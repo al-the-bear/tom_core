@@ -2,6 +2,19 @@
 
 ### Changed
 
+- **Closing an audit sink or anchor publisher finishes the job (tcopen83).**
+  The kernel's `TomClosable.close` is awaited by the shutdown cleanup now, so
+  the split between a synchronous close and an awaitable sibling is gone.
+  `TomAuditSink.close()` returns `Future<void>` and drains the queue — every
+  record submitted before it is stored by the time it completes, and a record
+  submitted after it is refused with `audit.sink.closed`. `flushAndClose()` is
+  removed. `TomAuditAnchorPublisher.close()` publishes the final anchor and
+  completes once it is stored; `publishAndClose()` is removed. Every close of a
+  sink, a publisher or a `TomMessageOutbox` hands later callers the same close.
+  `TomMessageOutbox.close()` awaits its scheduler's lease releases and the
+  receipt stream. The file and SQL sinks no longer re-check for closure inside
+  the serialised write: no queued record can meet a closed sink any more.
+
 - **The login asks the installed `TomClientLimitsProvider` for the client
   limits (tcopen76)** before minting tokens, so a subscription service answers
   what a client bought; `null` keeps the authentication service's limits, and a

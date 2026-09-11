@@ -106,6 +106,9 @@ class TomMessageOutbox implements TomClosable {
 
   bool _closed = false;
 
+  /// The close under way, once [close] has been called.
+  Future<void>? _closing;
+
   /// Creates an outbox.
   ///
   /// [store] defaults to an in-memory queue, which is right for tests and
@@ -287,15 +290,16 @@ class TomMessageOutbox implements TomClosable {
     }
   }
 
-  /// Stops delivery and releases the scheduler. The [router] is left open.
+  /// Stops delivery, closes the scheduler — releasing the leases it holds —
+  /// and closes [receipts], completing once all of that has. The [router] is
+  /// left open. Idempotent: every call is handed the same close.
   @override
-  void close() {
-    if (_closed) return;
+  Future<void> close() => _closing ??= _shutDown();
+
+  Future<void> _shutDown() async {
     _closed = true;
-    scheduler.close();
-    // Completes on a later microtask and nothing downstream depends on it;
-    // awaiting would make [close] async for no observable difference.
-    unawaited(_receipts.close());
+    await scheduler.close();
+    await _receipts.close();
   }
 }
 

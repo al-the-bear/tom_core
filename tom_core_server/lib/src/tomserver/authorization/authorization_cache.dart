@@ -207,8 +207,8 @@ class TomAuthorizationCache implements TomDisposable {
   /// so that registering [instance] with `tomShutdownCleanup` both releases the
   /// isolate and leaves no authorized principals behind in memory.
   ///
-  /// Synchronous, as [TomDisposable] requires: the cleanup discards a returned
-  /// future rather than awaiting it, and cancelling a timer needs nothing more.
+  /// Synchronous because cancelling a timer and clearing a map need nothing
+  /// more.
   @override
   void dispose() {
     _stopEviction();

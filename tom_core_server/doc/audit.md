@@ -362,8 +362,8 @@ order.
 
 ### Reading a trail back is per sink, deliberately
 
-`TomAuditSink` declares a writer's surface — `write`, `headHash`, `entryCount`,
-`close`, `flushAndClose` — and reading entries back is not among them. Each
+`TomAuditSink` declares a writer's surface — `write`, `headHash`, `entryCount`
+and `close` — and reading entries back is not among them. Each
 implementation exposes read-back separately instead, in the shape its storage
 actually has:
 
@@ -831,27 +831,23 @@ callback propagates only after every chain has been checked.
 
 The final anchor of a graceful shutdown is the one that pins the chain's last
 head; without it every entry written since the previous tick stays unanchored.
-Delivering it takes an `await`, so the publisher offers the same pair the sink
-does:
+`close()` delivers it: it stops the schedule, publishes one final anchor, and
+completes once that anchor is in the store. A store failure is thrown — the
+caller asked for a publication and is entitled to learn it did not happen — and
+the publisher is closed either way. Every call is handed the same close, so a
+shutdown that reaches the publisher twice publishes one final anchor, not two.
 
-| Call | Publishes | Use it |
-| ---- | --------- | ------ |
-| `publishAndClose()` | a final anchor, awaited | wherever an `await` is available |
-| `close()` | **nothing** | only the synchronous `TomClosable` shutdown path |
-
-`close()` is `TomClosable`'s method and that contract is synchronous — nothing
-awaits what it returns. A publication it started without waiting would sit in a
-microtask that a departing process never runs, so it makes no such attempt.
-Best-effort publishing here would be worse than none: an operator who reads that
-close anchors the final head believes the chain is pinned where it stopped, and
-an unanchored tail nobody knows about is the gap an anchor exists to close.
+Because `close()` is `TomClosable`'s method, a publisher registered with the
+shutdown cleanup is awaited like any other closable, within the phase's budget.
 
 Order matters when the sink is queued. Anchor **after** draining the sink, not
 before — an anchor is a claim about a *position*, so one taken first pins the
 head as it stood before the records the drain went on to store, leaving them
 outside the anchored range. That is the one place a truncation is invisible.
-`advanced_ops_server`'s `OpsRuntime.close` is the worked example: stop the
-timers, uninstall the trail, `flushAndClose` the sink, *then* `publishAndClose`.
+Closables close in registration order, so register the sink ahead of its
+publisher. `advanced_ops_server`'s `OpsRuntime.close` is the worked example:
+stop the timers, uninstall the trail, close the sink, *then* close the
+publisher.
 
 ## Failure Behaviour
 
@@ -910,36 +906,32 @@ against a dead handle for the life of the process.
 
 Both persistent sinks serialise their writes through an internal queue, so at
 the moment of shutdown there may be a record that a caller has submitted and the
-sink has not yet stored. What happens to it is a choice, and the sinks make it
-explicitly:
+sink has not yet stored. `close()` waits for it: the sink closes to new records,
+waits for the queued ones to be stored, and only then releases the file or
+returns. A shutdown that awaits the close — this is `TomClosable`'s method, so
+a sink registered with the shutdown cleanup is awaited within its phase's
+budget — therefore has every record submitted before it in the trail.
 
-| Call | Contract | Use it |
-| ---- | -------- | ------ |
-| `close()` | Synchronous. Refuses whatever is still queued with `audit.sink.closed`. | From the synchronous shutdown path — it is `TomClosable`'s method. |
-| `flushAndClose()` | Asynchronous. Waits for the queued records to be stored, then closes. | Everywhere an `await` is available. |
+A record submitted *after* the call is refused. The queue has to stop growing
+for the drain to have a point to reach while a caller keeps writing, and that
+leaves three possible answers for the late record, of which only one is honest:
 
-`close()` cannot do better. `TomClosable.close()` must complete synchronously —
-the shutdown calls it through a `void Function()` and does not await what comes
-back — and no synchronous method can wait for a queue. That leaves three
-possible answers for a queued record, and only one of them is honest:
-
-- **Write it anyway.** A sink that is closed is still writing. For the file
-  sink this meant reopening the file it had just closed and appending to it,
-  behind the back of the code that closed it.
+- **Write it anyway.** A sink that is closed is still writing — for the file
+  sink, reopening the file it is closing, behind the back of the code that
+  closed it.
 - **Drop it.** An audited action reports success with no entry behind it —
   precisely the outcome a fail-closed trail exists to prevent.
 - **Refuse it.** The record's `write` future completes with
   `audit.sink.closed`, and the caller — which is the code that knows whether the
   action may still be allowed to stand — is told.
 
-So a graceful shutdown should call `flushAndClose()` and await it; registering
-the sink as a `TomClosable` remains the backstop for the paths that cannot.
-Calling both is safe: `flushAndClose()` after `close()` is a no-op, not a second
-close, and it will not reopen anything.
+Every call is handed the same close, so a shutdown that closes the sink twice —
+the registered `TomClosable` and the application's own teardown — waits for the
+one drain both times and reopens nothing.
 
 **All three sinks answer the same way.** `TomMemoryAuditSink` has no queue —
 `write` has stored the entry by the time its future completes — so it has
-nothing to refuse *from* one, but a write submitted after `close()` is refused
+nothing to drain, but a write submitted after `close()` is refused
 with the same `audit.sink.closed`. That is deliberate rather than incidental:
 the refusal is a promise of `TomAuditSink`, and a caller holding the interface
 cannot ask which implementation it got. A lenient memory sink would be the worse
@@ -956,7 +948,7 @@ final sink = TomFileAuditSink(directory: Directory('/var/audit/app'));
 TomAuditTrail.install(sink);
 
 // Graceful teardown: nothing submitted before this line is refused.
-await sink.flushAndClose();
+await sink.close();
 ```
 
 ## Suppressing the Trail

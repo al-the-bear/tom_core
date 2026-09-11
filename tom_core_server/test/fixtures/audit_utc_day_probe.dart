@@ -42,7 +42,7 @@ Future<void> main() async {
         outcome: TomAuditOutcome.succeeded,
       ),
     );
-    sink.close();
+    await sink.close();
     final offset = probeInstant.toLocal().timeZoneOffset.inHours;
     stdout.write('$offset|${p.basename(sink.files.single.path)}');
   } finally {

@@ -135,7 +135,7 @@ Future<void> _steady(_Options options, TomDataSource datasource) async {
 
   await scheduler.start();
   await Future<void>.delayed(options.duration);
-  scheduler.close();
+  await scheduler.close();
   // The tick that is already in flight when close() returns may still be
   // completing a run. Wait out longer than one body, so a run that fired is
   // finished and recorded before the process exits — otherwise it stays

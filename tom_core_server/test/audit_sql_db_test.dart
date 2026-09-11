@@ -87,7 +87,7 @@ void main() async {
           expect(read.single.record.target, 'Invoice');
           expect(read.single.record.after['amount'], 1);
           expect(read.single.isSelfConsistent, isTrue);
-          sink.close();
+          await sink.close();
         },
       );
 
@@ -107,7 +107,7 @@ void main() async {
         ]);
         expect((await sink.verify()).isValid, isTrue);
         expect(sink.headHash, read.last.hash);
-        sink.close();
+        await sink.close();
       });
 
       test('the table creates itself on first use', () async {
@@ -116,13 +116,13 @@ void main() async {
         final sink = sinkFor('node-a');
         await sink.write(_record(1));
         expect(await sink.readAll(), hasLength(1));
-        sink.close();
+        await sink.close();
       });
 
       test('a closed sink refuses further records', () async {
         final sink = sinkFor('node-a');
         await sink.write(_record(1));
-        sink.close();
+        await sink.close();
         expect(
           () => sink.write(_record(2)),
           throwsA(
@@ -135,17 +135,31 @@ void main() async {
         );
       });
 
-      test('a record still queued when close() runs is refused', () async {
+      test('close stores what was queued before it', () async {
         final sink = sinkFor('node-a');
-        await sink.write(_record(1));
-        // Not awaited: the record is enqueued and has not started when
-        // `close()` runs. The enqueue-time check already let it through, so
-        // only the check in the serialised body can turn it away — and if
-        // neither does, a closed sink inserts a row.
+        final first = sink.write(_record(1));
         final queued = sink.write(_record(2));
-        sink.close();
+
+        await sink.close();
+
+        // Stored by the time the close completes, not merely at some point
+        // after it: the close drains the queue before it returns.
+        expect(sink.entryCount, 2);
+        await expectLater(first, completes);
+        await expectLater(queued, completes);
+        expect((await sink.readAll()).map((e) => e.record.id), [
+          'entry-1',
+          'entry-2',
+        ]);
+        expect((await sink.verify()).isValid, isTrue);
+      });
+
+      test('a write during the close is refused', () async {
+        final sink = sinkFor('node-a');
+        final queued = sink.write(_record(1));
+        final closing = sink.close();
         await expectLater(
-          queued,
+          sink.write(_record(2)),
           throwsA(
             isA<TomAuditException>().having(
               (e) => e.key,
@@ -154,77 +168,51 @@ void main() async {
             ),
           ),
         );
+        await closing;
+        await expectLater(queued, completes);
 
         // The refusal is only half the claim; the table is the other half.
         final reader = sinkFor('node-a');
         expect((await reader.readAll()).map((e) => e.record.id), ['entry-1']);
-        reader.close();
+        await reader.close();
       });
 
       test('a refused record does not provision the schema', () async {
         // Never opened: the table was dropped in setUp and this sink has not
-        // written yet, so the queued record would be the one to create it.
+        // written yet, so the refused record would be the one to create it.
         final sink = sinkFor('node-a');
-        final queued = sink.write(_record(1));
-        sink.close();
-        await expectLater(queued, throwsA(isA<TomAuditException>()));
+        final closing = sink.close();
+        await expectLater(
+          sink.write(_record(1)),
+          throwsA(isA<TomAuditException>()),
+        );
+        await closing;
 
-        // Refusing has to be free of side effects. Refuse late enough and the
-        // record still reaches `open()` on its way to being turned away — a
-        // closed sink creating a table, probing the deployment and recovering
-        // a chain head for an entry it had already decided not to store.
+        // Refusing has to be free of side effects: a closed sink creating a
+        // table, probing the deployment and recovering a chain head for an
+        // entry it had already decided not to store.
         expect(sink.writeOnceCheck, isNull);
       });
 
-      test('a close during open() does not insert the queued row', () async {
+      test('a close during open() waits for the queued row', () async {
         final sink = sinkFor('node-a');
         final queued = sink.write(_record(1));
         // `open()` is a real round trip — provisioning, probing and head
-        // recovery. The serialised body has already passed its first check and
-        // is suspended inside it, so this is the window that only the check
-        // *after* the open can catch.
-        scheduleMicrotask(sink.close);
-        await expectLater(
-          queued,
-          throwsA(
-            isA<TomAuditException>().having(
-              (e) => e.key,
-              'key',
-              'audit.sink.closed',
-            ),
-          ),
-        );
+        // recovery — and the queued record is suspended inside it. The close
+        // lands in that window and still waits for the row.
+        final closed = Completer<void>();
+        scheduleMicrotask(() => closed.complete(sink.close()));
+        await expectLater(queued, completes);
+        await closed.future;
 
         final reader = sinkFor('node-a');
-        expect(await reader.readAll(), isEmpty);
-        reader.close();
+        expect((await reader.readAll()).map((e) => e.record.id), ['entry-1']);
+        await reader.close();
       });
 
-      test(
-        'flushAndClose stores what was queued rather than refusing it',
-        () async {
-          final sink = sinkFor('node-a');
-          final first = sink.write(_record(1));
-          final queued = sink.write(_record(2));
-
-          await sink.flushAndClose();
-
-          // Neither write was awaited before the close, and both are stored.
-          // This is what `close()` cannot do: `TomClosable` requires it to
-          // return synchronously, and no synchronous method can wait for a queue.
-          await expectLater(first, completes);
-          await expectLater(queued, completes);
-          expect((await sink.readAll()).map((e) => e.record.id), [
-            'entry-1',
-            'entry-2',
-          ]);
-          expect((await sink.verify()).isValid, isTrue);
-        },
-      );
-
-      test('flushAndClose leaves the sink closed', () async {
+      test('close leaves the sink closed', () async {
         final sink = sinkFor('node-a');
-        await sink.flushAndClose();
+        await sink.close();
         expect(
           () => sink.write(_record(1)),
           throwsA(
@@ -237,17 +225,20 @@ void main() async {
         );
       });
 
-      test('flushAndClose after close() is a no-op', () async {
+      test('every close is handed the same close', () async {
         final sink = sinkFor('node-a');
-        await sink.write(_record(1));
-        sink.close();
-        // Shutdown may call both — the registered `TomClosable` and the
-        // application's own teardown. The second call must not throw, and must
-        // not resurrect anything.
-        await sink.flushAndClose();
+        final queued = sink.write(_record(1));
+        // Shutdown may close a sink twice — the registered TomClosable and the
+        // application's own teardown. Both wait for the one drain.
+        final first = sink.close();
+        final second = sink.close();
+
+        expect(identical(first, second), isTrue);
+        await second;
+        await expectLater(queued, completes);
         final reader = sinkFor('node-a');
         expect((await reader.readAll()).map((e) => e.record.id), ['entry-1']);
-        reader.close();
+        await reader.close();
       });
     });
 
@@ -258,7 +249,7 @@ void main() async {
           final first = sinkFor('node-a');
           await first.write(_record(1));
           final last = await first.write(_record(2));
-          first.close();
+          await first.close();
 
           final second = sinkFor('node-a');
           await second.open();
@@ -272,7 +263,7 @@ void main() async {
           final verification = await second.verify();
           expect(verification.isValid, isTrue);
           expect(verification.entryCount, 3);
-          second.close();
+          await second.close();
         },
       );
 
@@ -281,7 +272,7 @@ void main() async {
         await sink.open();
         expect(sink.headHash, tomAuditGenesisHash);
         expect((await sink.verify()).entryCount, 0);
-        sink.close();
+        await sink.close();
       });
 
       test('a failed open is retried rather than remembered', () async {
@@ -301,7 +292,7 @@ void main() async {
         await sink.open();
         await sink.write(_record(1));
         expect(await sink.readAll(), hasLength(1));
-        sink.close();
+        await sink.close();
       });
     });
 
@@ -323,7 +314,7 @@ void main() async {
           for (var i = 1; i <= 20; i++) 'entry-$i',
         ]);
         expect((await sink.verify()).isValid, isTrue);
-        sink.close();
+        await sink.close();
       });
 
       test('two sinks on one chain cannot fork it', () async {
@@ -350,8 +341,8 @@ void main() async {
           ),
         );
         expect((await a.verify()).isValid, isTrue);
-        a.close();
-        b.close();
+        await a.close();
+        await b.close();
       });
 
       test('a failed write does not wedge the sink', () async {
@@ -374,8 +365,8 @@ void main() async {
         );
         await a.write(_record(4));
         expect((await a.verify()).isValid, isTrue);
-        a.close();
-        b.close();
+        await a.close();
+        await b.close();
       });
     });
 
@@ -400,8 +391,8 @@ void main() async {
         // the whole reason `writer` is a required argument.
         expect((await a.verify()).isValid, isTrue);
         expect((await b.verify()).isValid, isTrue);
-        a.close();
-        b.close();
+        await a.close();
+        await b.close();
       });
     });
 
@@ -422,7 +413,7 @@ void main() async {
         // The retained rows are a suffix, so they still verify — against their
         // own oldest link rather than against genesis.
         expect((await sink.verify()).isValid, isTrue);
-        sink.close();
+        await sink.close();
       });
 
       test(
@@ -432,7 +423,7 @@ void main() async {
           await sink.write(_record(1));
           expect(await sink.purgeToMaxEntries(5), 0);
           expect(await sink.readAll(), hasLength(1));
-          sink.close();
+          await sink.close();
         },
       );
 
@@ -442,7 +433,7 @@ void main() async {
         await sink.write(_record(2));
         expect(await sink.purgeToMaxEntries(0), 2);
         expect(await sink.readAll(), isEmpty);
-        sink.close();
+        await sink.close();
       });
 
       test('a negative limit is refused rather than interpreted', () async {
@@ -457,7 +448,7 @@ void main() async {
             ),
           ),
         );
-        sink.close();
+        await sink.close();
       });
 
       test(
@@ -477,7 +468,7 @@ void main() async {
             'entry-4',
           ]);
           expect((await sink.verify()).isValid, isTrue);
-          sink.close();
+          await sink.close();
         },
       );
 
@@ -489,7 +480,7 @@ void main() async {
 
         expect(await sink.purgeBefore(base.add(const Duration(days: 1))), 2);
         expect(await sink.readAll(), isEmpty);
-        sink.close();
+        await sink.close();
       });
 
       test('a cutoff before every entry removes nothing', () async {
@@ -501,7 +492,7 @@ void main() async {
           0,
         );
         expect(await sink.readAll(), hasLength(1));
-        sink.close();
+        await sink.close();
       });
 
       test('retention leaves the chain able to continue', () async {
@@ -517,7 +508,7 @@ void main() async {
         final read = await sink.readAll();
         expect(read.map((e) => e.record.id), ['entry-3', 'entry-4', 'entry-5']);
         expect((await sink.verify()).isValid, isTrue);
-        sink.close();
+        await sink.close();
       });
     });
 
@@ -542,7 +533,7 @@ void main() async {
         expect(verification.isValid, isFalse);
         expect(verification.brokenAtIndex, 1);
         expect(verification.detail, contains('content changed'));
-        sink.close();
+        await sink.close();
       });
 
       test('a removed interior row breaks the link, not the content', () async {
@@ -563,7 +554,7 @@ void main() async {
         // differently.
         expect(verification.brokenAtIndex, 1);
         expect(verification.detail, contains('link mismatch'));
-        sink.close();
+        await sink.close();
       });
 
       test('an unreadable record is a finding, not a skipped row', () async {
@@ -584,7 +575,7 @@ void main() async {
             ),
           ),
         );
-        sink.close();
+        await sink.close();
       });
     });
 
@@ -644,7 +635,7 @@ void main() async {
         expect(result.status, TomAuditAnchorStatus.diverged);
         expect(result.indicatesTampering, isTrue);
         publisher.stop();
-        sink.close();
+        await sink.close();
       });
 
       test('deleting the newest rows reads as a truncation', () async {
@@ -675,7 +666,7 @@ void main() async {
         );
         expect(result.status, TomAuditAnchorStatus.truncated);
         publisher.stop();
-        sink.close();
+        await sink.close();
       });
 
       test('retention leaves a suffix that still matches the anchor', () async {
@@ -704,7 +695,7 @@ void main() async {
         expect(result.status, TomAuditAnchorStatus.matched);
         expect(result.indicatesTampering, isFalse);
         publisher.stop();
-        sink.close();
+        await sink.close();
       });
 
       test(
@@ -714,7 +705,7 @@ void main() async {
           for (var i = 1; i <= 3; i++) {
             await first.write(_record(i));
           }
-          first.close();
+          await first.close();
 
           final second = sinkFor('node-a');
           await second.write(_record(4));
@@ -727,7 +718,7 @@ void main() async {
             writer: 'node-a',
           );
           expect(result.status, TomAuditAnchorStatus.matched);
-          second.close();
+          await second.close();
         },
       );
     });
@@ -744,7 +735,7 @@ void main() async {
           expect(check.grantsDelete, isTrue);
           expect(check.isAppendOnly, isFalse);
           expect(check.summary, contains('UPDATE PERMITTED'));
-          sink.close();
+          await sink.close();
         },
       );
 
@@ -762,7 +753,7 @@ void main() async {
               ),
             ),
           );
-          sink.close();
+          await sink.close();
         },
       );
 
@@ -786,7 +777,7 @@ void main() async {
           );
           expect(check.updatesBlocked, isTrue);
           expect(check.isAppendOnly, isFalse, reason: 'DELETE is still open');
-          sink.close();
+          await sink.close();
         },
       );
 
@@ -801,7 +792,7 @@ void main() async {
         );
 
         expect((await sink.verifyWriteOnce()).isAppendOnly, isTrue);
-        sink.close();
+        await sink.close();
       });
 
       test(
@@ -835,7 +826,7 @@ void main() async {
           // destructive statements.
           await sink.write(_record(2));
           expect(await sink.readAll(), hasLength(2));
-          sink.close();
+          await sink.close();
         },
       );
     });
@@ -934,7 +925,7 @@ void main() async {
         await sink.write(_record(2));
         expect(await sink.readAll(), hasLength(2));
         expect((await sink.verify()).isValid, isTrue);
-        sink.close();
+        await sink.close();
       });
 
       test(
@@ -976,7 +967,7 @@ void main() async {
 
           expect(await sink.readAll(), hasLength(1));
           expect((await sink.readAll()).single.record.actor.username, 'ada');
-          sink.close();
+          await sink.close();
         },
       );
 
@@ -1016,8 +1007,8 @@ void main() async {
           final operator = sinkFor('node-a');
           expect(await operator.purgeToMaxEntries(2), 2);
           expect((await operator.verify()).isValid, isTrue);
-          serving.close();
-          operator.close();
+          await serving.close();
+          await operator.close();
         },
       );
     });

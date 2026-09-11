@@ -65,7 +65,7 @@ minute boundary.
 start and stop in. The audit sink must be installed before the first job body
 runs, uninstalled after the last one stops, and **drained** after that — a
 record the sink has accepted but not yet written is still in its queue, and
-`TomAuditSink.close()` is synchronous and so has to refuse it. That is why
+`TomAuditSink.close()` stores it before it completes. That is why
 `close()` returns a `Future`: the signal handler awaits it before `exit(0)`,
 which does not wait for pending work. Four independent `start()` calls in a
 `main` are four chances to get that order wrong with the constraint living only

@@ -125,20 +125,20 @@ class OpsAnchoring {
   Future<TomAuditAnchor> publishNow() =>
       runAsOpsService(() => publisher.publishNow());
 
-  /// Publishes a final anchor, then stops the timer.
+  /// Publishes a final anchor, then closes the publisher for good — see
+  /// [TomAuditAnchorPublisher.close].
   ///
-  /// Awaitable, because the anchor that pins the head a shutdown stops at is
-  /// the one worth having and a synchronous close cannot wait for it — see
-  /// [TomAuditAnchorPublisher.close]. [OpsRuntime.close] calls this *after*
-  /// draining the sink, so the final anchor covers the records the drain
-  /// stored rather than the head as it stood before them.
+  /// The anchor that pins the head a shutdown stops at is the one worth
+  /// having. [OpsRuntime.close] calls this *after* draining the sink, so the
+  /// final anchor covers the records the drain stored rather than the head as
+  /// it stood before them.
   ///
   /// Not gated on [OpsCapabilities.publishAuditAnchor], unlike [start] and
   /// [publishNow]: a shutdown must not be the moment a capability check
   /// discovers it can refuse, and an anchor the server is closing on is
   /// evidence about work it has already done rather than new work it is asking
   /// permission for.
-  Future<void> publishAndClose() => runAsOpsService(publisher.publishAndClose);
+  Future<void> close() => runAsOpsService(publisher.close);
 
   /// Disarms the timer and leaves the publisher able to publish.
   ///
@@ -148,18 +148,6 @@ class OpsAnchoring {
   /// those two calls the publisher must still accept a publication — which is
   /// exactly what distinguishes this from [close].
   void stop() => publisher.stop();
-
-  /// Closes the publisher for good. Publishes **nothing** — see
-  /// [publishAndClose].
-  ///
-  /// Kept alongside its awaitable sibling rather than folded into it, because
-  /// the two answer different questions and a sample that offered only one
-  /// would hide the choice. This is for a caller with no `await` to be had — a
-  /// test tearing down, a synchronous shutdown path — and the price is stated:
-  /// no final anchor, so the entries written since the last tick stay
-  /// unanchored. [OpsRuntime.close] has an `await`, so it uses the other, and
-  /// reaches for [stop] when all it wants is the timer off.
-  void close() => publisher.close();
 
   /// One line describing the arrangement, for the boot log.
   ///

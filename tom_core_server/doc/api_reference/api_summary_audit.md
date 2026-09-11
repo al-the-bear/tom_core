@@ -446,8 +446,8 @@ than raising from the synchronous part of the body, which puts the rule in the
 declaration where a guard added later inherits it.
 
 **Reading a trail back is deliberately not part of this interface.** A sink is
-a *writer*, and the members below — `write`, `headHash`, `entryCount`, `close`,
-`flushAndClose` — are the whole of what a caller may do to an arbitrary sink.
+a *writer*, and the members below — `write`, `headHash`, `entryCount` and
+`close` — are the whole of what a caller may do to an arbitrary sink.
 Each implementation exposes its own read-back in the shape
 its storage has — `TomMemoryAuditSink.verify` and `TomFileAuditSink.readAll` /
 `verify` synchronously, `TomSqlAuditSink.readAll` / `verify` asynchronously
@@ -475,8 +475,7 @@ module, not a gap this interface is waiting to grow into.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | Persists `record` and returns the entry as stored. Every failure, refusals included, arrives as an error on the returned future — never as a throw from the call itself. |
-| `close` | `void close()` | *(override)* Closes the sink **without** waiting for records already queued. Inherits `TomClosable`'s synchronous contract, so a queued record cannot be waited for: it is refused with `audit.sink.closed` rather than dropped or written anyway. |
-| `flushAndClose` | `Future<void> flushAndClose()` | Waits for every queued record to be stored, then closes. Nothing enqueued before the call is refused. Idempotent, and safe to call after `close`. Use this wherever an `await` is available. |
+| `close` | `Future<void> close()` | *(override)* Waits for every queued record to be stored, then closes; nothing enqueued before the call is lost. A record written after the call is refused with `audit.sink.closed` rather than dropped or written anyway. Idempotent: every call is handed the same close. A sink registered with the shutdown cleanup is drained within its phase's budget. |
 
 ### TomMemoryAuditSink
 
@@ -511,8 +510,7 @@ TomMemoryAuditSink({int maxEntries = 1000})
 | `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | *(override)* Chains `record` onto the head, appends it, and drops the oldest entries once `maxEntries` is exceeded. After `close()` the returned future completes with `audit.sink.closed` and nothing is stored — the same refusal the two persistent sinks give, because it is `TomAuditSink`'s promise rather than theirs. |
 | `verify` | `TomAuditChainVerification verify()` | Verifies the retained entries, starting from the oldest retained link rather than genesis so a bounded sink does not report a false break at the front. Synchronous, and not a `TomAuditSink` member — read-back is per implementation by design. |
 | `clear` | `void clear()` | Discards every retained entry and resets the chain. Test-support only. |
-| `close` | `void close()` | *(override)* Refuses later writes. Idempotent, and reading keeps working — `entries`, `records`, `verify`, `headHash` and `entryCount` all still answer. There is no queue to refuse *from*: `write` has stored the entry by the time its future completes. |
-| `flushAndClose` | `Future<void> flushAndClose()` | *(override)* Nothing to drain — `write` stores the entry before its future completes and there is no queue behind it — so this is `close()` with an `await` in front of it. |
+| `close` | `Future<void> close()` | *(override)* Refuses later writes. Idempotent, and reading keeps working — `entries`, `records`, `verify`, `headHash` and `entryCount` all still answer. There is no queue to drain: `write` has stored the entry by the time its future completes. |
 
 ### TomFileAuditSink
 
@@ -567,8 +565,7 @@ TomFileAuditSink({
 | `readAll` | `List<TomAuditEntry> readAll()` | Reads every retained entry across all files, oldest first. Synchronous, and not a `TomAuditSink` member — read-back is per implementation by design. |
 | `verify` | `TomAuditChainVerification verify()` | Verifies the retained entries starting from the oldest retained link, so a retention deletion is not reported as a break. Synchronous, like `readAll`, and not on `TomAuditSink` either. |
 | `write` | `Future<TomAuditEntry> write(TomAuditRecord record)` | *(override)* Appends one JSON line to the current UTC day's file, opening the next day's file when the day has turned over — which is not a rotation, so no sequence number is spent — rotating on overflow and applying retention as needed. Writes are serialised through an internal queue, and each is flushed before it returns. The returned future carries `audit.sink.closed` when the sink is closed and `audit.sink.write_failed` when storage refused it — once each, and never as a throw from the call. A failed write drops the file handle, so the sink resumes recording as soon as the path it died on works again. |
-| `close` | `void close()` | *(override)* Closes the file handle. Every `write` that has *returned* already flushed, so nothing completed is at risk; a record still in the queue is refused with `audit.sink.closed`, because `TomClosable` requires this method to return synchronously and no synchronous method can wait for a queue. The refusal is also what keeps a queued record from reopening the file the sink has just closed. |
-| `flushAndClose` | `Future<void> flushAndClose()` | *(override)* Closes the sink to new records, waits for the queued ones to be written and flushed, then closes the handle. The route that stores what `close` has to refuse. |
+| `close` | `Future<void> close()` | *(override)* Closes the sink to new records, waits for the queued ones to be written, then flushes and closes the handle. With nothing left to write, nothing can reopen the file once it is closed. Idempotent: every call is handed the same close. |
 
 ### TomAudited
 
@@ -936,7 +933,7 @@ audited server, and it wants the narrowest possible permission.
 | `append` | `Future<void> append(TomAuditAnchor anchor)` | Appends `anchor`; must throw rather than silently drop, so a publisher can tell a publication from a swallowed error. |
 | `read` | `Future<List<TomAuditAnchor>> read(String writer)` | Every stored anchor for `writer`, oldest first — and **only** that writer's. An implementation that groups by some derivation of the name must still filter on the writer recorded in each anchor, since such derivations are rarely injective. A foreign anchor is worse than none: it makes `latest` answer the routine check with a position from another trail. |
 | `latest` | `Future<TomAuditAnchor?> latest(String writer)` | The most recently published anchor for `writer`, or `null`. The one a routine check uses: it pins the furthest verifiable position. |
-| `close` | `void close()` | *(override)* No-op by default. |
+| `close` | `FutureOr<void> close()` | *(override)* No-op by default. |
 
 ### TomMemoryAuditAnchorStore
 
@@ -1040,8 +1037,7 @@ TomAuditAnchorPublisher({
 | `start` | `Future<void> start()` | Publishes one anchor immediately, then every `interval`. The immediate publication matters: a process compromised and killed inside one interval would otherwise never anchor. Throws `TomAuditException` when the publisher is closed — through `publishNow`, which runs before the timer is armed. |
 | `stop` | `void stop()` | Stops the schedule; `publishNow` still works. |
 | `publishNow` | `Future<TomAuditAnchor> publishNow()` | Captures the sink's position, signs it when a signer is configured, appends it to the store and returns it. Throws when the store refuses, and throws `TomAuditException` (`audit.anchor.publisher_closed`) once the publisher is closed — this is the single choke point every publication passes through. |
-| `publishAndClose` | `Future<void> publishAndClose()` | Cancels the schedule, publishes a final anchor, then closes. The anchor that pins the chain's last head, which a synchronous `close` cannot deliver. A store failure is thrown, unlike the scheduled path; the publisher closes either way. Idempotent, and a no-op after `close`. |
-| `close` | `void close()` | *(override)* Cancels the schedule and closes. **Publishes nothing** — `TomClosable`'s contract is synchronous, and a publication started without waiting is one a departing process never finishes. Use `publishAndClose` wherever an `await` is available. |
+| `close` | `Future<void> close()` | *(override)* Cancels the schedule, publishes a final anchor — the one that pins the chain's last head — then closes. A store failure is thrown, unlike the scheduled path; the publisher closes either way. Idempotent: every call is handed the same close. Register it after the sink it anchors, so the sink drains first. |
 
 ### TomAuditChainReader
 
@@ -1318,8 +1314,7 @@ start-up than on the first audited action.
 | `purgeBefore` | `Future<int> purgeBefore(DateTime before)` | Deletes this writer's entries recorded before `before`, returning the row count. The cutoff is resolved to a *sequence* boundary first, because deleting by timestamp could punch a hole under clock skew. Never called by the framework — schedule it. |
 | `purgeToMaxEntries` | `Future<int> purgeToMaxEntries(int maxEntries)` | Keeps the newest `maxEntries` entries of this writer's chain and deletes the prefix in front of them, returning the row count. Throws `TomAuditException` for a negative limit. Never called by the framework — schedule it. |
 | `verifyWriteOnce` | `Future<TomAuditWriteOnceCheck> verifyWriteOnce()` | Observes what the connected user and the table's `BEFORE` triggers actually permit. Called by `open`; exposed so a health check or operator tool can ask without opening a second sink. |
-| `close` | `void close()` | *(override)* Marks the sink closed. Every `write` that has *returned* already committed its `INSERT`, so nothing completed is at risk; a record still in the queue is refused with `audit.sink.closed`, because `TomClosable` requires this method to return synchronously and no synchronous method can wait for a queue. The `datasource` is deliberately not closed — it is registered process-wide. |
-| `flushAndClose` | `Future<void> flushAndClose()` | *(override)* Closes the sink to new records, waits for the queued ones to be inserted, then returns. The route that stores what `close` has to refuse; like `close`, it leaves the `datasource` open. |
+| `close` | `Future<void> close()` | *(override)* Closes the sink to new records and waits for the queued ones to be inserted. Idempotent: every call is handed the same close. The `datasource` is deliberately not closed — it is registered process-wide. |
 | `toString` | `String toString()` | *(override)* `TomSqlAuditSink(<table>, writer: <writer>)`. |
 
 ### TomAuditTrailRow

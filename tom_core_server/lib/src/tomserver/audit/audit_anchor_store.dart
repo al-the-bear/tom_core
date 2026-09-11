@@ -70,8 +70,9 @@ abstract class TomAuditAnchorStore implements TomClosable {
     return all.isEmpty ? null : all.last;
   }
 
+  /// Releases whatever the store holds; nothing, by default.
   @override
-  void close() {}
+  FutureOr<void> close() {}
 }
 
 /// An in-memory anchor store, for tests.
@@ -232,6 +233,10 @@ class TomAuditAnchorPublisher implements TomClosable {
 
   Timer? _timer;
   bool _closed = false;
+
+  /// The close under way, once [close] has been called; every later call gets
+  /// this one.
+  Future<void>? _closing;
   TomAuditAnchor? _lastPublished;
 
   /// Creates a publisher. Nothing is published until [start] or [publishNow].
@@ -324,8 +329,11 @@ class TomAuditAnchorPublisher implements TomClosable {
   ///
   /// The last anchor of a graceful shutdown is the one that pins the chain's
   /// final head; without it every entry written since the last tick is left
-  /// unanchored. This is the method that delivers it, and [close] is not — see
-  /// there for why a synchronous close cannot.
+  /// unanchored. This is [TomClosable]'s method, so a publisher registered
+  /// with the shutdown cleanup delivers that anchor before the shutdown moves
+  /// on. Register it *after* the sink it anchors: closables close in
+  /// registration order, so the sink drains its queue first and the final
+  /// anchor pins the head the drain left.
   ///
   /// The timer is stopped *before* the final anchor is taken, so a scheduled
   /// tick cannot interleave and leave the last word to a publication the
@@ -337,40 +345,19 @@ class TomAuditAnchorPublisher implements TomClosable {
   /// timer running because the store was down would be a process that does not
   /// exit.
   ///
-  /// Idempotent, and a no-op after [close]: shutdown paths run twice more often
-  /// than anyone plans for, and a second final anchor would be a second claim
-  /// about the same head from a publisher that had already stopped.
-  Future<void> publishAndClose() async {
-    if (_closed) return;
+  /// Idempotent: every call is handed the same close. Shutdown paths run twice
+  /// more often than anyone plans for, and a second final anchor would be a
+  /// second claim about the same head from a publisher that had already
+  /// stopped.
+  @override
+  Future<void> close() => _closing ??= _publishAndClose();
+
+  Future<void> _publishAndClose() async {
     stop();
     try {
       await publishNow();
     } finally {
       _closed = true;
     }
-  }
-
-  /// Stops the schedule. **Publishes nothing** — see [publishAndClose].
-  ///
-  /// This is [TomClosable]'s method and inherits its **synchronous** contract,
-  /// which is what decides the behaviour: no synchronous method can wait for a
-  /// publication, and a publication started without waiting is one the caller
-  /// cannot rely on. In the shutdown path this is called from, the process is
-  /// going away — so the append sitting in a microtask never runs, and the
-  /// anchor is simply lost.
-  ///
-  /// Publishing anyway on a best-effort basis was the previous behaviour and
-  /// was worse than not publishing: an operator who reads that close anchors
-  /// the final head believes the chain is pinned where it stopped, and an
-  /// unanchored tail nobody knows about is the gap an anchor exists to close.
-  ///
-  /// Use [publishAndClose] wherever an `await` is available; reach for this one
-  /// only from the synchronous shutdown path, and accept that the entries
-  /// written since the last tick stay unanchored.
-  @override
-  void close() {
-    if (_closed) return;
-    _closed = true;
-    stop();
   }
 }

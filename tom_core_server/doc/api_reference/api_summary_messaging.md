@@ -872,7 +872,7 @@ all — are routinely measured in minutes.
 | `tick` | `Future<void> tick()` | Runs one delivery pass; exposed so a test can drive delivery without waiting on wall-clock time. |
 | `start` | `void start()` | Begins delivering on the scheduler's tick interval. |
 | `purgeFinished` | `Future<int> purgeFinished(DateTime before)` | Drops finished runs recorded before `before`, returning how many. Never called on your behalf: the completed runs are a delivery audit trail whose retention is a deployment's decision. |
-| `close` | `void close()` | *(override)* Stops delivery, releases the scheduler and closes the receipt stream. The `router` is left open. |
+| `close` | `Future<void> close()` | *(override)* Stops delivery, closes the scheduler — releasing its leases — and closes the receipt stream, completing once all of that has. The `router` is left open. Idempotent: every call is handed the same close. |
 
 ### TomTemplatedMessageService
 

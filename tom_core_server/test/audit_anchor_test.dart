@@ -113,7 +113,7 @@ void main() {
       expect(anchor.headHash, sink.headHash);
       expect(anchor.createdAt.isUtc, isTrue);
       expect(anchor.isSigned, isFalse);
-      sink.close();
+      await sink.close();
     });
 
     // An anchor is read next to the entry it anchors, so the two abbreviate the
@@ -137,7 +137,7 @@ void main() {
         expect(anchorWith('').toString(), contains(' no hash '));
       });
 
-      test('an anchor and its entry abbreviate to the same width', () {
+      test('an anchor and its entry abbreviate to the same width', () async {
         final sink = TomMemoryAuditSink();
         final full = List.generate(
           64,
@@ -155,7 +155,7 @@ void main() {
         expect(anchorText, contains(' ${full.substring(0, 8)} '));
         expect(entryText, endsWith('[${full.substring(0, 8)}]'));
         expect(anchorText, isNot(contains(full.substring(0, 9))));
-        sink.close();
+        await sink.close();
       });
     });
 
@@ -195,7 +195,7 @@ void main() {
           expect(anchor.headHash, sink.headHash, reason: name);
           expect(anchor.headHash, isNot(tomAuditGenesisHash), reason: name);
 
-          await sink.flushAndClose();
+          await sink.close();
         }
       },
     );
@@ -1031,7 +1031,7 @@ void main() {
       expect(publisher.lastPublished, same(anchor));
 
       publisher.stop();
-      sink.close();
+      await sink.close();
     });
 
     test('the published anchor is what later proves a rewrite', () async {
@@ -1047,7 +1047,7 @@ void main() {
       }
       await publisher.publishNow();
       publisher.stop();
-      sink.close();
+      await sink.close();
 
       // The attacker rewrites the file entirely: a fresh, internally perfect
       // chain over doctored records.
@@ -1075,7 +1075,7 @@ void main() {
         writer: 'node-a',
       );
       expect(result.status, TomAuditAnchorStatus.diverged);
-      reopened.close();
+      await reopened.close();
     });
 
     test('start publishes immediately, before the first interval', () async {
@@ -1090,7 +1090,7 @@ void main() {
       await publisher.start();
       expect(store.anchors, hasLength(1));
       publisher.stop();
-      sink.close();
+      await sink.close();
     });
 
     test('the schedule keeps publishing, and stop ends it', () async {
@@ -1115,22 +1115,16 @@ void main() {
       final stopped = store.anchors.length;
       await Future<void>.delayed(const Duration(milliseconds: 120));
       expect(store.anchors, hasLength(stopped));
-      sink.close();
+      await sink.close();
     });
 
-    // `close()` is `TomClosable`'s method and inherits its synchronous
-    // contract, so it cannot wait for a publication — and a publication it
-    // starts without waiting is one the shutdown it was called for will not be
-    // around to finish. These tests fix the split the way the sink's
-    // `close()`/`flushAndClose()` pair already does: the synchronous call makes
-    // no promise it cannot keep, and the awaitable sibling makes the one that
-    // matters.
-    //
-    // None of them may use a delay to see their result. A guarantee that needs
-    // the test to wait a turn is a guarantee that is not there at the only
-    // moment it is claimed for.
+    // `close()` is `TomClosable`'s method, so a shutdown awaits it: the final
+    // anchor is in the store by the time the close completes. None of these
+    // tests may use a delay to see their result. A guarantee that needs the
+    // test to wait a turn is a guarantee that is not there at the only moment
+    // it is claimed for.
     group('closing the publisher', () {
-      test('close stops the schedule and publishes nothing', () async {
+      test('close anchors the final head, with no delay', () async {
         final sink = TomMemoryAuditSink();
         final store = TomMemoryAuditAnchorStore();
         final publisher = TomAuditAnchorPublisher(
@@ -1141,47 +1135,25 @@ void main() {
         );
         await publisher.start();
         await sink.write(_record('r0'));
-        publisher.close();
-
-        // Pumped generously: the point is not that the anchor is late, it is
-        // that there is no anchor. A `close()` that started one would land it
-        // here and still have lost it in a real shutdown.
-        await pumpEventQueue();
-        expect(store.anchors, hasLength(1));
-        expect(store.anchors.single.entryCount, 0);
-        sink.close();
-      });
-
-      test('publishAndClose anchors the final head, with no delay', () async {
-        final sink = TomMemoryAuditSink();
-        final store = TomMemoryAuditAnchorStore();
-        final publisher = TomAuditAnchorPublisher(
-          sink: sink,
-          store: store,
-          writer: 'node-a',
-          interval: const Duration(hours: 24),
-        );
-        await publisher.start();
-        await sink.write(_record('r0'));
-        await publisher.publishAndClose();
+        await publisher.close();
 
         expect(store.anchors, hasLength(2));
         expect(store.anchors.last.entryCount, 1);
         expect(store.anchors.last.headHash, sink.headHash);
-        sink.close();
+        await sink.close();
       });
 
-      test('publishAndClose closes: the schedule does not restart', () async {
+      test('close closes: the schedule does not restart', () async {
         final sink = TomMemoryAuditSink();
         final publisher = TomAuditAnchorPublisher(
           sink: sink,
           store: TomMemoryAuditAnchorStore(),
           writer: 'node-a',
         );
-        await publisher.publishAndClose();
+        await publisher.close();
 
         await expectLater(publisher.start(), throwsA(isA<TomAuditException>()));
-        sink.close();
+        await sink.close();
       });
 
       test('every way of stopping cancels the timer', () async {
@@ -1214,20 +1186,13 @@ void main() {
           isFalse,
           reason: 'stop',
         );
-        expect(
-          (await armed()
-                ..close())
-              .isScheduled,
-          isFalse,
-          reason: 'close',
-        );
 
         final closing = await armed();
-        await closing.publishAndClose();
-        expect(closing.isScheduled, isFalse, reason: 'publishAndClose');
+        await closing.close();
+        expect(closing.isScheduled, isFalse, reason: 'close');
       });
 
-      test('publishAndClose is idempotent', () async {
+      test('every close is handed the same close', () async {
         // Shutdown paths run twice more often than anyone plans for — a signal
         // handler and a `finally`, say — and a second final anchor would be a
         // second claim about the same head from a publisher that had already
@@ -1239,32 +1204,47 @@ void main() {
           store: store,
           writer: 'node-a',
         );
-        await publisher.publishAndClose();
-        await publisher.publishAndClose();
+        final first = publisher.close();
+        final second = publisher.close();
 
+        expect(identical(first, second), isTrue);
+        await second;
         expect(store.anchors, hasLength(1));
-        sink.close();
+        await sink.close();
       });
 
-      test('publishAndClose after close publishes nothing', () async {
-        // The caller already took the synchronous exit. Publishing now would
-        // be a closed publisher writing to the store, which is exactly what
-        // the guard on `publishNow` refuses.
-        final sink = TomMemoryAuditSink();
-        final store = TomMemoryAuditAnchorStore();
-        final publisher = TomAuditAnchorPublisher(
-          sink: sink,
-          store: store,
-          writer: 'node-a',
-        );
-        publisher.close();
-        await publisher.publishAndClose();
+      test(
+        'a shutdown that closes the sink first anchors the drained head',
+        () async {
+          // Closables close in registration order, so registering the sink
+          // ahead of its publisher lets the sink drain before the final anchor
+          // is taken — and the anchor pins every record written before the
+          // shutdown, including the one still queued when it began.
+          final dir = Directory.systemTemp.createTempSync('tom_anchor_close_');
+          addTearDown(() => dir.deleteSync(recursive: true));
+          final sink = TomFileAuditSink(directory: dir);
+          final store = TomMemoryAuditAnchorStore();
+          final publisher = TomAuditAnchorPublisher(
+            sink: sink,
+            store: store,
+            writer: 'node-a',
+          );
+          final cleanup = TomShutdownCleanup()
+            ..addClosable(sink)
+            ..addClosable(publisher);
+          addTearDown(cleanup.dispose);
 
-        expect(store.anchors, isEmpty);
-        sink.close();
-      });
+          final queued = sink.write(_record('r0'));
+          await cleanup.performShutdown();
 
-      test('a store outage fails publishAndClose but still closes', () async {
+          await expectLater(queued, completes);
+          expect(store.anchors, hasLength(1));
+          expect(store.anchors.single.entryCount, 1);
+          expect(store.anchors.single.headHash, sink.headHash);
+        },
+      );
+
+      test('a store outage fails close but still closes', () async {
         // Two claims, and they pull in opposite directions. The caller asked
         // for a publication, so they are entitled to learn it did not happen —
         // unlike the scheduled tick, which only logs. But the publisher must
@@ -1277,10 +1257,7 @@ void main() {
           writer: 'node-a',
         );
 
-        await expectLater(
-          publisher.publishAndClose(),
-          throwsA(isA<TomAuditException>()),
-        );
+        await expectLater(publisher.close(), throwsA(isA<TomAuditException>()));
         await expectLater(
           publisher.start(),
           throwsA(
@@ -1291,7 +1268,7 @@ void main() {
             ),
           ),
         );
-        sink.close();
+        await sink.close();
       });
     });
 
@@ -1307,7 +1284,7 @@ void main() {
       // about it; only the scheduled path swallows.
       await expectLater(publisher.start(), throwsA(isA<TomAuditException>()));
       publisher.stop();
-      sink.close();
+      await sink.close();
     });
 
     test('publishing after close is refused, by either route', () async {
@@ -1323,7 +1300,7 @@ void main() {
         store: store,
         writer: 'node-a',
       );
-      publisher.close();
+      await publisher.close();
 
       const closed = 'audit.anchor.publisher_closed';
       await expectLater(
@@ -1334,8 +1311,9 @@ void main() {
         publisher.publishNow(),
         throwsA(isA<TomAuditException>().having((e) => e.key, 'key', closed)),
       );
-      expect(store.anchors, isEmpty);
-      sink.close();
+      // The final anchor the close published, and nothing after it.
+      expect(store.anchors, hasLength(1));
+      await sink.close();
     });
   });
 }

@@ -655,7 +655,8 @@ returns, so one slow relay handshake never holds up the next window — the outb
 composes `TomScheduler.tick()` with `TomScheduler.drain()` to get both
 properties at once.
 
-`outbox.close()` stops delivery and releases the scheduler, and leaves the
+`outbox.close()` stops delivery and closes the scheduler, completing once the
+scheduler's leases are released and the receipt stream is closed. It leaves the
 router open: a router shared with the rest of the application must not be torn
 down because the outbox stopped.
 

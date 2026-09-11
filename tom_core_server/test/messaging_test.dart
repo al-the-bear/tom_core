@@ -1622,7 +1622,7 @@ void main() {
     });
 
     test('a closed outbox refuses further messages', () async {
-      outbox.close();
+      await outbox.close();
       await expectLater(
         outbox.send(_mail()),
         throwsA(isA<TomMessagingException>()),
@@ -1632,7 +1632,7 @@ void main() {
     test('closing the outbox leaves the router open', () async {
       // A router shared with the rest of the application must not be torn down
       // because the outbox stopped.
-      outbox.close();
+      await outbox.close();
       expect((await transport.send(_mail())).isDelivered, isTrue);
     });
   });

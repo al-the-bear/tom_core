@@ -249,7 +249,7 @@ Future<void> run() async {
     'two sends of one message id queue one run, so an uncertain caller '
     'retrying cannot cause two deliveries',
   );
-  outbox.close();
+  await outbox.close();
 
   // 11. A file transport writes each message to a `.eml` file — a local run
   //     that produces something openable, without a relay.

@@ -202,7 +202,7 @@ can populate, so there is exactly one.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `dispose` | `void dispose()` | *(override)* Stops the sweep and drops every cached principal. Synchronous, as `TomDisposable` requires. |
+| `dispose` | `void dispose()` | *(override)* Stops the sweep and drops every cached principal. Synchronous: cancelling a timer and clearing a map need nothing more. |
 
 ### TomAuthorizationCacheStoreMessage
 

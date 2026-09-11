@@ -369,9 +369,8 @@ void main() {
       await draining.start();
 
       // Submitted and deliberately not awaited, so it is still in the sink's
-      // queue when the shutdown begins. `TomAuditSink.close()` is synchronous
-      // and would have to refuse it; the runtime's shutdown is asynchronous
-      // precisely so it does not have to.
+      // queue when the shutdown begins. The runtime's shutdown drains the sink
+      // before it completes, so the record is stored rather than refused.
       unawaited(
         TomAuditTrail.recordAction(
           action: TomAuditAction.execute,

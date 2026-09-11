@@ -252,9 +252,8 @@ class OpsRuntime {
   /// run's final mutation go unrecorded — the one record most worth having,
   /// because it is the one that happened during a shutdown. Draining is the
   /// other half of that promise: a record the sink has accepted but not yet
-  /// written is still in its queue, and `TomAuditSink.close()` is synchronous
-  /// and therefore has to refuse it. [TomAuditSink.flushAndClose] is what
-  /// stores it, and awaiting it here is what lets the caller exit knowing the
+  /// written is still in its queue, and [TomAuditSink.close] stores it before
+  /// it completes. Awaiting it here is what lets the caller exit knowing the
   /// trail is complete rather than merely closed.
   ///
   /// Anchoring is therefore the one thing whose reversal is **split**, and that
@@ -268,12 +267,12 @@ class OpsRuntime {
   /// is up.
   Future<void> close() async {
     anchoring.stop();
-    outbox.close();
-    scheduler.close();
+    await outbox.close();
+    await scheduler.close();
     TomServerPrincipal.clear();
     TomAuditTrail.uninstall();
-    await auditSink.flushAndClose();
-    await anchoring.publishAndClose();
+    await auditSink.close();
+    await anchoring.close();
   }
 
   /// One line per scheduler alert.

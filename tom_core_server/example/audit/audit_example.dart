@@ -224,12 +224,11 @@ Future<void> run() async {
       outcome: TomAuditOutcome.succeeded,
     );
 
-    // Shutting down: `flushAndClose` waits for records the sink has accepted
-    // but not yet written. `close()` is `TomClosable`'s synchronous method and
-    // cannot wait, so it refuses them with `audit.sink.closed` — the honest
-    // answer, but not the one a graceful shutdown wants. Here the record above
-    // was awaited and is already on disk; the shape is what matters.
-    await files.flushAndClose();
+    // Shutting down: `close()` waits for records the sink has accepted but not
+    // yet written, and refuses any written after it with `audit.sink.closed`.
+    // Here the record above was awaited and is already on disk; the shape is
+    // what matters.
+    await files.close();
 
     // Reopening picks the chain up where it left off rather than restarting it.
     final reopened = TomFileAuditSink(directory: dir);
@@ -246,36 +245,48 @@ Future<void> run() async {
       'and recovers the head hash, so a restart continues the same chain',
     );
 
-    // What a queued record meets at each of the two doors, side by side.
-    final queued = reopened.write(
-      TomAuditRecord(
-        id: 'queued-at-close',
-        timestamp: DateTime.now().toUtc(),
-        actor: TomAuditActor.system,
-        action: TomAuditAction.update,
-        target: 'Order',
-        targetKey: '7',
-        outcome: TomAuditOutcome.succeeded,
-      ),
+    // A record still queued when the close begins is stored; one written after
+    // the close began is refused.
+    TomAuditRecord orderUpdate(String id) => TomAuditRecord(
+      id: id,
+      timestamp: DateTime.now().toUtc(),
+      actor: TomAuditActor.system,
+      action: TomAuditAction.update,
+      target: 'Order',
+      targetKey: '7',
+      outcome: TomAuditOutcome.succeeded,
     );
-    reopened.close();
-    String outcome;
-    try {
-      await queued;
-      outcome = 'stored';
-    } on TomAuditException catch (e) {
-      outcome = 'refused (${e.key})';
+    Future<String> outcomeOf(Future<TomAuditEntry> write) async {
+      try {
+        await write;
+        return 'stored';
+      } on TomAuditException catch (e) {
+        return 'refused (${e.key})';
+      }
     }
-    print('   a record queued at close  : $outcome');
+
+    // Each outcome is listened for as soon as its write is made, so the
+    // refusal has a handler waiting when it arrives.
+    final queued = outcomeOf(reopened.write(orderUpdate('queued-at-close')));
+    final closing = reopened.close();
+    final late = outcomeOf(reopened.write(orderUpdate('written-after-close')));
+    await closing;
+
+    final queuedOutcome = await queued;
+    final lateOutcome = await late;
+    print('   a record queued at close  : $queuedOutcome');
+    print('   a record after the close  : $lateOutcome');
     check(
-      outcome.startsWith('refused'),
-      'the synchronous close cannot wait, so it turns a queued record away',
+      queuedOutcome == 'stored',
+      'the close drains the queue, so a record queued before it is stored',
     );
-    // Refused, not silently dropped and not written behind the sink's back:
-    // the caller is told, and the file the sink just closed stays closed.
     check(
-      reopened.readAll().length == 1,
-      'a refused record is not written behind the back of the closed file',
+      lateOutcome == 'refused (audit.sink.closed)',
+      'a record written after the close began is refused, not dropped',
+    );
+    check(
+      reopened.readAll().length == 2,
+      'the drained record is on disk, and the refused one is not',
     );
   } finally {
     await dir.delete(recursive: true);
@@ -427,12 +438,10 @@ Future<void> run() async {
     'what a retention sweep leaves behind is a suffix, not an alarm',
   );
 
-  // `publishAndClose`, not `close`: the final anchor is what pins the head the
-  // chain ends on, and only the awaitable sibling can deliver it. `close()` is
-  // `TomClosable`'s synchronous method and publishes nothing — reach for it
-  // only where there is no `await` to be had.
-  await publisher.publishAndClose();
-  anchors.close();
+  // Closing publishes one final anchor: it pins the head the chain ends on,
+  // and the close completes only once that anchor is in the store.
+  await publisher.close();
+  await anchors.close();
   TomAuditTrail.uninstall();
 }
 

@@ -460,7 +460,7 @@ Future<void> run() async {
     'one outbox carries every channel, so the SMS rides the retry budget the '
     'email does',
   );
-  outbox.close();
+  await outbox.close();
 
   // 11. Only now does a vendor appear. TomSmsTransport turns the message into
   //     whatever fields this gateway wants, and the mapping lives entirely in

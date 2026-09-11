@@ -38,10 +38,7 @@ class _FailingSink implements TomAuditSink {
   }
 
   @override
-  void close() {}
-
-  @override
-  Future<void> flushAndClose() async => close();
+  Future<void> close() async {}
 }
 
 TomAuditRecord _record(
@@ -906,9 +903,9 @@ void main() {
     // a shutdown path exercised against it would pass here and refuse in
     // production.
     group('a closed sink refuses records', () {
-      test('the write future carries the refusal, not the call site', () {
+      test('the write future carries the refusal, not the call site', () async {
         final sink = TomMemoryAuditSink();
-        sink.close();
+        await sink.close();
 
         // Deliberately not `expect(() => sink.write(r), throwsA(...))`: that
         // form passes whichever channel the error takes, and the channel is
@@ -931,7 +928,7 @@ void main() {
         final sink = TomMemoryAuditSink();
         await sink.write(_record('r1'));
         final head = sink.headHash;
-        sink.close();
+        await sink.close();
 
         await expectLater(
           sink.write(_record('r2')),
@@ -948,26 +945,19 @@ void main() {
       test('closing ends the writing, not the reading', () async {
         final sink = TomMemoryAuditSink();
         await sink.write(_record('r1'));
-        sink.close();
+        await sink.close();
 
         expect(sink.entries, hasLength(1));
         expect(sink.records.single.id, 'r1');
         expect(sink.verify().isValid, isTrue);
       });
 
-      test('close is idempotent, and flushAndClose closes', () async {
-        final sink = TomMemoryAuditSink()
-          ..close()
-          ..close();
+      test('close is idempotent', () async {
+        final sink = TomMemoryAuditSink();
+        await sink.close();
+        await sink.close();
         await expectLater(
           sink.write(_record('r1')),
-          throwsA(isA<TomAuditException>()),
-        );
-
-        final flushed = TomMemoryAuditSink();
-        await flushed.flushAndClose();
-        await expectLater(
-          flushed.write(_record('r1')),
           throwsA(isA<TomAuditException>()),
         );
       });
@@ -998,7 +988,8 @@ void main() {
       };
 
       for (final entry in sinks.entries) {
-        final sink = entry.value..close();
+        final sink = entry.value;
+        await sink.close();
         await expectLater(
           sink.write(_record('r1')),
           throwsA(
@@ -1161,7 +1152,7 @@ void main() {
         final first = TomFileAuditSink(directory: dir);
         await first.write(_record('r1'));
         final head = first.headHash;
-        first.close();
+        await first.close();
 
         final second = TomFileAuditSink(directory: dir);
         addTearDown(second.close);
@@ -1282,7 +1273,7 @@ void main() {
       () async {
         final sink = TomFileAuditSink(directory: dir);
         await sink.write(_record('r1'));
-        sink.close();
+        await sink.close();
         await expectLater(
           sink.write(_record('r2')),
           throwsA(isA<TomAuditException>()),
@@ -1301,9 +1292,9 @@ void main() {
     // caller learns the record was not stored — is instead an uncaught error
     // on whatever stack happened to be running.
     group('write reports every failure through the future it returns', () {
-      test('refusing a record does not throw at the call site', () {
+      test('refusing a record does not throw at the call site', () async {
         final sink = TomFileAuditSink(directory: dir);
-        sink.close();
+        await sink.close();
 
         // Deliberately not `expect(() => sink.write(r), throwsA(...))`: that
         // form passes whichever channel the error takes, and the channel is
@@ -1326,7 +1317,7 @@ void main() {
         // The shape a caller writes when the audit write is fire-and-forget:
         // no enclosing `try`, because the future was supposed to carry it.
         final sink = TomFileAuditSink(directory: dir);
-        sink.close();
+        await sink.close();
 
         Object? caught;
         await sink
@@ -1433,21 +1424,31 @@ void main() {
       expect(sink.verify().isValid, isTrue);
     });
 
-    test('a record still queued when close() runs is refused, not written', () {
+    test('close stores what was queued before it', () async {
       final sink = TomFileAuditSink(directory: dir);
-      // Not awaited. The record is enqueued and has not started when close()
-      // runs, which is the state `_queue` exists to represent — and the state
-      // the enqueue-time `_closed` guard cannot see, because it already let
-      // this record through.
-      final queued = sink.write(_record('r1'));
-      sink.close();
+      final first = sink.write(_record('r1'));
+      final queued = sink.write(_record('r2'));
 
-      // Same sink, same closed state, same answer as a write submitted after
-      // close returns. Which of the two a caller gets used to depend on where
-      // the event loop happened to be, and an audit sink may not answer a
-      // question about durability with a coin flip.
-      expect(
-        queued,
+      await sink.close();
+
+      // Stored by the time the close completes, not merely at some point
+      // after it: the close drains the queue before it releases the file.
+      expect(sink.entryCount, 2);
+      await expectLater(first, completes);
+      await expectLater(queued, completes);
+      expect(sink.readAll().map((e) => e.record.id), ['r1', 'r2']);
+      expect(sink.verify().isValid, isTrue);
+    });
+
+    test('a write during the close is refused, and stored nowhere', () async {
+      final sink = TomFileAuditSink(directory: dir);
+      final queued = sink.write(_record('r1'));
+      final closing = sink.close();
+
+      // The queue stops growing the moment close is called, which is what
+      // gives the drain a point to reach while a caller keeps writing.
+      await expectLater(
+        sink.write(_record('r2')),
         throwsA(
           isA<TomAuditException>().having(
             (e) => e.key,
@@ -1456,85 +1457,55 @@ void main() {
           ),
         ),
       );
-    });
+      await closing;
 
-    test('close() does not reopen the file to serve a queued record', () async {
-      final sink = TomFileAuditSink(directory: dir);
-      await sink.write(_record('r1'));
-      final queued = sink.write(_record('r2'));
-      sink.close();
-      await expectLater(queued, throwsA(isA<TomAuditException>()));
-
-      // The refusal is half the claim; the file is the other half. An
-      // `_ensureOpen` that reads a nulled `_sink` as "not opened yet" calls
-      // `openWrite` again, reopening the very file it has just closed and
-      // appending to it — while the unawaited close of the old handle is still
-      // in flight on the same path.
+      await expectLater(queued, completes);
       expect(sink.files, hasLength(1));
-      expect(sink.files.single.readAsLinesSync(), hasLength(1));
       expect(sink.readAll().map((e) => e.record.id), ['r1']);
     });
 
-    test('a refused record does not rotate the file on its way out', () async {
+    test('a refused record does not rotate the file', () async {
       // Cap chosen as in the rotation test above: one record fits, a second
-      // does not, so the queued record can only be stored by rotating first.
+      // does not, so the refused record could only be stored by rotating.
       final sink = TomFileAuditSink(directory: dir, maxFileBytes: 300);
       await sink.write(_record('r1'));
       final before = sink.files.single.path;
 
-      final queued = sink.write(_record('r2'));
-      sink.close();
-      await expectLater(queued, throwsA(isA<TomAuditException>()));
+      final closing = sink.close();
+      await expectLater(
+        sink.write(_record('r2')),
+        throwsA(isA<TomAuditException>()),
+      );
+      await closing;
 
-      // Refusing has to be free of side effects. Refuse late enough and the
-      // record still reaches the rotation logic on its way to being turned
-      // away — renaming a file to make room for an entry that was never going
-      // to be written. A trail that reshuffles its own files in response to a
-      // record it rejected is answering a question nobody asked.
+      // Refusing has to be free of side effects: a trail that reshuffles its
+      // own files for a record it rejected is answering a question nobody
+      // asked.
       expect(sink.files.single.path, before);
     });
 
-    test('a close during rotation does not open a new file', () async {
+    test('a close during rotation waits for the rotation', () async {
       final sink = TomFileAuditSink(directory: dir, maxFileBytes: 300);
       await sink.write(_record('r1'));
 
       // Rotation awaits: the outgoing handle is flushed and closed before the
-      // replacement is opened. That gap is the only window in which `close()`
-      // can land *after* the serialised body has already checked, so it is the
-      // window the check at the point of opening exists for.
+      // replacement is opened. A close landing in that gap waits for the
+      // record behind it, rather than leaving the old file moved aside and no
+      // successor holding the entry.
       final rotating = sink.write(_record('r2'));
-      scheduleMicrotask(sink.close);
-      await expectLater(rotating, throwsA(isA<TomAuditException>()));
+      final closed = Completer<void>();
+      scheduleMicrotask(() => closed.complete(sink.close()));
+      await expectLater(rotating, completes);
+      await closed.future;
 
-      // One file — the one rotation moved aside. A second would mean the sink
-      // created a handle after it was closed, which is the defect in its
-      // purest form: not reopening what it closed, but opening something new.
-      expect(sink.files, hasLength(1));
-      expect(sink.readAll().map((e) => e.record.id), ['r1']);
+      expect(sink.files, hasLength(2));
+      expect(sink.readAll().map((e) => e.record.id), ['r1', 'r2']);
+      expect(sink.verify().isValid, isTrue);
     });
 
-    test(
-      'flushAndClose stores what was queued rather than refusing it',
-      () async {
-        final sink = TomFileAuditSink(directory: dir);
-        final first = sink.write(_record('r1'));
-        final queued = sink.write(_record('r2'));
-
-        await sink.flushAndClose();
-
-        // Neither write was awaited before the close, and both are stored. This
-        // is what `close()` cannot do: `TomClosable` requires it to return
-        // synchronously, and no synchronous method can wait for a queue.
-        await expectLater(first, completes);
-        await expectLater(queued, completes);
-        expect(sink.readAll().map((e) => e.record.id), ['r1', 'r2']);
-        expect(sink.verify().isValid, isTrue);
-      },
-    );
-
-    test('flushAndClose leaves the sink closed', () async {
+    test('close leaves the sink closed, and opens nothing', () async {
       final sink = TomFileAuditSink(directory: dir);
-      await sink.flushAndClose();
+      await sink.close();
       expect(
         () => sink.write(_record('r1')),
         throwsA(
@@ -1550,19 +1521,21 @@ void main() {
       expect(sink.files, isEmpty);
     });
 
-    test(
-      'flushAndClose after close() is a no-op, not a second close',
-      () async {
-        final sink = TomFileAuditSink(directory: dir);
-        await sink.write(_record('r1'));
-        sink.close();
-        // Shutdown may call both — the registered `TomClosable` and the
-        // application's own teardown. The second call must not throw, and must
-        // not resurrect anything.
-        await sink.flushAndClose();
-        expect(sink.readAll().map((e) => e.record.id), ['r1']);
-      },
-    );
+    test('every close is handed the same close', () async {
+      // Shutdown may close a sink twice — the registered TomClosable and the
+      // application's own teardown. Both must wait for the one drain, and
+      // neither may resurrect anything.
+      final sink = TomFileAuditSink(directory: dir);
+      final queued = sink.write(_record('r1'));
+
+      final first = sink.close();
+      final second = sink.close();
+
+      expect(identical(first, second), isTrue);
+      await second;
+      await expectLater(queued, completes);
+      expect(sink.readAll().map((e) => e.record.id), ['r1']);
+    });
   });
 
   group('TomAuditTrail', () {

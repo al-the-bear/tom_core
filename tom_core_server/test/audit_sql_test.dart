@@ -245,9 +245,9 @@ void main() {
   // `TomAuditSink` rather than of any one implementation, and a caller holding
   // the abstract type has no way to ask which it got.
   group('write reports failure through the future it returns', () {
-    test('refusing a record does not throw at the call site', () {
+    test('refusing a record does not throw at the call site', () async {
       final sink = TomSqlAuditSink(_UnusedDataSource(), writer: 'node-a');
-      sink.close();
+      await sink.close();
 
       // Not `expect(() => sink.write(r), throwsA(...))`: that form passes
       // whichever channel the error takes, and the channel is the subject.
