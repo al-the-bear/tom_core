@@ -86,8 +86,12 @@ scope, so it has no instance to recognise: it always constructs a fresh child
 of `current`. Re-entering the same id therefore nests, and the path repeats the
 segment — `withScope('app', () => withScope('app', ...))` resolves to
 `app.app`, where `app.runInScope(() => app.runInScope(...))` on one instance
-resolves to `app`. Code that can be nested inside itself (a widget subtree that
-installs its own scope, say) should hold the scope and use `runInScope`.
+resolves to `app`. The repeated segment is the intended path, not a missing
+check: two nested bodies that each asked for `app` are two namespaces, and
+merging them by name would hand the inner one the outer one's resource keys — a
+tree node whose key equals its parent's would share its parent's resources.
+Code that can be nested inside itself (a widget subtree that installs its own
+scope, say) should hold the scope and use `runInScope`.
 
 **The root scope cannot be swapped out.** `defaultScope` is `static final`, so
 there is no supported way — and no compiling way — to point the process at a

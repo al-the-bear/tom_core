@@ -924,6 +924,16 @@ anyone who was writing them.
   keep passing for a reason that is now stated correctly.
 
 ### Documentation
+- **`withScope` nesting a repeated name is the contract (tcopen70).**
+  `withScope('app', () => withScope('app', ...))` resolves to `app.app`: every
+  call builds a new scope, and two nested requests for `app` are two
+  namespaces. Collapsing them by name would hand the inner scope the outer
+  one's resource keys — the by-name rule the root elision was rewritten to
+  avoid. The dartdoc now says so and points self-nesting code at `runInScope`,
+  whose identity short-circuit has an instance to recognise. `withScope`
+  installs through the same private `_runScoped` as both `runInScope`s, so
+  "every install goes through here" is true of the module.
+
 - **The two preference stores' precedence is stated in the kernel
   (tcopen52).** The rule existed only in `tom_core_flutter`'s
   `TomDevicePreferences`: when a key is in both stores, the device value wins

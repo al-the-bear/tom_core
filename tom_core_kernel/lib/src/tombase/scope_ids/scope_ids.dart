@@ -25,8 +25,8 @@ class TomScopeException extends TomException {
 /// a scope id may not contain.
 const String _scopePathSeparator = '.';
 
-/// Shared scope-installation policy for [TomScope.runInScope] and
-/// [TomScopeMixin.runInScope].
+/// Shared scope-installation policy for [TomScope.withScope],
+/// [TomScope.runInScope] and [TomScopeMixin.runInScope].
 ///
 /// Every install goes through here, which is what makes the identity check
 /// below a property of the module rather than of one call site.
@@ -34,6 +34,8 @@ const String _scopePathSeparator = '.';
 /// If [scope] is already the current zone scope (identical reference), [body]
 /// runs directly without creating a new zone — this prevents duplicate scope
 /// nesting. Otherwise [body] runs in a child zone carrying [scope].
+/// [TomScope.withScope] never takes the first branch: the scope it passes is
+/// one it has just built, so it nests on every call.
 T _runScoped<T>(TomScope scope, T Function() body) {
   _requireScopeIdentity(scope, 'Cannot install a scope on the zone');
   if (identical(scope, TomScope.current)) return body();
@@ -128,6 +130,16 @@ abstract class TomScope {
 
   /// Runs [body] in a new child scope named [scope], parented to [current].
   ///
+  /// Every call builds a new scope, so a name never recognises itself:
+  /// `withScope('app', () => withScope('app', ...))` nests a second `app` and
+  /// resolves to `app.app`. Two nested bodies that each asked for a scope named
+  /// `app` are two namespaces, and merging them by name would hand the inner
+  /// one the outer one's keys — a tree node whose key equals its parent's
+  /// would share its parent's resources. The identity short-circuit belongs to
+  /// [runInScope], which is given an instance it can recognise; code that may
+  /// be nested inside itself should hold its scope and install it with
+  /// [runInScope].
+  ///
   /// The scope rides on a child [Zone], which bounds *reachability*, not
   /// lifetime. The caller's own continuation after this call never sees the
   /// scope — but anything [body] schedules (a `Future`, `Timer` or stream
@@ -139,14 +151,8 @@ abstract class TomScope {
   /// not cover a closure that is merely *stored* here and invoked directly by
   /// someone else later, which runs in the invoker's scope. Wrap those with
   /// [ScopeCapture].
-  static T withScope<T>(String scope, T Function() body) {
-    return runZoned(
-      body,
-      zoneValues: {
-        TomScope: TomScopeBase(scopeId: scope, parentScope: current),
-      },
-    );
-  }
+  static T withScope<T>(String scope, T Function() body) =>
+      _runScoped(TomScopeBase(scopeId: scope, parentScope: current), body);
 
   /// Runs [body] inside this scope's zone.
   ///

@@ -80,7 +80,7 @@ on the current `Zone`.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `withScope` | `static T withScope<T>(String scope, T Function() body)` | Runs `body` in a new child scope named `scope`, parented to `current`. The zone bounds reachability, not lifetime: the caller's continuation never sees the scope, but anything `body` schedules inherits it and observes it whenever it later runs. Throws `TomScopeException` — without running `body` — if `scope` is empty or contains `.`. |
+| `withScope` | `static T withScope<T>(String scope, T Function() body)` | Runs `body` in a new child scope named `scope`, parented to `current`. Every call builds a new scope, so re-entering the same name nests: `withScope('app', () => withScope('app', ...))` resolves to `app.app`. The identity short-circuit belongs to `runInScope`; code that may be nested inside itself holds its scope and uses that. The zone bounds reachability, not lifetime: the caller's continuation never sees the scope, but anything `body` schedules inherits it and observes it whenever it later runs. Throws `TomScopeException` — without running `body` — if `scope` is empty or contains `.`. |
 | `buildScopePath` | `static String buildScopePath(TomScope scope)` | Builds the dot-separated scope path for any `TomScope` (e.g. `app.checkout.orderForm`), eliding only the root sentinel. Requires an acyclic parent chain: the walk is iterative and unguarded, so a loop exhausts the heap rather than raising `StackOverflowError`. Scopes built through this module cannot form one — the obligation falls on hand-rolled `implements TomScope`. |
 
 #### Properties

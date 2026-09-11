@@ -70,11 +70,12 @@ void main() {
       // nesting, because it short-circuits on instance identity and there is
       // one instance to recognise.
       //
-      // Whether the repetition is desirable is a separate question; this test
-      // does not answer it. It pins what happens today, so that changing it has
-      // to be a decision rather than an accident. Re-entrancy is reachable in
-      // practice: a widget subtree that installs its own scope and is nested
-      // inside itself does exactly this.
+      // The repetition is the contract. Two nested bodies that each asked for
+      // `app` are two namespaces; collapsing them by name would give the inner
+      // one the outer one's resource keys, which is the by-name rule this
+      // module replaced with an identity one. Code that can be nested inside
+      // itself — a widget subtree that installs its own scope — holds the
+      // scope and uses `runInScope`, which the next test pins.
       test('re-entering the same id nests and repeats the path segment', () {
         final repeated = TomScope.withScope(
           'app',
