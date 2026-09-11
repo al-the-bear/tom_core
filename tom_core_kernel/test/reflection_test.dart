@@ -541,6 +541,22 @@ class AllFinalHolder {
   AllFinalHolder(this.name, this.age);
 }
 
+/// Holds collections of both annotated classes named `ClashingItem`, which
+/// differ only by the library that declares them.
+///
+/// The field walk resolves an element type through the field's own mirror —
+/// its declared type arguments — so the shared simple name never enters into
+/// it, and both collections have to round-trip as their own class.
+@tomReflector
+class ClashingItemsHolder {
+  List<first_clash.ClashingItem> firsts = [];
+  List<second_clash.ClashingItem> seconds = [];
+  Map<String, first_clash.ClashingItem> firstsByName = {};
+  Map<String, second_clash.ClashingItem> secondsByName = {};
+
+  ClashingItemsHolder();
+}
+
 /// A holder whose collections name an element class that cannot be built from
 /// a map: [AllFinalHolder] has no no-argument constructor, so every element
 /// handed to either field is refused — and the refusal has to say which field
@@ -2610,8 +2626,13 @@ void main() {
               contains("'ClashingItem' is ambiguous"),
               contains('support/reflection_clash_first.dart'),
               contains('support/reflection_clash_second.dart'),
+              // And the way out: the refusal is a limit of resolving from a
+              // bare collection, so it points at resolving from a
+              // declaration, which has no such limit.
+              contains('tomReflector.reflectType(ClashingItem)'),
             ),
-          );
+          )
+          .having((e) => e.parameters?['typeName'], 'typeName', 'ClashingItem');
 
       expect(
         () => tomReflectionInfo.singleElementType(<first_clash.ClashingItem>[]),
@@ -2623,6 +2644,62 @@ void main() {
         ),
         throwsA(ambiguous),
       );
+    });
+
+    test('a shared simple name does not reach the field walk', () {
+      // The refusal above belongs to the two helpers that are handed a bare
+      // collection, where the element type exists only as text. Deserializing
+      // a *field* never asks that question: the element type is the field's
+      // declared type argument, read from its own mirror. So two classes
+      // sharing a simple name — the collision that appears the first time an
+      // unrelated package with its own `Item` is added — both deserialize,
+      // each as itself, in lists and in maps.
+      final holder = tomReflectionInfo.setValues(ClashingItemsHolder(), {
+        'firsts': [
+          {'label': 'a'},
+        ],
+        'seconds': [
+          {'label': 'b'},
+        ],
+        'firstsByName': {
+          'x': {'label': 'c'},
+        },
+        'secondsByName': {
+          'y': {'label': 'd'},
+        },
+      });
+
+      expect(holder.firsts.single, isA<first_clash.ClashingItem>());
+      expect(holder.firsts.single.label, 'a');
+      expect(holder.seconds.single, isA<second_clash.ClashingItem>());
+      expect(holder.seconds.single.label, 'b');
+      expect(holder.firstsByName['x'], isA<first_clash.ClashingItem>());
+      expect(holder.firstsByName['x']!.label, 'c');
+      expect(holder.secondsByName['y'], isA<second_clash.ClashingItem>());
+      expect(holder.secondsByName['y']!.label, 'd');
+    });
+
+    test('collections of both same-named classes round-trip', () {
+      final original = ClashingItemsHolder()
+        ..firsts.add(first_clash.ClashingItem()..label = 'one')
+        ..seconds.add(second_clash.ClashingItem()..label = 'two')
+        ..firstsByName['k'] = (first_clash.ClashingItem()..label = 'three')
+        ..secondsByName['k'] = (second_clash.ClashingItem()..label = 'four');
+
+      final restored = tomReflectionInfo
+          .createInstanceFromJsonString<ClashingItemsHolder>(
+            tomReflector.reflectType(ClashingItemsHolder) as ClassMirror,
+            tomReflectionInfo.convertToJsonString(original),
+          );
+
+      expect(restored.firsts.single, isA<first_clash.ClashingItem>());
+      expect(restored.firsts.single.label, 'one');
+      expect(restored.seconds.single, isA<second_clash.ClashingItem>());
+      expect(restored.seconds.single.label, 'two');
+      expect(restored.firstsByName['k'], isA<first_clash.ClashingItem>());
+      expect(restored.firstsByName['k']!.label, 'three');
+      expect(restored.secondsByName['k'], isA<second_clash.ClashingItem>());
+      expect(restored.secondsByName['k']!.label, 'four');
     });
   });
 

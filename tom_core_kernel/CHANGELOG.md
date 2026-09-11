@@ -8,6 +8,20 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Added
+- **Two same-named annotated classes both deserialize (tcopen57).** Pinned,
+  and the documentation corrected: it said collections of two annotated classes
+  sharing a simple name could not be deserialized. They can — `setValues` reads
+  a `List<X>` / `Map<String, X>` field's element class from the field's own
+  mirror and never looks a type up by name — and `reflection_test.dart` now
+  round-trips a collection of each of the two `ClashingItem` fixtures. The
+  simple-name lookup belongs only to `singleElementType` and
+  `mapValueElementType`, which are handed a bare collection whose type arguments
+  exist only as text; *Type Resolution* in `doc/reflection/reflection.md` now
+  states that as a named constraint of those two helpers. Their
+  `reflector.classmirror.ambiguous_simple_name` refusal names the remedy
+  (resolve from a declaration, e.g. `tomReflector.reflectType(X)`) and carries
+  `parameters: {"typeName": …}`.
+
 - **Every refusal of a field's value says where (tcopen55).** A payload
   refused by `setValues` used to name, at best, the type that would not build:
   a `Map` handed to a `List<int>` field threw `reflector.instance_creation.failed`

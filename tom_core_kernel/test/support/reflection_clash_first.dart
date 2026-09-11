@@ -1,11 +1,13 @@
 /// One half of a deliberate simple-name collision.
 ///
 /// [ClashingItem] is declared here *and* in `reflection_clash_second.dart`
-/// under the same simple name. Reflection resolves a field's element type by
-/// simple name, so a domain containing both cannot answer the question "which
-/// `ClashingItem`?" — and must say so rather than pick one. The pair exists to
-/// pin that refusal; see the `ambiguous_simple_name` test in
-/// `reflection_test.dart`.
+/// under the same simple name. The pair pins both halves of what that means.
+/// `singleElementType` and `mapValueElementType` are handed a bare collection,
+/// whose element type exists only as text, so they cannot answer "which
+/// `ClashingItem`?" and must say so rather than pick one. The field walk reads
+/// a field's element type from the field's own mirror, so collections of each
+/// deserialize as themselves. See the `ambiguous_simple_name` and
+/// `ClashingItemsHolder` tests in `reflection_test.dart`.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';

@@ -332,6 +332,11 @@ class TomReflectionInfo {
   /// // valueMirror is the ClassMirror for Person
   /// ```
   ///
+  /// **Resolved by simple name**, because a collection value carries its type
+  /// arguments only as text: two annotated classes sharing a simple name make
+  /// this lookup refuse (`reflector.classmirror.ambiguous_simple_name`).
+  /// Deserializing a field is not affected — it reads the field's own mirror.
+  ///
   /// Exactly two type arguments are required. A collection with any other
   /// arity is refused rather than resolved: with one, the caller wanted
   /// [singleElementType] and the message says so; with three or more, there is
@@ -381,6 +386,11 @@ class TomReflectionInfo {
   /// final elementMirror = tomReflectionInfo.singleElementType(people);
   /// // elementMirror is the ClassMirror for Person
   /// ```
+  ///
+  /// **Resolved by simple name**, because a collection value carries its type
+  /// arguments only as text: two annotated classes sharing a simple name make
+  /// this lookup refuse (`reflector.classmirror.ambiguous_simple_name`).
+  /// Deserializing a field is not affected — it reads the field's own mirror.
   ///
   /// Throws [TomReflectorException] if the element type is not found
   /// among annotated classes, or if it is itself generic: both methods resolve
@@ -542,6 +552,14 @@ class TomReflectionInfo {
   /// Searches through all classes annotated with `@tomReflector` to find
   /// one matching the given [typeName].
   ///
+  /// The one name-based lookup in this class, and reached only from
+  /// [singleElementType] and [mapValueElementType]: they are handed a bare
+  /// collection, whose element type exists at run time only as the text of
+  /// its `runtimeType`, so a simple name is all there is to go on. The field
+  /// walk never comes here — it reads a field's element type from the field's
+  /// own mirror — which is why a shared simple name refuses these two helpers
+  /// and nothing else.
+  ///
   /// Throws [TomReflectorException] with the provided [errorKey] and
   /// [errorMessage] if not found.
   ClassMirror _findClassMirror(
@@ -574,7 +592,13 @@ class TomReflectionInfo {
         "reflector.classmirror.ambiguous_simple_name",
         "TomReflectionInfo._findClassMirror: simple name '$typeName' is "
             "ambiguous; it matches annotated classes in "
-            "${libraries.join(", ")}",
+            "${libraries.join(", ")}. A collection value carries its element "
+            "type only as text, so this lookup cannot tell them apart; resolve "
+            "the type from a declaration instead — "
+            "tomReflector.reflectType($typeName) where the type is known, or "
+            "the declaring field's returnType.typeArguments. Deserializing a "
+            "field reads that field's own mirror and is unaffected.",
+        parameters: {"typeName": typeName},
         autoLog: true,
       );
     }

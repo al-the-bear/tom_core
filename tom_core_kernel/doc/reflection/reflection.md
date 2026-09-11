@@ -1026,7 +1026,7 @@ apart.
 | `reflector.type_resolution.nested_generic_unsupported` | The element type is itself a generic collection (`List<List<X>>`, `Map<String, List<X>>`) |
 | `reflector.classmirror.not_found_for_map_value` | Map value type not found |
 | `reflector.classmirror.not_found_for_iterable_value` | List element type not found |
-| `reflector.classmirror.ambiguous_simple_name` | The simple name matches more than one annotated class |
+| `reflector.classmirror.ambiguous_simple_name` | `singleElementType` or `mapValueElementType` was handed a collection whose element type's simple name matches more than one annotated class. Names the library of each candidate and the remedy, and carries `parameters: {"typeName": …}`. Field deserialization never raises it — see [Type Resolution](#type-resolution) |
 | `reflection.set.unexpected_condition_final_static_private` | Field has a getter but no setter (static, final or private) — names the class and the field |
 | `reflection.set.unknown_field` | The key names no field on the target class, and the converter was built with `strictUnknownFields: true`. The default converter ignores such keys silently — see [Unknown Keys](#unknown-keys) |
 | `reflection.set.unexpected_type` | A value no strategy converts reached a field that cannot take it as it is — a `double` for an `int` field, a `Set` for a `List` field. Names the class, the field, its declared type and the value's type |
@@ -1238,22 +1238,32 @@ the offending value, at the one point that still knows all three.
 
 ### Ambiguous Type Names
 
-Element types of annotated collections are resolved by *simple* name. If two
-`@tomReflector` classes in different libraries share a simple name, the lookup
-is rejected rather than silently resolved to the first match:
+The two helpers that are handed a bare collection — `singleElementType` and
+`mapValueElementType` — resolve its element type by *simple* name, because
+that is all a collection value carries: its type arguments exist at run time
+only as the text of its `runtimeType`. If two `@tomReflector` classes in
+different libraries share a simple name, they refuse rather than silently
+return the first match:
 
 ```dart
 // Both a.dart and b.dart declare an annotated `Address`.
 tomReflectionInfo.singleElementType(<Address>[]);
 // throws TomReflectorException(reflector.classmirror.ambiguous_simple_name),
-// naming the library of each candidate in the message.
+// naming the library of each candidate and the way out.
 ```
 
 The message identifies the candidates by their **library URI**, not by
 qualified name: the reflector is configured without `libraryCapability`, so
 every qualified name here is `.Address` and listing them would only repeat the
-ambiguous name back. Resolve the collision by renaming one class or by dropping
-its `@tomReflector`.
+ambiguous name back. The way out is to resolve the type from a declaration,
+which has no such limit: `tomReflector.reflectType(Address)` where the type is
+known statically, or the declaring field's `returnType.typeArguments`.
+
+**Deserialization is not affected.** `setValues` and `createInstanceFromJson`
+never look a type up by name: a `List<Address>` or `Map<String, Address>`
+field's element type is read from that field's own mirror. Two annotated
+`Address` classes in two libraries both deserialize and serialize, each as
+itself — see [Type Resolution](#type-resolution).
 
 ### When the Value's Shape Does Not Fit the Field
 
@@ -1535,7 +1545,28 @@ void main() {
 
 ## Type Resolution
 
-For working with generic collection types, helper methods are available:
+Two mechanisms find the class of a collection's elements, and which one runs
+depends on what the caller has.
+
+**From a declaration — what deserialization uses.** When `setValues` fills a
+`List<X>` or `Map<String, X>` field, the element class is the field's declared
+type argument, read from the field's own mirror (`returnType.typeArguments`).
+The generated reflection data identifies that class exactly, by declaration, so
+nothing is resolved by name and two annotated classes sharing a simple name do
+not interfere: a collection of each deserializes as itself, in a list or a map,
+and round-trips through `convertToJsonString` and `createInstanceFromJson`.
+
+**From a value — the two helpers below.** Given only a collection, Dart exposes
+its element type as text (`runtimeType.toString()` is `List<Person>`) and never
+as a `Type`, so `singleElementType` and `mapValueElementType` resolve the
+simple name against the annotated classes. That is exact while the name is
+unique. **Named constraint:** when two annotated classes share it — typically
+the first time a package bringing its own `Item`, `User` or `Address` is added
+— these two helpers raise `reflector.classmirror.ambiguous_simple_name` for a
+collection of *either* class, naming both libraries. Resolve from a declaration
+instead, as above; see [Ambiguous Type Names](#ambiguous-type-names).
+
+The helpers:
 
 ### Get List Element Type
 
@@ -1587,9 +1618,9 @@ for `Address`. Nothing at the call site can distinguish that from the right
 answer, so the wrong half of the collection would propagate silently.
 
 Both resolve the element type by **simple name** against the classes annotated
-with `@tomReflector`, which is why they go one level deep and no further: a
-generic instantiation such as `List<String>` is not an annotated class and
-never will be. Given `List<List<String>>` or `Map<String, Map<String, int>>`
+with `@tomReflector` — the constraint above — which is also why they go one
+level deep and no further: a generic instantiation such as `List<String>` is
+not an annotated class and never will be. Given `List<List<String>>` or `Map<String, Map<String, int>>`
 they raise `reflector.type_resolution.nested_generic_unsupported` rather than
 searching for a type that cannot exist.
 
