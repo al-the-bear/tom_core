@@ -167,6 +167,19 @@ void main() {
         expect(TomScope.buildScopePath(scope), equals('app'));
       });
 
+      // Nothing is cached: `buildScopePath` accepts any TomScope, and a
+      // hand-rolled one may compute its parent. A memoised path would keep
+      // answering with the chain it saw first.
+      test('follows a hand-rolled scope whose parent changes', () {
+        final first = TomScopeBase(scopeId: 'first');
+        final second = TomScopeBase(scopeId: 'second');
+        final movable = _MovableScope('leaf', first);
+
+        expect(TomScope.buildScopePath(movable), equals('first.leaf'));
+        movable.parentScope = second;
+        expect(TomScope.buildScopePath(movable), equals('second.leaf'));
+      });
+
       test('joins a parent chain root-to-leaf with dots', () {
         final root = TomScopeBase(scopeId: 'app', parentScope: null);
         final mid = TomScopeBase(scopeId: 'checkout', parentScope: root);
@@ -940,6 +953,20 @@ class _MixinScope with TomScopeMixin {
   _MixinScope({required String scopeId, TomScope? parentScope}) {
     initScope(scopeId: scopeId, parentScope: parentScope);
   }
+}
+
+/// A hand-rolled [TomScope] whose parent can be re-pointed — the kind of
+/// implementation [TomScope.buildScopePath] accepts and cannot cache for.
+class _MovableScope extends TomScope {
+  _MovableScope(this.id, this.parentScope);
+
+  @override
+  final String id;
+
+  TomScope? parentScope;
+
+  @override
+  TomScope? get parent => parentScope;
 }
 
 /// A mixin scope whose identity is assigned after construction, by calling

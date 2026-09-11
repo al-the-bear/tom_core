@@ -210,6 +210,13 @@ order:
 An empty path (only the root sentinel) yields `''`, which lets consumers treat
 "no scope" as an empty prefix.
 
+The path is rebuilt on every call and not cached. The walk is linear in the
+depth and costs a fraction of a microsecond at the depths scopes reach in
+practice — more than the map lookup a caller does with the result, but small
+beside the work a lookup serves. It also keeps the answer right for any
+`TomScope`: `buildScopePath` accepts a hand-rolled implementation whose `id` or
+`parent` is computed, and a cached path would outlive a change to either.
+
 **The elision is by identity, not by name.** Only `TomScope.defaultScope`
 itself — compared with `identical` — is dropped from the walk. A domain scope
 whose local id happens to be `default` is an ordinary scope and keeps its

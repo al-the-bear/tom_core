@@ -180,6 +180,15 @@ abstract class TomScope {
   /// The requirement binds anything that implements [TomScope] by hand: such a
   /// type supplies its own [parent], outside that argument and outside any
   /// check this module can make.
+  ///
+  /// The path is rebuilt on every call; nothing is cached. The walk is linear
+  /// in the depth and costs a fraction of a microsecond at the depths scopes
+  /// reach in practice — more than the map lookup a caller then does with the
+  /// result, but small beside anything a lookup is done for. Rebuilding is also
+  /// what keeps the answer right for every [TomScope]: a scope that mixes in
+  /// [TomScopeMixin] has a write-once identity, but this method accepts any
+  /// implementation, including one whose [id] or [parent] is computed, and a
+  /// cached path would outlive a change to either.
   static String buildScopePath(TomScope scope) {
     final List<String> parts = [];
     TomScope? current = scope;

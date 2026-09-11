@@ -934,6 +934,14 @@ anyone who was writing them.
   keep passing for a reason that is now stated correctly.
 
 ### Documentation
+- **The scope path is rebuilt on every call, by design (tcopen72).**
+  `buildScopePath` caches nothing. The walk is linear in the depth and costs a
+  fraction of a microsecond at practical depths, and rebuilding keeps the
+  answer right for a hand-rolled `TomScope` whose `id` or `parent` is
+  computed — which the method accepts, and which a cached path would outlive.
+  The dartdoc and `doc/scope_ids/scope_ids.md` say so, and a test pins that the
+  path follows such a scope when its parent changes.
+
 - **`withScope` nesting a repeated name is the contract (tcopen70).**
   `withScope('app', () => withScope('app', ...))` resolves to `app.app`: every
   call builds a new scope, and two nested requests for `app` are two
