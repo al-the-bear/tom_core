@@ -50,18 +50,18 @@ class ThrowingClosable implements TomClosable {
   }
 }
 
-/// Closable whose teardown is asynchronous.
-///
-/// `Future<void> close()` is a legal override of `void close()` — in return
-/// position every type is a subtype of `void` — which is why this mistake
-/// compiles and why no analyzer flags it.
+/// Closable whose teardown is asynchronous: it finishes one turn of the event
+/// loop after it is called, so it has finished only if something awaited it.
 class AsyncClosable implements TomClosable {
+  AsyncClosable([this.log]);
+  final List<String>? log;
   bool flushed = false;
 
   @override
   Future<void> close() async {
     await Future<void>.delayed(Duration.zero);
     flushed = true;
+    log?.add('async closable');
   }
 }
 
@@ -75,6 +75,68 @@ class AsyncThrowingClosable implements TomClosable {
   }
 }
 
+/// Disposable whose teardown is asynchronous.
+class AsyncDisposable implements TomDisposable {
+  AsyncDisposable(this.log);
+  final List<String> log;
+
+  @override
+  Future<void> dispose() async {
+    await Future<void>.delayed(Duration.zero);
+    log.add('async disposable');
+  }
+}
+
+/// Closable whose teardown never finishes — a peer that never acknowledges the
+/// close. Only a phase timeout gets a shutdown past it.
+class HangingClosable implements TomClosable {
+  bool started = false;
+
+  @override
+  Future<void> close() {
+    started = true;
+    return Completer<void>().future;
+  }
+}
+
+/// Closable that takes [delay] to close and then records [name].
+class DelayedClosable implements TomClosable {
+  DelayedClosable(this.name, this.delay, this.log);
+  final String name;
+  final Duration delay;
+  final List<String> log;
+
+  @override
+  Future<void> close() async {
+    await Future<void>.delayed(delay);
+    log.add(name);
+  }
+}
+
+/// Closable that fails [delay] after it is called.
+class LateFailingClosable implements TomClosable {
+  LateFailingClosable(this.delay);
+  final Duration delay;
+
+  @override
+  Future<void> close() async {
+    await Future<void>.delayed(delay);
+    throw Exception('Late close failed');
+  }
+}
+
+/// Closable that holds the thread for [duration] without ever suspending.
+class BusyClosable implements TomClosable {
+  BusyClosable(this.duration);
+  final Duration duration;
+
+  @override
+  void close() {
+    final watch = Stopwatch()..start();
+    while (watch.elapsed < duration) {}
+  }
+}
+
 // =============================================================================
 // Reflected targets for TomCloseAdaptor (own + inherited members)
 // =============================================================================
@@ -84,6 +146,17 @@ class AsyncThrowingClosable implements TomClosable {
 class OwnCloseTarget {
   bool closed = false;
   void close() => closed = true;
+}
+
+/// Target whose `close()` is asynchronous, so the adaptor has a future to
+/// hand on.
+@tomReflector
+class AsyncCloseTarget {
+  bool closed = false;
+  Future<void> close() async {
+    await Future<void>.delayed(Duration.zero);
+    closed = true;
+  }
 }
 
 /// Base declaring `close()`; the leaf [InheritsClose] does not redeclare it,
@@ -377,29 +450,29 @@ void main() {
     // `performShutdown` group and is not restated here.
 
     group('addDisposable', () {
-      test('the registered disposable is disposed', () {
+      test('the registered disposable is disposed', () async {
         final cleanup = _newCleanup();
         final disposable = TestDisposable();
         cleanup.addDisposable(disposable);
 
-        cleanup.performShutdown();
+        await cleanup.performShutdown();
 
         expect(disposable.disposed, isTrue);
       });
 
-      test('several disposables run in registration order', () {
+      test('several disposables run in registration order', () async {
         final log = <String>[];
         final cleanup = _newCleanup();
         cleanup.addDisposable(NamedDisposable('first', log));
         cleanup.addDisposable(NamedDisposable('second', log));
         cleanup.addDisposable(NamedDisposable('third', log));
 
-        cleanup.performShutdown();
+        await cleanup.performShutdown();
 
         expect(log, equals(['first', 'second', 'third']));
       });
 
-      test('the same disposable registered twice is disposed twice', () {
+      test('the same disposable registered twice is disposed twice', () async {
         // Registration appends; it does not deduplicate. So the caller owns
         // the arithmetic: a disposable that cannot survive being disposed
         // twice must be registered once.
@@ -408,49 +481,49 @@ void main() {
         cleanup.addDisposable(disposable);
         cleanup.addDisposable(disposable);
 
-        cleanup.performShutdown();
+        await cleanup.performShutdown();
 
         expect(disposable.disposeCount, equals(2));
       });
     });
 
     group('addClosable', () {
-      test('the registered closable is closed', () {
+      test('the registered closable is closed', () async {
         final cleanup = _newCleanup();
         final closable = TestClosable();
         cleanup.addClosable(closable);
 
-        cleanup.performShutdown();
+        await cleanup.performShutdown();
 
         expect(closable.closed, isTrue);
       });
 
-      test('several closables run in registration order', () {
+      test('several closables run in registration order', () async {
         final log = <String>[];
         final cleanup = _newCleanup();
         cleanup.addClosable(NamedClosable('first', log));
         cleanup.addClosable(NamedClosable('second', log));
         cleanup.addClosable(NamedClosable('third', log));
 
-        cleanup.performShutdown();
+        await cleanup.performShutdown();
 
         expect(log, equals(['first', 'second', 'third']));
       });
 
-      test('the same closable registered twice is closed twice', () {
+      test('the same closable registered twice is closed twice', () async {
         final cleanup = _newCleanup();
         final closable = TestClosable();
         cleanup.addClosable(closable);
         cleanup.addClosable(closable);
 
-        cleanup.performShutdown();
+        await cleanup.performShutdown();
 
         expect(closable.closeCount, equals(2));
       });
     });
 
     group('addSignalHandler', () {
-      test('the handler runs and receives the signal', () {
+      test('the handler runs and receives the signal', () async {
         // The signal is the one thing a handler gets that a closable and a
         // disposable do not, so a handler that runs but is handed the wrong
         // signal is still broken.
@@ -458,33 +531,36 @@ void main() {
         final received = <ProcessSignal>[];
         cleanup.addSignalHandler(received.add);
 
-        cleanup.performShutdown(signal: ProcessSignal.sigterm);
+        await cleanup.performShutdown(signal: ProcessSignal.sigterm);
 
         expect(received, equals([ProcessSignal.sigterm]));
       });
 
-      test('several handlers run in registration order', () {
+      test('several handlers run in registration order', () async {
         final log = <String>[];
         final cleanup = _newCleanup();
         cleanup.addSignalHandler((signal) => log.add('first'));
         cleanup.addSignalHandler((signal) => log.add('second'));
         cleanup.addSignalHandler((signal) => log.add('third'));
 
-        cleanup.performShutdown();
+        await cleanup.performShutdown();
 
         expect(log, equals(['first', 'second', 'third']));
       });
 
-      test('a handler that does nothing does not stop the ones behind it', () {
-        final log = <String>[];
-        final cleanup = _newCleanup();
-        cleanup.addSignalHandler((signal) {});
-        cleanup.addSignalHandler((signal) => log.add('reached'));
+      test(
+        'a handler that does nothing does not stop the ones behind it',
+        () async {
+          final log = <String>[];
+          final cleanup = _newCleanup();
+          cleanup.addSignalHandler((signal) {});
+          cleanup.addSignalHandler((signal) => log.add('reached'));
 
-        cleanup.performShutdown();
+          await cleanup.performShutdown();
 
-        expect(log, equals(['reached']));
-      });
+          expect(log, equals(['reached']));
+        },
+      );
     });
 
     // `addSignal` is the one registration whose effect `performShutdown()`
@@ -532,7 +608,7 @@ void main() {
 
       test('registering the same signal twice reports one shutdown', () async {
         // A second watcher on the same signal does not corrupt the cleanup —
-        // `_executed` sees to that — but it does drive the handler twice, so
+        // it runs once per instance — but it does drive the handler twice, so
         // one Ctrl-C reports itself twice and claims on its own first arrival
         // that shutdown "has already been performed". The operator-visible
         // output is therefore the assertion, rather than a count of how many
@@ -544,7 +620,7 @@ void main() {
         // constructor registers through this same method, so the duplicate it
         // could collide with is caught by the same mechanism.
         final lines = <String>[];
-        await _capturePrintsAsync(lines, () async {
+        await _capturePrints(lines, () async {
           final cleanup = _newCleanup();
           cleanup.addSignal(ProcessSignal.sigusr1);
           cleanup.addSignal(ProcessSignal.sigusr1);
@@ -575,28 +651,28 @@ void main() {
 
       const expectedOrder = ['handler', 'closable', 'disposable'];
 
-      test('a freshly constructed instance is already armed', () {
+      test('a freshly constructed instance is already armed', () async {
         // No call of any kind between construction and registration: the
         // watchers are installed by the constructor, so cleanup runs.
         final log = <String>[];
         final cleanup = _newCleanup();
         registerRecorders(cleanup, log);
 
-        cleanup.performShutdown();
+        await cleanup.performShutdown();
 
         expect(log, equals(expectedOrder));
       });
 
-      test('two instances registered alike clean up alike', () {
+      test('two instances registered alike clean up alike', () async {
         final firstLog = <String>[];
         final first = _newCleanup();
         registerRecorders(first, firstLog);
-        first.performShutdown();
+        await first.performShutdown();
 
         final secondLog = <String>[];
         final second = _newCleanup();
         registerRecorders(second, secondLog);
-        second.performShutdown();
+        await second.performShutdown();
 
         expect(firstLog, equals(expectedOrder));
         expect(secondLog, equals(expectedOrder));
@@ -604,92 +680,275 @@ void main() {
     });
 
     group('mixed handlers', () {
-      test('phase order wins over the order things were registered in', () {
-        // Registering the three kinds interleaved is the realistic case — a
-        // module registers whatever it owns as it initialises. Doing so must
-        // not reorder the phases, and must not scramble the sequence within a
-        // phase either. Both halves of that are in the one expectation below:
-        // the two handlers still precede the two closables, and inside each
-        // phase the entries keep the order they were registered in.
+      test(
+        'phase order wins over the order things were registered in',
+        () async {
+          // Registering the three kinds interleaved is the realistic case — a
+          // module registers whatever it owns as it initialises. Doing so must
+          // not reorder the phases, and must not scramble the sequence within a
+          // phase either. Both halves of that are in the one expectation below:
+          // the two handlers still precede the two closables, and inside each
+          // phase the entries keep the order they were registered in.
+          final log = <String>[];
+          final cleanup = _newCleanup();
+          cleanup.addDisposable(NamedDisposable('disposable', log));
+          cleanup.addSignalHandler((signal) => log.add('handler 1'));
+          cleanup.addClosable(NamedClosable('closable 1', log));
+          cleanup.addSignalHandler((signal) => log.add('handler 2'));
+          cleanup.addClosable(NamedClosable('closable 2', log));
+
+          await cleanup.performShutdown();
+
+          expect(
+            log,
+            equals([
+              'handler 1',
+              'handler 2',
+              'closable 1',
+              'closable 2',
+              'disposable',
+            ]),
+          );
+        },
+      );
+    });
+
+    // A handler, a close() and a dispose() may each return a Future, and the
+    // phase awaits it before calling the next entry. Each test pairs the async
+    // entry with something that can only hold if that await happened, so none
+    // of them passes on a shutdown that merely called the entry.
+    group('asynchronous entries', () {
+      test('an async close has finished when the shutdown completes', () async {
+        final asynchronous = AsyncClosable();
+        final cleanup = _newCleanup();
+        cleanup.addClosable(asynchronous);
+
+        final shutdown = cleanup.performShutdown();
+        // Called but not finished: the flush is a turn of the event loop away.
+        expect(asynchronous.flushed, isFalse);
+
+        await shutdown;
+        expect(asynchronous.flushed, isTrue);
+      });
+
+      test('the next entry waits for an async one to finish', () async {
         final log = <String>[];
         final cleanup = _newCleanup();
-        cleanup.addDisposable(NamedDisposable('disposable', log));
-        cleanup.addSignalHandler((signal) => log.add('handler 1'));
-        cleanup.addClosable(NamedClosable('closable 1', log));
-        cleanup.addSignalHandler((signal) => log.add('handler 2'));
-        cleanup.addClosable(NamedClosable('closable 2', log));
+        cleanup.addClosable(AsyncClosable(log));
+        cleanup.addClosable(NamedClosable('sync closable', log));
 
-        cleanup.performShutdown();
+        await cleanup.performShutdown();
+
+        expect(log, equals(['async closable', 'sync closable']));
+      });
+
+      test('each phase finishes before the next one starts', () async {
+        final log = <String>[];
+        final cleanup = _newCleanup();
+        cleanup.addSignalHandler((signal) async {
+          await Future<void>.delayed(Duration.zero);
+          log.add('async handler');
+        });
+        cleanup.addClosable(NamedClosable('closable', log));
+        cleanup.addDisposable(AsyncDisposable(log));
+        cleanup.addDisposable(NamedDisposable('last disposable', log));
+
+        await cleanup.performShutdown();
 
         expect(
           log,
           equals([
-            'handler 1',
-            'handler 2',
-            'closable 1',
-            'closable 2',
-            'disposable',
+            'async handler',
+            'closable',
+            'async disposable',
+            'last disposable',
           ]),
         );
       });
-    });
 
-    // Both interfaces and the handler typedef return `void`, and the phase
-    // calls them through a `void Function(T)`. Dart accepts an `async` body
-    // there, so the mistake compiles; these two tests pin what it then does.
-    // They are the executable form of the claims the module doc and the module
-    // readme now make, so if teardown ever becomes awaited both should fail —
-    // and both documents have to change with them.
-    group('asynchronous entries', () {
-      test('a Future returned from close() is not awaited', () async {
-        // The synchronous closable is the control. Both are registered on one
-        // instance and closed in the same phase, so its flag proves the phase
-        // ran — without it, `flushed` being false would be equally consistent
-        // with a shutdown that closed nothing at all.
-        final synchronous = TestClosable();
-        final asynchronous = AsyncClosable();
-        final cleanup = _newCleanup();
-        cleanup.addClosable(synchronous);
-        cleanup.addClosable(asynchronous);
-
-        cleanup.performShutdown();
-
-        expect(synchronous.closed, isTrue);
-        expect(
-          asynchronous.flushed,
-          isFalse,
-          reason: 'the phase moved on before the async close resumed',
-        );
-
-        // Unawaited is not the same as unrun. The work does finish — one turn
-        // of the event loop later, which in a real shutdown is a turn the
-        // process may not still be there for.
-        await Future<void>.delayed(Duration.zero);
-        expect(asynchronous.flushed, isTrue);
-      });
-
-      test('a Future that fails escapes the per-entry report', () async {
-        // The per-entry try/catch wraps the call, and an async body's throw
-        // happens after the call has already returned. So the failure misses
-        // the `Failed to call closable ...` diagnostic entirely and surfaces
-        // as an unhandled asynchronous error, with nothing left to name the
-        // phase or the entry that produced it.
-        //
-        // The synchronous thrower alongside it is the control: it fails in the
-        // same phase of the same shutdown and *is* reported, which is what
-        // makes the async one's absence from the report mean something rather
-        // than showing only that the capture was not wired up.
+      test('an async failure is reported like a synchronous one', () async {
+        // The throw lands inside the returned future, after the call itself
+        // has returned. Awaiting the future is what brings it under the
+        // per-entry report. The synchronous thrower beside it is the control:
+        // it proves the capture is wired, so the async one's report means
+        // something.
         final lines = <String>[];
         final errors = <Object>[];
+        final survivor = TestClosable();
         final cleanup = _newCleanup();
         cleanup.addClosable(ThrowingClosable());
         cleanup.addClosable(AsyncThrowingClosable());
+        cleanup.addClosable(survivor);
+
+        await runZonedGuarded(
+          () => cleanup.performShutdown(),
+          (error, stackTrace) => errors.add(error),
+          zoneSpecification: ZoneSpecification(
+            print: (self, parent, zone, line) => lines.add(line),
+          ),
+        )!;
+
+        expect(lines, hasLength(2));
+        expect(lines[0], contains('Close failed'));
+        expect(
+          lines[1],
+          allOf(
+            contains('AsyncThrowingClosable'),
+            contains('Async close failed'),
+          ),
+        );
+        expect(
+          errors,
+          isEmpty,
+          reason: 'nothing escapes as an unhandled error',
+        );
+        expect(survivor.closed, isTrue, reason: 'the phase went on after it');
+      });
+
+      test('an adaptor hands on the future of an async target', () async {
+        final target = AsyncCloseTarget();
+        final cleanup = _newCleanup();
+        cleanup.addClosable(TomCloseAdaptor(target));
+
+        await cleanup.performShutdown();
+
+        expect(target.closed, isTrue);
+      });
+    });
+
+    // The budget is per phase: a phase that overruns it is abandoned — the
+    // entry it is waiting on and every entry behind it — and the shutdown goes
+    // on with the next phase. The budgets are short so the suite stays fast;
+    // the margins between them are wide so a loaded machine does not flip a
+    // result.
+    group('phase timeout', () {
+      test('defaults to ten seconds', () {
+        expect(
+          TomShutdownCleanup.defaultPhaseTimeout,
+          equals(const Duration(seconds: 10)),
+        );
+        expect(
+          _newCleanup().phaseTimeout,
+          equals(TomShutdownCleanup.defaultPhaseTimeout),
+        );
+      });
+
+      test('a zero or negative timeout is refused', () {
+        // A budget of nothing would abandon every async entry unseen, which
+        // is the dropped-teardown behaviour this module exists to prevent.
+        final cleanup = _newCleanup();
+        expect(() => cleanup.phaseTimeout = Duration.zero, throwsArgumentError);
+        expect(
+          () => cleanup.phaseTimeout = const Duration(seconds: -1),
+          throwsArgumentError,
+        );
+        expect(cleanup.phaseTimeout, TomShutdownCleanup.defaultPhaseTimeout);
+      });
+
+      test('a hanging entry abandons its phase, and only its phase', () async {
+        final log = <String>[];
+        final hanging = HangingClosable();
+        final cleanup = _newCleanup()
+          ..silent = true
+          ..phaseTimeout = const Duration(milliseconds: 50);
+        cleanup.addSignalHandler((signal) => log.add('handler'));
+        cleanup.addClosable(hanging);
+        cleanup.addClosable(NamedClosable('behind the hang', log));
+        cleanup.addDisposable(NamedDisposable('disposable', log));
+
+        await cleanup.performShutdown();
+
+        expect(hanging.started, isTrue);
+        expect(log, equals(['handler', 'disposable']));
+      });
+
+      test(
+        'the abandonment names the phase, the entry and what it skipped',
+        () async {
+          final lines = <String>[];
+          final cleanup = _newCleanup()
+            ..phaseTimeout = const Duration(milliseconds: 50);
+          cleanup.addClosable(HangingClosable());
+          cleanup.addClosable(TestClosable());
+          cleanup.addClosable(TestClosable());
+
+          await _capturePrints(lines, cleanup.performShutdown);
+
+          expect(lines, hasLength(1));
+          expect(
+            lines.single,
+            allOf(
+              contains('closable'),
+              contains('50 ms'),
+              contains('HangingClosable'),
+              contains('2 entries'),
+            ),
+          );
+        },
+      );
+
+      test('silent suppresses the abandonment report', () async {
+        final lines = <String>[];
+        final cleanup = _newCleanup()
+          ..silent = true
+          ..phaseTimeout = const Duration(milliseconds: 50);
+        cleanup.addClosable(HangingClosable());
+
+        await _capturePrints(lines, cleanup.performShutdown);
+
+        expect(lines, isEmpty);
+      });
+
+      test('the budget covers the whole phase, not each entry', () async {
+        // Each entry fits the budget alone; together they do not. A budget
+        // per entry would let every registration add its own allowance, so
+        // the phase could never be bounded.
+        final log = <String>[];
+        final cleanup = _newCleanup()
+          ..silent = true
+          ..phaseTimeout = const Duration(milliseconds: 1000);
+        const each = Duration(milliseconds: 600);
+        cleanup.addClosable(DelayedClosable('first', each, log));
+        cleanup.addClosable(DelayedClosable('second', each, log));
+        cleanup.addClosable(NamedClosable('third', log));
+
+        await cleanup.performShutdown();
+
+        expect(log, equals(['first']));
+      });
+
+      test('a synchronous overrun abandons the entries behind it', () async {
+        // A synchronous entry cannot be interrupted, but the time it takes is
+        // spent from the same budget.
+        final log = <String>[];
+        final cleanup = _newCleanup()
+          ..silent = true
+          ..phaseTimeout = const Duration(milliseconds: 50);
+        cleanup.addClosable(BusyClosable(const Duration(milliseconds: 120)));
+        cleanup.addClosable(NamedClosable('behind the overrun', log));
+        cleanup.addDisposable(NamedDisposable('disposable', log));
+
+        await cleanup.performShutdown();
+
+        expect(log, equals(['disposable']));
+      });
+
+      test('an abandoned entry that fails later is still reported', () async {
+        // The shutdown has moved on, but the process may well still be there
+        // when the entry gives up — and a failure nobody hears of is the one
+        // that cannot be diagnosed.
+        final lines = <String>[];
+        final errors = <Object>[];
+        final cleanup = _newCleanup()
+          ..phaseTimeout = const Duration(milliseconds: 50);
+        cleanup.addClosable(
+          LateFailingClosable(const Duration(milliseconds: 150)),
+        );
 
         await runZonedGuarded(
           () async {
-            cleanup.performShutdown();
-            await Future<void>.delayed(Duration.zero);
-            await Future<void>.delayed(Duration.zero);
+            await cleanup.performShutdown();
+            await Future<void>.delayed(const Duration(milliseconds: 400));
           },
           (error, stackTrace) => errors.add(error),
           zoneSpecification: ZoneSpecification(
@@ -697,12 +956,12 @@ void main() {
           ),
         )!;
 
-        expect(lines, hasLength(1), reason: 'only the sync failure reported');
-        expect(lines.single, contains('Close failed'));
-        expect(lines.single, isNot(contains('Async close failed')));
-
-        expect(errors, hasLength(1));
-        expect(errors.single.toString(), contains('Async close failed'));
+        expect(lines, hasLength(2));
+        expect(
+          lines.last,
+          allOf(contains('Late close failed'), contains('abandoned')),
+        );
+        expect(errors, isEmpty);
       });
     });
   });
@@ -789,20 +1048,23 @@ void main() {
 
   group('Edge Cases', () {
     group('empty state', () {
-      test('a shutdown with nothing registered is quiet, not a no-op', () {
-        // Nothing registered is the normal state of an instance that was
-        // built and then never used, and every phase iterating an empty list
-        // is what has to happen. What makes it worth an assertion is the
-        // console: a shutdown with no work to report must report nothing, or
-        // every application that never registers anything grows a line of
-        // output it cannot explain.
-        final lines = <String>[];
-        final cleanup = _newCleanup();
+      test(
+        'a shutdown with nothing registered is quiet, not a no-op',
+        () async {
+          // Nothing registered is the normal state of an instance that was
+          // built and then never used, and every phase iterating an empty list
+          // is what has to happen. What makes it worth an assertion is the
+          // console: a shutdown with no work to report must report nothing, or
+          // every application that never registers anything grows a line of
+          // output it cannot explain.
+          final lines = <String>[];
+          final cleanup = _newCleanup();
 
-        _capturePrints(lines, cleanup.performShutdown);
+          await _capturePrints(lines, cleanup.performShutdown);
 
-        expect(lines, isEmpty);
-      });
+          expect(lines, isEmpty);
+        },
+      );
     });
 
     group('multiple instances', () {
@@ -817,7 +1079,7 @@ void main() {
         }
       });
 
-      test('one instance shutting down does not run the other', () {
+      test('one instance shutting down does not run the other', () async {
         // The three registration lists are instance fields, and an
         // application that keeps a cleanup per subsystem relies on that:
         // tearing one subsystem down must leave the others running.
@@ -828,14 +1090,14 @@ void main() {
         first.addClosable(NamedClosable('first', firstLog));
         second.addClosable(NamedClosable('second', secondLog));
 
-        first.performShutdown();
+        await first.performShutdown();
 
         expect(firstLog, equals(['first']));
         expect(secondLog, isEmpty);
 
         // And the second is still able to run afterwards — the once-only
         // guard belongs to the instance that spent it, not to the class.
-        second.performShutdown();
+        await second.performShutdown();
 
         expect(secondLog, equals(['second']));
       });
@@ -847,29 +1109,29 @@ void main() {
   // ===========================================================================
 
   group('Interface Polymorphism', () {
-    test('should handle TomDisposable through interface reference', () {
+    test('should handle TomDisposable through interface reference', () async {
       // Arrange
       TomDisposable disposable = TestDisposable();
 
       // Act
-      disposable.dispose();
+      await disposable.dispose();
 
       // Assert
       expect((disposable as TestDisposable).disposed, isTrue);
     });
 
-    test('should handle TomClosable through interface reference', () {
+    test('should handle TomClosable through interface reference', () async {
       // Arrange
       TomClosable closable = TestClosable();
 
       // Act
-      closable.close();
+      await closable.close();
 
       // Assert
       expect((closable as TestClosable).closed, isTrue);
     });
 
-    test('should store interfaces in lists', () {
+    test('should store interfaces in lists', () async {
       // Arrange
       final disposables = <TomDisposable>[
         TestDisposable(),
@@ -879,7 +1141,7 @@ void main() {
 
       // Act
       for (var d in disposables) {
-        d.dispose();
+        await d.dispose();
       }
 
       // Assert
@@ -888,7 +1150,7 @@ void main() {
       }
     });
 
-    test('should store closables in lists', () {
+    test('should store closables in lists', () async {
       // Arrange
       final closables = <TomClosable>[
         TestClosable(),
@@ -898,7 +1160,7 @@ void main() {
 
       // Act
       for (var c in closables) {
-        c.close();
+        await c.close();
       }
 
       // Assert
@@ -913,11 +1175,11 @@ void main() {
   // ===========================================================================
 
   group('TomCloseAdaptor', () {
-    test('resolves a close() declared on the leaf type itself', () {
+    test('resolves a close() declared on the leaf type itself', () async {
       final target = OwnCloseTarget();
       final adaptor = TomCloseAdaptor(target);
 
-      adaptor.close();
+      await adaptor.close();
 
       expect(target.closed, isTrue);
     });
@@ -926,32 +1188,35 @@ void main() {
     // everything a leaf type inherits has to be found by walking upwards. The
     // four tests below are the four shapes that walk has to cope with.
 
-    test('resolves a close() inherited from a superclass', () {
+    test('resolves a close() inherited from a superclass', () async {
       final target = InheritsClose();
 
       final adaptor = TomCloseAdaptor(target);
-      adaptor.close();
+      await adaptor.close();
 
       expect(target.closed, isTrue);
     });
 
-    test('resolves a dispose() inherited from a superclass', () {
+    test('resolves a dispose() inherited from a superclass', () async {
       final target = InheritsDispose();
 
       final adaptor = TomCloseAdaptor(target);
-      adaptor.close();
+      await adaptor.close();
 
       expect(target.disposedFlag, isTrue);
     });
 
-    test('resolves a custom-named method inherited from a superclass', () {
-      final target = InheritsShutdown();
+    test(
+      'resolves a custom-named method inherited from a superclass',
+      () async {
+        final target = InheritsShutdown();
 
-      final adaptor = TomCloseAdaptor(target, 'shutdown');
-      adaptor.close();
+        final adaptor = TomCloseAdaptor(target, 'shutdown');
+        await adaptor.close();
 
-      expect(target.shutdownCalled, isTrue);
-    });
+        expect(target.shutdownCalled, isTrue);
+      },
+    );
 
     // The walk follows `ClassMirror.superclass` and nothing else, so it only
     // reaches a mixin's members if the reflector models the mixin application
@@ -960,20 +1225,20 @@ void main() {
     // dartdoc on `_resolveCloseMethod` promises mixin members are resolved,
     // and nothing but a live mixin can keep that promise honest.
 
-    test('resolves a close() mixed in rather than inherited', () {
+    test('resolves a close() mixed in rather than inherited', () async {
       final target = MixesInClose();
 
       final adaptor = TomCloseAdaptor(target);
-      adaptor.close();
+      await adaptor.close();
 
       expect(target.closed, isTrue);
     });
 
-    test('resolves a dispose() mixed in rather than inherited', () {
+    test('resolves a dispose() mixed in rather than inherited', () async {
       final target = MixesInDispose();
 
       final adaptor = TomCloseAdaptor(target);
-      adaptor.close();
+      await adaptor.close();
 
       expect(target.disposedFlag, isTrue);
     });
@@ -1049,32 +1314,35 @@ void main() {
     // the object close() would actually close. The compiler now owns that
     // guarantee, so what remains testable is the invariant itself: the field
     // and the invocation target are the same object.
-    test('closableObject names the object that close() actually closes', () {
-      final first = OwnCloseTarget();
-      final second = OwnCloseTarget();
-      final adaptor = TomCloseAdaptor(first);
+    test(
+      'closableObject names the object that close() actually closes',
+      () async {
+        final first = OwnCloseTarget();
+        final second = OwnCloseTarget();
+        final adaptor = TomCloseAdaptor(first);
 
-      expect(adaptor.closableObject, same(first));
+        expect(adaptor.closableObject, same(first));
 
-      adaptor.close();
+        await adaptor.close();
 
-      expect(first.closed, isTrue);
-      expect(second.closed, isFalse);
-    });
+        expect(first.closed, isTrue);
+        expect(second.closed, isFalse);
+      },
+    );
 
-    test('two adaptors over two targets stay independent', () {
+    test('two adaptors over two targets stay independent', () async {
       // The bound-once mirror is per-instance, not shared state on the class.
       final first = OwnCloseTarget();
       final second = OwnCloseTarget();
       final firstAdaptor = TomCloseAdaptor(first);
       final secondAdaptor = TomCloseAdaptor(second);
 
-      secondAdaptor.close();
+      await secondAdaptor.close();
 
       expect(second.closed, isTrue);
       expect(first.closed, isFalse);
 
-      firstAdaptor.close();
+      await firstAdaptor.close();
 
       expect(first.closed, isTrue);
     });
@@ -1085,34 +1353,50 @@ void main() {
   // ===========================================================================
 
   group('performShutdown', () {
-    test('runs handlers, then closables, then disposables in order', () {
+    test('runs handlers, then closables, then disposables in order', () async {
       final log = <String>[];
       final cleanup = _newCleanup();
       cleanup.addDisposable(RecordingDisposable(log));
       cleanup.addSignalHandler((signal) => log.add('handler'));
       cleanup.addClosable(RecordingClosable(log));
 
-      cleanup.performShutdown();
+      await cleanup.performShutdown();
 
       expect(log, equals(['handler', 'closable', 'disposable']));
     });
 
-    test('executes only once across repeated calls (_executed)', () {
+    test('executes only once across repeated calls', () async {
       final cleanup = _newCleanup();
       final closable = TestClosable();
       final disposable = TestDisposable();
       cleanup.addClosable(closable);
       cleanup.addDisposable(disposable);
 
-      cleanup.performShutdown();
-      cleanup.performShutdown();
-      cleanup.performShutdown();
+      await cleanup.performShutdown();
+      await cleanup.performShutdown();
+      await cleanup.performShutdown();
 
       expect(closable.closeCount, equals(1));
       expect(disposable.disposeCount, equals(1));
     });
 
-    test('isolates failures so later cleanups still run', () {
+    test('a call during a running shutdown joins it', () async {
+      // The second caller gets the shutdown already under way rather than a
+      // completed no-op, so awaiting it means what it says: the entries have
+      // finished, whichever caller started them.
+      final asynchronous = AsyncClosable();
+      final cleanup = _newCleanup();
+      cleanup.addClosable(asynchronous);
+
+      final first = cleanup.performShutdown();
+      final second = cleanup.performShutdown();
+
+      expect(identical(first, second), isTrue);
+      await second;
+      expect(asynchronous.flushed, isTrue);
+    });
+
+    test('isolates failures so later cleanups still run', () async {
       final log = <String>[];
       final cleanup = _newCleanup();
       // A throwing handler and a throwing closable must not prevent the
@@ -1124,7 +1408,7 @@ void main() {
 
       // silent: suppress the "Failed to call …" diagnostics during the test.
       cleanup.silent = true;
-      cleanup.performShutdown();
+      await cleanup.performShutdown();
 
       expect(log, equals(['closable', 'disposable']));
     });
@@ -1134,53 +1418,53 @@ void main() {
     // cannot be reproduced by re-running it, so whatever the diagnostic omits
     // is lost for good.
 
-    test('the failure diagnostic names the exception', () {
+    test('the failure diagnostic names the exception', () async {
       final lines = <String>[];
       final cleanup = _newCleanup();
       cleanup.addClosable(ThrowingClosable());
 
-      _capturePrints(lines, cleanup.performShutdown);
+      await _capturePrints(lines, cleanup.performShutdown);
 
       // ThrowingClosable throws Exception('Close failed').
       expect(lines.join('\n'), contains('Close failed'));
     });
 
-    test('the failure diagnostic names the phase and the entry', () {
+    test('the failure diagnostic names the phase and the entry', () async {
       final lines = <String>[];
       final cleanup = _newCleanup();
       cleanup.addDisposable(ThrowingDisposable());
 
-      _capturePrints(lines, cleanup.performShutdown);
+      await _capturePrints(lines, cleanup.performShutdown);
 
       final diagnostic = lines.join('\n');
       expect(diagnostic, contains('disposable'));
       expect(diagnostic, contains('ThrowingDisposable'));
     });
 
-    test('the failure diagnostic carries a stack trace', () {
+    test('the failure diagnostic carries a stack trace', () async {
       final lines = <String>[];
       final cleanup = _newCleanup();
       cleanup.addClosable(ThrowingClosable());
 
-      _capturePrints(lines, cleanup.performShutdown);
+      await _capturePrints(lines, cleanup.performShutdown);
 
       // The frame that actually threw has to be in there, or the trace is
       // decoration rather than evidence.
       expect(lines.join('\n'), contains('ThrowingClosable.close'));
     });
 
-    test('silent suppresses the failure diagnostic too', () {
+    test('silent suppresses the failure diagnostic too', () async {
       final lines = <String>[];
       final cleanup = _newCleanup();
       cleanup.addClosable(ThrowingClosable());
       cleanup.silent = true;
 
-      _capturePrints(lines, cleanup.performShutdown);
+      await _capturePrints(lines, cleanup.performShutdown);
 
       expect(lines, isEmpty);
     });
 
-    test('a manual call that does real work still prints no status', () {
+    test('a manual call that does real work still prints no status', () async {
       // The quiet-when-empty case is covered under `empty state`; this is the
       // one that could regress independently, because a status message gated
       // on the wrong condition would show up only once there was work to
@@ -1191,67 +1475,123 @@ void main() {
       cleanup.addClosable(TestClosable());
       cleanup.addDisposable(RecordingDisposable(<String>[]));
 
-      _capturePrints(lines, cleanup.performShutdown);
+      await _capturePrints(lines, cleanup.performShutdown);
 
       expect(lines, isEmpty);
     });
 
-    test('manual call ignores paused (only the signal path honours it)', () {
-      final cleanup = _newCleanup();
-      final closable = TestClosable();
-      cleanup.addClosable(closable);
-      cleanup.paused = true;
-
-      // The manual path (fromSignal: false) always runs regardless of paused.
-      cleanup.performShutdown();
-
-      expect(closable.closed, isTrue);
-    });
-
-    group('signal-driven path (fromSignal)', () {
-      test('skips cleanup entirely while paused', () {
+    test(
+      'manual call ignores paused (only the signal path honours it)',
+      () async {
         final cleanup = _newCleanup();
         final closable = TestClosable();
         cleanup.addClosable(closable);
         cleanup.paused = true;
 
-        cleanup.performShutdown(fromSignal: true);
+        // The manual path (fromSignal: false) always runs regardless of paused.
+        await cleanup.performShutdown();
+
+        expect(closable.closed, isTrue);
+      },
+    );
+
+    group('signal-driven path (fromSignal)', () {
+      test('skips cleanup entirely while paused', () async {
+        final cleanup = _newCleanup();
+        final closable = TestClosable();
+        cleanup.addClosable(closable);
+        cleanup.paused = true;
+
+        await cleanup.performShutdown(fromSignal: true);
 
         expect(closable.closed, isFalse);
       });
 
-      test('runs cleanup when not paused', () {
+      test('runs cleanup when not paused', () async {
         final cleanup = _newCleanup();
         final closable = TestClosable();
         cleanup.addClosable(closable);
         cleanup.silent = true;
 
-        cleanup.performShutdown(fromSignal: true);
+        await cleanup.performShutdown(fromSignal: true);
 
         expect(closable.closed, isTrue);
       });
 
-      test('silent suppresses the status messages', () {
+      test('silent suppresses the status messages', () async {
         final lines = <String>[];
         final cleanup = _newCleanup();
         cleanup.addClosable(TestClosable());
         cleanup.silent = true;
 
-        _capturePrints(lines, () => cleanup.performShutdown(fromSignal: true));
+        await _capturePrints(
+          lines,
+          () => cleanup.performShutdown(fromSignal: true),
+        );
 
         expect(lines, isEmpty);
       });
 
-      test('non-silent emits the received + performed status messages', () {
+      test('a signal during a running shutdown says so', () async {
         final lines = <String>[];
         final cleanup = _newCleanup();
-        cleanup.addClosable(TestClosable());
+        cleanup.addClosable(AsyncClosable());
 
-        _capturePrints(lines, () => cleanup.performShutdown(fromSignal: true));
+        await _capturePrints(lines, () async {
+          final running = cleanup.performShutdown();
+          await cleanup.performShutdown(fromSignal: true);
+          await running;
+          await cleanup.performShutdown(fromSignal: true);
+        });
 
-        expect(lines, contains('Received SIGINT'));
-        expect(lines, contains('Shutdown performed'));
+        expect(
+          lines,
+          equals([
+            'Received SIGINT',
+            'Shutdown is already in progress',
+            'Received SIGINT',
+            'Shutdown has already been performed',
+          ]),
+        );
       });
+
+      test(
+        'reports the shutdown performed once the entries have finished',
+        () async {
+          // One list takes both the entry's record and the printed status, so
+          // their order is the assertion.
+          final lines = <String>[];
+          final cleanup = _newCleanup();
+          cleanup.addClosable(AsyncClosable(lines));
+
+          await _capturePrints(
+            lines,
+            () => cleanup.performShutdown(fromSignal: true),
+          );
+
+          expect(
+            lines,
+            equals(['Received SIGINT', 'async closable', 'Shutdown performed']),
+          );
+        },
+      );
+
+      test(
+        'non-silent emits the received + performed status messages',
+        () async {
+          final lines = <String>[];
+          final cleanup = _newCleanup();
+          cleanup.addClosable(TestClosable());
+
+          await _capturePrints(
+            lines,
+            () => cleanup.performShutdown(fromSignal: true),
+          );
+
+          expect(lines, contains('Received SIGINT'));
+          expect(lines, contains('Shutdown performed'));
+        },
+      );
     });
   });
 
@@ -1290,26 +1630,13 @@ void main() {
   });
 }
 
-/// Runs [body] while collecting every `print` line into [sink].
-void _capturePrints(List<String> sink, void Function() body) {
-  runZoned(
-    body,
-    zoneSpecification: ZoneSpecification(
-      print: (self, parent, zone, line) => sink.add(line),
-    ),
-  );
-}
-
 /// Runs the asynchronous [body] while collecting every `print` line into
 /// [sink], completing once [body] has.
 ///
-/// The signal-driven tests need this rather than [_capturePrints] because
-/// their output arrives from a stream listener: the registration, the send and
-/// the delivery all have to happen inside the capturing zone.
-Future<void> _capturePrintsAsync(
-  List<String> sink,
-  Future<void> Function() body,
-) {
+/// Output arrives on later turns of the event loop — from an awaited entry, a
+/// phase timer, or a signal listener — so the registration, the shutdown and
+/// everything it prints all have to happen inside the capturing zone.
+Future<void> _capturePrints(List<String> sink, Future<void> Function() body) {
   return runZoned(
     body,
     zoneSpecification: ZoneSpecification(

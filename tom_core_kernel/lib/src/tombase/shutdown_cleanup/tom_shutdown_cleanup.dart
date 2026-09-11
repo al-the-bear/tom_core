@@ -10,10 +10,10 @@
 /// - [TomClosable]: Objects that implement a `close()` method
 /// - [TomSignalHandler]: Custom signal handlers for specialized cleanup logic
 ///
-/// All three are **synchronous**. Nothing awaits what a handler, a `close()`
-/// or a `dispose()` returns, so teardown that has to await belongs in the
-/// application's own control flow rather than here — see [TomClosable.close]
-/// for what becomes of a `Future` returned from one of them.
+/// Each of the three may be **asynchronous**. The shutdown awaits whatever an
+/// entry returns before it calls the next one, within a per-phase budget
+/// ([TomShutdownCleanup.phaseTimeout]) that keeps one entry that never finishes
+/// from holding the process open.
 ///
 /// ## Quick Start
 ///
@@ -53,11 +53,9 @@ import '../reflection/reflection.dart';
 /// Called when a registered signal is received by the process.
 /// The [onData] parameter contains the specific signal that was received.
 ///
-/// Returns `void`, and that return value is discarded rather than awaited. An
-/// `async` handler therefore compiles and then runs only as far as its first
-/// `await` before the shutdown moves on to the next entry. See
-/// [TomClosable.close].
-typedef TomSignalHandler = void Function(ProcessSignal onData);
+/// A handler may be `async`: the shutdown awaits the future it returns before
+/// it calls the next handler, and before the closables phase begins.
+typedef TomSignalHandler = FutureOr<void> Function(ProcessSignal onData);
 
 // =============================================================================
 // Interfaces
@@ -93,10 +91,9 @@ abstract class TomDisposable {
   /// Implementations should release all resources and perform
   /// any necessary cleanup operations.
   ///
-  /// **Must complete synchronously** — a returned `Future` is discarded, not
-  /// awaited. See [TomClosable.close] for what that costs and what to write
-  /// instead.
-  void dispose();
+  /// May be asynchronous: the shutdown awaits a returned `Future` before it
+  /// disposes the next object. See [TomClosable.close] for how long it waits.
+  FutureOr<void> dispose();
 }
 
 /// Interface for objects that can be closed during shutdown.
@@ -129,20 +126,16 @@ abstract class TomClosable {
   /// Implementations should close all connections, streams, or
   /// other resources that require explicit closing.
   ///
-  /// **Must complete synchronously.** The shutdown calls this through a
-  /// `void Function()` and does not await what comes back, so an `async`
-  /// implementation — which the compiler accepts, because in return position
-  /// every type is a subtype of `void` — runs only as far as its first
-  /// `await`. The remainder resumes on a later turn of the event loop, one the
-  /// process may not survive; and anything it throws misses the per-entry
-  /// failure report, because that catch is around the call rather than around
-  /// the future it returned.
+  /// May be asynchronous. The shutdown awaits a returned `Future` before it
+  /// closes the next object, so a flush, a socket close or a queue drain has
+  /// finished by the time the phase moves on; a failure inside that future is
+  /// reported like one thrown by the call itself.
   ///
-  /// Teardown that genuinely has to await belongs in the application's own
-  /// asynchronous control flow. Register a signal handler that records the
-  /// request — completing a `Completer`, setting a flag — and do the awaiting
-  /// where an `await` is honoured.
-  void close();
+  /// The wait is bounded. Every phase has [TomShutdownCleanup.phaseTimeout] to
+  /// finish in, and a phase that overruns it is abandoned — the entry it was
+  /// waiting on and every entry behind it — so a close that never completes
+  /// costs the rest of its phase, not the whole shutdown.
+  FutureOr<void> close();
 }
 
 // =============================================================================
@@ -290,10 +283,13 @@ class TomCloseAdaptor implements TomClosable {
     return null;
   }
 
-  /// Invokes the close/dispose method on the wrapped object.
+  /// Invokes the close/dispose method on the wrapped object, handing on the
+  /// `Future` it returns so an asynchronous target is awaited like any other
+  /// [TomClosable].
   @override
-  void close() {
-    _im.invoke(_mm.simpleName, []);
+  FutureOr<void> close() {
+    final result = _im.invoke(_mm.simpleName, []);
+    if (result is Future) return result.then<void>((_) {});
   }
 }
 
@@ -313,10 +309,11 @@ class TomCloseAdaptor implements TomClosable {
 /// 2. Closables (objects implementing [TomClosable])
 /// 3. Disposables (objects implementing [TomDisposable])
 ///
-/// Each cleanup operation is wrapped in a try-catch to ensure that a
-/// failing cleanup doesn't prevent other cleanups from executing. The failure
-/// is reported with its exception and the top frames of its stack — printed,
-/// not logged, and suppressed by [silent].
+/// Every entry is awaited before the next one is called, and each phase has
+/// [phaseTimeout] to finish in. A failing entry — whether it throws or its
+/// future fails — does not stop the ones behind it: the failure is reported
+/// with its exception and the top frames of its stack, printed rather than
+/// logged, and suppressed by [silent].
 ///
 /// ## Basic Usage
 ///
@@ -329,12 +326,20 @@ class TomCloseAdaptor implements TomClosable {
 /// tomShutdownCleanup.addDisposable(streamController);
 /// ```
 ///
+/// ## Running it yourself
+///
+/// ```dart
+/// // Returns once every entry has finished, or its phase was abandoned.
+/// await tomShutdownCleanup.performShutdown();
+/// exit(0);
+/// ```
+///
 /// ## Custom Signal Handlers
 ///
 /// ```dart
-/// tomShutdownCleanup.addSignalHandler((signal) {
+/// tomShutdownCleanup.addSignalHandler((signal) async {
 ///   print('Received signal: $signal');
-///   // Perform custom cleanup
+///   await flushJournal(); // awaited before the closables run
 /// });
 /// ```
 ///
@@ -369,8 +374,23 @@ class TomShutdownCleanup {
   /// `dispose()` failure are the top ones.
   static const int _diagnosticStackDepth = 10;
 
-  late final TomSignalHandler _signalHandler;
-  bool _executed = false;
+  /// The [phaseTimeout] a new instance starts with.
+  ///
+  /// Long enough for a flush, a socket close or a pool drain on a healthy
+  /// system; short enough that a teardown that has hung is given up on before
+  /// an operator reaches for `kill -9`.
+  static const Duration defaultPhaseTimeout = Duration(seconds: 10);
+
+  late final void Function(ProcessSignal signal) _signalHandler;
+
+  /// The shutdown, once one has started; every later caller gets this one.
+  Future<void>? _shutdown;
+
+  /// Whether [_shutdown] has finished — which decides what a late signal
+  /// reports, not whether anything runs.
+  bool _shutdownFinished = false;
+
+  Duration _phaseTimeout = defaultPhaseTimeout;
 
   /// When true, signal handling is paused and signals are ignored.
   /// Use this in interactive REPLs that have their own CTRL-C handling.
@@ -378,6 +398,33 @@ class TomShutdownCleanup {
 
   /// When true, suppresses output messages during shutdown.
   bool silent = false;
+
+  /// How long each of the three phases may take before it is abandoned.
+  ///
+  /// The budget is per phase, and it covers the whole phase rather than each
+  /// entry: the time every entry takes — awaited or synchronous — is spent
+  /// from it. When it runs out, the entry being awaited is left to finish on
+  /// its own and the entries behind it in the same phase are not called; the
+  /// next phase then starts with a budget of its own. An abandoned entry that
+  /// fails later is still reported.
+  ///
+  /// A synchronous entry cannot be interrupted. One that overruns the budget
+  /// runs to its end, and the entries behind it are then abandoned.
+  ///
+  /// Defaults to [defaultPhaseTimeout]. Must be positive: a budget of nothing
+  /// would abandon every asynchronous entry unseen.
+  Duration get phaseTimeout => _phaseTimeout;
+
+  set phaseTimeout(Duration value) {
+    if (value <= Duration.zero) {
+      throw ArgumentError.value(
+        value,
+        'phaseTimeout',
+        'must be positive; a shutdown phase needs time to run',
+      );
+    }
+    _phaseTimeout = value;
+  }
 
   /// Creates a new shutdown cleanup coordinator.
   ///
@@ -387,8 +434,11 @@ class TomShutdownCleanup {
   /// Use [tomShutdownCleanup] for the default global instance, or create
   /// custom instances for specialized signal handling.
   TomShutdownCleanup() {
+    // Nothing waits on a stream listener, so the shutdown the signal starts is
+    // deliberately not awaited here. A caller that needs to know when it has
+    // finished calls performShutdown() and is handed the same shutdown.
     _signalHandler = (signal) =>
-        performShutdown(signal: signal, fromSignal: true);
+        unawaited(performShutdown(signal: signal, fromSignal: true));
     // SIGHUP/SIGINT are registered through the same watcher-subscription path
     // as [addSignal], so there is a single place that owns how a signal is
     // watched and how its subscription is retained for teardown.
@@ -396,63 +446,195 @@ class TomShutdownCleanup {
     addSignal(ProcessSignal.sigint);
   }
 
-  /// Triggers shutdown cleanup, running registered signal handlers, then
-  /// closables, then disposables — exactly once across the instance's life.
+  /// Runs the shutdown cleanup — registered signal handlers, then closables,
+  /// then disposables — exactly once across the instance's life, and completes
+  /// when it has finished.
   ///
-  /// External code can call `performShutdown()` directly to run the cleanup
-  /// without an OS signal; that manual path always runs (it ignores [paused])
-  /// and stays quiet. The signal-driven path passes [fromSignal] `true`, which
-  /// honours [paused] (skip while paused) and gates the status messages on
-  /// [silent]. [signal] is forwarded to the registered signal handlers.
-  void performShutdown({
+  /// Every entry is awaited, within [phaseTimeout] per phase, so the returned
+  /// future completes only once the teardown has happened or been given up on.
+  /// That is what makes it safe to exit the process after awaiting it.
+  ///
+  /// The first call starts the shutdown and every later one — manual or
+  /// signal-driven, during it or after it — is handed that same shutdown
+  /// rather than a second run. A caller that awaits it therefore always waits
+  /// for the real thing, whoever started it. Do not await it from inside one of
+  /// the entries: the entry would be waiting for the shutdown that is waiting
+  /// for the entry, and only the phase timeout would end it.
+  ///
+  /// External code calls this directly to run the cleanup without an OS
+  /// signal; that manual path always runs (it ignores [paused]) and stays
+  /// quiet. The signal-driven path passes [fromSignal] `true`, which honours
+  /// [paused] (skip while paused) and gates the status messages on [silent].
+  /// [signal] is forwarded to the registered signal handlers.
+  Future<void> performShutdown({
     ProcessSignal signal = ProcessSignal.sigint,
     bool fromSignal = false,
   }) {
     // The signal path is suppressed while paused (e.g. interactive REPL mode).
-    if (fromSignal && paused) return;
+    if (fromSignal && paused) return Future<void>.value();
 
-    if (fromSignal && !silent) print("Received $signal");
-    if (_executed) {
-      if (fromSignal && !silent) print("Shutdown has already been performed");
-      return;
+    final announce = fromSignal && !silent;
+    if (announce) print("Received $signal");
+    final running = _shutdown;
+    if (running != null) {
+      if (announce) {
+        print(
+          _shutdownFinished
+              ? "Shutdown has already been performed"
+              : "Shutdown is already in progress",
+        );
+      }
+      return running;
     }
-    _executeCleanup(signal);
-    _executed = true;
-    if (fromSignal && !silent) print("Shutdown performed");
+    return _shutdown = _executeCleanup(signal, announce: announce);
   }
 
   /// Runs the three cleanup phases in order — signal handlers, then closables,
-  /// then disposables — isolating each callout so a failing handler never
-  /// prevents the rest from running.
-  void _executeCleanup(ProcessSignal signal) {
-    _runPhase(_signalHandlers, "signalHandler", (handler) => handler(signal));
-    _runPhase(_closables, "closable", (closable) => closable.close());
-    _runPhase(_disposables, "disposable", (disposable) => disposable.dispose());
+  /// then disposables — each finishing, or being abandoned, before the next
+  /// begins.
+  Future<void> _executeCleanup(
+    ProcessSignal signal, {
+    required bool announce,
+  }) async {
+    await _runPhase(
+      _signalHandlers,
+      "signalHandler",
+      (handler) => handler(signal),
+    );
+    await _runPhase(_closables, "closable", (closable) => closable.close());
+    await _runPhase(
+      _disposables,
+      "disposable",
+      (disposable) => disposable.dispose(),
+    );
+    _shutdownFinished = true;
+    if (announce) print("Shutdown performed");
   }
 
-  /// Runs [action] over every entry of [items], isolating each call so one
-  /// failing entry never aborts the phase. On failure a `Failed to call
-  /// $label $item: $exception` diagnostic is printed, followed by the top
-  /// [_diagnosticStackDepth] frames, unless [silent]. This is the single owner
-  /// of the per-entry try/catch/report policy shared by all three cleanup
-  /// phases.
+  /// Runs [action] over every entry of [items] in order, awaiting each one
+  /// that returns a `Future`, within a budget of [phaseTimeout] for the phase.
   ///
-  /// The exception and its trace are part of the report because a shutdown
-  /// runs once, usually unattended, and cannot be re-run to find out what went
-  /// wrong: whatever this line omits is lost. Message and trace go out in a
-  /// single `print` so that concurrent output cannot separate a failure from
-  /// its evidence when several entries fail.
-  void _runPhase<T>(List<T> items, String label, void Function(T item) action) {
-    for (final item in items) {
+  /// This is the single owner of the per-entry policy all three phases share.
+  /// A failing entry — thrown by the call or by the future it returned — never
+  /// aborts the phase: a `Failed to call $label $item: $exception` diagnostic
+  /// is printed, followed by the top [_diagnosticStackDepth] frames, unless
+  /// [silent]. The exception and its trace are part of the report because a
+  /// shutdown runs once, usually unattended, and cannot be re-run to find out
+  /// what went wrong. Message and trace go out in a single `print` so that
+  /// concurrent output cannot separate a failure from its evidence.
+  ///
+  /// When the budget runs out the phase is abandoned: the entry being awaited
+  /// is left to finish on its own, and the ones behind it are not called.
+  /// A synchronous entry is never awaited, so a phase of synchronous entries
+  /// runs straight through without yielding.
+  Future<void> _runPhase<T>(
+    List<T> items,
+    String label,
+    FutureOr<void> Function(T item) action,
+  ) async {
+    final elapsed = Stopwatch()..start();
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      final remaining = _phaseTimeout - elapsed.elapsed;
+      if (remaining <= Duration.zero) {
+        _reportAbandoned(label, items, index, waitingOn: null);
+        return;
+      }
       try {
-        action(item);
+        final result = action(item);
+        if (result is Future<void>) {
+          final finished = await _finishesWithin(
+            result,
+            remaining,
+            onLateFailure: (exception, stackTrace) => _reportFailure(
+              label,
+              item,
+              exception,
+              stackTrace,
+              abandoned: true,
+            ),
+          );
+          if (!finished) {
+            _reportAbandoned(label, items, index, waitingOn: item);
+            return;
+          }
+        }
       } catch (exception, stackTrace) {
-        if (silent) continue;
-        final trace = tomGetStackTrace(stackTrace, _diagnosticStackDepth);
-        final report = "Failed to call $label $item: $exception";
-        print(trace.isEmpty ? report : "$report\n$trace");
+        _reportFailure(label, item, exception, stackTrace);
       }
     }
+  }
+
+  /// Whether [work] finishes within [budget]; rethrows its failure if it fails
+  /// in time.
+  ///
+  /// `Future.timeout` is not used because its `TimeoutException` could not be
+  /// told apart from one the entry itself throws — a socket close that times
+  /// out is a failure to report, not the phase running out of time. A failure
+  /// that arrives after the budget has gone is handed to [onLateFailure]
+  /// instead of being dropped.
+  static Future<bool> _finishesWithin(
+    Future<void> work,
+    Duration budget, {
+    required void Function(Object exception, StackTrace stackTrace)
+    onLateFailure,
+  }) {
+    final outcome = Completer<bool>();
+    final deadline = Timer(budget, () {
+      if (!outcome.isCompleted) outcome.complete(false);
+    });
+    unawaited(
+      work.then(
+        (_) {
+          deadline.cancel();
+          if (!outcome.isCompleted) outcome.complete(true);
+        },
+        onError: (Object exception, StackTrace stackTrace) {
+          deadline.cancel();
+          if (outcome.isCompleted) {
+            onLateFailure(exception, stackTrace);
+          } else {
+            outcome.completeError(exception, stackTrace);
+          }
+        },
+      ),
+    );
+    return outcome.future;
+  }
+
+  void _reportFailure(
+    String label,
+    Object? item,
+    Object exception,
+    StackTrace stackTrace, {
+    bool abandoned = false,
+  }) {
+    if (silent) return;
+    final trace = tomGetStackTrace(stackTrace, _diagnosticStackDepth);
+    final when = abandoned ? " (after its phase abandoned it)" : "";
+    final report = "Failed to call $label $item$when: $exception";
+    print(trace.isEmpty ? report : "$report\n$trace");
+  }
+
+  /// Reports that the [label] phase ran out of [phaseTimeout] at [index]:
+  /// [waitingOn] had not finished — or, when `null`, the budget was already
+  /// spent before the entry at [index] could be called.
+  void _reportAbandoned<T>(
+    String label,
+    List<T> items,
+    int index, {
+    required T? waitingOn,
+  }) {
+    if (silent) return;
+    final skipped = items.length - index - (waitingOn == null ? 0 : 1);
+    final budget = "${_phaseTimeout.inMilliseconds} ms";
+    final cause = waitingOn == null
+        ? "its time was spent"
+        : "$waitingOn had not finished";
+    print(
+      "Abandoned the $label phase after $budget: $cause, "
+      "$skipped ${skipped == 1 ? 'entry' : 'entries'} behind it not called",
+    );
   }
 
   final List<TomSignalHandler> _signalHandlers = [];
