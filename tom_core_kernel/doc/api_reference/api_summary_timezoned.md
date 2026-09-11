@@ -363,23 +363,28 @@ None — the constructor is private. Obtain instances via `TomTimezone.utc`,
 | `fromName(String name)` | `TomTimezone?` | Finds a timezone by IANA name (case-insensitive); `null` if not found. |
 | `firstWithOffset(int utcOffsetMinutes)` | `TomTimezone?` | The first zone whose **current** offset is `utcOffsetMinutes`, or `null` if none is at it now. *First* is bucket order — IANA name order — not the best-known zone: `firstWithOffset(0)` yields `Africa/Abidjan`, not `UTC`. |
 | `allWithOffset(int utcOffsetMinutes)` | `List<TomTimezone>?` | Every zone whose **current** offset is `utcOffsetMinutes`, or `null` if none is at it now. **Unmodifiable**, like `timezones`, and for the same reason: it is the bucket `firstWithOffset` reads. Take `[...?…]` to sort or filter. |
-| `findTimezone(String? name, int? utcOffsetMinutes)` | `TomTimezone` | The strict lookup: never returns `null`. A name-only lookup returns the named zone; with `name` null, the first zone at the given offset — a branch that reads the same index as `firstWithOffset` and inherits its shelf life. Throws `TomTimezoneException` for an unknown name or a name whose current offset differs from a supplied `utcOffsetMinutes` (`timezone.not_found.name_offset_mismatch`), for an offset no zone is at (`timezone.not_found.offset`), and when both arguments are null (`timezone.find.no_criteria`). |
+| `firstWithOffsetOn(int utcOffsetMinutes, DateTime when)` | `TomTimezone?` | The first zone whose offset **at `when`** is `utcOffsetMinutes`, or `null` if none was. Computed by scanning the database rather than read from the index, so it never goes stale; *first* is database order, as for `firstWithOffset`. |
+| `allWithOffsetOn(int utcOffsetMinutes, DateTime when)` | `List<TomTimezone>` | Every zone whose offset **at `when`** is `utcOffsetMinutes`; empty when none was, since a scan always has an answer. **Unmodifiable**. O(zones) per call, against `allWithOffset`'s map hit — a correct answer for an instant, or a fast answer for today. |
+| `findTimezone(String? name, int? utcOffsetMinutes, {DateTime? at})` | `TomTimezone` | The strict lookup: never returns `null`. A name-only lookup returns the named zone; with `name` null, the first zone at the given offset — a branch that reads the same index as `firstWithOffset` and inherits its shelf life. Throws `TomTimezoneException` for an unknown name or a name whose current offset differs from a supplied `utcOffsetMinutes` (`timezone.not_found.name_offset_mismatch`), for an offset no zone is at (`timezone.not_found.offset`), and when both arguments are null (`timezone.find.no_criteria`). |
 | `convertMinutesToUtcOffset(int totalMinutes)` | `String` | Formats a minute offset as `Z`, `+HH:MM`, or `-HH:MM`. Throws `TomFormattingException` outside ±840 minutes (±14:00, inclusive), which no real zone reaches. Offsets read from a zone are always inside that range, so this static entry point — the only one taking an arbitrary `int` — is also the only one that can raise; `getUtcOffsetStringOn`, `toStringOn` and `toString` cannot. |
 | `changeLocation(DateTime dt, TomTimezone inTimezone, TomTimezone toTimezone)` | `DateTime` | Reads the calendar fields of `dt` as a wall-clock reading **in `inTimezone`**, resolves them to an instant there, and renders that instant in `toTimezone`. The instant `dt` itself denotes is ignored, so the result never depends on the host's local zone and `DateTime(...)` / `DateTime.utc(...)` with the same fields convert alike. Use `toTZDateTime` instead to re-render an instant you already hold. |
 | `populateFromLocations(Map<String, tz.Location> locations)` | `void` | *(`@visibleForTesting`)* Fills the lookup caches from `locations` and registers the `utc` singleton, which the IANA database does not supply under that name. Logs an ERROR when `locations` is empty. Populates **once per isolate**: a second call throws `TomTimezoneException` (`timezone.database.already_populated`, carrying `loaded` and `offered` counts) rather than replacing the database or ignoring the call. Exists so a test can drive the empty-database branch, which the public entry points cannot provoke on a native platform. |
 
-The three offset entry points above — `firstWithOffset`, `allWithOffset` and
-`findTimezone`'s name-null branch — read one index, and that index is built
-once at first access from each zone's offset *at that moment*. It is never
-rebuilt. So a zone that observes daylight saving is in one bucket in winter and
-another in summer (about a third of the IANA database moves this way:
-`allWithOffset(0)` contains `Europe/London` in January and not in July, when
-London is on BST at +60), and a process that runs across a transition keeps
-answering for the season it started in.
+The index-backed offset entry points — `firstWithOffset`, `allWithOffset` and
+`findTimezone`'s name-null branch without `at` — read one index, and that index
+is built once at first access from each zone's offset *at that moment*. It is
+never rebuilt. So a zone that observes daylight saving is in one bucket in
+winter and another in summer (about a third of the IANA database moves this
+way: `allWithOffset(0)` contains `Europe/London` in January and not in July,
+when London is on BST at +60), and a process that runs across a transition
+keeps answering for the season it started in.
 
-Use these for discovery and store the `timezone` name they yield, never the
-offset it was found under. When the question is "what was the offset *then*",
-it is not a lookup: ask a zone you already hold, with `getUtcOffsetOn`.
+Use those for discovery and store the `timezone` name they yield, never the
+offset it was found under. When the question is about an instant, ask for it:
+`firstWithOffsetOn`, `allWithOffsetOn`, and `findTimezone(..., at:)` compute
+each zone's offset at the instant given, so they neither depend on when the
+process started nor go stale while it runs. For the offset of a zone you
+already hold, `getUtcOffsetOn` is the direct question.
 
 `timezones` and `allWithOffset` return **unmodifiable views** of that index
 rather than the index itself. A write throws `UnsupportedError` where it is

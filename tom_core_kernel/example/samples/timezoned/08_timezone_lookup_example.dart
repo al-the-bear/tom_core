@@ -1,7 +1,8 @@
 /// Timezone Lookup Example
 ///
 /// This example demonstrates the various ways to find and look up timezones:
-/// by name, by offset, and how to list all available timezones.
+/// by name, by offset — today's, and at a given instant — and how to list all
+/// available timezones.
 ///
 /// To run this file on its own:
 /// ```bash
@@ -74,6 +75,57 @@ void run() {
   } else {
     print('   allWithOffset(540): no results\n');
   }
+
+  // -------------------------------------------------------------------------
+  // Example 3b: The same questions, asked about an instant
+  // -------------------------------------------------------------------------
+  print('3b. Offset lookup at a given instant:');
+
+  // The lookups above answer for today. These compute each zone's offset at
+  // the instant given, so the answer is the same whenever it is asked — and
+  // a DST boundary shows up as a difference between the two instants.
+  final january = DateTime.utc(2024, 1, 15, 12);
+  final july = DateTime.utc(2024, 7, 15, 12);
+
+  final zeroInJanuary = TomTimezone.allWithOffsetOn(
+    0,
+    january,
+  ).map((z) => z.timezone).toList();
+  final zeroInJuly = TomTimezone.allWithOffsetOn(
+    0,
+    july,
+  ).map((z) => z.timezone).toList();
+  final londonInJanuary = zeroInJanuary.contains('Europe/London');
+  final londonInJuly = zeroInJuly.contains('Europe/London');
+
+  print(
+    '   allWithOffsetOn(0, January): ${zeroInJanuary.length} zones, '
+    'Europe/London among them: $londonInJanuary',
+  );
+  print(
+    '   allWithOffsetOn(0, July):    ${zeroInJuly.length} zones, '
+    'Europe/London among them: $londonInJuly',
+  );
+  print(
+    '   firstWithOffsetOn(0, January): '
+    '${TomTimezone.firstWithOffsetOn(0, january)?.timezone}',
+  );
+
+  // findTimezone takes the same instant, and validates the named zone's
+  // offset at it: -05:00 is New York in winter, not in summer.
+  final nyInWinter = TomTimezone.findTimezone(
+    'America/New_York',
+    -300,
+    at: january,
+  );
+  final nyInSummerKey = _findTimezoneFailureKey(
+    () => TomTimezone.findTimezone('America/New_York', -300, at: july),
+  );
+  print(
+    '   findTimezone("America/New_York", -300, at: January): '
+    '${nyInWinter.timezone}',
+  );
+  print('   … at: July: $nyInSummerKey\n');
 
   // -------------------------------------------------------------------------
   // Example 4: Using findTimezone with name and offset validation
@@ -217,6 +269,13 @@ void run() {
 
   // Example 3: All with offset
   assert(allPlus9Count > 0);
+
+  // Example 3b: London keeps GMT in January and moves to BST in July, and the
+  // at-instant lookups say so whatever the season the sample runs in.
+  assert(londonInJanuary, 'Europe/London is at +00:00 in January');
+  assert(!londonInJuly, 'Europe/London is at +01:00 in July');
+  assert(nyInWinter.timezone == 'America/New_York');
+  assert(nyInSummerKey == 'timezone.not_found.name_offset_mismatch');
   assert(allPlus9First5.isNotEmpty);
 
   // Example 4: findTimezone validation

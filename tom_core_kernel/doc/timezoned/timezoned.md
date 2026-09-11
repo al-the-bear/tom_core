@@ -149,6 +149,12 @@ final utcPlus9 = TomTimezone.firstWithOffset(540);   // +09:00
 final utcMinus5 = TomTimezone.firstWithOffset(-300); // -05:00
 final allPlus9 = TomTimezone.allWithOffset(540);     // Every zone at +09:00 today
 
+// By UTC offset at a given instant — computed, so it is the same answer
+// whenever it is asked
+final winter = DateTime.utc(2024, 1, 15);
+final atZeroThen = TomTimezone.allWithOffsetOn(0, winter); // includes Europe/London
+final firstThen = TomTimezone.firstWithOffsetOn(0, winter);
+
 // With offset validation — -300 is New York in winter, so this throws in summer
 final ny = TomTimezone.findTimezone('America/New_York', -300);
 // findTimezone throws: unknown name, mismatch, no zone at the offset, both null
@@ -162,11 +168,33 @@ January and does not in July, when London is on BST at +60. The index is built
 once, on first access, and never rebuilt, so a process that runs across a
 transition keeps answering for the season it started in.
 
-Two consequences at the call site. Use offset lookup for **discovery** — a zone
-picker, "who is at +05:30 at the moment" — and store the zone *name* it gives
-you, never the offset you found it under; a stored offset stops identifying the
-same zone twice a year. And when the question is really "what was the offset
-then", it is not a lookup at all: ask a zone you already hold, with
+Two consequences at the call site. Use the index-backed lookups for
+**discovery** — a zone picker, "who is at +05:30 at the moment" — and store the
+zone *name* they give you, never the offset you found it under; a stored offset
+stops identifying the same zone twice a year. And when the question is about an
+instant rather than about today, ask for that instant: `allWithOffsetOn(offset,
+when)` and `firstWithOffsetOn(offset, when)` compute each zone's offset at
+`when` instead of reading the index, and `findTimezone`'s `at:` argument does
+the same on both of its branches — reading a named zone's offset at `when`, or
+scanning for a zone that was at one. They cost a walk of the database where the
+index-backed pair costs a map hit, and in exchange the answer neither depends on
+the season the process started in nor goes stale while it runs. What
+`findTimezone` does with a lookup it cannot satisfy is unchanged — see
+[Error Handling](#error-handling):
+
+```dart
+final january = DateTime.utc(2024, 1, 15);
+final july = DateTime.utc(2024, 7, 15);
+
+TomTimezone.allWithOffsetOn(0, january);  // holds Europe/London
+TomTimezone.allWithOffsetOn(0, july);     // does not — London is on BST
+// -05:00 is New York in winter and -04:00 in summer, so the same pair agrees
+// at one instant and is refused at the other.
+TomTimezone.findTimezone('America/New_York', -300, at: january);
+TomTimezone.findTimezone('America/New_York', -240, at: july);
+```
+
+For the offset of a zone you already hold, the direct question is
 `getUtcOffsetOn` (see [UTC Offset Operations](#utc-offset-operations)).
 
 A third follows from the index being built once: `TomTimezone.timezones` and

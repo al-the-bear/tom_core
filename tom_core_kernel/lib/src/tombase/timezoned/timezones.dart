@@ -322,7 +322,8 @@ class TomTimezone {
   /// *First* means first in the bucket, which is IANA name order rather than
   /// the best-known zone at that offset: `firstWithOffset(0)` yields
   /// `Africa/Abidjan`, not `UTC`. Where a particular zone is wanted, name it
-  /// with [fromName].
+  /// with [fromName]. For the zones at an offset at a *particular* instant,
+  /// which does not go stale, use [firstWithOffsetOn] and [allWithOffsetOn].
   ///
   /// [utcOffsetMinutes] The UTC offset in minutes (e.g., 540 for UTC+9).
   ///
@@ -348,7 +349,8 @@ class TomTimezone {
   /// bucket holds the zones that were at this offset when the index was built,
   /// not the zones that are ever at it. `allWithOffset(0)` in July does not
   /// contain `Europe/London`, which is on BST and sits at 60; in January it
-  /// does. Treat the result as a snapshot, not as a membership rule.
+  /// does. Treat the result as a snapshot, not as a membership rule, or ask
+  /// [allWithOffsetOn] for the zones at an offset at a given instant.
   ///
   /// The list is **unmodifiable**, and for the same reason [timezones] is: it
   /// is a view onto the bucket [firstWithOffset] reads, so sorting or filtering
@@ -374,6 +376,72 @@ class TomTimezone {
     return bucket == null ? null : UnmodifiableListView(bucket);
   }
 
+  /// Every timezone whose offset **at [when]** is [utcOffsetMinutes].
+  ///
+  /// The at-instant counterpart of [allWithOffset], and the one to reach for
+  /// when the question is about a moment rather than about today. It asks each
+  /// zone what its offset was at [when] instead of reading the offset index,
+  /// so a daylight-saving boundary is a fact about [when] and the answer does
+  /// not change as the process runs: `allWithOffsetOn(0, january)` holds
+  /// `Europe/London` in any season, and `allWithOffsetOn(0, july)` does not.
+  ///
+  /// The price is the scan: O(zones) per call against a database of a few
+  /// hundred, where [allWithOffset] is a map hit. That is the trade — a
+  /// correct answer for an instant, or a fast answer for the season the
+  /// process started in.
+  ///
+  /// Zones come in the database's own order, as they do from [allWithOffset],
+  /// and the list is **unmodifiable** for the same reason every other lookup's
+  /// is. An offset no zone was at answers with an empty list rather than
+  /// `null`: the scan always has an answer, and "none" is one.
+  ///
+  /// Example:
+  /// ```dart
+  /// final winter = DateTime.utc(2024, 1, 15);
+  /// for (final zone in TomTimezone.allWithOffsetOn(0, winter)) {
+  ///   print(zone.timezone); // 'UTC', 'Europe/London', 'Africa/Abidjan', ...
+  /// }
+  /// ```
+  static List<TomTimezone> allWithOffsetOn(
+    int utcOffsetMinutes,
+    DateTime when,
+  ) => List.unmodifiable(_zonesWithOffsetOn(utcOffsetMinutes, when));
+
+  /// The first timezone whose offset **at [when]** is [utcOffsetMinutes], or
+  /// `null` when no zone was at it then.
+  ///
+  /// [firstWithOffset] with an instant, and [allWithOffsetOn]'s first element
+  /// — *first* meaning first in the database's order rather than the
+  /// best-known zone at that offset, so name a particular zone with [fromName]
+  /// where one is wanted. The scan stops at the first match.
+  ///
+  /// Example:
+  /// ```dart
+  /// final summer = DateTime.utc(2024, 7, 15);
+  /// TomTimezone.firstWithOffsetOn(60, summer)?.timezone; // a zone at +01:00 then
+  /// ```
+  static TomTimezone? firstWithOffsetOn(int utcOffsetMinutes, DateTime when) {
+    for (final zone in _zonesWithOffsetOn(utcOffsetMinutes, when)) {
+      return zone;
+    }
+    return null;
+  }
+
+  /// The zones at [utcOffsetMinutes] on [when], computed rather than indexed.
+  ///
+  /// Lazy, so [firstWithOffsetOn] pays for one match and [allWithOffsetOn] for
+  /// the whole database, from one definition of what "at this offset then"
+  /// means.
+  static Iterable<TomTimezone> _zonesWithOffsetOn(
+    int utcOffsetMinutes,
+    DateTime when,
+  ) sync* {
+    _initialize();
+    for (final zone in _timezonesMap.values) {
+      if (zone.getUtcOffsetOn(when) == utcOffsetMinutes) yield zone;
+    }
+  }
+
   /// Finds a timezone by name, optionally validating its UTC offset.
   ///
   /// This is the strict lookup: where [fromName] answers "is this zone here?"
@@ -395,16 +463,21 @@ class TomTimezone {
   ///   (`timezone.not_found.name_offset_mismatch`). This happens whether or
   ///   not an offset was supplied, so a name-only lookup throws too — unlike
   ///   [fromName], which returns `null` for the same name.
-  /// - [name] is found but its current offset does not match
-  ///   [utcOffsetMinutes] (`timezone.not_found.name_offset_mismatch`).
-  /// - [name] is null and no zone is at [utcOffsetMinutes] now
+  /// - [name] is found but its offset does not match [utcOffsetMinutes]
+  ///   (`timezone.not_found.name_offset_mismatch`).
+  /// - [name] is null and no zone is at [utcOffsetMinutes]
   ///   (`timezone.not_found.offset`).
   /// - Both arguments are null, leaving nothing to look up
   ///   (`timezone.find.no_criteria`).
   ///
-  /// The offset compared is the zone's offset *now*, so a zone that observes
-  /// daylight saving matches a different value in summer than in winter. Use
-  /// [getUtcOffsetOn] to ask about a particular date.
+  /// [at] decides *when* the offset is read. Left out, every offset in the
+  /// call is the zone's offset now, so a zone that observes daylight saving
+  /// matches a different value in summer than in winter, and the name-less
+  /// branch reads the offset index with the shelf life [firstWithOffset]
+  /// describes. Supplied, both are computed for that instant instead — the
+  /// name branch compares against [getUtcOffsetOn], the name-less branch scans
+  /// as [firstWithOffsetOn] does — so the answer is the same whenever it is
+  /// asked.
   ///
   /// Example:
   /// ```dart
@@ -422,22 +495,37 @@ class TomTimezone {
   ///
   /// // Throws: both arguments null, nothing to look up
   /// TomTimezone.findTimezone(null, null); // TomTimezoneException
+  ///
+  /// // -05:00 is New York in winter, so this agrees in January
+  /// TomTimezone.findTimezone('America/New_York', -300, at: winter);
   /// ```
-  static TomTimezone findTimezone(String? name, int? utcOffsetMinutes) {
+  static TomTimezone findTimezone(
+    String? name,
+    int? utcOffsetMinutes, {
+    DateTime? at,
+  }) {
     _initialize();
     if (name != null) {
       var byName = _timezonesMap[name.toUpperCase()];
       // A name-only lookup (no offset given) returns the named zone; when an
-      // offset is supplied it must match the zone's current offset.
+      // offset is supplied it must match the zone's offset — now, or at [at].
       if (byName != null &&
           (utcOffsetMinutes == null ||
-              byName.timezoneOffsetMin == utcOffsetMinutes)) {
+              (at == null
+                      ? byName.timezoneOffsetMin
+                      : byName.getUtcOffsetOn(at)) ==
+                  utcOffsetMinutes)) {
         return byName;
       } else {
         throw TomTimezoneException(
           'timezone.not_found.name_offset_mismatch',
-          'Timezone with name $name not found or does not match offset $utcOffsetMinutes',
-          parameters: {'name': name, 'utcOffsetMinutes': utcOffsetMinutes},
+          'Timezone with name $name not found or does not match offset '
+              '$utcOffsetMinutes${at == null ? '' : ' at ${at.toIso8601String()}'}',
+          parameters: {
+            'name': name,
+            'utcOffsetMinutes': utcOffsetMinutes,
+            if (at != null) 'at': at.toIso8601String(),
+          },
         );
       }
     }
@@ -447,12 +535,18 @@ class TomTimezone {
         'findTimezone needs a name or an offset; both arguments were null',
       );
     }
-    final byOffset = _timezoneByOffset[utcOffsetMinutes]?.first;
+    final byOffset = at == null
+        ? _timezoneByOffset[utcOffsetMinutes]?.first
+        : firstWithOffsetOn(utcOffsetMinutes, at);
     if (byOffset == null) {
       throw TomTimezoneException(
         'timezone.not_found.offset',
-        'No timezone is at UTC offset $utcOffsetMinutes minutes now',
-        parameters: {'utcOffsetMinutes': utcOffsetMinutes},
+        'No timezone is at UTC offset $utcOffsetMinutes minutes '
+            '${at == null ? 'now' : 'at ${at.toIso8601String()}'}',
+        parameters: {
+          'utcOffsetMinutes': utcOffsetMinutes,
+          if (at != null) 'at': at.toIso8601String(),
+        },
       );
     }
     return byOffset;

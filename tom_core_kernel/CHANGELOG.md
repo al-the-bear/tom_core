@@ -8,6 +8,19 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Added
+- **Offset lookup can ask about an instant (tcopen93).**
+  `TomTimezone.allWithOffsetOn(offset, when)` and
+  `firstWithOffsetOn(offset, when)` answer "which zones were at this offset
+  *then*", and `findTimezone` takes the same instant as `at:` — validating a
+  named zone's offset at it, or scanning for one. They compute each zone's
+  offset at the instant instead of reading the startup-sampled index, so the
+  answer neither depends on the season the process started in nor goes stale
+  while it runs; the price is a walk of the database where the index-backed
+  pair costs a map hit. `allWithOffsetOn` answers with an empty list rather
+  than `null` when no zone was at the offset. The index-backed
+  `firstWithOffset` / `allWithOffset` keep their shelf life, and their
+  documentation now points at the at-instant pair.
+
 - **Client limits get a source and a refresh path (tcopen76).**
   `TomClientLimitsProvider` is the contract a subscription and quota service
   (Tom SQM) implements — `clientLimitsFor(principal)` — installed at

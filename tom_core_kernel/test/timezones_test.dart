@@ -125,6 +125,121 @@ void main() {
       });
     });
 
+    // The index answers for the season the process started in. These answer
+    // for an instant, by asking each zone what its offset was then, so a DST
+    // boundary is a fact about the argument rather than about the clock.
+    group('offset lookup at an instant', () {
+      final january = DateTime.utc(2024, 1, 15, 12);
+      final july = DateTime.utc(2024, 7, 15, 12);
+
+      List<String> namesAt(int offset, DateTime when) =>
+          TomTimezone.allWithOffsetOn(
+            offset,
+            when,
+          ).map((z) => z.timezone).toList();
+
+      test('London is at +00:00 in January and +01:00 in July', () {
+        expect(namesAt(0, january), contains('Europe/London'));
+        expect(namesAt(0, july), isNot(contains('Europe/London')));
+        expect(namesAt(60, july), contains('Europe/London'));
+        expect(namesAt(60, january), isNot(contains('Europe/London')));
+      });
+
+      test('New York is at -05:00 in January and -04:00 in July', () {
+        expect(namesAt(-300, january), contains('America/New_York'));
+        expect(namesAt(-300, july), isNot(contains('America/New_York')));
+        expect(namesAt(-240, july), contains('America/New_York'));
+      });
+
+      test('every zone it answers with was really at that offset then', () {
+        for (final zone in TomTimezone.allWithOffsetOn(0, january)) {
+          expect(zone.getUtcOffsetOn(january), 0, reason: zone.timezone);
+        }
+      });
+
+      test('the answer is independent of the season it is asked in', () {
+        // The index-backed lookup samples the offsets once, at startup; this
+        // one recomputes, so the pair for a DST zone always disagrees in one
+        // direction or the other whatever today is.
+        final london = TomTimezone.fromName('Europe/London')!;
+        final now = london.getCurrentUtcOffset();
+        final other = now == 0 ? july : january;
+        expect(london.getUtcOffsetOn(other), isNot(now));
+        expect(namesAt(now, other), isNot(contains('Europe/London')));
+      });
+
+      test('no zone at that offset then is an empty answer, not null', () {
+        // Seven minutes east of UTC: no zone has ever used it.
+        expect(TomTimezone.allWithOffsetOn(7, january), isEmpty);
+        expect(TomTimezone.firstWithOffsetOn(7, january), isNull);
+      });
+
+      test('firstWithOffsetOn is the first of allWithOffsetOn', () {
+        expect(
+          TomTimezone.firstWithOffsetOn(0, january)?.timezone,
+          namesAt(0, january).first,
+        );
+      });
+
+      test('the list it hands back is unmodifiable', () {
+        // Like every other lookup here: a caller that sorts the answer in
+        // place must not be able to reach anything the module holds.
+        final zones = TomTimezone.allWithOffsetOn(0, january);
+        expect(() => zones.sort(), throwsUnsupportedError);
+        expect(() => zones.add(TomTimezone.utc), throwsUnsupportedError);
+      });
+    });
+
+    group('findTimezone at an instant', () {
+      final january = DateTime.utc(2024, 1, 15, 12);
+      final july = DateTime.utc(2024, 7, 15, 12);
+
+      test('the named zone is validated against its offset then', () {
+        final winter = TomTimezone.findTimezone(
+          'America/New_York',
+          -300,
+          at: january,
+        );
+        expect(winter.timezone, 'America/New_York');
+
+        // The same pair in the other season is a mismatch, and says so.
+        expect(
+          () => TomTimezone.findTimezone('America/New_York', -300, at: july),
+          throwsA(
+            isA<TomTimezoneException>().having(
+              (e) => e.key,
+              'key',
+              'timezone.not_found.name_offset_mismatch',
+            ),
+          ),
+        );
+        expect(
+          TomTimezone.findTimezone('America/New_York', -240, at: july).timezone,
+          'America/New_York',
+        );
+      });
+
+      test('a name-less lookup answers for that instant', () {
+        final zone = TomTimezone.findTimezone(null, 60, at: july);
+        expect(zone.getUtcOffsetOn(july), 60);
+      });
+
+      test('no zone at that offset then throws, naming the instant', () {
+        expect(
+          () => TomTimezone.findTimezone(null, 7, at: january),
+          throwsA(
+            isA<TomTimezoneException>()
+                .having((e) => e.key, 'key', 'timezone.not_found.offset')
+                .having(
+                  (e) => e.parameters?['at'],
+                  'at',
+                  january.toIso8601String(),
+                ),
+          ),
+        );
+      });
+    });
+
     // =========================================================================
     // The lookups hand out views, not the index
     // =========================================================================
