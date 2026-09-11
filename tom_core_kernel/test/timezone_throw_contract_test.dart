@@ -3,10 +3,13 @@
 ///
 /// ## Why `findTimezone` throws
 ///
-/// `TomTimezone.findTimezone` throws for two unrelated reasons: the name is not
-/// in the database, or the name is there but its current offset is not the one
-/// the caller supplied. One `throw` serves both, which is why they are easy to
-/// describe as one.
+/// `TomTimezone.findTimezone` throws for every lookup it cannot satisfy, and
+/// that is four unrelated reasons: the name is not in the database, the name is
+/// there but its current offset is not the one the caller supplied, no zone is
+/// at the offset given without a name, or neither argument was given. The
+/// first two share one `throw`, which is why they are easy to describe as one,
+/// and the last two are the ones easy to leave out, because a lookup that names
+/// no zone reads as one that might simply answer `null`.
 ///
 /// The unknown-name case is the one that surprises, because the neighbouring
 /// lookup does the opposite: `fromName('Mars/Olympus')` returns `null`, while
@@ -51,7 +54,7 @@
 ///
 /// Four documents are held to them — the method's own dartdoc, the module
 /// readme, the narrative guide, and the API mirror. In the markdown files it is
-/// not the file as a whole that must name both modes but each passage that
+/// not the file as a whole that must name every mode but each passage that
 /// raises the subject: the omission being guarded against was a single trailing
 /// comment that said `Throws if mismatch`, and a file-wide search would have
 /// found the missing half somewhere else and reported nothing.
@@ -104,6 +107,16 @@ final List<_FailureMode> _failureModes = [
     what: 'an offset that disagrees with the named zone',
     provoke: () => TomTimezone.findTimezone('UTC', 60),
     named: {'does not match', "doesn't match", 'differs', 'mismatch'},
+  ),
+  _FailureMode(
+    what: 'an offset no zone is at',
+    provoke: () => TomTimezone.findTimezone(null, 7),
+    named: {'no zone is at', 'no zone at', 'no zone has'},
+  ),
+  _FailureMode(
+    what: 'no name and no offset',
+    provoke: () => TomTimezone.findTimezone(null, null),
+    named: {'both arguments', 'both null', 'neither', 'nothing to look'},
   ),
 ];
 
@@ -224,7 +237,7 @@ String _withoutDenials(String text, String name) =>
     text.replaceAll(RegExp('(?:not|never|rather than) +`?$name`?'), '');
 
 void main() {
-  group('findTimezone throws for both documented reasons', () {
+  group('findTimezone throws for every documented reason', () {
     test('every listed mode actually throws', () {
       // The anchor for everything below. If a mode stops throwing, the scans
       // are checking the documentation of a failure that no longer happens.
@@ -256,7 +269,7 @@ void main() {
     });
   });
 
-  group('the documentation names both reasons', () {
+  group('the documentation names every reason', () {
     test('the dartdoc describes every mode', () {
       final dartdoc = _asRead(_dartdocOf(_method));
 
@@ -282,7 +295,7 @@ void main() {
     });
 
     for (final path in [_readmePath, _guidePath, _apiPath]) {
-      test('every passage in $path that raises the subject names both', () {
+      test('every passage in $path that raises the subject names them all', () {
         final passages = _throwPassages(path, {_method.toLowerCase()});
 
         expect(
@@ -311,7 +324,7 @@ void main() {
           reason:
               'These passages describe `$_method` as throwing but name only '
               'some of the reasons it does: ${narrow.join('; ')}. A passage '
-              'that lists one of two triggers reads as the complete set.',
+              'that lists some of the triggers reads as the complete set.',
         );
       });
     }

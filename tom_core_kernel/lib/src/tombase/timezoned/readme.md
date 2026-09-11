@@ -17,7 +17,7 @@ full variants used by the observable date/time cells.
 | `TomZonedDate` | Date-only zoned value. |
 | `TomZonedTime` | Time-only zoned value. |
 | `TomZonedDateTime` | Full zoned date-and-time value. |
-| `TomTimezoneException` | Thrown by `findTimezone`, the strict lookup, and by nothing else: for a name that is not in the database, or one whose current offset does not match a value supplied alongside it. Parsing fails with `FormatException` — see [Failures](#failures). |
+| `TomTimezoneException` | Thrown by `findTimezone`, the strict lookup, and by nothing else: for a name that is not in the database, one whose current offset does not match a value supplied alongside it, an offset no zone is at, or a call given neither a name nor an offset. Parsing fails with `FormatException` — see [Failures](#failures). |
 
 > On native (VM / Flutter) the timezone database loads **synchronously on first
 > access** from the embedded IANA data — no startup call is required. On the
@@ -71,9 +71,10 @@ TomZonedDateTime.fromDateTime(base, base.timezone).convertToTzSameInstant(zone);
 Which failure a caller sees depends on the entry point rather than on the
 mistake. `fromName('Mars/Olympus')` returns `null`, while `findTimezone` throws
 `TomTimezoneException` for a name that is not in the database — with or without
-an offset supplied to disagree with — and for a name that is there but whose
-current offset does not match one that was. Ask with `fromName` when a zone's
-absence is an answer, with `findTimezone` when it is a fault.
+an offset supplied to disagree with — for a name that is there but whose
+current offset does not match one that was, for an offset no zone is at, and
+when both arguments are null. It never returns `null`. Ask with `fromName` when
+a zone's absence is an answer, with `findTimezone` when it is a fault.
 
 Parsing refuses differently again: `parseFromString`, on all three variants,
 throws `FormatException` and never `TomTimezoneException` — both for a string

@@ -151,7 +151,7 @@ final allPlus9 = TomTimezone.allWithOffset(540);     // Every zone at +09:00 tod
 
 // With offset validation — -300 is New York in winter, so this throws in summer
 final ny = TomTimezone.findTimezone('America/New_York', -300);
-// findTimezone throws: unknown name, or an offset that does not match
+// findTimezone throws: unknown name, mismatch, no zone at the offset, both null
 ```
 
 The offset lookups have a shelf life, and it is worth knowing before you use
@@ -576,8 +576,9 @@ print(afterDST.toString()); // Offset is -04:00
 
 ### TomTimezoneException
 
-Thrown when a name is not in the database, or when a supplied offset does not
-match the zone's current one:
+Thrown by `findTimezone` for every lookup it cannot satisfy — a name not in the
+database, a supplied offset that does not match the zone's current one, an
+offset no zone is at, and both arguments null:
 
 ```dart
 try {
@@ -589,6 +590,11 @@ try {
 // An unknown name throws too, with or without an offset to disagree with —
 // where fromName would simply return null.
 TomTimezone.findTimezone('Mars/Olympus', null);
+
+// So does an offset no zone is at, and so do both arguments null, leaving
+// nothing to look up — firstWithOffset would return null for the first.
+TomTimezone.findTimezone(null, 7);    // timezone.not_found.offset
+TomTimezone.findTimezone(null, null); // timezone.find.no_criteria
 ```
 
 ### Null Returns
@@ -600,11 +606,12 @@ final tz = TomTimezone.fromName('Invalid/Zone');       // null
 final offset = TomTimezone.firstWithOffset(99999);     // null
 ```
 
-`findTimezone` is the one that does not. A name that is not in the database
-raises `TomTimezoneException` rather than returning `null`, as does a name whose
-current offset does not match a value supplied alongside it. Choose between the
-two on that difference: `fromName` to ask whether a zone exists, `findTimezone`
-when its absence is a fault.
+`findTimezone` is the one that does not: it never returns `null`. A name that is
+not in the database raises `TomTimezoneException`, as does a name whose current
+offset does not match a value supplied alongside it, an offset no zone is at,
+and a call with both arguments null. Choose between the lookups on that
+difference: `fromName` to ask whether a zone exists, `findTimezone` when its
+absence is a fault.
 
 ### Format Exceptions
 

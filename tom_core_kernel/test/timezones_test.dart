@@ -337,8 +337,7 @@ void main() {
           'UTC',
           utcTz!.timezoneOffsetMin,
         );
-        expect(tzResult, isNotNull);
-        expect(tzResult!.timezone, equals('UTC'));
+        expect(tzResult.timezone, equals('UTC'));
       });
 
       test('should return Asia/Tokyo when name and offset match', () {
@@ -347,19 +346,42 @@ void main() {
           'Asia/Tokyo',
           tokyoTz!.timezoneOffsetMin,
         );
-        expect(tzResult, isNotNull);
-        expect(tzResult!.timezone, equals('Asia/Tokyo'));
+        expect(tzResult.timezone, equals('Asia/Tokyo'));
       });
 
       test('should return first timezone with offset when name is null', () {
         final tzResult = TomTimezone.findTimezone(null, 0);
-        expect(tzResult, isNotNull);
-        expect(tzResult!.timezoneOffsetMin, equals(0));
+        expect(tzResult.timezoneOffsetMin, equals(0));
       });
 
-      test('should return null when both name and offset are null', () {
-        final tzResult = TomTimezone.findTimezone(null, null);
-        expect(tzResult, isNull);
+      // The strict lookup has one failure mode: every lookup it cannot
+      // satisfy throws, so a caller writes one handler and never meets a null.
+      test('throws when neither a name nor an offset is given', () {
+        expect(
+          () => TomTimezone.findTimezone(null, null),
+          throwsA(
+            isA<TomTimezoneException>().having(
+              (e) => e.key,
+              'key',
+              'timezone.find.no_criteria',
+            ),
+          ),
+        );
+      });
+
+      test('throws when no zone is at the given offset', () {
+        // Seven minutes east of UTC: no zone has ever used it.
+        expect(TomTimezone.firstWithOffset(7), isNull);
+        expect(
+          () => TomTimezone.findTimezone(null, 7),
+          throwsA(
+            isA<TomTimezoneException>()
+                .having((e) => e.key, 'key', 'timezone.not_found.offset')
+                .having((e) => e.parameters, 'parameters', {
+                  'utcOffsetMinutes': 7,
+                }),
+          ),
+        );
       });
 
       // A name-only lookup (offset null) must return the named zone instead of
@@ -368,15 +390,13 @@ void main() {
         'should return named zone when name is given and offset is null',
         () {
           final tzResult = TomTimezone.findTimezone('Asia/Tokyo', null);
-          expect(tzResult, isNotNull);
-          expect(tzResult!.timezone, equals('Asia/Tokyo'));
+          expect(tzResult.timezone, equals('Asia/Tokyo'));
         },
       );
 
       test('should return UTC when name is "UTC" and offset is null', () {
         final tzResult = TomTimezone.findTimezone('UTC', null);
-        expect(tzResult, isNotNull);
-        expect(tzResult!.timezone, equals('UTC'));
+        expect(tzResult.timezone, equals('UTC'));
       });
 
       // An unknown name is a fault here, not an empty answer: fromName returns

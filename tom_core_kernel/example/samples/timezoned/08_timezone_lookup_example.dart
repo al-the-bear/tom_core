@@ -85,7 +85,7 @@ void run() {
   try {
     utcValid = TomTimezone.findTimezone('UTC', 0);
     utcValidSuccess = true;
-    print('   findTimezone("UTC", 0): ${utcValid?.timezone ?? "null"}');
+    print('   findTimezone("UTC", 0): ${utcValid.timezone}');
   } on TomTimezoneException catch (e) {
     print('   findTimezone("UTC", 0): Error - ${e.defaultUserMessage}');
   }
@@ -99,8 +99,19 @@ void run() {
     invalidOffsetThrew = true;
     print('   findTimezone("UTC", 60): Correctly threw exception');
     print('     ${e.defaultUserMessage}');
-    print('     (UTC has offset 0, not 60 minutes)\n');
+    print('     (UTC has offset 0, not 60 minutes)');
   }
+
+  // Every lookup the strict entry point cannot satisfy throws, the two that
+  // name no zone included — it never answers null.
+  final noZoneKey = _findTimezoneFailureKey(
+    () => TomTimezone.findTimezone(null, 7),
+  );
+  final noCriteriaKey = _findTimezoneFailureKey(
+    () => TomTimezone.findTimezone(null, null),
+  );
+  print('   findTimezone(null, 7):    $noZoneKey');
+  print('   findTimezone(null, null): $noCriteriaKey\n');
 
   // -------------------------------------------------------------------------
   // Example 5: Listing all available timezones
@@ -210,9 +221,10 @@ void run() {
 
   // Example 4: findTimezone validation
   assert(utcValidSuccess == true);
-  assert(utcValid != null);
-  assert(utcValid!.timezone == 'UTC');
+  assert(utcValid?.timezone == 'UTC');
   assert(invalidOffsetThrew == true);
+  assert(noZoneKey == 'timezone.not_found.offset');
+  assert(noCriteriaKey == 'timezone.find.no_criteria');
 
   // Example 5: All timezones. The exact count is a property of the IANA
   // database bundled with `package:timezone` (341 locations at 0.11.1, plus
@@ -246,4 +258,15 @@ void run() {
 void main() {
   prepareSampleProcess();
   run();
+}
+
+/// The key of the [TomTimezoneException] [lookup] throws, or `null` if it
+/// returns normally.
+String? _findTimezoneFailureKey(void Function() lookup) {
+  try {
+    lookup();
+    return null;
+  } on TomTimezoneException catch (e) {
+    return e.key;
+  }
 }

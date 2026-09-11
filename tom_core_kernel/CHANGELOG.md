@@ -811,6 +811,14 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **`TomTimezone.findTimezone` never returns `null` (tcopen90).** Every lookup
+  it cannot satisfy throws `TomTimezoneException`: besides an unknown name and
+  an offset mismatch, a name-less lookup whose offset no zone is at
+  (`timezone.not_found.offset`) and a call with both arguments null
+  (`timezone.find.no_criteria`), which had both answered `null`. The return
+  type is `TomTimezone`, so a caller writes one `on TomTimezoneException`
+  handler and no null check.
+
 - **A serialized zoned value's offset is the one at its own instant
   (tcopen89).** `TomTimezoned`, `TomZonedDate`, `TomZonedTime` and
   `TomZonedDateTime` render their zone through `TomTimezone.toStringOn(this)`,

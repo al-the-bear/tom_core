@@ -356,9 +356,8 @@ class TomTimezone {
   /// Finds a timezone by name, optionally validating its UTC offset.
   ///
   /// This is the strict lookup: where [fromName] answers "is this zone here?"
-  /// with a zone or `null`, this one treats a name it cannot honour as an
-  /// error. Supplying an offset adds a second thing that can be wrong, and both
-  /// raise [TomTimezoneException].
+  /// with a zone or `null`, this one treats every lookup it cannot satisfy as
+  /// an error, so it never returns `null` and a caller writes one handler.
   ///
   /// [name] The timezone name (optional).
   /// [utcOffsetMinutes] The expected UTC offset in minutes (optional).
@@ -366,17 +365,21 @@ class TomTimezone {
   /// Returns:
   /// - The named zone, when it exists and — if an offset was given — its
   ///   current offset is that offset
-  /// - The first zone at [utcOffsetMinutes] if [name] is null, or `null` when
-  ///   no zone is at that offset. This branch reads the same offset index as
-  ///   [firstWithOffset] and inherits its shelf life
-  /// - `null` if both parameters are null
+  /// - The first zone at [utcOffsetMinutes] if [name] is null. This branch
+  ///   reads the same offset index as [firstWithOffset] and inherits its shelf
+  ///   life
   ///
-  /// Throws [TomTimezoneException] in two cases:
-  /// - [name] is not found in the database. This happens whether or not an
-  ///   offset was supplied, so a name-only lookup throws too — unlike
+  /// Throws [TomTimezoneException] in four cases:
+  /// - [name] is not found in the database
+  ///   (`timezone.not_found.name_offset_mismatch`). This happens whether or
+  ///   not an offset was supplied, so a name-only lookup throws too — unlike
   ///   [fromName], which returns `null` for the same name.
   /// - [name] is found but its current offset does not match
-  ///   [utcOffsetMinutes].
+  ///   [utcOffsetMinutes] (`timezone.not_found.name_offset_mismatch`).
+  /// - [name] is null and no zone is at [utcOffsetMinutes] now
+  ///   (`timezone.not_found.offset`).
+  /// - Both arguments are null, leaving nothing to look up
+  ///   (`timezone.find.no_criteria`).
   ///
   /// The offset compared is the zone's offset *now*, so a zone that observes
   /// daylight saving matches a different value in summer than in winter. Use
@@ -392,8 +395,14 @@ class TomTimezone {
   ///
   /// // Throws: no such zone, even with no offset to disagree with
   /// TomTimezone.findTimezone('Mars/Olympus', null); // TomTimezoneException
+  ///
+  /// // Throws: no zone is at +00:07
+  /// TomTimezone.findTimezone(null, 7); // TomTimezoneException
+  ///
+  /// // Throws: both arguments null, nothing to look up
+  /// TomTimezone.findTimezone(null, null); // TomTimezoneException
   /// ```
-  static TomTimezone? findTimezone(String? name, int? utcOffsetMinutes) {
+  static TomTimezone findTimezone(String? name, int? utcOffsetMinutes) {
     _initialize();
     if (name != null) {
       var byName = _timezonesMap[name.toUpperCase()];
@@ -411,9 +420,21 @@ class TomTimezone {
         );
       }
     }
-    return utcOffsetMinutes != null
-        ? _timezoneByOffset[utcOffsetMinutes]?.first
-        : null;
+    if (utcOffsetMinutes == null) {
+      throw TomTimezoneException(
+        'timezone.find.no_criteria',
+        'findTimezone needs a name or an offset; both arguments were null',
+      );
+    }
+    final byOffset = _timezoneByOffset[utcOffsetMinutes]?.first;
+    if (byOffset == null) {
+      throw TomTimezoneException(
+        'timezone.not_found.offset',
+        'No timezone is at UTC offset $utcOffsetMinutes minutes now',
+        parameters: {'utcOffsetMinutes': utcOffsetMinutes},
+      );
+    }
+    return byOffset;
   }
 
   /// Returns a string representation of this timezone.
