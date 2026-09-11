@@ -1537,6 +1537,32 @@ void main() {
       );
     });
 
+    test('a "*" grant holds every API but no revocation', () {
+      // `*` holds every key except one beginning with `-`. A principal granted
+      // everything is not thereby issued every revocation — which would refuse
+      // it every member of every container it holds.
+      expect(accessHolding(contractGatedHandler, ['*']), isTrue);
+      expect(accessHolding(unguardedHandler, ['*']), isTrue);
+      expect(
+        accessHolding(contractGatedHandler, [
+          '*',
+          '-fixture_access.contractGated',
+        ]),
+        isFalse,
+        reason: 'a revocation issued by name still carves the endpoint out',
+      );
+    });
+
+    test('an "<api>.*" grant holds every member of the API', () {
+      expect(accessHolding(contractGatedHandler, ['fixture_access.*']), isTrue);
+      expect(accessHolding(overriddenHandler, ['fixture_access.*']), isTrue);
+      expect(
+        accessHolding(inlineHandler, ['fixture_access.*']),
+        isFalse,
+        reason: 'it is not part of the API contract',
+      );
+    });
+
     test('an inline endpoint on an API class keys on the class', () {
       // The discriminator between "registry-backed" meaning *this method* and
       // meaning *this class*. FixtureAccessApiService is a

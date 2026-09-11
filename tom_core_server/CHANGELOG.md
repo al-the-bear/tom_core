@@ -2,6 +2,15 @@
 
 ### Changed
 
+- **Pattern grants reach the graded view and automatic endpoint protection
+  (tcopen74).** `TomGradedAccessControlInformation.resolveState` reads its
+  binary fallback through the kernel's new
+  `TomAccessControlInformation.holdsResourceKey`, so `*` and `prefix.*` grants
+  count there as they do in resource-key protection. The endpoint pipeline's
+  automatic protection accepts `*` and `<api>.*` for its container and member
+  keys, and a `*` never covers a `-<member>` revocation, so a principal granted
+  everything is not refused everything.
+
 - **`TomSqlLeaseLock.forget` takes a `TomOneShotResource` (tcopen68)**, the
   kernel's new type for a resource name that is never acquired again, rather
   than any `String` — see the kernel's CHANGELOG. `forget` destroys the fencing

@@ -317,7 +317,7 @@ Groups authorization data:
 | `roles` | Job functions (admin, user, manager) |
 | `groups` | Organizational units (can be nested) |
 | `entitlements` | Fine-grained permissions |
-| `resourceKeys` | Field-level access identifiers |
+| `resourceKeys` | Field-level grants — exact keys, `prefix.*` and `*` (see [Resource Key Protection](#resource-key-protection)) |
 | `resourceRoles` | `resourceKey → roleName` — the principal's role on each *individual* resource |
 
 ```dart
@@ -464,16 +464,20 @@ Runnable:
 | `TomRoleAccess` | Requires specific roles |
 | `TomGroupAccess` | Requires group membership |
 | `TomEntitlementAccess` | Requires specific entitlements |
-| `TomResourceKeyAccess` | Requires a resource key, while protection is switched on |
+| `TomResourceKeyAccess` | Grades a resource key — flat grant or resource role — while protection is switched on |
 | `TomCustomAccess` | Delegates to a registered `TomAccessControlHandler` — see [Custom Access Control](#custom-access-control) |
 | `TomGradedAccess` | **Composes** three of the above into all four states — see [Graded Access](#graded-access-all-four-states) |
 
 The first nine each state a requirement on the **user**, and each answers about
 the principal you hand it — `checkAccessibility(principal)` means the same thing
-for every row. They are also two-valued: the requirement is either met or it is
-not, so they resolve to `full` or `none` and never to the middle two states.
-[`TomGradedAccess`](#graded-access-all-four-states) is the exception, and that is
-the entire purpose of the tenth row.
+for every row. Eight of them are also two-valued: the requirement is either met
+or it is not, so they resolve to `full` or `none` and never to the middle two
+states. `TomResourceKeyAccess` grades instead, because a resource key can be
+held through a resource role as well as a flat grant — a `viewer` role on the
+key resolves to `read` (see [Resource Key
+Protection](#resource-key-protection)). [`TomGradedAccess`](#graded-access-all-four-states)
+composes any of them into all four states, and that is the entire purpose of
+the tenth row.
 
 Stating a requirement on the user is only half of an access decision: the result
 is met with what the *deployment* is granted, so a control the user satisfies can
@@ -547,7 +551,46 @@ The master switch is the first thing to get right, because the default is
 fail-*open*: an application that never sets it can call `tomProtect` on every
 sensitive field it has and still serve all of them. Set it once at start-up.
 
-The rule lives in one place, `TomResourceKeyProtection.isProtectedFor`, and is
+**What a principal holds.** A principal holds a resource key through either of
+its two resource grants, and the two are one answer:
+
+- **A flat grant** in `aci.resourceKeys` is full access. An entry is an exact
+  key or a pattern:
+
+  | Grant | Covers |
+  | ----- | ------ |
+  | `user.email` | exactly `user.email` |
+  | `user.*` | every key under `user.` — `user.email`, `user.address.city` — but not `user`, nor `username` |
+  | `*` | every key except a revocation |
+
+  A key beginning with `-` is a **revocation**: the server's endpoint pipeline
+  asks whether a principal holds `-<member>` to withdraw one member of a
+  container it otherwise holds. A revocation is issued by name, or by a
+  revocation pattern such as `-Orders.*` — never by `*`, or a principal granted
+  everything would also be refused everything.
+- **A resource role** in `aci.resourceRoles` grades the key through
+  `TomResourceRoleRegistry` — `owner → full`, `viewer → read`, whatever the
+  application registered. An unknown role grants nothing.
+
+When both apply, the wider state wins. The answer is a four-state
+`TomAuthState`, and the boolean checks are that state collapsed: a resource is
+*protected* unless its state shows content, so a read-only role unprotects the
+value while a `disabled` one does not.
+
+| Ask | Ambient zone | Explicit principal |
+| --- | ------------ | ------------------ |
+| The four-state grade | `tomResourceState(key)` / `resourceState(key)` | `TomResourceKeyProtection.resourceStateFor(principal, key)` |
+
+```dart
+final emailWidget = switch (tomResourceState('user.email')) {
+  TomAuthState.full => emailEditor(),
+  TomAuthState.read => emailText(),
+  TomAuthState.disabled => emailPlaceholder(),
+  TomAuthState.none => null,
+};
+```
+
+The rule lives in one place, `TomResourceKeyProtection.resourceStateFor`, and is
 reached two ways. The helpers above — `tomProtect`, `tomProtected` and
 `isProtected` — apply it to whoever the **ambient zone** names, which is what
 you want at a field you are rendering for the current request. Where a

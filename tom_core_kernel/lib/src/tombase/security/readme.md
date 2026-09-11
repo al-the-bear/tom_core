@@ -28,7 +28,7 @@ an element is hidden, locked, read-only, or fully editable.
 | `TomAuthorizable` | Implemented by anything that carries authorization and can be asked for its state. |
 | `TomAccessControlHandler` | The function signature a `TomCustomAccess` rule supplies. |
 | `TomAccessControlInformation` / `TomAccessControlDefinition` | The ACI a principal carries, and the entitlement/role definitions it is resolved against — both populated from your authorization store at login. |
-| `TomResourceKeyProtection` | The global switches for resource-key protection. Several are declared but read by nothing yet; each says so on its own declaration, so do not rely on one until it does. |
+| `TomResourceKeyProtection` | Resource-key protection: `resourceStateFor` grades a key from the principal's flat `resourceKeys` grants (exact, `prefix.*`, `*`) and its `resourceRoles`, and `isProtectedFor` / `protectFor` are that grade collapsed to two outcomes; plus the global switches. Several switches are declared but read by nothing yet; each says so on its own declaration, so do not rely on one until it does. |
 | `TomGuestAccess` | The rule for endpoints reachable by anyone, authenticated or not. |
 | `TomServerPrincipal` | The process's own identity, installed from a service token. `isConfigured` answers which regime is in force — unconfigured is the designed default, not a failure. |
 | `TomClientLimitsInformation` | Per-client limits, travelling in the **public** half of the JWT. |

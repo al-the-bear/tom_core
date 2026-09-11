@@ -39,6 +39,7 @@ library;
 import 'package:meta/meta.dart';
 
 import '../little_things/little_things.dart';
+import 'resource_role_authorization.dart';
 import 'server_principal.dart';
 import 'tom_authorization.dart';
 import 'user_principal_aci.dart';
@@ -198,28 +199,66 @@ class TomResourceKeyProtection {
     return data;
   }
 
-  /// Checks if a resource is protected from [principal].
+  /// The [TomAuthState] [principal] holds on [resourceKey].
   ///
-  /// Returns `true` if the resource is protected (the principal lacks access),
-  /// `false` if the resource is accessible. A `null` [principal] is treated as
-  /// holding no keys, so a protected resource is out of its reach.
+  /// This is the rule itself, stated over an explicit operand; every other
+  /// member of this class — and [TomResourceKeyAccess] — is a view of it. The
+  /// principal's two resource grants are one answer:
+  ///
+  /// 1. **A flat grant** in `aci.resourceKeys` covering the key — exact, `*`
+  ///    or `prefix.*`, as [TomAccessControlInformation.holdsResourceKey]
+  ///    defines — is [TomAuthState.full].
+  /// 2. **A resource role** in `aci.resourceRoles` for the key resolves through
+  ///    [TomResourceRoleRegistry], exactly as [TomResourceRoleAdapter] resolves
+  ///    it: an unknown role, or none, grants nothing.
+  ///
+  /// When both apply, the wider state wins ([TomAuthState.widen]): holding a
+  /// grant is never undone by also holding a narrower role.
+  ///
+  /// A `null` [principal] holds nothing and gets [TomAuthState.none].
   ///
   /// Gated on [globalSettingProtectionDefault]: while that is `false` — its
-  /// default — this answers `false` for every key and every principal, before
-  /// any key is consulted.
+  /// default — this answers [TomAuthState.full] for every key and every
+  /// principal, before any grant is consulted.
   ///
-  /// This is the rule itself, stated over an explicit operand. [isProtected]
-  /// applies it to whoever the ambient zone names; [TomResourceKeyAccess]
-  /// applies it to the principal its caller asked about.
-  ///
-  /// - [principal]: The principal whose keys decide access, or `null`
-  /// - [resourceKey]: The key identifying the resource to check
-  // TODO: plugin actual check for resource access here...
-  static bool isProtectedFor(TomPrincipal? principal, String resourceKey) {
-    if (!globalSettingProtectionDefault) return false;
-    if (principal == null) return true;
-    return !principal.aci.resourceKeys.contains(resourceKey);
+  /// - [principal]: The principal whose grants decide access, or `null`
+  /// - [resourceKey]: The key identifying the resource
+  static TomAuthState resourceStateFor(
+    TomPrincipal? principal,
+    String resourceKey,
+  ) {
+    if (!globalSettingProtectionDefault) return TomAuthState.full;
+    if (principal == null) return TomAuthState.none;
+    final aci = principal.aci;
+    if (aci.holdsResourceKey(resourceKey)) return TomAuthState.full;
+    return TomResourceRoleAdapter(aci.resourceRoles).stateOf(resourceKey);
   }
+
+  /// The [TomAuthState] the current user holds on [resourceKey] — the
+  /// principal installed on the ambient zone, through [resourceStateFor].
+  ///
+  /// Outside a request zone there is no principal, so with protection on this
+  /// answers [TomAuthState.none] for everything — fail-closed.
+  static TomAuthState resourceState(String resourceKey) =>
+      resourceStateFor(getFromCurrentZone<TomPrincipal>(), resourceKey);
+
+  /// Checks if a resource is protected from [principal].
+  ///
+  /// Returns `true` if the resource is protected, `false` if its content is
+  /// accessible: [resourceStateFor] collapsed to two outcomes, protected
+  /// unless the state [TomAuthState.showsContent]. A principal holding the
+  /// resource read-only is therefore *not* protected from it — it may see the
+  /// value — and one holding it [TomAuthState.disabled] is, because a disabled
+  /// element shows no content.
+  ///
+  /// The two-valued form is what [protectFor] needs, since a value is either
+  /// served or replaced by its fallback. Code that renders a field editable,
+  /// read-only or hidden asks [resourceStateFor] instead.
+  ///
+  /// - [principal]: The principal whose grants decide access, or `null`
+  /// - [resourceKey]: The key identifying the resource to check
+  static bool isProtectedFor(TomPrincipal? principal, String resourceKey) =>
+      !resourceStateFor(principal, resourceKey).showsContent;
 
   /// Checks if a resource is protected from the current user.
   ///
@@ -232,7 +271,7 @@ class TomResourceKeyProtection {
   ///
   /// Gated on [globalSettingProtectionDefault] exactly as [isProtectedFor] is.
   /// Note the two ways this answers `false`: protection switched off (nothing
-  /// is protected) and the principal holding the key. Outside a request zone
+  /// is protected) and the principal holding the resource. Outside a request zone
   /// there is no principal, so with protection on this answers `true` for
   /// everything — fail-closed.
   ///
@@ -275,6 +314,24 @@ T tomProtect<T>(T data, T fallback, String resourceKey) {
 /// ```
 bool tomProtected(String resourceKey) {
   return TomResourceKeyProtection.isProtected(resourceKey);
+}
+
+/// Convenience function for the [TomAuthState] the current user holds on
+/// [resourceKey] — a shorthand for [TomResourceKeyProtection.resourceState].
+///
+/// Where [tomProtect] can only serve a value or its fallback, this tells a
+/// field whether to render editable, read-only, greyed out or not at all:
+///
+/// ```dart
+/// final emailWidget = switch (tomResourceState('user.email')) {
+///   TomAuthState.full => emailEditor(),
+///   TomAuthState.read => emailText(),
+///   TomAuthState.disabled => emailPlaceholder(),
+///   TomAuthState.none => null,
+/// };
+/// ```
+TomAuthState tomResourceState(String resourceKey) {
+  return TomResourceKeyProtection.resourceState(resourceKey);
 }
 
 // =============================================================================
@@ -844,8 +901,13 @@ class TomGroupAccess extends TomAccessControl {
 /// Unlike its siblings, this control has a second operand: while
 /// [TomResourceKeyProtection.globalSettingProtectionDefault] is `false`,
 /// resource keys are not enforced at all and every principal is granted. Once
-/// it is on, the rule is the ordinary one — the principal's own
-/// `aci.resourceKeys` must contain [key].
+/// it is on, the grade is [TomResourceKeyProtection.resourceStateFor] — a flat
+/// grant covering [key] is full access, and a resource role for it grades
+/// through [TomResourceRoleRegistry].
+///
+/// That makes it the one built-in besides [TomGradedAccess] that can resolve
+/// to [TomAuthState.read] or [TomAuthState.disabled]: a principal holding the
+/// key through a `viewer` role sees the resource read-only.
 ///
 /// It is deliberately *not* routed through the shared ACI helper the role and
 /// group controls use: that master switch is a genuinely different rule, in
@@ -860,6 +922,10 @@ class TomResourceKeyAccess extends TomAccessControl {
   const TomResourceKeyAccess(this.key);
 
   @override
+  TomAuthState resolvePrincipalAuthState(TomPrincipal? principal) =>
+      TomResourceKeyProtection.resourceStateFor(principal, key);
+
+  @override
   bool checkPrincipalAccess(TomPrincipal? principal) =>
-      !TomResourceKeyProtection.isProtectedFor(principal, key);
+      resolvePrincipalAuthState(principal).showsContent;
 }

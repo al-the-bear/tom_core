@@ -769,6 +769,22 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **Resource-key protection answers in four states, from both resource grants
+  (tcopen74).** `TomResourceKeyProtection.resourceStateFor(principal, key)` —
+  with the zone form `resourceState` and the helper `tomResourceState` — grades
+  a key `full` when a flat `resourceKeys` grant covers it, and otherwise through
+  the principal's `resourceRoles` and `TomResourceRoleRegistry`; the wider of
+  the two wins. The two grants had ignored each other: a principal given `read`
+  through a resource role was still protected from the key. `isProtectedFor`,
+  `protectFor` and their zone forms are that grade collapsed — protected unless
+  it shows content — and `TomResourceKeyAccess` now resolves to it, so it can
+  grade `read` and `disabled`.
+- **Resource-key grants accept patterns (tcopen74).**
+  `TomAccessControlInformation.holdsResourceKey` is the one reading of the grant
+  list: `user.*` covers every key under `user.` (not `user`, not `username`),
+  and `*` covers every key except a `-` revocation. The documented
+  `resourceKeys: ['*']` for an administrator role now means what it says.
+
 - **`ScopeCapture.run` replaces `wrapCounter` (tcopen73).** `run` runs any
   body in the captured scope and is the general form the `wrap0`…`wrap5`
   family is sugar for, so a callback of any other shape — a sixth argument,

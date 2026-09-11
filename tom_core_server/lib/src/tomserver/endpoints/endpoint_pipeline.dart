@@ -1321,7 +1321,10 @@ class TomEndpointHandler {
   /// Note the polarity of [TomResourceKeyProtection.isProtected]: it answers
   /// "the principal *lacks* this key". Every key in the list, `-<member>`
   /// included, is something the principal **holds** — the minus is part of the
-  /// name of a revocation, not a negation of the test.
+  /// name of a revocation, not a negation of the test. Which is why a `*` grant
+  /// never covers a `-` key ([TomAccessControlInformation.holdsResourceKey]): a
+  /// principal granted every container is not thereby issued every
+  /// revocation.
   bool checkAutomaticAccess(bool accessCheck) {
     final (container, member) = automaticProtectionKeys;
 

@@ -145,7 +145,10 @@ class TomAccessControlInformation {
 
   final List<String> _resourceKeys = [];
 
-  /// Unmodifiable list of resource keys the user can access.
+  /// Unmodifiable list of resource-key grants the user holds.
+  ///
+  /// An entry is an exact key or a pattern — see [holdsResourceKey], which is
+  /// the one rule for reading this list.
   List<String> get resourceKeys => List.unmodifiable(_resourceKeys);
 
   final Map<String, String> _resourceRoles = {};
@@ -177,9 +180,52 @@ class TomAccessControlInformation {
     if (resourceRoles.isNotEmpty) _resourceRoles.addAll(resourceRoles);
   }
 
+  /// Whether one of the [resourceKeys] grants covers [resourceKey].
+  ///
+  /// A grant is one of three shapes:
+  ///
+  /// | Grant | Covers |
+  /// | ----- | ------ |
+  /// | `user.email` | exactly `user.email` |
+  /// | `user.*` | every key under `user.` — `user.email`, `user.address.city` — but not `user` itself, nor `username` |
+  /// | `*` | every key except a revocation |
+  ///
+  /// A `*` anywhere but the final segment is an ordinary character, so
+  /// `tom.*.email` covers only the literal key `tom.*.email`.
+  ///
+  /// A key beginning with `-` names a **revocation**: the server's endpoint
+  /// pipeline asks whether a principal holds `-<member>` to withdraw one member
+  /// of a container the principal otherwise holds. A revocation is issued by
+  /// name — `-Orders.delete`, or a revocation pattern such as `-Orders.*` — and
+  /// never by `*`, or a principal granted everything would also be refused
+  /// everything.
+  ///
+  /// Every reader of [resourceKeys] as a grant list asks this rather than
+  /// testing membership, so an exact-only reading cannot quietly disagree with
+  /// a pattern-aware one.
+  bool holdsResourceKey(String resourceKey) {
+    for (final grant in _resourceKeys) {
+      if (_resourceKeyGrantCovers(grant, resourceKey)) return true;
+    }
+    return false;
+  }
+
   @override
   String toString() =>
       "ACI ${roles.length} roles, ${entitlements.length} entitlements, ${resourceKeys.length} resource key, ${groups.length} groups, ${resourceRoles.length} resource roles.";
+}
+
+/// Whether the single resource-key [grant] covers [resourceKey]; the rule
+/// [TomAccessControlInformation.holdsResourceKey] states.
+bool _resourceKeyGrantCovers(String grant, String resourceKey) {
+  if (grant == resourceKey) return true;
+  if (grant == '*') return !resourceKey.startsWith('-');
+  if (grant.endsWith('.*')) {
+    // Keep the separator in the prefix: `user.*` covers `user.email`, and
+    // neither `user` nor `username`.
+    return resourceKey.startsWith(grant.substring(0, grant.length - 1));
+  }
+  return false;
 }
 
 // =============================================================================

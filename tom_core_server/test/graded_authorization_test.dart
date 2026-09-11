@@ -164,6 +164,23 @@ void main() {
       );
     });
 
+    test('the binary fallback honours "*" and "prefix.*" grants', () {
+      // One rule for holding a flat key, shared with the kernel's
+      // resource-key protection: the fallback asks the ACI, it does not test
+      // list membership itself.
+      final aci = TomGradedAccessControlInformation(
+        binary: TomAccessControlInformation(resourceKeys: ['orders.*']),
+      );
+      expect(aci.resolveState('orders.lines'), TomAuthState.full);
+      expect(aci.resolveState('orders'), TomAuthState.none);
+      expect(
+        TomGradedAccessControlInformation(
+          binary: TomAccessControlInformation(resourceKeys: ['*']),
+        ).resolveState('invoice'),
+        TomAuthState.full,
+      );
+    });
+
     test('fromGrants folds rows, widening on a duplicate key', () {
       final aci = TomGradedAccessControlInformation.fromGrants([
         TomResourceGrant(

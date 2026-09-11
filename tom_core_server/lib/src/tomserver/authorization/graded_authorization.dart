@@ -206,11 +206,15 @@ class TomGradedAccessControlInformation {
   /// The effective [TomAuthState] for [resourceKey]: the explicit grade when
   /// present, otherwise the binary fallback (granted → [TomAuthState.full],
   /// denied → [TomAuthState.none]).
+  ///
+  /// "Granted" is [TomAccessControlInformation.holdsResourceKey], so a `*` or
+  /// `prefix.*` grant in the binary list counts here exactly as it does in the
+  /// kernel's resource-key protection.
   TomAuthState resolveState(String resourceKey) {
     final graded = _grades[resourceKey];
     if (graded != null) return graded;
     return TomAuthStateCodec.fromLegacyGranted(
-      _binary.resourceKeys.contains(resourceKey),
+      _binary.holdsResourceKey(resourceKey),
     );
   }
 

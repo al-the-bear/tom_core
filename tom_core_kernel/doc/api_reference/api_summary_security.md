@@ -223,13 +223,14 @@ TomAccessControlInformation({
 | `roles` | `List<String>` | Unmodifiable list of roles assigned to the user. |
 | `groups` | `List<String>` | Unmodifiable list of groups the user belongs to. |
 | `entitlements` | `List<String>` | Unmodifiable list of entitlements granted to the user. |
-| `resourceKeys` | `List<String>` | Unmodifiable list of resource keys the user can access. |
+| `resourceKeys` | `List<String>` | Unmodifiable list of resource-key grants: exact keys, `prefix.*` and `*` patterns. Read it through `holdsResourceKey`, not by membership. |
 | `resourceRoles` | `Map<String, String>` | Unmodifiable `resourceKey → roleName` map giving the principal's role on each individual resource (C-5). |
 
 #### Methods
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
+| `holdsResourceKey(String resourceKey)` | `bool` | Whether a `resourceKeys` grant covers `resourceKey`. `user.email` covers exactly that key; `user.*` covers every key under `user.` (`user.email`, `user.address.city`) but neither `user` nor `username`; `*` covers every key **except a revocation** — one beginning with `-`, which the server's endpoint pipeline uses to withdraw one member of a granted container, and which is held only by name or by a revocation pattern such as `-Orders.*`. A `*` anywhere but the last segment is an ordinary character. The one rule every reader of the grant list uses. |
 | `toString()` | `String` | *(override)* Summary of counts of roles, entitlements, resource keys, groups, and resource roles. |
 
 ### TomClientLimitsInformation
@@ -707,9 +708,13 @@ const TomResourceRoleAdapter(Map<String, String> resourceRoles)
 
 Provides resource-level protection based on resource keys, selectively hiding or
 exposing data according to a principal's access rights. All members are static.
-The rule lives in [isProtectedFor], which takes the principal as an argument;
-[isProtected] and [protect] are the ambient-zone forms of it, reading the
-principal the current request installed. Every one of them is gated on
+The rule lives in [resourceStateFor], which takes the principal as an argument
+and answers with a four-state `TomAuthState`: a flat `resourceKeys` grant
+covering the key is `full`, a `resourceRoles` role for it grades through
+`TomResourceRoleRegistry`, and the wider of the two wins. [isProtectedFor] is
+that state collapsed to a bool — protected unless it shows content — and
+[resourceState], [isProtected] and [protect] are the ambient-zone forms, reading
+the principal the current request installed. Every one of them is gated on
 [globalSettingProtectionDefault], which is `false` by default.
 
 #### Static Properties
@@ -727,8 +732,10 @@ principal the current request installed. Every one of them is gated on
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
 | `protect<T>(T data, T fallback, String resourceKey)` | `T` | Returns [data] if the current user has access to [resourceKey], else [fallback]. Decided by [isProtected], so it inherits the master switch: while [globalSettingProtectionDefault] is `false` this returns [data] for every key and every principal. |
-| `isProtectedFor(TomPrincipal? principal, String resourceKey)` | `bool` | The protection rule itself, stated over an explicit principal. Answers `false` (accessible) whenever [globalSettingProtectionDefault] is `false`, before any key is consulted; otherwise `true` unless `principal` holds `resourceKey` in its ACI. A `null` principal holds no keys, so with protection on it is denied everything. |
-| `isProtected(String resourceKey)` | `bool` | [isProtectedFor] applied to the principal on the ambient zone — the operand is read from the zone, not passed. Note the two ways it answers `false`: protection is switched off, or the principal holds the key. Outside a request zone there is no principal, so with protection on this answers `true` for everything — fail-closed. Where a principal is already in hand, call [isProtectedFor]. |
+| `resourceStateFor(TomPrincipal? principal, String resourceKey)` | `TomAuthState` | The rule itself, over an explicit principal. `full` whenever [globalSettingProtectionDefault] is `false`, before any grant is consulted; otherwise `full` for a flat grant covering the key (`TomAccessControlInformation.holdsResourceKey`), else the principal's resource role for it mapped through `TomResourceRoleRegistry` (an unknown role, or none, is `none`). A `null` principal is `none`. |
+| `resourceState(String resourceKey)` | `TomAuthState` | [resourceStateFor] applied to the principal on the ambient zone. Outside a request zone, with protection on, `none` for everything — fail-closed. |
+| `isProtectedFor(TomPrincipal? principal, String resourceKey)` | `bool` | [resourceStateFor] collapsed to two outcomes: protected unless the state `showsContent`. A read-only role is therefore not protected; a `disabled` one is. A `null` principal holds nothing, so with protection on it is denied everything. |
+| `isProtected(String resourceKey)` | `bool` | [isProtectedFor] applied to the principal on the ambient zone — the operand is read from the zone, not passed. Note the two ways it answers `false`: protection is switched off, or the principal holds the resource. Outside a request zone there is no principal, so with protection on this answers `true` for everything — fail-closed. Where a principal is already in hand, call [isProtectedFor]. |
 
 ### TomAccessControl
 
@@ -992,9 +999,12 @@ Grants access based on resource key protection, integrating with
 siblings this control has a second operand: while
 [TomResourceKeyProtection.globalSettingProtectionDefault] is `false` — its
 default — resource keys are not enforced at all and every principal is granted.
-Once it is on, the rule is the ordinary one. It is deliberately not routed
-through the shared ACI helper the role and group controls use, because that
-master switch is a genuinely different rule.
+Once it is on, it grades through [TomResourceKeyProtection.resourceStateFor], so
+it is the one built-in besides `TomGradedAccess` that can resolve to `read` or
+`disabled` — a principal holding the key through a `viewer` resource role sees
+it read-only. It is deliberately not routed through the shared ACI helper the
+role and group controls use, because that master switch is a genuinely
+different rule.
 
 - **Extends:** `TomAccessControl`
 
@@ -1014,7 +1024,8 @@ const TomResourceKeyAccess(String key)
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `checkPrincipalAccess(TomPrincipal? principal)` | `bool` | *(override)* `true` when [key] is not protected from `principal`. Delegates to [TomResourceKeyProtection.isProtectedFor] — the explicit-principal form, so the answer is about the principal passed in, not about the ambient zone. |
+| `resolvePrincipalAuthState(TomPrincipal? principal)` | `TomAuthState` | *(override)* [TomResourceKeyProtection.resourceStateFor] for [key] — the explicit-principal form, so the answer is about the principal passed in, not about the ambient zone. |
+| `checkPrincipalAccess(TomPrincipal? principal)` | `bool` | *(override)* `true` when that state shows content. |
 
 ### TomAuthenticationMessage
 
@@ -1652,6 +1663,7 @@ Strategy for how a [TomAuthorizer] interacts with resource authorization.
 | Function | Signature | Description |
 | -------- | --------- | ----------- |
 | `tomProtect` | `T tomProtect<T>(T data, T fallback, String resourceKey)` | Convenience shorthand for [TomResourceKeyProtection.protect], inheriting its precondition: nothing is protected until [TomResourceKeyProtection.globalSettingProtectionDefault] is `true`. |
+| `tomResourceState` | `TomAuthState tomResourceState(String resourceKey)` | Convenience shorthand for [TomResourceKeyProtection.resourceState]: the four-state answer for the ambient principal, for a field that renders editable, read-only, greyed out or not at all. |
 | `tomProtected` | `bool tomProtected(String resourceKey)` | Convenience shorthand for [TomResourceKeyProtection.isProtected], inheriting its precondition: while [TomResourceKeyProtection.globalSettingProtectionDefault] is `false` — its default — this always answers `false`, so a `if (!tomProtected(...))` guard always passes. |
 | `registerTomOAuthApi` | `void registerTomOAuthApi()` | Registers `tomOAuthApi` with the global `tomRemoteApis` registry. Idempotent, and called by both halves — a server before mounting the endpoints, a client before building a caller. Registration is explicit rather than implicit in a top-level initializer because a deployment that configures no providers should not carry the API in its registry. |
 

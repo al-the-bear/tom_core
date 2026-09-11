@@ -5,6 +5,7 @@
 /// - TomResourceKeyAccess for field-level protection
 /// - TomCustomAccess for custom authorization handlers
 /// - TomResourceKeyProtection helper functions
+/// - Four-state resource grades: pattern grants and resource roles
 ///
 /// To run this file on its own:
 /// ```bash
@@ -265,6 +266,66 @@ class ResourceKeyProtectionExample {
 
     TomResourceKeyProtection.globalSettingProtectionDefault = false;
   }
+
+  static void example11ResourceGrades() {
+    print('\n11. Four-state resource grades (resourceStateFor):');
+
+    TomResourceKeyProtection.globalSettingProtectionDefault = true;
+    TomResourceRoleRegistry.registerAll({
+      'owner': TomAuthState.full,
+      'viewer': TomAuthState.read,
+    });
+
+    // One principal, both kinds of grant: a pattern covering every `profile.`
+    // key, and a per-resource role that holds `user.salary` read-only.
+    final hrPrincipal = TomPrincipal(
+      authenticated: true,
+      user: TomUser(id: 4, username: 'hr_user'),
+      aci: TomAccessControlInformation(
+        resourceKeys: ['profile.*'],
+        resourceRoles: {'user.salary': 'viewer'},
+      ),
+    );
+
+    TomAuthState grade(String key) =>
+        TomResourceKeyProtection.resourceStateFor(hrPrincipal, key);
+
+    final profileEmail = grade('profile.email');
+    final profileCity = grade('profile.address.city');
+    final salary = grade('user.salary');
+    final password = grade('user.password');
+
+    print('   - profile.email        : ${profileEmail.name}  (profile.*)');
+    print('   - profile.address.city : ${profileCity.name}  (profile.*)');
+    print('   - user.salary          : ${salary.name}  (viewer role)');
+    print('   - user.password        : ${password.name}  (no grant)');
+
+    // The boolean view is the grade collapsed: a read-only grade shows the
+    // value, so the salary is served rather than replaced by its fallback.
+    final shownSalary = TomResourceKeyProtection.protectFor(
+      hrPrincipal,
+      '85000',
+      '[hidden]',
+      'user.salary',
+    );
+    print('   - protectFor(user.salary): $shownSalary');
+
+    // And a read-only grade is what TomResourceKeyAccess resolves to.
+    final salaryAccess = const TomResourceKeyAccess(
+      'user.salary',
+    ).resolveAuthState(hrPrincipal);
+    print('   - TomResourceKeyAccess(user.salary): ${salaryAccess.name}');
+
+    assert(profileEmail == TomAuthState.full, 'profile.* covers profile.email');
+    assert(profileCity == TomAuthState.full, 'profile.* covers nested keys');
+    assert(salary == TomAuthState.read, 'viewer role grades read-only');
+    assert(password == TomAuthState.none, 'no grant, no access');
+    assert(shownSalary == '85000', 'a read-only grade shows the value');
+    assert(salaryAccess == TomAuthState.read, 'the access control grades too');
+
+    TomResourceRoleRegistry.reset();
+    TomResourceKeyProtection.globalSettingProtectionDefault = false;
+  }
 }
 
 // ============================================================================
@@ -437,6 +498,9 @@ void run() {
 
   // Global settings
   GlobalSettingsExample.example10GlobalProtectionSettings();
+
+  // Four-state resource grades
+  ResourceKeyProtectionExample.example11ResourceGrades();
 
   print('\n✓ All advanced access control examples passed!\n');
 }
