@@ -541,6 +541,18 @@ class AllFinalHolder {
   AllFinalHolder(this.name, this.age);
 }
 
+/// A holder whose collections name an element class that cannot be built from
+/// a map: [AllFinalHolder] has no no-argument constructor, so every element
+/// handed to either field is refused — and the refusal has to say which field
+/// and which position it came from, not only which class would not build.
+@tomReflector
+class UnbuildableElementsHolder {
+  List<AllFinalHolder>? items;
+  Map<String, AllFinalHolder>? byName;
+
+  UnbuildableElementsHolder();
+}
+
 /// The same shape, declaring the structural `toJson` hook.
 ///
 /// The control for [AllFinalHolder]: an immutable DTO is not refused for being
@@ -4848,6 +4860,217 @@ void main() {
         value: [
           {'city': 'Berlin'},
         ],
+      );
+    });
+
+    test('every refusal names the class, the field, its declared type and '
+        'the value\'s type', () {
+      // The keys say how far the reflector got before it gave up; these four
+      // parameters say *where*, and they are what a caller needs when the
+      // payload behind the refusal is a whole JSON document. A refusal that
+      // names only the type it could not build — "Failed to create instance
+      // of type List" — leaves the caller to search the document for every
+      // field that might be a list. The value's runtime type is named rather
+      // than left inside a root error, because the root error is the Dart
+      // runtime's wording and is not there at all for a refusal decided by
+      // inspection.
+      void attributes(
+        Object holder,
+        String field,
+        Object value, {
+        required String key,
+        required String declared,
+      }) {
+        final valueType = '${value.runtimeType}';
+        expect(
+          () => tomReflectionInfo.setValues(holder, {field: value}),
+          throwsA(
+            isA<TomReflectorException>()
+                .having((e) => e.key, 'key', key)
+                .having(
+                  (e) => e.parameters?['class'],
+                  'class',
+                  '${holder.runtimeType}',
+                )
+                .having((e) => e.parameters?['field'], 'field', field)
+                .having(
+                  (e) => e.parameters?['declaredType'],
+                  'declaredType',
+                  contains(declared),
+                )
+                .having(
+                  (e) => e.parameters?['valueType'],
+                  'valueType',
+                  valueType,
+                )
+                .having(
+                  (e) => e.defaultUserMessage,
+                  'defaultUserMessage',
+                  allOf(
+                    contains("'$field'"),
+                    contains('${holder.runtimeType}'),
+                    contains(declared),
+                    contains(valueType),
+                  ),
+                ),
+          ),
+          reason: '$field of ${holder.runtimeType} given a $valueType',
+        );
+      }
+
+      // A value no strategy handles at all.
+      attributes(
+        SimplePerson(),
+        'age',
+        2.5,
+        key: 'reflection.set.unexpected_type',
+        declared: 'int',
+      );
+      attributes(
+        ListHolder(),
+        'intList',
+        {1, 2},
+        key: 'reflection.set.unexpected_type',
+        declared: 'List<int>',
+      );
+      // A List for a field that cannot hold one.
+      attributes(
+        MapHolder(),
+        'intMap',
+        [1, 2, 3],
+        key: 'reflection.set.list_field_not_settable',
+        declared: 'Map<String, int>',
+      );
+      // A Map for a field that cannot hold one, down each of the paths that
+      // can refuse it: a type with nothing to build, a type the registry
+      // cannot construct, a type with no reflected fields, and a field
+      // already holding a list the map is poured into.
+      attributes(
+        OpaqueFieldHolder(),
+        'anything',
+        {'name': 'Alice'},
+        key: 'reflection.set.map_field_not_settable',
+        declared: 'dynamic',
+      );
+      attributes(
+        ListHolder(),
+        'intList',
+        {'a': 1},
+        key: 'reflector.instance_creation.failed',
+        declared: 'List<int>',
+      );
+      attributes(
+        NullablePerson(),
+        'age',
+        {'a': 1},
+        key: 'reflector.instance_creation.failed',
+        declared: 'int',
+      );
+      attributes(
+        OpaqueFieldHolder(),
+        'thing',
+        {'name': 'Alice'},
+        key: 'reflector.type.not_annotated',
+        declared: 'Object',
+      );
+      attributes(
+        Team(),
+        'members',
+        {'a': 1},
+        key: 'reflector.type.not_annotated',
+        declared: 'List<TeamMember>',
+      );
+    });
+
+    test('an element that cannot be built names its field and position', () {
+      // The class that would not build is only half the answer: the same
+      // class may be the element type of several fields, and a long list has
+      // many elements. The refusal keeps its key — the element's class could
+      // not be constructed — and gains the field, the declared collection type
+      // and the index or map key it was building.
+      final element = {'name': 'a', 'age': 1};
+      for (final (field, value, position) in [
+        ('items', <Object>[element], 'index 0'),
+        ('byName', <String, Object>{'first': element}, "key 'first'"),
+      ]) {
+        expect(
+          () => tomReflectionInfo.setValues(UnbuildableElementsHolder(), {
+            field: value,
+          }),
+          throwsA(
+            isA<TomReflectorException>()
+                .having(
+                  (e) => e.key,
+                  'key',
+                  'reflector.instance_creation.failed',
+                )
+                .having((e) => e.parameters?['field'], 'field', field)
+                .having(
+                  (e) => e.parameters?['class'],
+                  'class',
+                  'UnbuildableElementsHolder',
+                )
+                .having(
+                  (e) => e.parameters?['declaredType'],
+                  'declaredType',
+                  contains('AllFinalHolder'),
+                )
+                .having(
+                  (e) => e.defaultUserMessage,
+                  'defaultUserMessage',
+                  allOf(
+                    contains("'$field'"),
+                    contains(position),
+                    contains('AllFinalHolder'),
+                  ),
+                ),
+          ),
+          reason: field,
+        );
+      }
+    });
+
+    test('a refusal already attributed deeper is not re-attributed', () {
+      // Attribution is innermost: a field of a nested object that refuses its
+      // value names *that* field, and the enclosing field it was being built
+      // for must not overwrite it with its own name.
+      expect(
+        () => tomReflectionInfo.setValues(PersonWithAddress(), {
+          'address': {
+            'city': {'a': 1},
+          },
+        }),
+        throwsA(
+          isA<TomReflectorException>()
+              .having((e) => e.parameters?['field'], 'field', 'city')
+              .having((e) => e.parameters?['class'], 'class', 'Address'),
+        ),
+      );
+    });
+
+    test('a refusal under any other key travels unchanged', () {
+      // Only the two build refusals are re-raised with a field. Every other
+      // key is a verdict that already carries its own context — here, a
+      // nested key the strict converter does not know, which names the class
+      // and the key it could not place. Wrapping it in "could not build a
+      // value for field 'address'" would bury the precise statement under a
+      // vaguer one, and put the enclosing class into its parameters.
+      final strict = TomReflectionInfo(strictUnknownFields: true);
+
+      expect(
+        () => strict.setValues(PersonWithAddress(), {
+          'address': {'nope': 1},
+        }),
+        throwsA(
+          isA<TomReflectorException>()
+              .having((e) => e.key, 'key', 'reflection.set.unknown_field')
+              .having((e) => e.parameters?['field'], 'field', isNull)
+              .having(
+                (e) => e.defaultUserMessage,
+                'defaultUserMessage',
+                startsWith("TomReflectionInfo.setValues: 'Address'"),
+              ),
+        ),
       );
     });
 

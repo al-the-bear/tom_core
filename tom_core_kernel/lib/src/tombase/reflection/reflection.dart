@@ -1313,10 +1313,94 @@ class TomReflectionInfo {
     } else {
       throw TomReflectorException(
         "reflection.set.unexpected_type",
-        "Unexpected type to set in set values: ${entry.key} is ${entry.value} of type ${entry.value.runtimeType}",
+        "Field '${entry.key}' of ${cm.simpleName}, declared as "
+            "${imGet.reflectedReturnType}, cannot be set from a "
+            "${entry.value.runtimeType} (${limited(entry.value, 100)}): the "
+            "value is not assignable, and no strategy converts a value of that "
+            "type.",
+        parameters: _fieldRefusalParameters(
+          cm.simpleName,
+          entry.key,
+          imGet.reflectedReturnType,
+          entry.value,
+        ),
         autoLog: true,
       );
     }
+  }
+
+  /// The parameters every refusal of a field's value carries: the class, the
+  /// field, the field's declared type and the value's runtime type.
+  ///
+  /// The four are what locate a refusal in a payload. The key says how far the
+  /// reflector got; these say *where*, and a payload is usually a whole JSON
+  /// document. The value's type is named in its own right because the only
+  /// other place it might appear is a root error in the Dart runtime's wording,
+  /// and a refusal decided by inspection has no root error at all.
+  static Map<String, Object?> _fieldRefusalParameters(
+    String owner,
+    String field,
+    Object declaredType,
+    Object? value, {
+    String? at,
+  }) => {
+    "class": owner,
+    "field": field,
+    "declaredType": "$declaredType",
+    "valueType": "${value.runtimeType}",
+    if (at != null) "at": at,
+  };
+
+  /// The refusals raised by *building* a value — [createInstanceFromJson]
+  /// finding no constructor it may call, and [setValues] finding a type with
+  /// no reflected fields. Both are raised where only the type is known.
+  static const Set<String> _buildRefusalKeys = {
+    "reflector.instance_creation.failed",
+    "reflector.type.not_annotated",
+  };
+
+  /// [error] re-raised with the field it was building a value for, or `null`
+  /// when it should travel as it is.
+  ///
+  /// A build refusal names the type that would not build and nothing else,
+  /// because that is all the builder knows: "Failed to create instance of type
+  /// List" is true, and leaves the caller searching the payload for every
+  /// field that might hold a list. When the value was being built for a field,
+  /// the field is the part the caller needs, so the refusal is raised again
+  /// with [_fieldRefusalParameters] — under the **same key**, since the key
+  /// already says the right thing about what went wrong — and the original
+  /// kept as its `rootException`. [at] names the element's position when the
+  /// value was one element of a collection field.
+  ///
+  /// Only an unattributed build refusal is re-raised. Every other key is a
+  /// verdict that already carries its own context, and a refusal that already
+  /// names a field was claimed by a nested field closer to the fault:
+  /// attribution is innermost, so an enclosing field must not overwrite it.
+  static TomReflectorException? _attributedBuildRefusal(
+    TomReflectorException error,
+    StackTrace stack, {
+    required String owner,
+    required String field,
+    required Object declaredType,
+    required Object? value,
+    String? at,
+  }) {
+    if (!_buildRefusalKeys.contains(error.key)) return null;
+    if (error.parameters?["field"] != null) return null;
+    return TomReflectorException(
+      error.key,
+      "Could not build a value for field '$field' of $owner, declared as "
+      "$declaredType${at == null ? '' : ', at $at'}, from a "
+      "${value.runtimeType} (${limited(value, 100)}): "
+      "${error.defaultUserMessage}",
+      parameters: {
+        ...?error.parameters,
+        ..._fieldRefusalParameters(owner, field, declaredType, value, at: at),
+      },
+      rootException: error,
+      stack: stack,
+      autoLog: true,
+    );
   }
 
   /// Widens an `int` value onto a `double` field, returning true when it did.
@@ -1456,7 +1540,7 @@ class TomReflectionInfo {
     if (_trySetDateTimeMapType(im, cm, returnType, entry)) return;
 
     // Try annotated object map types
-    if (_trySetAnnotatedObjectMapType(im, imGet, entry)) return;
+    if (_trySetAnnotatedObjectMapType(im, cm, imGet, entry)) return;
 
     // Try to fill existing object
     if (_tryFillExistingMapOrObject(im, cm, entry)) return;
@@ -1474,10 +1558,16 @@ class TomReflectionInfo {
     throw TomReflectorException(
       "reflection.set.map_field_not_settable",
       "No strategy could set map field '${entry.key}' of ${cm.simpleName}, "
-          "declared as $returnType, from ${limited(entry.value, 100)}. "
-          "The declared type is not a supported map type, names no reflected "
-          "class to build, and the field holds nothing to fill in place.",
-      parameters: {"class": cm.simpleName, "field": entry.key},
+          "declared as $returnType, from a ${entry.value.runtimeType} "
+          "(${limited(entry.value, 100)}). The declared type is not a "
+          "supported map type, names no reflected class to build, and the "
+          "field holds nothing to fill in place.",
+      parameters: _fieldRefusalParameters(
+        cm.simpleName,
+        entry.key,
+        returnType,
+        entry.value,
+      ),
       autoLog: true,
     );
   }
@@ -1589,6 +1679,7 @@ class TomReflectionInfo {
   /// this method creates instances of MyClass for each map entry.
   bool _trySetAnnotatedObjectMapType(
     InstanceMirror im,
+    ClassMirror cm,
     MethodMirror imGet,
     MapEntry<String, dynamic> entry,
   ) {
@@ -1609,14 +1700,26 @@ class TomReflectionInfo {
     final newMap = typeString.endsWith("?>")
         ? memberMirror.createNullableValuedMap<String>()
         : memberMirror.createValuedMap<String>();
+    String? building;
     try {
       for (var subEntry in jsonMap.entries) {
+        building = subEntry.key;
         newMap[subEntry.key] = subEntry.value != null
             ? createInstanceFromJson(memberMirror, subEntry.value!)
             : null;
       }
-    } on TomReflectorException {
-      rethrow;
+    } on TomReflectorException catch (error, stacktrace) {
+      final attributed = _attributedBuildRefusal(
+        error,
+        stacktrace,
+        owner: cm.simpleName,
+        field: entry.key,
+        declaredType: imGet.reflectedReturnType,
+        value: (entry.value as Map)[building],
+        at: "key '$building'",
+      );
+      if (attributed == null) rethrow;
+      throw attributed;
     } catch (error, stacktrace) {
       // A field whose value type is itself generic — `Map<String, List<X>>` —
       // cannot be materialized at all, and the cast error it produces names
@@ -1681,8 +1784,20 @@ class TomReflectionInfo {
       } else {
         setValues(existing, entry.value as Map<String, dynamic>);
       }
-    } on TomReflectorException {
-      rethrow;
+    } on TomReflectorException catch (error, stacktrace) {
+      // Pouring a map into what the field holds refuses the holder's *type*
+      // when that type has no reflected fields — a list, say — and that
+      // refusal names only the type.
+      final attributed = _attributedBuildRefusal(
+        error,
+        stacktrace,
+        owner: cm.simpleName,
+        field: entry.key,
+        declaredType: cm.instanceMembers[entry.key]!.reflectedReturnType,
+        value: entry.value,
+      );
+      if (attributed == null) rethrow;
+      throw attributed;
     } catch (error, stacktrace) {
       // The map in the field carries its own element type, and rejects a value
       // of the wrong one with a `_TypeError` naming two types and no field.
@@ -1730,8 +1845,17 @@ class TomReflectionInfo {
         entry.key,
         createInstanceFromJson(returnType, entry.value),
       );
-    } on TomReflectorException {
-      rethrow;
+    } on TomReflectorException catch (error, stacktrace) {
+      final attributed = _attributedBuildRefusal(
+        error,
+        stacktrace,
+        owner: cm.simpleName,
+        field: entry.key,
+        declaredType: cm.instanceMembers[entry.key]!.reflectedReturnType,
+        value: entry.value,
+      );
+      if (attributed == null) rethrow;
+      throw attributed;
     } catch (error, stacktrace) {
       throw TomReflectorException(
         "reflection.set.map_field_assignment_failed",
@@ -1758,7 +1882,8 @@ class TomReflectionInfo {
   /// 1. Primitive list types (`List<int>`, `List<String>`, etc.)
   /// 2. DateTime list types (`List<DateTime>`, etc.)
   /// 3. Annotated object list types (`List<MyClass>`)
-  /// 4. Fallback: direct value setting
+  /// 4. Fallback: assign the list as it arrived, or refuse with
+  ///    `reflection.set.list_field_not_settable` when the field cannot hold it
   void _setListValue(
     InstanceMirror im,
     ClassMirror cm,
@@ -1774,7 +1899,7 @@ class TomReflectionInfo {
     if (_trySetDateTimeListType(im, cm, returnType, entry)) return;
 
     // Try annotated object list type
-    if (_trySetAnnotatedObjectListType(im, imGet, entry)) return;
+    if (_trySetAnnotatedObjectListType(im, cm, imGet, entry)) return;
 
     // Fallback: assign the list as it arrived. This is the last strategy in
     // the chain, so a failure here is the field's last chance to report
@@ -1786,9 +1911,14 @@ class TomReflectionInfo {
       throw TomReflectorException(
         "reflection.set.list_field_not_settable",
         "No strategy could set list field '${entry.key}' of ${cm.simpleName}, "
-            "declared as $returnType, from ${limited(entry.value, 100)}: "
-            "$error",
-        parameters: {"class": cm.simpleName, "field": entry.key},
+            "declared as $returnType, from a ${entry.value.runtimeType} "
+            "(${limited(entry.value, 100)}): $error",
+        parameters: _fieldRefusalParameters(
+          cm.simpleName,
+          entry.key,
+          returnType,
+          entry.value,
+        ),
         rootException: error,
         stack: stacktrace,
         autoLog: true,
@@ -1909,6 +2039,7 @@ class TomReflectionInfo {
   /// This method clears and populates the existing list rather than creating a new one.
   bool _trySetAnnotatedObjectListType(
     InstanceMirror im,
+    ClassMirror cm,
     MethodMirror imGet,
     MapEntry<String, dynamic> entry,
   ) {
@@ -1928,16 +2059,28 @@ class TomReflectionInfo {
     final newList = typeString.endsWith("?>")
         ? memberMirror.createNullableList()
         : memberMirror.createList();
+    var building = 0;
     try {
-      for (var subEntry in jsonList) {
+      for (; building < jsonList.length; building++) {
+        final subEntry = jsonList[building];
         newList.add(
           subEntry != null
               ? createInstanceFromJson(memberMirror, subEntry)
               : null,
         );
       }
-    } on TomReflectorException {
-      rethrow;
+    } on TomReflectorException catch (error, stacktrace) {
+      final attributed = _attributedBuildRefusal(
+        error,
+        stacktrace,
+        owner: cm.simpleName,
+        field: entry.key,
+        declaredType: imGet.reflectedReturnType,
+        value: (entry.value as List)[building],
+        at: 'index $building',
+      );
+      if (attributed == null) rethrow;
+      throw attributed;
     } catch (error, stacktrace) {
       // See the map counterpart: a `List<List<X>>` field fails with a cast
       // error that names `List` and no reason. Say what is actually wrong.

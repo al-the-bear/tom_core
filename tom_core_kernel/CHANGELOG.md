@@ -8,6 +8,20 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Added
+- **Every refusal of a field's value says where (tcopen55).** A payload
+  refused by `setValues` used to name, at best, the type that would not build:
+  a `Map` handed to a `List<int>` field threw `reflector.instance_creation.failed`
+  with "Failed to create instance of type List from JSON" and no parameters,
+  and `reflection.set.unexpected_type` (a `double` for an `int` field) named
+  neither the class nor the declared type. Now every refusal of a field's value
+  carries `class`, `field`, `declaredType`, `valueType` — and `at` for a
+  collection element — in `parameters` and in its message.
+  `instance_creation.failed` and `type.not_annotated` keep their keys: raised
+  while building a value for a field or an element, they are re-raised with the
+  field's parameters and the original as `rootException`. Attribution is
+  innermost, and every other key travels unchanged.
+  `doc/reflection/reflection.md` gains *Every Refusal Says Where*.
+
 - **The preference store is bounded, so the unpaged list is safe (tcopen54).**
   `listPreferences` answers everything a principal holds, with no page and no
   filter — right for every caller of it, and safe only if "everything" is

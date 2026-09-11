@@ -95,6 +95,15 @@ payload that *something* in it was not a date, kept the failure out of the
 module's auto-logging, and slipped past `on TomReflectorException`. The
 original `FormatException` is retained as the `rootException`.
 
+Every other refusal of a field's value says where, too. A value no strategy
+converts (`reflection.set.unexpected_type`), a list or map for a field that
+cannot hold one, and a value whose type cannot be built for a field or a
+collection element (`reflector.instance_creation.failed`,
+`reflector.type.not_annotated`) all carry the `class`, the `field`, its
+`declaredType`, the value's `valueType` — and for an element its position as
+`at` — in `parameters` and in the message. The build refusals keep their keys;
+only the attribution is added, innermost first.
+
 A class may take conversion over from the field walk with any of three
 optional hooks: a `fromJson` constructor (used by `createInstanceFromJson`), a
 `jsonDecode` method (used by `setValues`), or a `jsonEncode` getter (used by

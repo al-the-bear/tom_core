@@ -61,6 +61,7 @@ Flutter web, where `dart:mirrors` is unavailable.
   - [Atomic Collection Updates](#atomic-collection-updates)
   - [Ambiguous Type Names](#ambiguous-type-names)
   - [When the Value's Shape Does Not Fit the Field](#when-the-values-shape-does-not-fit-the-field)
+    - [Every Refusal Says Where](#every-refusal-says-where)
 - [Best Practices](#best-practices)
   - [1. Initialize All Fields](#1-initialize-all-fields)
   - [2. Use Non-Final Fields](#2-use-non-final-fields)
@@ -1016,9 +1017,9 @@ apart.
 | Error Key | Description |
 |-----------|-------------|
 | `reflector.reflect.not_reflectable` | The class has no generated reflection data at all — it was never annotated and never reached by quantification |
-| `reflector.type.not_annotated` | The class reflects, but carries no `@tomReflector` — a built-in such as `String`, `int`, `DateTime` or `List` that only has data because it appears as a field type |
+| `reflector.type.not_annotated` | The class reflects, but carries no `@tomReflector` — a built-in such as `String`, `int`, `DateTime` or `List` that only has data because it appears as a field type. Raised while building a value for a field, it also names that field — see [Every Refusal Says Where](#every-refusal-says-where) |
 | `reflector.type.all_final` | `getValues` reached the field walk, the walk contributed no field, and every member it skipped was `final` — names the type and the skipped members. Declare a rendering hook or make the members non-final; see [Use Non-Final Fields](#2-use-non-final-fields) |
-| `reflector.instance_creation.failed` | Failed to create instance |
+| `reflector.instance_creation.failed` | The type has no constructor this reflector may call with no arguments. Raised while building a value for a field or a collection element, it also names the field, its declared type, the value's type and the position — see [Every Refusal Says Where](#every-refusal-says-where) |
 | `reflector.type_resolution.not_a_generic_type` | The collection's runtime type carries no type arguments |
 | `reflector.type_resolution.not_a_map_type` | `mapValueElementType` was given a collection with an argument count other than two — see [Each Method Takes One Arity](#each-method-takes-one-arity) |
 | `reflector.type_resolution.not_a_single_element_type` | `singleElementType` was given a collection with an argument count other than one, typically a `Map<K, V>` |
@@ -1028,7 +1029,7 @@ apart.
 | `reflector.classmirror.ambiguous_simple_name` | The simple name matches more than one annotated class |
 | `reflection.set.unexpected_condition_final_static_private` | Field has a getter but no setter (static, final or private) — names the class and the field |
 | `reflection.set.unknown_field` | The key names no field on the target class, and the converter was built with `strictUnknownFields: true`. The default converter ignores such keys silently — see [Unknown Keys](#unknown-keys) |
-| `reflection.set.unexpected_type` | Unexpected value type during deserialization |
+| `reflection.set.unexpected_type` | A value no strategy converts reached a field that cannot take it as it is — a `double` for an `int` field, a `Set` for a `List` field. Names the class, the field, its declared type and the value's type |
 | `reflection.set.unexpected_string_type` | String value for non-DateTime field |
 | `reflection.set.datetime_must_be_filled_from_string_in_map` | Non-String element in a `Map<String, DateTime>`-style field |
 | `reflection.set.datetime_must_be_filled_from_string_for_list` | Non-String element in a `List<DateTime>`-style field |
@@ -1278,11 +1279,15 @@ got before it gave up, which is the part worth knowing when you read one:
 tomReflectionInfo.setValues(MapHolder(), {'intMap': [1, 2, 3]});
 // throws TomReflectorException(reflection.set.list_field_not_settable):
 // "No strategy could set list field 'intMap' of MapHolder, declared as
-//  Map<String, int>, from [1, 2, 3]: type 'List<int>' is not a subtype of ..."
+//  Map<String, int>, from a List<int> ([1, 2, 3]): type 'List<int>' is not
+//  a subtype of ..."
 
 // ListHolder declares `List<int>? intList`
 tomReflectionInfo.setValues(ListHolder(), {'intList': {'a': 1}});
-// throws TomReflectorException(reflector.instance_creation.failed)
+// throws TomReflectorException(reflector.instance_creation.failed):
+// "Could not build a value for field 'intList' of ListHolder, declared as
+//  List<int>, from a _Map<String, int> ({a: 1}): Failed to create instance
+//  of type List from JSON: ..."
 ```
 
 Both collection paths are built from strategies that are allowed to decline,
@@ -1306,6 +1311,47 @@ The one failure that *is* still read as "not applicable" is reading the field
 in the first place: an unassigned `late` field raises rather than answering
 null, and "there is nothing here to fill" is exactly what that means — so
 that one declines, and the strategy that builds a fresh instance runs instead.
+
+#### Every Refusal Says Where
+
+The key says how far the reflector got before it gave up. Where it gave up is
+carried in the exception's `parameters`, the same four on every refusal of a
+field's value:
+
+| Parameter | Holds |
+| --- | --- |
+| `class` | The class declaring the field |
+| `field` | The field |
+| `declaredType` | The field's declared type |
+| `valueType` | The runtime type of the value it was given |
+| `at` | Only for a collection element: `index 3`, or `key 'first'` |
+
+The message states the same, so a log line is enough to find the value in the
+payload. That holds for `reflection.set.unexpected_type`,
+`reflection.set.list_field_not_settable` and
+`reflection.set.map_field_not_settable`, which are the walk's own refusals, and
+for the two that are raised by *building* a value —
+`reflector.instance_creation.failed` and `reflector.type.not_annotated`. The
+builder knows only the type, so "Failed to create instance of type List" is all
+it can say; when the value was being built for a field, or for one element of a
+collection field, the refusal is raised again under the **same key** with the
+parameters above, and the builder's refusal kept as its `rootException`.
+
+Attribution is innermost. A nested object whose own field refuses its value
+names that field, and the field it was being built for does not overwrite it:
+
+```dart
+// PersonWithAddress declares `Address? address`; Address declares `String city`
+tomReflectionInfo.setValues(PersonWithAddress(), {
+  'address': {'city': {'a': 1}},
+});
+// throws TomReflectorException(reflector.instance_creation.failed) with
+// parameters {class: Address, field: city, declaredType: String, ...}
+```
+
+Every other key already carries its own context and travels unchanged — a
+strict converter's `reflection.set.unknown_field` for a nested key still names
+the nested class and the key it could not place.
 
 When the shape *does* fit, whether prior content survives depends on which
 strategy claims the payload:
