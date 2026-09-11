@@ -811,6 +811,17 @@ anyone who was writing them.
   configuration.
 
 ### Changed
+- **The serialized zoned form ends at the zone name (tcopen92).** Nothing is
+  appended after it, so a stored value, a map key or a URL built from one
+  carries no invisible byte and two equal values compare equal as strings.
+  Reading stays forgiving about what *surrounds* a value — `parseFromString`
+  and the `isTom…String` predicates trim first, so a string padded in transit
+  is still read and re-serializes without the padding — while whitespace inside
+  the form is refused. The emission of a trailing space ended with the
+  conversion refactor; this pins it with tests on the bytes for all four types
+  and `TomTimezone.toString`/`toStringOn`, and corrects the guide and the API
+  mirror, which claimed a padded string was rejected.
+
 - **The timezone database populates once per isolate (tcopen91).** A second
   `TomTimezone.populateFromLocations` throws `TomTimezoneException`
   (`timezone.database.already_populated`, carrying the `loaded` and `offered`

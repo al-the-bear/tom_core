@@ -473,9 +473,15 @@ The form ends where the zone name ends, with no trailing character. That is
 worth saying because the alternative is invisible: a serialized value is
 compared, used as a map key and written into URLs and filenames, and a byte
 nobody asked for travels into all of them without ever showing on a printed
-line. The parse patterns are correspondingly exact — they anchor straight after
-the zone — so a string carrying stray whitespace is rejected rather than
-silently accepted and then failing an equality check nothing explains.
+line. The parse patterns are correspondingly exact, anchored straight after the
+zone, so whitespace *inside* the form is refused.
+
+Reading is forgiving about what **surrounds** a value: `parseFromString` and
+the `isTom…String` predicates trim before matching, so a string that picked up
+whitespace in transit — a padded column, a hand-edited configuration file, a
+copied line — is still read, and the two agree, so a caller is never told a
+string is recognisable and then refused when parsing it. What comes back is the
+exact form: re-serializing a padded string writes it without the padding.
 
 `toString()` produces the whole form, prefix included, and `parseFromString`
 reads it back as it stands. `getSerializationPrefix()` exists for the other

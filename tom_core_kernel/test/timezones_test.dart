@@ -2714,6 +2714,65 @@ void main() {
       expect(restored.toString(), equals(serialized));
     });
 
+    // The form ends where the zone name ends. A trailing character would be
+    // carried into every stored value, map key and URL built from one, and is
+    // invisible in each of them — so it is asserted on the bytes rather than
+    // trusted to be visible in an expected string.
+    group('nothing emits a trailing character', () {
+      final berlin = TomTimezone.fromName('Europe/Berlin')!;
+      final instant = DateTime.utc(2024, 1, 15, 12);
+
+      final emitted = <String, String>{
+        'TomTimezone.toString': berlin.toString(),
+        'TomTimezone.toStringOn': berlin.toStringOn(instant),
+        'TomTimezoned': TomTimezoned.fromDateTime(instant, berlin).toString(),
+        'TomZonedDate': TomZonedDate(
+          year: 2024,
+          month: 1,
+          day: 15,
+          timezone: berlin,
+        ).toString(),
+        'TomZonedTime': TomZonedTime(hour: 9, timezone: berlin).toString(),
+        'TomZonedDateTime': TomZonedDateTime.fromDateTime(
+          instant,
+          berlin,
+        ).toString(),
+      };
+
+      for (final entry in emitted.entries) {
+        test('${entry.key} ends at the zone name', () {
+          expect(entry.value, endsWith('Europe/Berlin'));
+          expect(entry.value, equals(entry.value.trim()));
+          expect(entry.value, isNot(contains(' ')));
+        });
+      }
+    });
+
+    // Emission is exact; reading is forgiving. A value that picked up
+    // whitespace in transit — a padded column, a hand-edited config, a copied
+    // line — still parses, and the predicate agrees with the parser so a
+    // caller cannot be told yes and then refused.
+    group('whitespace around a stored value', () {
+      const padded = '  @X@2024-01-15T12:00:00.000Z_+01:00_Europe/Berlin ';
+
+      test('parses, and is recognised', () {
+        expect(TomZonedDateTime.isTomZonedDateTimeString(padded), isTrue);
+        final parsed = TomZonedDateTime.parseFromString(padded);
+        expect(parsed.timezone.timezone, 'Europe/Berlin');
+        expect(parsed.toString(), padded.trim());
+      });
+
+      test('whitespace inside the form is still refused', () {
+        // Tolerance is for what surrounds the value, not for its shape.
+        const inside = '@X@2024-01-15T12:00:00.000Z_+01:00_Europe/ Berlin';
+        expect(TomZonedDateTime.isTomZonedDateTimeString(inside), isFalse);
+        expect(
+          () => TomZonedDateTime.parseFromString(inside),
+          throwsA(isA<FormatException>()),
+        );
+      });
+    });
+
     group('the offset on either side of a DST boundary', () {
       // Fixed instants, so the expected strings are the same on every day
       // the suite runs: one January and one July value per zone, whichever

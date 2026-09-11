@@ -37,9 +37,11 @@ prefix), `TomZonedTime` (time-only anchored at 1970-01-01, `@T@` prefix), and
 of the string that fixes a point in time; the offset that follows is the zone's
 offset at that instant — the one the value's local fields use — and is written
 for readability, not read back. A produced
-string ends where the zone name ends: `TomTimezone.toString()` appends nothing,
-and the parse regexes anchor there, so stray whitespace is rejected rather than
-accepted into a value that then fails an equality check for no visible reason.
+string ends where the zone name ends: nothing appends to it, and the parse
+regexes anchor there, so whitespace inside the form is refused. Whitespace
+*around* a stored value is trimmed by both `parseFromString` and the
+`isTom…String` predicates, so a value padded in transit is still read and
+re-serializes without the padding.
 
 `TomTimezone` wraps the `timezone` package's `Location`: it looks zones up by
 name or UTC offset, computes offsets (including DST) at any instant, and
