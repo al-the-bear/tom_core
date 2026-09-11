@@ -8,6 +8,18 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Added
+- **Configuration's missing revision is stated as the design (tcopen58).**
+  `setAppConfigProvider` announces nothing, unlike `setAppResourceProvider`,
+  and that is now said where the two providers are compared — the provider
+  table in `doc/resources/resources.md`, the API mirror and the method's
+  dartdoc — rather than left for a reader of the source to infer. Consumers
+  capture configuration when they are built (a declared client setting at
+  declaration, a `TomProperty` at construction), so a counter would notify
+  nothing that could act on it; a later replacement is seen by every read after
+  it, and an application swapping configuration at a session boundary rebuilds
+  its dependents itself. `resources_test.dart` pins that an install leaves
+  `appResourcesRevision` untouched.
+
 - **Two same-named annotated classes both deserialize (tcopen57).** Pinned,
   and the documentation corrected: it said collections of two annotated classes
   sharing a simple name could not be deserialized. They can — `setValues` reads

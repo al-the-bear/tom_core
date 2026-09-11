@@ -1088,6 +1088,37 @@ void main() {
       expect(~TomTextResourceProvider.appResourcesRevision, equals(before + 1));
     });
 
+    test('configuration has no revision, and installing it is not a text '
+        'change', () {
+      // Deliberately asymmetric. Text is rendered and re-rendered, so its
+      // installs announce themselves; configuration is captured by its
+      // consumers when they are built — a declared client setting takes its
+      // baseline at declaration, a TomProperty at construction — so a counter
+      // would notify nothing that could act on it. What a replacement does
+      // guarantee is that every read made after it answers from the new
+      // provider. And it must not borrow the text revision to announce itself:
+      // re-rendering every text observer for a configuration change would be
+      // the counter's cost without its meaning.
+      final before = ~TomTextResourceProvider.appResourcesRevision;
+
+      TomConfigResourceProvider.setAppConfigProvider(
+        TomConfigResourceProvider.from({
+          'api': {'timeout': 1000},
+        }),
+      );
+      TomConfigResourceProvider.setAppConfigProvider(
+        TomConfigResourceProvider.from({
+          'api': {'timeout': 2000},
+        }),
+      );
+
+      expect(~TomTextResourceProvider.appResourcesRevision, equals(before));
+      expect(
+        TomConfigResourceProvider.getAppConfig().getObjectOrNull('api.timeout'),
+        equals(2000),
+      );
+    });
+
     test('replacing an installed provider bumps the revision again', () {
       // Not just the *first* install: every install announces itself, which is
       // what makes a locale switch (install the new bundle) work at all.

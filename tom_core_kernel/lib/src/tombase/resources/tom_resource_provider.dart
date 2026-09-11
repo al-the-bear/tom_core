@@ -617,6 +617,23 @@ class TomConfigResourceProvider {
   /// Use this method to replace the default provider with a custom
   /// pre-configured instance.
   ///
+  /// **Announces nothing, by design.** Unlike
+  /// [TomTextResourceProvider.setAppResourceProvider] there is no revision to
+  /// bump: configuration is installed at bootstrap and captured by its
+  /// consumers when they are built — a declared client setting takes its
+  /// baseline at declaration, a `TomProperty` at construction — so a counter
+  /// would notify nothing that could act on it. Nor does it borrow
+  /// [TomTextResourceProvider.appResourcesRevision]: re-rendering every text
+  /// observer for a configuration change would cost what a counter costs
+  /// without meaning what it means.
+  ///
+  /// Replacing the provider later is allowed, and every read made after the
+  /// call answers from the new one; a value captured before it is not
+  /// updated. An application that replaces configuration at a session
+  /// boundary — a per-user bundle after sign-in — rebuilds what depends on it
+  /// itself. A revision counter becomes worth adding only when configuration
+  /// has to change under a running screen.
+  ///
   /// [provider] - The provider instance to use application-wide.
   static void setAppConfigProvider(TomConfigResourceProvider provider) {
     _configProvider = provider;

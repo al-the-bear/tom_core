@@ -145,9 +145,18 @@ are looked up by flat keys or dot-notation paths.
 Both providers hold values of any type, so the choice between them is one of
 purpose, not of value type: this one is for how the application is *set up*,
 `TomTextResourceProvider` for what the user *sees*. The consequences are that
-configuration is read at the point of use rather than rendered, so it has no
-revision counter to observe, and that its three accessors are a strict subset of
-the text provider's six.
+configuration is not rendered, so it has no revision counter to observe, and
+that its three accessors are a strict subset of the text provider's six.
+
+**No revision, by design.** Configuration is installed at bootstrap and captured
+by its consumers when they are built — a declared client setting takes its
+baseline at declaration, a `TomProperty` at construction — so a counter would
+notify nothing that could act on it. `setAppConfigProvider` therefore announces
+nothing, and deliberately does not bump the text provider's
+`appResourcesRevision`. Replacing the provider later is allowed: every read after
+the call answers from the new one, while a value captured before it keeps its
+old value, so an application that swaps configuration at a session boundary —
+a per-user bundle after sign-in — rebuilds what depends on it itself.
 
 Values are `Object`, so reading one usually means casting it. Cast
 `getObjectOrNull`, not `getObject`: `getObject` echoes the key back as a
@@ -174,7 +183,7 @@ TomConfigResourceProvider.from(Map<String, dynamic> resources)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `setAppConfigProvider` | `static void setAppConfigProvider(TomConfigResourceProvider provider)` | Installs `provider` as the application-wide configuration provider. |
+| `setAppConfigProvider` | `static void setAppConfigProvider(TomConfigResourceProvider provider)` | Installs `provider` as the application-wide configuration provider. Announces nothing — no configuration revision exists, and `appResourcesRevision` is not bumped; reads after the call see the new provider, values captured earlier do not. |
 | `clearAppConfigProvider` | `@visibleForTesting static void clearAppConfigProvider()` | Returns the process to the un-bootstrapped state. |
 | `getAppConfig` | `static TomConfigResourceProvider getAppConfig()` | Returns the installed application-wide provider. Throws `TomResourceException` (`resources.config_provider.not_installed`) if `setAppConfigProvider` has not run. |
 

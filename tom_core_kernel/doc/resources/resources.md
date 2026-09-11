@@ -45,7 +45,7 @@ The module consists of two main providers:
 | Provider | Holds | Accessors | Observable |
 |----------|-------|-----------|------------|
 | `TomTextResourceProvider` | Everything the user sees: localized strings, UI labels, messages — and the non-String values that travel with them, such as TextStyles and Colors | String family (`getText`, `getTextOrNull`, `exists`) **and** object family (`getObject`, `getObjectOrNull`, `existsObject`) | Yes — `appResourcesRevision` |
-| `TomConfigResourceProvider` | How the application is set up: API endpoints, feature flags, timeouts | Object family only (`getObject`, `getObjectOrNull` and `exists`) | No |
+| `TomConfigResourceProvider` | How the application is set up: API endpoints, feature flags, timeouts | Object family only (`getObject`, `getObjectOrNull` and `exists`) | No — by design; see below |
 
 **Both bundles are `Map<String, dynamic>` and both hold values of any type.**
 The split is by *purpose*, not by value type: a Color belonging to the theme is
@@ -53,8 +53,17 @@ a text resource, and a `bool` feature flag is configuration. Two consequences
 follow, and they are the reason the split is worth having:
 
 - Only the text provider is observable. `appResourcesRevision` exists because a
-  locale or theme switch has to re-render; configuration is read at the point of
-  use and does not.
+  locale or theme switch has to re-render. Configuration is installed at
+  bootstrap and captured by its consumers when they are built — a declared
+  client setting takes its baseline at declaration, a `TomProperty` at
+  construction — so a counter would notify nothing that could act on it.
+  **Installing a configuration provider is therefore silent**: it bumps no
+  revision of its own and deliberately does not borrow the text provider's.
+  Replacing it later is allowed and every read after the install answers from
+  the new provider, but a value captured before it keeps its old value; an
+  application that swaps configuration at a session boundary — a per-user
+  bundle after sign-in — rebuilds what depends on it itself. A counter is worth
+  adding only once configuration has to change under a running screen.
 - Only the text provider has the String-specific accessors. `getText` on a
   non-String value reports the key as missing (that is what "text accessor"
   means), so a TextStyle stored in the text bundle is read with `getObject` /
@@ -301,13 +310,15 @@ A singleton provider for how the application is set up — endpoints, feature
 flags, timeouts. It holds values of any type, as the text provider does; what
 distinguishes it is that its contents are read at the point of use rather than
 rendered, so it carries no revision counter and no String-specific accessors.
+Installing it announces nothing — see the provider comparison in the
+[Overview](#overview) for why that is a decision rather than a gap.
 
 #### Static Members
 
 | Member | Type | Description |
 |--------|------|-------------|
 | `loader` | `Map<String, dynamic> Function()?` | Optional function the default constructor builds the bundle from — every construction, not just the singleton's. Declares *how* to build, not *when* to install. **Process-wide and persistent**: it stays set, so later providers built for local scopes pick it up too. **Synchronous** — asynchronous sources are awaited before the install instead |
-| `setAppConfigProvider()` | Method | Sets the application-wide provider instance |
+| `setAppConfigProvider()` | Method | Sets the application-wide provider instance. Announces nothing: there is no configuration revision, and the text provider's `appResourcesRevision` is not bumped. Reads after the call see the new provider; values captured earlier do not |
 | `getAppConfig()` | Method | Returns the installed provider; throws `resources.config_provider.not_installed` if there is none |
 
 #### Constructors
