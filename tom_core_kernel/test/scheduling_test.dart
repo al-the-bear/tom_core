@@ -202,7 +202,7 @@ class StallingLeaseLock extends TomLeaseLock {
   Future<TomLeaseInfo> inspect(String resource) => inner.inspect(resource);
 
   @override
-  Future<void> forget(String resource) => inner.forget(resource);
+  Future<void> forget(TomOneShotResource resource) => inner.forget(resource);
 
   @override
   void close() => inner.close();
@@ -3968,6 +3968,24 @@ void main() {
     });
   });
 
+  group('TomOneShotResource', () {
+    // `forget` accepts only this type, so a name that recurs — a job's
+    // `job:<name>` — cannot reach it without an explicit, named claim that it
+    // never will. That makes the distinction the lock's safety rests on a
+    // property of the call site rather than of the caller's care.
+
+    test('names a run the way the scheduler leases it', () {
+      expect(TomOneShotResource.run('nightly:42'), 'run:nightly:42');
+    });
+
+    test('is still a resource name every lock method accepts', () {
+      // A zero-cost wrapper: the same String, so acquire, inspect and friends
+      // take it unchanged.
+      final String name = TomOneShotResource.unique('import-7f3a');
+      expect(name, 'import-7f3a');
+    });
+  });
+
   group('TomLeaseInfo', () {
     final lease = TomLease(
       resource: 'job:r',
@@ -4026,6 +4044,78 @@ void main() {
     (clock) async =>
         TomFileLeaseLock('${makeTempDir().path}/leases', clock: clock),
   );
+
+  group('what the scheduler forgets', () {
+    // The scheduler is the one production caller of `forget`, and the one
+    // place both kinds of name meet: the lease key is `run:<id>` for a job
+    // that allows overlap and `job:<name>` for one that does not.
+    late FakeClock clock;
+    late TomMemoryJobStore store;
+    late TomMemoryLeaseLock lock;
+
+    setUp(() {
+      clock = FakeClock(DateTime.utc(2026, 3, 1, 10));
+      store = TomMemoryJobStore();
+      lock = TomMemoryLeaseLock(clock: clock.call);
+    });
+
+    Future<void> runWindow(
+      TomScheduler scheduler,
+      String id,
+      DateTime at,
+    ) async {
+      // Due now whatever its window, so the pass takes it.
+      await store.enqueue(
+        TomJobRun(id: id, jobName: 'job', scheduledFor: at, runAt: clock.now),
+      );
+      await scheduler.tick();
+      await scheduler.drain();
+    }
+
+    test(
+      'a finished run of an overlapping job leaves no lease record',
+      () async {
+        final scheduler = schedulerFor(store, clock, lock: lock);
+        addTearDown(scheduler.close);
+        scheduler.register(
+          jobNamed('job', TomCronSchedule('0 0 * * *'), allowOverlap: true),
+        );
+
+        await runWindow(scheduler, 'w1', clock.now);
+
+        // `run:<id>` is never taken again, so its record is dead weight.
+        expect((await lock.inspect('run:w1')).lease, isNull);
+      },
+    );
+
+    test('a job that forbids overlap keeps its record, so its tokens only '
+        'grow', () async {
+      // The recurring name. Forgetting it after a run would restart its chain
+      // at 1, and the second window would hold the same token as the first —
+      // indistinguishable to anything checking tokens.
+      final tokens = <int>[];
+      final scheduler = schedulerFor(store, clock, lock: lock);
+      addTearDown(scheduler.close);
+      scheduler.register(
+        jobNamed(
+          'job',
+          TomCronSchedule('0 0 * * *'),
+          body: (_) => _TokenProbe(lock, tokens),
+        ),
+      );
+
+      await runWindow(scheduler, 'w1', clock.now);
+      expect((await lock.inspect('job:job')).wasReleased, isTrue);
+      await runWindow(
+        scheduler,
+        'w2',
+        clock.now.add(const Duration(minutes: 1)),
+      );
+
+      expect(tokens, hasLength(2));
+      expect(tokens.last, greaterThan(tokens.first));
+    });
+  });
 
   group('TomFileLeaseLock (durability and process sharing)', () {
     test('a lease survives the object that created it', () async {
@@ -4957,4 +5047,18 @@ class _ThrowingLogOutput extends TomLogOutput {
     DateTime timeStamp, [
     String? origin,
   ]) => throw StateError('log output is broken');
+}
+
+/// Records the fencing token the running body's job lease holds.
+class _TokenProbe extends TomCommand {
+  final TomLeaseLock lock;
+  final List<int> tokens;
+
+  _TokenProbe(this.lock, this.tokens);
+
+  @override
+  Future<Object?> execute() async {
+    tokens.add((await lock.inspect('job:job')).lease!.token);
+    return 'probed';
+  }
 }

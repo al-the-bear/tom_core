@@ -8,6 +8,20 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Added
+- **`TomOneShotResource`, and `TomLeaseLock.forget` takes only that
+  (tcopen68).** Forgetting a resource erases its fencing-token chain, which is
+  safe for a name never acquired again (a run's `run:<id>`) and a silent
+  correctness failure for one that recurs (a job's `job:<name>`: its tokens
+  restart at 1, and a repeated token cannot tell a stale holder from a live
+  one). Both were plain `String`s, so the mistake was one character at the call
+  site. `TomOneShotResource` is an extension type over `String` — every other
+  lock method takes it unchanged, but a `String` does not convert to it — built
+  as `TomOneShotResource.run(runId)` or through the explicit
+  `TomOneShotResource.unique(name)`. The scheduler builds the key it forgets
+  from the run id. The lease-lock contract suite now covers `forget` for every
+  lock, and a scheduler test pins that a job's record is kept and its tokens
+  grow.
+
 - **A resource key held in both shapes is reported (tcopen61).** A dotted key
   that resolves through the nested tree *and* exists as a literal flat key is a
   mis-shaped bundle — partly flattened by tooling, or two bundles merged — and

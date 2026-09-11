@@ -302,7 +302,7 @@ class TomSqlLeaseLock extends TomLeaseLock {
   }
 
   @override
-  Future<void> forget(String resource) async {
+  Future<void> forget(TomOneShotResource resource) async {
     await ensureSchema();
     await datasource.executeCommand(
       'DELETE FROM $table WHERE resource = :resource',

@@ -278,10 +278,48 @@ abstract class TomLeaseLock {
   /// such as a job's restarts its tokens at 1, and a token that repeats is not
   /// a fencing token. It exists because a per-run resource would otherwise
   /// accumulate one dead record for every window ever executed.
-  Future<void> forget(String resource);
+  ///
+  /// Which is why it takes a [TomOneShotResource] rather than a `String`: the
+  /// caller has to have named the resource as one-shot where it was built, and
+  /// a recurring name cannot arrive here by one character of difference.
+  Future<void> forget(TomOneShotResource resource);
 
   /// Releases whatever the lock implementation owns.
   void close() {}
+}
+
+// =============================================================================
+// ONE-SHOT RESOURCES
+// =============================================================================
+
+/// A lease resource name that will never be acquired again once its work is
+/// done — the only kind [TomLeaseLock.forget] accepts.
+///
+/// Forgetting a resource erases its fencing-token chain, so the next
+/// acquisition starts at token 1 again. For a name that is never taken again
+/// that costs nothing and saves a dead record; for a name that **recurs** — a
+/// job's `job:<name>`, taken again on every window — it restarts the chain,
+/// and a token that repeats is not a fencing token: a stale holder and a live
+/// one can present the same number, and `leaseStolen` and `holderVanished`
+/// stop meaning anything.
+///
+/// Both kinds of name are resource strings that differ by a prefix, so at a
+/// call site nothing but that prefix tells them apart. This type carries the
+/// distinction instead. It *is* a `String` — every other lock method takes it
+/// unchanged — but a plain `String` does not convert to it, so a name reaches
+/// `forget` only after being declared one-shot where it was built.
+extension type TomOneShotResource._(String name) implements String {
+  /// The per-run resource the scheduler leases for a job that allows overlap:
+  /// `run:<runId>`. A run id is unique for the life of the queue, so the name
+  /// never recurs.
+  TomOneShotResource.run(String runId) : name = 'run:$runId';
+
+  /// A resource [name] the caller guarantees will never be acquired again
+  /// after it is forgotten — an id minted fresh for one piece of work.
+  ///
+  /// The claim is the caller's. It is spelled out rather than implied so that
+  /// it is visible, and reviewable, at the one place it is made.
+  TomOneShotResource.unique(String name) : this._(name);
 }
 
 // =============================================================================
@@ -367,7 +405,8 @@ class TomMemoryLeaseLock extends TomLeaseLock {
   }
 
   @override
-  Future<void> forget(String resource) async => _records.remove(resource);
+  Future<void> forget(TomOneShotResource resource) async =>
+      _records.remove(resource);
 
   TomLease _grant(
     String resource,
@@ -542,7 +581,7 @@ class TomFileLeaseLock extends TomLeaseLock {
   }
 
   @override
-  Future<void> forget(String resource) async {
+  Future<void> forget(TomOneShotResource resource) async {
     final dir = _directoryFor(resource);
     try {
       if (dir.existsSync()) dir.deleteSync(recursive: true);

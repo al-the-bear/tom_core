@@ -899,6 +899,15 @@ the scheduler waits for it: a body that outlives its `timeout` keeps the lease,
 renewed by the heartbeat, until it settles, so no peer can start its retry
 beside it.
 
+The two keys differ in one more way that matters. A `run:<id>` is taken once and
+never again, so when the run ends its record is dead weight and the scheduler
+**forgets** it. A `job:<name>` is taken again on every window, so its record is
+kept — released, not deleted — because forgetting it would restart its fencing
+tokens at 1, and a token that repeats cannot tell a stale holder from a live one.
+`TomLeaseLock.forget` therefore takes a `TomOneShotResource`, not a `String`: the
+run key is built as `TomOneShotResource.run(runId)`, and a job name cannot reach
+`forget` without being explicitly declared one-shot.
+
 ## Lease Locks
 
 A `TomLeaseLock` is a distributed lock with an expiry. The expiry is not

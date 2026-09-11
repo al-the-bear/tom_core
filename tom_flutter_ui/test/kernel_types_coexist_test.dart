@@ -34,7 +34,9 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 /// soup Dart allows; the captured group is the name.
 final _declaration = RegExp(
   r'^(?:abstract\s+|base\s+|final\s+|sealed\s+|interface\s+|mixin\s+)*'
-  r'(?:class|mixin|enum|extension|typedef)\s+(\w+)',
+  // `extension type Name` declares `Name`: the keyword pair is matched as one
+  // alternative, ahead of plain `extension`, or `type` is taken for the name.
+  r'(?:class|mixin|enum|extension\s+type|extension|typedef)\s+(\w+)',
   multiLine: true,
 );
 

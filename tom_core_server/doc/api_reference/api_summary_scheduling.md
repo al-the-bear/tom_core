@@ -263,7 +263,7 @@ registered.
 | `renew` | `Future<TomLease?> renew(TomLease lease, Duration ttl)` | *(override)* Extends the lease if this owner still holds it under the same token and it has not lapsed; returns the renewed lease or `null`. |
 | `release` | `Future<void> release(TomLease lease)` | *(override)* Marks the row `released = 1`, guarded on the token so a displaced holder's late release does nothing. The row is never deleted — it carries the fencing counter. |
 | `inspect` | `Future<TomLeaseInfo> inspect(String resource)` | *(override)* Reports the current or most recent lease, whether it is held now, and whether it was released deliberately; `TomLeaseInfo.free` when no row exists. |
-| `forget` | `Future<void> forget(String resource)` | *(override)* Deletes the resource's row. Destroys the fencing counter, so it must stay restricted to per-run resource names that are genuinely single-use. |
+| `forget` | `Future<void> forget(TomOneShotResource resource)` | *(override)* Deletes the resource's row. Destroys the fencing counter, which is why it takes the kernel's `TomOneShotResource` — a name declared single-use where it was built — rather than any `String`. |
 | `deleteAll` | `Future<void> deleteAll()` | Empties the lease table. Not part of `TomLeaseLock`, and destructive in the same way `forget` is: every fencing counter goes back to zero. For provisioning and tests only. |
 | `toString` | `String toString()` | *(override)* Renders `"TomSqlLeaseLock(<table>)"`. |
 

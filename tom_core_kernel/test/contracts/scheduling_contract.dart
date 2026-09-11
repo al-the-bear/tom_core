@@ -1014,6 +1014,45 @@ void runTomLeaseLockContract(String variant, TomLeaseLockFactory create) {
       },
     );
 
+    test('forget discards a one-shot resource, token chain and all', () async {
+      // The one operation that is not bookkeeping: it erases history. It is
+      // typed to take only a TomOneShotResource because of what the second
+      // acquisition shows — the chain restarts, and a token that repeats is
+      // not a fencing token. For a name that is never acquired again that
+      // costs nothing; for a recurring one it un-orders every holder.
+      final resource = TomOneShotResource.run('forgotten-run');
+      final first = await lock.acquire(
+        resource,
+        'node-a',
+        const Duration(minutes: 1),
+      );
+      await lock.release(first!);
+
+      await lock.forget(resource);
+
+      final info = await lock.inspect(resource);
+      expect(info.lease, isNull, reason: 'no record survives a forget');
+      expect(info.wasReleased, isFalse);
+      final again = await lock.acquire(
+        resource,
+        'node-b',
+        const Duration(minutes: 1),
+      );
+      expect(again!.token, first.token, reason: 'the chain restarted');
+    });
+
+    test('forget leaves every other resource alone', () async {
+      final kept = await lock.acquire(
+        'job:kept',
+        'node-a',
+        const Duration(minutes: 1),
+      );
+
+      await lock.forget(TomOneShotResource.run('other'));
+
+      expect((await lock.inspect('job:kept')).lease?.token, kept!.token);
+    });
+
     test('different resources do not contend', () async {
       expect(
         await lock.acquire('a', 'node-a', const Duration(minutes: 1)),

@@ -37,6 +37,7 @@ run, and a tick loop that plans, claims, dispatches and retries.
   - [TomLease](#tomlease)
   - [TomLeaseInfo](#tomleaseinfo)
   - [TomLeaseLock](#tomleaselock)
+  - [TomOneShotResource](#tomoneshotresource)
   - [TomMemoryLeaseLock](#tommemoryleaselock)
   - [TomFileLeaseLock](#tomfileleaselock)
 - [The scheduler](#the-scheduler)
@@ -101,6 +102,8 @@ TomJobStore  (abstract)
 TomLeaseLock  (abstract)
     ├── TomMemoryLeaseLock
     └── TomFileLeaseLock
+
+TomOneShotResource  (extension type on String — the only argument forget accepts)
 
 TomJobBase  (abstract, extends TomCommand)
 
@@ -892,8 +895,28 @@ const TomLeaseLock()
 | `renew` | `Future<TomLease?> renew(TomLease lease, Duration ttl)` | Extends a still-valid lease; `null` when the lease is no longer ours. |
 | `release` | `Future<void> release(TomLease lease)` | Gives the lease up early. |
 | `inspect` | `Future<TomLeaseInfo> inspect(String resource)` | Reports the resource's state without acquiring. |
-| `forget` | `Future<void> forget(String resource)` | Drops all record of the resource, fencing token included. |
+| `forget` | `Future<void> forget(TomOneShotResource resource)` | Drops all record of the resource, fencing token included. Takes a `TomOneShotResource`, not a `String`, because forgetting a name that recurs restarts its fencing chain at 1 — see below. |
 | `close` | `void close()` | Releases lock-owned resources; a no-op by default. |
+
+### TomOneShotResource
+
+A lease resource name that will never be acquired again once its work is done —
+the only kind `TomLeaseLock.forget` accepts.
+
+- **Kind:** extension type over `String`, implementing `String` — every other
+  lock method takes it unchanged, but a plain `String` does not convert to it.
+
+Forgetting erases a resource's fencing-token chain, so the next acquisition
+starts at token 1. For a name never taken again that costs nothing and saves a
+dead record; for a recurring one — a job's `job:<name>` — it restarts the chain,
+and a repeated token is not a fencing token. Both kinds of name are resource
+strings that differ by a prefix, so the distinction is carried by this type: a
+name reaches `forget` only after being declared one-shot where it was built.
+
+| Constructor | Description |
+| ----------- | ----------- |
+| `TomOneShotResource.run(String runId)` | `run:<runId>` — the per-run resource the scheduler leases for a job that allows overlap. Run ids are unique for the life of the queue. |
+| `TomOneShotResource.unique(String name)` | Any name the caller guarantees will never be acquired again after it is forgotten; the claim is made, visibly, at this one call. |
 
 ### TomMemoryLeaseLock
 

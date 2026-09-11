@@ -2,6 +2,11 @@
 
 ### Changed
 
+- **`TomSqlLeaseLock.forget` takes a `TomOneShotResource` (tcopen68)**, the
+  kernel's new type for a resource name that is never acquired again, rather
+  than any `String` — see the kernel's CHANGELOG. `forget` destroys the fencing
+  counter, so only a name declared single-use may reach it.
+
 - **The preference store enforces the contract's ceilings (tcopen54).** A
   write that would add a key beyond `tomUserPreferencesMaxPerPrincipal` (256)
   throws `TomUserPreferenceException('preferences.limit.exceeded')`; replacing a

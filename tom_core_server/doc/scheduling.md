@@ -536,7 +536,8 @@ node's work unattributable.
 - **`tom_lease` rows are not garbage.** A released row is retained on purpose
   (see [tom_lease](#tom_lease)); deleting rows to tidy up would reset fencing
   counters. `forget` exists for the per-run resource names that are genuinely
-  single-use.
+  single-use, and takes the kernel's `TomOneShotResource` rather than a
+  `String`, so a recurring name cannot reach it by accident.
 - **Both stores hold no connection state of their own.** They take a
   `TomDataSource` and issue statements; the connection lifecycle is the data
   source's.

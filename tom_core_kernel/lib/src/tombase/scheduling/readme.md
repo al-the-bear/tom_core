@@ -66,6 +66,7 @@ one node when several are running.
 | `TomFileLeaseLock` | Coordinates separate processes through a shared file. |
 | `TomLease` | A granted, time-bounded claim on a named resource. |
 | `TomLeaseInfo` | What a lock currently knows about a resource — who holds it, and until when. |
+| `TomOneShotResource` | A resource name that is never acquired again — the only kind `forget` accepts, so a recurring job name cannot have its fencing tokens reset by accident. |
 
 ### Observability
 

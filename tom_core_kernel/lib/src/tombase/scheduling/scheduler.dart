@@ -847,7 +847,7 @@ class TomScheduler implements TomClosable {
   /// leases the individual run, so concurrent windows are fine but no single
   /// window is executed twice.
   String _leaseResource(TomJobDefinition job, TomJobRun run) =>
-      job.allowOverlap ? 'run:${run.id}' : 'job:${job.name}';
+      job.allowOverlap ? TomOneShotResource.run(run.id) : 'job:${job.name}';
 
   /// Wins the coordination lease for [run], or reports why it could not.
   ///
@@ -1052,8 +1052,12 @@ class TomScheduler implements TomClosable {
     await coordinator.release(lease);
     // A run-scoped resource is named after an id that is never reused, so its
     // record is dead weight the moment the run ends. A job-scoped one must be
-    // kept: forgetting it would restart that job's fencing tokens at 1.
-    if (job.allowOverlap) await coordinator.forget(lease.resource);
+    // kept: forgetting it would restart that job's fencing tokens at 1 — which
+    // is why `forget` takes a TomOneShotResource, built here from the run id
+    // rather than recovered from the lease's plain resource string.
+    if (job.allowOverlap) {
+      await coordinator.forget(TomOneShotResource.run(run.id));
+    }
   }
 
   /// Fails one attempt, scheduling a retry when the policy allows one.

@@ -578,7 +578,7 @@ void main() async {
           'node-a',
           const Duration(minutes: 1),
         );
-        await lock.forget('r');
+        await lock.forget(TomOneShotResource.unique('r'));
 
         expect((await lock.inspect('r')).lease, isNull);
         final again = await lock.acquire(
