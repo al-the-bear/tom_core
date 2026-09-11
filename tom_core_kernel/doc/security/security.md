@@ -1273,8 +1273,14 @@ Handlers at Startup](#4-validate-custom-handlers-at-startup).
 ### Token Management
 
 ```dart
-// Set tokens after login
+// Set tokens after login — all or nothing: an unreadable pair throws here and
+// leaves the previous session (or none) untouched.
 TomBearerAuthentication.setTokens(authToken, authzToken);
+
+// Read the session: getPrincipal throws when there is none, tryGetPrincipal
+// answers null.
+final principal = TomBearerAuthentication.getPrincipal();
+final maybe = TomBearerAuthentication.tryGetPrincipal();
 
 // Get current tokens
 var token = TomBearerAuthentication.token;

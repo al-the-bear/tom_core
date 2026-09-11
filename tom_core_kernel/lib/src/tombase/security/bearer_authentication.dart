@@ -154,6 +154,15 @@ class TomBearerAuthentication {
   /// This should be called after successful authentication to store
   /// the tokens and make the principal available.
   ///
+  /// **All or nothing.** Both tokens are parsed and the principal derived
+  /// before anything is stored, so a pair that cannot be read — a token with
+  /// no payload, a claim Tom never writes — throws and leaves the session
+  /// exactly as it was: the previous session's tokens and principal, or none.
+  /// Storing the tokens first would pair the new tokens with the previous
+  /// principal, and [getPrincipal] would answer for the wrong user. It is also
+  /// what makes a stored token always readable, so [getPrincipal] has only one
+  /// way to fail.
+  ///
   /// - [authenticationToken]: JWT proving user identity
   /// - [authorizationToken]: JWT containing access rights
   /// - [decrypt]: Whether to decrypt the token's secret data (default: true)
@@ -162,14 +171,16 @@ class TomBearerAuthentication {
     String authorizationToken, [
     bool decrypt = true,
   ]) {
-    bearerAuthentication._token = authenticationToken;
-    bearerAuthentication._authorizationToken = authorizationToken;
-    var ct = TomClientJwtToken(authenticationToken, decrypt: decrypt);
-    bearerAuthentication._clientJwtToken = ct;
-    var cat = TomClientJwtToken(authorizationToken, decrypt: decrypt);
-    bearerAuthentication._clientAuthorizationJwtToken = cat;
-    var p = convertTokenPayloadToPrincipal(cat);
-    bearerAuthentication._principal = p;
+    final ct = TomClientJwtToken(authenticationToken, decrypt: decrypt);
+    final cat = TomClientJwtToken(authorizationToken, decrypt: decrypt);
+    final principal = convertTokenPayloadToPrincipal(cat);
+
+    final b = bearerAuthentication;
+    b._token = authenticationToken;
+    b._authorizationToken = authorizationToken;
+    b._clientJwtToken = ct;
+    b._clientAuthorizationJwtToken = cat;
+    b._principal = principal;
   }
 
   /// Discards the stored token pair and the cached principal.
@@ -387,13 +398,28 @@ class TomBearerAuthentication {
   // Principal access
   // -------------------------------------------------------------------------
 
+  /// The current session's principal, or `null` when there is no session.
+  ///
+  /// The non-throwing sibling of [getPrincipal], for a caller to whom "not
+  /// signed in" is an ordinary state — a widget build, a guard — rather than a
+  /// fault. It never throws: a stored token is always readable, because
+  /// [setTokens] refuses a pair it cannot derive a principal from and keeps
+  /// the previous session instead.
+  static TomPrincipal? tryGetPrincipal() => bearerAuthentication._principal;
+
   /// Gets the current authenticated principal.
   ///
-  /// Returns the [TomPrincipal] for the current session. The principal
-  /// is cached after first creation for performance.
+  /// Returns the [TomPrincipal] for the current session — the one live object
+  /// [setTokens] derived, which [replacePrincipalAci] and
+  /// [replaceClientLimits] update in place.
   ///
-  /// Throws [StateError] if no tokens have been set or if the tokens
-  /// cannot be parsed into a valid principal.
+  /// Throws [StateError] when there is no session: no tokens have been set, or
+  /// [clearTokens] discarded them. That is its only failure. A stored token is
+  /// always readable, because [setTokens] refuses a pair it cannot derive a
+  /// principal from — so a corrupt token surfaces there, loudly, when it
+  /// arrives, rather than here as a degraded guest identity that would make a
+  /// broken session look like a signed-out one. A caller for whom "not signed
+  /// in" is an ordinary state uses [tryGetPrincipal].
   ///
   /// ```dart
   /// var principal = TomBearerAuthentication.getPrincipal();
@@ -401,29 +427,14 @@ class TomBearerAuthentication {
   /// print('Roles: ${principal.aci.roles}');
   /// ```
   static TomPrincipal getPrincipal() {
-    if (bearerAuthentication._principal != null) {
-      return bearerAuthentication._principal!;
-    }
-    if (bearerAuthentication._clientJwtToken == null &&
-        bearerAuthentication._clientAuthorizationJwtToken == null) {
-      throw StateError("Can't get a principal without token");
-    }
-    var t =
-        bearerAuthentication._clientAuthorizationJwtToken ??
-        bearerAuthentication._clientJwtToken!;
-    // TODO: check if we can construct some fallback here.
-    if (t.payload == null || t.secretData == null) {
+    final principal = bearerAuthentication._principal;
+    if (principal == null) {
       throw StateError(
-        "Can't construct principal from a token without payload or secret data",
+        "There is no session: call setTokens after a login before reading the "
+        'principal, or use tryGetPrincipal when "not signed in" is expected.',
       );
     }
-    // Only one of the two tokens is guaranteed to be present (the guard above
-    // merely rules out *both* being absent), so derive from whichever we have.
-    bearerAuthentication._principal = convertTokenPayloadToPrincipal(
-      bearerAuthentication._clientJwtToken ?? t,
-      bearerAuthentication._clientAuthorizationJwtToken,
-    );
-    return bearerAuthentication._principal!;
+    return principal;
   }
 
   /// Replaces the current principal's access control information.

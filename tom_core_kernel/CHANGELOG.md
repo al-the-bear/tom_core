@@ -224,6 +224,17 @@ anyone who was writing them.
   settings key that binds no field of the configured driver.
 
 ### Fixed
+- **`setTokens` is all or nothing (tcopen77).** It stored the new tokens
+  before deriving the principal, so a pair it could not read — a token with no
+  payload, a claim Tom never writes — threw with the new tokens stored beside
+  the *previous* session's principal, and `getPrincipal()` then answered for
+  the wrong user. Both tokens are now parsed and the principal derived before
+  anything is stored; a refused pair leaves the previous session, or none,
+  untouched. A stored token is therefore always readable, so `getPrincipal()`
+  fails only for "no session" (its lazy re-derivation branch, and the marker
+  asking whether it should fall back to a guest, are gone), and the new
+  `tryGetPrincipal()` answers `null` for that case instead of throwing.
+
 - **A second `initScope` is refused in the module's own words (tcopen71).**
   It reached the `late final` fields and failed as `LateInitializationError:
   Field '_id@23310018' has already been initialized.` — a VM-mangled private

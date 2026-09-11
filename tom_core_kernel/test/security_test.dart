@@ -2989,6 +2989,73 @@ void main() {
       });
     });
 
+    group('tryGetPrincipal', () {
+      tearDown(TomBearerAuthentication.clearTokens);
+
+      test('is null when there is no session', () {
+        expect(TomBearerAuthentication.tryGetPrincipal(), isNull);
+      });
+
+      test('is the session principal once tokens are set', () {
+        final jwt = _makeJwt({'username': 'ivy'});
+        TomBearerAuthentication.setTokens(jwt, jwt, false);
+        final principal = TomBearerAuthentication.tryGetPrincipal();
+        expect(principal?.username, 'ivy');
+        expect(principal, same(TomBearerAuthentication.getPrincipal()));
+      });
+
+      test('is null again after clearTokens', () {
+        final jwt = _makeJwt({'username': 'ivy'});
+        TomBearerAuthentication.setTokens(jwt, jwt, false);
+        TomBearerAuthentication.clearTokens();
+        expect(TomBearerAuthentication.tryGetPrincipal(), isNull);
+      });
+    });
+
+    group('setTokens is all or nothing', () {
+      tearDown(TomBearerAuthentication.clearTokens);
+
+      // A pair that cannot be read into a principal: the requires2FA claim
+      // holds a value Tom never writes.
+      final unreadable = _makeJwt({
+        'username': 'mallory',
+        Tom2FAClaims.requires2FA: 'True',
+      });
+
+      test('a refused pair leaves the previous session intact', () {
+        // A stored token whose principal is some other session's would have
+        // getPrincipal answer for the wrong user.
+        final previous = _makeJwt({'username': 'judy'});
+        TomBearerAuthentication.setTokens(previous, previous, false);
+
+        expect(
+          () =>
+              TomBearerAuthentication.setTokens(unreadable, unreadable, false),
+          throwsA(isA<TomException>()),
+        );
+
+        expect(TomBearerAuthentication.token, previous);
+        expect(TomBearerAuthentication.authorizationToken, previous);
+        expect(
+          TomBearerAuthentication
+              .clientAuthorizationJwtToken
+              ?.payload?['username'],
+          'judy',
+        );
+        expect(TomBearerAuthentication.getPrincipal().username, 'judy');
+      });
+
+      test('a refused first pair leaves no session at all', () {
+        expect(
+          () =>
+              TomBearerAuthentication.setTokens(unreadable, unreadable, false),
+          throwsA(isA<TomException>()),
+        );
+        expect(TomBearerAuthentication.token, isNull);
+        expect(TomBearerAuthentication.tryGetPrincipal(), isNull);
+      });
+    });
+
     group('setTokens / replacePrincipalAci', () {
       test('setTokens parses the token and exposes a principal', () {
         final jwt = _makeJwt({

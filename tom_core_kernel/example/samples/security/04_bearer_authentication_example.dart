@@ -618,10 +618,19 @@ class BearerAuthenticationExample {
       '${TomBearerAuthentication.getPrincipal().username}',
     );
 
+    print(
+      '     tryGetPrincipal()    : '
+      '${TomBearerAuthentication.tryGetPrincipal()?.username}',
+    );
+
     final signedIn =
         TomBearerAuthentication.token != null &&
         TomBearerAuthentication.clientJwtToken != null &&
-        TomBearerAuthentication.getPrincipal().username == 'john.doe';
+        TomBearerAuthentication.getPrincipal().username == 'john.doe' &&
+        identical(
+          TomBearerAuthentication.tryGetPrincipal(),
+          TomBearerAuthentication.getPrincipal(),
+        );
 
     // The two tokens are distinct: only the authorization one carries the
     // encrypted ACI, which is why setTokens derives the principal from it.
@@ -643,11 +652,15 @@ class BearerAuthenticationExample {
     print('   After clearTokens():');
     print('     token          : ${TomBearerAuthentication.token}');
     print('     getPrincipal() : throws ${refusal.runtimeType}');
+    // The non-throwing read, for code to which "not signed in" is ordinary.
+    final afterClear = TomBearerAuthentication.tryGetPrincipal();
+    print('     tryGetPrincipal() : $afterClear');
 
     sessionLifecycleWorks =
         signedIn &&
         TomBearerAuthentication.token == null &&
-        refusal is StateError;
+        refusal is StateError &&
+        afterClear == null;
 
     // Assertions
     assert(signedIn, 'The accessors report the installed session');
