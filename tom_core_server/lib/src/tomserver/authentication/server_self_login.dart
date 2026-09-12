@@ -28,12 +28,49 @@
 /// than reimplement the flow.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../configuration/base_server_configuration.dart';
 import '../little_things/server_exception.dart';
+
+// =============================================================================
+// SESSION
+// =============================================================================
+
+/// What a self-login produced: the deployment's principal, and how long the
+/// tokens that carry it are good for.
+///
+/// The expiry is here rather than inferred by the caller because it is the one
+/// fact renewal is scheduled against, and a caller that had to dig it out of a
+/// token would be re-implementing the decode this class already did.
+class TomServerSession {
+  /// Creates a session.
+  const TomServerSession({required this.principal, required this.expiresAt});
+
+  /// The deployment, as a principal.
+  final TomPrincipal principal;
+
+  /// When the session stops being good, or `null` when no token carried an
+  /// `exp`.
+  ///
+  /// The **earlier** of the two tokens' expiries, because the session is only
+  /// as good as its shorter half — a still-valid authentication token beside an
+  /// expired authorization token is a principal whose grants have lapsed, which
+  /// is the half that does the capping.
+  ///
+  /// `null` is a real answer, not a missing one: an auth server is free to
+  /// issue tokens with no expiry, and a deployment on one has nothing to
+  /// schedule a renewal against. See [TomServerSelfLogin.loginAndInstall].
+  final DateTime? expiresAt;
+
+  @override
+  String toString() =>
+      'TomServerSession(${principal.user.username}, until '
+      '${expiresAt?.toIso8601String() ?? 'no expiry'})';
+}
 
 // =============================================================================
 // CREDENTIAL
@@ -265,7 +302,7 @@ class TomServerSelfLogin {
   /// Throws [TomServerSelfLoginException] when the auth server refuses, when the
   /// response is not the expected shape, or when a token it carried cannot be
   /// decoded into a principal.
-  static Future<TomPrincipal> logIn(
+  static Future<TomServerSession> logIn(
     TomServiceCredential credential, {
     TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(),
     bool decryptTokens = true,
@@ -305,9 +342,20 @@ class TomServerSelfLogin {
     // returning an error page in the token field gets "Bad state" from a frame
     // in the kernel and no key to branch on.
     try {
-      return TomBearerAuthentication.convertTokenPayloadToPrincipal(
-        TomClientJwtToken(tokens.$1, decrypt: decryptTokens),
-        TomClientJwtToken(tokens.$2, decrypt: decryptTokens),
+      final authentication = TomClientJwtToken(
+        tokens.$1,
+        decrypt: decryptTokens,
+      );
+      final authorization = TomClientJwtToken(
+        tokens.$2,
+        decrypt: decryptTokens,
+      );
+      return TomServerSession(
+        principal: TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          authentication,
+          authorization,
+        ),
+        expiresAt: _earlierExpiry(authentication, authorization),
       );
     } catch (e) {
       throw TomServerSelfLoginException(
@@ -338,6 +386,7 @@ class TomServerSelfLogin {
     TomBaseServerConfiguration config, {
     TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(),
     bool decryptTokens = true,
+    bool renew = true,
   }) async {
     final credential = TomServiceCredential.fromConfiguration(config);
     if (credential == null) {
@@ -347,17 +396,203 @@ class TomServerSelfLogin {
       );
       return false;
     }
-    final principal = await logIn(
+    final session = await logIn(
       credential,
       transport: transport,
       decryptTokens: decryptTokens,
     );
-    TomServerPrincipal.install(principal);
+    _install(session);
     tomLog.info(
       'Server self-login succeeded for ${credential.username}; deployment '
-      'grants now cap user grants.',
+      'grants now cap user grants'
+      '${session.expiresAt == null ? '' : ' until ${session.expiresAt!.toIso8601String()}'}.',
     );
+
+    stopRenewal();
+    if (!renew) return true;
+    _credential = credential;
+    _transport = transport;
+    _decryptTokens = decryptTokens;
+    _scheduleRenewal(session.expiresAt);
     return true;
+  }
+
+  // ---------------------------------------------------------------------------
+  // RENEWAL
+  // ---------------------------------------------------------------------------
+
+  /// How long before a session expires the next login is attempted.
+  ///
+  /// Long enough that a slow auth server does not leave the deployment briefly
+  /// capping at an expired principal, short enough that the extra logins are
+  /// noise rather than load.
+  static Duration globalSettingRenewalLead = const Duration(minutes: 2);
+
+  /// How soon a *failed* renewal is tried again.
+  ///
+  /// Sooner than the lead, because the session is now closer to expiry than it
+  /// was when the attempt was scheduled, and the reason a renewal fails is
+  /// usually a brief one.
+  static Duration globalSettingRenewalRetry = const Duration(seconds: 30);
+
+  /// The shortest delay the loop will schedule.
+  ///
+  /// Reached when a session's whole life is shorter than the lead — legitimate
+  /// for a deployment issuing very short service tokens, and a busy-wait
+  /// without the clamp.
+  static const Duration minimumRenewalDelay = Duration(seconds: 1);
+
+  static Timer? _timer;
+  static TomServiceCredential? _credential;
+  static TomServiceLoginTransport _transport =
+      const TomHttpServiceLoginTransport();
+  static bool _decryptTokens = true;
+  static DateTime? _installedUntil;
+
+  /// When the installed session expires, or `null` when nothing is installed or
+  /// no token carried an `exp`.
+  ///
+  /// The fact a deployment needs to build its own renewal, exposed whether or
+  /// not it uses the one here.
+  static DateTime? get installedUntil => _installedUntil;
+
+  /// Whether a renewal is currently scheduled.
+  static bool get isRenewing => _timer != null;
+
+  /// Cancels any scheduled renewal, leaving the installed principal in place.
+  ///
+  /// **Not** a way to drop the principal, and there is deliberately no such
+  /// call here: clearing it *widens* access, since an uncapped deployment caps
+  /// nobody. A shutdown stops the loop; it does not un-cap the server on its
+  /// way out.
+  static void stopRenewal() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  /// Logs in again with the credential [loginAndInstall] used, and installs the
+  /// result; returns whether it succeeded.
+  ///
+  /// The renewal the timer performs, callable directly — a deployment that
+  /// knows its entitlements have changed need not wait for the lead time.
+  ///
+  /// **A failure keeps the principal it has.** The old cap may be stale, and a
+  /// stale cap is still a cap; dropping it would widen every user's access at
+  /// the moment the auth server became unreachable, which is exactly when
+  /// widening is least defensible. So a failure is logged, the principal
+  /// stands, and another attempt is scheduled.
+  static Future<bool> renewNow() async {
+    final credential = _credential;
+    if (credential == null) return false;
+    try {
+      final session = await logIn(
+        credential,
+        transport: _transport,
+        decryptTokens: _decryptTokens,
+      );
+      _install(session);
+      tomLog.info(
+        'Server principal renewed for ${credential.username}'
+        '${session.expiresAt == null ? '' : ', now good until ${session.expiresAt!.toIso8601String()}'}.',
+      );
+      _scheduleRenewal(session.expiresAt);
+      return true;
+    } catch (e) {
+      tomLog.error(
+        'Server principal renewal failed for ${credential.username}: $e. The '
+        'principal installed at '
+        '${_installedUntil?.toIso8601String() ?? 'start-up'} still stands, so '
+        'the cap is unchanged and possibly stale; retrying in '
+        '${globalSettingRenewalRetry.inSeconds}s.',
+      );
+      _arm(globalSettingRenewalRetry);
+      return false;
+    }
+  }
+
+  /// How long to wait before renewing a session that expires at [expiresAt].
+  ///
+  /// One [lead] before expiry, clamped to [minimumRenewalDelay] so a session
+  /// shorter than the lead — or one already past — schedules a prompt attempt
+  /// rather than a negative delay. `null` when there is no expiry to aim at,
+  /// which is the caller's signal not to schedule anything.
+  ///
+  /// Public and pure because it is the part worth checking: the arithmetic has
+  /// three edges (comfortable, too short, already past) and a timer is a poor
+  /// place to discover which one was taken.
+  static Duration? renewalDelayFor(
+    DateTime? expiresAt, {
+    DateTime? now,
+    Duration? lead,
+  }) {
+    if (expiresAt == null) return null;
+    final delay =
+        expiresAt.difference(now ?? DateTime.now().toUtc()) -
+        (lead ?? globalSettingRenewalLead);
+    return delay < minimumRenewalDelay ? minimumRenewalDelay : delay;
+  }
+
+  static void _install(TomServerSession session) {
+    TomServerPrincipal.install(session.principal);
+    _installedUntil = session.expiresAt;
+  }
+
+  static void _scheduleRenewal(DateTime? expiresAt) {
+    final delay = renewalDelayFor(expiresAt);
+    if (delay == null) {
+      tomLog.warn(
+        'The service token carries no expiry, so the server principal cannot '
+        'be renewed on a schedule. It will cap user grants at whatever it '
+        'holds until the process restarts or TomServerSelfLogin.renewNow() is '
+        'called.',
+      );
+      return;
+    }
+    if (delay == minimumRenewalDelay) {
+      tomLog.warn(
+        'The service token expires sooner than the renewal lead of '
+        '${globalSettingRenewalLead.inSeconds}s, so the principal is being '
+        'renewed every ${delay.inSeconds}s. Lengthen the token or shorten '
+        'TomServerSelfLogin.globalSettingRenewalLead.',
+      );
+    }
+    _arm(delay);
+  }
+
+  static void _arm(Duration delay) {
+    stopRenewal();
+    _timer = Timer(delay, () {
+      // The timer has fired, so nothing is scheduled until `renewNow` either
+      // schedules the next one or arms a retry. Clearing it here keeps
+      // `isRenewing` honest during the attempt itself.
+      _timer = null;
+      unawaited(renewNow());
+    });
+  }
+
+  /// The sooner of the two tokens' `exp` claims, or `null` when neither has one.
+  static DateTime? _earlierExpiry(
+    TomClientJwtToken authentication,
+    TomClientJwtToken authorization,
+  ) {
+    final expiries = [
+      for (final token in [authentication, authorization])
+        if (_expiryOf(token) case final DateTime expiry) expiry,
+    ];
+    if (expiries.isEmpty) return null;
+    return expiries.reduce((a, b) => a.isBefore(b) ? a : b);
+  }
+
+  /// A token's `exp` as an instant, or `null` when it carries none.
+  ///
+  /// `exp` is seconds since the epoch by the JWT specification, and this token
+  /// came off the wire, so a value of another shape is read as *absent* rather
+  /// than coerced: a renewal scheduled against a number that was never a
+  /// timestamp is worse than one that never runs.
+  static DateTime? _expiryOf(TomClientJwtToken token) {
+    final exp = token.payload?['exp'];
+    if (exp is! int) return null;
+    return DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true);
   }
 
   /// Extracts the `(authentication, authorization)` token pair from a login

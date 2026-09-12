@@ -125,7 +125,8 @@ surface documented here.
 | `TomAuthenticationData` | class | Reflected authentication payload. |
 | `TomAuthenticationInfo` | class | Resolved authentication result. |
 | `TomLoginException` | class | Login failure (extends `TomServerException`). |
-| `TomServerSelfLogin` | class | Logs the deployment in as itself and installs the server principal. |
+| `TomServerSelfLogin` | class | Logs the deployment in as itself, installs the server principal, and renews it before its token expires. |
+| `TomServerSession` | class | What a self-login produced: the principal, and when its tokens expire. |
 | `TomServiceCredential` | class | The deployment's own login credential and where to present it. |
 | `TomServiceLoginTransport` | abstract class | The one-JSON-POST seam the self-login runs over. |
 | `TomHttpServiceLoginTransport` | class | The live transport, over `TomServerChannel`. |
@@ -981,6 +982,7 @@ surface documented here.
 | `TomServerException` | Little Things |
 | `TomServerSelfLogin` | Authentication |
 | `TomServerSelfLoginException` | Authentication |
+| `TomServerSession` | Authentication |
 | `TomService` | Endpoints |
 | `tomService` | Endpoints |
 | `TomServiceCredential` | Authentication |

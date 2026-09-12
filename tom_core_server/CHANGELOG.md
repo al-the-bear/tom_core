@@ -2,6 +2,28 @@
 
 ### Added
 
+- **The server principal renews itself before its token expires (tcopen103).**
+  `loginAndInstall` installed the deployment's principal once, at start-up, and
+  nothing re-logged in. That principal caps every user's grants, so a change
+  made in the auth server reached the deployment at its next restart and not
+  before — and because expiry was never checked, nothing said so. It now
+  schedules its own renewal off the token's `exp`, one
+  `globalSettingRenewalLead` (two minutes) ahead, clamped to
+  `minimumRenewalDelay` for sessions shorter than the lead and skipped with a
+  warning for tokens carrying no `exp`. `renewNow()` renews on demand,
+  `stopRenewal()` disarms, `installedUntil` and `isRenewing` report the state,
+  and `renew: false` declines the loop.
+
+  **A failed renewal keeps the principal it has.** A stale cap is still a cap,
+  and dropping it would widen every user's access at the moment the auth server
+  became unreachable; the failure is logged, the principal stands, and another
+  attempt is scheduled. Nothing in the path calls `TomServerPrincipal.clear()`.
+
+  `TomServerSelfLogin.logIn` now answers with a `TomServerSession` — the
+  principal plus the earlier of the two tokens' expiries — because that expiry
+  is the fact renewal is scheduled against, and a deployment building its own
+  loop needs it too.
+
 - **Two-factor verification now bounds an uncooperative client (tcopen102).**
   The attempt count travels inside the interim token and advances only along
   the chain of tokens the server hands back, which bounded a cooperative client

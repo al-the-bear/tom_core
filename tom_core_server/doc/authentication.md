@@ -30,6 +30,7 @@ principal into an authentication token and an authorization token.
   - [Why a server logs in](#why-a-server-logs-in)
   - [The credential](#the-credential)
   - [Lifecycle](#lifecycle)
+  - [The principal is renewed, not installed once](#the-principal-is-renewed-not-installed-once)
   - [Failure keys](#failure-keys)
   - [Swapping the transport](#swapping-the-transport)
 - [External Identity (OAuth 2.0 / OIDC)](#external-identity-oauth-20--oidc)
@@ -101,6 +102,7 @@ principal into an authentication token and an authorization token.
 | `TomRole2FAPolicy` | class | A requirement per role; the strictest matched role wins |
 | `Tom2FAGraceAccounting` | abstract class | Implemented *by a policy* that wants to be told when a grace login is spent |
 | `Tom2FAEnrolmentStore` | abstract class | Where a principal's set-up factors live. **No default** — see [Enrolment](#enrolment) |
+| `TomServerSession` | class | What a self-login produced: the deployment's principal and when its tokens expire |
 | `Tom2FAAttemptStore` | abstract class | Records that an interim token has been answered, so a replay cannot mint a fresh allowance. `Tom2FAMemoryAttemptStore` is the per-process default |
 | `Tom2FAAttempt` | class | One presentation of an interim token: its fingerprint, whose it is, the mechanism, and when the challenge lapses |
 | `Tom2FAMemoryAttemptStore` | class | The default attempt store — a map in this process, pruned as it is written |
@@ -1445,10 +1447,40 @@ undiagnosable rejected login — the identical fault, inverted.
 `TomSmtpSettings.fromConfiguration` splits the analogous `smtpPassword` the same
 way.
 
-A long-running deployment re-authenticates before its service token expires and
-calls `TomServerPrincipal.install` again — that is intended. Note the direction
-of `TomServerPrincipal.clear()`: it *widens* access, so it is never the right
-response to an expired token.
+### The principal is renewed, not installed once
+
+The server principal caps every user's grants, so a stale one keeps capping at
+yesterday's entitlements: a change made in the auth server would otherwise reach
+this deployment at its next restart and not before. `loginAndInstall` therefore
+schedules its own renewal, driven off the token's own `exp`:
+
+```dart
+// What TomServer.start() does for you.
+await TomServerSelfLogin.loginAndInstall(configuration);
+
+TomServerSelfLogin.installedUntil;   // when the installed session expires
+TomServerSelfLogin.isRenewing;       // whether a renewal is scheduled
+await TomServerSelfLogin.renewNow(); // renew now, without waiting for the lead
+TomServerSelfLogin.stopRenewal();    // disarm; the principal stays installed
+```
+
+The next attempt lands one `globalSettingRenewalLead` (two minutes) before
+expiry, clamped to `minimumRenewalDelay` so a session shorter than the lead —
+legitimate, if the auth server issues short service tokens — schedules a prompt
+attempt rather than a negative delay, and logs that it is doing so. A token
+carrying no `exp` is installed and *not* renewed, with a warning: there is
+nothing to schedule against, and a timer with no deadline would be pretending.
+Pass `renew: false` to decline the loop, and read `installedUntil` to build your
+own.
+
+**A failed renewal keeps the principal it has.** The old cap may be stale, and a
+stale cap is still a cap; dropping it would widen every user's access at the
+moment the auth server became unreachable, which is exactly when widening is
+least defensible. So the failure is logged — naming the staleness — the
+principal stands, and another attempt is scheduled `globalSettingRenewalRetry`
+later. Note the same direction in `TomServerPrincipal.clear()`: it *widens*
+access, so it is never the right response to an expired token, and nothing in
+the renewal path calls it.
 
 ### Failure keys
 
@@ -2357,7 +2389,7 @@ resolves the pending record for its context and calls
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `two_factor.dart` | `Future`, `FutureOr` |
+| `dart:async` | dart | `server_self_login.dart`, `two_factor.dart` | `Future`, `FutureOr`, and the `Timer` the server principal's renewal is scheduled on |
 | `dart:convert` | dart | 7 of 16 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
 | `dart:math` | dart | `oauth_flow.dart` | `Random`, `exp` |
 | `dart:typed_data` | dart | `two_factor_delivered_code.dart` | `Uint8List` |

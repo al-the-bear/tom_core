@@ -52,14 +52,49 @@ class _FakeTransport extends TomServiceLoginTransport {
   }
 }
 
+/// A transport that answers a different body on each call, so a renewal can be
+/// told apart from the login it replaces.
+class _SequenceTransport extends TomServiceLoginTransport {
+  final List<String> bodies;
+  final Object? throwsFrom;
+
+  int callCount = 0;
+
+  _SequenceTransport(this.bodies, {this.throwsFrom});
+
+  @override
+  Future<TomServiceLoginResponse> postJson(Uri uri, String requestBody) async {
+    callCount++;
+    if (throwsFrom != null && callCount >= 2) throw throwsFrom!;
+    final body =
+        bodies[callCount <= bodies.length ? callCount - 1 : bodies.length - 1];
+    return TomServiceLoginResponse(200, body);
+  }
+}
+
 /// Builds a signed token whose encrypted section carries [entitlements].
 String _serviceToken({
   String username = 'svc-app',
   List<String> entitlements = const [],
+  Duration expiresIn = const Duration(hours: 2),
 }) => TomServerJwtToken(
   {'username': username, 'userId': 42},
   encryptedData: {'entitlements': entitlements},
+  expiresIn: expiresIn,
 ).getJWT('tom');
+
+/// A token whose payload carries no `exp`, as a foreign auth server may issue.
+///
+/// Hand-built: `TomServerJwtToken` always stamps an expiry, and the reader
+/// decodes rather than verifies, so the unsigned shape is enough to carry the
+/// claims this case is about.
+String _tokenWithoutExpiry() {
+  String segment(Map<String, Object?> part) =>
+      base64Url.encode(utf8.encode(jsonEncode(part))).replaceAll('=', '');
+  return '${segment(const {'alg': 'HS256', 'typ': 'JWT'})}.'
+      '${segment(const {'username': 'svc-app', 'userId': 42, 'iss': 'tom'})}.'
+      'not-a-signature';
+}
 
 /// A login response body in the kernel's [TomAuthenticationResult] spelling.
 String _kernelSpelling(String token) => jsonEncode({
@@ -220,14 +255,14 @@ void main() {
             _serviceToken(entitlements: ['feature.tasks', 'feature.reports']),
           ),
         );
-        final principal = await TomServerSelfLogin.logIn(
+        final session = await TomServerSelfLogin.logIn(
           TomServiceCredential.fromConfiguration(_configured())!,
           transport: transport,
         );
 
-        expect(principal.user.username, 'svc-app');
+        expect(session.principal.user.username, 'svc-app');
         expect(
-          principal.aci.entitlements,
+          session.principal.aci.entitlements,
           containsAll(['feature.tasks', 'feature.reports']),
         );
       },
@@ -237,11 +272,11 @@ void main() {
       final transport = _FakeTransport(
         _shortSpelling(_serviceToken(entitlements: ['feature.tasks'])),
       );
-      final principal = await TomServerSelfLogin.logIn(
+      final session = await TomServerSelfLogin.logIn(
         TomServiceCredential.fromConfiguration(_configured())!,
         transport: transport,
       );
-      expect(principal.aci.entitlements, contains('feature.tasks'));
+      expect(session.principal.aci.entitlements, contains('feature.tasks'));
     });
 
     test('a rejected credential throws', () async {
@@ -412,6 +447,241 @@ void main() {
         TomServerPrincipal.isConfigured,
         isFalse,
         reason: 'a failed login must leave no principal behind',
+      );
+    });
+  });
+
+  group('the server principal is renewed before its token expires', () {
+    // The cap is only as current as the principal behind it: a server
+    // principal installed once at start-up keeps capping every user at the
+    // entitlements it held then, so an authorization change made in the auth
+    // server reaches this deployment at its next restart and not before. And
+    // because nothing checked expiry, nothing said so — the boot log announced
+    // the login and then went quiet.
+    setUp(TomServerSelfLogin.stopRenewal);
+    tearDown(TomServerSelfLogin.stopRenewal);
+
+    group('the delay arithmetic', () {
+      final now = DateTime.utc(2026, 3, 4, 12);
+
+      test('renews one lead time before expiry', () {
+        expect(
+          TomServerSelfLogin.renewalDelayFor(
+            now.add(const Duration(minutes: 30)),
+            now: now,
+            lead: const Duration(minutes: 2),
+          ),
+          const Duration(minutes: 28),
+        );
+      });
+
+      test(
+        'a token whose life is shorter than the lead renews at the floor',
+        () {
+          // Not an error — a deployment may issue very short service tokens —
+          // but the loop must not busy-wait, and the clamp is what stops it.
+          expect(
+            TomServerSelfLogin.renewalDelayFor(
+              now.add(const Duration(seconds: 10)),
+              now: now,
+              lead: const Duration(minutes: 2),
+            ),
+            TomServerSelfLogin.minimumRenewalDelay,
+          );
+        },
+      );
+
+      test('an expiry already past renews at the floor, not in the past', () {
+        expect(
+          TomServerSelfLogin.renewalDelayFor(
+            now.subtract(const Duration(minutes: 5)),
+            now: now,
+            lead: const Duration(minutes: 2),
+          ),
+          TomServerSelfLogin.minimumRenewalDelay,
+        );
+      });
+
+      test('a token with no expiry cannot be scheduled against', () {
+        expect(
+          TomServerSelfLogin.renewalDelayFor(
+            null,
+            now: now,
+            lead: Duration.zero,
+          ),
+          isNull,
+        );
+      });
+    });
+
+    test('the login reports when the session expires', () async {
+      final transport = _FakeTransport(
+        _kernelSpelling(_serviceToken(expiresIn: const Duration(minutes: 30))),
+      );
+
+      final session = await TomServerSelfLogin.logIn(
+        TomServiceCredential.fromConfiguration(_configured())!,
+        transport: transport,
+      );
+
+      expect(session.principal.user.username, 'svc-app');
+      expect(session.expiresAt, isNotNull);
+      expect(
+        session.expiresAt!.difference(DateTime.now().toUtc()).inMinutes,
+        closeTo(30, 1),
+      );
+    });
+
+    test('installing arms the renewal and says until when', () async {
+      final transport = _FakeTransport(
+        _kernelSpelling(_serviceToken(expiresIn: const Duration(hours: 2))),
+      );
+
+      await TomServerSelfLogin.loginAndInstall(
+        _configured(),
+        transport: transport,
+      );
+
+      expect(TomServerSelfLogin.isRenewing, isTrue);
+      expect(TomServerSelfLogin.installedUntil, isNotNull);
+    });
+
+    test('renewal installs the entitlements the auth server holds now', () async {
+      // The whole point: an entitlement removed upstream stops capping at the
+      // old value without anyone restarting the deployment.
+      final transport = _SequenceTransport([
+        _kernelSpelling(
+          _serviceToken(entitlements: ['feature.tasks', 'feature.reports']),
+        ),
+        _kernelSpelling(_serviceToken(entitlements: ['feature.tasks'])),
+      ]);
+
+      await TomServerSelfLogin.loginAndInstall(
+        _configured(),
+        transport: transport,
+      );
+      expect(
+        TomServerPrincipal.current!.aci.entitlements,
+        containsAll(['feature.tasks', 'feature.reports']),
+      );
+
+      final renewed = await TomServerSelfLogin.renewNow();
+
+      expect(renewed, isTrue);
+      expect(transport.callCount, 2);
+      expect(
+        TomServerPrincipal.current!.aci.entitlements,
+        isNot(contains('feature.reports')),
+        reason:
+            'the second install is what makes the cap current — a renewal that '
+            'left the old principal in place would be a timer that changes '
+            'nothing',
+      );
+    });
+
+    test('a failed renewal keeps the principal it has', () async {
+      // The direction of the failure is the whole safety argument. Clearing
+      // the principal *widens* access — every user's grant stops being capped
+      // — so a renewal that cannot reach the auth server must leave the last
+      // good cap standing and say so.
+      final transport = _SequenceTransport([
+        _kernelSpelling(_serviceToken(entitlements: ['feature.tasks'])),
+      ], throwsFrom: StateError('auth server down'));
+
+      await TomServerSelfLogin.loginAndInstall(
+        _configured(),
+        transport: transport,
+      );
+
+      final renewed = await TomServerSelfLogin.renewNow();
+
+      expect(renewed, isFalse);
+      expect(TomServerPrincipal.isConfigured, isTrue);
+      expect(
+        TomServerPrincipal.current!.aci.entitlements,
+        contains('feature.tasks'),
+      );
+      expect(
+        TomServerSelfLogin.isRenewing,
+        isTrue,
+        reason: 'a failed renewal schedules another try rather than giving up',
+      );
+    });
+
+    test('renewal can be declined at the call', () async {
+      final transport = _FakeTransport(_kernelSpelling(_serviceToken()));
+
+      await TomServerSelfLogin.loginAndInstall(
+        _configured(),
+        transport: transport,
+        renew: false,
+      );
+
+      expect(TomServerSelfLogin.isRenewing, isFalse);
+      expect(TomServerPrincipal.isConfigured, isTrue);
+    });
+
+    test('a token with no expiry is installed but not renewed', () async {
+      // Nothing to schedule against. Installing anyway is right — the cap is
+      // real — but pretending to renew it would be a timer with no deadline.
+      final transport = _FakeTransport(_kernelSpelling(_tokenWithoutExpiry()));
+
+      await TomServerSelfLogin.loginAndInstall(
+        _configured(),
+        transport: transport,
+      );
+
+      expect(TomServerPrincipal.isConfigured, isTrue);
+      expect(TomServerSelfLogin.isRenewing, isFalse);
+      expect(TomServerSelfLogin.installedUntil, isNull);
+    });
+
+    test('stopping disarms the loop', () async {
+      final transport = _FakeTransport(_kernelSpelling(_serviceToken()));
+      await TomServerSelfLogin.loginAndInstall(
+        _configured(),
+        transport: transport,
+      );
+      expect(TomServerSelfLogin.isRenewing, isTrue);
+
+      TomServerSelfLogin.stopRenewal();
+
+      expect(TomServerSelfLogin.isRenewing, isFalse);
+      expect(
+        TomServerPrincipal.isConfigured,
+        isTrue,
+        reason:
+            'stopping the renewal is not clearing the principal — clearing '
+            'widens access, which is never the answer to a timer',
+      );
+    });
+
+    test('the loop fires on its own', () async {
+      // The one test that lets a real timer run: everything above proves the
+      // pieces, and this proves they are wired to each other.
+      final transport = _SequenceTransport([
+        _kernelSpelling(
+          _serviceToken(
+            entitlements: ['feature.tasks'],
+            expiresIn: const Duration(seconds: 1),
+          ),
+        ),
+        _kernelSpelling(_serviceToken(entitlements: ['feature.renewed'])),
+      ]);
+
+      await TomServerSelfLogin.loginAndInstall(
+        _configured(),
+        transport: transport,
+      );
+
+      await Future<void>.delayed(
+        TomServerSelfLogin.minimumRenewalDelay + const Duration(seconds: 1),
+      );
+
+      expect(transport.callCount, greaterThanOrEqualTo(2));
+      expect(
+        TomServerPrincipal.current!.aci.entitlements,
+        contains('feature.renewed'),
       );
     });
   });

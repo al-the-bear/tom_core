@@ -53,6 +53,7 @@ server's own self-login against an auth server.
   - [TomServiceLoginResponse](#tomserviceloginresponse)
   - [TomHttpServiceLoginTransport](#tomhttpservicelogintransport)
   - [TomServerSelfLoginException](#tomserverselfloginexception)
+  - [TomServerSession](#tomserversession)
   - [TomServerSelfLogin](#tomserverselflogin)
   - [TomOAuthException](#tomoauthexception)
   - [TomOAuthProvisioning](#tomoauthprovisioning)
@@ -1560,6 +1561,28 @@ Keys raised: `server.selflogin.unreachable`, `server.selflogin.rejected`,
 `server.selflogin.bad_response`, `server.selflogin.no_token`,
 `server.selflogin.bad_token`.
 
+### TomServerSession
+
+What a self-login produced: the deployment's principal, and how long the tokens
+that carry it are good for. The expiry is here rather than inferred by the
+caller because it is the one fact renewal is scheduled against.
+
+#### Constructors
+
+```dart
+const TomServerSession({
+  required TomPrincipal principal,
+  required DateTime? expiresAt,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `principal` | `TomPrincipal` | The deployment, as a principal (final). |
+| `expiresAt` | `DateTime?` | The **earlier** of the two tokens' expiries — the session is only as good as its shorter half, and a still-valid authentication token beside an expired authorization token is a principal whose grants have lapsed. `null` is a real answer rather than a missing one: an auth server may issue tokens with no `exp`, and a deployment on one has nothing to schedule a renewal against (final). |
+
 ### TomServerSelfLogin
 
 Logs the deployment in as itself and installs the resulting principal, whose
@@ -1571,8 +1594,21 @@ Statics only — the constructor is private.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `logIn` | `static Future<TomPrincipal> logIn(TomServiceCredential credential, {TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(), bool decryptTokens = true})` | Logs in with `credential` and returns the deployment's principal. Throws `TomServerSelfLoginException` when the auth server is unreachable, refuses, answers in an unexpected shape, or returns a token that carries no payload. |
-| `loginAndInstall` | `static Future<bool> loginAndInstall(TomBaseServerConfiguration config, {TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(), bool decryptTokens = true})` | Logs in from `config` and installs the principal into `TomServerPrincipal`; returns whether one was installed. Returns `false` silently when self-login is not configured, so a deployment that configures none is unaffected. `TomServer.start()` calls this itself before binding the socket; call it directly only from a process that has no `TomServer`. |
+| `logIn` | `static Future<TomServerSession> logIn(TomServiceCredential credential, {TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(), bool decryptTokens = true})` | Logs in with `credential` and returns the deployment's session — the principal, and when its tokens expire. Throws `TomServerSelfLoginException` when the auth server is unreachable, refuses, answers in an unexpected shape, or returns a token that carries no payload. |
+| `loginAndInstall` | `static Future<bool> loginAndInstall(TomBaseServerConfiguration config, {TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(), bool decryptTokens = true, bool renew = true})` | Logs in from `config` and installs the principal into `TomServerPrincipal`; returns whether one was installed. Returns `false` silently when self-login is not configured, so a deployment that configures none is unaffected. `TomServer.start()` calls this itself before binding the socket; call it directly only from a process that has no `TomServer`. Schedules the renewal below unless `renew: false`. |
+| `renewNow` | `static Future<bool> renewNow()` | Logs in again with the credential `loginAndInstall` used and installs the result; returns whether it succeeded. **A failure keeps the principal it has** — the old cap may be stale, and a stale cap is still a cap, where dropping it would widen every user's access at the moment the auth server became unreachable. The failure is logged and another attempt is scheduled. |
+| `stopRenewal` | `static void stopRenewal()` | Cancels any scheduled renewal, leaving the installed principal in place. Not a way to drop the principal, and there is deliberately no such call: clearing it widens access. |
+| `renewalDelayFor` | `static Duration? renewalDelayFor(DateTime? expiresAt, {DateTime? now, Duration? lead})` | How long to wait before renewing a session expiring at `expiresAt` — one lead before it, clamped to `minimumRenewalDelay` so a session shorter than the lead, or one already past, schedules a prompt attempt rather than a negative delay. `null` when there is no expiry to aim at. Public and pure because the arithmetic has three edges and a timer is a poor place to discover which was taken. |
+
+#### Static Members
+
+| Member | Type | Description |
+| ------ | ---- | ----------- |
+| `globalSettingRenewalLead` | `Duration` | How long before expiry the next login is attempted (2 minutes). Long enough that a slow auth server does not leave the deployment capping at an expired principal, short enough that the extra logins are noise rather than load. |
+| `globalSettingRenewalRetry` | `Duration` | How soon a *failed* renewal is tried again (30 seconds) — sooner than the lead, because the session is now closer to expiry than when the attempt was scheduled. |
+| `minimumRenewalDelay` | `Duration` | The shortest delay the loop will schedule (1 second), reached when a session's whole life is shorter than the lead. Legitimate for very short service tokens, and a busy-wait without the clamp. |
+| `installedUntil` | `DateTime?` | *(getter)* When the installed session expires, or `null` when nothing is installed or no token carried an `exp`. The fact a deployment needs to build its own renewal, exposed whether or not it uses the one here. |
+| `isRenewing` | `bool` | *(getter)* Whether a renewal is currently scheduled. |
 
 ### TomOAuthException
 
