@@ -23,20 +23,36 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// `key=true` is converted (see [convertToObjectMap]) — so a bare flag can fill
 /// a reflected `bool` field directly.
 ///
-/// An argument whose key is empty is **skipped**: an empty argument, and one
-/// that starts with `=` so that nothing precedes the separator, both name no
-/// field and are dropped rather than recorded under an empty key. This too is
-/// the rule `TomEnvFile.parse` applies. Skipping is per argument — the
-/// arguments around a malformed one are still parsed.
+/// A key is stripped of its **leading `-` characters**, so `--port=8080`,
+/// `-port=8080` and `port=8080` are one argument under the name `port`, and
+/// `--verbose` is the flag `verbose`. The conventional command-line spelling
+/// therefore reaches a reflected field, which a key carrying its dashes cannot:
+/// no Dart class declares a field named `--port`. Two consequences follow. A
+/// key cannot begin with `-`, and the dashed and bare spellings of one option
+/// are the same entry, so the later of the two wins rather than both being
+/// recorded. Only the *leading* run is a prefix: a dash inside or at the end of
+/// a name is part of it (`--dry-run=1` is the key `dry-run`), and a dash in the
+/// value is data. Stripping is a command-line convention and is not applied by
+/// `TomEnvFile.parse`, which takes a variable name as it is written — the one
+/// place the two sources part company by design.
+///
+/// An argument whose key is empty is **skipped**: an empty argument, one that
+/// starts with `=` so that nothing precedes the separator, and one whose key is
+/// nothing but dashes (`--`, the conventional end-of-options marker) all name
+/// no field and are dropped rather than recorded under an empty key. Apart from
+/// the dashes this is the rule `TomEnvFile.parse` applies. Skipping is per
+/// argument — the arguments around a malformed one are still parsed.
 class TomArgs {
   /// Fills [fillIn] from `key=value` [args] using reflection and returns it.
   ///
   /// Each `key=value` argument becomes a field assignment on [fillIn]: the key
-  /// is the text before the first `=`, the value is everything after it, and
-  /// the value is type-converted (see [convertToObjectMap]).
-  /// A bare flag (`--verbose`) is recorded as the boolean `true`, matching how
-  /// `key=true` converts, so it fills a reflected `bool` field directly. An
-  /// argument with an empty key is skipped and never reaches [fillIn].
+  /// is the text before the first `=` with its leading dashes stripped, the
+  /// value is everything after it, and the value is type-converted (see
+  /// [convertToObjectMap]). So `--port=8080` and `port=8080` both assign the
+  /// field `port`. A bare flag (`--verbose`) is recorded as the boolean `true`,
+  /// matching how `key=true` converts, so it fills a reflected `bool` field
+  /// directly. An argument whose key is empty, or nothing but dashes, is
+  /// skipped and never reaches [fillIn].
   ///
   /// [T] must be a type registered with the reflection system
   /// (`tomReflectionInfo.setValues` performs the assignment); unknown keys that
@@ -98,8 +114,10 @@ class TomArgs {
   ///
   /// `key=value` becomes `key -> convertedValue`, split on the first `=` (see
   /// [convertToObjectMap] for the conversion table); a bare flag becomes
-  /// `flag -> true` (boolean). An argument with an empty key contributes no
-  /// entry, so the returned map never carries an empty key.
+  /// `flag -> true` (boolean). A key is stripped of its leading dashes, so
+  /// `--port=8080` returns `port -> 8080` and the returned map never carries a
+  /// key beginning with `-`. An argument with an empty key contributes no
+  /// entry, so the map never carries an empty key either.
   static Map<String, dynamic> parseArgsToMap(List<String> args) =>
       _parseArgs(args);
 
@@ -245,19 +263,27 @@ class TomArgs {
   /// be documented as one syntax rather than two that merely resemble each
   /// other.
   ///
-  /// An argument whose key is empty (`""`, `"=orphan"`, `"="`) is skipped, as
-  /// the same shape is in a `.env` file.
+  /// The key is then stripped of its leading `-` characters, so the
+  /// conventional `--port=8080` names the field `port`. See [_withoutLeadingDashes].
+  ///
+  /// An argument whose key is empty (`""`, `"=orphan"`, `"="`), or is nothing
+  /// but dashes and so empty once they are stripped (`"--"`), is skipped. Apart
+  /// from the dashes that is the shape a `.env` file skips too.
   ///
   /// Both public entry points parse through here, so they cannot disagree.
   static Map<String, dynamic> _parseArgs(List<String> args) {
     var argMap = <String, dynamic>{};
     for (String arg in args) {
       var separator = arg.indexOf("=");
-      final key = separator < 0 ? arg : arg.substring(0, separator);
+      final key = _withoutLeadingDashes(
+        separator < 0 ? arg : arg.substring(0, separator),
+      );
       // An empty key names nothing. On the fillFromArgs path it could never
       // match a field, so it would reach setValues as dead weight; and
-      // `TomEnvFile.parse` has always skipped it, so accepting it here would
-      // make the same text mean different things in the two sources.
+      // `TomEnvFile.parse` skips it, so accepting it here would make the same
+      // text mean different things in the two sources. A key of only dashes
+      // arrives here empty and is dropped the same way, which is what a bare
+      // `--` end-of-options marker needs.
       // Skipped rather than fatal: one malformed argument must not cost the
       // launch line the arguments around it.
       if (key.isEmpty) {
@@ -270,6 +296,29 @@ class TomArgs {
       }
     }
     return argMap;
+  }
+
+  /// Returns [key] without the `-` characters it begins with.
+  ///
+  /// This is what makes `--port=8080` and `port=8080` one argument, so that the
+  /// spelling every command line uses can also name a field: `setValues` is
+  /// given the key as a field name, and no Dart class declares `--port`.
+  ///
+  /// The whole leading run is removed rather than one or two characters. There
+  /// is then no arity to remember and no difference between the short and long
+  /// prefixes, and a third dash is a typo in the prefix rather than the first
+  /// character of a name — a name that begins with `-` is not reachable this
+  /// way, which is the price of the convention.
+  ///
+  /// Only the leading run. A dash inside a name is part of it (`--dry-run`
+  /// names `dry-run`), and the value is not touched at all, so a negative
+  /// number or a `-` standing for stdin survives.
+  static String _withoutLeadingDashes(String key) {
+    var start = 0;
+    while (start < key.length && key[start] == '-') {
+      start++;
+    }
+    return start == 0 ? key : key.substring(start);
   }
 
   /// Returns the contents of [value] with its surrounding quotes removed, or

@@ -254,10 +254,9 @@ abstract class TomBaseServerConfiguration {
   /// A literal default here (e.g. `8080`) would defeat that guard, since the
   /// field would never be `0` for the subclass to detect "no port configured".
   ///
-  /// The command-line spelling is `port=8080`, **not** `--port=8080`: a key is
-  /// the argument text before the first `=`, dashes included, so the dashed
-  /// form fills the key `--port`, which names no field and is silently dropped
-  /// (see `doc/cmdline.md`).
+  /// Either command-line spelling reaches it: a key is the argument text before
+  /// the first `=` with its leading dashes stripped, so `port=8080` and
+  /// `--port=8080` are one argument naming this field (see `doc/cmdline.md`).
   int port = 0;
 
   /// The PEM-encoded TLS certificate chain [TomServer.start] binds with, unless
@@ -824,11 +823,11 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// name inherits the precedence of the source it came from — a `PORT` in the
   /// OS environment still loses to a `port=` argument.
   ///
-  /// The command line is deliberately left out of it. An argument names its key
-  /// directly, and the undashed field spelling is the documented form there
-  /// (`port=9081`, see `doc/cmdline.md`); a second accepted spelling would
-  /// widen that surface without reconciling anything, because the command line
-  /// has no external naming convention to meet.
+  /// The command line is deliberately left out of it. An argument names its
+  /// field directly — `port=9081`, or `--port=9081`, since `TomArgs` strips a
+  /// key's leading dashes (see `doc/cmdline.md`) — so there is no naming
+  /// convention to reconcile, and accepting a `SCREAMING_SNAKE_CASE` argument
+  /// as well would widen the surface without gaining a source.
   static Map<String, Object?> getDefaultValues(List<String> args) {
     Map<String, Object?> values = deepCopyJsonTree(
       TomServerConfigResourceProvider.getServerConfig().resources,

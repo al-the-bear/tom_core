@@ -34,6 +34,31 @@
 
 ### Changed
 
+- **A dashed argument now names the field it spells (tcopen113).**
+  `TomArgs._parseArgs` took the text before the `=` verbatim, so `--port=8080`
+  was the key `--port` and `--verbose` the key `--verbose`. `fillFromArgs` hands
+  the key to `setValues` as a field name, no Dart class declares `--port`, and
+  an unmatched key is deliberately ignored — so the conventional double-dash
+  style bound nothing and reported nothing, and the server started on its
+  defaults with the launch line apparently honoured. The module's own dartdoc
+  used `--verbose` as its worked example of a flag filling a `bool` field.
+
+  A key is now stripped of the `-` characters it begins with, in the shared
+  splitter, so `--port=8080`, `-port=8080` and `port=8080` are one argument
+  named `port` and both entry points agree about it. Three consequences are
+  documented wherever the rule appears: a key cannot begin with `-`; the dashed
+  and bare spellings are one entry, so the later wins rather than the map
+  holding two values for one setting; and a key of only dashes (`--`, the
+  end-of-options marker) is empty once stripped and is skipped like any other
+  empty key. Only the leading run of the *key* — `--dry-run=1` is the key
+  `dry-run`, and a dash in the value is data. `TomEnvFile.parse` does not strip,
+  since a variable name in a `.env` file is the name; that is now the one
+  deliberate divergence between the two sources and a differential test pins it.
+
+  Eleven tests cover the rule and five dashed cases join the corpus that asserts
+  the map and the reflected object agree entry by entry;
+  `selectedRuntimeEnvironmentName(['--env=prod'])` pins it at the consumer end.
+
 - **Leaving the cache registry stops the timers (tcopen112).** A cache installs
   its periodic timers in its constructor, and the registry had `addCache` with
   no counterpart: the only way to drop a registration was `setCurrent`, which

@@ -25,9 +25,13 @@ conversion rules. An argument is split on its **first** `=`, so a value may
 itself contain `=` (a connection string, a URL with a query, padded base64) and
 arrives whole; `TomEnvFile` splits the same way. A bare flag becomes the boolean
 `true` in both `parseArgsToMap` and `fillFromArgs`, consistent with how
-`key=true` converts. An argument whose key is empty — an empty argument, or one
-starting with `=` — is skipped rather than recorded under an empty key, again as
-`TomEnvFile` does; the arguments around it are still parsed.
+`key=true` converts. A key is stripped of its **leading `-` characters**, so
+`--port=8080`, `-port=8080` and `port=8080` are one argument named `port` and
+the conventional command-line spelling reaches a reflected field — `TomEnvFile`
+does not strip, since a variable name in a `.env` file is the name. An argument
+whose key is empty — an empty argument, one starting with `=`, or one that is
+nothing but dashes — is skipped rather than recorded under an empty key, again
+as `TomEnvFile` does; the arguments around it are still parsed.
 
 `TomEnvFile` reads environment variables from a `.env` file (synchronously or
 asynchronously), supporting comments, empty lines, quoted values, and inline
@@ -57,8 +61,8 @@ value type.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `fillFromArgs` | `static T fillFromArgs<T extends Object>(List<String> args, T fillIn)` | Fills `fillIn` from `key=value` `args` using reflection and returns it, splitting each argument on its first `=`; a bare flag is recorded as the boolean `true`, and an argument with an empty key is skipped. `T` must be registered with the reflection system. |
-| `parseArgsToMap` | `static Map<String, dynamic> parseArgsToMap(List<String> args)` | Parses `key=value` `args` into a loose map, splitting on the first `=` and type-converting each value; a bare flag becomes the boolean `true`, and an argument with an empty key contributes no entry. |
+| `fillFromArgs` | `static T fillFromArgs<T extends Object>(List<String> args, T fillIn)` | Fills `fillIn` from `key=value` `args` using reflection and returns it, splitting each argument on its first `=` and naming the key without its leading dashes (`--port=8080` assigns `port`); a bare flag is recorded as the boolean `true`, and an argument whose key is empty, or nothing but dashes, is skipped. `T` must be registered with the reflection system. |
+| `parseArgsToMap` | `static Map<String, dynamic> parseArgsToMap(List<String> args)` | Parses `key=value` `args` into a loose map, splitting on the first `=` and type-converting each value; a key is named without its leading dashes, a bare flag becomes the boolean `true`, and an argument whose key is empty, or nothing but dashes, contributes no entry. |
 | `convertToObjectMap` | `static Map<String, dynamic> convertToObjectMap(Map<String, String> map)` | Converts every value in a string `map` to its natural Dart type (useful for normalising `Platform.environment`). |
 | `unquote` | `static String? unquote(String value)` | Returns the contents of `value` with its surrounding quotes removed, or `null` when `value` is not a quoted literal. Quotes count only as a **matched pair** — at least two characters, opening with `"` or `'` and closing with that same character — so `""` unquotes to the empty string while a lone `"`, an unterminated `"hello` and a mismatched `"hello'` all yield `null` and are used verbatim. `TomEnvFile.parse` decides through this method too, so the two sources cannot disagree. |
 | `fieldNameOf` | `static String? fieldNameOf(String name)` | The `lowerCamelCase` field name a `SCREAMING_SNAKE_CASE` variable spells (`JWT_SHARED_SECRET_KEY` → `jwtSharedSecretKey`), or `null` when `name` is not written in that convention. The underscore is the only separator, so a digit does not open a segment and `OAUTH2_TOKEN_URI` is three segments (`oauth2TokenUri`, not `oAuth2TokenUri`). A field spelled with a capitalised acronym is therefore not reachable — that is an inconsistency in the field's spelling, not a gap here. |

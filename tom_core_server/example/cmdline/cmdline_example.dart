@@ -46,12 +46,13 @@ bool _sameMap(Map<String, Object?> a, Map<String, Object?> b) =>
 
 Future<void> run() async {
   // 1. Parse `key=value` arguments. Values are converted to their natural type;
-  //    a bare flag becomes the boolean true.
-  final args = TomArgs.parseArgsToMap(['port=8080', 'rate=1.5', '--verbose']);
+  //    a bare flag becomes the boolean true, and a key is named without the
+  //    dashes it was written with.
+  final args = TomArgs.parseArgsToMap(['--port=8080', 'rate=1.5', '--verbose']);
   print('1. parsed args               : $args');
   check(args['port'] == 8080, 'port converts to the int 8080');
   check(args['rate'] == 1.5, 'rate converts to the double 1.5');
-  check(args['--verbose'] == true, 'a bare flag becomes the boolean true');
+  check(args['verbose'] == true, 'a bare flag becomes the boolean true');
 
   // 2. Normalise an existing string map (e.g. the OS environment) with the same
   //    conversion rules.

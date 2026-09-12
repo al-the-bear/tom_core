@@ -58,6 +58,17 @@ void main() {
       });
     });
 
+    // The launch line usually spells it `--env=prod`. `TomArgs` strips the
+    // leading dashes, so the conventional spelling selects the environment as
+    // the bare one does — and a reader who writes it that way is not silently
+    // given the fallback instead.
+    test('the conventional dashed spelling selects the environment', () {
+      return _withEnvFile('', () {
+        expect(selectedRuntimeEnvironmentName(['--env=prod']), 'prod');
+        expect(selectedRuntimeEnvironmentName(['-env=prod']), 'prod');
+      });
+    });
+
     test('the .env file wins over the OS environment', () {
       return _withEnvFile('PATH=from-env-file\n', () {
         expect(

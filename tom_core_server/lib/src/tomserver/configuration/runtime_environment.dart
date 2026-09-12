@@ -18,7 +18,8 @@ import '../cmdline/env_file.dart';
 ///
 /// Sources, highest precedence first:
 ///
-/// 1. a command-line argument, `env=dev` (undashed, as `doc/cmdline.md` has it);
+/// 1. a command-line argument, `env=dev` — or `--env=dev`, since `TomArgs`
+///    strips a key's leading dashes (see `doc/cmdline.md`);
 /// 2. the `.env` file in the current directory;
 /// 3. the OS environment.
 ///

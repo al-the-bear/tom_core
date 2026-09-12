@@ -22,7 +22,7 @@ void main() {
     });
 
     test('records a bare flag as boolean true', () {
-      expect(TomArgs.parseArgsToMap(['--verbose'])['--verbose'], isTrue);
+      expect(TomArgs.parseArgsToMap(['verbose'])['verbose'], isTrue);
     });
 
     // "First" is only a claim when there is more than one "=" to choose
@@ -133,6 +133,88 @@ void main() {
       // to nothing, which a caller checking completeness must tell apart from
       // a key no source mentioned.
       expect(TomEnvFile.parse([line]).containsKey('EMPTY'), isTrue);
+    });
+  });
+
+  // The conventional command-line spelling. A key is stripped of its leading
+  // `-` characters, so `--port=8080`, `-port=8080` and `port=8080` are one
+  // argument under one name, and the style a reader tries first reaches a
+  // reflected field instead of binding nothing.
+  group('leading dashes on a key', () {
+    test('the three spellings name the same key', () {
+      for (final arg in ['--port=8080', '-port=8080', 'port=8080']) {
+        expect(TomArgs.parseArgsToMap([arg]), {
+          'port': 8080,
+        }, reason: '"$arg" does not name `port`');
+      }
+    });
+
+    test('a dashed bare flag becomes the boolean true under its bare name', () {
+      expect(TomArgs.parseArgsToMap(['--verbose']), {'verbose': true});
+    });
+
+    // Stripping is of the leading run, not of a fixed one or two characters:
+    // there is no arity to remember, and a third dash is a typo in the prefix
+    // rather than part of the name.
+    test('any number of leading dashes is stripped', () {
+      expect(TomArgs.parseArgsToMap(['---port=8080']), {'port': 8080});
+    });
+
+    // The dashes are a prefix, not a spelling rule for the whole name. A
+    // `--dry-run` style option keeps its internal hyphen, which is what makes
+    // the stripped key still the name the caller wrote.
+    test('a dash inside or at the end of a key is untouched', () {
+      expect(TomArgs.parseArgsToMap(['--dry-run=1']), {'dry-run': 1});
+      expect(TomArgs.parseArgsToMap(['--trailing-=1']), {'trailing-': 1});
+    });
+
+    // A key of nothing but dashes reduces to the empty key, which names no
+    // field, and takes the empty key's outcome: skipped, and the arguments
+    // around it still parsed. `--` in particular is the conventional
+    // end-of-options marker, so a launch line that carries one is not unusual.
+    test('a key of only dashes is skipped like an empty key', () {
+      expect(TomArgs.parseArgsToMap(['--']), isEmpty);
+      expect(TomArgs.parseArgsToMap(['-']), isEmpty);
+      expect(TomArgs.parseArgsToMap(['--=orphan']), isEmpty);
+      expect(TomArgs.parseArgsToMap(['name=svc', '--', 'port=8080']), {
+        'name': 'svc',
+        'port': 8080,
+      });
+    });
+
+    // One name, so the later argument overrides the earlier one exactly as two
+    // identical spellings would. Two entries would instead let a launch line
+    // hold two values for one setting and bind whichever the reader looked up.
+    test('a dashed and a bare spelling are one entry, last one winning', () {
+      expect(TomArgs.parseArgsToMap(['port=1', '--port=2']), {'port': 2});
+      expect(TomArgs.parseArgsToMap(['--port=1', 'port=2']), {'port': 2});
+    });
+
+    test('a dashed key fills the reflected field it names', () {
+      final config = TomArgs.fillFromArgs([
+        '--port=8080',
+        '--name=svc',
+        '--verbose',
+      ], FixtureServerConfig());
+      expect(config.port, 8080);
+      expect(config.name, 'svc');
+      expect(config.verbose, isTrue);
+    });
+
+    // Only the key. The value is whatever follows the first `=`, and a leading
+    // dash there is data — a negative number, a `stdin` placeholder, a flag
+    // being passed through to another program.
+    test('a leading dash in the value is left alone', () {
+      expect(TomArgs.parseArgsToMap(['--mode=-5']), {'mode': '-5'});
+      expect(TomArgs.parseArgsToMap(['file=-']), {'file': '-'});
+    });
+
+    // The one place the two sources part company by design. Stripping is a
+    // command-line convention: nothing writes `--PORT=8080` in a `.env` file,
+    // and a variable name there is the name, so `TomEnvFile.parse` keeps what
+    // it is given.
+    test('TomEnvFile.parse does not strip dashes', () {
+      expect(TomEnvFile.parse(['--port=8080']), {'--port': 8080});
     });
   });
 
@@ -391,16 +473,14 @@ void main() {
       expect(config.verbose, isFalse);
     });
 
-    // The dashes are part of the key, and no Dart field can be named `--port`,
-    // so the conventional double-dash style is one particular case of "no
-    // matching field" — it binds nothing and says nothing. Worth its own test
-    // because that style is what a reader is most likely to try first.
-    test('a dashed key silently fills nothing', () {
+    // The conventional double-dash style is what a reader is most likely to try
+    // first, and the leading dashes are stripped from the key so that it names
+    // the field rather than a name no Dart class can declare.
+    test('a dashed key fills the field it names', () {
       final config = TomArgs.fillFromArgs([
         '--port=8080',
       ], FixtureServerConfig());
-      expect(config.port, 0); // not 8080
-      expect(TomArgs.parseArgsToMap(['--port=8080']), {'--port': 8080});
+      expect(config.port, 8080);
     });
 
     // fillFromArgs has no notion of a *required* argument — it binds whatever
@@ -513,6 +593,15 @@ void main() {
     const corpus = <String, List<String>>{
       'a plain pair': ['name=svc', 'port=8080'],
       'a bare flag': ['verbose'],
+      'a dashed pair': ['--port=8080'],
+      'a single-dashed pair': ['-name=svc'],
+      'a dashed bare flag': ['--verbose'],
+      'a dashed and a bare spelling of one key': ['port=1', '--port=8080'],
+      'an all-dash key between two good arguments': [
+        'name=svc',
+        '--',
+        'port=8080',
+      ],
       'an explicit bool': ['verbose=false'],
       'a value containing a further "="': ['name=a=b'],
       'a quoted value': ['name="my svc"'],

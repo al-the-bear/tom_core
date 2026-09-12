@@ -29,7 +29,7 @@ void main() {
 
   print(map['port']);    // 8080  (int)
   print(map['host']);    // localhost  (String)
-  print(map['--debug']); // true  (bool flag)
+  print(map['debug']);   // true  (bool flag, named without its dashes)
 
   // Read a .env file (returns {} when the file is absent):
   final env = TomEnvFile.read('.env');

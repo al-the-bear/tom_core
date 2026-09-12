@@ -437,25 +437,20 @@ void main() {
       expect(config.captured['kept'], 'resource');
     });
 
-    // The merge keys on the argument text before the first `=`, dashes
-    // included, so the conventional `--port=9000` style names the key
-    // `--port` -- which no Dart field can be called, and which the reflected
-    // `setValues` therefore drops. The undashed form is the one that reaches a
-    // field. Both halves are asserted here rather than only the working one,
-    // because the failure is silent: nothing reports a key that bound nothing,
-    // so a snippet claiming `--port=9000` sets `port` reads as plausible until
-    // it is run. `doc/cmdline.md` states the same limitation for
-    // `fillFromArgs`; this pins it on the configuration merge, which is the
-    // path a server actually starts through.
-    test(
-      'a dashed argument merges under the dashed key, not the field name',
-      () {
-        _install({});
-        final config = _CapturingConfig(['--port=9000']);
-        expect(config.captured['--port'], 9000);
-        expect(config.captured.containsKey('port'), isFalse);
-      },
-    );
+    // The merge keys on the argument text before the first `=` with its leading
+    // dashes stripped, so the conventional `--port=9000` style names the key
+    // `port` and reaches the field of that name. Both halves are asserted --
+    // the key that is there and the dashed one that is not -- because the
+    // failure this replaced was silent: nothing reports a key that bound
+    // nothing. Pinned here on the configuration merge as well as in
+    // `cmdline_test.dart`, because this is the path a server actually starts
+    // through.
+    test('a dashed argument merges under the field name', () {
+      _install({});
+      final config = _CapturingConfig(['--port=9000']);
+      expect(config.captured['port'], 9000);
+      expect(config.captured.containsKey('--port'), isFalse);
+    });
 
     test('an argument named as the field is named merges under that name', () {
       _install({});
@@ -884,10 +879,10 @@ void main() {
       // An all-digit argument arrives already typed, so the strict int cast
       // holds -- the conversion happens on the way into the map, not on read.
       expect(TomIntConfig('DB_PORT').get(), 3307);
-      // A bare flag is stored as the boolean true under its own dashed key,
-      // which is the one case where the dashed spelling is useful: it is read
-      // back as a key rather than bound to a field of that name.
-      expect(~TomBoolConfig('--verbose'), isTrue);
+      // A bare flag is stored as the boolean true under its name without the
+      // dashes it was written with, so the launch line's spelling and the
+      // lookup do not have to agree on a prefix.
+      expect(~TomBoolConfig('verbose'), isTrue);
       // Quoting is how a value that would otherwise convert stays textual; the
       // quotes are stripped as a pair, so the digits arrive without them.
       expect(~TomStringConfig('quantity'), '420');

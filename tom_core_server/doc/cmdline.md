@@ -10,6 +10,7 @@ line, in the environment, or in a `.env` file is interpreted identically.
 
 - [Overview](#overview)
 - [Parsing Arguments](#parsing-arguments)
+  - [A key is named without its leading dashes](#a-key-is-named-without-its-leading-dashes)
 - [Reading `.env` Files](#reading-env-files)
 - [Value Conversion](#value-conversion)
   - [A digit run larger than an `int` stays a `String`](#a-digit-run-larger-than-an-int-stays-a-string)
@@ -42,7 +43,7 @@ final config = TomArgs.fillFromArgs(argv, MyServerArgs());
 
 // 2. Into a loose map:
 final map = TomArgs.parseArgsToMap(['port=8080', 'debug=true', '--verbose']);
-// => {'port': 8080, 'debug': true, '--verbose': true}
+// => {'port': 8080, 'debug': true, 'verbose': true}
 
 // 3. Convert an existing string map (e.g. the OS environment):
 final env = TomArgs.convertToObjectMap(Platform.environment);
@@ -64,16 +65,47 @@ A token with no `=` is a **flag**. Both map paths encode a flag identically as
 the boolean `true` — consistent with how `key=true` is converted — so a flag
 fills a reflected `bool` field directly.
 
-A token whose key is empty is **skipped**: an empty token, and one starting with
-`=` so that nothing precedes the separator, name no field, and are dropped
-rather than recorded under an empty key. `TomEnvFile` skips such a line for the
-same reason. Skipping is per token — the tokens around a malformed one are still
-parsed, so one stray argument does not cost the launch line the rest:
+A token whose key is empty is **skipped**: an empty token, one starting with
+`=` so that nothing precedes the separator, and one whose key is nothing but
+dashes, name no field, and are dropped rather than recorded under an empty key.
+`TomEnvFile` skips such a line for the same reason. Skipping is per token — the
+tokens around a malformed one are still parsed, so one stray argument does not
+cost the launch line the rest:
 
 ```dart
 TomArgs.parseArgsToMap(['name=svc', '=orphan', 'port=8080']);
 // => {'name': 'svc', 'port': 8080}
 ```
+
+### A key is named without its leading dashes
+
+A key is stripped of the `-` characters it begins with, so the three spellings
+of one option are one argument:
+
+```dart
+TomArgs.parseArgsToMap(['--port=8080']);   // => {'port': 8080}
+TomArgs.parseArgsToMap(['-port=8080']);    // => {'port': 8080}
+TomArgs.parseArgsToMap(['port=8080']);     // => {'port': 8080}
+TomArgs.parseArgsToMap(['--verbose']);     // => {'verbose': true}
+```
+
+This is what lets the conventional command-line spelling reach a reflected
+field: `fillFromArgs` hands the key to `setValues` as a field name, and no Dart
+class declares a field named `--port`.
+
+Three consequences are worth stating:
+
+- **A key cannot begin with `-`.** The whole leading run is removed, so there is
+  no prefix arity to remember and no way to name a key whose first character is
+  a dash. Only the leading run is a prefix — `--dry-run=1` is the key `dry-run`,
+  and a dash in the *value* is data (`--mode=-5` gives `'-5'`).
+- **The dashed and bare spellings are one entry.** `['port=1', '--port=2']`
+  yields `{'port': 2}` — the later argument overrides the earlier one, rather
+  than the map holding two values for one setting.
+- **`TomEnvFile` does not strip.** Stripping is a command-line convention;
+  nothing writes `--PORT=8080` in a `.env` file, where a variable name is the
+  name. `TomEnvFile.parse(['--port=8080'])` therefore gives `{'--port': 8080}`.
+  This is the one place the two sources part company by design.
 
 > **`fillFromArgs` needs a reflected type.** It assigns through
 > `tomReflectionInfo.setValues`, so `T` must be registered with the reflection
@@ -303,13 +335,6 @@ tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
 
 ## Not Yet Implemented
 
-- **A dashed key cannot fill a reflected field.** The key is the text before
-  the `=` verbatim, dashes included, so `--port=8080` sets the key `--port`.
-  `parseArgsToMap` returns it and a map reader can use it, but `fillFromArgs`
-  hands it to `setValues` as a field name and Dart has no field named `--port`
-  — so the conventional double-dash style binds nothing and reports nothing.
-  Name the argument as the field is named (`port=8080`) when the target is a
-  configuration object.
 - **A negative number cannot be typed from any source.** `intPattern` and
   `doublePattern` do not admit a sign, so `-5` and `-1.5` stay `String`s. On the
   map paths that is merely untyped; against a reflected `int` field it fails,
