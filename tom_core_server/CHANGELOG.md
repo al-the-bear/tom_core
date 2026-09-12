@@ -2,6 +2,21 @@
 
 ### Documentation
 
+- **Cross-isolate forwarding stays one crossing per operation (tcopen109).**
+  Ten cached lookups from a worker are ten round trips and repeating a key costs
+  again; there is no batch command and no worker-side copy. That stands, and the
+  reasoning is now where a reader meets it rather than logged as a gap: a batch
+  command only helps a call site that knows its keys up front, and a worker-side
+  copy would cost the module its guarantee that exactly one copy of a cached
+  value exists. The size of the cost is unmeasured, which is stated rather than
+  glossed.
+
+  Two remedies need no framework change and are documented: resolve a key once
+  per request rather than repeatedly, or register the cache in the worker as
+  well — the local registry is consulted before forwarding, so that serves the
+  read with no crossing, with the second copy taken on deliberately. Three tests
+  pin the cost and the remedy.
+
 - **`getEntry` not enforcing expiry is a contract, not a gap (tcopen107).** The
   expiry rule is applied in `fromNameCache` alone, so a caller reaching past the
   static helpers reads a value the module considers dead. It stays that way, and

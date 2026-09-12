@@ -9,6 +9,17 @@ clear/deletion timers. `TomCacheManager` owns the named caches per isolate and
 forwards operations from worker isolates to the main isolate (where caches
 physically live). Static helpers key a cache by Dart type or by name.
 
+**Forwarding is one crossing per operation.** There is no batch command and no
+worker-side copy, so ten cached lookups from a worker are ten round trips and
+asking twice for the same key costs twice. That stands deliberately: a batch
+command only helps a call site that knows its keys up front, and a worker-side
+copy would cost the module its one guarantee that there is exactly *one* copy of
+a cached value. The size of the cost is unmeasured. A deployment that finds it
+matters resolves a key once per request rather than repeatedly, or registers the
+cache in the worker as well — the local registry is consulted before forwarding,
+so that serves the read with no crossing at all, at the price of the second copy
+being the deployment's decision rather than the framework's.
+
 ## Key types
 
 | Type | Responsibility |

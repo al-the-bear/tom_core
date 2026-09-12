@@ -38,6 +38,15 @@ transport cannot classify as well — a value that fails to convert to `T` throw
 rather than reporting a miss, and a miss is `null` rather than the
 `TomExecutor.noResult` sentinel that `executeInCreator` substitutes for it.
 
+**Forwarding is one crossing per operation**, by decision: there is no batch
+command and no worker-side copy, so ten lookups from a worker are ten round
+trips and repeating a key costs again. A batch command would only help a call
+site that knows its keys up front, and a worker-side copy would cost the
+module's guarantee that exactly one copy of a cached value exists. The local
+registry is consulted *before* forwarding, so a deployment that needs the
+crossing gone registers the cache in the worker as well — taking on the second
+copy deliberately.
+
 `TomCacheManager` holds the named `TomCache` instances for an isolate and decides
 whether operations run locally or are forwarded. `TomCacheException` is raised
 when an operation cannot complete. `TomCacheStoreMessage`,

@@ -26,6 +26,7 @@ schedule.
   - [A cache is bounded unless you say otherwise](#a-cache-is-bounded-unless-you-say-otherwise)
   - [Two reads, and only one of them expires](#two-reads-and-only-one-of-them-expires)
 - [Isolate Model](#isolate-model)
+  - [One crossing per operation](#one-crossing-per-operation)
 - [Failures Are Internal](#failures-are-internal)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
@@ -501,6 +502,47 @@ back as though it were the cached value. The sentinel translation is exact
 because a creator-side `null` has only the one meaning: a cached value is never
 `null`, so nothing but a miss can arrive that way.
 
+### One crossing per operation
+
+Each helper forwards its own operation. Ten cached lookups from a worker are ten
+round trips through the back channel, each an `await` on a completer the main
+isolate has to schedule, and asking twice for the same key costs twice. There is
+no batch command and no worker-side copy.
+
+That stands, and the reasons are worth stating because the alternatives are
+obvious ones:
+
+- **A batch command** — a fourth `TomCommand` carrying a list of keys and
+  returning a map — only helps a call site that knows its keys up front. A
+  handler resolving a user, then their tenant from the user, then a policy from
+  the tenant cannot name the second key until the first has answered, and that
+  is the shape most cached lookups have.
+- **A worker-side read-through copy** is the only option that would help an
+  unmodified call site, and it is the one that costs the module its central
+  simplification: today there is exactly **one** copy of a cached value, in the
+  main isolate, so every reader sees the same value and an invalidation is a
+  single `removeFromNameCache`. A second copy brings a coherence problem the
+  module does not have.
+
+**The size of the cost is unmeasured**, and saying so is part of the position
+rather than an omission from it: this is a decision not to pay for a fix whose
+cost nobody has established, not a claim that the crossing is cheap. A
+deployment that finds it matters has two remedies, and neither needs the
+framework to change:
+
+- **Resolve once per request.** The crossing is per *operation*, so a handler
+  that reads a key once and holds the value for the rest of the request pays for
+  one. Re-reading the same key inside one request is the case the round trip
+  punishes hardest and the easiest to avoid.
+- **Register the cache in the worker too.** `fromNameCache` looks the local
+  registry up *before* it considers forwarding, so a cache registered in a
+  worker is served there with no crossing at all. That is the read-through copy,
+  made explicit: the deployment takes on the second copy and the coherence
+  question, for data where it knows the answer — immutable reference data,
+  compiled templates, resolved configuration. `tom_uam`'s server start shows the
+  shape, registering its caches in `initializeAnyIsolate` rather than in the
+  main isolate alone.
+
 ## Failures Are Internal
 
 `TomCacheException` defaults to **`clientThrow: false`**, so the endpoints
@@ -551,11 +593,6 @@ local one.
 
 ## Not Yet Implemented
 
-- **Cross-isolate forwarding is one round trip per operation.** Each helper
-  issues its own `executeInCreator` call with a single-operation command. There
-  is no batch form and no worker-side read-through copy, so a handler resolving
-  ten cached keys from a worker pays ten crossings. Nothing measures this today,
-  so the size of the cost is unknown.
 - **A cache that leaves the registry keeps its timers.**
   `TomCacheManager.setCurrent` swaps the whole registry and nothing stops the
   discarded caches' timers, which carry on sweeping maps no lookup can reach and
@@ -564,10 +601,9 @@ local one.
   registration, and it is the leaky one. Call `stopTimers()` on a cache you are
   finished with.
 
-The second is pinned by a test in `test/cache_test.dart` — the timer half of it,
-in the group "The limits the documentation records" — so closing it turns a test
-red rather than leaving this section quietly wrong. The first is a cost rather
-than an outcome, and pinning it would mean asserting a shape.
+It is pinned by a test in `test/cache_test.dart` — the timer half of it, in the
+group "The limits the documentation records" — so closing it turns a test red
+rather than leaving this section quietly wrong.
 
 ## Verification
 

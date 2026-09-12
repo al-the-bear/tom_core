@@ -847,6 +847,55 @@ void main() {
         throwsA(isA<TomWorkerException>()),
       );
     });
+
+    test('every read is its own crossing — there is no batch', () async {
+      // The documented cost, made concrete. Ten reads of ten keys are ten
+      // forwarding attempts; nothing coalesces them, and there is no helper
+      // that could. Each attempt fails here for want of a back channel, and
+      // counting the failures is counting the crossings.
+      var attempts = 0;
+      for (var i = 0; i < 10; i++) {
+        try {
+          await TomCache.fromNameCache<String>('absent', 'k$i');
+        } on TomWorkerException {
+          attempts++;
+        }
+      }
+
+      expect(attempts, 10);
+    });
+
+    test('repeating one key crosses again each time', () async {
+      // And there is no worker-side copy either, so asking twice for the same
+      // key costs twice. That is what a read-through copy would have removed,
+      // and what registering the cache in the worker removes instead.
+      var attempts = 0;
+      for (var i = 0; i < 3; i++) {
+        try {
+          await TomCache.fromNameCache<String>('absent', 'same');
+        } on TomWorkerException {
+          attempts++;
+        }
+      }
+
+      expect(attempts, 3);
+    });
+
+    test('a cache the worker holds is served without crossing at all', () {
+      // The remedy a deployment can reach for: register the cache in the
+      // worker too. `fromNameCache` looks the local registry up first, so the
+      // read never reaches the back channel — which is why this does not throw
+      // where every test above does. The trade is a second copy, and it is the
+      // deployment's to make rather than the framework's to impose.
+      final local = _cache('worker-local');
+      TomCacheManager.addCache(local);
+      local.putEntry('k', TomCacheEntry('v'));
+
+      expect(
+        TomCache.fromNameCache<String>('worker-local', 'k'),
+        completion('v'),
+      );
+    });
   });
 
   // The group above proves only which branch was taken. This one runs the
@@ -1744,13 +1793,15 @@ void main() {
   });
 
   group('The limits the documentation records', () {
-    // `doc/cache.md`'s "Not Yet Implemented" section states these as the
-    // module's behaviour today. Prose cannot go red on its own, so closing one
-    // of these limits turns the matching test red, which is the signal that the
-    // section has a line to lose. The section's remaining two items are covered
-    // elsewhere: `getEntry` skipping expiry is pinned by the "getEntry
-    // (direct)" group above, and unbatched forwarding is a cost rather than an
-    // outcome — pinning it would mean asserting a shape, not a behaviour.
+    // `doc/cache.md`'s "Not Yet Implemented" section states this as the
+    // module's behaviour today. Prose cannot go red on its own, so closing the
+    // limit turns the matching test red, which is the signal that the section
+    // has a line to lose.
+    //
+    // The module's two stated decisions are pinned beside the behaviour they
+    // describe instead of here: `getEntry` skipping expiry in the "getEntry
+    // (direct)" group, and the per-operation crossing in "Worker-isolate
+    // forwarding decision".
 
     test('an explicitly unbounded cache keeps every entry it is given', () async {
       // `maximumEntries: null` is the opt-out, and it opts out completely:
