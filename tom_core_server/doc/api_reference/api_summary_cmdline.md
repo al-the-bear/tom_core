@@ -37,7 +37,9 @@ as `TomEnvFile` does; the arguments around it are still parsed.
 asynchronously), supporting comments, empty lines, quoted values, and inline
 comments. It reuses the `TomArgs` conversion rules, so a value is typed the same
 way from either source with one documented exception — an empty value becomes
-`null` here and the empty `String` there. It can merge multiple sources, with
+`null` here and the empty `String` there. `loadAndMerge` returns the process
+environment and the file as one typed map; `resolveEnvironment` returns the same
+two sources stringified, for `${VAR:default}` expansion. It can merge multiple sources, with
 later sources overriding earlier ones, and `resolveEnvironment` merges one
 particular pair — the OS environment and a `.env` — into the string map that
 `TomYaml`'s `${VAR:default}` expansion reads.
@@ -133,7 +135,7 @@ static.
 | `readAsync` | `static Future<Map<String, Object?>> readAsync([String path = '.env'])` | Asynchronous variant of `read`; returns an empty map if the file does not exist. |
 | `parse` | `static Map<String, Object?> parse(List<String> lines)` | Parses a list of `.env`-format lines into a map, usable for content from any source. |
 | `merge` | `static Map<String, Object?> merge(List<Map<String, Object?>> sources)` | Merges multiple environment maps; later sources override earlier ones. Converts nothing: a raw `Map<String, String>` such as `Platform.environment` passes by covariance and contributes `String` values, so wrap it in `TomArgs.convertToObjectMap` first. |
-| `load` | `static Map<String, Object?> load([String path = '.env'])` | Loads a `.env` file and returns the values (note: `Platform.environment` is read-only, so this does not mutate the OS environment). |
+| `loadAndMerge` | `static Map<String, Object?> loadAndMerge({String path = '.env', Map<String, String>? processEnvironment})` | `processEnvironment` (defaulting to `Platform.environment`) and the `.env` file at `path` as one **typed** map, the file layered on top. The process environment is passed through `TomArgs.convertToObjectMap` on the way in — the step a hand-written `merge` forgets, since covariance lets a raw `Map<String, String>` pass and every value then arrives as text. The file wins, which is the order `TomBaseServerConfiguration.getDefaultValues` and `resolveEnvironment` give the same two sources. An empty assignment **clears** the variable (the key is present with `null`), where `resolveEnvironment` drops it — a typed map can carry "present and cleared" and a stringified one cannot. A missing file contributes nothing. Nothing is installed anywhere: `Platform.environment` is read-only, and the name says what the method returns. |
 | `resolveEnvironment` | `static Map<String, String> resolveEnvironment({String path = '.env', Map<String, String>? processEnvironment})` | Builds the variable map that `${VAR:default}` placeholders expand from: `processEnvironment` (defaulting to `Platform.environment`) with the `.env` at `path` layered **on top**. Hand the result to `TomYaml.loadYamlFile(..., environment:)` — that is the only way a `.env` reaches a placeholder, since the process environment cannot be written to. Values are returned as `String` because an expansion is substituted as text; a key whose `.env` value is empty is dropped rather than contributed as `''`, leaving any process value for it standing. A missing file contributes nothing. |
 
 `parse` reads a line only when it carries a `=` and a non-empty key, so a blank

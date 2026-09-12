@@ -158,18 +158,55 @@ class TomEnvFile {
     return result;
   }
 
-  /// Loads environment variables from a `.env` file and adds them
-  /// to the process environment.
+  /// [processEnvironment] (the OS environment by default) and the `.env` file
+  /// at [path] as **one typed map**, the file layered on top.
   ///
-  /// Note: This only affects Dart code that reads from [Platform.environment]
-  /// after this call. It does not modify the actual OS environment.
+  /// The map a boot wants when it is going to bind the result: every value is
+  /// converted, including the ones that came from the process environment.
+  /// That wrap is the method's whole point — written by hand it is
   ///
-  /// Returns the loaded environment variables.
-  static Map<String, Object?> load([String path = '.env']) {
-    final env = read(path);
-    // Note: Platform.environment is read-only, so we can't actually
-    // add to it. This method returns the loaded values for manual use.
-    return env;
+  /// ```dart
+  /// TomEnvFile.merge([
+  ///   TomArgs.convertToObjectMap(Platform.environment),  // easily forgotten
+  ///   TomEnvFile.read(path),
+  /// ]);
+  /// ```
+  ///
+  /// and [merge] can only warn about the omission, because Dart's covariance
+  /// lets a raw `Map<String, String>` pass as a `Map<String, Object?>` without
+  /// complaint: the environment then contributes every value as text and an
+  /// `int` or `bool` field is refused at `setValues`.
+  ///
+  /// **The `.env` file wins**, which is the order
+  /// `TomBaseServerConfiguration.getDefaultValues` and [resolveEnvironment]
+  /// give the same two sources. One file, one rule.
+  ///
+  /// An empty assignment **clears** the variable rather than being dropped:
+  /// `EMPTY=` in the file leaves the key present with a `null` value, so a
+  /// process variable of that name is shadowed. That is what [read] makes of
+  /// the line and what `getDefaultValues` does with it, and a typed map can
+  /// carry the distinction between "present and cleared" and "absent" — where
+  /// [resolveEnvironment] cannot, since it must produce a
+  /// `Map<String, String>` for a substituter that treats empty as unset.
+  ///
+  /// A missing file contributes nothing ([read] returns `{}`), so the result is
+  /// then the converted [processEnvironment] alone.
+  ///
+  /// Nothing is installed anywhere: `Platform.environment` is read-only, and
+  /// the name says what the method returns rather than what it could not do.
+  /// A caller that wants the `SCREAMING_SNAKE_CASE` keys to also reach
+  /// `lowerCamelCase` fields applies [TomArgs.resolveEnvironmentNames] **per
+  /// source, before** this merge — see `getDefaultValues`, which does exactly
+  /// that; applying it to the merged result would let an alias derived from the
+  /// process environment outrank an exact key from the file.
+  static Map<String, Object?> loadAndMerge({
+    String path = '.env',
+    Map<String, String>? processEnvironment,
+  }) {
+    return merge([
+      TomArgs.convertToObjectMap(processEnvironment ?? Platform.environment),
+      read(path),
+    ]);
   }
 
   /// The effective environment for `${VAR}` expansion: [processEnvironment]

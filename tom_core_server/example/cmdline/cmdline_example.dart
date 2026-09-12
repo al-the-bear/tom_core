@@ -7,17 +7,11 @@
 /// `${VAR:default}` placeholders expand from
 /// ([TomEnvFile.resolveEnvironment]).
 ///
-/// Two members are deliberately not shown, for two different reasons:
+/// One member is deliberately not shown: [TomArgs.fillFromArgs] needs a
+/// reflected configuration type, which would make this file depend on generated
+/// code. `doc/cmdline.md` describes it.
 ///
-/// - [TomArgs.fillFromArgs] needs a reflected configuration type, which would
-///   make this file depend on generated code; `doc/cmdline.md` describes it.
-/// - `TomEnvFile.load` does nothing [TomEnvFile.read] does not. It calls `read`
-///   and returns the result — `Platform.environment` is read-only, so there is
-///   nothing for it to install the values into — and `doc/cmdline.md` lists it
-///   as a limitation with the advice to prefer `read`. An example is a
-///   recommendation, so demonstrating it here would contradict that advice.
-///
-/// Every other [TomEnvFile] method appears below, as do [TomArgs]'s three
+/// Every [TomEnvFile] method appears below, as do [TomArgs]'s three
 /// parsing entry points. [TomArgs.unquote] and the [TomArgs.intPattern] /
 /// [TomArgs.doublePattern] matchers are the shared machinery behind the
 /// conversions shown here — step 4's quoted value is `unquote` at work, the
@@ -149,7 +143,29 @@ BILLING_PHONE=+4917612345678
     'a later source overrides an earlier one and leaves the rest alone',
   );
 
-  // 8. Build the environment that `${VAR:default}` placeholders expand from:
+  // 8. The same two sources as one *typed* map, for binding rather than
+  //    substitution. `loadAndMerge` converts the process environment on the way
+  //    in, which is the step a hand-written `merge` forgets: covariance lets a
+  //    Map<String, String> through, and every value then arrives as text.
+  final settings = TomEnvFile.loadAndMerge(
+    path: envFile.path,
+    processEnvironment: {'WORKERS': '4', 'HOME': '/home/deploy'},
+  );
+  print('8. merged typed environment  : $settings');
+  check(
+    settings['WORKERS'] == 4,
+    'a process variable arrives typed, not as the string it was',
+  );
+  check(
+    settings['SERVER_PORT'] == 8080,
+    'the .env file is layered on top, and its values are typed too',
+  );
+  check(
+    settings['HOME'] == '/home/deploy',
+    'a process variable the .env says nothing about survives',
+  );
+
+  // 9. Build the environment that `${VAR:default}` placeholders expand from:
   //    the process environment with the `.env` layered on top. This is the map
   //    to hand `TomYaml.loadYamlFile(..., environment:)`, and it is what makes
   //    editing a `.env` move the datasource the server actually dials rather
@@ -163,7 +179,7 @@ BILLING_PHONE=+4917612345678
     path: envFile.path,
     processEnvironment: {'SERVER_PORT': '3306', 'HOME': '/home/deploy'},
   );
-  print('8. expansion environment     : $expansion');
+  print('9. expansion environment     : $expansion');
   check(
     expansion['SERVER_PORT'] == '8080',
     'the .env value wins over the one already in the process environment',

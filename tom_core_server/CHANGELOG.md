@@ -34,6 +34,36 @@
 
 ### Changed
 
+- **`TomEnvFile.load` is now `loadAndMerge`, and it merges (tcopen116).** `load`
+  called `read(path)` and returned the result. Its dartdoc opened by saying it
+  "adds them to the process environment" and retracted that two lines later, its
+  body carried the retraction as a comment, and four documents plus the one test
+  repeated the disclaimer — five artefacts explaining what a method could not do,
+  for a method that was `read` under another name.
+
+  `loadAndMerge({path, processEnvironment})` returns the process environment and
+  the `.env` file as one **typed** map, the file layered on top. What it adds
+  over the `merge([...])` a caller writes by hand is the
+  `TomArgs.convertToObjectMap` wrap on the environment: `merge` converts
+  nothing, and Dart's covariance lets a raw `Map<String, String>` pass without
+  complaint, so an unwrapped `Platform.environment` contributes every value as
+  text and an `int` or `bool` field is refused at `setValues`. `merge`'s dartdoc
+  can only warn about that; this is the same composition with the warning
+  discharged.
+
+  The `.env` wins, which is the order `getDefaultValues` and
+  `resolveEnvironment` give the same two sources. An empty assignment **clears**
+  the variable — the key is present with `null`, shadowing a process variable of
+  that name — where `resolveEnvironment` drops it, a difference forced by the
+  stringified map it must return rather than chosen.
+  `TomArgs.resolveEnvironmentNames` is deliberately not applied: its own
+  contract requires it per source before a merge.
+
+  The two remaining members are now a matched pair chosen by what the answer is
+  for: `loadAndMerge` for a map to bind, `resolveEnvironment` for a map to
+  substitute into. Seven tests, and the example demonstrates it as step 8 beside
+  `resolveEnvironment` as step 9.
+
 - **A negative number is a number (tcopen114).** `intPattern` and
   `doublePattern` did not admit a sign, and `_convertString` requires the match
   to cover the whole value, so `-5` and `-1.5` arrived as `String`s from every

@@ -1044,10 +1044,93 @@ void main() {
       expect(await TomEnvFile.readAsync('${dir.path}/.env.absent'), isEmpty);
     });
 
-    test('load reads the file (the OS environment is not mutated)', () async {
+    // The method that gives a boot the map it actually wants: the process
+    // environment and the `.env` file as one typed map, with the wrap that
+    // `merge` can only warn about already applied.
+    test('loadAndMerge returns the file over the process environment', () async {
+      final f = File('${dir.path}/.env');
+      await f.writeAsString('SHARED=fromFile\nONLY_IN_FILE=yes\n');
+      final env = TomEnvFile.loadAndMerge(
+        path: f.path,
+        processEnvironment: <String, String>{
+          'SHARED': 'fromProcess',
+          'ONLY_IN_PROCESS': 'kept',
+        },
+      );
+      // The same precedence `getDefaultValues` and `resolveEnvironment` give
+      // these two sources, so one file means one thing however it is read.
+      expect(env['SHARED'], 'fromFile');
+      expect(env['ONLY_IN_FILE'], 'yes');
+      // Both directions: the file overwrites what it names and leaves the rest.
+      expect(env['ONLY_IN_PROCESS'], 'kept');
+    });
+
+    // The reason this is not `merge([Platform.environment, read(path)])`, which
+    // is what a caller writes instead and which `merge`'s own dartdoc has to
+    // warn against: covariance lets a `Map<String, String>` pass, so every
+    // environment value arrives as text and an `int` or `bool` field is refused
+    // at `setValues`. Doing the wrap here is the method's whole point.
+    test('loadAndMerge types the process environment too', () async {
+      final f = File('${dir.path}/.env');
+      await f.writeAsString('FROM_FILE=1.5\n');
+      final env = TomEnvFile.loadAndMerge(
+        path: f.path,
+        processEnvironment: const <String, String>{
+          'WORKERS': '4',
+          'DEBUG': 'true',
+          'NAME': 'svc',
+        },
+      );
+      expect(env['WORKERS'], 4);
+      expect(env['DEBUG'], isTrue);
+      expect(env['NAME'], 'svc');
+      expect(env['FROM_FILE'], 1.5);
+    });
+
+    // Unlike `resolveEnvironment`, which drops a null because it must produce
+    // a `Map<String, String>` and substitution has no way to say "cleared".
+    // This map is typed, so `EMPTY=` can mean what a configuration tree means
+    // by it: the setting is present and explicitly empty. That is also what
+    // `getDefaultValues` does with the same line, and one rule is worth more
+    // than two.
+    test('loadAndMerge lets an empty .env value clear the variable', () async {
+      final f = File('${dir.path}/.env');
+      await f.writeAsString('EMPTY=\nKEPT=x\n');
+      final env = TomEnvFile.loadAndMerge(
+        path: f.path,
+        processEnvironment: <String, String>{'EMPTY': 'fromProcess'},
+      );
+      expect(env.containsKey('EMPTY'), isTrue);
+      expect(env['EMPTY'], isNull);
+      expect(env['KEPT'], 'x');
+    });
+
+    test(
+      'loadAndMerge returns the environment alone when the file is absent',
+      () async {
+        final env = TomEnvFile.loadAndMerge(
+          path: '${dir.path}/.env.absent',
+          processEnvironment: const <String, String>{'ONLY': 'x'},
+        );
+        expect(env, {'ONLY': 'x'});
+      },
+    );
+
+    test('loadAndMerge defaults to the real process environment', () async {
+      // PATH is set on every supported platform, so its presence says the
+      // default was consulted rather than an empty map substituted.
+      final env = TomEnvFile.loadAndMerge(path: '${dir.path}/.env.absent');
+      expect(env.containsKey('PATH'), isTrue);
+    });
+
+    // The one thing the old `load` did that its name denied: nothing. The
+    // method is named for what it returns, and the OS environment is still
+    // read-only -- which is worth an assertion rather than a paragraph.
+    test('loadAndMerge does not mutate the process environment', () async {
       final f = File('${dir.path}/.env');
       await f.writeAsString('LOADED=yes\n');
-      expect(TomEnvFile.load(f.path)['LOADED'], 'yes');
+      expect(TomEnvFile.loadAndMerge(path: f.path)['LOADED'], 'yes');
+      expect(Platform.environment.containsKey('LOADED'), isFalse);
     });
 
     test('resolveEnvironment lets the .env file win over the process', () async {
@@ -1201,18 +1284,16 @@ void main() {
       );
     });
 
-    // The example once ran five steps and reached two of `TomEnvFile`'s five
-    // methods; `parse`, `readAsync` and `load` appeared nowhere, and the header
-    // explained only the one omission it had thought about. Adding the missing
-    // steps fixes that instance. This fixes the class: a method added to
-    // `TomEnvFile` tomorrow is either shown or accounted for, and the list is
-    // read off the source rather than restated here, so it cannot go stale the
-    // way the hard-coded step count above did.
+    // The example once ran five steps and reached two of `TomEnvFile`'s
+    // methods, and the header explained only the one omission it had thought
+    // about. Adding the missing steps fixes that instance. This fixes the
+    // class: a method added to `TomEnvFile` tomorrow is either shown or
+    // accounted for, and the list is read off the source rather than restated
+    // here, so it cannot go stale the way the hard-coded step count above did.
     //
-    // Either resolution counts, because the todo's own bar allowed either: a
-    // demonstration, or a reason in the header. `load` takes the second route —
-    // it is `read` under another name and `doc/cmdline.md` says to prefer
-    // `read`, so showing it would recommend what the documentation warns off.
+    // Either resolution counts: a demonstration, or a reason in the header.
+    // Every method now takes the first route — the header's one remaining
+    // omission is `TomArgs.fillFromArgs`, which needs generated code.
     test('every public TomEnvFile method is shown or explained', () {
       final api = File(
         p.join('lib', 'src', 'tomserver', 'cmdline', 'env_file.dart'),
@@ -1226,7 +1307,14 @@ void main() {
       // pass by vacuum rather than by coverage.
       expect(
         methods,
-        containsAll(['read', 'readAsync', 'parse', 'merge', 'load']),
+        containsAll([
+          'read',
+          'readAsync',
+          'parse',
+          'merge',
+          'loadAndMerge',
+          'resolveEnvironment',
+        ]),
         reason: 'the public method list was not recovered from env_file.dart',
       );
 

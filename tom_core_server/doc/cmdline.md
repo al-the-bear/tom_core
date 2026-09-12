@@ -140,6 +140,29 @@ final env = TomEnvFile.merge([
 A **quoted** value is always kept as a `String` (no type conversion); an
 unquoted value is converted by the same rules as `TomArgs` (see below).
 
+`loadAndMerge` is the two-source form a boot usually wants — the process
+environment and the `.env` file as one **typed** map, the file layered on top:
+
+```dart
+final settings = TomEnvFile.loadAndMerge();            // OS env + ./.env
+final settings = TomEnvFile.loadAndMerge(path: 'prod.env');
+```
+
+It is `merge` with the wrap that `merge` can only warn about already applied
+(see [Convert the environment before merging
+it](#the-env-reaches-placeholders-only-if-you-carry-it-there)): the process
+environment is passed through `TomArgs.convertToObjectMap`, so a `WORKERS=4`
+exported by the shell arrives as the `int` `4` rather than the text `'4'`, and
+reaches an `int` field.
+
+The `.env` wins over the process environment, which is the order
+`TomBaseServerConfiguration.getDefaultValues` and `resolveEnvironment` give the
+same two sources. An empty assignment **clears** the variable rather than being
+skipped: `EMPTY=` leaves the key present with a `null` value and shadows a
+process variable of that name — what a typed map can say and the stringified
+`resolveEnvironment` cannot. Nothing is installed anywhere; `Platform.environment`
+is read-only, and the name says what the method returns.
+
 ## Value Conversion
 
 Both classes share one conversion table (implemented once in `TomArgs`):
@@ -384,9 +407,6 @@ tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
   a configuration no source supplied it for (see `doc/configuration.md`, *
   Requiring a setting*), or call `tomReflectionInfo.missingRequiredFields` on
   the merged map yourself. These two helpers stay pure parsers.
-- **`load` does not load.** It reads the file and returns the values, exactly as
-  `read` does. `Platform.environment` is read-only, so there is nothing for it
-  to install them into. Prefer `read`, which says what happens.
 - **A `#` anywhere in an unquoted `.env` value truncates it.** The
   inline-comment rule cuts at the first `#` with no requirement that whitespace
   precede it, so `K=pa#ss` yields `pa` and a URL loses its fragment. Quote any
@@ -407,18 +427,20 @@ tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
   matched-pair quoting rule), and the `intPattern` / `doublePattern` matchers
   that drive numeric detection.
 - **`TomEnvFile`** — `read` / `readAsync` (file → map), `parse` (lines → map),
-  `merge` (overlay maps), `resolveEnvironment` (OS environment + `.env`,
-  stringified, for `${VAR:default}` expansion), and `load` (read for manual use;
-  the OS environment is read-only and is not mutated).
+  `merge` (overlay maps), `loadAndMerge` (OS environment + `.env` as one typed
+  map, the environment converted on the way in), and `resolveEnvironment` (the
+  same two sources stringified, for `${VAR:default}` expansion).
 
 ## Verification
 
-`example/cmdline/cmdline_example.dart` walks the codegen-free helpers in seven
+`example/cmdline/cmdline_example.dart` walks the codegen-free helpers in nine
 steps, with no setup of any kind — parse `key=value` arguments, normalise an
 existing string map, `parse` a `.env` blob that never touches disk, read a
 `.env` file it writes to a temp directory first, read the same file again with
-`readAsync`, the missing file that yields an empty map from either variant, and
-a two-layer `merge`. Run it exactly as its header documents:
+`readAsync`, the missing file that yields an empty map from either variant, a
+two-layer `merge`, the typed environment `loadAndMerge` returns, and the
+stringified one `resolveEnvironment` builds for placeholder expansion. Run it
+exactly as its header documents:
 
 ```bash
 dart run example/cmdline/cmdline_example.dart
@@ -430,11 +452,10 @@ rather than a transcript — see
 [A green run is a verification](../README.md#a-green-example-run-is-a-verification)
 for why that helper throws instead of asserting.
 
-Two members are left out, and the example's header gives a reason for each:
-`fillFromArgs` needs a reflected configuration type, and `load` does nothing
-`read` does not (see the limitation above), so demonstrating it would recommend
-what this document warns off. The suite covers both. Which members are omitted
-is not a matter of habit: a test reads the public method list off
+One member is left out, and the example's header gives the reason:
+`fillFromArgs` needs a reflected configuration type. The suite covers it. Which
+members are omitted is not a matter of habit: a test reads the public method
+list off
 `env_file.dart` and requires each one to be either demonstrated by the example
 or named in its header, so a method added later cannot go unmentioned unnoticed.
 
