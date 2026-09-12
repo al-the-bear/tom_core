@@ -25,6 +25,7 @@ principal into an authentication token and an authorization token.
   - [How a mechanism names itself](#how-a-mechanism-names-itself)
   - [Writing your own mechanism](#writing-your-own-mechanism)
   - [Outcomes](#outcomes)
+  - [The attempt counter, and what makes it a bound](#the-attempt-counter-and-what-makes-it-a-bound)
 - [Server Self-Login](#server-self-login)
   - [Why a server logs in](#why-a-server-logs-in)
   - [The credential](#the-credential)
@@ -100,6 +101,10 @@ principal into an authentication token and an authorization token.
 | `TomRole2FAPolicy` | class | A requirement per role; the strictest matched role wins |
 | `Tom2FAGraceAccounting` | abstract class | Implemented *by a policy* that wants to be told when a grace login is spent |
 | `Tom2FAEnrolmentStore` | abstract class | Where a principal's set-up factors live. **No default** — see [Enrolment](#enrolment) |
+| `Tom2FAAttemptStore` | abstract class | Records that an interim token has been answered, so a replay cannot mint a fresh allowance. `Tom2FAMemoryAttemptStore` is the per-process default |
+| `Tom2FAAttempt` | class | One presentation of an interim token: its fingerprint, whose it is, the mechanism, and when the challenge lapses |
+| `Tom2FAMemoryAttemptStore` | class | The default attempt store — a map in this process, pruned as it is written |
+| `tom2FATokenFingerprint` | function | The SHA-256 an attempt store keys on, so the log holds a digest rather than a usable token |
 | `TomMemory2FAEnrolmentStore` | class | In-memory store, for tests and single-process development |
 | `TomPersistent2FAEnrolmentStore` | class | Store over `TomUserTwoFactorEnrolment`, secrets encrypted at rest |
 | `TomUserTwoFactorEnrolment` | class | One persisted enrolment row; the entity behind `@TomDbTable('tom_user_two_factor_enrolment')` |
@@ -1237,6 +1242,7 @@ Expiry, the attempt counter and adaptor dispatch are generic and handled once in
 | `login.error.2fa.invalid-code` | Wrong answer, attempts remain | A re-issued interim token |
 | `login.error.2fa.attempts-exhausted` | Wrong answer, no attempts left | None — restart at pass 1 |
 | `login.error.2fa.expired` | The challenge lapsed | None — restart at pass 1 |
+| `login.error.2fa.challenge-already-answered` | This interim token has been answered before — a replay, or an honest double-submit | None; the answer that spent it already returned the token to continue with |
 | `login.error.2fa.no-challenge` | No interim token was presented, or it carries none | None |
 | `login.error.2fa.unsupported-mechanism` | No adaptor registered for the mechanism | None |
 | `login.error.2fa.not-enrolled` | Nothing to challenge against: no TOTP secret resolves, or no address is on record for a delivered code | None |
@@ -1256,6 +1262,7 @@ The enrolment passes add their own, all of them from
 | `login.error.2fa.enrolment-unavailable` | There is no `Tom2FAEnrolmentStore`, so a confirmed factor could not be recorded | None |
 | `login.error.2fa.enrolment-expired` | The offer lapsed (default 10 minutes) | None — restart at pass 1 |
 | `login.error.2fa.enrolment-attempts-exhausted` | The confirmation was wrong once too often | None — restart at pass 1 |
+| `login.error.2fa.enrolment-already-answered` | This offer token has been answered before | None; the answer that spent it already returned the token to continue with |
 | `login.error.2fa.enrolment-required` | A skip was attempted on an offer the server did not mark skippable | None |
 
 A wrong code is an ordinary outcome and yields a failed
@@ -1278,17 +1285,64 @@ from the attempt that failed. An adaptor skipped for an unmet
 `Tom2FAPrerequisite` is neither of these — that is a logged warning, not a
 failure, and the mechanisms that *were* wired stay registered.
 
-**What the attempt counter does and does not bound.** The counter lives in the
-token and advances only along the chain of re-issued tokens. A stateless server
-holds no record of which interim tokens it has already answered, so it cannot
-tell a replay of an *earlier* token in the chain from its original presentation
-— and that earlier token is still valid and still carries its lower count. The
-counter therefore bounds a cooperative client (and gives a UI its "2 tries
-left"); what bounds an uncooperative one is the challenge's short validity,
-after which every token in the chain is refused. A deployment needing a hard
-per-challenge cap must add the server-side state this flow deliberately omits
-(a spent-token denylist or a per-user counter), or rely on the mechanism's own
-rate limiting.
+### The attempt counter, and what makes it a bound
+
+The counter lives in the token and advances only along the chain of re-issued
+tokens. On its own that bounds a **cooperative** client, and gives a UI its "2
+tries left". It does not bound an uncooperative one: a server holding no record
+of which interim tokens it has already answered cannot tell a replay of an
+*earlier* token in the chain from its original presentation, and that earlier
+token is still valid and still carries its lower count. Replay pass 1's token
+and the allowance is fresh every time — bounded only by how many requests fit
+inside the challenge's validity, which for six digits and five minutes is not a
+bound on anything.
+
+One recorded fact closes it: *this token has been answered*. `Tom2FAAttemptStore`
+holds it, and `authenticatePass2` consults it **before** asking the mechanism
+anything:
+
+```dart
+abstract class Tom2FAAttemptStore {
+  /// True when this token had not been answered before.
+  Future<bool> spend(Tom2FAAttempt attempt);
+}
+```
+
+Each token in the chain is then answerable exactly once, and since a wrong
+answer is what mints the next token, the whole chain admits exactly
+`attemptsAllowed` guesses however the attacker orders it. A replay is refused
+with `login.error.2fa.challenge-already-answered` — including a replay of a
+*correct* answer, so one interim token cannot mint two sessions. An honest
+client that double-submits meets the same refusal, and should: it already holds
+the re-issued token the answer gave it.
+
+The store is keyed on a **fingerprint** of the token — `tom2FATokenFingerprint`,
+a SHA-256 of the encoded string — not on the token. An attempt log is a thing a
+deployment points at shared infrastructure, and one holding usable bearer
+credentials would be a worse hazard than the one it closes. `Tom2FAAttempt`
+also carries the username and mechanism, because the seam is where a
+per-principal rate limit would go, and such a limiter has to know whose attempt
+it is refusing.
+
+**`Tom2FAMemoryAttemptStore` is installed by default, and is per process.** A
+bound that has to be opted into is a bound most deployments will not have, so
+the default is on; in a load-balanced cluster each node bounds only what reaches
+it, so the effective allowance is the challenge's times the node count. Finite,
+which is the property that matters, and a deployment that wants the exact cap
+installs a store its nodes share — an insert whose unique key is the
+fingerprint, with a duplicate-key error read as `false`. One that genuinely
+wants the old stateless behaviour installs a store whose `spend` always answers
+`true`; the choice is made by installing something, not by forking the pass.
+
+The challenge's own short validity still bounds the chain in time on top of all
+this.
+
+Enrolment confirmation is bounded the same way and by the same store, refusing a
+replay with `login.error.2fa.enrolment-already-answered`. It matters for the
+mechanisms whose confirmation is a code sent out of band: an authenticator app
+hands the secret to whoever holds the token, so guessing its code proves
+nothing, but an emailed code is exactly as brute-forceable there as a challenge
+code is here.
 
 ## Server Self-Login
 
@@ -2225,10 +2279,14 @@ resolves the pending record for its context and calls
   than none. The retry is the user asking for a new code. A deployment whose
   relay is unreliable therefore sees failed logins rather than late ones — which
   is the intended trade, not an oversight.
-- **The attempt counter is not a brute-force defence on its own.** It bounds a
-  cooperative client; the challenge's short validity is what bounds an
-  uncooperative one. A deployment needing a hard per-challenge cap must add the
-  server-side state stateless verification omits.
+- **The per-challenge attempt cap is per process by default.** The counter in
+  the token bounds a cooperative client; what bounds an uncooperative one is
+  `Tom2FAAttemptStore`, which records that an interim token has been answered
+  and refuses the replay. The default store is a map in this process, so a
+  clustered deployment gets the cap *per node* — finite, and larger than the
+  challenge's own allowance by the node count. A deployment wanting the exact
+  cap installs a store its nodes share. See [the attempt counter, and what makes
+  it a bound](#the-attempt-counter-and-what-makes-it-a-bound).
 - **The OAuth `id_token` signature is not verified.** The token is read for its
   claims only. This is safe *as deployed here* and unsafe if copied elsewhere:
   the token arrives over TLS on the server's own back-channel call to the
@@ -2300,17 +2358,17 @@ resolves the pending record for its context and calls
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `two_factor.dart` | `Future`, `FutureOr` |
-| `dart:convert` | dart | `oauth_flow.dart`, `oauth_tokens.dart`, `server_self_login.dart`, `two_factor.dart`, `two_factor_delivered_code.dart`, `two_factor_enrolment.dart` | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
+| `dart:convert` | dart | 7 of 16 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
 | `dart:math` | dart | `oauth_flow.dart` | `Random`, `exp` |
 | `dart:typed_data` | dart | `two_factor_delivered_code.dart` | `Uint8List` |
-| `crypto` | package | `oauth_flow.dart`, `two_factor_delivered_code.dart` | `sha256`, for the PKCE code challenge and the delivered-code digest |
+| `crypto` | package | `oauth_flow.dart`, `two_factor_attempts.dart`, `two_factor_delivered_code.dart` | `sha256`, for the PKCE code challenge, the interim-token fingerprint an attempt store keys on, and the delivered-code digest |
 | `dart_jsonwebtoken` | package | `jwt_signing.dart` | `jwt.SecretKey`, `jwt.signing` |
 | `http` | package | `oauth_flow.dart` | `http.dart`, `http.get`, `http.post` |
-| `tom_core_kernel` | package | 14 of 15 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
+| `tom_core_kernel` | package | 15 of 16 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
 | [configuration](configuration.md) | module | `jwt_signing.dart`, `oauth_provider.dart`, `server_self_login.dart`, `sql_oauth_state_store.dart` | `TomBaseServerConfiguration` supplies the service-account fields `TomServiceCredential.fromConfiguration` reads |
 | [datasources](datasources.md) | module | `oauth_identity.dart`, `oauth_state_sql.dart`, `oauth_tokens.dart`, `sql_oauth_state_store.dart`, `two_factor_enrolment.dart` | `TomDataSource`, `TomDataSourceInfo`, `TomDbBool`, `TomDbDateTime`, `TomDbInt`, `TomDbString` |
 | [endpoints](endpoints.md) | module | `oauth_endpoints.dart` | `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract |
-| [little_things](little_things.md) | module | 9 of 15 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException` and `TomOAuthException` |
+| [little_things](little_things.md) | module | 9 of 16 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException` and `TomOAuthException` |
 | [messaging](messaging.md) | module | `two_factor_delivered_code.dart` | `TomEmailService` and `TomSmsService` deliver the one-time codes, through `TomTemplatedMessageService.deliverNow` rather than the outbox. A deployment that registers neither can still run TOTP |
 | [object_persistence](object_persistence.md) | module | `oauth_identity.dart`, `oauth_tokens.dart`, `sql_oauth_state_store.dart`, `two_factor_enrolment.dart` | `TomExternalIdentityLink` and `TomUserTwoFactorEnrolment` are ordinary entities over `TomSqlDatasourceRepository`. Neither table is created by the framework; each entity carries its own `createTableSql` for a deployment's migration to run |
 | [preferences](preferences.md) | module | `authentication_server.dart` | `TomUserPreferences` |

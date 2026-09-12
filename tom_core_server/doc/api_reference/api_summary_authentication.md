@@ -32,6 +32,9 @@ server's own self-login against an auth server.
   - [Tom2FAEnrolmentOffer](#tom2faenrolmentoffer)
   - [Tom2FAEnrolmentSupport](#tom2faenrolmentsupport)
   - [Tom2FAEnrolmentState](#tom2faenrolmentstate)
+  - [Tom2FAAttempt](#tom2faattempt)
+  - [Tom2FAAttemptStore](#tom2faattemptstore)
+  - [Tom2FAMemoryAttemptStore](#tom2famemoryattemptstore)
   - [Tom2FAEnrolmentStore](#tom2faenrolmentstore)
   - [TomMemory2FAEnrolmentStore](#tommemory2faenrolmentstore)
   - [TomUserTwoFactorEnrolment](#tomusertwofactorenrolment)
@@ -91,6 +94,7 @@ Sources: `lib/src/tomserver/authentication/authentication_server.dart`,
 `lib/src/tomserver/authentication/two_factor.dart`,
 `lib/src/tomserver/authentication/two_factor_policy.dart`,
 `lib/src/tomserver/authentication/two_factor_enrolment.dart`,
+`lib/src/tomserver/authentication/two_factor_attempts.dart`,
 `lib/src/tomserver/authentication/two_factor_delivered_code.dart`,
 `lib/src/tomserver/authentication/server_self_login.dart`,
 `lib/src/tomserver/authentication/oauth_provider.dart`,
@@ -874,6 +878,107 @@ Tom2FAEnrolmentState({
 | `toClaims` | `Map<String, Object?> toClaims()` | The public half, for the interim token's claims. |
 | `secretClaims` | `Map<String, Object?>?` | The encrypted half — the offer's `enrolmentData` — or `null` when nothing has been chosen. |
 | `fromClaims` | `static Tom2FAEnrolmentState? fromClaims(Map<String, dynamic>? payload, [Map<String, dynamic>? secretData])` | Reads a pending enrolment back out of a token, or `null` when it carries none. An offer that cannot be decrypted degrades to the *offered* shape rather than throwing, so an undecryptable token sends the user back to the choice instead of failing the login. Every boolean claim is read with `Tom2FAClaims.isTrue` (either wire encoding), the same rule the kernel's `Tom2FAPendingEnrolment.fromClaims` applies — the two decode the same token, one to render the UI and one to authorise the enrolment passes, so they must not disagree about what `skippable` says. An unreadable **expiry** on a begun offer is the one input it refuses outright, throwing `TomLoginException('login.error.2fa.enrolment-offer-invalid')`: the offer travels encrypted and so is authentic, while its deadline travels in the public payload, and reading a missing deadline as *no deadline* would leave a generated secret confirmable for as long as somebody keeps the token. The kernel twin declines the same payload by returning `null` — it renders a panel rather than authorising a pass, so it has no error to raise. |
+
+### Tom2FAAttempt
+
+One presentation of an interim two-factor token, offered to a
+`Tom2FAAttemptStore`. Carries more than the fingerprint the default store keys
+on, because the seam is also where a per-principal rate limit would go — the
+other remedy for the same attack — and such a limiter has to know whose attempt
+it is refusing.
+
+#### Constructors
+
+```dart
+const Tom2FAAttempt({
+  required String fingerprint,
+  required String username,
+  required String challengeType,
+  required DateTime notAfter,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `fingerprint` | `String` | A stable, opaque identifier for the presented token — a digest, never the token; see `tom2FATokenFingerprint` (final). |
+| `username` | `String` | Who the chain belongs to, as the interim token's payload names them (final). |
+| `challengeType` | `String` | The mechanism the challenge belongs to (final). |
+| `notAfter` | `DateTime` | When the challenge lapses. After it every token in the chain is refused as expired, so a record older than this bounds nothing and a store may drop it (final). |
+
+### Tom2FAAttemptStore
+
+Records which interim two-factor tokens have already been answered — the one
+fact that turns the in-token attempt counter into a bound.
+
+The counter travels inside the token and advances only along the chain the
+server hands back, which bounds a cooperative client. An uncooperative one
+replays an earlier token: still valid, still carrying its lower count, and
+indistinguishable to a stateless server from its first presentation. With this
+store each token is answerable exactly once, and since a wrong answer is what
+mints the next token, the chain admits exactly `attemptsAllowed` guesses however
+the attacker orders it.
+
+**`resolve()` is never null, unlike `Tom2FAEnrolmentStore.resolve()`.** An
+absent installation is a single-process deployment, not a deployment that wants
+no bound — a bound that has to be opted into is one most deployments will not
+have — so it falls back to `Tom2FAMemoryAttemptStore.shared`. A deployment that
+genuinely wants the old stateless behaviour installs a store whose `spend`
+always answers `true`.
+
+- **Abstract**
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `resolve` | `Tom2FAAttemptStore resolve()` | The installed bean, or the process-wide `Tom2FAMemoryAttemptStore.shared`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `spend` | `Future<bool> spend(Tom2FAAttempt attempt)` | Records `attempt` and reports whether this token had **not** been answered before. `true` lets verification proceed; `false` refuses it with `login.error.2fa.challenge-already-answered`. One call rather than a check and a write, so two requests racing on one token cannot both be told they are the first — an implementation over shared storage makes it atomic (an insert whose unique key is the fingerprint, a duplicate-key error read as `false`). Called **before** the mechanism is asked, so a refused replay costs a request and buys no information. |
+
+### Tom2FAMemoryAttemptStore
+
+The default attempt store: a map in this process.
+
+**Per process, and says so.** In a load-balanced cluster each node bounds only
+the answers that reach it, so the effective allowance is the challenge's times
+the node count — finite, which is the property that matters, and a deployment
+wanting the exact cap installs a store its nodes share. Entries are pruned as
+they are written rather than on a timer: a record whose challenge has lapsed
+bounds nothing, so the map cannot grow beyond the tokens answered inside one
+challenge validity.
+
+- **Implements:** `Tom2FAAttemptStore`
+
+#### Constructors
+
+```dart
+Tom2FAMemoryAttemptStore()
+```
+
+#### Static Members
+
+| Member | Type | Description |
+| ------ | ---- | ----------- |
+| `shared` | `Tom2FAMemoryAttemptStore` | The process-wide instance `Tom2FAAttemptStore.resolve()` falls back to. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `size` | `int` | *(getter)* How many records are held — test-support, and a size to assert on. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `spend` | `Future<bool> spend(Tom2FAAttempt attempt)` | *(override)* Prunes lapsed records, then records the fingerprint if it is new. |
+| `clear` | `void clear()` | Discards every record. Test-support only. |
 
 ### Tom2FAEnrolmentStore
 
@@ -2167,6 +2272,7 @@ Keys raised: `oauth.callback.provider_error`, `oauth.callback.unknown_state`
 | `oauthStateTable(String table)` | `TomFrameworkTable` | The table's single column declaration; everything else — the DDL, the `SELECT` column lists, the `INSERT` — is derived from it |
 | `oauthStateTableDdl(String table)` | `String` | That declaration rendered as `CREATE TABLE IF NOT EXISTS`, for a start-up sequence that provisions without the store |
 | `installJwtSigning(TomBaseServerConfiguration configuration)` | `TomJwtConfiguration` | Builds the signing configuration from `jwtSharedSecretKey`, `jwtRsaPrivKey` and `jwtRsaPubKey`, installs it as `TomJwtConfiguration.defaultSignConfiguration`, and returns it. A boot calls it once, after the runtime environment is selected and before anything mints or verifies a token. An unset (or blank) field falls back to the framework's **bundled sample key**: permitted with a warning under a development or test environment, and refused with `TomSigningKeyException` anywhere else — including a boot that never declared an environment. Configure all three and the result is not a dummy configuration, so the per-sign development-key warning stops as well. Two servers reach the same signing key by configuring the same values; that, not a shared default, is what makes one server's token verify at the other. |
+| `tom2FATokenFingerprint(String tokenString)` | `String` | The SHA-256 of an encoded interim token, which is what a `Tom2FAAttemptStore` keys on. The digest and not the token: a store is a thing a deployment points at shared infrastructure, and an attempt log holding usable bearer credentials would be a worse hazard than the one it closes. Two byte-identical tokens have one fingerprint, which is the right reading — they are the same token, and the second presentation is the replay this refuses. |
 | `verifyBearerToken(String token, {bool decrypt = true})` | `TomClientJwtToken?` | Checks `token`'s **signature** against `TomJwtConfiguration.defaultSignConfiguration`'s key — the same key `TomServerJwtToken.getJWT` signs with — and returns it decoded, or `null` when it is not a token this deployment issued. The one thing that distinguishes a token this server minted from one a client typed: a JWT's public section is plain base64, so without this every claim in it, the principal included, is whatever the caller last wrote. Called from `extractAuthentication`, the single inbound path a client-supplied token enters by; unconditional, with no opt-out, because an opt-out is the same exposure with a name. Never throws — every rejection is `null` plus a warning naming the reason, so a forged token buys anonymous access rather than a distinguishable error. The validity window is deliberately **not** checked (`checkExpiresIn: false` / `checkNotBefore: false`): an expired token must still reach the request zone for a refresh endpoint to use, and expiry is answered by `tomDefaultAuthenticationMiddleware`, which drops the principal and keeps the credentials. |
 
 `installJwtSigning` and `verifyBearerToken` live in

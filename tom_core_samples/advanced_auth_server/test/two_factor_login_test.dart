@@ -332,8 +332,10 @@ void main() {
     // reachable only with an externally minted token, and is covered where such
     // a token can be built: tom_core_server's `two_factor_test.dart`.
 
-    test('replaying an earlier token wins a fresh attempt — expiry is the '
-        'real bound, not the counter', () async {
+    test('replaying an earlier token wins nothing — the allowance is spent '
+        'per token, not per presentation', () async {
+      Tom2FAMemoryAttemptStore.shared.clear();
+      addTearDown(Tom2FAMemoryAttemptStore.shared.clear);
       final service = _service();
       final pending = await service.login(_login('dave', 'dave-pass'));
 
@@ -345,16 +347,23 @@ void main() {
         _wrongCode(),
       ).then<Object?>((r) => r).onError<TomLoginException>((error, _) => error);
 
-      final replayed = await _submit(service, pending, _currentCode());
+      final replayed = await _submit(
+        service,
+        pending,
+        _currentCode(),
+      ).then<Object?>((r) => r).onError<TomLoginException>((error, _) => error);
 
-      // This is a *documented* property of stateless verification, asserted so
-      // it cannot change silently: the server keeps no record of the tokens it
-      // has answered, so it cannot tell this replay from the first presentation.
-      // The attempt counter therefore bounds an honest client, and the
-      // challenge's short expiry is what bounds a hostile one. Closing this
-      // needs server-side state that the fixed design deliberately omits.
-      expect(replayed.requires2FA, isFalse);
-      expect(replayed.authToken, isNotEmpty);
+      // The counter rides in the token, so without a record of what has been
+      // answered this replay was indistinguishable from the first presentation
+      // — and a *correct* code presented on a spent token would have completed
+      // the login, which is the same hole an attacker walks through with a
+      // wrong one. `Tom2FAAttemptStore` records the answer, so each token in
+      // the chain is answerable once and the allowance is the chain's.
+      expect(replayed, isA<TomLoginException>());
+      expect(
+        (replayed as TomLoginException).key,
+        'login.error.2fa.challenge-already-answered',
+      );
     });
   });
 

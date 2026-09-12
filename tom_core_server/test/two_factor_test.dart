@@ -2496,6 +2496,282 @@ void main() {
   /// the same token*, one to drive the UI and one to authorise the enrolment
   /// passes. They must therefore agree on what each claim means, which is why
   /// both read booleans through [Tom2FAClaims.isTrue].
+  group('an interim token can be answered once', () {
+    // The brute-force hole the attempt counter alone does not close. The count
+    // travels inside the token, so a stateless server cannot tell a replay of
+    // an earlier token in the chain from that token's first presentation — and
+    // the earlier token is still inside its validity and still carries its
+    // lower count. Replaying pass 1's token therefore bought a fresh allowance
+    // every time, bounded only by how many requests fit in the challenge's
+    // validity window. Six digits and five minutes is not a bound.
+    late TomAuthenticationService savedUserService;
+    late bool savedProtectionDefault;
+    late _FakeAdaptor adaptor;
+    final server = TomAuthenticationServer();
+
+    setUp(() {
+      savedUserService =
+          TomAuthenticationServer.globalSettingUserAuthenticationService;
+      savedProtectionDefault =
+          TomResourceKeyProtection.globalSettingProtectionDefault;
+      TomResourceKeyProtection.globalSettingProtectionDefault = false;
+      adaptor = _FakeAdaptor();
+      Tom2FARegistry.reset();
+      Tom2FARegistry.register('fake', adaptor);
+      TomAuthenticationServer.globalSettingUserAuthenticationService =
+          _StubAuthService(requires2FA: true, twoFactorType: 'fake');
+      // The default store is process-wide, so one test's spent tokens would
+      // otherwise be the next one's.
+      Tom2FAMemoryAttemptStore.shared.clear();
+    });
+
+    tearDown(() {
+      TomAuthenticationServer.globalSettingUserAuthenticationService =
+          savedUserService;
+      TomResourceKeyProtection.globalSettingProtectionDefault =
+          savedProtectionDefault;
+      Tom2FARegistry.reset();
+      TomBean.resetBeanContext();
+      Tom2FAMemoryAttemptStore.shared.clear();
+    });
+
+    Future<TomClientJwtToken> issuedChallenge() async {
+      final pass1 = await server.authenticatePass1(_message());
+      expect(pass1.error, isEmpty, reason: 'pass 1 should not fail');
+      return TomClientJwtToken(pass1.authorizationToken);
+    }
+
+    test('a second answer to the same token is refused', () async {
+      final token = await issuedChallenge();
+
+      final first = await server.authenticatePass2(
+        _message(password: 'wrong'),
+        challengeToken: token,
+      );
+      expect(first.error, 'login.error.2fa.invalid-code');
+
+      final replay = await server.authenticatePass2(
+        _message(password: 'wrong'),
+        challengeToken: token,
+      );
+
+      expect(replay.error, 'login.error.2fa.challenge-already-answered');
+      expect(replay.authorizationToken, isEmpty);
+      expect(
+        adaptor.verified,
+        1,
+        reason:
+            'the replay must be refused before the mechanism is asked, or the '
+            'guess still costs the attacker nothing but a request',
+      );
+    });
+
+    test('replaying the first token does not mint a fresh allowance', () async {
+      // The attack, end to end. Three guesses is the whole budget, and it
+      // stays three however the attacker orders the chain.
+      final first = await issuedChallenge();
+
+      var token = first;
+      for (var attempt = 1; attempt <= 3; attempt++) {
+        final result = await server.authenticatePass2(
+          _message(password: 'wrong'),
+          challengeToken: token,
+        );
+        if (attempt < 3) {
+          expect(result.error, 'login.error.2fa.invalid-code');
+          token = TomClientJwtToken(result.authorizationToken);
+        } else {
+          expect(result.error, 'login.error.2fa.attempts-exhausted');
+        }
+      }
+
+      final rewound = await server.authenticatePass2(
+        _message(password: 'wrong'),
+        challengeToken: first,
+      );
+
+      expect(rewound.error, 'login.error.2fa.challenge-already-answered');
+      expect(
+        adaptor.verified,
+        3,
+        reason:
+            'the mechanism saw exactly the allowance, and the replay of the '
+            'lowest-counted token in the chain added nothing to it',
+      );
+    });
+
+    test('a correct answer spends its token too', () async {
+      // Otherwise one interim token mints sessions for as long as it lives.
+      final token = await issuedChallenge();
+
+      final accepted = await server.authenticatePass2(
+        _message(password: '424242'),
+        challengeToken: token,
+      );
+      expect(accepted.error, isEmpty);
+
+      final again = await server.authenticatePass2(
+        _message(password: '424242'),
+        challengeToken: token,
+      );
+      expect(again.error, 'login.error.2fa.challenge-already-answered');
+      expect(again.authorizationToken, isEmpty);
+    });
+
+    test('each token in the chain is answerable exactly once', () async {
+      final first = await issuedChallenge();
+      final retry = await server.authenticatePass2(
+        _message(password: 'wrong'),
+        challengeToken: first,
+      );
+      final second = TomClientJwtToken(retry.authorizationToken);
+
+      // The re-issued token is a different token, so it has its own answer.
+      final accepted = await server.authenticatePass2(
+        _message(password: '424242'),
+        challengeToken: second,
+      );
+      expect(accepted.error, isEmpty);
+    });
+
+    test('an installed store replaces the process-wide default', () async {
+      final recording = _RecordingAttemptStore();
+      TomBean.withType(Tom2FAAttemptStore, recording);
+
+      final token = await issuedChallenge();
+      await server.authenticatePass2(
+        _message(password: '424242'),
+        challengeToken: token,
+      );
+
+      expect(recording.spent, hasLength(1));
+      expect(recording.spent.single.username, 'alice');
+      expect(recording.spent.single.challengeType, 'fake');
+      expect(recording.spent.single.fingerprint, isNotEmpty);
+      expect(
+        recording.spent.single.fingerprint,
+        isNot(contains(token.tokenString)),
+        reason:
+            'the store holds a fingerprint, never the bearer credential '
+            'itself — an attempt log is not a place to keep usable tokens',
+      );
+    });
+
+    test(
+      'a store that never refuses restores stateless verification',
+      () async {
+        // The escape hatch for a deployment that wants the old behaviour: the
+        // seam takes it, so nobody has to fork the pass to get it.
+        TomBean.withType(Tom2FAAttemptStore, _AlwaysFreshAttemptStore());
+
+        final token = await issuedChallenge();
+        await server.authenticatePass2(
+          _message(password: 'wrong'),
+          challengeToken: token,
+        );
+        final replay = await server.authenticatePass2(
+          _message(password: 'wrong'),
+          challengeToken: token,
+        );
+
+        expect(replay.error, 'login.error.2fa.invalid-code');
+      },
+    );
+  });
+
+  group('Tom2FAMemoryAttemptStore', () {
+    setUp(Tom2FAMemoryAttemptStore.shared.clear);
+
+    test('the first spend is fresh and every later one is not', () async {
+      final store = Tom2FAMemoryAttemptStore();
+      final attempt = Tom2FAAttempt(
+        fingerprint: 'abc',
+        username: 'alice',
+        challengeType: 'fake',
+        notAfter: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+      );
+
+      expect(await store.spend(attempt), isTrue);
+      expect(await store.spend(attempt), isFalse);
+      expect(await store.spend(attempt), isFalse);
+    });
+
+    test('two fingerprints do not collide', () async {
+      final store = Tom2FAMemoryAttemptStore();
+      final notAfter = DateTime.now().toUtc().add(const Duration(minutes: 5));
+
+      expect(
+        await store.spend(
+          Tom2FAAttempt(
+            fingerprint: 'a',
+            username: 'alice',
+            challengeType: 'fake',
+            notAfter: notAfter,
+          ),
+        ),
+        isTrue,
+      );
+      expect(
+        await store.spend(
+          Tom2FAAttempt(
+            fingerprint: 'b',
+            username: 'alice',
+            challengeType: 'fake',
+            notAfter: notAfter,
+          ),
+        ),
+        isTrue,
+      );
+    });
+
+    test(
+      'an entry is dropped once its challenge could no longer be answered',
+      () async {
+        // The record only has to outlive the challenge: after that every token in
+        // the chain is refused for being lapsed, so keeping the fingerprint would
+        // grow the map for nothing.
+        final store = Tom2FAMemoryAttemptStore();
+        final lapsed = Tom2FAAttempt(
+          fingerprint: 'old',
+          username: 'alice',
+          challengeType: 'fake',
+          notAfter: DateTime.now().toUtc().subtract(const Duration(seconds: 1)),
+        );
+
+        expect(await store.spend(lapsed), isTrue);
+        expect(
+          store.size,
+          isZero,
+          reason:
+              'an already-lapsed attempt is recorded and immediately pruned, so '
+              'a burst of stale tokens cannot grow the map',
+        );
+      },
+    );
+
+    test('pruning does not drop a record that is still load-bearing', () async {
+      final store = Tom2FAMemoryAttemptStore();
+      final live = Tom2FAAttempt(
+        fingerprint: 'live',
+        username: 'alice',
+        challengeType: 'fake',
+        notAfter: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+      );
+      await store.spend(live);
+
+      await store.spend(
+        Tom2FAAttempt(
+          fingerprint: 'other',
+          username: 'bob',
+          challengeType: 'fake',
+          notAfter: DateTime.now().toUtc().subtract(const Duration(seconds: 1)),
+        ),
+      );
+
+      expect(await store.spend(live), isFalse);
+    });
+  });
+
   group('Tom2FAEnrolmentState claim decoding', () {
     Map<String, dynamic> claims() => <String, dynamic>{
       Tom2FAEnrolmentClaims.pendingEnrolment: 'true',
@@ -2921,6 +3197,46 @@ void main() {
 
       expect(result.requires2FAEnrolment, isTrue);
       expect(result.availableTwoFactorMethods.map((m) => m.type), ['app']);
+    });
+
+    test('an offer token can be confirmed only once', () async {
+      // The same hole as pass two's, in the sibling pass. It matters for the
+      // mechanisms whose confirmation is a code sent out of band: an
+      // authenticator app hands the secret to whoever holds the token, so
+      // guessing its code proves nothing, but an emailed code is exactly as
+      // brute-forceable here as a challenge code is there.
+      Tom2FAMemoryAttemptStore.shared.clear();
+      addTearDown(Tom2FAMemoryAttemptStore.shared.clear);
+      policy(Tom2FARequirement.required);
+      final (_, offered) = await login();
+
+      final begun = await server.beginTwoFactorEnrolment(
+        _message(password: 'app'),
+        enrolmentToken: offered,
+      );
+      final offerToken = TomClientJwtToken(begun.authorizationToken);
+
+      final wrong = await server.completeTwoFactorEnrolment(
+        _message(password: 'not-the-code'),
+        enrolmentToken: offerToken,
+      );
+      expect(wrong.error, 'login.error.2fa.enrolment-invalid-code');
+
+      final replay = await server.completeTwoFactorEnrolment(
+        _message(password: 'not-the-code'),
+        enrolmentToken: offerToken,
+      );
+
+      expect(replay.error, 'login.error.2fa.enrolment-already-answered');
+      expect(replay.authorizationToken, isEmpty);
+      expect(
+        enrollable.confirmed,
+        1,
+        reason:
+            'the adaptor saw the first answer and not the replay — a replay '
+            'refused after the mechanism had been asked would still be a free '
+            'guess',
+      );
     });
 
     test('an interim enrolment token grants no session', () async {
@@ -3503,4 +3819,21 @@ TomClientJwtToken _tokenCarrying(Tom2FAChallenge challenge) {
   return TomClientJwtToken(
     TomServerJwtToken(publicInfo, encryptedData: privateInfo).getJWT('tom'),
   );
+}
+
+/// A store that records what it was asked and never refuses.
+class _RecordingAttemptStore implements Tom2FAAttemptStore {
+  final List<Tom2FAAttempt> spent = [];
+
+  @override
+  Future<bool> spend(Tom2FAAttempt attempt) async {
+    spent.add(attempt);
+    return true;
+  }
+}
+
+/// The escape hatch a deployment wanting stateless verification installs.
+class _AlwaysFreshAttemptStore implements Tom2FAAttemptStore {
+  @override
+  Future<bool> spend(Tom2FAAttempt attempt) async => true;
 }

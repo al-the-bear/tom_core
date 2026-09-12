@@ -2,6 +2,31 @@
 
 ### Added
 
+- **Two-factor verification now bounds an uncooperative client (tcopen102).**
+  The attempt count travels inside the interim token and advances only along
+  the chain of tokens the server hands back, which bounded a cooperative client
+  and nothing else: replaying an earlier token — still valid, still carrying its
+  lower count, indistinguishable to a stateless server from its first
+  presentation — bought a fresh allowance every time. The only real bound was
+  the challenge's validity, and six digits inside five minutes is not a bound.
+
+  `Tom2FAAttemptStore` records the one fact that closes it: *this token has been
+  answered*. `authenticatePass2` consults it before asking the mechanism
+  anything, so each token in the chain is answerable exactly once and the chain
+  admits exactly `attemptsAllowed` guesses however the attacker orders it. A
+  replay is refused with `login.error.2fa.challenge-already-answered`, including
+  a replay of a correct answer — one interim token cannot mint two sessions. An
+  honest client that double-submits meets the same refusal, and already holds
+  the re-issued token its first answer gave it.
+
+  The store is keyed on `tom2FATokenFingerprint`, a SHA-256 of the encoded
+  token: a digest, never the credential, because an attempt log is a thing a
+  deployment points at shared infrastructure. `Tom2FAMemoryAttemptStore` is
+  installed by default and is **per process**, so a cluster bounds per node
+  until a shared store is installed — finite either way, where before there was
+  no bound at all. A deployment wanting the old stateless behaviour installs a
+  store whose `spend` always answers `true`.
+
 - **An anchor store declares whether it is out of the server's reach
   (tcopen101).** Anchoring's premise is that the store is somewhere the audited
   server cannot rewrite, and the framework cannot check that — a path is a path.

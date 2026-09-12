@@ -1057,9 +1057,12 @@ void main() {
         expect(refused.error, isNotEmpty);
         expect(await store.enrolmentsFor(context), isEmpty);
 
+        // The retry rides on the token the refusal handed back, not on the one
+        // that was just answered: an offer token is spent by the answer, so
+        // presenting it again is the replay `Tom2FAAttemptStore` refuses.
         final done = await server.completeTwoFactorEnrolment(
           _message(password: code),
-          enrolmentToken: TomClientJwtToken(begun.authorizationToken),
+          enrolmentToken: TomClientJwtToken(refused.authorizationToken),
         );
 
         expect(done.error, isEmpty);

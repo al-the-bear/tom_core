@@ -3,6 +3,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../little_things/server_exception.dart';
 import '../preferences/user_preferences_service.dart';
 import 'two_factor.dart';
+import 'two_factor_attempts.dart';
 import 'two_factor_enrolment.dart';
 import 'two_factor_policy.dart';
 
@@ -259,13 +260,21 @@ class TomAuthenticationServer {
   /// token is still within its validity and still carries its lower count.
   ///
   /// So the counter bounds a cooperative client (and gives a UI its "2 tries
-  /// left"); it is **not** by itself a brute-force defence. What bounds an
-  /// uncooperative one is the challenge's own short
-  /// [Tom2FAChallengeSpec.validity] — after it lapses, every token in the chain
-  /// is refused. Deployments that need a hard per-challenge attempt cap must add
-  /// the server-side state that stateless verification deliberately omits (a
-  /// spent-token denylist or a per-user counter); see the mechanism's own rate
-  /// limiting as the usual alternative.
+  /// left"); it is **not** by itself a brute-force defence.
+  ///
+  /// What closes that is one recorded fact per token: *this one has been
+  /// answered*. [Tom2FAAttemptStore] holds it, and this pass consults it before
+  /// asking the mechanism anything, so each token in the chain is answerable
+  /// exactly once and the chain admits exactly [Tom2FAChallenge.attemptsAllowed]
+  /// guesses however the attacker orders it. A replay is refused with
+  /// `login.error.2fa.challenge-already-answered` — including a replay of a
+  /// *correct* answer, so one interim token cannot mint two sessions.
+  ///
+  /// The store is resolved rather than required: [Tom2FAMemoryAttemptStore] is
+  /// the default and is per process, so a cluster bounds per node until a shared
+  /// store is installed. The challenge's own short
+  /// [Tom2FAChallengeSpec.validity] still bounds the chain in time on top of
+  /// that.
   Future<TomAuthenticationResult> authenticatePass2(
     TomAuthenticationMessage m, {
     TomClientJwtToken? challengeToken,
@@ -299,6 +308,35 @@ class TomAuthenticationServer {
         );
       }
 
+      // The interim token carries the access-control payload pass 1 resolved,
+      // so the completed session needs no second trip to the user store — and
+      // the principal cannot be swapped for another between the passes.
+      // Resolved here rather than after verification because the attempt store
+      // is told whose attempt it is refusing, and decoding a payload has no
+      // side effect to sequence against.
+      final principal = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+        token,
+      );
+
+      // Before the mechanism is asked anything, so a replay costs a request and
+      // buys no information. The token's own identity is what is spent: a wrong
+      // answer is what mints the next token, so one answer per token is one
+      // guess per allowance, whichever token in the chain is presented.
+      final fresh = await Tom2FAAttemptStore.resolve().spend(
+        Tom2FAAttempt(
+          fingerprint: tom2FATokenFingerprint(token.tokenString),
+          username: principal.username,
+          challengeType: challenge.type,
+          notAfter: challenge.expiresAt,
+        ),
+      );
+      if (!fresh) {
+        throw TomLoginException(
+          'login.error.2fa.challenge-already-answered',
+          'This two-factor challenge token has already been answered',
+        );
+      }
+
       final adaptor = Tom2FARegistry.lookup(challenge.type);
       if (adaptor == null) {
         throw TomLoginException(
@@ -308,12 +346,6 @@ class TomAuthenticationServer {
         );
       }
 
-      // The interim token carries the access-control payload pass 1 resolved,
-      // so the completed session needs no second trip to the user store — and
-      // the principal cannot be swapped for another between the passes.
-      final principal = TomBearerAuthentication.convertTokenPayloadToPrincipal(
-        token,
-      );
       final context = _contextFor(principal, m);
 
       final consumed = challenge.withConsumedAttempt();
@@ -617,7 +649,11 @@ class TomAuthenticationServer {
   ///
   /// A wrong code stores nothing and returns a retry — the same offer with one
   /// attempt spent, exactly as [authenticatePass2] does for a wrong challenge
-  /// answer — until [Tom2FAEnrolmentOffer.attemptsAllowed] is exhausted.
+  /// answer — until [Tom2FAEnrolmentOffer.attemptsAllowed] is exhausted. And as
+  /// there, the count alone would bound only a cooperative client, so the offer
+  /// token is spent against [Tom2FAAttemptStore] before the mechanism is asked
+  /// anything: a replay is refused with
+  /// `login.error.2fa.enrolment-already-answered`.
   Future<TomAuthenticationResult> completeTwoFactorEnrolment(
     TomAuthenticationMessage m, {
     TomClientJwtToken? enrolmentToken,
@@ -642,6 +678,34 @@ class TomAuthenticationServer {
         throw TomLoginException(
           'login.error.2fa.enrolment-attempts-exhausted',
           'No two-factor enrolment attempts remain',
+        );
+      }
+
+      // The same bound as [authenticatePass2], for the same reason: the count
+      // rides in the token, so without a record of what has been answered a
+      // replay of an earlier offer token buys a fresh allowance. It matters for
+      // the mechanisms whose confirmation is a code sent out of band — an
+      // authenticator app hands the secret to whoever holds the token, so
+      // guessing its code proves nothing, but an emailed code is exactly as
+      // brute-forceable here as a challenge code is there.
+      final fresh = await Tom2FAAttemptStore.resolve().spend(
+        Tom2FAAttempt(
+          fingerprint: tom2FATokenFingerprint(token.tokenString),
+          username: TomBearerAuthentication.convertTokenPayloadToPrincipal(
+            token,
+          ).username,
+          challengeType: offer.type,
+          // Never null here: a begun state with no deadline reads as expired,
+          // and the check above has already refused it. The fallback records a
+          // lapsed attempt — pruned at once, and about a request that is
+          // refused either way — rather than inventing a window.
+          notAfter: state.expiresAt ?? DateTime.now().toUtc(),
+        ),
+      );
+      if (!fresh) {
+        throw TomLoginException(
+          'login.error.2fa.enrolment-already-answered',
+          'This two-factor enrolment token has already been answered',
         );
       }
 

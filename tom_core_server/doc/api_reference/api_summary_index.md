@@ -108,6 +108,9 @@ surface documented here.
 | `TomRole2FAPolicy` | class | Policy driven by role rules, folded to the strictest match. |
 | `Tom2FAGraceAccounting` | abstract class | Optional bean that records a grace login being spent. |
 | `Tom2FAEnrolmentStore` | abstract class | Where a principal's set-up factors live; deployment-supplied, no fallback. |
+| `Tom2FAAttemptStore` | abstract class | Records that an interim token has been answered, so a replay cannot mint a fresh allowance. |
+| `Tom2FAAttempt` | class | One presentation of an interim token, as an attempt store is told about it. |
+| `Tom2FAMemoryAttemptStore` | class | The default attempt store — a map in this process. |
 | `TomMemory2FAEnrolmentStore` | class | In-memory enrolment store, for tests and dev servers. |
 | `TomPersistent2FAEnrolmentStore` | class | Enrolment store over a repository, with `secretData` encrypted at rest. |
 | `TomUserTwoFactorEnrolment` | class | The persisted row behind `TomPersistent2FAEnrolmentStore`. |
@@ -657,6 +660,8 @@ surface documented here.
 | `TimeCol` | Object Persistence |
 | `TimeLiteral` | Object Persistence |
 | `Tom2FAAdaptor` | Authentication |
+| `Tom2FAAttempt` | Authentication |
+| `Tom2FAAttemptStore` | Authentication |
 | `Tom2FAChallengeSpec` | Authentication |
 | `Tom2FAContext` | Authentication |
 | `Tom2FADecision` | Authentication |
@@ -667,12 +672,14 @@ surface documented here.
 | `Tom2FAEnrolmentSupport` | Authentication |
 | `Tom2FAException` | Authentication |
 | `Tom2FAGraceAccounting` | Authentication |
+| `Tom2FAMemoryAttemptStore` | Authentication |
 | `Tom2FAPolicy` | Authentication |
 | `Tom2FAPrerequisite` | Authentication |
 | `Tom2FARegistry` | Authentication |
 | `Tom2FARequirement` | Authentication |
 | `Tom2FAService` | Authentication |
 | `Tom2FASubmission` | Authentication |
+| `tom2FATokenFingerprint` | Authentication |
 | `TomAggregate` | Object Persistence |
 | `TomAggregateFunction` | Datasources |
 | `TomAnnotationAnalyzer` | Object Persistence |
