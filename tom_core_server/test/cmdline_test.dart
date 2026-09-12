@@ -111,10 +111,29 @@ void main() {
       expect(TomEnvFile.parse([line]), {'k': 'v'});
     });
 
-    test('differs from TomEnvFile.parse on a "#" inside a value', () {
+    // A `#` that is part of a value is not a comment to either parser. The
+    // `.env` side once cut at the first `#` wherever it stood, so a password,
+    // a URL fragment or a colour literal arrived short from a file and whole
+    // from the command line — one of the two documented divergences, and the
+    // one that was an accident rather than a rule.
+    test('agrees with TomEnvFile.parse on a "#" inside a value', () {
       const line = 'pw=pa#ss';
-      expect(TomArgs.parseArgsToMap([line]), {'pw': 'pa#ss'});
-      expect(TomEnvFile.parse([line]), {'pw': 'pa'}); // truncated at the '#'
+      const expected = {'pw': 'pa#ss'};
+      expect(TomArgs.parseArgsToMap([line]), expected);
+      expect(TomEnvFile.parse([line]), expected);
+    });
+
+    // What is left of that divergence, and all that is left: `TomEnvFile`
+    // honours an inline comment and `TomArgs` strips none, so the two part
+    // company only where a `#` follows whitespace. A command line needs no
+    // comment rule — the shell has one — and a `.env` file has no other way to
+    // annotate a line.
+    test('differs from TomEnvFile.parse on a spaced "#"', () {
+      const line = 'pw=secret # the staging one';
+      expect(TomArgs.parseArgsToMap([line]), {
+        'pw': 'secret # the staging one',
+      });
+      expect(TomEnvFile.parse([line]), {'pw': 'secret'});
     });
 
     // The one place the two conversion tables themselves disagree, rather than
@@ -806,6 +825,49 @@ void main() {
     test('strips an inline comment after an unquoted value', () {
       final env = TomEnvFile.parse(['KEY=value # trailing note']);
       expect(env['KEY'], 'value');
+    });
+
+    // The whitespace is the rule, not decoration on the example. Without it a
+    // `#` is one of the value's own characters, which is what a password, a
+    // URL fragment, a colour literal and a channel name all are.
+    test('a "#" with no whitespace before it is part of the value', () {
+      final env = TomEnvFile.parse([
+        'PW=pa#ss',
+        'URL=https://h/doc#section',
+        'COLOR=#FF0000',
+        'CHANNEL=#general',
+      ]);
+      expect(env['PW'], 'pa#ss');
+      expect(env['URL'], 'https://h/doc#section');
+      expect(env['COLOR'], '#FF0000');
+      expect(env['CHANNEL'], '#general');
+    });
+
+    // A tab separates as well as a space: a `.env` file is written by hand and
+    // aligned by hand, and a column of comments is usually tabbed into place.
+    test('a tab before the "#" opens a comment too', () {
+      expect(TomEnvFile.parse(['KEY=value\t# note'])['KEY'], 'value');
+    });
+
+    // The comment is judged before the value is trimmed, which is what lets
+    // `COLOR=#FF0000` and `KEY= # note` mean different things: the first `#`
+    // is the value's first character, the second follows a space. After a trim
+    // the two are the same text and no rule could tell them apart.
+    test('a value that is only a spaced comment is empty', () {
+      expect(TomEnvFile.parse(['KEY= # note']).containsKey('KEY'), isTrue);
+      expect(TomEnvFile.parse(['KEY= # note'])['KEY'], isNull);
+    });
+
+    // A quoted value is taken verbatim before the comment rule is reached, so
+    // a `#` inside quotes stays whatever it was — spaced or not.
+    test('a quoted value keeps a spaced "#"', () {
+      expect(TomEnvFile.parse(['MSG="a # b"'])['MSG'], 'a # b');
+    });
+
+    // The comment still ends the value, so nothing after it is data: the
+    // trailing text is dropped rather than folded in with the `#` removed.
+    test('a comment takes everything after it', () {
+      expect(TomEnvFile.parse(['KEY=v # a=b # c'])['KEY'], 'v');
     });
 
     test('maps an empty value to null', () {

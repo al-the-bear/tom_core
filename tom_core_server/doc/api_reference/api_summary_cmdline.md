@@ -155,7 +155,8 @@ supported features named above actually does:
 | `ON="true"` | `String` `true` | quoted — not a `bool` |
 | `EMPTY=` | `null` | empty value (`.env` only) |
 | `EMPTY=""` | `String` `''` | quoted empty — not `null` |
-| `PW=pa#ss` | `String` `pa` | truncated at the inline comment |
+| `PW=pa#ss` | `String` `pa#ss` | the `#` is data — no whitespace before it |
+| `PW=pa #ss` | `String` `pa` | the space opens an inline comment |
 
 **A quoted value skips conversion entirely.** `TomArgs.unquote` decides what
 counts as quoted — a matched pair, see `unquote` above — and a value it accepts
@@ -172,11 +173,15 @@ present either way — `containsKey` returns `true` — so an empty assignment i
 key explicitly set to nothing, which is distinct from a key no source mentioned
 at all. To store an empty `String` from a `.env` file, quote it: `EMPTY=""`.
 
-**An unquoted value is truncated at its first `#`.** No whitespace is required
-before it, so `PW=pa#ss` yields `pa` and a URL loses its fragment; that is what
-"inline comments" means. `TomArgs` strips no comments, so unlike the quoting
-rule this one really is `.env`-only. Quote any value that may legitimately
-contain a `#`.
+**An inline comment is a `#` preceded by a space or a tab.** The whitespace is
+the rule, not decoration on the example: a `#` anywhere else is one of the
+value's own characters, so `PW=pa#ss`, `COLOR=#FF0000` and a URL fragment all
+survive unquoted. The judgement is made on the text *before* it is trimmed,
+which is what keeps `COLOR=#FF0000` (a value beginning with `#`) apart from
+`KEY= # note` (a comment following a space) — after a trim the two are one
+string. A comment runs to the end of the line, and inside quotes a `#` is always
+data. `TomArgs` strips no comments at all, so this is the one place the two
+parsers still part company over a value's content.
 
 ## Global Functions and Constants
 

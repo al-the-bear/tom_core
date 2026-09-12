@@ -19,7 +19,7 @@ the number, because it changes the value rather than decorating it.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomArgs` | Static namespace: `fillFromArgs<T>` populates a reflected object, `parseArgsToMap` returns a loose `Map`, `convertToObjectMap` normalises an existing string map (e.g. `Platform.environment`). |
-| `TomEnvFile` | Reads a `.env` file into a `Map<String, Object?>` via `read([path])` / `readAsync([path])`; supports comments, blank lines, quoted and inline-commented values. Missing file → empty map. `loadAndMerge` returns the OS environment and the `.env` as one *typed* map, the environment converted on the way in — the map to bind. `resolveEnvironment` returns the same two sources stringified — the map to hand `TomYaml.loadYamlFile(..., environment:)` so `${VAR:default}` placeholders see the `.env`. |
+| `TomEnvFile` | Reads a `.env` file into a `Map<String, Object?>` via `read([path])` / `readAsync([path])`; supports comments, blank lines, quoted values, and an inline comment opened by a `#` **preceded by whitespace** — a `#` anywhere else is part of the value, so `PW=pa#ss` and `COLOR=#FF0000` need no quotes. Missing file → empty map. `loadAndMerge` returns the OS environment and the `.env` as one *typed* map, the environment converted on the way in — the map to bind. `resolveEnvironment` returns the same two sources stringified — the map to hand `TomYaml.loadYamlFile(..., environment:)` so `${VAR:default}` placeholders see the `.env`. |
 
 ## Quick start
 

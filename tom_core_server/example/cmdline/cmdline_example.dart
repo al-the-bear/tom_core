@@ -86,6 +86,7 @@ ENABLED=true
 SUPPORT_PHONE=004917612345678901
 CLOCK_SKEW=-5
 BILLING_PHONE=+4917612345678
+WEBHOOK_URL=https://hooks.example.com/t/abc#deploy
 ''');
   final env = TomEnvFile.read(envFile.path);
   print('4. read .env                 : $env');
@@ -112,6 +113,17 @@ BILLING_PHONE=+4917612345678
   check(
     env['BILLING_PHONE'] == '+4917612345678',
     'a leading plus keeps an identifier textual, unquoted',
+  );
+  // An inline comment opens at a `#` preceded by whitespace — see the
+  // SERVER_NAME line above, whose note is stripped. A `#` anywhere else is one
+  // of the value's own characters, so a URL fragment needs no quotes.
+  check(
+    env['WEBHOOK_URL'] == 'https://hooks.example.com/t/abc#deploy',
+    'a "#" with no space before it is part of the value, not a comment',
+  );
+  check(
+    env['SERVER_NAME'] == 'my service',
+    'a "#" after whitespace opens a comment, which is dropped',
   );
 
   // 5. The same file read without blocking the isolate. Prefer this wherever

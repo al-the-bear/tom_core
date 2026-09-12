@@ -127,7 +127,10 @@ final env = await TomEnvFile.readAsync();   // async variant
 
 The format supports `KEY=value` pairs, `#` comment lines, blank lines, quoted
 values (`KEY="with spaces"`), and inline comments after an unquoted value
-(`KEY=value # note`). `parse(List<String>)` exposes the same parsing for content
+(`KEY=value # note`). **The space before that `#` is part of the rule**: a `#`
+preceded by anything else is one of the value's own characters, so `PW=pa#ss`,
+`COLOR=#FF0000` and a URL fragment need no quotes to survive. Inside quotes a
+`#` is always data. `parse(List<String>)` exposes the same parsing for content
 from any source, and `merge` overlays several maps (later wins):
 
 ```dart
@@ -407,12 +410,6 @@ tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
   a configuration no source supplied it for (see `doc/configuration.md`, *
   Requiring a setting*), or call `tomReflectionInfo.missingRequiredFields` on
   the merged map yourself. These two helpers stay pure parsers.
-- **A `#` anywhere in an unquoted `.env` value truncates it.** The
-  inline-comment rule cuts at the first `#` with no requirement that whitespace
-  precede it, so `K=pa#ss` yields `pa` and a URL loses its fragment. Quote any
-  value that may legitimately contain a `#` — a password, a fragment, a colour
-  literal. Command-line arguments are not affected: `TomArgs` strips no
-  comments.
 - **The two parsers still differ on whitespace.** `TomEnvFile.parse` trims
   around the key and the value; `TomArgs` takes the token as given. So
   `' k = v '` is `{'k': 'v'}` from a `.env` file and `{' k ': ' v '}` from the

@@ -9,7 +9,10 @@ import 'args.dart';
 /// - Comments: Lines starting with `#`
 /// - Empty lines (ignored)
 /// - Quoted values: `KEY="value with spaces"` or `KEY='value'`
-/// - Inline comments: `KEY=value # comment` (only if not inside quotes)
+/// - Inline comments: `KEY=value # comment` — the space before the `#` is part
+///   of the rule, not of the example. A `#` that follows anything else is one
+///   of the value's own characters, so `PW=pa#ss`, `COLOR=#FF0000` and a URL
+///   fragment all survive unquoted. Inside quotes a `#` is always data.
 ///
 /// Example `.env` file:
 /// ```
@@ -86,7 +89,12 @@ class TomEnvFile {
         continue;
       }
 
-      var value = line.substring(equalsIndex + 1).trim();
+      // The raw text after the `=` is kept as well as the trimmed value: the
+      // comment rule reads the raw one, because trimming destroys the very
+      // thing it judges by. `COLOR=#FF0000` and `KEY= # note` are the same
+      // string once trimmed, and they mean different things.
+      final rawValue = line.substring(equalsIndex + 1);
+      var value = rawValue.trim();
 
       // Handle quoted values. TomArgs.unquote owns the rule — quotes count
       // only as a matched pair — so the two sources cannot disagree about what
@@ -99,9 +107,9 @@ class TomEnvFile {
       }
 
       // Handle inline comments (only if not quoted)
-      final commentIndex = value.indexOf('#');
+      final commentIndex = _inlineCommentIndex(rawValue);
       if (commentIndex != -1) {
-        value = value.substring(0, commentIndex).trim();
+        value = rawValue.substring(0, commentIndex).trim();
       }
 
       // Convert value to appropriate type
@@ -109,6 +117,36 @@ class TomEnvFile {
     }
 
     return result;
+  }
+
+  /// The index in [rawValue] at which an inline comment starts, or `-1` when
+  /// the line carries none.
+  ///
+  /// A comment opens at a `#` **preceded by a space or a tab**. That
+  /// requirement is the rule rather than a convention borrowed from the
+  /// example: a `#` anywhere else is one of the value's own characters, and the
+  /// values that carry one are entirely ordinary — a password (`PW=pa#ss`), a
+  /// URL fragment, a CSS colour (`COLOR=#FF0000`), a channel name. Cutting at
+  /// the first `#` wherever it stood delivered each of them short, with no
+  /// diagnostic and no reason for a reader following the documented format to
+  /// suspect it. Quoting was the workaround and is now merely an option.
+  ///
+  /// [rawValue] is the text after the `=` **before trimming**, and it has to
+  /// be: `COLOR=#FF0000` and `KEY= # note` are one string once trimmed, so a
+  /// rule applied afterwards could not tell a value that begins with `#` from
+  /// a comment that follows a space. Read before the trim, the first has
+  /// nothing in front of its `#` and the second has a space.
+  ///
+  /// The `#` needs nothing after it: `KEY=value #` ends the value just as a
+  /// full comment does. And a comment takes everything to the end of the line,
+  /// so a second `#` inside it is part of the comment.
+  static int _inlineCommentIndex(String rawValue) {
+    for (var i = 1; i < rawValue.length; i++) {
+      if (rawValue[i] != '#') continue;
+      final before = rawValue[i - 1];
+      if (before == ' ' || before == '\t') return i;
+    }
+    return -1;
   }
 
   /// Converts a string value to the appropriate type.

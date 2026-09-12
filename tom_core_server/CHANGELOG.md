@@ -34,6 +34,30 @@
 
 ### Changed
 
+- **A `#` opens a `.env` comment only after whitespace (tcopen117).** `parse`
+  stripped an inline comment by cutting at `value.indexOf('#')`, with nothing
+  required in front of it — so it cut inside ordinary values. `PW=pa#ss` arrived
+  as `pa`, a URL lost its fragment, `COLOR=#FF0000` lost the whole value, and a
+  channel name lost its name, each silently. The class dartdoc had shown the
+  intended shape all along ("Inline comments: `KEY=value # comment`"), with a
+  space the implementation did not require.
+
+  A comment now opens at a `#` preceded by a space or a tab. The judgement is
+  made on the raw text **before** the trim, which is load-bearing:
+  `COLOR=#FF0000` and `KEY= # note` are one string once trimmed, so a rule
+  applied afterwards could not tell a value beginning with `#` from a comment
+  following a space. A tab counts because a `.env` file is aligned by hand; the
+  `#` needs nothing after it; a comment still runs to the end of the line; and
+  inside quotes a `#` remains data.
+
+  **One divergence between the two parsers closes.** `TomArgs` strips no
+  comments, so `pw=pa#ss` used to mean one thing on a command line and another
+  in a file. They now agree on a `#` inside a value and part company only where
+  a `#` follows whitespace — a difference with a reason, since a command line
+  has the shell's comment rule behind it and a `.env` file has no other way to
+  annotate a line. Eight tests, four mutations checked, and the example carries
+  a webhook URL with a fragment, unquoted.
+
 - **`TomEnvFile.load` is now `loadAndMerge`, and it merges (tcopen116).** `load`
   called `read(path)` and returned the result. Its dartdoc opened by saying it
   "adds them to the process environment" and retracted that two lines later, its
