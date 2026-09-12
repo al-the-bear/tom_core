@@ -203,6 +203,84 @@ abstract class Tom2FAGraceAccounting {
   Future<void> recordGraceLoginConsumed(Tom2FAContext context);
 }
 
+/// Where the grace a principal has already spent is remembered.
+///
+/// [Tom2FAGraceAccounting] says *when* a grace login is used; something has to
+/// hold the running total, and this is it. Without one, a policy re-reads its
+/// configured allowance on every login and hands the same number back — a
+/// countdown that never counts down, and a `graceLogins: 3` that means "three
+/// more, always".
+///
+/// ## Why the in-memory default is honest here and is not for enrolments
+///
+/// [Tom2FAEnrolmentStore.resolve] returns `null` rather than falling back,
+/// because an enrolment that vanished on restart would lose a user their
+/// factor. This one falls back to [TomMemory2FAGraceStore], because losing the
+/// count degrades to *exactly the behaviour that existed before it was
+/// counted*: the user is offered enrolment again and gets another few logins.
+/// A restart can therefore make the budget longer and can never make it
+/// shorter, so a per-process default cannot cost anyone access — and a store
+/// that has to be installed before the counter counts is a counter most
+/// deployments would not have.
+///
+/// A deployment that wants the budget to survive a restart, or to be one budget
+/// across a cluster, implements this against its own user data — where the
+/// principal already lives. The framework ships no table for it: the count is a
+/// fact about a user, and this package has no user table.
+abstract class Tom2FAGraceStore {
+  /// How many grace logins [context]'s principal has already spent.
+  Future<int> consumedBy(Tom2FAContext context);
+
+  /// Records that one more has just been spent.
+  Future<void> recordConsumed(Tom2FAContext context);
+
+  /// The installed store, or the process-wide [TomMemory2FAGraceStore].
+  static Tom2FAGraceStore resolve() {
+    final installed = TomBean.getBeanByType(Tom2FAGraceStore);
+    return installed is Tom2FAGraceStore
+        ? installed
+        : TomMemory2FAGraceStore.shared;
+  }
+
+  /// What a store files a principal's count under.
+  ///
+  /// The principal, and deliberately not the principal *and mechanism*: grace
+  /// is spent by declining to enrol at all, which is a decision about the
+  /// obligation rather than about any one way of meeting it. Keying by
+  /// mechanism would hand a user a fresh allowance for every mechanism the
+  /// deployment offers.
+  static String principalKeyOf(Tom2FAContext context) =>
+      context.principal.id.toString();
+}
+
+/// The default [Tom2FAGraceStore]: a map in this process.
+///
+/// **Per process**, and says so. A restart or a second node starts the count
+/// again, which lengthens the budget and never shortens it — see
+/// [Tom2FAGraceStore] for why that is an acceptable default here.
+class TomMemory2FAGraceStore implements Tom2FAGraceStore {
+  /// The process-wide instance [Tom2FAGraceStore.resolve] falls back to.
+  static final TomMemory2FAGraceStore shared = TomMemory2FAGraceStore();
+
+  final Map<String, int> _spent = {};
+
+  /// How many principals have spent anything. Test-support.
+  int get size => _spent.length;
+
+  @override
+  Future<int> consumedBy(Tom2FAContext context) async =>
+      _spent[Tom2FAGraceStore.principalKeyOf(context)] ?? 0;
+
+  @override
+  Future<void> recordConsumed(Tom2FAContext context) async {
+    final key = Tom2FAGraceStore.principalKeyOf(context);
+    _spent[key] = (_spent[key] ?? 0) + 1;
+  }
+
+  /// Discards every count. Test-support only.
+  void clear() => _spent.clear();
+}
+
 // =============================================================================
 // SHIPPED IMPLEMENTATIONS
 // =============================================================================
@@ -218,6 +296,14 @@ abstract class Tom2FAGraceAccounting {
 /// A principal that requires a factor but names no mechanism yields a `required`
 /// decision with **no** allowed mechanism. The login rejects that clearly rather
 /// than challenging with a mechanism key of `''`.
+///
+/// **Grants no grace at all**, and therefore counts none: every decision it
+/// makes carries `graceLogins: 0`, so a `required` login with nothing enrolled
+/// is offered enrolment it cannot decline. There is nowhere for a number to
+/// come from — the principal's flags say *whether* a factor is owed and not how
+/// long the user may put it off — and inventing one would be this policy
+/// deciding something it was not told. A deployment that wants a grace period
+/// uses [TomRole2FAPolicy], which is configured with one and counts it.
 class TomPrincipalFlag2FAPolicy implements Tom2FAPolicy {
   /// Creates the flag-reading default policy.
   const TomPrincipalFlag2FAPolicy();
@@ -257,7 +343,7 @@ class TomPrincipalFlag2FAPolicy implements Tom2FAPolicy {
 ///   mechanisms: ['totp'],
 /// ));
 /// ```
-class TomRole2FAPolicy implements Tom2FAPolicy {
+class TomRole2FAPolicy implements Tom2FAPolicy, Tom2FAGraceAccounting {
   /// The requirement each role imposes. Roles absent from the map impose
   /// nothing — they neither raise nor lower the outcome.
   final Map<String, Tom2FARequirement> requirementByRole;
@@ -275,7 +361,13 @@ class TomRole2FAPolicy implements Tom2FAPolicy {
   /// never what an unset option should mean.
   final List<String>? mechanisms;
 
-  /// The grace count stamped onto every decision this policy makes.
+  /// How many logins a principal may complete while still owing a factor.
+  ///
+  /// A **budget**, not a per-login allowance: this policy implements
+  /// [Tom2FAGraceAccounting], so each grace login actually spent is recorded in
+  /// the [Tom2FAGraceStore] and the decision reports what is left. `3` means
+  /// three logins in total, after which the enrolment offer stops being
+  /// declinable.
   final int graceLogins;
 
   /// Creates a role-driven policy.
@@ -298,14 +390,31 @@ class TomRole2FAPolicy implements Tom2FAPolicy {
       matched = matched == null ? rule : matched.strictest(rule);
     }
     final requirement = matched ?? defaultRequirement;
+    final remaining = await _remainingGraceFor(context);
 
     if (requirement == Tom2FARequirement.disabled) {
-      return Tom2FADecision(requirement: requirement, graceLogins: graceLogins);
+      return Tom2FADecision(requirement: requirement, graceLogins: remaining);
     }
     return Tom2FADecision(
       requirement: requirement,
       allowedMechanisms: mechanisms ?? Tom2FARegistry.registeredTypes.toList(),
-      graceLogins: graceLogins,
+      graceLogins: remaining,
     );
+  }
+
+  @override
+  Future<void> recordGraceLoginConsumed(Tom2FAContext context) =>
+      Tom2FAGraceStore.resolve().recordConsumed(context);
+
+  /// What is left of [graceLogins] for this principal.
+  ///
+  /// Never negative, and the store is not consulted at all when the policy
+  /// grants no grace: a deployment that configured none should not pay a store
+  /// read per login for an answer that is always zero.
+  Future<int> _remainingGraceFor(Tom2FAContext context) async {
+    if (graceLogins <= 0) return 0;
+    final spent = await Tom2FAGraceStore.resolve().consumedBy(context);
+    final left = graceLogins - spent;
+    return left < 0 ? 0 : left;
   }
 }

@@ -107,6 +107,8 @@ surface documented here.
 | `TomPrincipalFlag2FAPolicy` | class | The default policy: reads `TomPrincipal.requires2FA` / `twoFactorType`. |
 | `TomRole2FAPolicy` | class | Policy driven by role rules, folded to the strictest match. |
 | `Tom2FAGraceAccounting` | abstract class | Optional bean that records a grace login being spent. |
+| `Tom2FAGraceStore` | abstract class | Where spent grace is remembered, so a budget counts down. |
+| `TomMemory2FAGraceStore` | class | The default grace store — a map in this process. |
 | `Tom2FAEnrolmentStore` | abstract class | Where a principal's set-up factors live; deployment-supplied, no fallback. |
 | `Tom2FAAttemptStore` | abstract class | Records that an interim token has been answered, so a replay cannot mint a fresh allowance. |
 | `Tom2FAAttempt` | class | One presentation of an interim token, as an attempt store is told about it. |
@@ -673,6 +675,7 @@ surface documented here.
 | `Tom2FAEnrolmentSupport` | Authentication |
 | `Tom2FAException` | Authentication |
 | `Tom2FAGraceAccounting` | Authentication |
+| `Tom2FAGraceStore` | Authentication |
 | `Tom2FAMemoryAttemptStore` | Authentication |
 | `Tom2FAPolicy` | Authentication |
 | `Tom2FAPrerequisite` | Authentication |
@@ -888,6 +891,7 @@ surface documented here.
 | `tomLoggingMiddleware` | Server |
 | `TomLoginException` | Authentication |
 | `TomMemory2FAEnrolmentStore` | Authentication |
+| `TomMemory2FAGraceStore` | Authentication |
 | `TomMemoryAuditAnchorStore` | Audit |
 | `TomMemoryAuditSink` | Audit |
 | `TomMemoryBlobStore` | File Storage |

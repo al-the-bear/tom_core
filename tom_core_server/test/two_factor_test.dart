@@ -1771,6 +1771,122 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
+    // Grace is a budget, and something has to count it
+    // -------------------------------------------------------------------------
+
+    group('grace logins are counted, not re-granted', () {
+      // `graceLogins: 3` read as "three more, always": the policy re-read its
+      // configured allowance on every login and nothing held a running total,
+      // so a countdown never counted down and the user was never enrolled. The
+      // failure was silent and permissive, which is the worst pair.
+      setUp(TomMemory2FAGraceStore.shared.clear);
+      tearDown(TomMemory2FAGraceStore.shared.clear);
+
+      Tom2FAContext contextForId(int userId) =>
+          Tom2FAContext(principal: _principalWithId(userId));
+
+      test('the default policy grants none, twice running', () async {
+        // The behaviour the todo asks to see asserted: two consecutive logins
+        // through the shipped default. It grants no grace at all, so there is
+        // nothing to count and nothing that could drift.
+        const policy = TomPrincipalFlag2FAPolicy();
+
+        final first = await policy.decideFor(
+          contextFor(requires2FA: true, twoFactorType: 'totp'),
+        );
+        final second = await policy.decideFor(
+          contextFor(requires2FA: true, twoFactorType: 'totp'),
+        );
+
+        expect(first.graceLogins, isZero);
+        expect(second.graceLogins, isZero);
+        expect(policy, isNot(isA<Tom2FAGraceAccounting>()));
+      });
+
+      test('the role policy counts its budget down', () async {
+        final policy = TomRole2FAPolicy(
+          requirementByRole: const {'admin': Tom2FARequirement.required},
+          mechanisms: const ['totp'],
+          graceLogins: 3,
+        );
+        final context = contextForId(42);
+
+        expect((await policy.decideFor(context)).graceLogins, 3);
+        await policy.recordGraceLoginConsumed(context);
+        expect((await policy.decideFor(context)).graceLogins, 2);
+        await policy.recordGraceLoginConsumed(context);
+        expect((await policy.decideFor(context)).graceLogins, 1);
+        await policy.recordGraceLoginConsumed(context);
+        expect(
+          (await policy.decideFor(context)).graceLogins,
+          isZero,
+          reason:
+              'the fourth login is the one the budget was for — the offer '
+              'stops being declinable here or the number meant nothing',
+        );
+      });
+
+      test('a spent budget does not go negative', () async {
+        final policy = TomRole2FAPolicy(graceLogins: 1);
+        final context = contextForId(42);
+
+        await policy.recordGraceLoginConsumed(context);
+        await policy.recordGraceLoginConsumed(context);
+
+        expect((await policy.decideFor(context)).graceLogins, isZero);
+      });
+
+      test('one principal spending does not charge another', () async {
+        final policy = TomRole2FAPolicy(graceLogins: 2);
+
+        await policy.recordGraceLoginConsumed(contextForId(1));
+
+        expect((await policy.decideFor(contextForId(1))).graceLogins, 1);
+        expect((await policy.decideFor(contextForId(2))).graceLogins, 2);
+      });
+
+      test('the server can find the accounting on the role policy', () async {
+        // The login path asks `is Tom2FAGraceAccounting` before spending, so a
+        // policy that counts but does not declare it is a policy nothing tells.
+        expect(TomRole2FAPolicy(graceLogins: 1), isA<Tom2FAGraceAccounting>());
+      });
+
+      test('a policy granting no grace never reads the store', () async {
+        // Zero is always zero, and a store read per login to learn it is a
+        // round trip a deployment that configured no grace did not ask for.
+        final counting = _CountingGraceStore();
+        TomBean.withType(Tom2FAGraceStore, counting);
+
+        await TomRole2FAPolicy().decideFor(contextForId(42));
+
+        expect(counting.reads, isZero);
+      });
+
+      test('an installed store replaces the process-wide default', () async {
+        final store = _CountingGraceStore(consumed: 1);
+        TomBean.withType(Tom2FAGraceStore, store);
+
+        final decision = await TomRole2FAPolicy(
+          graceLogins: 3,
+        ).decideFor(contextForId(42));
+
+        expect(decision.graceLogins, 2);
+        expect(store.reads, 1);
+      });
+
+      test('the memory store keys on the principal', () async {
+        final store = TomMemory2FAGraceStore();
+
+        await store.recordConsumed(contextForId(7));
+        await store.recordConsumed(contextForId(7));
+
+        expect(await store.consumedBy(contextForId(7)), 2);
+        expect(await store.consumedBy(contextForId(8)), isZero);
+        expect(store.size, 1);
+      });
+    });
+
+    // -------------------------------------------------------------------------
     // The default, which must be today's behaviour and nothing else
     // -------------------------------------------------------------------------
 
@@ -3836,4 +3952,21 @@ class _RecordingAttemptStore implements Tom2FAAttemptStore {
 class _AlwaysFreshAttemptStore implements Tom2FAAttemptStore {
   @override
   Future<bool> spend(Tom2FAAttempt attempt) async => true;
+}
+
+/// A grace store that counts how often it was asked.
+class _CountingGraceStore implements Tom2FAGraceStore {
+  _CountingGraceStore({this.consumed = 0});
+
+  final int consumed;
+  int reads = 0;
+
+  @override
+  Future<int> consumedBy(Tom2FAContext context) async {
+    reads++;
+    return consumed;
+  }
+
+  @override
+  Future<void> recordConsumed(Tom2FAContext context) async {}
 }

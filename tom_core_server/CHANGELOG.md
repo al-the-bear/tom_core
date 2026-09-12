@@ -26,6 +26,25 @@
 
 ### Added
 
+- **Grace logins are a budget that counts down (tcopen106).**
+  `TomRole2FAPolicy(graceLogins: 3)` re-read its configured allowance on every
+  login and nothing held a running total, so it meant "three more, always" — a
+  countdown that never counted down, failing silently and permissively since the
+  user is never enrolled and the login always succeeds.
+
+  `Tom2FAGraceStore` holds the total; `TomRole2FAPolicy` implements
+  `Tom2FAGraceAccounting` and reports what is *left*, so the fourth login on a
+  budget of three finds the offer no longer declinable.
+  `TomMemory2FAGraceStore` is the per-process default — losing the count
+  degrades to the behaviour that preceded counting it, so a restart lengthens a
+  budget and never shortens it, which is why this store needs no installation
+  where an enrolment store does. No framework table ships: the count is a fact
+  about a user, and this package has no user table.
+
+  `TomPrincipalFlag2FAPolicy` grants no grace at all, and now says so at its own
+  declaration — the flags say *whether* a factor is owed, not how long it may be
+  put off.
+
 - **Unlinking an external identity revokes the grant at the provider
   (tcopen105).** `unlink` deleted the link and the framework's copy of the
   credential and told the provider nothing — so a user who pressed disconnect

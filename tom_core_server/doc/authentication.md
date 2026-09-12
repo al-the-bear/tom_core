@@ -102,6 +102,8 @@ principal into an authentication token and an authorization token.
 | `TomPrincipalFlag2FAPolicy` | class | The default policy, `const`-constructible: reads `requires2FA` / `twoFactorType` off the principal |
 | `TomRole2FAPolicy` | class | A requirement per role; the strictest matched role wins |
 | `Tom2FAGraceAccounting` | abstract class | Implemented *by a policy* that wants to be told when a grace login is spent |
+| `Tom2FAGraceStore` | abstract class | Where the grace a principal has already spent is remembered, so a budget counts down |
+| `TomMemory2FAGraceStore` | class | The default grace store — a map in this process |
 | `Tom2FAEnrolmentStore` | abstract class | Where a principal's set-up factors live. **No default** — see [Enrolment](#enrolment) |
 | `TomServerSession` | class | What a self-login produced: the deployment's principal and when its tokens expire |
 | `Tom2FAAttemptStore` | abstract class | Records that an interim token has been answered, so a replay cannot mint a fresh allowance. `Tom2FAMemoryAttemptStore` is the per-process default |
@@ -490,7 +492,7 @@ A deployment that installs nothing therefore sees no change.
 | ----- | ------- |
 | `requirement` | `Tom2FARequirement.disabled`, `optional` or `required` |
 | `allowedMechanisms` | The mechanism keys this login may use, in **preference order**. Unmodifiable |
-| `graceLogins` | How many more times this user may decline a `required` factor. Default `0` |
+| `graceLogins` | How many more times this user may decline a `required` factor. Default `0`. What the *decision* reports is what is **left**, where the policy counts — `TomRole2FAPolicy` does |
 
 and derives two more:
 
@@ -562,24 +564,59 @@ act — `TomBean.withType(Tom2FAPolicy, ...)` — because a policy that got pick
 up by a component scan would silently start demanding second factors from a
 deployment that only added a dependency.
 
-**Grace accounting.** `graceLogins` is a number the *policy* supplies, so only
-the policy can know how it is spent. A policy that wants to be told implements
-`Tom2FAGraceAccounting` as well:
+**Grace is a budget, and `TomRole2FAPolicy` counts it.** `graceLogins: 3` means
+three logins in all: the policy implements `Tom2FAGraceAccounting`, the server
+tells it the moment one is spent, and `Tom2FAGraceStore` holds the running
+total, so the next decision reports what is left. After the third, the enrolment
+offer stops being declinable.
+
+The server calls the hook **only at the moment grace is actually spent** — a
+user declining an offer that was declinable *because* of grace — never when the
+offer was merely made, and never for an `optional` decline, which costs nothing.
 
 ```dart
-class MyPolicy implements Tom2FAPolicy, Tom2FAGraceAccounting {
-  @override
-  Future<void> recordGraceLoginConsumed(Tom2FAContext context) =>
-      _users.decrementRemainingGraceLogins(context.principal);
-  // ...
+abstract class Tom2FAGraceStore {
+  Future<int> consumedBy(Tom2FAContext context);
+  Future<void> recordConsumed(Tom2FAContext context);
 }
 ```
 
-The server calls it **only at the moment grace is actually spent** — a user
-declining an offer that was declinable *because* of grace — never when the offer
-was merely made, and never for an `optional` decline, which costs nothing. A
-policy that does not implement the interface simply grants the same grace every
-time, which is a valid deployment: "warn, do not enforce yet".
+`TomMemory2FAGraceStore` is installed by default and is **per process**. Unlike
+`Tom2FAEnrolmentStore`, which has no default because an enrolment that vanished
+on restart would lose a user their factor, losing a grace count degrades to
+exactly the behaviour that preceded counting it: the user is offered enrolment
+again and gets another few logins. A restart can therefore make the budget
+longer and never shorter, so a per-process default cannot cost anyone access —
+and a store that had to be installed before the counter counted is a counter
+most deployments would not have.
+
+A deployment that wants the budget to survive a restart, or to be one budget
+across a cluster, implements the two methods against its own user data, where
+the principal already lives. The framework ships no table for it: the count is a
+fact about a user, and this package has no user table.
+
+```dart
+class MyGraceStore implements Tom2FAGraceStore {
+  @override
+  Future<int> consumedBy(Tom2FAContext context) =>
+      _users.graceLoginsSpentBy(context.principal);
+
+  @override
+  Future<void> recordConsumed(Tom2FAContext context) =>
+      _users.recordGraceLoginSpentBy(context.principal);
+}
+```
+
+The count is keyed on the **principal**, deliberately not on the principal and
+mechanism: grace is spent by declining to enrol at all, which is a decision
+about the obligation rather than about any one way of meeting it. Keying by
+mechanism would hand a user a fresh allowance for every mechanism the deployment
+offers.
+
+A policy of your own that grants grace implements `Tom2FAGraceAccounting` the
+same way, and may use the store or its own records; one that does not implement
+it grants the same grace every time, which is a valid deployment — "warn, do not
+enforce yet" — but no longer the default's behaviour.
 
 ### Enrolment
 
@@ -2362,11 +2399,13 @@ resolves the pending record for its context and calls
   must lead to different logins — see [Enrolment](#enrolment). A deployment
   installs `TomPersistent2FAEnrolmentStore` (and runs the DDL in
   `TomUserTwoFactorEnrolment.createTableSql`) to switch enrolment on.
-- **`graceLogins` is counted by the policy, not by the framework.** The server
-  reports each spend through `Tom2FAGraceAccounting`; a policy that does not
-  implement it grants the same grace on every login, which is a "warn, do not
-  enforce yet" deployment and not an error. Nothing in this module persists a
-  remaining-grace counter.
+- **The grace count is per process unless a deployment stores it.**
+  `TomRole2FAPolicy` counts its budget down through `Tom2FAGraceStore`, and the
+  default store is a map in this process — so a restart or a second node starts
+  the count again. That lengthens a budget and never shortens it, which is why
+  it is an acceptable default; a deployment that wants the count to survive
+  implements the store against its own user data. The framework ships no table
+  for it: the count is a fact about a user, and this package has no user table.
 - **A delivered code's transport is not retried.** Delivery is synchronous and
   a failure fails the login, because a code that outlives its challenge is worse
   than none. The retry is the user asking for a new code. A deployment whose

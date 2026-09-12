@@ -28,6 +28,8 @@ server's own self-login against an auth server.
   - [TomPrincipalFlag2FAPolicy](#tomprincipalflag2fapolicy)
   - [TomRole2FAPolicy](#tomrole2fapolicy)
   - [Tom2FAGraceAccounting](#tom2fagraceaccounting)
+  - [Tom2FAGraceStore](#tom2fagracestore)
+  - [TomMemory2FAGraceStore](#tommemory2fagracestore)
   - [Tom2FAEnrolment](#tom2faenrolment)
   - [Tom2FAEnrolmentOffer](#tom2faenrolmentoffer)
   - [Tom2FAEnrolmentSupport](#tom2faenrolmentsupport)
@@ -728,10 +730,11 @@ TomRole2FAPolicy({
 ### Tom2FAGraceAccounting
 
 The second interface a `Tom2FAPolicy` implements when its `graceLogins` are
-meant to run out. `graceLogins` is a number the policy supplies, so only the
-policy can know how it is spent; a policy that does not implement this grants
-the same grace on every login, which is a valid "warn, do not enforce yet"
-deployment rather than an error.
+meant to run out. `TomRole2FAPolicy` implements it and counts through
+`Tom2FAGraceStore`, so its `graceLogins: 3` is a budget of three rather than
+three-every-login. A policy of your own that does not implement this grants the
+same grace every time, which is a valid "warn, do not enforce yet" deployment
+rather than an error.
 
 - **Abstract**
 
@@ -740,6 +743,76 @@ deployment rather than an error.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `recordGraceLoginConsumed` | `Future<void> recordGraceLoginConsumed(Tom2FAContext context)` | Called at the moment grace is **spent** — a user declining an offer that was declinable because of grace — and never when the offer was merely made, nor for an `optional` decline, which costs nothing. |
+
+### Tom2FAGraceStore
+
+Where the grace a principal has already spent is remembered.
+`Tom2FAGraceAccounting` says *when* one is used; something has to hold the
+running total, and this is it. Without one a policy re-reads its configured
+allowance every login and hands back the same number — a countdown that never
+counts down.
+
+**`resolve()` falls back to `TomMemory2FAGraceStore`**, unlike
+`Tom2FAEnrolmentStore.resolve()`, which returns `null`. The asymmetry is the
+consequence of losing the record: an enrolment that vanished would lose a user
+their factor, where a grace count that vanishes degrades to exactly the
+behaviour that preceded counting it — the user is offered enrolment again and
+gets another few logins. A restart can lengthen a budget and never shorten it,
+so a per-process default cannot cost anyone access, and a store that had to be
+installed before the counter counted is a counter most deployments would not
+have.
+
+- **Abstract**
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `resolve` | `Tom2FAGraceStore resolve()` | The installed bean, or the process-wide `TomMemory2FAGraceStore.shared`. |
+| `principalKeyOf` | `String principalKeyOf(Tom2FAContext context)` | What a store files a count under — the principal, and deliberately not the principal *and mechanism*: grace is spent by declining to enrol at all, so keying by mechanism would hand a user a fresh allowance for every mechanism offered. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `consumedBy` | `Future<int> consumedBy(Tom2FAContext context)` | How many grace logins this principal has already spent. |
+| `recordConsumed` | `Future<void> recordConsumed(Tom2FAContext context)` | Records that one more has just been spent. |
+
+### TomMemory2FAGraceStore
+
+The default store: a map in this process. A restart or a second node starts the
+count again — see `Tom2FAGraceStore` for why that is acceptable here. A
+deployment that wants the budget to survive implements the two methods against
+its own user data; the framework ships no table, because the count is a fact
+about a user and this package has no user table.
+
+- **Implements:** `Tom2FAGraceStore`
+
+#### Constructors
+
+```dart
+TomMemory2FAGraceStore()
+```
+
+#### Static Members
+
+| Member | Type | Description |
+| ------ | ---- | ----------- |
+| `shared` | `TomMemory2FAGraceStore` | The process-wide instance `Tom2FAGraceStore.resolve()` falls back to. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `size` | `int` | *(getter)* How many principals have spent anything. Test-support. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `consumedBy` | `Future<int> consumedBy(Tom2FAContext context)` | *(override)* The count held for this principal, or `0`. |
+| `recordConsumed` | `Future<void> recordConsumed(Tom2FAContext context)` | *(override)* Increments it. |
+| `clear` | `void clear()` | Discards every count. Test-support only. |
 
 ### Tom2FAEnrolment
 
