@@ -26,19 +26,42 @@ export 'init_tz_embedded.dart' if (dart.library.js) 'init_tz_web.dart';
 
 // see https://stackoverflow.com/questions/63666615/how-to-get-timezone-name-in-flutter
 
-/// Exception thrown by [TomTimezone.findTimezone], and by nothing else in this
-/// module.
+/// The module's exception, raised where a request about a zone cannot be
+/// satisfied: by the strict lookup [TomTimezone.findTimezone], and by
+/// [TomTimezone.populateFromLocations] on a second population.
 ///
-/// Extends [TomException] to provide consistent error handling across the
-/// Tom framework. It is raised for exactly two reasons:
-/// - Timezone name not found in the database
-/// - Timezone name and UTC offset mismatch
+/// Extends [TomException], so every failure carries a key and the values
+/// involved and is caught, reported and translated like any other in the
+/// framework. One key per failure, so a caller branches on the key rather than
+/// on a message:
 ///
-/// It is *not* what a parse failure raises. The `parseFromString` of each
-/// variant throws [FormatException] — for a string that does not match the
-/// serialized form, and for one naming a zone that is not in the database —
-/// so a caller reading serialized values catches that instead. The lenient
-/// lookup [TomTimezone.fromName] raises nothing at all and returns `null`.
+/// - `timezone.lookup.name_not_found` — no zone carries the name given.
+/// - `timezone.lookup.offset_mismatch` — the named zone is at a different
+///   offset from the one supplied beside it.
+/// - `timezone.lookup.offset_not_found` — no zone is at the offset given.
+/// - `timezone.lookup.no_criteria` — neither a name nor an offset was given.
+/// - `timezone.database.already_populated` — the database already holds one.
+///
+/// ## What raises something else, and why
+///
+/// The module refuses in four shapes, and which one a caller meets follows the
+/// entry point rather than the mistake — "a zone that is not in the database"
+/// reaches three of them.
+///
+/// A parse failure is a [FormatException]: the `parseFromString` of each
+/// variant throws it for a string that does not match the serialized form. The
+/// lenient lookup [TomTimezone.fromName] raises nothing at all and returns
+/// `null`.
+///
+/// The fourth is a [StateError], and it is the one failure here deliberately
+/// left outside this class: asking for a synchronous load of the database on a
+/// platform that has none — the browser, before `tomSetupTimezones()` has been
+/// awaited. Everything above answers a question about a value the caller
+/// passed, and a caller can catch it, report it and carry on with the rest of
+/// its work. That one says the module is not usable yet; every later access
+/// fails the same way and no handler repairs it, which is a fault in the
+/// application's startup and so an [Error]. See `refuseSynchronousTimezoneLoad`
+/// in `sync_load_refusal.dart`.
 ///
 /// Example:
 /// ```dart
@@ -78,8 +101,10 @@ class TomTimezoneException extends TomException {
 /// On the **web** the database must be fetched over the network and therefore
 /// cannot be loaded synchronously: applications must call (and await)
 /// `tomSetupTimezones()` during startup **before** any timezone access. If the
-/// database is still empty on first access, lookups throw a clear error rather
-/// than returning empty results.
+/// database is still empty on first access, lookups throw a [StateError]
+/// naming the missing call rather than returning empty results. It is an
+/// [Error] and not a [TomTimezoneException] on purpose — see that class for
+/// where the line falls.
 ///
 /// ## Common Usage
 ///
@@ -223,14 +248,15 @@ class TomTimezone {
   /// [tomSetupTimezones] during startup, which is mandatory on web), the
   /// existing data is used. Otherwise the embedded database is loaded
   /// synchronously via [tomSetupTimezonesSync]. On web there is no synchronous
-  /// load path, so [tomSetupTimezonesSync] throws to surface the missing
-  /// startup initialization instead of silently returning empty results.
+  /// load path, so [tomSetupTimezonesSync] throws a [StateError] naming the
+  /// missing startup call instead of silently returning empty results.
   static void _initialize() {
     if (_initialized) return;
 
     // Load the embedded database synchronously when it has not been
     // pre-populated. On native platforms this is a no-I/O in-memory load; on
-    // web it throws because the data must be fetched asynchronously first.
+    // web it raises a StateError, because the data must be fetched
+    // asynchronously first.
     if (tz.timeZoneDatabase.locations.isEmpty) {
       tomSetupTimezonesSync();
     }

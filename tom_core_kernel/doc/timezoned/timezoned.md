@@ -95,6 +95,15 @@ naming the missing call rather than behaving as though no zone matched. That is
 deliberate — an empty database makes every lookup return `null`, which reads
 like a bad zone name and sends you looking in the wrong place.
 
+An `Error`, and not the module's `TomTimezoneException`, is deliberate too. The
+module's exceptions answer a question about a value you passed — this zone is
+not in the database, that offset belongs to no zone — and you can catch one,
+report it, and carry on with the rest of the work. This says something else:
+the module is not usable yet. Every later access fails the same way and no
+handler repairs that, so the instruction to the reader is to fix the startup,
+not to write a `catch`. That is what an `Error` means in Dart, and it is the
+only failure in this module raised as one.
+
 `tomSetupTimezones` is safe to call on native too, where it is a no-op beyond
 loading data that would have loaded anyway. So startup code that awaits it
 unconditionally is correct on both platforms, and that is the simplest thing to
@@ -840,7 +849,7 @@ if (TomZonedDateTime.isTomZonedDateTimeString(input)) {
 | ---------- | ---- | ----------- | --- |
 | `dart:collection` | dart | `timezones.dart` | `UnmodifiableMapView`, `UnmodifiableListView` — the lookups hand out views onto the index rather than the index itself |
 | `meta` | package | `timezones.dart` | `@visibleForTesting` only; no runtime behaviour |
-| `timezone` | package | every file | The IANA database and `tz.TZDateTime`. This is the module — the Tom types are a typed, observable surface over it |
+| `timezone` | package | `date_timestamp.dart`, `init_tz_embedded.dart`, `init_tz_web.dart`, `timezones.dart` | The IANA database and `tz.TZDateTime`. This is the module — the Tom types are a typed, observable surface over it |
 | `tom_basics` | package | `timezones.dart` | `tomLog`, at `debug` when a zone lookup falls back and at `error` when initialization fails |
 | [little_things](../little_things/little_things.md) | module | `timezones.dart` | `TomException`, the base of the module's exception (`exception_base.dart`), and `convertMinutesToUtcOffset` for rendering a UTC offset (`formatting.dart`) |
 
@@ -848,6 +857,11 @@ Note that `date_timestamp.dart` — where `TomZonedDate`, `TomZonedTime` and
 `TomZonedDateTime` live — imports only `timezone` and its sibling
 `timezones.dart`. The kernel dependencies above all belong to `timezones.dart`,
 the initialization and lookup half of the module.
+
+`sync_load_refusal.dart` is the one file that imports nothing at all, and that
+is what it is for: it holds the `StateError` the browser's arm raises, and a
+file with no imports can be read on any platform — including the VM, where the
+suite runs it.
 
 ### Platform selection is a conditional import
 
@@ -863,6 +877,14 @@ different implementation: it has no bundled copy of the database and fetches
 one over the network. Everything else — server, CLI, test runner, Flutter on
 mobile and desktop — takes `init_tz_embedded.dart` and reads the copy that
 ships inside the `timezone` package.
+
+The browser's arm holds one statement: it calls
+`refuseSynchronousTimezoneLoad`, which lives in `sync_load_refusal.dart` and
+raises the `StateError` above. Apart, because `init_tz_web.dart` reaches
+`package:timezone/browser.dart` and so cannot be imported anywhere but a
+browser, while refusing asks nothing of any platform — which is what lets the
+suite run the refusal a browser meets instead of reading it out of a source
+file.
 
 So the `timezone` package is reached through `data/latest.dart` on native, the
 same `data/latest.dart` under Flutter — one arm serves both — and

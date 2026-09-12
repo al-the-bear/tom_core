@@ -27,15 +27,22 @@
 ///
 /// ## Which type each refusal surfaces as
 ///
-/// The module refuses in three shapes, and which one a caller meets depends on
+/// The module refuses in four shapes, and which one a caller meets depends on
 /// the entry point rather than on the mistake: `fromName` returns `null`,
-/// `findTimezone` throws `TomTimezoneException`, and `parseFromString` throws
-/// `FormatException`. "A zone that is not in the database" reaches all three,
-/// so the trigger does not reveal the shape and a document can attribute one to
+/// `findTimezone` throws `TomTimezoneException`, `parseFromString` throws
+/// `FormatException`, and a synchronous load where the platform has none throws
+/// `StateError`. "A zone that is not in the database" reaches three of them, so
+/// the trigger does not reveal the shape and a document can attribute one to
 /// the wrong entry point while every word in it looks right. The module readme
 /// did: it credited `TomTimezoneException` with "unknown zones / parse
 /// failures", of which the first was half true and the second belonged to
 /// `FormatException`.
+///
+/// The `StateError` is the shape that is *not* an exception, and the one whose
+/// documentation has to say why. The other three are answers about a value the
+/// caller passed; that one says the module is unusable until startup is fixed,
+/// which is a different instruction to the reader and the reason it is an
+/// `Error`.
 ///
 /// The rule that catches it is that **every exception type a passage names must
 /// belong to something that passage mentions**. A denial — "throws
@@ -43,12 +50,16 @@
 /// and is struck out before judging, because a sentence that names the type it
 /// is *not* is the one most worth writing here.
 ///
-/// The web case is left out of the table on purpose. A first access before
-/// `await tomSetupTimezones()` throws `StateError`, but only on the browser,
-/// and this suite runs on the VM. A mode that cannot be provoked here would sit
-/// in the table as an unexecuted claim, which is exactly what the table exists
-/// to prevent; `timezoned_platform_selection_test.dart` holds the platform
-/// documentation instead.
+/// The web case is in the table, under the refusal rather than the platform.
+/// What a browser meets before `await tomSetupTimezones()` has completed is a
+/// synchronous load asked of a platform that has none, and refusing that asks
+/// nothing of any platform — so it lives in a file the VM can import and this
+/// suite runs the refusal a browser would get, rather than reading it out of a
+/// source file and calling that a test. What the VM cannot run is the arm that
+/// selects it: `init_tz_web.dart` reaches `package:timezone/browser.dart` and
+/// is unimportable off the browser. That half — that the web arm refuses
+/// through this refusal and does not carry a second copy of it —
+/// `timezoned_platform_selection_test.dart` holds.
 ///
 /// ## Where the contracts are stated
 ///
@@ -63,6 +74,7 @@ library;
 import 'dart:io';
 
 import 'package:test/test.dart';
+import 'package:tom_core_kernel/src/tombase/timezoned/sync_load_refusal.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // =============================================================================
@@ -162,6 +174,11 @@ class _Refusal {
 /// zone this runtime does not know is not among them — the string carries an
 /// offset beside the name, and the parse reads the value with it rather than
 /// refusing — so the only parse entry here is the malformed one.
+///
+/// The last entry is the startup refusal. It is provoked directly rather than
+/// through `tomSetupTimezonesSync`, whose native implementation loads the
+/// embedded database and refuses nothing; the browser's implementation is the
+/// one that refuses, and it refuses by calling this.
 final List<_Refusal> _refusals = [
   _Refusal(
     what: 'a name the lenient lookup cannot find',
@@ -183,6 +200,13 @@ final List<_Refusal> _refusals = [
     surfaces: FormatException,
     surfaceNamed: 'formatexception',
     triggeredBy: {'parsefromstring', 'parse failure', 'parsing'},
+  ),
+  _Refusal(
+    what: 'a synchronous load where the platform has none',
+    provoke: refuseSynchronousTimezoneLoad,
+    surfaces: StateError,
+    surfaceNamed: 'stateerror',
+    triggeredBy: {'tomsetuptimezones'},
   ),
 ];
 

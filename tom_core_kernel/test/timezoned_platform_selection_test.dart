@@ -127,6 +127,47 @@ void main() {
   });
 
   // ===========================================================================
+  // How the arm that cannot run here refuses
+  // ===========================================================================
+  group('the web arm refuses a synchronous load', () {
+    // `timezone_throw_contract_test.dart` runs the refusal itself and asserts
+    // it is a `StateError`; it can, because refusing asks nothing of the
+    // platform. What it cannot do is reach the arm that raises it, so the two
+    // halves are joined here: that file pins the shape, this one pins that the
+    // browser's arm is what takes it.
+    test('through the shared refusal rather than a second copy', () {
+      final web = _armSource('dart.library.js');
+
+      expect(
+        web,
+        contains(_refusal),
+        reason:
+            'The browser has no synchronous path to the database, and saying '
+            'so is the whole body of its `tomSetupTimezonesSync`. It has to '
+            'say it by calling `$_refusal`, because that is the form the VM '
+            'suite can execute — a `throw` written out here instead would be '
+            'asserted by reading this file, which is not a test of anything '
+            'that runs.',
+      );
+      expect(
+        web,
+        isNot(contains('throw ')),
+        reason:
+            'A second `throw` in the web arm is a second refusal, and the one '
+            'the suite executes would no longer be the one the browser meets.',
+      );
+    });
+
+    test('and the native arm does not refuse at all', () {
+      // The asymmetry is the module's whole initialization story: the embedded
+      // database loads synchronously, so there is nothing to refuse. A refusal
+      // appearing here would mean native lazy-init had stopped working, and
+      // the failure would surface at every first access instead.
+      expect(_armSource(null), isNot(contains(_refusal)));
+    });
+  });
+
+  // ===========================================================================
   // What the documentation says about it
   // ===========================================================================
   group('platform documentation', () {
@@ -196,6 +237,19 @@ void main() {
 // -----------------------------------------------------------------------------
 // Reading the source
 // -----------------------------------------------------------------------------
+
+/// The function each arm calls to refuse a synchronous load of the database.
+const _refusal = 'refuseSynchronousTimezoneLoad';
+
+/// The text of the arm selected by [condition], or of the default arm for
+/// `null`.
+String _armSource(String? condition) {
+  final selection = _selection('import');
+  final arm = condition == null
+      ? selection.defaultArm
+      : selection.arms[condition]!;
+  return File('${_moduleDirectory.path}/$arm').readAsStringSync();
+}
 
 final _moduleDirectory = Directory('lib/src/tombase/timezoned');
 

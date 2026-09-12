@@ -92,6 +92,15 @@ the value keeps the name it was stored under and is read at the offset stored
 beside it, so a database older or smaller than the one that wrote the string
 does not turn a good value into an error.
 
+The fourth shape is not an exception at all. On web, a timezone access before
+`await tomSetupTimezones()` has completed throws `StateError` — an `Error`
+rather than `TomTimezoneException`, and deliberately so. The three refusals
+above answer a question about a value the caller passed, and a caller can catch
+one, report it, and carry on with the rest of its work. This one says the module
+is not usable yet: every later access fails the same way and no handler repairs
+that, which makes it a fault in the application's startup rather than a
+condition to handle.
+
 ---
 
 Part of [`tom_core_kernel`](../../../../README.md) — see the package README for

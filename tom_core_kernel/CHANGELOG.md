@@ -21,6 +21,19 @@ anyone who was writing them.
   vocabulary, so a key added without a documented home is visible.
 
 ### Documentation
+- **The web startup refusal is a `StateError` by a stated rule (tcopen98).**
+  Every other failure in `timezoned` is a `TomTimezoneException`, which made
+  the one a browser application actually meets look like an oversight. It stays
+  an `Error`, and the module now says where the line falls: the exceptions
+  answer a question about a value the caller passed and can be caught, reported
+  and carried on from; the startup refusal says the module is not usable yet,
+  which no handler repairs. Stated on `TomTimezoneException`, in the guide's
+  initialisation section, the module readme and the API mirror. The refusal
+  moved to `sync_load_refusal.dart` — `init_tz_web.dart` reaches
+  `package:timezone/browser.dart` and cannot be imported off the browser, so
+  the type it throws could only be checked by reading a source file; apart, the
+  suite runs it and asserts the type. No behaviour changed: the same
+  `StateError` with the same message.
 - **Zoned equality is the instant alone, and now says so (tcopen96).** `==` and
   `hashCode` on `TomTimezoned` and its three subclasses are `DateTime`'s, so
   neither the runtime type nor the timezone takes part: a `TomZonedDate` equals

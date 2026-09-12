@@ -26,6 +26,7 @@ Sources:
 - `lib/src/tombase/timezoned/timezones.dart`
 - `lib/src/tombase/timezoned/init_tz_embedded.dart`
 - `lib/src/tombase/timezoned/init_tz_web.dart`
+- `lib/src/tombase/timezoned/sync_load_refusal.dart`
 
 `TomTimezoned` extends `DateTime` and always stores its value in UTC, adding
 `local*` accessors that render the moment in an associated `TomTimezone`. Three
@@ -50,7 +51,9 @@ converts `DateTime`s between zones. The IANA database is loaded lazily on first
 access via a platform-conditional import — synchronously from the embedded data
 on native/Flutter, and (asynchronously, via `tomSetupTimezones`) over the
 network on web where the synchronous path throws. `TomTimezoneException`
-(extends the kernel `TomException`) is raised on name/offset mismatch.
+(extends the kernel `TomException`) reports a request about a zone that cannot
+be satisfied; the missing database on web is a `StateError` instead — see
+[TomTimezoneException](#tomtimezoneexception) for where that line falls.
 
 ## Class Hierarchy
 
@@ -328,9 +331,32 @@ zone.
 
 ### TomTimezoneException
 
-Exception thrown when a timezone operation fails (e.g. a name not found in the
-database, or a name/offset mismatch). Extends the kernel's `TomException` for
-consistent framework error handling.
+Raised where a request about a zone cannot be satisfied. Extends the kernel's
+`TomException`, so each failure carries a key and the values involved and is
+caught, reported and translated like any other in the framework. One key per
+failure, and the call each comes from:
+
+| Key | Raised by | Raised when |
+| --- | --------- | ----------- |
+| `timezone.lookup.name_not_found` | `findTimezone` | No zone carries the name given. |
+| `timezone.lookup.offset_mismatch` | `findTimezone` | The named zone is at an offset that differs from the one supplied beside it. |
+| `timezone.lookup.offset_not_found` | `findTimezone` | No zone is at the offset given. |
+| `timezone.lookup.no_criteria` | `findTimezone` | Neither a name nor an offset was given. |
+| `timezone.database.already_populated` | `populateFromLocations` | The database already holds a population. |
+
+Two other shapes are not this exception, and which one a caller meets follows
+the entry point rather than the mistake. A string that is not in the serialized
+form is a `FormatException`; the lenient lookup `fromName` raises nothing and
+returns `null`.
+
+The fourth shape is a `StateError`, and it is the one failure in the module
+deliberately left outside this class: a synchronous load of the database asked
+of a platform that has none — the browser, before `tomSetupTimezones()` has
+been awaited. Everything in the table answers a question about a value the
+caller passed, and a caller can catch it, report it and carry on. That one says
+the module is not usable yet; every later access fails the same way and no
+handler repairs it, which is a fault in the application's startup and so an
+`Error`.
 
 - **Extends:** `TomException`
 
@@ -443,7 +469,7 @@ before sorting or filtering.
 
 | Function | Signature | Description |
 | -------- | --------- | ----------- |
-| `tomSetupTimezones` | `Future<int> tomSetupTimezones()` | Asynchronously initializes the IANA timezone database. Mandatory on web (fetched over the network) before any timezone access; resolves to `0`. |
+| `tomSetupTimezones` | `Future<int> tomSetupTimezones()` | Asynchronously initializes the IANA timezone database. Mandatory on web (fetched over the network) before any timezone access; resolves to `0`. Skipping it on web leaves every timezone access throwing `StateError` — an `Error` rather than a `TomTimezoneException`, because the fault is in the application's startup and catching it repairs nothing. Harmless on native, where it loads data that would have loaded anyway. |
 | `tomSetupTimezonesSync` | `void tomSetupTimezonesSync()` | Loads the embedded database synchronously (native/Flutter). Backs `TomTimezone`'s synchronous lazy-init; on web it throws a `StateError` because there is no synchronous load path. |
 
 These two functions are provided by a platform-conditional import
