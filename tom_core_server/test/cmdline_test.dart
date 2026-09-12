@@ -553,10 +553,13 @@ void main() {
     });
 
     // fillFromArgs has no notion of a *required* argument — it binds whatever
-    // is present and never validates completeness. An omitted argument is
-    // therefore indistinguishable from one that was never declared: the field
-    // simply keeps its initialiser. Callers that need a value to be mandatory
-    // must check it themselves after binding.
+    // is present, so an omitted argument leaves the field at its initialiser
+    // and looks exactly like one that was never declared. That is deliberate:
+    // the question is whether *any* source supplied the setting, and a parser
+    // sees one. It is answered after the last merge — a field marked
+    // `@TomRequiredField()` refuses the start through
+    // `TomBaseServerConfiguration`, and `missingRequiredFields` answers it for
+    // any merged map.
     test('an omitted argument leaves the field at its initialiser', () {
       final config = TomArgs.fillFromArgs(['name=svc'], FixtureServerConfig());
       expect(config.name, 'svc');

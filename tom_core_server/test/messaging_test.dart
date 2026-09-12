@@ -442,7 +442,21 @@ void main() {
       );
       expect(document, contains('To: to@example.com'));
       expect(document, isNot(contains('secret@example.com')));
-      expect(document.toLowerCase(), isNot(contains('bcc')));
+
+      // Asserted against the header *names* rather than against the document
+      // text. A substring search for "bcc" also reads the generated
+      // `Message-ID`, whose UUID is random: one containing `ebcc` failed this
+      // test while the encoder was behaving perfectly, roughly once in a
+      // hundred and fifty runs. The question is whether a header field is
+      // named `bcc`, so that is what is asked.
+      final headerNames = document
+          .split('\r\n\r\n')
+          .first
+          .split('\r\n')
+          .map((line) => line.split(':').first.toLowerCase())
+          .toList();
+      expect(headerNames, contains('to'));
+      expect(headerNames, isNot(contains('bcc')));
     });
 
     test('Cc recipients do reach a header', () {

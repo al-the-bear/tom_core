@@ -10,6 +10,11 @@ import 'package:test/test.dart';
 // that pins that names the exception a malformed one raises.
 import 'package:yaml/yaml.dart' show YamlException;
 
+// The required-setting check reads an annotation through the mirrors, so the
+// one configuration that exercises it is reflected rather than hand-written.
+import 'fixtures/reflection_fixture.dart' show FixtureRequiredConfig;
+import 'fixtures/reflection_fixture.reflection.dart';
+
 /// A concrete configuration that captures the merged values instead of relying
 /// on the generated reflection, so [TomBaseServerConfiguration.getDefaultValues]
 /// and the source-merge order can be tested without codegen.
@@ -827,6 +832,137 @@ void main() {
   // halves are spelled as an ordinary property read. So the two are pinned
   // against each other here rather than each on its own: the assertions that
   // matter are the ones about the *boundary*.
+  // A setting nobody supplied leaves the field at its initialiser, which reads
+  // exactly like a setting nobody required -- so the failure surfaced much
+  // later, as a connection to `localhost:0` or an empty application id. The
+  // annotation says which settings a source has to name, and the merged map is
+  // the only place that question can be answered: it asks whether *any* source
+  // named it, and no single source knows.
+  group('a required setting no source supplied', () {
+    setUpAll(initializeReflection);
+
+    test('refuses the configuration, naming the setting', () {
+      _install({});
+      expect(
+        () => FixtureRequiredConfig([]),
+        throwsA(
+          isA<TomConfigurationException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'configuration.base_configuration.required_settings_missing',
+              )
+              .having((e) => e.parameters?['missing'], 'missing', ['dbUrl']),
+        ),
+      );
+    });
+
+    test('accepts it when a command-line argument supplies the setting', () {
+      _install({});
+      final config = FixtureRequiredConfig(['dbUrl=mysql://h/db']);
+      expect(config.dbUrl, 'mysql://h/db');
+    });
+
+    // Any source will do -- the requirement is that the setting was named, not
+    // where. The resource tree is the layer furthest from the launch line, so
+    // it is the one worth pinning beside the argument.
+    test('accepts it when the resource tree supplies the setting', () {
+      _install({'dbUrl': 'mysql://resource/db'});
+      expect(FixtureRequiredConfig([]).dbUrl, 'mysql://resource/db');
+    });
+
+    // The distinction the conversion table already draws: an empty assignment
+    // on a command line sets the setting to nothing deliberately, where a
+    // `.env` line parsing to null names it without giving it a value.
+    test('an explicitly empty argument counts as supplied', () {
+      _install({});
+      expect(FixtureRequiredConfig(['dbUrl=']).dbUrl, isEmpty);
+    });
+
+    // A null *reaching a non-nullable field* is refused earlier and by
+    // someone else: `setValues` cannot assign it, so the reflector raises
+    // before the required-setting check is asked anything. Pinned so the two
+    // refusals are not confused for one -- the check's own null rule is
+    // exercised below, on a map handed to it directly.
+    test('a null for a non-nullable field is refused by the binding', () {
+      _install({'dbUrl': null});
+      expect(
+        () => FixtureRequiredConfig([]),
+        throwsA(isA<TomReflectorException>()),
+      );
+    });
+
+    // An unannotated field is not required however empty it is left, so the
+    // report names the one setting that was required rather than every field
+    // the map left alone.
+    test('an unannotated field is not reported', () {
+      _install({});
+      expect(
+        () => FixtureRequiredConfig([]),
+        throwsA(
+          isA<TomConfigurationException>().having(
+            (e) => e.parameters?['missing'],
+            'missing',
+            isNot(contains('label')),
+          ),
+        ),
+      );
+    });
+
+    // The refusal happens before the instance registers itself as the
+    // isolate's active configuration: a configuration that will not start must
+    // not become the one `tomAppId` resolves through on its way out.
+    test('a refused configuration does not become the active one', () {
+      _install({});
+      _LateAppIdConfig([]); // registers itself and names the isolate
+      expect(tomAppId, 'fromConstructor');
+      expect(() => FixtureRequiredConfig([]), throwsA(anything));
+      expect(
+        tomAppId,
+        'fromConstructor',
+        reason: 'the refused configuration displaced the active one',
+      );
+    });
+
+    // The supported shape that is deliberately not checked: a configuration
+    // that implements `setValues` by hand has no mirrors, so it carries no
+    // annotation anything can read. Every other test in this file constructs
+    // exactly such a class, so this states the reason they still pass.
+    test('a configuration without mirrors is not checked', () {
+      _install({});
+      expect(() => _CapturingConfig([]), returnsNormally);
+      expect(tomReflectionInfo.canReflect(_CapturingConfig([])), isFalse);
+    });
+
+    // Public and separate from the constructor, so a configuration composed
+    // some other way can ask the same question of the same map.
+    test('the check can be run on a map the caller merged itself', () {
+      _install({});
+      final config = FixtureRequiredConfig(['dbUrl=x']);
+      expect(
+        () => config.assertRequiredSettings({}),
+        throwsA(isA<TomConfigurationException>()),
+      );
+      expect(
+        () => config.assertRequiredSettings({'dbUrl': 'y'}),
+        returnsNormally,
+      );
+
+      // The null rule, on the map itself: a key present with null names the
+      // setting without giving it a value, which is what a `.env` line
+      // `DB_URL=` parses to. An explicitly empty argument is the other side of
+      // that line and counts as supplied.
+      expect(
+        () => config.assertRequiredSettings({'dbUrl': null}),
+        throwsA(isA<TomConfigurationException>()),
+      );
+      expect(
+        () => config.assertRequiredSettings({'dbUrl': ''}),
+        returnsNormally,
+      );
+    });
+  });
+
   group('the environment and the command line as TomConfig sees them', () {
     test('an environment variable is not visible to TomConfig', () {
       _install({});

@@ -22,6 +22,38 @@ class SimplePerson {
   SimplePerson();
 }
 
+/// A settings holder whose two required fields a caller must supply, and one
+/// ordinary field it may leave out.
+/// Deliberately **not** annotated: the class a reflective question has no
+/// mirrors to answer from.
+class _Unreflected {
+  String name = '';
+}
+
+@tomReflector
+class RequiredSettings {
+  @TomRequiredField()
+  String dbUrl = '';
+
+  @TomRequiredField()
+  int port = 0;
+
+  String label = '';
+
+  RequiredSettings();
+}
+
+/// The inherited case: a required field declared on a base class has to be
+/// found on an instance of the subclass, which is where an application's own
+/// configuration lives.
+@tomReflector
+class DerivedSettings extends RequiredSettings {
+  @TomRequiredField()
+  String region = '';
+
+  DerivedSettings();
+}
+
 @tomReflector
 class NullablePerson {
   String? name;
@@ -1074,6 +1106,134 @@ void main() {
         isEmpty,
       );
       expect(strict.setValues(SimplePerson(), accepted).name, 'John');
+    });
+  });
+
+  // The mirror image of unknownFields: that one names keys with no field,
+  // this one names fields with no key. Binding reports neither by itself --
+  // an unsupplied setting leaves the field at its initialiser, which is
+  // indistinguishable from a setting that was never required.
+  group('tomReflectionInfo.missingRequiredFields', () {
+    test('names every required field the map supplies no key for', () {
+      expect(
+        tomReflectionInfo.missingRequiredFields(RequiredSettings(), {
+          'label': 'billing',
+        }),
+        ['dbUrl', 'port'],
+      );
+    });
+
+    test('answers empty when every required field is supplied', () {
+      expect(
+        tomReflectionInfo.missingRequiredFields(RequiredSettings(), {
+          'dbUrl': 'mysql://h/db',
+          'port': 3306,
+        }),
+        isEmpty,
+      );
+    });
+
+    // An unannotated field is not a required one, however empty it is left:
+    // `label` is absent from the map here and is not reported, while `port`
+    // is. The rule is what the class declares, not what the map holds.
+    test('says nothing about an unannotated field the map omits', () {
+      expect(
+        tomReflectionInfo.missingRequiredFields(RequiredSettings(), {
+          'dbUrl': 'mysql://h/db',
+        }),
+        ['port'],
+      );
+    });
+
+    // The question is whether a *source* supplied the setting, not whether the
+    // value looks empty. `dbUrl=` on a command line is an explicit empty
+    // value, and refusing it would conflate "set to nothing" with "not set" --
+    // the very distinction the conversion table draws deliberately.
+    test('an explicitly empty value is supplied', () {
+      expect(
+        tomReflectionInfo.missingRequiredFields(RequiredSettings(), {
+          'dbUrl': '',
+          'port': 0,
+        }),
+        isEmpty,
+      );
+    });
+
+    // Null is the other side of that line. `DB_URL=` in a `.env` file parses
+    // to null, which names the setting without giving it a value -- and
+    // `resolveEnvironment` already drops such a key rather than carrying it.
+    test('a key whose value is null is not supplied', () {
+      expect(
+        tomReflectionInfo.missingRequiredFields(RequiredSettings(), {
+          'dbUrl': null,
+          'port': 3306,
+        }),
+        ['dbUrl'],
+      );
+    });
+
+    // A configuration class is the deep end of an application's hierarchy, so
+    // a required field two levels up has to be seen from the instance.
+    test('reaches a required field declared on a superclass', () {
+      expect(
+        tomReflectionInfo.missingRequiredFields(DerivedSettings(), {
+          'port': 3306,
+        }),
+        ['region', 'dbUrl'],
+      );
+    });
+
+    test('a subclass instance reports nothing when all are supplied', () {
+      expect(
+        tomReflectionInfo.missingRequiredFields(DerivedSettings(), {
+          'dbUrl': 'mysql://h/db',
+          'port': 3306,
+          'region': 'eu',
+        }),
+        isEmpty,
+      );
+    });
+
+    // The same guard `unknownFields` carries, for the same reason: a class
+    // that decodes the map itself defines what a key means, so a field the
+    // hook filled from a differently-named key is not missing.
+    test('answers empty for a class whose jsonDecode hook owns the map', () {
+      expect(
+        tomReflectionInfo.missingRequiredFields(JsonHookHolder(), const {}),
+        isEmpty,
+      );
+    });
+
+    test('answers empty for a class with no required field at all', () {
+      expect(
+        tomReflectionInfo.missingRequiredFields(SimplePerson(), const {}),
+        isEmpty,
+      );
+    });
+  });
+
+  // The predicate the required-field check is gated on, and the only method
+  // here that answers rather than throwing when reflection is unavailable.
+  group('tomReflectionInfo.canReflect', () {
+    test('is true for an annotated class whose reflection is installed', () {
+      expect(tomReflectionInfo.canReflect(SimplePerson()), isTrue);
+    });
+
+    // The case the configuration check exists to tolerate: a class that binds
+    // its own values instead of being bound by the generator has no mirrors,
+    // so there is no annotation on it to read.
+    test('is false for a class carrying no @tomReflector', () {
+      expect(tomReflectionInfo.canReflect(_Unreflected()), isFalse);
+    });
+
+    // The distinction that makes it a predicate rather than a convenience:
+    // every other method treats the same object as a fault, because it was
+    // asked to convert one and cannot.
+    test('the converting methods still refuse the same object', () {
+      expect(
+        () => tomReflectionInfo.missingRequiredFields(_Unreflected(), const {}),
+        throwsA(isA<TomReflectorException>()),
+      );
     });
   });
 

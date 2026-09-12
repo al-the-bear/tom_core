@@ -376,12 +376,14 @@ tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
   intended one: a deployment that decorates a number learns it at start-up
   rather than never. Write the number plainly (`port=8080`, `offset=-5`) when
   the target is a numeric field.
-- **No entry point reports a setting that no source supplied.** `merge`
-  overlays maps and returns; `fillFromArgs` binds the keys it was given. A
-  required setting that nobody supplied is indistinguishable from one that was
-  never declared — the field keeps its initialiser, and the failure surfaces
-  later as a connection to `localhost:0` rather than at start-up. Completeness
-  is the caller's check, after the last source is merged.
+- **No entry point here reports a setting that no source supplied.** `merge`
+  overlays maps and returns; `fillFromArgs` binds the keys it was given. Neither
+  can answer it: the question is whether *any* source named the setting, and a
+  parser sees one. It is answered after the last source is merged — mark the
+  field `@TomRequiredField()` and `TomBaseServerConfiguration` refuses to build
+  a configuration no source supplied it for (see `doc/configuration.md`, *
+  Requiring a setting*), or call `tomReflectionInfo.missingRequiredFields` on
+  the merged map yourself. These two helpers stay pure parsers.
 - **`load` does not load.** It reads the file and returns the values, exactly as
   `read` does. `Platform.environment` is read-only, so there is nothing for it
   to install them into. Prefer `read`, which says what happens.

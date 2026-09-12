@@ -68,6 +68,30 @@ anyone who was writing them.
   tests.
 
 ### Added
+- **A field can declare that a bound map must supply it (tcopen115).**
+  `@TomRequiredField()` marks a field, and
+  `TomReflectionInfo.missingRequiredFields(object, values)` names the marked
+  fields the map supplies no value for — the mirror image of `unknownFields`,
+  which names keys with no field. Binding answers neither: a value nobody
+  supplied leaves the field at its initialiser, which reads exactly like a field
+  nobody required, so the failure surfaces wherever that initialiser turns out
+  to be wrong.
+
+  Reporting rather than throwing keeps the vocabulary with the caller, who knows
+  which document the map came from; every missing field is named at once. A key
+  present with `null` counts as missing — it names the field without giving it a
+  value — while an explicitly empty `String` counts as supplied, which is the
+  distinction the argument and `.env` conversion tables already draw. Fields are
+  reported in declaration order, the instance's own class first and then up the
+  superclass chain, so an inherited requirement is seen from the subclass an
+  application actually declares.
+
+  `TomReflectionInfo.canReflect(object)` comes with it: the predicate for a
+  caller with something to do when a class has no mirrors at all — unannotated,
+  or in an isolate where no generated reflection was installed — rather than a
+  failure to report. Every other method on the class treats the same object as a
+  fault, because it was asked to convert one and cannot.
+
 - **A serialized value whose zone this runtime does not know is read at its
   stored offset (tcopen95).** The offset beside the zone name stops being
   write-only: where the name resolves, the zone stays authoritative and a

@@ -19,6 +19,7 @@ fields from a map or JSON string, and read them back out — without
 | ---- | -------------- |
 | `TomReflector` | The reflection capability; annotate types with `@tomReflector` to make them reflectable. |
 | `TomReflectionInfo` | The converter: `createInstance`, `setValues`, `getValues`, `convertToJsonString`, `convertFromJsonString`, plus collection element-type resolution. |
+| `TomRequiredField` | A field annotation: a bound map must supply a value for the field. Read by `missingRequiredFields`; enforced by nobody. |
 | `TomReflectorException` | Thrown when a type is not reflectable, a mirror lookup is ambiguous, or a value cannot be materialized onto a field. |
 
 Two globals are exported: `tomReflector` (the annotation) and
@@ -117,6 +118,20 @@ a throwing `jsonDecode` or `jsonEncode` would produce no error at all — the
 custom representation simply not used. A hook that returns something
 unusable — a `jsonEncode` that is not a `Map<String, Object?>` — raises
 `reflection.hook.invalid_return` rather than being ignored.
+
+Two questions about a map are asked *before* it is bound, because binding
+answers neither. `unknownFields` names the keys that match no field — the
+question `strictUnknownFields` answers as it goes, asked for the whole map at
+once. `missingRequiredFields` is its mirror image: the fields marked
+`@TomRequiredField` that the map supplies no value for. A value nobody supplied
+leaves the field at its initialiser, which reads exactly like a field nobody
+required, so the failure otherwise surfaces wherever that initialiser turns out
+to be wrong. Both report rather than throw, because the caller knows which
+document the map came from and this converter does not. A key present with
+`null` counts as missing — it names the field without giving it a value — while
+an explicitly empty `String` counts as supplied. `canReflect` is the predicate
+for a caller with something to do when a class has no mirrors at all, rather
+than a failure to report.
 
 Collection fields are deserialized **atomically**: a `List<T>` or
 `Map<String, T>` is materialized in full before the field is touched, so an

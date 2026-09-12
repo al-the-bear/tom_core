@@ -197,6 +197,7 @@ declarations are omitted.
 | `TomReflector` | class | Kernel reflector (extends `Reflection`); JSON (de)serialization via mirrors. |
 | `TomReflectionInfo` | class | Reflection metadata helper over a reflector. |
 | `TomReflectorException` | class | Reflection failure (extends `TomException`). |
+| `TomRequiredField` | class | Field annotation: a bound map must supply a value for it. |
 | `tomReflector` | const | Shared `TomReflector` instance. |
 | `tomReflectionInfo` | final | Shared `TomReflectionInfo` instance. |
 

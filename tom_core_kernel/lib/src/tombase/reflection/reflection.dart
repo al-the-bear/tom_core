@@ -1191,6 +1191,124 @@ class TomReflectionInfo {
     ];
   }
 
+  /// Whether [o] can be reflected here: its class carries `@tomReflector` and
+  /// generated reflection data has been installed in this isolate.
+  ///
+  /// For callers that have something to do when reflection is *not* available,
+  /// rather than a failure to report. Every other method on this class treats
+  /// an unreflectable object as a fault, because it was asked to convert one
+  /// and cannot; a caller asking a question *about* a class — "does this one
+  /// declare a required field?" — may legitimately have no question to ask
+  /// when the class has no mirrors at all.
+  ///
+  /// The two conditions are one answer on purpose. `tomReflector.canReflect`
+  /// consults the generated registry, which raises rather than answering when
+  /// nothing has installed one, and both cases mean the same thing to a caller
+  /// asking whether reflection is available *here*.
+  bool canReflect(Object o) {
+    try {
+      return tomReflector.canReflect(o);
+    } on Object {
+      return false;
+    }
+  }
+
+  /// The names of [o]'s [TomRequiredField] fields that [values] supplies no
+  /// value for.
+  ///
+  /// The mirror image of [unknownFields]: that one names keys with no field,
+  /// this one names fields with no key. Neither is answered by binding — a
+  /// setting nobody supplied leaves the field at its initialiser, which reads
+  /// exactly like a setting nobody required.
+  ///
+  /// ```dart
+  /// final missing = tomReflectionInfo.missingRequiredFields(config, values);
+  /// if (missing.isNotEmpty) throw MyConfigException(missing);
+  /// ```
+  ///
+  /// Reporting rather than throwing keeps the vocabulary with the caller, who
+  /// knows which document the map was merged from and what to call it. Every
+  /// missing setting is reported at once, so a deployment fixes them in one
+  /// pass rather than one restart at a time.
+  ///
+  /// **Supplied means the key carries a value, not that the value looks
+  /// filled.** An explicitly empty one counts: `dbUrl=` on a command line sets
+  /// the setting to nothing deliberately, and refusing it would conflate "set
+  /// to nothing" with "not set". A **null** value does not count — a `.env`
+  /// line `DB_URL=` parses to null, which names the setting without giving it
+  /// one, and `TomEnvFile.resolveEnvironment` already drops such a key rather
+  /// than carrying it.
+  ///
+  /// Fields are reported in declaration order, the instance's own class first
+  /// and then up the superclass chain: an application's configuration is
+  /// usually the most derived class, so what it declares is what its operator
+  /// recognises first.
+  ///
+  /// Returns empty for a [TomClass], for a class declaring a `fromJson`
+  /// constructor, and for one declaring a `jsonDecode` hook — the same guard
+  /// [unknownFields] carries, for the same reason. Each takes the map over
+  /// entirely, so a field one of them filled from a differently-named key is
+  /// not missing, and this method has no view of that.
+  List<String> missingRequiredFields<T extends Object>(
+    T o,
+    Map<String, dynamic> values,
+  ) {
+    if (o is TomClass) return const [];
+
+    final im = _reflect(o, 'missingRequiredFields');
+    final cm = _annotatedType(im, o, 'missingRequiredFields');
+
+    if (_declaresConstructor(cm, "fromJson")) return const [];
+    if (cm.instanceMembers.containsKey("jsonDecode")) return const [];
+
+    return [
+      for (final field in _requiredFields(cm))
+        if (values[field] == null) field,
+    ];
+  }
+
+  /// The names of the [TomRequiredField] fields [cm] and its superclasses
+  /// declare, most derived first.
+  ///
+  /// The chain is walked because `declarations` holds a class's *own* members
+  /// only, and a configuration class inherits most of its fields. It ends where
+  /// the reflector's coverage does: `superclass` raises rather than answering
+  /// null for a class outside it, and a requirement declared where nothing can
+  /// read it is not one this method can report. A name already seen is not
+  /// repeated, so an override does not report its field twice.
+  static List<String> _requiredFields(ClassMirror cm) {
+    final required = <String>[];
+    ClassMirror? current = cm;
+    while (current != null) {
+      for (final declaration in current.declarations.entries) {
+        final member = declaration.value;
+        if (member is! VariableMirror || member.isStatic || member.isPrivate) {
+          continue;
+        }
+        if (required.contains(declaration.key)) continue;
+        if (member.metadata.any((m) => m is TomRequiredField)) {
+          required.add(declaration.key);
+        }
+      }
+      current = _superclassOrNull(current);
+    }
+    return required;
+  }
+
+  /// [cm]'s superclass, or null where the chain leaves the reflector's reach.
+  ///
+  /// Null and "not covered" are one answer here on purpose: both mean there are
+  /// no further declarations this reflector can read, and the alternative — a
+  /// `NoSuchCapabilityError` escaping — would make a required-field check fail
+  /// on a class whose parent merely happens to be unreflected.
+  static ClassMirror? _superclassOrNull(ClassMirror cm) {
+    try {
+      return cm.superclass;
+    } on Object {
+      return null;
+    }
+  }
+
   /// Invokes the optional `jsonDecode` hook, if [cm] declares one.
   ///
   /// Returns true when the hook ran, having taken over deserialization
@@ -2573,6 +2691,37 @@ class TomReflectionInfo {
     }
     return result;
   }
+}
+
+/// Marks a reflected field as one that a bound map must supply a value for.
+///
+/// The annotation states the requirement next to the field it constrains; it
+/// does not enforce it. [TomReflectionInfo.missingRequiredFields] reads it and
+/// reports, and the caller decides what an unsupplied setting means — which is
+/// the same division [TomReflectionInfo.unknownFields] makes, and for the same
+/// reason: the converter knows the class, not where the map came from or how
+/// bad it is for that particular setting to be absent.
+///
+/// ```dart
+/// @tomReflector
+/// class BillingConfiguration extends TomBaseServerConfiguration {
+///   @TomRequiredField()
+///   String dbUrl = '';
+/// }
+/// ```
+///
+/// Binding cannot report this by itself. A setting no source supplied leaves
+/// the field at its initialiser, which is indistinguishable from a setting that
+/// was never required — so the failure surfaces much later, as a connection to
+/// `localhost:0` or an empty application id.
+///
+/// **A field with a fallback is not required.** The requirement is that a
+/// *source* named the setting, so a field whose constructor applies a default
+/// when nothing was configured must not carry this: it would refuse the very
+/// launch the default exists to serve.
+class TomRequiredField {
+  /// Marks the annotated field as required.
+  const TomRequiredField();
 }
 
 /// Global reflector instance for annotating classes.

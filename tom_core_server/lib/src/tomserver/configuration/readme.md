@@ -12,7 +12,7 @@ resolve individual keys — obligatory (throws when absent) or with a default.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomBaseServerConfiguration` | Abstract configuration root: assembles the property sources and installs the active config provider. |
+| `TomBaseServerConfiguration` | Abstract configuration root: assembles the property sources, refuses to build when a field marked `@TomRequiredField` was supplied by no source, and installs the active config provider. |
 | `TomServerConfigResourceProvider` | Holds the merged config map; `exists(key)` / `get(key)` back every `TomConfig` lookup. |
 | `TomConfig<T>` | Resolves one key to `T`; `TomConfig(key)` is obligatory, `TomConfig.withDefault(key, value)` falls back. `get()` / `~config` read the value. |
 | `TomStringConfig` · `TomIntConfig` · `TomDoubleConfig` · `TomBoolConfig` | Typed specialisations of `TomConfig<T>`. |

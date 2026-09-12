@@ -15,6 +15,7 @@ environment-variable substitution.
   - [A cleared key takes step 1, not step 2](#a-cleared-key-takes-step-1-not-step-2)
   - [What a bad cast throws](#what-a-bad-cast-throws)
 - [The Server Configuration Base](#the-server-configuration-base)
+  - [Requiring a setting](#requiring-a-setting)
   - [Naming the application](#naming-the-application)
   - [Switching protection off from the command line](#switching-protection-off-from-the-command-line)
 - [Deployment Settings](#deployment-settings)
@@ -256,6 +257,59 @@ individual fields rather than this list.
 > production**. The JWT fields are carried, not used: nothing in this library
 > reads them, and there are no keys for the algorithm, issuer, audience or
 > expiry, so a server that signs tokens assembles that part in code.
+
+### Requiring a setting
+
+Mark a field `@TomRequiredField()` and the constructor refuses to build a
+configuration no source supplied it for:
+
+```dart
+@tomReflector
+class BillingConfiguration extends TomBaseServerConfiguration {
+  @TomRequiredField()
+  String dbUrl = '';
+
+  BillingConfiguration(super.args);
+}
+```
+
+```text
+TomConfigurationException: configuration.base_configuration.required_settings_missing
+No source supplied the required setting dbUrl for BillingConfiguration. A
+resource file, the environment, a .env file or a command-line argument must
+name it.
+```
+
+The merged map is the only place the question can be asked: the answer is "did
+*any* source name this setting", and no single source knows. Binding cannot
+report it either — a setting nobody supplied leaves the field at its
+initialiser, which reads exactly like a setting nobody required, so the failure
+otherwise surfaces much later as a connection to `localhost:0` or an empty
+application id.
+
+Every missing setting is named at once, in declaration order, so a deployment
+fixes them in one pass rather than one restart at a time. The refusal happens
+before the instance registers itself as the isolate's active configuration: one
+that will not start must not become the one `tomAppId` resolves through on its
+way out.
+
+**A field with a fallback is not required.** `port` and `appId` on the base
+carry none of these, deliberately: every field there has a documented default,
+and a field whose constructor supplies one would be refused for the very launch
+the default exists to serve.
+
+| The sources hold | Verdict |
+| ---------------- | ------- |
+| no key at all | **refused** — no source named it |
+| the key, with `null` (a `.env` line `DB_URL=`) | **refused** — named, given nothing |
+| the key, with `''` (`dbUrl=` on the command line) | accepted — set to nothing deliberately |
+
+A configuration whose `setValues` is written by hand rather than generated is
+**not** checked: the annotation is read through the mirrors, so such a class has
+none to read. A server whose `setValues` is generated is reflected by
+construction, so the check is in force wherever the framework binds the fields.
+`assertRequiredSettings` is public, so a configuration composed some other way
+can ask the same question of its own map.
 
 ### Naming the application
 
@@ -657,9 +711,13 @@ started with no configuration whose first symptom appears several layers later.
   tree against the fields it will fill. `getDefaultValues` returns whatever the
   sources said, and the reflection layer assigns the keys that name a field and
   drops the rest — so `prot=8080` merges as a live key, `port` is never set,
-  and the server comes up on its subclass default. A typo is indistinguishable
-  from a setting nobody supplied, and neither is reported. Completeness is the
-  caller's check, after the last source is merged.
+  and the server comes up on its subclass default. The *absence* half of this
+  is answered where it can be: a field marked `@TomRequiredField()` refuses the
+  start when no source named it (see
+  [Requiring a setting](#requiring-a-setting)). The typo half is not, because a
+  key that names no field is indistinguishable from one meant for another tool —
+  the merged map carries the whole process environment. Use
+  `tomReflectionInfo.unknownFields` on a map whose two ends are both yours.
 - **An unknown key reads back as its own name.**
   `TomServerConfigResourceProvider.get` answers a key it does not hold with the
   key string itself, not `null` and not a throw. A caller that forgets to gate

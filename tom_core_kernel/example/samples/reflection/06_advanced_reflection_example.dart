@@ -10,6 +10,7 @@
 /// - Custom deserialization with jsonDecode method
 /// - All supported field types demonstration
 /// - Error handling for reflection operations
+/// - Reporting the required fields a map does not supply
 ///
 /// To run this file on its own:
 /// ```bash
@@ -24,6 +25,25 @@ import '../../sample_bootstrap.dart';
 // ============================================================================
 // Model Classes
 // ============================================================================
+
+/// A settings holder whose two required fields a caller must supply.
+///
+/// The annotation states the requirement and enforces nothing:
+/// [TomReflectionInfo.missingRequiredFields] reads it and reports, and what an
+/// unsupplied value means is the caller's to decide.
+@tomReflector
+class ConnectionSettings {
+  /// Required: no default makes sense for it.
+  @TomRequiredField()
+  String url = '';
+
+  /// Required as well, so the report can name more than one at a time.
+  @TomRequiredField()
+  int port = 0;
+
+  /// Ordinary: a caller may leave it out.
+  String label = '';
+}
 
 /// A simple product class.
 @tomReflector
@@ -384,10 +404,38 @@ class AdvancedReflectionExample {
   }
 
   // -------------------------------------------------------------------------
-  // Example 9: Round-trip with all types
+  // Example 9: Required fields a map does not supply
   // -------------------------------------------------------------------------
-  static void example9RoundTrip() {
-    print('\n9. Round-trip with all types:');
+  static void example9RequiredFields() {
+    print('\n9. Required fields the map does not supply:');
+
+    final settings = ConnectionSettings();
+    const partial = {'url': 'mysql://host/db', 'label': 'billing'};
+
+    final missing = tomReflectionInfo.missingRequiredFields(settings, partial);
+    print('   Missing: $missing');
+
+    // Binding cannot report this by itself: the field simply keeps its
+    // initialiser, which reads exactly like a field nobody required.
+    tomReflectionInfo.setValues(settings, partial);
+    print('   port after binding: ${settings.port}  (its initialiser)');
+
+    final complete = {...partial, 'port': 3306};
+    final none = tomReflectionInfo.missingRequiredFields(settings, complete);
+    print('   Missing once supplied: $none');
+
+    // Assertions
+    assert(missing.length == 1, 'Only `port` is both required and unsupplied');
+    assert(missing.first == 'port', 'The report names the field');
+    assert(settings.port == 0, 'An unsupplied field keeps its initialiser');
+    assert(none.isEmpty, 'Nothing is missing once every required key is there');
+  }
+
+  // -------------------------------------------------------------------------
+  // Example 10: Round-trip with all types
+  // -------------------------------------------------------------------------
+  static void example10RoundTrip() {
+    print('\n10. Round-trip with all types:');
 
     final allTypesJson = tomReflectionInfo.convertToJsonString(
       allTypesInstance,
@@ -427,7 +475,8 @@ class AdvancedReflectionExample {
     example6AllTypesDemo();
     example7ListAnnotatedClasses();
     example8ErrorHandling();
-    example9RoundTrip();
+    example9RequiredFields();
+    example10RoundTrip();
 
     print('\n=== Advanced Reflection Example Complete ===\n');
   }

@@ -21,6 +21,7 @@ Flutter web, where `dart:mirrors` is unavailable.
   - [Global Instances](#global-instances)
 - [Annotations](#annotations)
   - [The @tomReflector annotation](#the-tomreflector-annotation)
+  - [The @TomRequiredField annotation](#the-tomrequiredfield-annotation)
 - [Instance Creation](#instance-creation)
   - [Create Empty Instance](#create-empty-instance)
   - [Create from JSON](#create-from-json)
@@ -29,6 +30,7 @@ Flutter web, where `dart:mirrors` is unavailable.
   - [From JSON String](#from-json-string)
   - [Unknown Keys](#unknown-keys)
     - [Asking the question in advance](#asking-the-question-in-advance)
+  - [Missing Required Fields](#missing-required-fields)
   - [TomClass Integration](#tomclass-integration)
   - [Custom Deserialization](#custom-deserialization)
 - [Serialization (Object to JSON)](#serialization-object-to-json)
@@ -187,6 +189,8 @@ The main class for reflection operations. Key methods:
 | `createInstanceFromJson<T>(mirror, data)` | Create instance and populate from JSON; returns a `T` or throws |
 | `setValues<T>(object, values)` | Set field values on an existing object |
 | `unknownFields<T>(object, values)` | The keys of `values` that name no writable declaration on `object` |
+| `missingRequiredFields<T>(object, values)` | The `@TomRequiredField` fields of `object` that `values` supplies no value for |
+| `canReflect(object)` | Whether `object` can be reflected here — annotated, and reflection data installed |
 | `getValues(object)` | Get all field values as a map |
 | `convertToJsonString(object)` | Serialize object to JSON string; a `List` or `Map` is encoded as itself, with complex elements rendered by `getValues` |
 | `convertFromJsonString<T>(object, json)` | Deserialize JSON string to object |
@@ -227,6 +231,29 @@ class MyModel {
 
 **Important**: Only classes annotated with `@tomReflector` will be available
 for reflection at runtime.
+
+### The @TomRequiredField annotation
+
+Marks a field that a bound map must supply a value for:
+
+```dart
+@tomReflector
+class BillingConfiguration {
+  @TomRequiredField()
+  String dbUrl = '';
+
+  String label = '';
+}
+```
+
+It states the requirement next to the field it constrains; it does not enforce
+it. `missingRequiredFields` reads it and reports, and the caller decides what an
+unsupplied value means — the same division `unknownFields` makes, and for the
+same reason: the converter knows the class, not where the map came from.
+
+A field whose owner falls back to a default when nothing was supplied must
+**not** carry it. The requirement is that a source named the value, so the
+annotation would refuse the very call the default exists to serve.
 
 ## Instance Creation
 
@@ -376,6 +403,44 @@ exists but cannot be written is not reported, because it is not unknown.
 A class that takes the map over entirely — a `TomClass`, a `fromJson`
 constructor, a `jsonDecode` hook — answers empty. What counts as a known key is
 theirs to define, and this converter has no view of it.
+
+### Missing Required Fields
+
+The mirror image: `unknownFields` names keys with no field, `missingRequiredFields`
+names fields with no key.
+
+```dart
+final missing = tomReflectionInfo.missingRequiredFields(config, values);
+if (missing.isNotEmpty) throw MyConfigException(missing);
+```
+
+Binding reports neither by itself. A value nobody supplied leaves the field at
+its initialiser, which reads exactly like a field nobody required — so the
+failure surfaces much later, wherever the initialiser turns out to be wrong.
+
+| The map holds | Verdict | Why |
+| ------------- | ------- | --- |
+| no key at all | **missing** | no source named the field |
+| the key, with `null` | **missing** | the field was named and given nothing |
+| the key, with `''` or `0` | supplied | set to that value deliberately |
+
+The `null` row is the line worth knowing. A `.env` line `DB_URL=` parses to
+`null`, which names the setting without giving it one, while `dbUrl=` on a
+command line is the empty `String` — the distinction the conversion table
+already draws. Refusing an explicitly empty value would conflate "set to
+nothing" with "not set".
+
+Fields are reported in declaration order, the instance's own class first and
+then up the superclass chain, so what the most derived class declares is what a
+reader recognises first. The three map-owning hooks answer empty here too, for
+the reason they do above.
+
+The annotation is read through the mirrors, so a class with none — unannotated,
+or in an isolate where no generated reflection was installed — has no
+requirement anything can read. `canReflect` is the predicate for a caller that
+has something to do in that case rather than a failure to report; every other
+method on `TomReflectionInfo` treats the same object as a fault, because it was
+asked to convert one and cannot.
 
 `tom_core_server` uses this at its data-source registry: a settings key that
 binds no field of the configured driver fails the start-up naming the key and

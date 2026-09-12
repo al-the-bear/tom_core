@@ -161,6 +161,37 @@
 
 ### Added
 
+- **A configuration setting can be required (tcopen115).** The module bound
+  whatever was present and never asked whether anything was missing:
+  `getDefaultValues` merged what the sources said, `setValues` assigned the keys
+  that named a field, and a setting nobody supplied left the field at its
+  initialiser — indistinguishable from a setting nobody required. The failure
+  surfaced much later, as a connection to `localhost:0` or an empty application
+  id, naming neither the setting nor the file that should have carried it.
+
+  A field marked `@TomRequiredField()` (new in `tom_core_kernel`) is now checked
+  by `TomBaseServerConfiguration.assertRequiredSettings`, which the constructor
+  calls with the merged map. It throws `TomConfigurationException`
+  (`configuration.base_configuration.required_settings_missing`) naming every
+  missing setting at once and the four sources that could have supplied one.
+
+  The merged map is the only place the question can be asked — the answer is
+  "did *any* source name this setting", and no single source knows. That is why
+  `TomArgs` and `TomEnvFile` gained nothing: `merge` is not even on the path a
+  server starts through, since `getDefaultValues` composes with
+  `mergeMapsOneSided`.
+
+  Three rules, each documented where it applies: a key present with `null`
+  counts as missing (a `.env` line `DB_URL=` names the setting without giving it
+  one) while an explicitly empty `String` counts as supplied; nothing on the
+  base class is marked, because every field there has a documented default and a
+  field whose constructor falls back is not required; and a configuration whose
+  `setValues` is hand-written rather than generated is not checked, because the
+  annotation is read through the mirrors. The refusal happens after `setValues`
+  and before the instance registers itself, so a subclass body still sees
+  resolved fields and a configuration that will not start never becomes the
+  isolate's active one.
+
 - **Grace logins are a budget that counts down (tcopen106).**
   `TomRole2FAPolicy(graceLogins: 3)` re-read its configured allowance on every
   login and nothing held a running total, so it meant "three more, always" — a

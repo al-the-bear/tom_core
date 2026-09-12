@@ -120,10 +120,12 @@ TomBaseServerConfiguration(List<String> args)
 Applies the kernel's protection settings from `args`
 (`TomResourceKeyProtection.applyArguments` — `tom.protection…=true|false`;
 throws `TomProtectionSettingException` for a misspelt setting), then calls
-`setValues(getDefaultValues(args))`, then assigns `args` to the field of the
-same name. The order matters in both directions: `setValues` runs first so
-a subclass's constructor body sees resolved fields, and the `args` assignment
-runs after it so a merged key spelled `args` cannot displace the invocation.
+`setValues(getDefaultValues(args))`, then `assertRequiredSettings` on the same
+merged map, then assigns `args` to the field of the same name. The order matters
+in every direction: `setValues` runs first so a subclass's constructor body sees
+resolved fields, the required-setting check runs before the instance registers
+itself as the isolate's active configuration, and the `args` assignment runs
+last so a merged key spelled `args` cannot displace the invocation.
 
 #### Static Methods
 
@@ -210,6 +212,7 @@ through the ordinary precedence chain — OS environment, `.env`, or command lin
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `setValues` | `void setValues(Map<String, Object?> values)` | Assigns the merged configuration `values` onto this instance (implemented by generated reflection for the concrete subclass). |
+| `assertRequiredSettings` | `void assertRequiredSettings(Map<String, Object?> values)` | Throws `TomConfigurationException` (`configuration.base_configuration.required_settings_missing`) naming every field marked `@TomRequiredField` that `values` supplies no value for. Called by the constructor with the merged map — the only place the question can be asked, since the answer is "did *any* source name this setting" and no single source knows. A key present with `null` counts as missing (a `.env` line `DB_URL=`); an explicitly empty `String` counts as supplied (`dbUrl=` on the command line). Nothing on this class is marked: every field here has a documented default, and a field whose constructor falls back is not required. A configuration with no mirrors — a hand-written `setValues` — is not checked, because the annotation is read through them. Public, so a configuration composed some other way can ask the same question of its own map. |
 
 ### TomConfig&lt;T&gt;
 

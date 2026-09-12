@@ -1153,6 +1153,35 @@ class FixtureConflictingAccessService {
   };
 }
 
+/// A reflected server configuration that requires one setting, for exercising
+/// [TomBaseServerConfiguration.assertRequiredSettings] as a server meets it.
+///
+/// Reflected rather than hand-written, unlike the configurations in
+/// `configuration_test.dart`: the requirement is declared as an annotation and
+/// read through the mirrors, so a configuration without them is exactly the
+/// case that is *not* checked. Only a reflected one can exercise the check.
+@tomReflector
+class FixtureRequiredConfig extends TomBaseServerConfiguration {
+  /// Required: no source has to name it for the object to compile, and the
+  /// constructor supplies no fallback — which is what makes it required rather
+  /// than defaulted.
+  @TomRequiredField()
+  String dbUrl = '';
+
+  /// An ordinary setting beside it, so a test can tell "reported because it is
+  /// required" from "reported because it is absent".
+  String label = '';
+
+  /// Builds the configuration from [args], through the base's merge.
+  FixtureRequiredConfig(super.args);
+
+  /// Binds the merged configuration onto this instance.
+  @override
+  void setValues(Map<String, dynamic> values) {
+    tomReflectionInfo.setValues<FixtureRequiredConfig>(this, values);
+  }
+}
+
 /// A reflected configuration object for exercising [TomArgs.fillFromArgs]: its
 /// public fields are assigned by name from parsed `key=value` arguments.
 ///

@@ -869,6 +869,65 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// method is in a position to ask.
   void setValues(Map<String, Object?> values);
 
+  /// Throws when a field marked [TomRequiredField] was supplied by no source.
+  ///
+  /// Called by the constructor with the map [getDefaultValues] merged, which is
+  /// the only place the question can be asked: the answer is "did *any* source
+  /// name this setting", and no single source knows. Binding cannot report it —
+  /// an unsupplied setting leaves the field at its initialiser, which reads
+  /// exactly like a setting nobody required, so the failure would otherwise
+  /// surface much later as a connection to `localhost:0` or an empty
+  /// application id.
+  ///
+  /// Nothing on this class carries the annotation, and nothing should: every
+  /// field here has a documented default, and a field a constructor falls back
+  /// for is not required. An application marks its own:
+  ///
+  /// ```dart
+  /// @tomReflector
+  /// class BillingConfiguration extends TomBaseServerConfiguration {
+  ///   @TomRequiredField()
+  ///   String dbUrl = '';
+  ///
+  ///   BillingConfiguration(super.args);
+  /// }
+  /// ```
+  ///
+  /// Every missing setting is named at once, in declaration order, so a
+  /// deployment fixes them in one pass rather than one restart at a time. A key
+  /// present with a **null** value counts as missing — a `.env` line `DB_URL=`
+  /// names the setting without giving it one — while an explicitly empty
+  /// command-line value (`dbUrl=`) counts as supplied. That is the distinction
+  /// the conversion table draws deliberately; see
+  /// [TomReflectionInfo.missingRequiredFields].
+  ///
+  /// Public and separate from the constructor so a configuration composed some
+  /// other way — a test, a tool that merges its own sources — can ask the same
+  /// question of the same map.
+  ///
+  /// **A configuration with no mirrors is not checked.** The annotation is read
+  /// through reflection, so a subclass that implements [setValues] by hand
+  /// instead of through the generator has none to read, and this method has
+  /// nothing to report rather than a failure to report. That is a supported
+  /// shape — a test or a tool composing a configuration without codegen — and
+  /// it is the same class of object for which `setValues` was already the
+  /// subclass's own affair. A server whose `setValues` is generated is
+  /// reflected by construction, so the check is in force wherever the framework
+  /// binds the fields.
+  void assertRequiredSettings(Map<String, Object?> values) {
+    if (!tomReflectionInfo.canReflect(this)) return;
+    final missing = tomReflectionInfo.missingRequiredFields(this, values);
+    if (missing.isEmpty) return;
+    throw TomConfigurationException(
+      "configuration.base_configuration.required_settings_missing",
+      "No source supplied the required ${missing.length == 1 ? 'setting' : 'settings'} "
+          "${missing.join(', ')} for $runtimeType. A resource file, the "
+          "environment, a .env file or a command-line argument must name "
+          "${missing.length == 1 ? 'it' : 'them'}.",
+      parameters: {'missing': missing, 'configuration': '$runtimeType'},
+    );
+  }
+
   /// Creates the configuration, resolving and applying values from all sources
   /// (see [getDefaultValues]) for the given [args].
   ///
@@ -896,6 +955,11 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// configuration in the same isolate installs an equivalent closure over the
   /// same getter.
   ///
+  /// A field an application marked [TomRequiredField] is checked here too, by
+  /// [assertRequiredSettings], with the merged map and before the instance
+  /// registers itself: a configuration that refuses to start must not become
+  /// the isolate's active one on its way out.
+  ///
   /// It applies the kernel's protection settings from [args] too
   /// ([TomResourceKeyProtection.applyArguments]), so `tom.protection=false` or
   /// `tom.protection.json=false` on a server's command line switches the
@@ -906,7 +970,11 @@ utj3flRQDLaDAl91lySpAjUp9aM8
     // First, so a misspelt `tom.protection` argument stops the server before
     // anything else has been configured.
     TomResourceKeyProtection.applyArguments(args);
-    setValues(getDefaultValues(args));
+    final values = getDefaultValues(args);
+    setValues(values);
+    // Before the instance registers itself below: a configuration that refuses
+    // to start must not become the isolate's active one on its way out.
+    assertRequiredSettings(values);
     this.args = args;
     _activeConfiguration = this;
     TomRemoteLogMessage.globalSettingSenderIdResolver = () => tomAppId;
