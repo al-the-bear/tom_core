@@ -129,7 +129,11 @@ class TomCache {
   final Map<String, TomCacheEntry> _cache = {};
 
   /// Removes the entry stored under [key], unlinking it from the MRU list if the
-  /// cache is bounded. A no-op when the key is absent.
+  /// cache is bounded, and answers whether there was one to remove.
+  ///
+  /// A key the cache does not hold is not an error — it answers `false`. The
+  /// distinction is worth returning because the caller cannot otherwise make
+  /// it without a second read, which from a worker isolate is a second crossing.
   ///
   /// This is the module's only chain-unlink routine. The deletion sweep, and
   /// both of [putEntry]'s removals — replacing an existing key and evicting the
@@ -137,7 +141,7 @@ class TomCache {
   /// paired with a partial chain repair in one of them. Every earlier defect in
   /// this area was a second copy of these ten lines that had drifted: repairing
   /// the head but not the tail, or removing from the map with no repair at all.
-  void removeEntry(String key) {
+  bool removeEntry(String key) {
     TomCacheEntry? oldEntry = _cache[key];
     // Remove old entry;
     if (oldEntry != null) {
@@ -153,7 +157,9 @@ class TomCache {
         _last = oldEntry._before;
       }
       _cache.remove(key);
+      return true;
     }
+    return false;
   }
 
   /// Returns the entry under [key], or `null` if absent. In a bounded cache the
@@ -201,7 +207,11 @@ class TomCache {
   /// not notice either way — the map holds one value per key regardless — but a
   /// superseded entry left in the chain eventually becomes its tail, and the
   /// eviction that follows would then drop the live replacement by its key.
-  void putEntry(String key, TomCacheEntry entry) {
+  bool putEntry(String key, TomCacheEntry entry) {
+    // Captured before anything is written, because every branch below mutates
+    // the map and the sole-entry replacement clears it and re-enters — a
+    // reading taken later would report that recursion's view, not this call's.
+    final replaced = _cache.containsKey(key);
     if (maximumEntries == null) {
       _cache[key] = entry;
     } else {
@@ -227,7 +237,7 @@ class TomCache {
           if (cacheSize == 1) {
             _cache.clear();
             putEntry(key, entry);
-            return;
+            return replaced;
           }
           removeEntry(key);
         }
@@ -244,6 +254,9 @@ class TomCache {
         }
       }
     }
+    // An eviction is not a replacement: the answer is about *this* key having
+    // been held, not about something having left the cache.
+    return replaced;
   }
 
   /// The name this cache is registered under in [TomCacheManager].
@@ -604,8 +617,9 @@ class TomCache {
     return null;
   }
 
-  /// Stores [value] under [key] in the cache named after [T]. See [toNameCache].
-  static Future<void> toTypeCache<T>(String key, Object value) {
+  /// Stores [value] under [key] in the cache named after [T]. See [toNameCache],
+  /// including for what the answer means.
+  static Future<bool> toTypeCache<T>(String key, Object value) {
     return toNameCache(T.toString(), key, value);
   }
 
@@ -619,9 +633,15 @@ class TomCache {
   /// forwarded to the main isolate;
   /// otherwise a missing cache throws [TomCacheException].
   ///
-  /// The future carries only completion and failure: there is no count or
-  /// status to report, since a store either happens or throws. An insert and a
-  /// replacement are not distinguished, and neither is reported.
+  /// Answers **whether the key was already held** — `true` for a replacement,
+  /// `false` for an insert. The fact is free at the write site, and a caller
+  /// that had to establish it otherwise would have to read first: a second
+  /// operation, and from a worker isolate a second crossing. A forwarded store
+  /// carries the same answer back, so it reports what a local one reports.
+  ///
+  /// It is *not* "something left the cache": an insert that pushes a bounded
+  /// cache past its bound evicts a different key and still answers `false`,
+  /// because the question is about this key.
   ///
   /// A forwarded store that fails on the main isolate throws here too. A write
   /// that reports success while the value went nowhere is the worst of the
@@ -636,7 +656,7 @@ class TomCache {
   /// slot and counting against a bounded cache's bound. A caller with a
   /// nullable value must decide what absence means to it — skip the store, or
   /// store a sentinel of its own that a read can hand back.
-  static Future<void> toNameCache(
+  static Future<bool> toNameCache(
     String cacheName,
     String key,
     Object value, [
@@ -645,7 +665,7 @@ class TomCache {
     var cache = TomCacheManager.getCache(cacheName);
     if (cache != null) {
       if (value is TomCacheEntry) {
-        cache.putEntry(key, value);
+        return cache.putEntry(key, value);
       } else {
         var deleteAt =
             deletionTime ??
@@ -655,12 +675,17 @@ class TomCache {
                   )
                 : null);
         var entry = TomCacheEntry(value, deleteAt);
-        cache.putEntry(key, entry);
+        return cache.putEntry(key, entry);
       }
     } else if (!TomCacheManager._current.useInThisIsolate) {
-      await TomWorker.executeInCreator(
-        TomCacheStoreMessage(cacheName, key, value, deletionTime),
-      );
+      // `== true` rather than a cast: only `null` is substituted in transit, so
+      // a creator-side `false` arrives as `false` — and anything that is
+      // neither is a transport fault, which reads better as "did not replace"
+      // than as a crash inside a store that succeeded.
+      return await TomWorker.executeInCreator(
+            TomCacheStoreMessage(cacheName, key, value, deletionTime),
+          ) ==
+          true;
     } else {
       throw TomCacheException(
         "error.cache_store.not_found",
@@ -670,8 +695,8 @@ class TomCache {
   }
 
   /// Removes the entry keyed by [key] from the cache named after [T]. See
-  /// [removeFromNameCache].
-  static Future<void> removeFromTypeCache<T>(String key) {
+  /// [removeFromNameCache], including for what the answer means.
+  static Future<bool> removeFromTypeCache<T>(String key) {
     return removeFromNameCache(T.toString(), key);
   }
 
@@ -681,16 +706,21 @@ class TomCache {
   /// to the main isolate; otherwise a missing cache throws [TomCacheException].
   /// A forwarded removal that fails on the main isolate throws here too.
   ///
-  /// The future carries only completion and failure: there is no count or
-  /// status to report, since a removal either happens or throws. Removing a key
-  /// the cache does not hold is not an error and is indistinguishable from
-  /// removing one it does.
-  static Future<void> removeFromNameCache(String cacheName, String key) async {
+  /// Answers **whether anything was removed**. Removing a key the cache does not
+  /// hold is still not an error; it is merely distinguishable now, which it was
+  /// not — a caller wanting to know had to read first, and from a worker
+  /// isolate that is a second crossing. A forwarded removal carries the same
+  /// answer back.
+  static Future<bool> removeFromNameCache(String cacheName, String key) async {
     var cache = TomCacheManager.getCache(cacheName);
     if (cache != null) {
-      cache.removeEntry(key);
+      return cache.removeEntry(key);
     } else if (!TomCacheManager._current.useInThisIsolate) {
-      await TomWorker.executeInCreator(TomCacheRemoveMessage(cacheName, key));
+      // See [toNameCache] for why the answer is compared rather than cast.
+      return await TomWorker.executeInCreator(
+            TomCacheRemoveMessage(cacheName, key),
+          ) ==
+          true;
     } else {
       throw TomCacheException(
         "error.cache_remove.cache_not_found",
@@ -732,8 +762,9 @@ class TomCacheStoreMessage extends TomCommand {
     tomLog.trace(
       "Storing in main isolate cache $key $cacheName ${Isolate.current.debugName}",
     );
-    await TomCache.toNameCache(cacheName, key, value, deletionTime);
-    return true;
+    // The answer the local call produced, sent back rather than replaced by a
+    // constant: a forwarded store reports what a local one reports.
+    return await TomCache.toNameCache(cacheName, key, value, deletionTime);
   }
 }
 
@@ -751,8 +782,7 @@ class TomCacheRemoveMessage extends TomCommand {
     tomLog.trace(
       "Removing from main isolate cache $key $cacheName ${Isolate.current.debugName}",
     );
-    await TomCache.removeFromNameCache(cacheName, key);
-    return true;
+    return await TomCache.removeFromNameCache(cacheName, key);
   }
 }
 

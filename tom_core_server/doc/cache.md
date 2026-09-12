@@ -319,11 +319,25 @@ every read misses. A caller holding a nullable value decides what absence means
 to it: skip the store, or store a sentinel of its own that a read can hand back.
 
 The four mutators — `toNameCache`, `toTypeCache`, `removeFromNameCache` and
-`removeFromTypeCache` — return `Future<void>`. The future carries completion and
-failure, and nothing else: a store or a removal either happens or throws, so an
-insert is not distinguished from a replacement, nor a removal from a no-op. A
-caller that needs to know which it was reads first, which is a second operation
-and — from a worker isolate — a second round trip.
+`removeFromTypeCache` — return `Future<bool>`, and each answers the one question
+the write already knows the answer to:
+
+| Call | `true` means |
+| ---- | ------------ |
+| `toNameCache` / `toTypeCache` | the key was **already held** — this was a replacement, not an insert |
+| `removeFromNameCache` / `removeFromTypeCache` | there **was** an entry, and it is gone |
+
+Both facts are free at the write site and were previously discarded, so a caller
+that needed either had to read first: a second operation, and from a worker
+isolate a second round trip for a fact the first crossing already had in hand. A
+forwarded mutation carries its answer back, so it reports what a local one
+reports.
+
+The store's answer is about *this key*, not about the cache: an insert that
+pushes a bounded cache past `maximumEntries` evicts a different key and still
+answers `false`. And a removal that answers `false` is still not an error —
+removing a key the cache does not hold never was — it is merely distinguishable
+now.
 
 A value that *is already* a `TomCacheEntry` is stored verbatim, so it keeps its
 own `deletionTime` and the cache's `deleteEntriesAfterSeconds` does not apply to

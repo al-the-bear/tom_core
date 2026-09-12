@@ -184,10 +184,15 @@ class ProbeCacheStoreCommand extends TomCommand {
   Future<Object?> execute() async {
     if (TomWorker.isMainIsolate) return 'not-a-worker';
     try {
-      await TomCache.toNameCache(cacheName, 'k', 'from-worker');
-      // A constant, because the store reports nothing but completion. What is
-      // under test is which of the three branches below the crossing took.
-      return 'stored';
+      // The answer travels: `true` when the store replaced an existing entry.
+      // Carrying it back is what lets a forwarded store report what a local
+      // one reports, rather than only that it happened.
+      final replaced = await TomCache.toNameCache(
+        cacheName,
+        'k',
+        'from-worker',
+      );
+      return 'stored:$replaced';
     } on TomCacheException catch (e) {
       return 'failed:${e.key} client=${e.clientThrow}';
     } catch (e) {
@@ -979,7 +984,13 @@ void main() {
             .executeCommand(ProbeCacheStoreCommand('shared'))
             .timeout(const Duration(seconds: 10));
 
-        expect(answer, 'stored');
+        expect(
+          answer,
+          'stored:false',
+          reason:
+              'the key was not held, so the store was an insert — and the '
+              'answer crossed back rather than being replaced by a constant',
+        );
         expect(
           await TomCache.fromNameCache<String>('shared', 'k'),
           'from-worker',
@@ -1117,8 +1128,19 @@ void main() {
   group('Cross-isolate command objects (executed locally)', () {
     test('store message stores into the named cache', () async {
       TomCacheManager.addCache(_cache('c'));
-      final ok = await TomCacheStoreMessage('c', 'k', 'v', null).execute();
-      expect(ok, isTrue);
+      final replaced = await TomCacheStoreMessage(
+        'c',
+        'k',
+        'v',
+        null,
+      ).execute();
+      expect(
+        replaced,
+        isFalse,
+        reason:
+            'the command answers what the store answered — this key was not '
+            'held, so it was an insert',
+      );
       expect(await TomCache.fromNameCache<String>('c', 'k'), 'v');
     });
 
@@ -1131,13 +1153,13 @@ void main() {
       // default the value is still readable, so the two outcomes cannot be
       // confused.
       TomCacheManager.addCache(_cache('c'));
-      final ok = await TomCacheStoreMessage(
+      final replaced = await TomCacheStoreMessage(
         'c',
         'k',
         'v',
         DateTime.now().subtract(const Duration(hours: 1)),
       ).execute();
-      expect(ok, isTrue);
+      expect(replaced, isFalse);
       expect(await TomCache.fromNameCache<String>('c', 'k'), isNull);
     });
 
@@ -1838,6 +1860,116 @@ void main() {
       TomCacheManager.setCurrent(TomCacheManager());
       expect(TomCacheManager.getCache('orphan'), isNull);
       expect(orphan.deletionTimer!.isActive, isTrue);
+    });
+  });
+
+  group('A mutator says what it did', () {
+    // The three mutators reported only completion: a caller could not tell an
+    // insert from a replacement, nor a removal from a no-op, and had to read
+    // first to find out — a second operation, and from a worker a second round
+    // trip. Both facts are already known at the write site and were discarded.
+
+    test('putEntry answers whether it replaced an entry', () {
+      final cache = _cache('p');
+
+      expect(cache.putEntry('k', TomCacheEntry(1)), isFalse);
+      expect(cache.putEntry('k', TomCacheEntry(2)), isTrue);
+      expect(cache.getEntry('k')!.value, 2);
+    });
+
+    test('putEntry answers the same in a bounded cache', () {
+      // The bounded path has three branches — empty, replacing, inserting —
+      // and the replacing one recurses when the cache holds exactly one entry.
+      // The answer is captured before any of that runs, so the recursion
+      // cannot report `false` for a replacement it performed.
+      final cache = _cache('p', maximumEntries: 2);
+
+      expect(cache.putEntry('a', TomCacheEntry(1)), isFalse);
+      expect(
+        cache.putEntry('a', TomCacheEntry(2)),
+        isTrue,
+        reason: 'the sole-entry replacement clears the map and re-enters',
+      );
+      expect(cache.putEntry('b', TomCacheEntry(3)), isFalse);
+      expect(cache.putEntry('a', TomCacheEntry(4)), isTrue);
+      expect(cache.getEntry('a')!.value, 4);
+    });
+
+    test('an eviction is not reported as a replacement', () {
+      // The insert that pushes the bound evicts another key. That is not this
+      // key being replaced, and conflating the two would make the answer mean
+      // "something left the cache" rather than "this key was already here".
+      final cache = _cache('p', maximumEntries: 1);
+      cache.putEntry('a', TomCacheEntry(1));
+
+      expect(cache.putEntry('b', TomCacheEntry(2)), isFalse);
+      expect(cache.getEntry('a'), isNull);
+    });
+
+    test('removeEntry answers whether it removed anything', () {
+      final cache = _cache('r');
+      cache.putEntry('k', TomCacheEntry(1));
+
+      expect(cache.removeEntry('k'), isTrue);
+      expect(cache.removeEntry('k'), isFalse);
+      expect(cache.removeEntry('never-there'), isFalse);
+    });
+
+    test('toNameCache reports the insert and the replacement', () async {
+      TomCacheManager.addCache(_cache('m'));
+
+      expect(await TomCache.toNameCache('m', 'k', 'first'), isFalse);
+      expect(await TomCache.toNameCache('m', 'k', 'second'), isTrue);
+    });
+
+    test('toNameCache reports it for a TomCacheEntry value too', () async {
+      // The other arm of the store: a caller passing an entry with its own
+      // lifetime gets the same answer as one passing a bare value.
+      TomCacheManager.addCache(_cache('m'));
+
+      expect(await TomCache.toNameCache('m', 'k', TomCacheEntry(1)), isFalse);
+      expect(await TomCache.toNameCache('m', 'k', TomCacheEntry(2)), isTrue);
+    });
+
+    test('removeFromNameCache reports the removal and the no-op', () async {
+      TomCacheManager.addCache(_cache('m'));
+      await TomCache.toNameCache('m', 'k', 'v');
+
+      expect(await TomCache.removeFromNameCache('m', 'k'), isTrue);
+      expect(
+        await TomCache.removeFromNameCache('m', 'k'),
+        isFalse,
+        reason:
+            'removing a key the cache does not hold is still not an error — it '
+            'is now merely distinguishable from removing one it does',
+      );
+    });
+
+    test('the type-keyed helpers carry the same answer', () async {
+      TomCacheManager.addCache(_cache('int'));
+
+      expect(await TomCache.toTypeCache<int>('k', 1), isFalse);
+      expect(await TomCache.toTypeCache<int>('k', 2), isTrue);
+      expect(await TomCache.removeFromTypeCache<int>('k'), isTrue);
+      expect(await TomCache.removeFromTypeCache<int>('k'), isFalse);
+    });
+
+    test('the commands answer what the local call answered', () async {
+      // What the creator side computes and sends back. `false` has to survive
+      // the crossing as `false`, which it does because only `null` is
+      // substituted by the transport.
+      TomCacheManager.addCache(_cache('cmd'));
+
+      expect(
+        await TomCacheStoreMessage('cmd', 'k', 'v', null).execute(),
+        isFalse,
+      );
+      expect(
+        await TomCacheStoreMessage('cmd', 'k', 'v', null).execute(),
+        isTrue,
+      );
+      expect(await TomCacheRemoveMessage('cmd', 'k').execute(), isTrue);
+      expect(await TomCacheRemoveMessage('cmd', 'k').execute(), isFalse);
     });
   });
 

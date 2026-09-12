@@ -34,6 +34,19 @@
 
 ### Changed
 
+- **The cache mutators say what they did (tcopen111).** `toNameCache`,
+  `toTypeCache`, `removeFromNameCache` and `removeFromTypeCache` return
+  `Future<bool>`: a store answers whether the key was already held, a removal
+  whether there was anything to remove. Both facts are free at the write site —
+  `putEntry` and `removeEntry` return them now too — and were discarded, so a
+  caller that needed either had to read first: a second operation, and from a
+  worker isolate a second crossing for a fact the first one already had.
+
+  The store's answer is about *this key*: an insert that pushes a bounded cache
+  past its bound evicts a different key and still answers `false`. Forwarded
+  mutations carry their answer back rather than the constant the commands
+  returned, so a forwarded store reports what a local one reports.
+
 - **A cache is bounded unless the caller says otherwise (tcopen108).**
   `maximumEntries` had no default, so `TomCache('x')` had no bound — and with no
   `deleteEntriesAfterSeconds` its entries carried no expiry either, so both
