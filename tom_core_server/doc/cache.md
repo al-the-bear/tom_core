@@ -2,8 +2,9 @@
 
 A lightweight in-memory cache for the server. Caches are registered by name in a
 `TomCacheManager`, physically held in the main isolate, and reached from any
-isolate through a small set of static helpers. A cache can be unbounded or LRU
-bounded, and can expire entries by age or clear itself on a schedule.
+isolate through a small set of static helpers. A cache is LRU-bounded by default
+and unbounded on request, and can expire entries by age or clear itself on a
+schedule.
 
 ## Table of Contents
 
@@ -22,6 +23,7 @@ bounded, and can expire entries by age or clear itself on a schedule.
 - [Registering a Cache](#registering-a-cache)
 - [Reading, Storing, Removing](#reading-storing-removing)
 - [Expiry and Bounds](#expiry-and-bounds)
+  - [A cache is bounded unless you say otherwise](#a-cache-is-bounded-unless-you-say-otherwise)
   - [Two reads, and only one of them expires](#two-reads-and-only-one-of-them-expires)
 - [Isolate Model](#isolate-model)
 - [Failures Are Internal](#failures-are-internal)
@@ -346,17 +348,51 @@ A cache has two independent eviction mechanisms plus an optional periodic clear:
   place. `getEntry` deliberately does not apply the rule — see [Two reads, and
   only one of them
   expires](#two-reads-and-only-one-of-them-expires).
-- **LRU bound** — when `maximumEntries` is set the entries form a
-  most-recently-used list; reading or writing an entry moves it to the front,
-  and exceeding the bound evicts the least-recently-used entry. When
-  `maximumEntries` is **not** set there is no bound at all — see
-  [Not Yet Implemented](#not-yet-implemented) before leaving a cache unbounded.
+- **LRU bound** — the entries form a most-recently-used list; reading or writing
+  an entry moves it to the front, and exceeding `maximumEntries` evicts the
+  least-recently-used one. **On by default**, at
+  `TomCache.defaultMaximumEntries` (100) — see [A cache is bounded unless you
+  say otherwise](#a-cache-is-bounded-unless-you-say-otherwise).
 - **Periodic clear** — when `clearIntervalSeconds` is set a *clearance timer*
   empties the whole cache on that interval.
 
-None of the three is on by default. `TomCache('x')` with no further arguments is
-unbounded, holds its entries forever, and runs an hourly sweep that finds
-nothing to sweep.
+Expiry and the periodic clear are off by default; the bound is on.
+`TomCache('x')` with no further arguments holds a hundred entries, keeps them
+forever, and runs an hourly sweep that finds nothing to sweep.
+
+### A cache is bounded unless you say otherwise
+
+`maximumEntries` defaults to `TomCache.defaultMaximumEntries` — a hundred — and
+`maximumEntries: null` is how a caller asks for no bound at all.
+
+A bound is the default because an unbounded cache with no lifetime grows for the
+life of the process. Whether that is a leak depends entirely on the shape of the
+key:
+
+| Key | Unbounded is |
+| --- | ------------ |
+| a route, a template name, a configuration section | **fine** — the key space is bounded by its own shape, and the cache stops growing on its own |
+| a user id, a request parameter, a tenant | **a leak** — the key space is as large as the traffic, and nothing in the process will correct it |
+
+Nothing in the API distinguishes them, so the default has to be the answer that
+is merely *wrong* in the first case rather than *unbounded* in the second. A
+cache holding a hundred routing entries instead of a hundred and twenty misses a
+little more often; a cache holding every user id a long-running server ever saw
+is a defect.
+
+The number matters less than the fact that there is one. A hundred is large
+enough that a small fixed key space fits — most such caches hold a handful — and
+small enough that a hundred of anything is cheap to hold. A deployment that
+knows its key space says so:
+
+```dart
+TomCache('sessions', maximumEntries: 10000)   // a bound of your own
+TomCache('routes', maximumEntries: null)      // bounded by its own key space
+```
+
+`null` means exactly what it always meant, and zero is still refused: `null` is
+how a feature is switched off, so zero is never a second way of saying that —
+see the constructor.
 
 ### Two reads, and only one of them expires
 
@@ -515,15 +551,6 @@ local one.
 
 ## Not Yet Implemented
 
-- **An unbounded cache has no bound at all.** Without `maximumEntries` nothing
-  caps the map, and without `deleteEntriesAfterSeconds` the stored entries carry
-  no `deletionTime` for the sweep to find — so both eviction mechanisms decline
-  and the cache grows for the life of the process. That is the *default*
-  configuration: `TomCache('x')` is unbounded, lifetime-free, and swept hourly
-  for nothing. It is safe when the key space is itself bounded — routing tables,
-  compiled templates, resolved configuration — and a leak when the key is a user
-  id or a request parameter. Nothing in the API distinguishes the two, so the
-  choice is the caller's to make deliberately.
 - **Cross-isolate forwarding is one round trip per operation.** Each helper
   issues its own `executeInCreator` call with a single-operation command. There
   is no batch form and no worker-side read-through copy, so a handler resolving
@@ -537,11 +564,10 @@ local one.
   registration, and it is the leaky one. Call `stopTimers()` on a cache you are
   finished with.
 
-All but the second are pinned by tests in `test/cache_test.dart` — the first and
-the timer half of the last in the group "The limits the documentation records" —
-so closing one of them turns a test red rather than leaving this section quietly
-wrong. The second is a cost rather than an outcome, and pinning it would mean
-asserting a shape.
+The second is pinned by a test in `test/cache_test.dart` — the timer half of it,
+in the group "The limits the documentation records" — so closing it turns a test
+red rather than leaving this section quietly wrong. The first is a cost rather
+than an outcome, and pinning it would mean asserting a shape.
 
 ## Verification
 

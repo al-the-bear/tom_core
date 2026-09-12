@@ -1752,13 +1752,18 @@ void main() {
     // (direct)" group above, and unbatched forwarding is a cost rather than an
     // outcome — pinning it would mean asserting a shape, not a behaviour.
 
-    test('an unbounded cache keeps every entry it is given', () async {
-      // Nothing caps the backing map when `maximumEntries` is null, and a value
-      // stored into a cache without `deleteEntriesAfterSeconds` carries no
-      // `deletionTime` — so the sweep has nothing to find either. Both eviction
-      // mechanisms decline and the map grows for the life of the process.
-      // Giving `maximumEntries` a default would turn this red.
-      final cache = TomCache('unbounded', deletionIntervalSeconds: null);
+    test('an explicitly unbounded cache keeps every entry it is given', () async {
+      // `maximumEntries: null` is the opt-out, and it opts out completely:
+      // nothing caps the backing map, and a value stored into a cache without
+      // `deleteEntriesAfterSeconds` carries no `deletionTime`, so the sweep has
+      // nothing to find either. Both eviction mechanisms decline and the map
+      // grows for the life of the process. That is now something a caller has
+      // to ask for.
+      final cache = TomCache(
+        'unbounded',
+        deletionIntervalSeconds: null,
+        maximumEntries: null,
+      );
       TomCacheManager.addCache(cache);
       for (var i = 0; i < 5000; i++) {
         await TomCache.toNameCache('unbounded', 'k$i', i);
@@ -1782,6 +1787,82 @@ void main() {
       TomCacheManager.setCurrent(TomCacheManager());
       expect(TomCacheManager.getCache('orphan'), isNull);
       expect(orphan.deletionTimer!.isActive, isTrue);
+    });
+  });
+
+  group('A cache is bounded unless the caller says otherwise', () {
+    // A cache with no bound and no lifetime grows for the life of the process.
+    // That is safe when the key space is itself bounded (routing tables,
+    // compiled templates) and a leak when the key is a user id or a request
+    // parameter, and nothing in the API tells the two apart — so the bound is
+    // the default and growing without one is what a caller asks for.
+
+    test('the default is a bound, not the absence of one', () {
+      final cache = TomCache('defaulted', deletionIntervalSeconds: null);
+      addTearDown(cache.stopTimers);
+
+      expect(cache.maximumEntries, TomCache.defaultMaximumEntries);
+      expect(TomCache.defaultMaximumEntries, 100);
+    });
+
+    test('forType defaults the same way', () {
+      // Two constructors, one default: a cache named after a type is no more
+      // likely to have a bounded key space than any other.
+      final cache = TomCache.forType(int, deletionIntervalSeconds: null);
+      addTearDown(cache.stopTimers);
+
+      expect(cache.maximumEntries, TomCache.defaultMaximumEntries);
+    });
+
+    test('a defaulted cache evicts rather than growing', () async {
+      final cache = TomCache(
+        'bounded-by-default',
+        deletionIntervalSeconds: null,
+      );
+      TomCacheManager.addCache(cache);
+      for (var i = 0; i <= TomCache.defaultMaximumEntries; i++) {
+        await TomCache.toNameCache('bounded-by-default', 'k$i', i);
+      }
+
+      expect(
+        await TomCache.fromNameCache<int>('bounded-by-default', 'k0'),
+        isNull,
+        reason:
+            'the least-recently-used entry goes when the bound is exceeded — '
+            'the whole point of having one',
+      );
+      expect(
+        await TomCache.fromNameCache<int>(
+          'bounded-by-default',
+          'k${TomCache.defaultMaximumEntries}',
+        ),
+        TomCache.defaultMaximumEntries,
+      );
+    });
+
+    test('an explicit null is still how a caller opts out', () {
+      // The escape hatch has to stay reachable, and `null` is what the field
+      // has always meant. A default that could not be turned off would make the
+      // legitimate unbounded case — a key space bounded by its own shape —
+      // unreachable.
+      final cache = TomCache(
+        'opted-out',
+        deletionIntervalSeconds: null,
+        maximumEntries: null,
+      );
+      addTearDown(cache.stopTimers);
+
+      expect(cache.maximumEntries, isNull);
+    });
+
+    test('zero is still refused, not read as the opt-out', () {
+      // The edge the bound already had, unchanged by the default: `null` is
+      // off, a positive number is a bound, and zero is a caller whose
+      // arithmetic produced something the cache cannot honour.
+      expect(
+        () => TomCache('zero', maximumEntries: 0),
+        throwsA(isA<ArgumentError>()),
+      );
     });
   });
 

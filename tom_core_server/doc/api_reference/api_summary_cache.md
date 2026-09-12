@@ -22,8 +22,9 @@ from the main isolate and transparently forwarded to from worker isolates.
 Source: `lib/src/tomserver/cache/server_cache.dart`.
 
 `TomCache` is a named in-memory cache of `TomCacheEntry` values keyed by string.
-A cache may be unbounded (a plain map with optional time-based expiry) or
-bounded (`maximumEntries` set, LRU eviction). Two background timers can be
+A cache is **bounded by default** (`maximumEntries`, LRU eviction) and unbounded
+on request (`maximumEntries: null`, a plain map with optional time-based
+expiry). Two background timers can be
 installed: a deletion timer that drops expired entries and a clearance timer that
 empties the whole cache. Both are created in `Zone.root`, not in the zone that
 constructed the cache, so a cache first built on a request path does not leave
@@ -176,7 +177,7 @@ TomCache(
   String cacheName, {
   int? deleteEntriesAfterSeconds,
   int? deletionIntervalSeconds = 3600,
-  int? maximumEntries,
+  int? maximumEntries = TomCache.defaultMaximumEntries,
   int? clearIntervalSeconds,
 })
 
@@ -184,10 +185,16 @@ factory TomCache.forType(
   Type type, {
   int? deleteEntriesAfterSeconds,
   int? deletionIntervalSeconds = 3600,
-  int? maximumEntries,
+  int? maximumEntries = TomCache.defaultMaximumEntries,
   int? clearIntervalSeconds,
 })
 ```
+
+#### Static Members
+
+| Member | Type | Description |
+| ------ | ---- | ----------- |
+| `defaultMaximumEntries` | `int` | The bound a cache gets when the caller names none (100). The number matters less than the fact that there is one: an unbounded cache with no lifetime grows for the life of the process, and whether that is a leak depends on the shape of the key — bounded for a route or a template name, unbounded for a user id or a request parameter — which the cache cannot see. So the default is the answer that is merely *wrong* in the first case rather than *unbounded* in the second. |
 
 #### Static Methods
 
@@ -208,7 +215,7 @@ factory TomCache.forType(
 | `deletionIntervalSeconds` | `int?` | How often (seconds) the deletion timer sweeps expired entries; `null` disables it, a value must be positive (default 3600, final). |
 | `deleteEntriesAfterSeconds` | `int?` | Default lifetime (seconds) applied when no explicit deletion time is given; `null` means no age expiry, a value must be positive (final). |
 | `clearIntervalSeconds` | `int?` | How often (seconds) the clearance timer empties the whole cache; `null` disables it, a value must be positive (final). |
-| `maximumEntries` | `int?` | Upper bound on entries; `null` makes the cache unbounded, a positive value turns on LRU eviction (final). |
+| `maximumEntries` | `int?` | Upper bound on entries; a positive value turns on LRU eviction and `null` makes the cache unbounded. Defaults to `defaultMaximumEntries`, so a cache is bounded unless the caller asks otherwise (final). |
 | `deletionTimer` | `Timer?` | The periodic timer that sweeps expired entries, or `null` when none is running — the interval is unset, or `stopTimers` has since cleared it. |
 | `clearanceTimer` | `Timer?` | The periodic timer that clears the whole cache, or `null` when none is running — the interval is unset, or `stopTimers` has since cleared it. |
 

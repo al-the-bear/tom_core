@@ -13,7 +13,7 @@ physically live). Static helpers key a cache by Dart type or by name.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomCache` | A named cache; constructor takes `cacheName` plus `deleteEntriesAfterSeconds`, `maximumEntries`, and clear/deletion intervals — each positive or `null`, since `null` is how a feature is switched off and a non-positive value would give a black-hole cache or a busy-loop sweep. `TomCache.forType(Type)` names it after a type. Its clear and deletion timers run in `Zone.root` rather than the zone that constructed the cache, and stop through `stopTimers()`. |
+| `TomCache` | A named cache; constructor takes `cacheName` plus `deleteEntriesAfterSeconds`, `maximumEntries`, and clear/deletion intervals — each positive or `null`, since `null` is how a feature is switched off and a non-positive value would give a black-hole cache or a busy-loop sweep. **`maximumEntries` defaults to `TomCache.defaultMaximumEntries` (100)**: a cache is LRU-bounded unless the caller passes `null`, because whether growing without a bound is a leak depends on the shape of the key and the cache cannot see it. `TomCache.forType(Type)` names it after a type. Its clear and deletion timers run in `Zone.root` rather than the zone that constructed the cache, and stop through `stopTimers()`. |
 | `TomCacheEntry` | One cached value (`value`) with an optional `deletionTime`. The value is non-nullable: a read answers `null` for a miss and for an expiry, so an entry holding `null` would be one no read could surface. |
 | `TomCacheManager` | Per-isolate registry; `getCache(name)` / `addCache`, and the cross-isolate forwarding decision (`useInThisIsolate`). |
 

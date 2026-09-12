@@ -265,14 +265,43 @@ class TomCache {
 
   /// Upper bound on the number of entries. `null` makes the cache unbounded; a
   /// value turns on LRU eviction and must be positive — see the constructor.
+  ///
+  /// Defaults to [defaultMaximumEntries]: a cache is bounded unless the caller
+  /// says otherwise.
   final int? maximumEntries;
+
+  /// The bound a cache gets when the caller names none.
+  ///
+  /// A hundred, and the number matters less than the fact that there is one.
+  /// The alternative default was no bound at all, which is safe exactly when
+  /// the key space is itself bounded — routing tables, compiled templates,
+  /// resolved configuration — and a leak for the life of the process when the
+  /// key is a user id or a request parameter. Nothing in the API tells those
+  /// apart, so the default has to be the answer that is merely *wrong* in the
+  /// first case rather than *unbounded* in the second: a cache that holds a
+  /// hundred routing entries instead of a hundred and twenty misses a little
+  /// more, while a cache that holds every user id a long-running server ever
+  /// saw is a defect nothing in the process will correct.
+  ///
+  /// Chosen to be large enough that a small fixed key space fits — most such
+  /// caches hold a handful — and small enough that a hundred of anything is
+  /// cheap to hold. A deployment that knows its key space says so, and one that
+  /// knows it is bounded by its own shape passes `maximumEntries: null`.
+  static const int defaultMaximumEntries = 100;
 
   /// Creates a named cache and installs its background timers.
   ///
   /// [deleteEntriesAfterSeconds] sets the default per-entry lifetime,
   /// [deletionIntervalSeconds] the expiry-sweep period (default 3600),
-  /// [maximumEntries] the LRU bound, and [clearIntervalSeconds] a full-clear
-  /// period.
+  /// [maximumEntries] the LRU bound (default [defaultMaximumEntries]), and
+  /// [clearIntervalSeconds] a full-clear period.
+  ///
+  /// **A cache is bounded unless the caller says otherwise.** Passing
+  /// `maximumEntries: null` is the opt-out and means exactly what it always
+  /// meant — no bound — but it is now something a caller asks for rather than
+  /// something they get by not thinking about it. An unbounded cache with no
+  /// lifetime grows for the life of the process, and whether that is a leak
+  /// depends on the shape of the key, which the cache cannot see.
   ///
   /// **Every one of the four must be positive or `null`**, and an
   /// [ArgumentError] naming the offending parameter is thrown otherwise. `null`
@@ -294,7 +323,7 @@ class TomCache {
     this.cacheName, {
     this.deleteEntriesAfterSeconds,
     this.deletionIntervalSeconds = 3600,
-    this.maximumEntries,
+    this.maximumEntries = defaultMaximumEntries,
     this.clearIntervalSeconds,
   }) {
     // Why: all four checks before createTimers(). A throw after a timer was
@@ -347,7 +376,7 @@ class TomCache {
     Type type, {
     int? deleteEntriesAfterSeconds,
     int? deletionIntervalSeconds = 3600,
-    int? maximumEntries,
+    int? maximumEntries = defaultMaximumEntries,
     int? clearIntervalSeconds,
   }) {
     return TomCache(

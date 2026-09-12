@@ -19,6 +19,22 @@
 
 ### Changed
 
+- **A cache is bounded unless the caller says otherwise (tcopen108).**
+  `maximumEntries` had no default, so `TomCache('x')` had no bound — and with no
+  `deleteEntriesAfterSeconds` its entries carried no expiry either, so both
+  eviction mechanisms declined and the map grew for the life of the process.
+  Whether that is a leak depends on the shape of the key, which the cache cannot
+  see: bounded for a route or a template name, unbounded for a user id or a
+  request parameter.
+
+  It now defaults to `TomCache.defaultMaximumEntries` (100), and
+  `maximumEntries: null` is the opt-out. The default is the answer that is
+  merely *wrong* for a small fixed key space — a hundred routing entries instead
+  of a hundred and twenty misses a little more often — rather than *unbounded*
+  for an open one. `TomCache.forType` carries the same default. The edges are
+  unchanged: `null` is off, a positive number is a bound, and zero is still
+  refused.
+
 - **The OAuth completion is `POST /oauth/complete`, and is the application's
   call (tcopen104).** It was `GET /oauth/callback`, described as the address the
   provider redirects a browser to — and it answers a `TomAuthenticationResult`,
