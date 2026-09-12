@@ -4559,8 +4559,9 @@ void main() {
     });
 
     test('each endpoint states its method and its address', () {
-      // The callback is a `GET` because a provider redirects a *browser* to
-      // it; the other two are the client's own calls.
+      // All three are the client's own calls, the completion included: the
+      // provider redirects a *browser* to a page of the application, and the
+      // page posts what it received here.
       expect(
         tomOAuthApi[tomOAuthProvidersEndpointId].method,
         TomHttpMethod.get,
@@ -4568,8 +4569,11 @@ void main() {
       expect(tomOAuthApi[tomOAuthProvidersEndpointId].uri, '/providers');
       expect(tomOAuthApi[tomOAuthBeginEndpointId].method, TomHttpMethod.post);
       expect(tomOAuthApi[tomOAuthBeginEndpointId].uri, '/authorize');
-      expect(tomOAuthApi[tomOAuthCompleteEndpointId].method, TomHttpMethod.get);
-      expect(tomOAuthApi[tomOAuthCompleteEndpointId].uri, '/callback');
+      expect(
+        tomOAuthApi[tomOAuthCompleteEndpointId].method,
+        TomHttpMethod.post,
+      );
+      expect(tomOAuthApi[tomOAuthCompleteEndpointId].uri, '/complete');
     });
 
     test('each endpoint states the request type it reads', () {
@@ -4603,44 +4607,18 @@ void main() {
       );
     });
 
-    test('the callback binds the provider spelling onto the DTO field', () {
-      // The provider chooses these names, not us, and one of the four is not a
-      // Dart identifier. A typo on either side of `error_description` is a
-      // run-time-only failure on the one path a deployment cannot rehearse
-      // without a real provider — which is the whole reason it is pinned here.
-      expect(tomOAuthApi[tomOAuthCompleteEndpointId].urlParameterMapping, {
-        'code': 'code',
-        'state': 'state',
-        'error': 'error',
-        'error_description': 'errorDescription',
-      });
-    });
-
-    test('the other two endpoints bind nothing from the URL', () {
-      // `/authorize` states everything in its body and `/providers` states
-      // nothing at all, so neither has a URL name that could disagree with a
-      // field.
+    test('no endpoint binds anything from the URL', () {
+      // `/authorize` and `/complete` state everything in their bodies and
+      // `/providers` states nothing at all, so none has a URL name that could
+      // disagree with a field.
+      //
+      // The completion is the one worth asserting. It carried a mapping while
+      // it was a `GET` the provider redirected to, which put `code` and `state`
+      // in the query string — and so in the access log, in the proxy log and in
+      // the `Referer` of whatever loaded next. They travel in a body now.
       expect(tomOAuthApi[tomOAuthProvidersEndpointId].urlParameterMapping, {});
       expect(tomOAuthApi[tomOAuthBeginEndpointId].urlParameterMapping, {});
-    });
-
-    test('the callback resolves exactly as a provider redirects to it', () {
-      // The mapping asserted as a URL rather than as a map: the snake_cased
-      // name has to survive into the query string, and the field name must not.
-      expect(
-        tomOAuthApi[tomOAuthCompleteEndpointId]
-            .resolveUri(
-              Uri.parse('https://api.example.com'),
-              parameters: {
-                'state': 's-1',
-                'error': 'access_denied',
-                'errorDescription': 'declined',
-              },
-            )
-            .toString(),
-        'https://api.example.com/oauth/callback'
-        '?state=s-1&error=access_denied&error_description=declined',
-      );
+      expect(tomOAuthApi[tomOAuthCompleteEndpointId].urlParameterMapping, {});
     });
 
     test('every endpoint is public, and necessarily so', () {
@@ -4752,28 +4730,20 @@ void main() {
       },
     );
 
-    test(
-      'the callback endpoint addresses the query the provider redirects with',
-      () {
-        // No send: the provider redirects a *browser* here, so the exchange this
-        // endpoint describes is not one a client makes. What is checkable — and
-        // what the mapping exists for — is that the URL it resolves carries the
-        // provider's own snake_case spelling.
-        final complete = tomOAuthApi[tomOAuthCompleteEndpointId];
-        final uri = complete.resolveUri(
-          Uri.parse('https://api.example.com'),
-          parameters: {'code': 'c-1', 'state': 'st-42'},
-        );
+    test('the completion endpoint addresses a plain path, with no query', () {
+      // The application posts `code` and `state`; nothing about them belongs in
+      // the URL. A resolved address carrying them would be the shape a provider
+      // redirect has, which is the reading this endpoint no longer invites.
+      final complete = tomOAuthApi[tomOAuthCompleteEndpointId];
+      final uri = complete.resolveUri(
+        Uri.parse('https://api.example.com'),
+        parameters: {'code': 'c-1', 'state': 'st-42'},
+      );
 
-        expect(uri.path, equals('/oauth/callback'));
-        expect(uri.queryParameters['code'], equals('c-1'));
-        expect(uri.queryParameters['state'], equals('st-42'));
-        expect(
-          complete.urlParameterMapping['error_description'],
-          equals('errorDescription'),
-        );
-      },
-    );
+      expect(uri.path, equals('/oauth/complete'));
+      expect(uri.queryParameters, isEmpty);
+      expect(complete.method, TomHttpMethod.post);
+    });
   });
 }
 

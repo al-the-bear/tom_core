@@ -8,6 +8,16 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Changed
+- **The OAuth completion is `POST /oauth/complete` (tcopen104).** It was `GET
+  /oauth/callback`, with a `urlParameterMapping` binding the provider's query
+  parameters — a contract that reads as "the provider redirects a browser here",
+  and this endpoint answers a `TomAuthenticationResult`. The provider redirects
+  a browser to a page of the *application*, which is what every `redirectUri` in
+  the framework configures; that page posts `code` and `state` here, so the
+  endpoint is an ordinary typed `POST` and the mapping is gone —
+  the parameters no longer travel through every log and proxy in between.
+  `TomOAuthCallbackRequest` keeps its name, because its fields *are* the
+  redirect's parameters.
 - **The timezone setup calls answer with the number of zones loaded
   (tcopen99).** Both returned a literal `0` under a `Future<int>` that promised
   otherwise — not a count, not a status, never non-zero — so a caller that

@@ -1,5 +1,29 @@
 ## 1.3.0
 
+### Changed
+
+- **The OAuth completion is `POST /oauth/complete`, and is the application's
+  call (tcopen104).** It was `GET /oauth/callback`, described as the address the
+  provider redirects a browser to — and it answers a `TomAuthenticationResult`,
+  so on that reading the last step of an interactive login rendered a token pair
+  into the address bar, into history, into the access log and into the `Referer`
+  of whatever loaded next, while a cancelled authorization rendered a fault body
+  as a page.
+
+  The reading was the defect. Every provider configuration in the module sets
+  `redirectUri` to a page of the *application*, so the intermediary was always
+  assumed and never written down: the provider redirects the browser to that
+  page, the page reads `code` and `state` off its own query string, and posts
+  them here. The verb and URI say so now, and the `urlParameterMapping` is gone
+  — `code` and `state` travel in a body rather than through every log and proxy
+  between the page and this server. `TomOAuthCallbackRequest` keeps its name,
+  because its fields *are* the redirect's parameters.
+
+  The framework stays entirely non-browser-facing, deliberately: configured
+  completion redirects plus a token handover would mean a second token-bearing
+  store, a second endpoint and HTML rendering inside a package whose HTTP
+  surface is typed JSON, to own a decision that is the application's anyway.
+
 ### Added
 
 - **The server principal renews itself before its token expires (tcopen103).**

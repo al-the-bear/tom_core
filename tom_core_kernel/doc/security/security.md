@@ -1146,7 +1146,7 @@ the handshake's verification steps.
 | -------- | ------ | ------------------ |
 | `/oauth/providers` | GET | — → `List<TomOAuthProviderDto>` |
 | `/oauth/authorize` | POST | `TomOAuthAuthorizationRequest` → `TomOAuthAuthorizationDto` |
-| `/oauth/callback` | GET | `TomOAuthCallbackRequest` → `TomAuthenticationResult` |
+| `/oauth/complete` | POST | `TomOAuthCallbackRequest` → `TomAuthenticationResult` |
 
 **Name the ids through the constants, never as literals.** The api and its
 three endpoints are identified by `tomOAuthApiId` (`'tomOAuth'`),
@@ -1164,10 +1164,16 @@ not mean unguarded — the flow is protected by the `state` handle (single-use,
 server-issued, TTL-bounded) and the PKCE verifier, neither of which a caller
 supplies.
 
-`/oauth/callback` is a `GET` with no body because the provider redirects a
-*browser* to it: everything arrives in the query string. The endpoint's
-`urlParameterMapping` binds those parameters into the typed DTO and is the one
-place the provider's snake_case spelling (`error_description`) appears.
+**The provider does not redirect here.** Its `redirectUri` names a page of the
+*application*; that page reads `code` and `state` off its own query string and
+posts them to `/oauth/complete`, which is why the completion is an ordinary
+`POST` with a body. An endpoint the provider redirected to would answer a
+browser navigation with a token pair — tokens in the address bar, in history, in
+the access log, and in the `Referer` of whatever loaded next. It was a `GET` at
+`/oauth/callback` once, which invited exactly that; the DTO keeps the callback
+name because its fields *are* the redirect's parameters, and translating the
+provider's snake_case spelling (`error_description`) is the application's job as
+it reads its own query string.
 
 ### Driving it from a client
 

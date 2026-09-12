@@ -1,16 +1,29 @@
 /// The HTTP face of external identity: `/oauth/*`, bound to the kernel's
 /// [tomOAuthApi] (C-9).
 ///
-/// ## Three endpoints, and why the third is a `GET`
+/// ## Three endpoints, all of them calls the application makes
 ///
-/// `/oauth/providers` and `/oauth/authorize` are ordinary calls a client makes.
-/// `/oauth/callback` is not: it is the address the *provider* redirects a
-/// browser to, so its shape is dictated by OAuth rather than by this framework.
-/// It is a `GET` carrying `code` and `state` in the query string, which is why
-/// the contract maps those query parameters onto its request DTO
-/// ([TomApiEndpoint.urlParameterMapping]) instead of declaring a body.
+/// Including the third. `/oauth/complete` is *not* the address the provider
+/// redirects to — that is a page of the application, named by the provider
+/// configuration's `redirectUri`. The provider redirects a **browser** there;
+/// the page reads `code` and `state` off its own query string and posts them
+/// here, and the token pair comes back to the front end in a response body it
+/// controls.
 ///
-/// ## Why the callback issues a login rather than reporting an OAuth result
+/// The arrangement matters rather than being a preference. An endpoint the
+/// provider redirects *to* answers a browser navigation, so a token pair would
+/// land in the address bar, in the session's history, in the server's access
+/// log and in the `Referer` of whatever the page loaded next — and a cancelled
+/// authorization would render a fault body as a page. This endpoint was a `GET`
+/// at `/callback` once, which invited exactly that reading; it is a `POST` at
+/// `/complete` now, and nothing in the framework is browser-facing.
+///
+/// A deployment that wants the provider to reach the server directly puts its
+/// own handler at that address: it is the one piece that has to know where the
+/// user should end up afterwards, which is an application decision and not a
+/// framework one.
+///
+/// ## Why the completion issues a login rather than reporting an OAuth result
 ///
 /// It returns a [TomAuthenticationResult] — the same type
 /// [TomAuthenticationServer.authenticateUser] returns for a password login, with
@@ -25,8 +38,8 @@
 /// ## Why all three are public
 ///
 /// There is no caller to authenticate. A user reaching `/oauth/providers` has
-/// not logged in yet — that is what they are trying to do — and the provider's
-/// redirect arrives with nothing but a code. What stands in for authentication
+/// not logged in yet — that is what they are trying to do — and the completion
+/// arrives with nothing but a code the application forwarded. What stands in for authentication
 /// here is the `state` handle: server-issued, single-use and TTL-bounded, so an
 /// unauthenticated endpoint still cannot be driven by anyone who did not start
 /// a flow through [beginOAuthAuthorization].
@@ -91,9 +104,10 @@ class TomOAuthServer implements TomOAuthApiService {
 
     // Read (without spending) the pending record for the context the login
     // started in. The message must be built *before* the credential is
-    // authenticated, and the callback is a bare browser navigation carrying no
-    // client, locale or organization of its own — so this is the only place the
-    // real context can come from. The record is spent later, inside the flow.
+    // authenticated, and the completion carries only what the provider's
+    // redirect gave the application — no client, locale or organization of its
+    // own — so this is the only place the real context can come from. The
+    // record is spent later, inside the flow.
     final pending = await TomOAuthStateStore.resolve().peek(request.state);
     if (pending == null) {
       throw TomEndpointHandlerException(
@@ -113,7 +127,7 @@ class TomOAuthServer implements TomOAuthApiService {
   ///
   /// The username is deliberately left at its default: which local account this
   /// is, is what the provider's answer decides, and naming one here would be
-  /// asserting an identity the callback has not yet established.
+  /// asserting an identity the completion has not yet established.
   TomAuthenticationMessage _messageFor(TomOAuthAuthorizationState pending) {
     final message = TomAuthenticationMessage();
     if (pending.client.isNotEmpty) message.client = pending.client;

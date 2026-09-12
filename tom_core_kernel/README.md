@@ -104,7 +104,7 @@ handle declared so far so a missing binding fails at start-up.
 | `TomBearerAuthentication` | Bearer-token authentication |
 | `TomAccessControlInformation`, `TomGroup`, `TomRole`, `TomEntitlement` | Principal / ACI model |
 | `TomResourceRoleRegistry`, `TomResourceRoleAdapter` | Per-principal-per-resource roles — the same user as `owner` of one resource and `viewer` of another. The kernel's only shipped `TomAuthorizationAdapter` |
-| `tomOAuthApi`, `TomOAuthProviderDto`, `TomOAuthAuthorizationRequest`, `TomOAuthCallbackRequest`, `TomOAuthApiService` | The wire contract for external-identity login ("Sign in with …"). The `/oauth/callback` endpoint answers with `TomAuthenticationResult` — the *same* type `/login` answers with, because an OAuth provider resolves a principal and everything after that is the one login path every credential reaches, second factor included. |
+| `tomOAuthApi`, `TomOAuthProviderDto`, `TomOAuthAuthorizationRequest`, `TomOAuthCallbackRequest`, `TomOAuthApiService` | The wire contract for external-identity login ("Sign in with …"). The `/oauth/complete` endpoint — which the *application* calls, forwarding what the provider's redirect left on its own page — answers with `TomAuthenticationResult` — the *same* type `/login` answers with, because an OAuth provider resolves a principal and everything after that is the one login path every credential reaches, second factor included. |
 
 ### Runtime utilities
 

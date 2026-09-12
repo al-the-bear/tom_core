@@ -9,7 +9,17 @@
 /// G-API-3). The kernel is the framework's contracts package, so declaring the
 /// API anywhere else would mean one of the two tiers re-stating it.
 ///
-/// ## The callback returns a login, not an OAuth result
+/// ## The completion is the application's call, not the provider's redirect
+///
+/// The provider redirects a **browser**, and every deployment's `redirectUri`
+/// names a page of its own application. That page reads `code` and `state` off
+/// its own query string and calls [tomOAuthCompleteEndpointId] — an ordinary
+/// typed `POST` like any other. Letting the provider redirect straight to the
+/// server would answer a browser navigation with a token pair: tokens in the
+/// address bar, in history, in the access log, and in the `Referer` of whatever
+/// the page loaded next.
+///
+/// ## The completion returns a login, not an OAuth result
 ///
 /// [tomOAuthCompleteEndpointId] answers with a [TomAuthenticationResult] — the
 /// *same* type `/login` answers with, carrying the same token pair, the same
@@ -176,13 +186,15 @@ class TomOAuthAuthorizationDto {
   String toString() => 'TomOAuthAuthorizationDto($state)';
 }
 
-/// What the provider's redirect carries back.
+/// What the provider's redirect carried back, forwarded by the application.
 ///
 /// Either [code] + [state] (success) or [error] + [errorDescription] (the user
-/// declined, the provider refused). The fields are named for the DTO; the
-/// snake_cased query parameters they bind from are declared once in the
-/// endpoint's [TomApiEndpoint.urlParameterMapping], which is what keeps the
-/// provider's spelling out of the Dart shape.
+/// declined, the provider refused). Still named for the callback, because that
+/// is what these values *are* — the redirect's query parameters — even though
+/// the redirect landed on the application's page and the application is what
+/// posts them here. The provider's snake_cased spellings (`error_description`)
+/// are the application's to translate as it reads its own query string; the
+/// server sees only this shape.
 @tomReflector
 class TomOAuthCallbackRequest {
   /// The authorization code to exchange, when the flow succeeded.
@@ -254,20 +266,20 @@ final TomApi tomOAuthApi = TomApi(
       method: TomHttpMethod.post,
       access: const TomPublicAccess(),
     ),
-    // The provider redirects a *browser* here, so everything arrives in the
-    // query string and there is no body to bind from. The mapping is what makes
-    // those parameters reach the typed DTO, and it names the provider's
-    // snake_case spelling on the left of the one entry that differs.
+    // The provider redirects a *browser*, and not to here: every deployment's
+    // `redirectUri` names a page of its own application, which reads `code`
+    // and `state` off its own query string and calls this. So this is an
+    // ordinary typed POST, and the parameters travel in the body.
+    //
+    // The alternative — letting the provider redirect straight here — would
+    // answer a browser navigation with a token pair, putting the tokens in the
+    // address bar, in history, in the access log and in the `Referer` of
+    // whatever the page loaded next. A `GET` at `/callback` invited exactly
+    // that, which is why neither the verb nor the name survived.
     TomApiEndpoint<TomAuthenticationResult, TomOAuthCallbackRequest>(
       id: tomOAuthCompleteEndpointId,
-      uri: '/callback',
-      method: TomHttpMethod.get,
-      urlParameterMapping: const {
-        'code': 'code',
-        'state': 'state',
-        'error': 'error',
-        'error_description': 'errorDescription',
-      },
+      uri: '/complete',
+      method: TomHttpMethod.post,
       access: const TomPublicAccess(),
     ),
   ],

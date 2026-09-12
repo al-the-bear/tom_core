@@ -149,6 +149,9 @@ class _StubTransport implements TomOAuthTokenTransport {
   /// The user-info response as a literal body, bypassing [userInfo].
   final String? rawUserInfoBody;
 
+  /// How many code exchanges were asked for.
+  int calls = 0;
+
   /// The form the last code exchange posted.
   Map<String, String>? postedForm;
 
@@ -164,6 +167,7 @@ class _StubTransport implements TomOAuthTokenTransport {
     Map<String, String> form,
     Map<String, String> headers,
   ) async {
+    calls++;
     postedForm = form;
     postedHeaders = headers;
     return rawTokenBody ?? jsonEncode(tokenResponse);
@@ -3106,6 +3110,85 @@ void main() {
         expect((await store.peek(dto.state))!.organization, 'acme');
       },
     );
+
+    group('the completion endpoint is the application\'s call', () {
+      // The provider redirects the *browser* to the application's own page —
+      // that is what every `redirectUri` in the configuration points at — and
+      // the application forwards what it received here. The endpoint is
+      // therefore an ordinary typed call, and its contract has to say so: a
+      // `GET` at `/callback` reads as the provider's redirect target, and one
+      // that answers a token pair in a browser's address bar puts the tokens
+      // in history, in the access log and in the `Referer` of whatever the
+      // page loads next.
+
+      TomApiEndpoint completion() =>
+          tomOAuthApi.endpoints[tomOAuthCompleteEndpointId]!;
+
+      test('it is a POST at /complete', () {
+        expect(completion().uri, '/complete');
+        expect(completion().method, TomHttpMethod.post);
+      });
+
+      test('its parameters travel in the body, not the query string', () {
+        expect(
+          completion().urlParameterMapping,
+          isEmpty,
+          reason:
+              'a mapping from query parameters is what a browser redirect '
+              'needs. Keeping it would leave `code` and `state` in every log '
+              'and proxy between the app and this server.',
+        );
+      });
+
+      test('a provider refusal is refused by key, before any exchange', () async {
+        final store = TomOAuthMemoryStateStore();
+        TomBean.withType(TomOAuthStateStore, store);
+        final transport = _StubTransport();
+        TomBean.withType(TomOAuthTokenTransport, transport);
+
+        await expectLater(
+          endpoints.completeOAuthAuthorization(
+            TomOAuthCallbackRequest(
+              state: 'whatever',
+              error: 'access_denied',
+              errorDescription: 'The user pressed cancel',
+            ),
+          ),
+          throwsA(
+            isA<TomEndpointHandlerException>().having(
+              (e) => e.key,
+              'key',
+              'oauth.callback.provider_error',
+            ),
+          ),
+        );
+        expect(
+          transport.calls,
+          isZero,
+          reason:
+              'there is no code to exchange — a refusal that reached the token '
+              'endpoint would be asking the provider about an authorization it '
+              'just declined to grant',
+        );
+      });
+
+      test('an unknown state is refused by key', () async {
+        TomBean.withType(TomOAuthStateStore, TomOAuthMemoryStateStore());
+
+        await expectLater(
+          endpoints.completeOAuthAuthorization(
+            TomOAuthCallbackRequest(code: 'the-code', state: 'never-issued'),
+          ),
+          throwsA(
+            isA<TomEndpointHandlerException>().having(
+              (e) => e.key,
+              'key',
+              'oauth.callback.unknown_state',
+            ),
+          ),
+        );
+      });
+    });
 
     test('the callback completes the login the flow started', () async {
       final store = TomOAuthMemoryStateStore();

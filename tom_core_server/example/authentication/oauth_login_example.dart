@@ -6,9 +6,12 @@
 /// [TomOAuthFlow.beginAuthorization] mints the state and the PKCE pair and
 /// builds the URI the user is sent to; the provider redirects back to the
 /// deployment with a code, and [TomOAuthFlow.completeAuthorization] trades that
-/// code for an identity. `POST /oauth/authorize` and `GET /oauth/callback` are
-/// those two calls behind an HTTP route — running them directly, as here, is
-/// the same flow with the transport taken out.
+/// code for an identity. `POST /oauth/authorize` and `POST /oauth/complete` are
+/// those two calls behind an HTTP route — running the flow directly, as the
+/// first seven examples do, is the same thing with the transport taken out,
+/// and Example 8 runs the endpoints themselves, including the hop the
+/// framework deliberately does not make: the provider redirects a *browser* to
+/// the application's own page, and that page posts what it received.
 ///
 /// **Everything runs against a scripted provider.** [_ScriptedProvider] is a
 /// [TomOAuthTokenTransport] that answers the token and user-info calls from a
@@ -409,7 +412,97 @@ Future<void> run() async {
   print('directory asked for:       ${directory.lookups}');
   print('login recorded:            ${link.lastLoginAt != null}');
 
-  // What the seven examples above had to be true for.
+  // Example 8: the same login through the HTTP endpoints, including the hop
+  // the framework deliberately does not make. The provider redirects a
+  // *browser* to the application's own `redirectUri` page; that page reads
+  // `code` and `state` off its own query string and posts them to
+  // `/oauth/complete`, so the token pair comes back in a response body the
+  // front end controls instead of in an address bar.
+  TomBean.resetBeanContext();
+  final endpointIdentities = TomMemoryExternalIdentityStore();
+  TomBean.withType(
+    TomOAuthProviders,
+    _providers(provisioning: 'autoProvision'),
+  );
+  TomBean.withType(TomOAuthStateStore, TomOAuthMemoryStateStore());
+  TomBean.withType(TomOAuthTokenTransport, _ScriptedProvider());
+  final savedService =
+      TomAuthenticationServer.globalSettingUserAuthenticationService;
+  TomAuthenticationServer.globalSettingUserAuthenticationService =
+      TomOAuthAuthenticationService(
+        directory: _AccountDirectory(canProvision: true),
+        identityStore: endpointIdentities,
+      );
+
+  const endpoints = TomOAuthServer();
+  final authorization = await endpoints.beginOAuthAuthorization(
+    _authorizationRequest(),
+  );
+
+  // What the provider sends the browser to. Parsing it here is exactly what
+  // the application's page does with its own location.
+  final redirected = Uri.parse(
+    'https://console.example.test/oauth/callback'
+    '?code=the-code&state=${authorization.state}',
+  );
+  final completed = await endpoints.completeOAuthAuthorization(
+    TomOAuthCallbackRequest(
+      code: redirected.queryParameters['code']!,
+      state: redirected.queryParameters['state']!,
+    ),
+  );
+  print(
+    'completion error:          ${completed.error.isEmpty ? '(none)' : completed.error}',
+  );
+  print(
+    'completion token issued:   ${completed.authorizationToken.isNotEmpty}',
+  );
+
+  // The user pressed Cancel. The page has no code to forward; posting the
+  // refusal here only names it.
+  var cancelledKey = '';
+  try {
+    await endpoints.completeOAuthAuthorization(
+      TomOAuthCallbackRequest(
+        state: authorization.state,
+        error: 'access_denied',
+        errorDescription: 'The user declined',
+      ),
+    );
+  } on TomEndpointHandlerException catch (e) {
+    cancelledKey = e.key;
+  }
+  print('cancelled by user:         $cancelledKey');
+
+  // A state this server never issued -- or one already spent, or lapsed.
+  var unknownStateKey = '';
+  try {
+    await endpoints.completeOAuthAuthorization(
+      TomOAuthCallbackRequest(code: 'the-code', state: 'never-issued'),
+    );
+  } on TomEndpointHandlerException catch (e) {
+    unknownStateKey = e.key;
+  }
+  print('unknown state:             $unknownStateKey');
+
+  TomAuthenticationServer.globalSettingUserAuthenticationService = savedService;
+  TomBean.resetBeanContext();
+
+  // What the eight examples above had to be true for.
+  check(
+    completed.error.isEmpty && completed.authorizationToken.isNotEmpty,
+    'the completion endpoint answers the same authentication result a password '
+    'login answers, in a body the front end holds',
+  );
+  check(
+    cancelledKey == 'oauth.callback.provider_error',
+    'a refusal the application chooses to forward is named rather than guessed '
+    'at',
+  );
+  check(
+    unknownStateKey == 'oauth.callback.unknown_state',
+    'a state this server never issued completes nothing',
+  );
   check(
     uri.queryParameters['response_type'] == 'code',
     'the user is sent on the authorization-code flow',

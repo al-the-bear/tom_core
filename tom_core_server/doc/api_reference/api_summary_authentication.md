@@ -2295,7 +2295,7 @@ to an authorization this server started.
 | ------ | --------- | ----------- |
 | `listOAuthProviders` | `Future<List<TomOAuthProviderDto>> listOAuthProviders()` | `GET /oauth/providers`. Resource keys only. |
 | `beginOAuthAuthorization` | `Future<TomOAuthAuthorizationDto> beginOAuthAuthorization(TomOAuthAuthorizationRequest request)` | `POST /oauth/authorize`. |
-| `completeOAuthAuthorization` | `Future<TomAuthenticationResult> completeOAuthAuthorization(TomOAuthCallbackRequest request)` | `GET /oauth/callback`. Refuses a provider-reported error and an unknown state, then delegates to `TomAuthenticationServer.authenticateExternal`. Returns a login result, not an OAuth result. |
+| `completeOAuthAuthorization` | `Future<TomAuthenticationResult> completeOAuthAuthorization(TomOAuthCallbackRequest request)` | `POST /oauth/complete` — the *application's* call, forwarding the `code` and `state` the provider's redirect left on its own page. Refuses a provider-reported error (`oauth.callback.provider_error`) and an unknown state (`oauth.callback.unknown_state`), then delegates to `TomAuthenticationServer.authenticateExternal`. Returns a login result, not an OAuth result. Nothing here is browser-facing: an endpoint the provider redirected to would answer a browser navigation with a token pair. |
 
 Keys raised: `oauth.callback.provider_error`, `oauth.callback.unknown_state`
 (both `TomEndpointHandlerException`).

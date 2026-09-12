@@ -44,6 +44,7 @@ principal into an authentication token and an authorization token.
   - [Delegated access: the provider's tokens](#delegated-access-the-providers-tokens)
   - [Where pending authorizations live](#where-pending-authorizations-live)
   - [The endpoints](#the-endpoints)
+  - [The completion is your call, not the provider's redirect](#the-completion-is-your-call-not-the-providers-redirect)
   - [Failure keys](#failure-keys-1)
 - [Verification](#verification)
 - [Core Components](#core-components)
@@ -1556,9 +1557,10 @@ result to the same `_completeLogin` a password login reaches:
 POST /oauth/authorize        →  TomOAuthFlow.beginAuthorization
         │                        stores the pending state + PKCE verifier
         ▼
-   (browser visits the provider, user consents, provider redirects back)
+   (browser visits the provider, user consents, provider redirects the
+    browser to the application's own redirectUri page with ?code&state)
         │
-GET  /oauth/callback?code&state
+POST /oauth/complete         ←  the application's page, forwarding them
         │
         ▼
 TomAuthenticationServer.authenticateExternal
@@ -1936,8 +1938,8 @@ is not present.
 ### Where pending authorizations live
 
 The handshake is **two HTTP requests**, and the second one is not issued by the
-client: the provider redirects the browser to `/oauth/callback`, and a load
-balancer routes that redirect to whichever node it likes. Whatever
+client: the provider redirects the browser to the application's page, whose
+`POST /oauth/complete` a load balancer routes to whichever node it likes. Whatever
 `/oauth/authorize` wrote must therefore be readable by *any* node — including
 one that has never heard of the flow.
 
@@ -2024,12 +2026,46 @@ handle is what ties a callback to an authorization this server started.
 | ------ | --- | ------- |
 | `GET` | `/oauth/providers` | The configured providers as resource keys only — no endpoint, client id or secret reaches a client |
 | `POST` | `/oauth/authorize` | Begins an authorization; returns the provider URL to send the browser to, and the `state` handle |
-| `GET` | `/oauth/callback` | Where the provider redirects back; completes the login |
+| `POST` | `/oauth/complete` | Completes the login from the `code` and `state` the application received |
 
-The callback is a `GET` with query parameters because that is what a browser
-redirect is; its `code` / `state` / `error` / `error_description` parameters bind
-into the typed DTO through the endpoint's `urlParameterMapping`, the same
-declaration path parameters already used.
+### The completion is your call, not the provider's redirect
+
+The provider redirects a **browser**, and not to this server: a provider's
+`redirectUri` names a page of *your* application — that is what every example
+above configures. That page reads `code` and `state` off its own query string
+and posts them to `/oauth/complete`, which answers the same
+`TomAuthenticationResult` a password login answers, in a response body the front
+end controls.
+
+```text
+  provider  ──302──▶  https://app.example.com/oauth/callback?code&state
+                              │  (your page, your framework)
+                              ▼
+                      POST /oauth/complete  { code, state }
+                              │
+                              ▼
+                      TomAuthenticationResult  → the front end's own hands
+```
+
+Nothing in this module is browser-facing, and that is a decision rather than an
+omission. An endpoint the provider redirects *to* answers a browser navigation,
+so the token pair would land in the address bar, in the session's history, in
+the access log and in the `Referer` of whatever the page loaded next; a
+cancelled authorization would render a fault body as a page. The completion was
+a `GET` at `/oauth/callback` once, which invited exactly that reading — hence
+the verb and the name it has now, and hence no `urlParameterMapping`: `code`
+and `state` travel in a body, not in every log and proxy between your page and
+this server.
+
+What your page does with a refusal — `?error=access_denied` when the user
+presses cancel — is likewise yours: it never has to reach this server, and
+posting it here only buys the `oauth.callback.provider_error` key. Where the
+user goes after a successful login is your decision too, which is the other
+reason the framework does not own the redirect: it would have to be told.
+
+A deployment that genuinely wants the provider to reach the server directly
+writes that handler itself, in its own application, and calls this endpoint
+from it.
 
 `registerFrameworkApis()` registers the contract, so a router resolves it
 without the application registering anything.
@@ -2378,12 +2414,6 @@ resolves the pending record for its context and calls
   principal is not a workaround: `TomServerPrincipal.clear()` *widens* access
   rather than narrowing it. A deployment that changes a server account's rights
   restarts the process for now.
-- **`/oauth/callback` answers with a JSON authentication result**, although it
-  is the address the provider redirects a *browser* to. The token therefore
-  reaches the user's address bar and history, and a cancelled or expired
-  authorization renders as a result object rather than as a page. A deployment
-  that puts a person in front of this flow wraps the endpoint with its own
-  redirect.
 
 ## Dependencies
 
