@@ -515,6 +515,88 @@ void main() {
     });
   });
 
+  // A property that resolves before its configuration exists is an ordering
+  // mistake, and the provider now knows enough to say so: the one it creates
+  // because nobody had installed anything is marked, and `TomConfig` refuses
+  // it. Eager resolution stays -- an obligatory key still fails at the
+  // declaration -- and the mistake the eagerness exposes is now named.
+  group('resolving before a provider exists', () {
+    // Resolving against the placeholder `getServerConfig` creates when nothing
+    // has been installed is the ordering mistake this refuses. It needs a fresh
+    // isolate, because the active provider is a static and every other test in
+    // this file installs one -- so the case is stated by running a program.
+    //
+    // The exposure the refusal is for: a `TomConfig` held in a static or a
+    // field initialiser resolves at class-load time, before any start-up code
+    // has run. It used to take the placeholder's answer silently -- a default
+    // where one was supplied, a throw naming the *key* where none was -- and
+    // the real fault, that nothing had been installed yet, was never named.
+    Future<ProcessResult> runProgram(String name, String body) async {
+      final script = File(paths.join('.dart_tool', 'tcopen119_$name.dart'));
+      script.writeAsStringSync(
+        "import 'package:tom_core_server/tom_core_server.dart';\n"
+        'void main() {\n$body\n}\n',
+      );
+      addTearDown(() {
+        if (script.existsSync()) script.deleteSync();
+      });
+      return Process.run(Platform.resolvedExecutable, ['run', script.path]);
+    }
+
+    test(
+      'resolving before a provider is installed names that, not the key',
+      () async {
+        final result = await runProgram(
+          'placeholder',
+          "  TomStringConfig.withDefault('anything', 'fallback');",
+        );
+        final output = '${result.stdout}${result.stderr}';
+        expect(result.exitCode, isNot(0), reason: 'the program should fail');
+        expect(
+          output,
+          contains('configuration.tom_config.no_provider_installed'),
+        );
+        // The message has to name the key the caller wrote as well as the fault,
+        // because a static initialiser gives no stack the caller recognises.
+        expect(output, contains('anything'));
+      },
+    );
+
+    // A default supplied by the static `loader` hook is a *configured*
+    // provider, created lazily on purpose -- the documented path. It must not
+    // be refused: the refusal is for "nobody configured anything", not for
+    // "nobody called setServerConfigProvider".
+    test('a provider built by the loader hook is not a placeholder', () async {
+      final result = await runProgram(
+        'loader',
+        "  TomServerConfigResourceProvider.loader = () => {'k': 'v'};\n"
+            "  final value = TomStringConfig('k').get();\n"
+            "  if (value != 'v') throw StateError('got \$value');",
+      );
+      expect(
+        result.exitCode,
+        0,
+        reason: 'the loader path must still resolve: ${result.stderr}',
+      );
+    });
+
+    test('an installed provider is not a placeholder, however empty', () {
+      // The other half: an explicitly installed empty tree is a deliberate
+      // statement, so a defaulted property takes its default rather than
+      // refusing. Only the provider nobody asked for is refused.
+      _install({});
+      expect(
+        TomStringConfig.withDefault('absent', 'fallback').get(),
+        'fallback',
+      );
+      expect(
+        TomServerConfigResourceProvider.getServerConfig()
+            .isUnconfiguredPlaceholder,
+        isFalse,
+      );
+    });
+  });
+
   group('TomBaseServerConfiguration.getDefaultValues', () {
     // The resource tree is the base of the four-layer merge, and the only layer
     // that answers when nothing was passed -- so a setting that appears in a

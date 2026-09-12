@@ -14,7 +14,7 @@ resolve individual keys — obligatory (throws when absent) or with a default.
 | ---- | -------------- |
 | `TomBaseServerConfiguration` | Abstract configuration root: assembles the property sources, refuses to build when a field marked `@TomRequiredField` was supplied by no source, and installs the active config provider. |
 | `TomServerConfigResourceProvider` | Holds the merged config map; `exists(key)` / `get(key)` back every `TomConfig` lookup. `get` is total — an unknown key resolves to the key string, a cleared one to `null` — so **gate on `exists`**: that is what tells "never mentioned" from "configured as nothing". |
-| `TomConfig<T>` | Resolves one key to `T`; `TomConfig(key)` is obligatory, `TomConfig.withDefault(key, value)` falls back. `get()` / `~config` read the value. |
+| `TomConfig<T>` | Resolves one key to `T`; `TomConfig(key)` is obligatory, `TomConfig.withDefault(key, value)` falls back. `get()` / `~config` read the value. The read is **eager**, so build one only after a provider is installed — building one before any exists is refused, naming the ordering rather than answering from an empty placeholder. |
 | `TomStringConfig` · `TomIntConfig` · `TomDoubleConfig` · `TomBoolConfig` | Typed specialisations of `TomConfig<T>`. |
 | `TomConfigurationException` | Raised when a value fails the cast to `T`. Chains the `TypeError` as `rootException` — read it for a generic mismatch, where the message alone names a value that looks valid. |
 | `TomYaml` | Parses YAML configuration resources, expanding `${VAR:default}` from `Platform.environment` or from an `environment:` map you pass (`TomEnvFile.resolveEnvironment()` to include a `.env`). `loadYamlFile` / `mergeInYamlFile` require the file to exist and throw `PathNotFoundException` when it does not — unlike `TomEnvFile.read`, which returns `{}`; `loadYamlFileIfPresent` / `mergeInYamlFileIfPresent` forgive an absent file, and only an absent file, and report whether it was there. |
@@ -26,13 +26,20 @@ resolve individual keys — obligatory (throws when absent) or with a default.
 import 'package:tom_core_server/tom_core_server.dart';
 
 void main() {
-  // With the active config provider populated (e.g. by a
-  // TomBaseServerConfiguration), resolve typed keys:
+  // The provider first. A TomConfig reads its value once, at construction, so
+  // one built before any provider exists is refused rather than answered from
+  // an empty default. A server gets this from TomBaseServerConfiguration.
+  TomServerConfigResourceProvider.setServerConfigProvider(
+    TomServerConfigResourceProvider.from({
+      'server': {'host': 'localhost'},
+    }),
+  );
+
   final port = TomIntConfig.withDefault('server.port', 8080);
   final host = TomStringConfig.withDefault('server.host', 'localhost');
 
-  print(~port); // 8080  (default, since the key is absent here)
-  print(~host); // localhost
+  print(~port); // 8080  (the default, since the tree has no server.port)
+  print(~host); // localhost  (from the tree)
 }
 ```
 

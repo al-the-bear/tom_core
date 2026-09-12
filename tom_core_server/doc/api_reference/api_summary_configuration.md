@@ -84,13 +84,14 @@ TomServerConfigResourceProvider.from(Map<String, dynamic> resources)
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `setServerConfigProvider` | `static void setServerConfigProvider(TomServerConfigResourceProvider provider)` | Installs `provider` as the process-wide configuration source. |
-| `getServerConfig` | `static TomServerConfigResourceProvider getServerConfig()` | Returns the active provider, creating a default one (using `loader` if set) on first access. |
+| `getServerConfig` | `static TomServerConfigResourceProvider getServerConfig()` | Returns the active provider, creating a default one (using `loader` if set) on first access. The provider it creates when `loader` is unset is a **placeholder**: returned rather than refused, so a direct `exists`/`get` still answers, but marked (`isUnconfiguredPlaceholder`) and refused by `TomConfig`. |
 
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `loader` | `Map<String, dynamic> Function()?` | Optional factory for the default provider's `resources`, invoked the first time `getServerConfig` lazily creates a provider (static). Reachable **only before a provider exists** — it fires on that creation, so after any `setServerConfigProvider` call it can never run and `.load` is the equivalent left. |
+| `isUnconfiguredPlaceholder` | `bool` | Whether this provider is the placeholder `getServerConfig` creates when nothing has been installed and no `loader` was set (read-only). True of exactly one object: the one built because a caller asked for the active provider before anything supplied it. A provider installed, built by `loader`, or constructed directly is false however empty its `resources` are — an empty tree installed on purpose is a statement, which is the same distinction `exists` draws one level down. `TomConfig` reads it and refuses to resolve; a caller reading the provider directly is unaffected, since `exists` answering false for every key is true. |
 | `resources` | `Map<String, dynamic>` | The configuration tree: a possibly-nested map of property values. |
 
 #### Methods

@@ -244,6 +244,31 @@ Because the value is captured at construction, build a `TomConfig` *after* the
 provider is installed; later provider changes are not observed by an existing
 instance.
 
+**Building one before any provider exists is refused**, rather than answered
+from the empty placeholder `getServerConfig` would otherwise create:
+
+```text
+TomConfigurationException: configuration.tom_config.no_provider_installed
+Property 'server.port' was resolved before a configuration provider was
+installed. A TomConfig reads its value once, at construction, so it must be
+built after TomServerConfigResourceProvider.setServerConfigProvider (or after a
+TomBaseServerConfiguration, which installs one) — not as a static or a field
+initialiser, which run at class-load time.
+```
+
+That is the ordering mistake the eager read exposes, and it is worth its own
+answer because the three things it used to do all hid it: a defaulted property
+quietly took its default, an obligatory one threw naming the *key* as though the
+operator had forgotten it, and neither said that the configuration did not exist
+yet. The exposure is highest exactly where `TomConfig` is most natural to write
+— a static or a field initialiser, which resolves when its library is first
+touched, before `main` has run.
+
+Only the provider **nobody asked for** is refused. One installed explicitly is
+never a placeholder however empty it is — an empty tree installed on purpose is
+a statement, and a defaulted property takes its default against it — and neither
+is one the static `loader` hook built, which is the documented lazy path.
+
 The provider is the *only* source read. An environment variable or a
 command-line argument is not one of the three steps above — it reaches the
 configuration object's fields instead. See *Source Precedence* below for the one
@@ -746,10 +771,12 @@ started with no configuration whose first symptom appears several layers later.
   `tomReflectionInfo.unknownFields` on a map whose two ends are both yours.
 - **A `TomConfig` resolves once, at construction.** The value is read from the
   active provider when the object is built and cached, so a provider installed
-  afterwards is not observed. Install the provider before declaring the
-  properties — but that ordering is a convention, not something the API
-  enforces, and a property held in a top-level `final` resolves when its
-  library is first touched, which may be before `main` has installed anything.
+  *afterwards* is not observed — a second install does not update an existing
+  instance. Building one before **any** provider exists is no longer part of
+  this: it is refused, naming the ordering (see [Typed Property
+  Access](#typed-property-access)). What remains is the narrower case of a
+  `TomConfig` built against one provider and read after another was installed,
+  which the API cannot distinguish from an intentional snapshot.
 - **An obligatory miss throws a bare `String`.** The third resolution branch
   throws the message rather than an exception carrying it, so `on Exception
   catch` does not catch it and a plain `catch (e)` hands back a `String`. Use a

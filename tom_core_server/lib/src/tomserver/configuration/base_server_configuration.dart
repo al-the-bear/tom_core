@@ -45,10 +45,41 @@ class TomServerConfigResourceProvider {
 
   /// Returns the active provider, creating a default one (using [loader] if
   /// set) on first access.
+  ///
+  /// The provider created here when [loader] is unset is a **placeholder**: it
+  /// holds nothing, and nobody asked for it. It is returned rather than
+  /// refused, so a direct `exists`/`get` still answers, but it is marked (see
+  /// [isUnconfiguredPlaceholder]) and [TomConfig] refuses to resolve against
+  /// it — a property that resolves before its configuration exists is the
+  /// ordering mistake, and taking the placeholder's answer hides it.
   static TomServerConfigResourceProvider getServerConfig() {
-    _configProvider ??= TomServerConfigResourceProvider();
+    if (_configProvider == null) {
+      final created = TomServerConfigResourceProvider();
+      // Only when nothing filled it. A `loader` was set *on purpose* and the
+      // provider it builds is as configured as an installed one — that is the
+      // documented lazy path, not the mistake.
+      created._isUnconfiguredPlaceholder = loader == null;
+      _configProvider = created;
+    }
     return _configProvider!;
   }
+
+  /// Whether this provider is the placeholder [getServerConfig] creates when
+  /// nothing has been installed and no [loader] was set.
+  ///
+  /// True of exactly one object: the one built because a caller asked for the
+  /// active provider before anything supplied it. A provider passed to
+  /// [setServerConfigProvider], built by [loader], or constructed directly is
+  /// false however empty its [resources] are — an empty tree installed on
+  /// purpose is a statement, and the distinction this flag carries is between
+  /// *configured as nothing* and *not configured yet*, which is the same
+  /// distinction [exists] draws one level down.
+  ///
+  /// [TomConfig] reads it and refuses; nothing else does. A caller reading the
+  /// provider directly is unaffected, because it gets an answer it can judge —
+  /// `exists` is false for every key, which is true.
+  bool get isUnconfiguredPlaceholder => _isUnconfiguredPlaceholder;
+  bool _isUnconfiguredPlaceholder = false;
 
   /// The configuration tree: a possibly-nested map of property values.
   Map<String, dynamic> resources = {};

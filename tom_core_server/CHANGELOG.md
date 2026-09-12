@@ -61,6 +61,33 @@
 
 ### Changed
 
+- **Resolving a `TomConfig` before a provider exists is refused (tcopen119).**
+  `TomConfig` reads its value in the constructor, so a property built before the
+  real provider was installed took whatever the then-active provider answered —
+  and when nothing had been installed, `getServerConfig` created an empty one on
+  the spot and answered from that. All three outcomes hid the same fact: a
+  defaulted property quietly took its default, an obligatory one threw naming
+  the *key* as though the operator had forgotten it, and nothing said the
+  configuration did not exist yet. The exposure is highest where `TomConfig` is
+  most natural to write — a static or a field initialiser, which resolves when
+  its library is first touched, before `main` has run.
+
+  The provider now records whether it is the placeholder `getServerConfig`
+  creates when nothing has been installed (`isUnconfiguredPlaceholder`), and
+  `TomConfig` refuses to resolve against one, with
+  `configuration.tom_config.no_provider_installed` naming the ordering and the
+  remedy. **Eager resolution stays**, which was the point of this shape over a
+  lazy read: a missing obligatory key still fails at the declaration rather than
+  at the first read somewhere else.
+
+  Three boundaries are drawn deliberately. A provider the static `loader` hook
+  built is *not* a placeholder — that is the documented lazy path. An explicitly
+  installed provider is never one however empty it is, since an empty tree
+  installed on purpose is a statement. And the placeholder is still returned
+  rather than refused, so a caller reading `exists`/`get` directly is unaffected;
+  only `TomConfig` refuses, because only `TomConfig` makes a decision it cannot
+  revisit.
+
 - **A `#` opens a `.env` comment only after whitespace (tcopen117).** `parse`
   stripped an inline comment by cutting at `value.indexOf('#')`, with nothing
   required in front of it — so it cut inside ordinary values. `PW=pa#ss` arrived

@@ -118,6 +118,24 @@ class TomConfig<T> {
 
   void _getValue() {
     final provider = TomServerConfigResourceProvider.getServerConfig();
+    // Before anything else: resolving against the placeholder
+    // `getServerConfig` creates when nothing has been installed is an ordering
+    // mistake, not a configuration one, and the two report differently. Taking
+    // the placeholder's answer would give a defaulted property its default and
+    // an obligatory one a throw naming the *key* — three ways of hiding the
+    // same fact, that the configuration did not exist yet.
+    if (provider.isUnconfiguredPlaceholder) {
+      throw TomConfigurationException(
+        'configuration.tom_config.no_provider_installed',
+        "Property '$_propertyKey' was resolved before a configuration "
+            'provider was installed. A TomConfig reads its value once, at '
+            'construction, so it must be built after '
+            'TomServerConfigResourceProvider.setServerConfigProvider (or after '
+            'a TomBaseServerConfiguration, which installs one) — not as a '
+            'static or a field initialiser, which run at class-load time.',
+        parameters: {'key': _propertyKey},
+      );
+    }
     if (provider.exists(_propertyKey)) {
       final raw = provider.get(_propertyKey);
       // `on TypeError` rather than a bare `catch`: a failed `as` is the only
