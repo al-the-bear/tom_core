@@ -1,5 +1,22 @@
 ## 1.3.0
 
+### Documentation
+
+- **`getEntry` not enforcing expiry is a contract, not a gap (tcopen107).** The
+  expiry rule is applied in `fromNameCache` alone, so a caller reaching past the
+  static helpers reads a value the module considers dead. It stays that way, and
+  the reasons are now stated where a reader meets them — `doc/cache.md` has a
+  section under Expiry and Bounds, the module readme states it, and the API
+  mirror gives the reason rather than the bare fact.
+
+  `getEntry` is the *structural* read. Applying a value-level policy there would
+  collapse "there is no such key" and "there is a key whose value has died" into
+  one `null` — the distinction a structural read exists to keep — and would make
+  a read a mutation, since honouring the rule means dropping the entry. The
+  entry handed back carries its own `deletionTime`, so a caller that wants the
+  rule can apply it. The pinning test reads as the contract now and has a
+  companion asserting the other half.
+
 ### Changed
 
 - **The OAuth completion is `POST /oauth/complete`, and is the application's

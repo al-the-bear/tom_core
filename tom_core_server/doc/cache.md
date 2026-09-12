@@ -22,6 +22,7 @@ bounded, and can expire entries by age or clear itself on a schedule.
 - [Registering a Cache](#registering-a-cache)
 - [Reading, Storing, Removing](#reading-storing-removing)
 - [Expiry and Bounds](#expiry-and-bounds)
+  - [Two reads, and only one of them expires](#two-reads-and-only-one-of-them-expires)
 - [Isolate Model](#isolate-model)
 - [Failures Are Internal](#failures-are-internal)
 - [Core Components](#core-components)
@@ -340,10 +341,11 @@ A cache has two independent eviction mechanisms plus an optional periodic clear:
 - **Per-entry expiry** — a stored value expires at an explicit `deletionTime`,
   or after `deleteEntriesAfterSeconds` from when it was stored. Expired entries
   are dropped lazily when read *through the static helpers* and swept by a
-  *deletion timer* every `deletionIntervalSeconds` (default one hour). The raw
-  `getEntry` accessor does not apply the rule, so it can hand back an expired
-  entry; the sweep only ever reclaims entries that carry a `deletionTime` in the
-  first place.
+  *deletion timer* every `deletionIntervalSeconds` (default one hour). The
+  sweep only ever reclaims entries that carry a `deletionTime` in the first
+  place. `getEntry` deliberately does not apply the rule — see [Two reads, and
+  only one of them
+  expires](#two-reads-and-only-one-of-them-expires).
 - **LRU bound** — when `maximumEntries` is set the entries form a
   most-recently-used list; reading or writing an entry moves it to the front,
   and exceeding the bound evicts the least-recently-used entry. When
@@ -355,6 +357,35 @@ A cache has two independent eviction mechanisms plus an optional periodic clear:
 None of the three is on by default. `TomCache('x')` with no further arguments is
 unbounded, holds its entries forever, and runs an hourly sweep that finds
 nothing to sweep.
+
+### Two reads, and only one of them expires
+
+`fromNameCache` applies the expiry rule and `getEntry` does not. That asymmetry
+is a decision rather than an omission, and it is the reason both exist.
+
+| Read | Level | On an expired entry |
+| ---- | ----- | ------------------- |
+| `TomCache.fromNameCache<T>(cache, key)` | the **value** | drops it and answers `null` |
+| `cache.getEntry(key)` | the **structure** | hands it back, `deletionTime` and all |
+
+`getEntry` answers what the map holds and where the MRU chain puts it. Expiry is
+a policy *about a value*, and applying it at the structural level would collapse
+two different answers into one `null`: "there is no such key" and "there is a
+key whose value has died" — which is precisely the distinction a structural read
+exists to keep. It would also make a read a mutation, since honouring the rule
+means dropping the entry, and `getEntry` is the accessor `putEntry` and the
+deletion sweep are peers of.
+
+So the rule lives once, in the value-level read, and the entry the accessor
+hands back carries its own verdict: a caller holding a `TomCacheEntry` has its
+`deletionTime` and can decide for itself.
+
+**Which to use.** Read values through `fromNameCache` / `toNameCache` — that is
+what they are for, and they also forward correctly from a worker isolate.
+`getEntry` and `putEntry` are public for the case the static helpers do not
+cover: storing an entry with a lifetime of its own, and inspecting what is
+actually held. A caller that reaches for them is asking about the structure, and
+gets a structural answer.
 
 **All four configuration numbers must be positive or `null`.** `null` is how
 each is switched off, so zero is never a second way of saying that — it is a
@@ -469,8 +500,10 @@ local one.
 ## Core Components
 
 - **`TomCache`** — the cache and its static accessor helpers. Instance methods
-  `getEntry` / `putEntry` / `removeEntry` implement the MRU bookkeeping;
-  `createTimers` / `stopTimers` manage the background timers.
+  `getEntry` / `putEntry` / `removeEntry` implement the MRU bookkeeping and are
+  *structural* — see [Two reads, and only one of them
+  expires](#two-reads-and-only-one-of-them-expires); `createTimers` /
+  `stopTimers` manage the background timers.
 - **`TomCacheEntry`** — value object: the cached `value`, which is non-nullable,
   and its `deletionTime`.
 - **`TomCacheManager`** — the per-isolate registry and the `useInThisIsolate`
@@ -482,13 +515,6 @@ local one.
 
 ## Not Yet Implemented
 
-- **`getEntry` does not enforce expiry.** The expiry rule lives in
-  `fromNameCache` alone; the entry accessor is a structural read that looks the
-  key up, promotes it in a bounded cache, and hands it back whatever its
-  `deletionTime` says. `getEntry` and `putEntry` are public because storing an
-  entry with its own lifetime is a documented use, so a caller that reaches past
-  the static helpers can read a value the module considers dead. Prefer
-  `fromNameCache` unless you specifically want the raw entry.
 - **An unbounded cache has no bound at all.** Without `maximumEntries` nothing
   caps the map, and without `deleteEntriesAfterSeconds` the stored entries carry
   no `deletionTime` for the sweep to find — so both eviction mechanisms decline
@@ -511,11 +537,11 @@ local one.
   registration, and it is the leaky one. Call `stopTimers()` on a cache you are
   finished with.
 
-All but the third are pinned by tests in `test/cache_test.dart` — the second and
-the timer half of the last in the group "The limits the documentation records",
-the first in "getEntry (direct)" — so closing one of them turns a test red
-rather than leaving this section quietly wrong. The third is a cost rather than
-an outcome, and pinning it would mean asserting a shape.
+All but the second are pinned by tests in `test/cache_test.dart` — the first and
+the timer half of the last in the group "The limits the documentation records" —
+so closing one of them turns a test red rather than leaving this section quietly
+wrong. The second is a cost rather than an outcome, and pinning it would mean
+asserting a shape.
 
 ## Verification
 

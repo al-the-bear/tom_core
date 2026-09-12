@@ -16,6 +16,18 @@ physically live). Static helpers key a cache by Dart type or by name.
 | `TomCache` | A named cache; constructor takes `cacheName` plus `deleteEntriesAfterSeconds`, `maximumEntries`, and clear/deletion intervals — each positive or `null`, since `null` is how a feature is switched off and a non-positive value would give a black-hole cache or a busy-loop sweep. `TomCache.forType(Type)` names it after a type. Its clear and deletion timers run in `Zone.root` rather than the zone that constructed the cache, and stop through `stopTimers()`. |
 | `TomCacheEntry` | One cached value (`value`) with an optional `deletionTime`. The value is non-nullable: a read answers `null` for a miss and for an expiry, so an entry holding `null` would be one no read could surface. |
 | `TomCacheManager` | Per-isolate registry; `getCache(name)` / `addCache`, and the cross-isolate forwarding decision (`useInThisIsolate`). |
+
+**Two reads, and only one of them expires.** `TomCache.fromNameCache` is the
+*value*-level read: it applies the expiry rule, dropping an entry whose
+`deletionTime` has passed and answering `null`. `getEntry` is the *structural*
+one and deliberately does not — applying a value policy there would collapse "no
+such key" and "a key whose value has died" into one `null`, which is the
+distinction a structural read exists to keep, and would make a read a mutation,
+since honouring the rule means dropping the entry. So the rule lives once, and
+the entry `getEntry` hands back carries its own `deletionTime` for a caller that
+wants to apply it. Read values through the static helpers; reach for
+`getEntry` / `putEntry` when the question is about the structure — storing an
+entry with a lifetime of its own, or inspecting what is actually held.
 | Static helpers | `TomCache.toTypeCache<T>` / `fromTypeCache<T>` / `removeFromTypeCache<T>` and the `*NameCache` variants store/retrieve/remove by type or name. |
 
 ## Quick start

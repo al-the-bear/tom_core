@@ -1355,14 +1355,44 @@ void main() {
     });
 
     test('does not check expiry — an already-expired entry is still returned', () {
-      // getEntry is a raw structural read; the "is it expired?" decision belongs
-      // to fromNameCache, not here. An entry whose deletionTime is in the past
-      // must still be handed back verbatim.
+      // The contract, not an omission. `getEntry` is the *structural* accessor:
+      // it answers what the map holds and where the MRU chain puts it. Expiry
+      // is a policy about a value, and applying it here would collapse "no such
+      // key" and "a key whose value has died" into one `null` — the very
+      // distinction a structural read exists to keep. `fromNameCache` is the
+      // value-level read, and it is where the rule lives.
       final cache = _cache('g');
       cache.putEntry('k', TomCacheEntry('v', DateTime(2000)));
       final entry = cache.getEntry('k');
       expect(entry, isNotNull);
       expect(entry!.value, 'v');
+      expect(
+        entry.deletionTime!.isBefore(DateTime.now()),
+        isTrue,
+        reason:
+            'the entry handed back carries its own verdict — a caller reaching '
+            'past the static helpers has everything it needs to apply the rule '
+            'the accessor deliberately does not',
+      );
+    });
+
+    test('the value-level read applies the rule the accessor does not', () async {
+      // The other half of the same contract, asserted beside it: the two reads
+      // answer differently for one entry, which is the whole reason both exist.
+      TomCacheManager.addCache(_cache('g-pair'));
+      final cache = TomCacheManager.getCache('g-pair')!;
+      cache.putEntry('k', TomCacheEntry('v', DateTime(2000)));
+
+      expect(cache.getEntry('k'), isNotNull);
+      expect(await TomCache.fromNameCache<String>('g-pair', 'k'), isNull);
+      expect(
+        cache.getEntry('k'),
+        isNull,
+        reason:
+            'the value-level read drops what it refuses, so the expired entry '
+            'is gone from the structure too — the rule is applied once and the '
+            'accessor then agrees with it',
+      );
     });
 
     test(
