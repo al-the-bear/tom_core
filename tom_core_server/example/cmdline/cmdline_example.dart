@@ -22,8 +22,8 @@
 /// [TomArgs.doublePattern] matchers are the shared machinery behind the
 /// conversions shown here — step 4's quoted value is `unquote` at work, the
 /// `int` and `double` in steps 1 and 3 are the two patterns, and step 4's
-/// padded phone number is the shape those patterns refuse — rather than
-/// operations a caller performs separately.
+/// padded and `+`-signed phone numbers are the shapes those patterns refuse —
+/// rather than operations a caller performs separately.
 ///
 /// Run with `dart run example/cmdline/cmdline_example.dart`.
 /// The same behaviour is covered by `test/cmdline_test.dart`.
@@ -90,6 +90,8 @@ SERVER_PORT=8080
 SERVER_NAME="my service"   # inline comment is stripped
 ENABLED=true
 SUPPORT_PHONE=004917612345678901
+CLOCK_SKEW=-5
+BILLING_PHONE=+4917612345678
 ''');
   final env = TomEnvFile.read(envFile.path);
   print('4. read .env                 : $env');
@@ -106,6 +108,16 @@ SUPPORT_PHONE=004917612345678901
   check(
     env['SUPPORT_PHONE'] == '004917612345678901',
     'a zero-padded identifier keeps its zeros, unquoted',
+  );
+  // A `-` changes the value it introduces, so it is part of the number and a
+  // negative setting reaches a numeric field. A `+` decorates one — it is how
+  // an international phone number is written — so it is refused for the same
+  // reason the padding is: converting it would hand back a different
+  // identifier and report nothing.
+  check(env['CLOCK_SKEW'] == -5, 'a leading minus is part of the number');
+  check(
+    env['BILLING_PHONE'] == '+4917612345678',
+    'a leading plus keeps an identifier textual, unquoted',
   );
 
   // 5. The same file read without blocking the isolate. Prefer this wherever

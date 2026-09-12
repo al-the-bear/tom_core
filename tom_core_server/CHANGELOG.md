@@ -34,6 +34,36 @@
 
 ### Changed
 
+- **A negative number is a number (tcopen114).** `intPattern` and
+  `doublePattern` did not admit a sign, and `_convertString` requires the match
+  to cover the whole value, so `-5` and `-1.5` arrived as `String`s from every
+  source. Against a reflected field that was fatal, not merely untyped: the
+  `String` is refused at assignment with `TomReflectorException`, so a negative
+  setting could not be configured at all — not from the command line, not from
+  the environment, not from a `.env` file, and not by quoting, which makes a
+  value textual deliberately. The documented advice was to carry a positive
+  number with a separate direction flag.
+
+  Both patterns now admit a leading `-`, so `offset=-5` is the `int` `-5` and
+  `drift=-1.5` the `double` `-1.5`, from either source. **A `+` is not
+  admitted**, and the asymmetry is the padding rule rather than an omission: a
+  `-` changes the value it introduces, while a `+` in front of a digit run is
+  decoration — it is how an international phone number is written — so
+  converting `+4917612345678` would hand back a different identifier and report
+  nothing, exactly as `007` → `7` would. The cost lands where it is loud
+  instead of where it is silent: `port=+5` is refused at assignment naming the
+  key. Quoting is still the escape the other way (`"-5"` is the text).
+
+  The sign is judged before the digit run, so every other rule survives it:
+  `-007` stays a `String` (padding), `-.5` stays a `String` (the integer part is
+  required), and a lone `-` — the conventional stand-in for stdin — stays a
+  `String`. The magnitude limit reaches the new side, where the two ends are not
+  mirrors: `-9223372036854775808` converts and `-9223372036854775809` does not.
+
+  Ten tests cover the rule, including a differential one asserting the `.env`
+  file and the command line agree on it; three that pinned the old answer were
+  rewritten.
+
 - **A dashed argument now names the field it spells (tcopen113).**
   `TomArgs._parseArgs` took the text before the `=` verbatim, so `--port=8080`
   was the key `--port` and `--verbose` the key `--verbose`. `fillFromArgs` hands

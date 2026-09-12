@@ -6,11 +6,13 @@
 Command-line and environment ingestion. `TomArgs` parses `key=value` argv into a
 typed map (or straight onto a reflected config object); `TomEnvFile` reads the
 same `key=value` shape from a `.env` file. Both share one value-conversion table
-(`"true"`/`"false"` → `bool`, unpadded all-digits → `int`, decimal → `double`,
-quoted → unquoted string, otherwise the raw `String`). A digit run is typed only
-when a type can carry it faithfully, so one too large for a 64-bit `int` and one
-with leading zeros both stay `String`s — `007` is an identifier and `7` is a
-different one.
+(`"true"`/`"false"` → `bool`, an optionally `-`-signed unpadded digit run →
+`int`, the same with a decimal point → `double`, quoted → unquoted string,
+otherwise the raw `String`). A digit run is typed only when a type can carry it
+faithfully, so one too large for a 64-bit `int`, one with leading zeros, and one
+introduced by a `+` all stay `String`s — `007` is an identifier and `7` is a
+different one, and so are `+4917612345678` and `4917612345678`. A `-` is part of
+the number, because it changes the value rather than decorating it.
 
 ## Key types
 

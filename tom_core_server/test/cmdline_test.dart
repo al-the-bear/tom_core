@@ -205,7 +205,7 @@ void main() {
     // dash there is data — a negative number, a `stdin` placeholder, a flag
     // being passed through to another program.
     test('a leading dash in the value is left alone', () {
-      expect(TomArgs.parseArgsToMap(['--mode=-5']), {'mode': '-5'});
+      expect(TomArgs.parseArgsToMap(['--mode=-5']), {'mode': -5});
       expect(TomArgs.parseArgsToMap(['file=-']), {'file': '-'});
     });
 
@@ -258,9 +258,78 @@ void main() {
       expect(convert('99999999999999999999'), isA<String>());
     });
 
-    test('a leading sign keeps the value a String (no whole-string match)', () {
-      expect(convert('-5'), '-5');
-      expect(convert('-1.5'), '-1.5');
+    // A leading `-` is a sign, so the value it introduces is a number. Without
+    // this a configuration field declared `int` could not be given a negative
+    // value from any source: the `String` reaches the field and the reflector
+    // refuses it, so a negative offset had to be carried as a positive number
+    // and a separate direction flag.
+    test('a leading minus converts', () {
+      expect(convert('-5'), -5);
+      expect(convert('-1.5'), -1.5);
+      expect(convert('-0'), 0);
+    });
+
+    // A leading `+` does not, and the asymmetry is the padding rule rather
+    // than an oversight. A `+` in front of a digit run is decorative — it is
+    // how an international phone number is written — so converting
+    // `+4917612345678` produces a *different* identifier with nothing
+    // reporting the change, exactly as `007` -> `7` would. A `-` is never
+    // decorative: it changes the value it introduces.
+    //
+    // The cost is paid where it is loud rather than where it is silent. A `+5`
+    // aimed at an `int` field is refused at assignment with a
+    // `TomReflectorException` naming the key; a converted `+49…` would have
+    // arrived silently as the wrong number.
+    test('a leading plus keeps the value a String', () {
+      expect(convert('+5'), '+5');
+      expect(convert('+1.5'), '+1.5');
+      expect(convert('+4917612345678'), '+4917612345678');
+    });
+
+    // The sign admits a number, not everything that starts with one. A lone
+    // `-` is the conventional stand-in for stdin and has to survive as text.
+    test('a sign with no digits after it keeps the value a String', () {
+      expect(convert('-'), '-');
+      expect(convert('+'), '+');
+      expect(convert('-abc'), '-abc');
+      expect(convert('-.5'), '-.5');
+    });
+
+    // The padding rule survives the sign: the digit run after it is judged
+    // exactly as an unsigned one is, so a negative-looking padded identifier
+    // is still an identifier.
+    test('a signed padded run keeps the value a String', () {
+      expect(convert('-007'), '-007');
+      expect(convert('-00.5'), '-00.5');
+    });
+
+    // The magnitude limit too, and on the negative side the boundary is not
+    // the mirror of the positive one: two's complement reaches one further
+    // down than up, so the smallest int converts while one past it does not.
+    test('the negative 64-bit boundary converts and one past it does not', () {
+      expect(convert('-9223372036854775808'), -9223372036854775808);
+      expect(convert('-9223372036854775809'), '-9223372036854775809');
+    });
+
+    // The value in this workspace that actually begins with a `-`: a PEM key,
+    // which `tom_uam_server`'s own `.env` carries unquoted. It is safe because
+    // the match must cover the *whole* value, and that is a separate rule from
+    // the pattern -- so it is pinned here rather than left to be inferred from
+    // one. A conversion would not merely mistype it, it would replace a key
+    // with a number.
+    test('a PEM block beginning with dashes stays a String', () {
+      const pem =
+          '-----BEGIN PUBLIC KEY----- MIIBCgKCAQEA0 -----END PUBLIC '
+          'KEY-----';
+      expect(convert(pem), pem);
+      expect(convert('-----'), '-----');
+    });
+
+    // Quoting is how a value that would otherwise convert stays textual, and
+    // it is the escape the sign rule needs: a token that reads as a negative
+    // number but is meant as text says so explicitly.
+    test('a quoted negative number stays a String', () {
+      expect(convert('"-5"'), '-5');
     });
 
     test('trailing non-numeric text keeps the value a String', () {
@@ -502,12 +571,25 @@ void main() {
       );
     });
 
-    // The sign restriction is not merely "stays a String" once a reflected
-    // field is involved: the String is refused at assignment, so a negative
-    // setting cannot reach an int field by any route, quoted or not.
-    test('a negative value cannot fill an int field', () {
+    // The consequence that matters for the sign rule: a negative value reaches
+    // a reflected numeric field, which no route could achieve while the sign
+    // kept it a String.
+    test('a negative value fills an int field', () {
+      final config = TomArgs.fillFromArgs([
+        'port=-5',
+        'rate=-1.5',
+      ], FixtureServerConfig());
+      expect(config.port, -5);
+      expect(config.rate, -1.5);
+    });
+
+    // The other side of the asymmetry, at the field where it is felt: `+5` is
+    // a String, so it is refused at assignment rather than binding 5. Loud,
+    // which is the trade the plus rule makes — a converted `+` would have been
+    // silent and wrong for every identifier written with one.
+    test('a plus-signed value cannot fill an int field', () {
       expect(
-        () => TomArgs.fillFromArgs(['port=-5'], FixtureServerConfig()),
+        () => TomArgs.fillFromArgs(['port=+5'], FixtureServerConfig()),
         throwsA(isA<TomReflectorException>()),
       );
     });
@@ -612,7 +694,8 @@ void main() {
         'port=8080',
       ],
       'a digit run too large for an int': ['name=9223372036854775808'],
-      'a negative number': ['name=-5'],
+      'a negative number': ['port=-5', 'rate=-1.5'],
+      'a plus-signed number': ['name=+5'],
       // On the String field, like the negative number above: a padded run no
       // longer converts, so it is a value the int field cannot accept.
       'leading zeros': ['name=007'],
@@ -677,6 +760,18 @@ void main() {
       expect(env['PORT'], 8080);
       expect(env['RATE'], 1.5);
       expect(env['ON'], isTrue);
+    });
+
+    // One conversion table serves both sources, so the sign rule has to reach
+    // the `.env` file too -- a deployment that writes `OFFSET=-5` there and
+    // `offset=-5` on the command line must get the same `int` from each.
+    // Asserted differentially rather than as a second independent expectation:
+    // two separate tests would stay green if only one source were changed.
+    test('a signed value converts exactly as it does on the command line', () {
+      const lines = ['OFFSET=-5', 'DRIFT=-1.5', 'PHONE=+4917612345678'];
+      const expected = {'OFFSET': -5, 'DRIFT': -1.5, 'PHONE': '+4917612345678'};
+      expect(TomEnvFile.parse(lines), expected);
+      expect(TomArgs.parseArgsToMap(lines), expected);
     });
 
     test('skips blank lines and # comments', () {

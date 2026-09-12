@@ -13,6 +13,7 @@ line, in the environment, or in a `.env` file is interpreted identically.
   - [A key is named without its leading dashes](#a-key-is-named-without-its-leading-dashes)
 - [Reading `.env` Files](#reading-env-files)
 - [Value Conversion](#value-conversion)
+  - [A leading `-` is part of the number; a leading `+` is not](#a-leading---is-part-of-the-number-a-leading--is-not)
   - [A digit run larger than an `int` stays a `String`](#a-digit-run-larger-than-an-int-stays-a-string)
   - [A digit run with leading zeros stays a `String`](#a-digit-run-with-leading-zeros-stays-a-string)
   - [Quotes are stripped only in pairs](#quotes-are-stripped-only-in-pairs)
@@ -148,14 +149,14 @@ Both classes share one conversion table (implemented once in `TomArgs`):
 | `true` | `bool` `true` |
 | `false` | `bool` `false` |
 | wrapped in a matched pair of `"` or `'` | the unquoted contents |
-| all digits, unpadded, fitting a 64-bit `int` (e.g. `8080`) | `int` |
-| decimal, `digits . digits*` (e.g. `3.14`, `5.`), integer part unpadded | `double` |
+| an optional `-`, then digits, unpadded, fitting a 64-bit `int` (e.g. `8080`, `-5`) | `int` |
+| an optional `-`, then a decimal, `digits . digits*` (e.g. `3.14`, `5.`, `-1.5`), integer part unpadded | `double` |
 | empty (`.env` only) | `null` |
 | anything else | the original `String` |
 
-The numeric rules match the *whole* string, so a leading sign or trailing text
-keeps the value a `String`: `-5`, `1.2.3`, and `12px` all stay strings. `int` is
-tried before `double`, so `8080` is an `int` and `3.14` a `double`.
+The numeric rules match the *whole* string, so trailing text keeps the value a
+`String`: `1.2.3` and `12px` both stay strings. `int` is tried before `double`,
+so `8080` is an `int` and `3.14` a `double`.
 
 The decimal's fractional part is **zero or more** digits, not one optional
 digit. Two consequences are easy to predict wrongly:
@@ -166,17 +167,50 @@ digit. Two consequences are easy to predict wrongly:
 | `5.` | `double` `5.0` | zero fractional digits is a match; the bare `.` does **not** keep it a `String` |
 | `.5` | `String` | the integer part is required |
 
+### A leading `-` is part of the number; a leading `+` is not
+
+| Value | Result |
+| ----- | ------ |
+| `-5` | `int` `-5` |
+| `-1.5` | `double` `-1.5` |
+| `-9223372036854775808` | `int` — the smallest that fits; the ends are not mirrors |
+| `+5` | `String` |
+| `+4917612345678` | `String` — a phone number, not a quantity |
+| `-007` | `String` — the padding rule applies to the run after the sign |
+| `-` | `String` — a sign with no number after it |
+| `"-5"` | `String` `-5` — quoting is the escape |
+
+A `-` changes the value it introduces, so it is part of the number. Without it
+a negative setting could not reach a numeric field from any source: the `String`
+arrives at a reflected `int` field and is refused with `TomReflectorException`,
+so a negative offset had to be carried as a positive number plus a direction
+flag.
+
+A `+` is different, and the asymmetry is the padding rule in its other
+spelling. A `+` in front of a digit run is decoration — it is how an
+international phone number is written — so converting `+4917612345678` produces
+a *different* identifier and reports nothing, exactly as `007` → `7` would. The
+cost of refusing it lands where it is loud rather than where it is silent: `+5`
+against an `int` field is refused at assignment, naming the key, whereas a
+converted `+49…` would have arrived silently as the wrong number.
+
+Quoting works in both directions, as everywhere else in the table: `"-5"` is the
+text `-5`, and there is no way to make `+5` a number other than writing it
+without the sign.
+
 ### A digit run larger than an `int` stays a `String`
 
 Dart's `int` is 64-bit. A run of digits longer than `9223372036854775807` has no
 `int` to become, so it is left as the text it arrived as — the same outcome as
-`-5` or `12px`, and for the same reason: the converter only produces a type it
+`12px` or `+5`, and for the same reason: the converter only produces a type it
 can actually represent.
 
 | Value | Result |
 | ----- | ------ |
 | `9223372036854775807` | `int` — the largest that fits |
 | `9223372036854775808` | `String` — one past the limit |
+| `-9223372036854775808` | `int` — two's complement reaches one further down |
+| `-9223372036854775809` | `String` — one past the limit at the other end |
 | `99999999999999999999` | `String` |
 
 This matters because the values that overflow are rarely arithmetic. An account
@@ -335,21 +369,13 @@ tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
 
 ## Not Yet Implemented
 
-- **A negative number cannot be typed from any source.** `intPattern` and
-  `doublePattern` do not admit a sign, so `-5` and `-1.5` stay `String`s. On the
-  map paths that is merely untyped; against a reflected `int` field it fails,
-  because the `String` is refused at assignment with `TomReflectorException`.
-  There is no escape either — quoting makes it a `String` deliberately rather
-  than a number. A negative setting therefore has to be carried some other way
-  (a positive value with a separate direction flag, or a `String` field the
-  application parses itself).
-- **A zero-padded number cannot fill an `int` field.** Leading zeros keep a
-  value a `String` (above), so `port=08080` is refused at assignment with
-  `TomReflectorException` rather than silently binding 8080 — the same outcome
-  as a negative number, and for the same reason. This is the price of the
-  padding rule and is the intended one: a deployment that pads a number learns
-  it at start-up. Write the number unpadded (`port=8080`) when the target is an
-  `int` field.
+- **A zero-padded or `+`-signed number cannot fill an `int` field.** Leading
+  zeros and a leading `+` keep a value a `String` (above), so `port=08080` and
+  `port=+5` are refused at assignment with `TomReflectorException` rather than
+  silently binding 8080 and 5. This is the price of the padding rule and is the
+  intended one: a deployment that decorates a number learns it at start-up
+  rather than never. Write the number plainly (`port=8080`, `offset=-5`) when
+  the target is a numeric field.
 - **No entry point reports a setting that no source supplied.** `merge`
   overlays maps and returns; `fillFromArgs` binds the keys it was given. A
   required setting that nobody supplied is indistinguishable from one that was

@@ -72,9 +72,9 @@ value type.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `intPattern` | `RegExp` | Matches an **unpadded** run of digits (`0` itself, or a run starting with a non-zero digit); a value parses as `int` only when this matches the whole string **and** the number fits a 64-bit `int` — the pattern constrains shape, not magnitude (static, final). |
+| `intPattern` | `RegExp` | Matches an optional `-` and then an **unpadded** run of digits (`0` itself, or a run starting with a non-zero digit); a value parses as `int` only when this matches the whole string **and** the number fits a 64-bit `int` — the pattern constrains shape, not magnitude. A `-` is admitted because it changes the value; a `+` is not, because it is decoration an identifier may carry (an international phone number) and dropping it would yield a different one (static, final). |
 | `environmentNamePattern` | `RegExp` | What counts as `SCREAMING_SNAKE_CASE` for `fieldNameOf`: upper-case letters and digits in underscore-separated segments, no empty segment and no leading or trailing underscore. The first character is `[A-Z]` rather than `[A-Z0-9]`, because a name beginning with a digit has no field to name — a Dart identifier cannot (static, final). |
-| `doublePattern` | `RegExp` | Matches a decimal number (`digits . digits*` — the fractional part is zero or more digits, not one optional digit) whose integer part is unpadded like `intPattern`; a value parses as `double` only when this matches the whole string and it is not already an `int` (static, final). |
+| `doublePattern` | `RegExp` | Matches an optional `-` and then a decimal number (`digits . digits*` — the fractional part is zero or more digits, not one optional digit) whose integer part is unpadded like `intPattern`; a value parses as `double` only when this matches the whole string and it is not already an `int`. The sign follows `intPattern`'s rule, so `-1.5` converts and `+1.5` does not (static, final). |
 
 Value-conversion table (shared by all entry points):
 
@@ -83,15 +83,15 @@ Value-conversion table (shared by all entry points):
 | `"true"` / `null` | `bool` `true` |
 | `"false"` | `bool` `false` |
 | wrapped in a matched pair of `"` or `'` | the unquoted contents |
-| all digits, unpadded, and it fits a 64-bit `int` | `int` |
-| decimal number, `digits . digits*` (`5.` included), integer part unpadded | `double` |
+| an optional `-`, then digits, unpadded, and it fits a 64-bit `int` | `int` |
+| an optional `-`, then a decimal, `digits . digits*` (`5.` included), integer part unpadded | `double` |
 | anything else | the original `String` |
 
 Quotes are stripped only as a pair (see `unquote`), so an unbalanced quote is
 data rather than a syntax error: `"` and `"hello` pass through unchanged.
 
-Two restrictions on a digit run are part of the rule, and both say the same
-thing — a type is produced only when it can carry the value faithfully:
+Three restrictions on a digit run are part of the rule, and all three say the
+same thing — a type is produced only when it can carry the value faithfully:
 
 - **Magnitude.** `9223372036854775807` converts, `9223372036854775808` and
   longer runs stay `String`. Overflow is not a parse failure — an account
@@ -104,10 +104,20 @@ thing — a type is produced only when it can carry the value faithfully:
   `1.50` and `1.5` are one quantity while `007` and `7` are two identifiers.
   The consequence for a reflected object is that `port=08080` is refused at
   assignment rather than binding 8080.
+- **Sign.** A leading `-` is part of the number, so `offset=-5` reaches an `int`
+  field; a leading `+` is not, because it is how an international phone number
+  is written and converting `+4917612345678` would yield a different identifier
+  — the padding rule in its other spelling. `+5` against an `int` field is
+  therefore refused at assignment, which is loud, where a converted `+49…` would
+  have been silent. Quoting is the escape the other way: `"-5"` is the text.
 
 The fractional part of a decimal is zero or more digits, so a value ending in a
 bare `.` converts rather than staying a `String`: `5.` becomes the `double`
-`5.0`. An integer part is still required, so `.5` stays a `String`.
+`5.0`. An integer part is still required, so `.5` and `-.5` stay `String`s.
+
+The two magnitude ends are not mirrors — two's complement reaches one further
+down than up — so `-9223372036854775808` converts and `9223372036854775808`
+does not.
 
 ### TomEnvFile
 
