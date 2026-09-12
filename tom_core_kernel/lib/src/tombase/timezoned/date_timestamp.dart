@@ -138,6 +138,30 @@ int _offsetMinutesOf(String offsetSection) {
 /// - `@T@` for times
 /// - `@X@` for datetimes
 ///
+/// ## Equality is the instant alone
+///
+/// `==` and `hashCode` are [DateTime]'s: two values are equal when they name
+/// the same UTC instant. Neither the runtime type nor the [timezone] takes
+/// part, and nothing here overrides that — it is what a `DateTime` user
+/// expects, and a zoned value is a `DateTime`.
+///
+/// Three consequences, each of which surfaces as a deduplication surprise
+/// rather than as a compile error:
+///
+/// - A [TomZonedDate] equals a [TomZonedDateTime] at the same instant. Tokyo's
+///   midnight on the 15th *is* 15:00Z on the 14th, so the date and that
+///   datetime are one value, share a hash code, and collapse in a `Set` or a
+///   `Map` key.
+/// - The same instant in two zones is one value: "now in Tokyo" equals "now in
+///   Berlin". A `Set<TomZonedDateTime>` therefore does not keep one entry per
+///   zone.
+/// - A plain `DateTime.utc(...)` at that instant is equal to all of them.
+///
+/// What equality drops is still on the value, so compare that instead when the
+/// question is "the same *value*" rather than "the same moment": `runtimeType`,
+/// [timezone], or the serialized form, which carries the type prefix, the
+/// offset and the zone name and therefore differs for every case above.
+///
 /// ## Conversion lives on the subclasses
 ///
 /// None of the `convertToTz*` methods is declared here, so a value obtained
@@ -531,6 +555,10 @@ tz.Location? _zoneOf(DateTime dt) {
 /// final date = TomZonedDate(year: 2024, month: 6, day: 15, timezone: tokyo);
 /// print(date.localDay); // 15 (local day in Tokyo)
 ///
+/// // Equality is the instant alone, so this date equals the datetime naming
+/// // the same moment, whatever zone either carries — see
+/// // [TomTimezoned]'s "Equality is the instant alone".
+///
 /// // Parse from string
 /// final parsed = TomZonedDate.parseFromString('@D@2024-06-14T15:00:00.000Z_+09:00_Asia/Tokyo');
 /// print(parsed.localDay); // 15 (local day in Tokyo)
@@ -846,6 +874,10 @@ class TomZonedDate extends TomTimezoned {
 /// final tokyo = TomTimezone.fromName('Asia/Tokyo');
 /// final time = TomZonedTime(hour: 14, minute: 30, timezone: tokyo);
 /// print(time.localHour); // 14 (local time in Tokyo)
+///
+/// // A time is an instant on 1970-01-01, and equality is the instant alone:
+/// // it equals any zoned value naming that moment, whatever its type or zone
+/// // — see [TomTimezoned]'s "Equality is the instant alone".
 /// print(time.hour);      // 5 (UTC time)
 ///
 /// // Parse from string
@@ -1159,6 +1191,10 @@ class TomZonedTime extends TomTimezoned {
 ///   timezone: ny,
 /// );
 /// print(summer.hour); // 16 (12 + 4 hours for EDT)
+///
+/// // Equality is the instant alone: the same moment in another zone, or as a
+/// // TomZonedDate, is an equal value — see [TomTimezoned]'s "Equality is the
+/// // instant alone".
 ///
 /// // Winter (EST: UTC-5)
 /// final winter = TomZonedDateTime(

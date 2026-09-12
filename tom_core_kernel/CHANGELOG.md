@@ -7,6 +7,17 @@ API narrowings. Read the **Changed** section before upgrading — several public
 members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
+### Documentation
+- **Zoned equality is the instant alone, and now says so (tcopen96).** `==` and
+  `hashCode` on `TomTimezoned` and its three subclasses are `DateTime`'s, so
+  neither the runtime type nor the timezone takes part: a `TomZonedDate` equals
+  the `TomZonedDateTime` at the same moment, that moment in Tokyo equals it in
+  Berlin, and a plain `DateTime.utc(...)` equals both — one `Set` entry, one
+  `Map` key. The behaviour is unchanged; it is stated on all four types, in the
+  guide, the API mirror and the module readme, with the way to tell such values
+  apart (`runtimeType`, `timezone`, or the serialized form), and pinned by
+  tests.
+
 ### Added
 - **A serialized value whose zone this runtime does not know is read at its
   stored offset (tcopen95).** The offset beside the zone name stops being

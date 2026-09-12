@@ -66,6 +66,15 @@ final base = TomTimezoned.now();
 TomZonedDateTime.fromDateTime(base, base.timezone).convertToTzSameInstant(zone);
 ```
 
+## Equality
+
+`==` is `DateTime`'s: the UTC instant alone. The runtime type and the zone take
+no part, so a `TomZonedDate` equals the `TomZonedDateTime` at the same moment,
+and that moment in Tokyo equals it in Berlin — one entry in a `Set`, one `Map`
+key. Compare `runtimeType`, `timezone` or `toString()` to tell such values
+apart; see
+[Equality is the instant alone](../../../../doc/timezoned/timezoned.md#equality-is-the-instant-alone).
+
 ## Failures
 
 Which failure a caller sees depends on the entry point rather than on the

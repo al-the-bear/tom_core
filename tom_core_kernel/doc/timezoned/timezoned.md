@@ -17,6 +17,7 @@ automatic handling of daylight saving time (DST) transitions.
   - [String Representation](#string-representation)
   - [TZDateTime Interop](#tzdatetime-interop)
 - [TomTimezoned Types](#tomtimezoned-types)
+  - [Equality is the instant alone](#equality-is-the-instant-alone)
   - [TomZonedDateTime](#tomzoneddatetime)
   - [TomZonedDate](#tomzoneddate)
   - [TomZonedTime](#tomzonedtime)
@@ -321,6 +322,46 @@ Hold a value at `TomTimezoned` where the kind genuinely does not matter: as the
 supertype every zoned value shares — `TomOTimezoned` binds its type parameter
 to it — for the accessors above, and for a serialization round trip that
 carries a value through without asking what it is.
+
+### Equality is the instant alone
+
+`==` and `hashCode` are `DateTime`'s: two values are equal when they name the
+same UTC instant. Neither the runtime type nor the timezone takes part, and
+nothing in this module overrides that — a zoned value is a `DateTime`, and that
+is the equality a `DateTime` carries.
+
+Three consequences, each of which shows up as a deduplication surprise rather
+than as a compile error:
+
+```dart
+final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
+final berlin = TomTimezone.fromName('Europe/Berlin')!;
+final instant = DateTime.utc(2024, 6, 14, 15);
+
+// A date and a datetime: Tokyo's midnight on the 15th *is* 15:00Z on the 14th.
+TomZonedDate(year: 2024, month: 6, day: 15, timezone: tokyo) ==
+    TomZonedDateTime.fromDateTime(instant, tokyo); // true, same hashCode
+
+// Two zones, one moment.
+TomZonedDateTime.fromDateTime(instant, tokyo) ==
+    TomZonedDateTime.fromDateTime(instant, berlin); // true
+
+// And a plain UTC DateTime at that instant.
+TomZonedDateTime.fromDateTime(instant, tokyo) == instant; // true
+```
+
+So a `Set` does not keep one entry per type or per zone, and two such values
+collide as `Map` keys. That is the right answer when the question is "the same
+moment", which is what these types are for.
+
+When the question is "the same *value*", compare what equality drops — it is
+all still on the value:
+
+| To distinguish | Compare |
+| -------------- | ------- |
+| A date from a time from a datetime | `runtimeType`, or `getSerializationPrefix()` |
+| One zone from another | `timezone.timezone` |
+| Both at once | `toString()` — the serialized form carries the prefix, the offset and the zone name |
 
 ### TomZonedDateTime
 

@@ -2710,6 +2710,65 @@ void main() {
     });
   });
 
+  // Equality is inherited from DateTime, so it is the UTC instant alone: not
+  // the runtime type, not the zone. That is what a DateTime user expects, and
+  // it is the kind of thing a caller otherwise discovers through a
+  // deduplication bug — so it is pinned here and stated on all four types.
+  group('equality is the instant alone', () {
+    final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
+    final berlin = TomTimezone.fromName('Europe/Berlin')!;
+    final instant = DateTime.utc(2024, 6, 14, 15);
+
+    test('two types at the same instant are one value', () {
+      // Midnight on the 15th in Tokyo is 15:00Z on the 14th, which is also
+      // what this datetime names.
+      final date = TomZonedDate(year: 2024, month: 6, day: 15, timezone: tokyo);
+      final dateTime = TomZonedDateTime.fromDateTime(instant, tokyo);
+
+      expect(date, equals(dateTime));
+      expect(date.hashCode, dateTime.hashCode);
+      expect({date, dateTime}, hasLength(1));
+      expect(<DateTime, String>{
+        date: 'first',
+        dateTime: 'second',
+      }, hasLength(1));
+    });
+
+    test('two zones at the same instant are one value', () {
+      final inTokyo = TomZonedDateTime.fromDateTime(instant, tokyo);
+      final inBerlin = TomZonedDateTime.fromDateTime(instant, berlin);
+
+      expect(inTokyo, equals(inBerlin));
+      expect({inTokyo, inBerlin}, hasLength(1));
+    });
+
+    test('a plain UTC DateTime at that instant is equal too', () {
+      expect(TomZonedDateTime.fromDateTime(instant, tokyo), equals(instant));
+      expect(instant, equals(TomZonedDateTime.fromDateTime(instant, tokyo)));
+    });
+
+    test('a different instant is a different value, zone or not', () {
+      final later = instant.add(const Duration(milliseconds: 1));
+      expect(
+        TomZonedDateTime.fromDateTime(instant, tokyo),
+        isNot(equals(TomZonedDateTime.fromDateTime(later, tokyo))),
+      );
+    });
+
+    test('what equality drops is still on the value, and in its string', () {
+      // The way to tell these apart is not `==`: it is the type, the zone, or
+      // the serialized form, which carries the prefix, the offset and the name.
+      final date = TomZonedDate(year: 2024, month: 6, day: 15, timezone: tokyo);
+      final inTokyo = TomZonedDateTime.fromDateTime(instant, tokyo);
+      final inBerlin = TomZonedDateTime.fromDateTime(instant, berlin);
+
+      expect(date.runtimeType, isNot(inTokyo.runtimeType));
+      expect(inTokyo.timezone.timezone, isNot(inBerlin.timezone.timezone));
+      expect(date.toString(), isNot(inTokyo.toString()));
+      expect(inTokyo.toString(), isNot(inBerlin.toString()));
+    });
+  });
+
   group('TomTimezone.fixedOffset', () {
     test('is the named zone at one offset, for every instant', () {
       final zone = TomTimezone.fixedOffset(

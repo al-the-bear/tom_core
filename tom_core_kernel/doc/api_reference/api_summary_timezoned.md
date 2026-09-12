@@ -116,6 +116,14 @@ converts to UTC. `parseFromString` throws `FormatException` for a string that is
 not in the serialized form; a zone name this runtime does not know is read as a
 `TomTimezone.fixedOffset` at the offset stored beside it, not refused.
 
+`==` and `hashCode` are `DateTime`'s, on this type and all three subclasses:
+equality is the UTC instant alone, and neither the runtime type nor `timezone`
+takes part. A `TomZonedDate` therefore equals the `TomZonedDateTime` naming the
+same moment, the same instant in two zones is one value, and a plain
+`DateTime.utc(...)` at that instant equals both — so a `Set` keeps one entry and
+`Map` keys collide. Compare `runtimeType`, `timezone` or `toString()` when the
+question is "the same value" rather than "the same moment".
+
 All of them return `TomTimezoned` itself rather than one of the subclasses, so
 the methods below are the whole of what such a value offers. No `convertToTz*`
 method is among them, and that is a decision rather than a language limit: an

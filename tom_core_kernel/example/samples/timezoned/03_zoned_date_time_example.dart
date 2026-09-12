@@ -5,6 +5,7 @@
 /// - TomZonedTime for time values without date components
 /// - Differences from TomZonedDateTime
 /// - Serialization prefixes
+/// - Equality: the instant alone, so neither type nor zone distinguishes values
 ///
 /// To run this file on its own:
 /// ```bash
@@ -390,6 +391,49 @@ class ZonedDateTimeExample {
   }
 
   // -------------------------------------------------------------------------
+  // Example 9: Equality does not distinguish the types, or the zones
+  // -------------------------------------------------------------------------
+  static void example9Equality() {
+    print('\n9. Equality is the instant alone:');
+
+    final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
+    final berlin = TomTimezone.fromName('Europe/Berlin')!;
+
+    // Midnight on the 15th in Tokyo is 15:00Z on the 14th — one moment, so
+    // the date and the datetime are one value, whatever their types say.
+    final instant = DateTime.utc(2024, 6, 14, 15);
+    final date = TomZonedDate(year: 2024, month: 6, day: 15, timezone: tokyo);
+    final inTokyo = TomZonedDateTime.fromDateTime(instant, tokyo);
+    final inBerlin = TomZonedDateTime.fromDateTime(instant, berlin);
+
+    print('   - date == datetime            : ${date == inTokyo}');
+    print('   - Tokyo == Berlin             : ${inTokyo == inBerlin}');
+    print(
+      '   - a Set of all three holds    : ${{date, inTokyo, inBerlin}.length}',
+    );
+    print('   - their serialized forms      :');
+    print('     ${date.toString()}');
+    print('     ${inTokyo.toString()}');
+    print('     ${inBerlin.toString()}');
+
+    // What `==` drops is still on the value: compare the type, the zone or
+    // the serialized form when "the same value" is the question.
+    assert(date == inTokyo, 'the same moment is the same value');
+    assert(inTokyo == inBerlin, 'the zone takes no part in equality');
+    assert({date, inTokyo, inBerlin}.length == 1, 'a Set keeps one of them');
+    assert(date.runtimeType != inTokyo.runtimeType, 'the types still differ');
+    assert(
+      inTokyo.timezone.timezone != inBerlin.timezone.timezone,
+      'and so do the zones',
+    );
+    assert(
+      date.toString() != inTokyo.toString() &&
+          inTokyo.toString() != inBerlin.toString(),
+      'the serialized form tells all three apart',
+    );
+  }
+
+  // -------------------------------------------------------------------------
   // Run all examples
   // -------------------------------------------------------------------------
   static void run() {
@@ -403,6 +447,7 @@ class ZonedDateTimeExample {
     example6TimezoneConversion();
     example7SerializationPrefixes();
     example8NowFactories();
+    example9Equality();
 
     print('\n=== TomZonedDate and TomZonedTime Example Complete ===\n');
   }
