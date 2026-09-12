@@ -16,6 +16,8 @@ hash-chained by the sink, and optionally anchored outside the audited server.
   - [TomAuditException](#tomauditexception)
   - [TomAuditEntry](#tomauditentry)
   - [TomAuditChainVerification](#tomauditchainverification)
+  - [TomAuditQuery](#tomauditquery)
+  - [TomAuditQueryResult](#tomauditqueryresult)
   - [TomAuditSink](#tomauditsink)
   - [TomMemoryAuditSink](#tommemoryauditsink)
   - [TomFileAuditSink](#tomfileauditsink)
@@ -54,6 +56,7 @@ hash-chained by the sink, and optionally anchored outside the audited server.
 
 Source: `lib/src/tomserver/audit/audit_record.dart`,
 `lib/src/tomserver/audit/audit_sink.dart`,
+`lib/src/tomserver/audit/audit_query.dart`,
 `lib/src/tomserver/audit/audit_trail.dart`,
 `lib/src/tomserver/audit/audit_anchor.dart`,
 `lib/src/tomserver/audit/audit_anchor_store.dart`,
@@ -429,6 +432,83 @@ const TomAuditChainVerification({
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `toString` | `String toString()` | *(override)* A one-line summary naming the entry count, and the break position and reason when invalid. |
+
+### TomAuditQuery
+
+A question about a stored trail: what an actor did, what happened to a target,
+what happened in a window, what was refused. Every field is optional and every
+field given is an **and**; an empty query matches the whole trail. A value
+rather than a method on anything, because the question is storage-neutral even
+though answering it is not — the same arrangement `verifyAuditChain` has.
+
+- **Fields:** `from` (inclusive), `to` (exclusive), `actor`, `action`, `target`,
+  `targetKey`, `outcome`, `requestId`, `limit`, `newestFirst`.
+
+#### Constructors
+
+```dart
+const TomAuditQuery({
+  DateTime? from,
+  DateTime? to,
+  String? actor,
+  TomAuditAction? action,
+  String? target,
+  String? targetKey,
+  TomAuditOutcome? outcome,
+  String? requestId,
+  int limit = TomAuditQuery.defaultLimit,
+  bool newestFirst = true,
+})
+```
+
+#### Static Members
+
+| Member | Type | Description |
+| ------ | ---- | ----------- |
+| `defaultLimit` | `int` | How many entries a query returns when it does not say (500). A number rather than "all of them": the trail is the one table with no natural ceiling, so unbounded is a default that works on a development database and takes a production one down. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `matches` | `bool matches(TomAuditRecord record)` | Whether `record` answers this query — the authoritative test, judged against the record, which is never truncated. Instants compare as instants, so a window given in another zone names the same moments. |
+
+The window is half-open — `from` inclusive, `to` exclusive — so consecutive
+windows tile the trail and an entry on a boundary belongs to exactly one of
+them. A closed upper bound would report it in both, and a daily export would
+double-count every midnight.
+
+### TomAuditQueryResult
+
+What a `TomAuditQuery` found. Carries counts as well as entries, because a page
+of results on its own cannot be read safely: a caller cannot tell a full page
+from the last one, nor a narrow search from a lossy index doing its job.
+
+#### Constructors
+
+```dart
+const TomAuditQueryResult({
+  required List<TomAuditEntry> entries,
+  required bool hasMore,
+  required int examined,
+  required int rejectedByProjection,
+})
+```
+
+#### Static Members
+
+| Member | Type | Description |
+| ------ | ---- | ----------- |
+| `empty` | `TomAuditQueryResult` | An empty result that examined nothing. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `entries` | `List<TomAuditEntry>` | The matching entries, in the order asked for. |
+| `hasMore` | `bool` | Whether the trail held further matches beyond this page. |
+| `examined` | `int` | How many stored entries were read and judged. Over a relational trail, how many rows the index handed back. |
+| `rejectedByProjection` | `int` | How many examined entries the projection matched and the record did not — the lossy index's false positives, counted rather than hidden. Always zero over an in-memory trail, which is why it is on the result rather than assumed away. |
 
 ### TomAuditSink
 
@@ -1413,4 +1493,6 @@ TomAuditTriggerRow()
 | `auditTrailNoUpdateTriggerName` | `String auditTrailNoUpdateTriggerName(String table)` | The name of the trigger that rejects `UPDATE` on `table` (`trg_<table>_no_update`). |
 | `auditTrailNoDeleteTriggerName` | `String auditTrailNoDeleteTriggerName(String table)` | The name of the trigger that rejects `DELETE` on `table` (`trg_<table>_no_delete`). |
 | `auditTrailNoUpdateTriggerDdl` | `String auditTrailNoUpdateTriggerDdl(String table)` | A `BEFORE UPDATE` trigger that signals SQLSTATE `45000` on every update. The recommended guard, with no operational cost since nothing in the framework updates an audit row. |
+| `filterAuditEntries` | `TomAuditQueryResult filterAuditEntries(Iterable<TomAuditEntry> entries, TomAuditQuery query)` | Answers `query` from entries already read back — for `TomMemoryAuditSink.entries` and `TomFileAuditSink.readAll()`, which are synchronous because there is nothing to wait for. `TomSqlAuditSink.query` is separate rather than reading everything and calling this: pushing the filter into the database is the point of that table's indexes. `rejectedByProjection` is always zero here — nothing was projected, so nothing can have been matched lossily. |
+| `auditProjectionPrefix` | `String? auditProjectionPrefix(String? value, int? maxCharacters)` | `value` cut to what a column of `maxCharacters` can store. Used at both ends by the relational sink: it trims the projection columns on write and narrows a search term on read. One function rather than two call sites doing the same arithmetic, because the two agreeing is why a search over a truncated column finds anything — a reader comparing the full term against a column the writer shortened matches nothing and reports it as "no such entry". |
 | `auditTrailNoDeleteTriggerDdl` | `String auditTrailNoDeleteTriggerDdl(String table)` | A `BEFORE DELETE` trigger that signals SQLSTATE `45000` on every delete. Only for deployments that never prune: it blocks retention as well as tampering. |

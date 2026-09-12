@@ -87,6 +87,28 @@ class TomFrameworkColumn {
     return buffer.toString();
   }
 
+  /// The declared character capacity of a string column, or `null` when the
+  /// type carries none.
+  ///
+  /// Read from [type] rather than declared beside it, so there is one statement
+  /// of the width and it is the one the `CREATE TABLE` uses. A writer that
+  /// trims a value to fit, and a reader that has to trim a search term the same
+  /// way to find what the writer stored, both need this number — and a literal
+  /// repeated at either call site is a number that survives a column being
+  /// widened.
+  ///
+  /// `VARCHAR(160)` and `CHAR(64)` answer with their length; `BIGINT`,
+  /// `LONGTEXT` and `DATETIME(6)` answer `null`. A precision is not a character
+  /// capacity, which is why the type name is matched rather than the
+  /// parenthesis alone.
+  int? get maxCharacters {
+    final match = RegExp(
+      r'^\s*(?:VAR)?CHAR\s*\(\s*(\d+)\s*\)',
+      caseSensitive: false,
+    ).firstMatch(type);
+    return match == null ? null : int.parse(match.group(1)!);
+  }
+
   @override
   String toString() => '$name $type';
 }

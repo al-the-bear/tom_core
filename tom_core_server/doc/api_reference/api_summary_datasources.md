@@ -1114,6 +1114,7 @@ const TomFrameworkColumn(
 | `nullable` | `bool` | Whether the column accepts `NULL`. |
 | `defaultValue` | `String?` | The `DEFAULT` clause's value as SQL text, or `null` for no default. |
 | `autoIncrement` | `bool` | Whether the column carries `AUTO_INCREMENT`. |
+| `maxCharacters` | `int?` | The declared character capacity of a string column, or `null` for a type carrying none — `VARCHAR(160)` and `CHAR(64)` answer with their length, `BIGINT` and `LONGTEXT` answer `null`. Read from `type` rather than declared beside it, so a writer trimming a value to fit and a reader trimming a search term the same way ask one declaration where the width is. A precision is not a character capacity, which is why the type name is matched and not the parenthesis alone. |
 
 ##### Methods
 

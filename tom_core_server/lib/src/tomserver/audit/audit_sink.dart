@@ -390,18 +390,28 @@ List<TomAuditEntry> parseAuditLines(Iterable<String> lines) {
 /// to call.
 ///
 /// Nothing is lost by leaving it out, because the *analysis* is already
-/// storage-neutral: [verifyAuditChain] and `verifyAgainstAnchor` take a
-/// `List<TomAuditEntry>`, not a sink. An operator reads the trail back the way
-/// that particular storage is read — they know which one they deployed — and
-/// hands the entries to the same checker whichever sink produced them.
+/// storage-neutral: [verifyAuditChain], `verifyAgainstAnchor` and
+/// `filterAuditEntries` take a `List<TomAuditEntry>`, not a sink. An operator
+/// reads the trail back the way that particular storage is read — they know
+/// which one they deployed — and hands the entries to the same checker or the
+/// same filter whichever sink produced them.
 ///
 /// What *is* uniform is the pair an anchor needs. [headHash] and [entryCount]
 /// are on this interface precisely because [TomAuditAnchor.of] must work
 /// against whatever sink happens to be installed without knowing its concrete
-/// type; that is the one cross-sink read the module performs, and it is
-/// served. A reporting API over stored trails — queries by actor, target or
-/// time window — is a deferred feature of the module, not something this
-/// interface is quietly waiting to grow.
+/// type; that is the one cross-sink read the module performs, and it is served.
+///
+/// Querying a trail — by actor, target, outcome or time window — is
+/// `TomAuditQuery`, and it stays off this interface by the same argument. The
+/// *question* is storage-neutral and is a value; answering it is not. A sink
+/// whose entries are already in memory is filtered where it stands, with
+/// `filterAuditEntries` over the entries it hands back; the relational sink
+/// pushes the
+/// filter into the database instead, because the indexes that make the question
+/// cheap are in the table and reading ten million rows to discard all but five
+/// is not a query. One signature over both would have to promise the
+/// asynchronous shape everywhere and would hide that difference, which is the
+/// difference a deployment needs to see.
 abstract class TomAuditSink implements TomClosable {
   /// Persists [record], returning the entry as stored.
   ///

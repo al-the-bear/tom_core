@@ -396,6 +396,242 @@ void main() async {
       });
     });
 
+    group('querying pushes the filter into the table', () {
+      /// A record whose actor and target are given, so a query has something
+      /// to narrow on other than the shared defaults above.
+      TomAuditRecord about({
+        required int index,
+        required String actor,
+        String target = 'Invoice',
+        TomAuditAction action = TomAuditAction.update,
+        TomAuditOutcome outcome = TomAuditOutcome.succeeded,
+        DateTime? at,
+      }) => TomAuditRecord(
+        id: 'entry-$index',
+        timestamp: at ?? DateTime.utc(2026, 3, 1, 12, 0, index),
+        actor: TomAuditActor(username: actor),
+        action: action,
+        target: target,
+        targetKey: '$index',
+        outcome: outcome,
+      );
+
+      test('an actor query answers with that actor and nobody else', () async {
+        final sink = sinkFor('node-a');
+        await sink.write(about(index: 1, actor: 'ada'));
+        await sink.write(about(index: 2, actor: 'grace'));
+        await sink.write(about(index: 3, actor: 'ada'));
+
+        final result = await sink.query(const TomAuditQuery(actor: 'ada'));
+
+        // Newest first by default, which is the order an auditor reads in.
+        expect(result.entries.map((e) => e.record.id), ['entry-3', 'entry-1']);
+        expect(result.examined, 2);
+        expect(result.rejectedByProjection, isZero);
+        expect(result.hasMore, isFalse);
+        await sink.close();
+      });
+
+      test('an actor too long for its column is still found', () async {
+        // The defect the whole design exists to prevent. `actor` is
+        // VARCHAR(160) and the writer trims to fit, so a query comparing the
+        // full 200-character username against the stored value would match no
+        // row and report it as "this actor did nothing" — a false negative, in
+        // the one kind of query where a silent omission is the worst outcome.
+        final long = '${'u' * 199}1';
+        final sink = sinkFor('node-a');
+        await sink.write(about(index: 1, actor: long));
+
+        final result = await sink.query(TomAuditQuery(actor: long));
+
+        expect(result.entries, hasLength(1));
+        expect(
+          result.entries.single.record.actor.username,
+          long,
+          reason:
+              'the record is authoritative and is never truncated, so what '
+              'comes back is the full name even though the column holds 160 '
+              'characters of it',
+        );
+        await sink.close();
+      });
+
+      test(
+        'two actors sharing a prefix are told apart by the record',
+        () async {
+          // The other half: the cut that avoids the false negative admits rows
+          // that merely share the first 160 characters. Those are the index's
+          // false positives, and the record decides against them.
+          final shared = 'u' * 160;
+          final sink = sinkFor('node-a');
+          await sink.write(about(index: 1, actor: '${shared}alice'));
+          await sink.write(about(index: 2, actor: '${shared}bob'));
+
+          final result = await sink.query(
+            TomAuditQuery(actor: '${shared}alice'),
+          );
+
+          expect(result.entries.map((e) => e.record.id), ['entry-1']);
+          expect(
+            result.examined,
+            2,
+            reason: 'both rows matched the truncated column',
+          );
+          expect(
+            result.rejectedByProjection,
+            1,
+            reason:
+                'the lossy index is counted rather than hidden — an operator '
+                'who sees this number knows the projection is doing its job',
+          );
+          await sink.close();
+        },
+      );
+
+      test(
+        'a time window takes its lower bound and leaves its upper',
+        () async {
+          final sink = sinkFor('node-a');
+          for (var i = 1; i <= 4; i++) {
+            await sink.write(
+              about(
+                index: i,
+                actor: 'ada',
+                at: DateTime.utc(2026, 3, 1, 12, 0, i),
+              ),
+            );
+          }
+
+          final result = await sink.query(
+            TomAuditQuery(
+              from: DateTime.utc(2026, 3, 1, 12, 0, 2),
+              to: DateTime.utc(2026, 3, 1, 12, 0, 4),
+              newestFirst: false,
+            ),
+          );
+
+          expect(result.entries.map((e) => e.record.id), [
+            'entry-2',
+            'entry-3',
+          ]);
+          await sink.close();
+        },
+      );
+
+      test('the fields combine as an and', () async {
+        final sink = sinkFor('node-a');
+        await sink.write(
+          about(index: 1, actor: 'ada', action: TomAuditAction.delete),
+        );
+        await sink.write(
+          about(index: 2, actor: 'ada', action: TomAuditAction.update),
+        );
+        await sink.write(
+          about(index: 3, actor: 'grace', action: TomAuditAction.delete),
+        );
+
+        final result = await sink.query(
+          const TomAuditQuery(actor: 'ada', action: TomAuditAction.delete),
+        );
+
+        expect(result.entries.map((e) => e.record.id), ['entry-1']);
+        await sink.close();
+      });
+
+      test('a denied outcome is findable on its own', () async {
+        // "What was refused" is one of the four questions the trail exists to
+        // answer, and the only one whose rows are the interesting minority.
+        final sink = sinkFor('node-a');
+        await sink.write(about(index: 1, actor: 'ada'));
+        await sink.write(
+          about(index: 2, actor: 'ada', outcome: TomAuditOutcome.denied),
+        );
+
+        final result = await sink.query(
+          const TomAuditQuery(outcome: TomAuditOutcome.denied),
+        );
+
+        expect(result.entries.map((e) => e.record.id), ['entry-2']);
+        await sink.close();
+      });
+
+      test(
+        'the limit bounds the answer and the result says there is more',
+        () async {
+          final sink = sinkFor('node-a');
+          for (var i = 1; i <= 5; i++) {
+            await sink.write(about(index: i, actor: 'ada'));
+          }
+
+          final result = await sink.query(const TomAuditQuery(limit: 2));
+
+          expect(result.entries.map((e) => e.record.id), [
+            'entry-5',
+            'entry-4',
+          ]);
+          expect(result.hasMore, isTrue);
+          expect(
+            result.examined,
+            2,
+            reason:
+                'the row beyond the limit is read to learn that it exists and '
+                'is not judged, so it does not appear in the count of what was',
+          );
+          await sink.close();
+        },
+      );
+
+      test('the last page does not claim there is more', () async {
+        final sink = sinkFor('node-a');
+        for (var i = 1; i <= 3; i++) {
+          await sink.write(about(index: i, actor: 'ada'));
+        }
+
+        final result = await sink.query(const TomAuditQuery(limit: 3));
+
+        expect(result.entries, hasLength(3));
+        expect(result.hasMore, isFalse);
+        await sink.close();
+      });
+
+      test('a query answers for its own writer only', () async {
+        // Same scoping as readAll and both purges: a sink is one chain's
+        // handle on a shared table.
+        final a = sinkFor('node-a');
+        final b = sinkFor('node-b');
+        await a.write(about(index: 1, actor: 'ada'));
+        await b.write(about(index: 2, actor: 'ada'));
+
+        expect(
+          (await a.query(
+            const TomAuditQuery(actor: 'ada'),
+          )).entries.map((e) => e.record.id),
+          ['entry-1'],
+        );
+        expect(
+          (await b.query(
+            const TomAuditQuery(actor: 'ada'),
+          )).entries.map((e) => e.record.id),
+          ['entry-2'],
+        );
+        await a.close();
+        await b.close();
+      });
+
+      test('a question nothing answers is an empty result', () async {
+        final sink = sinkFor('node-a');
+        await sink.write(about(index: 1, actor: 'ada'));
+
+        final result = await sink.query(
+          const TomAuditQuery(actor: 'nobody-here'),
+        );
+
+        expect(result.entries, isEmpty);
+        expect(result.hasMore, isFalse);
+        await sink.close();
+      });
+    });
+
     group('retention removes a prefix and nothing else', () {
       test('purgeToMaxEntries keeps the newest entries', () async {
         final sink = sinkFor('node-a');

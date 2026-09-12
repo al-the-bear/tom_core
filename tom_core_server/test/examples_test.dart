@@ -83,7 +83,7 @@ const _notSpawnedHere = <String, String>{
 /// Recorded rather than omitted, so a transcript that *starts* being numbered
 /// has to be registered here rather than arriving unmeasured.
 const _stepCounts = <String, int>{
-  'example/audit/audit_example.dart': 10,
+  'example/audit/audit_example.dart': 11,
   'example/authentication/authentication_example.dart': 0,
   'example/authentication/oauth_login_example.dart': 0,
   'example/authentication/two_factor_enrolment_example.dart': 0,

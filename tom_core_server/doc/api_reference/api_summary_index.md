@@ -43,6 +43,7 @@ surface documented here.
 | `TomAuditEntry` | class | A record plus its position in the hash chain. |
 | `TomAuditRecordIdGenerator` | class | Issues record ids that sort chronologically as plain strings. |
 | `TomAuditChainVerification` | class | The outcome of checking a chain's integrity. |
+| `TomAuditQuery` / `TomAuditQueryResult` | classes | A question about a stored trail, and what it found. |
 | `TomAuditException` | class | Audit failure (extends `TomServerException`). |
 | `TomAuditSink` | abstract class | Where a record is persisted. |
 | `TomMemoryAuditSink` | class | In-memory sink bounded by entry count; tests and dev servers. |
@@ -76,6 +77,7 @@ surface documented here.
 | `TomAuditSeqRow` | class | A projected sequence number, for retention boundaries. |
 | `TomAuditTriggerRow` | class | One `information_schema.TRIGGERS` row. |
 | `verifyAuditChain` / `verifyAgainstAnchor` | top-level | Chain and anchor verification. |
+| `filterAuditEntries` / `auditProjectionPrefix` | top-level | Answering a query over entries in hand; cutting a value to a projection column's width. |
 | `parseAuditLines` / `auditDiff` | top-level | JSON-Lines parsing; the changed-fields pair. |
 | `tomAuditGenesisHash` / `tomAuditRedactedPlaceholder` | top-level | The chain start hash; the redaction placeholder. |
 | `defaultAuditTrailTable` / `auditTrailTable` / `auditTrailTableDdl` | top-level | The trail table's name, descriptor and DDL. |
@@ -552,6 +554,7 @@ surface documented here.
 | ---- | ------ |
 | `And` | Object Persistence |
 | `auditDiff` | Audit |
+| `auditProjectionPrefix` | Audit |
 | `auditTrailNoDeleteTriggerDdl` | Audit |
 | `auditTrailNoDeleteTriggerName` | Audit |
 | `auditTrailNoUpdateTriggerDdl` | Audit |
@@ -587,6 +590,7 @@ surface documented here.
 | `DoubleLiteral` | Object Persistence |
 | `Eq` | Object Persistence |
 | `extractAuthentication` | Server |
+| `filterAuditEntries` | Audit |
 | `frameworkOwnedTables` | Database Migration |
 | `Group` | Object Persistence |
 | `Gt` | Object Persistence |
@@ -704,6 +708,8 @@ surface documented here.
 | `TomAuditHeadRow` | Audit |
 | `TomAuditOutcome` | Audit |
 | `TomAuditPolicy` | Audit |
+| `TomAuditQuery` | Audit |
+| `TomAuditQueryResult` | Audit |
 | `TomAuditRecord` | Audit |
 | `TomAuditRecordIdGenerator` | Audit |
 | `tomAuditRedactedPlaceholder` | Audit |

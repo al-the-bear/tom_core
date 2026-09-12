@@ -1,5 +1,34 @@
 ## 1.3.0
 
+### Added
+
+- **The audit trail can be asked a question (tcopen100).** The trail table has
+  carried indexes on `(target, action)`, `(actor)` and `(writer, recorded_at)`
+  since it was declared, and nothing in the package issued a query against any
+  of them: a deployment answering an auditor either called `readAll()` on a
+  table that may hold ten million rows, or wrote SQL against a schema the
+  framework owns. `TomAuditQuery` is the question as a value — actor, action,
+  target, target key, outcome, request id, a half-open time window, a limit and
+  an order — and `TomAuditQueryResult` is what came back, with `hasMore`,
+  `examined` and `rejectedByProjection` beside the entries. A trail already in
+  memory is narrowed by `filterAuditEntries`; `TomSqlAuditSink.query` pushes the
+  filter into the indexes instead.
+
+  The six projection columns are truncated to fit, and both ways of forgetting
+  that are silent, so neither is left to documentation. A search term is cut to
+  its column's declared width before it is bound — by `auditProjectionPrefix`,
+  the same call the insert makes — so a value the writer shortened is still
+  found rather than reported as "no such entry". Every row that comes back is
+  then re-judged by `TomAuditQuery.matches` against the record, which is never
+  truncated, so a shared prefix is not an answer. The widths come from the
+  `TomFrameworkTable` declaration through the new
+  `TomFrameworkColumn.maxCharacters`, replacing the literals that sat beside
+  each truncation and would have survived a column being widened.
+
+  Export stays in the `export` module: `TomAuditEntry.toJson()` is already a
+  map, so a result feeds `TomTabularSection.ofMaps` with no dependency between
+  the two modules.
+
 ### Changed
 
 - **Closing an audit sink or anchor publisher finishes the job (tcopen83).**

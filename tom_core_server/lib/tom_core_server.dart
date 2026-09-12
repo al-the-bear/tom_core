@@ -6,6 +6,7 @@ library;
 export 'src/tomserver/audit/audit_anchor.dart';
 export 'src/tomserver/audit/audit_anchor_monitor.dart';
 export 'src/tomserver/audit/audit_anchor_store.dart';
+export 'src/tomserver/audit/audit_query.dart';
 export 'src/tomserver/audit/audit_record.dart';
 export 'src/tomserver/audit/audit_sink.dart';
 export 'src/tomserver/audit/audit_trail.dart';

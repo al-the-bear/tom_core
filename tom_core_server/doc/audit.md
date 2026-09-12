@@ -38,6 +38,10 @@ remembering to ask.
   - [Shutting a sink down](#shutting-a-sink-down)
 - [Suppressing the Trail](#suppressing-the-trail)
 - [Verification](#verification)
+- [Querying the Trail](#querying-the-trail)
+  - [The projection narrows, the record decides](#the-projection-narrows-the-record-decides)
+  - [Paging is by window, not by offset](#paging-is-by-window-not-by-offset)
+  - [Exporting a result](#exporting-a-result)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
@@ -87,6 +91,8 @@ is a peer of the other three layers rather than an option on the sink.
 | Sink | `auditTrailNoUpdateTriggerName` / `auditTrailNoDeleteTriggerName` | functions | The names those two guards are installed under, so a deployment can drop or probe one without re-deriving the string |
 | Sink | `TomAuditWriteOnceCheck` | class | What a deployment's audit table actually permits, as observed |
 | Sink | `TomAuditTrailRow` / `TomAuditHeadRow` / `TomAuditSeqRow` / `TomAuditTriggerRow` | classes | The reflected row shapes `TomSqlAuditSink` reads through |
+| Sink | `TomAuditQuery` / `TomAuditQueryResult` | classes | A question about a stored trail — actor, target, outcome, window — and what it found |
+| Sink | `filterAuditEntries` / `auditProjectionPrefix` | functions | Answering that question over entries in hand; cutting a value to what a lossy projection column holds |
 | Sink | `TomAuditException` | class | A sink that could not store a record |
 | Anchor | `TomAuditAnchor` | class | A claim about where one chain stood: `writer`, `entryCount`, `headHash`, `createdAt` |
 | Anchor | `verifyAgainstAnchor` / `TomAuditAnchorVerification` / `TomAuditAnchorStatus` | function / classes | Checking a chain against an anchor, and what the answer means |
@@ -380,10 +386,12 @@ on the interface — advertising a whole-table read of a ten-million-row trail a
 an ordinary call.
 
 Nothing is lost by the omission, because the analysis is storage-neutral
-already: `verifyAuditChain` and `verifyAgainstAnchor` take a
-`List<TomAuditEntry>`, not a sink. An operator reads the trail back the way
-their storage is read, and hands the entries to the same checker whichever sink
-produced them.
+already: `verifyAuditChain`, `verifyAgainstAnchor` and `filterAuditEntries` take
+a `List<TomAuditEntry>`, not a sink. An operator reads the trail back the way
+their storage is read, and hands the entries to the same checker — or the same
+filter — whichever sink produced them. See [Querying the
+Trail](#querying-the-trail) for the one place that arrangement does not hold,
+and why.
 
 The one cross-sink read the module itself performs *is* on the interface:
 `TomAuditAnchor.of(sink, ...)` needs `headHash` and `entryCount` from whatever
@@ -962,7 +970,7 @@ and therefore auditable in its own right.
 
 ## Verification
 
-Six suites carry the module's name, three of which need a server.
+Seven suites carry the module's name, three of which need a server.
 
 `test/audit_test.dart` is the largest and always runs: `TomAuditActor`
 attribution, `TomAuditRecord` and the normalisation of before/after values to
@@ -981,6 +989,12 @@ sanitisation — and the publisher with its close path.
 ordinary states, its findings, the round, the seam a deployment substitutes, the
 verification job and `TomAuditAnchorCheck`.
 
+`test/audit_query_test.dart` covers the storage-neutral half of querying:
+`TomAuditQuery.matches` judging a record field by field and as an *and*, the
+half-open window, `filterAuditEntries` with its order, its limit counted in
+matches rather than rows, and `auditProjectionPrefix` against the widths the
+trail table declares.
+
 `test/audit_sql_test.dart` reads the source tree: the migration files match the
 shipped DDL, the trail schema encodes the invariants the chain relies on, and the
 guard triggers reject rather than silently ignore.
@@ -988,7 +1002,10 @@ guard triggers reject rather than silently ignore.
 Two suites are tagged `db` and skip when no server is reachable, so the default
 run stays green without one. `test/audit_sql_db_test.dart` covers the relational
 sink against a live MariaDB — appending, reopening, concurrency, writer scoping,
-retention removing a prefix and nothing else, verification noticing what the
+retention removing a prefix and nothing else, querying — including the two
+claims the projection rests on, that an actor too long for its column is still
+found and that two actors sharing a prefix are told apart by the record —
+verification noticing what the
 chain exists to notice, an anchor catching what the chain cannot, the write-once
 probe, and the grant that is the guarantee. `test/audit_db_test.dart` covers the
 repository chokepoint, which is what makes the trail automatic rather than
@@ -1002,11 +1019,119 @@ dart run example/audit/audit_example.dart
 server: installing a sink, the record's shape, attribution from the ambient
 zone, the declared/automatic split, redaction, the hash chain, the file sink
 with its whole-file retention, the relational sink's schema and write-once
-check, and the anchors. The records are produced by hand, which is what keeps
+check, the anchors, and finally a query over the trail those steps produced. The records are produced by hand, which is what keeps
 the example connection-free — the two chokepoints that produce them in a running
 server are covered by the two `db` suites above and by
 `test/endpoints_pipeline_test.dart`. Every step checks its own result, and
 `test/examples_test.dart` runs it.
+
+## Querying the Trail
+
+An auditor asks few questions and always the same ones: what did this person do,
+what happened to this record, what happened in this window, what was refused.
+`TomAuditQuery` is that question — a value, with every field optional and every
+field given an **and**:
+
+```dart
+final result = await sink.query(
+  TomAuditQuery(
+    actor: 'ada',
+    action: TomAuditAction.delete,
+    from: DateTime.utc(2026, 3, 1),
+    to: DateTime.utc(2026, 4, 1),
+    limit: 100,
+  ),
+);
+
+for (final entry in result.entries) {
+  print('${entry.record.timestamp} ${entry.record.target}');
+}
+if (result.hasMore) print('…and more before that');
+```
+
+Being a value rather than a method is the same arrangement `verifyAuditChain`
+already has, and for the same reason: the *question* is storage-neutral, the
+answering is not.
+
+| Trail | How it is asked |
+| --- | --- |
+| `TomMemoryAuditSink` | `filterAuditEntries(sink.entries, query)` |
+| `TomFileAuditSink` | `filterAuditEntries(sink.readAll(), query)` |
+| `TomSqlAuditSink` | `await sink.query(query)` |
+
+The relational sink is the one that does not go through the shared function, and
+that is deliberate rather than an accident of it being asynchronous. The filter
+is pushed into the database, where the indexes on `(target, action)`, `(actor)`
+and `(writer, recorded_at)` are — the indexes the table has carried since it was
+declared, and which nothing used to issue a query against. Reading every row back
+in order to discard all but five answers the same question and is what
+`readAll()` is for; on a trail of ten million rows it is not a query.
+
+`TomAuditQueryResult` carries counts as well as entries, because a page on its
+own cannot be read safely:
+
+| Field | What it says |
+| --- | --- |
+| `entries` | the matching entries, in the order asked for — newest first by default |
+| `hasMore` | the trail held further matches beyond this page |
+| `examined` | how many stored entries were read and judged |
+| `rejectedByProjection` | how many the index matched and the record did not |
+
+A query is scoped to the sink's own `writer`, like `readAll()` and both purges: a
+sink is one chain's handle on a table several may share. A deployment with
+several writers asks each of them, which is also what keeps the entry indexes in
+the answer meaningful — they are positions within a chain, and there is no order
+across two.
+
+### The projection narrows, the record decides
+
+The columns a `WHERE` clause can test are the six **projection** columns, and
+they are [a lossy index](#the-relational-sink): truncated to fit, so they can say
+*maybe* and never *yes*. Both ways of forgetting that are silent, so neither is
+left to documentation:
+
+- **Comparing a full search term to a truncated column finds nothing.** A
+  200-character username is stored as its first 160, and `WHERE actor = :actor`
+  with the whole name matches no row — reported to the auditor as "this person
+  did nothing". A false negative, in the one kind of query where a silent
+  omission is the worst available outcome. So every search term is cut to its
+  column's declared width before it is bound, by the same call the insert uses
+  (`auditProjectionPrefix`, over the width in the `TomFrameworkTable`
+  declaration). Both ends cut at the same place because both ask the same
+  declaration where it is.
+- **Trusting the column's value reports a truncated name as the name.** The cut
+  above admits rows that merely share a prefix, so every row that comes back is
+  decoded and re-judged by `TomAuditQuery.matches` against the record itself,
+  which is never truncated. Rows the index matched and the record did not are
+  dropped, and counted in `rejectedByProjection` rather than hidden.
+
+So the answer never contains a row the index merely thought looked right, and
+never omits one it stored short.
+
+### Paging is by window, not by offset
+
+Narrow `to` to the oldest instant already seen and ask again. There is no
+`offset`, and its absence is the same argument as above: an offset would have to
+be counted over the projection's matches rather than the record's, and those are
+two different numbers. Counting in the units the caller cannot see is how a page
+boundary silently skips an entry.
+
+### Exporting a result
+
+Export stays in the `export` module rather than growing a second home here. An
+entry is already a map — `TomAuditEntry.toJson()` — so a result feeds
+`TomTabularSection.ofMaps` directly, and the CSV, XLSX and PDF renderers follow
+from there:
+
+```dart
+final section = TomTabularSection.ofMaps(
+  [for (final entry in result.entries) entry.record.toJson()],
+);
+```
+
+Nothing in `audit` depends on `export` for this, and that is the point: the audit
+module owns the trail and the question, the export module owns the rendering, and
+a result is the value that crosses between them.
 
 ## Core Components
 
@@ -1043,14 +1168,13 @@ server are covered by the two `db` suites above and by
 
 ## Not Yet Implemented
 
-- **An audit reporting API, and an application over it** — queries by actor,
-  target, outcome or time window, and export of the result (overlaps CE-RP
-  reporting). This is the deferred feature that
-  [Reading a trail back is per
-  sink](#reading-a-trail-back-is-per-sink-deliberately) points at: a reporting
-  surface is where paged, filtered, storage-aware reads belong, not
-  `TomAuditSink`. Until it exists, an operator reads a trail back through the
-  concrete sink they deployed.
+- **An audit reporting *application*** — a screen an auditor uses, with saved
+  questions, scheduled deliveries and a cross-writer view. The query underneath
+  it is [here now](#querying-the-trail), and export is
+  [the export module's](#exporting-a-result); what is missing is the product
+  above them, which is CE-RP reporting's subject rather than this module's. The
+  seam is the result value: a reporting surface asks `TomAuditQuery` and renders
+  `TomAuditQueryResult`.
 - Anchor stores for specific external services (object storage with a
   deny-delete policy, a countersigning service). The `TomAuditAnchorStore` seam
   is here; the implementations are deployment-specific by nature.
@@ -1072,7 +1196,7 @@ server are covered by the two `db` suites above and by
 | `dart:typed_data` | dart | `audit_anchor.dart` | `Uint8List` |
 | `crypto` | package | `audit_sink.dart` | SHA-256 for the hash chain |
 | `path` | package | `audit_anchor_store.dart`, `audit_sink.dart` | `p.basename`, `p.basenameWithoutExtension`, `p.join` |
-| `tom_core_kernel` | package | 7 of 8 files | `TomPrincipal`, `TomUser`, `getFromCurrentZone`, `TomClosable`, `tomReflector` (policy resolution by mirror), `TomScheduledJob` / `TomJobBase` / `TomRetryPolicy` and `TomBean` / `TomBeanLocatorException` for the verification job, `tomLog` for the finding channel, and — through its `tom_crypto` re-export — `rsaSign` / `rsaVerify` for anchor signatures |
+| `tom_core_kernel` | package | 7 of 9 files | `TomPrincipal`, `TomUser`, `getFromCurrentZone`, `TomClosable`, `tomReflector` (policy resolution by mirror), `TomScheduledJob` / `TomJobBase` / `TomRetryPolicy` and `TomBean` / `TomBeanLocatorException` for the verification job, `tomLog` for the finding channel, and — through its `tom_crypto` re-export — `rsaSign` / `rsaVerify` for anchor signatures |
 | [datasources](datasources.md) | module | `sql_audit_sink.dart`, `sql_audit_sql.dart` | `TomSqlAuditSink` writes through a `TomDataSource` directly, and encodes instants with `sqlInstant` |
 | [little_things](little_things.md) | module | `audit_sink.dart`, `audit_trail.dart`, `sql_audit_sink.dart` | `TomRequestId`, recovered from the zone to supply `requestId`. This is the module's only intra-package dependency below the endpoints/persistence layer, and it is deliberately the bottom one: the id type lives beside the exception base, so attributing an entry to its request does not drag the whole server module in |
 | [object_persistence](object_persistence.md) | module | `sql_audit_sink.dart` | `TomSqlDatasourceRepository` calls the trail on every mutation |

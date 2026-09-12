@@ -56,6 +56,7 @@ import '../datasources/framework_table.dart';
 import '../datasources/sql_instant.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/persistence_annotations.dart';
+import 'audit_query.dart';
 import 'audit_record.dart';
 import 'audit_sink.dart';
 import 'sql_audit_sql.dart';
@@ -432,6 +433,102 @@ class TomSqlAuditSink implements TomAuditSink {
     return rows.map(_entryOf).toList(growable: false);
   }
 
+  /// Answers [query] from this writer's chain, without reading the rest of it.
+  ///
+  /// The counterpart of `filterAuditEntries` for a trail that is in a table
+  /// rather than in memory, and the reason the two are separate calls rather
+  /// than one: here the filter is pushed into the database, where the indexes
+  /// on `(target, action)`, `(actor)` and `(writer, recorded_at)` are — the
+  /// indexes this table has carried since it was declared. Reading every row
+  /// back and filtering in Dart would answer the same question and is what
+  /// [readAll] is for; on a trail of ten million rows it is not a query.
+  ///
+  /// ## The projection narrows, the record decides
+  ///
+  /// The columns the `WHERE` clause tests are the **lossy** ones: they are
+  /// truncated to fit, so they can say *maybe* and never *yes*. Two rules
+  /// follow, and both are structural here rather than advisory:
+  ///
+  ///  * every search term is cut to its column's width by [_fit] before it is
+  ///    bound, the same call the insert makes. Comparing a full term against a
+  ///    column the writer shortened would match nothing and report it as "no
+  ///    such entry" — a false negative, which in an audit query is the failure
+  ///    that matters;
+  ///  * every row that comes back is decoded and re-judged by
+  ///    [TomAuditQuery.matches] against the record itself. The cut above admits
+  ///    rows that merely share a prefix, and those are dropped here and counted
+  ///    in [TomAuditQueryResult.rejectedByProjection] rather than returned.
+  ///
+  /// So the answer never contains a row the index merely thought looked right,
+  /// and never omits one it stored short.
+  ///
+  /// Scoped to [writer], like [readAll] and both purges: a sink is one chain's
+  /// handle on the table. A deployment whose trail carries several writers asks
+  /// each of them, which is also how it keeps the entry indexes in the answer
+  /// meaningful — they are positions within a chain, and there is no order
+  /// across two.
+  ///
+  /// Paging is by window, not by offset: narrow [TomAuditQuery.to] to the
+  /// oldest instant already seen and ask again. An offset would have to be
+  /// counted over the projection's matches rather than the record's, which is
+  /// the one number this method deliberately does not let a caller act on.
+  Future<TomAuditQueryResult> query(TomAuditQuery query) async {
+    await open();
+    final conditions = <String>['writer = :writer'];
+    final parameters = <String, dynamic>{'writer': writer};
+
+    void narrow(String column, String parameter, String? value) {
+      if (value == null) return;
+      conditions.add('$column = :$parameter');
+      parameters[parameter] = _fit(value, column);
+    }
+
+    narrow('actor', 'actor', query.actor);
+    narrow('target', 'target', query.target);
+    narrow('target_key', 'targetKey', query.targetKey);
+    narrow('request_id', 'requestId', query.requestId);
+    // Enumerated, so the stored text is the name in full and no cut applies.
+    narrow('action', 'action', query.action?.name);
+    narrow('outcome', 'outcome', query.outcome?.name);
+
+    if (query.from != null) {
+      conditions.add('recorded_at >= :from');
+      parameters['from'] = sqlInstant(query.from!);
+    }
+    if (query.to != null) {
+      conditions.add('recorded_at < :to');
+      parameters['to'] = sqlInstant(query.to!);
+    }
+
+    // One row beyond the limit, which is how the result can say whether the
+    // trail held more without counting what it did not read.
+    final rows = await datasource.executeQuery<TomAuditTrailRow>(
+      'SELECT ${_trail.columnsOf(_selectColumns)} FROM $table '
+      'WHERE ${conditions.join(' AND ')} '
+      'ORDER BY seq ${query.newestFirst ? 'DESC' : 'ASC'} '
+      'LIMIT ${query.limit + 1}',
+      parameters,
+    );
+
+    final hasMore = rows.length > query.limit;
+    final examined = hasMore ? query.limit : rows.length;
+    final entries = <TomAuditEntry>[];
+    for (final row in rows.take(examined)) {
+      // Decoded once. The record is the authority for the filter and is also
+      // what the entry carries, so decoding it twice would cost the JSON parse
+      // of every examined row for nothing.
+      final entry = _entryOf(row);
+      if (query.matches(entry.record)) entries.add(entry);
+    }
+
+    return TomAuditQueryResult(
+      entries: List.unmodifiable(entries),
+      hasMore: hasMore,
+      examined: examined,
+      rejectedByProjection: examined - entries.length,
+    );
+  }
+
   /// Verifies the retained entries, starting from the oldest retained link.
   ///
   /// Retention may have removed the head of the chain, so verification starts
@@ -572,14 +669,14 @@ class TomSqlAuditSink implements TomAuditSink {
     return {
       'writer': writer,
       'entryIndex': entry.index,
-      'entryId': _fit(record.id, 191),
+      'entryId': _fit(record.id, 'entry_id'),
       'recordedAt': sqlInstant(record.timestamp),
-      'actor': _fit(record.actor.username, 160),
+      'actor': _fit(record.actor.username, 'actor'),
       'action': record.action.name,
-      'target': _fit(record.target, 160),
-      'targetKey': _fitOrNull(record.targetKey, 191),
+      'target': _fit(record.target, 'target'),
+      'targetKey': _fit(record.targetKey, 'target_key'),
       'outcome': record.outcome.name,
-      'requestId': _fitOrNull(record.requestId, 191),
+      'requestId': _fit(record.requestId, 'request_id'),
       'previousHash': entry.previousHash,
       'hash': entry.hash,
       // Exactly the text that was hashed, so a row verifies against its own
@@ -612,18 +709,20 @@ class TomSqlAuditSink implements TomAuditSink {
     }
   }
 
-  /// Truncates [value] to [limit] characters.
+  /// Truncates [value] to what [column] can hold.
   ///
   /// The projection columns are an index, not the record: the authoritative
   /// text lives in `record` and is never truncated. Trimming here rather than
   /// letting the database reject the row keeps an over-long username from
   /// failing an audited action — the trail is fail-closed, so a rejected insert
   /// would take the action down with it.
-  static String _fit(String value, int limit) =>
-      value.length <= limit ? value : value.substring(0, limit);
-
-  static String? _fitOrNull(String? value, int limit) =>
-      value == null ? null : _fit(value, limit);
+  ///
+  /// The width comes from the column's own declaration, and [query] narrows its
+  /// search terms through the same call. That is what makes a search over a
+  /// truncated column find the row it shortened: both ends cut at the same
+  /// place because both ask the same declaration where it is.
+  String? _fit(String? value, String column) =>
+      auditProjectionPrefix(value, _trail.column(column)?.maxCharacters);
 
   /// Waits for the queued records to be inserted, then closes.
   ///

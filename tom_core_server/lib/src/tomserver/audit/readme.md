@@ -47,6 +47,7 @@ matter.
 | `TomMemoryAuditSink` · `TomFileAuditSink` | The two sinks needing no database — the second appends, and its retention operates on whole files. |
 | `TomSqlAuditSink` | The relational sink, over the table `auditTrailTable` declares and `auditTrailTableDdl` renders. `TomAuditWriteOnceCheck` reports whether the deployment's triggers actually forbid `UPDATE` and `DELETE`. |
 | `TomAuditChainVerification` | Whether the chain still verifies, and where it first does not. |
+| `TomAuditQuery` · `TomAuditQueryResult` | What an auditor asks a stored trail, and what came back. Answered by `filterAuditEntries` over entries already in hand, or by `TomSqlAuditSink.query`, which pushes the filter into the table's indexes. The result counts what it examined and what the lossy projection matched but the record did not. |
 
 ### The anchor — what the chain alone cannot catch
 

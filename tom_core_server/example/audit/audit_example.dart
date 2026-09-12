@@ -438,9 +438,39 @@ Future<void> run() async {
     'what a retention sweep leaves behind is a suffix, not an alarm',
   );
 
+  // 11. Asking the trail a question. The chain and the anchor establish that
+  //     what is stored is what was written; a query is what an auditor
+  //     actually does with it afterwards. `TomAuditQuery` is the question as a
+  //     value, so the same one can be put to a trail in memory, in a file or
+  //     in a table — here, to the memory sink through `filterAuditEntries`.
+  final grants = filterAuditEntries(
+    sink.entries,
+    const TomAuditQuery(target: 'Grant'),
+  );
+  print(
+    '11. grants in the trail      : ${grants.entries.length} of '
+    '${grants.examined} entries examined',
+  );
+  check(
+    grants.entries.length == 2 && grants.examined == 3,
+    'a query narrows to the entries it asked for and says what it looked at',
+  );
+  // Newest first by default, which is the order an auditor reads in. Over a
+  // relational trail the same query is `await sqlSink.query(...)`, which pushes
+  // the filter into the table's indexes rather than reading every row back —
+  // and re-judges each row against the record, because the indexed columns are
+  // truncated and may narrow a search but never decide it.
+  check(
+    grants.entries.first.index > grants.entries.last.index,
+    'the newest matching entry is the one an auditor is shown first',
+  );
+  check(
+    !grants.hasMore,
+    'and the result says plainly that this is the whole answer, not a page',
+  );
+
   // Closing publishes one final anchor: it pins the head the chain ends on,
   // and the close completes only once that anchor is in the store.
-  await publisher.close();
   await anchors.close();
   TomAuditTrail.uninstall();
 }
