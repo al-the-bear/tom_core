@@ -21,6 +21,7 @@ schedule.
   - [9. Stopping the timers](#9-stopping-the-timers)
   - [10. Installing a manager](#10-installing-a-manager)
 - [Registering a Cache](#registering-a-cache)
+  - [Leaving the registry](#leaving-the-registry)
 - [Reading, Storing, Removing](#reading-storing-removing)
 - [Expiry and Bounds](#expiry-and-bounds)
   - [A cache is bounded unless you say otherwise](#a-cache-is-bounded-unless-you-say-otherwise)
@@ -256,17 +257,21 @@ Replacing the current manager discards the registered caches with it, which is
 what makes it useful between tests. The positional flag says caches are served
 from this isolate; in the main isolate it is forced to `true` regardless.
 
-What it discards is the **registry**, not the caches' timers. A discarded cache
-is unreachable but still installed in the event loop, still firing and still
-keeping the isolate alive — so timers have to be stopped *before* the manager
-holding them goes, at which point there is no longer any handle to stop them
-with. That is why step 9 comes first.
+What it discards is the **registry**, not the caches' timers — and that is
+deliberate, because the swap cannot know whether it is final. The *outgoing*
+manager is what comes back, which is the handle for releasing it when it is:
+
+```dart
+TomCacheManager.setCurrent(TomCacheManager(true)).dispose();
+```
+
+See [Leaving the registry](#leaving-the-registry).
 
 ## Registering a Cache
 
 Create a cache and register it once at startup — `TomCacheManager.addCache` is
-the only entrance, and there is no counterpart that removes one (see
-[Not Yet Implemented](#not-yet-implemented)). A cache is named either by a string
+the entrance, and `removeCache` the way out (see [Leaving the
+registry](#leaving-the-registry)). A cache is named either by a string
 or, through `TomCache.forType`, after the Dart type it holds, which is what pairs
 it with the `…TypeCache` helpers. The constructor's four knobs are independent
 and all optional: [step 1](#1-registering-a-cache-and-using-it) registers a named
@@ -283,6 +288,30 @@ TomCacheManager.addCache(
   ),
 );
 ```
+
+### Leaving the registry
+
+A cache installs its periodic timers in its constructor, so leaving the registry
+is not on its own enough to stop one: a cache nothing can look up goes on
+sweeping and clearing its map, and a pending timer keeps the isolate alive.
+Unregistering and stopping are therefore one operation.
+
+| Call | Does |
+| ---- | ---- |
+| `TomCacheManager.removeCache(name)` | unregisters that cache, stops its timers, and returns it — `null` if no such cache was registered |
+| `manager.dispose()` | the same for every cache the manager holds, and empties the registry |
+| `TomCacheManager.setCurrent(other)` | swaps the registry and **stops nothing**, returning the displaced manager |
+
+`setCurrent` stays a pure swap because it cannot know whether the swap is final.
+A caller that swaps a manager out in order to swap it back would get its caches
+returned dead, and a `setCurrent` that restarted them on the way back would be
+doing two things and guessing which was wanted. So it hands back the outgoing
+manager instead, and `dispose()` is how a caller says "finished with this one".
+
+Neither call destroys anything. `stopTimers` is reversible by contract, so a
+removed cache keeps its entries and `createTimers()` starts it again — which is
+what a caller re-registering it later, or reading the map one last time, needs.
+`dispose` is idempotent, so a shutdown path that reaches it twice is not a fault.
 
 ## Reading, Storing, Removing
 
@@ -607,17 +636,9 @@ local one.
 
 ## Not Yet Implemented
 
-- **A cache that leaves the registry keeps its timers.**
-  `TomCacheManager.setCurrent` swaps the whole registry and nothing stops the
-  discarded caches' timers, which carry on sweeping maps no lookup can reach and
-  keep the isolate alive. There is also no per-cache deregistration —
-  `addCache` has no counterpart — so `setCurrent` is the only way to drop a
-  registration, and it is the leaky one. Call `stopTimers()` on a cache you are
-  finished with.
-
-It is pinned by a test in `test/cache_test.dart` — the timer half of it, in the
-group "The limits the documentation records" — so closing it turns a test red
-rather than leaving this section quietly wrong.
+Nothing. The module's two standing decisions — what `getEntry` answers, and the
+cost of a crossing — are stated where the behaviour is, under [Expiry and
+Bounds](#expiry-and-bounds) and [Isolate Model](#isolate-model) respectively.
 
 ## Verification
 

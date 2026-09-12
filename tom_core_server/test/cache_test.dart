@@ -339,9 +339,16 @@ void main() {
       expect(TomCacheManager().useInThisIsolate, isTrue);
     });
 
-    test('setCurrent swaps the active manager', () {
+    test('setCurrent installs the new manager and hands back the old', () {
+      // The outgoing one is the only answer worth having: the incoming one is
+      // the argument the caller just passed, while the outgoing one is the
+      // handle for releasing the registry that was just displaced.
+      final outgoing = TomCacheManager();
+      TomCacheManager.setCurrent(outgoing);
       final replacement = TomCacheManager();
-      expect(TomCacheManager.setCurrent(replacement), same(replacement));
+
+      expect(TomCacheManager.setCurrent(replacement), same(outgoing));
+      expect(TomCacheManager.getCache('anything'), isNull);
     });
 
     test('setCurrent discards the caches the replaced manager held', () {
@@ -1814,52 +1821,107 @@ void main() {
     );
   });
 
-  group('The limits the documentation records', () {
-    // `doc/cache.md`'s "Not Yet Implemented" section states this as the
-    // module's behaviour today. Prose cannot go red on its own, so closing the
-    // limit turns the matching test red, which is the signal that the section
-    // has a line to lose.
-    //
-    // The module's two stated decisions are pinned beside the behaviour they
-    // describe instead of here: `getEntry` skipping expiry in the "getEntry
-    // (direct)" group, and the per-operation crossing in "Worker-isolate
-    // forwarding decision".
+  group('Leaving the registry stops the timers', () {
+    // A cache installs its periodic timers in its constructor, so leaving the
+    // registry is not on its own enough to stop one: a cache nothing can look
+    // up would go on sweeping and clearing its map, and a pending timer keeps
+    // the isolate alive. Unregistering and stopping are therefore one
+    // operation.
 
-    test('an explicitly unbounded cache keeps every entry it is given', () async {
-      // `maximumEntries: null` is the opt-out, and it opts out completely:
-      // nothing caps the backing map, and a value stored into a cache without
-      // `deleteEntriesAfterSeconds` carries no `deletionTime`, so the sweep has
-      // nothing to find either. Both eviction mechanisms decline and the map
-      // grows for the life of the process. That is now something a caller has
-      // to ask for.
-      final cache = TomCache(
-        'unbounded',
-        deletionIntervalSeconds: null,
-        maximumEntries: null,
-      );
+    test('removeCache unregisters and stops the cache', () {
+      final cache = TomCache('removable', deletionIntervalSeconds: 1);
       TomCacheManager.addCache(cache);
-      for (var i = 0; i < 5000; i++) {
-        await TomCache.toNameCache('unbounded', 'k$i', i);
-      }
-      expect(cache.maximumEntries, isNull);
-      // The first key survives 4999 later writes: nothing evicted it.
-      expect(await TomCache.fromNameCache<int>('unbounded', 'k0'), 0);
-      expect(await TomCache.fromNameCache<int>('unbounded', 'k4999'), 4999);
-      // And it is not merely unswept-yet — it carries no expiry to sweep.
-      expect(cache.getEntry('k0')!.deletionTime, isNull);
+      expect(cache.deletionTimer!.isActive, isTrue);
+
+      final removed = TomCacheManager.removeCache('removable');
+
+      expect(removed, same(cache));
+      expect(TomCacheManager.getCache('removable'), isNull);
+      expect(cache.deletionTimer, isNull);
+      expect(cache.clearanceTimer, isNull);
     });
 
-    test('setCurrent leaves the discarded caches sweeping', () {
-      // The registry is swapped, but the caches that went with it keep their
-      // timers: they carry on firing against maps no lookup can reach, and each
-      // one keeps the isolate alive. The tear-down below is the workaround the
-      // absence of a deregistration API forces, and is itself the evidence.
-      final orphan = TomCache('orphan', deletionIntervalSeconds: 1);
-      addTearDown(orphan.stopTimers);
-      TomCacheManager.addCache(orphan);
+    test('removeCache answers null for a name nobody registered', () {
+      // Not an error: a caller tidying up should not have to know whether it
+      // got as far as registering.
+      expect(TomCacheManager.removeCache('never-registered'), isNull);
+    });
+
+    test('a removed cache is restartable, not destroyed', () {
+      // `stopTimers` is reversible by contract, and removal uses it rather
+      // than some stronger teardown — the caller may want the map's contents,
+      // or may re-register it later.
+      final cache = TomCache('removable', clearIntervalSeconds: 1);
+      TomCacheManager.addCache(cache);
+      cache.putEntry('k', TomCacheEntry('v'));
+
+      TomCacheManager.removeCache('removable');
+
+      expect(cache.getEntry('k')!.value, 'v');
+      cache.createTimers();
+      addTearDown(cache.stopTimers);
+      expect(cache.clearanceTimer!.isActive, isTrue);
+    });
+
+    test('dispose stops every cache and empties the registry', () {
+      final one = TomCache('one', deletionIntervalSeconds: 1);
+      final two = TomCache('two', clearIntervalSeconds: 1);
+      final manager = TomCacheManager();
+      TomCacheManager.setCurrent(manager);
+      TomCacheManager.addCache(one);
+      TomCacheManager.addCache(two);
+
+      manager.dispose();
+
+      expect(one.deletionTimer, isNull);
+      expect(two.clearanceTimer, isNull);
+      expect(TomCacheManager.getCache('one'), isNull);
+      expect(TomCacheManager.getCache('two'), isNull);
+    });
+
+    test('dispose is idempotent', () {
+      // A shutdown path may reach it twice, and the second call must not throw
+      // on an empty registry.
+      final manager = TomCacheManager();
+      TomCacheManager.setCurrent(manager);
+      TomCacheManager.addCache(TomCache('x', deletionIntervalSeconds: 1));
+
+      manager.dispose();
+      expect(manager.dispose, returnsNormally);
+    });
+
+    test('setCurrent stays a pure swap', () {
+      // Deliberately: a caller that swaps a manager out intending to swap it
+      // back would get its caches returned dead, and a `setCurrent` that
+      // restarted them on the way back would be doing two things. Stopping is
+      // the caller's call, through `dispose` — which is why the timer keeps
+      // running here.
+      final outgoing = TomCache('outgoing', deletionIntervalSeconds: 1);
+      addTearDown(outgoing.stopTimers);
+      TomCacheManager.addCache(outgoing);
+
       TomCacheManager.setCurrent(TomCacheManager());
-      expect(TomCacheManager.getCache('orphan'), isNull);
-      expect(orphan.deletionTimer!.isActive, isTrue);
+
+      expect(TomCacheManager.getCache('outgoing'), isNull);
+      expect(
+        outgoing.deletionTimer!.isActive,
+        isTrue,
+        reason:
+            'the swap does not decide the outgoing caches are finished — '
+            '`dispose` is how a caller says so',
+      );
+    });
+
+    test('the manager a swap returns is the one that can dispose it', () {
+      // The whole reason `setCurrent` answers the outgoing manager: it is the
+      // handle a caller needs to release what it just displaced.
+      final cache = TomCache('held', deletionIntervalSeconds: 1);
+      TomCacheManager.addCache(cache);
+
+      final previous = TomCacheManager.setCurrent(TomCacheManager());
+      previous.dispose();
+
+      expect(cache.deletionTimer, isNull);
     });
   });
 
@@ -2036,6 +2098,30 @@ void main() {
       addTearDown(cache.stopTimers);
 
       expect(cache.maximumEntries, isNull);
+    });
+
+    test('an explicitly unbounded cache keeps every entry it is given', () async {
+      // `maximumEntries: null` is the opt-out, and it opts out completely:
+      // nothing caps the backing map, and a value stored into a cache without
+      // `deleteEntriesAfterSeconds` carries no `deletionTime`, so the sweep has
+      // nothing to find either. Both eviction mechanisms decline and the map
+      // grows for the life of the process. That is now something a caller has
+      // to ask for.
+      final cache = TomCache(
+        'unbounded',
+        deletionIntervalSeconds: null,
+        maximumEntries: null,
+      );
+      TomCacheManager.addCache(cache);
+      for (var i = 0; i < 5000; i++) {
+        await TomCache.toNameCache('unbounded', 'k$i', i);
+      }
+      expect(cache.maximumEntries, isNull);
+      // The first key survives 4999 later writes: nothing evicted it.
+      expect(await TomCache.fromNameCache<int>('unbounded', 'k0'), 0);
+      expect(await TomCache.fromNameCache<int>('unbounded', 'k4999'), 4999);
+      // And it is not merely unswept-yet — it carries no expiry to sweep.
+      expect(cache.getEntry('k0')!.deletionTime, isNull);
     });
 
     test('zero is still refused, not read as the opt-out', () {

@@ -84,10 +84,29 @@ class TomCacheManager {
     }
   }
 
-  /// Replaces the process-wide current manager and returns it. Useful in tests
-  /// or to install a pre-populated manager.
-  static TomCacheManager setCurrent(TomCacheManager manager) =>
-      _current = manager;
+  /// Replaces the process-wide current manager and returns the one it replaced.
+  /// Useful in tests or to install a pre-populated manager.
+  ///
+  /// **The *outgoing* manager is what comes back**, which is the only answer
+  /// that is worth anything: the incoming one is the argument the caller just
+  /// passed. A caller that installs a fresh manager without having kept a
+  /// reference to the old one would otherwise have displaced a registry it can
+  /// no longer reach — whose caches are still sweeping.
+  ///
+  /// **A pure swap: the outgoing caches keep running.** Their timers are not
+  /// stopped, and that is deliberate — a caller swapping a manager out in order
+  /// to swap it back would otherwise get its caches returned dead, and a
+  /// `setCurrent` that restarted them on the way back would be doing two things
+  /// and guessing which. The returned manager is the handle for releasing what
+  /// was displaced: call [dispose] on it when the swap is final.
+  ///
+  /// See [removeCache] to release a single cache, and [dispose] for a whole
+  /// registry.
+  static TomCacheManager setCurrent(TomCacheManager manager) {
+    final previous = _current;
+    _current = manager;
+    return previous;
+  }
 
   static var _current = TomCacheManager();
 
@@ -97,6 +116,46 @@ class TomCacheManager {
   /// Registers [cache] under its [TomCache.cacheName].
   static void addCache(TomCache cache) {
     _current._caches[cache.cacheName] = cache;
+  }
+
+  /// Unregisters the cache named [name], **stops its timers**, and returns it;
+  /// `null` when no cache of that name was registered.
+  ///
+  /// The counterpart [addCache] lacked. A cache installs its periodic timers in
+  /// its constructor, so one that merely leaves the registry goes on sweeping
+  /// and clearing a map no lookup can reach — and a pending timer keeps the
+  /// isolate alive. Unregistering and stopping are therefore one operation:
+  /// splitting them would leave the caller holding the half that matters and
+  /// no reason to think so.
+  ///
+  /// The cache is **returned rather than destroyed**, and [TomCache.stopTimers]
+  /// is reversible: its entries are still there, and
+  /// [TomCache.createTimers] restarts it. A caller that wants the contents, or
+  /// means to re-register it later, has both.
+  ///
+  /// An unknown name answers `null` rather than raising: a caller tidying up
+  /// should not have to know whether it got as far as registering.
+  static TomCache? removeCache(String name) {
+    final removed = _current._caches.remove(name);
+    removed?.stopTimers();
+    return removed;
+  }
+
+  /// Unregisters every cache this manager holds and stops each one's timers.
+  ///
+  /// What a caller invokes when it is finished with a registry — a test between
+  /// cases, a process shutting down, or the manager [setCurrent] handed back
+  /// after a final swap. `setCurrent` deliberately does not do this itself; see
+  /// there for why.
+  ///
+  /// Idempotent: a second call finds an empty registry and does nothing, so a
+  /// shutdown path that reaches it twice is not a fault. The caches themselves
+  /// survive and are restartable, exactly as with [removeCache].
+  void dispose() {
+    for (final cache in _caches.values) {
+      cache.stopTimers();
+    }
+    _caches.clear();
   }
 
   /// The registry itself. Keyed by [TomCache.cacheName], which is the only key

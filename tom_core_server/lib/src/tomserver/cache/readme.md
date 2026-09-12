@@ -26,7 +26,7 @@ being the deployment's decision rather than the framework's.
 | ---- | -------------- |
 | `TomCache` | A named cache; constructor takes `cacheName` plus `deleteEntriesAfterSeconds`, `maximumEntries`, and clear/deletion intervals — each positive or `null`, since `null` is how a feature is switched off and a non-positive value would give a black-hole cache or a busy-loop sweep. **`maximumEntries` defaults to `TomCache.defaultMaximumEntries` (100)**: a cache is LRU-bounded unless the caller passes `null`, because whether growing without a bound is a leak depends on the shape of the key and the cache cannot see it. `TomCache.forType(Type)` names it after a type. Its clear and deletion timers run in `Zone.root` rather than the zone that constructed the cache, and stop through `stopTimers()`. |
 | `TomCacheEntry` | One cached value (`value`) with an optional `deletionTime`. The value is non-nullable: a read answers `null` for a miss and for an expiry, so an entry holding `null` would be one no read could surface. |
-| `TomCacheManager` | Per-isolate registry; `getCache(name)` / `addCache`, and the cross-isolate forwarding decision (`useInThisIsolate`). |
+| `TomCacheManager` | Per-isolate registry; `getCache(name)` / `addCache` / `removeCache(name)`, `dispose()`, and the cross-isolate forwarding decision (`useInThisIsolate`). A cache installs its timers in its constructor, so leaving the registry has to stop them too — `removeCache` and `dispose` do, while `setCurrent` stays a pure swap and hands back the displaced manager for the caller to `dispose` when the swap is final. |
 
 **Two reads, and only one of them expires.** `TomCache.fromNameCache` is the
 *value*-level read: it applies the expiry rule, dropping an entry whose

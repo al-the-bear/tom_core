@@ -34,6 +34,25 @@
 
 ### Changed
 
+- **Leaving the cache registry stops the timers (tcopen112).** A cache installs
+  its periodic timers in its constructor, and the registry had `addCache` with
+  no counterpart: the only way to drop a registration was `setCurrent`, which
+  swapped the whole map and stopped nothing, so a discarded cache went on
+  sweeping a map no lookup could reach while its pending timer kept the isolate
+  alive.
+
+  `TomCacheManager.removeCache(name)` unregisters one cache and stops it;
+  `dispose()` does the same for a whole registry and is idempotent. Neither
+  destroys anything — `stopTimers` is reversible, so a removed cache keeps its
+  entries and `createTimers()` restarts it.
+
+  `setCurrent` stays a pure swap: stopping the outgoing caches there would be
+  wrong for a caller swapping a manager out in order to swap it back. It now
+  returns **the manager it replaced** rather than the one just passed, which is
+  the handle for disposing what was displaced — without it the remedy would be
+  unreachable for a caller that installed a fresh manager without keeping a
+  reference.
+
 - **The cache mutators say what they did (tcopen111).** `toNameCache`,
   `toTypeCache`, `removeFromNameCache` and `removeFromTypeCache` return
   `Future<bool>`: a store answers whether the key was already held, a removal

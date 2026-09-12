@@ -155,15 +155,22 @@ out forwarding, which it never does.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `setCurrent` | `static TomCacheManager setCurrent(TomCacheManager manager)` | Replaces the process-wide current manager and returns it. |
+| `setCurrent` | `static TomCacheManager setCurrent(TomCacheManager manager)` | Replaces the process-wide current manager and returns **the one it replaced** — the only answer worth having, since the incoming manager is the argument just passed, while the outgoing one is the handle for releasing the registry that was displaced. A **pure swap**: the outgoing caches keep running, because the swap cannot know whether it is final — a caller swapping a manager out to swap it back would get its caches returned dead. Call `dispose()` on the returned manager when it is. |
 | `getCache` | `static TomCache? getCache(String name)` | Returns the cache registered under `name`, or `null` if none is. |
 | `addCache` | `static void addCache(TomCache cache)` | Registers `cache` under its `cacheName`. |
+| `removeCache` | `static TomCache? removeCache(String name)` | Unregisters the cache named `name`, **stops its timers**, and returns it; `null` when none was registered — a caller tidying up should not have to know whether it got as far as registering. Unregistering and stopping are one operation because a cache installs its timers in its constructor, so one that merely leaves the registry goes on sweeping a map no lookup can reach. The cache is returned rather than destroyed: `stopTimers` is reversible, so its entries survive and `createTimers()` restarts it. |
 
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `useInThisIsolate` | `bool` | Whether caches are served from this isolate; always `true` in the main isolate, `false` in a worker forwards missing-cache operations to the creator. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `dispose` | `void dispose()` | Unregisters every cache this manager holds and stops each one's timers — what a caller invokes when it is finished with a registry: a test between cases, a process shutting down, or the manager `setCurrent` handed back after a final swap. Idempotent, so a shutdown path reaching it twice is not a fault; the caches survive and are restartable. |
 
 ### TomCache
 
