@@ -610,6 +610,146 @@ class TomOAuthFlow {
     return TomOAuthTokenGrant.fromTokenResponse(response, previous: grant);
   }
 
+  /// Revokes [grant] at [providerId]'s revocation endpoint (RFC 7009).
+  ///
+  /// Answers `true` when the provider was asked and did not refuse, and
+  /// `false` when there was nothing to ask — the provider configures no
+  /// `revocationEndpoint`, or the grant carries no token. The two are different
+  /// facts and a caller acts on them differently: nothing-to-ask is the
+  /// ordinary shape of a deployment whose provider publishes no such endpoint,
+  /// while a refusal is worth an operator's attention.
+  ///
+  /// **The refresh token is what is revoked when there is one.** Revoking it
+  /// ends the chain: an access token outlives it by minutes, where a refresh
+  /// token outlives a disconnect by months. The access token is the fallback
+  /// for a grant that never carried a refresh token at all.
+  ///
+  /// RFC 7009 specifies an empty `200` for success *and* for a token the
+  /// provider does not recognise, which is what makes revoking a grant this
+  /// deployment may not have minted harmless. This transport sees bodies rather
+  /// than statuses, so an empty body is read as that success, and a body that
+  /// decodes to an object carrying `error` is read as the refusal it is.
+  ///
+  /// Throws [TomOAuthException] (`oauth.flow.revocation_rejected`) on a
+  /// refusal, and lets a transport failure out as it comes. Callers that must
+  /// not fail for either — [TomExternalIdentityStore.unlink] is the one in this
+  /// module — catch around it; see [revokeGrantsFor].
+  Future<bool> revokeGrant({
+    required String providerId,
+    required TomOAuthTokenGrant grant,
+  }) async {
+    final provider = providers[providerId];
+    final endpoint = provider.revocationEndpoint;
+    if (endpoint == null || endpoint.isEmpty) return false;
+
+    final refreshToken = grant.refreshToken;
+    final revoking = refreshToken != null && refreshToken.isNotEmpty
+        ? (token: refreshToken, hint: 'refresh_token')
+        : (token: grant.accessToken, hint: 'access_token');
+    if (revoking.token.isEmpty) return false;
+
+    final headers = <String, String>{'Accept': 'application/json'};
+    final secret = provider.clientSecret;
+    if (secret != null) {
+      headers['Authorization'] =
+          'Basic ${base64.encode(utf8.encode('${Uri.encodeComponent(provider.clientId)}:${Uri.encodeComponent(secret)}'))}';
+    }
+
+    final body = await transport.postForm(Uri.parse(endpoint), {
+      'token': revoking.token,
+      'token_type_hint': revoking.hint,
+      'client_id': provider.clientId,
+    }, headers);
+
+    if (body.trim().isEmpty) return true;
+    Object? decoded;
+    try {
+      decoded = jsonDecode(body);
+    } catch (_) {
+      // Not JSON, and not empty. Nothing in RFC 7009 puts a failure here, and
+      // a provider that answers prose to a successful revocation is common
+      // enough that reading it as a refusal would report failures that are not.
+      return true;
+    }
+    if (decoded is Map && decoded['error'] != null) {
+      throw TomOAuthException(
+        'oauth.flow.revocation_rejected',
+        "The provider refused to revoke the grant for '$providerId': "
+            "${decoded['error']} ${decoded['error_description'] ?? ''}",
+      );
+    }
+    return true;
+  }
+
+  /// Revokes whatever is held for `(issuer, subject)` at every configured
+  /// registration of that issuer, and never throws.
+  ///
+  /// What [TomExternalIdentityStore.unlink] calls, which is why it cannot fail:
+  /// refusing to unlink because a provider is unreachable would leave the
+  /// deployment holding the credential it was just told to drop — the opposite
+  /// of what pressing disconnect asked for. So every failure is logged and the
+  /// deletion proceeds, and the honest reading of the result is *best effort*.
+  ///
+  /// **Every registration sharing the issuer is asked.** Two registrations
+  /// against one IdP is a shape this module supports, and the token store is
+  /// keyed by issuer rather than by registration — so which client credentials
+  /// minted a grant is not recorded. Asking all of them is what makes the
+  /// revocation reliable, and costs nothing: RFC 7009 makes a token the
+  /// provider does not recognise a success.
+  ///
+  /// Answers how many registrations accepted the revocation.
+  static Future<int> revokeGrantsFor({
+    required String issuer,
+    required String subject,
+    TomOAuthProviders? providers,
+    TomOAuthTokenStore? tokenStore,
+    TomOAuthTokenTransport? transport,
+  }) async {
+    final installedProviders =
+        providers ??
+        (TomBean.getBeanByType(TomOAuthProviders) as TomOAuthProviders?);
+    if (installedProviders == null) return 0;
+
+    final store = tokenStore ?? TomOAuthTokenStore.resolve();
+    if (store == null) return 0;
+
+    final TomOAuthTokenGrant? grant;
+    try {
+      grant = await store.read(issuer, subject);
+    } catch (e) {
+      tomLog.warn(
+        'Could not read the grant for $subject at $issuer before unlinking, '
+        'so nothing was revoked at the provider: $e',
+      );
+      return 0;
+    }
+    if (grant == null) return 0;
+
+    final flow = TomOAuthFlow(
+      providers: installedProviders,
+      stateStore: TomOAuthMemoryStateStore(),
+      transport: transport ?? TomOAuthTokenTransport.resolve(),
+    );
+
+    var revoked = 0;
+    for (final provider in installedProviders.providers.values) {
+      if (provider.issuer != issuer) continue;
+      try {
+        if (await flow.revokeGrant(providerId: provider.id, grant: grant)) {
+          revoked++;
+        }
+      } catch (e) {
+        tomLog.warn(
+          'Revoking the grant for $subject at provider "${provider.id}" '
+          'failed: $e. The link and the local copy of the credential are being '
+          'deleted anyway — the credential remains valid at the provider until '
+          'it expires or the user withdraws consent there.',
+        );
+      }
+    }
+    return revoked;
+  }
+
   /// A live access token for `(issuer, subject)` at [providerId], refreshing it
   /// when it is within [minimumValidity] of expiry.
   ///

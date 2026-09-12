@@ -173,6 +173,20 @@ class TomOAuthProviderConfig {
   /// configurable set of OIDC providers".
   final String? userInfoEndpoint;
 
+  /// Where a grant is revoked (RFC 7009), or `null` when the provider
+  /// configures none.
+  ///
+  /// Optional, and absent is the majority case — a great many providers
+  /// publish no revocation endpoint at all, and a deployment that holds no
+  /// tokens has nothing to revoke. What it is *not* is a value to default:
+  /// guessing an address for a security-relevant call would mean posting a
+  /// live credential at a URL nobody configured.
+  ///
+  /// Where it is set, [TomExternalIdentityStore.unlink] uses it, so pressing
+  /// disconnect ends the credential rather than merely forgetting it. See
+  /// [TomOAuthFlow.revokeGrant].
+  final String? revocationEndpoint;
+
   /// The client id registered with the provider.
   final String clientId;
 
@@ -271,6 +285,7 @@ class TomOAuthProviderConfig {
     required this.clientId,
     required this.redirectUri,
     this.userInfoEndpoint,
+    this.revocationEndpoint,
     this.clientSecret,
     this.scopes = const ['openid', 'email', 'profile'],
     this.usePkce = true,
@@ -319,6 +334,7 @@ class TomOAuthProviderConfig {
       authorizationEndpoint: required('authorizationEndpoint'),
       tokenEndpoint: required('tokenEndpoint'),
       userInfoEndpoint: optional('userInfoEndpoint'),
+      revocationEndpoint: optional('revocationEndpoint'),
       clientId: required('clientId'),
       clientSecret: optional('clientSecret'),
       redirectUri: required('redirectUri'),

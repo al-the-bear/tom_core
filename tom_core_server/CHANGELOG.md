@@ -26,6 +26,27 @@
 
 ### Added
 
+- **Unlinking an external identity revokes the grant at the provider
+  (tcopen105).** `unlink` deleted the link and the framework's copy of the
+  credential and told the provider nothing — so a user who pressed disconnect
+  had this deployment forget a token that went on working, and any copy taken
+  before the unlink stayed live for as long as the provider allowed, which for a
+  refresh token is months.
+
+  Revocation joins the provider-call family it was the only absent member of.
+  `TomOAuthProviderConfig.revocationEndpoint` is where the URL goes (optional —
+  a great many providers publish none), `TomOAuthFlow.revokeGrant` makes the RFC
+  7009 call, and `revokeGrantsFor` is what `unlink` invokes. The refresh token is
+  what is revoked when there is one: it ends the chain.
+
+  **Best effort, and the deletion happens regardless.** Refusing to unlink
+  because a provider is unreachable would leave the deployment holding the
+  credential it was told to drop. Failures are logged, naming what stays valid
+  where. Every registration sharing the issuer is asked, because the token store
+  is keyed by issuer and does not record which client credentials minted a
+  grant; an unrecognised token is a success by the RFC, so the extra call is
+  free.
+
 - **The server principal renews itself before its token expires (tcopen103).**
   `loginAndInstall` installed the deployment's principal once, at start-up, and
   nothing re-logged in. That principal caps every user's grants, so a change

@@ -40,11 +40,14 @@ TomOAuthProviderConfig _oidcProvider({
   TomOAuthProvisioning provisioning = TomOAuthProvisioning.refuse,
   bool usePkce = true,
   Duration clockSkew = const Duration(seconds: 60),
+  String? revocationEndpoint,
+  String id = 'stub',
 }) => TomOAuthProviderConfig(
-  id: 'stub',
+  id: id,
   issuer: _issuer,
   authorizationEndpoint: '$_issuer/authorize',
   tokenEndpoint: '$_issuer/token',
+  revocationEndpoint: revocationEndpoint,
   clientId: _clientId,
   clientSecret: 'sh-sh-secret',
   redirectUri: 'https://app.example.test/oauth/callback',
@@ -152,6 +155,13 @@ class _StubTransport implements TomOAuthTokenTransport {
   /// How many code exchanges were asked for.
   int calls = 0;
 
+  /// The URI the last form post went to.
+  Uri? postedUri;
+
+  /// The body answered to a post, when it should not be [tokenResponse] —
+  /// a revocation answers an empty body, not a token.
+  String? formResponse;
+
   /// The form the last code exchange posted.
   Map<String, String>? postedForm;
 
@@ -168,8 +178,10 @@ class _StubTransport implements TomOAuthTokenTransport {
     Map<String, String> headers,
   ) async {
     calls++;
+    postedUri = uri;
     postedForm = form;
     postedHeaders = headers;
+    if (formResponse != null) return formResponse!;
     return rawTokenBody ?? jsonEncode(tokenResponse);
   }
 
@@ -3053,6 +3065,267 @@ void main() {
   });
 
   // ===========================================================================
+  // REVOCATION
+  // ===========================================================================
+
+  group('revoking a grant at the provider', () {
+    // Unlinking deleted the framework's copy of the credential and told the
+    // provider nothing, so a user who pressed disconnect had the deployment
+    // forget a token that went on working — for a refresh token, possibly for
+    // months, in every copy taken before the unlink.
+    TomOAuthTokenGrant grant({String? refreshToken = 'rt-1'}) =>
+        TomOAuthTokenGrant(
+          accessToken: 'at-1',
+          refreshToken: refreshToken,
+          obtainedAt: DateTime.now().toUtc(),
+        );
+
+    TomOAuthFlow flowOver(
+      TomOAuthProviderConfig provider,
+      _StubTransport transport,
+    ) => TomOAuthFlow(
+      providers: TomOAuthProviders({provider.id: provider}),
+      stateStore: TomOAuthMemoryStateStore(),
+      transport: transport,
+    );
+
+    test('the endpoint is read from the provider configuration', () {
+      final configured = TomOAuthProviders.fromConfiguration(
+        TomServerConfigResourceProvider.from({
+          'oauth': {
+            'providers': {
+              'idp': {
+                'issuer': _issuer,
+                'authorizationEndpoint': '$_issuer/authorize',
+                'tokenEndpoint': '$_issuer/token',
+                'revocationEndpoint': '$_issuer/revoke',
+                'clientId': _clientId,
+                'redirectUri': 'https://app.example.test/oauth/callback',
+              },
+            },
+          },
+        }),
+      );
+
+      expect(configured['idp'].revocationEndpoint, '$_issuer/revoke');
+    });
+
+    test('a provider that configures none reads null, not empty', () {
+      // Absent is the majority case and has to stay distinguishable from
+      // configured-but-blank, which is a configuration error rather than a
+      // provider without revocation.
+      expect(_oidcProvider().revocationEndpoint, isNull);
+    });
+
+    test('the refresh token is what is revoked, by RFC 7009', () async {
+      // Revoking the refresh token revokes the chain: an access token outlives
+      // it by minutes, where a refresh token outlives the unlink by months.
+      final transport = _StubTransport()..formResponse = '';
+      final flow = flowOver(
+        _oidcProvider(revocationEndpoint: '$_issuer/revoke'),
+        transport,
+      );
+
+      final revoked = await flow.revokeGrant(
+        providerId: 'stub',
+        grant: grant(),
+      );
+
+      expect(revoked, isTrue);
+      expect(transport.postedUri.toString(), '$_issuer/revoke');
+      expect(transport.postedForm!['token'], 'rt-1');
+      expect(transport.postedForm!['token_type_hint'], 'refresh_token');
+      expect(
+        transport.postedHeaders!['Authorization'],
+        startsWith('Basic '),
+        reason:
+            'a revocation is a client-authenticated call like the exchange — '
+            'without it a provider cannot tell who is asking',
+      );
+    });
+
+    test('a grant with no refresh token revokes the access token', () async {
+      final transport = _StubTransport()..formResponse = '';
+      final flow = flowOver(
+        _oidcProvider(revocationEndpoint: '$_issuer/revoke'),
+        transport,
+      );
+
+      await flow.revokeGrant(
+        providerId: 'stub',
+        grant: grant(refreshToken: null),
+      );
+
+      expect(transport.postedForm!['token'], 'at-1');
+      expect(transport.postedForm!['token_type_hint'], 'access_token');
+    });
+
+    test('a provider with no revocation endpoint is not called', () async {
+      final transport = _StubTransport();
+      final flow = flowOver(_oidcProvider(), transport);
+
+      expect(
+        await flow.revokeGrant(providerId: 'stub', grant: grant()),
+        isFalse,
+        reason:
+            'false says nothing was asked, which is different from asked and '
+            'refused — the caller logs one and worries about the other',
+      );
+      expect(transport.calls, isZero);
+    });
+
+    test('a provider that refuses says so', () async {
+      final transport = _StubTransport()
+        ..formResponse = '{"error":"unsupported_token_type"}';
+      final flow = flowOver(
+        _oidcProvider(revocationEndpoint: '$_issuer/revoke'),
+        transport,
+      );
+
+      await expectLater(
+        flow.revokeGrant(providerId: 'stub', grant: grant()),
+        throwsA(
+          isA<TomOAuthException>().having(
+            (e) => e.key,
+            'key',
+            'oauth.flow.revocation_rejected',
+          ),
+        ),
+      );
+    });
+
+    test('an empty answer is the success RFC 7009 specifies', () async {
+      final transport = _StubTransport()..formResponse = '   ';
+      final flow = flowOver(
+        _oidcProvider(revocationEndpoint: '$_issuer/revoke'),
+        transport,
+      );
+
+      expect(
+        await flow.revokeGrant(providerId: 'stub', grant: grant()),
+        isTrue,
+      );
+    });
+
+    group('unlinking revokes first, and unlinks regardless', () {
+      late _StubTransport transport;
+      late TomMemoryOAuthTokenStore tokens;
+      late TomMemoryExternalIdentityStore identities;
+
+      setUp(() async {
+        TomBean.resetBeanContext();
+        transport = _StubTransport()..formResponse = '';
+        tokens = TomMemoryOAuthTokenStore();
+        identities = TomMemoryExternalIdentityStore(tokenStore: tokens);
+        await identities.link(
+          const TomExternalIdentity(issuer: _issuer, subject: 'sub-1'),
+          'alice',
+        );
+        await tokens.store(
+          _issuer,
+          'sub-1',
+          TomOAuthTokenGrant(
+            accessToken: 'at-1',
+            refreshToken: 'rt-1',
+            obtainedAt: DateTime.now().toUtc(),
+          ),
+        );
+      });
+
+      tearDown(TomBean.resetBeanContext);
+
+      test('the provider is told before the grant is forgotten', () async {
+        TomBean.withType(
+          TomOAuthProviders,
+          TomOAuthProviders({
+            'stub': _oidcProvider(revocationEndpoint: '$_issuer/revoke'),
+          }),
+        );
+        TomBean.withType(TomOAuthTokenTransport, transport);
+
+        await identities.unlink(_issuer, 'sub-1');
+
+        expect(
+          transport.postedForm!['token'],
+          'rt-1',
+          reason:
+              'the grant has to still be readable when the provider is asked, '
+              'so the revocation precedes the deletion',
+        );
+        expect(await tokens.read(_issuer, 'sub-1'), isNull);
+        expect(
+          await identities.localUsernameFor(
+            const TomExternalIdentity(issuer: _issuer, subject: 'sub-1'),
+          ),
+          isNull,
+        );
+      });
+
+      test('a provider that cannot be reached does not keep the link', () async {
+        // The safety property. Refusing to unlink because the provider is down
+        // would leave the deployment holding the credential it was told to
+        // drop — the opposite of what the user asked for.
+        TomBean.withType(
+          TomOAuthProviders,
+          TomOAuthProviders({
+            'stub': _oidcProvider(revocationEndpoint: '$_issuer/revoke'),
+          }),
+        );
+        TomBean.withType(
+          TomOAuthTokenTransport,
+          _ThrowingTransport(StateError('provider unreachable')),
+        );
+
+        await identities.unlink(_issuer, 'sub-1');
+
+        expect(await tokens.read(_issuer, 'sub-1'), isNull);
+        expect(
+          await identities.localUsernameFor(
+            const TomExternalIdentity(issuer: _issuer, subject: 'sub-1'),
+          ),
+          isNull,
+        );
+      });
+
+      test('every registration sharing the issuer is asked', () async {
+        // Two registrations against one IdP is a shape the module already
+        // supports, and the token store is keyed by issuer rather than by
+        // registration — so which client credentials minted this grant is not
+        // recorded. Asking both is what makes the revocation reliable; RFC
+        // 7009 makes an unknown token a success, so the extra call is free.
+        TomBean.withType(
+          TomOAuthProviders,
+          TomOAuthProviders({
+            'stub': _oidcProvider(revocationEndpoint: '$_issuer/revoke'),
+            'second': _oidcProvider(
+              id: 'second',
+              revocationEndpoint: '$_issuer/revoke-2',
+            ),
+          }),
+        );
+        TomBean.withType(TomOAuthTokenTransport, transport);
+
+        await identities.unlink(_issuer, 'sub-1');
+
+        expect(transport.calls, 2);
+      });
+
+      test('no configured revocation endpoint is not a failure', () async {
+        TomBean.withType(
+          TomOAuthProviders,
+          TomOAuthProviders({'stub': _oidcProvider()}),
+        );
+        TomBean.withType(TomOAuthTokenTransport, transport);
+
+        await identities.unlink(_issuer, 'sub-1');
+
+        expect(transport.calls, isZero);
+        expect(await tokens.read(_issuer, 'sub-1'), isNull);
+      });
+    });
+  });
+
+  // ===========================================================================
   // THE ENDPOINTS
   // ===========================================================================
 
@@ -3276,4 +3549,22 @@ void main() {
   // The OAuth-specific half of the same guarantee — that the contract declares
   // the mapping at all, `error_description` rename included — is the kernel's:
   // `tomOAuthApi` is declared in `oauth_contract.dart`.
+}
+
+/// A transport whose every call fails, for the unreachable-provider case.
+class _ThrowingTransport implements TomOAuthTokenTransport {
+  _ThrowingTransport(this.error);
+
+  final Object error;
+
+  @override
+  Future<String> postForm(
+    Uri uri,
+    Map<String, String> form,
+    Map<String, String> headers,
+  ) async => throw error;
+
+  @override
+  Future<String> getJson(Uri uri, Map<String, String> headers) async =>
+      throw error;
 }

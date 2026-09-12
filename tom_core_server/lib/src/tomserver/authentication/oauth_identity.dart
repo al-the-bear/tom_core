@@ -278,7 +278,15 @@ class TomPersistentExternalIdentityStore implements TomExternalIdentityStore {
 
   @override
   Future<void> unlink(String issuer, String subject) async {
-    // Tokens first. If the link delete failed after the tokens were removed the
+    // The provider first, while the grant is still readable — see
+    // [TomOAuthFlow.revokeGrantsFor]. Best effort: a provider that cannot be
+    // reached must not keep the link alive.
+    await TomOAuthFlow.revokeGrantsFor(
+      issuer: issuer,
+      subject: subject,
+      tokenStore: _tokenStore,
+    );
+    // Tokens next. If the link delete failed after the tokens were removed the
     // user has an intact link and must re-consent — annoying. The other order
     // leaves a live third-party credential with nothing pointing at it, which
     // nothing will ever clean up.
@@ -354,6 +362,11 @@ class TomMemoryExternalIdentityStore implements TomExternalIdentityStore {
 
   @override
   Future<void> unlink(String issuer, String subject) async {
+    await TomOAuthFlow.revokeGrantsFor(
+      issuer: issuer,
+      subject: subject,
+      tokenStore: _tokenStore,
+    );
     await (_tokenStore ?? TomOAuthTokenStore.resolve())?.delete(
       issuer,
       subject,

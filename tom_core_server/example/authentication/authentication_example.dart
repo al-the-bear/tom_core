@@ -212,10 +212,21 @@ Future<void> run() async {
   print('links listed:              ${linked.length}');
   print('store after editing one:   $stillLinkedTo');
 
+  // Unlinking revokes at the provider first, then deletes. No provider is
+  // configured here, so there is no revocation endpoint to call and nothing is
+  // attempted -- which is the ordinary shape for a deployment whose provider
+  // publishes none. What it never does is refuse to unlink: a provider that
+  // cannot be reached is logged, and the deletion proceeds, because keeping the
+  // link would leave this deployment holding the credential it was told to
+  // drop.
   await identities.unlink(identity.issuer, identity.subject);
   print(
     'grant after unlink:        '
     '${await tokens.read(identity.issuer, identity.subject)}',
+  );
+  print(
+    'link after unlink:         '
+    '${await identities.localUsernameFor(identity)}',
   );
 
   // Example 9: a grant that expired with no refresh token is deleted when

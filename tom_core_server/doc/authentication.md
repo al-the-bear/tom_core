@@ -1616,6 +1616,7 @@ oauth:
       issuer: https://accounts.google.com
       authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
       tokenEndpoint: https://oauth2.googleapis.com/token
+      revocationEndpoint: https://oauth2.googleapis.com/revoke   # optional
       clientId: 1234.apps.googleusercontent.com
       clientSecret: ${GOOGLE_CLIENT_SECRET}
       redirectUri: https://app.example.com/oauth/callback
@@ -1719,9 +1720,32 @@ abstract class TomExternalIdentityStore {
 }
 ```
 
-`unlink` removes the link **and every provider token held through it** — the
-cascade is part of the contract, not the caller's responsibility, so a user who
-presses *disconnect* cannot leave a live refresh token behind.
+`unlink` **revokes the grant at the provider, then** removes the link and every
+provider token held through it — the cascade is part of the contract, not the
+caller's responsibility, so a user who presses *disconnect* cannot leave a live
+refresh token behind. Forgetting a credential is not ending one: a copy taken
+before the unlink — a log line, a backup, a compromised process — goes on
+working until the provider's own lifetime runs out, and for a refresh token that
+is months.
+
+Revocation is RFC 7009 and needs the provider's `revocationEndpoint`, which is
+optional configuration: a great many providers publish none, and a deployment
+holding no tokens has nothing to revoke. Where it is absent, nothing is called
+and nothing is logged as wrong.
+
+**Best effort, and the deletion happens regardless.** Refusing to unlink because
+the provider is unreachable would leave the deployment holding the credential it
+was just told to drop, which is the opposite of what disconnect asked for. So a
+failure is logged — naming what remains valid where — and the link and the local
+copy go anyway.
+
+**Every registration sharing the issuer is asked.** Two registrations against
+one IdP is a shape this module supports, and the token store is keyed by issuer
+rather than by registration, so which client credentials minted a grant is not
+recorded. Asking all of them is what makes the revocation reliable, and costs
+nothing: RFC 7009 makes a token the provider does not recognise a success. The
+refresh token is what is revoked when there is one — it ends the chain, where an
+access token would outlive it by minutes.
 
 Keyed on the pair rather than on the subject alone because a subject is only
 unique *within* an issuer — two providers may both call a user `12345`.
@@ -1890,7 +1914,7 @@ What the store guarantees:
 | Neither token is readable in the row | The whole grant is JSON, encrypted through `TomJwtConfiguration.encrypt` into `token_data` |
 | An operator can still triage | `token_scope`, `obtained_at`, `expires_at` sit beside it in the clear; none of them is authoritative |
 | One grant per identity | `UNIQUE KEY (issuer, subject)` — a second row would make which credential is presented depend on row order |
-| A credential never outlives its link | `TomExternalIdentityStore.unlink` deletes the grant *before* the link |
+| A credential never outlives its link | `TomExternalIdentityStore.unlink` revokes at the provider, then deletes the grant *before* the link |
 | A credential never outlives its usefulness | `accessTokenFor` deletes a grant it finds expired with nothing to refresh it |
 
 Using it later is one call, and it is deliberately **not** on the authentication
@@ -2082,6 +2106,7 @@ without the application registering anything.
 | `oauth.callback.unknown_state` · `oauth.flow.unknown_state` | The state handle is unknown, expired, or already used — raised by the endpoint and by the flow respectively. |
 | `oauth.callback.provider_error` | The provider itself refused (e.g. the user pressed cancel). |
 | `oauth.flow.missing_code` · `oauth.flow.token_exchange_rejected` | The redirect carried no code, or the token endpoint refused the exchange. |
+| `oauth.flow.revocation_rejected` | The provider refused to revoke a grant. Raised by `TomOAuthFlow.revokeGrant`; `unlink` catches it, logs it and deletes anyway. |
 | `oauth.flow.issuer_mismatch` · `oauth.flow.audience_mismatch` · `oauth.flow.missing_subject` · `oauth.flow.malformed_id_token` | The claims failed verification. |
 | `oauth.flow.missing_expiry` · `oauth.flow.id_token_expired` · `oauth.flow.id_token_not_yet_valid` | The `id_token` is outside its own validity window, or carries none. Read against the provider's `clockSkewSeconds`. |
 | `oauth.flow.no_claims_source` · `oauth.flow.no_access_token` | The provider returned neither an `id_token` nor a usable `userInfoEndpoint` call. |
@@ -2400,20 +2425,12 @@ resolves the pending record for its context and calls
   reverse. `TomPersistentOAuthTokenStore` needs
   `TomExternalIdentityToken.createTableSql`, shipped as
   `example/authentication/migrations/main/tomcore/[3]-create_tom_external_identity_token.sql`.
-- **Provider token *revocation* is not implemented.** Deleting the identity link
-  deletes the framework's copy of the grant, but nothing calls the provider's
-  revocation endpoint — the credential stops being reachable from here and
-  remains valid at the provider until it expires or the user withdraws consent.
-  A deployment that must revoke on unlink calls the provider's endpoint itself
-  (RFC 7009), which is one provider-specific HTTP call this module deliberately
-  does not model.
-- **The server principal is installed once and never renewed.**
-  `TomServerSelfLogin.loginAndInstall` obtains the principal at start-up and
-  nothing re-logs in afterwards, so a long-lived process keeps capping its
-  scheduled work at whatever entitlements it held when it started. Clearing the
-  principal is not a workaround: `TomServerPrincipal.clear()` *widens* access
-  rather than narrowing it. A deployment that changes a server account's rights
-  restarts the process for now.
+- **Revocation reaches only providers that publish an endpoint.** `unlink`
+  revokes through `revocationEndpoint` (RFC 7009) where a provider configures
+  one; where it does not, the framework's copy of the grant is deleted and the
+  credential remains valid at the provider until it expires or the user
+  withdraws consent there. Nothing can be done about that from here — there is
+  no address to call.
 
 ## Dependencies
 

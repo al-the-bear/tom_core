@@ -110,10 +110,13 @@ What that ownership consists of:
   on purpose: an operator must be able to ask "is this grant live and what does
   it cover?" without the private key, and none of those three columns is
   authoritative.
-* **Deleted with the link.** `TomExternalIdentityStore.unlink` deletes the grant
-  *before* the link it belongs to. A third-party credential never outlives the
-  link it was granted through, and the other order would leave an orphaned live
-  credential behind.
+* **Revoked, then deleted with the link.** `TomExternalIdentityStore.unlink`
+  revokes the grant at the provider (RFC 7009, where a `revocationEndpoint` is
+  configured) and then deletes it *before* the link it belongs to. Forgetting a
+  credential is not ending one — a copy taken before the unlink goes on working
+  until the provider's own lifetime runs out. Best effort: a provider that
+  cannot be reached is logged and the deletion proceeds, because refusing to
+  unlink would leave the deployment holding the credential it was told to drop.
 * **Deleted when dead.** `TomOAuthFlow.accessTokenFor` deletes a grant it finds
   expired with no refresh token, rather than answering `null` and leaving it. It
   can never mint another token, so it is a fact about the past, not a credential
