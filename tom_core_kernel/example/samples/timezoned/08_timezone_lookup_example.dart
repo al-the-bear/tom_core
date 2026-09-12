@@ -275,15 +275,15 @@ void run() {
   assert(londonInJanuary, 'Europe/London is at +00:00 in January');
   assert(!londonInJuly, 'Europe/London is at +01:00 in July');
   assert(nyInWinter.timezone == 'America/New_York');
-  assert(nyInSummerKey == 'timezone.not_found.name_offset_mismatch');
+  assert(nyInSummerKey == 'timezone.lookup.offset_mismatch');
   assert(allPlus9First5.isNotEmpty);
 
   // Example 4: findTimezone validation
   assert(utcValidSuccess == true);
   assert(utcValid?.timezone == 'UTC');
   assert(invalidOffsetThrew == true);
-  assert(noZoneKey == 'timezone.not_found.offset');
-  assert(noCriteriaKey == 'timezone.find.no_criteria');
+  assert(noZoneKey == 'timezone.lookup.offset_not_found');
+  assert(noCriteriaKey == 'timezone.lookup.no_criteria');
 
   // Example 5: All timezones. The exact count is a property of the IANA
   // database bundled with `package:timezone` (341 locations at 0.11.1, plus

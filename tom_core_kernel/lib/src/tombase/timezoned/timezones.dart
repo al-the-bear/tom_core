@@ -45,7 +45,7 @@ export 'init_tz_embedded.dart' if (dart.library.js) 'init_tz_web.dart';
 /// try {
 ///   TomTimezone.findTimezone('UTC', 60); // UTC should have offset 0, not 60
 /// } on TomTimezoneException catch (e) {
-///   print('Error: ${e.key}'); // timezone.not_found.name_offset_mismatch
+///   print('Error: ${e.key}'); // timezone.lookup.offset_mismatch
 /// }
 /// ```
 class TomTimezoneException extends TomException {
@@ -517,17 +517,19 @@ class TomTimezone {
   ///   reads the same offset index as [firstWithOffset] and inherits its shelf
   ///   life
   ///
-  /// Throws [TomTimezoneException] in four cases:
-  /// - [name] is not found in the database
-  ///   (`timezone.not_found.name_offset_mismatch`). This happens whether or
-  ///   not an offset was supplied, so a name-only lookup throws too — unlike
-  ///   [fromName], which returns `null` for the same name.
-  /// - [name] is found but its offset does not match [utcOffsetMinutes]
-  ///   (`timezone.not_found.name_offset_mismatch`).
-  /// - [name] is null and no zone is at [utcOffsetMinutes]
-  ///   (`timezone.not_found.offset`).
-  /// - Both arguments are null, leaving nothing to look up
-  ///   (`timezone.find.no_criteria`).
+  /// Throws [TomTimezoneException] in four cases, one key each, so a caller
+  /// branches on the key rather than on the message:
+  /// - `timezone.lookup.name_not_found` — [name] is not in the database. This
+  ///   happens whether or not an offset was supplied, so a name-only lookup
+  ///   throws too — unlike [fromName], which returns `null` for the same name.
+  ///   Parameters: `name`, and `utcOffsetMinutes` when one was given.
+  /// - `timezone.lookup.offset_mismatch` — [name] is in the database but sits
+  ///   elsewhere. Parameters: `name`, `utcOffsetMinutes` as asked for,
+  ///   `actualUtcOffsetMinutes` as found, and `at` when one was given.
+  /// - `timezone.lookup.offset_not_found` — [name] is null and no zone is at
+  ///   [utcOffsetMinutes]. Parameters: `utcOffsetMinutes`, and `at` when given.
+  /// - `timezone.lookup.no_criteria` — both arguments are null, leaving
+  ///   nothing to look up.
   ///
   /// [at] decides *when* the offset is read. Left out, every offset in the
   /// call is the zone's offset now, so a zone that observes daylight saving
@@ -565,32 +567,46 @@ class TomTimezone {
   }) {
     _initialize();
     if (name != null) {
-      var byName = _timezonesMap[name.toUpperCase()];
-      // A name-only lookup (no offset given) returns the named zone; when an
-      // offset is supplied it must match the zone's offset — now, or at [at].
-      if (byName != null &&
-          (utcOffsetMinutes == null ||
-              (at == null
-                      ? byName.timezoneOffsetMin
-                      : byName.getUtcOffsetOn(at)) ==
-                  utcOffsetMinutes)) {
-        return byName;
-      } else {
+      final byName = _timezonesMap[name.toUpperCase()];
+      // Two failures, and a caller branching on the key has to be able to tell
+      // them apart: a name the database does not hold is a different fact
+      // about the world from a zone that exists and sits elsewhere.
+      if (byName == null) {
         throw TomTimezoneException(
-          'timezone.not_found.name_offset_mismatch',
-          'Timezone with name $name not found or does not match offset '
-              '$utcOffsetMinutes${at == null ? '' : ' at ${at.toIso8601String()}'}',
+          'timezone.lookup.name_not_found',
+          'No timezone is named $name',
           parameters: {
             'name': name,
-            'utcOffsetMinutes': utcOffsetMinutes,
-            if (at != null) 'at': at.toIso8601String(),
+            if (utcOffsetMinutes != null) 'utcOffsetMinutes': utcOffsetMinutes,
           },
         );
       }
+      // A name-only lookup (no offset given) returns the named zone; when an
+      // offset is supplied it must match the zone's offset — now, or at [at].
+      if (utcOffsetMinutes != null) {
+        final actual = at == null
+            ? byName.timezoneOffsetMin
+            : byName.getUtcOffsetOn(at);
+        if (actual != utcOffsetMinutes) {
+          throw TomTimezoneException(
+            'timezone.lookup.offset_mismatch',
+            'Timezone $name is at $actual minutes'
+                '${at == null ? ' now' : ' at ${at.toIso8601String()}'}, '
+                'not the $utcOffsetMinutes asked for',
+            parameters: {
+              'name': name,
+              'utcOffsetMinutes': utcOffsetMinutes,
+              'actualUtcOffsetMinutes': actual,
+              if (at != null) 'at': at.toIso8601String(),
+            },
+          );
+        }
+      }
+      return byName;
     }
     if (utcOffsetMinutes == null) {
       throw TomTimezoneException(
-        'timezone.find.no_criteria',
+        'timezone.lookup.no_criteria',
         'findTimezone needs a name or an offset; both arguments were null',
       );
     }
@@ -599,7 +615,7 @@ class TomTimezone {
         : firstWithOffsetOn(utcOffsetMinutes, at);
     if (byOffset == null) {
       throw TomTimezoneException(
-        'timezone.not_found.offset',
+        'timezone.lookup.offset_not_found',
         'No timezone is at UTC offset $utcOffsetMinutes minutes '
             '${at == null ? 'now' : 'at ${at.toIso8601String()}'}',
         parameters: {

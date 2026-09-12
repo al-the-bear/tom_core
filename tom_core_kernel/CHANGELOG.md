@@ -7,6 +7,19 @@ API narrowings. Read the **Changed** section before upgrading — several public
 members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
+### Changed
+- **Every `findTimezone` failure has its own key (tcopen97).** The shared
+  `timezone.not_found.name_offset_mismatch` becomes
+  `timezone.lookup.name_not_found` and `timezone.lookup.offset_mismatch`, so a
+  caller can tell "there is no such zone" from "that zone is not at that
+  offset" — the point of keyed exceptions. The mismatch carries
+  `actualUtcOffsetMinutes` beside the offset asked for. The module's other
+  lookup keys join the same family in one pass:
+  `timezone.not_found.offset` → `timezone.lookup.offset_not_found`, and
+  `timezone.find.no_criteria` → `timezone.lookup.no_criteria`.
+  `timezone.database.already_populated` is unchanged. A test asserts the whole
+  vocabulary, so a key added without a documented home is visible.
+
 ### Documentation
 - **Zoned equality is the instant alone, and now says so (tcopen96).** `==` and
   `hashCode` on `TomTimezoned` and its three subclasses are `DateTime`'s, so

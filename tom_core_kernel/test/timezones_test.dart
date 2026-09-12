@@ -190,6 +190,102 @@ void main() {
       });
     });
 
+    // One key per distinguishable failure: a caller branching on the key can
+    // tell "there is no such zone" from "that zone is not at that offset",
+    // which one shared key could not say. The parameters carry what each case
+    // is about, so a translated message never has to parse the text.
+    group('every findTimezone failure has its own key', () {
+      test(
+        'an unknown name is not-found, whether or not an offset came with it',
+        () {
+          for (final call in [
+            () => TomTimezone.findTimezone('Mars/Olympus', null),
+            () => TomTimezone.findTimezone('Mars/Olympus', 0),
+          ]) {
+            expect(
+              call,
+              throwsA(
+                isA<TomTimezoneException>()
+                    .having(
+                      (e) => e.key,
+                      'key',
+                      'timezone.lookup.name_not_found',
+                    )
+                    .having(
+                      (e) => e.parameters?['name'],
+                      'name',
+                      'Mars/Olympus',
+                    ),
+              ),
+            );
+          }
+        },
+      );
+
+      test('a zone that exists at another offset is a mismatch', () {
+        expect(
+          () => TomTimezone.findTimezone('UTC', 60),
+          throwsA(
+            isA<TomTimezoneException>()
+                .having((e) => e.key, 'key', 'timezone.lookup.offset_mismatch')
+                .having((e) => e.parameters?['name'], 'name', 'UTC')
+                .having(
+                  (e) => e.parameters?['utcOffsetMinutes'],
+                  'asked for',
+                  60,
+                )
+                .having(
+                  (e) => e.parameters?['actualUtcOffsetMinutes'],
+                  'actual',
+                  0,
+                ),
+          ),
+        );
+      });
+
+      test('the two name failures are told apart by key alone', () {
+        // The point of the split: same call shape, same argument count, two
+        // different answers, and neither message has to be read.
+        String keyOf(void Function() call) {
+          try {
+            call();
+            return 'no throw';
+          } on TomTimezoneException catch (e) {
+            return e.key;
+          }
+        }
+
+        expect(
+          keyOf(() => TomTimezone.findTimezone('Mars/Olympus', 0)),
+          isNot(keyOf(() => TomTimezone.findTimezone('UTC', 60))),
+        );
+      });
+
+      test('the module raises one key per condition, and no other', () {
+        // The whole vocabulary, so a key added without a home here is visible.
+        const vocabulary = {
+          'timezone.lookup.name_not_found',
+          'timezone.lookup.offset_mismatch',
+          'timezone.lookup.offset_not_found',
+          'timezone.lookup.no_criteria',
+        };
+        final raised = <String>{};
+        for (final call in [
+          () => TomTimezone.findTimezone('Mars/Olympus', null),
+          () => TomTimezone.findTimezone('UTC', 60),
+          () => TomTimezone.findTimezone(null, 7),
+          () => TomTimezone.findTimezone(null, null),
+        ]) {
+          try {
+            call();
+          } on TomTimezoneException catch (e) {
+            raised.add(e.key);
+          }
+        }
+        expect(raised, vocabulary);
+      });
+    });
+
     group('findTimezone at an instant', () {
       final january = DateTime.utc(2024, 1, 15, 12);
       final july = DateTime.utc(2024, 7, 15, 12);
@@ -209,7 +305,7 @@ void main() {
             isA<TomTimezoneException>().having(
               (e) => e.key,
               'key',
-              'timezone.not_found.name_offset_mismatch',
+              'timezone.lookup.offset_mismatch',
             ),
           ),
         );
@@ -229,7 +325,7 @@ void main() {
           () => TomTimezone.findTimezone(null, 7, at: january),
           throwsA(
             isA<TomTimezoneException>()
-                .having((e) => e.key, 'key', 'timezone.not_found.offset')
+                .having((e) => e.key, 'key', 'timezone.lookup.offset_not_found')
                 .having(
                   (e) => e.parameters?['at'],
                   'at',
@@ -497,7 +593,7 @@ void main() {
             isA<TomTimezoneException>().having(
               (e) => e.key,
               'key',
-              'timezone.find.no_criteria',
+              'timezone.lookup.no_criteria',
             ),
           ),
         );
@@ -510,7 +606,7 @@ void main() {
           () => TomTimezone.findTimezone(null, 7),
           throwsA(
             isA<TomTimezoneException>()
-                .having((e) => e.key, 'key', 'timezone.not_found.offset')
+                .having((e) => e.key, 'key', 'timezone.lookup.offset_not_found')
                 .having((e) => e.parameters, 'parameters', {
                   'utcOffsetMinutes': 7,
                 }),

@@ -17,7 +17,7 @@ full variants used by the observable date/time cells.
 | `TomZonedDate` | Date-only zoned value. |
 | `TomZonedTime` | Time-only zoned value. |
 | `TomZonedDateTime` | Full zoned date-and-time value. |
-| `TomTimezoneException` | Thrown by `findTimezone`, the strict lookup, and by nothing else: for a name that is not in the database, one whose current offset does not match a value supplied alongside it, an offset no zone is at, or a call given neither a name nor an offset. Parsing fails with `FormatException` — see [Failures](#failures). |
+| `TomTimezoneException` | Thrown by `findTimezone`, the strict lookup, and by `populateFromLocations` on a second population. One key per failure, so a caller branches on the key: a name not in the database (`timezone.lookup.name_not_found`), a named zone whose offset differs from one supplied beside it (`timezone.lookup.offset_mismatch`), an offset no zone is at (`timezone.lookup.offset_not_found`), neither a name nor an offset (`timezone.lookup.no_criteria`), and a second population (`timezone.database.already_populated`). Parsing fails with `FormatException` — see [Failures](#failures). |
 
 > On native (VM / Flutter) the timezone database loads **synchronously on first
 > access** from the embedded IANA data — no startup call is required. On the

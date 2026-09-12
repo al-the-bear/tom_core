@@ -671,12 +671,23 @@ TomTimezone.findTimezone('Mars/Olympus', null);
 
 // So does an offset no zone is at, and so do both arguments null, leaving
 // nothing to look up — firstWithOffset would return null for the first.
-TomTimezone.findTimezone(null, 7);    // timezone.not_found.offset
-TomTimezone.findTimezone(null, null); // timezone.find.no_criteria
+TomTimezone.findTimezone(null, 7);    // timezone.lookup.offset_not_found
+TomTimezone.findTimezone(null, null); // timezone.lookup.no_criteria
 ```
 
-The name cases — unknown name, and a name whose offset disagrees — share the
-key `timezone.not_found.name_offset_mismatch`.
+Each failure carries its own key, so a caller branches on the key and a
+translated message never has to read the text:
+
+| Key | Raised when | Parameters |
+| --- | ----------- | ---------- |
+| `timezone.lookup.name_not_found` | the name is not in this runtime's database, with or without an offset beside it | `name`, and `utcOffsetMinutes` when one was given |
+| `timezone.lookup.offset_mismatch` | the named zone exists but sits elsewhere | `name`, `utcOffsetMinutes` asked for, `actualUtcOffsetMinutes` found, `at` when given |
+| `timezone.lookup.offset_not_found` | no name was given and no zone is at the offset | `utcOffsetMinutes`, `at` when given |
+| `timezone.lookup.no_criteria` | neither a name nor an offset was given | — |
+
+The first two are the pair worth having apart: "there is no such zone" and
+"that zone is not at that offset" are different facts about the world, and one
+key could only have said "one of these happened".
 
 One more call raises this type, and it is not a lookup:
 `populateFromLocations`, the `@visibleForTesting` entry point a test uses to
