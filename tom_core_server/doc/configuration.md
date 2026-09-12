@@ -106,6 +106,32 @@ cfg.get('smsHost');      // 'smsHost' — the key-string fallback above
 answers `get` gives for "no value": `null` means *cleared*, the key string
 means *unknown*. Gate on `exists` rather than testing `get(...) == null`.
 
+**That is the contract, and the gate is the caller's half of it.** `get` is
+total: it never throws and never answers `null` for a key the tree does not
+hold, so it cannot by itself report a key nobody configured. Both halves of
+that are deliberate. Answering `null` for an unknown key would collapse it with
+a cleared one and cost the module the distinction `exists` was built to
+preserve. Throwing would cost the other half — a read that cannot fail is what
+lets a caller walk a tree of optional settings without a `try` at every step.
+
+The price is that the fallback is indistinguishable from a configured value
+that happens to equal its own key, which is why the gate is `exists` and not a
+test on the value:
+
+```dart
+final cfg = TomServerConfigResourceProvider.from({'host': 'host'});
+cfg.exists('host');  // true  — configured, and configured as 'host'
+cfg.get('host');     // 'host'
+cfg.exists('port');  // false — never mentioned
+cfg.get('port');     // 'port' — the same shape of answer, the opposite meaning
+```
+
+Forgetting the gate costs what this API cannot take back: a missing `host`
+reads as the host name `host`, and the failure surfaces at connect time rather
+than at lookup. Every read inside `tom_core_server` is gated, and a test fails
+on one that is not — it reads the provider locals off the source rather than
+from a list, so a new call site is covered whatever it names its variable.
+
 Alternatively, supply a lazy `loader` (used when the default provider is created
 on first `getServerConfig`) or construct with `.load(loader)`.
 
@@ -718,13 +744,6 @@ started with no configuration whose first symptom appears several layers later.
   key that names no field is indistinguishable from one meant for another tool —
   the merged map carries the whole process environment. Use
   `tomReflectionInfo.unknownFields` on a map whose two ends are both yours.
-- **An unknown key reads back as its own name.**
-  `TomServerConfigResourceProvider.get` answers a key it does not hold with the
-  key string itself, not `null` and not a throw. A caller that forgets to gate
-  on `exists` receives `'server.port'` where it expected a port — which fails
-  the next cast if it is lucky, and silently succeeds where a `String` was
-  wanted if it is not. Gate on `exists`, or read through `TomConfig`, which
-  does.
 - **A `TomConfig` resolves once, at construction.** The value is read from the
   active provider when the object is built and cached, so a provider installed
   afterwards is not observed. Install the provider before declaring the

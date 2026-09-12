@@ -13,7 +13,7 @@ resolve individual keys — obligatory (throws when absent) or with a default.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomBaseServerConfiguration` | Abstract configuration root: assembles the property sources, refuses to build when a field marked `@TomRequiredField` was supplied by no source, and installs the active config provider. |
-| `TomServerConfigResourceProvider` | Holds the merged config map; `exists(key)` / `get(key)` back every `TomConfig` lookup. |
+| `TomServerConfigResourceProvider` | Holds the merged config map; `exists(key)` / `get(key)` back every `TomConfig` lookup. `get` is total — an unknown key resolves to the key string, a cleared one to `null` — so **gate on `exists`**: that is what tells "never mentioned" from "configured as nothing". |
 | `TomConfig<T>` | Resolves one key to `T`; `TomConfig(key)` is obligatory, `TomConfig.withDefault(key, value)` falls back. `get()` / `~config` read the value. |
 | `TomStringConfig` · `TomIntConfig` · `TomDoubleConfig` · `TomBoolConfig` | Typed specialisations of `TomConfig<T>`. |
 | `TomConfigurationException` | Raised when a value fails the cast to `T`. Chains the `TypeError` as `rootException` — read it for a generic mismatch, where the message alone names a value that looks valid. |

@@ -87,10 +87,28 @@ class TomServerConfigResourceProvider {
 
   /// Returns property [s] (dotted path or top-level key).
   ///
-  /// Returns `null` when the property is present and explicitly `null`; gate on
-  /// [exists] to tell that apart from an unknown key. As a deliberate fallback,
-  /// an unknown key resolves to the key string [s] itself rather than throwing
-  /// (callers that must distinguish absence use [exists], as [TomConfig] does).
+  /// **Gate on [exists] first.** This method is total — it never throws, and it
+  /// never answers `null` for a key the tree does not hold — so it cannot, by
+  /// itself, report a key nobody configured. An unknown key resolves to the key
+  /// string [s]; [exists] is what separates that from a value. [TomConfig]
+  /// gates, and a caller reading through it inherits the gate.
+  ///
+  /// That is the contract rather than a gap, and the reason is the pair of
+  /// answers it keeps apart. `null` means the property is present and
+  /// explicitly **cleared**; the key string means **unknown**. Answering `null`
+  /// for both would collapse them, and the distinction is the one [exists] was
+  /// built to preserve: a cleared setting is configured, and [TomConfig] must
+  /// see it as configured so it does not substitute the default the operator
+  /// was overriding. Throwing instead would cost the other half — a read that
+  /// cannot fail is what lets a caller walk a tree of optional settings without
+  /// a `try` at every step.
+  ///
+  /// The fallback is *indistinguishable from a configured value that equals its
+  /// own key*, which is the price and is why the gate is [exists] rather than a
+  /// test on the value. The cost of forgetting it is the one this API cannot
+  /// remove: a missing `host` reads back as the host name `host`, and the
+  /// failure surfaces at connect time rather than at lookup. Every read in this
+  /// package is gated, and `configuration_test.dart` fails on one that is not.
   Object? get(String s) {
     try {
       return getObjectFromTree(resources, s);

@@ -2,6 +2,33 @@
 
 ### Documentation
 
+- **The key-string fallback is the contract, and the gate is now enforced
+  (tcopen118).** `TomServerConfigResourceProvider.get` answers an unknown key
+  with the key string itself, which was recorded as an open end on the strength
+  of what it costs: a caller who forgets `exists` receives a plausible `String`
+  where a value was expected, and a missing `host` reads back as the host name
+  `host`.
+
+  It stays, and the reasoning is now where a reader meets it — the `get`
+  dartdoc, `doc/configuration.md` (moved out of *Not Yet Implemented*), the API
+  mirror and the module readme. Two properties are load-bearing and each
+  alternative gives one up. The two "no value" answers stay apart: `null` means
+  *cleared*, the key string means *unknown*, and answering `null` for both would
+  collapse the distinction `exists` was built to preserve. And a read cannot
+  fail, which is what lets a caller walk a tree of optional settings without a
+  `try` at every step.
+
+  What changes is that the contract is enforced rather than stated. A test walks
+  `lib/`, finds every local initialised from the provider — reading the names off
+  the source, so a call site naming its variable something else is still covered
+  — and requires each read to be preceded by `exists` on the same key; a read
+  chained straight off `getServerConfig()` is reported by construction. All three
+  reads in the package pass, and the guard was falsified four ways before being
+  trusted. Three behavioural tests state the contract beside it, including
+  `{'host': 'host'}` — where a configured value and the fallback are the same
+  text and mean opposite things, which is why the gate is `exists` and not a test
+  on the value.
+
 - **Cross-isolate forwarding stays one crossing per operation (tcopen109).**
   Ten cached lookups from a worker are ten round trips and repeating a key costs
   again; there is no batch command and no worker-side copy. That stands, and the

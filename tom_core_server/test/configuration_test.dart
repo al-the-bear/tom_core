@@ -110,9 +110,102 @@ void main() {
       expect(p.exists('b'), isFalse);
     });
 
+    // The contract, not a gap: `get` is total — it never throws and never
+    // answers `null` for a key it does not hold — and the two answers it gives
+    // for "no value" stay distinguishable. `null` means *cleared*, the key
+    // string means *unknown*. Collapsing them onto `null` would cost the
+    // module the distinction `exists` exists to preserve: a deliberately
+    // cleared setting must read as configured, so `TomConfig` does not
+    // substitute the default the operator was overriding.
     test('get falls back to the key string for an unknown key', () {
       final p = TomServerConfigResourceProvider.from({'a': 1});
       expect(p.get('unknown'), 'unknown');
+      // A dotted path answers the same way, so a caller walking a tree meets
+      // one rule rather than two.
+      expect(p.get('server.nope'), 'server.nope');
+    });
+
+    test('the two "no value" answers are distinguishable', () {
+      final p = TomServerConfigResourceProvider.from({'cleared': null});
+      expect(p.exists('cleared'), isTrue);
+      expect(p.get('cleared'), isNull);
+      expect(p.exists('absent'), isFalse);
+      expect(p.get('absent'), 'absent');
+    });
+
+    // Why the gate is `exists` and not a test on the value: the fallback is
+    // indistinguishable from a configured value that happens to equal its own
+    // key, and a setting named for what it holds is not far-fetched (`env=env`
+    // is a mistake, `mode=mode` is a template). Only `exists` separates them,
+    // which is what makes it the contract rather than a convention.
+    test('a configured value equal to its key is not the fallback', () {
+      final p = TomServerConfigResourceProvider.from({'host': 'host'});
+      expect(p.exists('host'), isTrue);
+      expect(p.get('host'), 'host');
+      expect(p.exists('port'), isFalse);
+      expect(p.get('port'), 'port'); // the same text, the opposite meaning
+    });
+
+    // The contract is only as good as its observance, and an ungated read is
+    // invisible: it compiles, it runs, and it delivers a plausible `String`
+    // where a value was expected — a missing `host` becomes the host name
+    // `host`, and the failure surfaces at connect time rather than at lookup.
+    // Every read in this package is gated; this is what keeps it that way.
+    //
+    // The provider names are read off the source rather than listed here, so a
+    // fourth call site that names its local something else is still covered —
+    // a hard-coded list of names would fail open, which is how this class of
+    // guard usually rots.
+    test('every configuration read in lib/ is gated on exists', () {
+      final ungated = <String>[];
+      final files = Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'));
+
+      for (final file in files) {
+        final source = file.readAsStringSync();
+
+        // A local initialised from the provider, however it is spelled:
+        // `= TomServerConfigResourceProvider.getServerConfig()`,
+        // `= config ?? TomServerConfigResourceProvider…`, `= TomServer…from(…)`.
+        final providers = RegExp(
+          r'\b(?:final|var)\s+(\w+)\s*=[^;]*?'
+          r'TomServerConfigResourceProvider',
+        ).allMatches(source).map((m) => m.group(1)!).toSet();
+
+        // A read chained straight off the accessor cannot have been gated on
+        // the same expression, so it counts as a read with no name of its own.
+        for (final match in RegExp(
+          r'TomServerConfigResourceProvider\.getServerConfig\(\)\s*\.\s*get\(',
+        ).allMatches(source)) {
+          ungated.add('${file.path}: chained read at ${match.start}');
+        }
+
+        for (final name in providers) {
+          // Raw fragments around the interpolated name: a non-raw string
+          // would read `\b` as a backspace and match nothing, which is a
+          // guard that passes by never looking.
+          final reads = RegExp(r'\b' + name + r'\s*\.\s*get\(([^)]*)\)');
+          for (final read in reads.allMatches(source)) {
+            final key = read.group(1)!.trim();
+            final from = read.start < 600 ? 0 : read.start - 600;
+            final before = source.substring(from, read.start);
+            if (!before.contains('exists($key)')) {
+              ungated.add('${file.path}: $name.get($key)');
+            }
+          }
+        }
+      }
+
+      expect(
+        ungated,
+        isEmpty,
+        reason:
+            'a configuration read that is not gated on `exists` receives the '
+            'key string for a key nobody configured — gate it, or read '
+            'through TomConfig, which does',
+      );
     });
 
     test('setServerConfigProvider installs the active provider', () {
