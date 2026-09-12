@@ -23,7 +23,10 @@ full variants used by the observable date/time cells.
 > access** from the embedded IANA data — no startup call is required. On the
 > **web** the data is fetched over the network, so `await tomSetupTimezones()`
 > during startup is mandatory; a first access without it throws `StateError`
-> rather than resolving to an empty database. `tomSetupTimezones` is exported
+> rather than resolving to an empty database. Both entry points answer with the
+> number of zones the database holds once loaded, which is how a truncated
+> fetch is caught where it happens rather than at the first lookup.
+> `tomSetupTimezones` is exported
 > from the package barrel alongside the types below, and is harmless on native
 > — see [Initialization](../../../../doc/timezoned/timezoned.md#initialization).
 

@@ -469,8 +469,8 @@ before sorting or filtering.
 
 | Function | Signature | Description |
 | -------- | --------- | ----------- |
-| `tomSetupTimezones` | `Future<int> tomSetupTimezones()` | Asynchronously initializes the IANA timezone database. Mandatory on web (fetched over the network) before any timezone access; resolves to `0`. Skipping it on web leaves every timezone access throwing `StateError` — an `Error` rather than a `TomTimezoneException`, because the fault is in the application's startup and catching it repairs nothing. Harmless on native, where it loads data that would have loaded anyway. |
-| `tomSetupTimezonesSync` | `void tomSetupTimezonesSync()` | Loads the embedded database synchronously (native/Flutter). Backs `TomTimezone`'s synchronous lazy-init; on web it throws a `StateError` because there is no synchronous load path. |
+| `tomSetupTimezones` | `Future<int> tomSetupTimezones()` | Asynchronously initializes the IANA timezone database. Mandatory on web (fetched over the network) before any timezone access. Resolves to the number of zones the database holds once loaded, so a caller can tell a truncated or empty load from a good one at the point the data arrives rather than at the first lookup. Skipping it on web leaves every timezone access throwing `StateError` — an `Error` rather than a `TomTimezoneException`, because the fault is in the application's startup and catching it repairs nothing. Harmless on native, where it loads data that would have loaded anyway. |
+| `tomSetupTimezonesSync` | `int tomSetupTimezonesSync()` | Loads the embedded database synchronously (native/Flutter) and returns the same zone count as `tomSetupTimezones`, which on this platform is this call. Backs `TomTimezone`'s synchronous lazy-init; on web it throws a `StateError` because there is no synchronous load path, so it never reaches a return. |
 
 These two functions are provided by a platform-conditional import
 (`init_tz_embedded.dart` by default, `init_tz_web.dart` in the browser), so the

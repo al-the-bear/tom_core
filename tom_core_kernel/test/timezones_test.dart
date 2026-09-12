@@ -3228,4 +3228,53 @@ void main() {
       expect(TomTimezoned.isTomTimezonedString(base.toString()), isTrue);
     });
   });
+
+  group('setup answers with the size of the database it loaded', () {
+    // What the pair answers with is the one fact worth having at that moment:
+    // how many zones came out of the load. An empty or truncated database is
+    // otherwise invisible until the first lookup, where it reads as a bad zone
+    // name. A literal answer would say nothing, so the tests pin the value
+    // against the database rather than against a number.
+
+    test('the asynchronous entry point returns the zone count', () async {
+      final loaded = await tomSetupTimezones();
+
+      expect(loaded, equals(tz.timeZoneDatabase.locations.length));
+    });
+
+    test('the synchronous entry point returns the same count', () {
+      // The two load the same database on this platform, so they had better
+      // agree about its size — a caller picks between them on whether it can
+      // await, not on what it wants to know.
+      expect(
+        tomSetupTimezonesSync(),
+        equals(tz.timeZoneDatabase.locations.length),
+      );
+    });
+
+    test('the count is a population, not a status code', () async {
+      // A status code is a small fixed vocabulary; this is the IANA database,
+      // which holds hundreds of zones, and the number moves when the database
+      // does.
+      final loaded = await tomSetupTimezones();
+
+      expect(
+        loaded,
+        greaterThan(100),
+        reason:
+            'the IANA database holds hundreds of zones. A count in single '
+            'digits is a database that did not load, which is exactly what '
+            'this return value exists to make visible.',
+      );
+      expect(
+        TomTimezone.timezones.length,
+        greaterThanOrEqualTo(loaded),
+        reason:
+            'every loaded zone reaches the module index, which adds its own '
+            '`utc` entry on top. A count larger than the index would mean the '
+            'number describes something other than the database that was '
+            'loaded.',
+      );
+    });
+  });
 }

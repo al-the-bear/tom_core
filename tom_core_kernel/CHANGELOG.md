@@ -8,6 +8,19 @@ members became read-only or non-overridable, which is a compile break for
 anyone who was writing them.
 
 ### Changed
+- **The timezone setup calls answer with the number of zones loaded
+  (tcopen99).** Both returned a literal `0` under a `Future<int>` that promised
+  otherwise — not a count, not a status, never non-zero — so a caller that
+  checked it was checking a constant. They return the size of the database once
+  loaded, which costs a `length` on a map that was just filled and catches an
+  empty or truncated load at the point the data arrives instead of at the first
+  lookup, where it reads as an ordinary zone name reported unknown. It matters
+  most on web, where the database comes over the network.
+  `tomSetupTimezonesSync` returns `int` rather than `void` for the same reason:
+  the two differ in whether a caller can await, not in what it is told. The
+  embedded arm stays `async` although it awaits nothing — that is what routes a
+  corrupt-database failure through the future the signature promises instead of
+  throwing past it.
 - **Every `findTimezone` failure has its own key (tcopen97).** The shared
   `timezone.not_found.name_offset_mismatch` becomes
   `timezone.lookup.name_not_found` and `timezone.lookup.offset_mismatch`, so a

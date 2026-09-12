@@ -257,6 +257,9 @@ class TomTimezone {
     // pre-populated. On native platforms this is a no-I/O in-memory load; on
     // web it raises a StateError, because the data must be fetched
     // asynchronously first.
+    // The zone count it answers with is for a caller that asked to load the
+    // database; here the load is a step on the way to the caches below, and
+    // the size of what arrived is read from the location map directly.
     if (tz.timeZoneDatabase.locations.isEmpty) {
       tomSetupTimezonesSync();
     }

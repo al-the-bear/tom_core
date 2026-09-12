@@ -71,16 +71,18 @@ void main() {
     });
 
     test('tomSetupTimezones is callable through the barrel', () async {
-      // Naming it is what this asserts; the return value is incidental. On
-      // native the database is already loaded lazily, so a second load is a
-      // no-op — the point is that the call resolves at all.
-      expect(await tomSetupTimezones(), equals(0));
+      // Naming it is what this asserts. The value it answers with is the
+      // number of zones loaded, pinned against the database in
+      // `timezones_test.dart`; from here, where the only import is the barrel,
+      // what can be said is that it is a population — a fixed status value
+      // would not clear a hundred.
+      expect(await tomSetupTimezones(), greaterThan(100));
     });
 
     test('tomSetupTimezonesSync is callable through the barrel', () {
       // Native only. On web this same call throws by design, which is the
       // reason the asynchronous one has to be reachable.
-      expect(tomSetupTimezonesSync, returnsNormally);
+      expect(tomSetupTimezonesSync(), greaterThan(100));
     });
 
     test('a lookup succeeds once setup has run', () {

@@ -83,12 +83,22 @@ synchronously — so it has to be done before anything reads a timezone:
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 Future<void> main() async {
-  await tomSetupTimezones();
+  final zones = await tomSetupTimezones();
+  if (zones == 0) {
+    throw StateError('the timezone database arrived empty');
+  }
 
   // Safe from here on.
   final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
 }
 ```
+
+The call answers with the number of zones the database holds once loaded. On
+web that number is worth looking at: the data arrives over the network, so a
+truncated or misrouted response is a real possibility, and without the count it
+would first show up as a lookup reporting a perfectly ordinary zone name as
+unknown — a fault that reads as a typo in your own code. The check above is one
+line and rules that out at the point the data arrives.
 
 Skipping it is not a silent degradation: `TomTimezone` throws a `StateError`
 naming the missing call rather than behaving as though no zone matched. That is
@@ -110,9 +120,9 @@ unconditionally is correct on both platforms, and that is the simplest thing to
 write if the application targets both.
 
 There is also `tomSetupTimezonesSync`, which is what backs the native lazy
-load. Calling it directly is rarely useful — it does what first access already
-does — and on web it throws, because the synchronous path it names does not
-exist there.
+load and answers with the same count. Calling it directly is rarely useful — it
+does what first access already does — and on web it throws, because the
+synchronous path it names does not exist there.
 
 ## Quick Start
 
