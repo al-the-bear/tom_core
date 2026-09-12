@@ -216,8 +216,6 @@ void main() {
             store: TomMemoryAuditAnchorStore(),
             writer: opsAuditWriter,
           ),
-          storeDescription: 'memory:test',
-          independentOfServer: false,
         ),
       );
     });
@@ -323,8 +321,6 @@ void main() {
               store: TomMemoryAuditAnchorStore(),
               writer: opsAuditWriter,
             ),
-            storeDescription: 'memory:test',
-            independentOfServer: false,
           ),
         );
         addTearDown(second.close);
@@ -362,8 +358,6 @@ void main() {
             store: TomMemoryAuditAnchorStore(),
             writer: opsAuditWriter,
           ),
-          storeDescription: 'memory:test',
-          independentOfServer: false,
         ),
       );
       await draining.start();
@@ -416,8 +410,6 @@ void main() {
             store: anchors,
             writer: opsAuditWriter,
           ),
-          storeDescription: 'memory:test',
-          independentOfServer: false,
         ),
       );
       await closing.start();

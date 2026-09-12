@@ -1004,6 +1004,116 @@ void main() {
     });
   });
 
+  group('a store declares whether it is out of the server\'s reach', () {
+    // The premise of anchoring is that the store is somewhere the audited
+    // server cannot rewrite, and the framework cannot check that: a path is a
+    // path. What it can do is make the posture a declared fact that defaults to
+    // the honest answer, so a deployment that never thought about it reads as
+    // "not independent" rather than as nothing at all.
+
+    test('the default is not independent', () {
+      expect(
+        _BrokenStore().independentOfServer,
+        isFalse,
+        reason:
+            'a store that says nothing about its posture must not read as a '
+            'claim to have one — silence is the case this defaults for',
+      );
+    });
+
+    test('the memory store can never be independent', () {
+      // Not a default here but a fact: it lives in the process it anchors, so
+      // the attacker who would rewrite it is the one it exists to catch.
+      expect(TomMemoryAuditAnchorStore().independentOfServer, isFalse);
+      expect(TomMemoryAuditAnchorStore().description, equals('memory'));
+    });
+
+    test('the file store defaults to not independent', () async {
+      final directory = await Directory.systemTemp.createTemp('anchor-posture');
+      addTearDown(() => directory.delete(recursive: true));
+      final store = TomFileAuditAnchorStore(directory: directory);
+
+      expect(
+        store.independentOfServer,
+        isFalse,
+        reason:
+            'a directory handed in by configuration is one the framework knows '
+            'nothing about, so the honest default is that it is reachable',
+      );
+      expect(store.description, equals('file:${directory.path}'));
+    });
+
+    test('the file store carries the deployment\'s assertion', () async {
+      final directory = await Directory.systemTemp.createTemp('anchor-posture');
+      addTearDown(() => directory.delete(recursive: true));
+
+      expect(
+        TomFileAuditAnchorStore(
+          directory: directory,
+          independentOfServer: true,
+        ).independentOfServer,
+        isTrue,
+      );
+    });
+  });
+
+  group('the publisher describes the arrangement it is part of', () {
+    // What a boot log has to be able to say. A deployment that has not made
+    // the arrangement should read that off its own start-up output rather than
+    // discover it during an investigation.
+    late TomMemoryAuditSink sink;
+
+    setUp(() => sink = TomMemoryAuditSink());
+    tearDown(() => sink.close());
+
+    test('and says plainly when the store is a copy, not an anchor', () async {
+      final directory = await Directory.systemTemp.createTemp('anchor-posture');
+      addTearDown(() => directory.delete(recursive: true));
+      final publisher = TomAuditAnchorPublisher(
+        sink: sink,
+        store: TomFileAuditAnchorStore(directory: directory),
+        writer: 'node-a',
+      );
+      addTearDown(publisher.close);
+
+      final described = publisher.describe();
+
+      expect(described, contains('file:${directory.path}'));
+      expect(described, contains('node-a'));
+      expect(
+        described.toLowerCase(),
+        contains('not'),
+        reason:
+            'the line has to be readable as a warning, not as a field a '
+            'reader has to know the polarity of',
+      );
+      expect(described.toLowerCase(), contains('copy'));
+    });
+
+    test('and says so when the deployment has asserted otherwise', () async {
+      final directory = await Directory.systemTemp.createTemp('anchor-posture');
+      addTearDown(() => directory.delete(recursive: true));
+      final publisher = TomAuditAnchorPublisher(
+        sink: sink,
+        store: TomFileAuditAnchorStore(
+          directory: directory,
+          independentOfServer: true,
+        ),
+        writer: 'node-a',
+      );
+      addTearDown(publisher.close);
+
+      final described = publisher.describe();
+
+      expect(described, contains('declared independent'));
+      expect(
+        described,
+        isNot(contains('NOT')),
+        reason: 'the assertion and its absence must not read alike',
+      );
+    });
+  });
+
   group('TomAuditAnchorPublisher', () {
     late Directory dir;
 

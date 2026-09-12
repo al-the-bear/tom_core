@@ -60,7 +60,7 @@ point in time, kept somewhere the trail's writer cannot reach.
 | ---- | ---------- |
 | `TomAuditAnchor` | One signed statement: the head hash, the sequence it was at, and when. |
 | `TomAuditAnchorSigner` · `TomAuditAnchorVerifier` | How one is signed and checked; `TomRsaAuditAnchorSigner` is the shipped pair. |
-| `TomAuditAnchorStore` | Where anchors live — `TomMemoryAuditAnchorStore` and `TomFileAuditAnchorStore` ship. `TomAuditAnchorPublisher` writes them on a cadence. |
+| `TomAuditAnchorStore` | Where anchors live — `TomMemoryAuditAnchorStore` and `TomFileAuditAnchorStore` ship, and no external store ever will: such a store's guarantee is in its configuration, not its code. `independentOfServer` is the deployment's assertion that the store is beyond this server's reach — declared, never verified, `false` by default — and `TomAuditAnchorPublisher.describe()` prints it. `TomAuditAnchorPublisher` writes anchors on a cadence. |
 | `TomAuditAnchorMonitor` | Reads the anchors back and reports what they say about the chain today, through `TomAuditAnchorCheck` / `TomAuditAnchorReport`. |
 | `verifyAuditChain` · `verifyAgainstAnchor` | The two verifications, kept separate because they answer different questions. |
 

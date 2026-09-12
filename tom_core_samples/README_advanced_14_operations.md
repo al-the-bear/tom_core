@@ -68,8 +68,13 @@ for it: there is no SQL anchor store. Anchoring a trail into the database that
 holds it is one credential and one blast radius — ceremony rather than a
 guarantee. `TomFileAuditAnchorStore` writes JSON Lines to a directory, and
 whether that directory is genuinely *independent* is a deployment fact this
-package cannot establish. `OpsAnchoring.describe()` therefore reports what the
-arrangement **is** at boot rather than asserting what it should be.
+package cannot establish — nor will any external store ever ship in the
+framework, because such a store's guarantee lives in its configuration rather
+than in its code. What the framework does supply is the posture:
+`TomFileAuditAnchorStore(independentOfServer: ...)` is the deployment's own
+assertion, default `false`, and `OpsAnchoring.describe()` forwards
+`TomAuditAnchorPublisher.describe()` rather than phrasing the posture a second
+way.
 
 ## The delete this job deliberately does not do
 

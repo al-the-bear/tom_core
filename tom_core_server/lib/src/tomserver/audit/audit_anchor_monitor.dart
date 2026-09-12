@@ -162,10 +162,28 @@ class TomAuditAnchorReport {
   /// When the round ran.
   final DateTime checkedAt;
 
+  /// Where the anchors were read from — [TomAuditAnchorStore.description].
+  final String storeDescription;
+
+  /// Whether the deployment declares that store beyond the audited server's
+  /// reach.
+  ///
+  /// Carried so that a reader of the report can weigh it, and **not** consulted
+  /// by [isClean]. A round verifies a chain against the anchors it was given;
+  /// whether those anchors were somewhere an attacker could also have rewritten
+  /// is a different question, and one this object can report but not answer. A
+  /// clean round over a store the server can reach is exactly what it says —
+  /// the chain matches the claim — and the claim may be worth nothing. Letting
+  /// this flag move the verdict would turn a declaration nobody verified into a
+  /// status, which is the mistake the declaration exists to avoid.
+  final bool storeIsIndependent;
+
   /// Creates a report.
   TomAuditAnchorReport({
     required List<TomAuditAnchorCheck> checks,
     required this.checkedAt,
+    this.storeDescription = 'unknown',
+    this.storeIsIndependent = false,
   }) : checks = List.unmodifiable(checks);
 
   /// The checks an operator must act on.
@@ -182,10 +200,19 @@ class TomAuditAnchorReport {
   @override
   String toString() {
     final found = findings.length;
+    // The caveat rides on the same line as the verdict, because the line is
+    // what reaches a dashboard. "No findings" on its own, over a store the
+    // audited server can rewrite, is the reassurance anchoring exists to
+    // withhold.
+    final store = storeIsIndependent
+        ? 'store $storeDescription, declared independent'
+        : 'store $storeDescription, NOT independent of this server';
     return found == 0
-        ? 'audit anchors verified: ${checks.length} chain(s), no findings'
+        ? 'audit anchors verified: ${checks.length} chain(s), no findings '
+              '($store)'
         : 'audit anchors verified: ${checks.length} chain(s), '
-              '$found finding(s) — ${findings.map((c) => c.writer).join(', ')}';
+              '$found finding(s) — ${findings.map((c) => c.writer).join(', ')} '
+              '($store)';
   }
 }
 
@@ -243,6 +270,8 @@ class TomAuditAnchorMonitor {
     final report = TomAuditAnchorReport(
       checks: checks,
       checkedAt: DateTime.now().toUtc(),
+      storeDescription: store.description,
+      storeIsIndependent: store.independentOfServer,
     );
 
     for (final check in report.checks) {

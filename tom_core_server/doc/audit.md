@@ -30,6 +30,7 @@ remembering to ask.
   - [What the result distinguishes](#what-the-result-distinguishes)
   - [Retention does not raise a false alarm](#retention-does-not-raise-a-false-alarm)
   - [What anchoring actually guarantees](#what-anchoring-actually-guarantees)
+  - [The posture is declared, and never believed](#the-posture-is-declared-and-never-believed)
   - [Why the publisher is not a scheduled job](#why-the-publisher-is-not-a-scheduled-job)
   - [Reading the anchors back](#reading-the-anchors-back)
   - [Shutting the publisher down](#shutting-the-publisher-down)
@@ -735,6 +736,55 @@ There is deliberately **no SQL anchor store**. Anchoring the trail into the same
 database that holds it is one credential and one blast radius: ceremony without
 a guarantee.
 
+**No external store ships in this package, and none will.** That is a decision,
+not a gap waiting to be filled. An S3 anchor store's guarantee is not in its
+code: it is in the bucket's object-lock mode, its retention period, and a
+credential that cannot delete — none of which the class can see. A type called
+`TomS3AuditAnchorStore` would read like a guarantee over configuration that may
+supply none, which is the exact failure this section is about, dressed as its
+remedy. The seam is the deliverable. A deployment implements
+`TomAuditAnchorStore` against what it has actually arranged, in its own package,
+where the arrangement and the code can be reviewed together.
+
+### The posture is declared, and never believed
+
+Since the framework cannot check independence, it does the next best thing:
+`TomAuditAnchorStore.independentOfServer` makes the posture a stated fact.
+
+```dart
+TomFileAuditAnchorStore(
+  directory: Directory('/srv/anchors'),
+  independentOfServer: true,   // the deployment's assertion, not a check
+)
+```
+
+It **defaults to `false`**, and that default is the whole point. The question is
+not "is this store independent" — nothing here can answer that — but "has anyone
+said it is", and a store nobody asked must answer no. Without it, a deployment
+anchoring into its own writable tree gets a dashboard reading *anchored* with
+nothing anywhere recording that the anchors are as rewritable as the trail.
+`TomMemoryAuditAnchorStore` answers `false` as a fact rather than a default:
+it lives in the process it attests to, so no arrangement could change it.
+
+Two places surface it, and neither acts on it:
+
+```dart
+publisher.describe();
+// audit anchors -> file:/srv/anchors (NOT declared independent of this
+// server — this is a copy, not an anchor; chain "app-node-1")
+
+(await monitor.verifyAll()).toString();
+// audit anchors verified: 1 chain(s), no findings
+// (store file:/srv/anchors, NOT independent of this server)
+```
+
+`TomAuditAnchorReport` carries `storeDescription` and `storeIsIndependent`, and
+`isClean` is computed without consulting either. That separation is deliberate:
+a flag becomes the config flag that pretends the moment something turns green
+because of it. A round verifies a chain against the anchors it was given; whether
+those anchors sat somewhere the same attacker could rewrite is a different
+question, which the report states and does not answer.
+
 ### Why the publisher is not a scheduled job
 
 `TomScheduler` runs a job once *across the cluster*, which is exactly wrong
@@ -1175,9 +1225,14 @@ a result is the value that crosses between them.
   above them, which is CE-RP reporting's subject rather than this module's. The
   seam is the result value: a reporting surface asks `TomAuditQuery` and renders
   `TomAuditQueryResult`.
-- Anchor stores for specific external services (object storage with a
-  deny-delete policy, a countersigning service). The `TomAuditAnchorStore` seam
-  is here; the implementations are deployment-specific by nature.
+- ~~Anchor stores for specific external services.~~ **Decided: none ship here,
+  and the question is closed.** An external store's guarantee lives in its
+  configuration — an object-lock mode, a retention period, a credential that
+  cannot delete — and not in the code that talks to it, so shipping one would
+  put this package's name on a guarantee it cannot see. The seam is
+  `TomAuditAnchorStore`; a deployment implements it where its arrangement is
+  reviewable. What the framework does supply is the posture:
+  [declared, and never believed](#the-posture-is-declared-and-never-believed).
 - **Routing a finding somewhere other than a log or a callback.**
   `TomAuditAnchorMonitor` ships both of those and nothing else — see [Reading
   the anchors back](#reading-the-anchors-back). A deployment that wants a

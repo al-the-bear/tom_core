@@ -2,6 +2,33 @@
 
 ### Added
 
+- **An anchor store declares whether it is out of the server's reach
+  (tcopen101).** Anchoring's premise is that the store is somewhere the audited
+  server cannot rewrite, and the framework cannot check that — a path is a path.
+  So `TomAuditAnchorStore.independentOfServer` makes the posture a stated fact
+  that **defaults to `false`**: a store nobody asked reads as "not independent"
+  rather than as nothing at all. Without it, a deployment anchoring into its own
+  writable tree got a dashboard saying *anchored* with nothing anywhere
+  recording that the anchors were as rewritable as the trail.
+  `TomFileAuditAnchorStore` takes it as a constructor argument;
+  `TomMemoryAuditAnchorStore` answers `false` as a fact, not a default.
+
+  Two places surface it and neither acts on it: the new
+  `TomAuditAnchorPublisher.describe()` is a boot line naming the store, the
+  posture and the chain, and `TomAuditAnchorReport` carries `storeDescription`
+  and `storeIsIndependent` — with `isClean` computed without consulting either.
+  A round verifies a chain against the anchors it was given; whether those
+  anchors sat where the same attacker could rewrite them is a different
+  question, reported rather than answered. Stores also gained a `description`
+  for those lines.
+
+  **No external anchor store will ship in this package**, and the
+  documentation now says so as a decision rather than listing it as not yet
+  implemented. An S3 store's guarantee is in its bucket's object-lock mode, its
+  retention period and a credential that cannot delete — none of which the class
+  can see, so shipping one would put the framework's name on a guarantee it
+  cannot check.
+
 - **The audit trail can be asked a question (tcopen100).** The trail table has
   carried indexes on `(target, action)`, `(actor)` and `(writer, recorded_at)`
   since it was declared, and nothing in the package issued a query against any

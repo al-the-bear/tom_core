@@ -67,21 +67,19 @@ const String opsAuditWriter = 'advanced_ops_server';
 /// discarding exactly that evidence.
 const Duration opsAnchorInterval = Duration(hours: 1);
 
-/// The publisher plus the facts a reader needs to judge it.
+/// The publisher, plus this deployment's rules about when it may run.
 class OpsAnchoring {
   /// Creates the anchoring arrangement.
-  OpsAnchoring({
-    required this.publisher,
-    required this.storeDescription,
-    required this.independentOfServer,
-  });
+  OpsAnchoring({required this.publisher});
 
   /// Builds the file-backed arrangement this deployment ships.
   ///
   /// [directory] is where anchors are written. [independentOfServer] is the
   /// deployment's own assertion that the directory is beyond this process's
   /// reach — it defaults to `false`, because the honest default for a path
-  /// handed in by configuration is "we do not know that it is".
+  /// handed in by configuration is "we do not know that it is". It is carried
+  /// by the store, which is where the framework keeps it; see
+  /// [TomAuditAnchorStore.independentOfServer].
   factory OpsAnchoring.toDirectory(
     Directory directory, {
     required TomAuditSink sink,
@@ -90,22 +88,23 @@ class OpsAnchoring {
   }) => OpsAnchoring(
     publisher: TomAuditAnchorPublisher(
       sink: sink,
-      store: TomFileAuditAnchorStore(directory: directory),
+      store: TomFileAuditAnchorStore(
+        directory: directory,
+        independentOfServer: independentOfServer,
+      ),
       writer: opsAuditWriter,
       interval: interval,
     ),
-    storeDescription: 'file:${directory.path}',
-    independentOfServer: independentOfServer,
   );
 
   /// The framework publisher doing the work.
   final TomAuditAnchorPublisher publisher;
 
-  /// A human-readable description of where anchors land.
-  final String storeDescription;
-
   /// Whether the deployment asserts the store is out of this server's reach.
-  final bool independentOfServer;
+  ///
+  /// Read from the store rather than kept beside it: two copies of one fact
+  /// drift, and the store is where a deployment configures it.
+  bool get independentOfServer => publisher.store.independentOfServer;
 
   /// Publishes immediately and every [TomAuditAnchorPublisher.interval] after.
   ///
@@ -151,12 +150,8 @@ class OpsAnchoring {
 
   /// One line describing the arrangement, for the boot log.
   ///
-  /// Reports rather than reassures: a deployment that has not made the
-  /// write-once arrangement should be able to read that off its own start-up
-  /// output instead of discovering it during an investigation.
-  String describe() => independentOfServer
-      ? 'audit anchors -> $storeDescription (declared independent of this '
-            'server; chain "$opsAuditWriter")'
-      : 'audit anchors -> $storeDescription (NOT declared independent of this '
-            'server — this is a copy, not an anchor; chain "$opsAuditWriter")';
+  /// The framework's own line — see [TomAuditAnchorPublisher.describe]. A
+  /// sample forwards it rather than phrasing the posture a second way: two
+  /// wordings of one fact are two things to keep true.
+  String describe() => publisher.describe();
 }

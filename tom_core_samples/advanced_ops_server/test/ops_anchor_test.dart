@@ -17,6 +17,8 @@
 /// implementations.
 library;
 
+import 'dart:io';
+
 import 'package:advanced_ops_server/advanced_ops_server.dart';
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
@@ -40,8 +42,6 @@ _arrangement({Duration interval = const Duration(hours: 1)}) {
         writer: opsAuditWriter,
         interval: interval,
       ),
-      storeDescription: 'memory:test',
-      independentOfServer: false,
     ),
     store: store,
     sink: sink,
@@ -241,22 +241,26 @@ void main() {
       },
     );
 
-    test('a deployment that asserts independence is described as anchored', () {
-      final sink = TomMemoryAuditSink();
-      final anchoring = OpsAnchoring(
-        publisher: TomAuditAnchorPublisher(
+    test(
+      'a deployment that asserts independence is described as anchored',
+      () async {
+        // The assertion now rides on the store, which is where the framework
+        // keeps it; this sample reads it back rather than carrying a second copy.
+        final directory = await Directory.systemTemp.createTemp('ops-anchor');
+        addTearDown(() => directory.delete(recursive: true));
+        final sink = TomMemoryAuditSink();
+        final anchoring = OpsAnchoring.toDirectory(
+          directory,
           sink: sink,
-          store: TomMemoryAuditAnchorStore(),
-          writer: opsAuditWriter,
-        ),
-        storeDescription: 'file:/mnt/wormhole',
-        independentOfServer: true,
-      );
-      addTearDown(anchoring.close);
+          independentOfServer: true,
+        );
+        addTearDown(anchoring.close);
 
-      expect(anchoring.describe(), contains('declared independent'));
-      expect(anchoring.describe(), isNot(contains('NOT declared')));
-      expect(anchoring.describe(), contains('/mnt/wormhole'));
-    });
+        expect(anchoring.independentOfServer, isTrue);
+        expect(anchoring.describe(), contains('declared independent'));
+        expect(anchoring.describe(), isNot(contains('NOT declared')));
+        expect(anchoring.describe(), contains(directory.path));
+      },
+    );
   });
 }

@@ -1015,6 +1015,13 @@ audited server, and it wants the narrowest possible permission.
 | `latest` | `Future<TomAuditAnchor?> latest(String writer)` | The most recently published anchor for `writer`, or `null`. The one a routine check uses: it pins the furthest verifiable position. |
 | `close` | `FutureOr<void> close()` | *(override)* No-op by default. |
 
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `independentOfServer` | `bool` | *(getter)* Whether the deployment **asserts** this store is beyond the audited server's reach. A declaration, never a verification — the framework cannot tell an append-only mount from a directory the process owns. Defaults to `false`, which is the point: the question is not "is it independent" but "has anyone said it is", and a store nobody asked must answer no. Nothing branches on the value; it reaches `TomAuditAnchorPublisher.describe` and `TomAuditAnchorReport`, and `isClean` never consults it. |
+| `description` | `String` | *(getter)* Where anchors land, in one phrase for a log line or a report — `memory`, `file:/srv/anchors`. Defaults to the implementation's type name. |
+
 ### TomMemoryAuditAnchorStore
 
 An in-memory anchor store, for tests. Explicitly not an anchor: it lives in the
@@ -1034,6 +1041,8 @@ TomMemoryAuditAnchorStore()
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `anchors` | `List<TomAuditAnchor>` | *(getter)* Every anchor appended, in order, across all writers; unmodifiable. |
+| `independentOfServer` | `bool` | *(override, getter)* Always `false`, and here a fact rather than a default: the store lives in the process it anchors, so no arrangement could change the answer. |
+| `description` | `String` | *(override, getter)* `'memory'`. |
 
 #### Methods
 
@@ -1058,6 +1067,7 @@ framework cannot enforce that and does not pretend to.
 TomFileAuditAnchorStore({
   required Directory directory,
   String filePrefix = 'anchor',
+  bool independentOfServer = false,
 })
 ```
 
@@ -1067,6 +1077,8 @@ TomFileAuditAnchorStore({
 | -------- | ---- | ----------- |
 | `directory` | `Directory` | The directory the anchor files live in; created if absent (final). |
 | `filePrefix` | `String` | The file name prefix, so several deployments can share a directory (final). |
+| `independentOfServer` | `bool` | *(override)* The deployment's assertion that `directory` is out of this server's reach (final). Declared, not verified, and `false` until someone says otherwise — a path arriving from configuration is one the framework knows nothing about. |
+| `description` | `String` | *(override, getter)* `'file:<directory path>'`. |
 
 #### Methods
 
@@ -1116,6 +1128,7 @@ TomAuditAnchorPublisher({
 | ------ | --------- | ----------- |
 | `start` | `Future<void> start()` | Publishes one anchor immediately, then every `interval`. The immediate publication matters: a process compromised and killed inside one interval would otherwise never anchor. Throws `TomAuditException` when the publisher is closed — through `publishNow`, which runs before the timer is armed. |
 | `stop` | `void stop()` | Stops the schedule; `publishNow` still works. |
+| `describe` | `String describe()` | One line naming the arrangement, for a start-up log: where anchors land, whether the store is declared independent of this server, and which chain. Reports rather than reassures — a deployment anchoring into a directory it can itself rewrite has a copy of the head hash, and the line says so in words rather than printing a boolean whose polarity a reader has to remember. |
 | `publishNow` | `Future<TomAuditAnchor> publishNow()` | Captures the sink's position, signs it when a signer is configured, appends it to the store and returns it. Throws when the store refuses, and throws `TomAuditException` (`audit.anchor.publisher_closed`) once the publisher is closed — this is the single choke point every publication passes through. |
 | `close` | `Future<void> close()` | *(override)* Cancels the schedule, publishes a final anchor — the one that pins the chain's last head — then closes. A store failure is thrown, unlike the scheduled path; the publisher closes either way. Idempotent: every call is handed the same close. Register it after the sink it anchors, so the sink drains first. |
 
@@ -1202,6 +1215,8 @@ What one round of `TomAuditAnchorMonitor.verifyAll` concluded.
 TomAuditAnchorReport({
   required List<TomAuditAnchorCheck> checks,
   required DateTime checkedAt,
+  String storeDescription = 'unknown',
+  bool storeIsIndependent = false,
 })
 ```
 
@@ -1211,6 +1226,8 @@ TomAuditAnchorReport({
 | -------- | ---- | ----------- |
 | `checks` | `List<TomAuditAnchorCheck>` | One entry per declared chain, in declaration order; unmodifiable (final). |
 | `checkedAt` | `DateTime` | When the round ran (final). |
+| `storeDescription` | `String` | Where the anchors were read from — the store's `description` (final). |
+| `storeIsIndependent` | `bool` | Whether the deployment declares that store beyond the audited server's reach (final). Carried so a reader can weigh the verdict, and **not** consulted by `isClean`: a round verifies a chain against the anchors it was given, and whether those anchors sat where the same attacker could rewrite them is a different question this object reports rather than answers. Letting it move the verdict would turn an unverified declaration into a status. |
 | `findings` | `Iterable<TomAuditAnchorCheck>` | *(getter)* The checks an operator must act on. |
 | `isClean` | `bool` | *(getter)* Whether every declared chain verified. Stricter than "no findings": an inconclusive check is not a finding but is not a clean bill of health either. False for an empty report, so a monitor watching nothing cannot answer "all clear". |
 

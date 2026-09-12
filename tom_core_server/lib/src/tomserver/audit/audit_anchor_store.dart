@@ -16,13 +16,35 @@
 /// and [TomFileAuditAnchorStore] for a directory that the deployment has
 /// arranged to be outside the server's reach — a read-only-to-the-app mount, a
 /// share the process may append to and nothing more. A file store in the
-/// application's own writable tree provides no anchoring guarantee whatever,
-/// and saying so plainly is more useful than a config flag that pretends
-/// otherwise.
+/// application's own writable tree provides no anchoring guarantee whatever.
 ///
-/// Note what is *not* here: a SQL anchor store. Anchoring the trail into the
-/// same database that holds it would be ceremony without a guarantee — one
+/// **No external store ships in this package, and none will.** Not an omission
+/// waiting to be filled: an S3 store's guarantee is not in its code but in the
+/// bucket's object-lock mode, its retention period and a credential that cannot
+/// delete — none of which the class can see, so `TomS3AuditAnchorStore` would
+/// be a name that reads like a guarantee over configuration that may supply
+/// none. The seam is the deliverable; a deployment implements
+/// [TomAuditAnchorStore] against whatever it has arranged, in its own package,
+/// where the arrangement and the code sit together.
+///
+/// Note what is *not* here either: a SQL anchor store. Anchoring the trail into
+/// the same database that holds it would be ceremony without a guarantee — one
 /// credential, one blast radius. `doc/audit.md` says the same thing at length.
+///
+/// ## The posture is declared, and never believed
+///
+/// Because the framework cannot check independence, it does the next thing:
+/// [TomAuditAnchorStore.independentOfServer] makes the posture a stated fact
+/// that **defaults to `false`**, so a deployment that never thought about it
+/// reads as "not independent" rather than as nothing at all. Without it a
+/// dashboard says *anchored* over anchors as rewritable as the trail, which is
+/// worse than saying nothing.
+///
+/// This is not the config flag that pretends. A flag pretends when something
+/// acts on it — when a status turns green because a boolean said so. Nothing
+/// does: [TomAuditAnchorPublisher.describe] prints it and
+/// `TomAuditAnchorReport` carries it, and `isClean` is computed without ever
+/// looking at it. It is reported, never trusted.
 library;
 
 import 'dart:async';
@@ -70,6 +92,30 @@ abstract class TomAuditAnchorStore implements TomClosable {
     return all.isEmpty ? null : all.last;
   }
 
+  /// Whether the deployment asserts this store is beyond the audited server's
+  /// reach.
+  ///
+  /// **A declaration, not a verification.** The framework cannot tell a mount
+  /// the process may only append to from a directory it owns outright — a path
+  /// is a path — so this is the deployment saying what it has arranged, and it
+  /// is accountable for the answer.
+  ///
+  /// Defaults to `false`, which is the whole point of having it. The question
+  /// is not "is this store independent" — nothing here can answer that — but
+  /// "has anyone said it is", and a store that has never been asked must answer
+  /// no. Nothing branches on the value: it reaches
+  /// [TomAuditAnchorPublisher.describe] and the monitor's report, so an
+  /// operator reads the posture off the same line that tells them the chain
+  /// verified.
+  bool get independentOfServer => false;
+
+  /// Where anchors land, in one short phrase for a log line or a report.
+  ///
+  /// `memory`, `file:/srv/anchors`, `s3://bucket/prefix`. Defaults to the
+  /// implementation's type name, which is enough to tell two stores apart and
+  /// nothing more; a store whose location is configurable should say where.
+  String get description => runtimeType.toString();
+
   /// Releases whatever the store holds; nothing, by default.
   @override
   FutureOr<void> close() {}
@@ -84,6 +130,18 @@ class TomMemoryAuditAnchorStore extends TomAuditAnchorStore {
 
   /// Every anchor appended, in order, across all writers.
   List<TomAuditAnchor> get anchors => List.unmodifiable(_anchors);
+
+  /// Always `false`, and here that is a fact rather than a default.
+  ///
+  /// The store lives in the process it anchors, so the attacker who would have
+  /// to rewrite it is exactly the one it exists to catch. There is no
+  /// arrangement a deployment could make that would change the answer, which is
+  /// why it is stated rather than inherited.
+  @override
+  bool get independentOfServer => false;
+
+  @override
+  String get description => 'memory';
 
   @override
   Future<void> append(TomAuditAnchor anchor) async => _anchors.add(anchor);
@@ -112,10 +170,22 @@ class TomFileAuditAnchorStore extends TomAuditAnchorStore {
   /// The file name prefix, so several deployments can share a directory.
   final String filePrefix;
 
+  /// The deployment's assertion that [directory] is out of this server's reach.
+  ///
+  /// See [TomAuditAnchorStore.independentOfServer]: declared, not verified, and
+  /// `false` until someone says otherwise. A path arriving from configuration
+  /// is one the framework knows nothing about.
+  @override
+  final bool independentOfServer;
+
+  @override
+  String get description => 'file:${directory.path}';
+
   /// Creates a store in [directory], creating the directory if needed.
   TomFileAuditAnchorStore({
     required this.directory,
     this.filePrefix = 'anchor',
+    this.independentOfServer = false,
   }) {
     if (!directory.existsSync()) {
       directory.createSync(recursive: true);
@@ -250,6 +320,23 @@ class TomAuditAnchorPublisher implements TomClosable {
 
   /// The most recent anchor this publisher wrote, or `null`.
   TomAuditAnchor? get lastPublished => _lastPublished;
+
+  /// One line naming the arrangement, for a start-up log.
+  ///
+  /// Reports rather than reassures. A deployment anchoring into a directory it
+  /// can itself rewrite has a copy of the head hash, not an anchor, and that is
+  /// something to read off the boot output rather than to discover during an
+  /// investigation — so the line says which it is, in words, instead of
+  /// printing a boolean whose polarity a reader has to remember.
+  ///
+  /// The posture comes from [TomAuditAnchorStore.independentOfServer], which
+  /// the deployment declares and nothing verifies. Printing it is the whole of
+  /// what the framework does with it.
+  String describe() => store.independentOfServer
+      ? 'audit anchors -> ${store.description} (declared independent of this '
+            'server; chain "$writer")'
+      : 'audit anchors -> ${store.description} (NOT declared independent of '
+            'this server — this is a copy, not an anchor; chain "$writer")';
 
   /// Whether the periodic schedule is currently armed.
   ///

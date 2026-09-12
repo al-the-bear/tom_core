@@ -232,6 +232,65 @@ void main() {
     });
   });
 
+  group('a report carries the store\'s posture, and does not trust it', () {
+    // The dashboard problem: a report that says "no findings" over a store the
+    // server could rewrite has verified the chain against a claim the same
+    // attacker controls, and said nothing about that.
+
+    test('the report names the store it read from and its posture', () async {
+      final clean = _chain(3);
+      final store = TomMemoryAuditAnchorStore();
+      await store.append(_anchorAt(clean, writer: 'node-a'));
+
+      final report = await TomAuditAnchorMonitor(
+        store: store,
+        chains: [_watch('node-a', clean)],
+      ).verifyAll();
+
+      expect(report.storeDescription, equals('memory'));
+      expect(report.storeIsIndependent, isFalse);
+    });
+
+    test('a clean round over a reachable store still says so', () async {
+      final clean = _chain(3);
+      final store = TomMemoryAuditAnchorStore();
+      await store.append(_anchorAt(clean, writer: 'node-a'));
+
+      final report = await TomAuditAnchorMonitor(
+        store: store,
+        chains: [_watch('node-a', clean)],
+      ).verifyAll();
+
+      expect(report.isClean, isTrue);
+      expect(
+        report.toString().toLowerCase(),
+        contains('not independent'),
+        reason:
+            'the caveat belongs in the line an operator actually reads. A '
+            '"no findings" that omits it is the reassurance this whole '
+            'mechanism exists to avoid giving.',
+      );
+    });
+
+    test('the posture does not decide whether a round is clean', () async {
+      // Reported, never trusted. Letting the flag move `isClean` would make an
+      // unverifiable assertion into a status — which is the config flag that
+      // pretends, rather than the declaration that informs.
+      final clean = _chain(3);
+      final reachable = TomMemoryAuditAnchorStore();
+      await reachable.append(_anchorAt(clean, writer: 'node-a'));
+
+      final report = await TomAuditAnchorMonitor(
+        store: reachable,
+        chains: [_watch('node-a', clean)],
+      ).verifyAll();
+
+      expect(report.isClean, isTrue);
+      expect(report.storeIsIndependent, isFalse);
+      expect(report.findings, isEmpty);
+    });
+  });
+
   group('TomAuditAnchorMonitor — the seam', () {
     test('every finding reaches onFinding, and nothing else does', () async {
       final clean = _chain(3);
