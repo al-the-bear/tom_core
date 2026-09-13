@@ -27,6 +27,7 @@ library;
 
 import '../datasources/queries.dart';
 import '../datasources/sql_dialects.dart';
+import '../datasources/sql_instant.dart';
 import '../datasources/types_operator.dart';
 
 import 'operators_expressions.dart';
@@ -252,11 +253,26 @@ class TomGroupedRow {
     return raw.toString() == '1' || raw.toString().toLowerCase() == 'true';
   }
 
-  /// The value under [alias] as a `DateTime`.
+  /// The value under [alias] as a **UTC** `DateTime`.
+  ///
+  /// The module has one convention for an instant and this is a read path like
+  /// any other: a `DATETIME` column carries no zone, so its text taken at face
+  /// value is *this node's* wall clock rather than the moment the writing node
+  /// stored. `parseSqlInstant` is the reading half everywhere else — the
+  /// reflected entity mapper, [TomDbDateTime.of], and the driver's own grouped
+  /// projection, which is what normally fills this map — so it is the reading
+  /// half here too. A second answer in the one place a caller builds a row by
+  /// hand would be the module disagreeing with itself, silently and by exactly
+  /// the machine's UTC offset. See `datasources/sql_instant.dart`.
+  ///
+  /// A value that is already a `DateTime` is relabelled rather than reparsed:
+  /// `toUtc` names the same moment, so a row built by hand from a local value
+  /// answers what a row built by the driver would.
   DateTime? dateTimeValue(String alias) {
     final raw = value(alias);
-    if (raw == null || raw is DateTime) return raw as DateTime?;
-    return DateTime.parse(raw.toString());
+    if (raw == null) return null;
+    if (raw is DateTime) return raw.toUtc();
+    return parseSqlInstant(raw.toString());
   }
 
   /// The value under [alias] coerced to [V] — the accessor the typed nodes use

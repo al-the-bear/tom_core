@@ -335,6 +335,78 @@ void main() {
   // nowhere, and a stated rule with no test of its own is the claim that goes
   // stale silently: every caller can be corrected into agreement with itself,
   // and not one of them is the rule.
+  // The convention is only one convention while every read path uses it. Two
+  // coexisted for a while -- the instant helpers reading UTC and a grouped-row
+  // accessor reading the same text as local -- and the cost of that is the
+  // shape a sampling test cannot catch: the same characters naming a moment
+  // that differs by the machine's UTC offset, with no error and no type
+  // difference. So the rule is read off the source.
+  group('one convention: no read path parses column text itself', () {
+    /// The files that materialise a **column value**: the data source module,
+    /// which reads every row, and the grouped-row accessors, which are the one
+    /// other place a stored value becomes a Dart `DateTime`.
+    ///
+    /// `query_sentence_compiler.dart` is deliberately *not* here, and its
+    /// exclusion is checked rather than asserted (below): it parses literals a
+    /// caller wrote on the way **into** SQL, which is the opposite direction,
+    /// and its datetime literal requires a zone suffix.
+    Iterable<File> readers() => [
+      ...Directory('lib/src/tomserver/datasources')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart')),
+      File('lib/src/tomserver/object_persistence/grouped_query.dart'),
+    ];
+
+    test('only sql_instant.dart names DateTime.parse', () {
+      final offenders = <String>[];
+      for (final file in readers()) {
+        final lines = file.readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          final line = lines[i];
+          // Prose about the trap is the point of several of these files.
+          if (line.trimLeft().startsWith('//')) continue;
+          if (line.trimLeft().startsWith('///')) continue;
+          if (!line.contains('DateTime.parse(')) continue;
+          // The one implementation of the rule, which is where the suffix is
+          // appended -- and the only place a bare parse is the right answer.
+          if (file.path.endsWith('sql_instant.dart')) continue;
+          offenders.add('${file.path}:${i + 1}');
+        }
+      }
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'a column value parsed outside `parseSqlInstant` is read as this '
+            "node's local time, which is a second convention — see "
+            '`datasources/sql_instant.dart`',
+      );
+    });
+
+    // The reason the query-sentence compiler is out of scope above, held to
+    // rather than trusted: its datetime literal carries its own zone, so the
+    // `DateTime.parse` it performs is not a zone-less one. If the pattern ever
+    // accepted a suffix-less token, this fails and the exclusion has to be
+    // re-argued rather than silently covering a second convention.
+    test('a query-sentence datetime literal must carry its zone', () {
+      final source = File(
+        'lib/src/tomserver/object_persistence/query_sentence_compiler.dart',
+      ).readAsStringSync();
+      final datetime = source.substring(
+        source.indexOf("kind: 'datetime'"),
+        source.indexOf("kind: 'date'"),
+      );
+      expect(
+        datetime,
+        contains(r'(Z|[+\-][0-9]{2}:[0-9]{2})$'),
+        reason:
+            'the datetime literal pattern no longer requires a zone suffix, so '
+            'its DateTime.parse became a local read',
+      );
+    });
+  });
+
   group('sqlInstant / parseSqlInstant (the one encoding of an instant)', () {
     test('renders UTC with six fractional digits', () {
       expect(

@@ -36,8 +36,13 @@
 ///  * **Inlined as a literal** — a `DATETIME` literal in generated SQL is
 ///    rendered by the dialect, again through [sqlInstant].
 ///
-/// Reading back is one route: `TomDbDateTime.of` and the hand-written mappers
-/// both go through [parseOptionalSqlInstant], so a column read is UTC.
+/// Reading back is one route as well: `TomDbDateTime.of`, the hand-written
+/// mappers and `TomGroupedRow.dateTimeValue` all go through
+/// [parseOptionalSqlInstant] or [parseSqlInstant], so a column read is UTC
+/// whichever shape the result took. A test reads this module and the
+/// grouped-row accessors off disk and requires that no file but this one names
+/// `DateTime.parse`, because a second reading of the same text is a second
+/// convention and the two differ silently, by the machine's UTC offset.
 ///
 /// The first case is why this is stated here rather than left to each entity.
 /// A validity window, an expiry, a lease deadline — the instants that decide

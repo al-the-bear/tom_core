@@ -41,7 +41,7 @@ is the explicit opt-out.
 | `TomFileReference` · `TomFileReferenceKeys` | Marks a `String` column as holding a blob storage key rather than the bytes, and mints the keys for it. The bytes live in the file-storage module; the column holds the way back to them. |
 | `MariadbRepository<T, K>` | The MariaDB binding of `TomSqlDatasourceRepository` — constructed directly, and the only thing it adds is `MariadbSqlDialect`. |
 | `TomQuerySentenceCompiler` | Compiles a written sentence (`find by owner = :who order by created_at`) into the same operator tree the builder produces, so a query can be data. |
-| `TomGroupedSelect` · `TomGroupedRow` · `TomAggregate` | `GROUP BY` and its aggregates — `CountAll`, `Count`, `Sum`, `Avg`, `Min`, `Max` — projected under an alias and read back off the row by it. |
+| `TomGroupedSelect` · `TomGroupedRow` · `TomAggregate` | `GROUP BY` and its aggregates — `CountAll`, `Count`, `Sum`, `Avg`, `Min`, `Max` — projected under an alias and read back off the row by it. A `DateTime` alias reads back UTC, through the one instant convention the data source writes (`datasources/sql_instant.dart`). |
 
 ## Quick start
 

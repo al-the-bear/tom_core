@@ -116,6 +116,20 @@ for both ways this server writes SQL:
   `TomDbDateTime.of` reads a column back through `parseOptionalSqlInstant`, and
   `dateTimeOp` inlines the same text as a literal. An entity therefore stores
   UTC and reads UTC without saying so.
+- **Aggregate results** — `TomGroupedRow.dateTimeValue` (and `typed<DateTime>`
+  through it) reads the same way, whether the driver filled the row or a caller
+  built one by hand. A value that is already a `DateTime` is relabelled with
+  `toUtc` rather than reparsed: the same moment, in the frame every other read
+  path answers in.
+
+**There is one convention, and it is enforced rather than described.** A test
+reads the data source module and the grouped-row accessors off disk and requires
+that no file but `sql_instant.dart` names `DateTime.parse` — a column value
+parsed anywhere else is read as *this node's* local time, which is a second
+convention arrived at silently. The query-sentence compiler is outside that
+population on purpose: it parses literals a caller wrote on the way *into* SQL,
+and its datetime literal must carry a zone suffix, which a second test holds it
+to.
 
 The second case is why the convention is stated here rather than left to each
 entity. A validity window, an expiry, a lease deadline — the instants that

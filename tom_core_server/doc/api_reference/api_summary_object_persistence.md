@@ -1215,7 +1215,7 @@ TomGroupedRow(Map<String, Object?> values)
 | `doubleValue` | `double? doubleValue(String alias)` | The value as a `double`. |
 | `stringValue` | `String? stringValue(String alias)` | The value as a `String`. |
 | `boolValue` | `bool? boolValue(String alias)` | The value as a `bool` (MariaDB stores booleans as `1`/`0`). |
-| `dateTimeValue` | `DateTime? dateTimeValue(String alias)` | The value as a `DateTime`. |
+| `dateTimeValue` | `DateTime? dateTimeValue(String alias)` | The value as a **UTC** `DateTime`. A read path like any other: column text goes through `parseSqlInstant`, and a value that is already a `DateTime` is relabelled with `toUtc` rather than reparsed — the same moment, in the frame every other read path answers in. A second reading of the same text would be a second convention, differing by the machine's UTC offset with no error and no type difference; see `datasources/sql_instant.dart`. |
 | `typed` | `V? typed<V>(String alias)` | The value coerced to `V` — the accessor `TomAggregate.read` and `keyOf` use, so a caller never names a type twice. Throws for an unsupported `V`. |
 | `keyOf` | `Object? keyOf(DbCol column)` | The group-key value for `column`, which a grouped query projects under the column's declared field name. |
 

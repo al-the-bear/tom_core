@@ -255,8 +255,48 @@ void main() {
       expect(row.boolValue('done'), isTrue);
     });
 
-    test('parses a textual timestamp', () {
-      expect(row.dateTimeValue('created'), DateTime.parse('2026-07-28 10:00'));
+    // The module has one convention for an instant and this accessor is a read
+    // path like any other: a `DATETIME` column carries no zone, so text taken
+    // at face value is *this node's* wall clock rather than the moment the
+    // writing node stored. `parseSqlInstant` is the reading half everywhere
+    // else -- the entity mapper, `TomDbDateTime.of`, the driver's own grouped
+    // projection -- and a second answer here would be the module disagreeing
+    // with itself in the one place a caller builds a row by hand.
+    test('reads a textual timestamp as UTC, like every other read path', () {
+      expect(row.dateTimeValue('created'), DateTime.utc(2026, 7, 28, 10));
+      expect(row.dateTimeValue('created')!.isUtc, isTrue);
+    });
+
+    test('agrees with the entity-column reader on the same text', () {
+      const text = '2026-07-28 10:00:00.000000';
+      final grouped = TomGroupedRow({'at': text}).dateTimeValue('at');
+      expect(grouped, TomDbDateTime.of(text).get());
+      expect(grouped, parseSqlInstant(text));
+    });
+
+    // The driver hands this accessor a `DateTime` it has already read through
+    // the convention, so the common case arrives UTC. A row built by hand --
+    // a test, an in-memory stand-in, a second driver -- may not, and the
+    // accessor's answer is the same moment either way: converting relabels,
+    // it does not move.
+    test(
+      'a local DateTime handed in is returned as the same moment in UTC',
+      () {
+        final local = DateTime(2026, 7, 28, 10);
+        final read = TomGroupedRow({'at': local}).dateTimeValue('at')!;
+        expect(read.isUtc, isTrue);
+        expect(read.isAtSameMomentAs(local), isTrue);
+      },
+    );
+
+    // Tom's own `@X@…` form carries its zone, so it round-trips exactly --
+    // and reaches this accessor from a text column rather than a DATETIME one.
+    test('a stored instant that is already UTC is unchanged', () {
+      final read = TomGroupedRow({
+        'at': DateTime.utc(2026, 7, 28, 10),
+      }).dateTimeValue('at')!;
+      expect(read, DateTime.utc(2026, 7, 28, 10));
+      expect(read.isUtc, isTrue);
     });
 
     test('a null value stays null through the accessors', () {
@@ -322,10 +362,8 @@ void main() {
       // perfectly ordinary value type.
       expect(row.typed<double>('revenue'), 12.5);
       expect(row.typed<bool>('done'), isTrue);
-      expect(
-        row.typed<DateTime>('created'),
-        DateTime.parse('2026-07-28 10:00'),
-      );
+      // Through the same accessor, so through the same convention: UTC.
+      expect(row.typed<DateTime>('created'), DateTime.utc(2026, 7, 28, 10));
     });
 
     test('an exact-numeric read as int truncates rather than failing', () {

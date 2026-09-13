@@ -105,6 +105,35 @@
 
 ### Changed
 
+- **One instant convention, and it is now enforced (tcopen124).** The module
+  reads a stored `DATETIME` as UTC everywhere — the bind boundary, the reflected
+  entity mapper, `TomDbDateTime.of`, the dialect's inlined literal and the
+  driver's grouped projection all go through `sql_instant.dart` — with one
+  exception: `TomGroupedRow.dateTimeValue`, the accessor a caller reads an
+  aggregate result off, parsed the text itself with `DateTime.parse`. That is a
+  **local** `DateTime`: the same characters naming a moment that differs by the
+  machine's UTC offset, with no error and no type difference to notice it by.
+
+  In the ordinary case the driver had already read the column through the
+  convention, so the accessor received a `DateTime` and returned it unchanged.
+  The second convention was reachable from the other direction — a row built by
+  hand carrying column text, or a local `DateTime` — and a public accessor whose
+  answer depends on which shape its map happens to hold is the module
+  disagreeing with itself. It now reads text through `parseSqlInstant` and
+  relabels an existing `DateTime` with `toUtc`.
+
+  **The rule is read off the source rather than sampled**, because every call
+  site can be corrected into agreement with itself while the module still holds
+  two answers: a test walks the data source module and the grouped-row
+  accessors and requires that no file but `sql_instant.dart` names
+  `DateTime.parse`. The query-sentence compiler is outside that population on
+  purpose — it parses literals a caller wrote on the way *into* SQL — and the
+  exclusion is checked rather than trusted, by a second test holding its
+  datetime literal pattern to requiring a zone suffix.
+
+  No migration: the bind path was already UTC, so nothing on disk was written
+  under the other convention.
+
 - **The development TLS pair announces itself (tcopen121).**
   `certificateChain` and `privateKey` default to a complete self-signed
   `localhost` certificate and its RSA key, both committed to this repository.
