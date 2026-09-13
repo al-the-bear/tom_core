@@ -61,6 +61,36 @@
 
 ### Changed
 
+- **Every configuration failure is one exception, told apart by its key
+  (tcopen120).** The failed cast already raised `TomConfigurationException`; the
+  obligatory miss beside it threw the message itself —
+  `throw ("Obligatory resource $key not found …")`. A bare `String` is not an
+  `Exception`, so `on Exception catch` never saw it, a `catch (e)` handed back a
+  `String` with nothing to branch on, and the two failures of one constructor
+  needed two different catch shapes, only one reachable by type. It carried no
+  key and no parameters either, so a handler wanting to report *which* property
+  was missing had to parse prose.
+
+  It now raises the type its neighbour used, under
+  `configuration.tom_config.property_not_configured`, with the property and the
+  wanted type in `parameters`. One type told apart by `key` is the shape the
+  client side already chose: `tom_core_flutter`'s `TomProperty` raises
+  `TomPropertyException` under `resources.property.not_configured` /
+  `…type_mismatch` for the same two conditions, and the opening sentence of the
+  message is deliberately identical so an operator who has met one recognises
+  the other.
+
+  **`clientThrow` is now `false` for `TomConfigurationException`**, against
+  `TomServerException`'s `true`. Every message this type carries names an
+  internal configuration key, and the mismatch names the offending *value* —
+  which for `smtpPassword` or `jwtSharedSecretKey` is the secret itself. Set on
+  the class rather than at each raise site, because `clientThrow` is documented
+  as a property of the exception type, fixed by the party that knows what the
+  message contains.
+
+  Four tests, two mutations checked. The example's step 6 now catches by type
+  and prints the key.
+
 - **Resolving a `TomConfig` before a provider exists is refused (tcopen119).**
   `TomConfig` reads its value in the constructor, so a property built before the
   real provider was installed took whatever the then-active provider answered —

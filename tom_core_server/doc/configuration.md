@@ -13,7 +13,8 @@ environment-variable substitution.
 - [The Resource Provider](#the-resource-provider)
 - [Typed Property Access](#typed-property-access)
   - [A cleared key takes step 1, not step 2](#a-cleared-key-takes-step-1-not-step-2)
-  - [What a bad cast throws](#what-a-bad-cast-throws)
+  - [What a failed resolution throws](#what-a-failed-resolution-throws)
+    - [The chained cause of a bad cast](#the-chained-cause-of-a-bad-cast)
 - [The Server Configuration Base](#the-server-configuration-base)
   - [Requiring a setting](#requiring-a-setting)
   - [Naming the application](#naming-the-application)
@@ -141,9 +142,10 @@ on first `getServerConfig`) or construct with `.load(loader)`.
 and caches it. Resolution order:
 
 1. provider has the key → cast its value to `T` (a bad cast throws a
-   [`TomConfigurationException`](#what-a-bad-cast-throws));
+   [`TomConfigurationException`](#what-a-failed-resolution-throws));
 2. else a default was supplied → use it;
-3. else the property is obligatory → construction throws.
+3. else the property is obligatory → construction throws the same type under
+   `configuration.tom_config.property_not_configured`.
 
 ```dart
 final port = TomIntConfig.withDefault('server.port', 8080).get(); // 8080
@@ -202,14 +204,44 @@ This is the same distinction the provider draws in *The Resource Provider*
 above, carried one layer up: `exists` reports a cleared key as configured
 precisely so `TomConfig` cannot silently fall through to a default.
 
-### What a bad cast throws
+### What a failed resolution throws
 
-Step 1 raises a `TomConfigurationException` — a `TomServerException`, so it is
-a real `Exception` and carries the isolate name and the request UUID like every
-other server error. Its `key` is
-`configuration.tom_config.property_type_mismatch`, and `parameters` holds the
-`key`, `type` and `value` separately, so a handler can report them without
-parsing the message.
+Every way resolution can fail raises a `TomConfigurationException` — a
+`TomServerException`, so it is a real `Exception` and carries the isolate name
+and the request UUID like every other server error. **One type, three
+conditions, told apart by `key`:**
+
+| `key` | Condition |
+| ----- | --------- |
+| `configuration.tom_config.property_not_configured` | The key is absent and the property declared no default. |
+| `configuration.tom_config.property_type_mismatch` | The key holds a value that cannot be cast to `T`. |
+| `configuration.tom_config.no_provider_installed` | The property was declared before any provider existed. |
+
+So a startup handler writes one clause and still discriminates:
+
+```dart
+try {
+  final host = TomStringConfig('server.host');
+} on TomConfigurationException catch (e) {
+  stderr.writeln('${e.key}: ${e.parameters?['key']}');
+}
+```
+
+All three are raised during **construction**, so catching one means wrapping the
+declaration rather than the read. `parameters` holds the property `key` and the
+`type` it was wanted as — and, for a mismatch, the offending `value` — so a
+handler reports them without parsing the message.
+
+**None of them is sent to a client.** `clientThrow` is `false` for this type: a
+configuration message names an internal key, and the mismatch names the value as
+well, which for `smtpPassword` or `jwtSharedSecretKey` is the secret itself. The
+endpoints pipeline masks it behind a generic response.
+
+The same shape is used on the client side by `tom_core_flutter`'s `TomProperty`
+(`resources.property.not_configured` / `resources.property.type_mismatch`), so
+an operator who has met one recognises the other.
+
+#### The chained cause of a bad cast
 
 The `TypeError` the cast raised is chained as `rootException`, with its stack
 trace in `stack`. That matters more than it looks. The message alone —
@@ -235,10 +267,6 @@ try {
 So read `rootException` before concluding the file is right and the code is
 wrong. The same applies to any generic type — `Map<String, String>` over a
 decoded `Map<String, dynamic>` fails the identical way.
-
-Note the asymmetry with step 3: an obligatory key with no default throws a bare
-`String`, not an exception at all. See [Not Yet
-Implemented](#not-yet-implemented).
 
 Because the value is captured at construction, build a `TomConfig` *after* the
 provider is installed; later provider changes are not observed by an existing
@@ -777,12 +805,6 @@ started with no configuration whose first symptom appears several layers later.
   Access](#typed-property-access)). What remains is the narrower case of a
   `TomConfig` built against one provider and read after another was installed,
   which the API cannot distinguish from an intentional snapshot.
-- **An obligatory miss throws a bare `String`.** The third resolution branch
-  throws the message rather than an exception carrying it, so `on Exception
-  catch` does not catch it and a plain `catch (e)` hands back a `String`. Use a
-  bare `catch` around the declaration of an obligatory property. A failed
-  *cast* is unaffected — that path throws a `TomConfigurationException`, so the
-  two failures of one constructor need two different catch shapes.
 - **A substituted YAML value is text.** `${VAR}` expansion runs after the YAML
   parser has assigned types, so `port: ${DB_PORT:3306}` yields the `String`
   `'3306'` where `port: 3306` yields an `int`, and `TomConfig` casts rather

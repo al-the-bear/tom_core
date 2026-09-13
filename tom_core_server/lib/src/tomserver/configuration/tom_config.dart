@@ -1,23 +1,40 @@
 import '../little_things/server_exception.dart';
 import 'base_server_configuration.dart';
 
-/// A configuration property could not be resolved to the type asked for.
+/// A configuration property could not be resolved.
 ///
-/// Thrown by [TomConfig] when the configured value fails the cast to `T` and
-/// the `int`→`double` widening does not apply. Carries the [TypeError] that
-/// the cast raised as `rootException`, together with its stack trace — the
-/// message names the key, the wanted type and the value, which is enough for a
-/// scalar mismatch but not for a generic one, where only the chained
-/// `TypeError` names the subtype relation that actually failed.
+/// **One type, three conditions, told apart by `key`** — the shape
+/// `TomProperty` uses on the client side for the same question, and the reason
+/// a caller can write one `on TomConfigurationException catch` and still
+/// discriminate:
 ///
-/// `parameters` carries the `key`, `type` and `value` separately, so a handler
-/// can report them without parsing the message.
+/// | `key` | Condition |
+/// | ----- | --------- |
+/// | `configuration.tom_config.property_not_configured` | The key is absent and the property declared no default. |
+/// | `configuration.tom_config.property_type_mismatch` | The key holds a value that cannot be cast to the property's `T`. |
+/// | `configuration.tom_config.no_provider_installed` | The property was declared before any provider existed. |
 ///
-/// This is the only *exception* the resolution path raises. An obligatory key
-/// with no default throws a bare `String` instead, which no `on Exception
-/// catch` will see — see `doc/configuration.md` under *Not Yet Implemented*.
+/// All three are raised during **construction**, so catching one means
+/// wrapping the declaration rather than the read. `parameters` carries the
+/// `key` — and, for a type mismatch, the `type` it was wanted as and the
+/// offending `value` — so a handler reports them without parsing the message.
+/// A type mismatch also chains the [TypeError] the cast raised as
+/// `rootException`: the message names the type that was *expected*, and for a
+/// generic mismatch only the `TypeError` names the subtype relation that
+/// actually failed (a YAML `hosts: [a, b]` read as `List<String>` reports
+/// `with value [a, b]`, which is exactly what the operator wrote).
+///
+/// **`clientThrow` is `false` by default, and that is a property of the type.**
+/// Every message here names an internal configuration key, and the type
+/// mismatch names the offending value as well — which for `smtpPassword` or
+/// `jwtSharedSecretKey` is the secret itself. None of that may reach a caller,
+/// so the decision is made once, where the exception is defined, rather than at
+/// each raise site in turn.
 class TomConfigurationException extends TomServerException {
   /// Creates a configuration resolution failure.
+  ///
+  /// [clientThrow] defaults to `false`, unlike [TomServerException]'s `true`:
+  /// a configuration message is for the operator who wrote the file.
   TomConfigurationException(
     super.key,
     super.defaultUserMessage, {
@@ -25,7 +42,7 @@ class TomConfigurationException extends TomServerException {
     super.stack,
     super.rootException,
     super.autoLog,
-    super.clientThrow,
+    super.clientThrow = false,
   });
 }
 
@@ -186,7 +203,18 @@ class TomConfig<T> {
     } else if (_hasDefault) {
       _value = _defaultValue;
     } else {
-      throw ("Obligatory resource $_propertyKey not found in configuration resources");
+      // The same sentence its client-side twin raises for the same condition
+      // (`resources.property.not_configured` in `tom_core_flutter`), so an
+      // operator who has met one recognises the other. It was a bare `String`
+      // here until the key was added — uncatchable by `on Exception`, and
+      // carrying nothing a handler could read without parsing prose.
+      throw TomConfigurationException(
+        'configuration.tom_config.property_not_configured',
+        "Obligatory resource $_propertyKey not found in configuration "
+            'resources. Declare it with TomConfig.withDefault to make it '
+            'optional, or configure it.',
+        parameters: {'key': _propertyKey, 'type': '$T'},
+      );
     }
   }
 

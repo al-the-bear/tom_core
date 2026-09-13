@@ -339,19 +339,82 @@ void main() {
       expect(~TomBoolConfig('flag'), isTrue);
     });
 
-    test('throws for an obligatory key with no default', () {
-      // A bare String, not an Exception -- so `on Exception catch` misses it
-      // and only a bare `catch` sees it. Asserted by type rather than with
-      // `anything`, because that is the part doc/configuration.md warns about
-      // under *Not Yet Implemented*: an assertion that accepts either shape
-      // would let the warning outlive the behaviour it describes.
+    // The two ways resolution fails are one type told apart by `key`, which is
+    // the shape `tom_core_flutter`'s `TomProperty` -- this class's client-side
+    // twin -- already uses for the same two conditions. Asserted by type and by
+    // key rather than with `throwsException` or `anything`: a loose assertion
+    // is what let the obligatory path go on throwing a bare `String`, which no
+    // `on Exception catch` could see, for as long as it did.
+    test('an obligatory key with no default throws a keyed exception', () {
       _install({});
-      expect(() => TomStringConfig('obligatory'), throwsA(isA<String>()));
+      expect(
+        () => TomStringConfig('obligatory'),
+        throwsA(
+          isA<TomConfigurationException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'configuration.tom_config.property_not_configured',
+              )
+              .having((e) => e.parameters?['key'], 'the property', 'obligatory')
+              .having(
+                (e) => e.parameters?['type'],
+                'the wanted type',
+                'String',
+              ),
+        ),
+      );
     });
 
-    test('throws an Exception on a type mismatch', () {
+    // The half the type change is for: a caller reporting a configuration
+    // failure can now write the clause every other server error takes.
+    test('an obligatory miss is catchable as an Exception', () {
+      _install({});
+      Object? caught;
+      try {
+        TomStringConfig('obligatory');
+      } on Exception catch (error) {
+        caught = error;
+      }
+      expect(caught, isA<TomServerException>());
+    });
+
+    test('a type mismatch throws the same type under a different key', () {
       _install({'port': 'not-an-int'});
-      expect(() => TomIntConfig('port'), throwsException);
+      expect(
+        () => TomIntConfig('port'),
+        throwsA(
+          isA<TomConfigurationException>().having(
+            (e) => e.key,
+            'key',
+            'configuration.tom_config.property_type_mismatch',
+          ),
+        ),
+      );
+    });
+
+    // A configuration message names an internal key, and the type-mismatch one
+    // names the offending *value* as well -- which for `smtpPassword` or
+    // `jwtSharedSecretKey` is the secret itself. None of the three may be
+    // surfaced to a caller, so the flag is a property of the type rather than a
+    // decision each raise site remembers to make.
+    test('no configuration failure is safe to send to a client', () {
+      _install({'port': 'not-an-int'});
+      for (final build in <void Function()>[
+        () => TomStringConfig('obligatory'),
+        () => TomIntConfig('port'),
+      ]) {
+        expect(
+          build,
+          throwsA(
+            isA<TomConfigurationException>().having(
+              (e) => e.clientThrow,
+              'clientThrow',
+              isFalse,
+            ),
+          ),
+        );
+      }
     });
 
     test('the cast failure carries the TypeError it caught', () {

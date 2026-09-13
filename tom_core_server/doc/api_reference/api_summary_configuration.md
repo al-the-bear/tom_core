@@ -36,8 +36,8 @@ environment, then a `.env` file, then command-line arguments, which win).
 
 `TomConfig<T>` is a typed, eagerly-resolved view of a single property, with
 specialised subclasses `TomStringConfig`, `TomIntConfig`, `TomDoubleConfig`, and
-`TomBoolConfig`; a value that fails the cast raises
-`TomConfigurationException`, which chains the `TypeError`. `TomYaml` loads YAML
+`TomBoolConfig`; every way resolution fails raises `TomConfigurationException`,
+one type told apart by `key`, and a failed cast chains the `TypeError`. `TomYaml` loads YAML
 files with `${VAR}` / `${VAR:default}` environment-variable substitution.
 
 ## Class Hierarchy
@@ -236,9 +236,10 @@ setting is cleared); a non-nullable `T` throws, naming the key, the type and the
 value. Declare the property nullable where clearing it is a legitimate
 deployment choice.
 
-A failed cast throws `TomConfigurationException`; an obligatory key with no
-default throws a bare `String`, which is not an `Exception` at all. The two
-failure modes of one constructor therefore need two different catch shapes.
+Every resolution failure throws `TomConfigurationException` — the bad cast, the
+obligatory key with no default, and the property declared before any provider
+existed — so one `on TomConfigurationException catch` around the declaration
+covers them all and the `key` says which occurred.
 
 - **Type Parameters:** `T` — the resolved value type.
 
@@ -315,25 +316,40 @@ TomBoolConfig.withDefault(String key, bool value)
 
 ### TomConfigurationException
 
-A configuration property failed the cast to `T` and the `int`→`double` widening
-did not apply. Raised by every `TomConfig` constructor.
+A configuration property could not be resolved. Raised by every `TomConfig`
+constructor, and by `TomBaseServerConfiguration.assertRequiredSettings`.
 
 - **Extends:** `TomServerException`
 
-The `TypeError` the cast raised is chained as `rootException`, with its trace in
-`stack`. Read it before concluding the file is right: the message names the key,
-the wanted type and the value, which is enough for a scalar mismatch but not for
-a generic one. A YAML `hosts: [a, b]` read as `List<String>` fails on the
-element type, and the message reports `with value [a, b]` — exactly what the
-operator wrote. Only the cause says `List<dynamic> is not a subtype of
-List<String>`.
+**One type, several conditions, told apart by `key`** — the shape
+`tom_core_flutter`'s `TomProperty` uses on the client side for the same
+question, so a caller writes one clause and still discriminates:
 
-| Field | Value |
-| ----- | ----- |
-| `key` | `configuration.tom_config.property_type_mismatch` |
-| `parameters` | `key`, `type` and `value`, so a handler need not parse the message |
-| `rootException` | the `TypeError` raised by the failed cast |
-| `stack` | that `TypeError`'s stack trace |
+| `key` | Condition |
+| ----- | --------- |
+| `configuration.tom_config.property_not_configured` | The key is absent and the property declared no default. |
+| `configuration.tom_config.property_type_mismatch` | The key holds a value that cannot be cast to the property's `T`. |
+| `configuration.tom_config.no_provider_installed` | The property was declared before any provider existed. |
+| `configuration.base_configuration.required_settings_missing` | A field marked `@TomRequiredField` was supplied by no source. |
+
+All are raised during **construction**, so catching one means wrapping the
+declaration rather than the read. `parameters` carries the property `key` and
+the `type` it was wanted as — and, for a mismatch, the offending `value` — so a
+handler reports them without parsing the message.
+
+`clientThrow` is **`false`** for this type, unlike `TomServerException`'s
+`true`: every message names an internal configuration key, and the mismatch
+names the value as well, which for `smtpPassword` or `jwtSharedSecretKey` is the
+secret itself. The decision is made where the exception is defined rather than
+at each raise site.
+
+For a mismatch the `TypeError` the cast raised is chained as `rootException`,
+with its trace in `stack`. Read it before concluding the file is right: the
+message names the key, the wanted type and the value, which is enough for a
+scalar mismatch but not for a generic one. A YAML `hosts: [a, b]` read as
+`List<String>` fails on the element type, and the message reports `with value
+[a, b]` — exactly what the operator wrote. Only the cause says `List<dynamic> is
+not a subtype of List<String>`.
 
 #### Constructors
 
@@ -345,7 +361,7 @@ TomConfigurationException(
   StackTrace? stack,
   Object? rootException,
   bool autoLog,
-  bool clientThrow,
+  bool clientThrow = false,
 })
 ```
 

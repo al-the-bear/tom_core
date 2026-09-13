@@ -6,9 +6,10 @@
 /// files with `${VAR:default}` substitution via [TomYaml], and the boundary
 /// between the merged value map and the provider — steps 10 and 11 show that
 /// the environment reaches a configuration object's *fields* but not
-/// [TomConfig], and the one line that changes that. Step 12 shows the failure
-/// shape: a bad cast raises [TomConfigurationException] chaining the
-/// [TypeError], which step 6's obligatory miss — a bare `String` — does not.
+/// [TomConfig], and the one line that changes that. Steps 6 and 12 show the
+/// failure shape: every resolution failure raises [TomConfigurationException],
+/// one type told apart by its `key`, and a bad cast chains the [TypeError] the
+/// obligatory miss has no cause to carry.
 ///
 /// The three ways to install a tree appear in the order a startup meets them:
 /// step 1 defers the build to first access, step 2 hands over a tree already in
@@ -88,15 +89,20 @@ Future<void> run() async {
   print('5. featureFlags.beta (~)     : $beta');
   check(beta == true, '~ is shorthand for .get()');
 
-  // 6. An obligatory missing property throws on construction.
-  var threw = false;
+  // 6. An obligatory missing property throws on construction -- as a
+  //    TomConfigurationException, so `on Exception` sees it and the `key`
+  //    says which of the failures it was.
+  String? missingKey;
   try {
     TomStringConfig('server.obligatoryMissing');
-  } catch (_) {
-    threw = true;
+  } on TomConfigurationException catch (error) {
+    missingKey = error.key;
   }
-  print('6. obligatory missing threw  : $threw');
-  check(threw, 'an obligatory missing property throws on construction');
+  print('6. obligatory missing key    : $missingKey');
+  check(
+    missingKey == 'configuration.tom_config.property_not_configured',
+    'an obligatory missing property throws a keyed exception on construction',
+  );
 
   // 7. Load a YAML file with ${VAR:default} substitution.
   final dir = await Directory.systemTemp.createTemp('tom_config_example');
@@ -227,10 +233,10 @@ server:
     'the environment resolves once the merged map is the provider',
   );
 
-  // 12. A value of the wrong type throws TomConfigurationException, which
-  //     chains the TypeError the cast raised. Note the contrast with step 6:
-  //     that one needs a bare `catch` because an obligatory miss throws a bare
-  //     String, while this one can be caught by type.
+  // 12. A value of the wrong type throws the same type as step 6 under a
+  //     different key, and chains the TypeError the cast raised -- which is the
+  //     one thing the two failures do not share, since an absent key has no
+  //     cause to carry.
   //
   //     The chained cause is the point. A YAML `hosts: [a, b]` decodes as
   //     List<dynamic>, so asking for List<String> fails on the *element* type
