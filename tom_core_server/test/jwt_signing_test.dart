@@ -1,6 +1,8 @@
 // `SecretKey` is `dart_jsonwebtoken`'s, and tom_crypto does not re-export it —
 // so a test that wants to read the installed HMAC key back out reaches for the
 // package directly, exactly as `jwt_signing.dart` does.
+import 'dart:io';
+
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
@@ -130,6 +132,43 @@ void main() {
   // or the sample could not be run at all; what it must not do is start that
   // way anywhere else. The bundled keys are published in this repository, so
   // outside development they are not a weak secret but a public one.
+  // The guide is the artefact a deployment reads before it writes a `.env`, and
+  // it once said the opposite of the truth in one place while saying the truth
+  // in another: a blockquote beside the configuration base called the JWT
+  // fields "carried, not used: nothing in this library reads them", two hundred
+  // lines above the section describing what `installJwtSigning` does with them.
+  // A reader who met the blockquote first would conclude the framework ignores
+  // their signing configuration and assemble it themselves.
+  //
+  // Pinned here rather than in a documentation sweep because the fact being
+  // claimed is this function's: it reads the three fields, so the sentence that
+  // says nothing does is false exactly while this file exists.
+  group('the guide says these fields are read', () {
+    final guide = File('doc/configuration.md').readAsStringSync();
+
+    test('no passage claims the library reads none of them', () {
+      for (final denial in [
+        'carried, not used',
+        'nothing in this library reads them',
+        'read by nothing',
+      ]) {
+        expect(
+          guide,
+          isNot(contains(denial)),
+          reason:
+              'doc/configuration.md still says the JWT fields are unread; '
+              '`installJwtSigning` reads all three, and a deployment that '
+              'believes the denial will assemble its own signing configuration',
+        );
+      }
+    });
+
+    test('the guide names the function that reads them', () {
+      expect(guide, contains('installJwtSigning'));
+      expect(guide, contains('jwtSharedSecretKey'));
+    });
+  });
+
   group('installJwtSigning refuses bundled keys outside development', () {
     test('an unconfigured server boots in development on the bundled keys', () {
       selectEnvironment(development: true);

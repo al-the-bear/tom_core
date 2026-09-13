@@ -2,6 +2,26 @@
 
 ### Documentation
 
+- **The guide no longer says the JWT key material is unread (tcopen122).** A
+  blockquote beside the configuration base called the three JWT fields "carried,
+  not used: nothing in this library reads them" — two hundred lines above the
+  *JWT Signing Keys* section of the same document, which describes what
+  `installJwtSigning` does with them. A reader who met the blockquote first
+  would conclude the framework ignores their signing configuration and assemble
+  it themselves. The completion corpus said the same thing in two more places,
+  and one of them still recorded `jwtSharedSecretKey`'s long-removed literal
+  default.
+
+  All four passages now say what the code does: the three fields default to
+  `null`, meaning *not configured*; `installJwtSigning` reads them, falling back
+  to the bundled sample keys with a warning in a development or test environment
+  and refusing with `TomSigningKeyException` anywhere else.
+
+  The claim is pinned by a test in `jwt_signing_test.dart` rather than left to a
+  future sweep — the fact being claimed is that function's, so the sentence
+  denying it is false exactly while the file exists. It refuses the three
+  spellings the denial was written in and requires the guide to name the reader.
+
 - **The key-string fallback is the contract, and the gate is now enforced
   (tcopen118).** `TomServerConfigResourceProvider.get` answers an unknown key
   with the key string itself, which was recorded as an open end on the strength

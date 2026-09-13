@@ -336,9 +336,12 @@ individual fields rather than this list.
 > `localhost` pair for local development and **must be overridden in
 > production**; a boot that serves TLS with either half still at its default
 > [says so in the log](#the-development-tls-pair-announces-itself). The JWT
-> fields are carried, not used: nothing in this library reads them, and there
-> are no keys for the algorithm, issuer, audience or expiry, so a server that
-> signs tokens assembles that part in code.
+> fields are the server's signing key material, read by `installJwtSigning`
+> (see [JWT Signing Keys](#jwt-signing-keys)); all three default to `null`, and
+> a field left unset falls back to the framework's bundled sample key, which is
+> permitted in a development or test environment and refused anywhere else. The
+> rest of a signing configuration — algorithm, issuer, audience, expiry — is
+> supplied in code, because there are no configuration keys for those.
 
 ### The development TLS pair announces itself
 
