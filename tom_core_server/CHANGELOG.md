@@ -2,6 +2,30 @@
 
 ### Documentation
 
+- **An unknown configuration key stays unreported, and the reason is now
+  falsifiable (tcopen123).** `getDefaultValues` merges four sources and
+  `setValues` assigns the keys it recognises; a key matching no field is neither
+  applied nor reported, so `smtpHots: mail.example.com` gets the behaviour of
+  having configured nothing — and for the 23 mail, SMS and self-login settings
+  that is a server which starts, runs, and quietly sends no mail.
+
+  That stands. The check itself is not the difficulty —
+  `tomReflectionInfo.unknownFields` already names every key of a map that
+  matches no field — the merged tree is: it carries the whole process
+  environment by construction, so every `PATH` and `HOME` is an unknown key and
+  the report is dozens of lines with the one useful line indistinguishable
+  inside it. A test now says so rather than the prose alone: the check run on a
+  merged tree built from a launch line carrying `prot=8080` must return a list
+  holding both `prot` and `PATH`, and more than ten entries.
+
+  `doc/configuration.md` gains *Why an unknown key is not reported*, which
+  states the three narrower answers that were declined — provenance (correct,
+  and it costs `getDefaultValues` its shape), near misses by edit distance
+  (invents a threshold the module would have to defend), and an allowed-key list
+  (one more artefact to keep in step) — and what a caller can do instead: run
+  `unknownFields` on a map whose two ends are both theirs, as the datasource
+  registry does.
+
 - **The guide no longer says the JWT key material is unread (tcopen122).** A
   blockquote beside the configuration base called the three JWT fields "carried,
   not used: nothing in this library reads them" — two hundred lines above the

@@ -1745,6 +1745,45 @@ void main() {
   // throw under TomConfig resolution, and the substituted-YAML one under
   // TomYaml); the four with nowhere else to live are here.
   group('the documented limitations hold', () {
+    // One test below builds a *reflected* configuration, to run the
+    // unknown-key check the way a caller would.
+    setUpAll(initializeReflection);
+
+    // Why the typo is *not* reported, stated as something falsifiable rather
+    // than as an assertion in prose. The check itself is cheap and already
+    // exists — `tomReflectionInfo.unknownFields` — and running it on the merged
+    // tree produces an answer nobody can act on: the tree carries the whole
+    // process environment by construction, so a mistyped setting and an
+    // ordinary shell variable arrive as the same kind of entry, in a list the
+    // environment dominates. Telling them apart needs provenance the merge does
+    // not carry, which is the cost the decision declined to pay.
+    test('an unknown key cannot be told from an environment variable', () {
+      _install({});
+      final config = FixtureRequiredConfig(['dbUrl=x', 'prot=8080']);
+      final merged = TomBaseServerConfiguration.getDefaultValues([
+        'dbUrl=x',
+        'prot=8080',
+      ]);
+
+      final unknown = tomReflectionInfo.unknownFields(config, merged);
+
+      // The typo is in the report -- the check would find it.
+      expect(unknown, contains('prot'));
+      // So is the environment, which is why the report cannot be acted on.
+      // PATH is set on every supported platform.
+      expect(unknown, contains('PATH'));
+      // And not by a handful: the environment is what the list is mostly made
+      // of, so a warning per unknown key would be noise with the one useful
+      // line buried in it. The number is asserted loosely on purpose -- what
+      // matters is the order of magnitude, not a count that would drift with
+      // whatever shell the suite runs under.
+      expect(
+        unknown.length,
+        greaterThan(10),
+        reason: 'the merged tree should carry the process environment in bulk',
+      );
+    });
+
     test('a misspelled setting merges as a live key and fills no field', () {
       // `prot` is a typo for `port`. Nothing validates the merged tree against
       // the fields it will fill, so the typo survives the merge as an ordinary
