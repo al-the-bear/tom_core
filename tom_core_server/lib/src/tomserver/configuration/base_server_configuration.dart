@@ -308,22 +308,14 @@ abstract class TomBaseServerConfiguration {
   /// `--port=8080` are one argument naming this field (see `doc/cmdline.md`).
   int port = 0;
 
-  /// The PEM-encoded TLS certificate chain [TomServer.start] binds with, unless
-  /// [noSsl] is set.
+  /// The PEM certificate chain [certificateChain] defaults to: a throwaway
+  /// self-signed `localhost` pair committed to this repository.
   ///
-  /// **The default is a throwaway self-signed `localhost` pair committed to
-  /// this repository, and its private key is public.** It exists so a
-  /// development machine can speak HTTPS without a certificate authority.
-  /// Nothing refuses to start when a deployment leaves it in place, so
-  /// overriding this and [privateKey] together is the deployment's
-  /// responsibility — a server still serving this chain in production is
-  /// authenticating itself with a key anyone can read.
-  ///
-  /// Supplied as PEM text rather than a path, which is what lets a container
-  /// inject it through the environment; the bytes are handed to
-  /// [SecurityContext.useCertificateChainBytes] unparsed, so a malformed value
-  /// fails at bind time and not before.
-  String certificateChain = '''
+  /// Named rather than written inline so that [usesDevelopmentTlsMaterial]
+  /// compares against the very text the field defaults to. A fingerprint or a
+  /// copy would be a second statement of the same value, and the check would
+  /// go quiet the day the two drifted apart.
+  static const String developmentCertificateChain = '''
 -----BEGIN CERTIFICATE-----
 MIIFgzCCA2ugAwIBAgIUIQjzx85IYfitPxv3DWFnvTsKKYYwDQYJKoZIhvcNAQEL
 BQAwXzELMAkGA1UEBhMCR0IxEDAOBgNVBAgMB0VuZ2xhbmQxETAPBgNVBAcMCEJy
@@ -356,27 +348,13 @@ n7809H7FuopWpa5JhGCTyRQRSCv9IXvtJd6oH/dZyq5yhypyjtAzDfpRcD6Ut3Wp
 Fge3ejxMrwsq13az1+esJSH161qunB6Zsrs1/bx4zwQfJc0a90CAjqQESjLv+dUC
 A1KMqQJg19+OXA5eF2Fs7N1UwFLrVsI=
 -----END CERTIFICATE-----
-  ''';
+''';
 
-  /// The PEM-encoded TLS private key for [certificateChain]. **A credential:**
-  /// handle it exactly as the marked settings below are handled.
-  ///
-  /// The default is the private half of the checked-in self-signed pair and is
-  /// therefore public. See [certificateChain]: the two are overridden together
-  /// or not at all, since a chain without its matching key binds nothing.
-  ///
-  /// Never log this field, and never log [args], which may carry it. The bytes
-  /// are handed to [SecurityContext.usePrivateKeyBytes] unparsed.
-  ///
-  /// It carries a different wording from the marked settings on purpose. That
-  /// marker is a controlled one: `doc/configuration.md` tabulates the four
-  /// out-of-band blocks a deployment supplies — JWT signing, server self-login,
-  /// outbound mail, outbound SMS — and a test holds the marked fields and that
-  /// table to each other, so a field marked without a row there fails. TLS
-  /// material has no row: it is documented by the limitation naming the
-  /// checked-in pair. The difference is about which document owes a row, not
-  /// about how carefully this value is handled.
-  String privateKey = '''
+  /// The PEM private key [privateKey] defaults to, and the reason
+  /// [usesDevelopmentTlsMaterial] exists: **it is published**, in this
+  /// repository, so a server serving it authenticates itself with a key
+  /// anyone can read.
+  static const String developmentPrivateKey = '''
 -----BEGIN PRIVATE KEY-----
 MIIJQQIBADANBgkqhkiG9w0BAQEFAASCCSswggknAgEAAoICAQDFNk2kG9qWxivR
 dL2OfCDbiTy8mauNf5U4OKGMoSid6CGP9NgalFlcU0XmzQn8ODnyAKtIRXoICaOv
@@ -429,7 +407,71 @@ G0ciJ8iK10zKoJVL58VzPifv8gC/eIZddlS9Qtm/ylgXhkJkTo6rRb8IUe3caVhF
 R0ZDWZvhvfh24gnkHjnZ9SbYqz20sa244+pgHmPXwnYDEidb+1SXvy7LE1LuAhUW
 utj3flRQDLaDAl91lySpAjUp9aM8
 -----END PRIVATE KEY-----
-    ''';
+''';
+
+  /// The PEM-encoded TLS certificate chain [TomServer.start] binds with, unless
+  /// [noSsl] is set.
+  ///
+  /// **The default is a throwaway self-signed `localhost` pair committed to
+  /// this repository, and its private key is public.** It exists so a
+  /// development machine can speak HTTPS without a certificate authority.
+  /// Nothing refuses to start when a deployment leaves it in place, so
+  /// overriding this and [privateKey] together is the deployment's
+  /// responsibility — a server still serving this chain in production is
+  /// authenticating itself with a key anyone can read.
+  ///
+  /// Supplied as PEM text rather than a path, which is what lets a container
+  /// inject it through the environment; the bytes are handed to
+  /// [SecurityContext.useCertificateChainBytes] unparsed, so a malformed value
+  /// fails at bind time and not before.
+  String certificateChain = developmentCertificateChain;
+
+  /// The PEM-encoded TLS private key for [certificateChain]. **A credential:**
+  /// handle it exactly as the marked settings below are handled.
+  ///
+  /// The default is the private half of the checked-in self-signed pair and is
+  /// therefore public. See [certificateChain]: the two are overridden together
+  /// or not at all, since a chain without its matching key binds nothing.
+  ///
+  /// Never log this field, and never log [args], which may carry it. The bytes
+  /// are handed to [SecurityContext.usePrivateKeyBytes] unparsed.
+  ///
+  /// It carries a different wording from the marked settings on purpose. That
+  /// marker is a controlled one: `doc/configuration.md` tabulates the four
+  /// out-of-band blocks a deployment supplies — JWT signing, server self-login,
+  /// outbound mail, outbound SMS — and a test holds the marked fields and that
+  /// table to each other, so a field marked without a row there fails. TLS
+  /// material has no row: it is documented by the limitation naming the
+  /// checked-in pair. The difference is about which document owes a row, not
+  /// about how carefully this value is handled.
+  String privateKey = developmentPrivateKey;
+
+  /// Whether either half of the TLS material is still the checked-in
+  /// development pair.
+  ///
+  /// **Either half, not both**, because the two halves fail differently and
+  /// both are worth hearing about. A default [privateKey] means the server
+  /// authenticates itself with a key published in this repository, which is the
+  /// danger this getter exists for. A default [certificateChain] beside an
+  /// overridden key is a different fault with the same remedy: the pair does
+  /// not match, so the socket fails to bind — and saying so before the bind is
+  /// cheaper than reading the error afterwards.
+  ///
+  /// Compared against [developmentCertificateChain] and
+  /// [developmentPrivateKey], which are the very constants the fields default
+  /// to, so the check cannot drift from what it checks.
+  ///
+  /// It says nothing about whether TLS is *served* — [noSsl] answers that, and
+  /// a plaintext server carrying the default pair is not doing anything wrong.
+  /// [TomServer.warnOnDevelopmentTlsMaterial] puts the two questions together.
+  /// A method rather than a getter, and on this class that is a distinction
+  /// the documentation rests on: the `Properties` table of
+  /// `api_summary_configuration.md` is the list of **knobs a deployment sets**,
+  /// held to the class's fields by a census, and a computed answer standing
+  /// among them would blur the two.
+  bool usesDevelopmentTlsMaterial() =>
+      certificateChain == developmentCertificateChain ||
+      privateKey == developmentPrivateKey;
 
   /// PEM of the RSA public key that encrypts the payload section of an issued
   /// token; read by [installJwtSigning].

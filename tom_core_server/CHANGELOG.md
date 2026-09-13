@@ -61,6 +61,31 @@
 
 ### Changed
 
+- **The development TLS pair announces itself (tcopen121).**
+  `certificateChain` and `privateKey` default to a complete self-signed
+  `localhost` certificate and its RSA key, both committed to this repository.
+  They were marked as a development pair that must be overridden — in the
+  source, the guide and the API mirror — and nothing enforced it: a deployment
+  that omitted the setting served TLS with a published key and started cleanly.
+
+  The pair stays; a development machine has to speak HTTPS without a certificate
+  authority. `TomServer.start` now warns before it builds the `SecurityContext`,
+  naming which half is still at its default and what to set. **Either half
+  triggers it**: a default `privateKey` means the key is public, a default
+  `certificateChain` beside an overridden key means the pair cannot match and
+  the bind fails. A plaintext server (`noSsl`) is silent.
+
+  **Nothing refuses to start.** A refusal would cost every local run that serves
+  TLS an opt-in setting in every launch line, compose file and integration
+  script; a deployment that reads its logs has been told.
+  `TomBaseServerConfiguration.usesDevelopmentTlsMaterial()` is public so one
+  that would rather refuse can, in one `if`.
+
+  The PEM literals moved into `developmentCertificateChain` and
+  `developmentPrivateKey`, which the fields now default to — so the check
+  compares against the very text the field defaults to rather than a copy that
+  could drift. Seven tests, three mutations checked.
+
 - **Every configuration failure is one exception, told apart by its key
   (tcopen120).** The failed cast already raised `TomConfigurationException`; the
   obligatory miss beside it threw the message itself —

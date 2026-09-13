@@ -106,7 +106,8 @@ TomServer(TomBaseServerConfiguration configuration)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `start` | `void start()` | *(async)* Logs the deployment in as itself (`TomServerSelfLogin.loginAndInstall`) before anything else, then initialises the router, composes the pipeline, builds TLS, resolves the listen address, and binds the socket. A deployment that configured a service credential and cannot log in has the error rethrown and **no socket is bound**; one that configured none is unaffected. Fire-and-forget; does not return the `HttpServer`. |
+| `warnOnDevelopmentTlsMaterial` | `void warnOnDevelopmentTlsMaterial()` | Warns when this server is about to serve TLS with the checked-in development pair, naming which half is still at its default. Called by `start` before it builds the `SecurityContext`. Silent when `noSsl` is set, since nothing is served over TLS. Nothing refuses to start: an opt-in flag would cost every local TLS run an extra setting. Public and separate from `start` because `start` binds a socket and returns nothing, so a property of the boot is otherwise unobservable. |
+| `start` | `void start()` | *(async)* Logs the deployment in as itself (`TomServerSelfLogin.loginAndInstall`) before anything else, then warns if the TLS material is still the development pair, initialises the router, composes the pipeline, builds TLS, resolves the listen address, and binds the socket. A deployment that configured a service credential and cannot log in has the error rethrown and **no socket is bound**; one that configured none is unaffected. Fire-and-forget; does not return the `HttpServer`. |
 
 ## Global Functions and Constants
 

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart' as jwt;
 import 'package:shelf/shelf.dart';
@@ -537,6 +538,107 @@ void main() {
       final config = _NoopConfig()..loggingMiddleware = custom;
       final server = TomServer(config);
       expect(identical(server.loggingMiddleware, custom), isTrue);
+    });
+  });
+
+  // The TLS material a deployment gets when it configures none is a real
+  // self-signed pair whose private key is committed to this repository. It
+  // stays -- a development machine has to be able to speak HTTPS without a
+  // certificate authority -- so the boot says so, every time, rather than
+  // serving a published key in silence.
+  group('the development TLS pair announces itself', () {
+    late _CapturingLogOutput captured;
+    late TomLogOutput installed;
+
+    setUp(() {
+      TomServerConfigResourceProvider.setServerConfigProvider(
+        TomServerConfigResourceProvider.from({}),
+      );
+      installed = tomLog.logOutput;
+      captured = _CapturingLogOutput();
+      tomLog.logOutput = captured;
+    });
+
+    tearDown(() => tomLog.logOutput = installed);
+
+    String warning() =>
+        captured.messages.where((m) => m.contains('TLS')).join('\n');
+
+    test('a configuration that overrides neither half is warned about', () {
+      TomServer(_NoopConfig()).warnOnDevelopmentTlsMaterial();
+      // The three things an operator needs: that it is happening, that the key
+      // is public, and which fields to set.
+      expect(warning(), contains('development'));
+      expect(warning(), contains('published'));
+      expect(warning(), contains('certificateChain'));
+      expect(warning(), contains('privateKey'));
+    });
+
+    // The half that matters most, told apart from the other: a deployment that
+    // supplied its own chain and left the key is still serving a published key.
+    test('overriding only the chain is still warned about', () {
+      final config = _NoopConfig()..certificateChain = '-----BEGIN CERT-----';
+      TomServer(config).warnOnDevelopmentTlsMaterial();
+      expect(warning(), contains('private key'));
+    });
+
+    // And the reverse, which is a different fault with the same remedy: the
+    // pair no longer matches, so the bind fails -- worth saying before it does.
+    test('overriding only the key is still warned about', () {
+      final config = _NoopConfig()..privateKey = '-----BEGIN KEY-----';
+      TomServer(config).warnOnDevelopmentTlsMaterial();
+      expect(warning(), contains('certificate chain'));
+    });
+
+    test('a configuration that overrides both is silent', () {
+      final config = _NoopConfig()
+        ..certificateChain = '-----BEGIN CERT-----'
+        ..privateKey = '-----BEGIN KEY-----';
+      TomServer(config).warnOnDevelopmentTlsMaterial();
+      expect(captured.messages, isEmpty);
+    });
+
+    // Nothing is served over TLS, so there is nothing to warn about -- and a
+    // warning here would be the kind that teaches an operator to ignore them.
+    test('a plaintext server is silent, default pair or not', () {
+      TomServer(_NoopConfig()..noSsl = true).warnOnDevelopmentTlsMaterial();
+      expect(captured.messages, isEmpty);
+    });
+
+    test('the condition is readable on the configuration itself', () {
+      expect(_NoopConfig().usesDevelopmentTlsMaterial(), isTrue);
+      final overridden = _NoopConfig()
+        ..certificateChain = 'x'
+        ..privateKey = 'y';
+      expect(overridden.usesDevelopmentTlsMaterial(), isFalse);
+    });
+
+    // `start()` is fire-and-forget and binds a socket, so nothing in this
+    // package calls it (see the header). The warning is a public method for
+    // that reason -- and the source is what says the boot still calls it,
+    // which is the same technique the self-login ordering is pinned with.
+    test('start() calls it, before it builds the context', () {
+      final lines = File(
+        'lib/src/tomserver/server/server.dart',
+      ).readAsLinesSync();
+      // The *call*, not the declaration: `…Material();` ends in a semicolon
+      // where `void …Material() {` does not. Searching for the bare name would
+      // match the method itself, and the guard would pass with nothing calling
+      // it -- which is exactly what the first draft of this test did.
+      final call = lines.indexWhere(
+        (l) => l.contains('warnOnDevelopmentTlsMaterial();'),
+      );
+      final context = lines.indexWhere((l) => l.contains('SecurityContext()'));
+      expect(
+        call,
+        greaterThanOrEqualTo(0),
+        reason: 'start() no longer announces the development TLS pair',
+      );
+      expect(
+        context,
+        greaterThan(call),
+        reason: 'the warning must precede the context it is about',
+      );
     });
   });
 

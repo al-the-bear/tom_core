@@ -16,6 +16,7 @@ environment-variable substitution.
   - [What a failed resolution throws](#what-a-failed-resolution-throws)
     - [The chained cause of a bad cast](#the-chained-cause-of-a-bad-cast)
 - [The Server Configuration Base](#the-server-configuration-base)
+  - [The development TLS pair announces itself](#the-development-tls-pair-announces-itself)
   - [Requiring a setting](#requiring-a-setting)
   - [Naming the application](#naming-the-application)
   - [Switching protection off from the command line](#switching-protection-off-from-the-command-line)
@@ -333,9 +334,48 @@ individual fields rather than this list.
 
 > The default `certificateChain` / `privateKey` are a throwaway self-signed
 > `localhost` pair for local development and **must be overridden in
-> production**. The JWT fields are carried, not used: nothing in this library
-> reads them, and there are no keys for the algorithm, issuer, audience or
-> expiry, so a server that signs tokens assembles that part in code.
+> production**; a boot that serves TLS with either half still at its default
+> [says so in the log](#the-development-tls-pair-announces-itself). The JWT
+> fields are carried, not used: nothing in this library reads them, and there
+> are no keys for the algorithm, issuer, audience or expiry, so a server that
+> signs tokens assembles that part in code.
+
+### The development TLS pair announces itself
+
+`certificateChain` and `privateKey` default to a complete self-signed
+`localhost` certificate and its RSA key, both committed to this repository. They
+stay: a development machine has to be able to speak HTTPS without a certificate
+authority. What has changed is that a boot serving them is no longer silent —
+`TomServer.start` warns before it builds the `SecurityContext`:
+
+```text
+WARN  TLS is enabled and the certificate chain and the private key is still the
+development pair committed to tom_core_server. Its private key is published, so
+this server authenticates itself with a key anyone can read. Set
+certificateChain and privateKey for any deployment that is not a local
+development machine.
+```
+
+**Either half triggers it**, and the message names which. A default
+`privateKey` is the danger — the key is public. A default `certificateChain`
+beside an overridden key is a different fault with the same remedy: the pair
+does not match, so the socket fails to bind, and hearing that before the bind is
+cheaper than reading the error afterwards.
+
+A plaintext server (`noSsl`) is silent, because nothing is served over TLS and a
+warning that does not apply is the kind that teaches an operator to ignore the
+ones that do.
+
+**Nothing refuses to start.** A refusal would cost every local run that serves
+TLS an extra opt-in setting, and a deployment that reads its logs has been told.
+`TomBaseServerConfiguration.usesDevelopmentTlsMaterial` is the condition on its
+own, for a deployment that would rather refuse than warn:
+
+```dart
+if (configuration.usesDevelopmentTlsMaterial) {
+  throw StateError('refusing to start with the development certificate');
+}
+```
 
 ### Requiring a setting
 
@@ -810,12 +850,16 @@ started with no configuration whose first symptom appears several layers later.
   `'3306'` where `port: 3306` yields an `int`, and `TomConfig` casts rather
   than parses. See [A substituted value is a
   string](#a-substituted-value-is-a-string).
-- **The default TLS material is a checked-in self-signed pair.**
-  `certificateChain` and `privateKey` default to a throwaway `localhost`
-  certificate committed to this repository — convenient for local development,
-  and worthless as authentication anywhere else, since its private key is
-  public. Nothing refuses to start when a deployment leaves it in place, so
-  overriding both in production is the deployment's responsibility.
+- **Nothing refuses to start on the checked-in TLS pair.** `certificateChain`
+  and `privateKey` default to a throwaway `localhost` certificate committed to
+  this repository — convenient for local development, and worthless as
+  authentication anywhere else, since its private key is public. A boot that
+  serves TLS with either half still at its default now [warns every
+  time](#the-development-tls-pair-announces-itself), but it does start:
+  refusing would cost every local TLS run an opt-in setting. Overriding both in
+  production is still the deployment's responsibility, and
+  `usesDevelopmentTlsMaterial` is the condition for one that would rather
+  refuse.
 - **The JWT key material defaults to nothing, deliberately.**
   `jwtSharedSecretKey`, `jwtRsaPrivKey` and `jwtRsaPubKey` are all `null` out of
   the box, and `installJwtSigning` reads that nullness as "not configured": it

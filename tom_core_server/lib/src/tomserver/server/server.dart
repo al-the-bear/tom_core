@@ -400,6 +400,7 @@ class TomServer {
     await _installServerPrincipal();
 
     if (!configuration.noSsl) {
+      warnOnDevelopmentTlsMaterial();
       securityContext = SecurityContext()
         ..useCertificateChainBytes(utf8.encode(configuration.certificateChain))
         ..usePrivateKeyBytes(utf8.encode(configuration.privateKey));
@@ -494,6 +495,44 @@ class TomServer {
 
     tomLog.info(
       'Server listening on port ${server.port} ${server.address} ${securityContext != null ? "SSL" : "no SSL"} at ${DateTime.now()}',
+    );
+  }
+
+  /// Warns when this server is about to serve TLS with the checked-in
+  /// development pair.
+  ///
+  /// The pair stays a field default — a development machine has to be able to
+  /// speak HTTPS without a certificate authority — so the boot says so instead,
+  /// every time, rather than serving a published key in silence. Nothing
+  /// refuses to start: an opt-in flag would cost every local TLS run an extra
+  /// setting, and a deployment that reads its logs has been told.
+  ///
+  /// Silent when [TomBaseServerConfiguration.noSsl] is set, because nothing is
+  /// served over TLS and a warning that does not apply is the kind that teaches
+  /// an operator to ignore the ones that do.
+  ///
+  /// Public and separate from [start] for the reason the rest of `start()` is
+  /// not tested here: it binds a socket and returns nothing, so a property of
+  /// the boot is otherwise unobservable. This one can be asked directly.
+  void warnOnDevelopmentTlsMaterial() {
+    if (configuration.noSsl) return;
+    if (!configuration.usesDevelopmentTlsMaterial()) return;
+
+    final defaulted = <String>[
+      if (configuration.certificateChain ==
+          TomBaseServerConfiguration.developmentCertificateChain)
+        'certificate chain',
+      if (configuration.privateKey ==
+          TomBaseServerConfiguration.developmentPrivateKey)
+        'private key',
+    ];
+
+    tomLog.warn(
+      'TLS is enabled and the ${defaulted.join(' and the ')} is still the '
+      'development pair committed to tom_core_server. Its private key is '
+      'published, so this server authenticates itself with a key anyone can '
+      'read. Set certificateChain and privateKey for any deployment that is '
+      'not a local development machine.',
     );
   }
 
