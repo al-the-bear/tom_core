@@ -8,12 +8,21 @@
 /// `prepareStatement` binding positional parameters, and the plain
 /// (non-XA) transaction lifecycle actually committing or rolling back rows.
 ///
+/// It also covers **driver discovery**, which needs no server but does need
+/// generated reflection: `createDatasourceOf` resolves a type by scanning
+/// `tomReflector.annotatedClasses` for `@TomDatasourceDriver`, which raises
+/// "Reflection has not been initialized" in the connection-free suite. This
+/// file bootstraps a reflection root, so the scan here is a real scan rather
+/// than a stand-in for one.
+///
 /// The whole group is `@Tags(['db'])` and skips itself when no MariaDB is
 /// reachable, so the default `testkit :test` run stays green everywhere. Bring a
 /// server up with `tool/run_db_tests.sh` (or point `TOM_CORE_SERVER_TEST_DB_*`
 /// at your own) to run it.
 @Tags(['db'])
 library;
+
+import 'dart:io';
 
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
@@ -170,6 +179,90 @@ void main() async {
       );
       // Leave the fixture clean for the next test.
       await ds.rollback();
+    });
+
+    // Driver discovery scans `tomReflector.annotatedClasses` for
+    // `@TomDatasourceDriver`, so it needs generated reflection to run at all —
+    // which is why it is tested here rather than in `datasources_test.dart`,
+    // where the scan raises "Reflection has not been initialized". The scan has
+    // already happened by the time these run: `TestDatabase.register` resolved
+    // the driver in `setUpAll`, so what is asserted is the populated registry,
+    // which is the state a server runs in.
+    group('driver discovery', () {
+      test('mariadb resolves to the plain driver', () {
+        final resolved = TomDataSource.createDatasourceOf('mariadb');
+        expect(resolved, isA<MariaDbDatasource>());
+        // Not the XA subclass: it *is* a MariaDbDatasource, so a bare isA would
+        // pass for either, and the two type names have to resolve apart.
+        expect(resolved, isNot(isA<MariaDbXADatasource>()));
+      });
+
+      test('mariadb_xa resolves to the XA driver', () {
+        expect(
+          TomDataSource.createDatasourceOf('mariadb_xa'),
+          isA<MariaDbXADatasource>(),
+        );
+      });
+
+      test('each call returns a fresh data source', () {
+        // The registry holds the class, not an instance: two named entries
+        // configured with the same driver type must not share a connection.
+        final first = TomDataSource.createDatasourceOf('mariadb');
+        final second = TomDataSource.createDatasourceOf('mariadb');
+        expect(identical(first, second), isFalse);
+      });
+
+      test('an unknown type is refused, naming the type', () {
+        expect(
+          () => TomDataSource.createDatasourceOf('postgres'),
+          throwsA(
+            isA<TomDatasourceInitException>()
+                .having(
+                  (e) => e.key,
+                  'key',
+                  'tom_datasource.create_datasource_of.no_driver_found',
+                )
+                .having(
+                  (e) => e.defaultUserMessage,
+                  'message',
+                  contains('postgres'),
+                ),
+          ),
+        );
+      });
+
+      // The duplicate-driver guard is asserted from the source rather than by
+      // running it, and the reason is structural: the scan reads the whole
+      // reflected graph, so provoking it means putting a second
+      // `@TomDatasourceDriver("mariadb")` class into the fixture — which would
+      // make the scan throw on its *first* call, in `setUpAll`, and take every
+      // other test in this file with it. A duplicate is a build-time mistake in
+      // an application's own graph; what is checkable here is that the scan
+      // refuses it rather than letting the second registration win silently.
+      test('a duplicate driver is refused rather than overwritten', () {
+        final source = File(
+          'lib/src/tomserver/datasources/datasource_initialization.dart',
+        ).readAsStringSync();
+        final scan = source.substring(
+          source.indexOf('static void _initializeDatasourceTypes()'),
+          source.indexOf('static TomDataSource? createDatasourceOf('),
+        );
+        // The collision is detected before the map is written, so the first
+        // registration stands and the second raises.
+        expect(scan, contains('if (_datasourceTypes[driver.type] != null)'));
+        expect(
+          scan,
+          contains(
+            'tom_datasource.initialize_datasource_types.duplicate_driver',
+          ),
+        );
+        // And the assignment is in the `else`, so no path overwrites an
+        // existing entry.
+        expect(
+          scan.indexOf('duplicate_driver'),
+          lessThan(scan.indexOf('_datasourceTypes[driver.type] = candidate')),
+        );
+      });
     });
   }, skip: skipReason);
 }

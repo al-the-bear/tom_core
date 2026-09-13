@@ -1748,11 +1748,13 @@ void main() {
     });
   });
 
-  // Driver discovery (createDatasourceOf resolving mariadb/mariadb_xa,
-  // the unknown-type and duplicate-driver guards) is deferred: it scans
+  // Driver discovery (createDatasourceOf resolving mariadb/mariadb_xa, and the
+  // unknown-type and duplicate-driver guards) is covered by the `driver
+  // discovery` group in `datasources_db_test.dart`, not here: the scan reads
   // tomReflector.annotatedClasses, which raises "Reflection has not been
-  // initialized" in this suite (no generated reflection is bootstrapped here).
-  // That belongs to an integration-level test with reflection wired up.
+  // initialized" in this suite because no generated reflection is bootstrapped.
+  // That file bootstraps one, so the scan is a real scan there rather than a
+  // stand-in for it.
 
   group('TomDataSourceInfo.initializeDatasourceInfo config guard', () {
     setUp(() => TomDataSourceInfo.datasources.clear());

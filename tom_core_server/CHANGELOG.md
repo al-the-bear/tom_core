@@ -2,6 +2,31 @@
 
 ### Documentation
 
+- **Driver discovery is tested where reflection exists (tcopen125).**
+  `createDatasourceOf` resolves a data-source type by scanning
+  `tomReflector.annotatedClasses` for `@TomDatasourceDriver`, and none of it had
+  a test: the scan raises "Reflection has not been initialized" in the
+  connection-free suite, which bootstraps none, and that suite recorded the gap
+  as a deferral to "an integration-level test with reflection wired up". That
+  test already existed — `datasources_db_test.dart` bootstraps a reflection root
+  and resolves a driver in its own `setUpAll` — so the coverage had a home and
+  was not in it.
+
+  A `driver discovery` group now asserts that `mariadb` resolves to
+  `MariaDbDatasource` and `mariadb_xa` to `MariaDbXADatasource` (the first
+  carrying `isNot(isA<MariaDbXADatasource>())`, since the XA class *is* a
+  `MariaDbDatasource` and a bare `isA` would pass for either), that each call
+  returns a fresh instance, and that an unknown type is refused with its key and
+  the type in the message. The deferral comment is now a pointer to them.
+
+  The duplicate-driver guard is asserted from the source instead, for a
+  structural reason: provoking it means a second `@TomDatasourceDriver("mariadb")`
+  in the reflected graph, and the scan reads the whole graph on its first call —
+  in that file, `setUpAll` — so the fixture would take every test in it down
+  rather than the one under test. The test requires the collision branch, its
+  key, and that the branch precedes the assignment, which is what "refused rather
+  than overwritten" means in code.
+
 - **An unknown configuration key stays unreported, and the reason is now
   falsifiable (tcopen123).** `getDefaultValues` merges four sources and
   `setValues` assigns the keys it recognises; a key matching no field is neither
