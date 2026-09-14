@@ -408,6 +408,123 @@ void main() {
     });
   });
 
+  // The export module is the lower half of a reporting element whose upper half
+  // — the report definition, its projection, its schedule — has no
+  // specification. That half is deferred, and `TomTabularResult` is the shape
+  // the deferral rests on: an envelope is *adapted onto* it later rather than
+  // the renderers being rebuilt around it.
+  //
+  // That property is worth holding rather than trusting. It is true today only
+  // because `render` takes one argument and it is the result: a second
+  // parameter — a report definition, a locale, a chart set — would make every
+  // renderer, including any an application registered, change on the day the
+  // envelope lands. These tests are what makes that a decision rather than an
+  // accident nobody noticed breaking.
+  group('the shape a reporting envelope will be adapted onto', () {
+    /// The source of [path], for reading a declaration rather than a value.
+    String sourceOf(String path) => File(path).readAsStringSync();
+
+    test('the renderer contract takes the result and nothing else', () {
+      final contract = sourceOf(
+        'lib/src/tomserver/export/tabular_renderer.dart',
+      );
+      expect(
+        contract,
+        contains('Stream<List<int>> render(TomTabularResult result);'),
+        reason:
+            'a second parameter on render is what would force every renderer '
+            'to change when the report envelope lands',
+      );
+    });
+
+    test('every shipped renderer declares that same signature', () {
+      for (final file in const [
+        'csv_renderer.dart',
+        'xlsx_renderer.dart',
+        'pdf_renderer.dart',
+      ]) {
+        expect(
+          sourceOf('lib/src/tomserver/export/$file'),
+          contains('render(TomTabularResult result)'),
+          reason: '$file renders from something other than the result',
+        );
+      }
+    });
+
+    test(
+      'a result the module did not derive renders on every format',
+      () async {
+        // What an envelope will hand over: sections it built itself, from a
+        // query the export module knows nothing about, with the report's own
+        // name and parameters in the metadata. Nothing here is reflected, and
+        // nothing comes from an entity.
+        TomTabularResult envelopeShaped() => TomTabularResult(
+          title: 'Quarterly revenue',
+          metadata: const {
+            'Report': 'revenue-by-region',
+            'Parameters': 'quarter=2026Q3',
+            'Generated': '2026-07-01T00:00:00Z',
+          },
+          sections: [
+            TomTabularSection.ofMaps(
+              [
+                TomTabularColumn('region', label: 'Region'),
+                TomTabularColumn(
+                  'total',
+                  label: 'Total',
+                  type: TomColumnType.decimal,
+                ),
+              ],
+              Stream.fromIterable(const [
+                {'region': 'North', 'total': 1200.5},
+                {'region': 'South', 'total': 980.0},
+              ]),
+              title: 'By region',
+            ),
+          ],
+        );
+
+        for (final format in const ['csv', 'xlsx', 'pdf']) {
+          // Awaited and measured, not merely invoked: a renderer returns its
+          // stream before it has rendered anything, so `returnsNormally` around
+          // the call would pass on a renderer that failed on its first row.
+          final bytes = await _collect(
+            TomExportFormats.standard()
+                .rendererFor(format)
+                .render(envelopeShaped()),
+          );
+          expect(
+            bytes,
+            isNotEmpty,
+            reason: '$format could not render a result it did not help build',
+          );
+        }
+      },
+    );
+
+    test('the envelope has somewhere to put what it knows', () async {
+      // `metadata` is the adaptation surface: a report name, the parameters it
+      // ran with, when it ran. A renderer that reads it is what makes the map
+      // carried *and* used, so the envelope has a destination rather than a
+      // field.
+      final bytes = await _collect(
+        const TomPdfRenderer().render(
+          TomTabularResult.single(
+            title: 'Quarterly revenue',
+            metadata: const {'Report': 'revenue-by-region'},
+            section: TomTabularSection.ofRows(
+              [TomTabularColumn('region', label: 'Region')],
+              [
+                TomTabularRow(const ['North']),
+              ],
+            ),
+          ),
+        ),
+      );
+      expect(bytes, isNotEmpty);
+    });
+  });
+
   // ===========================================================================
   // CSV
   // ===========================================================================

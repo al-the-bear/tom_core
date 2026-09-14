@@ -33,6 +33,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 - [Wiring a Server](#wiring-a-server)
 - [Verification](#verification)
 - [Core Components](#core-components)
+- [The Reporting Half This Is The Lower Half Of](#the-reporting-half-this-is-the-lower-half-of)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
 
@@ -882,6 +883,41 @@ per example would be twenty-three tests of one function.
 - **`TomExportService`** — the `apiResponse` and `fileExport` channels.
 - **`TomExportException`** — the module's base error.
 
+## The Reporting Half This Is The Lower Half Of
+
+This module renders and delivers. It does not define reports: there is no type
+that names a query, a projection, a delivery channel and a schedule in one
+place, which is what an application would actually configure. That half is
+**in scope for the framework and not written**, and when it is written it is a
+module of its own that depends on this one — not an extension of it. A module
+that both defined reports and rendered them would have two reasons to change,
+and the reason a report definition changes (a new parameter, a new schedule)
+has nothing to do with the reason a renderer does (a format's own rules).
+
+What that module will need from this one already exists, and is the reason the
+deferral is safe rather than merely convenient:
+
+| The reporting module needs | This module already offers |
+| -------------------------- | -------------------------- |
+| a shape to put its result in | `TomTabularResult` — a title, one or more sections, and a `metadata` map for the report's name, its parameters and when it ran |
+| a way to build that shape from a query it ran | `TomTabularSection.ofMaps` (a `TomGroupedRow`'s `values` feed it directly), `ofRows`, or `ofEntities` when the report is over one entity |
+| a document, in a format a definition names | `TomExportFormats.rendererFor(id)` — with its media type and file extension available *without* rendering, which is what a schedule needs to name a stored file |
+| delivery with no request in sight | `TomExportService.storeAs` and `keyFor`; neither takes a `Request`, so a scheduled run is not a special case |
+| a schedule | the [scheduling](scheduling.md) module. A reporting module runs on the existing scheduled-work machinery rather than growing its own |
+
+**The property the deferral rests on is that `TomTabularRenderer.render` takes
+the result and nothing else.** A second parameter — a report definition, a
+locale, a chart set — would mean every renderer changes on the day the envelope
+lands, including one an application registered itself, and that is exactly the
+rebuild the deferral was chosen to avoid. It is held by tests rather than by
+intention: `export_test.dart` asserts the contract's signature, asserts that
+each shipped renderer declares it, and renders a result built the way an
+envelope will build one — sections from a query this module knows nothing about,
+metadata filled with a report's own identity — through all three formats.
+
+So an envelope is adapted onto `TomTabularResult`; `TomTabularResult` is not
+adapted to an envelope.
+
 ## Not Yet Implemented
 
 - **Charts, and they wait on the envelope below.** The specification names
@@ -912,7 +948,8 @@ per example would be twenty-three tests of one function.
   scheduling.** The reporting element is deferred and its specification
   unwritten. `TomTabularResult` is deliberately the minimal shape the renderers
   need, so the envelope is adapted onto it later rather than the renderers being
-  rebuilt around it.
+  rebuilt around it. What that means concretely is
+  [The Reporting Half This Is The Lower Half Of](#the-reporting-half-this-is-the-lower-half-of).
 - **The `email` delivery channel**, which composes out of this module and the
   `messaging` module rather than living in either alone.
 - **Expiry and quota for stored exports.** `delete` exists and nothing calls it;

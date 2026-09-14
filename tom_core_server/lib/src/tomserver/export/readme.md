@@ -81,9 +81,18 @@ Future<void> main() async {
 }
 ```
 
+This is the **lower half** of a reporting element. It renders and delivers; it
+does not define reports, and it will not — a report definition names a query, a
+projection, a delivery channel and a schedule, and a module that both defined
+reports and rendered them would have two reasons to change. When the reporting
+half is specified it becomes a module of its own that depends on this one, and
+it adapts its envelope onto `TomTabularResult` rather than this module growing
+to meet it. `doc/export.md` names the seams it will use and the property that
+keeps that adaptation cheap.
+
 See [`doc/export.md`](../../../../doc/export.md) for the full treatment: the
 streaming contract, what each format does with a column type, deriving columns
-from an entity, and the store seam. `example/export/export_example.dart` runs
+from an entity, the store seam, and the reporting boundary. `example/export/export_example.dart` runs
 the whole surface without a server, and `test/export_test.dart` and
 `test/export_entities_test.dart` cover it.
 

@@ -2,6 +2,27 @@
 
 ### Documentation
 
+- **The reporting boundary is stated, and the property it rests on is held
+  (tcopen140).** This module is the lower half of a reporting element whose
+  upper half — a report definition naming a query, a projection, a delivery
+  channel and a schedule — is unspecified. That half is in scope for the
+  framework as a **module of its own**: reporting will depend on export, and
+  export does not grow definitions or scheduling, because the reason a report
+  definition changes has nothing to do with the reason a renderer does.
+
+  `doc/export.md` now enumerates what the later module needs and where it
+  already exists — the result shape and its `metadata` map, the three ways to
+  build a section, a format's media type and extension available *without*
+  rendering, `storeAs`/`keyFor` with no `Request` in sight, and the scheduling
+  module for the schedule.
+
+  The property the deferral rests on is that `TomTabularRenderer.render` takes
+  the result and nothing else: a second parameter would mean every renderer
+  changes when the envelope lands, including one an application registered.
+  `export_test.dart` holds it — the contract's signature, each shipped
+  renderer's, and a result built the way an envelope will build one rendered
+  through all three formats.
+
 - **Charts wait on the report envelope, and the order is the decision
   (tcopen139).** The absence was documented; what it did not say is *why now
   rather than later*, or why nothing in the module anticipates them. A chart is
