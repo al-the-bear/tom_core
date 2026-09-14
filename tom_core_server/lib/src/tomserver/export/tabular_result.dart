@@ -39,8 +39,18 @@
 /// The one thing `codespecs_mapping.md` §5.28 names that is **not** here is
 /// **charts** (series and axes). Two of the three output formats cannot
 /// express a chart at all, so a chart model would be a field that only the
-/// PDF renderer ever read. When
-/// charts are specified they belong beside this type, not inside it.
+/// PDF renderer ever read. When charts are specified they belong beside this
+/// type, not inside it — and they wait on the same envelope, because a chart is
+/// a projection of a *report* result rather than of a tabular one, so its shape
+/// follows from the envelope's.
+///
+/// Nothing here anticipates them, deliberately: no chart field, no capability
+/// flag beside [TomTabularRenderer.streamsRows], no way for a renderer to
+/// declare that it cannot draw one. Each would be a declaration about a shape
+/// that does not exist yet — the same mistake as the model itself, one layer
+/// down. An application that needs charts sooner registers a renderer that
+/// draws them through [TomExportFormats], which the module neither knows about
+/// nor has to.
 /// ## Why there are two ways to build a section
 ///
 /// [TomTabularSection.ofRows] / [TomTabularSection.ofMaps] make the caller

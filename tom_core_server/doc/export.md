@@ -884,10 +884,30 @@ per example would be twenty-three tests of one function.
 
 ## Not Yet Implemented
 
-- **Charts.** The specification names series and axes; two of the three formats
-  cannot express a chart at all, so a chart model would be a field only the PDF
-  renderer ever read. When charts are specified they belong *beside*
-  `TomTabularResult`, not inside it.
+- **Charts, and they wait on the envelope below.** The specification names
+  series and axes; two of the three formats cannot express a chart at all, so a
+  chart model would be a field only the PDF renderer ever read. When charts are
+  specified they belong *beside* `TomTabularResult`, not inside it.
+
+  The order is the decision. A chart is a projection of a **report** result, not
+  of a tabular one, so its shape follows from the report envelope — which is the
+  next entry in this list and is itself unspecified. Specifying a chart model
+  first would mean guessing what carries it, and a model built on a guess is how
+  a field ends up with exactly one reader.
+
+  Nothing is prepared for charts on purpose, and that includes the things their
+  absence might look like an oversight in: there is no chart field on
+  `TomTabularResult`, no capability flag beside `streamsRows`, and no way for a
+  renderer to declare that it cannot draw one. Each of those would be a
+  declaration *about a shape that does not exist* — the same mistake as the model
+  itself, one layer down.
+
+  An application that needs charts before the envelope does is not blocked.
+  `TomExportFormats` is an open registry: register a renderer that draws them
+  under its own format id, or replace a shipped one, and the module neither
+  knows nor needs to. That is the same seam
+  [Formats Are a Registry, Not a Switch](#formats-are-a-registry-not-a-switch)
+  is about, and it is why waiting costs a caller nothing.
 - **The report-result envelope, report definitions, projections and
   scheduling.** The reporting element is deferred and its specification
   unwritten. `TomTabularResult` is deliberately the minimal shape the renderers

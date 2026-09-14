@@ -1,5 +1,27 @@
 ## 1.3.0
 
+### Documentation
+
+- **Charts wait on the report envelope, and the order is the decision
+  (tcopen139).** The absence was documented; what it did not say is *why now
+  rather than later*, or why nothing in the module anticipates them. A chart is
+  a projection of a **report** result rather than of a tabular one, so its shape
+  follows from the report envelope — which is itself unspecified. Specifying the
+  chart model first would mean guessing what carries it, and a model built on a
+  guess is how a field ends up with exactly one reader.
+
+  That reasoning covers the preparation too, which is what the absence might
+  otherwise look like an oversight in: no chart field on `TomTabularResult`, no
+  capability flag beside `streamsRows`, no way for a renderer to declare it
+  cannot draw one. Each would be a declaration about a shape that does not
+  exist — the same mistake one layer down.
+
+  An application that needs charts before the envelope does is not blocked:
+  `TomExportFormats` is an open registry, and a renderer that draws them plugs
+  in under its own format id without the module knowing. That seam is already
+  covered by `export_test.dart`'s "an application format plugs in without the
+  module knowing it".
+
 ### Changed
 
 - **The error handler is handed a `StackTrace` (tcopen138).** Every method of
