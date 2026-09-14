@@ -804,8 +804,8 @@ times and then deallocated.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `lastGeneratedId` | `int?` | The auto-increment / identity key from the most recent `execute` that inserted a row, or `null` (default `null`). |
-| `lastAffectedRows` | `int` | The number of rows the most recent `execute` changed — the count a `DELETE` or `UPDATE` reports, `0` for a statement that changed nothing or has not run. Abstract and non-nullable, unlike `lastGeneratedId`: a driver that ran a write knows how many rows it touched, and a default would let silence read as a real count. Per-execution state, so read it before `deallocate`. |
+| `lastGeneratedId` | `int?` | The auto-increment / identity key from the most recent `execute` that inserted a row, or `null` when it produced none. Abstract: the key belongs to the connection the insert ran on and only the driver knows which connection that was, so a default would let a driver that never implemented it answer "no key" for every insert and be believed. Per-execution state, so read it before `deallocate`. |
+| `lastAffectedRows` | `int` | The number of rows the most recent `execute` changed — the count a `DELETE` or `UPDATE` reports, `0` for a statement that changed nothing or has not run. Abstract and non-nullable, as `lastGeneratedId` is: a driver that ran a write knows how many rows it touched, and a default would let silence read as a real count. Per-execution state, so read it before `deallocate`. |
 
 ##### Methods
 

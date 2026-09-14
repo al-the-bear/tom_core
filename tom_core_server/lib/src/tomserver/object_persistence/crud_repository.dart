@@ -1418,17 +1418,21 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
         for (final col in writable) col.declaredName: dbValue(col),
       };
       await _saveInsertQuery!.execute(params);
-      // Resolve the row's key: an auto-increment surrogate is assigned by the
-      // database. Read it from the insert statement's *own* result
-      // (`lastGeneratedId`) — authoritative and connection-correct. Only fall
-      // back to a separate `SELECT LAST_INSERT_ID()` when the driver exposes no
-      // generated key, since that follow-up query is session-scoped and returns
-      // 0 if it runs on a different connection than the insert. A
-      // caller-supplied key is used as-is.
-      // In the else branch `isUnsavedKey` is false, so the key is non-null.
-      final K rowKey = isUnsavedKey(primaryKey)
-          ? (_saveInsertQuery!.lastGeneratedId ?? await _lastInsertId()) as K
-          : primaryKey as K;
+      // Resolve the row's key. This branch runs exactly when the key was left
+      // unsaved, so the database assigned an auto-increment surrogate and the
+      // insert statement's own result is the only place it can be read from:
+      // `lastGeneratedId` is connection-correct by construction, where a
+      // follow-up query for "the last key" is session-scoped and answers about
+      // whichever connection it happens to run on.
+      //
+      // A driver that answers `null` here is saying the insert assigned no key,
+      // which for a row whose key this repository asked the database to assign
+      // is not a state to carry forward: every later step — the read-back, the
+      // audit record, the key returned to the caller — would name a row that is
+      // not the one just written. So it is refused by name.
+      final K rowKey =
+          (_saveInsertQuery!.lastGeneratedId ?? _noGeneratedKey(dbTable.table))
+              as K;
       final newRow = await findById(rowKey);
       if (newRow != null) {
         // A create has no before-image; the whole stored row is the change.
@@ -1496,16 +1500,27 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     }
   }
 
-  /// Reads back the surrogate key the database assigned to the most recent
-  /// `INSERT` on this repository's connection (`LAST_INSERT_ID()`), so [save]
-  /// can return the freshly stored row.
-  Future<int?> _lastInsertId() async {
-    final rows = await datasourceInfo.datasource.executeQuery<TomCountResult>(
-      'SELECT LAST_INSERT_ID() AS count',
-      null,
-      TomCountResult,
+  /// Refuses an insert whose surrogate key the driver did not report.
+  ///
+  /// Named separately so the raise site stays one expression, and separately
+  /// from the insert's other failure — `insert_not_readable`, which is what a
+  /// *key* that reads back no row looks like. The two are different faults with
+  /// different fixes: this one is the driver or the table (no key was assigned,
+  /// or the driver does not report one), that one is the row.
+  Never _noGeneratedKey(String table) {
+    throw TomRepositoryException(
+      'crud_repository.save.no_generated_key',
+      "Insert into '$table' reported no generated key, but the row's primary "
+          "key was left for the database to assign. Either the table assigns "
+          "no auto-increment key for its primary key, or the driver "
+          "(${datasourceInfo.datasource.runtimeType}) does not report one from "
+          "the insert's result — see TomPreparedStatement.lastGeneratedId.",
+      parameters: {
+        'table': table,
+        'type': '$T',
+        'datasource': '${datasourceInfo.datasource.runtimeType}',
+      },
     );
-    return rows.isEmpty ? null : rows.first.count;
   }
 
   @override

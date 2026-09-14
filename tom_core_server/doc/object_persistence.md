@@ -278,11 +278,12 @@ Every repository rejection is a keyed `TomServerException`, never a bare
 | `crud_repository.count.illegal_count_result` | `count()`'s `COUNT(*)` returned other than exactly one row. |
 | `crud_repository.count_by_query.illegal_count_result` | Ditto for `countByQuery`. |
 | `crud_repository.count_by_query_sentence.illegal_count_result` | Ditto for `countByQuerySentence`. |
+| `crud_repository.save.no_generated_key` | An `INSERT` whose primary key was left for the database to assign reported no generated key — the table assigns none, or the driver does not report one from the insert's result. |
 | `crud_repository.save.insert_not_readable` | An `INSERT` reported success but the new row could not be read back. |
 | `crud_repository.save.update_not_readable` | An `UPDATE` ran but the row could not be re-read. |
 | `crud_repository.delete.unsaved_entity` | `delete(entity)` was handed an entity that was never persisted. |
 
-The first seven are *server* faults — a broken deployment, a table contradicting
+The first eight are *server* faults — a broken deployment, a table contradicting
 its own key, a driver that reported a write it then could not read — so
 `clientThrow` defaults to `false`: the key travels to the caller, the message
 (which names internals) does not.

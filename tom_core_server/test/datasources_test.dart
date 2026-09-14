@@ -1646,6 +1646,55 @@ void main() {
     });
   });
 
+  group('the driver contract answers nothing on a driver\'s behalf', () {
+    /// The body of `abstract class TomPreparedStatement`, without its header.
+    String statementContract() {
+      final source = File(
+        'lib/src/tomserver/datasources/datasource_initialization.dart',
+      ).readAsStringSync();
+      const header = 'abstract class TomPreparedStatement<T extends Object> {';
+      final start = source.indexOf(header);
+      expect(start, isNot(-1), reason: 'the contract was renamed');
+      final body = source.substring(start + header.length);
+      return body.substring(0, body.indexOf('\n}'));
+    }
+
+    /// [contract] without its dartdoc and comment lines.
+    Iterable<String> declarations(String contract) => contract
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty && !line.startsWith('//'));
+
+    test('every member is abstract', () {
+      // The rule, and the reason it is worth a test rather than a convention:
+      // each member of this contract carries a value the layers above act on —
+      // `save` returns a row under the key `lastGeneratedId` reports, `delete`
+      // returns `lastAffectedRows` as *the* number of rows removed. A default
+      // lets a driver that never implemented the member answer anyway, and the
+      // answer is indistinguishable from a real one, so nothing at any layer
+      // can notice. A member body is exactly what that looks like in source:
+      // either `=> …` or a braced block.
+      final body = declarations(statementContract());
+      expect(
+        body.where((line) => line.contains('=>') || line.contains('{')),
+        isEmpty,
+        reason:
+            'a member of TomPreparedStatement gained a default implementation; '
+            'a driver can now leave it unanswered and have the silence read as '
+            'an answer',
+      );
+    });
+
+    test('it declares the three members the layers above read', () {
+      // Named individually so a member *removed* fails here too: the check
+      // above passes trivially on an empty contract.
+      final body = declarations(statementContract()).join('\n');
+      expect(body, contains('int? get lastGeneratedId;'));
+      expect(body, contains('int get lastAffectedRows;'));
+      expect(body, contains('Future<List<T>> execute('));
+    });
+  });
+
   // The third state, and the one close used to leave unrepresentable. Closing
   // released the socket but left `connection` pointing at the dead object, so
   // the data source went on describing itself in terms of a connection that was

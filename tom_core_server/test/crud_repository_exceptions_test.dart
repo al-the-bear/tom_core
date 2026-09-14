@@ -232,6 +232,49 @@ void main() {
       );
     });
 
+    test('a driver that reports no generated key is refused by name', () async {
+      // The scripted source leaves `generatedId` null, which is what a driver
+      // that never implemented `lastGeneratedId` answers for every insert.
+      // `save` asked the database to assign the key, so there is no key to
+      // return and nothing later in the method can be about the right row.
+      expect(scripted.generatedId, isNull);
+      await expectLater(
+        FixtureTaskRepository().save(FixtureTaskRecord()..title = 'x'),
+        throwsA(repositoryError('crud_repository.save.no_generated_key')),
+      );
+    });
+
+    test('the refusal names the table and the driver', () async {
+      // Both halves are the diagnosis: the table is where an author looks for a
+      // missing AUTO_INCREMENT, the driver is where they look for an
+      // unimplemented `lastGeneratedId`, and the message cannot say which of
+      // the two it is.
+      await expectLater(
+        FixtureTaskRepository().save(FixtureTaskRecord()..title = 'x'),
+        throwsA(
+          isA<TomRepositoryException>().having(
+            (e) => e.toString(),
+            'message',
+            allOf(
+              contains('fixture_task'),
+              contains('ScriptedDataSource'),
+              contains('lastGeneratedId'),
+            ),
+          ),
+        ),
+      );
+    });
+
+    test('a missing key and an unreadable row are different faults', () {
+      // An insert that reported no key never produced one to read back, so it
+      // cannot also be the row that vanished — and the two are fixed in
+      // different places, the driver or the table against the row.
+      expect(
+        'crud_repository.save.no_generated_key',
+        isNot('crud_repository.save.insert_not_readable'),
+      );
+    });
+
     test('the two write paths do not share one key', () {
       // An insert that vanished and an update that vanished are different
       // faults — the first suspects the insert, the second suspects the row's

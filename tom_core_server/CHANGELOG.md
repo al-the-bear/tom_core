@@ -2,6 +2,31 @@
 
 ### Fixed
 
+- **A driver that cannot report a generated key no longer has one invented for
+  it (tcopen127).** `TomPreparedStatement.lastGeneratedId` carried a default
+  returning `null` — the sentinel for "this execute generated no key" — which
+  only the MariaDB statement overrode, so a second driver could report "no key"
+  for every insert without implementing anything.
+  `TomSqlDatasourceRepository.save` then fell back to a `SELECT
+  LAST_INSERT_ID()` of its own: the session-scoped read this member exists to
+  replace, hard-coded MySQL SQL in a driver-neutral repository, reachable only
+  where it is wrong in the most expensive way. On MariaDB it can never answer
+  better than the insert's own result, because both read the same session state;
+  on any other database it is not valid SQL.
+
+  The member is abstract now, on the argument its sibling `lastAffectedRows`
+  already carried: only a driver *can* answer it, because the key belongs to the
+  connection the insert ran on and only the driver knows which connection that
+  was. The fallback is gone with it, and an insert that reports no key for a row
+  whose key the repository asked the database to assign is refused by
+  `crud_repository.save.no_generated_key`, naming the table and the driver — the
+  two places the fault can be.
+
+  The same statement carried a dead branch: the key resolution re-tested
+  `isUnsavedKey(primaryKey)` inside the `if (insert)` arm that had already
+  tested it on a `final` local, so its "a caller supplied the key" arm could not
+  run. It is one expression now.
+
 - **A projection may omit a column on every row shape (tcopen126).** Four of the
   row mapper's five shapes skip a column the result does not carry; the
   annotated entity read it anyway, reaching the driver, which answered

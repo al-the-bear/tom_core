@@ -27,6 +27,20 @@ class TomDatasourceInitException extends TomServerException {
 /// Annotation marking a [TomDataSource] implementation as the driver for a
 /// named data-source [type] (e.g. `"mariadb"`). Drivers are discovered by
 /// scanning [tomReflector] for this annotation.
+///
+/// **What a driver owes the layers above it.** The type registered here is
+/// reached only through [TomDataSource] and [TomPreparedStatement], so
+/// everything the framework knows about a database it learns from those two
+/// contracts. Every member of [TomPreparedStatement] is abstract, deliberately:
+/// each carries a value the layers above act on, so there is none a driver can
+/// leave unanswered and have the silence read as an answer. The one that costs
+/// most is [TomPreparedStatement.lastGeneratedId] —
+/// `TomSqlDatasourceRepository.save` takes a freshly inserted row's surrogate
+/// key from it, and a driver is the only layer that can supply it, because the
+/// key belongs to the connection the insert ran on and only the driver knows
+/// which connection that was. A driver that answers `null` there makes every
+/// insert of a database-assigned key fail, by name, rather than storing rows
+/// under a key that is not theirs.
 @tomReflector
 class TomDatasourceDriver {
   /// The data-source type this driver serves.
@@ -52,18 +66,32 @@ abstract class TomPreparedStatement<T extends Object> {
   /// Read from the insert's *own* result, this is the authoritative source for
   /// a freshly inserted row's surrogate key — unlike a follow-up
   /// `SELECT LAST_INSERT_ID()`, which is session-scoped and returns `0` if it
-  /// happens to run on a different connection than the insert.
-  int? get lastGeneratedId => null;
+  /// happens to run on a different connection than the insert. A driver is the
+  /// only layer that can answer it for the same reason: the key belongs to the
+  /// connection the insert ran on, and only the driver knows which connection
+  /// that was.
+  ///
+  /// Abstract, and without a default, for the reason [lastAffectedRows] is:
+  /// `null` is a real answer — every `SELECT`, `UPDATE` and `DELETE` gives it,
+  /// and so does an insert into a table that assigns no key — and
+  /// `TomSqlDatasourceRepository.save` acts on it, refusing an insert whose
+  /// surrogate key it asked the database to assign and did not get back. A
+  /// default returning `null` would let a driver that never implemented this
+  /// give that answer to every insert, and be believed.
+  ///
+  /// It is per-execution state on the handle, so read it immediately after
+  /// [execute] and before [deallocate].
+  int? get lastGeneratedId;
 
   /// The number of rows the most recent [execute] changed — the count a
   /// `DELETE` or `UPDATE` reports, and `0` for a statement that changed
   /// nothing or has not run yet.
   ///
-  /// Deliberately non-nullable and without a default, unlike [lastGeneratedId]:
-  /// a driver that ran a write knows how many rows it touched, and callers
-  /// return this number as *the* answer to "how many rows were deleted". A
-  /// default would let a driver stay silent and have the silence read as a
-  /// real count — which is exactly the defect this member exists to remove.
+  /// Deliberately non-nullable, and abstract as [lastGeneratedId] is: a driver
+  /// that ran a write knows how many rows it touched, and callers return this
+  /// number as *the* answer to "how many rows were deleted". A default would
+  /// let a driver stay silent and have the silence read as a real count —
+  /// which is exactly the defect this member exists to remove.
   ///
   /// It is per-execution state on the handle, so read it immediately after
   /// [execute] and before [deallocate].

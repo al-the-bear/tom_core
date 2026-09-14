@@ -1197,22 +1197,31 @@ test here requires this file in particular to keep using it.
   means they share transaction state, and a rollback on one rolls the other one
   back too. Configure a separate data source for each unit of work that has to
   commit independently, rather than two names over one connection.
-- **`lastGeneratedId` is optional, and its fallback is session-scoped.**
-  `TomPreparedStatement.lastGeneratedId` defaults to `null` and only the MariaDB
-  statement overrides it; a driver that does not is silently fallen back to a
-  follow-up `SELECT LAST_INSERT_ID()`, which reads the *session's* last value
-  and answers 0 on any other connection. A new driver overrides
-  `lastGeneratedId` and returns the id the insert itself reported.
-- **`lastAffectedRows` is not optional, and it is per-execution.** Unlike
-  `lastGeneratedId`, `TomPreparedStatement.lastAffectedRows` is abstract and
-  non-nullable — a driver that ran a write knows how many rows it touched, and
-  callers (the CRUD repository's delete methods) return the number as *the*
-  answer to "how many rows went". A default would let a driver stay silent and
-  have the silence read as a real count. It is state on the handle, replaced by
-  the next `execute` and meaningless after `deallocate`, so read it immediately
-  after the execute that produced it. Both this and `lastGeneratedId` are
-  captured in one place in the MariaDB statement, so that its
-  reconnect-and-retry branch cannot pick up one and drop the other.
+- **`lastGeneratedId` is yours to answer, and only you can.**
+  `TomPreparedStatement.lastGeneratedId` is abstract. The key belongs to the
+  connection the insert ran on, and the driver is the only layer that knows
+  which connection that was — a follow-up `SELECT LAST_INSERT_ID()` from any
+  layer above reads the *session's* last value and answers 0 on another
+  connection, which is the defect reading it from the insert's own result
+  exists to remove. Return what the insert reported;
+  `TomSqlDatasourceRepository.save` takes a freshly inserted row's surrogate key
+  from it and refuses the insert by name
+  (`crud_repository.save.no_generated_key`) when there is none, rather than
+  storing a row under a key that is not its own.
+- **`lastAffectedRows` is per-execution.** `TomPreparedStatement.lastAffectedRows`
+  is abstract and non-nullable for the same reason — a driver that ran a write
+  knows how many rows it touched, and callers (the CRUD repository's delete
+  methods) return the number as *the* answer to "how many rows went". A default
+  would let a driver stay silent and have the silence read as a real count. It
+  is state on the handle, replaced by the next `execute` and meaningless after
+  `deallocate`, so read it immediately after the execute that produced it. Both
+  this and `lastGeneratedId` are captured in one place in the MariaDB statement,
+  so that its reconnect-and-retry branch cannot pick up one and drop the
+  other.
+
+  Every member of the contract is abstract, and `datasources_test.dart` holds it
+  there: a member that grows a body is one a driver can leave unanswered while
+  the layers above read the default as its answer.
 - **XA has no recovery.** `MariaDbXADatasource` derives its branch id from a
   timestamp and keeps it only in memory, and nothing ever issues `XA RECOVER`,
   so a process that dies between `XA PREPARE` and `XA COMMIT` leaves a prepared
