@@ -1,6 +1,54 @@
 ## 1.3.0
 
+### Fixed
+
+- **A projection may omit a column on every row shape (tcopen126).** Four of the
+  row mapper's five shapes skip a column the result does not carry; the
+  annotated entity read it anyway, reaching the driver, which answered
+  `MySQLClientException: There is no column with name: …` — outside this
+  module's exception family and naming a column rather than the query that
+  failed to select it. So `executeQuery<Entity>('SELECT title FROM …')` failed
+  while the same partial projection onto any other shape mapped. The entity
+  shape now guards as the other four do.
+
+- **The unsuitable-class refusal names a case a result can reach (tcopen126).**
+  `error.result_processing.unsuitable_class` sat in a final `else` after the
+  branch chain, which could not fire: the chain's first two branches take every
+  `TomClass` and its last two every other reflected type, and the type had
+  already been reflected four lines above. The case the message describes — a
+  result type not marked `@tomReflector` — surfaced instead as the reflector's
+  raw `NoSuchCapabilityError`. The guard now sits at the mirror lookup it is
+  about, keeping its key. The branch it vacated became the plain `else` it always
+  was, resolving its columns through `analysePersistentType`, which cannot answer
+  null and names the type when it cannot resolve one.
+
+### Changed
+
+- **`MariaDbDatasource.mapResultSet` is public (tcopen126).** The method that
+  picks between the five row shapes — grouped row, table-less `TomClass`,
+  annotated `TomClass`, plain reflected holder, annotated entity — was private
+  and reachable only through `executeQuery` or a prepared statement, both of
+  which want a connection. It needs none: the protocol has decoded every column
+  to text by the time a row reaches it, and only a `@TomReference` column reaches
+  back to the database, after a row's own columns are set.
+
 ### Documentation
+
+- **The row-shape decision is tested in the ordinary run (tcopen126).** Every
+  test of the mapper lived in the `db`-tagged suites, which skip themselves when
+  no MariaDB is listening — the ordinary case — so the module's largest decision
+  had no regression protection in the run people make.
+  `test/mariadb_row_mapping_test.dart` maps and asserts each of the five shapes,
+  the refusal of an unreflected result type, a `NULL` on every element type, a
+  projection that omits columns, and the text spellings the numeric readers
+  decide on. Its rows carry what the protocol carries — a column type, a length
+  and the column's text — and hand every typed read to the driver's own
+  `MySQLColumnType.convertStringValueToProvidedType`, the entire body of the real
+  `ResultSetRow.typedColByName`. That is what separates it from the fake
+  `grouped_query_db_test.dart` warns against: it invents no conversion, so a
+  `NEWDECIMAL` column refuses a `double` there from the same code as against a
+  live server. Which protocol type an SQL expression yields, and what text
+  arrives in it, stays with the `db`-tagged suites.
 
 - **Driver discovery is tested where reflection exists (tcopen125).**
   `createDatasourceOf` resolves a data-source type by scanning

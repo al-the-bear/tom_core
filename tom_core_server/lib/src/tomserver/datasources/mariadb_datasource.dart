@@ -158,11 +158,7 @@ class MariadbPreparedStatement<T extends Object>
     try {
       IResultSet result = await _execute(parameters, params);
       _captureExecuteResult(result);
-      return datasource._processResult<T>(
-        result,
-        resultType,
-        groupedProjection,
-      );
+      return datasource.mapResultSet<T>(result, resultType, groupedProjection);
     } on MariadbPreparedStatementException {
       // One retry, on the link the data source re-opens. Routed through the
       // same helper as the entry points so the lifecycle rule has a single
@@ -172,11 +168,7 @@ class MariadbPreparedStatement<T extends Object>
       preparedStmt = await link.prepare(command);
       IResultSet result = await _execute(parameters, params);
       _captureExecuteResult(result);
-      return datasource._processResult<T>(
-        result,
-        resultType,
-        groupedProjection,
-      );
+      return datasource.mapResultSet<T>(result, resultType, groupedProjection);
     }
   }
 
@@ -728,10 +720,31 @@ class MariaDbDatasource implements TomDataSource {
         );
       },
     );
-    return _processResult<T>(qResult, resultType);
+    return mapResultSet<T>(qResult, resultType);
   }
 
-  Future<List<T>> _processResult<T extends Object>(
+  /// Maps the driver's [qResult] onto a list of [T], choosing between the five
+  /// row shapes this driver understands.
+  ///
+  /// This is the module's central decision, and which branch a result takes is
+  /// determined entirely by what [resultType] (or [T]) declares:
+  ///
+  /// 1. a **grouped row**, when [groupedProjection] is non-null — there is no
+  ///    class to reflect, so the query's own projection supplies the types;
+  /// 2. a **table-less [TomClass]**, bound by observable member name;
+  /// 3. an **annotated [TomClass]**, bound by `@TomDbColumn` name;
+  /// 4. a **plain reflected holder** with no `@TomDbTable`, bound by declared
+  ///    field name — the shape an aggregate query lands on;
+  /// 5. an **annotated entity**, bound by its persistent column list.
+  ///
+  /// It is public, and takes the driver's result set rather than a connection,
+  /// because nothing here needs a server: every branch reads column *text* the
+  /// protocol has already decoded. Only a `@TomReference` column reaches back
+  /// to the database, and only after a row's own columns are set. Keeping the
+  /// mapping reachable without a live server is what lets the row-shape
+  /// decision be tested in the ordinary run rather than only in the `db`-tagged
+  /// one.
+  Future<List<T>> mapResultSet<T extends Object>(
     IResultSet qResult, [
     Type? resultType,
     Map<String, Type>? groupedProjection,
@@ -748,8 +761,35 @@ class MariaDbDatasource implements TomDataSource {
           mapGroupedRow(row, groupedProjection) as T,
       ];
     }
-    ClassMirror classMirror =
-        tomReflector.reflectType(resultType ?? T) as ClassMirror;
+    // The one shape this driver cannot map: a result type the reflector does
+    // not hold. Every branch below reaches the class through a mirror, so the
+    // refusal belongs here, at the step that needs the mirror. It has no home
+    // after the branches: between them they accept every reflected type, so a
+    // final `else` there is a case no result can reach.
+    final TypeMirror typeMirror;
+    try {
+      typeMirror = tomReflector.reflectType(rType);
+    } on NoSuchCapabilityError catch (error, stack) {
+      throw MariadbDatasourceException(
+        "error.result_processing.unsuitable_class",
+        "Class $rType cannot be used for automatic processing of result sets. "
+            "It must be marked @tomReflector, and be either a TomClass or "
+            "carry persistence annotations.",
+        parameters: {"type": "$rType"},
+        rootException: error,
+        stack: stack,
+      );
+    }
+    if (typeMirror is! ClassMirror) {
+      throw MariadbDatasourceException(
+        "error.result_processing.unsuitable_class",
+        "$rType is registered with tomReflector but is not a class "
+            "(${typeMirror.runtimeType}), so no result row can be mapped onto "
+            "it.",
+        parameters: {"type": "$rType"},
+      );
+    }
+    final ClassMirror classMirror = typeMirror;
     List<T> result = [];
     Object testObject = classMirror.newInstance("", []);
     if (testObject is TomClass &&
@@ -881,8 +921,15 @@ class MariaDbDatasource implements TomDataSource {
         }
         result.add(rowResult as T);
       }
-    } else if (TomAnnotationAnalyzer.getPersistentColumns(rType)
-        case final persistentColumns?) {
+    } else {
+      // The annotated entity: reflectable (the mirror above) and carrying a
+      // @TomDbTable (every branch before this one ruled its absence out), so
+      // analysePersistentType resolves it — and names the type if it somehow
+      // cannot, rather than answering a null this branch would have to assert
+      // away.
+      final persistentColumns = TomAnnotationAnalyzer.analysePersistentType(
+        rType,
+      ).columnInfo;
       for (var row in qResult.rows) {
         // Per row: the stack is drained at the end of this iteration, so a
         // stack that outlived it would re-resolve every earlier row's
@@ -906,6 +953,15 @@ class MariaDbDatasource implements TomDataSource {
             // Deferred: the reference query binds values from this row, so it
             // can only run once every other field has been set.
             refStack.add((column: col, owner: classMirror, field: dm, row: im));
+            continue;
+          }
+          // A column the result does not carry is skipped, as it is on all four
+          // shapes above. A projection that selects a subset of an entity's
+          // columns is an ordinary query; reading a column that is not there
+          // reaches the driver instead, which answers with a
+          // MySQLClientException — outside this module's exception family, and
+          // naming a column rather than the query that failed to select it.
+          if (!qResult.cols.any((c) => c.name == col.field)) {
             continue;
           }
           switch (dm.reflectedType) {
@@ -1028,12 +1084,6 @@ class MariaDbDatasource implements TomDataSource {
         }
         result.add(rowResult as T);
       }
-    } else {
-      throw MariadbDatasourceException(
-        "error.result_processing.unsuitable_class",
-        "Class ${classMirror.reflectedType} cannot be used for automatic processing of resultsets. It must either be TomClass or have persistence annotation and must be marked @tomReflector.",
-        parameters: {"type": classMirror.reflectedType},
-      );
     }
     return result;
   }
@@ -1064,7 +1114,7 @@ class MariaDbDatasource implements TomDataSource {
   /// Fills each pending association in [refStack] by running its reference
   /// query and writing the results into the row that owes it.
   ///
-  /// This is the whole implementation of `@TomReference`: [_processResult]
+  /// This is the whole implementation of `@TomReference`: [mapResultSet]
   /// cannot read an association while mapping a row — the query binds values
   /// from that same row — so it stacks the reference columns and calls this
   /// once the row's own columns are set.

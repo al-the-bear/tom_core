@@ -3,7 +3,7 @@
 ///
 /// `TomObject<T>.getType()` returns `T` exactly as declared, so a `TomNString`
 /// answers `String?` and a `TomNDouble` answers `double?`. Both `TomClass`
-/// mapping variants in `MariaDbDatasource._processResult` switched on that
+/// mapping variants in `MariaDbDatasource.mapResultSet` switched on that
 /// answer against bare `case String:` / `case double:` patterns, which a
 /// nullable type never matches — so every such member fell through to the
 /// `default:` branch and was refused by name with

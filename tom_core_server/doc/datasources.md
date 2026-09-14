@@ -761,6 +761,31 @@ mirror is taken; an alias whose declared type is outside
 `int`/`double`/`String`/`bool`/`DateTime` raises
 `error.result_processing_grouped.unknown_type`.
 
+**The shape decision is one public method.** `mapResultSet` is the driver's
+largest decision, and which of five shapes a result takes is settled entirely by
+what the result type declares:
+
+| Result type | Bound by |
+| ----------- | -------- |
+| any, with a grouped projection | the query's alias → type projection, into a `TomGroupedRow` |
+| a `TomClass` with no `@TomDbTable` | the observable member's own name |
+| a `TomClass` with `@TomDbTable` | the `@TomDbColumn` name |
+| a reflected holder with no `@TomDbTable` | the declared field name |
+| a reflected entity with `@TomDbTable` | its persistent column list |
+
+A column the result does not carry is skipped on **every** shape, so a
+projection that selects a subset of an entity's columns maps rather than fails.
+A result type the reflector does not hold is refused where the mirror is taken,
+by `error.result_processing.unsuitable_class` naming the type — the one shape
+this driver cannot map, and the only outcome besides the five.
+
+It is public, and takes the driver's result set rather than a connection,
+because nothing in it needs a server: the protocol has already decoded every
+column to text, and only a `@TomReference` column reaches back to the database.
+That is what lets the whole decision be tested in the ordinary run
+(`mariadb_row_mapping_test.dart`) instead of only where a MariaDB happens to be
+listening.
+
 > **Numeric columns are read as text, deliberately — on every path.**
 > `mysql_client` converts a column to `double` only from a whitelist of protocol
 > types (TINY, SHORT, LONG, LONGLONG, INT24, FLOAT, DOUBLE), and to `int` from a
@@ -773,7 +798,11 @@ mirror is taken; an alias whose declared type is outside
 > helpers, `_readDouble` and `_readInt`, used by `mapGroupedRow` and by all four
 > entity-mapping variants alike. Parsing here is lossless: the driver's own
 > conversion starts from exactly this text (the whitelist is a gate, not a
-> decoder) and it reports `DECIMAL` as best-matching Dart `String`.
+> decoder) and it reports `DECIMAL` as best-matching Dart `String`. Text that is
+> no number at all is refused by column name —
+> `error.result_processing.not_a_double` for a `double` field,
+> `error.result_processing.not_an_int` for an `int` one — so the failure names
+> the column and the value, which the driver's own conversion error does not.
 >
 > **An `int`-declared field over a `DECIMAL` column is decided here, not by the
 > driver.** `DECIMAL(n,0)` is a legitimate exact-integer mapping, so refusing
@@ -950,7 +979,7 @@ column reference is the production failure the whole file exists to prevent.
 
 ## Verification
 
-Two suites cover the driver, split by what needs a server rather than by what
+Three suites cover the driver, split by what needs a server rather than by what
 is interesting. Two more cover the framework-table declarations, split the same
 way.
 
@@ -976,6 +1005,30 @@ script each command's outcome and record the SQL it was given, which is how a
 failed `XA START` / `XA END` / `XA ROLLBACK` can be shown to clear the branch
 id — a cleared id surfaces as the literal `XA COMMIT null`, so the recording is
 the assertion.
+
+`test/mariadb_row_mapping_test.dart` covers the shape decision
+[The MariaDB Driver](#the-mariadb-driver) sets out, and also runs without a
+server. It drives
+`mapResultSet` over a result set whose rows carry what the protocol carries —
+a column type, a length and the column's text — and hands every typed read to
+the driver's own `MySQLColumnType.convertStringValueToProvidedType`, which is
+the entire body of the real `ResultSetRow.typedColByName`. So a `NEWDECIMAL`
+column refuses a `double` there for the same reason and from the same code as
+against a live server, which is the fact the text readers exist to work around.
+Each of the five shapes is mapped and asserted, as are the refusal of an
+unreflected result type, a `NULL` on every element type, a projection that
+omits columns, and the text spellings the numeric readers decide on —
+`1234.56`, `43.0000`, `-42.05`, an exactly integral `10.00` onto an `int`, the
+fractional value that is refused instead of truncated, and text that is no
+number at all.
+
+What a fake cannot stand in for is what the *server* sends: which protocol type
+a given SQL expression yields and what text arrives in the column. That stays
+the `db`-tagged suites' job — `test/decimal_column_db_test.dart` pins the
+`NEWDECIMAL` spellings an entity meets, `test/grouped_query_db_test.dart` the
+aggregate widening, `test/nullable_observable_db_test.dart` the two `TomClass`
+variants over real columns. The two halves are complementary: those files
+establish what arrives, this one establishes what the mapper does with it.
 
 `test/datasources_db_test.dart` covers what only a real server can settle:
 `connect` opening a live link, `executeCommand` reporting an affected-row

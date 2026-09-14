@@ -90,6 +90,10 @@ snippet above the example runs green as it stands; the drivers and the registry
 are the part that needs a server, and the example says so rather than
 pretending otherwise. `test/datasources_test.dart` covers the module and also
 runs the example, requiring it to print every numbered step and no others;
+`test/mariadb_row_mapping_test.dart` covers the row mapper's five shapes, its
+refusal of an unreflected result type and the text spellings its numeric readers
+decide on, over a result set that carries what the protocol carries and hands
+every typed read to the driver's own converter;
 `test/datasources_db_test.dart` adds what only a live MariaDB can answer, and
 self-skips when none is reachable. `@TomReference` is split across two files for
 the same reason: `test/reference_query_test.dart` covers the sentence the
