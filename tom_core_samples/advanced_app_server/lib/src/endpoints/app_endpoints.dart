@@ -1558,15 +1558,11 @@ class AppEndpointErrorHandler extends TomErrorHandler {
   @override
   Response handleErrorDefault(
     Object error,
-    Object stacktrace,
+    StackTrace stacktrace,
     Request r,
     Object? result,
   ) =>
-      appForbiddenOrNotFound(
-        r,
-        error,
-        stacktrace is StackTrace ? stacktrace : StackTrace.current,
-      ) ??
+      appForbiddenOrNotFound(r, error, stacktrace) ??
       const TomDefaultErrorHandler().handleErrorDefault(
         error,
         stacktrace,

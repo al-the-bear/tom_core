@@ -2,6 +2,25 @@
 
 ### Changed
 
+- **The error handler is handed a `StackTrace` (tcopen138).** Every method of
+  `TomErrorHandler` typed its trace as `Object` — `handleInvocationError`,
+  `handleConversionError`, `handleUnknowResultTypeError`, `handleErrorDefault`,
+  and `TomDefaultErrorHandler` repeating it. Every call site binds a real one
+  from a `catch (error, stacktrace)`, so the looser type bought nothing and cost
+  each implementation a cast before it could call anything a trace offers.
+
+  It is `StackTrace` on all five. **Breaking for an implementation outside this
+  repository** — nothing is published, and the two `advanced_*` samples and the
+  framework's own `TomUserPreferencesErrorHandler` moved in the same commit.
+  Both samples were paying exactly that cost, each with its own
+  `stacktrace is StackTrace ? stacktrace : StackTrace.current`, dead the moment
+  the parameter narrowed and deleted with it.
+
+  The overrides are the guard: narrowing a parameter in an override is a compile
+  error without `covariant`, so widening the contract back stops the package
+  compiling against its own implementations. A test reads the contract's source
+  for the wholesale revert that would still compile.
+
 - **A socket conversation has a shape in the trail (tcopen137).** An audited
   socket wrote one entry — the acceptance — plus a second only if the handler
   threw. Acceptance is genuinely the auditable moment in the pipeline's

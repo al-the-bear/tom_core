@@ -890,6 +890,13 @@ handler, `TomDefaultErrorHandler`, returns an opaque plain-text `500` so error
 detail never leaks. If a handler itself throws, the pipeline raises a
 `TomEndpointHandlerException` wrapping both errors.
 
+Every hook takes the trace as a **`StackTrace`**. Each call site binds one from
+a `catch (error, stacktrace)`, so a looser `Object` bought nothing and cost each
+implementation a cast before it could call anything a trace offers — a cost paid
+once per implementation and then forever. `handleUnknowResultTypeError` is
+declared for a result whose type cannot be mapped to a body and is not reached
+by the pipeline today; that case leaves as a conversion error.
+
 ## Building the Router
 
 `TomEndpointRouting().initializeRouter()` (called by `TomServer`) scans the
@@ -1019,11 +1026,6 @@ it means "nothing a caller can see", not "nothing at all".
   What was *said* inside a conversation is the handler's own to record, where
   its meaning is known. See
   [What the trail says about a socket](#what-the-trail-says-about-a-socket).
-- **`TomErrorHandler` receives the stack trace as `Object`.**
-  `handleErrorDefault` — the one method a concrete handler must implement — and
-  the three hooks that delegate to it all declare `Object stacktrace`, so an
-  implementation that wants to walk the trace casts it to `StackTrace` first.
-  The value the pipeline passes always is one.
 
 ## Verification
 

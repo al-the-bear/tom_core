@@ -289,8 +289,8 @@ const TomUserPreferencesErrorHandler()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `handleInvocationError` | `Response handleInvocationError(Object error, Object stacktrace, Request r)` | Answers with the mapped status when `error` is a `TomException` whose `key` is one of the translated ones, carrying `tomErrorEnvelope(error)` as the body, the `x-tom-error` header and `Content-Type: application/json` so a client branches on `errorKey` rather than on a status alone. Everything else falls through to `handleErrorDefault`. |
-| `handleErrorDefault` | `Response handleErrorDefault(Object error, Object stacktrace, Request r, Object? result)` | Delegates to `TomDefaultErrorHandler`, so every failure that is not one of the translated keys is answered exactly as it would have been without this handler. |
+| `handleInvocationError` | `Response handleInvocationError(Object error, StackTrace stacktrace, Request r)` | Answers with the mapped status when `error` is a `TomException` whose `key` is one of the translated ones, carrying `tomErrorEnvelope(error)` as the body, the `x-tom-error` header and `Content-Type: application/json` so a client branches on `errorKey` rather than on a status alone. Everything else falls through to `handleErrorDefault`. |
+| `handleErrorDefault` | `Response handleErrorDefault(Object error, StackTrace stacktrace, Request r, Object? result)` | Delegates to `TomDefaultErrorHandler`, so every failure that is not one of the translated keys is answered exactly as it would have been without this handler. |
 
 Why only those keys: a client must be able to tell **"you have no such
 preference"** from **"the server is broken"**, and a client that cannot must

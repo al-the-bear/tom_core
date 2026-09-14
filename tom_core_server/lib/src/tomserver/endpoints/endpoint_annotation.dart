@@ -5,19 +5,29 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 /// Turns an error raised while serving an endpoint into a shelf [Response].
 ///
-/// The endpoint pipeline calls one of the three hooks depending on *where* the
-/// failure occurred: [handleInvocationError] when the service method itself
-/// threw, [handleConversionError] when serialising the (successful) result
-/// failed, and [handleUnknowResultTypeError] when a result could not be mapped
-/// to a known body type. All three default to [handleErrorDefault], which is the
-/// single method a concrete handler must implement; override the individual
+/// The endpoint pipeline calls a hook depending on *where* the failure
+/// occurred: [handleInvocationError] when the service method itself threw, and
+/// [handleConversionError] when serialising the (successful) result failed.
+/// [handleUnknowResultTypeError] is declared for a result whose type cannot be
+/// mapped to a body and is not reached by the pipeline today — that case leaves
+/// as a conversion error. All three default to [handleErrorDefault], which is
+/// the single method a concrete handler must implement; override the individual
 /// hooks only when a stage needs a different response.
+///
+/// The stack trace is a [StackTrace] on every hook. Every call site binds one
+/// from a `catch (error, stacktrace)` clause, so a looser `Object` bought
+/// nothing and cost every implementer a cast before they could call anything a
+/// trace offers.
 abstract class TomErrorHandler {
   /// Const base constructor so handlers can be used as `const` annotations.
   const TomErrorHandler();
 
   /// Builds the response for an error thrown by the service method.
-  Response handleInvocationError(Object error, Object stacktrace, Request r) {
+  Response handleInvocationError(
+    Object error,
+    StackTrace stacktrace,
+    Request r,
+  ) {
     return handleErrorDefault(error, stacktrace, r, null);
   }
 
@@ -25,7 +35,7 @@ abstract class TomErrorHandler {
   /// response body.
   Response handleConversionError(
     Object error,
-    Object stacktrace,
+    StackTrace stacktrace,
     Request r,
     Object? result,
   ) {
@@ -36,7 +46,7 @@ abstract class TomErrorHandler {
   /// body.
   Response handleUnknowResultTypeError(
     Object error,
-    Object stacktrace,
+    StackTrace stacktrace,
     Request r,
     Object? result,
   ) {
@@ -48,7 +58,7 @@ abstract class TomErrorHandler {
   /// occurred (`null` for invocation errors).
   Response handleErrorDefault(
     Object error,
-    Object stacktrace,
+    StackTrace stacktrace,
     Request r,
     Object? result,
   );
@@ -63,7 +73,7 @@ class TomDefaultErrorHandler extends TomErrorHandler {
   @override
   Response handleErrorDefault(
     Object error,
-    Object stacktrace,
+    StackTrace stacktrace,
     Request r,
     Object? result,
   ) {

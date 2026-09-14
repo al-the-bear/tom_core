@@ -80,10 +80,37 @@ class _StubErrorHandler extends TomErrorHandler {
   @override
   Response handleErrorDefault(
     Object error,
-    Object stacktrace,
+    StackTrace stacktrace,
     Request r,
     Object? result,
   ) => Response.internalServerError(body: 'stub');
+}
+
+/// A [TomErrorHandler] that keeps the trace it was handed, and **uses** it as a
+/// [StackTrace] without a cast.
+///
+/// The declaration is the assertion. Every hook of the contract types the trace
+/// as `StackTrace`, so this override compiles; widening the contract back to
+/// `Object` makes it a compile error, because narrowing a parameter in an
+/// override is not permitted without `covariant`. The body then shows what the
+/// type buys — `toString()` on the trace rather than on an `Object` that might
+/// be one.
+class _TraceCapturingHandler extends TomErrorHandler {
+  _TraceCapturingHandler();
+
+  /// The frames of the trace this handler last received.
+  String? frames;
+
+  @override
+  Response handleErrorDefault(
+    Object error,
+    StackTrace stacktrace,
+    Request r,
+    Object? result,
+  ) {
+    frames = stacktrace.toString();
+    return Response.internalServerError(body: 'captured');
+  }
 }
 
 void main() {
@@ -322,6 +349,54 @@ void main() {
         42,
       );
       expect(r.statusCode, 500);
+    });
+  });
+
+  // Every call site binds a real trace from a `catch (error, stacktrace)`, so
+  // typing the parameter `Object` bought nothing and cost every implementer a
+  // cast before they could call anything a trace offers — a cost paid once per
+  // implementation, forever. The two in-workspace samples were both paying it,
+  // each with its own `stacktrace is StackTrace ? stacktrace : StackTrace.current`.
+  group('the error handler receives a StackTrace', () {
+    test('a handler uses the trace without casting it first', () {
+      final handler = _TraceCapturingHandler();
+      final trace = StackTrace.current;
+
+      handler.handleInvocationError(StateError('boom'), trace, _req());
+
+      expect(handler.frames, trace.toString());
+      expect(handler.frames, isNotEmpty);
+    });
+
+    test('every hook passes the same trace through', () {
+      // The three hooks delegate to `handleErrorDefault`, so the narrowing has
+      // to hold on all four or one path would hand over something else.
+      final trace = StackTrace.current;
+      for (final call in <void Function(_TraceCapturingHandler)>[
+        (h) => h.handleInvocationError(StateError('x'), trace, _req()),
+        (h) => h.handleConversionError(StateError('x'), trace, _req(), 'r'),
+        (h) => h.handleUnknowResultTypeError(StateError('x'), trace, _req(), 1),
+      ]) {
+        final handler = _TraceCapturingHandler();
+        call(handler);
+        expect(handler.frames, trace.toString());
+      }
+    });
+
+    test('the contract declares it, and nothing declares Object', () {
+      // Read from the source, because the compiler only rejects a *narrowing*
+      // override: widening the contract back to `Object` would leave every
+      // caller compiling, and only an implementation that had already narrowed
+      // — like the stub above — would notice.
+      final source = File(
+        'lib/src/tomserver/endpoints/endpoint_annotation.dart',
+      ).readAsStringSync();
+      expect(
+        'StackTrace stacktrace'.allMatches(source).length,
+        5,
+        reason: 'four contract methods and the default implementation',
+      );
+      expect(source, isNot(contains('Object stacktrace')));
     });
   });
 

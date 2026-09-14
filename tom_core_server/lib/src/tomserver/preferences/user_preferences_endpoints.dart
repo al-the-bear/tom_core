@@ -98,7 +98,11 @@ class TomUserPreferencesErrorHandler extends TomErrorHandler {
       (errorKey.startsWith(_encodedRefusalPrefix) ? 400 : null);
 
   @override
-  Response handleInvocationError(Object error, Object stacktrace, Request r) {
+  Response handleInvocationError(
+    Object error,
+    StackTrace stacktrace,
+    Request r,
+  ) {
     final status = error is TomException ? _statusFor(error.key) : null;
     if (error is TomException && status != null) {
       // The body is the framework's own envelope, rendered by the same function
@@ -124,7 +128,7 @@ class TomUserPreferencesErrorHandler extends TomErrorHandler {
   @override
   Response handleErrorDefault(
     Object error,
-    Object stacktrace,
+    StackTrace stacktrace,
     Request r,
     Object? result,
   ) => const TomDefaultErrorHandler().handleErrorDefault(

@@ -348,7 +348,7 @@ class LoginUnauthorizedErrorHandler extends TomErrorHandler {
   @override
   Response handleErrorDefault(
     Object error,
-    Object stacktrace,
+    StackTrace stacktrace,
     Request r,
     Object? result,
   ) {

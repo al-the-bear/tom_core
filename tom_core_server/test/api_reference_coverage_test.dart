@@ -6605,9 +6605,15 @@ class After {}
     }
 
     test('the census reads the section and nothing else', () {
-      // Each assertion above passes on an empty read, so the read is pinned.
-      // Twenty guides, 173 names — if either number collapses the checks are
-      // agreeing that nothing is missing from nothing.
+      // Each assertion above passes on an empty read, so the read is pinned:
+      // if the reader returns nothing, every check above agrees that nothing is
+      // missing from nothing.
+      //
+      // The bound is a **collapse detector**, not a census. The corpus shrinks
+      // legitimately as limitations are closed — it was 173 names when this was
+      // written and is 148 now — so the floor sits well below the current count
+      // and is lowered when it is reached, never met by leaving a limitation
+      // in place. A broken reader goes to zero, not to nine tenths.
       final names = [
         for (final module in _modules())
           for (final (:line, :text) in _limitationsBodyOf(module))
@@ -6616,7 +6622,7 @@ class After {}
                 if (name.group(1)!.split('.').any(_caseHump.hasMatch))
                   (line, span.group(1)!),
       ];
-      expect(names, hasLength(greaterThan(150)));
+      expect(names, hasLength(greaterThan(100)));
       expect(
         _packageVocabulary,
         hasLength(greaterThan(5000)),
