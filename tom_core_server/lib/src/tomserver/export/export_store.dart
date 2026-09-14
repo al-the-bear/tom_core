@@ -87,7 +87,7 @@ class TomStoredExport {
   String toString() => 'TomStoredExport($key, $byteCount bytes)';
 }
 
-/// The four things a store does, and how each one reports a failure.
+/// The five things a store does, and how each one reports a failure.
 ///
 /// The keys are named here rather than spelled at each throw site so that the
 /// same failure of the same operation carries the same key whichever backend
@@ -129,11 +129,11 @@ enum TomExportStoreOperation {
 
 /// Stores and retrieves rendered exports by key.
 ///
-/// ## Why the four methods are final
+/// ## Why the public methods are final
 ///
-/// A backend implements [doStore], [doOpen], [doExists] and [doDelete]; the
-/// four public methods are this class's own and wrap them. That indirection
-/// buys two guarantees no backend can forget:
+/// A backend implements [doStore], [doOpen], [doExists], [doDelete] and — when
+/// it can — [doDeletePrefix]; the public methods are this class's own and wrap
+/// them. That indirection buys two guarantees no backend can forget:
 ///
 /// - **Every key is validated**, so a backend written later — or by an
 ///   application — cannot be handed a directory traversal.
@@ -141,10 +141,27 @@ enum TomExportStoreOperation {
 ///   [TomExportStoreOperation] names for the operation that failed. A backend
 ///   touches a filesystem, an S3 client or a database driver, each with an
 ///   exception vocabulary of its own; without this, which exception a caller
-///   had to catch depended on which backend was configured.
+///   has to catch would depend on which backend is configured.
 ///
-/// Both properties were previously left to each backend to honour, and each
-/// backend honoured a different subset of them.
+/// Leaving either to the backends is what makes them differ: a guarantee every
+/// implementor must remember is one some implementor does not.
+///
+/// ## Why there is no listing
+///
+/// Store, open, exists, delete, delete-a-prefix — and nothing that walks the
+/// key space. That is not an omission waiting to be filled. A listing is a
+/// paginated call over an object store and a scan over a blob table, and
+/// neither answers what a retention pass actually needs to know: which export,
+/// rendered for whom, is now old enough to go.
+///
+/// **The enumeration belongs to the deployment.** [TomStoredExport] is a row —
+/// key, media type, size, time — and a system that stores exports for later
+/// retrieval keeps one per export anyway, next to the tenant and the user that
+/// storage has no business holding. Retention is then a query over those rows
+/// and a [deletePrefix] per partition, which works on every backend rather than
+/// on the ones that can enumerate. `example/export/export_retention.dart` is
+/// that pass, run against a store that can reclaim by prefix and one that
+/// cannot.
 abstract class TomExportStore {
   /// Creates a store.
   const TomExportStore();
@@ -544,6 +561,12 @@ class TomMemoryExportStore extends TomExportStore {
   final Map<String, TomStoredExport> _descriptors = {};
 
   /// The keys currently held, in insertion order.
+  ///
+  /// This backend's own affordance, not part of [TomExportStore]: the contract
+  /// has no listing, and a retention pass written against this getter would not
+  /// run on any other store. The deployment's own record is what enumerates —
+  /// see the class dartdoc of [TomExportStore]. Here it saves a test from
+  /// probing keys it just wrote.
   Iterable<String> get keys => _content.keys;
 
   /// The descriptor recorded for [key], or `null` when it holds nothing.
@@ -557,7 +580,7 @@ class TomMemoryExportStore extends TomExportStore {
 
   /// The stored bytes for [key] as text, for tests that assert on content.
   ///
-  /// Validates like the four store methods do. This backend is what tests and
+  /// Validates like the store methods do. This backend is what tests and
   /// development servers run on, so a key it accepts and a production backend
   /// rejects is a failure that appears only on deployment.
   String textOf(String key) {

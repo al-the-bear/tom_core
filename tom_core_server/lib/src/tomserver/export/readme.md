@@ -42,7 +42,7 @@ CSV so a parser can read it back.
 | Type | What it is |
 | ---- | ---------- |
 | `TomExportService` | Renders and answers: `respondWith` returns the bytes as an HTTP response, `inline` or as a download. |
-| `TomExportStore` · `TomStoredExport` | Where a rendered export is kept when it is not answered immediately, and what is known about one. |
+| `TomExportStore` · `TomStoredExport` | Where a rendered export is kept when it is not answered immediately, and what is known about one. It stores, reads, probes, deletes and reclaims a prefix; it does not enumerate — the deployment's own record of what it stored is what retention queries. |
 | `TomDirectoryExportStore` · `TomMemoryExportStore` | The two stores needing no infrastructure. |
 | `TomBlobExportStore` | The same over a `TomBlobStore`, so an export lands wherever the deployment's files already live rather than in a second place. |
 | `TomExportStoreOperation` | What the caller asked for when a store failed, carrying a stable error key. |

@@ -2,6 +2,32 @@
 
 ### Added
 
+- **The export store says which layer owns enumeration, and shows the retention
+  pass that follows from it (tcopen145).** `doc/export.md` described expiry as
+  "a matter of deleting a prefix" and deferred retention to a deployment, while
+  the contract offered nothing to enumerate with — so a deployment had to reach
+  past the interface to its backend and lose the abstraction the module built.
+
+  `deletePrefix` closed the reclaim half. The rest of the answer is that there
+  is **no listing, deliberately**: it is a paginated call over an object store
+  and a scan over a blob table, and neither knows which export was rendered for
+  whom. `TomStoredExport` is a row, and the deployment that keeps one per export
+  — beside the tenant and the user that storage has no business holding —
+  enumerates from there. That is also what makes the pass portable: written
+  against a listing it would run only on the backends that have one; written
+  against the deployment's own rows it runs everywhere, falling back to deleting
+  key by key where `supportsPrefixDelete` is `false`.
+
+  `example/export/export_retention.dart` is that pass in seven checked steps,
+  run against a store that can reclaim by prefix and one that cannot. The
+  contract, the guide, the API summary and the module readme state the rule
+  where a reader meets the narrowness, rather than only where retention is
+  discussed.
+
+  `TomMemoryExportStore.keys` is documented as this backend's own affordance
+  rather than enumeration — a retention pass written against it would not run on
+  any other store.
+
 - **The suite bounds a renderer's memory rather than asserting it is early
   (tcopen144).** Both export test files opened by saying streaming is asserted
   and not assumed, and what they asserted was that *some* output appears before

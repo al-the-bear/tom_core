@@ -574,6 +574,8 @@ abstract class TomExportStore {
   Stream<List<int>> open(String key) { /* → doOpen */ }
   Future<bool> exists(String key) { /* → doExists */ }
   Future<bool> delete(String key) { /* → doDelete */ }
+  Future<int> deletePrefix(String prefix) { /* → doDeletePrefix */ }
+  bool get supportsPrefixDelete => false;
 
   // What a backend implements. Each receives an already-validated key and may
   // fail in its own vocabulary.
@@ -583,20 +585,25 @@ abstract class TomExportStore {
   Stream<List<int>> doOpen(String key);
   Future<bool> doExists(String key);
   Future<bool> doDelete(String key);
+  // Concrete, and throws: a backend claiming the capability and forgetting
+  // the method must fail rather than report an empty purge.
+  Future<int> doDeletePrefix(String prefix) { /* → prefix_delete_unsupported */ }
 
   static String validateKey(String key);
 }
 ```
 
-No directories to list, no metadata to update, no partial reads. Keeping it that
-narrow is what made `TomBlobExportStore` four delegating methods when the blob
+No metadata to update, no partial reads — and **no listing**. The first two are
+narrowness for its own sake; the third is a decision with a consequence, and
+[Retention](#retention) is where it lands. Keeping the interface this narrow is
+what made `TomBlobExportStore` a handful of delegating methods when the blob
 storage arrived (see [Every Backend at Once](#every-backend-at-once)); nothing
 that renders or delivers an export changed.
 
 The split into a final public method and a `do*` hook is what makes the two
 guarantees below hold *by construction* rather than by every backend remembering
-to honour them — which, before the split, three backends each honoured a
-different subset of.
+to honour them. A guarantee every implementor has to remember is one some
+implementor does not.
 
 **Worked example.** `advanced_ops_server` renders a weekly report into the *same*
 `tom_blob` pair that holds an item attachment, separated only by a key prefix —
@@ -878,7 +885,7 @@ reach the output *before* the row stream closes.
 which is worth saying because it spent its life in the neighbour's suite. It is
 declared in `lib/src/tomserver/export/` and it is this module's class — the
 dependency arrow runs export → `file_storage`, and the adaptor is the arrowhead.
-Its group covers its own four methods, its prefix validation and its translation
+Its group covers its own store methods, its prefix validation and its translation
 of every backend failure into the export vocabulary: one class's unit tests, not
 a claim about two modules agreeing. So it sits beside the two backends it is
 interchangeable with, immediately before the contract group that drives all
@@ -929,9 +936,19 @@ would be one test of one function, repeated.
 `example/export/export_email.dart` is the second export example, in six steps:
 the two halves configured without knowing each other, the store, the link shape,
 the attachment read back from the store, the outbox delivering it, and the
-export still in the store afterwards. It is spawned by `test/examples_test.dart`
-with the rest, and its step count is recorded there — an added step that nobody
-listed is a surface nothing checks.
+export still in the store afterwards.
+
+`example/export/export_retention.dart` is the third, in seven: three exports
+across three day partitions with a row recorded for each, the store declining to
+enumerate, the register naming the expired partitions instead, a `deletePrefix`
+per partition checked against the rows it should have removed, the current
+export surviving, the same pass reclaiming key by key on a store that cannot
+prefix-delete, and the two refusals that keep a wrong answer from being a quiet
+one.
+
+Both are spawned by `test/examples_test.dart` with the rest, and their step
+counts are recorded there — an added step that nobody listed is a surface
+nothing checks.
 
 ## Core Components
 
@@ -986,13 +1003,24 @@ up. A backend that *claims* the capability and forgets the method gets the same
 refusal rather than an empty purge, because the base class's implementation
 throws rather than returning zero.
 
-**A blob-backed deployment keeps its own record.** The descriptor `store`
-returns carries the key, the media type, the size and the time; a system that
-stores exports for later retrieval almost always has a row per export already,
-and deletes by key from it. That is a database question rather than a storage
-one, which is why the blob contract is not widened to answer it: a listing over
-an object store is a paginated call with a cost the caller has to understand,
-and file storage has no other caller asking for one.
+**The deployment owns the enumeration, on every backend.** `deletePrefix` is
+the reclaim primitive — the one thing a caller cannot build from what it has —
+and it is deliberately not paired with a listing. *Which* partitions are old
+enough to go is not a question storage can answer: a listing is a paginated call
+over an object store and a scan over a blob table, and neither knows which
+export was rendered for whom. The descriptor `store` returns is a row — key,
+media type, size, time — and a system that stores exports for later retrieval
+keeps one per export anyway, beside the tenant and the user that storage has no
+business holding. Retention is a query over those rows and a `deletePrefix` per
+partition, which is a database question rather than a storage one, and which is
+why neither this contract nor the blob one is widened to answer it.
+
+That split is also what makes the pass portable: a retention loop written
+against a *listing* would run only on the backends that have one. Written
+against the deployment's own rows it runs everywhere, and falls back to deleting
+key by key where `supportsPrefixDelete` is `false`.
+`example/export/export_retention.dart` is that pass, run against both kinds of
+store.
 
 **The schedule is the deployment's.** Nothing here runs on a timer. A nightly
 purge belongs in the back-office tier, beside the other passes that tidy up
@@ -1075,9 +1103,11 @@ adapted to an envelope.
 - **A purge on a schedule, and quota.** `TomExportStore.deletePrefix` reclaims a
   day partition in one call, and nothing in this module runs it on a timer:
   *how long* an export is worth keeping is a deployment's decision, and *when*
-  the pass runs belongs with its other nightly work. There is no quota either —
-  nothing refuses a write because an account has stored too much. See
-  [Retention](#retention).
+  the pass runs belongs with its other nightly work. Nor does it enumerate what
+  to purge — that is the deployment's own record, for the reason
+  [Retention](#retention) gives. There is no quota either — nothing refuses a
+  write because an account has stored too much, which would need the same record
+  and a limit to compare it against.
 
 ## Dependencies
 

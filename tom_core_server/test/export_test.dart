@@ -2828,6 +2828,90 @@ void main() {
     });
   });
 
+  // The half of retention this module does *not* answer, asserted because an
+  // absence is the one design decision nothing fails when it is undone. A
+  // listing is a paginated call over an object store and a scan over a blob
+  // table, and neither knows which export was rendered for whom -- so the
+  // enumeration is the deployment's own record, and `deletePrefix` is the
+  // reclaim primitive it drives. The consequence a test can hold onto is that
+  // the pass is portable: it runs against a backend that cannot prefix-delete.
+  group('enumeration belongs to the deployment, not the store', () {
+    test('the contract offers no way to walk the key space', () {
+      // A source read, because what is asserted is that a member is *absent*.
+      // If a listing is ever added, this fails and whoever added it is sent to
+      // the paragraph explaining why it was left out -- which is the whole
+      // value of the guard, since adding one breaks nothing else.
+      final contract = File(
+        'lib/src/tomserver/export/export_store.dart',
+      ).readAsStringSync();
+      final abstractPart = contract.substring(
+        contract.indexOf('abstract class TomExportStore'),
+        contract.indexOf('class TomDirectoryExportStore'),
+      );
+      for (final shape in const ['list', 'keysUnder', 'entries', 'walk']) {
+        expect(
+          abstractPart,
+          isNot(contains('$shape(')),
+          reason:
+              'TomExportStore declares $shape: enumeration is the deployment\'s '
+              'record, and doc/export.md explains why widening the contract is '
+              'the wrong direction',
+        );
+      }
+    });
+
+    test('a retention pass over recorded rows runs on any backend', () async {
+      // The shape the guide and the example show, exercised against the store
+      // that *cannot* prefix-delete. That is the case a pass written against a
+      // listing would not have: it falls back to the keys the deployment
+      // already recorded, and reclaims the same partition.
+      for (final store in <TomExportStore>[
+        TomMemoryExportStore(),
+        TomBlobExportStore(TomMemoryBlobStore()),
+      ]) {
+        final recorded = <String>[];
+        for (final key in const [
+          '2026/07/08/sales.csv',
+          '2026/07/08/returns.csv',
+          '2026/07/15/sales.csv',
+        ]) {
+          await store.store(
+            key: key,
+            bytes: Stream.value(utf8.encode('x')),
+            mediaType: 'text/csv',
+          );
+          recorded.add(key);
+        }
+
+        // The deployment's own record answers which partition is expired; the
+        // store is only ever asked to remove one.
+        const expired = '2026/07/08';
+        final under = [
+          for (final key in recorded)
+            if (key.startsWith('$expired/')) key,
+        ];
+        if (store.supportsPrefixDelete) {
+          expect(await store.deletePrefix(expired), under.length);
+        } else {
+          for (final key in under) {
+            expect(await store.delete(key), isTrue);
+          }
+        }
+
+        expect(
+          await store.exists('2026/07/08/sales.csv'),
+          isFalse,
+          reason: '$store did not reclaim the expired partition',
+        );
+        expect(
+          await store.exists('2026/07/15/sales.csv'),
+          isTrue,
+          reason: '$store took a partition the pass did not name',
+        );
+      }
+    });
+  });
+
   group('TomExportStore (one error contract across backends)', () {
     late Directory root;
 

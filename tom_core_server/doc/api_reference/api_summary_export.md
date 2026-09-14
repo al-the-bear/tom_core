@@ -69,10 +69,12 @@ row at a time; PDF cannot, because the file ends with a cross-reference table
 of byte offsets into everything before it, so `TomPdfRenderer` reports
 `streamsRows` as `false` and states its `rowLimit` rather than discovering it.
 
-Storage is a deliberately narrow four-method contract: put a stream under a
-key, read it back, ask whether it is there, delete it. Those four methods are
-final on `TomExportStore`; a backend implements `doStore`, `doOpen`, `doExists`
-and `doDelete` instead. That split is what makes the interface's two promises
+Storage is a deliberately narrow contract: put a stream under a key, read it
+back, ask whether it is there, delete it, and reclaim a whole prefix. Those
+methods are final on `TomExportStore`; a backend implements `doStore`, `doOpen`,
+`doExists`, `doDelete` and — when it can — `doDeletePrefix` instead. There is no
+listing: enumerating what was stored belongs to the deployment's own record of
+it, not to storage. That split is what makes the interface's two promises
 hold by construction rather than by each backend remembering them — every key is
 validated before any backend sees it, so none can be handed a traversal, and
 every backend failure is translated into a `TomExportException` carrying the
@@ -81,7 +83,7 @@ reads the same way whichever backend is configured.
 `TomDirectoryExportStore` writes to a sibling `<key>~part` file and renames on
 success, `TomMemoryExportStore` is the test and development backend, and
 `TomBlobExportStore` puts the `file_storage` module's `TomBlobStore` behind the
-same four methods — every configured blob backend at once. `TomExportService`
+same contract — every configured blob backend at once. `TomExportService`
 is the seam an endpoint calls: `respondWith` for the `apiResponse` channel,
 `storeAs` for `fileExport`, and `render` for everything else.
 
@@ -601,7 +603,7 @@ TomStoredExport({
 
 ### TomExportStoreOperation
 
-The four things an export store does, and how each one reports a failure. The
+The five things an export store does, and how each one reports a failure. The
 keys are named here rather than spelled at each throw site so that the same
 failure of the same operation carries the same key whichever backend is
 configured — which is the entire promise `TomExportStore` makes by being an
@@ -628,14 +630,21 @@ interface at all.
 
 Stores and retrieves rendered exports by key. Deliberately not a general file
 store: put a stream under a key, read it back, ask whether it is there, delete
-it — no directories to list, no metadata to update, no partial reads.
+it, reclaim a prefix — no metadata to update, no partial reads, and no listing.
 
-The four public methods are final, and a backend implements the `do*` hooks
-beside them. Both of the interface's guarantees then hold by construction: every
-key is validated before any backend sees it, and every failure a backend raises
-is translated into a `TomExportException` carrying the operation's key. Both
-were previously left to each backend to honour, and each honoured a different
-subset of them.
+The public methods are final, and a backend implements the `do*` hooks beside
+them. Both of the interface's guarantees then hold by construction: every key is
+validated before any backend sees it, and every failure a backend raises is
+translated into a `TomExportException` carrying the operation's key. Leaving
+either to the backends is what makes them differ — a guarantee every implementor
+must remember is one some implementor does not.
+
+The missing listing is a decision rather than an omission. A listing is a
+paginated call over an object store and a scan over a blob table, and neither
+answers which export, rendered for whom, is old enough to purge. `TomStoredExport`
+is a row, and the deployment that keeps one per export enumerates from there and
+reclaims with `deletePrefix`; that pass runs on every backend, including the ones
+that cannot prefix-delete. See `example/export/export_retention.dart`.
 
 - **Extends:** none (abstract)
 
