@@ -296,19 +296,26 @@ abstract class FixtureApiService {
   )
   Future<Map<String, Object>> pair(FixtureParseRequest first, String second);
 
-  /// Two **numeric** primitives, one from the path and one from the query.
+  /// Three primitives that can fail to parse: one from the path and two from
+  /// the query.
   ///
-  /// The only endpoint whose parameters can fail to parse. Every other fixture
-  /// binds `String`s, which always parse, so the branch that refuses a
-  /// malformed URL value had nothing to fire on: `/fixture/typed/abc` and
-  /// `?ratio=xyz` are the two shapes of that mistake, one per source.
+  /// The only endpoint whose parameters can fail to parse at all. Every other
+  /// fixture binds `String`s, which always parse, so the branch that refuses a
+  /// malformed URL value had nothing to fire on: `/fixture/typed/abc`,
+  /// `?ratio=xyz` and `?active=maybe` are three shapes of that mistake, across
+  /// both sources and all three parsing types.
+  ///
+  /// [active] carries the one whose failure is otherwise invisible. A `bool`
+  /// coercion written as `raw == 'true'` is total: every unrecognised spelling
+  /// yields `false`, which is an answer rather than a refusal, and no test can
+  /// see the difference without a bool parameter to send one through.
   @TomPublicAccess()
   @TomEndpoint(
     methods: [TomHttpMethod.get],
     uri: '/fixture/typed/{id}',
     logRequests: false,
   )
-  Future<Map<String, Object>> typedPrimitives(int id, num ratio);
+  Future<Map<String, Object>> typedPrimitives(int id, num ratio, bool active);
 
   /// A trailing **optional** parameter that nothing binds.
   ///
@@ -794,8 +801,11 @@ class FixtureApiServer implements FixtureApiService {
   ) async => <String, Object>{'label': first.label, 'second': second};
 
   @override
-  Future<Map<String, Object>> typedPrimitives(int id, num ratio) async =>
-      <String, Object>{'id': id, 'ratio': ratio};
+  Future<Map<String, Object>> typedPrimitives(
+    int id,
+    num ratio,
+    bool active,
+  ) async => <String, Object>{'id': id, 'ratio': ratio, 'active': active};
 
   @override
   Future<Map<String, Object>> optionalTail(

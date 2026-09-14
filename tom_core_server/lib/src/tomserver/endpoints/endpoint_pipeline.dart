@@ -193,24 +193,54 @@ class TomEndpointHandler {
       type == num ||
       type == bool;
 
+  /// The URL spellings of `true`, lower-cased.
+  ///
+  /// Four rather than one, because four is what clients send: `true` from a
+  /// JSON-shaped caller, `1` from a form and from most hand-written query
+  /// strings, `on` from an HTML checkbox, `yes` from a human. The set is closed
+  /// and shared with [_falseSpellings] so that every spelling is either
+  /// recognised or refused, never quietly read as the opposite.
+  static const Set<String> _trueSpellings = {'true', '1', 'yes', 'on'};
+
+  /// The URL spellings of `false`, lower-cased — the mirror of
+  /// [_trueSpellings], one per shape.
+  static const Set<String> _falseSpellings = {'false', '0', 'no', 'off'};
+
+  /// [raw] as a `bool`, or `null` when it is no spelling of either.
+  ///
+  /// Case-insensitive: `TRUE`, `True` and `true` are one word written three
+  /// ways, and a caller who capitalises is not making a different statement.
+  static bool? _coerceBool(String raw) {
+    final spelling = raw.toLowerCase();
+    if (_trueSpellings.contains(spelling)) return true;
+    if (_falseSpellings.contains(spelling)) return false;
+    return null;
+  }
+
   /// Coerces a raw URL string (a matched path variable *or* a query-string
   /// value) into the method parameter's primitive [type], or returns `null`
   /// when [type] is not a bindable primitive (so the caller falls through to
   /// the other binding strategies).
   ///
-  /// Such values always arrive as strings, so the numeric/bool forms are
-  /// parsed; an unparsable numeric value also yields `null`. The two `null`s
-  /// mean different things and are told apart by asking
-  /// [isBindablePrimitive] first — which is what the binding loop does, and
-  /// what makes a malformed number a `400` rather than a parameter that quietly
-  /// goes unbound. `bool` follows the URL convention where only the literal
-  /// `true` is truthy.
+  /// Such values always arrive as strings, so the numeric and boolean forms are
+  /// parsed; a value that will not parse also yields `null`. The two `null`s
+  /// mean different things and are told apart by asking [isBindablePrimitive]
+  /// first — which is what the binding loop does, and what makes a malformed
+  /// value a named refusal rather than a parameter that quietly goes unbound.
+  ///
+  /// **`bool` is the reason that matters.** It was `raw == 'true'`, which is
+  /// total: every other spelling — `1`, `yes`, `on`, `TRUE` — produced `false`,
+  /// so `?active=TRUE` meant the opposite of what the caller wrote and nothing
+  /// could notice. A number at least answers `null` for nonsense. So the
+  /// accepted spellings are a closed, case-insensitive set
+  /// ([_trueSpellings] / [_falseSpellings]) and anything outside it is
+  /// unparsable, which is now a refusal the caller is told about.
   static Object? coercePrimitiveParameter(Type type, String raw) {
     if (type == String) return raw;
     if (type == int) return int.tryParse(raw);
     if (type == double) return double.tryParse(raw);
     if (type == num) return num.tryParse(raw);
-    if (type == bool) return raw == 'true';
+    if (type == bool) return _coerceBool(raw);
     return null;
   }
 

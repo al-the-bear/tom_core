@@ -2327,16 +2327,19 @@ void main() {
 
     tearDown(TomBean.resetBeanContext);
 
-    /// A GET of `/fixture/typed/<id>?ratio=<ratio>` with `id` as the route
-    /// capture a matched route would have supplied.
-    Request typedRequest(String id, String ratio) => Request(
-      'GET',
-      Uri.parse('http://localhost/fixture/typed/$id?ratio=$ratio'),
-      context: {
-        TomRequestLogInfo.contextName: TomRequestLogInfo(),
-        'shelf_router/params': {'id': id},
-      },
-    );
+    /// A GET of `/fixture/typed/<id>?ratio=<ratio>&active=<active>` with `id`
+    /// as the route capture a matched route would have supplied.
+    Request typedRequest(String id, String ratio, [String active = 'true']) =>
+        Request(
+          'GET',
+          Uri.parse(
+            'http://localhost/fixture/typed/$id?ratio=$ratio&active=$active',
+          ),
+          context: {
+            TomRequestLogInfo.contextName: TomRequestLogInfo(),
+            'shelf_router/params': {'id': id},
+          },
+        );
 
     /// The refusal for a URL value, with [value] in its message.
     ///
@@ -2366,11 +2369,42 @@ void main() {
           ),
     );
 
-    test('a well-formed request still binds both values', () async {
+    test('a well-formed request still binds all three values', () async {
       // The control. Everything below asserts a throw, so without this the
       // group would be satisfied by a loop that refused every URL value.
       final bound = await typed.bindParameters(typedRequest('7', '1.5'));
-      expect(bound, [7, 1.5]);
+      expect(bound, [7, 1.5, true]);
+    });
+
+    test('every accepted bool spelling binds through the loop', () async {
+      // The unit tests pin the spellings; this pins that the loop reaches them.
+      // A bool is the one primitive whose coercion can be written as a total
+      // function — `raw == 'true'` answers for every input — and a total
+      // coercion gives the refusing branch no null to act on.
+      for (final raw in const ['true', 'TRUE', '1', 'yes', 'on']) {
+        expect(
+          await typed.bindParameters(typedRequest('7', '1.5', raw)),
+          [7, 1.5, true],
+          reason: '"$raw" is a spelling of true',
+        );
+      }
+      for (final raw in const ['false', 'FALSE', '0', 'no', 'off']) {
+        expect(
+          await typed.bindParameters(typedRequest('7', '1.5', raw)),
+          [7, 1.5, false],
+          reason: '"$raw" is a spelling of false',
+        );
+      }
+    });
+
+    test('a bool spelling the set does not contain is refused', () {
+      // The invisible failure, made visible: under a total coercion
+      // `?active=maybe` binds as `false` and the caller is told nothing, so the
+      // endpoint acts on the opposite of what was written.
+      expect(
+        () => typed.bindParameters(typedRequest('7', '1.5', 'maybe')),
+        refusedValue('maybe', 'active'),
+      );
     });
 
     test('a path variable that is not an int is refused by name', () {

@@ -2,6 +2,22 @@
 
 ### Fixed
 
+- **A `bool` URL value has eight spellings, and every other one is refused
+  (tcopen134).** The rule was `raw == 'true'`, which is total: every other
+  spelling a client might reasonably send — `1`, `yes`, `on`, `TRUE` — produced
+  `false`, so `?active=TRUE` meant the opposite of what the caller wrote and no
+  layer could notice. A number at least answers "unparsable" for nonsense; a
+  boolean always produced a usable value, which made it the one primitive whose
+  failure was invisible.
+
+  The accepted spellings are a closed, case-insensitive set — `true`/`false`,
+  `1`/`0`, `yes`/`no`, `on`/`off` — and anything outside it is unparsable, which
+  is the refusal tcopen133 gave somewhere to go. Four shapes because four is
+  what clients send: `true` from a JSON-shaped caller, `1` from a form, `on`
+  from an HTML checkbox, `yes` from a human. An empty value (`?flag=`) is
+  unparsable too; an unchecked checkbox sends no field at all, which is absence
+  rather than `false`.
+
 - **A URL value that will not parse is refused, not skipped (tcopen133).**
   `coercePrimitiveParameter` answers `null` for two conditions that are
   different answers — a `Request` parameter, which is no primitive at all and

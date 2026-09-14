@@ -272,6 +272,24 @@ the same way — this is how `GET /projects?workspaceId=` binds a bare
 body (deserialised onto the parameter type via reflection, merged with path
 params), and finally a `Map`-typed context entry.
 
+**A `bool` accepts eight spellings, and nothing else.** `true` / `false`,
+`1` / `0`, `yes` / `no`, `on` / `off`, matched case-insensitively — four shapes
+because four is what clients send: `true` from a JSON-shaped caller, `1` from a
+form and from most hand-written query strings, `on` from an HTML checkbox, `yes`
+from a human. Anything outside the set is *unparsable*, and refused like any
+other unparsable value.
+
+That last part is the point. The rule was `raw == 'true'`, which is **total**:
+every other spelling produced `false`, so `?active=TRUE` meant the opposite of
+what the caller wrote and no layer could notice. A number at least answers
+"unparsable" for nonsense; a boolean always produced a usable value. So a `bool`
+is the one primitive whose failure was invisible, and closing the set is what
+makes `false` an answer rather than also the way the framework says "I did not
+understand you". Note that an empty value (`?flag=`) is unparsable too: a
+present-but-blank flag states nothing. An HTML checkbox that is *unchecked*
+sends no field at all, which is absence rather than `false` — a handler that
+needs a default declares the parameter optional.
+
 A URL value that will not parse is a **client error, not a missed strategy**.
 `coercePrimitiveParameter` answers `null` for two conditions that are different
 answers — a `Request` parameter, which is no primitive at all and should fall
@@ -921,10 +939,6 @@ it means "nothing a caller can see", not "nothing at all".
   looking and no more than that: a caller gets a `200` computed as though the
   parameter had not been sent. The opt-in itself is deliberate — see
   [Binding a Query Parameter](#binding-a-query-parameter).
-- **`bool` accepts exactly one spelling.** Coercion is `raw == 'true'`, so
-  `?flag=1`, `?flag=yes` and `?flag=TRUE` all arrive as `false` rather than as
-  an error. An endpoint that must tell "false" from "not a boolean" takes the
-  value as a `String` and parses it itself.
 - **A repeated text field cannot become a list.** Both form shapes keep the
   last value of a repeated field, the way a query string does, because a DTO
   field is one value. An endpoint that needs a repeated *text* field declares a

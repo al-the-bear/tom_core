@@ -388,12 +388,72 @@ void main() {
       expect(TomEndpointHandler.coercePrimitiveParameter(num, '7'), 7);
     });
 
-    test('maps a bool parameter ("true" only)', () {
-      expect(TomEndpointHandler.coercePrimitiveParameter(bool, 'true'), isTrue);
-      expect(
-        TomEndpointHandler.coercePrimitiveParameter(bool, 'false'),
-        isFalse,
-      );
+    // A bool was `raw == 'true'`, which is total: every other spelling produced
+    // `false`, so `?active=TRUE` meant the opposite of what the caller wrote and
+    // nothing could notice. It is the one primitive whose failure was invisible
+    // — a number at least answers `null` for nonsense — so the accepted
+    // spellings are a closed set and everything else is a refusal.
+    test('accepts four spellings of true, in any case', () {
+      for (final raw in const [
+        'true',
+        'TRUE',
+        'True',
+        '1',
+        'yes',
+        'YES',
+        'on',
+        'On',
+      ]) {
+        expect(
+          TomEndpointHandler.coercePrimitiveParameter(bool, raw),
+          isTrue,
+          reason: '"$raw" is a spelling of true',
+        );
+      }
+    });
+
+    test('accepts four spellings of false, in any case', () {
+      for (final raw in const [
+        'false',
+        'FALSE',
+        'False',
+        '0',
+        'no',
+        'NO',
+        'off',
+        'Off',
+      ]) {
+        expect(
+          TomEndpointHandler.coercePrimitiveParameter(bool, raw),
+          isFalse,
+          reason: '"$raw" is a spelling of false',
+        );
+      }
+    });
+
+    test('an unrecognised spelling is null, not false', () {
+      // The whole point of the change. `false` is an answer and `null` is a
+      // refusal, and the two must not be the same value — under the old rule
+      // every one of these bound as `false`.
+      for (final raw in const ['maybe', 'y', 'n', 't', 'f', '2', '-1', '']) {
+        expect(
+          TomEndpointHandler.coercePrimitiveParameter(bool, raw),
+          isNull,
+          reason: '"$raw" is no spelling of either, so it cannot bind',
+        );
+      }
+    });
+
+    test('the true and false spellings do not overlap', () {
+      // A spelling in both sets would resolve by whichever is tested first,
+      // which is an ordering nothing else in this file depends on.
+      const trues = ['true', '1', 'yes', 'on'];
+      const falses = ['false', '0', 'no', 'off'];
+      for (final raw in trues) {
+        expect(falses, isNot(contains(raw)));
+      }
+      expect(trues.toSet(), hasLength(trues.length));
+      expect(falses.toSet(), hasLength(falses.length));
     });
 
     test('returns null for an unparsable numeric value', () {
