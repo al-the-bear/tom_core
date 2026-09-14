@@ -236,17 +236,67 @@ class TomEndpointHandler {
   /// Called *before* [injectPathParameters], so a path capture of the same
   /// mapped name still wins: the route is the stronger statement.
   ///
-  /// Pure and side-effect-free apart from mutating [jsonBodyData], so it is
-  /// unit-testable without a live router (like [coercePrimitiveParameter]).
+  /// **A parameter the mapping does not name is dropped, and the drop is logged
+  /// at debug.** Dropping is the opt-in working as designed; the silence was a
+  /// separate choice, and the expensive one. A client sending `?status=open` to
+  /// an endpoint that never mapped `status` gets a `200` computed as though it
+  /// had not been sent, and nothing anywhere says so — the endpoint author sees
+  /// a working request and the caller sees an ignored filter. Debug is the
+  /// level the decision names: it is findable by someone who goes looking,
+  /// without failing a request or filling an ordinary log with the tracking
+  /// parameters (`utm_source`, `gclid`) that every public URL collects.
+  ///
+  /// **The names are logged; the values never are.** A query string is where
+  /// `?code=…&state=…` arrives on an OAuth callback, and a log at a level
+  /// people leave on in development is the last place a credential should
+  /// reach. The name alone is the whole diagnosis anyway: what the author needs
+  /// is that `status` was sent and not bound.
+  ///
+  /// [declaredParameterNames] are the handler method's own parameter names, and
+  /// they are excluded from the report. The mapping is not the only way a query
+  /// value reaches a handler: a *bare primitive* parameter binds from the query
+  /// string by its own name (`GET /projects?workspaceId=` → `String
+  /// workspaceId`), several strategies earlier. An endpoint that declares one
+  /// **and** takes a request DTO would otherwise have the bound parameter
+  /// reported as dropped on every request — a diagnostic that cries wolf on the
+  /// documented case is worse than none, because it teaches its reader to skip
+  /// the line that matters.
+  ///
+  /// Pure and side-effect-free apart from mutating [jsonBodyData] and that log
+  /// line, so it is unit-testable without a live router (like
+  /// [coercePrimitiveParameter]).
   static void injectQueryParameters(
     Map<String, dynamic> jsonBodyData,
     Request req,
-    TomEndpoint endpoint,
-  ) {
-    final mapping = endpoint.urlParameterMapping;
-    if (mapping.isEmpty) return;
+    TomEndpoint endpoint, {
+    Set<String> declaredParameterNames = const {},
+  }) {
     final queryParameters = req.requestedUri.queryParameters;
     if (queryParameters.isEmpty) return;
+    final mapping = endpoint.urlParameterMapping;
+    // Reported before the fold, and *not* behind `mapping.isEmpty`: an endpoint
+    // that mapped nothing at all is the commonest form of this mistake, and an
+    // early return there is precisely what hid it.
+    if (TomLogger.globalSettingDebugEnabled) {
+      final unmapped = [
+        for (final name in queryParameters.keys)
+          if (!mapping.containsKey(name) &&
+              !declaredParameterNames.contains(name))
+            name,
+      ];
+      if (unmapped.isNotEmpty) {
+        // One line per request rather than one per name: the set is the
+        // finding, and an endpoint that is reached with three stray parameters
+        // is reached with them together.
+        tomLog.debug(
+          "Query parameter(s) ${unmapped.join(', ')} sent to ${endpoint.uri} "
+          "are not named in its urlParameterMapping and were not bound. Query "
+          "binding is opt-in per parameter: add "
+          "urlParameterMapping: {'<query name>': '<DTO field>'} to the "
+          "endpoint to bind one.",
+        );
+      }
+    }
     mapping.forEach((queryName, fieldName) {
       final value = queryParameters[queryName];
       if (value != null) jsonBodyData[fieldName] = value;
@@ -689,7 +739,14 @@ class TomEndpointHandler {
               jsonBodyData.addAll(decodeJsonObjectBody(body, parameterMirror));
             }
           }
-          injectQueryParameters(jsonBodyData, req, metadata.endpoint);
+          injectQueryParameters(
+            jsonBodyData,
+            req,
+            metadata.endpoint,
+            declaredParameterNames: {
+              for (final parameter in method.parameters) parameter.simpleName,
+            },
+          );
           injectPathParameters(jsonBodyData, req, metadata.endpoint);
           if (jsonBodyData.isNotEmpty) {
             try {

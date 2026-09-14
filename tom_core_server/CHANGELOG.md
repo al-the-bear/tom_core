@@ -2,6 +2,26 @@
 
 ### Changed
 
+- **A dropped query parameter says so (tcopen132).** `injectQueryParameters`
+  returned immediately when `urlParameterMapping` was empty, and otherwise
+  folded only the names the mapping listed. The opt-in is right and stays — a
+  query string is whatever a caller chose to append, so an identity fallback
+  would let any caller write any field of any request DTO. The silence was the
+  expensive part: a client sends `?status=open` to an endpoint that never mapped
+  `status`, gets a `200` computed as though it had not been sent, and nobody is
+  told.
+
+  The drop is reported at **debug** now, naming the endpoint and the parameter
+  names. Debug rather than a `400`, because a public URL collects `utm_source`
+  and `gclid` whether the endpoint wants them or not. Three details carry it:
+  the early return on an empty mapping is gone, since an endpoint that mapped
+  nothing is the commonest form of the mistake; **values are never logged**,
+  because a query string is where an OAuth `code` arrives; and the handler's own
+  parameter names are excluded, because a bare primitive parameter binds from
+  the query string by its own name several strategies earlier, and a diagnostic
+  that fires on the documented case teaches its reader to skip the line that
+  matters.
+
 - **The routing tables are readable, and not writable (tcopen131).**
   `TomEndpointRouting.handlers` and `routingInfo` were public mutable statics,
   so any code in the process could add, replace or clear an entry after the

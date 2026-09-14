@@ -15,6 +15,7 @@ method, and converts the result (or any error) into a `Response`.
 - [Resolving the Implementation Instance](#resolving-the-implementation-instance)
 - [The Request Pipeline](#the-request-pipeline)
 - [Parameter Binding](#parameter-binding)
+  - [Binding a Query Parameter](#binding-a-query-parameter)
   - [Parameters that cannot be filled](#parameters-that-cannot-be-filled)
 - [Access Control](#access-control)
   - [A Denial Answers 404, and Says Nothing Else](#a-denial-answers-404-and-says-nothing-else)
@@ -280,6 +281,44 @@ fails the request with
 request and response classes are discouraged throughout Tom Core for that
 reason; the pipeline inherits the rule rather than restating it, because
 binding is the reflection module's contract and not a policy of its own.
+
+### Binding a Query Parameter
+
+A query value reaches a handler by one of two routes, and they are not
+alternatives to each other:
+
+| The handler declares | Bound by | Needs `urlParameterMapping`? |
+| -------------------- | -------- | ---------------------------- |
+| a bare `String` / `num` / `bool` parameter | the primitive query strategy, by the parameter's own name | no |
+| a field of a request DTO | `injectQueryParameters`, under the mapped field name | **yes**, per parameter |
+
+The DTO route is opt-in and the path route is not, which is the module's most
+mistakable asymmetry. A path capture binds under its own name whether or not
+`urlParameterMapping` names it, so an empty map still binds every path
+parameter; a query parameter binds into a DTO **only** when the map names it.
+The reason is whose statement the value is. A route is part of the endpoint's
+own declaration, so binding a capture by its own name is safe; a query string is
+whatever a caller chose to append, so an identity fallback would let any caller
+write any field of any request DTO — `?isAdmin=true` reaching a field the
+endpoint never meant to expose.
+
+**The opt-in stays; the silence does not.** A parameter that no mapping names
+and no handler parameter declares is dropped and reported at **debug**, naming
+the endpoint and the parameter names. Debug rather than a `400`, because a
+public URL collects `utm_source` and `gclid` whether the endpoint wants them or
+not, and rejecting the request would break every caller that appends one; debug
+rather than nothing, because the failure it replaces is expensive to find — a
+client sends `?status=open`, gets a `200` computed as though it had not, and
+nobody is told: the author sees a working request, the caller sees an ignored
+filter, and no log connects them.
+
+Two things the line deliberately does not do. It never logs **values** — a query
+string is where `?code=…&state=…` arrives on an OAuth callback, and a log at a
+level people leave on in development is the last place a credential should
+reach; the name alone is the whole diagnosis. And it excludes the names the
+handler declares as its own parameters, because those bind by the primitive
+route above: a diagnostic that fires on the documented case teaches its reader
+to skip the line that matters.
 
 ### Parameters that cannot be filled
 
@@ -856,13 +895,17 @@ looks. It is not a survey of everything unfinished inside the module: edges with
 no outward effect are out of scope for this list, so a limitation's absence from
 it means "nothing a caller can see", not "nothing at all".
 
-- **An unmapped query parameter is dropped in silence.** A path capture binds
-  under its own name whether or not `urlParameterMapping` names it; a query
-  parameter binds **only** when the map names it, and nothing warns about one it
-  does not. An endpoint expecting `?token=…` with an empty mapping therefore
-  receives a request DTO without it — or, when the route captures nothing at
-  all, no DTO and an argument-count failure that names neither the parameter nor
-  the query string.
+- **An unmapped query parameter is dropped, and only a debug line says so.** A
+  path capture binds under its own name whether or not `urlParameterMapping`
+  names it; a query parameter binds **only** when the map names it. An endpoint
+  expecting `?token=…` with an empty mapping therefore receives a request DTO
+  without it — or, when the route captures nothing at all, no DTO and an
+  argument-count failure that names neither the parameter nor the query string.
+  The drop is announced at **debug**, naming the endpoint and the parameter
+  names (never their values), which makes it findable by someone who goes
+  looking and no more than that: a caller gets a `200` computed as though the
+  parameter had not been sent. The opt-in itself is deliberate — see
+  [Binding a Query Parameter](#binding-a-query-parameter).
 - **A URL value that will not parse falls through rather than failing.**
   `coercePrimitiveParameter` answers `null` both for "this type is not a
   primitive" and for "this primitive would not parse", and its caller cannot

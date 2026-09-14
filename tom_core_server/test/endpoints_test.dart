@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
@@ -38,6 +40,37 @@ Request _reqWithQuery(String uri, {Map<String, String> params = const {}}) =>
 /// Named by group rather than by line number on purpose: this pointer has to
 /// survive the file it points into being edited.
 Request _req() => Request('POST', Uri.parse('http://localhost/greet'));
+
+/// Collects what the framework logged, so a test can assert on a diagnostic
+/// that has no other observable effect — which is exactly what the unmapped
+/// query parameter's debug line is.
+///
+/// Every level is kept: [TomLogger] hands the output its own configured level
+/// and leaves the filtering to it, so filtering here would silently drop the
+/// message whenever the suite ran at a quieter level.
+class _CapturingLogOutput extends TomLogOutput {
+  final List<String> lines = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) => lines.add(convertToString(message));
+}
+
+/// Captures log output for the duration of the calling test.
+List<String> _captureLog() {
+  final previousOutput = tomLog.logOutput;
+  final captured = _CapturingLogOutput();
+  tomLog.logOutput = captured;
+  addTearDown(() => tomLog.logOutput = previousOutput);
+  return captured.lines;
+}
 
 /// A distinguishable [TomErrorHandler] so tests can assert *which* handler an
 /// endpoint resolved to (by identity) rather than just its response.
@@ -549,10 +582,11 @@ void main() {
   // any caller write any field of the request DTO of any endpoint.
   //
   // That asymmetry is also the module's most mistakable behaviour: an endpoint
-  // that declares no mapping drops the whole query string in silence, and the
-  // author sees a DTO with a missing value — or, if nothing else binds, an
-  // argument-count failure naming neither the parameter nor the query string.
-  // It is pinned here as a decision rather than left to be rediscovered.
+  // that declares no mapping drops the whole query string, and the author sees
+  // a DTO with a missing value — or, if nothing else binds, an argument-count
+  // failure naming neither the parameter nor the query string. It is pinned
+  // here as a decision rather than left to be rediscovered, and the drop is
+  // announced at debug so it can be found rather than deduced.
   group('TomEndpointHandler.injectQueryParameters', () {
     test('binds a mapped query parameter under its DTO field name', () {
       const endpoint = TomEndpoint(
@@ -583,8 +617,10 @@ void main() {
         _reqWithQuery('http://localhost/callback?code=abc&state=xyz'),
         endpoint,
       );
-      // The silent drop, stated outright. There is no identity fallback to fall
-      // back to, so an unmapped endpoint is closed to the query string entirely.
+      // The drop, stated outright. There is no identity fallback to fall back
+      // to, so an unmapped endpoint is closed to the query string entirely. It
+      // is no longer silent — see the `an unmapped parameter is reported at
+      // debug` group below.
       expect(json, isEmpty);
     });
 
@@ -679,6 +715,206 @@ void main() {
       TomEndpointHandler.injectQueryParameters(json, req, endpoint);
       TomEndpointHandler.injectPathParameters(json, req, endpoint);
       expect(json, {'id': '7'});
+    });
+  });
+
+  // The drop is the opt-in working as designed; the silence was a separate
+  // choice, and the expensive one. A client sending `?status=open` to an
+  // endpoint that never mapped `status` gets a 200 computed as though it had
+  // not been sent — the author sees a working request and the caller sees an
+  // ignored filter, and nothing anywhere connects the two. Debug is the level
+  // the decision names: findable by someone who goes looking, without failing a
+  // request or filling an ordinary log with the tracking parameters every
+  // public URL collects.
+  group('an unmapped query parameter is reported at debug', () {
+    test('an endpoint that mapped nothing still reports what it dropped', () {
+      // The commonest form of the mistake, and the one an early return on
+      // `mapping.isEmpty` used to hide: there is nothing to fold, so the fold
+      // had nothing to say.
+      final lines = _captureLog();
+      TomEndpointHandler.injectQueryParameters(
+        <String, dynamic>{},
+        _reqWithQuery('http://localhost/tasks?status=open'),
+        const TomEndpoint(uri: '/tasks'),
+      );
+      expect(lines, hasLength(1));
+      expect(lines.single, contains('status'));
+      expect(lines.single, contains('/tasks'));
+      expect(lines.single, contains('urlParameterMapping'));
+    });
+
+    test('only the unmapped names are named', () {
+      final lines = _captureLog();
+      TomEndpointHandler.injectQueryParameters(
+        <String, dynamic>{},
+        _reqWithQuery('http://localhost/callback?code=abc&status=open'),
+        const TomEndpoint(
+          uri: '/callback',
+          urlParameterMapping: {'code': 'code'},
+        ),
+      );
+      expect(lines.single, contains('status'));
+      expect(lines.single, isNot(contains('code=')));
+    });
+
+    test('the values are never logged', () {
+      // A query string is where `?code=…&state=…` arrives on an OAuth
+      // callback. A log at a level people leave on in development is the last
+      // place a credential should reach, and the name alone is the whole
+      // diagnosis: what the author needs to know is that it was sent and not
+      // bound.
+      final lines = _captureLog();
+      TomEndpointHandler.injectQueryParameters(
+        <String, dynamic>{},
+        _reqWithQuery('http://localhost/callback?code=s3cret&state=t0ken'),
+        const TomEndpoint(uri: '/callback'),
+      );
+      expect(lines.single, contains('code'));
+      expect(lines.single, contains('state'));
+      expect(lines.single, isNot(contains('s3cret')));
+      expect(lines.single, isNot(contains('t0ken')));
+    });
+
+    test('several strays are one line, not one line each', () {
+      // The set is the finding: an endpoint reached with three stray
+      // parameters is reached with them together, and three lines would read
+      // as three events.
+      final lines = _captureLog();
+      TomEndpointHandler.injectQueryParameters(
+        <String, dynamic>{},
+        _reqWithQuery('http://localhost/t?utm_source=a&gclid=b&status=open'),
+        const TomEndpoint(uri: '/t'),
+      );
+      expect(lines, hasLength(1));
+      for (final name in const ['utm_source', 'gclid', 'status']) {
+        expect(lines.single, contains(name));
+      }
+    });
+
+    test('a fully mapped request says nothing', () {
+      final lines = _captureLog();
+      TomEndpointHandler.injectQueryParameters(
+        <String, dynamic>{},
+        _reqWithQuery('http://localhost/callback?code=abc'),
+        const TomEndpoint(
+          uri: '/callback',
+          urlParameterMapping: {'code': 'code'},
+        ),
+      );
+      expect(lines, isEmpty);
+    });
+
+    test('a request with no query string says nothing', () {
+      final lines = _captureLog();
+      TomEndpointHandler.injectQueryParameters(
+        <String, dynamic>{},
+        _reqWithQuery('http://localhost/tasks'),
+        const TomEndpoint(uri: '/tasks'),
+      );
+      expect(lines, isEmpty);
+    });
+
+    test('a mapped name the caller omitted is not reported as unmapped', () {
+      // The two states are different: `error_description` is part of the
+      // contract and simply did not arrive, which is the ordinary shape of a
+      // successful OAuth callback and says nothing about the endpoint.
+      final lines = _captureLog();
+      TomEndpointHandler.injectQueryParameters(
+        <String, dynamic>{},
+        _reqWithQuery('http://localhost/callback?code=abc'),
+        const TomEndpoint(
+          uri: '/callback',
+          urlParameterMapping: {
+            'code': 'code',
+            'error_description': 'errorDescription',
+          },
+        ),
+      );
+      expect(lines, isEmpty);
+    });
+
+    test('binding is unaffected by the log level', () {
+      final lines = _captureLog();
+      final previous = TomLogger.globalSettingDebugEnabled;
+      addTearDown(() => TomLogger.globalSettingDebugEnabled = previous);
+      TomLogger.globalSettingDebugEnabled = false;
+
+      final json = <String, dynamic>{};
+      TomEndpointHandler.injectQueryParameters(
+        json,
+        _reqWithQuery('http://localhost/callback?code=abc&status=open'),
+        const TomEndpoint(
+          uri: '/callback',
+          urlParameterMapping: {'code': 'code'},
+        ),
+      );
+
+      expect(lines, isEmpty);
+      expect(json, {'code': 'abc'});
+    });
+
+    test('a name the handler declares as a parameter is not reported', () {
+      // The mapping is not the only way a query value reaches a handler: a bare
+      // primitive parameter binds from the query string by its own name,
+      // several strategies before the DTO is built. An endpoint that declares
+      // one *and* takes a request DTO would otherwise have the bound parameter
+      // reported as dropped on every request — a diagnostic that cries wolf on
+      // the documented case teaches its reader to skip the line that matters.
+      final lines = _captureLog();
+      TomEndpointHandler.injectQueryParameters(
+        <String, dynamic>{},
+        _reqWithQuery('http://localhost/projects?workspaceId=7&status=open'),
+        const TomEndpoint(uri: '/projects'),
+        declaredParameterNames: const {'workspaceId'},
+      );
+      expect(lines.single, contains('status'));
+      expect(lines.single, isNot(contains('workspaceId')));
+    });
+
+    test('the pipeline passes the handler\'s parameter names', () {
+      // The exclusion is only correct if the caller supplies the names, and
+      // the caller is the binding loop — reached only by a live request to an
+      // endpoint that has *both* a primitive query parameter and a request
+      // DTO, which no fixture declares. Asserted from the source rather than
+      // by adding one: a default of `const {}` at the call site type-checks,
+      // passes every test above, and silently restores the false alarm.
+      final source = File(
+        'lib/src/tomserver/endpoints/endpoint_pipeline.dart',
+      ).readAsStringSync();
+      expect(
+        source,
+        contains(
+          'for (final parameter in method.parameters) parameter.simpleName,',
+        ),
+        reason:
+            'the binding loop no longer tells injectQueryParameters which '
+            'names the handler declares, so a bound primitive query parameter '
+            'is reported as dropped',
+      );
+    });
+
+    test('the scan is behind the toggle, not merely the line', () {
+      // Asserted from the source, because it cannot be observed: `tomLog.debug`
+      // checks the same toggle itself, so dropping the guard would still print
+      // nothing and pass every test above. What the guard buys is that an
+      // endpoint reached with a query string does not build a list per request
+      // on a server configured to discard the line — a cost, not an output.
+      final source = File(
+        'lib/src/tomserver/endpoints/endpoint_pipeline.dart',
+      ).readAsStringSync();
+      final body = source.substring(
+        source.indexOf('static void injectQueryParameters('),
+        source.indexOf('static void injectFormFields('),
+      );
+      final guard = body.indexOf('TomLogger.globalSettingDebugEnabled');
+      final scan = body.indexOf('final unmapped = [');
+      expect(guard, isNot(-1), reason: 'the toggle guard is gone');
+      expect(scan, isNot(-1), reason: 'the unmapped scan was renamed');
+      expect(
+        guard,
+        lessThan(scan),
+        reason: 'the scan must not run when debug logging is off',
+      );
     });
   });
 
