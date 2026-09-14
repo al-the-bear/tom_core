@@ -253,6 +253,27 @@ class _TypedFileSlot<T extends Object, K> extends TomFileSlot {
 /// the key type and — through the entity's annotations — the table name, the
 /// column names and the blob store. Anything else would be a restatement, and a
 /// restatement is what drifts.
+///
+/// ## Its lifetime is the isolate's, and that is a bootstrap requirement
+///
+/// The registry is a **process-wide static**, and Dart isolates do not share
+/// statics — so it is really one registry *per isolate*. An application that
+/// serves from several isolates must run its [register] calls in each of them,
+/// which is what a server bootstrap already does: the registration sits in the
+/// start-up path every isolate runs, beside the bean wiring and the data-source
+/// configuration, not in a `main()` one isolate reaches and the others do not.
+///
+/// Static rather than owned state because the alternative buys nothing here.
+/// The registry is written once at start-up and read on every file request; a
+/// bean-scoped one would make the lifetime the server's rather than the
+/// process's, which is the same lifetime in every deployment this framework
+/// builds, at the cost of threading a dependency through [TomFileEndpoint],
+/// `TomFormFileStorage` and every call site of [resolve].
+///
+/// What the static *does* cost is a silent failure mode: an isolate that never
+/// ran the registration answers every file request with "no such slot", which is
+/// indistinguishable from a column that is deliberately closed. [resolve]
+/// removes it — see there.
 class TomFileSlots {
   TomFileSlots._();
 
@@ -264,6 +285,13 @@ class TomFileSlots {
   /// file column, or would produce an ambiguous slot. That is the trade the
   /// reflection-derived design buys: the failures a hand-written mapping table
   /// would have shown at request time show here instead.
+  ///
+  /// **Call this in the start-up path every isolate runs.** The registry it
+  /// writes to is a static, and statics are per isolate, so a registration that
+  /// happens in one isolate is invisible to every other one — see the class
+  /// documentation. Registering twice in one isolate is refused
+  /// (`file_endpoint.duplicate_slot`), so a bootstrap that runs once per
+  /// isolate is both the requirement and the only thing that works.
   static void register<T extends Object, K>(
     TomFileRepository<T, K> repository,
   ) {
@@ -345,8 +373,29 @@ class TomFileSlots {
   /// A non-exposed column is indistinguishable from a non-existent one here, and
   /// that is the intent: the endpoint answers both with a plain 404 rather than
   /// telling a caller which columns exist but are closed to them.
-  static TomFileSlot? resolve(String table, String column) =>
-      _slots[table]?[column];
+  ///
+  /// An **empty registry** is the one case that does not get that answer. It
+  /// means no slot was registered in this isolate at all, which a file request
+  /// arriving here says somebody expected one — and the two readings of "no such
+  /// slot" are then a closed column and a bootstrap that did not run, which no
+  /// caller and no operator can tell apart from a 404. So it is refused by name
+  /// and logged, and the request fails as the server fault it is.
+  ///
+  /// The trigger is deliberately "a file request arrived **and** the registry is
+  /// empty", not "the registry is empty": a deployment that exposes no file
+  /// columns is not misconfigured, it simply has no caller asking, and it never
+  /// reaches this.
+  static TomFileSlot? resolve(String table, String column) {
+    if (_slots.isEmpty) {
+      throw TomFileSlotException(
+        'file_endpoint.no_slots_registered',
+        'This server has no file slots registered.',
+        parameters: {'table': table, 'column': column},
+        autoLog: true,
+      );
+    }
+    return _slots[table]?[column];
+  }
 
   /// Every registered slot, as `<table>/<column>` — for diagnostics and tests.
   static List<String> get slots => [
@@ -357,7 +406,9 @@ class TomFileSlots {
   /// Forgets every registration.
   ///
   /// Exists for tests, which build a fresh registry per case; an application
-  /// registers once at startup.
+  /// registers once per isolate at startup and never calls this. A test that
+  /// resets while another test's slots are live deregisters them too — they
+  /// share the isolate, and the registry is the isolate's.
   static void reset() => _slots.clear();
 }
 

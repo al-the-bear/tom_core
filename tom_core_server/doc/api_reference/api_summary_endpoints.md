@@ -891,13 +891,20 @@ it publishes only those declaring `exposed: true`. What exposure decides is
 with the row scope (C-3) and column grade (C-4) the repository enforces, and the
 endpoint access check the pipeline runs first.
 
+The registry is a process-wide **static**, and Dart isolates do not share
+statics, so it is really one registry per isolate: an application serving from
+several must run its `register` calls in each, which is what a start-up path
+already does. An isolate that did not is the one failure that would otherwise be
+silent, and `resolve` refuses it by name rather than answering the 404 a closed
+column gets.
+
 #### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `register` | `static void register<T extends Object, K>(TomFileRepository<T, K> repository)` | Registers every exposed `@TomFileReference` column of `T`. Throws `TomFileSlotException` at wire-up time when the entity declares no `@TomDbTable` (`entity_not_mapped`), exposes no file column (`no_exposed_column`), would produce an ambiguous slot (`ambiguous_slot`), or collides with one already registered (`duplicate_slot`). |
-| `resolve` | `static TomFileSlot? resolve(String table, String column)` | The slot serving `<table>/<column>`, or `null` when none is exposed. A non-exposed column is deliberately indistinguishable from a non-existent one. |
-| `reset` | `static void reset()` | Forgets every registration. For tests, which build a fresh registry per case; an application registers once at startup. |
+| `register` | `static void register<T extends Object, K>(TomFileRepository<T, K> repository)` | Registers every exposed `@TomFileReference` column of `T`. Throws `TomFileSlotException` at wire-up time when the entity declares no `@TomDbTable` (`entity_not_mapped`), exposes no file column (`no_exposed_column`), would produce an ambiguous slot (`ambiguous_slot`), or collides with one already registered (`duplicate_slot`). Call it in the start-up path **every isolate runs**: the registry is a static, statics are per isolate, and registering twice in one isolate is refused — so once per isolate is both the requirement and the only thing that works. |
+| `resolve` | `static TomFileSlot? resolve(String table, String column)` | The slot serving `<table>/<column>`, or `null` when none is exposed. A non-exposed column is deliberately indistinguishable from a non-existent one. An **empty** registry is the exception: it means no slot was registered in this isolate at all, and a file request arriving says somebody expected one — so it throws `TomFileSlotException` (`file_endpoint.no_slots_registered`, logged) rather than letting a bootstrap that did not run read as a closed column. |
+| `reset` | `static void reset()` | Forgets every registration. For tests, which build a fresh registry per case; an application registers once per isolate at startup and never calls it. A test that resets while another test's slots are live deregisters those too — they share the isolate, and the registry is the isolate's. |
 
 #### Static Properties
 

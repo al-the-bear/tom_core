@@ -1,6 +1,35 @@
 ## 1.3.0
 
+### Fixed
+
+- **An isolate that registered no file slots says so (tcopen136).**
+  `TomFileSlots` holds its slots in a static map and Dart isolates do not share
+  statics, so it is one registry *per isolate*. An isolate that never ran the
+  registration answered every file request with "no such slot" — exactly the
+  answer a column deliberately left closed gets, and deliberately so, since the
+  endpoint refuses to tell a caller which columns exist but are shut. A
+  bootstrap that did not run and a closed column were the same 404.
+
+  `resolve` refuses an **empty** registry by name
+  (`file_endpoint.no_slots_registered`, logged) and lets it leave as the server
+  fault it is. The trigger is "a file request arrived *and* the registry is
+  empty", not "the registry is empty": a deployment exposing no file columns is
+  not misconfigured, it simply has no caller asking. Once anything is
+  registered the ordinary `null` is back, so a closed or absent column is still
+  a plain 404 — a test holds that line, because a refusal widened to every miss
+  would leak what the 404 exists to withhold.
+
 ### Documentation
+
+- **The slot registry's lifetime is stated where a slot is registered
+  (tcopen136).** The registry stays a static: it is written once at start-up and
+  read on every file request, so a bean-scoped lifetime would be the server's
+  rather than the process's — the same lifetime in every deployment this
+  framework builds — at the cost of threading a dependency through
+  `TomFileEndpoint`, `TomFormFileStorage` and every call site of `resolve`. What
+  that requires of an application is now on the class and on `register`: run the
+  registration in the start-up path **every isolate runs**, not in a `main()`
+  one isolate reaches.
 
 - **Forms have no streaming path, and that is settled (tcopen135).** A multipart
   body is a single sequential stream — part N+1 is unreachable until part N has

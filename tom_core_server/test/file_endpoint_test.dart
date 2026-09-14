@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' show Client;
 import 'package:shelf/shelf.dart';
@@ -19,6 +20,33 @@ import 'fixtures/reflection_fixture.dart'
         FixtureUnmappedFileRecord,
         registerFixtureAccessApi;
 import 'fixtures/reflection_fixture.reflection.dart';
+
+/// Collects what the framework logged, so a test can assert on a diagnostic
+/// that has no other observable effect — a bootstrap fault reaches the caller
+/// as a bare server error, so the log line is the whole diagnosis.
+class _CapturingLogOutput extends TomLogOutput {
+  final List<String> lines = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) => lines.add(convertToString(message));
+}
+
+/// Captures log output for the duration of the calling test.
+List<String> _captureLog() {
+  final previousOutput = tomLog.logOutput;
+  final captured = _CapturingLogOutput();
+  tomLog.logOutput = captured;
+  addTearDown(() => tomLog.logOutput = previousOutput);
+  return captured.lines;
+}
 
 /// The framework's HTTP file endpoint, end to end.
 ///
@@ -359,8 +387,18 @@ void main() {
           ),
         ),
       );
-      // Nothing was published under any plausible name for it.
-      expect(TomFileSlots.slots, isEmpty);
+      // Nothing was published under any plausible name for it. Asked against a
+      // registry that holds *something* — a sound entity registered beside it —
+      // because `resolve` refuses an empty registry outright, and because
+      // "nothing published" is a stronger claim than "the registry is empty".
+      TomFileSlots.register(_MemoryFileRepository());
+      expect(
+        TomFileSlots.slots,
+        unorderedEquals([
+          'fixture_file_slot/poster',
+          'fixture_file_slot/graded_poster',
+        ]),
+      );
       expect(
         TomFileSlots.resolve('FixtureUnmappedFileRecord', 'attachment'),
         isNull,
@@ -369,6 +407,89 @@ void main() {
         TomFileSlots.resolve('fixture_unmapped_file', 'attachment'),
         isNull,
       );
+    });
+
+    // The registry is a static, and Dart isolates do not share statics — so it
+    // is one registry per isolate, and an isolate that never ran the
+    // registration answers every file request with "no such slot". That answer
+    // is indistinguishable from a column deliberately left closed, which is the
+    // ordinary 404 this endpoint is careful to give. The two readings cannot
+    // both stay silent.
+    group('an isolate that registered nothing says so', () {
+      test('resolve refuses an empty registry by name', () {
+        expect(
+          () => TomFileSlots.resolve('fixture_file_slot', 'poster'),
+          throwsA(
+            isA<TomFileSlotException>()
+                .having(
+                  (e) => e.key,
+                  'key',
+                  'file_endpoint.no_slots_registered',
+                )
+                .having(
+                  (e) => e.parameters,
+                  'parameters',
+                  allOf(
+                    containsPair('table', 'fixture_file_slot'),
+                    containsPair('column', 'poster'),
+                  ),
+                ),
+          ),
+        );
+      });
+
+      test('a registered registry still answers null for an unknown slot', () {
+        // The counter-case, and the one that keeps the refusal narrow. Once
+        // anything is registered, a slot that is closed or absent is back to
+        // being a plain `null` — the 404 the endpoint gives deliberately,
+        // rather than telling a caller which columns exist.
+        TomFileSlots.register(_MemoryFileRepository());
+        expect(
+          TomFileSlots.resolve('fixture_file_slot', 'internal_notes'),
+          isNull,
+        );
+        expect(TomFileSlots.resolve('no_such_table', 'poster'), isNull);
+      });
+
+      test('the form upload path reports it too', () async {
+        // `storeIn` resolves through the same registry, so a form handler in an
+        // unregistered isolate meets the same fault rather than "no such slot"
+        // — one registry, one answer.
+        final file = TomFormFile(
+          field: 'poster',
+          bytes: Uint8List.fromList(const [1, 2, 3]),
+          fileName: 'p.png',
+          mediaType: 'image/png',
+        );
+        await expectLater(
+          file.storeIn('fixture_file_slot', 'poster', '1'),
+          throwsA(
+            isA<TomFileSlotException>().having(
+              (e) => e.key,
+              'key',
+              'file_endpoint.no_slots_registered',
+            ),
+          ),
+        );
+      });
+
+      test('the refusal is logged, because nobody else can see it', () {
+        // A bootstrap fault reaches the caller as a server error, which says
+        // nothing about what to fix. The line in the log is the whole
+        // diagnosis, so it is `autoLog: true` rather than left to a handler
+        // that may render it as a bare 500.
+        final lines = _captureLog();
+        expect(
+          () => TomFileSlots.resolve('fixture_file_slot', 'poster'),
+          throwsA(isA<TomFileSlotException>()),
+        );
+        expect(
+          lines.any(
+            (line) => line.contains('file_endpoint.no_slots_registered'),
+          ),
+          isTrue,
+        );
+      });
     });
 
     group('the ambiguity guard behind the default-closed rule', () {
@@ -437,6 +558,10 @@ void main() {
           ),
           throwsA(isA<TomFileSlotException>()),
         );
+        // A sound entity registered beside it, so the registry is non-empty:
+        // `resolve` refuses an empty one outright, and "this entity published
+        // nothing" is a stronger claim than "nothing is published".
+        TomFileSlots.register(_MemoryFileRepository());
         for (final name in [
           'dossier', // the collision itself
           'notes', // the closed column's declared name
@@ -448,7 +573,14 @@ void main() {
             reason: 'a rejected entity published the slot "$name"',
           );
         }
-        expect(TomFileSlots.slots, isEmpty);
+        expect(
+          TomFileSlots.slots,
+          unorderedEquals([
+            'fixture_file_slot/poster',
+            'fixture_file_slot/graded_poster',
+          ]),
+          reason: 'the rejected entity contributed a slot of its own',
+        );
       });
 
       test('a sound entity registered alongside it is unaffected', () {

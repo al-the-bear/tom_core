@@ -968,11 +968,16 @@ it means "nothing a caller can see", not "nothing at all".
   case that could have been streamed and deliberately is not — the file is last
   only if the page's markup puts it last, which the endpoint cannot require. See
   [Multipart Forms](#multipart-forms).
-- **`TomFileSlots` is a process-wide registry.** The map of exposed file columns
-  is static, so it is scoped to the *process* rather than to a repository or a
-  server: two isolates serving the same entity each register their own copy, and
-  `TomFileSlots.reset()` exists for tests that want a fresh registry, not for
-  re-registration at runtime.
+- **`TomFileSlots` is a per-isolate registry, and registering is a bootstrap
+  requirement.** The map of exposed file columns is static, and Dart isolates do
+  not share statics, so an application serving from several isolates must run
+  its `TomFileSlots.register` calls in each — which a start-up path does, and a
+  `main()` that one isolate reaches does not. An isolate that registered nothing
+  no longer answers a file request with "no such slot": `resolve` refuses an
+  empty registry by name (`file_endpoint.no_slots_registered`, logged), because
+  a bootstrap that did not run and a column deliberately left closed are
+  otherwise the same 404. `TomFileSlots.reset()` exists for tests that want a
+  fresh registry, not for re-registration at runtime.
 - **A socket has no server-side push registry.** A handler owns its own
   connection and can write to it at any time, but there is no shared registry to
   broadcast to every connection of a user or a topic. That is a feature of
