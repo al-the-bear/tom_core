@@ -296,6 +296,20 @@ abstract class FixtureApiService {
   )
   Future<Map<String, Object>> pair(FixtureParseRequest first, String second);
 
+  /// Two **numeric** primitives, one from the path and one from the query.
+  ///
+  /// The only endpoint whose parameters can fail to parse. Every other fixture
+  /// binds `String`s, which always parse, so the branch that refuses a
+  /// malformed URL value had nothing to fire on: `/fixture/typed/abc` and
+  /// `?ratio=xyz` are the two shapes of that mistake, one per source.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/typed/{id}',
+    logRequests: false,
+  )
+  Future<Map<String, Object>> typedPrimitives(int id, num ratio);
+
   /// A trailing **optional** parameter that nothing binds.
   ///
   /// The counter-case to [pair], and the reason "unbound" cannot simply mean
@@ -778,6 +792,10 @@ class FixtureApiServer implements FixtureApiService {
     FixtureParseRequest first,
     String second,
   ) async => <String, Object>{'label': first.label, 'second': second};
+
+  @override
+  Future<Map<String, Object>> typedPrimitives(int id, num ratio) async =>
+      <String, Object>{'id': id, 'ratio': ratio};
 
   @override
   Future<Map<String, Object>> optionalTail(

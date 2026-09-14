@@ -2306,6 +2306,165 @@ void main() {
   // end. That admits exactly one kind of shortening — dropping trailing
   // optionals, which is how Dart applies their defaults — and refuses every
   // other, each with a key naming the parameter at fault.
+  // The two `null`s `coercePrimitiveParameter` can answer are different
+  // answers, and the loop used to read both as "this strategy does not apply".
+  // So `?ratio=xyz` on a `num` parameter was not a client error: the parameter
+  // fell through every remaining strategy and ended unbound, and the caller was
+  // told `unbindable_parameter` — a message naming neither the value nor the
+  // fact that it was nearly right. `isBindablePrimitive` is asked first now, so
+  // past it a `null` means one thing.
+  group('a URL value that will not parse is refused, not skipped', () {
+    late TomEndpointHandler typed;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomEndpointRouting().initializeRouter();
+      typed = _routeInfo('/fixture/typed/{id}').handler;
+    });
+
+    tearDown(TomBean.resetBeanContext);
+
+    /// A GET of `/fixture/typed/<id>?ratio=<ratio>` with `id` as the route
+    /// capture a matched route would have supplied.
+    Request typedRequest(String id, String ratio) => Request(
+      'GET',
+      Uri.parse('http://localhost/fixture/typed/$id?ratio=$ratio'),
+      context: {
+        TomRequestLogInfo.contextName: TomRequestLogInfo(),
+        'shelf_router/params': {'id': id},
+      },
+    );
+
+    /// The refusal for a URL value, with [value] in its message.
+    ///
+    /// Read off `defaultUserMessage` rather than `toString()`: the parameters
+    /// map carries the value too, so a message that named neither would still
+    /// satisfy a `toString()` match — the assertion would pass on a message
+    /// that says nothing, which is the thing being pinned.
+    Matcher refusedValue(String value, String parameter) => throwsA(
+      isA<TomEndpointHandlerException>()
+          .having(
+            (e) => e.key,
+            'key',
+            'endpoint_pipeline.bind_parameters.unparsable_url_value',
+          )
+          .having(
+            (e) => e.defaultUserMessage,
+            'message',
+            allOf(contains(value), contains(parameter)),
+          )
+          .having(
+            (e) => e.parameters,
+            'parameters',
+            allOf(
+              containsPair('value', value),
+              containsPair('parameter', parameter),
+            ),
+          ),
+    );
+
+    test('a well-formed request still binds both values', () async {
+      // The control. Everything below asserts a throw, so without this the
+      // group would be satisfied by a loop that refused every URL value.
+      final bound = await typed.bindParameters(typedRequest('7', '1.5'));
+      expect(bound, [7, 1.5]);
+    });
+
+    test('a path variable that is not an int is refused by name', () {
+      expect(
+        () => typed.bindParameters(typedRequest('abc', '1.5')),
+        refusedValue('abc', 'id'),
+      );
+    });
+
+    test('a query value that is not a num is refused by name', () {
+      expect(
+        () => typed.bindParameters(typedRequest('7', 'xyz')),
+        refusedValue('xyz', 'ratio'),
+      );
+    });
+
+    test('the refusal names the type and the source', () async {
+      // Both are the diagnosis: the type says what would have been accepted,
+      // and the source says where to look for it — a path segment and a query
+      // parameter are edited in different places.
+      Object? caught;
+      try {
+        await typed.bindParameters(typedRequest('abc', '1.5'));
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught, isA<TomEndpointHandlerException>());
+      final message =
+          (caught as TomEndpointHandlerException).defaultUserMessage;
+      expect(message, contains('int'));
+      expect(message, contains('path variable'));
+
+      Object? fromQuery;
+      try {
+        await typed.bindParameters(typedRequest('7', 'xyz'));
+      } catch (error) {
+        fromQuery = error;
+      }
+      final queryMessage =
+          (fromQuery as TomEndpointHandlerException).defaultUserMessage;
+      expect(queryMessage, contains('query parameter'));
+      expect(queryMessage, contains('num'));
+    });
+
+    test('the refusal reaches the client rather than being masked', () async {
+      // `TomServerException.clientThrow` defaults to true and this raise site
+      // keeps it: the message names the caller's own value, which is the one
+      // thing they can act on, and masking it would leave them with a key and
+      // no idea which parameter was wrong.
+      Object? caught;
+      try {
+        await typed.bindParameters(typedRequest('abc', '1.5'));
+      } catch (error) {
+        caught = error;
+      }
+      expect((caught as TomServerException).clientThrow, isTrue);
+    });
+
+    test('it is not the fall-through failure any more', () async {
+      // The defect this closes, pinned by its own key: falling through ended
+      // with `unbindable_parameter`, which says only that nothing could supply
+      // the parameter.
+      Object? caught;
+      try {
+        await typed.bindParameters(typedRequest('abc', '1.5'));
+      } catch (error) {
+        caught = error;
+      }
+      expect(
+        (caught as TomEndpointHandlerException).key,
+        isNot('endpoint_pipeline.bind_parameters.unbindable_parameter'),
+      );
+    });
+
+    test('a non-primitive parameter still falls through', () {
+      // The other half of the pair, and the reason the predicate exists: a
+      // `FixtureParseRequest` parameter is not a primitive, so a path capture
+      // or query value of the same name must not refuse the request — the DTO
+      // strategy below is the one that binds it.
+      final parse = _routeInfo('/fixture/parse', 'POST').handler;
+      expect(
+        parse.bindParameters(
+          Request(
+            'POST',
+            Uri.parse('http://localhost/fixture/parse?first=abc'),
+            body: '{"label":"x","when":"2026-08-25T00:00:00Z"}',
+            context: {TomRequestLogInfo.contextName: TomRequestLogInfo()},
+          ),
+        ),
+        completes,
+      );
+    });
+  });
+
   group('binding preserves argument positions', () {
     late TomEndpointHandler pairHandler;
     late TomEndpointHandler optionalTailHandler;

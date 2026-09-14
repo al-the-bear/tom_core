@@ -398,10 +398,65 @@ void main() {
 
     test('returns null for an unparsable numeric value', () {
       expect(TomEndpointHandler.coercePrimitiveParameter(int, 'abc'), isNull);
+      expect(
+        TomEndpointHandler.coercePrimitiveParameter(double, 'abc'),
+        isNull,
+      );
+      expect(TomEndpointHandler.coercePrimitiveParameter(num, 'abc'), isNull);
     });
 
     test('returns null for a non-primitive parameter type', () {
       expect(TomEndpointHandler.coercePrimitiveParameter(Request, '1'), isNull);
+    });
+  });
+
+  // The two `null`s above are different answers, and the method's return type
+  // cannot say which: a `Request` parameter is not a primitive at all and the
+  // binding loop should try the next strategy, while `?count=abc` on an `int`
+  // is a client error that no later strategy can repair. Asked first, this
+  // predicate separates them — past it, a `null` means the value did not parse.
+  group('TomEndpointHandler.isBindablePrimitive', () {
+    test('every type the coercion handles is bindable', () {
+      for (final type in const [String, int, double, num, bool]) {
+        expect(
+          TomEndpointHandler.isBindablePrimitive(type),
+          isTrue,
+          reason: '$type is coerced, so it must be recognised',
+        );
+      }
+    });
+
+    test('anything else is not', () {
+      for (final type in const [Request, Object, DateTime, Uri, List, Map]) {
+        expect(
+          TomEndpointHandler.isBindablePrimitive(type),
+          isFalse,
+          reason: '$type has no URL coercion, so the loop must fall through',
+        );
+      }
+    });
+
+    test('the predicate and the coercion agree on every type', () {
+      // The pair is only honest while they cover the same set: a type the
+      // predicate accepts and the coercion does not would make every request
+      // carrying it a 400, and a type the coercion handles and the predicate
+      // rejects would go on falling through silently.
+      for (final type in const [String, int, double, num, bool]) {
+        // '1' parses as every one of them, so a null here would mean the
+        // coercion does not know the type at all.
+        expect(
+          TomEndpointHandler.coercePrimitiveParameter(type, '1'),
+          isNotNull,
+          reason: '$type is bindable but the coercion returned null',
+        );
+      }
+      for (final type in const [Request, Object, DateTime, Uri]) {
+        expect(
+          TomEndpointHandler.coercePrimitiveParameter(type, '1'),
+          isNull,
+          reason: '$type is not bindable but the coercion answered',
+        );
+      }
     });
   });
 

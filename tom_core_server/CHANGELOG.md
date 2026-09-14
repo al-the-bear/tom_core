@@ -1,5 +1,25 @@
 ## 1.3.0
 
+### Fixed
+
+- **A URL value that will not parse is refused, not skipped (tcopen133).**
+  `coercePrimitiveParameter` answers `null` for two conditions that are
+  different answers — a `Request` parameter, which is no primitive at all and
+  should fall through to the next binding strategy, and `?count=abc` on an
+  `int`, which no later strategy can repair — and the binding loop read every
+  `null` as "this strategy does not apply". So a malformed number was not a
+  client error: the parameter fell through every remaining strategy and ended
+  unbound, and the caller was told `unbindable_parameter`, a message naming
+  neither the value nor the fact that it was nearly right.
+
+  `TomEndpointHandler.isBindablePrimitive(Type)` is the question the return type
+  cannot carry. Asked first, past it a `null` means one thing, and the request is
+  refused by `endpoint_pipeline.bind_parameters.unparsable_url_value` naming the
+  parameter, the type, the source (path variable or query parameter) and the
+  offending value. A predicate rather than a result type keeps the coercion a
+  pure function with tests of its own, and the loop is the only caller that has
+  to tell the two cases apart.
+
 ### Changed
 
 - **A dropped query parameter says so (tcopen132).** `injectQueryParameters`

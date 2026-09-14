@@ -173,15 +173,38 @@ class TomEndpointHandler {
       metadata.methodMirror.hasReflectedReturnType &&
       _noResultReturnTypes.contains(metadata.methodMirror.reflectedReturnType);
 
+  /// Whether [type] is a primitive this module binds from a raw URL string.
+  ///
+  /// The question [coercePrimitiveParameter]'s answer cannot carry. That method
+  /// returns `null` for two conditions that are different answers — a `Request`
+  /// parameter, which is not a primitive at all and should fall through to the
+  /// next binding strategy, and `?count=abc` on an `int`, which is a client
+  /// error — and a single `null` cannot express both. Asked *first*, this
+  /// separates them: past it, a `null` means the value did not parse.
+  ///
+  /// Kept as a predicate rather than folded into the coercion's return type
+  /// because the coercion is a pure function with other callers and tests of
+  /// its own, and the binding loop is the one place that has to tell the two
+  /// cases apart.
+  static bool isBindablePrimitive(Type type) =>
+      type == String ||
+      type == int ||
+      type == double ||
+      type == num ||
+      type == bool;
+
   /// Coerces a raw URL string (a matched path variable *or* a query-string
   /// value) into the method parameter's primitive [type], or returns `null`
   /// when [type] is not a bindable primitive (so the caller falls through to
   /// the other binding strategies).
   ///
   /// Such values always arrive as strings, so the numeric/bool forms are
-  /// parsed; an unparsable numeric value yields `null` (treated as "could not
-  /// bind"). `bool` follows the URL convention where only the literal `true` is
-  /// truthy.
+  /// parsed; an unparsable numeric value also yields `null`. The two `null`s
+  /// mean different things and are told apart by asking
+  /// [isBindablePrimitive] first — which is what the binding loop does, and
+  /// what makes a malformed number a `400` rather than a parameter that quietly
+  /// goes unbound. `bool` follows the URL convention where only the literal
+  /// `true` is truthy.
   static Object? coercePrimitiveParameter(Type type, String raw) {
     if (type == String) return raw;
     if (type == int) return int.tryParse(raw);
@@ -189,6 +212,42 @@ class TomEndpointHandler {
     if (type == num) return num.tryParse(raw);
     if (type == bool) return raw == 'true';
     return null;
+  }
+
+  /// Binds [raw] — a URL value from [source] — to the primitive [type] of the
+  /// parameter called [parameter], or refuses the request.
+  ///
+  /// Reached only when [isBindablePrimitive] has already answered `true`, so a
+  /// `null` from the coercion means exactly one thing: the caller sent a value
+  /// this parameter cannot take. That is a statement about the *request*, and
+  /// the client is the party who can fix it — which is why it leaves as a named
+  /// exception carrying the parameter, the type and the offending value rather
+  /// than falling through to the remaining strategies. Falling through ends
+  /// with the parameter unbound and the request refused by
+  /// `unbindable_parameter`, a message that names neither the value nor the
+  /// fact that it was *nearly* right.
+  Object _requirePrimitive(
+    Type type,
+    String raw, {
+    required String parameter,
+    required String source,
+  }) {
+    final value = coercePrimitiveParameter(type, raw);
+    if (value == null) {
+      throw TomEndpointHandlerException(
+        "endpoint_pipeline.bind_parameters.unparsable_url_value",
+        "Endpoint $name received '$raw' as the $source '$parameter', which is "
+            "not a valid $type.",
+        parameters: {
+          "parameter": parameter,
+          "endpoint": name,
+          "type": "$type",
+          "source": source,
+          "value": raw,
+        },
+      );
+    }
+    return value;
   }
 
   /// Folds the request's URL path parameters into [jsonBodyData] under the
@@ -660,18 +719,21 @@ class TomEndpointHandler {
       // no DTO to carry it — without this branch it would never be bound and the
       // invocation would fail with the wrong argument count.
       final pathParam = req.params[pm.simpleName];
-      if (pathParam != null) {
-        final primitive = coercePrimitiveParameter(
+      if (pathParam != null && isBindablePrimitive(pm.type.reflectedType)) {
+        // Asked in this order deliberately: the predicate decides whether this
+        // strategy applies at all, so past it an unparsable value is the
+        // client's mistake and not a reason to try something else.
+        final primitive = _requirePrimitive(
           pm.type.reflectedType,
           pathParam,
+          parameter: pm.simpleName,
+          source: 'path variable',
         );
-        if (primitive != null) {
-          tomLog.trace(
-            "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from path variable '$pathParam'.",
-          );
-          positionalArguments.add(primitive);
-          continue;
-        }
+        tomLog.trace(
+          "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from path variable '$pathParam'.",
+        );
+        positionalArguments.add(primitive);
+        continue;
       }
       // Primitive query-string parameter (e.g. `GET /projects?workspaceId=`):
       // bind a bare String/num/bool method parameter from the query value of
@@ -680,18 +742,18 @@ class TomEndpointHandler {
       // — without this branch the parameter is never bound and the invocation
       // fails with the wrong argument count.
       final queryParam = req.requestedUri.queryParameters[pm.simpleName];
-      if (queryParam != null) {
-        final primitive = coercePrimitiveParameter(
+      if (queryParam != null && isBindablePrimitive(pm.type.reflectedType)) {
+        final primitive = _requirePrimitive(
           pm.type.reflectedType,
           queryParam,
+          parameter: pm.simpleName,
+          source: 'query parameter',
         );
-        if (primitive != null) {
-          tomLog.trace(
-            "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from query parameter '$queryParam'.",
-          );
-          positionalArguments.add(primitive);
-          continue;
-        }
+        tomLog.trace(
+          "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from query parameter '$queryParam'.",
+        );
+        positionalArguments.add(primitive);
+        continue;
       }
       var ctx = getFromCurrentZone<TomExecutionContext>();
       if (ctx != null) {

@@ -272,6 +272,20 @@ the same way — this is how `GET /projects?workspaceId=` binds a bare
 body (deserialised onto the parameter type via reflection, merged with path
 params), and finally a `Map`-typed context entry.
 
+A URL value that will not parse is a **client error, not a missed strategy**.
+`coercePrimitiveParameter` answers `null` for two conditions that are different
+answers — a `Request` parameter, which is no primitive at all and should fall
+through to the next strategy, and `?count=abc` on an `int`, which no later
+strategy can repair — and one `null` cannot carry both. `isBindablePrimitive` is
+asked first, so past it a `null` means the value did not parse, and the request
+is refused by `endpoint_pipeline.bind_parameters.unparsable_url_value` naming
+the parameter, the type, the source (path variable or query parameter) and the
+value. Falling through instead ended
+with the parameter unbound and `unbindable_parameter`, which says only that
+nothing could supply it — the one diagnosis that names neither the value nor the
+fact that it was nearly right, produced from the one case where the client is
+the party who can fix it.
+
 The body strategy is why a request DTO is **reflection-first**: it is filled by
 `tomReflectionInfo.setValues`, so the type needs `@tomReflectable` and **plain
 non-`final` members** — nothing else. A `final` member cannot be assigned after
@@ -336,6 +350,7 @@ request with a `TomEndpointHandlerException` naming the parameter at fault:
 
 | Key (under `endpoint_pipeline.bind_parameters.`) | Raised when |
 | ------------------------------------------------ | ----------- |
+| `unparsable_url_value` | A **path variable or query value** whose parameter is a primitive the value will not parse as — `/items/abc` or `?count=abc` on an `int`. Names the parameter, the type, the source and the offending value. |
 | `unbindable_parameter` | A **required** parameter that no strategy could supply. |
 | `unbindable_optional_parameter` | An **optional** parameter was not bound, but one *after* it was — omitting it would slide the later value into its slot. |
 | `named_parameter_not_supported` | A **named** parameter was bound. Endpoint methods are invoked with positional arguments only, so declare it positionally instead. |
@@ -906,12 +921,6 @@ it means "nothing a caller can see", not "nothing at all".
   looking and no more than that: a caller gets a `200` computed as though the
   parameter had not been sent. The opt-in itself is deliberate — see
   [Binding a Query Parameter](#binding-a-query-parameter).
-- **A URL value that will not parse falls through rather than failing.**
-  `coercePrimitiveParameter` answers `null` both for "this type is not a
-  primitive" and for "this primitive would not parse", and its caller cannot
-  tell the two apart. So `?count=abc` on an `int` parameter is not a 400: it
-  reads as "not bindable this way", the next binding strategy is tried, and
-  whatever fails last is what the client is told about.
 - **`bool` accepts exactly one spelling.** Coercion is `raw == 'true'`, so
   `?flag=1`, `?flag=yes` and `?flag=TRUE` all arrive as `false` rather than as
   an error. An endpoint that must tell "false" from "not a boolean" takes the
