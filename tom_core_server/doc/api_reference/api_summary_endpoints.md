@@ -320,7 +320,7 @@ const TomEndpoint({
 | `methods` | `List<TomHttpMethod>` | The HTTP methods this endpoint answers (defaults to `GET`). |
 | `formFields` | `List<String>` | Allow-list of text form fields folded into the request DTO from a form body; empty means "every field that arrives". |
 | `uri` | `String` | The route path the endpoint is mounted at. |
-| `consumes` | `TomMimeType` | The request body media type the endpoint accepts (defaults to JSON). |
+| `consumes` | `TomMimeType` | The request body media type the endpoint accepts (defaults to JSON). `multipart/form-data` and `application/x-www-form-urlencoded` both select the form path; which of the two a browser sends is decided by the form's markup. A form is the shape for a form, not for bulk transfer — every file part is buffered and bounded by `TomMultipartForm.globalSettingMaxFilePartBytes`, and a larger upload belongs on the raw-body file endpoint. |
 | `produces` | `TomMimeType` | The response body media type the endpoint produces (defaults to JSON). |
 | `contentDisposition` | `String?` | Optional `Content-Disposition` header for the response. |
 | `errorHandler` | `TomErrorHandler?` | Per-endpoint error handler (defaults to `TomDefaultErrorHandler`). |
@@ -697,7 +697,7 @@ TomMultipartForm({
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
-| `globalSettingMaxFilePartBytes` | `static int` | The largest a single file part may be before it is refused (default 8 MiB). |
+| `globalSettingMaxFilePartBytes` | `static int` | The largest a single file part may be before it is refused (default 8 MiB). A part must be materialised to be read — part N+1 is unreachable until part N is drained — so the ceiling bounds an allocation the caller would otherwise choose. There is no streaming form path, including for the single-file form: "the file is the last part" is a property of the page's markup, not of the protocol. A transfer that outgrows this changes route to the raw-body file endpoint, not shape. |
 | `readForm` | `static Future<TomMultipartForm?> readForm(Request req)` | Decodes `req` as `multipart/form-data`, or returns `null` when it is not one. Reads the body, so it may be called once per request. |
 | `readUrlEncodedForm` | `static Future<TomMultipartForm> readUrlEncodedForm(Request req)` | Decodes `req` as `application/x-www-form-urlencoded`; the result never carries files. |
 

@@ -1033,6 +1033,65 @@ void main() {
     });
   });
 
+  // The decision that a form has no streaming path is only useful where the
+  // choice is made, and the choice is made at `consumes:`. A developer
+  // declaring a form endpoint has to be told there and then that the parts are
+  // buffered and where a larger upload belongs — finding it in the module guide
+  // requires already suspecting there is something to find.
+  group('the form/file choice is stated where a form is declared', () {
+    /// The dartdoc of one declaration in [path], read from the source.
+    ///
+    /// The comment lines immediately above `declaration`, which is where a
+    /// dartdoc lives — read rather than reflected because a doc comment is not
+    /// reflectable, and the guidance is the artefact under test.
+    String dartdocAbove(String path, String declaration) {
+      final lines = File(path).readAsLinesSync();
+      final index = lines.indexWhere((line) => line.contains(declaration));
+      expect(index, isNot(-1), reason: '$declaration is gone from $path');
+      final doc = <String>[];
+      for (var i = index - 1; i >= 0; i--) {
+        final line = lines[i].trim();
+        if (!line.startsWith('///')) break;
+        doc.insert(0, line);
+      }
+      return doc.join('\n');
+    }
+
+    test('consumes names the ceiling and the route a bigger upload takes', () {
+      final doc = dartdocAbove(
+        'lib/src/tomserver/endpoints/endpoint_annotation.dart',
+        'final TomMimeType consumes;',
+      );
+      expect(doc, contains('globalSettingMaxFilePartBytes'));
+      expect(doc, contains('file endpoint'));
+      expect(
+        doc,
+        contains('multipart/form-data'),
+        reason:
+            'the reader has to know this is the declaration that selects it',
+      );
+    });
+
+    test('the form library records why the one-file form is not streamed', () {
+      // The case the ceiling's reasoning does not cover: with a single part
+      // there is nothing after it to reach, so it *could* have been streamed.
+      // The answer has to be written down, or the question is reopened by the
+      // next reader who notices.
+      final library = File(
+        'lib/src/tomserver/endpoints/form_binding.dart',
+      ).readAsStringSync();
+      final head = library.substring(0, library.indexOf('library;'));
+      expect(head, contains('one-file form'));
+      expect(
+        head,
+        contains('tree order'),
+        reason:
+            'the reason is that HTML orders parts by the page, so "the file is '
+            'last" is not something an endpoint can require',
+      );
+    });
+  });
+
   group('exception types', () {
     test('TomEndpointHandlerException is a TomServerException', () {
       final ex = TomEndpointHandlerException('key', 'message');

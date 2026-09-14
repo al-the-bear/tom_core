@@ -1,5 +1,27 @@
 ## 1.3.0
 
+### Documentation
+
+- **Forms have no streaming path, and that is settled (tcopen135).** A multipart
+  body is a single sequential stream — part N+1 is unreachable until part N has
+  been drained — so every file part is buffered and
+  `globalSettingMaxFilePartBytes` (8 MiB) bounds it. That answered the general
+  case and left one open: a form with a **single** file part could in principle
+  be streamed, because there is nothing after it to reach.
+
+  It is not, and the reason is now recorded. "The file is the last part" is a
+  property of the *page*, not of the protocol: HTML submits a form's entries in
+  the document's own tree order, so whether the file arrives last depends on
+  where the `<input type="file">` sits among the other inputs — markup the
+  endpoint does not own and cannot see. An endpoint accepting a streamed part
+  would work for one page and silently buffer, or fail, for another submitting
+  the same fields in a different order.
+
+  The guidance moved to where the choice is made: `TomEndpoint.consumes`, which
+  is what an endpoint declares to become a form, previously said only "the
+  request body media type the endpoint accepts". Two tests read that dartdoc and
+  the form library's and require them to keep saying it.
+
 ### Fixed
 
 - **A `bool` URL value has eight spellings, and every other one is refused

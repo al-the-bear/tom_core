@@ -697,6 +697,21 @@ loud rather than letting a large upload discover it as an out-of-memory crash.
 Bulk transfer belongs on the raw-body file endpoint, which streams and needs no
 ceiling at all.
 
+**The one-file form does not get a streaming path either**, and that is a
+decision rather than an omission. A form with a single file part could in
+principle be handed to the handler as a live stream, because there is nothing
+after it to reach — but "the file is the last part" is a property of the *page*,
+not of the protocol. HTML submits a form's entries in the document's own tree
+order, so whether the file arrives last depends on where the `<input
+type="file">` happens to sit among the other inputs, in markup the endpoint does
+not own and cannot see. An endpoint accepting a streamed part would work for one
+page and silently buffer, or fail, for another submitting the same fields in a
+different order. A contract that holds or not depending on how a caller's form
+was authored is worse than a ceiling, which at least refuses in one place and
+says why. So a transfer that outgrows the ceiling changes **route**, not shape —
+and the guidance is repeated on `TomEndpoint.consumes`, where an endpoint
+declares itself a form.
+
 An endpoint that declares `consumes: TomMimeType.urlEncoded` gets the *other*
 shape an HTML form takes — the one a browser sends when the form has no file
 input. It decodes into the same `TomMultipartForm` (with no files), folds
@@ -948,7 +963,11 @@ it means "nothing a caller can see", not "nothing at all".
 - **Multipart parts are materialised.** A part must be buffered to be read, so
   `globalSettingMaxFilePartBytes` bounds it. Streaming a part lazily is not
   expressible over a sequential envelope; bulk transfer belongs on the raw-body
-  [file endpoint](file_storage.md#serving-a-file-over-http), which streams.
+  [file endpoint](file_storage.md#serving-a-file-over-http), which streams. The
+  single-file form, where there is nothing after the part to reach, is the one
+  case that could have been streamed and deliberately is not — the file is last
+  only if the page's markup puts it last, which the endpoint cannot require. See
+  [Multipart Forms](#multipart-forms).
 - **`TomFileSlots` is a process-wide registry.** The map of exposed file columns
   is static, so it is scoped to the *process* rather than to a repository or a
   server: two isolates serving the same entity each register their own copy, and

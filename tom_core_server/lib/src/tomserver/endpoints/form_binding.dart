@@ -28,6 +28,29 @@
 /// the ceiling out loud rather than letting a large upload discover it as an
 /// out-of-memory crash. An upload that does not fit belongs on the raw-body
 /// file endpoint, which streams.
+///
+/// ### The one-file form does not get a streaming path either
+///
+/// The bound above is about the general case, and it leaves one case open: a
+/// form with a *single* file part could in principle be handed to the handler
+/// as a live stream, because there is nothing after it to reach. That is not
+/// offered, and the reason is that the condition cannot be stated in the
+/// endpoint's contract.
+///
+/// "The file is the last part" is a property of the **page**, not of the
+/// protocol. HTML submits a form's entries in the document's own tree order, so
+/// whether the file arrives last depends on where the `<input type="file">`
+/// happens to sit among the other inputs — a decision taken in markup the
+/// endpoint does not own and cannot see. An endpoint accepting a streamed part
+/// would therefore work for one page and silently buffer, or fail, for another
+/// that submits the same fields in a different order. A contract that holds or
+/// not depending on how a caller's form was authored is worse than the ceiling,
+/// which at least refuses in one place and says why.
+///
+/// So the split stands: forms carry what a form carries, and a transfer that
+/// outgrows the ceiling changes route rather than shape. The guidance is
+/// repeated on [TomEndpoint.consumes], because that is where an endpoint
+/// declares itself a form and where the choice is actually made.
 library;
 
 import 'dart:typed_data';

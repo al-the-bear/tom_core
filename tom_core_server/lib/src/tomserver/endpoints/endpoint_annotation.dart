@@ -266,6 +266,23 @@ class TomEndpoint<requestType extends Object, resultType extends Object>
   final String uri;
 
   /// The request body media type the endpoint accepts (defaults to JSON).
+  ///
+  /// `multipart/form-data` and `application/x-www-form-urlencoded` both select
+  /// the form path: text parts fold into the request DTO and file parts bind to
+  /// `TomFormFile` parameters. Which of the two a browser sends is decided by
+  /// the form's markup, not by the endpoint, so declaring either is declaring
+  /// "this is a form".
+  ///
+  /// **A form is the shape for a form, not for bulk transfer.** A multipart
+  /// body is a single sequential stream — part N+1 is unreachable until part N
+  /// has been drained — so every file part is buffered as it goes past, and
+  /// `TomMultipartForm.globalSettingMaxFilePartBytes` (8 MiB) bounds it. An
+  /// upload larger than that belongs on the raw-body file endpoint
+  /// (`TomFileSlot`), where the whole request *is* the file, the slot is the
+  /// URL, and nothing is buffered. Declare the form for "create a document
+  /// **with** its attachment", where the title, the tags and the bytes arrive
+  /// together and a raw body could carry only one of them; declare the file
+  /// route for "replace the attachment of row 42".
   final TomMimeType consumes;
 
   /// The response body media type the endpoint produces (defaults to JSON).
