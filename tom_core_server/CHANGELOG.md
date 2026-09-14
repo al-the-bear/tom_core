@@ -1,5 +1,27 @@
 ## 1.3.0
 
+### Documentation
+
+- **The expression-tree walk has a demonstrated use and an asserted shape
+  (tcopen129).** `TomOperator.children` and `TomOperator.operandChildren` were
+  added so a predicate could be traversed, and nothing said what the walk yields
+  at a container whose operands are themselves containers, nor how the two
+  members differ.
+
+  `datasources_test.dart` now asserts both: that `AND` over two predicates has
+  two children rather than one list, that `BETWEEN` yields its left operand and
+  both bounds in order, that a column reference is a leaf because its operand is
+  the column *name*, and that `operandChildren` is the builder half — a static
+  that flattens one constructor operand and reads no tree.
+
+  Step 10 of the module example demonstrates why the walk exists at all:
+  `getFields` answers with the rendered fragment `demo_task.priority`, which is
+  what a statement needs and not enough for a layer reading a column's
+  declaration, and only the node holds that. The consumers are named where the
+  capability is described — `TomUnaryOperator`/`TomBinaryOperator` implement it,
+  `TomGroupedSelect.columnsOf` and `_ungroupedFields` consume it — since they
+  live one module up, which is the direction the dependency runs.
+
 ### Fixed
 
 - **A framework-table descriptor with no columns is refused on construction

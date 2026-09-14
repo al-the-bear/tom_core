@@ -11,7 +11,8 @@
 ///  6. the static clause builders on [TomGeneratedQuery];
 ///  7. the quote-aware placeholder scan ([SqlPlaceholderScan]);
 ///  8. classifying a failed write ([classifySqlFailure]);
-///  9. declaring a framework-owned table ([TomFrameworkTable]).
+///  9. declaring a framework-owned table ([TomFrameworkTable]);
+/// 10. walking an expression tree ([TomOperator.children]).
 ///
 /// Two things genuinely need more than a Dart VM and are therefore described in
 /// `doc/datasources.md` instead of run here. The drivers ([MariaDbDatasource],
@@ -262,6 +263,67 @@ void run() {
   check(
     stale.join(',') == 'lease_name',
     'a column reference no declaration knows about is reported',
+  );
+
+  // 10. An expression tree can be walked. `children` is the one traversal
+  //     every structural walk goes through: a container yields its operands
+  //     (flattening one that is itself a list, as AND and BETWEEN carry), a
+  //     leaf yields none.
+  //
+  //     What this makes possible is asking the tree a question no member
+  //     answers. `getFields` reports the *rendered* fragment — the string
+  //     `demo_task.priority` — which is what SQL needs and not enough for a
+  //     layer deciding whether a query touches a column the principal may not
+  //     read: that decision needs the column's metadata, and only the DbCol
+  //     node holds it. A walk reaches the node; the field set does not.
+  const taskTable = TomDbTable(
+    datasource: 'demo',
+    table: 'demo_task',
+    primaryKeyField: 'id',
+  );
+  TomColumnInformation columnInfo(String name, Type type) =>
+      TomColumnInformation(
+        tableType: Object,
+        table: taskTable,
+        declaredType: type,
+        declaredName: name,
+        field: name,
+      );
+  final priority = IntCol(Object, 'priority', columnInfo('priority', int));
+  final title = StringCol(Object, 'title', columnInfo('title', String));
+  final predicate = And([
+    Between<TomDbInt>(priority, [IntegerLiteral(1), IntegerLiteral(9)]),
+    Eq<TomDbString>(title, StringLiteral('release')),
+  ]);
+
+  /// Every column reference in [node]'s subtree, by declared name.
+  List<String> columnsTouched(TomOperator node) => [
+    if (node is DbCol) node.columnInformation.declaredName,
+    for (final child in node.children) ...columnsTouched(child),
+  ];
+
+  print('10. walking the tree');
+  print('   sql       -> ${predicate.generate(dialect)}');
+  print('   children  -> ${predicate.children.length}');
+  print('   columns   -> ${columnsTouched(predicate)}');
+  print('   getFields -> ${predicate.getFields(dialect)}');
+  check(
+    predicate.children.length == 2,
+    'AND yields its operand list flattened, not the list as one child',
+  );
+  check(
+    columnsTouched(predicate).join(',') == 'priority,title',
+    'the walk reaches each column node, left to right',
+  );
+  check(
+    priority.children.isEmpty,
+    'a column reference is a leaf: its operand is the column name, not a node',
+  );
+  check(
+    predicate.getFields(dialect).join(',') ==
+        'demo_task.priority,demo_task.title',
+    'getFields answers with rendered SQL, which is why a walk is the way to '
+    'the column metadata',
   );
 
   print('\nDatasources example completed.');

@@ -222,11 +222,34 @@ expression, …). A node knows how to:
 
 - `generate(dialect)` — render its SQL fragment;
 - `getFields(dialect)` — report the columns it references;
-- `getParameters(dialect)` — report the positional parameters it contributes.
+- `getParameters(dialect)` — report the positional parameters it contributes;
+- `children` — yield its direct sub-expressions, left to right.
 
 The object-persistence query builder provides the concrete factories (literals,
 field references, comparisons, `AND`/`OR`, …); this module supplies the base
 contract and the dialect they render against.
+
+`children` is the single traversal every structural walk goes through. A leaf —
+a literal, a parameter, a column reference — has none, and a container yields
+its operands, flattening one that is itself a list, as `AND`, `OR`, `IN` and
+`BETWEEN` carry. A container builds its own `children` by passing each
+constructor operand through the static `TomOperator.operandChildren`, which is
+the other half of the pair and reads no tree: a nested operator yields itself, a
+`List<TomOperator>` its elements, and a leaf value — a column *name*, a Dart
+literal — nothing. That last case is why a column reference is a leaf: its
+operand is the name, not a node.
+
+`getFields` and `getParameters` are themselves defined in terms of it, and the
+reason it is exposed is the walk neither of them can express. A walk may **stop**
+at a node — `TomGroupedSelect` checks a `HAVING` predicate by descending here
+while treating an aggregate as opaque, because an aggregate collapses the rows
+its operand references and so imposes no grouping obligation on it. And a walk
+may ask for what a rendered fragment cannot carry: `getFields` answers with the
+SQL text `demo_task.priority`, which is what a statement needs, while a layer
+deciding whether a query touches a column the principal may not read needs the
+column's *declaration* — its resource key, its declared type — and only the
+`DbCol` node holds that. Step 10 of the module example walks a nested predicate
+for exactly that.
 
 ## The SQL Dialect
 
@@ -1097,16 +1120,17 @@ against a server you already have, export `TOM_CORE_SERVER_TEST_DB_HOST`,
 `dart test --tags db test/datasources_db_test.dart`.
 
 `example/datasources/datasources_example.dart` is the readable entry point to
-the same connection-free surface the first suite covers, in nine numbered
+the same connection-free surface the first suite covers, in ten numbered
 steps: boxing and parsing typed values; rendering literals; letting `objectOp`
 dispatch on a runtime type, including an iterable becoming a comma-separated
 list; emitting the `:name` placeholder that keeps untrusted input out of the
 SQL; writing and reading back an instant through the one `DATETIME(6)`
 encoding; rendering each clause a generated statement is assembled from;
 scanning a statement for its placeholders without mistaking a colon inside a
-literal for one; classifying a failed write as definite or ambiguous; and
-declaring a framework-owned table, then deriving its DDL, its column lists and
-its inserts from that one declaration.
+literal for one; classifying a failed write as definite or ambiguous; declaring
+a framework-owned table, then deriving its DDL, its column lists and its
+inserts from that one declaration; and walking an expression tree to reach the
+column metadata a rendered fragment cannot carry.
 
 Only two things genuinely need more than a Dart VM, which is why they are
 described in this document instead of run there: the drivers and the registry
@@ -1121,7 +1145,7 @@ dart run example/datasources/datasources_example.dart
 ```
 
 `test/datasources_test.dart` runs the example under precisely that command and
-requires it to exit 0 having printed exactly those nine steps, in order and with
+requires it to exit 0 having printed exactly those ten steps, in order and with
 no others — an added step nothing lists is a surface nothing checks. So the
 transcript in the file is what the module currently does rather than what it did
 when the file was written. Its expectations are written through the shared

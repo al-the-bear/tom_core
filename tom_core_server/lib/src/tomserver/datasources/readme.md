@@ -82,10 +82,10 @@ Future<void> main() async {
 
 See [`doc/datasources.md`](../../../../doc/datasources.md) for the driver
 registry, the connection lifecycle and the transaction seam, and
-`example/datasources/datasources_example.dart` for a walkthrough of nine
+`example/datasources/datasources_example.dart` for a walkthrough of ten
 surfaces in order — SQL value boxing and parsing, literal rendering, bound
-parameters, the instant encoding, the clause builders and the classification of
-a failed write. Those are pure functions over their arguments, so unlike the
+parameters, the instant encoding, the clause builders, the classification of a
+failed write and the walk over an expression tree. Those are pure functions over their arguments, so unlike the
 snippet above the example runs green as it stands; the drivers and the registry
 are the part that needs a server, and the example says so rather than
 pretending otherwise. `test/datasources_test.dart` covers the module and also

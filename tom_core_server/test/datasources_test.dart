@@ -680,6 +680,147 @@ void main() {
         {'col'},
       );
     });
+
+    test('a leaf has no children', () {
+      expect(_Literal<TomDbInt>('x').children, isEmpty);
+    });
+  });
+
+  group('the expression tree can be walked', () {
+    /// The column metadata a `DbCol` carries, built directly: the walk is the
+    /// only route to it, so a test of the walk needs a node that has some.
+    /// Constructing it here rather than resolving it keeps this suite free of
+    /// reflection, which it does not bootstrap.
+    TomColumnInformation columnInfo(String name, Type type) =>
+        TomColumnInformation(
+          tableType: Object,
+          table: const TomDbTable(
+            datasource: 'demo',
+            table: 'demo_task',
+            primaryKeyField: 'id',
+          ),
+          declaredType: type,
+          declaredName: name,
+          field: name,
+        );
+
+    /// `priority BETWEEN 1 AND 9 AND title = 'release'` — a container whose
+    /// operands are themselves containers, which is the shape the walk has to
+    /// be described for. `BETWEEN` carries its bounds as a *list*, so one node
+    /// exercises both operand shapes at once.
+    ({And predicate, IntCol priority, StringCol title}) nested() {
+      final priority = IntCol(Object, 'priority', columnInfo('priority', int));
+      final title = StringCol(Object, 'title', columnInfo('title', String));
+      return (
+        predicate: And([
+          Between<TomDbInt>(priority, [IntegerLiteral(1), IntegerLiteral(9)]),
+          Eq<TomDbString>(title, StringLiteral('release')),
+        ]),
+        priority: priority,
+        title: title,
+      );
+    }
+
+    /// Every node of [node]'s subtree, depth-first, [node] included.
+    List<TomOperator> walk(TomOperator node) => [
+      node,
+      for (final child in node.children) ...walk(child),
+    ];
+
+    test('a container yields its operands, a list flattened into them', () {
+      // The question the module had no answer to: what a walk sees at a
+      // container whose operand is a `List<TomOperator>`. It sees the
+      // elements, not the list as one child — so `AND` over two predicates has
+      // two children and not one.
+      final tree = nested();
+      expect(tree.predicate.children, hasLength(2));
+      expect(tree.predicate.children.map((c) => c.runtimeType.toString()), [
+        'Between<TomDbInt>',
+        'Eq<TomDbString>',
+      ]);
+    });
+
+    test('a binary operator yields both operands, left to right', () {
+      // `BETWEEN` is the node that carries one of each: an operator on the
+      // left, a two-element list on the right. Its children are the three
+      // nodes, in that order.
+      final between = nested().predicate.children.first;
+      expect(between.children.map((c) => c.runtimeType.toString()), [
+        'IntCol',
+        'IntegerLiteral',
+        'IntegerLiteral',
+      ]);
+    });
+
+    test('a column reference is a leaf, because its operand is a name', () {
+      // The case that is easy to get wrong when reading the code: `DbCol`
+      // extends the unary operator, but its operand is the column *name*, a
+      // `String`. So it contributes no children and answers `getFields` for
+      // itself instead.
+      final tree = nested();
+      expect(tree.priority.children, isEmpty);
+      expect(tree.priority.getFields(TomStandardSqlDialect()), {
+        'demo_task.priority',
+      });
+    });
+
+    test('the walk reaches every node of the tree', () {
+      final tree = nested();
+      expect(walk(tree.predicate), hasLength(8));
+      expect(walk(tree.predicate).whereType<DbCol>().map((c) => c.operant1), [
+        'priority',
+        'title',
+      ]);
+    });
+
+    test('the walk is the way to a column\'s metadata; getFields is not', () {
+      // Why the member exists at all. `getFields` answers with the *rendered*
+      // fragment, which is what SQL needs and not enough for a layer deciding
+      // whether a query touches a column the principal may not read — that
+      // decision reads the column's declaration, and only the node holds it.
+      final tree = nested();
+      expect(tree.predicate.getFields(TomStandardSqlDialect()), {
+        'demo_task.priority',
+        'demo_task.title',
+      });
+      expect(
+        walk(
+          tree.predicate,
+        ).whereType<DbCol>().map((c) => c.columnInformation.declaredType),
+        [int, String],
+      );
+    });
+
+    test('operandChildren builds children; it does not read them', () {
+      // How the two members differ, which the module documented nowhere. The
+      // getter is an instance member reporting a node's sub-expressions; the
+      // static is the builder half — a container calls it once per constructor
+      // operand to assemble its own `children`, and it never descends.
+      final leaf = _Literal<TomDbInt>('1');
+      final other = _Literal<TomDbInt>('2');
+      expect(TomOperator.operandChildren(leaf), [leaf]);
+      expect(TomOperator.operandChildren([leaf, other]), [leaf, other]);
+      // A non-operator operand yields nothing, which is what makes a column
+      // reference (whose operand is a `String`) and every literal a leaf.
+      expect(TomOperator.operandChildren('priority'), isEmpty);
+      expect(TomOperator.operandChildren(42), isEmpty);
+      expect(TomOperator.operandChildren(null), isEmpty);
+      // And it flattens one operand only: a nested container passed to it
+      // comes back as itself, its own children untouched.
+      final container = And([Eq<TomDbInt>(leaf, other)]);
+      expect(TomOperator.operandChildren(container), [container]);
+    });
+
+    test('getParameters and getFields are defined in terms of the walk', () {
+      // Stated in the dartdoc, and worth pinning: the two members a caller
+      // already had are aggregations over `children`, so a container that
+      // reported the wrong children would misreport both — and the walk is
+      // what a caller uses when neither aggregation is the question.
+      final leaf = _Literal<TomDbInt>('x', fields: {'a'});
+      final other = _Literal<TomDbInt>('y', fields: {'b'});
+      final dialect = TomStandardSqlDialect();
+      expect(And([Eq<TomDbInt>(leaf, other)]).getFields(dialect), {'a', 'b'});
+    });
   });
 
   // The query-generation clause renderers were extracted from
@@ -2371,8 +2512,8 @@ void main() {
           .map((match) => match.group(1)!)
           .toList();
       expect(printed, [
-        for (var step = 1; step <= 9; step++) '$step',
-      ], reason: 'the example demonstrates nine surfaces, in order');
+        for (var step = 1; step <= 10; step++) '$step',
+      ], reason: 'the example demonstrates ten surfaces, in order');
     });
 
     test('with its expectations checked rather than asserted', () async {
