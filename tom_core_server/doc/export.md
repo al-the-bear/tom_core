@@ -25,6 +25,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 - [Format Choices and Licences](#format-choices-and-licences)
 - [CSV](#csv)
 - [XLSX](#xlsx)
+  - [The XLSX ceilings](#the-xlsx-ceilings)
 - [PDF, and Why It Is the One That Does Not Stream](#pdf-and-why-it-is-the-one-that-does-not-stream)
 - [Storage: A Deliberately Narrow Seam](#storage-a-deliberately-narrow-seam)
 - [Every Backend at Once](#every-backend-at-once)
@@ -446,6 +447,36 @@ Details that make the output actually open:
 - **Timestamps in the archive are zero**, so the same result renders to
   byte-identical output — which is what makes the archive assertable in tests.
 
+### The XLSX ceilings
+
+Streaming removes the memory ceiling, not every ceiling. Three remain, and like
+the PDF renderer's `rowLimit` this writer **states them and fails at them**:
+
+| Knob | Default | What it is |
+| ---- | ------- | ---------- |
+| `maxRowsPerSheet` | 1 048 576 | Excel's own row limit per worksheet, header included |
+| `maxColumnsPerSheet` | 16 384 | Excel's own column limit per worksheet |
+| `maxPartBytes` | 4 294 967 295 | The width of the ZIP header fields this writer emits |
+
+The first two are the reader's limits, not this writer's: a sheet past either
+renders perfectly here and Excel refuses to open it. `export.xlsx.too_many_rows`
+is raised on the row that crosses the line; `export.xlsx.too_many_columns`
+before any row is pulled, since the columns are known up front and a result that
+cannot fit should not cost the query first.
+
+The third is this writer's. Sizes, offsets and the entry count go into the ZIP
+structures as 32-bit fields, and there is no ZIP64 here — so a part past 4 GiB
+would not fail, it would **wrap**: the field would hold the value modulo 4 GiB,
+the reader would believe it, and a run that reported success would have produced
+a corrupt workbook. `export.xlsx.archive_too_large` is raised the moment a
+measure would not fit, naming which part and which measure. ZIP64 is the other
+answer and is a larger one — a second set of headers, an extra-field record per
+entry and its own end-of-central-directory pair — and at that size the
+recommendation in the message is the better product anyway.
+
+All three messages name **csv** as the alternative, because it genuinely has
+none of these limits.
+
 ## PDF, and Why It Is the One That Does Not Stream
 
 A PDF ends with a cross-reference table of byte offsets into everything before
@@ -469,8 +500,9 @@ than discovering them:
 | `compress` | `true` | `false` makes the text readable in a hex dump |
 
 `rowLimit` fails rather than truncating. A silently shortened report is a wrong
-report that looks right; the error names the limit and points at CSV and XLSX,
-which have no such ceiling.
+report that looks right; the error names the limit and points at CSV, which has
+no ceiling at all, and at XLSX, whose ceilings are two orders of magnitude
+higher (below).
 
 The configuration surface intentionally exposes `package:pdf`'s own types
 (`PdfPageFormat`, `pw.PageOrientation`, `pw.ThemeData`). Wrapping them would

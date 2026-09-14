@@ -191,13 +191,13 @@ KNOWN_STEMS = frozenset(
 #: into 18 families of pointer plus the 20 published names below.
 CAPS_SHAPE = re.compile(r"\b([A-Z]{2,12})\d+\b")
 
-#: ALL-CAPS names that a reader can look up: hash and cipher families, media
-#: and encoding standards, SQL types, signal names, and the two mermaid node
-#: prefixes the design diagrams use (``RT1``, ``FB1``).
+#: ALL-CAPS names that a reader can look up: hash and cipher families, media,
+#: container and encoding standards, SQL types, signal names, and the two
+#: mermaid node prefixes the design diagrams use (``RT1``, ``FB1``).
 KNOWN_CAPS = frozenset(
     """
     AES AWS FB FF HS INT ISO MGF MP PKCS RFC RGBA RS RT SHA SIGUSR SKU USR
-    UTF X
+    UTF X ZIP
     """.split()
 )
 

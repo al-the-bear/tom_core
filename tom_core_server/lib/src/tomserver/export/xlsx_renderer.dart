@@ -70,7 +70,12 @@ import 'tabular_result.dart';
 /// Renders a tabular result as an Office Open XML workbook, streaming.
 class TomXlsxRenderer extends TomTabularRenderer {
   /// Creates an XLSX renderer.
-  const TomXlsxRenderer({this.compressionLevel = 6});
+  const TomXlsxRenderer({
+    this.compressionLevel = 6,
+    this.maxRowsPerSheet = 1048576,
+    this.maxColumnsPerSheet = 16384,
+    this.maxPartBytes = 0xFFFFFFFF,
+  });
 
   /// The deflate level, 0 (store) to 9 (smallest).
   ///
@@ -78,6 +83,46 @@ class TomXlsxRenderer extends TomTabularRenderer {
   /// roughly ten to one. 0 is worth choosing only when the consumer is a
   /// program on the same machine and the CPU matters more than the bytes.
   final int compressionLevel;
+
+  /// The most rows one worksheet may hold, header included.
+  ///
+  /// Defaults to Excel's own limit since the 2007 format, and it is Excel's
+  /// rather than this writer's: a sheet past it renders perfectly here and is
+  /// refused *by the reader*. Checked while the rows stream, so a result that
+  /// will not fit fails on the row that crosses the line rather than at the
+  /// reader an hour later.
+  ///
+  /// Lower it for a consumer with a tighter limit of its own. Raising it
+  /// produces a file Excel will not open, which is the caller's to decide in
+  /// the same way [TomPdfRenderer.rowLimit] is.
+  final int maxRowsPerSheet;
+
+  /// The most columns one worksheet may hold — Excel's limit, as above.
+  ///
+  /// Checked before any row is written, because a section's columns are known
+  /// up front and a refusal that waited for the stream would have spent the
+  /// query first.
+  final int maxColumnsPerSheet;
+
+  /// The largest value the archive's 32-bit size and offset fields can hold.
+  ///
+  /// Every size and offset this writer emits is 32-bit and ZIP64 — the
+  /// extension that widens them — is not written. A part or an archive past
+  /// this would wrap **silently**: the fields would hold the value modulo 4
+  /// GiB, the reader would believe them, and the result is a corrupt workbook
+  /// produced by a run that reported success. The module's stated purpose is
+  /// the export too large to hold in memory, so this is a ceiling a real report
+  /// reaches rather than a theoretical one.
+  ///
+  /// So it is checked as the bytes go past and the render **fails at the
+  /// ceiling**, which is what [TomPdfRenderer] does with its own. Emitting
+  /// ZIP64 instead is the other honest answer and a larger one: it changes the
+  /// local header, the data descriptor, the central directory and the
+  /// end-of-central-directory record, and every reader that has to accept them.
+  ///
+  /// A parameter so that the refusal can be reached in a test without producing
+  /// four gigabytes; a deployment has no reason to change it.
+  final int maxPartBytes;
 
   @override
   String get formatId => 'xlsx';
@@ -91,7 +136,7 @@ class TomXlsxRenderer extends TomTabularRenderer {
 
   @override
   Stream<List<int>> render(TomTabularResult result) async* {
-    final zip = _ZipStreamWriter(compressionLevel);
+    final zip = _ZipStreamWriter(compressionLevel, maxPartBytes);
     final sheetNames = _sheetNames(result);
     final properties = _customPropertyEntries(result.metadata);
 
@@ -128,6 +173,18 @@ class TomXlsxRenderer extends TomTabularRenderer {
 
   /// Emits one worksheet part as a stream of XML fragments, one per row.
   Stream<String> _sheetXml(TomTabularSection section) async* {
+    if (section.columns.length > maxColumnsPerSheet) {
+      throw TomExportException(
+        'export.xlsx.too_many_columns',
+        'That result has more columns than a worksheet can hold.',
+        parameters: {
+          'section': section.title ?? '',
+          'columns': section.columns.length,
+          'limit': maxColumnsPerSheet,
+          'alternative': 'csv',
+        },
+      );
+    }
     yield '$_xmlDeclaration'
         '<worksheet xmlns="$_nsMain">';
     // Every column, not only the hinted ones. OOXML's width unit is already a
@@ -156,6 +213,18 @@ class TomXlsxRenderer extends TomTabularRenderer {
     var rowNumber = 1;
     await for (final row in section.rows) {
       rowNumber++;
+      if (rowNumber > maxRowsPerSheet) {
+        throw TomExportException(
+          'export.xlsx.too_many_rows',
+          'That result has more rows than a worksheet can hold. Export it as '
+              'csv instead.',
+          parameters: {
+            'section': section.title ?? '',
+            'limit': maxRowsPerSheet,
+            'alternative': 'csv',
+          },
+        );
+      }
       final line = StringBuffer()..write('<row r="$rowNumber">');
       for (var i = 0; i < section.columns.length; i++) {
         final cell = _cellXml(
@@ -458,11 +527,39 @@ String _escapeXml(String text) {
 /// sizes are written *after* its data — which is what makes it possible to
 /// compress and emit an entry that has not been produced yet.
 class _ZipStreamWriter {
-  _ZipStreamWriter(this._level);
+  _ZipStreamWriter(this._level, this._maxBytes);
+
+  /// The most entries the 16-bit central-directory counts can hold.
+  ///
+  /// A workbook has one part per sheet plus six fixed ones, so this is far out
+  /// of reach — checked anyway because the cost is one comparison and the
+  /// failure it prevents is the same silent wrap as the sizes.
+  static const int maxZipEntries = 0xFFFF;
 
   final int _level;
+
+  /// The ceiling every 32-bit size and offset is held to — see
+  /// [TomXlsxRenderer.maxPartBytes].
+  final int _maxBytes;
   final List<_ZipEntry> _entries = [];
   int _offset = 0;
+
+  /// Refuses [value] — [what] of [name] — before it can wrap a 32-bit field.
+  static void _requireFits(int value, int limit, String what, String name) {
+    if (value <= limit) return;
+    throw TomExportException(
+      'export.xlsx.archive_too_large',
+      'That export is too large for the xlsx container. Export it as csv '
+          'instead.',
+      parameters: {
+        'part': name,
+        'measure': what,
+        'value': value,
+        'limit': limit,
+        'alternative': 'csv',
+      },
+    );
+  }
 
   /// Appends an entry whose content is [text], emitting its bytes.
   Stream<List<int>> addText(String name, String text) =>
@@ -471,6 +568,11 @@ class _ZipStreamWriter {
   /// Appends an entry whose content is [chunks], emitting bytes as it goes.
   Stream<List<int>> addStream(String name, Stream<String> chunks) async* {
     final nameBytes = utf8.encode(name);
+    // The offset goes into this entry's central-directory record, so an archive
+    // that has already passed 4 GiB cannot address the part about to be
+    // written — checked before the part is produced rather than after.
+    _requireFits(_offset, _maxBytes, 'archive offset', name);
+    _requireFits(_entries.length + 1, maxZipEntries, 'entry count', name);
     final entry = _ZipEntry(name: nameBytes, offset: _offset);
     _entries.add(entry);
 
@@ -490,10 +592,21 @@ class _ZipStreamWriter {
     await for (final chunk in chunks) {
       final bytes = utf8.encode(chunk);
       entry.uncompressedSize += bytes.length;
+      // Per chunk, not at the end: the point is to fail *before* the fields
+      // wrap and before the rest of a multi-gigabyte query is pulled, not to
+      // discover it once the part is complete.
+      _requireFits(
+        entry.uncompressedSize,
+        _maxBytes,
+        'uncompressed size',
+        name,
+      );
       crc.add(bytes);
       if (deflate == null) {
         _offset += bytes.length;
         entry.compressedSize += bytes.length;
+        _requireFits(entry.compressedSize, _maxBytes, 'compressed size', name);
+        _requireFits(_offset, _maxBytes, 'archive offset', name);
         yield bytes;
       } else {
         deflate.add(bytes);
@@ -501,6 +614,13 @@ class _ZipStreamWriter {
         if (out.isNotEmpty) {
           _offset += out.length;
           entry.compressedSize += out.length;
+          _requireFits(
+            entry.compressedSize,
+            _maxBytes,
+            'compressed size',
+            name,
+          );
+          _requireFits(_offset, _maxBytes, 'archive offset', name);
           yield out;
         }
       }
@@ -550,6 +670,17 @@ class _ZipStreamWriter {
       _offset += record.length;
       yield record;
     }
+    // The two fields of the end record that are not an entry's: where the
+    // central directory begins and how long it is. Both are 32-bit, and an
+    // archive whose *parts* each fit can still push the directory past the
+    // ceiling.
+    _requireFits(start, _maxBytes, 'central directory offset', 'archive');
+    _requireFits(
+      _offset - start,
+      _maxBytes,
+      'central directory size',
+      'archive',
+    );
     yield _bytes([
       ..._u32(0x06054b50),
       ..._u16(0),

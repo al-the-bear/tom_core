@@ -881,6 +881,170 @@ void main() {
   /// would find its columns at a varying row. So these tests are what stops the
   /// context from being quietly dropped again, and equally what stops it from
   /// reappearing in the data region.
+  // The module's stated purpose is the export too large to hold in memory, and
+  // this writer emits every size and offset in 32 bits with no ZIP64. A part
+  // past 4 GiB would wrap *silently* — the field holds the value modulo 4 GiB,
+  // the reader believes it, and a run that reported success produced a corrupt
+  // workbook. Excel's two sheet limits are the same shape one layer up: a sheet
+  // past either renders perfectly here and is refused by the reader.
+  //
+  // So the writer states its ceilings and fails at them, which is what the PDF
+  // renderer does with its own.
+  group('TomXlsxRenderer states its ceilings and fails at them', () {
+    /// A result of [rows] rows over [columns] columns.
+    TomTabularResult sized({
+      required int rows,
+      int columns = 1,
+    }) => TomTabularResult.single(
+      title: 'sized',
+      section: TomTabularSection(
+        columns: [for (var i = 0; i < columns; i++) TomTabularColumn('c$i')],
+        rows: Stream.fromIterable(
+          Iterable.generate(
+            rows,
+            (r) => TomTabularRow(List<Object?>.generate(columns, (c) => r + c)),
+          ),
+        ),
+      ),
+    );
+
+    test('a sheet past the row limit is refused, naming csv', () async {
+      // The limit counts the header, so the refusal is on the row that would
+      // be the 1,048,577th cell row. Driven at the real limit rather than a
+      // lowered one, because it is reachable in about two seconds and the
+      // number itself is the thing worth pinning.
+      await expectLater(
+        _collect(
+          const TomXlsxRenderer(
+            compressionLevel: 0,
+          ).render(sized(rows: TomXlsxRenderer().maxRowsPerSheet)),
+        ),
+        throwsA(
+          isA<TomExportException>()
+              .having((e) => e.key, 'key', 'export.xlsx.too_many_rows')
+              .having(
+                (e) => e.parameters?['alternative'],
+                'alternative',
+                'csv',
+              ),
+        ),
+      );
+    });
+
+    test('a sheet at the row limit renders', () async {
+      // The boundary from the other side, at a lowered limit so the pair costs
+      // one cheap test rather than two expensive ones: the refusal above pins
+      // the real number, this pins that the check is `>` and not `>=`.
+      const renderer = TomXlsxRenderer(compressionLevel: 0, maxRowsPerSheet: 4);
+      final bytes = await _collect(renderer.render(sized(rows: 3)));
+      expect(bytes, isNotEmpty);
+      await expectLater(
+        _collect(renderer.render(sized(rows: 4))),
+        throwsA(
+          isA<TomExportException>().having(
+            (e) => e.key,
+            'key',
+            'export.xlsx.too_many_rows',
+          ),
+        ),
+      );
+    });
+
+    test('a sheet past the column limit is refused before any row', () async {
+      // Columns are known up front, so the refusal must not wait for the
+      // stream — a result that cannot fit should not cost the query first.
+      var pulled = 0;
+      final result = TomTabularResult.single(
+        title: 'wide',
+        section: TomTabularSection(
+          columns: [for (var i = 0; i < 5; i++) TomTabularColumn('c$i')],
+          rows:
+              Stream.fromIterable([
+                TomTabularRow(const [1, 2, 3, 4, 5]),
+              ]).map((row) {
+                pulled++;
+                return row;
+              }),
+        ),
+      );
+
+      await expectLater(
+        _collect(const TomXlsxRenderer(maxColumnsPerSheet: 4).render(result)),
+        throwsA(
+          isA<TomExportException>()
+              .having((e) => e.key, 'key', 'export.xlsx.too_many_columns')
+              .having(
+                (e) => e.parameters?['alternative'],
+                'alternative',
+                'csv',
+              ),
+        ),
+      );
+      expect(pulled, 0, reason: 'the refusal pulled rows it did not need');
+    });
+
+    test('the real limits are Excel\'s, not numbers this writer chose', () {
+      // Pinned because they are the whole point: a different number renders a
+      // file that opens nowhere, and nothing else in the suite would notice.
+      expect(const TomXlsxRenderer().maxRowsPerSheet, 1048576);
+      expect(const TomXlsxRenderer().maxColumnsPerSheet, 16384);
+      expect(const TomXlsxRenderer().maxPartBytes, 0xFFFFFFFF);
+    });
+
+    test('a part past the 32-bit ceiling is refused, not wrapped', () async {
+      // Reached at a lowered ceiling, because producing four gigabytes to
+      // observe a comparison is not a test. What it pins is that the check
+      // exists on the part's own size and fires while the bytes stream.
+      await expectLater(
+        _collect(
+          const TomXlsxRenderer(
+            compressionLevel: 0,
+            maxPartBytes: 512,
+          ).render(sized(rows: 200, columns: 4)),
+        ),
+        throwsA(
+          isA<TomExportException>()
+              .having((e) => e.key, 'key', 'export.xlsx.archive_too_large')
+              .having(
+                (e) => e.parameters?['alternative'],
+                'alternative',
+                'csv',
+              ),
+        ),
+      );
+    });
+
+    test('the refusal names which measure crossed the ceiling', () async {
+      // A part, the archive's own offset and the central directory are three
+      // different 32-bit fields, and an operator asking "too large *how*"
+      // cannot act on the answer without knowing which.
+      Object? caught;
+      try {
+        await _collect(
+          const TomXlsxRenderer(
+            compressionLevel: 0,
+            maxPartBytes: 512,
+          ).render(sized(rows: 200, columns: 4)),
+        );
+      } catch (error) {
+        caught = error;
+      }
+      final parameters = (caught as TomExportException).parameters!;
+      expect(parameters['measure'], isNotNull);
+      expect(parameters['part'], isNotNull);
+      expect(parameters['limit'], 512);
+    });
+
+    test('an ordinary workbook is nowhere near any of them', () async {
+      // The control. Every assertion above is a refusal, so without this the
+      // group would be satisfied by a renderer that refused everything.
+      final bytes = await _collect(
+        const TomXlsxRenderer().render(_sampleResult()),
+      );
+      expect(bytes.length, greaterThan(500));
+    });
+  });
+
   group('TomXlsxRenderer (document properties)', () {
     late Map<String, String> parts;
 

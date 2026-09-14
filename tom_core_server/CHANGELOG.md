@@ -2,6 +2,27 @@
 
 ### Added
 
+- **`TomXlsxRenderer` states its three ceilings and fails at them (tcopen143).**
+  The writer emits every size, offset and count into 32-bit ZIP fields and has
+  no ZIP64, so a part past 4 GiB did not fail — it **wrapped**, the field
+  holding the value modulo 4 GiB, the reader believing it, and a run that
+  reported success producing a corrupt workbook. Excel's two sheet limits were
+  the same shape one layer up: a sheet past 1,048,576 rows or 16,384 columns
+  rendered perfectly here and would not open anywhere.
+
+  `maxPartBytes`, `maxRowsPerSheet` and `maxColumnsPerSheet` are now documented
+  constructor parameters, following `TomPdfRenderer.rowLimit` — a ceiling a
+  caller can lower and a test can reach. Crossing one throws
+  `export.xlsx.archive_too_large`, `export.xlsx.too_many_rows` or
+  `export.xlsx.too_many_columns`; each names **csv** as the alternative, and the
+  archive error names which part and which measure would not fit. The column
+  check runs before any row is pulled, since the columns are known up front and
+  a result that cannot fit should not cost the query first.
+
+  Failing rather than emitting ZIP64 is the choice: ZIP64 is a second set of
+  headers, a per-entry extra field and its own end-of-central-directory pair,
+  and at four gigabytes the alternative the message names is the better product.
+
 - **`TomExportStore.deletePrefix`, the reclaim primitive retention is built on
   (tcopen142).** The day partitioning `keyFor` writes was documented as making
   "expiry a matter of deleting a prefix" and had no consumer: `delete` took one

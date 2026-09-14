@@ -498,7 +498,12 @@ custom-properties part at all.
 #### Constructors
 
 ```dart
-const TomXlsxRenderer({int compressionLevel = 6})
+const TomXlsxRenderer({
+  int compressionLevel = 6,
+  int maxRowsPerSheet = 1048576,
+  int maxColumnsPerSheet = 16384,
+  int maxPartBytes = 0xFFFFFFFF,
+})
 ```
 
 #### Properties
@@ -506,6 +511,9 @@ const TomXlsxRenderer({int compressionLevel = 6})
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `compressionLevel` | `int` | The deflate level, 0 (store) to 9 (smallest); 6 is zlib's default and the right trade for tabular XML (final). |
+| `maxRowsPerSheet` | `int` | Excel's own row limit per worksheet, header included. Exceeding it throws `TomExportException` (`export.xlsx.too_many_rows`) on the row that crosses the line, naming csv as the alternative (final). |
+| `maxColumnsPerSheet` | `int` | Excel's own column limit per worksheet. Exceeding it throws `TomExportException` (`export.xlsx.too_many_columns`) before any row is pulled, since the columns are known up front (final). |
+| `maxPartBytes` | `int` | The width of the ZIP header fields this writer emits. There is no ZIP64 here, so a size, offset or directory past this would wrap silently rather than fail; `export.xlsx.archive_too_large` names the part and the measure instead (final). |
 | `formatId` | `String` | *(getter, override)* `xlsx`. |
 | `mediaType` | `String` | *(getter, override)* `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`. |
 | `fileExtension` | `String` | *(getter, override)* `xlsx`. |

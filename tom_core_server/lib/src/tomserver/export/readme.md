@@ -34,7 +34,7 @@ CSV so a parser can read it back.
 | Type | What it is |
 | ---- | ---------- |
 | `TomTabularRenderer` | The contract: a format id, a media type, a file extension, and `render`. |
-| `TomCsvRenderer` · `TomXlsxRenderer` · `TomPdfRenderer` | The three shipped formats. The XLSX writer builds the zip itself, so the package carries no spreadsheet dependency. |
+| `TomCsvRenderer` · `TomXlsxRenderer` · `TomPdfRenderer` | The three shipped formats. The XLSX writer builds the zip itself, so the package carries no spreadsheet dependency. CSV has no ceiling; XLSX and PDF state theirs and fail at them rather than emitting a file no reader accepts. |
 | `TomExportFormats` | The registry a format is looked up in, and where a deployment registers its own. |
 
 ### Delivery and storage
