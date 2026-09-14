@@ -603,10 +603,8 @@ void main() {
       TomBean.withType(FixtureApiServer, FixtureApiServer());
       TomBean.withType(TomHealthServer, TomHealthServer());
       TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
-      // The table is static and accumulates across runs, so it is cleared here
-      // rather than trusted: a stale entry from an earlier initializeRouter
-      // would let an absent route look present.
-      TomEndpointRouting.routingInfo.clear();
+      // `initializeRouter` starts from an empty table, so a stale entry from an
+      // earlier run cannot let an absent route look present here.
       TomEndpointRouting().initializeRouter();
     });
 
@@ -725,6 +723,104 @@ void main() {
   // `methods: [TomHttpMethod.options]` — would be scanned by every other group's
   // `initializeRouter()` in this file and fail all of them, which is a
   // file-wide cost for one negative case.
+  // The two tables are the framework's only public statement about what it is
+  // serving, which is why they are exposed at all — a diagnostics caller reads
+  // them without holding the router. That makes them worth reading and not
+  // worth writing: a caller that could append would be describing a route
+  // nothing serves, and one that could remove would be hiding a route that is
+  // still served. Either leaves every reader wrong about the process it is
+  // reporting on, and neither changes what the server answers, so the damage is
+  // undetectable from the outside.
+  group('the routing tables are readable, not writable', () {
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomEndpointRouting().initializeRouter();
+    });
+
+    tearDown(() {
+      TomEndpointRouting.resetRoutes();
+      TomBean.resetBeanContext();
+    });
+
+    test('the handler list refuses every mutation', () {
+      final handler = TomEndpointRouting.handlers.first;
+      expect(
+        () => TomEndpointRouting.handlers.add(handler),
+        throwsUnsupportedError,
+      );
+      expect(TomEndpointRouting.handlers.clear, throwsUnsupportedError);
+      expect(
+        () => TomEndpointRouting.handlers[0] = handler,
+        throwsUnsupportedError,
+      );
+    });
+
+    test('the route table refuses every mutation', () {
+      final key = TomEndpointRouting.routingInfo.keys.first;
+      final info = TomEndpointRouting.routingInfo[key]!;
+      expect(
+        () => TomEndpointRouting.routingInfo[key] = info,
+        throwsUnsupportedError,
+      );
+      expect(
+        () => TomEndpointRouting.routingInfo.remove(key),
+        throwsUnsupportedError,
+      );
+      expect(TomEndpointRouting.routingInfo.clear, throwsUnsupportedError);
+    });
+
+    test('the views are live, not snapshots', () {
+      // A view rather than a copy, so a diagnostics caller holding the
+      // reference sees a later mount — and so that reading the table costs
+      // nothing on a path an operator may poll.
+      final routes = TomEndpointRouting.routingInfo;
+      final handlers = TomEndpointRouting.handlers;
+      final beforeRoutes = routes.length;
+      final beforeHandlers = handlers.length;
+
+      final mounted = TomEndpointRouting.routingInfo.values.first.handler;
+      TomEndpointRouting().createRoutesForEndpoint(
+        TomEndpoint(uri: '/probe_live', methods: [TomHttpMethod.get]),
+        Router(),
+        mounted,
+        mounted.metadata,
+        tomReflector.reflectType(FixtureApiServer) as ClassMirror,
+      );
+
+      expect(routes.length, beforeRoutes + 1);
+      expect(handlers.length, beforeHandlers + 1);
+      expect(routes.containsKey((uri: '/probe_live', method: 'GET')), isTrue);
+    });
+
+    test('resetRoutes empties both', () {
+      expect(TomEndpointRouting.handlers, isNotEmpty);
+      expect(TomEndpointRouting.routingInfo, isNotEmpty);
+
+      TomEndpointRouting.resetRoutes();
+
+      expect(TomEndpointRouting.handlers, isEmpty);
+      expect(TomEndpointRouting.routingInfo, isEmpty);
+    });
+
+    test('a second initializeRouter describes the second run, not both', () {
+      // What the doc comment claims — "the last run" — and what was false
+      // while nothing cleared the tables: the handler list grew by a full
+      // router's worth on every initialisation, without bound, and a route
+      // deleted from the source would have gone on being reported as mounted.
+      final first = TomEndpointRouting.handlers.length;
+      final firstRoutes = TomEndpointRouting.routingInfo.length;
+      expect(first, greaterThan(0));
+
+      TomEndpointRouting().initializeRouter();
+
+      expect(TomEndpointRouting.handlers, hasLength(first));
+      expect(TomEndpointRouting.routingInfo, hasLength(firstRoutes));
+    });
+  });
+
   group('the HTTP methods an endpoint may declare', () {
     late TomEndpointHandler handler;
     late ClassMirror serviceMirror;
@@ -734,7 +830,6 @@ void main() {
       TomBean.withType(FixtureApiServer, FixtureApiServer());
       TomBean.withType(TomHealthServer, TomHealthServer());
       TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
-      TomEndpointRouting.routingInfo.clear();
       TomEndpointRouting().initializeRouter();
       // Any mounted endpoint will do. The switch reads `tep.methods`; the
       // handler and the mirror are only what serves the route and what names the
@@ -744,10 +839,9 @@ void main() {
     });
 
     tearDown(() {
-      // `createRoutesForEndpoint` writes both statics, and `/probe` is not a
+      // `createRoutesForEndpoint` writes both tables, and `/probe` is not a
       // route any other group should be able to find.
-      TomEndpointRouting.routingInfo.clear();
-      TomEndpointRouting.handlers.clear();
+      TomEndpointRouting.resetRoutes();
       TomBean.resetBeanContext();
     });
 

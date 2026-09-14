@@ -1,6 +1,38 @@
 ## 1.3.0
 
+### Changed
+
+- **The routing tables are readable, and not writable (tcopen131).**
+  `TomEndpointRouting.handlers` and `routingInfo` were public mutable statics,
+  so any code in the process could add, replace or clear an entry after the
+  router was built. They exist for diagnostics and for tests, and both uses are
+  reads; nothing distinguished a read from a caller quietly rewriting the served
+  surface.
+
+  They are unmodifiable *views* of the tables the mount writes now — views
+  rather than copies, so a diagnostics caller holding the reference sees a later
+  mount and reading costs nothing, while `add`, `remove`, `clear` and assignment
+  throw `UnsupportedError`. Writing was never a capability worth having:
+  appending describes a route nothing serves, removing hides a route that is
+  still served, and neither changes what the server answers — so the damage is
+  invisible from outside and shows up only as every reader of the table being
+  wrong about the process it reports on. `TomEndpointRouting.resetRoutes()` is
+  the one mutation, and it is a reset, for a test that mounts routes without
+  building a router.
+
+  They stay static, which is what lets a diagnostics endpoint report on a server
+  it does not hold.
+
 ### Fixed
+
+- **`handlers` describes the last router, not every router since start-up
+  (tcopen131).** It was documented as "every endpoint handler mounted during the
+  last `initializeRouter` run" and was nothing of the kind: nothing cleared it,
+  so it accumulated every handler mounted since the process started — growing
+  without bound across repeated initialisations, and reporting a route as
+  mounted after it had been removed from the source. `initializeRouter` resets
+  both tables before it mounts, which is what makes the sentence true: it builds
+  a fresh `Router`, so the table describing that router is fresh too.
 
 - **A schema directory may hold what a machine put there (tcopen130).** Every
   file in a schema directory had to be a migration: a name that did not parse

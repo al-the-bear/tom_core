@@ -525,7 +525,7 @@ TomEndpointRoutingInfo(TomEndpointHandler handler, TomEndpoint endpoint, TomHttp
 Builds the shelf `Router` for the application by reflecting over annotated
 service/API classes and mounting one route per endpoint method. The mounted
 handlers and a `TomEndpointRouteKey`→`TomEndpointRoutingInfo` map are exposed
-statically for diagnostics.
+statically, read-only, for diagnostics.
 
 #### Constructors
 
@@ -538,20 +538,21 @@ TomEndpointRouting()
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `shelfRoutePath` | `static String shelfRoutePath(String uri)` | Translates a Tom route template (`{name}`) into the `shelf_router` path syntax (`<name>`). |
+| `resetRoutes` | `static void resetRoutes()` | Forgets every mounted route, so the next mount starts from an empty table. `initializeRouter` calls it, which is what makes `handlers` answer for the *last* run rather than every run since the process started. Public for a test that mounts routes directly, without a router; there is no other caller. |
 
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `handlers` | `static List<TomEndpointHandler>` | Every endpoint handler mounted during the last `initializeRouter` run. |
-| `routingInfo` | `static Map<TomEndpointRouteKey, TomEndpointRoutingInfo>` | Mounted routes for diagnostics, one entry per route *and* HTTP method. Only declared methods are listed; the automatic `OPTIONS` preflight is not. |
+| `handlers` | `static List<TomEndpointHandler>` | Every endpoint handler mounted during the last `initializeRouter` run. An unmodifiable *view* of the live list: reading it shows a later mount and costs nothing, while `add` / `clear` / assignment throw `UnsupportedError`. Appending would describe a route nothing serves and removing would hide one still served — neither changes what the server answers, so neither is visible except as a reader being wrong about the process. |
+| `routingInfo` | `static Map<TomEndpointRouteKey, TomEndpointRoutingInfo>` | Mounted routes for diagnostics, one entry per route *and* HTTP method. Only declared methods are listed; the automatic `OPTIONS` preflight is not. An unmodifiable view, for the reason `handlers` is one. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `scanClasses` | `TomClassScanResult scanClasses()` | Reflects over the annotated classes and partitions them into service interfaces, API implementations, and components. |
-| `initializeRouter` | `Router initializeRouter()` | Scans the annotated classes and mounts every endpoint method onto a fresh `Router`, returning it. |
+| `initializeRouter` | `Router initializeRouter()` | Scans the annotated classes and mounts every endpoint method onto a fresh `Router`, returning it. Calls `resetRoutes` first, so the diagnostics tables describe this run and not the union of every run since the process started. |
 | `registerFrameworkApis` | `void registerFrameworkApis()` | Registers the APIs the framework ships (preferences, OAuth) before the scan, so a deployment does not have to name an endpoint it never asked for. Idempotent — the registry is keyed by API id, so repeated router initialisations cannot double-mount. |
 | `instantiateComponent` | `Object? instantiateComponent(ClassMirror componentType)` | Last-resort resolution: constructs `componentType` through its no-argument constructor, registers the instance as the bean for its type, and returns it — or `null` when it cannot be built that way. A `@tomComponent` that needs no arguments is fully described by its own declaration, so building it is not a guess; anything with a real constructor still belongs to the application. An application that registered its own bean is never overridden, because this only runs when the lookup came back empty. |
 | `createRoutesForClassMirror` | `void createRoutesForClassMirror(ClassMirror serviceType, Object? serviceInstance, Router router)` | Mounts every endpoint method of `serviceType` onto `router`, building a handler per method. |

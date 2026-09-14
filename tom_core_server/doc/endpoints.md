@@ -827,6 +827,27 @@ route saying something that holds for every route.
 The table is a diagnostic, not the router — the router is authoritative about
 what is served, and it is keyed by method already.
 
+**It is read-only, and it describes the last `initializeRouter` run.** Both
+`routingInfo` and `handlers` are unmodifiable *views* of the tables the mount
+writes: reading one costs nothing and shows a later mount, and `add`, `remove`,
+`clear` and assignment throw `UnsupportedError`. That is the whole of the public
+access. Writing was never a capability worth having — a caller that appended
+would be describing a route nothing serves, and one that removed would be hiding
+a route that is still served. Neither changes what the server answers, so
+neither is visible from the outside; what changes is that every reader of the
+table is now wrong about the process it is reporting on.
+
+`initializeRouter` empties both before it mounts, which is what makes "the last
+run" true: it builds a fresh `Router`, so the table describing that router is
+fresh too. A process that initialises twice sees the second router's routes and
+not the union of both. `TomEndpointRouting.resetRoutes()` is the same reset,
+public for a test that mounts routes directly without building a router.
+
+The tables are **static**, so they are process-wide rather than per-router. That
+is what lets a diagnostics endpoint report on a server it does not hold, and it
+is the reason two routers in one process would share one table — a shape nothing
+in this framework builds.
+
 ## Not Yet Implemented
 
 Every limitation below has a consequence a caller can observe — a value that
@@ -950,6 +971,7 @@ and `test/examples_test.dart` runs it.
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `endpoint_pipeline.dart`, `file_endpoint.dart`, `web_socket_endpoint.dart` | `Future`, `Stream`, `StreamController`, `StreamSubscription`, `Zone`, `unawaited` |
+| `dart:collection` | dart | `endpoint_pipeline.dart` | `UnmodifiableListView`, `UnmodifiableMapView` — the read-only views of the routing tables |
 | `dart:convert` | dart | `endpoint_annotation.dart`, `endpoint_pipeline.dart`, `file_endpoint.dart` | `Encoding`, `json`, `jsonDecode`, `jsonEncode` |
 | `dart:typed_data` | dart | `form_binding.dart` | `Uint8List` |
 | `shelf` | package | `endpoint_annotation.dart`, `endpoint_pipeline.dart`, `endpoint_results.dart`, `file_endpoint.dart`, `form_binding.dart` | the HTTP `Request` / `Response` / `Router` types |

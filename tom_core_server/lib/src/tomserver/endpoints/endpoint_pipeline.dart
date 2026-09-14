@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 
 import 'package:shelf/shelf.dart';
@@ -1398,13 +1399,35 @@ class TomEndpointRoutingInfo {
 /// implementations, and components; [initializeRouter] resolves each service's
 /// instance (via [TomComponentReference], bean lookup, or a matching component
 /// class) and mounts its endpoint methods. The mounted handlers and a
-/// [TomEndpointRouteKey]→[TomEndpointRoutingInfo] map are exposed statically for
-/// diagnostics.
+/// [TomEndpointRouteKey]→[TomEndpointRoutingInfo] map are exposed statically,
+/// read-only, for diagnostics.
 class TomEndpointRouting {
+  /// The mounted handlers, written only by [createRoutesForEndpoint].
+  static final List<TomEndpointHandler> _handlers = [];
+
+  /// The mounted routes, written only by [createRoutesForEndpoint].
+  static final Map<TomEndpointRouteKey, TomEndpointRoutingInfo> _routingInfo =
+      {};
+
   /// Every endpoint handler mounted during the last [initializeRouter] run.
-  static List<TomEndpointHandler> handlers = [];
+  ///
+  /// A **read-only view** of the live list, not a copy: a diagnostics caller
+  /// reading it after a later mount sees that mount, and reading it costs
+  /// nothing. `add`, `clear` and the rest throw [UnsupportedError].
+  ///
+  /// The mutation path is deliberately not here. What is served is decided by
+  /// what the reflector holds and what [initializeRouter] mounts from it, and a
+  /// caller that could append to this list would be describing a route nothing
+  /// serves, or — worse — removing the record of one that is still being
+  /// served. Both make the table's readers wrong about the process they are
+  /// reporting on. A test that needs an empty table calls [resetRoutes].
+  static final List<TomEndpointHandler> handlers = UnmodifiableListView(
+    _handlers,
+  );
 
   /// Mounted routes for diagnostics, one entry per route *and* HTTP method.
+  ///
+  /// A read-only view, for the reason [handlers] is one.
   ///
   /// See [TomEndpointRouteKey] for why the method is part of the key. An
   /// endpoint declaring three methods contributes three entries sharing one
@@ -1416,7 +1439,25 @@ class TomEndpointRouting {
   /// plumbing rather than part of the endpoint's surface: recording it would
   /// double the table with entries that say nothing an operator does not
   /// already know holds for every route.
-  static Map<TomEndpointRouteKey, TomEndpointRoutingInfo> routingInfo = {};
+  static final Map<TomEndpointRouteKey, TomEndpointRoutingInfo> routingInfo =
+      UnmodifiableMapView(_routingInfo);
+
+  /// Forgets every mounted route, so the next mount starts from an empty table.
+  ///
+  /// [initializeRouter] calls it, which is what makes [handlers] answer for the
+  /// *last* run rather than for every run since the process started — it builds
+  /// a fresh [Router], so the table describing that router is fresh too.
+  ///
+  /// It is public because a test that mounts routes directly, without a router,
+  /// needs the same fresh start; there is no other caller. The table is
+  /// process-wide rather than per-router, which is what lets a diagnostics
+  /// endpoint report on a server it does not hold, and is the reason two
+  /// routers in one process would share one table — a shape nothing in this
+  /// framework builds.
+  static void resetRoutes() {
+    _handlers.clear();
+    _routingInfo.clear();
+  }
 
   /// Translates a Tom route template into the `shelf_router` path syntax.
   ///
@@ -1502,6 +1543,11 @@ class TomEndpointRouting {
   /// router.
   Router initializeRouter() {
     final Router router = Router();
+    // A fresh router gets a fresh table. Without this the diagnostics view
+    // accumulates every handler mounted since the process started, while
+    // claiming to describe the last run — and `handlers` grows without bound
+    // across repeated initialisations, which the test suite does per case.
+    resetRoutes();
     registerFrameworkApis();
     var scanResult = scanClasses();
     // old style, for services based on interfaces
@@ -1647,10 +1693,10 @@ class TomEndpointRouting {
       // browser can discover the route the same way it discovers any other.
       router.get(route, teph.handleWebSocketCall);
       router.options(route, teph.handleMethodCall);
-      routingInfo[(uri: tep.uri, method: TomHttpMethod.get.name)] =
+      _routingInfo[(uri: tep.uri, method: TomHttpMethod.get.name)] =
           TomEndpointRoutingInfo(teph, tep, TomHttpMethod.get);
       tomLog.info("mounted websocket endpoint ${teph.name} $tep");
-      handlers.add(teph);
+      _handlers.add(teph);
       return;
     }
     for (var method in tep.methods) {
@@ -1679,11 +1725,8 @@ class TomEndpointRouting {
             "Endpoint method $method invalid for ${mmd.methodMirror.simpleName}-${instanceClassMirror.simpleName}",
           );
       }
-      routingInfo[(uri: tep.uri, method: method.name)] = TomEndpointRoutingInfo(
-        teph,
-        tep,
-        method,
-      );
+      _routingInfo[(uri: tep.uri, method: method.name)] =
+          TomEndpointRoutingInfo(teph, tep, method);
     }
     // Preflight is a property of the *route*, not of each method mounted on it.
     // Registering it inside the loop above mounted one copy per declared method,
@@ -1691,7 +1734,7 @@ class TomEndpointRouting {
     // unreachable.
     router.options(route, teph.handleMethodCall);
     tomLog.info("mounted endpoint ${teph.name} $tep");
-    handlers.add(teph);
+    _handlers.add(teph);
   }
 
   /// Collects, for each endpoint-annotated method of [classMirror], the merged
