@@ -188,6 +188,9 @@ class TomWebSocketConnection {
   WebSocketChannel? _channel;
   String? _subprotocol;
   bool _closed = false;
+  Stream<dynamic>? _messages;
+  int _messagesReceived = 0;
+  int _messagesSent = 0;
 
   /// Creates a not-yet-attached connection; the pipeline attaches it on upgrade.
   TomWebSocketConnection();
@@ -231,13 +234,38 @@ class TomWebSocketConnection {
   /// normalised, because which of the two a peer sent is information the
   /// handler may need. The stream is single-subscription and closing it (or
   /// letting it end) ends the conversation.
-  Stream<dynamic> get messages => _live.stream;
+  ///
+  /// Counted as it passes, for [messagesReceived]. The count is a side effect
+  /// of the pass-through rather than a second traversal, and it is cached so
+  /// that reading this getter twice yields the one stream the channel has —
+  /// a second subscription is the error it always was.
+  Stream<dynamic> get messages => _messages ??= _live.stream.map((message) {
+    _messagesReceived++;
+    return message;
+  });
+
+  /// How many frames the peer has sent, counted as the handler reads them.
+  ///
+  /// A frame the handler never reads is not counted: the stream is
+  /// single-subscription and the count rides on it, so this is "what this
+  /// conversation consumed", which is what the audit entry is about. A handler
+  /// that never listens reports zero, and that is the true answer about it.
+  int get messagesReceived => _messagesReceived;
+
+  /// How many frames this side has sent.
+  int get messagesSent => _messagesSent;
 
   /// Sends a text frame.
-  void sendText(String message) => _live.sink.add(message);
+  void sendText(String message) {
+    _live.sink.add(message);
+    _messagesSent++;
+  }
 
   /// Sends a binary frame.
-  void sendBytes(List<int> bytes) => _live.sink.add(bytes);
+  void sendBytes(List<int> bytes) {
+    _live.sink.add(bytes);
+    _messagesSent++;
+  }
 
   /// Closes the socket, optionally with a WebSocket close [code] and [reason].
   ///
@@ -252,5 +280,6 @@ class TomWebSocketConnection {
 
   @override
   String toString() =>
-      'TomWebSocketConnection(open: $isOpen, subprotocol: $subprotocol)';
+      'TomWebSocketConnection(open: $isOpen, subprotocol: $subprotocol, '
+      'received: $_messagesReceived, sent: $_messagesSent)';
 }

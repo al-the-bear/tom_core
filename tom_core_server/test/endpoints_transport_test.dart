@@ -868,5 +868,86 @@ void main() {
 
       expect(received, ['zone:fixture/socket;id:present', 'echo:hello']);
     });
+
+    // CE-LG: a socket contributes two entries, and the second exists because
+    // the first does not describe what happened. "A connection was accepted"
+    // says the same thing about a channel that carried nothing and one that
+    // carried two hundred messages over an hour, so the closing entry carries
+    // the shape — how long it was open and how many frames crossed it.
+    test('an audited socket records its acceptance and its close', () async {
+      final sink = TomMemoryAuditSink();
+      TomAuditTrail.install(sink);
+      addTearDown(() {
+        TomAuditTrail.uninstall();
+        TomAuditTrail.resetPolicyCache();
+      });
+
+      final socket = WebSocketChannel.connect(
+        Uri.parse('ws://localhost:${server.port}/fixture/audited_socket'),
+      );
+      await socket.ready;
+      final received = <String>[];
+      final done = socket.stream
+          .listen((m) => received.add(m as String))
+          .asFuture<void>();
+      socket.sink.add('one');
+      socket.sink.add('two');
+      socket.sink.add('bye');
+      await done;
+
+      expect(received, ['ready', 'echo:one', 'echo:two']);
+
+      final records = sink.records;
+      expect(records, hasLength(2));
+      expect(
+        records.map((r) => r.action),
+        everyElement(TomAuditAction.execute),
+      );
+      expect(
+        records.map((r) => r.outcome),
+        everyElement(TomAuditOutcome.succeeded),
+      );
+      expect(records.first.detail, 'WebSocket connection accepted');
+
+      // The shape. Three frames in — `one`, `two`, `bye`, all read by the
+      // handler — and three out: the greeting and the two echoes.
+      final closing = records.last.detail!;
+      expect(closing, startsWith('WebSocket connection closed after '));
+      expect(closing, contains('3 received'));
+      expect(closing, contains('3 sent'));
+      expect(
+        closing,
+        matches(RegExp(r'after \d+\.\d+s')),
+        reason:
+            'the duration is seconds to one decimal, for an auditor to scan',
+      );
+
+      // Joinable: both entries carry the handshake's request id, which is what
+      // makes them one conversation rather than two unrelated records.
+      expect(records.first.requestId, isNotNull);
+      expect(records.last.requestId, records.first.requestId);
+    });
+
+    test('an unaudited socket still records nothing', () async {
+      // The counter-case. Endpoint auditing is *declared*: the counting and the
+      // closing entry must not turn every socket into two trail records, or the
+      // opt-in would have stopped meaning anything.
+      final sink = TomMemoryAuditSink();
+      TomAuditTrail.install(sink);
+      addTearDown(() {
+        TomAuditTrail.uninstall();
+        TomAuditTrail.resetPolicyCache();
+      });
+
+      final socket = WebSocketChannel.connect(
+        Uri.parse('ws://localhost:${server.port}/fixture/socket'),
+      );
+      await socket.ready;
+      final done = socket.stream.listen((_) {}).asFuture<void>();
+      socket.sink.add('bye');
+      await done;
+
+      expect(sink.records, isEmpty);
+    });
   });
 }

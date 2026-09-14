@@ -28,6 +28,7 @@ method, and converts the result (or any error) into a `Response`.
 - [Multipart Forms](#multipart-forms)
 - [Redirects](#redirects)
 - [WebSocket Endpoints](#websocket-endpoints)
+  - [What the trail says about a socket](#what-the-trail-says-about-a-socket)
 - [Request Logging](#request-logging)
   - [Who writes the line](#who-writes-the-line)
 - [Error Handling](#error-handling)
@@ -794,6 +795,35 @@ handshake. `allowedOrigins` is the handshake-time counterpart of CORS — the
 page on another site from opening an authenticated socket in a visitor's
 session.
 
+### What the trail says about a socket
+
+An endpoint that declares `@TomAudited` contributes **two** records per
+conversation, and they are the two moments an auditor can act on:
+
+| Record | Written | Detail |
+| ------ | ------- | ------ |
+| acceptance | before the handler runs | `WebSocket connection accepted` |
+| close | when the handler returns | `WebSocket connection closed after 3.4s, 12 received, 5 sent` |
+| close (failed) | when the handler throws | the error, followed by the same shape |
+
+Both carry the **handshake's request id**, so the pair is one conversation
+rather than two unrelated records, and the closing outcome is `succeeded` for a
+normal return and `failed` for a throw.
+
+The closing entry exists because the first does not describe what happened. "A
+connection was accepted" says the same thing about a channel that carried
+nothing and one that carried two hundred messages over an hour — access to the
+channel, not use of it. The shape closes that: how long it was open, how many
+frames the handler read, how many it sent. Frames the handler never read are not
+counted, and that is the true answer about a handler that never listened.
+
+**What the trail does not say is what was said.** There is no record per
+message, deliberately: that is the trail an auditor cannot read, with the
+entries that matter buried under routine traffic, which is the failure the
+declared-auditing design exists to prevent. A socket whose *messages* are
+themselves auditable events — commands rather than a data feed — records them
+from the handler, where their meaning is known.
+
 ## Request Logging
 
 `TomEndpoint.logRequests` is **three-state**, and the third state is the point
@@ -983,11 +1013,12 @@ it means "nothing a caller can see", not "nothing at all".
   broadcast to every connection of a user or a topic. That is a feature of
   whatever wants to broadcast, and inventing its addressing model before a
   caller has one would be guessing.
-- **A socket is audited at its ends only.** `handleWebSocketCall` records one
-  entry when the connection is accepted and — only if the handler throws — one
-  when it fails; nothing during the conversation and nothing on a clean close.
-  An hour-long session is therefore one audit entry, and what was said inside it
-  is the handler's own to record.
+- **A socket's messages are not individually audited.** An audited socket
+  contributes two records — the acceptance and the close, the latter carrying
+  the duration and the frame counts in each direction — but nothing per message.
+  What was *said* inside a conversation is the handler's own to record, where
+  its meaning is known. See
+  [What the trail says about a socket](#what-the-trail-says-about-a-socket).
 - **`TomErrorHandler` receives the stack trace as `Object`.**
   `handleErrorDefault` — the one method a concrete handler must implement — and
   the three hooks that delegate to it all declare `Object stacktrace`, so an

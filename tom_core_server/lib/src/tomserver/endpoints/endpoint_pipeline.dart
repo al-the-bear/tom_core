@@ -1377,10 +1377,24 @@ class TomEndpointHandler {
     TomWebSocketConnection connection,
     List<Object> positionalArguments,
   ) async {
-    // CE-LG: what is auditable about a socket is that it was *accepted* — the
-    // point at which an authenticated principal gained an open channel. The
-    // conversation that follows carries no further endpoint invocations, so
-    // there is no later moment at which "this succeeded" would mean more.
+    // CE-LG: a socket contributes **two** entries, and they are the two moments
+    // an auditor can act on. The first is acceptance — the point at which an
+    // authenticated principal gained an open channel — and it is written before
+    // the handler runs, so a conversation that never ends still shows that the
+    // channel was opened.
+    //
+    // The second is the close, and it exists because the first does not
+    // describe what happened. "A connection was accepted" says the same thing
+    // about a socket that carried nothing and one that carried two hundred
+    // messages over an hour, and an auditor reading the trail has no way to
+    // tell them apart. The closing entry carries the shape: how long the
+    // channel was open and how many frames crossed it in each direction.
+    //
+    // Not a record per message, deliberately. That is the trail an auditor
+    // cannot read — the entries that matter buried under routine traffic —
+    // which is the failure the declared-auditing design exists to prevent. Both
+    // entries carry the handshake's request id, so the pair is joinable.
+    final open = Stopwatch()..start();
     await _recordInvocationAudit(
       TomAuditOutcome.succeeded,
       detail: "WebSocket connection accepted",
@@ -1389,17 +1403,41 @@ class TomEndpointHandler {
       var result = instance.invoke(callName, positionalArguments);
       if (result is Future) await result;
       await connection.close(1000, "Handler completed");
+      await _recordInvocationAudit(
+        TomAuditOutcome.succeeded,
+        detail: _socketShape("WebSocket connection closed", open, connection),
+      );
     } catch (error, stacktrace) {
       tomLog.warn(
         "$reqId-${req.url}: WebSocket handler $callName on ${instance.type.simpleName} threw $error\n$stacktrace",
       );
-      await _recordInvocationAudit(TomAuditOutcome.failed, detail: "$error");
+      // The failure carries the shape too: how far a conversation got before it
+      // broke is the first thing asked about one that did.
+      await _recordInvocationAudit(
+        TomAuditOutcome.failed,
+        detail: _socketShape("$error", open, connection),
+      );
       // 1011 "internal error" is the WebSocket equivalent of a 500: the peer is
       // told the conversation ended because *this* side failed, without being
       // told how — the same discretion the default error handler applies.
       await connection.close(1011, "Handler failed");
     }
   }
+
+  /// [lead], followed by how long the socket was open and what crossed it.
+  ///
+  /// One renderer for both closing entries, so the success and failure records
+  /// of a conversation are read the same way. Seconds to one decimal rather
+  /// than a `Duration`: an auditor scans these, and `3.4s` and `3600.0s` sort
+  /// and compare by eye where `0:00:03.412000` does not.
+  static String _socketShape(
+    String lead,
+    Stopwatch open,
+    TomWebSocketConnection connection,
+  ) =>
+      '$lead after ${(open.elapsedMilliseconds / 1000).toStringAsFixed(1)}s, '
+      '${connection.messagesReceived} received, '
+      '${connection.messagesSent} sent';
 
   /// Whether requests to this endpoint are logged.
   ///

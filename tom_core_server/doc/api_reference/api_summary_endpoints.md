@@ -817,7 +817,9 @@ TomWebSocketConnection()
 | -------- | ---- | ----------- |
 | `subprotocol` | `String?` | The subprotocol agreed during the handshake, or `null`. |
 | `isOpen` | `bool` | Whether the socket has been attached and not yet closed from this side. |
-| `messages` | `Stream<dynamic>` | Messages from the peer: `String` for a text frame, `List<int>` for a binary one. |
+| `messages` | `Stream<dynamic>` | Messages from the peer: `String` for a text frame, `List<int>` for a binary one. Counted as they pass, for `messagesReceived`; the stream is cached so reading the getter twice yields the one stream the channel has. |
+| `messagesReceived` | `int` | How many frames the peer has sent, counted as the handler reads them. A frame the handler never read is not counted — the count rides on the single-subscription stream, so this is what the conversation consumed. |
+| `messagesSent` | `int` | How many frames this side has sent. |
 
 #### Methods
 

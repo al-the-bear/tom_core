@@ -529,6 +529,18 @@ abstract class FixtureApiService {
   @TomWebSocketEndpoint(uri: '/fixture/socket')
   Future<void> socket(TomWebSocketConnection connection);
 
+  /// A socket endpoint that declares `@TomAudited`.
+  ///
+  /// The only one, and it exists because the socket audit model is a *pair* of
+  /// entries — the acceptance and the close — and a pair cannot be asserted
+  /// against an endpoint that declares no auditing at all. It behaves exactly
+  /// as [socket] does, so what differs between the two in a trail is the
+  /// declaration and nothing else.
+  @TomPublicAccess()
+  @TomAudited()
+  @TomWebSocketEndpoint(uri: '/fixture/audited_socket')
+  Future<void> auditedSocket(TomWebSocketConnection connection);
+
   /// The socket example of `doc/endpoints.md` and of `web_socket_endpoint.dart`'s
   /// library dartdoc, as compiled code — a socket endpoint gated by resource key.
   ///
@@ -890,6 +902,15 @@ class FixtureApiServer implements FixtureApiService {
       'zone:${request == null ? 'lost' : request.url.path};'
       'id:${requestId == null ? 'lost' : 'present'}',
     );
+    await for (final message in connection.messages) {
+      if (message == 'bye') return;
+      connection.sendText('echo:$message');
+    }
+  }
+
+  @override
+  Future<void> auditedSocket(TomWebSocketConnection connection) async {
+    connection.sendText('ready');
     await for (final message in connection.messages) {
       if (message == 'bye') return;
       connection.sendText('echo:$message');

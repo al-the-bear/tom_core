@@ -1,5 +1,28 @@
 ## 1.3.0
 
+### Changed
+
+- **A socket conversation has a shape in the trail (tcopen137).** An audited
+  socket wrote one entry — the acceptance — plus a second only if the handler
+  threw. Acceptance is genuinely the auditable moment in the pipeline's
+  vocabulary, and it is not enough for an auditor: "a connection was accepted"
+  says the same thing about a channel that carried nothing and one that carried
+  two hundred messages over an hour.
+
+  A closing entry now carries the shape —
+  `WebSocket connection closed after 3.4s, 12 received, 5 sent` — and the
+  failure entry carries the same tail after the error, because how far a
+  conversation got before it broke is the first thing asked about one that did.
+  Both entries carry the handshake's request id, so the pair is one
+  conversation. `TomWebSocketConnection` gained `messagesReceived` and
+  `messagesSent`; the received count rides on the `messages` stream, so a frame
+  the handler never read is not counted.
+
+  Not a record per message, deliberately: that is the trail an auditor cannot
+  read, with the entries that matter buried under routine traffic. A socket
+  whose messages are themselves auditable events records them from the handler,
+  where their meaning is known.
+
 ### Fixed
 
 - **An isolate that registered no file slots says so (tcopen136).**
