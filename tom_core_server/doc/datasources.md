@@ -1051,8 +1051,22 @@ either way; it rolls one back and finds nothing; and it runs two transactions in
 succession, which is the cheapest assertion that no branch was stranded holding
 its locks.
 
-The framework tables are covered separately, because what has to be proved
-about them is agreement rather than behaviour.
+The framework tables are covered by two files, because two different things
+have to be proved about them.
+
+`test/framework_table_test.dart` covers the descriptor types themselves — what
+they *do*, rather than what they agree with. Every assertion in the convergence
+file below reads a descriptor and compares it with something else, so all of
+them stay green when the rendering is wrong the same way on both sides, and none
+of them constructs a descriptor to see what it produces. This one does: the
+padded column lines, the `DEFAULT` and `AUTO_INCREMENT` clauses in SQL's order,
+the character capacity read back out of a type (and the `null` a `DECIMAL(10,2)`
+must answer, so a precision cannot become a length), the index names built from
+the table name, the three `ArgumentError` guards, the `INSERT` shape, and
+`unknownFrameworkColumns` against a statement carrying a known column, an
+unknown one and a bind. Its fixture is a small invented table rather than a real
+one, so widening a real column cannot fail a test about padding.
+
 `test/framework_schema_test.dart` runs without a server and closes the four
 ways a second spelling of a column could survive: each declaration is compared
 against the shipped reference migration, against the reflected row types the

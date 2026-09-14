@@ -1174,8 +1174,10 @@ TomFrameworkTable({
 })
 ```
 
-Throws `ArgumentError` when `primaryKey` or a key names a column the table does
-not declare.
+Throws `ArgumentError` when `columns` is empty, or when `primaryKey` or a key
+names a column the table does not declare. Both are checked on construction
+because a descriptor is built once at start-up, where the alternative is a
+`CREATE TABLE` that fails against a live server.
 
 ##### Properties
 

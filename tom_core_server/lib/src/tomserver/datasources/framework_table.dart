@@ -160,10 +160,23 @@ class TomFrameworkTable {
   }) : _byName = {
          for (final column in columns) column.name.toLowerCase(): column,
        } {
+    // Both checks are on construction because a descriptor is built once at
+    // start-up: a mistake here would otherwise surface as a `CREATE TABLE`
+    // failure against a live server, which is exactly the class of failure this
+    // type removes.
+    //
+    // A table needs at least one column. `createTableDdl` measures its padding
+    // by reducing over them, so an empty descriptor fails there with "No
+    // element" — a message about the renderer, arriving at the first
+    // `CREATE TABLE`, about a table that could not have been valid SQL anyway.
+    if (columns.isEmpty) {
+      throw ArgumentError.value(
+        name,
+        'columns',
+        'declares no columns (from $origin); a table needs at least one',
+      );
+    }
     // Every key and every primary-key part must name a column of this table.
-    // Checked on construction because a descriptor is built once at start-up:
-    // a typo here would otherwise surface as a `CREATE TABLE` failure against a
-    // live server, which is exactly the class of failure this type removes.
     for (final column in [
       ...primaryKey,
       for (final key in keys) ...key.columns,

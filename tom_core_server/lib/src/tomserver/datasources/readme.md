@@ -95,7 +95,9 @@ refusal of an unreflected result type and the text spellings its numeric readers
 decide on, over a result set that carries what the protocol carries and hands
 every typed read to the driver's own converter;
 `test/datasources_db_test.dart` adds what only a live MariaDB can answer, and
-self-skips when none is reachable. `@TomReference` is split across two files for
+self-skips when none is reachable. The framework-table descriptors have two
+files of their own: `test/framework_table_test.dart` for what they render and
+refuse, and `test/framework_schema_test.dart` for what they have to agree with. `@TomReference` is split across two files for
 the same reason: `test/reference_query_test.dart` covers the sentence the
 annotation produces, which needs no connection, and
 `test/reference_association_db_test.dart` covers what the driver does with the

@@ -2,6 +2,33 @@
 
 ### Fixed
 
+- **A framework-table descriptor with no columns is refused on construction
+  (tcopen128).** It reached `createTableDdl`, whose padding reduces over the
+  columns, and failed there with "No element" — a message about the renderer,
+  arriving at the first `CREATE TABLE`, about a table that could not have been
+  valid SQL anyway. It joins the keyed-column check in the constructor, where a
+  descriptor is built once at start-up.
+
+### Documentation
+
+- **The framework-table descriptors are tested where they are declared
+  (tcopen128).** `framework_schema_test.dart` covers what they are *for* —
+  agreement with the migration chain, with the row types, with the statements
+  the stores issue — and every one of those assertions reads a descriptor and
+  compares it with something else, so all of them stay green when the rendering
+  is wrong the same way on both sides. None constructs one to see what it
+  produces.
+
+  `framework_table_test.dart` does: the padded column lines and the two optional
+  clauses in SQL's order, the character capacity read back out of a type (with
+  the `null` a `DECIMAL(10,2)` has to answer, so a precision cannot become a
+  length), the index names built from the table name and the two tables that
+  therefore do not collide, the three `ArgumentError` guards, the `INSERT` shape
+  including a literal value, a golden `CREATE TABLE`, and
+  `unknownFrameworkColumns` against a statement carrying a known column, an
+  unknown one and a bind. Its fixture is a small invented table, so widening a
+  real column cannot fail a test about padding.
+
 - **A driver that cannot report a generated key no longer has one invented for
   it (tcopen127).** `TomPreparedStatement.lastGeneratedId` carried a default
   returning `null` — the sentinel for "this execute generated no key" — which
