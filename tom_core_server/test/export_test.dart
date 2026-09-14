@@ -2346,6 +2346,154 @@ void main() {
     });
   });
 
+  // The day partitioning `keyFor` writes exists so that "delete everything
+  // older than N days" is a prefix delete rather than an enumeration — and
+  // until this existed, the partitioning had no consumer and a server using
+  // the fileExport channel grew its store without bound. This is the reclaim
+  // primitive; *when* it runs is the deployment's, on the same scheduled-work
+  // machinery as its other nightly passes.
+  group('deletePrefix (the reclaim primitive retention is built on)', () {
+    test('a day partition goes in one call', () async {
+      final store = TomMemoryExportStore();
+      for (final key in const [
+        '2026/07/08/sales.csv',
+        '2026/07/08/returns.csv',
+        '2026/07/09/sales.csv',
+      ]) {
+        await store.store(
+          key: key,
+          bytes: Stream.value(utf8.encode('x')),
+          mediaType: 'text/csv',
+        );
+      }
+
+      expect(await store.deletePrefix('2026/07/08'), 2);
+      expect(store.keys, ['2026/07/09/sales.csv']);
+    });
+
+    test('the prefix is matched by segment, never by characters', () async {
+      // The reason this is not `startsWith`. A month's retention that also
+      // took the next month is the failure mode, and it is silent: the caller
+      // asked for a prefix and got a prefix.
+      final store = TomMemoryExportStore();
+      for (final key in const ['2026/07/a.csv', '2026/070/b.csv']) {
+        await store.store(
+          key: key,
+          bytes: Stream.value(utf8.encode('x')),
+          mediaType: 'text/csv',
+        );
+      }
+
+      expect(await store.deletePrefix('2026/07'), 1);
+      expect(store.keys, ['2026/070/b.csv']);
+    });
+
+    test('a prefix naming one export deletes that one', () async {
+      final store = TomMemoryExportStore();
+      await store.store(
+        key: '2026/07/08/sales.csv',
+        bytes: Stream.value(utf8.encode('x')),
+        mediaType: 'text/csv',
+      );
+      expect(await store.deletePrefix('2026/07/08/sales.csv'), 1);
+      expect(store.keys, isEmpty);
+    });
+
+    test('a prefix holding nothing is zero, not an error', () async {
+      final store = TomMemoryExportStore();
+      expect(await store.deletePrefix('2026/01/01'), 0);
+    });
+
+    test('an empty prefix is refused, and told what it would have meant', () {
+      // `validateKey` refuses an empty key too, so the refusal is not what this
+      // check adds — the *message* is. A caller whose configured prefix came
+      // out empty is told it names every export there is, rather than that it
+      // is not a valid relative key, which reads like a typo.
+      expect(
+        () => TomMemoryExportStore().deletePrefix(''),
+        throwsA(
+          isA<TomExportException>()
+              .having((e) => e.key, 'key', 'export.store.invalid_key')
+              .having(
+                (e) => e.defaultUserMessage,
+                'message',
+                contains('every export'),
+              ),
+        ),
+      );
+    });
+
+    test('the directory backend removes the partition from disk', () async {
+      final root = Directory.systemTemp.createTempSync('tom_export_purge_');
+      addTearDown(() => root.deleteSync(recursive: true));
+      final store = TomDirectoryExportStore(root);
+      for (final key in const [
+        '2026/07/08/sales.csv',
+        '2026/07/08/returns.csv',
+        '2026/07/09/sales.csv',
+      ]) {
+        await store.store(
+          key: key,
+          bytes: Stream.value(utf8.encode('x')),
+          mediaType: 'text/csv',
+        );
+      }
+
+      expect(await store.deletePrefix('2026/07/08'), 2);
+      expect(Directory('${root.path}/2026/07/08').existsSync(), isFalse);
+      expect(await store.exists('2026/07/09/sales.csv'), isTrue);
+    });
+
+    test('a store that cannot enumerate says so instead of reporting zero', () {
+      // The difference between "the purge found nothing" and "this backend
+      // cannot purge" is the difference between a healthy deployment and one
+      // whose disk fills up while a nightly job reports success.
+      final store = TomBlobExportStore(TomMemoryBlobStore());
+      expect(store.supportsPrefixDelete, isFalse);
+      expect(
+        () => store.deletePrefix('2026/07/08'),
+        throwsA(
+          isA<TomExportException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'export.store.prefix_delete_unsupported',
+              )
+              .having(
+                (e) => e.parameters?['store'],
+                'store',
+                'TomBlobExportStore',
+              ),
+        ),
+      );
+    });
+
+    test('the two stores that own their key space declare that they can', () {
+      expect(TomMemoryExportStore().supportsPrefixDelete, isTrue);
+      expect(
+        TomDirectoryExportStore(Directory('unused')).supportsPrefixDelete,
+        isTrue,
+      );
+    });
+
+    test('a claimed capability with no implementation fails loudly', () async {
+      // The default `doDeletePrefix` throws rather than returning zero, so a
+      // backend written later that declares the capability and forgets the
+      // method is a reported fault and not an empty purge.
+      final store = _CapabilityWithoutImplementation();
+      await expectLater(
+        store.deletePrefix('2026/07'),
+        throwsA(
+          isA<TomExportException>().having(
+            (e) => e.key,
+            'key',
+            'export.store.prefix_delete_unsupported',
+          ),
+        ),
+      );
+    });
+  });
+
   group('TomExportStore (one error contract across backends)', () {
     late Directory root;
 
@@ -2883,6 +3031,32 @@ class _MeteredExportService extends TomExportService {
 }
 
 /// An application-supplied format, proving the registry is genuinely open.
+/// A store that claims the prefix-delete capability and does not implement it.
+///
+/// The shape a backend written later can take by accident: the getter is one
+/// line and the method is not. Only the base class's refusing default makes
+/// that a fault rather than a purge that deletes nothing.
+class _CapabilityWithoutImplementation extends TomExportStore {
+  @override
+  bool get supportsPrefixDelete => true;
+
+  @override
+  Future<TomStoredExport> doStore({
+    required String key,
+    required Stream<List<int>> bytes,
+    required String mediaType,
+  }) async => throw UnimplementedError();
+
+  @override
+  Stream<List<int>> doOpen(String key) => throw UnimplementedError();
+
+  @override
+  Future<bool> doExists(String key) async => false;
+
+  @override
+  Future<bool> doDelete(String key) async => false;
+}
+
 class _JsonLinesRenderer extends TomTabularRenderer {
   const _JsonLinesRenderer();
 

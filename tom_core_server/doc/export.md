@@ -33,6 +33,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 - [Wiring a Server](#wiring-a-server)
 - [Verification](#verification)
 - [Core Components](#core-components)
+- [Retention](#retention)
 - [The Reporting Half This Is The Lower Half Of](#the-reporting-half-this-is-the-lower-half-of)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
@@ -57,7 +58,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 | `TomDirectoryExportStore` / `TomMemoryExportStore` | classes | Filesystem and in-memory backends |
 | `TomBlobExportStore` | class | The same interface over the `file_storage` blob API — every configured backend at once |
 | `TomStoredExport` | class | What was stored, where, and how big it turned out |
-| `TomExportStoreOperation` | enum | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete`, each carrying a stable `export.store.*` error key, so the same failure reads the same whichever backend is configured |
+| `TomExportStoreOperation` | enum | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete` / `deletePrefix`, each carrying a stable `export.store.*` error key (`export.store.write_failed`, `read_failed`, `probe_failed`, `delete_failed`, `export.store.prefix_delete_failed`), so the same failure reads the same whichever backend is configured |
 | `TomExportService` | class | The seam an endpoint calls: respond with, or store, an export |
 | `tomFormatCellAsText` | function | The one answer to "how does a value look as text" |
 | `TomExportException` | class | The module's base error |
@@ -699,7 +700,8 @@ worth it only for PDF — the one of the three a browser can display itself.
 `keyFor(baseName, format, partitionOn: DateTime.now())` produces
 `2026/07/28/sales.xlsx`. Exports accumulate, and a flat directory of them becomes
 unlistable long before it becomes large; partitioning by day is the cheap fix
-that also makes expiry a matter of deleting a prefix.
+that also makes expiry a matter of deleting a prefix — see
+[Retention](#retention) for the call that does it and who runs it.
 
 **`keyFor` takes the same report name `respondWith` does, and sanitises it for
 the same reason.** A report is named by a person, so `Q3 sales` is the ordinary
@@ -901,6 +903,56 @@ listed is a surface nothing checks.
 - **`TomExportService`** — the `apiResponse` and `fileExport` channels.
 - **`TomExportException`** — the module's base error.
 
+## Retention
+
+Stored exports accumulate. The day partitioning `keyFor` writes is what makes
+reclaiming them cheap, and `TomExportStore.deletePrefix` is the call that does
+it:
+
+```dart
+// Everything exported on 8 July, in one call.
+final removed = await store.deletePrefix('2026/07/08');
+```
+
+**The prefix is matched by key segment, never by characters.** `2026/07` removes
+`2026/07` and everything beneath it, and never `2026/070`. A string prefix that
+can reach a sibling is an ordinary convenience everywhere except in a delete,
+where it is how a month's retention takes the next month with it. An empty
+prefix is refused for the same reason: it names every export there is, and a
+configuration value that turned out empty should not empty the store.
+
+**Not every backend can do it, and each says which it is.**
+`supportsPrefixDelete` is the question to ask at wire-up:
+
+| Backend | Prefix delete | Why |
+| ------- | ------------- | --- |
+| `TomDirectoryExportStore` | yes | keys are paths; a partition is a directory |
+| `TomMemoryExportStore` | yes | it holds its own key space |
+| `TomBlobExportStore` | **no** | `TomBlobStore` offers no enumeration, and a prefix delete cannot be built from `delete` alone |
+
+Calling it on a store that cannot throws
+`export.store.prefix_delete_unsupported`, naming the backend. Answering `0`
+instead would make "the purge found nothing" and "this backend cannot purge" the
+same answer, and the deployment would learn the difference from a disk filling
+up. A backend that *claims* the capability and forgets the method gets the same
+refusal rather than an empty purge, because the base class's implementation
+throws rather than returning zero.
+
+**A blob-backed deployment keeps its own record.** The descriptor `store`
+returns carries the key, the media type, the size and the time; a system that
+stores exports for later retrieval almost always has a row per export already,
+and deletes by key from it. That is a database question rather than a storage
+one, which is why the blob contract is not widened to answer it: a listing over
+an object store is a paginated call with a cost the caller has to understand,
+and file storage has no other caller asking for one.
+
+**The schedule is the deployment's.** Nothing here runs on a timer. A nightly
+purge belongs in the back-office tier, beside the other passes that tidy up
+after the day — the scheduling module already provides the machinery, and a
+second copy of it here would give this module two reasons to change. What this
+module owes such a job is the partition layout it created and the call that
+reclaims one, and both are above.
+
 ## The Reporting Half This Is The Lower Half Of
 
 This module renders and delivers. It does not define reports: there is no type
@@ -972,8 +1024,12 @@ adapted to an envelope.
   `messaging` module rather than living in either alone — worked end to end in
   `example/export/export_email.dart`, and deliberately not a third method on
   `TomExportService`.
-- **Expiry and quota for stored exports.** `delete` exists and nothing calls it;
-  how long an export is worth keeping is a deployment's decision.
+- **A purge on a schedule, and quota.** `TomExportStore.deletePrefix` reclaims a
+  day partition in one call, and nothing in this module runs it on a timer:
+  *how long* an export is worth keeping is a deployment's decision, and *when*
+  the pass runs belongs with its other nightly work. There is no quota either —
+  nothing refuses a write because an account has stored too much. See
+  [Retention](#retention).
 
 ## Dependencies
 

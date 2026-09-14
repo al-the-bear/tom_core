@@ -607,6 +607,7 @@ interface at all.
 | `read` | Reading one back: `TomExportStore.open`. Key `export.store.read_failed`. |
 | `probe` | Asking whether one is there: `TomExportStore.exists`. Key `export.store.probe_failed`. |
 | `delete` | Removing one: `TomExportStore.delete`. Key `export.store.delete_failed`. |
+| `deletePrefix` | Removing a whole partition: `TomExportStore.deletePrefix`. Key `export.store.prefix_delete_failed`. |
 
 #### Properties
 
@@ -650,6 +651,8 @@ const TomExportStore()
 | `open` | `Stream<List<int>> open(String key)` | Reads the export stored under `key`; throws `TomExportException` when the key holds nothing, rather than disguising a missing export as an empty file. Validates the key, dispatches to `doOpen`, and reports any other failure as `export.store.read_failed`. A transfer that breaks partway still delivers the chunks that arrived and *then* throws — the same contract `TomBlobStore.get` states, for the same reason. |
 | `exists` | `Future<bool> exists(String key)` | Whether `key` currently holds an export. Validates the key, dispatches to `doExists`, and reports any failure as `export.store.probe_failed`. |
 | `delete` | `Future<bool> delete(String key)` | Deletes `key`, returning whether anything was there to delete. Validates the key, dispatches to `doDelete`, and reports any failure as `export.store.delete_failed`. |
+| `deletePrefix` | `Future<int> deletePrefix(String prefix)` | Deletes every export under `prefix`, returning how many went — the reclaim primitive the day partitioning `keyFor` writes exists for. Matched by key **segment**: `2026/07` never reaches `2026/070`. An empty prefix is refused (`export.store.invalid_key`), and a store whose `supportsPrefixDelete` is `false` throws `export.store.prefix_delete_unsupported` naming the backend rather than answering `0`. |
+| `doDeletePrefix` | `Future<int> doDeletePrefix(String prefix)` | Implemented by backends declaring the capability; called by `deletePrefix` with a validated, non-empty prefix. The default throws, so a backend that claims the capability and forgets the method fails loudly rather than reporting an empty purge. |
 | `doStore` | `Future<TomStoredExport> doStore({required String key, required Stream<List<int>> bytes, required String mediaType})` | Implemented by backends; called by `store` with an already-validated `key`. May fail in its own vocabulary — the caller never sees it. A chunk from `bytes` is borrowed for the duration of the `await`: consume or copy it before asking for the next, never retain it. |
 | `doOpen` | `Stream<List<int>> doOpen(String key)` | Implemented by backends; called by `open` with an already-validated `key`. Raising `export.store.not_found` is the one error a backend must produce itself, because only it knows the difference between absent and unreadable. Each chunk belongs to the caller: writable, and aliased with nothing the backend keeps. |
 | `doExists` | `Future<bool> doExists(String key)` | Implemented by backends; called by `exists` with an already-validated `key`. |
@@ -692,6 +695,7 @@ once would report itself configured and fail every write after.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `root` | `Directory` | The directory every key resolves beneath; created on demand by the first `store`, never by a read (final). |
+| `supportsPrefixDelete` | `bool` | *(override)* `true` — keys are paths beneath `root`, so a day partition is a directory and `deletePrefix` removes its tree. |
 
 #### Methods
 
@@ -725,6 +729,7 @@ TomMemoryExportStore()
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `keys` | `Iterable<String>` | *(getter)* The keys currently held, in insertion order. |
+| `supportsPrefixDelete` | `bool` | *(override)* `true` — it holds its own key space, so a prefix delete is a scan of the keys it has. |
 
 #### Methods
 
@@ -775,6 +780,7 @@ check applies here too.
 | -------- | ---- | ----------- |
 | `blobStore` | `TomBlobStore` | The blob store the exports are kept in; named `blobStore` because `store` is this interface's write method (final). |
 | `keyPrefix` | `String` | The prefix prepended to every key before it reaches `blobStore`, namespacing exports inside a store that holds other things and making a retention rule expressible as a prefix. `''` when there is none. Both halves of the joined key are checked, in the two places each belongs: the caller's key on every call and *before* prefixing, the prefix once at construction (final). |
+| `supportsPrefixDelete` | `bool` | *(override)* `false` — `TomBlobStore` offers no enumeration, so a prefix delete cannot be built from `delete` alone. A blob-backed deployment that needs retention keeps its own record of what it stored and deletes by key; widening the blob contract to answer this would put a paginated listing in a module with no other caller for one. |
 
 #### Methods
 

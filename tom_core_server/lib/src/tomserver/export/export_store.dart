@@ -110,6 +110,12 @@ enum TomExportStoreOperation {
   delete(
     'export.store.delete_failed',
     'The stored export could not be deleted.',
+  ),
+
+  /// Removing a whole partition: [TomExportStore.deletePrefix].
+  deletePrefix(
+    'export.store.prefix_delete_failed',
+    'The stored exports under that prefix could not be deleted.',
   );
 
   const TomExportStoreOperation(this.errorKey, this.message);
@@ -208,6 +214,78 @@ abstract class TomExportStore {
     TomExportStoreOperation.delete,
     key,
     () => doDelete(validateKey(key)),
+  );
+
+  /// Whether this store can delete a whole key prefix.
+  ///
+  /// `false` by default, so a backend written later has to *say* it can rather
+  /// than inherit the claim. The two shipped stores that own their key space —
+  /// the directory and the memory one — say so; [TomBlobExportStore] does not,
+  /// because `TomBlobStore` offers no enumeration and a prefix delete cannot be
+  /// built from `delete` alone.
+  ///
+  /// Exposed rather than hidden for the reason [TomTabularRenderer.streamsRows]
+  /// is: it is the one property a deployment *deciding whether to schedule a
+  /// purge* needs to know, and it needs to know it at wire-up rather than from
+  /// a purge that ran nightly and reclaimed nothing.
+  bool get supportsPrefixDelete => false;
+
+  /// Deletes every export whose key lies under [prefix], returning how many
+  /// went.
+  ///
+  /// **The prefix is matched by key segment, never by characters.** `2026/07`
+  /// removes `2026/07` and everything beneath it, and never `2026/070` — a
+  /// string prefix that can reach a sibling is an ordinary convenience
+  /// everywhere except in a delete, where it is how a month's retention takes
+  /// the next month with it.
+  ///
+  /// This is the reclaim primitive the day partitioning [TomExportService.keyFor]
+  /// writes exists for: a retention pass deletes `2026/07/08` rather than
+  /// enumerating what is under it. *When* it runs is the deployment's — a
+  /// scheduled purge belongs in the back-office tier, on the same scheduled-work
+  /// machinery as its other nightly passes, not in this module.
+  ///
+  /// Throws [TomExportException] (`export.store.prefix_delete_unsupported`) on
+  /// a store that cannot enumerate, naming the backend. A store that answered
+  /// `0` instead would make "the purge found nothing" and "this backend cannot
+  /// purge" the same answer, and the deployment would learn the difference from
+  /// a disk filling up.
+  ///
+  /// An empty prefix is refused (`export.store.invalid_key`): it names every
+  /// export there is, and a delete whose argument came from a configuration
+  /// value that turned out to be empty should not empty the store.
+  Future<int> deletePrefix(String prefix) {
+    if (prefix.isEmpty) {
+      throw TomExportException(
+        'export.store.invalid_key',
+        'A prefix delete needs a prefix; an empty one names every export.',
+        parameters: {'prefix': prefix},
+      );
+    }
+    if (!supportsPrefixDelete) {
+      throw TomExportException(
+        'export.store.prefix_delete_unsupported',
+        'This export store cannot delete a key prefix.',
+        parameters: {'prefix': prefix, 'store': '$runtimeType'},
+      );
+    }
+    return _translating(
+      TomExportStoreOperation.deletePrefix,
+      prefix,
+      () => doDeletePrefix(validateKey(prefix)),
+    );
+  }
+
+  /// Deletes everything under [prefix]. Implemented by backends that declare
+  /// [supportsPrefixDelete]; called by [deletePrefix].
+  ///
+  /// [prefix] has already been validated and is non-empty. The default throws,
+  /// so a backend that claims the capability and forgets the implementation
+  /// fails loudly rather than reporting an empty purge.
+  Future<int> doDeletePrefix(String prefix) => throw TomExportException(
+    'export.store.prefix_delete_unsupported',
+    'This export store cannot delete a key prefix.',
+    parameters: {'prefix': prefix, 'store': '$runtimeType'},
   );
 
   /// Writes [bytes] under [key]. Implemented by backends; called by [store].
@@ -415,6 +493,27 @@ class TomDirectoryExportStore extends TomExportStore {
     return true;
   }
 
+  @override
+  bool get supportsPrefixDelete => true;
+
+  @override
+  Future<int> doDeletePrefix(String prefix) async {
+    // A prefix names a directory when one exists and a single file otherwise,
+    // which is what "by segment" means on a filesystem: `2026/07` is the month
+    // directory, and `2026/07/sales.csv` is one export. Neither reaches
+    // `2026/070`, because a path join cannot produce it.
+    final directory = Directory(p.join(root.path, prefix));
+    if (directory.existsSync()) {
+      final removed = directory
+          .listSync(recursive: true)
+          .whereType<File>()
+          .length;
+      await directory.delete(recursive: true);
+      return removed;
+    }
+    return await doDelete(prefix) ? 1 : 0;
+  }
+
   /// The file [key] names, beneath [root].
   ///
   /// [key] arrives validated — [TomExportStore] checks it before dispatching to
@@ -525,6 +624,24 @@ class TomMemoryExportStore extends TomExportStore {
   Future<bool> doDelete(String key) async {
     _descriptors.remove(key);
     return _content.remove(key) != null;
+  }
+
+  @override
+  bool get supportsPrefixDelete => true;
+
+  @override
+  Future<int> doDeletePrefix(String prefix) async {
+    // By segment: the prefix itself, or the prefix followed by a separator.
+    // `startsWith(prefix)` alone would take `2026/070` out with `2026/07`,
+    // which is the month after the one retention was asked about.
+    final matching = _content.keys
+        .where((key) => key == prefix || key.startsWith('$prefix/'))
+        .toList();
+    for (final key in matching) {
+      _content.remove(key);
+      _descriptors.remove(key);
+    }
+    return matching.length;
   }
 
   @override

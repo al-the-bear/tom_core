@@ -147,6 +147,23 @@ class TomBlobExportStore extends TomExportStore {
   @override
   Future<bool> doDelete(String key) => blobStore.delete(_blobKey(key));
 
+  /// `false`: `TomBlobStore` offers no enumeration.
+  ///
+  /// The blob contract is `put` / `get` / `describe` / `delete` / `exists`, all
+  /// by key, and a prefix delete cannot be built from them — there is no way to
+  /// learn which keys exist under one. Widening the *blob* contract to serve
+  /// the export module's retention would be the wrong direction: a listing over
+  /// an object store is a paginated call with a cost a caller has to
+  /// understand, and file storage has no other caller asking for one.
+  ///
+  /// So a blob-backed deployment that needs retention keeps its own record of
+  /// what it stored — the descriptor `store` returns carries the key, the size
+  /// and the time — and deletes by key. That is a database question, and a
+  /// system storing exports for later retrieval almost always has the row
+  /// already.
+  @override
+  bool get supportsPrefixDelete => false;
+
   @override
   String toString() =>
       'TomBlobExportStore($blobStore'

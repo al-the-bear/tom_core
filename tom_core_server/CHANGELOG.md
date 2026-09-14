@@ -1,5 +1,33 @@
 ## 1.3.0
 
+### Added
+
+- **`TomExportStore.deletePrefix`, the reclaim primitive retention is built on
+  (tcopen142).** The day partitioning `keyFor` writes was documented as making
+  "expiry a matter of deleting a prefix" and had no consumer: `delete` took one
+  key, nothing walked partitions, and a server using the `fileExport` channel
+  grew its store without bound.
+
+  `deletePrefix` removes a partition in one call and returns how many exports
+  went. The prefix is matched by key **segment**, so `2026/07` never reaches
+  `2026/070` — a string prefix that can touch a sibling is an ordinary
+  convenience everywhere except in a delete. An empty prefix is refused, with a
+  message saying it names every export there is.
+
+  `supportsPrefixDelete` says which backends can: the directory and memory
+  stores own their key space and do; `TomBlobExportStore` does **not**, because
+  `TomBlobStore` offers no enumeration and a prefix delete cannot be built from
+  `delete` alone. Calling it there throws
+  `export.store.prefix_delete_unsupported` naming the backend rather than
+  answering `0` — "the purge found nothing" and "this backend cannot purge" must
+  not be the same answer to a nightly job. A backend that claims the capability
+  and forgets the method gets the same refusal, because the base implementation
+  throws rather than returning zero.
+
+  *When* a purge runs stays the deployment's: a nightly pass belongs in the
+  back-office tier on the scheduling module's machinery, and a timer here would
+  give this module two reasons to change.
+
 ### Documentation
 
 - **The email delivery channel is worked end to end (tcopen141).** The
