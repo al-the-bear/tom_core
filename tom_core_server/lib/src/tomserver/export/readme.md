@@ -92,9 +92,12 @@ keeps that adaptation cheap.
 
 See [`doc/export.md`](../../../../doc/export.md) for the full treatment: the
 streaming contract, what each format does with a column type, deriving columns
-from an entity, the store seam, and the reporting boundary. `example/export/export_example.dart` runs
-the whole surface without a server, and `test/export_test.dart` and
-`test/export_entities_test.dart` cover it.
+from an entity, the store seam, and the reporting boundary.
+`example/export/export_example.dart` runs the whole surface without a server,
+and `example/export/export_email.dart` composes the third delivery channel out
+of this module and `messaging` — store the export, then send it as a link or as
+an attachment, with the outbox owning the delivery. `test/export_test.dart` and
+`test/export_entities_test.dart` cover the module.
 
 ---
 

@@ -2,6 +2,26 @@
 
 ### Documentation
 
+- **The email delivery channel is worked end to end (tcopen141).** The
+  specification names three channels; the module implements two and documents
+  the third as composing out of this module and `messaging` — which was true,
+  described, and performed by no code anywhere. A composition that is claimed
+  and never run is a claim.
+
+  `example/export/export_email.dart` is it, in six steps: the two halves
+  configured without knowing each other, the export stored, the **link** shape
+  (the message carries the key, the store keeps the bytes), the **attachment**
+  shape (the bytes read back from the store rather than rendered a second time,
+  with the renderer's own file name and media type), the outbox delivering it,
+  and the export still in the store afterwards. The two shapes are not
+  interchangeable, and the example says which is which: an attachment is a copy
+  per recipient and the first thing a mail server refuses on size, while a link
+  needs a recipient who can reach the store.
+
+  Delivery goes through `TomMessageOutbox.send`, so retry, backoff and
+  at-most-one-runner-per-message stay the outbox's — which is the whole reason
+  the export service has no third method. Neither module learns about the other.
+
 - **The reporting boundary is stated, and the property it rests on is held
   (tcopen140).** This module is the lower half of a reporting element whose
   upper half — a report definition naming a query, a projection, a delivery

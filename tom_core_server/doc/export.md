@@ -734,6 +734,17 @@ the `messaging` module's subject; it composes by rendering to bytes or to the
 store and attaching the result. Inventing a third path here would duplicate the
 outbox's retry and delivery semantics — the one thing that module exists to own.
 
+`example/export/export_email.dart` is that composition, run end to end: store
+the export, then send it either as a **link** (the message carries the key, the
+store keeps the bytes) or as an **attachment** (the bytes ride along, read back
+from the store rather than rendered a second time). The two are not
+interchangeable — an attachment is a copy per recipient and the first thing a
+mail server refuses on size, while a link needs a recipient who can reach the
+store. Delivery is `TomMessageOutbox.send`, so retry, backoff and
+at-most-one-runner-per-message are the outbox's and not a second implementation
+here. Neither module learns about the other: the twenty lines that join them
+live in the application, which is what the example is.
+
 ## Untrusted Text in Four Places
 
 A report's name, its title, its column labels and its cell values all originate
@@ -862,8 +873,15 @@ for why that helper **throws** rather than asserting.
 That the helper fails the run rather than narrating it is the third guard, and
 the one neither test above can make: both are satisfied by a `check` that merely
 printed. It lives in `test/examples_test.dart`, once for the whole example
-suite, because all twenty-three examples share one definition and checking it
-per example would be twenty-three tests of one function.
+suite, because every example shares one definition and checking it per example
+would be one test of one function, repeated.
+
+`example/export/export_email.dart` is the second export example, in six steps:
+the two halves configured without knowing each other, the store, the link shape,
+the attachment read back from the store, the outbox delivering it, and the
+export still in the store afterwards. It is spawned by `test/examples_test.dart`
+with the rest, and its step count is recorded there — an added step that nobody
+listed is a surface nothing checks.
 
 ## Core Components
 
@@ -951,7 +969,9 @@ adapted to an envelope.
   rebuilt around it. What that means concretely is
   [The Reporting Half This Is The Lower Half Of](#the-reporting-half-this-is-the-lower-half-of).
 - **The `email` delivery channel**, which composes out of this module and the
-  `messaging` module rather than living in either alone.
+  `messaging` module rather than living in either alone — worked end to end in
+  `example/export/export_email.dart`, and deliberately not a third method on
+  `TomExportService`.
 - **Expiry and quota for stored exports.** `delete` exists and nothing calls it;
   how long an export is worth keeping is a deployment's decision.
 
