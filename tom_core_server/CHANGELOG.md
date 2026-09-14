@@ -1,5 +1,30 @@
 ## 1.3.0
 
+### Fixed
+
+- **A schema directory may hold what a machine put there (tcopen130).** Every
+  file in a schema directory had to be a migration: a name that did not parse
+  raised `db_migration.migration.illegal_filename_in_migrations_directory` and
+  aborted the run. The reasoning is sound for a file a developer put there — it
+  is more likely a migration nobody noticed was not running than clutter — and
+  it does not reach the files an operating system, a file explorer or an editor
+  writes without being asked. A `.DS_Store`, a `Thumbs.db`, a `.gitkeep` or a
+  `README.md` turned a deployment into a hard startup failure whose fix was to
+  delete a file the operator did not create.
+
+  `TomDbMigrations.isNotAMigrationFile` now skips two classes and only two: any
+  **dot-file**, and the fixed case-insensitive list `readme.md`, `thumbs.db`,
+  `desktop.ini`. `collectMigrationFiles` applies it, so the engine and the
+  convergence check ignore the same files, and it applies before the
+  duplicate-basename check, so an ignored name cannot be reported as half of a
+  collision.
+
+  The line is deliberately not at the extension. Under "only `.sql` counts" a
+  mis-typed `[3]-add_index.sqll` and an editor's `[3]-add_index.orig` would both
+  become invisible — the two shapes the abort exists to catch. Both are still
+  reported, and a file under a name that is neither a migration nor recognised
+  clutter still stops the run.
+
 ### Documentation
 
 - **The expression-tree walk has a demonstrated use and an asserted shape

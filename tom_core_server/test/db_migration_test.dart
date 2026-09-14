@@ -431,6 +431,132 @@ void main() {
   // it back — including one on a different SDK, platform or isolate. These pin
   // the digest to a constant, so a change of algorithm is a red suite here
   // rather than a fleet-wide `checksum_mismatch` on the next deployment.
+  group('a schema directory may hold what a machine put there', () {
+    late Directory dir;
+
+    setUp(() => dir = Directory.systemTemp.createTempSync('tom_mig_stray_'));
+    tearDown(() => dir.deleteSync(recursive: true));
+
+    /// Writes [names] as empty files and returns the directory's entries.
+    List<FileSystemEntity> entriesFor(Iterable<String> names) {
+      for (final name in names) {
+        File(p.join(dir.path, name)).writeAsStringSync('-- $name');
+      }
+      return dir.listSync();
+    }
+
+    /// The basenames [names] collect to, sorted.
+    List<String> collected(Iterable<String> names) =>
+        TomDbMigrations.collectMigrationFiles(entriesFor(names)).keys.toList()
+          ..sort();
+
+    test('a dot-file is ignored, whatever it is', () {
+      // The class, not a list: a dot-file is hidden by convention on every
+      // platform this runs on, which is as close as a file system comes to
+      // saying "not content". `.DS_Store` arrives from the macOS Finder,
+      // `.gitkeep` from whoever needed the empty directory committed, and the
+      // swap file from an editor left open on the migration beside it.
+      expect(
+        collected([
+          '[1]-first.sql',
+          '.DS_Store',
+          '.gitkeep',
+          '.gitignore',
+          // vim's swap file for the migration beside it; the leading dot is
+          // what makes it invisible here.
+          '.[1]-first.sql.swp',
+        ]),
+        ['[1]-first'],
+      );
+    });
+
+    test('the three named files are ignored, in any case', () {
+      // A fixed list rather than a pattern, so a reader can see all of it. Two
+      // are written by a file explorer and one by a person documenting the
+      // directory — none of them by the author of a migration.
+      expect(
+        collected(['[1]-first.sql', 'README.md', 'Thumbs.db', 'desktop.ini']),
+        ['[1]-first'],
+      );
+      expect(collected(['[1]-first.sql', 'readme.md', 'THUMBS.DB']), [
+        '[1]-first',
+      ]);
+    });
+
+    test('an ignored file does not collide with a migration', () {
+      // The skip happens before the duplicate-basename check, so a `README.md`
+      // beside a `README.sql` — or any pair an ignored name could strip to —
+      // cannot be reported as a collision.
+      expect(collected(['[1]-first.sql', 'readme.md', 'readme.sql']), [
+        '[1]-first',
+        'readme',
+      ]);
+    });
+
+    test('a directory of nothing but ignorable files collects nothing', () {
+      expect(collected(['.DS_Store', 'README.md']), isEmpty);
+    });
+
+    test('a mis-typed migration is still collected, and still refused', () {
+      // The line is drawn here rather than at the extension precisely for
+      // this: under an extension filter `[3]-add_index.sqll` would be
+      // invisible, and a migration that was meant to run simply would not.
+      // Collected, it reaches the parser, which reports it.
+      expect(collected(['[3]-add_index.sqll']), ['[3]-add_index']);
+      expect(
+        () => TomDbMigrations.orderMigrationNames(['[3]-add_index.sqll']),
+        throwsA(
+          isA<TomDbMigrationException>().having(
+            (e) => e.key,
+            'key',
+            'db_migration.migration.illegal_filename_in_migrations_directory',
+          ),
+        ),
+      );
+    });
+
+    test('an editor backup is still a duplicate, not an ignored file', () {
+      // `.orig` and `.bak` are not dot-files and are not on the list, which is
+      // deliberate: a backup strips to the same key as the migration it is a
+      // backup *of*, so tolerating it would let the losing file be the one
+      // that was meant to run.
+      expect(
+        () => TomDbMigrations.collectMigrationFiles(
+          entriesFor(['[3]-add_index.sql', '[3]-add_index.orig']),
+        ),
+        throwsA(
+          isA<TomDbMigrationException>().having(
+            (e) => e.key,
+            'key',
+            'db_migration.migration.duplicate_migration_basename',
+          ),
+        ),
+      );
+    });
+
+    test('a stray name nobody accounted for still aborts the run', () {
+      // What the policy does not do. A file a developer put there under a name
+      // that is neither a migration nor recognised clutter is still the case
+      // this module exists to be loud about.
+      expect(collected(['notes_about_the_chain.txt']), [
+        'notes_about_the_chain',
+      ]);
+      expect(
+        () => TomDbMigrations.orderMigrationNames(['notes_about_the_chain']),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+    });
+
+    test('the rule is one predicate, and it is the one the collector uses', () {
+      // Named so the policy can be read and asserted on its own rather than
+      // only through a directory listing.
+      expect(TomDbMigrations.isNotAMigrationFile('.DS_Store'), isTrue);
+      expect(TomDbMigrations.isNotAMigrationFile('README.md'), isTrue);
+      expect(TomDbMigrations.isNotAMigrationFile('[1]-first.sql'), isFalse);
+      expect(TomDbMigrations.isNotAMigrationFile('[1]-first.orig'), isFalse);
+    });
+  });
+
   group('MariadbMigrationAdaptor.checksumOf', () {
     test('a known script produces a known constant digest', () {
       // The constant is the whole point: it is the contract between a row

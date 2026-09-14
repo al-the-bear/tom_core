@@ -83,9 +83,11 @@ void main() {
 ```
 
 See [`doc/db_migration.md`](../../../../doc/db_migration.md) for the full
-treatment: the directory layout and file-name grammar, environment tags, adaptor
-discovery, idempotency and checksum stability, the whole schema-convergence
-chapter, and what returns a `Future` and why. The connection-free surface runs
+treatment: the directory layout and file-name grammar — including the two
+classes of file a schema directory may hold without being migrations, which is
+everything a machine put there and nothing a developer did — environment tags,
+adaptor discovery, idempotency and checksum stability, the whole
+schema-convergence chapter, and what returns a `Future` and why. The connection-free surface runs
 in `example/db_migration/db_migration_example.dart`; `test/db_migration_test.dart`
 and `test/schema_convergence_test.dart` cover the two halves, and
 `test/db_migration_db_test.dart` covers the MariaDB adaptor against a live

@@ -291,6 +291,51 @@ class TomDbMigrations {
     );
   }
 
+  /// The names, lower-cased, that a schema directory may hold without them
+  /// being migrations.
+  ///
+  /// Everything on this list is written by something other than the author of
+  /// the migration chain: a file explorer (`thumbs.db`, `desktop.ini`) or a
+  /// person documenting the directory (`readme.md`). `.DS_Store`, `.gitkeep`
+  /// and an editor's swap file need no entry — they are dot-files, which
+  /// [isNotAMigrationFile] skips as a class.
+  static const Set<String> _nonMigrationFileNames = {
+    'readme.md',
+    'thumbs.db',
+    'desktop.ini',
+  };
+
+  /// Whether [name] — a file's basename *with* its extension — is one a schema
+  /// directory may hold that is not a migration.
+  ///
+  /// A file in a schema directory whose name does not parse is refused, and
+  /// that stays: a surprising file there is more likely a migration nobody
+  /// noticed was not running than deliberate clutter, and the cost of the two
+  /// mistakes is not symmetric. But the argument is about files *a developer
+  /// put there*. It does not reach the ones an operating system, a file
+  /// explorer or an editor writes without being asked, and for those the
+  /// refusal is a hard startup failure whose fix is to delete a file the
+  /// operator did not create.
+  ///
+  /// So two classes are skipped, and only two:
+  ///
+  /// * **dot-files** — `.DS_Store`, `.gitkeep`, `.gitignore`, and the swap file
+  ///   an editor leaves beside the migration it has open, whose name begins
+  ///   with a dot. A dot-file is hidden by convention on every platform this
+  ///   runs on, which is as close as a file system comes to saying "not
+  ///   content";
+  /// * the fixed list [_nonMigrationFileNames], matched case-insensitively.
+  ///
+  /// Everything else still aborts, which is the point of drawing the line here
+  /// rather than at the extension. `[3]-add_index.sqll` is a mis-typed
+  /// migration, `[3]-add_index.orig` is an editor's backup of one — under an
+  /// extension filter both would be invisible, and the file that was meant to
+  /// run would simply not run. Under this rule both are still reported, the
+  /// second as a duplicate basename.
+  static bool isNotAMigrationFile(String name) =>
+      name.startsWith('.') ||
+      _nonMigrationFileNames.contains(name.toLowerCase());
+
   /// Collects the migration files among [entries], keyed by basename without
   /// extension — the key everything downstream identifies a migration by.
   ///
@@ -310,7 +355,9 @@ class TomDbMigrations {
   /// file can be the one that was meant to run.
   ///
   /// Non-file entries are skipped, so a sub-directory in a schema folder is
-  /// ignored rather than collected.
+  /// ignored rather than collected, and so are the entries
+  /// [isNotAMigrationFile] recognises — the files a machine put in the
+  /// directory rather than a person.
   ///
   /// Shared with [TomSchemaConvergenceCheck.readChain] for the reason
   /// [orderMigrationNames] is: a check that accepted a tree the engine refuses
@@ -321,6 +368,7 @@ class TomDbMigrations {
     final files = <String, File>{};
     for (final entry in entries) {
       if (entry is! File) continue;
+      if (isNotAMigrationFile(p.basename(entry.path))) continue;
       final basename = p.basenameWithoutExtension(entry.path);
       final existing = files[basename];
       if (existing != null) {

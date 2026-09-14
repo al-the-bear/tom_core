@@ -15,6 +15,7 @@ implementation (`MariadbMigrationAdaptor`) is provided.
   - [The shared schema model and DDL replay](#the-shared-schema-model-and-ddl-replay)
 - [The Directory Layout](#the-directory-layout)
   - [One File per Migration](#one-file-per-migration)
+  - [What a Schema Directory May Hold Besides Migrations](#what-a-schema-directory-may-hold-besides-migrations)
   - [One Migration per Version](#one-migration-per-version)
   - [Environment Tags](#environment-tags)
   - [The Tree Root Has to Be There](#the-tree-root-has-to-be-there)
@@ -189,6 +190,47 @@ which both the engine and the [convergence check](#schema-convergence) collect
 through — for the same reason they share the name parser and the ordering. A
 check that quietly read one of two colliding files would report on a chain the
 engine refuses to apply, which is worse than either behaviour on its own.
+
+### What a Schema Directory May Hold Besides Migrations
+
+Refusing a name it cannot parse is the rule this module follows, and it stays.
+But the argument for it — a surprising file in a migrations directory is more
+likely a migration nobody noticed was not running than deliberate clutter — is
+about files **a developer put there**. It does not reach the ones an operating
+system, a file explorer or an editor writes without being asked, and for those
+the refusal is a hard startup failure whose fix is to delete a file the operator
+did not create.
+
+Two classes are therefore skipped, and only two:
+
+| Skipped | Why |
+| ------- | --- |
+| Any **dot-file** — `.DS_Store`, `.gitkeep`, `.gitignore`, the swap file an editor leaves beside the migration it has open | A dot-file is hidden by convention on every platform this runs on, which is as close as a file system comes to saying "not content" |
+| The fixed list `readme.md`, `thumbs.db`, `desktop.ini`, matched case-insensitively | Each is written by something other than the author of the chain: a file explorer, or a person documenting the directory |
+
+Everything else is collected, and so must parse. That is the point of drawing
+the line here rather than at the extension:
+
+```text
+app/
+  [3]-add_index.sql     # applied
+  [3]-add_index.sqll    # a mis-typed migration → reported, not skipped
+  [3]-add_index.orig    # an editor's backup   → reported as a duplicate
+  README.md             # ignored
+  .DS_Store             # ignored
+```
+
+An extension filter — "only `.sql` counts" — would be simpler to state and would
+make the first two invisible, which is exactly the failure the abort exists to
+prevent: the file that was meant to run simply would not, and nothing would say
+so. A file a developer put there under a name that is neither a migration nor
+recognised clutter still stops the run.
+
+The rule is one predicate, `TomDbMigrations.isNotAMigrationFile`, applied inside
+`collectMigrationFiles` — so the engine and the
+[convergence check](#schema-convergence) ignore the same files, and it is
+applied *before* the duplicate-basename check, so an ignored name can never be
+reported as half of a collision.
 
 ### One Migration per Version
 
