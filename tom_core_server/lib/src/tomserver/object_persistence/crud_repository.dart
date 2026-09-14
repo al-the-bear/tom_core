@@ -224,8 +224,9 @@ abstract class TomFileRepository<T extends Object, K> {
     String? fileName,
   });
 
-  /// Streams the file held by the file column [fieldName] of row [id].
-  Stream<List<int>> openFile(K id, String fieldName);
+  /// Streams the file held by the file column [fieldName] of row [id], or
+  /// [range] of it.
+  Stream<List<int>> openFile(K id, String fieldName, {TomBlobRange? range});
 
   /// The descriptor of the file held by [fieldName] on row [id], or `null` when
   /// the row (or its column) holds nothing.
@@ -728,7 +729,12 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   }
 
   /// Streams the file held by the file-reference column [fieldName] of the row
-  /// with primary key [id].
+  /// with primary key [id], or [range] of it.
+  ///
+  /// [range] is passed to the store, which serves it natively where the backend
+  /// can seek. Both authorization gates run first and unchanged: a range is a
+  /// narrower read of the same bytes, never a way to reach bytes a whole read
+  /// would refuse.
   ///
   /// Reads the row through [findById], so the entity's row scope (C-3) applies
   /// unchanged: a row the principal may not see is simply not found. A column
@@ -737,7 +743,11 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// and a row whose column holds no key raises `storage.file_reference
   /// .no_file` — the caller asked for a file that is not there, which is a
   /// different answer from an empty one.
-  Stream<List<int>> openFile(K id, String fieldName) async* {
+  Stream<List<int>> openFile(
+    K id,
+    String fieldName, {
+    TomBlobRange? range,
+  }) async* {
     final column = _fileColumn(fieldName);
     final row = await findById(id);
     if (row == null) {
@@ -756,7 +766,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
         parameters: {'entity': T.toString(), 'field': fieldName, 'id': '$id'},
       );
     }
-    yield* _fileStore(column).get(key);
+    yield* _fileStore(column).get(key, range: range);
   }
 
   /// The descriptor of the file held by [fieldName] on row [id] — its media

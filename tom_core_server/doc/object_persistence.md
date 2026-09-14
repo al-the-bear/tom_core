@@ -938,7 +938,7 @@ stack, and it can be exercised without a database:
 Future<T?> findById(K id);
 Future<T> saveFile(T entity, String fieldName, Stream<List<int>> bytes,
     {String? mediaType, String? fileName});
-Stream<List<int>> openFile(K id, String fieldName);
+Stream<List<int>> openFile(K id, String fieldName, {TomBlobRange? range});
 Future<TomStoredBlob?> describeFile(K id, String fieldName);
 Future<T> clearFile(T entity, String fieldName);
 ```

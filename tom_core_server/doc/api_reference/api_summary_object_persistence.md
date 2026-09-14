@@ -682,7 +682,7 @@ persistence stack.
 | ------ | --------- | ----------- |
 | `findById` | `Future<T?> findById(K id)` | Loads the entity with the given `id`, or `null` if absent (or not visible to the current principal under the entity's row scope). |
 | `saveFile` | `Future<T> saveFile(T entity, String fieldName, Stream<List<int>> bytes, {String? mediaType, String? fileName})` | Uploads `bytes` into the file column `fieldName` of `entity` and saves the row, returning the stored entity. |
-| `openFile` | `Stream<List<int>> openFile(K id, String fieldName)` | Streams the file held by the file column `fieldName` of row `id`. |
+| `openFile` | `Stream<List<int>> openFile(K id, String fieldName, {TomBlobRange? range})` | Streams the file held by the file column `fieldName` of row `id`, or `range` of it. The range is passed to the store, which serves it natively where the backend can seek; both authorization gates run first and unchanged, since a range is a narrower read of the same bytes and never a way to reach bytes a whole read would refuse. |
 | `describeFile` | `Future<TomStoredBlob?> describeFile(K id, String fieldName)` | The descriptor of the file held by `fieldName` on row `id`, or `null` when the row (or its column) holds nothing. |
 | `clearFile` | `Future<T> clearFile(T entity, String fieldName)` | Clears the file column `fieldName` on `entity`, deleting the blob. |
 

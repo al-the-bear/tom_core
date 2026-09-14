@@ -311,6 +311,106 @@ class _RecordingBlobDataSource implements TomDataSource {
   );
 }
 
+/// A backend that implements nothing but [doGet], to exercise the inherited
+/// range read.
+///
+/// Yields its content in fixed-size pieces so the default's arithmetic is
+/// driven across chunk boundaries rather than over a single list, which is the
+/// only shape in which it can be wrong.
+class _WholeReadsOnlyBlobStore extends TomBlobStore {
+  _WholeReadsOnlyBlobStore(this.content);
+
+  final List<int> content;
+
+  /// The piece size [doGet] yields in. Small, odd, and coprime with every
+  /// boundary the ranges below sit on, so the default's arithmetic is exercised
+  /// mid-piece at both ends rather than only on a piece boundary.
+  static const int chunk = 7;
+
+  /// How many bytes [doGet] has yielded across every read, so a test can show
+  /// that the fallback pays for the whole object.
+  int yielded = 0;
+
+  @override
+  Stream<List<int>> doGet(String key) async* {
+    for (var at = 0; at < content.length; at += chunk) {
+      final piece = content.sublist(at, (at + chunk).clamp(0, content.length));
+      yielded += piece.length;
+      yield piece;
+    }
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName} is not under test');
+}
+
+/// A data source that answers one blob's manifest and chunk rows from memory.
+///
+/// Enough to drive [TomDatabaseBlobStore]'s reads without a database, which is
+/// what makes "only the chunks the range touches are fetched" assertable in the
+/// default suite rather than only under `--tags db`.
+class _StoredBlobDataSource implements TomDataSource {
+  _StoredBlobDataSource({
+    required this.key,
+    required this.content,
+    required this.chunkSize,
+  });
+
+  final String key;
+  final List<int> content;
+  final int chunkSize;
+
+  /// The `chunk_index` of every chunk row queried, in order.
+  final List<int> chunksRead = [];
+
+  /// Whether the manifest answers `chunk_size` as `0`, the shape a row written
+  /// without one has.
+  bool unrecordedChunkSize = false;
+
+  int get _chunkCount => (content.length + chunkSize - 1) ~/ chunkSize;
+
+  @override
+  Future<BigInt> executeCommand(
+    String command, [
+    Map<String, dynamic>? params,
+  ]) async => BigInt.one;
+
+  @override
+  Future<List<T>> executeQuery<T extends Object>(
+    String command, [
+    Map<String, dynamic>? params,
+    Type? resultType,
+  ]) async {
+    if (command.contains('chunk_index = :chunkIndex')) {
+      final index = params!['chunkIndex'] as int;
+      chunksRead.add(index);
+      final at = index * chunkSize;
+      final row = TomBlobChunkRow()
+        ..chunkData = base64.encode(
+          content.sublist(at, (at + chunkSize).clamp(0, content.length)),
+        );
+      return <TomBlobChunkRow>[row].cast<T>();
+    }
+    if (params?['key'] != key) return <T>[];
+    final row = TomBlobManifestRow()
+      ..storageKey = key
+      ..uploadId = 'upload-1'
+      ..mediaType = 'application/octet-stream'
+      ..byteCount = content.length
+      ..chunkCount = _chunkCount
+      ..chunkSize = unrecordedChunkSize ? 0 : chunkSize
+      ..storedAt = DateTime.utc(2026, 7, 8);
+    return <TomBlobManifestRow>[row].cast<T>();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
+    'The stored-blob data source was asked for ${invocation.memberName}, '
+    'which no test needs.',
+  );
+}
+
 void main() {
   group('every backend refuses an invalid key on every method', () {
     // The grammar was enforced on `put` and left to each backend elsewhere, so
@@ -360,6 +460,221 @@ void main() {
       // splitting them would make a caller handle two.
       final store = TomMemoryBlobStore();
       return _refusesEverywhere(store, 'a' * (TomBlobStore.maxKeyLength + 1));
+    });
+  });
+
+  // `get` took a key and nothing else, so a download endpoint honouring HTTP
+  // `Range` had to read from zero and throw the prefix away — paying the full
+  // transfer for every seek, on backends that can all seek natively. The
+  // contract now carries a range, with a default on [TomBlobStore] that reads
+  // and discards so that no backend is *obliged* to implement two read paths,
+  // and an override on each of the four that can do better.
+  //
+  // The reference every case is checked against is the same sublist, because
+  // four native implementations and one fallback agreeing with `List.sublist`
+  // is the whole claim. What differs between them is cost, and cost is what the
+  // last three tests assert directly.
+  group('a byte range reads only the bytes asked for', () {
+    /// 5,000 bytes with a position-dependent value, so a slice taken from the
+    /// wrong offset is a different slice rather than the same zeros.
+    final content = Uint8List.fromList([
+      for (var i = 0; i < 5000; i++) (i * 7 + i ~/ 251) % 251,
+    ]);
+
+    /// The ranges every backend is driven through: the head, the tail, an
+    /// interior slice, the whole thing by two spellings, and the last byte
+    /// alone.
+    final ranges = <TomBlobRange>[
+      TomBlobRange(0, 10),
+      TomBlobRange(4990),
+      TomBlobRange(1234, 3456),
+      TomBlobRange(0),
+      TomBlobRange(0, 5000),
+      TomBlobRange(4999, 5000),
+    ];
+
+    Future<void> agreesWithSublist(TomBlobStore store, String key) async {
+      for (final range in ranges) {
+        final end = range.endExclusive ?? content.length;
+        expect(
+          await store.getBytes(key, range: range),
+          content.sublist(range.start, end),
+          reason: '$store served the wrong bytes for $range',
+        );
+      }
+    }
+
+    test('memory', () async {
+      final store = TomMemoryBlobStore();
+      await store.putBytes(key: 'k.bin', bytes: content);
+      await agreesWithSublist(store, 'k.bin');
+    });
+
+    test('directory', () async {
+      final root = Directory.systemTemp.createTempSync('tom_range_');
+      addTearDown(() => root.deleteSync(recursive: true));
+      final store = TomDirectoryBlobStore(root);
+      await store.putBytes(key: 'k.bin', bytes: content);
+      await agreesWithSublist(store, 'k.bin');
+    });
+
+    test('database', () async {
+      final source = _StoredBlobDataSource(
+        key: 'k.bin',
+        content: content,
+        chunkSize: 512,
+      );
+      final store = TomDatabaseBlobStore(source, createSchema: false);
+      await agreesWithSublist(store, 'k.bin');
+    });
+
+    test('s3', () async {
+      // The backend asks the object store for the range, so the fake has to
+      // serve it — which is also what makes the header assertable below.
+      final store = _s3((request) async {
+        final header = request.headers['range'];
+        if (header == null) return http.Response.bytes(content, 200);
+        final match = RegExp(r'^bytes=(\d+)-(\d*)$').firstMatch(header)!;
+        final start = int.parse(match.group(1)!);
+        final to = match.group(2)!;
+        final end = to.isEmpty ? content.length : int.parse(to) + 1;
+        return http.Response.bytes(content.sublist(start, end), 206);
+      });
+      await agreesWithSublist(store, 'k.bin');
+    });
+
+    test('a backend that implements only doGet', () async {
+      // The inherited default, which is what decision (B) buys: a backend
+      // author writes one read path and a ranged read still works.
+      final store = _WholeReadsOnlyBlobStore(content);
+      await agreesWithSublist(store, 'k.bin');
+    });
+
+    test('the default pays for the prefix, and the natives do not', () async {
+      // The cost, stated as a number rather than as prose. All three serve
+      // the last ten bytes of a 5,000-byte blob. The fallback reads the 4,990
+      // before them and throws them away; the S3 backend sends one header and
+      // receives ten; the database backend touches one chunk row out of ten.
+      final tail = TomBlobRange(4990, 5000);
+      final fallback = _WholeReadsOnlyBlobStore(content);
+      expect(await fallback.getBytes('k.bin', range: tail), hasLength(10));
+      expect(
+        fallback.yielded,
+        greaterThanOrEqualTo(4990),
+        reason: 'the fallback is supposed to read the prefix and discard it',
+      );
+
+      var received = 0;
+      final s3 = _s3((request) async {
+        final match = RegExp(
+          r'^bytes=(\d+)-(\d*)$',
+        ).firstMatch(request.headers['range']!)!;
+        final start = int.parse(match.group(1)!);
+        final to = match.group(2)!;
+        final body = content.sublist(
+          start,
+          to.isEmpty ? content.length : int.parse(to) + 1,
+        );
+        received += body.length;
+        return http.Response.bytes(body, 206);
+      });
+      await s3.getBytes('k.bin', range: tail);
+      expect(received, 10, reason: 'the prefix crossed the wire anyway');
+
+      final source = _StoredBlobDataSource(
+        key: 'k.bin',
+        content: content,
+        chunkSize: 500,
+      );
+      final database = TomDatabaseBlobStore(source, createSchema: false);
+      await database.getBytes('k.bin', range: tail);
+      expect(
+        source.chunksRead,
+        [9],
+        reason: 'the rows before the range were fetched and thrown away',
+      );
+    });
+
+    test('the S3 range header is inclusive at the end, and is signed', () {
+      // Two facts about one line. The header is inclusive where this module's
+      // range is exclusive, so an off-by-one here serves one byte too many
+      // without failing anywhere; and a header S3 does not see in the signature
+      // makes the whole request a 403.
+      final seen = <String, String>{};
+      final store = _s3((request) async {
+        seen.addAll(request.headers);
+        return http.Response.bytes(content.sublist(0, 10), 206);
+      });
+      return store.getBytes('k.bin', range: TomBlobRange(0, 10)).then((_) {
+        expect(seen['range'], 'bytes=0-9');
+        expect(seen['authorization'], contains('SignedHeaders='));
+        expect(seen['authorization'], contains('range'));
+      });
+    });
+
+    test('an open-ended range asks S3 for one too', () async {
+      // `bytes=500-` rather than a computed end: the store does not know the
+      // object's size, and inventing one would be the second place that size is
+      // decided.
+      late String header;
+      final store = _s3((request) async {
+        header = request.headers['range']!;
+        return http.Response.bytes(content.sublist(500), 206);
+      });
+      await store.getBytes('k.bin', range: TomBlobRange(500));
+      expect(header, 'bytes=500-');
+    });
+
+    test('a manifest with no recorded chunk size still reads correctly', () {
+      // The database backend divides a byte offset by the recorded chunk size.
+      // A manifest that does not carry one cannot be seeked into, and the
+      // answer is the slow correct read rather than a guess: `byte_count` and
+      // `chunk_count` do not determine it — 10 bytes in 2 chunks is 6+4 or 9+1
+      // or 5+5.
+      final source = _StoredBlobDataSource(
+        key: 'k.bin',
+        content: content,
+        chunkSize: 500,
+      )..unrecordedChunkSize = true;
+      final store = TomDatabaseBlobStore(source, createSchema: false);
+      return expectLater(
+        store.getBytes('k.bin', range: TomBlobRange(4800, 4810)),
+        completion(content.sublist(4800, 4810)),
+      );
+    });
+
+    test('a range that is not one is refused before any backend sees it', () {
+      for (final build in <TomBlobRange Function()>[
+        () => TomBlobRange(-1),
+        () => TomBlobRange(-1, 10),
+        () => TomBlobRange(10, 10),
+        () => TomBlobRange(10, 9),
+      ]) {
+        expect(
+          build,
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.invalid_range',
+            ),
+          ),
+        );
+      }
+    });
+
+    test('clampedTo separates unsatisfiable from merely overshooting', () {
+      // The distinction an endpoint answers 416 or 206 on. A start at or past
+      // the end names no byte and must be refused; a range that runs off the
+      // end is how a resumed download ends and must be served.
+      expect(TomBlobRange(100).clampedTo(100), isNull);
+      expect(TomBlobRange(101).clampedTo(100), isNull);
+      expect(TomBlobRange(0, 500).clampedTo(100)!.endExclusive, 100);
+      expect(TomBlobRange(90).clampedTo(100)!.endExclusive, 100);
+      final exact = TomBlobRange(10, 20);
+      expect(identical(exact.clampedTo(100), exact), isTrue);
+      expect(TomBlobRange(10, 20).length, 10);
+      expect(TomBlobRange(10).length, isNull);
     });
   });
 

@@ -875,7 +875,7 @@ interface, not a class of their own.
 | ------ | --------- | ----------- |
 | `upload` | `Future<TomFileMetadata> upload(String rawId, Stream<List<int>> bytes, {String? mediaType, String? fileName})` | Stores `bytes` against row `rawId` and returns the descriptor. The storage key is minted by the store, never named by the caller — a client that could choose a key could choose someone else's. |
 | `describe` | `Future<TomFileMetadata?> describe(String rawId)` | The descriptor of the file on row `rawId`, or `null` when the row holds none. |
-| `open` | `Stream<List<int>> open(String rawId)` | Streams the file on row `rawId`. |
+| `open` | `Stream<List<int>> open(String rawId, {TomBlobRange? range})` | Streams the file on row `rawId`, or `range` of it. `TomFileEndpoint` passes the range it read from an HTTP `Range` header, already resolved and clamped against the descriptor's size. |
 | `clear` | `Future<bool> clear(String rawId)` | Removes the file on row `rawId`; `false` when there was none to remove. |
 
 ### TomFileSlots

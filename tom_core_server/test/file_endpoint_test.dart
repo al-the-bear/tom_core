@@ -207,7 +207,11 @@ class _MemoryFileRepository
   }
 
   @override
-  Stream<List<int>> openFile(int id, String fieldName) async* {
+  Stream<List<int>> openFile(
+    int id,
+    String fieldName, {
+    TomBlobRange? range,
+  }) async* {
     final column = _column(fieldName);
     final row = _visible(id);
     if (row == null) {
@@ -231,7 +235,7 @@ class _MemoryFileRepository
         parameters: {'id': '$id', 'field': fieldName},
       );
     }
-    yield* _store(column).get(key);
+    yield* _store(column).get(key, range: range);
   }
 
   @override
@@ -735,6 +739,174 @@ void main() {
         expect(await client.describe(slot), isNull);
       },
     );
+
+    // A browser resuming a large download, or seeking in a video, sends
+    // `Range`. Before this the endpoint ignored the header and served the whole
+    // file with a 200 — which is legal, and which makes every seek cost the
+    // full transfer on backends that can all seek natively.
+    group('Range', () {
+      /// 1,000 bytes with a position-dependent value, uploaded to row 1.
+      final payload = Uint8List.fromList([
+        for (var i = 0; i < 1000; i++) (i * 13) % 251,
+      ]);
+      const slot = 'fixture_file_slot/1/poster';
+
+      /// Boots the server and puts [payload] in the slot.
+      Future<void> withPayload() async {
+        await start();
+        await client.upload(
+          slot: slot,
+          source: TomFileSource.bytes('big.bin', payload),
+        );
+      }
+
+      /// The body of [response], drained.
+      Future<List<int>> bodyOf(HttpClientResponse response) async {
+        final bytes = <int>[];
+        await for (final chunk in response) {
+          bytes.addAll(chunk);
+        }
+        return bytes;
+      }
+
+      test(
+        'a range is answered 206 with the slice and its Content-Range',
+        () async {
+          await withPayload();
+          final response = await _raw(
+            server.port,
+            'GET',
+            '/files/$slot',
+            headers: const {'range': 'bytes=100-199'},
+          );
+          expect(response.statusCode, 206);
+          expect(
+            response.headers.value('content-range'),
+            'bytes 100-199/1000',
+            reason: 'Content-Range is inclusive at both ends',
+          );
+          expect(response.headers.value('content-length'), '100');
+          expect(await bodyOf(response), payload.sublist(100, 200));
+        },
+      );
+
+      test('an open-ended range runs to the end', () async {
+        await withPayload();
+        final response = await _raw(
+          server.port,
+          'GET',
+          '/files/$slot',
+          headers: const {'range': 'bytes=900-'},
+        );
+        expect(response.statusCode, 206);
+        expect(response.headers.value('content-range'), 'bytes 900-999/1000');
+        expect(await bodyOf(response), payload.sublist(900));
+      });
+
+      test('a suffix range counts back from the end', () async {
+        // The form that needs the size, which the endpoint has from `describe`
+        // and the store does not. `bytes=-100` is the last hundred bytes, not
+        // the first hundred and not a range starting at -100.
+        await withPayload();
+        final response = await _raw(
+          server.port,
+          'GET',
+          '/files/$slot',
+          headers: const {'range': 'bytes=-100'},
+        );
+        expect(response.statusCode, 206);
+        expect(response.headers.value('content-range'), 'bytes 900-999/1000');
+        expect(await bodyOf(response), payload.sublist(900));
+      });
+
+      test('a suffix longer than the file is the whole file', () async {
+        await withPayload();
+        final response = await _raw(
+          server.port,
+          'GET',
+          '/files/$slot',
+          headers: const {'range': 'bytes=-5000'},
+        );
+        expect(response.statusCode, 206);
+        expect(response.headers.value('content-range'), 'bytes 0-999/1000');
+        expect(await bodyOf(response), payload);
+      });
+
+      test('a range running past the end is clamped, not refused', () async {
+        // How a resumed download ends: the client asks for more than is left
+        // and is given what is left. Refusing here would make the last request
+        // of every resume a failure.
+        await withPayload();
+        final response = await _raw(
+          server.port,
+          'GET',
+          '/files/$slot',
+          headers: const {'range': 'bytes=990-2000'},
+        );
+        expect(response.statusCode, 206);
+        expect(response.headers.value('content-range'), 'bytes 990-999/1000');
+        expect(await bodyOf(response), payload.sublist(990));
+      });
+
+      test('a range beyond the end is 416, naming the size', () async {
+        // The one refusal, and the header on it is the point: a client
+        // resuming from a stale size learns the current one and can retry,
+        // rather than looping on a request that will never succeed.
+        await withPayload();
+        final response = await _raw(
+          server.port,
+          'GET',
+          '/files/$slot',
+          headers: const {'range': 'bytes=1000-1100'},
+        );
+        expect(response.statusCode, 416);
+        expect(response.headers.value('content-range'), 'bytes */1000');
+        expect(
+          jsonDecode(utf8.decode(await bodyOf(response)))['key'],
+          'file_endpoint.range_not_satisfiable',
+        );
+      });
+
+      test('a header this does not understand serves the whole file', () async {
+        // Leniency, on purpose. A multipart/byteranges body is a second wire
+        // format for a case no browser needs, and refusing a header merely not
+        // understood would break a download that would otherwise have worked.
+        // RFC 9110 permits ignoring the header, so each of these is a 200.
+        await withPayload();
+        for (final header in const [
+          'bytes=0-99, 200-299', // more than one range
+          'items=0-99', // a unit that is not bytes
+          'bytes=-', // neither end
+          'bytes=200-100', // backwards
+          'nonsense',
+        ]) {
+          final response = await _raw(
+            server.port,
+            'GET',
+            '/files/$slot',
+            headers: {'range': header},
+          );
+          expect(response.statusCode, 200, reason: header);
+          expect(await bodyOf(response), payload, reason: header);
+        }
+      });
+
+      test('every download advertises that it takes ranges', () async {
+        // Without this a browser does not try: `Accept-Ranges` is what makes a
+        // download resumable from the client's side, and HEAD is where a client
+        // planning a resumable transfer reads it.
+        await withPayload();
+        for (final method in const ['GET', 'HEAD']) {
+          final response = await _raw(server.port, method, '/files/$slot');
+          expect(
+            response.headers.value('accept-ranges'),
+            'bytes',
+            reason: method,
+          );
+          await bodyOf(response);
+        }
+      });
+    });
 
     test('a download produces its bytes inside the request execution context', () async {
       // A response body is *lazy*. The handler returns a stream and shelf hands
@@ -1294,10 +1466,12 @@ Future<HttpClientResponse> _raw(
   String method,
   String path, {
   List<int>? body,
+  Map<String, String> headers = const {},
 }) async {
   final http = HttpClient();
   try {
     final request = await http.open(method, '127.0.0.1', port, path);
+    headers.forEach(request.headers.set);
     if (body != null) {
       request.headers.contentType = ContentType('application', 'octet-stream');
       request.add(body);

@@ -231,6 +231,46 @@ of the type rather than of whichever backend built the descriptor.
 | ------ | --------- | ----------- |
 | `toString` | `String toString()` | *(override)* Renders `TomStoredBlob(<key>, <byteCount> bytes, <mediaType>)`. |
 
+### TomBlobRange
+
+A half-open byte range of a stored blob — `start` inclusive, `endExclusive`
+exclusive — for the partial read `TomBlobStore.get` takes. Half-open because
+`File.openRead` and `List.sublist` are, which is where a range ends up. HTTP's
+`Range` is inclusive at both ends and its suffix form (`bytes=-500`) names no
+start at all; both are resolved against the blob's known size before they reach
+here, by whoever read the header, so a backend never reasons about a range it
+cannot check. Both ends are validated at construction, so every backend refuses
+the same nonsense the same way — the reason key validation sits on
+`TomBlobStore` and not in each `do*`.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+TomBlobRange(int start, [int? endExclusive])
+```
+
+Throws `TomStorageException` (`storage.blob.invalid_range`) for a negative start
+or an end at or before it. An empty range is refused rather than answered with
+an empty stream: a zero-length read is a caller's arithmetic going wrong, and an
+empty body is how that mistake reaches a user as a corrupt download.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `start` | `int` | The first byte to read, counted from zero (final). |
+| `endExclusive` | `int?` | One past the last byte to read, or `null` to read to the end — the form a `bytes=500-` header takes, and the only one that needs no size to resolve (final). |
+| `length` | `int?` | *(getter)* How many bytes the range covers, or `null` when it runs to the end. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `clampedTo` | `TomBlobRange? clampedTo(int byteCount)` | The range clamped to a blob of `byteCount` bytes, or `null` when it lies wholly beyond it. `null` is what HTTP calls *unsatisfiable*: a start at or past the end names no byte, and the correct answer is a refusal rather than an empty body. A range that merely overshoots is clamped instead — asking for more than there is and getting what there is is how a resumed download ends. |
+| `toString` | `String toString()` | *(override)* Renders `TomBlobRange(<start>, <endExclusive>)`. |
+
 ### TomBlobStore
 
 Stores and retrieves blobs by key. Implemented by the four shipped backends; an
@@ -275,16 +315,17 @@ different subset of them, which is what the four shipped backends did.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `put` | `Future<TomStoredBlob> put({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | Validates `key`, calls `doPut`, reports any other failure as `storage.blob.write_failed`. Writes `bytes` under `key`, replacing anything already there, and returns the descriptor. A failure must leave nothing readable under `key` beyond what was there before: implementations commit atomically or not at all. A chunk from `bytes` is borrowed for the duration of the `await` — consume or copy it before asking for the next, never retain it, since a producer refilling one scratch buffer per chunk is the ordinary shape of an encoder. |
-| `get` | `Stream<List<int>> get(String key)` | Validates `key`, reads through `doGet`, reports any other failure as `storage.blob.read_failed`. Throws `storage.blob.not_found` when the key holds nothing, rather than disguising a missing blob as an empty file. Each chunk belongs to the caller: writable, and aliased with nothing the store keeps. Consumes the backend's stream with `await for` rather than `yield*`, because a `yield*` forwards the inner stream's errors past the enclosing `try` and the translation would never run. A transfer that breaks partway still delivers the chunks that arrived and *then* throws — draining the backend's stream first would satisfy the error contract while turning every interrupted download into an empty one, and would reintroduce buffering on the read side. |
+| `get` | `Stream<List<int>> get(String key, {TomBlobRange? range})` | Validates `key`, reads through `doGet` — or through `doGetRange` when a `range` is given — reports any other failure as `storage.blob.read_failed`. Throws `storage.blob.not_found` when the key holds nothing, rather than disguising a missing blob as an empty file. Each chunk belongs to the caller: writable, and aliased with nothing the store keeps. Consumes the backend's stream with `await for` rather than `yield*`, because a `yield*` forwards the inner stream's errors past the enclosing `try` and the translation would never run. A transfer that breaks partway still delivers the chunks that arrived and *then* throws — draining the backend's stream first would satisfy the error contract while turning every interrupted download into an empty one, and would reintroduce buffering on the read side. |
 | `describe` | `Future<TomStoredBlob?> describe(String key)` | Validates `key`, calls `doDescribe`, reports any other failure as `storage.blob.probe_failed`. The descriptor for `key`, or `null` when it holds nothing — the one read allowed to answer "nothing" without throwing. |
 | `delete` | `Future<bool> delete(String key)` | Validates `key`, calls `doDelete`, reports any other failure as `storage.blob.delete_failed`. Returns whether anything was there to delete. |
 | `exists` | `Future<bool> exists(String key)` | Validates `key`, calls `doExists`, reports any other failure as `storage.blob.probe_failed`. |
 | `doPut` | `Future<TomStoredBlob> doPut({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(abstract)* Implemented by a backend; called by `put` with an already-validated key. A backend that fails part-way through cleans up and lets the failure out — `put` names the operation — rather than building a `write_failed` of its own. |
 | `doGet` | `Stream<List<int>> doGet(String key)` | *(abstract)* Implemented by a backend; called by `get` with an already-validated key. Throws `notFound` when the key holds nothing. |
+| `doGetRange` | `Stream<List<int>> doGetRange(String key, TomBlobRange range)` | Called by `get` when a range is given. Defined in terms of `doGet` so a backend implements one read path, not two — the arrangement `doExists` has over `doDescribe` — and overridden by every shipped backend, each of which can seek. The default reads from zero, discards everything before the range and stops once it is served: correct, and costing the prefix, which for a seek near the end of a large blob is the whole thing. Putting that fallback here rather than in the caller is what lets a download endpoint honour HTTP `Range` against any backend while still reaching S3's native capability. A range running past the end yields what there is rather than failing; the caller that knows the size has already refused an unsatisfiable one with `TomBlobRange.clampedTo`. |
 | `doDescribe` | `Future<TomStoredBlob?> doDescribe(String key)` | *(abstract)* Implemented by a backend; called by `describe` with an already-validated key. |
 | `doDelete` | `Future<bool> doDelete(String key)` | *(abstract)* Implemented by a backend; called by `delete` with an already-validated key. |
 | `doExists` | `Future<bool> doExists(String key)` | Called by `exists` with an already-validated key. Defined in terms of `doDescribe` so a backend implements one lookup, not two; overridden where a cheaper existence probe exists. |
-| `getBytes` | `Future<Uint8List> getBytes(String key)` | Reads `key` fully into memory — the convenience for call sites that genuinely know their blobs are small. A helper on the streaming API, not a second contract method, so a backend author cannot implement it instead of streaming. Collects with a non-copying builder, which returns a lone chunk untouched: it is exactly as aliased as what the backend yielded, which is why `get` promises the caller owns its chunks. |
+| `getBytes` | `Future<Uint8List> getBytes(String key, {TomBlobRange? range})` | Reads `key` fully into memory — the convenience for call sites that genuinely know their blobs are small. A helper on the streaming API, not a second contract method, so a backend author cannot implement it instead of streaming. Collects with a non-copying builder, which returns a lone chunk untouched: it is exactly as aliased as what the backend yielded, which is why `get` promises the caller owns its chunks. |
 | `putBytes` | `Future<TomStoredBlob> putBytes({required String key, required List<int> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | The buffered counterpart to `getBytes`; delegates to `put` with a single-value stream. |
 | `close` | `Future<void> close()` | Releases whatever the backend holds open. Idempotent; the default does nothing, because most backends hold nothing. |
 
@@ -321,6 +362,7 @@ TomMemoryBlobStore()
 | `clear` | `void clear()` | Forgets everything, for a test that reuses one store across cases. |
 | `doPut` | `Future<TomStoredBlob> doPut({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Drains the stream fully before either map is touched, so a stream that throws half way leaves no half-written blob. Copies each chunk as it arrives rather than retaining it, so a producer reusing one scratch buffer stores what it streamed. |
 | `doGet` | `Stream<List<int>> doGet(String key)` | *(override)* Yields the buffered bytes as one chunk, copied so the reader owns it; throws `storage.blob.not_found` when absent. |
+| `doGetRange` | `Stream<List<int>> doGetRange(String key, TomBlobRange range)` | *(override)* A `sublist`, copied like a whole read. The inherited default would read the whole blob and discard the prefix; here the whole blob is already a list. |
 | `doDescribe` | `Future<TomStoredBlob?> doDescribe(String key)` | *(override)* The descriptor recorded by `doPut`, or `null`. |
 | `doExists` | `Future<bool> doExists(String key)` | *(override)* Answers straight from the content map rather than through `doDescribe`. |
 | `doDelete` | `Future<bool> doDelete(String key)` | *(override)* Drops the content and its descriptor, returning whether content was present. |
@@ -366,6 +408,7 @@ TomDirectoryBlobStore.at(String path)
 | ------ | --------- | ----------- |
 | `doPut` | `Future<TomStoredBlob> doPut({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Streams to a sibling `<key>~part` and renames it into place, so a reader sees the previous blob or the complete new one. The close, the rename and the sidecar write are all inside the failure path, because each has filesystem faults of its own — a full disk surfaces at `close`, a rename fails on a cross-device root or an occupied target — and each of them fails *after* the partial exists. The rollback deletes whichever residue the failure left: the partial before the rename, the newly committed blob after it, then rethrows so that `put` reports it as `storage.blob.write_failed` with the original as `rootException`. |
 | `doGet` | `Stream<List<int>> doGet(String key)` | *(override)* Streams the file with `openRead`; throws `storage.blob.not_found` when it does not exist. A mid-read filesystem fault becomes `storage.blob.read_failed` at `get`. |
+| `doGetRange` | `Stream<List<int>> doGetRange(String key, TomBlobRange range)` | *(override)* `openRead(start, end)` — a real seek, so a request for the last megabyte of a gigabyte reads a megabyte. |
 | `doDescribe` | `Future<TomStoredBlob?> doDescribe(String key)` | *(override)* Size and mtime from `stat()`, media type and file name from the sidecar when it is present and parseable — so a directory populated by `scp` is still readable. A sidecar that cannot be *read* (as opposed to parsed) surfaces as `storage.blob.probe_failed`. |
 | `doExists` | `Future<bool> doExists(String key)` | *(override)* A direct file-existence probe. `exists` translates whatever this throws, but here there is nothing to translate: `File.exists` answers from a `stat` and maps every failure of it — an unreadable parent directory included — to `false`. It therefore means "visible to this process" rather than "present in storage"; ask `describe` to tell an unreadable blob from an absent one. |
 | `doDelete` | `Future<bool> doDelete(String key)` | *(override)* Deletes the file and its sidecar, returning whether the file was there; a filesystem refusal surfaces as `storage.blob.delete_failed`. |
@@ -444,6 +487,7 @@ error far better caught at start-up than on the first upload.
 | `ensureSchema` | `Future<void> ensureSchema()` | Creates the two tables if they do not exist. Idempotent and called automatically by every operation; exposed so a start-up sequence can provision the schema before serving traffic. |
 | `doPut` | `Future<TomStoredBlob> doPut({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Slices the incoming stream into `chunkSize` chunk rows under a fresh upload id, then replaces the manifest row — the commit point. A failure deletes the chunks it wrote and rethrows, so `put` reports `storage.blob.write_failed`; superseded chunks are removed afterwards and a failure to do so is logged, not raised. |
 | `doGet` | `Stream<List<int>> doGet(String key)` | *(override)* Reads the manifest, then fetches and base64-decodes one chunk row per consumer demand; throws `storage.blob.not_found` for an unknown key and `storage.blob.missing_chunk` when the manifest and its chunks disagree. |
+| `doGetRange` | `Stream<List<int>> doGetRange(String key, TomBlobRange range)` | *(override)* Divides the range's start by the manifest's recorded `chunk_size` to name the first chunk row, then fetches only the rows the range touches and trims the two edges. A manifest carrying no size falls back to the inherited read: the size is a constructor argument, so a store reconfigured between the write and the read would otherwise seek to the wrong row, and `byte_count` with `chunk_count` does not determine it. |
 | `doDescribe` | `Future<TomStoredBlob?> doDescribe(String key)` | *(override)* Builds the descriptor from the manifest row, or `null`. An empty `file_name` is treated as absent, so a `NOT NULL` variant of the table behaves the same. |
 | `doDelete` | `Future<bool> doDelete(String key)` | *(override)* Deletes the manifest row first — that is the point at which the blob is gone — then its chunks; returns whether a manifest was there. |
 | `purgeOrphanedChunks` | `Future<int> purgeOrphanedChunks()` | Deletes chunk rows no manifest refers to, returning how many were removed. Housekeeping for the residue of a replace or delete whose chunk cleanup failed; belongs on a schedule rather than in the request path. |
@@ -472,6 +516,7 @@ TomBlobManifestRow()
 | `fileName` | `String?` | The original file name, or `null` when none was supplied — the ordinary case, since most blobs are written by key (column `file_name`). |
 | `byteCount` | `int` | The blob's size in bytes (column `byte_count`). |
 | `chunkCount` | `int` | How many chunk rows the content occupies (column `chunk_count`). |
+| `chunkSize` | `int` | The size every chunk but the last was written at (column `chunk_size`). Recorded rather than assumed because a ranged read divides a byte offset by it and the store's `chunkSize` is a constructor argument; it is not derivable from `byte_count` and `chunk_count` either — ten bytes in two chunks is 6+4 or 9+1 or 5+5. |
 | `storedAt` | `DateTime` | When the write completed, read back as UTC (column `stored_at`). |
 
 ### TomBlobChunkRow
@@ -648,6 +693,7 @@ render it unawares.
 | ------ | --------- | ----------- |
 | `doPut` | `Future<TomStoredBlob> doPut({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Buffers up to `partSize`: a stream that ends inside the first buffer is one signed `PUT`, otherwise each full buffer becomes a part and the upload is completed at the end. Any failure issues an `AbortMultipartUpload` and rethrows, so `put` reports `storage.blob.write_failed` — or passes through the storage exception already thrown. |
 | `doGet` | `Stream<List<int>> doGet(String key)` | *(override)* Streams the response body of a signed `GET`; `404` drains the body and throws `storage.blob.not_found`, which passes through to the caller, and any other error status throws `storage.s3.request_failed`, which `get` translates to `storage.blob.read_failed`. |
+| `doGetRange` | `Stream<List<int>> doGetRange(String key, TomBlobRange range)` | *(override)* The same signed `GET` carrying `Range: bytes=a-b`, so the bytes before the range never cross the wire. The header is inclusive at both ends where `TomBlobRange` is exclusive at the top, and an open-ended range goes out as `bytes=500-` — the store does not know the object's size, and inventing one would be a second place that size is decided. S3 answers `206`, which the success check already accepts. |
 | `doDescribe` | `Future<TomStoredBlob?> doDescribe(String key)` | *(override)* A signed `HEAD`, mapping `content-type`, `content-length`, `last-modified` and `x-amz-meta-filename` into the descriptor; `null` on `404`. |
 | `doDelete` | `Future<bool> doDelete(String key)` | *(override)* Probes with `doExists` first, because S3 answers `204` to a delete whether or not the object was there, then sends the signed `DELETE`. |
 | `close` | `Future<void> close()` | *(override)* Closes the HTTP client, but only the one this store created. |

@@ -173,6 +173,17 @@ class TomDirectoryBlobStore extends TomBlobStore {
   }
 
   @override
+  Stream<List<int>> doGetRange(String key, TomBlobRange range) async* {
+    final file = _fileFor(key);
+    if (!file.existsSync()) throw TomBlobStore.notFound(key);
+    // A real seek: `openRead` takes the offsets straight to the file
+    // descriptor, so a request for the last megabyte of a gigabyte reads a
+    // megabyte. The inherited default would read the gigabyte and throw away
+    // all but the tail.
+    yield* file.openRead(range.start, range.endExclusive);
+  }
+
+  @override
   Future<TomStoredBlob?> doDescribe(String key) async {
     final file = _fileFor(key);
     if (!file.existsSync()) return null;

@@ -191,6 +191,68 @@ class TomStoredBlob {
   String toString() => 'TomStoredBlob($key, $byteCount bytes, $mediaType)';
 }
 
+/// A half-open byte range of a stored blob: [start] inclusive, [endExclusive]
+/// exclusive.
+///
+/// Half-open because that is what `File.openRead` and `List.sublist` take, and
+/// the backends are where this ends up. HTTP's `Range` is inclusive-at-both-ends
+/// and a *suffix* form (`bytes=-500`) has no start at all; both are resolved
+/// against the blob's known size before they reach here, by whoever read the
+/// header. This type is the resolved one, so a backend never has to reason
+/// about a range it cannot check.
+///
+/// Both ends are checked at construction rather than at the backend, so every
+/// store refuses the same nonsense the same way — the same reason key
+/// validation sits on [TomBlobStore] and not in each `do*`.
+class TomBlobRange {
+  /// A range from [start] up to but not including [endExclusive].
+  ///
+  /// [endExclusive] `null` means *to the end of the blob*, which is the form a
+  /// `bytes=500-` header takes and the only one that needs no size to resolve.
+  ///
+  /// Throws [TomStorageException] (`storage.blob.invalid_range`) for a negative
+  /// start or an end at or before it. An empty range is refused rather than
+  /// answered with an empty stream: a zero-length read is a caller's arithmetic
+  /// going wrong, and an empty body is how that mistake reaches a user as a
+  /// corrupt download.
+  TomBlobRange(this.start, [this.endExclusive]) {
+    if (start < 0 || (endExclusive != null && endExclusive! <= start)) {
+      throw TomStorageException(
+        'storage.blob.invalid_range',
+        'That byte range is not a range.',
+        parameters: {'start': start, 'endExclusive': endExclusive},
+      );
+    }
+  }
+
+  /// The first byte to read, counted from zero.
+  final int start;
+
+  /// One past the last byte to read, or `null` to read to the end.
+  final int? endExclusive;
+
+  /// How many bytes this range covers, or `null` when it runs to the end.
+  int? get length => endExclusive == null ? null : endExclusive! - start;
+
+  /// This range clamped to a blob of [byteCount] bytes, or `null` when it lies
+  /// wholly beyond it.
+  ///
+  /// `null` is the answer HTTP calls *unsatisfiable*: a start at or past the
+  /// end names no byte, and the correct response is a refusal rather than an
+  /// empty body. A range that merely *overshoots* is not unsatisfiable — it is
+  /// clamped, because asking for more than there is and getting what there is
+  /// is how a resumed download ends.
+  TomBlobRange? clampedTo(int byteCount) {
+    if (start >= byteCount) return null;
+    final end = endExclusive;
+    if (end == null || end > byteCount) return TomBlobRange(start, byteCount);
+    return this;
+  }
+
+  @override
+  String toString() => 'TomBlobRange($start, $endExclusive)';
+}
+
 /// Stores and retrieves blobs by key.
 ///
 /// Implemented by [TomMemoryBlobStore], `TomDirectoryBlobStore`,
@@ -274,14 +336,16 @@ abstract class TomBlobStore {
   /// draining the backend's stream first: buffering here would be invisible to
   /// anyone reading a small blob, and would quietly turn every interrupted
   /// download into an empty one.
-  Stream<List<int>> get(String key) async* {
+  Stream<List<int>> get(String key, {TomBlobRange? range}) async* {
     try {
+      final validated = validateKey(key);
       // `await for`, not `yield*`: a `yield*` forwards the inner stream's
       // *errors* straight to the output stream, past the enclosing try, so the
       // translation below would never see the failure it exists to translate.
       // Re-yielding each chunk as it arrives is also what keeps the read
       // streaming, and so what keeps the partial delivery above true.
-      await for (final chunk in doGet(validateKey(key))) {
+      await for (final chunk
+          in range == null ? doGet(validated) : doGetRange(validated, range)) {
         yield chunk;
       }
     } on TomStorageException catch (error, stack) {
@@ -336,6 +400,42 @@ abstract class TomBlobStore {
   /// Reads a validated [key]. Implemented by backends; called by [get].
   Stream<List<int>> doGet(String key);
 
+  /// Reads [range] of a validated [key]. Called by [get] when one is given.
+  ///
+  /// Defined in terms of [doGet] so a backend implements one read path, not
+  /// two — the same arrangement as [doExists] over [doDescribe]. **Override it
+  /// when the backend can seek**, which is every backend shipped here: a file
+  /// opens at an offset, a chunked row set skips whole rows, and S3 takes a
+  /// `Range` header. The default reads from zero and discards everything before
+  /// the range, stopping once the range is served — correct, and costing the
+  /// prefix, which for a seek near the end of a large blob is the whole thing.
+  ///
+  /// Putting the discarding here rather than in the caller is the point. A
+  /// download endpoint honouring HTTP `Range` needs *a* range read from every
+  /// backend, and writing the fallback at the endpoint would mean the S3
+  /// backend's native capability were unreachable through the interface.
+  ///
+  /// A range that runs past the end of the blob yields what there is rather
+  /// than failing: [get] cannot know the size without a second lookup, and the
+  /// caller that does know — the endpoint — has already refused an
+  /// unsatisfiable one with [TomBlobRange.clampedTo].
+  Stream<List<int>> doGetRange(String key, TomBlobRange range) async* {
+    var position = 0;
+    await for (final chunk in doGet(key)) {
+      final end = position + chunk.length;
+      if (end > range.start) {
+        final from = range.start > position ? range.start - position : 0;
+        final limit = range.endExclusive;
+        final to = limit == null || limit >= end
+            ? chunk.length
+            : limit - position;
+        yield chunk.sublist(from, to);
+      }
+      position = end;
+      if (range.endExclusive != null && position >= range.endExclusive!) return;
+    }
+  }
+
   /// Describes a validated [key]. Implemented by backends; called by [describe].
   Future<TomStoredBlob?> doDescribe(String key);
 
@@ -355,12 +455,12 @@ abstract class TomBlobStore {
   /// helper on the streaming API rather than a second method on the contract
   /// precisely so that a backend author cannot implement it *instead of*
   /// streaming.
-  Future<Uint8List> getBytes(String key) async {
+  Future<Uint8List> getBytes(String key, {TomBlobRange? range}) async {
     // Non-copying, which is safe only because [get] yields chunks the caller
     // owns: a lone chunk comes back from `takeBytes` untouched, so this method
     // is exactly as aliased as what the backend yielded.
     final builder = BytesBuilder(copy: false);
-    await for (final chunk in get(key)) {
+    await for (final chunk in get(key, range: range)) {
       builder.add(chunk);
     }
     return builder.takeBytes();
@@ -706,6 +806,18 @@ class TomMemoryBlobStore extends TomBlobStore {
     // The cost is one memcpy per read on the backend that exists for tests and
     // development servers — the one place where fidelity beats speed.
     yield Uint8List.fromList(bytes);
+  }
+
+  @override
+  Stream<List<int>> doGetRange(String key, TomBlobRange range) async* {
+    final bytes = _content[key];
+    if (bytes == null) throw TomBlobStore.notFound(key);
+    // The inherited default would read the whole blob and discard the prefix.
+    // Here the whole blob is a list, so the range is a sublist — and `sublist`
+    // copies, which is the same promise `doGet` keeps one line above.
+    final end = (range.endExclusive ?? bytes.length).clamp(0, bytes.length);
+    final start = range.start.clamp(0, end);
+    yield Uint8List.fromList(bytes.sublist(start, end));
   }
 
   @override

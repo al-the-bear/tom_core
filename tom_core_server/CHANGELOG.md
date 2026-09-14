@@ -2,6 +2,44 @@
 
 ### Added
 
+- **A byte range on the blob contract, and `Range` on the download endpoint
+  (tcopen146).** `get` took a key and nothing else, so a download endpoint
+  honouring HTTP `Range` had to read from zero and throw the prefix away — the
+  full transfer for every seek, on backends that can all seek natively.
+
+  `TomBlobRange` is a half-open `[start, endExclusive)` validated once on the
+  contract, and `get` takes one. No backend is *obliged* to serve it:
+  `doGetRange` is concrete and reads from zero, discarding the prefix and
+  stopping once the range is served — the arrangement `doExists` already has
+  over `doDescribe`. All four shipped backends override it, each the way its
+  medium offers: a file seek, a `sublist`, a chunk-index division, and a signed
+  `Range: bytes=a-b` header. Putting the fallback on the contract rather than in
+  the caller is what makes S3's native capability reachable through the
+  interface at all.
+
+  `TomDatabaseBlobStore` now records `chunk_size` in the manifest, because a
+  ranged read divides a byte offset by it and the store's own chunk size is a
+  constructor argument — a store reconfigured between the write and the read
+  would otherwise seek to the wrong row. It is not derivable from `byte_count`
+  and `chunk_count`: ten bytes in two chunks is 6+4 or 9+1 or 5+5. A manifest
+  carrying none falls back to the inherited read.
+
+  `TomFileEndpoint` honours `Range` end to end. `GET` and `HEAD` advertise
+  `Accept-Ranges: bytes`, without which a browser never asks; a ranged `GET` is
+  `206` with `Content-Range` and the slice's `Content-Length`; all three header
+  forms are resolved against the descriptor's size, including the suffix
+  `bytes=-100`. An overshooting range is clamped, because that is how a resumed
+  download ends; one starting at or past the end is `416` with
+  `Content-Range: bytes */<size>`, keyed `file_endpoint.range_not_satisfiable`,
+  so a client resuming from a stale size learns the current one. A header this
+  does not understand — several ranges, another unit, backwards — is ignored and
+  the whole file is served, which RFC 9110 permits and which keeps a download
+  working that would otherwise have broken.
+
+  `TomFileRepository.openFile` and `TomFileSlot.open` carry the range through.
+  Both authorization gates run first and unchanged: a range is a narrower read
+  of the same bytes, never a way to reach bytes a whole read would refuse.
+
 - **The export store says which layer owns enumeration, and shows the retention
   pass that follows from it (tcopen145).** `doc/export.md` described expiry as
   "a matter of deleting a prefix" and deferred retention to a deployment, while

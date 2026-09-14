@@ -18,6 +18,7 @@ without the second; the second is built entirely on the first.
 - [Streaming Is the Requirement](#streaming-is-the-requirement)
   - [Who Owns a Chunk](#who-owns-a-chunk)
   - [A Broken Transfer Delivers What It Got](#a-broken-transfer-delivers-what-it-got)
+  - [A Byte Range, and Who Is Obliged to Serve It](#a-byte-range-and-who-is-obliged-to-serve-it)
 - [Keys Are a Grammar, Not a String](#keys-are-a-grammar-not-a-string)
   - [Prefixes obey the same grammar](#prefixes-obey-the-same-grammar)
 - [The Backends](#the-backends)
@@ -37,6 +38,7 @@ without the second; the second is built entirely on the first.
   - [Slots Are Derived, Not Declared](#slots-are-derived-not-declared)
   - [Exposure Is Default-Closed](#exposure-is-default-closed)
   - [The Wire Contract](#the-wire-contract)
+    - [Range](#range)
   - [Serving a File by Hand](#serving-a-file-by-hand)
   - [A File That Arrives as Part of a Form](#a-file-that-arrives-as-part-of-a-form)
 - [Exports Ride the Same API](#exports-ride-the-same-api)
@@ -51,8 +53,9 @@ without the second; the second is built entirely on the first.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomBlobStore` | abstract class | The contract: `put` / `get` / `describe` / `exists` / `delete` by key |
+| `TomBlobStore` | abstract class | The contract: `put` / `get` (whole or a byte range) / `describe` / `exists` / `delete` by key |
 | `TomStoredBlob` | class | What was stored — key, media type, size, time, name, location |
+| `TomBlobRange` | class | A half-open byte range of a blob, for the partial read `get` takes |
 | `TomStorageException` | class | The module's base error |
 | `TomBlobStoreOperation` | enum | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete`, each carrying a stable error key |
 | `TomMemoryBlobStore` | class | In-memory; tests and development |
@@ -110,7 +113,7 @@ Future<TomStoredBlob> put({
   String? fileName,
 });
 
-Stream<List<int>> get(String key);
+Stream<List<int>> get(String key, {TomBlobRange? range});
 ```
 
 `getBytes` and `putBytes` exist as conveniences for the cases that genuinely are
@@ -172,6 +175,49 @@ re-yields each chunk as it arrives inside the `try` that names the failure,
 which is why every backend can hand its raw stream — an `openRead`, an HTTP
 response body, a cursor over chunk rows — straight up without wrapping anything
 itself. `TomExportStore.open` states and does the same.
+
+### A Byte Range, and Who Is Obliged to Serve It
+
+`get` takes an optional `TomBlobRange`: a half-open `[start, endExclusive)`, with
+a null end meaning *to the end of the blob*. Half-open because `File.openRead`
+and `List.sublist` are, which is where a range ends up. Both ends are checked at
+construction, so every backend refuses the same nonsense the same way — the same
+reason key validation sits on `TomBlobStore` and not in each `do*`.
+
+**No backend is obliged to implement it.** `doGetRange` is concrete on
+`TomBlobStore` and reads from zero, discarding everything before the range and
+stopping once the range is served. A backend that overrides nothing still serves
+a range correctly; it just pays for the prefix, which for a seek near the end of
+a large blob is the whole thing. That is the same arrangement `doExists` has over
+`doDescribe`: one obligation, with a faster path where one exists.
+
+All four shipped backends take the faster path, and each does it the way its
+medium already offers:
+
+| Backend | How | What it costs |
+| ------- | --- | ------------- |
+| `TomDirectoryBlobStore` | `openRead(start, end)` | a real file seek |
+| `TomMemoryBlobStore` | `sublist` — copied, like a whole read | one memcpy of the slice |
+| `TomDatabaseBlobStore` | `start ~/ chunkSize` names the first chunk row | the rows the range touches, not the rows before it |
+| `TomS3BlobStore` | a signed `Range: bytes=a-b` header | the slice crosses the wire, not the object |
+
+The database backend records `chunk_size` in the manifest rather than assuming
+its own, because the size is a constructor argument: a store reconfigured
+between the write and the read would otherwise divide by the wrong number and
+serve the wrong bytes. It is not derivable from `byte_count` and `chunk_count`
+either — ten bytes in two chunks is 6+4 or 9+1 or 5+5. A manifest that carries no
+size falls back to the inherited read, which is slow and correct.
+
+The S3 header is **inclusive at both ends** where this module's range is
+exclusive at the top, so an open-ended range goes out as `bytes=500-` — the store
+does not know the object's size, and inventing one would be a second place that
+size is decided.
+
+Putting the fallback on the contract rather than in the caller is the decision
+worth naming. A download endpoint honouring HTTP `Range` needs *a* range read
+from whatever backend is configured; writing the discard at the endpoint instead
+would mean the S3 backend's native capability could not be reached through the
+interface at all.
 
 ## Keys Are a Grammar, Not a String
 
@@ -427,6 +473,12 @@ them. They are a closed list, `TomBlobStore.passThroughErrorKeys`:
 | `storage.blob.invalid_key` | The key is not a key — the caller's mistake, and the same one on every backend. |
 | `storage.blob.invalid_key_prefix` | The key is fine and the deployment's configured prefix leaves no room for it. A different fault from the one above, calling for a different action. |
 | `storage.blob.missing_chunk` | The blob is there and its parts do not add up. |
+
+`storage.blob.invalid_range` is the same shape one step earlier: a `TomBlobRange`
+with a negative start, or an end at or before it, is refused by its own
+constructor, so no backend ever sees one. An empty range is refused rather than
+answered with an empty stream — a zero-length read is a caller's arithmetic going
+wrong, and an empty body is how that reaches a user as a corrupt download.
 
 Everything else is wrapped, and the original fault kept as `rootException`: the
 caller needs a key it can branch on, whoever reads the log needs the `errno`
@@ -798,7 +850,7 @@ cannot drift, because they share the code that defines the shape.
 | Method | Body | Success | Empty slot |
 | ------ | ---- | ------- | ---------- |
 | `POST` / `PUT` | the bytes, with `Content-Type` and optional `Content-Disposition: attachment; filename="…"` | `201` + descriptor JSON | — |
-| `GET` | — | `200` + bytes + descriptor headers | `404` |
+| `GET` | — | `200` + bytes + descriptor headers, or `206` for a range | `404` |
 | `HEAD` | — | `200` + descriptor headers | `404` |
 | `DELETE` | — | `204` | `404` |
 
@@ -822,6 +874,39 @@ Errors are reported as `{"key", "message"}` with the same key the repository
 threw — `storage.file_reference.row_not_found`,
 `column_authorization.read.field_forbidden`, and so on — so a client can
 distinguish causes without parsing prose.
+
+#### Range
+
+`GET` and `HEAD` both answer `Accept-Ranges: bytes`. Without it a browser does
+not attempt a partial request at all, so the backends' seeking would never be
+reached from the wire — and `HEAD` is where a client planning a resumable
+transfer reads it, along with the size.
+
+A `GET` carrying `Range` is answered `206` with `Content-Range` and a
+`Content-Length` of the slice. All three forms are understood, resolved against
+the size the descriptor already gives:
+
+| Header | Means | On a 1,000-byte file |
+| ------ | ----- | -------------------- |
+| `bytes=100-199` | the hundred bytes at 100 | `206`, `Content-Range: bytes 100-199/1000` |
+| `bytes=900-` | from 900 to the end | `206`, `bytes 900-999/1000` |
+| `bytes=-100` | the **last** hundred bytes | `206`, `bytes 900-999/1000` |
+| `bytes=990-2000` | past the end — **clamped** | `206`, `bytes 990-999/1000` |
+| `bytes=1000-` | at or past the end | `416`, `Content-Range: bytes */1000` |
+
+The distinction in the last two rows is the one that matters. A range that
+overshoots is how a resumed download ends, and refusing it would make the last
+request of every resume a failure; a range that *starts* at or past the end
+names no byte at all, and the `416` carries `bytes */1000` so a client resuming
+from a stale size learns the current one instead of looping. Its body is the
+usual `{"key", "message"}`, keyed `file_endpoint.range_not_satisfiable`.
+
+Anything else — more than one range, a unit other than `bytes`, a backwards or
+unparsable header — is **ignored**, and the whole file is served with a `200`.
+RFC 9110 permits exactly that, and it is the right trade here: a
+`multipart/byteranges` body is a second wire format for a case no browser needs,
+and refusing a header merely not understood would break a download that would
+otherwise have worked.
 
 ### Serving a File by Hand
 
@@ -962,11 +1047,6 @@ and the count of them is the assertion. Every step checks its own result, and
 
 ## Not Yet Implemented
 
-- **Range requests.** `get` streams a whole blob; a video seek or a resumable
-  download needs a byte range. Every backend can express one (a `Range` header,
-  a file seek, a chunk-index arithmetic), so this is an addition to the
-  contract rather than a redesign — but adding it before a caller needs it would
-  be guessing at the signature.
 - **Server-side copy and move.** Currently a copy is a `get` piped into a `put`,
   which is correct but crosses the network twice for S3, where a single
   `x-amz-copy-source` request would do.

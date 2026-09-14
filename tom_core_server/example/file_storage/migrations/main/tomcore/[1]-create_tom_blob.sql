@@ -29,6 +29,13 @@
 --  * `chunk_count` is what a download iterates, so a manifest and its chunks
 --    disagree loudly (a missing-chunk error) rather than quietly truncating the
 --    file.
+--  * `chunk_size` is the size every chunk but the last was written at, and it is
+--    recorded rather than assumed because a *ranged* read divides a byte offset
+--    by it to name the first chunk row it needs. The store's own chunk size is a
+--    constructor argument, so a store reconfigured between the write and the
+--    read would otherwise seek to the wrong row and serve the wrong bytes. It is
+--    not derivable from the two columns above either: ten bytes in two chunks is
+--    6+4 or 9+1 or 5+5.
 --  * `stored_at` is DATETIME(6), and the width is not a precision preference —
 --    it is the column agreeing with its writer. Every DateTime the framework
 --    binds is rendered with six fractional digits, and MariaDB does not reject
@@ -43,6 +50,7 @@ CREATE TABLE IF NOT EXISTS tom_blob (
   file_name   VARCHAR(255) NULL,
   byte_count  BIGINT       NOT NULL,
   chunk_count INT          NOT NULL,
+  chunk_size  INT          NOT NULL,
   stored_at   DATETIME(6)  NOT NULL,
   PRIMARY KEY (storage_key)
 );

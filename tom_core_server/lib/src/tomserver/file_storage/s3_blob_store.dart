@@ -229,14 +229,39 @@ class TomS3BlobStore extends TomBlobStore {
   }
 
   @override
-  Stream<List<int>> doGet(String key) async* {
+  Stream<List<int>> doGet(String key) => _openObject(key);
+
+  @override
+  Stream<List<int>> doGetRange(String key, TomBlobRange range) =>
+      _openObject(key, range: range);
+
+  /// The object at [key], optionally only [range] of it.
+  ///
+  /// One body for both reads because everything below the header is the same
+  /// request, and the reasoning about the 404, the failure and the `yield*` is
+  /// what would have to be duplicated — and then kept in step — to have two.
+  ///
+  /// S3 answers a ranged `GET` natively, which is the whole reason
+  /// [TomBlobStore.doGetRange] is overridable: the bytes before the range never
+  /// cross the wire. The header is inclusive at both ends, so the exclusive end
+  /// this module carries is written as `end - 1`; an open-ended range is
+  /// `bytes=start-`, which S3 reads as "to the end" without being told where
+  /// that is. The response comes back `206`, which the `>= 300` check below
+  /// already treats as success.
+  Stream<List<int>> _openObject(String key, {TomBlobRange? range}) async* {
     final uri = _objectUri(key, const {});
+    final headers = <String, String>{
+      if (range != null)
+        'range':
+            'bytes=${range.start}-'
+            '${range.endExclusive == null ? '' : range.endExclusive! - 1}',
+    };
     final request = http.Request('GET', uri)
       ..headers.addAll(
         _requestHeaders(
           method: 'GET',
           uri: uri,
-          headers: const {},
+          headers: headers,
           payloadHash: TomAwsV4Signer.emptyPayloadHash,
         ),
       );

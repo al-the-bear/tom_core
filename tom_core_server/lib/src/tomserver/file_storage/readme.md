@@ -21,7 +21,8 @@ backend on every method, because one key must not be able to reach another.
 
 | Type | What it is |
 | ---- | ---------- |
-| `TomBlobStore` | `put` / `get` / `describe` / `exists` / `delete`, by key. The whole surface. |
+| `TomBlobStore` | `put` / `get` / `describe` / `exists` / `delete`, by key. The whole surface. `get` takes an optional byte range; the default reads from zero and discards the prefix, so no backend is obliged to implement two read paths — and all four override it, because all four can seek. |
+| `TomBlobRange` | A half-open `[start, endExclusive)` of a blob. There is no listing and no offset arithmetic to get wrong: both ends are checked once, on the contract. |
 | `TomStoredBlob` | What was stored: key, media type, `byteCount`, `storedAt` (always UTC) and an optional file name. |
 | `TomBlobStoreOperation` | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete` — each carrying a stable error key. |
 | `TomStorageException` | The module's base error. An infrastructure failure is named as a storage error rather than escaping as a raw `FileSystemException` or driver error. |

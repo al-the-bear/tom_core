@@ -120,8 +120,8 @@ abstract class TomFileSlot {
   /// none.
   Future<TomFileMetadata?> describe(String rawId);
 
-  /// Streams the file on row [rawId].
-  Stream<List<int>> open(String rawId);
+  /// Streams the file on row [rawId], or [range] of it.
+  Stream<List<int>> open(String rawId, {TomBlobRange? range});
 
   /// Removes the file on row [rawId]; `false` when there was none to remove.
   Future<bool> clear(String rawId);
@@ -217,8 +217,8 @@ class _TypedFileSlot<T extends Object, K> extends TomFileSlot {
   }
 
   @override
-  Stream<List<int>> open(String rawId) =>
-      repository.openFile(_id(rawId), _field);
+  Stream<List<int>> open(String rawId, {TomBlobRange? range}) =>
+      repository.openFile(_id(rawId), _field, range: range);
 
   @override
   Future<bool> clear(String rawId) async {
@@ -493,7 +493,7 @@ class TomFileEndpoint {
         case 'PUT':
           return await _upload(request, slot, id);
         case 'GET':
-          return await _download(slot, id);
+          return await _download(request, slot, id);
         case 'HEAD':
           return await _head(slot, id);
         case 'DELETE':
@@ -566,15 +566,101 @@ class TomFileEndpoint {
     );
   }
 
-  static Future<Response> _download(TomFileSlot slot, String id) async {
+  static Future<Response> _download(
+    Request request,
+    TomFileSlot slot,
+    String id,
+  ) async {
     final metadata = await slot.describe(id);
     if (metadata == null) {
       return _error(404, 'file_endpoint.no_file', 'No file is stored there.');
     }
-    return Response.ok(
-      _inCurrentZone(() => slot.open(id)),
-      headers: tomFileDescriptorHeaders(metadata),
+    final headers = {
+      ...tomFileDescriptorHeaders(metadata),
+      // Advertised on every download, because a client that means to resume
+      // asks this first. Without it a browser will not attempt a range at all,
+      // and the backends' seeking would never be reached from the wire.
+      'accept-ranges': 'bytes',
+    };
+
+    final asked = _rangeOf(request.headers['range'], metadata.byteCount);
+    if (asked == null) {
+      return Response.ok(_inCurrentZone(() => slot.open(id)), headers: headers);
+    }
+
+    final range = asked.clampedTo(metadata.byteCount);
+    if (range == null) {
+      // 416, and it carries `Content-Range: bytes */size` — the one response
+      // that tells a client resuming from a stale size what the size now is,
+      // which is what lets it retry correctly instead of looping.
+      return Response(
+        416,
+        body: jsonEncode({
+          'key': 'file_endpoint.range_not_satisfiable',
+          'message': 'That byte range lies beyond the end of the file.',
+        }),
+        headers: {
+          TomHeader.contentType: TomMimeType.json.toHeaderValue(),
+          'accept-ranges': 'bytes',
+          'content-range': 'bytes */${metadata.byteCount}',
+        },
+      );
+    }
+
+    final end = range.endExclusive! - 1;
+    return Response(
+      206,
+      body: _inCurrentZone(() => slot.open(id, range: range)),
+      headers: {
+        ...headers,
+        // Both rewritten for the partial: the length is the slice's, and
+        // `Content-Range` is inclusive at both ends where this module's range
+        // is not. Leaving the whole file's length here is how a client waits
+        // forever for bytes that are not coming.
+        'content-length': '${range.length}',
+        'content-range': 'bytes ${range.start}-$end/${metadata.byteCount}',
+      },
     );
+  }
+
+  /// The single byte range [header] asks for, or `null` for no usable one.
+  ///
+  /// Deliberately **lenient**: an unparsable header, a unit other than `bytes`,
+  /// or more than one range answers `null`, and the caller then serves the whole
+  /// file with a 200. RFC 9110 permits exactly that, and it is the right trade
+  /// here — a multipart/byteranges body is a second wire format for a case no
+  /// browser needs, and refusing a header we merely do not understand would
+  /// break a download that would otherwise have worked.
+  ///
+  /// The three forms: `bytes=500-999` is `[500, 1000)`, `bytes=500-` runs to
+  /// the end, and the suffix form `bytes=-500` means *the last 500 bytes*.
+  /// [byteCount] is taken because the suffix form cannot be resolved without
+  /// it — it counts backwards from an end this header never names.
+  ///
+  /// `bytes=-0` asks for the last nothing, which the RFC calls unsatisfiable;
+  /// it comes back as a range starting at [byteCount], which
+  /// [TomBlobRange.clampedTo] then reports as such. That keeps "the caller
+  /// asked for something impossible" (416) apart from "this header says nothing
+  /// I understand" (200 and the whole file), which are different answers.
+  static TomBlobRange? _rangeOf(String? header, int byteCount) {
+    if (header == null) return null;
+    final match = RegExp(r'^bytes=(\d*)-(\d*)$').firstMatch(header.trim());
+    if (match == null) return null;
+    final from = match.group(1)!;
+    final to = match.group(2)!;
+    if (from.isEmpty && to.isEmpty) return null;
+    if (from.isEmpty) {
+      final wanted = int.parse(to);
+      if (wanted == 0) return TomBlobRange(byteCount);
+      return TomBlobRange((byteCount - wanted).clamp(0, byteCount), byteCount);
+    }
+    final start = int.parse(from);
+    if (to.isEmpty) return TomBlobRange(start);
+    final endInclusive = int.parse(to);
+    // A backwards range is nonsense rather than unsatisfiable, so it is ignored
+    // like any other header this does not understand.
+    if (endInclusive < start) return null;
+    return TomBlobRange(start, endInclusive + 1);
   }
 
   /// [open]'s stream, opened and consumed in the zone this is called from.
@@ -640,7 +726,11 @@ class TomFileEndpoint {
       // body, and declaring a length nothing then fills is an error at the
       // socket. The size still travels — `x-tom-file` carries the whole
       // descriptor, which is what the client reads first.
-      ..remove('content-length');
+      ..remove('content-length')
+      // The same advertisement the GET makes, and this is where a client that
+      // plans a resumable download actually reads it: it asks HEAD for the
+      // size, and learns here that it may ask for part of it.
+      ..['accept-ranges'] = 'bytes';
     return Response.ok(null, headers: headers);
   }
 

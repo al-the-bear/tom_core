@@ -1081,7 +1081,11 @@ and `test/examples_test.dart` runs it.
 - **File endpoint** (`file_endpoint.dart`) — `TomFileService` / `TomFileServer`,
   `TomFileEndpoint`, the `TomFileSlots` registry, and the `TomFormFile.storeIn`
   extension that joins an uploaded form part to a file slot; documented in
-  [File Storage](file_storage.md#serving-a-file-over-http).
+  [File Storage](file_storage.md#serving-a-file-over-http). A download honours
+  HTTP `Range` — `206` with `Content-Range`, or `416` carrying
+  `file_endpoint.range_not_satisfiable` and `Content-Range: bytes */<size>` when
+  the range starts at or past the end — and both `GET` and `HEAD` advertise
+  `Accept-Ranges: bytes`, without which a browser never asks for one.
 - **Form binding** (`form_binding.dart`) — `TomMultipartForm`, `TomFormFile`,
   `TomFormBindingException`, and the `tomConsumesForm` /
   `tomConsumesMultipartForm` predicates.
@@ -1104,7 +1108,7 @@ and `test/examples_test.dart` runs it.
 | `tom_core_kernel` | package | every file | `tomReflector` and the mirror types (annotation discovery, parameter binding, result conversion), `TomHttpMethod`, `TomMimeType`, `TomHeader`, `TomPrincipal`, `TomClientJwtToken`, `TomAccessControl`, `TomResourceKeyProtection`, `TomComponent`, `TomBean`, `tomRemoteApis` / `TomApi` / `TomApiEndpoint`, `TomExecutionContext`, `tomLog` |
 | `web_socket_channel` | package | `endpoint_pipeline.dart`, `web_socket_endpoint.dart` | the handshake upgrade and the channel a socket handler talks through |
 | [audit](audit.md) | module | `endpoint_pipeline.dart` | `TomAuditAction`, `TomAuditOutcome`, `TomAuditTrail`, `TomAudited` |
-| [file_storage](file_storage.md) | module | `file_endpoint.dart` | `TomStorageException`, `TomStoredBlob` |
+| [file_storage](file_storage.md) | module | `file_endpoint.dart` | `TomBlobRange`, `TomStorageException`, `TomStoredBlob` |
 | [little_things](little_things.md) | module | `endpoint_pipeline.dart`, `file_endpoint.dart`, `form_binding.dart`, `web_socket_endpoint.dart` | `TomServerException`, `TomRequestId` |
 | [object_persistence](object_persistence.md) | module | `file_endpoint.dart` | `TomAnnotationAnalyzer`, `TomColumnAuthorizationException`, `TomColumnInformation`, `TomDataScopeAuthorizationException`, `TomDbTable`, `TomFileReference` |
 | [server](server.md) | module | `endpoint_pipeline.dart` | `TomRequestLogInfo` |

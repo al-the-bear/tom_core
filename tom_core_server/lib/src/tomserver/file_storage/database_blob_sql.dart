@@ -59,6 +59,14 @@ TomFrameworkTable blobManifestTable(String table) => TomFrameworkTable(
     const TomFrameworkColumn('file_name', 'VARCHAR(255)', nullable: true),
     const TomFrameworkColumn('byte_count', 'BIGINT'),
     const TomFrameworkColumn('chunk_count', 'INT'),
+    // The size every chunk but the last was written at. Recorded rather
+    // than assumed because a ranged read maps a byte offset onto a chunk
+    // index by dividing by it, and the store's `chunkSize` is a
+    // constructor argument: a store reconfigured between the write and the
+    // read would otherwise seek to the wrong row and serve the wrong bytes.
+    // It is not derivable from `byte_count` and `chunk_count` either --
+    // 10 bytes in 2 chunks is 6+4 or 9+1 or 5+5.
+    const TomFrameworkColumn('chunk_size', 'INT'),
     const TomFrameworkColumn('stored_at', 'DATETIME(6)'),
   ],
   primaryKey: const ['storage_key'],

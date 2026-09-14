@@ -251,6 +251,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
         'file_name': ':fileName',
         'byte_count': ':byteCount',
         'chunk_count': ':chunkCount',
+        'chunk_size': ':chunkSize',
         'stored_at': ':storedAt',
       }),
       {
@@ -260,6 +261,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
         'fileName': fileName,
         'byteCount': byteCount,
         'chunkCount': chunkIndex,
+        'chunkSize': chunkSize,
         // Bound as a `DateTime`, not as text this store renders itself. The
         // data source binds every instant through `sqlInstant`, which is what
         // puts a UTC reading in the column; a local one formatted here read
@@ -297,25 +299,67 @@ class TomDatabaseBlobStore extends TomBlobStore {
     for (var index = 0; index < manifest.chunkCount; index++) {
       // One round trip per chunk, taken only when the consumer has asked for
       // the previous one — this is where the streaming actually happens.
-      final rows = await datasource.executeQuery<TomBlobChunkRow>(
-        'SELECT ${_chunks.columnsOf(const ['chunk_data'])} FROM $chunkTable '
-        'WHERE upload_id = :uploadId AND chunk_index = :chunkIndex',
-        {'uploadId': manifest.uploadId, 'chunkIndex': index},
-      );
-      if (rows.isEmpty) {
-        throw TomStorageException(
-          'storage.blob.missing_chunk',
-          'The stored file is incomplete and cannot be read.',
-          parameters: {
-            'key': key,
-            'uploadId': manifest.uploadId,
-            'chunkIndex': index,
-          },
-          autoLog: true,
-        );
-      }
-      yield base64.decode(rows.first.chunkData);
+      yield base64.decode(await _chunkData(key, manifest, index));
     }
+  }
+
+  @override
+  Stream<List<int>> doGetRange(String key, TomBlobRange range) async* {
+    await ensureSchema();
+    final manifest = await _manifestOf(key);
+    if (manifest == null) throw TomBlobStore.notFound(key);
+    // Chunks are addressed by index and every one but the last was written at
+    // the recorded size, so the first chunk a byte offset can be in is a
+    // division. The rows before it are never fetched: the inherited default
+    // would take one round trip each and decode them only to throw them away,
+    // which on a gigabyte blob is thousands of queries for a seek to the end.
+    final size = manifest.chunkSize;
+    if (size <= 0) {
+      // A manifest written before the size was recorded, or by a store that got
+      // it wrong. Reading from zero is slow and correct; guessing is neither.
+      yield* super.doGetRange(key, range);
+      return;
+    }
+    final first = range.start ~/ size;
+    final end = range.endExclusive;
+    final last = end == null
+        ? manifest.chunkCount - 1
+        : ((end - 1) ~/ size).clamp(0, manifest.chunkCount - 1);
+    for (var index = first; index <= last; index++) {
+      final chunk = base64.decode(await _chunkData(key, manifest, index));
+      final position = index * size;
+      final from = range.start > position ? range.start - position : 0;
+      final to = end == null || end - position >= chunk.length
+          ? chunk.length
+          : end - position;
+      if (from < to) yield chunk.sublist(from, to);
+    }
+  }
+
+  /// The base64 payload of chunk [index] of [manifest].
+  Future<String> _chunkData(
+    String key,
+    _BlobManifest manifest,
+    int index,
+  ) async {
+    final rows = await datasource.executeQuery<TomBlobChunkRow>(
+      'SELECT ${_chunks.columnsOf(const ['chunk_data'])} FROM $chunkTable '
+      'WHERE upload_id = :uploadId AND chunk_index = :chunkIndex',
+      {'uploadId': manifest.uploadId, 'chunkIndex': index},
+    );
+    if (rows.isEmpty) {
+      throw TomStorageException(
+        'storage.blob.missing_chunk',
+        'The stored file is incomplete and cannot be read.',
+        parameters: {
+          'key': key,
+          'uploadId': manifest.uploadId,
+          'chunkIndex': index,
+        },
+        autoLog: true,
+      );
+    }
+    return rows.first.chunkData;
   }
 
   @override
@@ -380,6 +424,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
       fileName: row.fileName,
       byteCount: row.byteCount,
       chunkCount: row.chunkCount,
+      chunkSize: row.chunkSize,
       storedAt: row.storedAt,
     );
   }
@@ -403,6 +448,7 @@ class _BlobManifest {
     required this.fileName,
     required this.byteCount,
     required this.chunkCount,
+    required this.chunkSize,
     required this.storedAt,
   });
 
@@ -412,6 +458,7 @@ class _BlobManifest {
   final String? fileName;
   final int byteCount;
   final int chunkCount;
+  final int chunkSize;
   final DateTime storedAt;
 }
 
@@ -455,6 +502,10 @@ class TomBlobManifestRow {
   /// How many chunk rows the content occupies.
   @TomDbColumn(columnName: "chunk_count")
   int chunkCount = 0;
+
+  /// The size every chunk but the last was written at.
+  @TomDbColumn(columnName: "chunk_size")
+  int chunkSize = 0;
 
   /// When the write completed.
   @TomDbColumn(columnName: "stored_at")
