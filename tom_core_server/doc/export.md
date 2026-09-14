@@ -326,6 +326,22 @@ stream is listened to once. A renderer meeting those may hold one row at a time
 `streamsRows`, because it is the one thing a caller deciding *whether to allow*
 an export of a given size needs to know.
 
+**What `streamsRows: true` promises**, in the two forms it can be broken:
+
+- **A row is not read once the next has been pulled.** `TomTabularRow` stores
+  the caller's list rather than copying it, so a caller is free to reuse a
+  buffer between rows; a renderer that keeps a row to read later — a one-row
+  sliding window is enough — reads something else by then.
+- **Output is not held back.** Bytes leave as the rows arrive, so the last row
+  is followed by a constant tail (a closing tag, a central directory) rather
+  than by the whole document.
+
+Neither is visible in a content test, so the suite bounds both directly: fifty
+thousand rows through CSV and XLSX, with rows that throw when read after the
+source has moved past them, and a count of how much output was still unsent when
+the source drained. PDF is the control — it is the renderer that fails the
+second one on purpose.
+
 Errors surface **on the stream**, not thrown from `render`. By the time a row
 fails, `render` has long returned.
 

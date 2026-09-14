@@ -399,7 +399,7 @@ const TomTabularRenderer()
 | `formatId` | `String` | *(getter)* The short, lowercase format key — `csv`, `xlsx`, `pdf` — that a query parameter carries and `TomExportFormats` registers under. |
 | `mediaType` | `String` | *(getter)* The IANA media type to serve or store the output as. |
 | `fileExtension` | `String` | *(getter)* The filename extension, without the dot. |
-| `streamsRows` | `bool` | *(getter)* Whether the format renders in memory bounded by one row rather than all; `true` by default. Exposed because it is the one property a caller deciding whether to allow an export of a given size needs. |
+| `streamsRows` | `bool` | *(getter)* Whether the format renders in memory bounded by one row rather than all; `true` by default. Exposed because it is the one property a caller deciding whether to allow an export of a given size needs. Declaring it `true` promises that a row is not read once the next has been pulled — rows are handed over uncopied — and that output is not held back. |
 
 #### Methods
 

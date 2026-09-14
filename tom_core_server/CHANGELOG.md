@@ -2,6 +2,30 @@
 
 ### Added
 
+- **The suite bounds a renderer's memory rather than asserting it is early
+  (tcopen144).** Both export test files opened by saying streaming is asserted
+  and not assumed, and what they asserted was that *some* output appears before
+  the source closes. A renderer that emitted its header and then collected every
+  row satisfied all of it, which left the claim the module exists for — peak
+  memory is one row, whatever the row count — pinned by nothing.
+
+  Fifty thousand rows now go through CSV and XLSX against the two quantities
+  that can grow with them. Rows that throw when read after the source has moved
+  past them catch a renderer holding rows; a count of how much output was still
+  unsent when the source drained catches a renderer holding output. They are not
+  redundant — a one-row sliding window fails the first and passes the second —
+  and PDF is the control, since it is the renderer that fails the second on
+  purpose and says so through `streamsRows`.
+
+  `streamsRows` now documents what declaring it `true` promises, in the two
+  forms it can be broken, at the contract and in the guide.
+
+  `ProcessInfo.currentRss` was measured as the alternative and rejected: the
+  heap's high-water mark does not fall, so a warm-up pass leaves enough headroom
+  to absorb a hundred megabytes of buffering with no RSS growth at all, and a
+  collect-then-render mutation passed an RSS ceiling that both probes here fail
+  decisively.
+
 - **`TomXlsxRenderer` states its three ceilings and fails at them (tcopen143).**
   The writer emits every size, offset and count into 32-bit ZIP fields and has
   no ZIP64, so a part past 4 GiB did not fail — it **wrapped**, the field

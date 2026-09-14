@@ -65,6 +65,12 @@ abstract class TomTabularRenderer {
   /// conforming writer can emit the first page before knowing the last. The
   /// flag is exposed rather than hidden because it is the one property a caller
   /// deciding *whether to allow* an export of a given size needs to know.
+  ///
+  /// Declaring it `true` promises two things, which are the two ways the
+  /// property is lost: a row is not read once the next has been pulled — rows
+  /// are handed over uncopied, so by then it may hold something else — and
+  /// output is not held back, so the last row is followed by a constant tail
+  /// rather than by the whole document.
   bool get streamsRows => true;
 
   /// Renders [result], emitting the encoded document as it is produced.

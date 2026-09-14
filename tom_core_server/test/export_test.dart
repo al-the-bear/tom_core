@@ -27,9 +27,12 @@ import 'fixtures/posix_permissions.dart';
 ///
 /// The other recurring theme is that streaming is *asserted*, not assumed. A
 /// renderer that quietly collected every row would pass every content test and
-/// fail the only requirement that made this module necessary, so the tests that
-/// matter most feed rows through a controller and check that output appears
-/// before the input is closed.
+/// fail the only requirement that made this module necessary. Each renderer's
+/// own group feeds rows through a controller and checks that output appears
+/// before the input is closed; the `holds one row, whatever the row count`
+/// group drives fifty thousand rows and bounds the two quantities that can grow
+/// with them — bytes still unsent when the source drains, and rows read after
+/// the source has moved past them.
 ///
 /// **Two groups here name a `file_storage` type, for opposite reasons.**
 /// `TomBlobExportStore` is not a `file_storage` class at all — it is declared in
@@ -75,6 +78,32 @@ List<TomTabularColumn> _columns() => [
 ];
 
 /// A two-row result over [_columns].
+/// A row that throws when read after the source has produced a later one.
+///
+/// Used by the bounded-memory group: a renderer that holds a row to read it
+/// after pulling the next has lost the property the module exists for, and
+/// there is no way to see that from the bytes alone.
+class _OneShotRow extends TomTabularRow {
+  _OneShotRow(super.cells, this.index);
+
+  /// The row's position in the source, for naming it in the failure.
+  final int index;
+
+  /// Whether the source has moved past this row.
+  bool expired = false;
+
+  @override
+  Object? cell(int i) {
+    if (expired) {
+      throw StateError(
+        'row $index was read after the source produced a later one, so the '
+        'renderer is holding rows rather than one row',
+      );
+    }
+    return super.cell(i);
+  }
+}
+
 TomTabularResult _sampleResult({String title = 'Sales', String? section}) =>
     TomTabularResult.single(
       title: title,
@@ -1494,6 +1523,147 @@ void main() {
       await rows.close();
       await done;
     });
+  });
+
+  // ===========================================================================
+  // Bounded memory
+  // ===========================================================================
+
+  // The module's reason to exist is that a renderer's peak memory is one row,
+  // whatever the row count. The per-renderer streaming tests above assert that
+  // *some* output appears before the source closes, which a renderer that
+  // emitted its header and then collected every row would satisfy. These drive
+  // a large row count and bound the two quantities that can grow with it.
+  //
+  // There are two ways to lose the property, and one probe each:
+  //
+  // - **Output is held.** The renderer reads rows promptly and emits at the
+  //   end. `bytesBeforeTheSourceDrains` catches it; the row probe cannot, since
+  //   nothing is read late.
+  // - **Rows are held.** The renderer emits promptly and reads a row after
+  //   pulling the next — a sliding window, or a collect-then-render rewrite.
+  //   `_OneShotRow` catches it; the byte probe cannot distinguish a window of
+  //   k rows from a window of one when there are fifty thousand of them.
+  //
+  // What neither sees is a row *retained but never read again*. That is not
+  // observable from outside the renderer, and saying so is better than an
+  // assertion that implies otherwise. `ProcessInfo.currentRss` was measured as
+  // the alternative and is not one: the heap's high-water mark does not fall,
+  // so a warm-up pass leaves enough headroom to absorb a hundred megabytes of
+  // buffering with no RSS growth at all, and the collect-then-render mutation
+  // below passes an RSS ceiling that the two probes here fail decisively.
+  group('a renderer holds one row, whatever the row count', () {
+    /// How many rows the probes push through. Large enough that a per-row cost
+    /// is unmistakable next to a constant one, small enough to stay in the
+    /// default suite: CSV runs it in about 60 ms, XLSX in about 250 ms.
+    const rowCount = 50000;
+
+    /// A row that refuses to be read once the source has moved past it.
+    ///
+    /// `TomTabularRow` stores the caller's list rather than copying it, and the
+    /// reason given for that at `tabular_result.dart` is "a renderer reads a
+    /// row once and drops it". That sentence is the contract a caller relies on
+    /// when it reuses a buffer between rows, and this makes it falsifiable.
+    _OneShotRow? previous;
+
+    /// [total] rows, each expired as the next is produced.
+    Stream<TomTabularRow> oneShotRows(int total) async* {
+      previous = null;
+      for (var index = 0; index < total; index++) {
+        previous?.expired = true;
+        final row = _OneShotRow([index, 'row $index'], index);
+        previous = row;
+        yield row;
+      }
+    }
+
+    /// [total] plain rows, counting how many the renderer pulled.
+    Stream<TomTabularRow> plainRows(
+      int total,
+      void Function() onDrained,
+    ) async* {
+      for (var index = 0; index < total; index++) {
+        yield TomTabularRow([index, 'row $index']);
+      }
+      onDrained();
+    }
+
+    TomTabularResult resultOver(Stream<TomTabularRow> rows) =>
+        TomTabularResult.single(
+          title: 'bounded',
+          section: TomTabularSection(
+            columns: [TomTabularColumn('n'), TomTabularColumn('s')],
+            rows: rows,
+          ),
+        );
+
+    /// The fraction of [renderer]'s output that left before the source drained.
+    Future<double> emittedBeforeDrain(TomTabularRenderer renderer) async {
+      var bytes = 0;
+      var atDrain = -1;
+      await for (final chunk in renderer.render(
+        resultOver(plainRows(rowCount, () => atDrain = bytes)),
+      )) {
+        bytes += chunk.length;
+      }
+      expect(atDrain, isNonNegative, reason: 'the source was never drained');
+      expect(bytes, greaterThan(0));
+      return atDrain / bytes;
+    }
+
+    for (final entry in <String, TomTabularRenderer>{
+      'csv': TomCsvRenderer(),
+      'xlsx': TomXlsxRenderer(),
+    }.entries) {
+      test('${entry.key} reads each row before pulling the next', () async {
+        // Passing means no row was read after the source moved on. Failing is
+        // a StateError naming the row, which is more use than a byte count.
+        final bytes = await _collect(
+          entry.value.render(resultOver(oneShotRows(rowCount))),
+        );
+        expect(bytes, isNotEmpty);
+        expect(
+          previous?.index,
+          rowCount - 1,
+          reason: 'the source did not actually produce $rowCount rows',
+        );
+      });
+
+      test('${entry.key} emits as it goes, not at the end', () async {
+        // 90% rather than 100%: XLSX's last sheet chunk, its central directory
+        // and CSV's final newline legitimately follow the last row, and a
+        // future change to chunking should not have to move this number. What
+        // it separates is a constant tail from a proportional one.
+        expect(await emittedBeforeDrain(entry.value), greaterThan(0.9));
+      });
+    }
+
+    test(
+      'the byte probe detects the renderer that says it cannot stream',
+      () async {
+        // Without this the 90% assertions would be satisfied by a probe that
+        // measured nothing. PDF ends with a cross-reference table of offsets
+        // into everything before it, so it cannot emit a byte until the last
+        // row is laid out -- it is the one renderer in the module that
+        // genuinely buffers, and it says so. A far smaller row count, because
+        // it is also the one renderer whose cost is superlinear.
+        expect(const TomPdfRenderer().streamsRows, isFalse);
+
+        var bytes = 0;
+        var atDrain = -1;
+        await for (final chunk in const TomPdfRenderer().render(
+          resultOver(plainRows(200, () => atDrain = bytes)),
+        )) {
+          bytes += chunk.length;
+        }
+        expect(bytes, greaterThan(0));
+        expect(
+          atDrain,
+          0,
+          reason: 'PDF emitted bytes before it had seen the last row',
+        );
+      },
+    );
   });
 
   // ===========================================================================
