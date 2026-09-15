@@ -247,51 +247,6 @@ class TomFileReference {
   });
 }
 
-/// Annotation describing a many-to-many join table between two entities.
-///
-/// Note: the persistence layer neither detects nor applies this annotation.
-/// Nothing outside this declaration reads the type, so placing it on an entity
-/// has no effect whatsoever — not a partial one, and not a failure either. A
-/// many-to-many association has to be traversed by querying the join table
-/// directly.
-///
-/// Listed with the module's other two unimplemented declarations under *Not
-/// Yet Implemented* in `doc/object_persistence.md`, which is where a reader
-/// meets them together rather than one annotation at a time.
-class TomJoinTable {
-  /// The entity on the far side of the join.
-  final Type targetEntity;
-
-  /// The repository type that loads [targetEntity].
-  final Type repositoryType;
-
-  /// The entity on the near side of the join.
-  final Type originEntity;
-
-  /// The key type linking the two sides.
-  final Type keyType;
-
-  /// The join-table columns on the origin side.
-  final List<String> leftSideColumns;
-
-  /// The join-table columns on the target side.
-  final List<String> rightSideColumns;
-
-  /// Extra join-table columns carried as context.
-  final List<String> contextColumns;
-
-  /// Describes a join table.
-  const TomJoinTable({
-    required this.targetEntity,
-    required this.repositoryType,
-    required this.keyType,
-    required this.originEntity,
-    required this.leftSideColumns,
-    required this.rightSideColumns,
-    this.contextColumns = const [],
-  });
-}
-
 /// Annotation describing a reference (association) from one entity to another,
 /// resolved through a join entity.
 ///
@@ -367,9 +322,9 @@ class TomReference<
 /// in a field's metadata, so although the callbacks take the whole entity, one
 /// placed on a class declaration is not seen at all.
 ///
-/// Listed with the module's other two unimplemented declarations under *Not
-/// Yet Implemented* in `doc/object_persistence.md`, which is where a reader
-/// meets them together rather than one annotation at a time.
+/// Listed under *Not Yet Implemented* in `doc/object_persistence.md`, beside
+/// the other thing the module does not yet do, which is where a reader meets
+/// them together rather than one declaration at a time.
 class TomPersistenceEventHandler<DBTYPE> {
   /// Called after the entity is persisted.
   final void Function(DBTYPE)? postPersist;

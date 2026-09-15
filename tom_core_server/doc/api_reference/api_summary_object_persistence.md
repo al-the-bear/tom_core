@@ -18,7 +18,6 @@ column-level access rights (C-4).
     - [TomDbColumn&lt;DART_TYPE, COL_TYPE&gt;](#tomdbcolumndart_type-col_type)
     - [TomEntityId](#tomentityid)
     - [TomDbScope](#tomdbscope)
-    - [TomJoinTable](#tomjointable)
     - [TomReference&lt;TARGET, K, REPO&gt;](#tomreferencetarget-k-repo)
     - [TomPersistenceEventHandler&lt;DBTYPE&gt;](#tompersistenceeventhandlerdbtype)
     - [TomColumnInformation](#tomcolumninformation)
@@ -297,38 +296,6 @@ resolver would deny itself its own input.
 | `field` | `String` | The entity field whose value is matched against the principal's allowed scope values. |
 | `scope` | `String` | The scope kind — a key into `TomDataScopeRegistry` selecting the resolver (default `'owner'`). |
 | `isOptOut` | `bool` | *(getter)* Whether this is the explicit opt-out (`scope == noScope`) rather than a scope declaration. `findDataScope` returns `null` for such an annotation. |
-
-#### TomJoinTable
-
-Annotation describing a many-to-many join table between two entities. Nothing
-outside its own declaration reads the type, so the persistence layer neither
-detects nor applies it, and placing it on an entity has no effect at all.
-
-##### Constructors
-
-```dart
-const TomJoinTable({
-  required Type targetEntity,
-  required Type repositoryType,
-  required Type keyType,
-  required Type originEntity,
-  required List<String> leftSideColumns,
-  required List<String> rightSideColumns,
-  List<String> contextColumns = const [],
-})
-```
-
-##### Properties
-
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `targetEntity` | `Type` | The entity on the far side of the join. |
-| `repositoryType` | `Type` | The repository type that loads `targetEntity`. |
-| `originEntity` | `Type` | The entity on the near side of the join. |
-| `keyType` | `Type` | The key type linking the two sides. |
-| `leftSideColumns` | `List<String>` | The join-table columns on the origin side. |
-| `rightSideColumns` | `List<String>` | The join-table columns on the target side. |
-| `contextColumns` | `List<String>` | Extra join-table columns carried as context. |
 
 #### TomReference&lt;TARGET, K, REPO&gt;
 

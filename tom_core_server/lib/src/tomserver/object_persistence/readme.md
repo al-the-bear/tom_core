@@ -27,7 +27,7 @@ is the explicit opt-out.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomDbTable` · `TomDbColumn` · `TomEntityId` · `TomReference` · `TomJoinTable` | Mapping annotations placed on a reflected entity. |
+| `TomDbTable` · `TomDbColumn` · `TomEntityId` · `TomReference` | Mapping annotations placed on a reflected entity. |
 | `TomAnnotationAnalyzer` | Mixin that reads the mapping annotations off an entity. |
 | `TomRepository<T, K>` | CRUD contract: `save`, `findById`, `findAll`, `delete`/`deleteById`, `count`, `existsById`, and `*ByQuery` / `*ByQuerySentence`. |
 | `TomSqlDatasourceRepository<T, K>` | SQL implementation over a `TomDataSource`; subclass and override `sqlDialect`. |

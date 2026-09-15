@@ -8759,9 +8759,9 @@ class After {}
     // It is the same defect one level up, and the reason it needs its own
     // check is that the failure is silent in both directions: nothing compiles
     // a path inside a comment, and a document is renamed by someone reading the
-    // document, not the source that names it. `@TomJoinTable` and
-    // `@TomPersistenceEventHandler` each point at `doc/object_persistence.md`
-    // for the section listing them beside their sibling, which is the pointer
+    // document, not the source that names it. `@TomPersistenceEventHandler`
+    // points at `doc/object_persistence.md` for the section that lists it
+    // beside the other thing the module does not yet do, which is the pointer
     // this check exists to keep honest.
     test('every doc/ path named in a source is a file that exists', () {
       final missing = <String>[];

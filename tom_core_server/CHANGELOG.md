@@ -2,6 +2,27 @@
 
 ### Added
 
+- **`@TomJoinTable` is removed (tcopen170).** It was declared, exported and
+  documented, and nothing outside its own declaration ever named the type — so
+  placing it on an entity had no effect at all, not a partial one and not a
+  failure either. An annotation a deployment can write which silently does
+  nothing is worse than its absence: autocomplete offers it, and the deployment
+  believes its many-to-many mapping is configured.
+
+  Removing rather than implementing, because the capability was never missing.
+  `@TomJoinTable` was very nearly a duplicate of `@TomReference`, which *is*
+  read by the analyzer and applied by the repository: the two carry the same
+  `targetEntity` / `repositoryType` / `keyType` / `leftSideColumns` /
+  `rightSideColumns` / `contextColumns`, and differ only in whether the join is
+  a mapped entity or a bare table. A many-to-many association is modelled by
+  giving the join table an entity and a `@TomReference` to it, which
+  `reference_association_db_test.dart` covers against a live database.
+
+  Nothing used it — no sample, no test, no example, no `tom_uam` — so the
+  removal is a deletion rather than a migration. `@TomPersistenceEventHandler`
+  stays: it is inert in the other way, resolved onto `TomColumnInformation` and
+  never read back, which needs a call site rather than a reader.
+
 - **DKIM is stated as a requirement on the relay, and the seam is named
   (tcopen169).** "DKIM signing … not implemented" sat under *Not Yet
   Implemented*, which reads as a gap the framework will close. It is a

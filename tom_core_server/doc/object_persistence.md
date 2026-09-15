@@ -61,7 +61,6 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
 | `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomReference` | classes | The annotations that map an entity class and its fields to a table and columns |
-| `TomJoinTable` | class | A join-table annotation the persistence layer neither detects nor applies — declared, and inert |
 | `TomDartType` | class | Wraps a `Type` so it can be carried as a value, where a bare `Type` literal is awkward to pass |
 | `TomRepository<T, K>` | abstract class | The CRUD + query contract for entity `T` keyed by `K` |
 | `TomSqlDatasourceRepository<T, K>` | abstract class | SQL implementation of the contract |
@@ -1335,7 +1334,7 @@ its own result, and `test/examples_test.dart` runs it.
 ## Core Components
 
 - **Annotations** — `TomDbTable`, `TomDbColumn`, `TomEntityId`, `TomReference`,
-  `TomJoinTable`, `TomPersistenceEventHandler`, plus `TomDartType`.
+  `TomPersistenceEventHandler`, plus `TomDartType`.
 - **`TomColumnInformation`** — resolved per-field metadata + reflection accessors.
 - **`TomRepository` / `TomSqlDatasourceRepository` / `MariadbRepository`** — the
   CRUD/query contract and its SQL/MariaDB implementations.
@@ -1367,11 +1366,10 @@ its own result, and `test/examples_test.dart` runs it.
 
 ## Not Yet Implemented
 
-The first two are *declared*, so they can look available from the outside — an
-annotation you can write and the analyzer accepts. The third is simply absent
+The first is *declared*, so it can look available from the outside — an
+annotation you can write and the analyzer accepts. The second is simply absent
 from the grammar, and a sentence using it is refused.
 
-- `@TomJoinTable` is declared but never read — neither detected nor acted on.
 - `@TomPersistenceEventHandler` is *detected* (`TomAnnotationAnalyzer` resolves
   it onto `TomColumnInformation.eventHandler`) but never invoked, so declaring
   one currently has no effect. Detection is field-level — the analyzer reads a

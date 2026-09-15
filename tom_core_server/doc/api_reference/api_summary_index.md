@@ -484,7 +484,7 @@ surface documented here.
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
-| `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomDbScope` / `TomJoinTable` / `TomReference` / `TomPersistenceEventHandler` | class | Persistence annotations. |
+| `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomDbScope` / `TomReference` / `TomPersistenceEventHandler` | class | Persistence annotations. |
 | `TomDartType` | class | Dart-type descriptor for persistence. |
 | `TomColumnInformation` | class | Column metadata. |
 | `TomRepository<T, K>` | abstract class | Repository contract. |
@@ -932,7 +932,6 @@ surface documented here.
 | `TomIntConfig` | Configuration |
 | `TomJobRunRow` | Scheduling |
 | `TomJobRunWindowRow` | Scheduling |
-| `TomJoinTable` | Object Persistence |
 | `TomLeaseRow` | Scheduling |
 | `TomLiteralSelect` | Datasources |
 | `TomLocalizedTextResources` | Resources |
