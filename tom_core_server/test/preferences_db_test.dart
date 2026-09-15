@@ -399,6 +399,49 @@ void main() async {
       expect(await rawRows(), hasLength(tomUserPreferencesMaxPerPrincipal));
     });
 
+    test('a window over all() narrows in the contract order', () async {
+      // The other half of `all([page])`: `preferences_service_test.dart`
+      // asserts the window is *forwarded*, and whether it narrows is the
+      // repository's answer, which needs a table.
+      //
+      // The rows are `k000` … `k255`, so the expected page is arithmetic
+      // rather than a copy of what the store happened to return — a page
+      // asserted against itself would pass whatever the window did.
+      await fillToCeiling(7);
+
+      final unpaged = await asSession(7, (p) => p.all());
+      final firstPage = await asSession(
+        7,
+        (p) => p.all(TomPageRequest(limit: 10)),
+      );
+      final thirdPage = await asSession(
+        7,
+        (p) => p.all(TomPageRequest(limit: 10, offset: 20)),
+      );
+
+      expect(unpaged, hasLength(tomUserPreferencesMaxPerPrincipal));
+      expect(firstPage.map((dto) => dto.key), [
+        for (var i = 0; i < 10; i++) 'k${i.toString().padLeft(3, '0')}',
+      ]);
+      expect(thirdPage.map((dto) => dto.key), [
+        for (var i = 20; i < 30; i++) 'k${i.toString().padLeft(3, '0')}',
+      ]);
+    });
+
+    test('a window stays inside the caller\'s own rows', () async {
+      // The window narrows the answer; it does not widen who it is about. A
+      // page that reached past the principal would be the scope failing under
+      // a LIMIT, which is exactly where a filter applied in the wrong order
+      // stops being visible.
+      await fillToCeiling(7);
+      await asSession(8, (p) => p.set('k000', 'theirs'));
+
+      final page = await asSession(8, (p) => p.all(TomPageRequest(limit: 10)));
+
+      expect(page.map((dto) => dto.key), ['k000']);
+      expect(await asSession(8, (p) => p.get<String>('k000')), 'theirs');
+    });
+
     test('the ceiling is counted per principal', () async {
       await fillToCeiling(7);
 

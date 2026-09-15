@@ -231,6 +231,29 @@ is no longer JSON.
 Together they cap the largest list at about four megabytes; a real one is a few
 hundred bytes.
 
+**So the wire is unpaged on purpose, and `all()` takes a window anyway.** The
+list endpoint returns the whole set because the set is bounded above — that is
+the argument, and it is the contract's own
+(`TomUserPreferencesApiService.listPreferences`: "Unpaged, and bounded"). Adding
+a page parameter to it would be a three-package change — the declaration lives
+in `tom_core_kernel` and `tom_core_flutter`'s client implements it — to push
+paging into every client for a list that cannot exceed 256 entries. An
+application that outgrows this is not storing preferences; it is storing
+collection data in a settings store, and the answer there is a table of its own.
+
+`TomUserPreferences.all()` nevertheless takes an optional `TomPageRequest`,
+because a caller on *this* side of the wire is not bound by that argument: a
+migration walking one principal's settings, or a job reading in batches, has a
+use for a window that no client does, and the repository's finders already
+accept one. The window applies to the same ordered sentence — page 2 is the
+rows after page 1, not whatever the engine returned second — which is what
+makes it a window rather than a sample.
+
+This paragraph and the two ceilings above it are pinned against the kernel's
+constants by `test/preferences_service_test.dart`: a ceiling raised without the
+document following would leave the argument for returning the list whole
+reading exactly as convincingly while being wrong.
+
 ## The Endpoints
 
 `TomUserPreferencesServer` implements the kernel's

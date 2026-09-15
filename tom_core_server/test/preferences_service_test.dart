@@ -20,6 +20,9 @@
 /// are only answerable against a real server — see `preferences_db_test.dart`.
 library;
 
+import 'dart:async';
+import 'dart:io';
+
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
@@ -135,4 +138,182 @@ void main() {
       );
     });
   });
+
+  group('all() takes a window, and the wire does not', () {
+    // `all()` answers every preference the caller holds, and the list endpoint
+    // returns it whole. That is safe rather than lucky — the store is bounded
+    // at `tomUserPreferencesMaxPerPrincipal` entries of at most
+    // `TomUserPreferenceCodec.maxValueBytes` each — and it is the wire
+    // contract's stated shape (`TomUserPreferencesApiService.listPreferences`:
+    // "Unpaged, and bounded").
+    //
+    // The optional window is for a caller on *this* side of the wire — a
+    // migration walking one principal's settings, a job reading in batches —
+    // and is asserted here as forwarding, because whether it narrows is the
+    // repository's answer and needs a table: `preferences_db_test.dart` takes
+    // that half.
+
+    test('no window is forwarded when none is given', () async {
+      final repository = _RecordingRepository();
+      await _asPrincipal(() => TomUserPreferences(repository).all());
+
+      expect(repository.pages, [null]);
+    });
+
+    test('the window is forwarded to the repository', () async {
+      final repository = _RecordingRepository();
+      final page = TomPageRequest(limit: 10, offset: 20);
+      await _asPrincipal(() => TomUserPreferences(repository).all(page));
+
+      expect(repository.pages, [same(page)]);
+    });
+
+    test('the ordered sentence is the one the window is applied to', () async {
+      // A window over an undefined order is a different set of rows each time
+      // it is asked for. The clause is part of the sentence rather than added
+      // beside the page, so the two cannot be separated by a later edit.
+      final repository = _RecordingRepository();
+      await _asPrincipal(
+        () => TomUserPreferences(repository).all(TomPageRequest(limit: 5)),
+      );
+
+      expect(repository.sentences.single, contains('ORDER BY preference_key'));
+    });
+  });
+
+  group('the guide states the bound the unpaged read rests on', () {
+    // The document's numbers are the argument for returning the list whole, so
+    // a ceiling raised in the kernel without the document following turns that
+    // argument into a wrong one — and it reads exactly as convincingly.
+    late String bounded;
+
+    setUpAll(() {
+      final guide = File('doc/preferences.md').readAsStringSync();
+      final start = guide.indexOf('## The Store Is Bounded');
+      expect(start, isNot(-1), reason: 'the guide section was renamed');
+      final end = guide.indexOf('\n## ', start + 1);
+      bounded = guide.substring(start, end == -1 ? guide.length : end);
+    });
+
+    /// The guide's ceiling table row that names [constant].
+    ///
+    /// The *row*, not the section: the numbers appear in the prose around the
+    /// table too, so a containment test over the whole section passes on a
+    /// sentence while the table it is meant to check has gone stale.
+    String rowNaming(String constant) {
+      final rows = bounded
+          .split('\n')
+          .where((line) => line.startsWith('| ') && line.contains(constant))
+          .toList();
+      expect(
+        rows,
+        hasLength(1),
+        reason: 'the guide must carry exactly one ceiling row for $constant',
+      );
+      return rows.single;
+    }
+
+    test('it names the count ceiling the kernel enforces', () {
+      expect(
+        rowNaming('tomUserPreferencesMaxPerPrincipal'),
+        contains('$tomUserPreferencesMaxPerPrincipal'),
+      );
+    });
+
+    test('it names the value ceiling in the unit the guide uses', () {
+      expect(
+        rowNaming('TomUserPreferenceCodec.maxValueBytes'),
+        contains('${TomUserPreferenceCodec.maxValueBytes ~/ 1024} KiB'),
+      );
+    });
+
+    test('it states what the two together cap the list at', () {
+      // Rounded to the nearest megabyte, which is the figure the guide gives —
+      // the point is the order of magnitude, and a reader who needs the exact
+      // number has the two ceilings above it.
+      final megabytes =
+          (tomUserPreferencesMaxPerPrincipal *
+              (TomUserPreferenceCodec.maxValueBytes +
+                  TomUserPreferenceKeys.maxLength)) /
+          (1024 * 1024);
+      expect(megabytes.round(), 4);
+      expect(bounded, contains('four megabytes'));
+    });
+
+    test('it says the wire is unpaged on purpose', () {
+      expect(
+        bounded,
+        allOf(contains('no page'), contains('TomPageRequest')),
+        reason:
+            'the section is where the decision lives: the list endpoint is '
+            'unpaged because the store is bounded, and `all()` takes a window '
+            'for the server-internal caller that wants one',
+      );
+    });
+  });
+}
+
+/// Runs [body] as a principal, so a read gets past the zone check.
+Future<T> _asPrincipal<T>(Future<T> Function() body) =>
+    runZoned(body, zoneValues: <Object, Object?>{TomPrincipal: _principal()});
+
+/// The smallest principal the service will accept.
+TomPrincipal _principal() => TomPrincipal(
+  authenticated: true,
+  context: {},
+  clientId: 0,
+  organization: 'acme',
+  organizationId: 0,
+  application: 'console',
+  applicationId: 0,
+  process: 'test',
+  processId: 0,
+  language: 'en',
+  country: 'US',
+  clientCountry: 'US',
+  clientLanguage: 'en',
+  clientTimezone: 'UTC',
+  user: TomUser(
+    id: 7,
+    username: 'user7',
+    firstname: 'Test',
+    lastname: 'User',
+    attributes: {},
+    timezone: 'utc',
+  ),
+  aci: TomAccessControlInformation(roles: const ['user']),
+);
+
+/// A repository that answers nothing and records what it was asked.
+///
+/// Whether a window *narrows* is the repository's answer and needs a table —
+/// `preferences_db_test.dart` asserts that. What this file can assert is that
+/// the service hands the window on rather than accepting it and dropping it,
+/// which is the failure an in-memory stand-in that applied the page itself
+/// would hide.
+class _RecordingRepository
+    implements TomSqlDatasourceRepository<TomUserPreference, int> {
+  /// The window of every `findByQuerySentence`, in order.
+  final List<TomPageRequest?> pages = [];
+
+  /// The sentence of every `findByQuerySentence`, in order.
+  final List<String> sentences = [];
+
+  @override
+  Future<Iterable<TomUserPreference>> findByQuerySentence(
+    String querySentence,
+    Map<String, Object?> parameters, [
+    Type? resultType,
+    TomPageRequest? page,
+  ]) async {
+    sentences.add(querySentence);
+    pages.add(page);
+    return const [];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => fail(
+    'the repository was reached via ${invocation.memberName}, which this '
+    'group does not exercise',
+  );
 }

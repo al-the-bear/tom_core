@@ -143,7 +143,7 @@ All of the following read the caller from the request zone, except `getFor`.
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference of the caller, ordered by key (unmodifiable). Unpaged, and bounded by the two ceilings below. |
+| `all` | `Future<List<TomUserPreferenceDto>> all([TomPageRequest? page])` | Every preference of the caller, ordered by key (unmodifiable), and bounded by the two ceilings below. `page` windows the answer and is for a server-internal caller — a migration or a batch job; the wire has no equivalent and deliberately, since the set cannot exceed the count ceiling. |
 | `read(String key)` | `Future<TomUserPreferenceDto?>` | The caller's preference under `key`, or `null` when never written. |
 | `get<T extends Object>(String key)` | `Future<T?>` | `read`, decoded as a `T`. Throws `TomUserPreferenceCodecException` when the preference exists but was written as a different type. |
 | `getOr<T extends Object>(String key, T fallback)` | `Future<T>` | `get`, with `fallback` for a preference that has never been written. A type mismatch still throws. |

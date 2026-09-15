@@ -43,6 +43,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../little_things/server_exception.dart';
 import '../object_persistence/crud_repository.dart';
+import '../object_persistence/paging.dart';
 import 'user_preference.dart';
 
 /// Raised when a preference operation cannot identify the caller
@@ -128,10 +129,21 @@ class TomUserPreferences {
   /// also free — `uq_tom_user_preference (principal_id, preference_key)` already
   /// covers `WHERE principal_id = ? ORDER BY preference_key`, so the rows come
   /// back in order off the index rather than through a sort.
-  Future<List<TomUserPreferenceDto>> all() async {
+  /// [page] windows the answer, and is for a **server-internal** caller — a
+  /// migration walking one principal's settings, an admin tool, a job that
+  /// reads in batches. The wire has no equivalent, and deliberately: see
+  /// [TomUserPreferencesApiService.listPreferences] and
+  /// `doc/preferences.md` §The Store Is Bounded.
+  ///
+  /// A window is only meaningful over a defined order, and this one has it
+  /// already — the `ORDER BY` above is the contract's, so page 2 is the rows
+  /// after page 1 rather than whatever the engine returned second.
+  Future<List<TomUserPreferenceDto>> all([TomPageRequest? page]) async {
     final rows = await repository.findByQuerySentence(
       'FIND BY principal_id = :principalId ORDER BY preference_key',
       {'principalId': _requirePrincipal().id},
+      null,
+      page,
     );
     return List.unmodifiable(rows.map((row) => row.toDto()));
   }

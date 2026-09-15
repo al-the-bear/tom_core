@@ -2,6 +2,32 @@
 
 ### Added
 
+- **`TomUserPreferences.all()` takes an optional window; the wire stays unpaged,
+  and the reason is pinned (tcopen175).** The read path had no
+  `TomPageRequest` while the repository's finders accept one. It now does —
+  `all([page])`, forwarded to the same ordered sentence, so page 2 is the rows
+  after page 1 rather than whatever the engine returned second. It is for a
+  caller on *this* side of the wire: a migration walking one principal's
+  settings, a job reading in batches.
+
+  `GET /preferences` is deliberately not paged, and that is a decision rather
+  than an omission: the declaration lives in `tom_core_kernel` and
+  `tom_core_flutter`'s client implements it, so a page parameter is a
+  three-package change to push paging into every client for a list that cannot
+  exceed `tomUserPreferencesMaxPerPrincipal` entries of at most
+  `TomUserPreferenceCodec.maxValueBytes` each. An application that outgrows
+  that is storing collection data in a settings store, and the answer there is
+  a table of its own.
+
+  The argument rests on those two numbers, so `doc/preferences.md` §The Store
+  Is Bounded now states the split and `preferences_service_test.dart` pins the
+  section's ceiling **rows** against the kernel constants — the rows rather
+  than the section, because the numbers appear in the prose around the table
+  too and a containment test over the whole section passes on a sentence while
+  the table has gone stale. A ceiling raised without the document following
+  would otherwise leave the argument for returning the list whole reading
+  exactly as convincingly while being wrong.
+
 - **The preferences module ships a runnable example (tcopen174).**
   `example/preferences/` held one migration file and no Dart, which made it the
   only module of the twenty without a program — and the one whose wiring is
