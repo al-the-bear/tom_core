@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:shelf/shelf.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -95,11 +97,15 @@ class TomHealthStatus {
 abstract class TomHealthAnalyzer {
   /// Analyzes the health of the server.
   ///
-  /// Returns the verdict a probe acts on and the message a person reads. An
-  /// analyzer that touches anything remote should impose its own timeout and
-  /// answer [TomHealthStatus.unhealthy] rather than hang: `/health` is the
-  /// request an orchestrator uses to decide whether the process is alive, so a
-  /// slow dependency that hangs it reads as a dead process.
+  /// Returns the verdict a probe acts on and the message a person reads.
+  ///
+  /// It is awaited under [TomHealthServer.healthTimeout], and a timeout or a
+  /// thrown exception becomes an unhealthy verdict naming what happened — so an
+  /// analyzer cannot stop a probe from answering. An analyzer that touches
+  /// anything remote should still impose its own, shorter deadline: the
+  /// framework's can only say *that* the check did not answer, while the
+  /// analyzer's own can say **which** dependency was slow, and it is the only
+  /// one that stops the work rather than the waiting.
   Future<TomHealthStatus> analyzeHealth();
 }
 
@@ -195,8 +201,20 @@ abstract class TomHealthService {
 @tomReflector
 @tomComponent
 class TomHealthServer implements TomHealthService {
+  /// The deadline a process starts with: five seconds.
+  ///
+  /// Long enough that a real dependency check — a `SELECT 1` over an
+  /// established pool, a cache `PING` — answers well inside it, and short
+  /// enough to beat the OS connect timeout that is the failure it exists for.
+  ///
+  /// It only fires if the *probe's own* timeout is longer. Kubernetes defaults
+  /// `timeoutSeconds` to 1, so a deployment that wants this deadline to be the
+  /// one that answers has to raise it — see `doc/healthcheck.md`.
+  static const Duration defaultHealthTimeout = Duration(seconds: 5);
+
   static TomHealthAnalyzer _livenessAnalyzer = TomDefaultHealthAnalyzer();
   static TomHealthAnalyzer _readinessAnalyzer = TomDefaultHealthAnalyzer();
+  static Duration _healthTimeout = defaultHealthTimeout;
 
   /// The analyzer every `GET /health` request is answered by — **liveness**.
   ///
@@ -255,17 +273,53 @@ class TomHealthServer implements TomHealthService {
         analyzer,
       );
 
-  /// Installs a fresh [TomDefaultHealthAnalyzer] on both probes.
+  /// How long a probe waits for its analyzer before answering unhealthy.
   ///
-  /// The supported spelling for a test or an example that installed an analyzer
+  /// Defaults to [defaultHealthTimeout]. Install a different one with
+  /// [installHealthTimeout].
+  static Duration get healthTimeout => _healthTimeout;
+
+  /// Installs [timeout] as the process-wide deadline for both probes, logging
+  /// the replacement at info.
+  ///
+  /// Throws `ArgumentError` on a zero or negative duration, which would make
+  /// every probe answer "timed out" before its analyzer ran — a health endpoint
+  /// that is wrong in the safe-looking direction, since 503 on liveness is a
+  /// restart.
+  ///
+  /// It goes through a function for the same reason the analyzers do: it is a
+  /// process-wide global, and a deadline silently shortened by something else
+  /// in the process is a probe failure with nothing to read. See
+  /// [installLivenessAnalyzer].
+  static void installHealthTimeout(Duration timeout) {
+    if (timeout <= Duration.zero) {
+      throw ArgumentError.value(
+        timeout,
+        'timeout',
+        'the health deadline must be positive',
+      );
+    }
+    tomLog.info(
+      'TomHealthServer: health deadline is now $timeout, '
+      'installed over $_healthTimeout',
+    );
+    _healthTimeout = timeout;
+  }
+
+  /// Puts the module's process-wide state back the way a fresh process starts
+  /// it: a fresh [TomDefaultHealthAnalyzer] on each probe, and the deadline at
+  /// [defaultHealthTimeout].
+  ///
+  /// The supported spelling for a test or an example that configured the module
   /// and wants the process back the way it found it. Each probe gets its own
-  /// instance, which is the state a fresh process starts in.
+  /// analyzer instance, which is the state a fresh process starts in.
   ///
   /// It logs like any other installation, because it is one: a reset that went
   /// unrecorded would be the one replacement the log could not account for.
-  static void resetHealthAnalyzers() {
+  static void resetHealthChecks() {
     installLivenessAnalyzer(TomDefaultHealthAnalyzer());
     installReadinessAnalyzer(TomDefaultHealthAnalyzer());
+    installHealthTimeout(defaultHealthTimeout);
   }
 
   /// Announces that [next] replaces [previous] on the [probe] analyzer, and
@@ -284,11 +338,53 @@ class TomHealthServer implements TomHealthService {
 
   @override
   Future<Response> health() async =>
-      responseFor(await _livenessAnalyzer.analyzeHealth());
+      responseFor(await verdictOf(_livenessAnalyzer, 'liveness'));
 
   @override
   Future<Response> ready() async =>
-      responseFor(await _readinessAnalyzer.analyzeHealth());
+      responseFor(await verdictOf(_readinessAnalyzer, 'readiness'));
+
+  /// Runs [analyzer] under the [healthTimeout] deadline and turns every way it
+  /// can fail to produce a verdict into one.
+  ///
+  /// Public so a deployment adding a probe route of its own gets the deadline
+  /// and the failure handling rather than a second, thinner spelling of them.
+  /// [probe] names the check in the message a person reads.
+  ///
+  /// **The deadline is the point.** `analyzeHealth` is `async` precisely so a
+  /// `SELECT 1` and a cache `PING` can be awaited, and a TCP connection to a
+  /// host that has dropped off the network does not fail fast — it waits for
+  /// the OS connect timeout, which on Linux is over two minutes. Awaited
+  /// without a deadline, the probe returns nothing at all for that window, so
+  /// an orchestrator sees a probe *timeout* rather than a degraded body and
+  /// restarts a process whose only problem was a slow dependency. "I could not
+  /// determine my health within $healthTimeout" is a worse answer than a real
+  /// verdict and a far better one than no answer.
+  ///
+  /// **A thrown analyzer is caught for the same reason.** Letting it out turns
+  /// the probe into the pipeline's 500, which on liveness is also a restart,
+  /// and loses the message. The exception's text becomes the body, so the cause
+  /// is still on the wire — nothing is swallowed, it is answered.
+  ///
+  /// A timed-out analyzer is **not** cancelled: `Future.timeout` stops the
+  /// waiting, not the work, and Dart has no way to abort a future in flight. An
+  /// analyzer that hangs on every probe therefore accumulates pending futures
+  /// at probe frequency, which is one more reason for an analyzer that touches
+  /// anything remote to carry its own, shorter deadline.
+  static Future<TomHealthStatus> verdictOf(
+    TomHealthAnalyzer analyzer,
+    String probe,
+  ) async {
+    try {
+      return await analyzer.analyzeHealth().timeout(_healthTimeout);
+    } on TimeoutException {
+      return TomHealthStatus.unhealthy(
+        'TIMEOUT: the $probe check did not answer within $_healthTimeout',
+      );
+    } catch (error) {
+      return TomHealthStatus.unhealthy('FAILED: the $probe check threw $error');
+    }
+  }
 
   /// The HTTP response one [status] is served as.
   ///

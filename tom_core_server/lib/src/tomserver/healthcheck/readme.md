@@ -21,7 +21,7 @@ own `TomHealthAnalyzer` (both default to the always-healthy
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomHealthService` | Abstract contract: `Future<Response> health()` and `ready()` — a `Response` because the status code is part of the answer. |
-| `TomHealthServer` | Default service; runs `livenessAnalyzer` for `/health` and `readinessAnalyzer` for `/ready`, turning each verdict into the response. Both are read-only; install through `installLivenessAnalyzer` / `installReadinessAnalyzer`, which log the replacement, and `resetHealthAnalyzers()` to go back to the defaults. |
+| `TomHealthServer` | Default service; runs `livenessAnalyzer` for `/health` and `readinessAnalyzer` for `/ready`, turning each verdict into the response. Both are read-only; install through `installLivenessAnalyzer` / `installReadinessAnalyzer`, which log the replacement, and `resetHealthChecks()` to go back to the defaults. Each analyzer runs under `healthTimeout` (five seconds by default, `installHealthTimeout` to change it), so one that hangs or throws still yields an unhealthy verdict rather than stopping the probe from answering. |
 | `TomHealthAnalyzer` | Abstract probe that decides the health verdict. |
 | `TomHealthStatus` · `TomHealthVerdict` | What an analyzer concludes: the verdict a probe acts on, and the message a person reads. Two verdicts, because HTTP offers a probe two answers. |
 | `TomDefaultHealthAnalyzer` | Always-healthy analyzer used when no custom probe is supplied. |

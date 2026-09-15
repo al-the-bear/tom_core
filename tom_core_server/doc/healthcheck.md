@@ -10,7 +10,9 @@ Two routes, because liveness ("am I running") and readiness ("can I serve
 traffic") have opposite consequences — see
 [Two Questions, Two Routes](#two-questions-two-routes). Each has its own
 process-wide analyzer, installed through a function that records the
-replacement — see [Installing an Analyzer](#installing-an-analyzer).
+replacement — see [Installing an Analyzer](#installing-an-analyzer) — and both
+answer under a deadline, so an analyzer that hangs cannot stop a probe from
+answering — see [The Deadline](#the-deadline).
 
 ## Table of Contents
 
@@ -20,6 +22,7 @@ replacement — see [Installing an Analyzer](#installing-an-analyzer).
   - [Kubernetes](#kubernetes)
 - [Customizing the Health Check](#customizing-the-health-check)
   - [Installing an Analyzer](#installing-an-analyzer)
+  - [The Deadline](#the-deadline)
 - [How It Is Wired](#how-it-is-wired)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
@@ -124,11 +127,21 @@ asked in more detail — and it is the path the platforms' own examples use.
 ```yaml
 livenessProbe:
   httpGet: { path: /health, port: 8080 }
+  timeoutSeconds: 10
 readinessProbe:
   httpGet: { path: /ready, port: 8080 }
+  timeoutSeconds: 10
 ```
 
 No body matcher on either: the verdict is the status code.
+
+`timeoutSeconds` is raised above the framework's own five-second deadline on
+purpose. Kubernetes defaults it to **1**, which is shorter than any real
+dependency check and shorter than the deadline — so the probe would give up
+first and the framework's `TIMEOUT:` answer, the whole point of the deadline,
+would never be read. Whichever of the two deadlines is shorter is the one that
+decides what the orchestrator sees; make it the framework's, which answers,
+rather than the probe's, which does not.
 
 ## Customizing the Health Check
 
@@ -175,7 +188,8 @@ through a function:
 | ---- | ------ |
 | `TomHealthServer.installLivenessAnalyzer(a)` | `a` answers every `GET /health` |
 | `TomHealthServer.installReadinessAnalyzer(a)` | `a` answers every `GET /ready` |
-| `TomHealthServer.resetHealthAnalyzers()` | both probes go back to a fresh `TomDefaultHealthAnalyzer`, one instance each |
+| `TomHealthServer.installHealthTimeout(d)` | `d` is the deadline both probes answer under |
+| `TomHealthServer.resetHealthChecks()` | both probes go back to a fresh `TomDefaultHealthAnalyzer`, one instance each, and the deadline to its default |
 
 **Each call logs at info, naming the outgoing and the incoming analyzer.** That
 line is the whole reason installation is a function rather than an assignment.
@@ -195,8 +209,49 @@ finished installing — so a seal would either be dead code or fire on a legitim
 late install. A late installation is *visible* instead, which is the boundary
 that can actually be enforced.
 
-`resetHealthAnalyzers()` is the supported way back for a test or an example that
-installed an analyzer. It logs like any other installation, because it is one.
+`resetHealthChecks()` is the supported way back for a test or an example that
+configured the module. It logs like any other installation, because it is one.
+
+### The Deadline
+
+Every probe awaits its analyzer under `TomHealthServer.healthTimeout`, five
+seconds by default, and **turns every way an analyzer can fail to produce a
+verdict into a verdict**:
+
+| What the analyzer does | What the probe answers |
+| ---------------------- | ---------------------- |
+| returns a status | that status, as always |
+| does not answer within the deadline | `503` with `TIMEOUT: the <probe> check did not answer within 0:00:05.000000` |
+| throws | `503` with `FAILED: the <probe> check threw <error>` |
+
+```dart
+TomHealthServer.installHealthTimeout(const Duration(seconds: 2));
+```
+
+A zero or negative duration is refused with an `ArgumentError`: it would make
+every probe answer `TIMEOUT` before its analyzer ran, which is wrong in the
+direction that looks safe — `503` on liveness is a restart.
+
+**Why the framework carries a deadline at all.** `analyzeHealth` is `async`
+precisely so a `SELECT 1` and a cache `PING` can be awaited, and a TCP
+connection to a host that has dropped off the network does not fail fast: it
+waits for the OS connect timeout, over two minutes on Linux. Awaited without a
+deadline, `/health` returns *nothing* for that window, so an orchestrator sees a
+probe timeout rather than a degraded body — and restarts a process whose only
+problem was a slow dependency. A health endpoint is the one endpoint that must
+always answer, and "I could not determine my health within five seconds" is a
+better answer than no answer.
+
+**An analyzer should still carry its own, shorter deadline.** The framework's
+can only say *that* the check did not answer; the analyzer's own can say
+**which** dependency was slow. It is also the only one that stops the *work*:
+`Future.timeout` stops the waiting, and Dart cannot abort a future in flight, so
+an analyzer that hangs on every probe accumulates pending futures at probe
+frequency.
+
+`TomHealthServer.verdictOf(analyzer, probeName)` is that logic as a public
+seam, so a deployment adding a probe route of its own gets the deadline and the
+failure handling rather than a second, thinner spelling of them.
 
 ## How It Is Wired
 
@@ -212,19 +267,19 @@ routes — no manual registration needed. The analyzers are `static` state on
   `readinessAnalyzer` are `static`, so one installation answers every request on
   every isolate; there is no per-instance, per-port or per-request override. A
   deployment that wants two different *liveness* checks needs two processes.
-- **`analyzeHealth` is awaited with no deadline.** An analyzer that probes a
-  database and hangs hangs the `/health` request, which is the request an
-  orchestrator uses to decide whether the process is alive — so a slow
-  dependency reads as a dead process and earns a restart. An analyzer that
-  touches anything remote should impose its own timeout and answer degraded.
+- **A timed-out analyzer is not cancelled.** `Future.timeout` stops the waiting,
+  not the work, and Dart has no way to abort a future in flight — so an analyzer
+  that hangs on every probe accumulates pending futures at probe frequency. The
+  remedy is the analyzer's own deadline, on the operation it started.
 
 ## Verification
 
 `test/healthcheck_test.dart` covers the surface a deployment drives directly:
 `TomDefaultHealthAnalyzer`'s verdict, each route delegating to its own analyzer,
 that the two are independent in both directions, that installation is read-only
-from outside and announces every replacement including a reset, and the declared
-routes. The
+from outside and announces every replacement including a reset, that a hanging
+or throwing analyzer still produces a verdict within the deadline, and the
+declared routes. The
 *mounted* routes are a different claim — they are produced by the
 reflection-based endpoints pipeline — so they are asserted where that pipeline
 runs, in `test/endpoints_pipeline_test.dart`, in the group named
@@ -241,8 +296,8 @@ route, which is exactly the shape `/ready` has.
 dart run example/healthcheck/healthcheck_example.dart
 ```
 
-`example/healthcheck/healthcheck_example.dart` shows the analyzer seam without
-the router, deliberately: mounting the route means initializing generated
+`example/healthcheck/healthcheck_example.dart` shows the analyzer seam and the
+deadline without the router, deliberately: mounting the route means initializing generated
 reflection and building a pipeline, which would bury the one thing the example
 is about. Every step checks its own result, and `test/examples_test.dart` runs
 it.
@@ -252,10 +307,11 @@ it.
 - **`TomHealthService`** — the reflected service interface carrying the
   `GET /health` and `GET /ready` endpoint annotations.
 - **`TomHealthServer`** — the reflected default implementation; holds the two
-  global analyzers (`livenessAnalyzer`, `readinessAnalyzer`) behind
-  `installLivenessAnalyzer` / `installReadinessAnalyzer` /
-  `resetHealthAnalyzers`, delegates each route to its own, and turns the verdict
-  into the response with `responseFor`.
+  global analyzers (`livenessAnalyzer`, `readinessAnalyzer`) and the deadline
+  (`healthTimeout`) behind `installLivenessAnalyzer` /
+  `installReadinessAnalyzer` / `installHealthTimeout` / `resetHealthChecks`,
+  runs each route's analyzer through `verdictOf`, and turns the verdict into the
+  response with `responseFor`.
 - **`TomHealthAnalyzer`** / **`TomDefaultHealthAnalyzer`** — the analyzer
   contract and its always-healthy default.
 - **`TomHealthStatus`** / **`TomHealthVerdict`** — what an analyzer concludes:
@@ -265,11 +321,12 @@ it.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `health_check.dart` | `TimeoutException`, the one `Future.timeout` throws, caught to turn a hung analyzer into a verdict |
 | `shelf` | package | `health_check.dart` | `Response`, because the status code is part of the answer and a `String` has nowhere to put it |
 | `tom_core_kernel` | package | every file | `tomReflector` (reflection), `tomComponent` (the bean locator's component annotation), `TomPublicAccess` (an access control), `TomHeader` (the `Content-Type` name), and `TomHttpMethod` / `TomMimeType` (the HTTP vocabulary the endpoint annotation is written in) |
 | [endpoints](endpoints.md) | module | every file | `tomService` and `TomEndpoint`, the two annotations by which the endpoints pipeline discovers the route |
 
-`health_check.dart` imports exactly two things, and between them they supply
+`health_check.dart` imports exactly three things, and between them they supply
 every symbol it uses:
 
 Note that `@tomComponent` and `@TomPublicAccess` are *kernel* annotations even

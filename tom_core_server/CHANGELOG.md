@@ -33,6 +33,35 @@
 
 ### Changed
 
+- **A probe answers even when its analyzer does not (tcopen156).**
+  `analyzeHealth()` was awaited with no deadline. It is `async` precisely so a
+  `SELECT 1` and a cache `PING` can be awaited, and a TCP connection to a host
+  that has dropped off the network does not fail fast — it waits for the OS
+  connect timeout, over two minutes on Linux. For that window `/health` returned
+  nothing at all, so an orchestrator saw a probe *timeout* rather than a degraded
+  body and restarted a process whose only problem was a slow dependency.
+
+  Both probes now run their analyzer through `TomHealthServer.verdictOf`, which
+  awaits it under `healthTimeout` — `defaultHealthTimeout`, five seconds — and
+  turns every way an analyzer can fail to produce a verdict into one: a timeout
+  becomes `503 TIMEOUT: the <probe> check did not answer within …`, a thrown
+  exception becomes `503 FAILED: the <probe> check threw …`. `verdictOf` is
+  public so a deployment adding a probe route of its own gets the same
+  behaviour. `installHealthTimeout` changes the deadline and refuses a
+  non-positive one, which would make every probe answer `TIMEOUT` before its
+  analyzer ran.
+
+  A timed-out analyzer is **not** cancelled: `Future.timeout` stops the waiting,
+  not the work. An analyzer that touches anything remote should still carry its
+  own, shorter deadline — it is the one that can name *which* dependency was
+  slow, and the only one that stops the operation.
+
+  `resetHealthAnalyzers()` is renamed `resetHealthChecks()`, since it now
+  restores the deadline as well as the two analyzers. `doc/healthcheck.md`'s
+  Kubernetes snippet sets `timeoutSeconds: 10`: the platform default of 1 is
+  shorter than the framework deadline, so the probe would give up first and the
+  `TIMEOUT:` answer would never be read.
+
 - **The health analyzers are installed, not assigned (tcopen155).**
   `TomHealthServer.livenessAnalyzer` and `readinessAnalyzer` were bare public
   mutable statics, read on every request. Anything in the process could replace
@@ -43,7 +72,7 @@
   Both are now read-only getters over private storage, installed through
   `installLivenessAnalyzer` / `installReadinessAnalyzer`, which log the
   replacement at info naming the outgoing and incoming runtime types.
-  `resetHealthAnalyzers()` puts both back to a fresh `TomDefaultHealthAnalyzer`
+  `resetHealthChecks()` puts both back to a fresh `TomDefaultHealthAnalyzer`
   and is the one supported spelling for the save-restore the module's own tests
   and example were each writing by hand.
 

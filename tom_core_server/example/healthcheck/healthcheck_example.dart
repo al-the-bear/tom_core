@@ -19,6 +19,8 @@
 /// named `healthcheck GET /health route`.
 library;
 
+import 'dart:async';
+
 import 'package:tom_core_server/tom_core_server.dart';
 
 import '../_support/check.dart';
@@ -33,6 +35,14 @@ class _DemoAnalyzer extends TomHealthAnalyzer {
   Future<TomHealthStatus> analyzeHealth() async => dbOk && cacheOk
       ? const TomHealthStatus.healthy()
       : TomHealthStatus.unhealthy('db=$dbOk, cache=$cacheOk');
+}
+
+/// An analyzer whose future never completes — the dependency that has dropped
+/// off the network rather than refusing a connection.
+class _HangingAnalyzer extends TomHealthAnalyzer {
+  @override
+  Future<TomHealthStatus> analyzeHealth() =>
+      Completer<TomHealthStatus>().future;
 }
 
 Future<void> run() async {
@@ -101,7 +111,30 @@ Future<void> run() async {
   } finally {
     // One supported call rather than a hand-written save-restore: the example
     // is where a reader learns how to put the process back.
-    TomHealthServer.resetHealthAnalyzers();
+    TomHealthServer.resetHealthChecks();
+  }
+
+  // 5. An analyzer that never answers does not stop the probe from answering.
+  //    A TCP connection to a host that has dropped off the network waits for
+  //    the OS connect timeout — over two minutes on Linux — and without a
+  //    deadline the probe returns nothing for that whole window, which an
+  //    orchestrator reads as a dead process rather than a slow dependency.
+  try {
+    TomHealthServer.installHealthTimeout(const Duration(milliseconds: 200));
+    TomHealthServer.installLivenessAnalyzer(_HangingAnalyzer());
+    final timedOut = await server.health();
+    final body = await timedOut.readAsString();
+    print('5. health() that hangs       => ${timedOut.statusCode} $body');
+    check(
+      timedOut.statusCode == 503,
+      'a probe that cannot determine its health still answers, and says so',
+    );
+    check(
+      body.startsWith('TIMEOUT:'),
+      'and the message names the deadline rather than a dependency',
+    );
+  } finally {
+    TomHealthServer.resetHealthChecks();
   }
 
   print('\nHealth-check example completed.');

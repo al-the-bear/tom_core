@@ -16,6 +16,7 @@
 /// survive the file it points into being edited.
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:shelf/shelf.dart';
@@ -28,6 +29,21 @@ class _FixedAnalyzer extends TomHealthAnalyzer {
 
   @override
   Future<TomHealthStatus> analyzeHealth() async => status;
+}
+
+/// An analyzer whose future never completes — the dependency that has dropped
+/// off the network rather than refused a connection.
+class _HangingAnalyzer extends TomHealthAnalyzer {
+  @override
+  Future<TomHealthStatus> analyzeHealth() =>
+      Completer<TomHealthStatus>().future;
+}
+
+/// An analyzer that throws instead of answering.
+class _ThrowingAnalyzer extends TomHealthAnalyzer {
+  @override
+  Future<TomHealthStatus> analyzeHealth() async =>
+      throw StateError('the pool is closed');
 }
 
 /// Collects the info-level lines the installer writes.
@@ -56,9 +72,9 @@ Future<String> _bodyOf(Response response) => response.readAsString();
 
 void main() {
   // Put the process back the way a fresh one starts, so installations do not
-  // leak between tests. One supported call, rather than a hand-written
-  // save-restore per global.
-  tearDown(TomHealthServer.resetHealthAnalyzers);
+  // leak between tests — analyzers and deadline alike. One supported call,
+  // rather than a hand-written save-restore per global.
+  tearDown(TomHealthServer.resetHealthChecks);
 
   group('the verdict and the message are two facts', () {
     test('a verdict carries the status code a probe acts on', () {
@@ -272,6 +288,7 @@ void main() {
       TomHealthServer.installLivenessAnalyzer(
         _FixedAnalyzer(const TomHealthStatus.unhealthy('gone')),
       );
+      TomHealthServer.installHealthTimeout(const Duration(seconds: 1));
 
       final log = _InfoLog();
       final previousOutput = tomLog.logOutput;
@@ -283,18 +300,26 @@ void main() {
       tomLog.logOutput = log;
       tomLog.setLogLevel(TomLogLevel.all);
 
-      TomHealthServer.resetHealthAnalyzers();
+      TomHealthServer.resetHealthChecks();
 
-      expect(log.lines, hasLength(2));
-      expect(log.lines.first, contains('liveness'));
-      expect(log.lines.last, contains('readiness'));
+      expect(log.lines, hasLength(3));
+      expect(log.lines[0], contains('liveness'));
+      expect(log.lines[1], contains('readiness'));
+      expect(log.lines[2], contains('deadline'));
       expect((await TomHealthServer().health()).statusCode, 200);
+      expect(
+        TomHealthServer.healthTimeout,
+        TomHealthServer.defaultHealthTimeout,
+        reason:
+            'a reset restores every process-wide knob, not just the two '
+            'that share a name with the call',
+      );
     });
 
-    test('a reset restores two instances, not one shared object', () {
+    test('a reset restores two analyzer instances, not one shared object', () {
       // The invariant a fresh process starts with. Handing both probes the same
       // default would make an analyzer mutated in place answer both routes.
-      TomHealthServer.resetHealthAnalyzers();
+      TomHealthServer.resetHealthChecks();
       expect(
         TomHealthServer.livenessAnalyzer,
         isA<TomDefaultHealthAnalyzer>().having(
@@ -303,6 +328,122 @@ void main() {
           isFalse,
         ),
       );
+    });
+  });
+
+  group('a probe answers even when its analyzer does not', () {
+    test('a hanging analyzer becomes an unhealthy verdict, not a hang', () {
+      // The defect this closes. `analyzeHealth` is async precisely so a
+      // SELECT 1 and a cache PING can be awaited, and a TCP connection to a
+      // host that has dropped off the network waits for the OS connect timeout
+      // — over two minutes on Linux. Awaited without a deadline the probe
+      // returns nothing at all for that window, so an orchestrator sees a probe
+      // *timeout* rather than a degraded body and restarts a process whose only
+      // problem was a slow dependency.
+      //
+      // Asserted with a fake clock rather than a real wait: `fakeAsync` would
+      // be the other way, but the deadline is short enough to spend for real
+      // and a 200 ms wall clock keeps the test readable.
+      TomHealthServer.installHealthTimeout(const Duration(milliseconds: 200));
+      TomHealthServer.installLivenessAnalyzer(_HangingAnalyzer());
+
+      return expectLater(
+        TomHealthServer().health().then((r) async {
+          expect(r.statusCode, 503);
+          final body = await _bodyOf(r);
+          expect(body, startsWith('TIMEOUT:'));
+          expect(
+            body,
+            contains('liveness'),
+            reason: 'the message names which check did not answer',
+          );
+          return body;
+        }),
+        completes,
+      ).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => fail('the deadline did not fire: the probe hung'),
+      );
+    });
+
+    test('and the other probe is unaffected while it hangs', () async {
+      // The deadline is per call, not a process-wide latch: a hanging liveness
+      // analyzer must not make readiness wait for it too.
+      TomHealthServer.installHealthTimeout(const Duration(milliseconds: 200));
+      TomHealthServer.installLivenessAnalyzer(_HangingAnalyzer());
+
+      final ready = await TomHealthServer().ready();
+      expect(ready.statusCode, 200);
+      expect(await _bodyOf(ready), 'OK');
+    });
+
+    test('a throwing analyzer becomes an unhealthy verdict too', () async {
+      // Letting it out turns the probe into the pipeline's 500, which on
+      // liveness is also a restart, and loses the message. The exception text
+      // reaches the body, so nothing is swallowed — it is answered.
+      TomHealthServer.installReadinessAnalyzer(_ThrowingAnalyzer());
+
+      final response = await TomHealthServer().ready();
+      expect(response.statusCode, 503);
+      final body = await _bodyOf(response);
+      expect(body, startsWith('FAILED:'));
+      expect(body, contains('readiness'));
+      expect(
+        body,
+        contains('the pool is closed'),
+        reason: 'the cause belongs on the wire, not only in a log',
+      );
+    });
+
+    test('an analyzer that answers in time is not touched', () async {
+      // The control. Without it the two assertions above are satisfied by a
+      // deadline that fires on every request.
+      TomHealthServer.installLivenessAnalyzer(
+        _FixedAnalyzer(const TomHealthStatus.unhealthy('db=false')),
+      );
+      final response = await TomHealthServer().health();
+      expect(response.statusCode, 503);
+      expect(await _bodyOf(response), 'db=false');
+    });
+
+    test('the deadline defaults to five seconds', () {
+      // Pinned by value because it is a promise to a deployment: long enough
+      // that a real dependency check answers well inside it, short enough to
+      // beat the OS connect timeout it exists for.
+      expect(TomHealthServer.defaultHealthTimeout, const Duration(seconds: 5));
+      expect(TomHealthServer.healthTimeout, const Duration(seconds: 5));
+    });
+
+    test('a non-positive deadline is refused at the boundary', () {
+      // A zero deadline would make every probe answer TIMEOUT before its
+      // analyzer ran — wrong in the direction that looks safe, since 503 on
+      // liveness is a restart.
+      expect(
+        () => TomHealthServer.installHealthTimeout(Duration.zero),
+        throwsArgumentError,
+      );
+      expect(
+        () => TomHealthServer.installHealthTimeout(const Duration(seconds: -1)),
+        throwsArgumentError,
+      );
+      expect(
+        TomHealthServer.healthTimeout,
+        TomHealthServer.defaultHealthTimeout,
+        reason: 'a refused installation leaves the deadline where it was',
+      );
+    });
+
+    test('verdictOf is the seam a third probe route reuses', () async {
+      // Public so a deployment adding its own probe path gets the deadline and
+      // the failure handling rather than a second, thinner spelling of them.
+      TomHealthServer.installHealthTimeout(const Duration(milliseconds: 200));
+
+      final verdict = await TomHealthServer.verdictOf(
+        _HangingAnalyzer(),
+        'startup',
+      );
+      expect(verdict.isHealthy, isFalse);
+      expect(verdict.message, contains('startup'));
     });
   });
 
