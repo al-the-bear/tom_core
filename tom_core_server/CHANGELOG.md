@@ -2,6 +2,29 @@
 
 ### Added
 
+- **Templating for the remaining channels splits by channel (tcopen167).** One
+  bullet covered `push` and `webhook` together, and the two are not the same
+  question.
+
+  A **webhook** payload has no reader and no locale, so there is nothing to
+  template: `TomTemplatedMessageService` exists to keep user-facing prose out of
+  Dart and resolve it in the *recipient's* language, and a webhook's recipient
+  is a program receiving `TomMessage.toJson()`. That is now a stated non-goal
+  under *Not in This Framework* rather than a pending item.
+
+  A **push** service waits on the push transport, not on this layer, and is
+  folded into the todo carrying that vendor decision so the two are resolved
+  together — a service composing messages for a channel nothing can deliver
+  composes messages that cannot be sent.
+
+  The instruction that a new channel extends the base **rather than
+  generalising** either existing service moves onto
+  `TomTemplatedMessageService`'s own dartdoc, where somebody about to do it is
+  standing, with its argument: the two differ only in their sub-keys and in the
+  message each builds, so a generalised service would parameterise exactly the
+  thing that distinguishes one channel from another and leave the shared part as
+  shared as it already is.
+
 - **Inbound mail is named as a boundary, not as a backlog item (tcopen166).**
   `doc/messaging.md` said "This module sends only" under *Not Yet Implemented*,
   which reads as "not yet" and invites the question every time somebody reads

@@ -34,6 +34,12 @@ tolerant parsing, character-set recovery, reply threading and attachment
 extraction are each a package's worth of work whose half-done version is worse
 than none. An application that needs to read mail uses a dedicated IMAP package.
 
+**A webhook has nothing to template.** `TomEmailService` and `TomSmsService` are
+the two templated services, and a third channel gets its own subclass rather
+than a generalisation of either — but a webhook's recipient is a program and its
+payload is `TomMessage.toJson()`, so there is no user-facing prose to resolve
+and no locale to resolve it in. A push service waits on the push transport.
+
 **The notification model is not here and is not coming.** Which events notify,
 who subscribes to them, and through which channels is the *application's*
 domain vocabulary and its product's policy; this module answers only how a

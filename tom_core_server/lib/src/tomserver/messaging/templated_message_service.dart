@@ -25,6 +25,23 @@
 ///
 /// Everything else — [send], [sendNow], [requiredText] — is the same code for
 /// every channel, and staying that way is the point.
+///
+/// ## One subclass per channel, never a generalised one
+///
+/// A third channel extends this class with its own sub-key set. It does **not**
+/// generalise [TomEmailService] or [TomSmsService], and the instruction is
+/// worth writing down because the tempting refactor is exactly the wrong one:
+/// the two differ only in their sub-keys (`subject`/`text`/`html` against
+/// `text`) and in the message each builds, so a "generalised" service would
+/// parameterise precisely the thing that distinguishes one channel from
+/// another, leave the shared part exactly as shared as it already is, and cost
+/// the compiler its ability to say that a [TomEmailRequest] has no text field
+/// to write a literal into.
+///
+/// Not every channel wants one. A webhook's payload is `TomMessage.toJson()`
+/// and its recipient is a program, so there is no user-facing prose to resolve
+/// and no locale to resolve it in — see "Not in This Framework" in
+/// `doc/messaging.md`.
 library;
 
 import '../resources/localized_text_resources.dart';

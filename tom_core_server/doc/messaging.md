@@ -63,6 +63,8 @@ out of.
 - [Not in This Framework](#not-in-this-framework)
   - [The notification model](#the-notification-model)
     - [What to build it out of](#what-to-build-it-out-of)
+  - [A templated service for webhook](#a-templated-service-for-webhook)
+    - [One service per channel](#one-service-per-channel)
   - [Inbound mail](#inbound-mail)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
@@ -1285,7 +1287,7 @@ produce either on demand.
 
 ## Not in This Framework
 
-Two things a reader might reasonably come here looking for are **not coming**,
+Three things a reader might reasonably come here looking for are **not coming**,
 and this section says so rather than leaving them on a list that reads as a
 schedule. Each names who owns the concern and what to build it with, because a
 non-goal that names no alternative is a refusal rather than an answer.
@@ -1329,6 +1331,40 @@ channel preferences, render one message per pair through a templated service,
 and hand each to the outbox. `messaging` stays unaware of all of it, which is
 the separation that lets a channel be added without touching the notification
 layer and a notification type without touching a transport.
+
+### A templated service for webhook
+
+**A webhook payload has no reader and no locale, so there is nothing to
+template.** `TomTemplatedMessageService` exists to keep user-facing prose out of
+Dart and resolve it in *the recipient's* language; a webhook's recipient is a
+program, and the payload is `TomMessage.toJson()` — the message's own structured
+representation, chosen precisely so that what an endpoint receives and what a
+queued message *is* cannot drift apart. Routing that through a resource bundle
+would mean resolving a locale for a consumer that has none.
+
+An application that does want prose in a webhook — a chat-service hook that
+posts a sentence — composes it the ordinary way and puts it in a body part. The
+templating rule is about *user-facing* text, and that text is user-facing when it
+reaches the chat client, not when it crosses the HTTP boundary.
+
+#### One service per channel
+
+Each channel that does want templating gets its own subclass **rather than a
+generalised one**, and the instruction is worth stating because the tempting
+refactor is exactly wrong. The two existing services differ in one thing:
+
+| Service | Sub-keys | Extra rule |
+| ------- | -------- | ---------- |
+| `TomEmailService` | `subject`, `text`, `html` | HTML body is optional and goes last, matching `multipart/alternative` |
+| `TomSmsService` | `text` | a segment budget, refused at render |
+
+Everything else — `send`, `sendNow`, `requiredText`, the fail-before-queueing
+order — is already shared by the base. So a "generalised" service would
+parameterise the sub-key set and the message shape, which is to say *the only
+thing that distinguishes one channel from another*, and leave the shared part
+exactly as shared as it already is. It would buy nothing and cost the compiler
+its ability to say that an email request has no `text` field to write a literal
+into.
 
 ### Inbound mail
 
@@ -1389,12 +1425,14 @@ correlation index, never through a mailbox.
   `example/messaging/sms_gateway_presets.dart` carries worked mappings for three
   named vendors, and none of them is exported as library API — see
   [Describing a gateway](#describing-a-gateway) for the argument.
-- **Templating for the remaining channels.** `TomEmailService` and
-  `TomSmsService` cover their channels; `push` and `webhook` have no equivalent
-  yet. A webhook rarely wants one — its body is structured data rather than
-  prose in a locale — but a push notification does. Each will extend
-  `TomTemplatedMessageService` with its own sub-key set rather than generalising
-  either existing one.
+- **A templated service for push**, which waits on the push transport rather
+  than on this layer: a service that composes messages for a channel nothing can
+  deliver composes messages that cannot be sent. When the transport arrives, the
+  service extends `TomTemplatedMessageService` with its own sub-key set —
+  `title` and `body` are what a push notification has — **rather than
+  generalising either existing one**. See
+  [One service per channel](#one-service-per-channel) for why that instruction
+  is load-bearing.
 - **Markup in templates.** A template resolves to a string. Conditionals, loops
   and partials are not offered: a template that needs one renders the varying
   part in the caller — as its own resource key, through `requiredText` — and
