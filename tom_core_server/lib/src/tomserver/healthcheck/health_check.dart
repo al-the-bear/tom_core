@@ -151,6 +151,18 @@ class TomDefaultHealthAnalyzer extends TomHealthAnalyzer {
 /// parameters on a health check are awkward to configure in several
 /// orchestrators, and a single route stays a single point of failure for both
 /// answers.
+///
+/// ## Neither route can fail to answer
+///
+/// Both run their analyzer through [TomHealthServer.verdictOf], so an analyzer
+/// that hangs, that throws, or that returns a future completing with an error
+/// produces an **unhealthy verdict carrying the reason** rather than an
+/// exception. That matters for the response *shape* as much as for the status:
+/// an exception leaving the handler becomes the endpoint pipeline's error
+/// envelope — a `500` with a JSON body — which is not what a probe configured
+/// against a plain-text route reads, and on liveness a `500` is a restart. The
+/// endpoint whose job is to report failure is the last one that should fail to
+/// respond because something failed.
 @tomReflector
 @tomService
 abstract class TomHealthService {
@@ -166,6 +178,10 @@ abstract class TomHealthService {
   /// directive in `endpoint_results.dart` because one caller is not a pattern:
   /// `TomRedirect` exists for the case where the *body* is implied by the
   /// intent, and here the handler is holding both facts already.
+  ///
+  /// Never completes with an error: whatever the analyzer does becomes a
+  /// verdict — see "Neither route can fail to answer" above and
+  /// [TomHealthServer.verdictOf].
   @TomPublicAccess()
   @TomEndpoint(
     methods: [TomHttpMethod.get],
@@ -182,6 +198,8 @@ abstract class TomHealthService {
   /// reads as a refinement of it, and these are two questions rather than one
   /// asked in more detail. It is also the path the platforms' own examples use,
   /// which is the path an operator will try first.
+  ///
+  /// Never completes with an error, for the same reason [health] does not.
   @TomPublicAccess()
   @TomEndpoint(
     methods: [TomHttpMethod.get],
@@ -361,10 +379,20 @@ class TomHealthServer implements TomHealthService {
   /// determine my health within $healthTimeout" is a worse answer than a real
   /// verdict and a far better one than no answer.
   ///
-  /// **A thrown analyzer is caught for the same reason.** Letting it out turns
-  /// the probe into the pipeline's 500, which on liveness is also a restart,
-  /// and loses the message. The exception's text becomes the body, so the cause
-  /// is still on the wire — nothing is swallowed, it is answered.
+  /// **A thrown analyzer is caught for the same reason, and it is the nearer
+  /// failure.** The analyzer this module is written for issues a `SELECT 1`
+  /// through the datasource, and a datasource that is *down* throws rather than
+  /// hangs — so an exception, not a timeout, is the realistic first encounter
+  /// with a broken dependency. Letting it out replaces the plain-text answer
+  /// with the pipeline's error envelope, a `500` carrying JSON, which is a
+  /// different response shape from the one every probe was configured to read;
+  /// and on liveness a `500` is a restart. The exception's text becomes the
+  /// body instead, so the cause is still on the wire — nothing is swallowed, it
+  /// is answered.
+  ///
+  /// The `catch` takes the synchronous throw too: an `analyzeHealth` that is
+  /// not `async` and raises before returning a future never reaches
+  /// [Future.timeout], so the call itself is inside the guarded block.
   ///
   /// A timed-out analyzer is **not** cancelled: `Future.timeout` stops the
   /// waiting, not the work, and Dart has no way to abort a future in flight. An

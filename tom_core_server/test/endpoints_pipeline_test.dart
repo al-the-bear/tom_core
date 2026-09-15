@@ -1500,6 +1500,39 @@ void main() {
         reason: 'a returned Response bypasses produces, so it sets its own',
       );
     });
+
+    test('a throwing analyzer keeps the plain-text shape, not the error '
+        'envelope', () async {
+      // The claim this pins is about the response *shape*, and only the mounted
+      // route can make it: an exception leaving the handler is caught by the
+      // pipeline's error handling, which answers a 500 with its own envelope.
+      // That is a different content type and a different body from the one
+      // every probe was configured to read, and on liveness a 500 is a restart
+      // — so a datasource that is merely down would kill the pod and hand the
+      // operator a response its probe cannot parse.
+      TomHealthServer.installLivenessAnalyzer(_BrokenAnalyzer());
+      addTearDown(TomHealthServer.resetHealthChecks);
+
+      final response = await router.call(_get('/health'));
+
+      expect(
+        response.statusCode,
+        503,
+        reason: 'unhealthy, not the pipeline 500 that means "the server broke"',
+      );
+      expect(
+        response.headers[TomHeader.contentType],
+        startsWith('text/plain'),
+        reason: 'the probe reads the shape it was configured for',
+      );
+      final body = await response.readAsString();
+      expect(body, startsWith('FAILED:'));
+      expect(
+        body,
+        contains('the pool is closed'),
+        reason: 'the cause reaches the operator on the wire',
+      );
+    });
   });
 
   group('TomEndpointHandler access checks', () {
@@ -2775,4 +2808,12 @@ class _DegradedAnalyzer extends TomHealthAnalyzer {
   @override
   Future<TomHealthStatus> analyzeHealth() async =>
       const TomHealthStatus.unhealthy('DEGRADED');
+}
+
+/// A [TomHealthAnalyzer] that throws — the datasource that is down rather than
+/// slow, which is the likelier way a real analyzer fails.
+class _BrokenAnalyzer extends TomHealthAnalyzer {
+  @override
+  Future<TomHealthStatus> analyzeHealth() async =>
+      throw StateError('the pool is closed');
 }

@@ -11,8 +11,9 @@ traffic") have opposite consequences — see
 [Two Questions, Two Routes](#two-questions-two-routes). Each has its own
 process-wide analyzer, installed through a function that records the
 replacement — see [Installing an Analyzer](#installing-an-analyzer) — and both
-answer under a deadline, so an analyzer that hangs cannot stop a probe from
-answering — see [The Deadline](#the-deadline).
+answer through a guard, so an analyzer that hangs or throws cannot stop a probe
+from answering — see
+[When the Analyzer Does Not Answer](#when-the-analyzer-does-not-answer).
 
 ## Table of Contents
 
@@ -22,7 +23,7 @@ answering — see [The Deadline](#the-deadline).
   - [Kubernetes](#kubernetes)
 - [Customizing the Health Check](#customizing-the-health-check)
   - [Installing an Analyzer](#installing-an-analyzer)
-  - [The Deadline](#the-deadline)
+  - [When the Analyzer Does Not Answer](#when-the-analyzer-does-not-answer)
 - [How It Is Wired](#how-it-is-wired)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
@@ -212,17 +213,32 @@ that can actually be enforced.
 `resetHealthChecks()` is the supported way back for a test or an example that
 configured the module. It logs like any other installation, because it is one.
 
-### The Deadline
+### When the Analyzer Does Not Answer
 
-Every probe awaits its analyzer under `TomHealthServer.healthTimeout`, five
-seconds by default, and **turns every way an analyzer can fail to produce a
-verdict into a verdict**:
+Every probe runs its analyzer through `TomHealthServer.verdictOf`, which awaits
+it under `TomHealthServer.healthTimeout` — five seconds by default — and **turns
+every way an analyzer can fail to produce a verdict into a verdict**:
 
 | What the analyzer does | What the probe answers |
 | ---------------------- | ---------------------- |
 | returns a status | that status, as always |
 | does not answer within the deadline | `503` with `TIMEOUT: the <probe> check did not answer within 0:00:05.000000` |
-| throws | `503` with `FAILED: the <probe> check threw <error>` |
+| throws, or returns a future that fails | `503` with `FAILED: the <probe> check threw <error>` |
+
+**The throw is the likelier failure, and the one that changes the response
+shape.** The analyzer this module is written for issues a `SELECT 1` through the
+datasource; a datasource that is *down* throws rather than hangs, so an
+exception is the realistic first encounter with a broken dependency. An
+exception leaving the handler is caught by the endpoints pipeline, which answers
+its own error envelope — a `500` carrying JSON. That is a different status, a
+different content type and a different body from the plain text every probe was
+configured to read, and on liveness a `500` is a restart: a database that was
+merely unreachable would take the pod down and hand the operator a response its
+probe cannot parse.
+
+A synchronous throw — an `analyzeHealth` that is not `async` and raises before
+returning a future — is caught too, because the call itself sits inside the
+guarded block rather than only the future it returns.
 
 ```dart
 TomHealthServer.installHealthTimeout(const Duration(seconds: 2));
@@ -232,7 +248,7 @@ A zero or negative duration is refused with an `ArgumentError`: it would make
 every probe answer `TIMEOUT` before its analyzer ran, which is wrong in the
 direction that looks safe — `503` on liveness is a restart.
 
-**Why the framework carries a deadline at all.** `analyzeHealth` is `async`
+**Why the framework carries a deadline as well.** `analyzeHealth` is `async`
 precisely so a `SELECT 1` and a cache `PING` can be awaited, and a TCP
 connection to a host that has dropped off the network does not fail fast: it
 waits for the OS connect timeout, over two minutes on Linux. Awaited without a
@@ -278,8 +294,10 @@ routes — no manual registration needed. The analyzers are `static` state on
 `TomDefaultHealthAnalyzer`'s verdict, each route delegating to its own analyzer,
 that the two are independent in both directions, that installation is read-only
 from outside and announces every replacement including a reset, that a hanging
-or throwing analyzer still produces a verdict within the deadline, and the
-declared routes. The
+analyzer still produces a verdict within the deadline and a throwing one — sync
+or async, early or late — produces one too, and the declared routes. The
+*response shape* a throw produces is a pipeline claim, so it is asserted where
+the pipeline runs. The
 *mounted* routes are a different claim — they are produced by the
 reflection-based endpoints pipeline — so they are asserted where that pipeline
 runs, in `test/endpoints_pipeline_test.dart`, in the group named
@@ -296,8 +314,8 @@ route, which is exactly the shape `/ready` has.
 dart run example/healthcheck/healthcheck_example.dart
 ```
 
-`example/healthcheck/healthcheck_example.dart` shows the analyzer seam and the
-deadline without the router, deliberately: mounting the route means initializing generated
+`example/healthcheck/healthcheck_example.dart` shows the analyzer seam and both
+failure paths without the router, deliberately: mounting the route means initializing generated
 reflection and building a pipeline, which would bury the one thing the example
 is about. Every step checks its own result, and `test/examples_test.dart` runs
 it.

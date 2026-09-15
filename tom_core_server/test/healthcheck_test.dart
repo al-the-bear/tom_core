@@ -39,11 +39,35 @@ class _HangingAnalyzer extends TomHealthAnalyzer {
       Completer<TomHealthStatus>().future;
 }
 
-/// An analyzer that throws instead of answering.
+/// An analyzer that throws instead of answering, from inside an async body —
+/// the future completes with an error.
 class _ThrowingAnalyzer extends TomHealthAnalyzer {
   @override
   Future<TomHealthStatus> analyzeHealth() async =>
       throw StateError('the pool is closed');
+}
+
+/// An analyzer that raises before it returns a future at all.
+///
+/// A distinct path: a synchronous throw never reaches [Future.timeout], so it
+/// is caught only because the call itself is inside the guarded block.
+class _SynchronouslyThrowingAnalyzer extends TomHealthAnalyzer {
+  @override
+  Future<TomHealthStatus> analyzeHealth() =>
+      throw StateError('no datasource is registered');
+}
+
+/// An analyzer whose future fails *after* the deadline has already fired.
+///
+/// The failure nobody sees coming: the probe has answered TIMEOUT and stopped
+/// waiting, and the original future then completes with an error that no longer
+/// has a caller.
+class _LateFailingAnalyzer extends TomHealthAnalyzer {
+  @override
+  Future<TomHealthStatus> analyzeHealth() => Future.delayed(
+    const Duration(milliseconds: 300),
+    () => throw StateError('the connection attempt gave up'),
+  );
 }
 
 /// Collects the info-level lines the installer writes.
@@ -392,6 +416,37 @@ void main() {
         body,
         contains('the pool is closed'),
         reason: 'the cause belongs on the wire, not only in a log',
+      );
+    });
+
+    test('a synchronous throw is caught as well', () async {
+      // The other half of "throws": an analyzeHealth that is not async and
+      // raises before returning a future never reaches Future.timeout, so it is
+      // caught only because the call itself sits inside the guarded block.
+      TomHealthServer.installLivenessAnalyzer(_SynchronouslyThrowingAnalyzer());
+
+      final response = await TomHealthServer().health();
+      expect(response.statusCode, 503);
+      expect(await _bodyOf(response), contains('no datasource is registered'));
+    });
+
+    test('a failure arriving after the deadline stays quiet', () async {
+      // `Future.timeout` stops the waiting, not the work, so the analyzer's
+      // future outlives the answer and then fails. Nothing is listening by
+      // then — and an unhandled asynchronous error is not a quiet event, it is
+      // reported to the zone and can take the isolate down. Asserted by letting
+      // the late failure land inside this test.
+      TomHealthServer.installHealthTimeout(const Duration(milliseconds: 100));
+      TomHealthServer.installLivenessAnalyzer(_LateFailingAnalyzer());
+
+      final response = await TomHealthServer().health();
+      expect(await _bodyOf(response), startsWith('TIMEOUT:'));
+
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      expect(
+        (await TomHealthServer().ready()).statusCode,
+        200,
+        reason: 'the isolate is still serving after the late failure landed',
       );
     });
 

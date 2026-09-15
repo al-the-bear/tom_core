@@ -33,7 +33,7 @@
 
 ### Changed
 
-- **A probe answers even when its analyzer does not (tcopen156).**
+- **A probe answers even when its analyzer does not (tcopen156, tcopen157).**
   `analyzeHealth()` was awaited with no deadline. It is `async` precisely so a
   `SELECT 1` and a cache `PING` can be awaited, and a TCP connection to a host
   that has dropped off the network does not fail fast — it waits for the OS
@@ -45,9 +45,16 @@
   awaits it under `healthTimeout` — `defaultHealthTimeout`, five seconds — and
   turns every way an analyzer can fail to produce a verdict into one: a timeout
   becomes `503 TIMEOUT: the <probe> check did not answer within …`, a thrown
-  exception becomes `503 FAILED: the <probe> check threw …`. `verdictOf` is
-  public so a deployment adding a probe route of its own gets the same
-  behaviour. `installHealthTimeout` changes the deadline and refuses a
+  exception — synchronous or asynchronous — becomes `503 FAILED: the <probe>
+  check threw …`. `verdictOf` is public so a deployment adding a probe route of
+  its own gets the same behaviour.
+
+  The throw is the likelier of the two and the one that changed the response
+  *shape*: the analyzer this module is written for issues a `SELECT 1`, and a
+  datasource that is down throws rather than hangs. An exception leaving the
+  handler was answered by the endpoints pipeline's error envelope — a `500`
+  carrying JSON where every probe was configured to read plain text — and on
+  liveness a `500` is a restart, so an unreachable database took the pod down. `installHealthTimeout` changes the deadline and refuses a
   non-positive one, which would make every probe answer `TIMEOUT` before its
   analyzer ran.
 

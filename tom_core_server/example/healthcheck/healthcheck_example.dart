@@ -45,6 +45,14 @@ class _HangingAnalyzer extends TomHealthAnalyzer {
       Completer<TomHealthStatus>().future;
 }
 
+/// An analyzer that throws — the datasource that is down rather than slow,
+/// which is the likelier way a real analyzer fails.
+class _BrokenAnalyzer extends TomHealthAnalyzer {
+  @override
+  Future<TomHealthStatus> analyzeHealth() async =>
+      throw StateError('the pool is closed');
+}
+
 Future<void> run() async {
   final server = TomHealthServer();
 
@@ -132,6 +140,28 @@ Future<void> run() async {
     check(
       body.startsWith('TIMEOUT:'),
       'and the message names the deadline rather than a dependency',
+    );
+  } finally {
+    TomHealthServer.resetHealthChecks();
+  }
+
+  // 6. And an analyzer that throws answers too — the likelier failure of the
+  //    two, since a datasource that is down throws rather than hangs. Left
+  //    uncaught it would reach the endpoints pipeline's error envelope: a 500
+  //    carrying JSON, where the probe was configured to read plain text, and on
+  //    liveness a 500 is a restart.
+  try {
+    TomHealthServer.installReadinessAnalyzer(_BrokenAnalyzer());
+    final broken = await server.ready();
+    final body = await broken.readAsString();
+    print('6. ready() that throws       => ${broken.statusCode} $body');
+    check(
+      broken.statusCode == 503,
+      'a broken dependency is an unhealthy verdict, not a failed request',
+    );
+    check(
+      body.startsWith('FAILED:') && body.contains('the pool is closed'),
+      'and the exception reaches the operator on the wire',
     );
   } finally {
     TomHealthServer.resetHealthChecks();
