@@ -23,6 +23,7 @@ declared.
   - [The two halves an instant splits into](#the-two-halves-an-instant-splits-into)
 - [The Operator Tree](#the-operator-tree)
 - [The SQL Dialect](#the-sql-dialect)
+  - [A `LIKE` pattern is a language, not a value](#a-like-pattern-is-a-language-not-a-value)
 - [Classifying Column Types](#classifying-column-types)
 - [Aggregate Fragments](#aggregate-fragments)
 - [Query Objects](#query-objects)
@@ -289,6 +290,41 @@ its dialect, so a second lookup keyed by the same string could only restate — 
 contradict — what `sqlDialect` already returns. Everything that renders SQL
 therefore asks the data source, and a dialect for another database ships as part
 of that database's driver.
+
+### A `LIKE` pattern is a language, not a value
+
+Every other predicate compares its right-hand operand as a value. `LIKE` reads
+it as a *pattern*: `%` matches any run of characters and `_` any single one,
+wherever they appear — including inside a value the caller bound. So a search
+box wired straight through binds the user's typing as a pattern, and
+`note LIKE :p` with `p` bound to `%50%%` returns every note containing `50`
+followed by anything rather than the ones mentioning `50%`.
+
+Binding does not prevent that and is not meant to. `p(name)` makes the value
+*safe* — it never becomes part of the SQL text — and a wildcard inside a pattern
+is not unsafe; it is the pattern working as specified. The two questions are
+different, and only the caller knows the answer to the second: is this text a
+pattern, or something to be matched literally?
+
+So the wildcards stay the caller's to place, and `escapeLikePattern` escapes
+what goes between them:
+
+```dart
+params['p'] = '%${dialect.escapeLikePattern(searchBox.text)}%';
+```
+
+It escapes `%`, `_` and `likeEscapeCharacter` itself — that one first, or a
+pattern already containing an escape would consume the one being added. `like`
+and `notLike` render an explicit `ESCAPE` clause naming the same character, read
+from the same property, so a dialect that needs a different one overrides
+`likeEscapeCharacter` alone and the two stay consistent by construction.
+
+The clause is written **always**, not only when something was escaped. Standard
+SQL defines no default escape character for `LIKE`, so without it whether
+`escapeLikePattern`'s output works would be a property of the driver rather than
+of this rendering — and it does work on MariaDB, whose default escape is a
+backslash. That is exactly the shape in which a dependency on one driver's
+undocumented default survives being noticed, so the rendering states it.
 
 ## Classifying Column Types
 
@@ -1017,7 +1053,11 @@ with `crud_repository`, `sqlInstant` / `parseSqlInstant` /
 `normalizePort`, the `initializeDatasourceInfo` configuration guard,
 `isLostConnectionFailure` — the retry decision described in
 [When a Write Fails](#when-a-write-fails) — and the rule that a driver owns its
-dialect.
+dialect. `escapeLikePattern` is covered here too, including the ordering that
+makes it correct and the agreement between what it escapes and what the
+rendered `ESCAPE` clause names; that the escaping actually changes which rows
+match is settled where it has to be, against a live server, by
+`object_persistence_db_test.dart`.
 
 Two things there are worth knowing about, because they are what let a
 connection-free suite assert connection behaviour at all. The **connection

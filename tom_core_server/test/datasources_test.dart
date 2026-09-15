@@ -652,9 +652,40 @@ void main() {
     test('like / notLike / regexp', () {
       final t = _Literal<TomDbString>('t');
       final pat = _Literal<TomDbString>('pat');
-      expect(d.like(t, pat), 't LIKE pat');
-      expect(d.notLike(t, pat), 't NOT LIKE pat');
+      expect(d.like(t, pat), r"t LIKE pat ESCAPE '\\'");
+      expect(d.notLike(t, pat), r"t NOT LIKE pat ESCAPE '\\'");
       expect(d.regexp(t, pat), 't REGEXP pat');
+    });
+
+    // `LIKE` is the one predicate whose right-hand operand is a small language
+    // rather than a value, so a caller who means "contains the text the user
+    // typed" has to say so. Binding does not help and is not meant to: it
+    // makes the value safe, and a wildcard in a pattern is not unsafe.
+    group('escapeLikePattern', () {
+      test('escapes both wildcards', () {
+        expect(d.escapeLikePattern('50% off'), r'50\% off');
+        expect(d.escapeLikePattern('a_b'), r'a\_b');
+      });
+
+      test('escapes the escape character first', () {
+        // Or a pattern that already contains one would consume the escape
+        // this adds, and `a\%b` would still match any run of characters.
+        expect(d.escapeLikePattern(r'a\%b'), r'a\\\%b');
+      });
+
+      test('leaves text with nothing to escape alone', () {
+        expect(d.escapeLikePattern('plain text'), 'plain text');
+      });
+
+      test('escapes for the character the ESCAPE clause names', () {
+        // The two read the same property, so a dialect that overrides it stays
+        // consistent by construction rather than by being remembered.
+        expect(
+          d.like(_Literal<TomDbString>('col'), _Literal<TomDbString>(':p')),
+          endsWith('ESCAPE ${d.text(d.likeEscapeCharacter)}'),
+        );
+        expect(d.escapeLikePattern('%'), startsWith(d.likeEscapeCharacter));
+      });
     });
   });
 

@@ -378,6 +378,12 @@ method renders one piece of SQL — a predicate, a literal, a positional paramet
 placeholder, or a qualified field reference. Drivers subclass to override any
 fragment.
 
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `likeEscapeCharacter` | `String` | *(getter)* The character that turns the next `%` or `_` in a `LIKE` pattern into itself, named in the `ESCAPE` clause `like` and `notLike` render. A dialect whose escape character differs overrides this alone; `escapeLikePattern` and the rendered clause both read it from here. Defaults to `\`. |
+
 ##### Methods
 
 | Method | Signature | Description |
@@ -386,8 +392,9 @@ fragment.
 | `isNotNull` | `SqlString isNotNull<T>(TomOperator<T> what)` | Renders `<what> IS NOT NULL`. |
 | `isin` | `SqlString isin<T>(TomOperator<T> what, List<TomOperator<T>> choices)` | Renders `<what> IN (<choices...>)` comma-separated. |
 | `between` | `SqlString between<T>(TomOperator<T> what, List<TomOperator<T>> betweenLimits)` | Renders `<what> BETWEEN <lo> AND <hi>`. |
-| `like` | `SqlString like(TomOperator<TomDbString> text, TomOperator<TomDbString> test)` | Renders `<text> LIKE <test>`. |
-| `notLike` | `SqlString notLike(TomOperator<TomDbString> text, TomOperator<TomDbString> test)` | Renders `<text> NOT LIKE <test>`. |
+| `like` | `SqlString like(TomOperator<TomDbString> text, TomOperator<TomDbString> test)` | Renders `<text> LIKE <test> ESCAPE '<likeEscapeCharacter>'`. The clause is always written: standard SQL defines no default escape character, so without it whether `escapeLikePattern`'s output works would be a property of the driver rather than of the rendering. |
+| `notLike` | `SqlString notLike(TomOperator<TomDbString> text, TomOperator<TomDbString> test)` | Renders `<text> NOT LIKE <test> ESCAPE '<likeEscapeCharacter>'` — see `like`. |
+| `escapeLikePattern` | `String escapeLikePattern(String literal)` | Escapes `%`, `_` and `likeEscapeCharacter` in `literal`, so a `LIKE` pattern built from it matches those characters literally. The wildcards stay the caller's to place: `'%${dialect.escapeLikePattern(input)}%'`. |
 | `regexp` | `SqlString regexp(TomOperator<TomDbString> text, TomOperator<TomDbString> test)` | Renders `<text> REGEXP <test>`. |
 | `group` | `SqlString group<T>(TomOperator<T> operant)` | Wraps `operant` in parentheses. |
 | `eq` | `SqlString eq<T>(TomOperator<T> operant1, TomOperator<T> operant2)` | Renders `<operant1> = <operant2>`. |

@@ -53,7 +53,7 @@ void main() {
     test('inside a parenthesised expression', () {
       expect(
         sql('find by ( title not like :p )'),
-        contains('( fixture_export.title NOT LIKE :p )'),
+        contains(r"( fixture_export.title NOT LIKE :p ESCAPE '\\' )"),
       );
     });
 
@@ -68,7 +68,8 @@ void main() {
       expect(
         sql('find by id > 1 and ( title not like :p )'),
         contains(
-          'fixture_export.id > 1 AND ( fixture_export.title NOT LIKE :p )',
+          r"fixture_export.id > 1 AND "
+          r"( fixture_export.title NOT LIKE :p ESCAPE '\\' )",
         ),
       );
     });

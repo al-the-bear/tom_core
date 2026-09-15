@@ -7,7 +7,7 @@
 /// the column-grade decision is a pure function — so this example runs the real
 /// surface rather than describing it.
 ///
-/// The sixteen steps below cover: mapping an entity ([TomAnnotationAnalyzer]),
+/// The seventeen steps below cover: mapping an entity ([TomAnnotationAnalyzer]),
 /// compiling the four sentence kinds ([TomQuerySentenceCompiler]), grouping and
 /// aggregation ([TomGroupedSelect]), paging ([TomPageRequest]), column
 /// authorization ([TomColumnAuthorization]) and the [TomQueryBuilder] DSL every
@@ -388,7 +388,8 @@ void run() {
   print('15. ${predicate.generate(dialect)}');
   check(
     predicate.generate(dialect) ==
-        "( example_claim.amount >= 50.0 ) AND ( example_claim.employee LIKE 'r.%' )",
+        r"( example_claim.amount >= 50.0 ) AND "
+            r"( example_claim.employee LIKE 'r.%' ESCAPE '\\' )",
     'a predicate assembled at runtime renders the same grouped conjunction a '
     'written sentence would have compiled to',
   );
@@ -406,6 +407,24 @@ void run() {
       'a between expression with one bound is refused',
     );
   }
+
+  // 17. A LIKE pattern is a small language, not a value. The wildcards are the
+  //     caller's to place; what goes between them is escaped, or a user typing
+  //     `%` into a search box searches for anything.
+  final typed = '50% off';
+  final pattern = '%${dialect.escapeLikePattern(typed)}%';
+  print('17. $typed -> $pattern');
+  check(
+    pattern == r'%50\% off%',
+    'escapeLikePattern escapes the wildcard the user typed, so it is matched '
+    'literally rather than read as "anything"',
+  );
+  check(
+    '%$typed%' == '%50% off%',
+    'the unescaped pattern is not refused and is not wrong SQL — it silently '
+    'means something wider than the caller typed, which is why the escaping '
+    'has to be asked for',
+  );
 
   print('\nObject-persistence example completed.');
 }

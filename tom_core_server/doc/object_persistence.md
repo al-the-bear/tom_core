@@ -21,6 +21,8 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
   - [What a comparison compares](#what-a-comparison-compares)
   - [Writing a value inline](#writing-a-value-inline)
     - [Inside a text literal](#inside-a-text-literal)
+  - [Matching literal text](#matching-literal-text)
+  - [Words this grammar does not have](#words-this-grammar-does-not-have)
 - [The Query Builder DSL](#the-query-builder-dsl)
 - [Row Scopes](#row-scopes)
   - [Declaring a scope](#declaring-a-scope)
@@ -628,6 +630,63 @@ backslash escape, only the doubling.
 Binding is still the better habit: a bound value is typed by the parameter
 rather than by its spelling, it leaves the sentence reusable, and it keeps
 untrusted text out of the statement text altogether.
+
+### Matching literal text
+
+`LIKE` is the one predicate whose right-hand operand is a small language rather
+than a value. `%` matches any run of characters and `_` any single one —
+wherever they appear, including inside a value the caller bound. So a search box
+wired straight through binds the user's typing as a *pattern*:
+`note like :p` with `p` bound to `%50%%` finds every note containing `50`
+followed by anything, not the notes that mention `50%`.
+
+Binding does not prevent this and is not meant to: it makes the value safe, and
+a wildcard in a pattern is not unsafe — it is the pattern working as specified.
+The wildcards stay the caller's to place, and `escapeLikePattern` escapes what
+goes between them:
+
+```dart
+final repo = MariadbRepository<Note, int>([Note]);
+final rows = await repo.findByQuerySentence(
+  'find by text like :p',
+  {'p': '%${repo.sqlDialect.escapeLikePattern(searchBox.text)}%'},
+);
+```
+
+It escapes `%`, `_` and the escape character itself, and the rendered predicate
+carries an explicit `ESCAPE` clause naming that character — standard SQL defines
+no default one, so without the clause whether the escaping worked would be a
+property of the driver rather than of the query. See
+[datasources](datasources.md) for the dialect member.
+
+### Words this grammar does not have
+
+A query sentence is a *string*, so every operator is directly writable — `>`,
+`<`, `%`. That is the difference from Spring Data, where the query is encoded in
+a **method name**: an identifier cannot contain an operator character, so
+`findByDueAfter` has to spell `>` as a word. Nothing here has that constraint,
+and a word-for-operator vocabulary would be a second way to write predicates the
+grammar already takes, each with its own branch in a parser whose dartdoc
+records three separate lookahead defects. So the words are not keywords, and
+this is how each is written instead:
+
+The left column is set in italics because none of those words is code here.
+
+| Spring Data | Here |
+| ----------- | ---- |
+| *After*, *Before* | `>`, `<` — on a temporal column like any other |
+| *StartsWith*, *EndsWith*, *Containing* | `like` with the wildcard placed where you mean it: `'a%'`, `'%a'`, `'%a%'` |
+| *Between*, *Within* | `>= :lo and <= :hi`; the single `BETWEEN` node is reachable from the [builder DSL](#the-query-builder-dsl) |
+| *Exists* | — |
+| *isEmpty*, *isNotEmpty* | — |
+
+The last two have no dash for a reason: **they have nothing to address.** A
+mapped column is one of eight scalar Dart types and none of them is a
+collection, and an association declared with `@TomReference` is loaded by a
+repository call rather than joined — so there is no collection-valued property
+for `isEmpty` to test. `Exists` needs a correlated subquery, which the operator
+tree has no node for. Both would be new machinery rather than new spellings, and
+neither is promised.
 
 ## The Query Builder DSL
 
@@ -1352,7 +1411,15 @@ that a repository is constructed rather than discovered.
 `test/object_persistence_db_test.dart` is tagged `db` and skips when no server
 is reachable, so the default run stays green without one. It covers CRUD through
 a repository against a real MariaDB, which is the half that cannot be settled by
-reading generated SQL.
+reading generated SQL — including the one claim in
+[Matching literal text](#matching-literal-text) that is about what the
+*database* does with a pattern rather than about what the query says.
+
+`test/query_sentence_declined_words_test.dart` runs both halves of
+[Words this grammar does not have](#words-this-grammar-does-not-have): that each
+declined word really is refused, and that the form named in its place really
+renders what the table says. It reads the table back, so a row added there
+without a test, or a word promoted to a keyword, fails rather than drifts.
 
 Several neighbouring surfaces are covered by suites named after the type rather
 than the module, and are named where each is described:
@@ -1368,10 +1435,10 @@ dart run example/object_persistence/object_persistence_example.dart
 ```
 
 `example/object_persistence/object_persistence_example.dart` runs the real
-surface in sixteen steps rather than describing it — mapping an entity,
+surface in seventeen steps rather than describing it — mapping an entity,
 compiling the four sentence kinds, grouping and aggregation, paging, column
-authorization, and the `TomQueryBuilder` DSL every sentence compiles down to,
-each with its refusals. The refusals are most of what the module has to say: a
+authorization, `LIKE`-pattern escaping, and the `TomQueryBuilder` DSL every
+sentence compiles down to, each with its refusals. The refusals are most of what the module has to say: a
 query it accepts is one you would have written anyway, so what is worth showing
 is where it stops you. Its entities live in
 `example/object_persistence/object_persistence_entities.dart`. Every step checks
@@ -1412,16 +1479,27 @@ its own result, and `test/examples_test.dart` runs it.
 
 ## Not Yet Implemented
 
-One thing is missing, and it is missing from the grammar, so a sentence using it
-is refused rather than quietly ignored.
+Both entries are about the *shape of a predicate*, and both are bounded by the
+same thing: an expression tree over the columns of the tables a query already
+names.
 
-- Additional query-sentence keywords — *After*, *Before*, *Containing*,
-  *EndsWith*, *StartsWith*, *Exists*, *isEmpty* / *isNotEmpty*, *Within* and
-  the like. They are set in italics, not as code, because none of them is
-  code: a sentence using one is refused. What the grammar does cover is set as
-  code, because it exists — comparison, `LIKE` / `NOT LIKE`, `REGEXP`,
-  `IS IN` / `IS NOT IN`, `IS NULL` / `IS NOT NULL`, `AND` / `OR` / `NOT` and
-  parenthesised groups.
+- **A predicate cannot address an association's columns.** `@TomReference`
+  declares an association, and the repository loads the other side with a
+  second query rather than joining it — so `find by author.name = :n` has no
+  reading, and the sentence refuses `author.name` as a column it cannot
+  resolve. Filter on the foreign key, or query the other entity's repository
+  and pass the ids to an `IS IN` list.
+- **There is no subquery node**, so a predicate that is *about* another result
+  set — `EXISTS`, `IN (SELECT …)`, a correlated aggregate — cannot be built.
+  `executeQueryString` takes the SQL directly when a query genuinely needs one;
+  it binds its parameters like any other statement, so reaching for it costs the
+  compiler's checking, not the injection safety.
+
+What is *not* listed here is a vocabulary of word-operators — *After*,
+*Containing*, *StartsWith* and their siblings. They are set in italics because
+none of them is code: they are not missing but declined, since a query sentence
+is a string and `>` and `%` are directly writable in one. See
+[Words this grammar does not have](#words-this-grammar-does-not-have).
 
 ## Dependencies
 

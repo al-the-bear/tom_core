@@ -119,7 +119,7 @@ void main() {
       ]);
       expect(
         pred.generate(dialect),
-        "( users.age >= :min ) AND ( users.name LIKE 'A%' )",
+        r"( users.age >= :min ) AND ( users.name LIKE 'A%' ESCAPE '\\' )",
       );
     });
 
@@ -532,7 +532,7 @@ void main() {
       final col = _column('users', 'name');
       expect(
         b.notLike(b.textF('name', col), b.text('A%')).generate(dialect),
-        "users.name NOT LIKE 'A%'",
+        r"users.name NOT LIKE 'A%' ESCAPE '\\'",
       );
     });
 

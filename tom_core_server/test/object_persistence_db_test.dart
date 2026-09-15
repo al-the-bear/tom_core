@@ -197,5 +197,54 @@ void main() async {
       expect(matches, hasLength(1));
       expect(matches.first.priority, 5);
     });
+
+    // What `escapeLikePattern` and the rendered `ESCAPE` clause claim is a
+    // statement about what the *database* does with a pattern, so it cannot be
+    // settled by reading the SQL. A wildcard the caller did not intend is the
+    // failure that hides best: the query returns rows, more of them, and only
+    // a reader who knows the data notices the extra ones.
+    group('a LIKE pattern matches a wildcard literally when escaped', () {
+      setUp(() async {
+        await repo.save(_task('50% off', 1));
+        await repo.save(_task('50 percent off', 2));
+        await repo.save(_task('a_b', 3));
+        await repo.save(_task('axb', 4));
+      });
+
+      Future<List<String>> titlesLike(String pattern) async {
+        final rows = await repo.findByQuerySentence('find by title like :p', {
+          'p': pattern,
+        });
+        return rows.map((r) => r.title!).toList()..sort();
+      }
+
+      test('an escaped % matches only a literal %', () async {
+        final escaped = repo.sqlDialect.escapeLikePattern('50%');
+        expect(await titlesLike('$escaped%'), ['50% off']);
+      });
+
+      test('the same text unescaped matches as a wildcard', () async {
+        // The other half of the claim, and the reason the helper exists: the
+        // unescaped pattern is not refused and not wrong SQL — it silently
+        // means something wider than the caller typed.
+        expect(await titlesLike('50%%'), ['50 percent off', '50% off']);
+      });
+
+      test('an escaped _ matches only a literal _', () async {
+        final escaped = repo.sqlDialect.escapeLikePattern('a_b');
+        expect(await titlesLike(escaped), ['a_b']);
+        expect(await titlesLike('a_b'), ['a_b', 'axb']);
+      });
+
+      test('escaped text with no wildcard still matches itself', () async {
+        // The escape character must not leak into the comparison: a pattern
+        // built from text containing none of the three characters has to
+        // behave exactly as the unescaped one does.
+        expect(
+          await titlesLike('%${repo.sqlDialect.escapeLikePattern('off')}%'),
+          ['50 percent off', '50% off'],
+        );
+      });
+    });
   }, skip: skipReason);
 }

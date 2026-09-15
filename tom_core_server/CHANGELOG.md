@@ -2,6 +2,55 @@
 
 ### Added
 
+- **The eight advertised query-sentence keywords are declined, and the gap
+  behind them closed (tcopen172).** *After*, *Before*, *StartsWith*, *EndsWith*,
+  *Containing*, *Within*, *Exists* and *isEmpty* / *isNotEmpty* sat under *Not
+  Yet Implemented* in `doc/object_persistence.md`, which reads as a backlog. They
+  are not one. Spring Data needs word-operators because its query is encoded in a
+  **method name**, where `>` and `%` cannot be written; a query sentence is a
+  string, where they can — so six of the eight are a second spelling for
+  something the grammar already takes, each needing its own branch in a parser
+  whose own dartdoc records three separate lookahead defects. Worse, a word the
+  guide advertised and the grammar refused came back as "No column match field
+  [after] found", sending the author to look for a field they never wrote.
+
+  `Exists` and `isEmpty` / `isNotEmpty` are struck for a different reason: they
+  have nothing to address. A mapped column is one of eight scalar Dart types and
+  none is a collection, and an association is loaded by a repository call rather
+  than joined, so there is no collection-valued property to test; `Exists` needs
+  a correlated subquery the operator tree has no node for.
+  `doc/object_persistence.md` gains *Words this grammar does not have*, a table
+  naming the writable form for each, and its *Not Yet Implemented* section now
+  states the two real boundaries — no predicate over an association's columns,
+  and no subquery node.
+
+  `query_sentence_declined_words_test.dart` runs both halves of that claim: each
+  declined word is refused, and each named replacement renders what the table
+  says. It reads the table back, so a row added without a test, or a word
+  promoted to a keyword, fails.
+
+- **`escapeLikePattern`, and an explicit `ESCAPE` clause on every `LIKE`
+  (tcopen172).** This is the one thing the struck keywords were carrying that the
+  grammar genuinely lacked. `LIKE` is the only predicate whose right-hand operand
+  is a language rather than a value, so binding a search box's text matches it as
+  a *pattern*: `%50%%` finds every note containing `50` followed by anything, not
+  the ones mentioning `50%`. Binding cannot help and is not meant to — it makes
+  the value safe, and a wildcard in a pattern is not unsafe.
+
+  `TomStandardSqlDialect.escapeLikePattern` escapes `%`, `_` and
+  `likeEscapeCharacter` — that one first, or a pattern already holding an escape
+  would consume the one being added. The wildcards stay the caller's to place.
+  `like` and `notLike` now render `ESCAPE '<likeEscapeCharacter>'` always: standard
+  SQL defines no default escape character, so without the clause whether the
+  escaping worked would be a property of the driver rather than of the rendering
+  — and it does work on MariaDB, which is how a dependency on one driver's
+  default survives being noticed. A dialect needing a different character
+  overrides `likeEscapeCharacter` alone.
+
+  That the escaping changes which rows match is asserted against a live MariaDB
+  in `object_persistence_db_test.dart`, since it is a claim about the database
+  rather than about the SQL.
+
 - **`@TomPersistenceEventHandler` is removed, and lifecycle work is a repository
   override (tcopen171).** The annotation carried `prePersist`, `postPersist`,
   `preLoad` and `postLoad`; `TomAnnotationAnalyzer` resolved it onto

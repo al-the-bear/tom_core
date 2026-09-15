@@ -210,18 +210,62 @@ class TomStandardSqlDialect {
     return "${what.generate(this)} BETWEEN ${betweenLimits[0].generate(this)} AND ${betweenLimits[1].generate(this)}";
   }
 
-  /// Renders `<text> LIKE <test>`.
-  SqlString like(TomOperator<TomDbString> text, TomOperator<TomDbString> test) {
-    return "${text.generate(this)} LIKE ${test.generate(this)}";
+  /// The character that turns the next `%` or `_` in a `LIKE` pattern into
+  /// itself, named in the `ESCAPE` clause [like] and [notLike] render.
+  ///
+  /// A dialect whose escape character differs overrides this; nothing else has
+  /// to change, because [escapeLikePattern] and the rendered clause both read
+  /// it from here.
+  String get likeEscapeCharacter => r'\';
+
+  /// Escapes [literal] so a `LIKE` pattern built from it matches those
+  /// characters *literally* — `%`, `_` and [likeEscapeCharacter] itself.
+  ///
+  /// `LIKE` is the one predicate whose right-hand operand is a small language
+  /// rather than a value, so a caller who means "contains the text the user
+  /// typed" has to say so: `WHERE note LIKE :p` with `p` bound to `%50%%`
+  /// matches every note containing `50` followed by anything, not the notes
+  /// mentioning `50%`. Neither binding nor [text] can prevent that — both make
+  /// the value *safe*, and a wildcard in a pattern is not unsafe, it is the
+  /// pattern working as specified.
+  ///
+  /// So the wildcards stay the caller's to place, and this escapes what is
+  /// between them:
+  ///
+  /// ```dart
+  /// params['p'] = '%${dialect.escapeLikePattern(searchBox.text)}%';
+  /// ```
+  ///
+  /// The escape character is doubled first, or a pattern already containing one
+  /// would consume the escape this adds.
+  String escapeLikePattern(String literal) {
+    final e = likeEscapeCharacter;
+    return literal
+        .replaceAll(e, '$e$e')
+        .replaceAll('%', '$e%')
+        .replaceAll('_', '${e}_');
   }
 
-  /// Renders `<text> NOT LIKE <test>`.
+  /// Renders `<text> LIKE <test> ESCAPE '<likeEscapeCharacter>'`.
+  ///
+  /// The `ESCAPE` clause is always written. Standard SQL defines *no* default
+  /// escape character for `LIKE`, so without it whether
+  /// [escapeLikePattern]'s output works is a property of the driver rather than
+  /// of this rendering — and it happens to work on MariaDB, which is the way a
+  /// dependency on an undocumented default survives being noticed.
+  SqlString like(TomOperator<TomDbString> text, TomOperator<TomDbString> test) {
+    return "${text.generate(this)} LIKE ${test.generate(this)}"
+        " ESCAPE ${this.text(likeEscapeCharacter)}";
+  }
+
+  /// Renders `<text> NOT LIKE <test> ESCAPE '<likeEscapeCharacter>'` — see
+  /// [like] for why the clause is always written.
   SqlString notLike(
     TomOperator<TomDbString> text,
     TomOperator<TomDbString> test,
   ) {
-    var notLike = "${text.generate(this)} NOT LIKE ${test.generate(this)}";
-    return notLike;
+    return "${text.generate(this)} NOT LIKE ${test.generate(this)}"
+        " ESCAPE ${this.text(likeEscapeCharacter)}";
   }
 
   /// Renders `<text> REGEXP <test>` (standard form; drivers may override).
