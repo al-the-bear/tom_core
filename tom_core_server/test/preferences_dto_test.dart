@@ -17,7 +17,19 @@
 /// there passes whether the normalisation happens or not — it is the one path
 /// that cannot see it. Only an in-memory local-flagged value can, and that needs
 /// nothing to build.
+///
+/// The file also carries what the timestamp is *for*, because that is a claim
+/// about the whole module and the only place it can be pinned is beside the
+/// conversion that produces it. No read path compares two of these: the
+/// shipped client holds no cache, so there is no staleness to detect, and a
+/// conditional read would be a mechanism with no consumer. What the field
+/// answers is "when did the server last write this" — an answer only the
+/// server can give, which is why the write request carries no timestamp — and
+/// that answer has to keep being true, which is what the group at the end
+/// asserts.
 library;
+
+import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
@@ -94,6 +106,77 @@ void main() {
       expect(dto.key, 'tom.theme');
       expect(dto.valueType, 'String');
       expect(dto.value, '"dark"');
+    });
+  });
+
+  group('nothing compares two of these, and the guide says why', () {
+    /// Every shipped library source, as (path, contents) pairs.
+    final library = [
+      for (final entry in Directory('lib').listSync(recursive: true))
+        if (entry is File && entry.path.endsWith('.dart'))
+          (entry.path, entry.readAsStringSync()),
+    ];
+
+    test('no shipped source compares an updatedAt against anything', () {
+      // A comparison is what a conditional read, a list-since or a staleness
+      // check would all need first, so its absence is the whole of "no read
+      // path uses it" in one testable form. If one appears, the decision
+      // recorded in the guide has changed and has to be rewritten rather than
+      // quietly outgrown.
+      final comparisons = <String>[];
+      final operators = RegExp(
+        r'updatedAt[!?.\w]*\s*(isAfter|isBefore|compareTo|==|!=|<|>)|'
+        r'(isAfter|isBefore|compareTo)\([^)]*updatedAt',
+      );
+      for (final (path, source) in library) {
+        final lines = source.split('\n');
+        for (var index = 0; index < lines.length; index++) {
+          final line = lines[index];
+          if (line.trimLeft().startsWith('///')) continue;
+          if (line.trimLeft().startsWith('//')) continue;
+          if (operators.hasMatch(line)) comparisons.add('$path:${index + 1}');
+        }
+      }
+      expect(
+        comparisons,
+        isEmpty,
+        reason:
+            'a timestamp comparison has appeared; doc/preferences.md records '
+            'that none exists and why, so that section is now wrong',
+      );
+    });
+
+    test('the pattern the guard uses finds a comparison when there is one', () {
+      // Without this the guard above passes by never matching anything, which
+      // is the one way an assertion about an absence is worthless.
+      final operators = RegExp(
+        r'updatedAt[!?.\w]*\s*(isAfter|isBefore|compareTo|==|!=|<|>)|'
+        r'(isAfter|isBefore|compareTo)\([^)]*updatedAt',
+      );
+      expect(operators.hasMatch('if (a.updatedAt!.isAfter(b))'), isTrue);
+      expect(operators.hasMatch('if (since.isBefore(dto.updatedAt!))'), isTrue);
+      expect(operators.hasMatch('    updatedAt: updatedAt?.toUtc(),'), isFalse);
+    });
+
+    test('the guide states what the timestamp is for, and what it is not', () {
+      final guide = File('doc/preferences.md').readAsStringSync();
+      final start = guide.indexOf('## When a Preference Was Written');
+      expect(start, isNot(-1), reason: 'the guide section was renamed');
+      final end = guide.indexOf('\n## ', start + 1);
+      final section = guide.substring(start, end == -1 ? guide.length : end);
+
+      expect(
+        section,
+        allOf(
+          // No cache, therefore no staleness, therefore no conditional read.
+          contains('no cache'),
+          // The answer is the server's, which is why the request has none.
+          contains('write request'),
+          // And the one place a second store also fills the field, so a
+          // reader does not mistake it for a cache of this one.
+          contains('device store'),
+        ),
+      );
     });
   });
 }

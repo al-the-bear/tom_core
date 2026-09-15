@@ -34,13 +34,36 @@ import 'fixtures/test_database.dart';
 /// `<schema>_versioning` bookkeeping tables cannot collide when both run.
 const String _migrationSchema = 'tomframework';
 
-/// The shipped chains, in the order they are concatenated.
-const List<String> _migrationChains = [
-  'example/scheduling/migrations/main/tomcore',
-  'example/file_storage/migrations/main/tomcore',
-  'example/audit/migrations/main/tomcore',
-  'example/authentication/migrations/main/tomcore',
-];
+/// Every shipped migration chain, discovered rather than listed.
+///
+/// A deployment applies all of them, so this test has to. It used to name four
+/// of the seven, and the three it did not name were invisible: the check only
+/// reports a table some descriptor claims, so a chain went unapplied for as
+/// long as no framework-owned table lived in it. `tom_delivery_report` was the
+/// first that did, and even then the failure only surfaced against an **empty**
+/// database — on a warm one the table is already there from whichever suite
+/// created it, and the missing chain is indistinguishable from an applied one.
+///
+/// Discovering them removes the whole class: a chain added under
+/// `example/<module>/migrations/main/tomcore` is applied here the moment it
+/// exists, with nothing to remember. Sorted, so the concatenated version
+/// numbers are the same on every run and on every machine.
+List<String> _migrationChains() {
+  final chains = [
+    for (final module in Directory('example').listSync().whereType<Directory>())
+      if (Directory('${module.path}/migrations/main/tomcore').existsSync())
+        '${module.path}/migrations/main/tomcore',
+  ]..sort();
+  // The discovery is the point of failure if `example/` is ever restructured,
+  // and an empty list would make the migration half of this suite assert
+  // nothing while still passing.
+  expect(
+    chains,
+    hasLength(greaterThan(3)),
+    reason: 'the shipped migration chains were not found under example/',
+  );
+  return chains;
+}
 
 /// The shipped migration files, laid out the way
 /// [TomDbMigrations.migrateDatabases] expects: `<dir>/<datasource>/<schema>/`.
@@ -58,7 +81,7 @@ Directory _migrationDirectory() {
     '${root.path}/${TestDatabase.datasourceName}/$_migrationSchema',
   )..createSync(recursive: true);
   var version = 0;
-  for (final chain in _migrationChains) {
+  for (final chain in _migrationChains()) {
     final files = Directory(chain).listSync().whereType<File>().toList()
       ..sort((a, b) => a.path.compareTo(b.path));
     for (final file in files) {

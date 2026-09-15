@@ -2,6 +2,54 @@
 
 ### Added
 
+- **`framework_schema_db_test` applies every shipped migration chain, not four
+  of seven (tcfinal23).** The chain list was hand-maintained and three chains —
+  `authorization`, `messaging`, `preferences` — were never added to it. The
+  omission was invisible for as long as no framework-owned table lived in one:
+  the check reports a table some descriptor claims, so an unapplied chain looks
+  exactly like an applied one until it holds such a table. `tom_delivery_report`
+  was the first that did, and even then the failure surfaced only against an
+  **empty** database — on a warm one the table is already there from whichever
+  suite created it.
+
+  It is now discovered from `example/*/migrations/main/tomcore` rather than
+  listed, which removes the class rather than the instance: a chain is applied
+  the moment it exists, with nothing to remember. The discovery asserts it found
+  more than three, so a restructured `example/` fails loudly instead of leaving
+  the migration half of the suite asserting nothing.
+
+  The shipped artifacts were correct throughout — `doc/messaging.md` already
+  names the reference migration a deployment copies. What was wrong was the
+  guard's coverage.
+
+- **`updatedAt` is documented as what it is, and pinned there (tcopen176).**
+  The column is written from the server's clock on every upsert and normalised
+  to UTC on the way out, and nothing compares two of them. That is a decision
+  rather than an omission, and `doc/preferences.md` now carries it as *When a
+  Preference Was Written*: a timestamp earns its keep when something can be
+  stale, and nothing here can — `TomUserPreferencesClient` holds no cache, so
+  `all`, `read` and `get` are each an HTTP call that branches on the status. A
+  conditional read or a `list-since` would be a mechanism with no consumer, and
+  a three-package change to build.
+
+  Two things the section states because a reader would otherwise infer the
+  opposite. The device store is **not** a cache of this one — it exists for the
+  preferences that must *not* follow the user, and fills `updatedAt` from its
+  own clock for its own rows, so comparing the two stores' stamps would be
+  comparing different facts. And the write request carries no timestamp on
+  purpose: when a preference was written is the server's answer, never the
+  client's claim.
+
+  What it is for, then, is the answer it gives — the one part a client cannot
+  compute for itself. Three tests make that answer true rather than nominal: a
+  replace moves the stamp forward (the upsert reuses the found row, so a stamp
+  assigned only on insert would keep answering when the preference was first
+  *created*), `setEncoded` stamps too (it is the path a request takes), and the
+  instant survives the round trip through `DATETIME(6)`. A fourth fails the
+  moment a comparison appears in shipped code, so the decision cannot be
+  quietly outgrown, and a fifth checks that guard's pattern matches a
+  comparison when there is one.
+
 - **`TomUserPreferences.all()` takes an optional window; the wire stays unpaged,
   and the reason is pinned (tcopen175).** The read path had no
   `TomPageRequest` while the repository's finders accept one. It now does —

@@ -251,6 +251,60 @@ void main() async {
       expect(dto.updatedAt!.isBefore(before), isFalse);
     });
 
+    test('a replace moves the timestamp forward', () async {
+      // "When was this written" has to mean the *last* write, or the field
+      // answers a different question than its name — and the upsert reuses the
+      // found row, so a stamp assigned only on insert would keep answering
+      // when the preference was first created while the value changed under
+      // it. That is the shape this asserts against, not merely that a stamp
+      // exists.
+      final first = await asSession(7, (p) => p.set('theme', 'dark'));
+      // The column is DATETIME(6) and the write is fast, so two stamps can
+      // land in the same microsecond; a pause makes "moved forward" a question
+      // about the code rather than about the clock's resolution.
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      final second = await asSession(7, (p) => p.set('theme', 'light'));
+
+      expect(second.updatedAt!.isAfter(first.updatedAt!), isTrue);
+      expect(await asSession(7, (p) => p.get<String>('theme')), 'light');
+    });
+
+    test('the endpoint\'s encoded write path stamps it too', () async {
+      // `setEncoded` is the path a request takes, and it reaches the same
+      // writer — so a stamp added to `set` alone would leave every preference
+      // written over HTTP without one.
+      final dto = await asSession(
+        7,
+        (p) => p.setEncoded(
+          'ui.rows',
+          valueType: TomUserPreferenceCodec.intType,
+          valueJson: '20',
+        ),
+      );
+
+      expect(dto.updatedAt, isNotNull);
+      expect(dto.updatedAt!.isUtc, isTrue);
+    });
+
+    test('the stamp survives the round trip through the column', () async {
+      // The DTO the writer returns is built in memory; the one a later session
+      // reads comes back through DATETIME(6) and the instant convention. Both
+      // have to answer the same moment, or "when was this written" depends on
+      // who is asking.
+      final written = await asSession(7, (p) => p.set('theme', 'dark'));
+
+      final readBack = await asSession(7, (p) => p.read('theme'));
+
+      expect(readBack!.updatedAt!.isUtc, isTrue);
+      expect(
+        readBack.updatedAt!.isAtSameMomentAs(written.updatedAt!),
+        isTrue,
+        reason:
+            'the stored instant and the one the write returned are the same '
+            'moment, so a client that re-reads sees the stamp it was given',
+      );
+    });
+
     // ------------------------------------------------------------------
     // One principal cannot read another's
     // ------------------------------------------------------------------

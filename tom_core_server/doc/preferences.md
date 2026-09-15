@@ -15,6 +15,7 @@ through.
   - [Why the lookups name the principal anyway](#why-the-lookups-name-the-principal-anyway)
 - [The Table and Its Migration](#the-table-and-its-migration)
 - [The Store Is Bounded](#the-store-is-bounded)
+- [When a Preference Was Written](#when-a-preference-was-written)
 - [The Endpoints](#the-endpoints)
   - [A miss is a 404, a bad request a 400, a full account a 409](#a-miss-is-a-404-a-bad-request-a-400-a-full-account-a-409)
   - [Installing the store](#installing-the-store)
@@ -253,6 +254,43 @@ This paragraph and the two ceilings above it are pinned against the kernel's
 constants by `test/preferences_service_test.dart`: a ceiling raised without the
 document following would leave the argument for returning the list whole
 reading exactly as convincingly while being wrong.
+
+## When a Preference Was Written
+
+Every row carries `updated_at`, written from the **server's** clock on each
+upsert and normalised to UTC on the way out. The write request carries no
+timestamp of its own, and deliberately: when a preference was written is the
+server's answer, never the client's claim — two devices whose clocks disagree
+would otherwise store two different answers to the same question.
+
+**Nothing compares two of them, and that is a decision rather than an
+oversight.** A timestamp earns its keep when something can be *stale*, and in
+this module nothing can: `TomUserPreferencesClient` holds no cache — `all`,
+`read` and `get` are each an HTTP call that branches on the status — so a second
+device does not hold an old value to discover, it simply asks. A conditional
+read (`If-Modified-Since`, an ETag) or a `list-since` would therefore be a
+mechanism with no consumer, and building one means changing the declaration in
+`tom_core_kernel`, the server and `tom_core_flutter`'s client together for a
+capability nothing yet asks for.
+
+The device store (`TomDevicePreferences`, `tom_core_flutter`) is **not** a cache
+of this one and must not be read as one. It exists for the preferences that must *not* follow the user — which
+account was last used on this device, whether this device's biometric unlock is
+on — and it fills `updatedAt` from its own clock for its own rows. The two
+stores share one DTO shape so that a value can *move* between them when it turns
+out to belong to the user rather than the device; comparing one store's
+timestamp against the other's would be comparing two different facts.
+
+So what the field is for, today, is what it says: the server's answer to when
+this preference was last written. That is worth returning — an application that
+shows "changed 3 days ago", an operator reading a row, a support question about
+which device wrote last — and it is the one part of the answer a client cannot
+compute for itself.
+
+If a client ever does cache, this is what has to change: the contract gains a
+conditional read or a `since` window, the server compares against the stored
+value, and this section is rewritten. `test/preferences_dto_test.dart` fails the
+moment a comparison appears in shipped code, so the rewrite cannot be forgotten.
 
 ## The Endpoints
 
