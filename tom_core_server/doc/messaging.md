@@ -26,6 +26,7 @@ lets it be made on the merits rather than around a missing substrate.
   - [Segments, not characters](#segments-not-characters)
   - [Two layers of classification](#two-layers-of-classification)
   - [Describing a gateway](#describing-a-gateway)
+  - [The list almost every answer is wrapped in](#the-list-almost-every-answer-is-wrapped-in)
 - [Webhook: The Message Is the Payload](#webhook-the-message-is-the-payload)
   - [One endpoint per message](#one-endpoint-per-message)
   - [Headers, and who wins](#headers-and-who-wins)
@@ -92,6 +93,7 @@ lets it be made on the merits rather than around a missing substrate.
 | `TomDeliveryReportProtocol` / `TomFieldMappedDeliveryReportProtocol` / `TomDeliveryCallback` | abstract class / class / class | The carrier's callback shape, described rather than coded |
 | `TomDeliveryReportService` / `TomDeliveryReportServer` / `TomDeliveryReportEndpoint` | abstract class / classes | The inbound `POST /messaging/delivery-report` route and what answers it |
 | `TomMimeEncoder` | class | Renders a `TomMessage` as an RFC 5322 / MIME document |
+| `tomVendorValueAt` | function | The dotted-path reader both vendor mappings share; a numeric segment indexes a list |
 | `TomMessageOutbox` | class | The durable send queue in front of a router |
 | `TomTemplatedMessageService` | abstract class | The rule every channel shares: a message is a template key plus parameters |
 | `TomEmailRequest` | class | What to send and to whom: a template key and parameters, never a subject or body |
@@ -454,11 +456,45 @@ router.register(settings == null
       ));
 ```
 
-**No vendor presets ship.** There is no `TomTwilioProtocol`, no
-`TomVonageProtocol`. A preset for an API this repository cannot test against is
-a plausible-looking guess, and when it fails the failure is attributed to the
-framework rather than to the guess. The mapping above is where a deployment
-records what it verified against its own account.
+**No vendor preset ships as library API.** There is no `TomTwilioProtocol`, no
+`TomVonageProtocol`. A preset in the framework is a vendor's API frozen into a
+release: when the vendor renames a field the constant becomes wrong, and a wrong
+constant is *harder* to route around than one that was never there — a
+deployment has to notice it is wrong, decide the framework is at fault rather
+than its own configuration, and then write the mapping by hand having been told
+by the preset's existence that it did not need to.
+
+What a preset actually answers is the need for **a worked mapping to copy**, and
+`example/messaging/sms_gateway_presets.dart` answers that without the staleness
+problem: a stale example is obviously the reader's to update, and stale library
+API is not. It carries mappings for Twilio, Vonage and MessageBird, each with a
+sample answer in that vendor's documented shape and an assertion that the
+mapping decodes it — so a reader updating for a new API version updates the
+sample and is told whether the mapping still reads it. What the example does
+*not* claim is verification against a live account; this repository cannot do
+that, and saying so is the difference between a worked example and the guess the
+paragraph above declines to ship.
+
+### The list almost every answer is wrapped in
+
+Two of those three vendors answer inside a **list**, because their submission
+APIs take a list of recipients and answer per recipient:
+
+```json
+{"messages": [{"message-id": "0A00…", "status": "0"}]}
+{"recipients": {"totalSentCount": 1, "items": [{"status": "sent"}]}}
+```
+
+So a dotted path may contain a **numeric segment**, which indexes a list:
+`messages.0.status`, `recipients.items.0.status`. Infobip, Plivo and ClickSend
+have the same shape. Twilio is the outlier — one message per call, a flat object
+— and a map-only path reader would express Twilio and none of the others, which
+is not what "expresses the common gateways" is worth saying about.
+
+`tomVendorValueAt` is that reader, and both vendor mappings share it: a
+delivery-report protocol and a submission protocol are the same idea pointed in
+opposite directions, and a deployment reading the two side by side has every
+reason to expect `a.b.0.c` to mean the same thing to both.
 
 The transport takes an injectable `openChannel`, the seam `TomSmtpTransport`
 provides with `connect`. That is how `test/sms_transport_test.dart` asserts a
@@ -1146,7 +1182,7 @@ failure that fires before anything is queued, and the segment budget. What that
 locale then *resolves* against is the resources module's rule, pinned in
 `test/resources_test.dart`; both suites render against the same fixture.
 
-Two examples run the module end to end, one per layer.
+Three examples run the module end to end.
 
 `example/messaging/messaging_example.dart` is the substrate, in twelve numbered
 steps: composing a message and reading its channel; registering a channel the
@@ -1168,6 +1204,13 @@ service cap refusing an over-long message at render; both services queueing on
 one outbox; one tick delivering both; a gateway accepting a submission and its
 id arriving back on the receipt; and one dead number among two being a partial
 delivery rather than a failure, with a rate limit thrown for retry instead.
+
+`example/messaging/sms_gateway_presets.dart` is the third, in seven steps: a
+worked `TomFieldMappedSmsProtocol` for Twilio, Vonage and MessageBird, each
+decoded against a sample answer in that vendor's documented shape — an
+acceptance and a refusal apiece — and closing on the case that makes the other
+six worth something, a mapping pointed at a field the answer does not have,
+which must read as a refusal rather than as a success.
 
 ```bash
 dart run example/messaging/messaging_example.dart
@@ -1258,9 +1301,10 @@ produce either on demand.
   an `expired` one does not re-queue anything. Both are policy — whose address
   to stop using, and when a re-send is worth paying for — and belong to the
   notification model this module deliberately stops short of.
-- **Vendor protocol presets.** `TomFieldMappedSmsProtocol` can express the
-  common gateways, but no per-vendor preset ships — see
-  [Describing a gateway](#describing-a-gateway) for why.
+- **Vendor protocol presets in `lib/`.** Deliberate, not missing:
+  `example/messaging/sms_gateway_presets.dart` carries worked mappings for three
+  named vendors, and none of them is exported as library API — see
+  [Describing a gateway](#describing-a-gateway) for the argument.
 - **The notification model.** Channels, notification types, per-user
   preferences and subscription resolution are a separate concern, deliberately
   not designed here.
@@ -1291,7 +1335,7 @@ produce either on demand.
 | `async` | package | `smtp_transport.dart` | `StreamQueue` drives the SMTP line protocol |
 | `path` | package | `message_transport.dart` | file naming in `TomFileMessageTransport` |
 | `shelf` | package | `delivery_report_endpoint.dart` | `Request` / `Response`, because a carrier acts on the status code and the pipeline's own envelope would make every refusal a `500` |
-| `tom_core_kernel` | package | 9 of 14 files | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `TomDataSource`, `tomLog`, `TomHeader` / `TomMimeType`, and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport` and `TomWebhookTransport` reach their endpoints through, rather than a raw client |
+| `tom_core_kernel` | package | 9 of 15 files | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `TomDataSource`, `tomLog`, `TomHeader` / `TomMimeType`, and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport` and `TomWebhookTransport` reach their endpoints through, rather than a raw client |
 | `uuid` | package | `message.dart` | `UuidV4`, for a message id when the caller supplies none |
 | [configuration](configuration.md) | module | `sms_transport.dart`, `smtp_transport.dart` | `TomBaseServerConfiguration` |
 | [datasources](datasources.md) | module | `delivery_report_sql.dart`, `sql_delivery_report_store.dart` | `TomFrameworkTable` — the single declaration the DDL, the statements and the convergence guard all derive from — plus `TomDataSourceInfo` and `sqlInstant` |

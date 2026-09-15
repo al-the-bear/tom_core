@@ -2,6 +2,35 @@
 
 ### Added
 
+- **Worked SMS gateway mappings, as an example (tcopen164).**
+  `TomFieldMappedSmsProtocol` described a gateway declaratively and shipped no
+  mapping for any named vendor, so every deployment re-derived the same one from
+  vendor documentation and learned it had a field name wrong when the gateway
+  rejected a message.
+
+  `example/messaging/sms_gateway_presets.dart` carries mappings for Twilio,
+  Vonage and MessageBird — as an **example**, not as library API. A preset in
+  the framework is a vendor's API frozen into a release, and a wrong constant is
+  harder to route around than one that was never there; a stale example is
+  obviously the reader's to update. Each mapping ships with a sample answer in
+  that vendor's documented shape and an assertion that the mapping decodes it,
+  so a reader updating for a new API version updates the sample and is told
+  whether the mapping still reads it. The example does not claim verification
+  against a live account, because this repository cannot do that.
+
+  Writing them found the thing the claim "expresses the common gateways" was
+  hiding: **two of the three answer inside a list**, because their submission
+  APIs take a list of recipients and answer per recipient — as do Infobip, Plivo
+  and ClickSend. Twilio is the outlier and Twilio is the shape this module's own
+  test fixture was written against. A dotted path may now contain a numeric
+  segment, which indexes a list, so `messages.0.status` is expressible.
+
+  That reader is now one function, `tomVendorValueAt`, shared by
+  `TomFieldMappedSmsProtocol` and `TomFieldMappedDeliveryReportProtocol`: the
+  two are the same idea pointed in opposite directions, and a deployment reading
+  them side by side has every reason to expect `a.b.0.c` to mean the same thing
+  to both.
+
 - **Delivery reports are consumed (tcopen163).** `TomDeliveryReceipt.remoteId`
   was written by every transport that had an id to give — SMTP from the relay's
   accept text, SMS from the gateway answer, the stand-ins synthetically — and

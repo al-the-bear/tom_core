@@ -37,6 +37,7 @@ library;
 
 import 'message.dart';
 import 'message_transport.dart';
+import 'vendor_mapping.dart';
 
 // =============================================================================
 // WHAT A CARRIER SAYS
@@ -414,8 +415,28 @@ class TomFieldMappedDeliveryReportProtocol extends TomDeliveryReportProtocol {
 
   List<Object?> _entriesOf(Object? source) {
     if (batchPath == null) return [source];
-    final batch = _resolve(source, batchPath!);
-    return batch is List ? batch : const [];
+    final batch = _listAt(source, batchPath!);
+    return batch ?? const [];
+  }
+
+  /// The list at dotted [path], or `null` when the path reaches anything else.
+  ///
+  /// Separate from [tomVendorValueAt] because the batch path is the one place a
+  /// mapping wants the container rather than a value inside it: the entries are
+  /// then each read with the ordinary reader.
+  static List<Object?>? _listAt(Object? source, String path) {
+    Object? node = source;
+    for (final step in path.split('.')) {
+      final index = int.tryParse(step);
+      if (index != null && index >= 0 && node is List) {
+        if (index >= node.length) return null;
+        node = node[index];
+        continue;
+      }
+      if (node is! Map) return null;
+      node = node[step];
+    }
+    return node is List ? node : null;
   }
 
   TomDeliveryState _stateOf(String? status) {
@@ -432,21 +453,8 @@ class TomFieldMappedDeliveryReportProtocol extends TomDeliveryReportProtocol {
   static DateTime? _instantOf(String? text) =>
       text == null ? null : DateTime.tryParse(text)?.toUtc();
 
-  /// The value at dotted [path], as text.
-  static String? _at(Object? source, String path) {
-    final value = _resolve(source, path);
-    return value == null ? null : '$value';
-  }
-
-  static Object? _resolve(Object? source, String path) {
-    Object? current = source;
-    for (final segment in path.split('.')) {
-      if (current is Map) {
-        current = current[segment];
-      } else {
-        return null;
-      }
-    }
-    return current;
-  }
+  /// The value at dotted [path], as text — see [tomVendorValueAt], which both
+  /// vendor mappings read a path with.
+  static String? _at(Object? source, String path) =>
+      tomVendorValueAt(source, path);
 }

@@ -446,6 +446,7 @@ surface documented here.
 | `TomSmsBodyFormat` | enum | `form`, `json`. |
 | `TomWebhookTransport` | class | Real delivery over HTTP: the message's own JSON POSTed to the URL that addresses it. |
 | `TomWebhookSettings` | class | The timeout, the always-applied headers, and how much of the answer the receipt keeps. |
+| `tomVendorValueAt` | function | The dotted-path reader both vendor mappings share; a numeric segment indexes a list. |
 | `TomDeliveryReport` | class | What a carrier says became of a message after accepting it. |
 | `TomDeliveryState` | enum | `delivered`, `failed`, `expired`, `unknown` — not the same question as `TomDeliveryOutcome`. |
 | `TomDeliveryCorrelation` | class | The `remoteId` → message row, and the last state reported against it. |
@@ -1105,6 +1106,7 @@ surface documented here.
 | `TomUserPreferencesServer` | Preferences |
 | `TomUserTwoFactorEnrolment` | Authentication |
 | `TomUserTwoFactorEnrolmentRepository` | Authentication |
+| `tomVendorValueAt` | Messaging |
 | `TomWebhookSettings` | Messaging |
 | `TomWebhookTransport` | Messaging |
 | `TomWebSocketConnection` | Endpoints |

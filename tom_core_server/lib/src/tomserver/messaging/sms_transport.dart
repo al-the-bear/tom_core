@@ -48,6 +48,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../configuration/base_server_configuration.dart';
 import 'message.dart';
 import 'message_transport.dart';
+import 'vendor_mapping.dart';
 
 // =============================================================================
 // SEGMENTATION
@@ -608,9 +609,9 @@ class TomFieldMappedSmsProtocol extends TomSmsGatewayProtocol {
   @override
   TomSmsGatewayAnswer decode(int statusCode, String body) {
     final json = _decodeOrNull(body);
-    final code = _stringAt(json, errorCodePath);
+    final code = tomVendorValueAt(json, errorCodePath);
     final detail =
-        _stringAt(json, errorMessagePath) ??
+        tomVendorValueAt(json, errorMessagePath) ??
         (body.trim().isEmpty ? null : _clip(body));
     final httpOk = statusCode >= 200 && statusCode < 300;
 
@@ -618,7 +619,7 @@ class TomFieldMappedSmsProtocol extends TomSmsGatewayProtocol {
     if (statusPath == null) {
       accepted = httpOk;
     } else {
-      final status = _stringAt(json, statusPath);
+      final status = tomVendorValueAt(json, statusPath);
       // A configured status path that does not resolve is not a success. The
       // gateway promised to say something and did not, and treating silence as
       // acceptance is how a maintenance page becomes a delivered message.
@@ -630,7 +631,7 @@ class TomFieldMappedSmsProtocol extends TomSmsGatewayProtocol {
 
     if (accepted) {
       return TomSmsGatewayAnswer.accepted(
-        remoteId: _stringAt(json, remoteIdPath),
+        remoteId: tomVendorValueAt(json, remoteIdPath),
         detail: detail,
       );
     }
@@ -657,16 +658,6 @@ class TomFieldMappedSmsProtocol extends TomSmsGatewayProtocol {
       // transport's status rule can still classify.
       return null;
     }
-  }
-
-  static String? _stringAt(Object? json, String? path) {
-    if (json == null || path == null) return null;
-    Object? node = json;
-    for (final step in path.split('.')) {
-      if (node is! Map) return null;
-      node = node[step];
-    }
-    return node == null ? null : node.toString();
   }
 
   static String _clip(String body) {

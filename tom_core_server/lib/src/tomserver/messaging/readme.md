@@ -130,6 +130,20 @@ carrier did with it afterwards arrives minutes or hours later, on a callback, an
 | `TomDeliveryReportProtocol` · `TomFieldMappedDeliveryReportProtocol` · `TomDeliveryCallback` | The carrier's callback shape, described in configuration rather than coded — the same seam `TomSmsGatewayProtocol` is, and with no vendor presets for the same reason. |
 | `TomDeliveryReportService` · `TomDeliveryReportServer` · `TomDeliveryReportEndpoint` | The inbound `POST /messaging/delivery-report` route. Public, because a carrier has no account here, and gated by a shared secret compared in constant time. Nothing is installed by default, and an uninstalled endpoint refuses everything. |
 
+### The vendor mapping's path
+
+Source: `vendor_mapping.dart`
+
+| Type | What it is |
+| ---- | ---------- |
+| `tomVendorValueAt` | The dotted-path reader `TomFieldMappedSmsProtocol` and `TomFieldMappedDeliveryReportProtocol` share. A numeric segment indexes a **list**, because almost every gateway wraps its answer in one — Vonage, MessageBird, Infobip, Plivo and ClickSend all answer per recipient. Twilio is the outlier, and a map-only reader would express Twilio and none of the others. |
+
+Worked mappings for three named vendors live in
+`example/messaging/sms_gateway_presets.dart`, as an **example** rather than as
+library API: a preset in the framework is a vendor's API frozen into a release,
+and a stale example is obviously the reader's to update while stale library API
+is not.
+
 ### The MIME document
 
 Source: `mime_encoder.dart`

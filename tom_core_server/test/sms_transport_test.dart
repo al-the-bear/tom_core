@@ -737,6 +737,113 @@ void main() {
   // THE SEAM: ONE OUTBOX, ONE RETRY BUDGET, TWO CHANNELS
   // ===========================================================================
 
+  group('the path a vendor mapping is written in', () {
+    // The reader both vendor mappings share. It grew a numeric segment because
+    // almost every gateway wraps its answer in a list — Vonage, MessageBird,
+    // Infobip, Plivo, ClickSend all answer per recipient — and a map-only
+    // reader could not express any of them. Twilio is the outlier, and Twilio
+    // is the shape this suite's own fixture was written against, which is why
+    // the limitation survived as long as it did.
+
+    test('a map key reads a map', () {
+      expect(tomVendorValueAt({'status': 'queued'}, 'status'), 'queued');
+      expect(
+        tomVendorValueAt({
+          'a': {'b': 'c'},
+        }, 'a.b'),
+        'c',
+      );
+    });
+
+    test('a numeric segment indexes a list', () {
+      // Vonage's shape, which has no path to `status` that does not pass
+      // through a list.
+      final answer = {
+        'messages': [
+          {'message-id': 'ID1', 'status': '0'},
+        ],
+      };
+      expect(tomVendorValueAt(answer, 'messages.0.status'), '0');
+      expect(tomVendorValueAt(answer, 'messages.0.message-id'), 'ID1');
+    });
+
+    test('an index past the end is null, not a crash', () {
+      // A path is configuration describing someone else's payload. A gateway
+      // that answered with fewer entries than the mapping expects must produce
+      // an unclassifiable answer rather than an exception from inside a decode.
+      expect(tomVendorValueAt({'m': <Object?>[]}, 'm.0.status'), isNull);
+      expect(
+        tomVendorValueAt({
+          'm': [1],
+        }, 'm.3'),
+        isNull,
+      );
+    });
+
+    test('a segment applied to the wrong shape is null', () {
+      expect(tomVendorValueAt({'a': 'text'}, 'a.b'), isNull);
+      expect(tomVendorValueAt([1, 2], 'key'), isNull);
+      expect(tomVendorValueAt(null, 'a'), isNull);
+      expect(tomVendorValueAt({'a': 1}, null), isNull);
+    });
+
+    test('a negative index is read as a key, not as an offset', () {
+      // `-1` meaning "the last entry" would be a second rule to remember for
+      // no gateway that needs it, and it would make a map key of `-1`
+      // unreachable. It stays a key lookup, which finds nothing in a list.
+      expect(
+        tomVendorValueAt({
+          'm': [1, 2],
+        }, 'm.-1'),
+        isNull,
+      );
+    });
+
+    test('the value is stringified, whatever the vendor sent', () {
+      // Codes arrive as numbers from some gateways and as strings from others,
+      // and the classification sets are sets of strings.
+      expect(tomVendorValueAt({'code': 21211}, 'code'), '21211');
+      expect(tomVendorValueAt({'ok': true}, 'ok'), 'true');
+    });
+  });
+
+  group('a mapping over a list-shaped answer', () {
+    // The end of the same argument, through the protocol rather than the
+    // reader: a gateway that answers per recipient is now expressible.
+
+    const vonage = TomFieldMappedSmsProtocol(
+      statusPath: 'messages.0.status',
+      acceptedStatuses: {'0'},
+      remoteIdPath: 'messages.0.message-id',
+      errorCodePath: 'messages.0.status',
+      permanentErrorCodes: {'6'},
+      transientErrorCodes: {'1'},
+    );
+
+    test('reads the accepted answer out of the list', () {
+      final answer = vonage.decode(
+        200,
+        '{"messages":[{"message-id":"ID1","status":"0"}]}',
+      );
+      expect(answer.isAccepted, isTrue);
+      expect(answer.remoteId, 'ID1');
+    });
+
+    test('classifies a refusal by the code in the same place', () {
+      // Vonage reports success and failure in one field, so the status path and
+      // the error-code path are the same path. The mapping expresses that
+      // directly rather than needing a special case.
+      final answer = vonage.decode(200, '{"messages":[{"status":"1"}]}');
+      expect(answer.isAccepted, isFalse);
+      expect(answer.isPermanent, isFalse);
+      expect(answer.providerCode, '1');
+    });
+
+    test('an answer with no entries is a refusal, not a success', () {
+      expect(vonage.decode(200, '{"messages":[]}').isAccepted, isFalse);
+    });
+  });
+
   group('an SMS on the outbox', () {
     late _FakeClock clock;
     late TomMessageOutbox outbox;

@@ -36,6 +36,7 @@ const _spawnedByModuleTest = <String, String>{
   'example/messaging/messaging_example.dart': 'test/messaging_test.dart',
   'example/messaging/messaging_templated_example.dart':
       'test/messaging_test.dart',
+  'example/messaging/sms_gateway_presets.dart': 'test/messaging_test.dart',
   'example/transactions/transactions_example.dart':
       'test/transactions_test.dart',
 };
@@ -104,6 +105,7 @@ const _stepCounts = <String, int>{
   'example/little_things/little_things_example.dart': 6,
   'example/messaging/messaging_example.dart': 12,
   'example/messaging/messaging_templated_example.dart': 12,
+  'example/messaging/sms_gateway_presets.dart': 7,
   'example/object_persistence/object_persistence_example.dart': 16,
   'example/resources/resources_example.dart': 7,
   'example/scheduling/scheduling_example.dart': 10,

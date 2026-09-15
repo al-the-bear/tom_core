@@ -1862,14 +1862,21 @@ void main() {
     });
   });
 
-  // The module ships two examples — the hand-composed substrate and the
-  // templated services above it — and both need the same two guarantees, so
-  // the group is written once and instantiated twice rather than copied.
+  // The module ships three examples — the hand-composed substrate, the
+  // templated services above it, and the worked gateway mappings — and all
+  // three need the same two guarantees, so the group is written once and
+  // instantiated three times rather than copied.
+  //
+  // The preset example is spawned from here rather than from
+  // `sms_transport_test.dart` because this is where the helper lives; the
+  // partition in `examples_test.dart` is about which suite runs a program, not
+  // about which module it is topically closest to.
   _exampleRunsGreen('example/messaging/messaging_example.dart', steps: 12);
   _exampleRunsGreen(
     'example/messaging/messaging_templated_example.dart',
     steps: 12,
   );
+  _exampleRunsGreen('example/messaging/sms_gateway_presets.dart', steps: 7);
 }
 
 /// Declares the guard group for one runnable example: it exits 0 under the

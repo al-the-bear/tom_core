@@ -83,7 +83,8 @@ Source: `lib/src/tomserver/messaging/email_service.dart`,
 `lib/src/tomserver/messaging/delivery_report.dart`,
 `lib/src/tomserver/messaging/delivery_report_sql.dart`,
 `lib/src/tomserver/messaging/delivery_report_endpoint.dart`,
-`lib/src/tomserver/messaging/sql_delivery_report_store.dart`.
+`lib/src/tomserver/messaging/sql_delivery_report_store.dart`,
+`lib/src/tomserver/messaging/vendor_mapping.dart`.
 
 The module separates three things a single `sendMail()` call conflates.
 *Composition* is `TomMessage` and the value types around it — `TomRecipient`
@@ -2057,5 +2058,6 @@ bean of its own.
 
 | Function | Signature | Description |
 | -------- | --------- | ----------- |
+| `tomVendorValueAt` | `String? tomVendorValueAt(Object? json, String? path)` | The value at dotted `path` inside a decoded gateway answer, as text, or `null`. A segment that parses as a non-negative integer indexes a **list**; every other segment reads a map key. Shared by `TomFieldMappedSmsProtocol` and `TomFieldMappedDeliveryReportProtocol`, because a deployment reading the two side by side has every reason to expect `a.b.0.c` to mean the same thing to both. A missing key, an index past the end, or a segment applied to neither answers `null` rather than throwing: a path is configuration describing someone else's payload, and a gateway that changed its shape should produce an unclassifiable answer rather than an exception from inside a decode. A map whose keys are digits is therefore unreachable — a real limit, and not a likely one. |
 | `deliveryReportTable` | `TomFrameworkTable deliveryReportTable(String table)` | The correlation table, declared **once**. The DDL `TomSqlDeliveryReportStore` issues, the column lists its statements interpolate and the schema model the convergence guard compares are all derived from this one declaration, so they cannot come apart. |
 | `deliveryReportTableDdl` | `String deliveryReportTableDdl(String table)` | The `CREATE TABLE` for a correlation table named `table` — what a deployment applies by hand when its database user may not run DDL and the store is constructed with `createSchema: false`. |
