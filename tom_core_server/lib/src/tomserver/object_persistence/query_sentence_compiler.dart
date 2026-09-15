@@ -168,6 +168,97 @@ _ScalarLiteral? _scalarLiteralFor(String token) {
   return null;
 }
 
+/// One thing a query sentence can carry besides its predicate.
+///
+/// Three are written before `by` (`distinct`, the row cap, the skip) and one
+/// after the predicate (`order by …`), but they are one vocabulary: each is
+/// parsed once for every sentence, and each kind of sentence then either
+/// permits it or refuses it **by name**.
+///
+/// Naming them is what makes that one question instead of several. A rule
+/// written per kind, in a condition of its own, is a rule a fifth kind has to
+/// remember to state — and an option no condition happens to mention is
+/// accepted and then dropped, which changes what a query returns while reading
+/// as though it had not.
+///
+/// [refusalKey] and [reason] are what a kind that does not permit this option
+/// says. One pair per option rather than per (kind, option) pair, because
+/// exactly one kind refuses each of them today; a second refuser would need a
+/// reason of its own, which `query_sentence_options_test.dart` asserts by
+/// checking every kind against every option.
+enum _SentenceOption {
+  distinct(
+    'distinct',
+    'distinct_unsupported_for_kind',
+    'Only Find and Count take a Distinct: MariaDB\'s DELETE is single-table '
+        'and has no projection to deduplicate, and a Group deduplicates inside '
+        'an aggregate — count ( distinct amount ) — not over the sentence.',
+  ),
+  cap(
+    'first/top',
+    'top_unsupported_for_count',
+    'A Count takes no First/Top: LIMIT caps the rows returned, and a count '
+        'returns one row whatever the cap, so a capped count would count the '
+        'whole filtered set and then cap nothing.',
+  ),
+  skip(
+    'skip/offset',
+    'skip_unsupported_for_kind',
+    "Only Find and Group take a Skip/Offset: MariaDB's DELETE has no OFFSET.",
+  ),
+  sort(
+    'order by',
+    'order_by_unsupported_for_count',
+    'A Count takes no Order By: the statement returns a single row, so an '
+        'ordering has nothing to order. Use Group to order aggregates.',
+  );
+
+  const _SentenceOption(this.spelling, this.refusalKey, this.reason);
+
+  /// How the option is written, for the refusal message.
+  final String spelling;
+
+  /// The tail of the exception key a kind refusing this option raises.
+  final String refusalKey;
+
+  /// Why that kind cannot express it.
+  final String reason;
+}
+
+/// The options one sentence carries, parsed once for every kind.
+///
+/// [projectionStart] is where the option scan stopped — the first token before
+/// `by` that names no option. For `group` that is where the projection begins;
+/// for every other kind there must be nothing there, and a token that is
+/// neither an option nor a projection is refused rather than dropped.
+class _SentenceOptions {
+  const _SentenceOptions({
+    required this.present,
+    required this.distinct,
+    required this.cap,
+    required this.skip,
+    required this.sort,
+    required this.projectionStart,
+  });
+
+  /// Which options the sentence actually wrote, so a kind refuses only what
+  /// was asked for. An option left out is not refused, however little the kind
+  /// could have done with it.
+  final Set<_SentenceOption> present;
+
+  final bool distinct;
+
+  /// The row cap, or `-1` for none.
+  final int cap;
+
+  /// The row skip, or `0` for none.
+  final int skip;
+
+  final List<TomSortField> sort;
+
+  final int projectionStart;
+}
+
 /// Compiles a Spring-Data-style *query sentence* into a [TomQuery].
 ///
 /// A query sentence is a whitespace-separated phrase such as
@@ -210,41 +301,229 @@ _ScalarLiteral? _scalarLiteralFor(String token) {
 /// both `top` and `first`, both `skip` and `offset`, a skip without a cap,
 /// etc.).
 ///
-/// The options are parsed once and then forwarded selectively, because the
-/// kinds do not all accept the same ones: a find or a group takes the cap, the
-/// skip and the sort; a delete takes the cap and the sort but no skip, because
-/// `DELETE` has no `OFFSET`; a count takes none of the three, because it
-/// returns one row whatever they say. A combination a kind cannot express is
-/// refused with a message naming the reason — never accepted and then ignored.
+/// **Options.** The four a sentence can carry — `distinct`, the cap, the skip
+/// and the sort — are parsed once, by one step, for every kind. Each kind then
+/// declares which of them it permits (`_permittedOptions`), and one loop
+/// refuses the rest **by name**: a find or a group takes the cap, the skip and
+/// the sort; a delete takes the cap and the sort but no skip, because `DELETE`
+/// has no `OFFSET`, and no `distinct`, because a single-table delete has no
+/// projection to deduplicate; a count takes only `distinct`, because it returns
+/// one row whatever the others say.
+///
+/// The declaration is what keeps the promise the next sentence makes. A
+/// combination a kind cannot express is refused with a message naming the
+/// reason — never accepted and then ignored — and so is a word before `by` that
+/// names no option at all, because a token skipped along with its argument
+/// changes what the query returns while reading as though it had not. The
+/// matrix is in `doc/object_persistence.md` and asserted against this compiler,
+/// cell by cell, by `query_sentence_options_test.dart`.
 class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     with TomQueryBuilder {
   /// Creates a compiler for the given entity [types] (the first is primary).
   TomQuerySentenceCompiler(super.types);
 
-  /// Parses query sentence [qs] into a [TomSelect], [TomCount], or [TomDelete].
+  /// Which options each kind of sentence permits.
+  ///
+  /// The declaration, not a detail: a kind permits what is listed here and
+  /// refuses everything else **by name**, so a new kind is a new row rather
+  /// than a search for the conditions that mention the existing ones. Listing
+  /// what is *permitted* rather than what is refused is the direction that
+  /// fails safe — an option added to [_SentenceOption] is refused by every kind
+  /// until one opts in, where a refusal list would let it through everywhere.
+  ///
+  /// Private, because a `Set<_SentenceOption>` is not something a caller could
+  /// do anything with. The table a reader needs is in
+  /// `doc/object_persistence.md`, and `query_sentence_options_test.dart`
+  /// asserts the compiler against that table rather than against this one — a
+  /// test reading this map would agree with it by construction.
+  static const Map<String, Set<_SentenceOption>> _permittedOptions = {
+    'FIND': {
+      _SentenceOption.distinct,
+      _SentenceOption.cap,
+      _SentenceOption.skip,
+      _SentenceOption.sort,
+    },
+    'GROUP': {_SentenceOption.cap, _SentenceOption.skip, _SentenceOption.sort},
+    // No window and no ordering: the statement returns one row, so a cap would
+    // cap nothing and an ordering would have nothing to order.
+    'COUNT': {_SentenceOption.distinct},
+    // `DELETE … ORDER BY … LIMIT n` is MariaDB syntax; `OFFSET` is not, and a
+    // single-table delete has no projection for `DISTINCT` to deduplicate.
+    'DELETE': {_SentenceOption.cap, _SentenceOption.sort},
+  };
+
+  /// Parses query sentence [qs] into a [TomSelect], [TomCount], [TomDelete] or
+  /// [TomGroupedSelect].
   TomQuery compileQuerySentence(String qs) {
     var parts = _splitQuerySentence(qs);
-    var queryOptions = parts.sublist(0, _index(parts, "BY"));
-    var whereClause = parts.sublist(_index(parts, "BY") + 1);
+    final byIndex = _index(parts, "BY");
+    if (byIndex == -1) {
+      // Every sentence is `<kind> [options] by <predicate>`, so a missing `by`
+      // leaves no predicate to compile and nowhere for the options to end.
+      // Raised here rather than reached as a `RangeError` out of the sublist
+      // below: a sentence can come from a request parameter, and the family
+      // callers catch on is this one.
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile.missing_by",
+        "The QuerySentence $qs cannot be compiled. Every sentence separates "
+            "its options from its predicate with [by] — find ... by ..., "
+            "count ... by ..., delete ... by ... — and this one has no [by].",
+      );
+    }
+    var queryOptions = parts.sublist(0, byIndex);
+    var whereClause = parts.sublist(byIndex + 1);
 
-    final top = _countOption(
-      queryOptions,
-      qs,
-      "TOP",
-      "FIRST",
-      "conflicting_top_first",
-      "You may specify First or Top, but not both.",
-    );
-    final skip = _countOption(
-      queryOptions,
-      qs,
-      "SKIP",
-      "OFFSET",
-      "conflicting_skip_offset",
-      "You may specify Skip or Offset, but not both.",
-    );
+    final options = _parseOptions(queryOptions, whereClause, qs);
+
+    final kind = queryOptions.isEmpty ? '' : parts[0].toUpperCase();
+    final permitted = _permittedOptions[kind];
+    if (permitted == null) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile.invalid_query_sentence_start",
+        "The QuerySentence $qs cannot be compiled. It must start with find...By, delete...By or count...By",
+      );
+    }
+
+    // One loop where there were three conditions. An option the sentence wrote
+    // and this kind does not permit is refused by name and never dropped.
+    //
+    // In declaration order, not in the order the sentence happened to write
+    // them, so a sentence carrying two refused options always reports the same
+    // one. `count top 2 skip 4` reports the cap: a skip needs a cap, so that is
+    // the refusal the author reaches first whichever way round they read it.
+    for (final option in _SentenceOption.values) {
+      if (!options.present.contains(option)) continue;
+      if (permitted.contains(option)) continue;
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile.${option.refusalKey}",
+        "The QuerySentence $qs cannot be compiled. ${option.reason}",
+        parameters: {"kind": kind, "option": option.spelling},
+      );
+    }
+
+    // Everything the option scan did not claim. For `group` that is the
+    // projection; for the other kinds there is nothing else a sentence may say
+    // before `by`, so a leftover token is a misspelled option or a stray word —
+    // and silently ignoring it is how `find frist 5 by …` returned the whole
+    // set while reading as though it had capped.
+    if (kind != 'GROUP' && options.projectionStart < queryOptions.length) {
+      // The message names what this kind *does* take, because the token is
+      // usually a misspelling of one of them and the author is looking for the
+      // spelling rather than for a list of what went wrong.
+      final takes = permitted
+          .where((o) => o != _SentenceOption.sort)
+          .map((o) => o.spelling)
+          .toList();
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile.unknown_option",
+        "The QuerySentence $qs cannot be compiled. "
+            "[${queryOptions[options.projectionStart]}] names no option before "
+            "[by]. A ${kind.toLowerCase()} takes "
+            "${takes.isEmpty ? 'no options' : takes.join(' and ')} there"
+            "${takes.contains(_SentenceOption.cap.spelling) || takes.contains(_SentenceOption.skip.spelling) ? ', and each of first/top and skip/offset takes a row count after it' : ''}.",
+        parameters: {
+          "kind": kind,
+          "token": queryOptions[options.projectionStart],
+        },
+      );
+    }
+
+    // The grouped kind splits its `having` clause off the where clause before
+    // either predicate is built, so it branches ahead of the common build.
+    if (kind == "GROUP") {
+      return _compileGrouped(queryOptions, whereClause, qs, options);
+    }
+
+    var query = _buildQuery(whereClause, qs).$1;
+
+    switch (kind) {
+      case "FIND":
+        return TomSelect(
+          types,
+          distinct: options.distinct,
+          top: options.cap,
+          offset: options.skip,
+          sort: options.sort,
+          query: query,
+        );
+      case "COUNT":
+        return TomCount(types, distinct: options.distinct, query: query);
+      default:
+        return TomDelete(
+          types,
+          top: options.cap,
+          sort: options.sort,
+          query: query,
+        );
+    }
+  }
+
+  /// Parses everything a sentence carries besides its predicate, once, for
+  /// every kind.
+  ///
+  /// [queryOptions] is the tokens before `by`, [whereClause] those after it.
+  /// The scan runs left to right from the kind word and stops at the first
+  /// token that names no option, which the caller reads as the projection
+  /// (`group`) or as a stray word (every other kind).
+  ///
+  /// Scanning rather than searching is what makes that stop meaningful. While
+  /// each option was found by searching the whole list, a token belonging to
+  /// none of them was invisible: nothing knew which tokens had been consumed,
+  /// so nothing could notice one that had not been.
+  _SentenceOptions _parseOptions(
+    List<String> queryOptions,
+    List<String> whereClause,
+    String qs,
+  ) {
+    final present = <_SentenceOption>{};
+    bool distinct = false;
+    int cap = -1;
+    int skip = -1;
+    String? capKeyword;
+    String? skipKeyword;
+
+    int at = queryOptions.isEmpty ? 0 : 1;
+    while (at < queryOptions.length) {
+      final token = queryOptions[at].toUpperCase();
+      if (token == "DISTINCT") {
+        present.add(_SentenceOption.distinct);
+        distinct = true;
+        at++;
+        continue;
+      }
+      if (token == "TOP" || token == "FIRST") {
+        if (capKeyword != null) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.compile.conflicting_top_first",
+            "The QuerySentence $qs cannot be compiled. You may specify First "
+                "or Top, but not both.",
+          );
+        }
+        capKeyword = queryOptions[at].toLowerCase();
+        cap = _optionArgument(queryOptions, at, capKeyword, qs);
+        present.add(_SentenceOption.cap);
+        at += 2;
+        continue;
+      }
+      if (token == "SKIP" || token == "OFFSET") {
+        if (skipKeyword != null) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.compile.conflicting_skip_offset",
+            "The QuerySentence $qs cannot be compiled. You may specify Skip "
+                "or Offset, but not both.",
+          );
+        }
+        skipKeyword = queryOptions[at].toLowerCase();
+        skip = _optionArgument(queryOptions, at, skipKeyword, qs);
+        present.add(_SentenceOption.skip);
+        at += 2;
+        continue;
+      }
+      break;
+    }
+
     final offset = skip > 0 ? skip : 0;
-    if (offset > 0 && top <= 0) {
+    if (offset > 0 && cap <= 0) {
       throw TomQuerySyntaxException(
         "query_sentence_compiler.compile.skip_without_top",
         "The QuerySentence $qs cannot be compiled. Skip/Offset needs a row cap: "
@@ -252,81 +531,63 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
             "without also capping. Add First/Top <n>.",
       );
     }
-    final kind = parts[0].toUpperCase();
-    if (kind == "COUNT" && top > 0) {
-      throw TomQuerySyntaxException(
-        "query_sentence_compiler.compile.top_unsupported_for_count",
-        "The QuerySentence $qs cannot be compiled. A Count takes no First/Top: "
-            "LIMIT caps the rows returned, and a count returns one row whatever"
-            " the cap, so a capped count would count the whole filtered set and"
-            " then cap nothing.",
-        parameters: {"kind": kind},
-      );
-    }
-    // Reachable for DELETE only: a Skip needs a cap (checked above), and the
-    // rule right above denies a Count one, so no Count sentence gets this far.
-    if (offset > 0 && kind != "FIND" && kind != "GROUP") {
-      throw TomQuerySyntaxException(
-        "query_sentence_compiler.compile.skip_unsupported_for_kind",
-        "The QuerySentence $qs cannot be compiled. Only Find and Group take a "
-            "Skip/Offset: MariaDB's DELETE has no OFFSET.",
-        parameters: {"kind": kind},
-      );
-    }
-    var distinct = _find(queryOptions, "DISTINCT");
-    var sort = _analyseOrderByClause(whereClause, qs);
-    if (kind == "COUNT" && sort.isNotEmpty) {
-      throw TomQuerySyntaxException(
-        "query_sentence_compiler.compile.order_by_unsupported_for_count",
-        "The QuerySentence $qs cannot be compiled. A Count takes no Order By: "
-            "the statement returns a single row, so an ordering has nothing to "
-            "order. Use Group to order aggregates.",
-        parameters: {"kind": kind},
-      );
-    }
 
-    // The grouped kind splits its `having` clause off the where clause before
-    // either predicate is built, so it branches ahead of the common build.
-    if (kind == "GROUP") {
-      return _compileGrouped(
-        queryOptions,
-        whereClause,
-        qs,
-        top: top,
-        offset: offset,
-        sort: sort,
-      );
-    }
+    final sort = _analyseOrderByClause(whereClause, qs);
+    if (sort.isNotEmpty) present.add(_SentenceOption.sort);
 
-    var query = _buildQuery(whereClause, qs).$1;
+    return _SentenceOptions(
+      present: present,
+      distinct: distinct,
+      cap: cap,
+      skip: offset,
+      sort: sort,
+      projectionStart: at,
+    );
+  }
 
-    if (kind == "FIND") {
-      return TomSelect(
-        types,
-        distinct: distinct,
-        top: top,
-        offset: offset,
-        sort: sort,
-        query: query,
-      );
-    } else if (kind == "COUNT") {
-      // No window and no ordering: both were rejected above, so there is
-      // nothing left to forward but the projection options.
-      return TomCount(types, distinct: distinct, query: query);
-    } else if (kind == "DELETE") {
-      return TomDelete(
-        types,
-        distinct: distinct,
-        top: top,
-        sort: sort,
-        query: query,
-      );
-    } else {
+  /// Reads the whole, non-negative row count [keyword] takes, at [at] + 1.
+  ///
+  /// The argument is rejected — never guessed at — when it is missing,
+  /// non-numeric or negative: a window the compiler had to invent would return
+  /// a different result set than the sentence asked for, without saying so.
+  ///
+  /// Zero is accepted and means *unpaged*, the reading
+  /// [TomPageRequest.assertWindow] gives `limit: 0` for a window built
+  /// programmatically. Negative is refused for the same reason, and for one
+  /// more: `-1` is the compiler's own "absent" sentinel, so an accepted
+  /// `first -1` could not be told apart from a sentence with no cap.
+  ///
+  /// [keyword] is quoted as the author spelled it — `top` and `first` are one
+  /// option internally, and quoting the other one sends the reader looking for
+  /// a word their sentence does not contain.
+  int _optionArgument(List<String> options, int at, String keyword, String qs) {
+    if (at + 1 >= options.length) {
       throw TomQuerySyntaxException(
-        "query_sentence_compiler.compile.invalid_query_sentence_start",
-        "The QuerySentence $qs cannot be compiled. It must start with find...By, delete...By or count...By",
+        "query_sentence_compiler.compile.${keyword}_missing_argument",
+        "The QuerySentence $qs cannot be compiled. [$keyword] takes a row "
+            "count, but the sentence reaches [by] with nothing after it.",
+        parameters: {"option": keyword},
       );
     }
+    final argument = options[at + 1];
+    final count = int.tryParse(argument);
+    if (count == null) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile.${keyword}_not_numeric",
+        "The QuerySentence $qs cannot be compiled. [$keyword] takes a whole "
+            "row count, but [$argument] is not one.",
+        parameters: {"option": keyword, "argument": argument},
+      );
+    }
+    if (count < 0) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile.${keyword}_negative",
+        "The QuerySentence $qs cannot be compiled. [$keyword] may not be "
+            "negative, but was $count. Use 0 for no $keyword at all.",
+        parameters: {"option": keyword, "argument": count},
+      );
+    }
+    return count;
   }
 
   /// The aggregates a `having` clause may address, keyed by their projection
@@ -348,18 +609,12 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
   TomGroupedSelect _compileGrouped(
     List<String> queryOptions,
     List<String> whereClause,
-    String qs, {
-    required int top,
-    required int offset,
-    required List<TomSortField> sort,
-  }) {
-    // Past the `group` keyword and any window options, whose values were
-    // already read by the caller — what remains is the projection.
-    int start = 1;
-    while (start < queryOptions.length &&
-        _windowOptions.contains(queryOptions[start].toUpperCase())) {
-      start += 2;
-    }
+    String qs,
+    _SentenceOptions options,
+  ) {
+    // Where the option scan stopped is where the projection begins — the one
+    // kind for which a token past the options is not a mistake.
+    final start = options.projectionStart;
     final overIndex = _index(queryOptions, "OVER", start);
     final projectionTokens = queryOptions.sublist(
       start,
@@ -401,9 +656,9 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
       groupBy: groupBy,
       aggregates: aggregates,
       having: having,
-      sort: sort,
-      top: top,
-      offset: offset,
+      sort: options.sort,
+      top: options.cap,
+      offset: options.skip,
     );
   }
 
@@ -565,76 +820,6 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     }
   }
 
-  /// The option keywords that take a numeric argument, so the grouped branch
-  /// knows how many tokens to skip before the projection starts.
-  static const Set<String> _windowOptions = {"TOP", "FIRST", "SKIP", "OFFSET"};
-
-  /// Reads the numeric option spelled either [keyA] or [keyB] out of [options],
-  /// returning `-1` when neither appears.
-  ///
-  /// Naming the same option twice is a contradiction rather than a preference,
-  /// so it is rejected with [conflictKey]. The argument itself is rejected —
-  /// never guessed at — when it is missing, non-numeric, or negative: a window
-  /// the compiler had to invent would return a different result set than the
-  /// sentence asked for, without saying so.
-  ///
-  /// Zero is accepted and means *unpaged*, the reading
-  /// [TomPageRequest.assertWindow] gives `limit: 0` for a window built
-  /// programmatically. Negative is refused for the same reason it is there, and
-  /// for one more here: `-1` is this method's own "absent" sentinel, so an
-  /// accepted `first -1` could not be told apart from a sentence with no cap.
-  int _countOption(
-    List<String> options,
-    String qs,
-    String keyA,
-    String keyB,
-    String conflictKey,
-    String conflictMessage,
-  ) {
-    int index = _index(options, keyA);
-    final other = _index(options, keyB);
-    if (index > -1 && other > -1) {
-      throw TomQuerySyntaxException(
-        "query_sentence_compiler.compile.$conflictKey",
-        "The QuerySentence $qs cannot be compiled. $conflictMessage",
-      );
-    }
-    if (index == -1) index = other;
-    if (index == -1) return -1;
-
-    // The keyword as the author spelled it: `top` and `first` are one option
-    // internally, and quoting the other one sends the reader looking for a
-    // word their sentence does not contain.
-    final keyword = options[index].toLowerCase();
-    if (index + 1 >= options.length) {
-      throw TomQuerySyntaxException(
-        "query_sentence_compiler.compile.${keyword}_missing_argument",
-        "The QuerySentence $qs cannot be compiled. [$keyword] takes a row "
-            "count, but the sentence reaches [by] with nothing after it.",
-        parameters: {"option": keyword},
-      );
-    }
-    final argument = options[index + 1];
-    final count = int.tryParse(argument);
-    if (count == null) {
-      throw TomQuerySyntaxException(
-        "query_sentence_compiler.compile.${keyword}_not_numeric",
-        "The QuerySentence $qs cannot be compiled. [$keyword] takes a whole "
-            "row count, but [$argument] is not one.",
-        parameters: {"option": keyword, "argument": argument},
-      );
-    }
-    if (count < 0) {
-      throw TomQuerySyntaxException(
-        "query_sentence_compiler.compile.${keyword}_negative",
-        "The QuerySentence $qs cannot be compiled. [$keyword] may not be "
-            "negative, but was $count. Use 0 for no $keyword at all.",
-        parameters: {"option": keyword, "argument": count},
-      );
-    }
-    return count;
-  }
-
   /// Parses the trailing `order by <field> [asc|desc] …` clause into sort terms
   /// and strips it from [wc].
   ///
@@ -714,13 +899,6 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         "DESC" || "DESCENDING" => TomSortDirection.descending,
         _ => null,
       };
-
-  bool _find(List<String> list, String key, [int startAt = 0]) {
-    for (int i = startAt; i < list.length; i++) {
-      if (list[i].toUpperCase() == key.toUpperCase()) return true;
-    }
-    return false;
-  }
 
   int _index(List<String> list, String key, [int startAt = 0]) {
     for (int i = startAt; i < list.length; i++) {

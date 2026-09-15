@@ -2,6 +2,42 @@
 
 ### Added
 
+- **One option step for all four sentence kinds, and three things it stops
+  dropping (tcopen173).** `distinct`, the row cap, the skip and the trailing
+  `order by` are parsed once by one step, and each kind now *declares* which of
+  them it permits; one loop refuses the rest by name. The rules were three
+  `if (kind == …)` conditions written in different directions and scattered
+  through the compile method, and each existing refusal keeps its key
+  (`top_unsupported_for_count`, `order_by_unsupported_for_count`,
+  `skip_unsupported_for_kind`).
+
+  What a per-kind condition leaves out is the point. An option no condition
+  mentioned was accepted and dropped — `delete distinct by …` compiled and the
+  `distinct` went nowhere, which the class dartdoc's own promise ("never
+  accepted and then ignored") denies — and a word before `by` that named no
+  option was skipped *along with its argument*, so `find frist 5 by …` returned
+  the whole set while reading as though it had capped. Both are now refused:
+  `distinct_unsupported_for_kind` (also for `group`, which deduplicates inside
+  an aggregate rather than over the sentence) and `unknown_option`, which names
+  the token it stopped at and what the kind does take.
+
+  A sentence with no `by` at all raised a raw `RangeError` out of the list
+  split — outside the `TomQuerySyntaxException` family this module documents as
+  covering every rejection, and reaching a caller as an internal error rather
+  than a bad request, which matters because a sentence can come from a request
+  parameter. It is now `missing_by`.
+
+  Two refused options in one sentence report the first in declaration order, so
+  the message does not depend on how the author arranged the words. That leaves
+  one cell declared but unreachable — a `count` refuses a skip, but a skip needs
+  a cap and a count refuses caps — and `doc/object_persistence.md` says so
+  beside the matrix rather than leaving it to be discovered.
+
+  The matrix is in the guide, and `query_sentence_options_test.dart` asserts the
+  compiler against *it* cell by cell: every permitted option must reach the
+  rendered SQL, every refused one must raise its documented key. A table read
+  from the source would have agreed with the source by construction.
+
 - **The eight advertised query-sentence keywords are declined, and the gap
   behind them closed (tcopen172).** *After*, *Before*, *StartsWith*, *EndsWith*,
   *Containing*, *Within*, *Exists* and *isEmpty* / *isNotEmpty* sat under *Not

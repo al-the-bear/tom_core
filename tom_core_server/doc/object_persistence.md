@@ -16,6 +16,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
   - [Paging and Sorting](#paging-and-sorting)
   - [Lifecycle work](#lifecycle-work)
 - [Query Sentences](#query-sentences)
+  - [Which kind takes which option](#which-kind-takes-which-option)
   - [`IS IN` lists](#is-in-lists)
   - [Column types a predicate can address](#column-types-a-predicate-can-address)
   - [What a comparison compares](#what-a-comparison-compares)
@@ -441,12 +442,45 @@ group count ( * ) as total over status by age >= :min
   applies to every field back to the previous direction keyword, so
   `order by a b desc` sorts both descending while `order by a desc b asc` mixes
   them; a field with no direction of its own sorts ascending.
-- **`count` takes neither a cap nor an ordering.** Its statement returns a
-  single row, so `top`/`first` would cap what is *returned* rather than what is
-  counted, and an `order by` would have one row to order. Both are rejected
-  rather than accepted and ignored, so `count first 5 by …` fails instead of
-  quietly counting the whole filtered set. Use `group` to cap or order
-  aggregates.
+
+### Which kind takes which option
+
+The four options are parsed once for every sentence, and each kind then permits
+or refuses each of them. **A kind that cannot express an option refuses it by
+name** — it is never accepted and then dropped, because an option that is
+silently ignored changes what the query returns while reading as though it had
+not.
+
+| Option | `find` | `group` | `count` | `delete` |
+| ------ | :----: | :-----: | :-----: | :------: |
+| `distinct` | yes | no | yes | no |
+| `first N` / `top N` | yes | yes | no | yes |
+| `skip M` / `offset M` | yes | yes | no | no |
+| `order by …` | yes | yes | no | yes |
+
+Each *no* is a refusal with a key of its own:
+
+| Refused | Key | Why |
+| ------- | --------------------------------------------- | --- |
+| a cap on a `count` | `query_sentence_compiler.compile.top_unsupported_for_count` | `LIMIT` caps the rows *returned*, and a count returns one row whatever the cap — so a capped count would count the whole filtered set and then cap nothing |
+| an ordering on a `count` | `query_sentence_compiler.compile.order_by_unsupported_for_count` | one row has nothing to order; use `group` to order aggregates |
+| a skip on a `delete` | `query_sentence_compiler.compile.skip_unsupported_for_kind` | MariaDB's `DELETE` has no `OFFSET` |
+| `distinct` on a `delete` or a `group` | `query_sentence_compiler.compile.distinct_unsupported_for_kind` | a single-table `DELETE` has no projection to deduplicate; a `group` deduplicates *inside* an aggregate — `count ( distinct amount )` — not over the sentence |
+
+Two more rejections belong to the same step, because both are ways of writing an
+option that is not one:
+
+| Refused | Key | Why |
+| ------- | --- | --- |
+| a word before `by` that names no option | `query_sentence_compiler.compile.unknown_option` | the scan reports where it stopped rather than skipping the token. A skipped word takes its argument with it, so `find frist 5 by …` would return the whole set while reading as though it had capped |
+| a sentence with no `by` at all | `query_sentence_compiler.compile.missing_by` | `by` is what separates the options from the predicate, so without it there is neither. Raised here rather than reaching the caller as a `RangeError` — a sentence can come from a request parameter |
+
+A sentence refusing two options at once reports the first in the order above, so
+the message does not depend on which order they were written in. One cell of the
+matrix is therefore declared but unreachable: a `count` refuses a skip, but a
+skip needs a cap and a `count` refuses caps, so `count top 2 skip 4 by …` is
+answered by `top_unsupported_for_count` and no sentence reaches
+`skip_unsupported_for_kind` through a count.
 
 ```text
 find first 25 skip 50 by status = :status order by priority desc due_date asc
@@ -1414,6 +1448,12 @@ a repository against a real MariaDB, which is the half that cannot be settled by
 reading generated SQL — including the one claim in
 [Matching literal text](#matching-literal-text) that is about what the
 *database* does with a pattern rather than about what the query says.
+
+`test/query_sentence_options_test.dart` asserts the matrix in
+[Which kind takes which option](#which-kind-takes-which-option) cell by cell —
+each permitted option reaches the rendered SQL, each refused one raises its
+documented key — and reads the table out of this document, so the guide, the
+compiler and the suite cannot drift apart without one of them failing.
 
 `test/query_sentence_declined_words_test.dart` runs both halves of
 [Words this grammar does not have](#words-this-grammar-does-not-have): that each
