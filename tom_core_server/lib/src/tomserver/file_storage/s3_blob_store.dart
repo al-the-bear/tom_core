@@ -536,6 +536,15 @@ class TomS3BlobStore extends TomBlobStore {
   Future<bool> doDelete(String key) async {
     // S3 answers `204` to a delete whether or not the object was there, so the
     // "did it exist" the contract promises has to be asked separately.
+    //
+    // Which makes the answer a *recent observation* rather than a fact, and
+    // deliberately so — see [TomBlobStore.delete]. Another caller can create or
+    // remove the key between this probe and the request below, so two
+    // concurrent deletes can both answer `true` and a delete racing a `put` can
+    // answer `false` having removed nothing. There is no conditional delete in
+    // the API to close it with: `x-amz-if-match` does not exist on `DeleteObject`,
+    // and a versioned bucket's delete marker answers a different question
+    // (which version) from the one the contract asks (was there anything).
     if (!await doExists(key)) return false;
     await _send(
       method: 'DELETE',

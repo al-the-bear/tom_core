@@ -699,6 +699,28 @@ A larger one becomes a multipart upload: initiate, one part per `partSize`
 window, complete. A part failure aborts the upload, so a half-uploaded object is
 not left to be billed for. `x-amz-meta-filename` carries the original name.
 
+**`delete`'s boolean is best-effort here, and exact everywhere else.** The
+contract says `delete` answers whether anything was there. A filesystem, a map
+and a manifest row answer that in the same operation that removes the blob, so
+their boolean is a fact. S3's `DELETE` answers `204` whether or not the object
+existed, so this backend asks separately with a `HEAD` — and another caller can
+create or remove the key between the two calls. Two concurrent deletes of one
+key can therefore both answer `true`, and a delete racing a `put` can answer
+`false` having removed nothing that the `put` then writes.
+
+There is no conditional delete to close it with: `DeleteObject` takes no
+`If-Match`, and a versioned bucket's delete marker answers *which version* went
+rather than *whether anything was there*. The exact answer is kept rather than
+replaced by a `void` no backend could get wrong, because a boolean that is a
+fact on three backends and a recent observation on the fourth is more useful
+than no answer anywhere — and the window only misleads a caller that is already
+racing itself. A caller that must not race holds a lock of its own; nothing in a
+storage API can supply one.
+
+`test/file_storage_test.dart` demonstrates both halves rather than describing
+them: an object appearing between the probe and the request, and two concurrent
+deletes both reporting success.
+
 ## A Failure Is a Storage Error, Not the Backend's
 
 The faults that stop a store come from the layer underneath it and speak that

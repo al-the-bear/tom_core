@@ -595,6 +595,23 @@ abstract class TomBlobStore {
   }
 
   /// Deletes [key], returning whether anything was there to delete.
+  ///
+  /// **Exact on a backend that can delete conditionally, best-effort on an
+  /// object store.** A filesystem, a map and a manifest row all answer the two
+  /// questions — did it exist, and is it gone — in one operation, so their
+  /// boolean is a fact. S3's `DELETE` answers `204` whether or not the object
+  /// was there, so [TomS3BlobStore] asks separately with a `HEAD` and another
+  /// caller can create or remove the key between the two. Two concurrent
+  /// deletes of one key can therefore both answer `true` there, and a delete
+  /// racing a `put` can answer `false` having removed nothing that the `put`
+  /// then writes.
+  ///
+  /// The window only misleads a caller that is already racing itself, which is
+  /// why the exact answer is kept rather than dropped for a `void` that no
+  /// backend could get wrong: a boolean that is a fact on three backends and a
+  /// recent observation on the fourth is more useful than no answer anywhere.
+  /// A caller that must not race holds a lock of its own; nothing in a storage
+  /// API can supply one.
   Future<bool> delete(String key) => _translating(
     TomBlobStoreOperation.delete,
     key,

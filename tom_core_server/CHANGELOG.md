@@ -1,5 +1,27 @@
 ## 1.3.0
 
+### Changed
+
+- **`TomBlobStore.delete`'s boolean is documented as exact on three backends and
+  best-effort on S3 (tcopen152).** The contract said "whether anything was there
+  to delete" with no caveat, and on S3 that is a *recent observation* rather
+  than a fact: `DELETE` answers `204` either way, so the backend probes with a
+  `HEAD` first and another caller can create or remove the key between the two
+  calls. Two concurrent deletes of one key can both answer `true`, and a delete
+  racing a `put` can answer `false` having removed nothing.
+
+  The behaviour is unchanged and the reasoning is now where a reader meets it —
+  on the contract, on the backend, in the guide and in the API summary. There is
+  nothing to close the window with: `DeleteObject` takes no `If-Match`, and a
+  versioned bucket's delete marker answers which version went rather than
+  whether anything was there. The exact answer is kept rather than replaced by a
+  `void` no backend could get wrong, because the window only misleads a caller
+  already racing itself.
+
+  Both halves of the race are now *demonstrated* rather than described: an
+  object appearing between the probe and the request, and two concurrent deletes
+  both reporting success.
+
 ### Added
 
 - **`purgeOrphanedChunks` gets the schedule it was documented as needing

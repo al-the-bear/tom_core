@@ -3492,6 +3492,64 @@ void main() {
       expect(methods.where((m) => m.startsWith('DELETE')), hasLength(1));
     });
 
+    test('the answer is a recent observation, not a fact', () async {
+      // The documented caveat, demonstrated rather than asserted in prose.
+      // `TomBlobStore.delete` promises an exact boolean on the backends that
+      // can delete conditionally and a best-effort one here, because S3 has no
+      // conditional delete and the probe and the request are two calls. This is
+      // the window: the object appears between them, the DELETE removes bytes
+      // this store never saw, and `false` is what the caller is told.
+      var probed = false;
+      final store = _s3((request) async {
+        if (request.method == 'HEAD') {
+          probed = true;
+          // Not there *yet*.
+          return http.Response('', 404);
+        }
+        return http.Response('', 204);
+      });
+
+      // Answered from the probe, so the DELETE is never sent and the object a
+      // concurrent writer is about to create survives — which is the benign
+      // half of the race.
+      expect(await store.delete('racing.txt'), isFalse);
+      expect(probed, isTrue);
+    });
+
+    test('two deletes of one key can both answer true', () async {
+      // The other half, and the one that misleads: the probe says yes for both
+      // callers, so both send a DELETE and both report having removed
+      // something. Only one did. A caller that must not see this holds a lock
+      // of its own — nothing in a storage API can supply one.
+      final store = _s3(
+        (request) async =>
+            http.Response('', request.method == 'DELETE' ? 204 : 200),
+      );
+
+      final answers = await Future.wait([
+        store.delete('contended.txt'),
+        store.delete('contended.txt'),
+      ]);
+      expect(answers, [isTrue, isTrue]);
+    });
+
+    test('the backends that can delete conditionally answer exactly', () async {
+      // The other side of the caveat, so "exact on the others" is a checked
+      // claim rather than a sentence. One operation answers both questions
+      // there, so a second delete of the same key is `false` with no window in
+      // which it could be anything else.
+      final root = Directory.systemTemp.createTempSync('tom_delete_');
+      addTearDown(() => root.deleteSync(recursive: true));
+      for (final store in <TomBlobStore>[
+        TomMemoryBlobStore(),
+        TomDirectoryBlobStore(root),
+      ]) {
+        await store.putBytes(key: 'k.bin', bytes: const [1]);
+        expect(await store.delete('k.bin'), isTrue, reason: '$store');
+        expect(await store.delete('k.bin'), isFalse, reason: '$store');
+      }
+    });
+
     test('parseHttpDate reads an IMF-fixdate and rejects anything else', () {
       expect(
         TomS3BlobStore.parseHttpDate('Wed, 21 Oct 2015 07:28:00 GMT'),
