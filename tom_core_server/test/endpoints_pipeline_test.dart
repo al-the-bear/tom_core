@@ -1445,25 +1445,35 @@ void main() {
       );
     });
 
-    test('reflects the configured TomHealthAnalyzer status', () async {
+    test('an unhealthy analyzer answers 503 through the mounted route', () async {
       TomHealthServer.healthAnalyzer = _DegradedAnalyzer();
       addTearDown(
         () => TomHealthServer.healthAnalyzer = TomDefaultHealthAnalyzer(),
       );
-      // Rebuild so the route binds the same singleton server, whose health()
-      // delegates to the now-degraded analyzer.
+      // The route binds the same singleton server, whose health() delegates to
+      // the now-unhealthy analyzer.
       final response = await router.call(_get('/health'));
-      expect(await response.readAsString(), 'DEGRADED');
 
-      // 200, *not* a 5xx — this module deliberately does not map a status
-      // string to a status code, so a degraded server still answers OK at the
-      // HTTP level. Asserted rather than left implicit because it is the whole
-      // reason the docs tell a probe author to match the body: a probe that
-      // checks only the status code stays green through this response.
+      // The status code, first, because it is the thing that was wrong. A load
+      // balancer's default check and a Kubernetes `httpGet` probe both read the
+      // code and nothing else, so a deployment whose analyzer correctly
+      // reported a dead database went on receiving traffic. Asserted through
+      // the *mounted route* rather than against `health()` directly, because
+      // the pipeline is what turns a handler's return value into a response and
+      // a `Response` it did not pass through untouched would land back at 200.
       expect(
         response.statusCode,
-        200,
-        reason: 'the analyzer verdict is carried in the body, not the status',
+        503,
+        reason: 'the verdict reaches the status code a probe reads',
+      );
+
+      // And the message is still the body, verbatim: a probe that wants the
+      // reason reads it where it has always been.
+      expect(await response.readAsString(), 'DEGRADED');
+      expect(
+        response.headers[TomHeader.contentType],
+        startsWith('text/plain'),
+        reason: 'a returned Response bypasses produces, so it sets its own',
       );
     });
   });
@@ -2734,9 +2744,11 @@ void main() {
   });
 }
 
-/// A [TomHealthAnalyzer] returning a non-OK status, to prove the route
-/// reflects the configured analyzer rather than a hardcoded string.
+/// A [TomHealthAnalyzer] returning an unhealthy verdict, to prove the route
+/// reflects the configured analyzer rather than a hardcoded string — and that
+/// the verdict reaches the status code.
 class _DegradedAnalyzer extends TomHealthAnalyzer {
   @override
-  Future<String> analyzeHealth() async => 'DEGRADED';
+  Future<TomHealthStatus> analyzeHealth() async =>
+      const TomHealthStatus.unhealthy('DEGRADED');
 }

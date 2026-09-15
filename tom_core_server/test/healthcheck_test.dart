@@ -18,16 +18,20 @@ library;
 
 import 'dart:io';
 
-import 'package:tom_core_server/tom_core_server.dart';
+import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
+import 'package:tom_core_server/tom_core_server.dart';
 
 class _FixedAnalyzer extends TomHealthAnalyzer {
-  final String status;
+  final TomHealthStatus status;
   _FixedAnalyzer(this.status);
 
   @override
-  Future<String> analyzeHealth() async => status;
+  Future<TomHealthStatus> analyzeHealth() async => status;
 }
+
+/// The body of [response], read back.
+Future<String> _bodyOf(Response response) => response.readAsString();
 
 void main() {
   // Restore the global analyzer after each test so swaps do not leak.
@@ -36,30 +40,93 @@ void main() {
     TomHealthServer.healthAnalyzer = original;
   });
 
+  group('the verdict and the message are two facts', () {
+    test('a verdict carries the status code a probe acts on', () {
+      // The whole point of separating them. A probe reads the code; a person
+      // reads the message. Encoding both into one string is what forced every
+      // consumer to parse, and made a typo in an analyzer a wrong verdict.
+      expect(TomHealthVerdict.healthy.statusCode, 200);
+      expect(TomHealthVerdict.unhealthy.statusCode, 503);
+    });
+
+    test('there are two verdicts, because HTTP offers two answers', () {
+      // Pinned by name. A third verdict would either map to one of these two —
+      // a distinction no probe can act on — or invent a status code no
+      // orchestrator reads. The gradation lives in the message.
+      expect(TomHealthVerdict.values, [
+        TomHealthVerdict.healthy,
+        TomHealthVerdict.unhealthy,
+      ]);
+    });
+
+    test('healthy defaults its message, unhealthy requires one', () {
+      // `OK` is what a human reading a probe log expects and what keeps a
+      // `curl` from looking broken; an unhealthy answer that does not say why
+      // is the one somebody is reading at three in the morning, so the
+      // constructor takes it.
+      const healthy = TomHealthStatus.healthy();
+      expect(healthy.message, 'OK');
+      expect(healthy.isHealthy, isTrue);
+      expect(healthy.statusCode, 200);
+
+      const unhealthy = TomHealthStatus.unhealthy('db=false');
+      expect(unhealthy.message, 'db=false');
+      expect(unhealthy.isHealthy, isFalse);
+      expect(unhealthy.statusCode, 503);
+    });
+  });
+
   group('TomDefaultHealthAnalyzer', () {
-    test('always returns OK', () async {
-      expect(await TomDefaultHealthAnalyzer().analyzeHealth(), 'OK');
+    test('always reports healthy', () async {
+      final status = await TomDefaultHealthAnalyzer().analyzeHealth();
+      expect(status.verdict, TomHealthVerdict.healthy);
+      expect(status.message, 'OK');
     });
   });
 
   group('TomHealthServer', () {
-    test('defaults to the always-OK analyzer', () {
+    test('defaults to the always-healthy analyzer', () {
       expect(TomHealthServer.healthAnalyzer, isA<TomDefaultHealthAnalyzer>());
     });
 
-    test('health() returns OK with the default analyzer', () async {
-      expect(await TomHealthServer().health(), 'OK');
+    test('health() answers 200 and OK with the default analyzer', () async {
+      final response = await TomHealthServer().health();
+      expect(response.statusCode, 200);
+      expect(await _bodyOf(response), 'OK');
     });
 
-    test('health() delegates to the swapped global analyzer', () async {
-      TomHealthServer.healthAnalyzer = _FixedAnalyzer('DEGRADED: db=false');
-      expect(await TomHealthServer().health(), 'DEGRADED: db=false');
+    test('an unhealthy analyzer answers 503, with its message', () async {
+      // The defect this closes: a load balancer's default check reads the
+      // status code and nothing else, so a deployment watching its analyzer
+      // correctly report a dead database still received traffic.
+      TomHealthServer.healthAnalyzer = _FixedAnalyzer(
+        const TomHealthStatus.unhealthy('DEGRADED: db=false'),
+      );
+      final response = await TomHealthServer().health();
+      expect(response.statusCode, 503);
+      expect(await _bodyOf(response), 'DEGRADED: db=false');
     });
+
+    test(
+      'the body is plain text, since a Response bypasses produces',
+      () async {
+        // A handler returning a `Response` is passed through untouched, so the
+        // endpoint's `produces` never reaches it. Without this the probe log
+        // fills with `application/octet-stream`.
+        final response = await TomHealthServer().health();
+        expect(
+          response.headers[TomHeader.contentType.toLowerCase()],
+          startsWith('text/plain'),
+        );
+      },
+    );
 
     test('the analyzer is shared across instances (static field)', () async {
-      TomHealthServer.healthAnalyzer = _FixedAnalyzer('CUSTOM');
-      expect(await TomHealthServer().health(), 'CUSTOM');
-      expect(await TomHealthServer().health(), 'CUSTOM');
+      TomHealthServer.healthAnalyzer = _FixedAnalyzer(
+        const TomHealthStatus.unhealthy('CUSTOM'),
+      );
+      expect((await TomHealthServer().health()).statusCode, 503);
+      expect(await _bodyOf(await TomHealthServer().health()), 'CUSTOM');
     });
   });
 

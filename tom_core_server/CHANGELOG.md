@@ -2,6 +2,31 @@
 
 ### Changed
 
+- **`/health` answers `503` when the analyzer says the process cannot serve
+  (tcopen153).** Every verdict was HTTP 200: `TomHealthAnalyzer.analyzeHealth`
+  returned a `String` and there was no argument, return channel or thrown type
+  by which it could influence the status. A load balancer's default check reads
+  the status code and nothing else, as does a Kubernetes `httpGet` probe unless
+  the deployment adds a body matcher — so a deployment watching its analyzer
+  correctly report `DEGRADED: db=false` went on receiving traffic.
+
+  The analyzer now returns a `TomHealthStatus`: a `TomHealthVerdict` a probe acts
+  on and a free-form message a person reads. **Two facts rather than one** —
+  encoding both into a string is what forced every consumer to parse, made a
+  typo in an analyzer a wrong verdict, and left an orchestrator nothing to act
+  on. There are two verdicts and deliberately not three: HTTP offers a probe
+  exactly two answers, so a third would either map to one of them, making a
+  distinction no probe can act on, or invent a code no orchestrator reads.
+  Gradation belongs in the message.
+
+  `TomHealthService.health` returns a shelf `Response` rather than a `String`,
+  because the status is part of the answer and a `String` has nowhere to put it.
+  That is the pipeline's documented escape hatch, used rather than inventing a
+  directive in `endpoint_results.dart`: one caller is not a pattern, and
+  `TomRedirect` exists for the case where the body is implied by the intent.
+  `TomHealthServer.responseFor` is public and static so a deployment writing its
+  own health route answers with the same shape.
+
 - **`TomBlobStore.delete`'s boolean is documented as exact on three backends and
   best-effort on S3 (tcopen152).** The contract said "whether anything was there
   to delete" with no caveat, and on S3 that is a *recent observation* rather

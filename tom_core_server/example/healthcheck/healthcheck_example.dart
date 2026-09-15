@@ -1,7 +1,8 @@
 /// Executable example for the health-check module of `tom_core_server`.
 ///
 /// This example shows the surface you can drive directly: the pluggable
-/// [TomHealthAnalyzer] and the way [TomHealthServer.health] delegates to it.
+/// [TomHealthAnalyzer], and the way [TomHealthServer.health] turns its verdict
+/// into the status code a probe reads and its message into the body.
 /// The `GET /health` route that publishes it is mounted by the reflection-based
 /// endpoints pipeline, so showing it here would mean initializing generated
 /// reflection and building a router — machinery that would bury the one thing
@@ -21,45 +22,63 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 import '../_support/check.dart';
 
-/// A custom analyzer that reports a degraded status from injected flags.
+/// A custom analyzer that reports an unhealthy verdict from injected flags.
 class _DemoAnalyzer extends TomHealthAnalyzer {
   final bool dbOk;
   final bool cacheOk;
   _DemoAnalyzer({required this.dbOk, required this.cacheOk});
 
   @override
-  Future<String> analyzeHealth() async =>
-      (dbOk && cacheOk) ? 'OK' : 'DEGRADED: db=$dbOk, cache=$cacheOk';
+  Future<TomHealthStatus> analyzeHealth() async => dbOk && cacheOk
+      ? const TomHealthStatus.healthy()
+      : TomHealthStatus.unhealthy('db=$dbOk, cache=$cacheOk');
 }
 
 Future<void> run() async {
   final server = TomHealthServer();
 
-  // 1. The default analyzer always reports OK.
+  // 1. The default analyzer always reports healthy. The verdict and the message
+  //    are two facts: the verdict is what a probe acts on, the message is what a
+  //    person reads.
   final defaultStatus = await TomDefaultHealthAnalyzer().analyzeHealth();
-  print('1. default analyzer => $defaultStatus');
+  print(
+    '1. default analyzer          => ${defaultStatus.verdict.name} '
+    '(${defaultStatus.message})',
+  );
   check(
-    defaultStatus == 'OK',
+    defaultStatus.isHealthy && defaultStatus.message == 'OK',
     'a server that has plugged in no analyzer still reports itself healthy',
   );
 
-  // 2. TomHealthServer.health() delegates to the global analyzer (OK default).
-  final healthDefault = await server.health();
-  print('2. health() with default analyzer => $healthDefault');
+  // 2. `health()` turns that verdict into the response a probe reads. 200,
+  //    because the status code *is* the verdict.
+  final healthy = await server.health();
+  print(
+    '2. health() by default       => ${healthy.statusCode} '
+    '${await healthy.readAsString()}',
+  );
   check(
-    healthDefault == 'OK',
-    'health() reports whatever the global analyzer says, not its own verdict',
+    healthy.statusCode == 200,
+    'a healthy process answers the status code every probe already checks',
   );
 
-  // 3. Swapping the global analyzer changes what every request returns.
+  // 3. Swapping the global analyzer changes what every request returns — and
+  //    the status code with it. This is the whole point: a load balancer's
+  //    default check reads the code and nothing else, so an unhealthy verdict
+  //    that answered 200 would leave a broken process receiving traffic.
   final previous = TomHealthServer.healthAnalyzer;
   try {
     TomHealthServer.healthAnalyzer = _DemoAnalyzer(dbOk: true, cacheOk: false);
-    final degraded = await server.health();
-    print('3. health() with degraded analyzer => $degraded');
+    final unhealthy = await server.health();
+    final body = await unhealthy.readAsString();
+    print('3. health() when degraded    => ${unhealthy.statusCode} $body');
     check(
-      degraded == 'DEGRADED: db=true, cache=false',
-      'one failing dependency degrades the report and names which one',
+      unhealthy.statusCode == 503,
+      'an unhealthy verdict reaches the status code, not only the body',
+    );
+    check(
+      body == 'db=true, cache=false',
+      'and the message still names which dependency failed',
     );
   } finally {
     TomHealthServer.healthAnalyzer = previous;

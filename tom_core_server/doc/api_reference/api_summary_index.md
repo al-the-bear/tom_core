@@ -398,6 +398,8 @@ surface documented here.
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
 | `TomHealthAnalyzer` | abstract class | Health-analysis contract. |
+| `TomHealthStatus` | class | A verdict a probe acts on, and a message a human reads. |
+| `TomHealthVerdict` | enum | `healthy` (200) or `unhealthy` (503). |
 | `TomDefaultHealthAnalyzer` | class | Default analyzer. |
 | `TomHealthService` | abstract class | Health-check service (`@tomService`). |
 | `TomHealthServer` | class | Health-check server component. |
@@ -888,6 +890,8 @@ surface documented here.
 | `TomHealthAnalyzer` | Health Check |
 | `TomHealthServer` | Health Check |
 | `TomHealthService` | Health Check |
+| `TomHealthStatus` | Health Check |
+| `TomHealthVerdict` | Health Check |
 | `TomHttpOAuthTokenTransport` | Authentication |
 | `TomHttpServiceLoginTransport` | Authentication |
 | `TomInformationSchemaColumnRow` | Database Migration |

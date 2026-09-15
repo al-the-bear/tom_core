@@ -31,7 +31,9 @@ not a readiness endpoint — see
 | `TomHealthService` | abstract class | Declares the `GET /health` endpoint |
 | `TomHealthServer` | class | The default implementation; delegates to the analyzer |
 | `TomHealthAnalyzer` | abstract class | The pluggable health-check contract (`analyzeHealth`) |
-| `TomDefaultHealthAnalyzer` | class | The default analyzer; always returns `"OK"` |
+| `TomHealthStatus` | class | What an analyzer concluded: a verdict a probe acts on, and a message a human reads |
+| `TomHealthVerdict` | enum | `healthy` (200) or `unhealthy` (503) — the two answers HTTP offers a probe |
+| `TomDefaultHealthAnalyzer` | class | The default analyzer; always reports healthy |
 
 ## The /health Endpoint
 
@@ -40,6 +42,19 @@ not a readiness endpoint — see
 reach it without a token), and sets `logRequests: false` so frequent probe
 traffic does not flood the logs. Like every endpoint it is mounted by the
 endpoints pipeline (see `doc/endpoints.md`) when the server starts.
+
+**The status code is the verdict, and the body is the reason:**
+
+| Verdict | Status | Body |
+| ------- | ------ | ---- |
+| `TomHealthVerdict.healthy` | `200` | the analyzer's message, `OK` by default |
+| `TomHealthVerdict.unhealthy` | `503` | the analyzer's message, which says what failed |
+
+Which is what makes an ordinary probe correct. A load balancer's default check
+reads the status code and nothing else, as does a Kubernetes `httpGet` probe
+unless the deployment adds a body matcher; both stop sending traffic to a
+process whose analyzer says it cannot serve. A probe that wants the *reason*
+reads the body, where it has always been.
 
 All three of those choices are asserted against the mounted route, in
 `test/endpoints_pipeline_test.dart`, in the group named
@@ -77,10 +92,9 @@ and has to choose which consequence it wants:
   can serve it.
 
 A deployment that needs both answers today has to encode both into the one
-string and have the two probes match different substrings of it. That matching
-has to be on the body: every analyzer string is served with HTTP 200 (see
-[Customizing the Health Check](#customizing-the-health-check)), so a probe
-configured to look only at the status code cannot distinguish any two verdicts.
+verdict and accept that both probes act on it: an unhealthy answer is a `503`,
+which takes the pod out of the load balancer *and* restarts it. Splitting them
+needs a second route with a second analyzer, which this module does not have.
 
 ## Customizing the Health Check
 
@@ -90,11 +104,11 @@ Replace it before the server starts to add real checks:
 ```dart
 class MyHealthAnalyzer extends TomHealthAnalyzer {
   @override
-  Future<String> analyzeHealth() async {
+  Future<TomHealthStatus> analyzeHealth() async {
     final dbOk = await checkDatabaseConnection();
     final cacheOk = await checkCacheService();
-    if (dbOk && cacheOk) return 'OK';
-    return 'DEGRADED: db=$dbOk, cache=$cacheOk';
+    if (dbOk && cacheOk) return const TomHealthStatus.healthy();
+    return TomHealthStatus.unhealthy('db=$dbOk, cache=$cacheOk');
   }
 }
 
@@ -102,10 +116,19 @@ class MyHealthAnalyzer extends TomHealthAnalyzer {
 TomHealthServer.healthAnalyzer = MyHealthAnalyzer();
 ```
 
-The analyzer returns a free-form string: `"OK"` for healthy, anything else to
-describe a degraded/unhealthy state. The endpoint returns whatever the analyzer
-produces; mapping a status string to an HTTP status code (if desired) is a
-caller/analyzer concern, not done by this module.
+An analyzer returns a **verdict** and a **message**, and they are two facts
+rather than one. The verdict is what a probe acts on and decides the status
+code; the message is free-form, is served as the body verbatim, and is what a
+person reads. Encoding both into one string — `"OK"` meaning healthy and
+anything else meaning not — is what forced every consumer to parse, made a typo
+in an analyzer a wrong verdict, and left an orchestrator no way to act without a
+body matcher.
+
+**There are two verdicts, and deliberately not three.** HTTP offers a probe
+exactly two answers: send me traffic, or do not. A third verdict would either
+map to one of those two — a distinction no probe can act on — or invent a status
+code no orchestrator reads. Gradation belongs in the message, which is where
+`db=false, cache=true` says what a number cannot.
 
 ## How It Is Wired
 
@@ -117,17 +140,11 @@ single assignment applies to every request.
 
 ## Not Yet Implemented
 
-- **Every verdict is HTTP 200.** The endpoint returns the analyzer's string
-  verbatim and never maps it to a status code, so a probe configured to check
-  the status alone reports healthy while the analyzer answers
-  `"DEGRADED: db=false"`. Mapping a verdict to a code is left to the deployment
-  (see [Customizing the Health Check](#customizing-the-health-check)); a probe
-  meant to act on the verdict has to match the body.
 - **There is no readiness endpoint, only a liveness one.** One route, one
   analyzer, one answer for two questions with opposite consequences —
-  [One Verdict for the Process](#one-verdict-for-the-process) sets out what a
-  deployment needing both has to do, which is to encode both into the one string
-  and have the two probes match different substrings of it.
+  [One Verdict for the Process](#one-verdict-for-the-process) sets out what that
+  costs a deployment that needs both, which is that an unhealthy verdict both
+  takes the pod out of the load balancer and restarts it.
 - **The analyzer is process-wide.** `TomHealthServer.healthAnalyzer` is
   `static`, so one assignment answers every request on every isolate; there is
   no per-instance, per-port or per-request override. A deployment that wants two
@@ -163,15 +180,19 @@ it.
 - **`TomHealthService`** — the reflected service interface carrying the
   `GET /health` endpoint annotation.
 - **`TomHealthServer`** — the reflected default implementation; holds the global
-  `TomHealthAnalyzer` and delegates `health()` to it.
+  `TomHealthAnalyzer`, delegates `health()` to it, and turns the verdict into
+  the response with `responseFor`.
 - **`TomHealthAnalyzer`** / **`TomDefaultHealthAnalyzer`** — the analyzer
-  contract and its always-`"OK"` default.
+  contract and its always-healthy default.
+- **`TomHealthStatus`** / **`TomHealthVerdict`** — what an analyzer concludes:
+  the verdict that decides the status code, and the message served as the body.
 
 ## Dependencies
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `tom_core_kernel` | package | every file | `tomReflector` (reflection), `tomComponent` (the bean locator's component annotation), `TomPublicAccess` (an access control), and `TomHttpMethod` / `TomMimeType` (the HTTP vocabulary the endpoint annotation is written in) |
+| `shelf` | package | `health_check.dart` | `Response`, because the status code is part of the answer and a `String` has nowhere to put it |
+| `tom_core_kernel` | package | every file | `tomReflector` (reflection), `tomComponent` (the bean locator's component annotation), `TomPublicAccess` (an access control), `TomHeader` (the `Content-Type` name), and `TomHttpMethod` / `TomMimeType` (the HTTP vocabulary the endpoint annotation is written in) |
 | [endpoints](endpoints.md) | module | every file | `tomService` and `TomEndpoint`, the two annotations by which the endpoints pipeline discovers the route |
 
 `health_check.dart` imports exactly two things, and between them they supply

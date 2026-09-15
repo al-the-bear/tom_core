@@ -9,10 +9,12 @@ orchestration tools (Docker, Kubernetes).
 - [Overview](#overview)
 - [Class Hierarchy](#class-hierarchy)
 - [Classes](#classes)
+  - [TomHealthStatus](#tomhealthstatus)
   - [TomHealthAnalyzer](#tomhealthanalyzer)
   - [TomDefaultHealthAnalyzer](#tomdefaulthealthanalyzer)
   - [TomHealthService](#tomhealthservice)
   - [TomHealthServer](#tomhealthserver)
+- [Enums](#enums)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -22,20 +24,24 @@ Source: `lib/src/tomserver/healthcheck/health_check.dart`.
 `TomHealthService` is a `@tomService` interface declaring the `GET /health`
 endpoint (public, unlogged). `TomHealthServer` is its `@tomComponent`
 implementation; it delegates each request to the static `healthAnalyzer` and
-returns that analyzer's string as the body, unchanged. Applications provide
+turns the `TomHealthStatus` it gets back into the response. Applications provide
 custom logic by extending `TomHealthAnalyzer` (overriding `analyzeHealth`) and
 assigning an instance to `TomHealthServer.healthAnalyzer` before startup; the
-shipped `TomDefaultHealthAnalyzer` always returns `"OK"`.
+shipped `TomDefaultHealthAnalyzer` always reports healthy.
 
-Every analyzer string is served with HTTP 200 — this module does not map a
-status to a status code, by design (see `doc/healthcheck.md`). A probe that
-checks only for a 200 is therefore a liveness check, and stays green while a
-custom analyzer answers `"DEGRADED: ..."`; acting on the verdict means reading
+**The status code is the verdict and the body is the reason**: `200` for
+`TomHealthVerdict.healthy`, `503` for `TomHealthVerdict.unhealthy`, with the
+analyzer's message served verbatim either way. That is what makes an ordinary
+probe correct — a load balancer's default check and a Kubernetes `httpGet` probe
+read the code and nothing else — while a probe that wants the reason still reads
 the body.
 
 ## Class Hierarchy
 
 ```
+TomHealthStatus          (a verdict and a message)
+TomHealthVerdict  (enum) (healthy 200 / unhealthy 503)
+
 TomHealthAnalyzer  (abstract)
     └── TomDefaultHealthAnalyzer
 
@@ -44,6 +50,43 @@ TomHealthService  (abstract, @tomService)
 ```
 
 ## Classes
+
+### TomHealthStatus
+
+What an analyzer concluded: a verdict a probe can act on, and a message a human
+can read. The two are separate because they are different facts — encoding both
+into one string is what forces every consumer to parse, makes a typo in an
+analyzer a wrong verdict, and leaves an orchestrator no way to act without a
+body matcher.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomHealthStatus.healthy([String message = 'OK'])
+const TomHealthStatus.unhealthy(String message)
+```
+
+The message is optional on `healthy` and required on `unhealthy`: `OK` is what a
+human reading a probe log expects and what keeps a `curl` from looking broken,
+while an unhealthy answer that does not say why is the one somebody is reading at
+three in the morning.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `verdict` | `TomHealthVerdict` | The verdict, which decides the HTTP status (final). |
+| `message` | `String` | A free-form description, served as the response body verbatim (final). |
+| `isHealthy` | `bool` | *(getter)* Whether `verdict` is `TomHealthVerdict.healthy`. |
+| `statusCode` | `int` | *(getter)* The HTTP status this is answered with — `verdict.statusCode`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* Renders `TomHealthStatus(<verdict>: <message>)`. |
 
 ### TomHealthAnalyzer
 
@@ -57,11 +100,11 @@ service availability, or resource usage.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `analyzeHealth` | `Future<String> analyzeHealth()` | Analyzes server health and returns a status string (`"OK"` when healthy, a descriptive message otherwise). |
+| `analyzeHealth` | `Future<TomHealthStatus> analyzeHealth()` | Analyzes server health, returning the verdict a probe acts on and the message a person reads. An analyzer that touches anything remote should impose its own timeout and answer unhealthy rather than hang: `/health` is the request an orchestrator uses to decide whether the process is alive, so a slow dependency that hangs it reads as a dead process. |
 
 ### TomDefaultHealthAnalyzer
 
-Default health analyzer that always returns `"OK"`.
+Default health analyzer that always reports healthy.
 
 - **Extends:** `TomHealthAnalyzer`
 
@@ -75,15 +118,16 @@ TomDefaultHealthAnalyzer()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `analyzeHealth` | `Future<String> analyzeHealth()` | *(override)* Always returns `"OK"`. |
+| `analyzeHealth` | `Future<TomHealthStatus> analyzeHealth()` | *(override)* Always returns `TomHealthStatus.healthy()`. |
 
 ### TomHealthService
 
 Health check service interface for server health monitoring. Declares the
 `GET /health` endpoint that container orchestration tools call to verify
-availability. The response body is the installed `TomHealthAnalyzer`'s string
-verbatim, so `"OK"` is the `TomDefaultHealthAnalyzer`'s answer rather than a
-constant of the endpoint. Annotated `@tomReflector` / `@tomService`.
+availability. The response body is the installed `TomHealthAnalyzer`'s message
+verbatim — so `"OK"` is the `TomDefaultHealthAnalyzer`'s answer rather than a
+constant of the endpoint — and the status code is the verdict. Annotated
+`@tomReflector` / `@tomService`.
 
 - **Extends:** none (abstract)
 
@@ -91,7 +135,7 @@ constant of the endpoint. Annotated `@tomReflector` / `@tomService`.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `health` | `Future<String> health()` | The `GET /health` endpoint: returns a plain-text status string. Marked `@TomPublicAccess` and `logRequests: false`. |
+| `health` | `Future<Response> health()` | The `GET /health` endpoint: a plain-text status string with the status code carrying the verdict. Marked `@TomPublicAccess` and `logRequests: false`. Returns a shelf `Response` rather than a `String` because the status is part of the answer and a `String` has nowhere to put it — the pipeline's documented escape hatch, used here rather than inventing a directive in `endpoint_results.dart` because one caller is not a pattern. |
 
 ### TomHealthServer
 
@@ -117,7 +161,29 @@ TomHealthServer()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `health` | `Future<String> health()` | *(override)* Delegates to `healthAnalyzer.analyzeHealth()`. |
+| `health` | `Future<Response> health()` | *(override)* Delegates to `healthAnalyzer.analyzeHealth()` and hands the result to `responseFor`. |
+| `responseFor` | `static Response responseFor(TomHealthStatus status)` | The HTTP response one status is served as: `status.statusCode`, the message as the body, and `text/plain` — set here because a handler returning a `Response` bypasses the endpoint's `produces`. Public and static so a deployment writing its own health route answers with the same shape rather than a second spelling of it. |
+
+## Enums
+
+### TomHealthVerdict
+
+Whether a deployment should be sent traffic. Two values, and deliberately not
+three: HTTP offers a probe exactly two answers — send me traffic, or do not — so
+a third verdict would either map to one of those two, making a distinction no
+probe can act on, or invent a status code no orchestrator reads. Gradation
+belongs in `TomHealthStatus.message`.
+
+| Value | `statusCode` | Meaning |
+| ----- | ------------ | ------- |
+| `healthy` | `200` | Everything the analyzer checked answered. |
+| `unhealthy` | `503` | Something did not. `503` is what takes a pod out of a load balancer and what a default probe already understands. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `statusCode` | `int` | The HTTP status a response carrying this verdict is answered with (final). |
 
 ## Global Functions and Constants
 

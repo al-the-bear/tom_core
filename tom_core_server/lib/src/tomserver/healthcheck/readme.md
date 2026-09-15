@@ -3,31 +3,37 @@
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
-A pluggable liveness/health endpoint. `TomHealthService.health()` returns a
-status string; `TomHealthServer` is the default implementation, delegating the
-actual assessment to a `TomHealthAnalyzer` (the `TomDefaultHealthAnalyzer`
-reports healthy). Swap in a custom analyzer to probe datasources, caches, or
-downstream services.
+A pluggable liveness/health endpoint. `TomHealthService.health()` answers with
+the analyzer's message as the body and its **verdict as the status code** — 200
+healthy, 503 unhealthy — so an ordinary probe, which reads the code and nothing
+else, stops sending traffic to a process that says it cannot serve.
+`TomHealthServer` is the default implementation, delegating the actual
+assessment to a `TomHealthAnalyzer` (the `TomDefaultHealthAnalyzer` reports
+healthy). Swap in a custom analyzer to probe datasources, caches, or downstream
+services.
 
 ## Key types
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomHealthService` | Abstract contract: `Future<String> health()`. |
-| `TomHealthServer` | Default service; runs the configured `TomHealthAnalyzer` and returns its string as the body, unchanged. |
+| `TomHealthService` | Abstract contract: `Future<Response> health()` — a `Response` because the status code is part of the answer. |
+| `TomHealthServer` | Default service; runs the configured `TomHealthAnalyzer` and turns its verdict into the response. |
 | `TomHealthAnalyzer` | Abstract probe that decides the health verdict. |
+| `TomHealthStatus` · `TomHealthVerdict` | What an analyzer concludes: the verdict a probe acts on, and the message a person reads. Two verdicts, because HTTP offers a probe two answers. |
 | `TomDefaultHealthAnalyzer` | Always-healthy analyzer used when no custom probe is supplied. |
 
 ## Quick start
 
 ```dart
+import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 Future<void> main() async {
   final TomHealthService service = TomHealthServer();
-  final status = await service.health();
+  final response = await service.health();
 
-  print(status); // OK  (from the default TomDefaultHealthAnalyzer)
+  print(response.statusCode);              // 200
+  print(await response.readAsString());    // OK  (TomDefaultHealthAnalyzer)
 }
 ```
 
