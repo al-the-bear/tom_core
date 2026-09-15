@@ -454,6 +454,111 @@ void main() async {
       });
     });
 
+    // The backend whose growth competes with the rows it serves: its blobs sit
+    // on the same disk, so an unbounded blob store is an unbounded outage for
+    // everything else in that database. The reclaim has to work here most of
+    // all — and has to take the chunks with the manifest rows, under the same
+    // guard a copy needs.
+    group('deletePrefix reclaims a partition', () {
+      /// Stores [keys], each a few chunks long.
+      Future<void> seed(List<String> keys) async {
+        for (final key in keys) {
+          await store.put(key: key, bytes: _stream([_bytes(3000)]));
+        }
+      }
+
+      /// How many chunk rows the whole table holds.
+      Future<int> chunkRows() async {
+        final rows = await dsi.datasource.executeQuery<TomBlobChunkRow>(
+          'SELECT chunk_data FROM ${store.chunkTable}',
+        );
+        return rows.length;
+      }
+
+      test('the manifest rows and their chunks go together', () async {
+        await seed(const [
+          '2026/07/08/a.bin',
+          '2026/07/08/b.bin',
+          '2026/07/09/c.bin',
+        ]);
+        final before = await chunkRows();
+        expect(before, 9, reason: '3 blobs of 3 chunks at the 1 KiB fixture');
+
+        expect(await store.deletePrefix('2026/07/08'), 2);
+        expect(await store.exists('2026/07/08/a.bin'), isFalse);
+        expect(await store.exists('2026/07/09/c.bin'), isTrue);
+        expect(
+          await chunkRows(),
+          3,
+          reason: 'the chunks of the purged partition were left behind',
+        );
+        // And nothing became an orphan on the way: the sweep that exists for
+        // the residue of a failed cleanup finds none.
+        expect(await store.purgeOrphanedChunks(), 0);
+      });
+
+      test(
+        'a shared upload keeps its chunks while a key still names it',
+        () async {
+          // A copy is a second manifest row against the same upload, so a
+          // partition delete must release chunks under the same guard an
+          // ordinary delete does — or purging July takes the copy in August with
+          // it, with no error anywhere.
+          await seed(const ['2026/07/08/a.bin']);
+          await store.copy('2026/07/08/a.bin', '2026/08/01/a.bin');
+
+          expect(await store.deletePrefix('2026/07'), 1);
+          expect(
+            await store.getBytes('2026/08/01/a.bin'),
+            _bytes(3000),
+            reason: 'purging one partition took the copy in another',
+          );
+          expect(await store.purgeOrphanedChunks(), 0);
+        },
+      );
+
+      test('an underscore in a key is a character, not a wildcard', () async {
+        // `_` matches any character in SQL `LIKE`, and it is a perfectly
+        // ordinary key character — the grammar allows it. Unescaped,
+        // `2026_07` matches `2026x07`, and a retention pass takes a partition
+        // nobody named. This is the test that would have found that.
+        await seed(const ['2026_07/a.bin', '2026x07/b.bin']);
+
+        expect(await store.deletePrefix('2026_07'), 1);
+        expect(await store.exists('2026_07/a.bin'), isFalse);
+        expect(
+          await store.exists('2026x07/b.bin'),
+          isTrue,
+          reason: 'the underscore was read as a wildcard',
+        );
+      });
+
+      test(
+        'the sibling a character prefix would reach is left alone',
+        () async {
+          await seed(const ['2026/07/08/a.bin', '2026/070/b.bin']);
+          expect(await store.deletePrefix('2026/07/08'), 1);
+          expect(await store.exists('2026/070/b.bin'), isTrue);
+        },
+      );
+
+      test('a prefix naming one blob removes that blob', () async {
+        await seed(const ['2026/07/08/a.bin', '2026/07/08/b.bin']);
+        expect(await store.deletePrefix('2026/07/08/a.bin'), 1);
+        expect(await store.exists('2026/07/08/a.bin'), isFalse);
+        expect(await store.exists('2026/07/08/b.bin'), isTrue);
+      });
+
+      test(
+        'a prefix holding nothing answers zero and touches nothing',
+        () async {
+          await seed(const ['2026/07/08/a.bin']);
+          expect(await store.deletePrefix('2027/01'), 0);
+          expect(await store.exists('2026/07/08/a.bin'), isTrue);
+        },
+      );
+    });
+
     test('purgeOrphanedChunks collects rows no manifest refers to', () async {
       await store.put(key: 'db/orphan.txt', bytes: _text('body'));
       // Simulates the one residue the store tolerates: a chunk-delete that did

@@ -232,6 +232,35 @@ class TomDirectoryBlobStore extends TomBlobStore {
   Future<bool> doExists(String key) => _fileFor(key).exists();
 
   @override
+  bool get supportsPrefixDelete => true;
+
+  @override
+  Future<int> doDeletePrefix(String prefix) async {
+    // A key is a path here, so a prefix is a directory — and removing a
+    // directory tree is one syscall per entry rather than one round trip per
+    // blob. The prefix may also name a single blob, which is the segment rule
+    // read the other way: `2026/07/a.pdf` is under itself.
+    final asFile = _fileFor(prefix);
+    if (asFile.existsSync()) {
+      await doDelete(prefix);
+      return 1;
+    }
+    final directory = Directory(p.join(root.path, prefix));
+    if (!directory.existsSync()) return 0;
+    // Counted before the tree goes, and counting *blobs*: the sidecars and any
+    // staging file left by an interrupted write are bookkeeping this store
+    // invented, and reporting them would tell a retention pass it reclaimed
+    // three times what it did.
+    final blobs = directory
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((file) => !file.path.contains(TomBlobStore.auxiliaryMarker))
+        .length;
+    await directory.delete(recursive: true);
+    return blobs;
+  }
+
+  @override
   Future<bool> doDelete(String key) async {
     final file = _fileFor(key);
     if (!file.existsSync()) return false;

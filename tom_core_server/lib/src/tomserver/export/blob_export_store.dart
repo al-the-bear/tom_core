@@ -147,22 +147,28 @@ class TomBlobExportStore extends TomExportStore {
   @override
   Future<bool> doDelete(String key) => blobStore.delete(_blobKey(key));
 
-  /// `false`: `TomBlobStore` offers no enumeration.
+  /// Whatever the blob store underneath answers.
   ///
-  /// The blob contract is `put` / `get` / `describe` / `delete` / `exists`, all
-  /// by key, and a prefix delete cannot be built from them — there is no way to
-  /// learn which keys exist under one. Widening the *blob* contract to serve
-  /// the export module's retention would be the wrong direction: a listing over
-  /// an object store is a paginated call with a cost a caller has to
-  /// understand, and file storage has no other caller asking for one.
+  /// This was `false`, on the argument that widening the blob contract to serve
+  /// the export module's retention would be the wrong direction. What changed
+  /// is that file storage acquired its *own* caller for the same primitive —
+  /// nothing bounded how much a deployment stored there either — and a prefix
+  /// delete turned out not to be the listing that argument was about. A listing
+  /// is a method whose cost differs by an order of magnitude between backends
+  /// while looking like a map lookup; a prefix delete is one operation a
+  /// backend can either perform or refuse, which is what
+  /// `supportsPrefixDelete` says out loud.
   ///
-  /// So a blob-backed deployment that needs retention keeps its own record of
-  /// what it stored — the descriptor `store` returns carries the key, the size
-  /// and the time — and deletes by key. That is a database question, and a
-  /// system storing exports for later retrieval almost always has the row
-  /// already.
+  /// So this delegates, and an export store over a blob store reclaims a
+  /// partition exactly as the directory and memory stores do — including over
+  /// S3, where the blob backend pays a paginated list and a batched delete and
+  /// says so.
   @override
-  bool get supportsPrefixDelete => false;
+  bool get supportsPrefixDelete => blobStore.supportsPrefixDelete;
+
+  @override
+  Future<int> doDeletePrefix(String prefix) =>
+      blobStore.deletePrefix(_blobKey(prefix));
 
   @override
   String toString() =>

@@ -21,11 +21,11 @@ backend on every method, because one key must not be able to reach another.
 
 | Type | What it is |
 | ---- | ---------- |
-| `TomBlobStore` | `put` / `get` / `describe` / `exists` / `delete` / `copy` / `move`, by key. The whole surface. `get` takes an optional byte range; the default reads from zero and discards the prefix, so no backend is obliged to implement two read paths — and all four override it, because all four can seek. `copy` and `move` have the same shape: a stream round trip by default, and a native relocation on every backend — a rename, a map entry, a manifest row against the same chunks, `x-amz-copy-source`. |
+| `TomBlobStore` | `put` / `get` / `describe` / `exists` / `delete` / `deletePrefix` / `copy` / `move`, by key. The whole surface. `get` takes an optional byte range; the default reads from zero and discards the prefix, so no backend is obliged to implement two read paths — and all four override it, because all four can seek. `copy` and `move` have the same shape: a stream round trip by default, and a native relocation on every backend — a rename, a map entry, a manifest row against the same chunks, `x-amz-copy-source`. `deletePrefix` is the reclaim a deployment's retention pass is built on — the one operation its own record of what it stored cannot assemble from outside. |
 | `TomBlobRange` | A half-open `[start, endExclusive)` of a blob. There is no listing and no offset arithmetic to get wrong: both ends are checked once, on the contract. |
 | `TomStoredBlob` | What was stored: key, media type, `byteCount`, `storedAt` (always UTC), the SHA-256 `digest` of the content, and an optional file name. |
 | `TomBlobDigest` | The running SHA-256 a backend feeds while it writes, so the hash costs the pass it is already making rather than a second read. |
-| `TomBlobStoreOperation` | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete` / `copy` / `move` — each carrying a stable error key. |
+| `TomBlobStoreOperation` | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete` / `deletePrefix` / `copy` / `move` — each carrying a stable error key. |
 | `TomStorageException` | The module's base error. An infrastructure failure is named as a storage error rather than escaping as a raw `FileSystemException` or driver error. |
 
 ### The backends

@@ -942,9 +942,9 @@ export still in the store afterwards.
 across three day partitions with a row recorded for each, the store declining to
 enumerate, the register naming the expired partitions instead, a `deletePrefix`
 per partition checked against the rows it should have removed, the current
-export surviving, the same pass reclaiming key by key on a store that cannot
-prefix-delete, and the two refusals that keep a wrong answer from being a quiet
-one.
+export surviving, the same pass over a blob-backed store — asking
+`supportsPrefixDelete` rather than assuming it — and the empty-prefix refusal
+that keeps a wrong answer from being a quiet one.
 
 Both are spawned by `test/examples_test.dart` with the rest, and their step
 counts are recorded there — an added step that nobody listed is a surface
@@ -993,7 +993,7 @@ configuration value that turned out empty should not empty the store.
 | ------- | ------------- | --- |
 | `TomDirectoryExportStore` | yes | keys are paths; a partition is a directory |
 | `TomMemoryExportStore` | yes | it holds its own key space |
-| `TomBlobExportStore` | **no** | `TomBlobStore` offers no enumeration, and a prefix delete cannot be built from `delete` alone |
+| `TomBlobExportStore` | whatever the blob store says | it delegates — see [file_storage.md](file_storage.md#quota-and-expiry), where every shipped backend can |
 
 Calling it on a store that cannot throws
 `export.store.prefix_delete_unsupported`, naming the backend. Answering `0`
@@ -1013,12 +1013,14 @@ media type, size, time — and a system that stores exports for later retrieval
 keeps one per export anyway, beside the tenant and the user that storage has no
 business holding. Retention is a query over those rows and a `deletePrefix` per
 partition, which is a database question rather than a storage one, and which is
-why neither this contract nor the blob one is widened to answer it.
+why neither this contract nor the blob one carries a listing.
 
 That split is also what makes the pass portable: a retention loop written
 against a *listing* would run only on the backends that have one. Written
 against the deployment's own rows it runs everywhere, and falls back to deleting
-key by key where `supportsPrefixDelete` is `false`.
+key by key where `supportsPrefixDelete` is `false` — which, since the blob
+contract grew the same primitive for the same reason, is now no shipped store at
+all.
 `example/export/export_retention.dart` is that pass, run against both kinds of
 store.
 

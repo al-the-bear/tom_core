@@ -797,7 +797,7 @@ check applies here too.
 | -------- | ---- | ----------- |
 | `blobStore` | `TomBlobStore` | The blob store the exports are kept in; named `blobStore` because `store` is this interface's write method (final). |
 | `keyPrefix` | `String` | The prefix prepended to every key before it reaches `blobStore`, namespacing exports inside a store that holds other things and making a retention rule expressible as a prefix. `''` when there is none. Both halves of the joined key are checked, in the two places each belongs: the caller's key on every call and *before* prefixing, the prefix once at construction (final). |
-| `supportsPrefixDelete` | `bool` | *(override)* `false` — `TomBlobStore` offers no enumeration, so a prefix delete cannot be built from `delete` alone. A blob-backed deployment that needs retention keeps its own record of what it stored and deletes by key; widening the blob contract to answer this would put a paginated listing in a module with no other caller for one. |
+| `supportsPrefixDelete` | `bool` | *(override)* Whatever `blobStore` answers. This was `false`, on the argument that widening the blob contract for the export module's retention was the wrong direction; file storage then acquired the same need of its own, and a prefix delete turned out not to be the listing that argument was about — a listing's cost differs by an order of magnitude between backends while looking like a map lookup, where a prefix delete is one operation a backend can perform or refuse, which is what this flag says out loud. |
 
 #### Methods
 

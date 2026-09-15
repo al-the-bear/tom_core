@@ -180,6 +180,7 @@ a file read is what failed.
 | `delete` | `storage.blob.delete_failed` | Removing what a key holds failed. |
 | `copy` | `storage.blob.copy_failed` | Putting what one key holds under a second one as well failed. |
 | `move` | `storage.blob.move_failed` | Moving what one key holds to another failed. |
+| `deletePrefix` | `storage.blob.prefix_delete_failed` | Removing everything under a key prefix failed. |
 
 #### Properties
 
@@ -325,6 +326,7 @@ const TomBlobStore()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
+| `supportsPrefixDelete` | `bool` | *(getter)* Whether this backend can delete every blob under a key prefix. Asked at wire-up, because it decides whether a deployment's retention pass is one call per partition or one per blob. `false` by default: a backend that does not answer the question does not get to be assumed capable. |
 | `maxKeyLength` | `static const int` | The longest key any backend accepts (512) — comfortably under the shortest limit in play, so the database backend can declare a fixed-width indexed column and a filesystem is never handed a name the OS rejects. |
 | `passThroughErrorKeys` | `static const Set<String>` | The four keys that reach a caller as the backend raised them — `storage.blob.not_found`, `invalid_key`, `invalid_key_prefix` and `missing_chunk`. Everything else, *including a backend's own `TomStorageException`*, is wrapped under the operation's key with the original as `rootException`. The match is on the key rather than the type, which is what stops `storage.s3.request_failed` reaching a caller who is supposed to be backend-agnostic; the list is closed by a rule — every member is raised by shared code or enforces a limit every backend obeys — so a backend cannot add to it. |
 | `auxiliaryMarker` | `static const String` | A character no valid key can contain (`~`), for backends keeping bookkeeping files alongside the blobs. Suffixing with it makes that bookkeeping *unaddressable*, where the obvious `<key>.meta` is a key a caller may legitimately choose — so two callers picking ordinary keys destroyed each other's data. Lives on the contract because it is a fact about `isValidKey`, which `TomExportStore` shares; the suffixes themselves stay with each backend. |
@@ -354,6 +356,7 @@ different subset of them, which is what the four shipped backends did.
 | `get` | `Stream<List<int>> get(String key, {TomBlobRange? range})` | Validates `key`, reads through `doGet` — or through `doGetRange` when a `range` is given — reports any other failure as `storage.blob.read_failed`. Throws `storage.blob.not_found` when the key holds nothing, rather than disguising a missing blob as an empty file. Each chunk belongs to the caller: writable, and aliased with nothing the store keeps. Consumes the backend's stream with `await for` rather than `yield*`, because a `yield*` forwards the inner stream's errors past the enclosing `try` and the translation would never run. A transfer that breaks partway still delivers the chunks that arrived and *then* throws — draining the backend's stream first would satisfy the error contract while turning every interrupted download into an empty one, and would reintroduce buffering on the read side. |
 | `describe` | `Future<TomStoredBlob?> describe(String key)` | Validates `key`, calls `doDescribe`, reports any other failure as `storage.blob.probe_failed`. The descriptor for `key`, or `null` when it holds nothing — the one read allowed to answer "nothing" without throwing. |
 | `delete` | `Future<bool> delete(String key)` | Validates `key`, calls `doDelete`, reports any other failure as `storage.blob.delete_failed`. Returns whether anything was there to delete. |
+| `deletePrefix` | `Future<int> deletePrefix(String prefix)` | Deletes every blob whose key lies under `prefix`, returning how many went. The reclaim primitive, and the only part of retention this module owns: *what* to keep and *how long* are a deployment's decisions, taken against its own record of what it stored, and this is the one operation that record cannot assemble from outside — deleting a partition key by key is a call per blob where a prefix delete is a call per partition. Matched by key **segment**, so `2026/07` never reaches `2026/070`. An empty prefix is refused (`storage.blob.invalid_key`), and a backend whose `supportsPrefixDelete` is `false` throws `storage.blob.prefix_delete_unsupported` naming itself rather than answering `0`. |
 | `copy` | `Future<TomStoredBlob> copy(String fromKey, String toKey)` | Validates both keys, refuses them when equal (`storage.blob.same_key`), calls `doCopy`, reports any other failure as `storage.blob.copy_failed`. Anything at `toKey` is replaced, as it is by `put` — the same rule, because a second one about overwriting would be a rule to remember. The media type and file name travel with the bytes: a copy that lost its `Content-Type` is served as `application/octet-stream` and downloads as a file nothing opens. An absent source is `storage.blob.not_found` rather than an empty destination. |
 | `move` | `Future<TomStoredBlob> move(String fromKey, String toKey)` | The same, under `storage.blob.move_failed`, with the source gone on return. The **order** is the contract: the destination is committed before the source is removed, so an interrupted move leaves the blob readable under both keys rather than under neither — the residue of a failure is a duplicate, which a retry converges on, where the other order's residue is a deletion. |
 | `exists` | `Future<bool> exists(String key)` | Validates `key`, calls `doExists`, reports any other failure as `storage.blob.probe_failed`. |
@@ -363,6 +366,7 @@ different subset of them, which is what the four shipped backends did.
 | `doDescribe` | `Future<TomStoredBlob?> doDescribe(String key)` | *(abstract)* Implemented by a backend; called by `describe` with an already-validated key. |
 | `doDelete` | `Future<bool> doDelete(String key)` | *(abstract)* Implemented by a backend; called by `delete` with an already-validated key. |
 | `doExists` | `Future<bool> doExists(String key)` | Called by `exists` with an already-validated key. Defined in terms of `doDescribe` so a backend implements one lookup, not two; overridden where a cheaper existence probe exists. |
+| `doDeletePrefix` | `Future<int> doDeletePrefix(String prefix)` | Called by `deletePrefix` with a validated, non-empty prefix. Implemented by backends that declare `supportsPrefixDelete`; the default throws, so a backend claiming the capability and forgetting the method fails loudly rather than reporting an empty purge. |
 | `doCopy` | `Future<TomStoredBlob> doCopy(String fromKey, String toKey)` | Called by `copy` with two validated, distinct keys. Concrete, and a stream round trip: read the source, write it to the destination. Overridden by every shipped backend, each of which can relocate without the bytes leaving — a filesystem copy, a map entry, an `INSERT` sharing the chunks, an `x-amz-copy-source` header. A concrete default is right here in a way it would not be for a listing: a stream round trip costs exactly what it looks like it costs, whereas a default `list` would hide a paginated scan behind a method that reads like a map lookup. |
 | `doMove` | `Future<TomStoredBlob> doMove(String fromKey, String toKey)` | Called by `move`. Concrete, and defined as `doCopy` followed by `doDelete` — in that order, so an interruption leaves a duplicate rather than a hole. Overridden where the backend can rename. |
 | `getBytes` | `Future<Uint8List> getBytes(String key, {TomBlobRange? range})` | Reads `key` fully into memory — the convenience for call sites that genuinely know their blobs are small. A helper on the streaming API, not a second contract method, so a backend author cannot implement it instead of streaming. Collects with a non-copying builder, which returns a lone chunk untouched: it is exactly as aliased as what the backend yielded, which is why `get` promises the caller owns its chunks. |
@@ -393,6 +397,7 @@ TomMemoryBlobStore()
 | -------- | ---- | ----------- |
 | `keys` | `Iterable<String>` | *(getter)* The keys currently held, in insertion order. |
 | `length` | `int` | *(getter)* The number of blobs held. |
+| `supportsPrefixDelete` | `bool` | *(override)* `true` — it holds its own key space, so a prefix delete is a scan of the keys it has. |
 
 #### Methods
 
@@ -443,6 +448,7 @@ TomDirectoryBlobStore.at(String path)
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `root` | `Directory` | The directory every key resolves beneath; created on first write (final). |
+| `supportsPrefixDelete` | `bool` | *(override)* `true` — keys are paths, so a partition is a directory and one recursive delete reclaims it. The count is of *blobs*, not of the metadata sidecars beside them. |
 
 #### Methods
 
@@ -523,6 +529,7 @@ error far better caught at start-up than on the first upload.
 | `chunkSize` | `int` | Raw bytes per chunk row, defaulting to `defaultChunkSize` and refused by the constructor when zero or less; the stored text is ~4/3 of that, and the upper bound on it is the server's `max_allowed_packet`, which no constructor can know (final). |
 | `createSchema` | `bool` | Whether to create the tables on first use; set `false` when the schema is owned by the migration module and the application's database user may not run DDL (final). |
 | `clock` | `DateTime Function()` | The source of a blob's `storedAt`, defaulting to `DateTime.now` (final). A seam rather than a call in place, for the reason `TomSqlLeaseLock` has one: what the store does with the reading — hand it to the data source as a `DateTime` so the bind boundary renders it through `sqlInstant` — is only observable against a known instant, and the defect it replaced was a local reading written as though it were UTC. |
+| `supportsPrefixDelete` | `bool` | *(override)* `true` — the manifest is indexed by key, so a prefix is one `DELETE` there plus the chunks of each upload no row still names. The `LIKE` pattern escapes `_`, which is both a wildcard and an ordinary key character. |
 
 #### Methods
 
@@ -734,6 +741,7 @@ render it unawares.
 | `partSize` | `int` | Bytes per multipart part, and the upload buffer bound; defaults to `defaultPartSize` (final). |
 | `keyPrefix` | `String?` | A prefix prepended to every key, so one bucket can host several stores. Checked twice, because one check cannot cover it: at construction against `TomBlobStore.isValidKeyPrefix`, and at every request against `TomBlobStore.maxKeyLength` on the joined key, which cannot be settled before a key arrives. Either refusal is `storage.blob.invalid_key_prefix` (final). |
 | `signer` | `TomAwsV4Signer` | The request signer, built from the constructor's credentials and region (final). |
+| `supportsPrefixDelete` | `bool` | *(override)* `true`, at a cost worth knowing: S3 has no prefix delete, so this is a paginated `ListObjectsV2` plus batched `DeleteObjects`. It is also **eventually consistent** — a `LIST` may not yet show an object written a moment ago — which is why retention runs against partitions nothing is still writing to. |
 
 #### Methods
 

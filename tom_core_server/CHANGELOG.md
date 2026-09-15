@@ -2,6 +2,48 @@
 
 ### Added
 
+- **`TomBlobStore.deletePrefix`, the reclaim retention is built on
+  (tcopen150).** A store grew without limit and forgot nothing: no per-tenant
+  ceiling, no total ceiling, no retention, and nothing that would notice a
+  caller uploading until the volume filled. The database backend is the sharpest
+  case, its blobs sitting on the same disk as the rows they belong to.
+
+  Quota and expiry stay the deployment's, and the documents now say so rather
+  than listing them as absent: a quota is a question about *whose* data and
+  expiry about *what kind* of file, and answering either needs a schema for
+  tenancy and a policy language that exist one layer up. What a deployment needs
+  is a row per stored blob — `TomStoredBlob` is that row — so the quota is a
+  `SUM(byte_count)` and the expiry a `WHERE stored_at <`.
+
+  The one operation that record cannot assemble from outside is the reclaim.
+  Deleting a partition key by key is a call per blob; `deletePrefix` is a call
+  per partition, and it is what the date in a generated key exists for. Matched
+  by key **segment**, so `2026/07` never reaches `2026/070`; an empty prefix is
+  refused, since it names every file there is.
+
+  Every shipped backend can, each paying what its medium charges: a key-space
+  scan, one recursive directory delete, one `DELETE` over the manifest plus the
+  chunks of each upload no row still names, and — on S3, which has no prefix
+  delete — a paginated `ListObjectsV2` with batched `DeleteObjects`. That last
+  is the only operation here whose cost is not a single request, and it is
+  eventually consistent, which is why retention runs against partitions nothing
+  is still writing to. A backend that cannot throws
+  `storage.blob.prefix_delete_unsupported` naming itself, rather than answering
+  `0` and letting a deployment learn the difference from a disk filling up.
+
+  The database backend's `LIKE` pattern escapes `_`, which is both a SQL
+  wildcard and an ordinary key character: unescaped, `2026_07` matches `2026x07`
+  and a retention pass takes a partition nobody named.
+
+  `TomBlobExportStore.supportsPrefixDelete` now delegates instead of answering
+  `false`, closing the gap tcopen145 recorded. The argument then was that
+  widening the blob contract for the export module's retention was the wrong
+  direction; file storage has since acquired the same need of its own, and a
+  prefix delete turned out not to be the listing that argument was about — a
+  listing's cost differs by an order of magnitude between backends while looking
+  like a map lookup, where a prefix delete is one operation a backend can
+  perform or refuse.
+
 - **`TomBlobMigration`: moving a deployment's files between backends, driven by
   the rows (tcopen149).** The hard part was never the copying, it was knowing
   what to copy — a blob store cannot enumerate itself, so a deployment that

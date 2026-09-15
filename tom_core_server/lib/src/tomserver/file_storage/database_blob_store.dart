@@ -466,6 +466,52 @@ class TomDatabaseBlobStore extends TomBlobStore {
   }
 
   @override
+  bool get supportsPrefixDelete => true;
+
+  @override
+  Future<int> doDeletePrefix(String prefix) async {
+    await ensureSchema();
+    // The uploads are read before the manifest rows go, because after that
+    // nothing names them and there is no way back to their chunks.
+    final doomed = await datasource.executeQuery<TomBlobManifestRow>(
+      'SELECT ${_manifest.columnList} FROM $manifestTable '
+      'WHERE storage_key = :key OR storage_key LIKE :under ESCAPE \'!\'',
+      {'key': prefix, 'under': '${_escapeLike(prefix)}/%'},
+    );
+    if (doomed.isEmpty) return 0;
+
+    await datasource.executeCommand(
+      'DELETE FROM $manifestTable '
+      'WHERE storage_key = :key OR storage_key LIKE :under ESCAPE \'!\'',
+      {'key': prefix, 'under': '${_escapeLike(prefix)}/%'},
+    );
+    // One guarded sweep per upload rather than one statement over all of them:
+    // a copy (see [doCopy]) can leave two keys on one upload, and only the
+    // rows still naming it decide whether its chunks may go.
+    for (final uploadId in {for (final row in doomed) row.uploadId}) {
+      await _deleteChunks(uploadId);
+    }
+    return doomed.length;
+  }
+
+  /// [prefix] with `LIKE`'s two wildcards escaped, for `ESCAPE '!'`.
+  ///
+  /// `_` is a wildcard *and* a perfectly ordinary key character — the grammar
+  /// allows it — so an unescaped `2026_07` matches `2026x07`, and a retention
+  /// pass takes a partition nobody named. `%` and `!` cannot appear in a key at
+  /// all, and are escaped anyway so the rule belongs to the pattern rather than
+  /// to the grammar: this stays correct if the key grammar ever widens.
+  ///
+  /// The escape character is `!` and not the SQL-conventional backslash,
+  /// because MariaDB reads a backslash inside a string literal as an escape of
+  /// its own, so the obvious `ESCAPE` clause is an unterminated literal and a
+  /// syntax error, and
+  /// the doubling that fixes it is one more thing to get right in a place where
+  /// getting it wrong deletes the wrong partition.
+  static String _escapeLike(String prefix) =>
+      prefix.replaceAll('!', '!!').replaceAll('_', '!_').replaceAll('%', '!%');
+
+  @override
   Future<bool> doDelete(String key) async {
     await ensureSchema();
     final manifest = await _manifestOf(key);

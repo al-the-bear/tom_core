@@ -37,6 +37,7 @@ library;
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
 import 'aws_v4_signer.dart';
@@ -394,6 +395,142 @@ class TomS3BlobStore extends TomBlobStore {
     final segments = _prefixed(key).split('/').map(Uri.encodeComponent);
     return '/$bucket/${segments.join('/')}';
   }
+
+  @override
+  bool get supportsPrefixDelete => true;
+
+  @override
+  Future<int> doDeletePrefix(String prefix) async {
+    // The one operation on this backend whose cost is not one request. S3 has
+    // no prefix delete: it has a paginated listing and a batched delete, and
+    // this is those two. The cost is stated rather than hidden, which is the
+    // difference between a method a caller can reason about and the `list` this
+    // module refused to put on the contract — there a caller would have been
+    // handed a paginated scan wearing the shape of a map lookup.
+    //
+    // **Eventually consistent.** A `LIST` may not yet show an object written a
+    // moment ago, so a prefix delete run against a live key space can leave
+    // one behind. Retention runs against partitions nothing is still writing
+    // to, which is what the date partitioning in a key is for.
+    var removed = 0;
+    String? token;
+    do {
+      final listed = await _listUnder(prefix, token);
+      if (listed.keys.isNotEmpty) {
+        await _deleteObjects(prefix, listed.keys);
+        removed += listed.keys.length;
+      }
+      token = listed.next;
+    } while (token != null);
+    return removed;
+  }
+
+  /// One page of the object keys under [prefix], with the token for the next.
+  ///
+  /// The keys come back **prefixed** — S3 knows nothing about [keyPrefix] — and
+  /// are handed to the delete as they arrived, since that is the form the
+  /// request needs.
+  Future<({List<String> keys, String? next})> _listUnder(
+    String prefix,
+    String? token,
+  ) async {
+    // The segment rule, expressed to S3: a trailing separator is what stops
+    // `2026/07` from listing `2026/070`. The prefix itself, which may be a
+    // whole key, is covered by [doDeletePrefix]'s caller having validated it —
+    // and by the `<Key>` scan below, which returns whatever S3 matched.
+    final uri = _bucketUri({
+      'list-type': '2',
+      'prefix': _prefixed(prefix),
+      if (token != null) 'continuation-token': token,
+    });
+    final response = await _send(
+      method: 'GET',
+      operation: 'listPrefix',
+      key: prefix,
+      uri: uri,
+    );
+    final body = response.body;
+    final wanted = _prefixed(prefix);
+    final keys = [
+      for (final match in RegExp(r'<Key>(.*?)</Key>').allMatches(body))
+        _unescapeXml(match.group(1)!),
+    ].where((key) => key == wanted || key.startsWith('$wanted/')).toList();
+    final next = RegExp(
+      r'<NextContinuationToken>(.*?)</NextContinuationToken>',
+    ).firstMatch(body);
+    final truncated = body.contains('<IsTruncated>true</IsTruncated>');
+    return (
+      keys: keys,
+      next: truncated && next != null ? _unescapeXml(next.group(1)!) : null,
+    );
+  }
+
+  /// Deletes [keys] — already prefixed — in batches of the protocol's maximum.
+  Future<void> _deleteObjects(String prefix, List<String> keys) async {
+    // 1000 is S3's own cap on one `DeleteObjects` request, not a number chosen
+    // here: a larger body is refused outright.
+    const batch = 1000;
+    for (var at = 0; at < keys.length; at += batch) {
+      final page = keys.sublist(at, (at + batch).clamp(0, keys.length));
+      final xml = StringBuffer('<Delete><Quiet>true</Quiet>');
+      for (final key in page) {
+        xml.write('<Object><Key>${_escapeXml(key)}</Key></Object>');
+      }
+      xml.write('</Delete>');
+      final body = utf8.encode(xml.toString());
+      final response = await _send(
+        method: 'POST',
+        operation: 'deletePrefix',
+        key: prefix,
+        uri: _bucketUri(const {'delete': ''}),
+        headers: {
+          'content-type': 'application/xml',
+          // Required by the protocol, and an MD5 rather than a choice: S3
+          // refuses a `DeleteObjects` without it.
+          'content-md5': base64.encode(md5.convert(body).bytes),
+        },
+        body: body,
+      );
+      // `Quiet` suppresses the per-key success entries, so anything left in the
+      // body is a failure — and S3 reports those with a `200`.
+      if (response.body.contains('<Error>')) {
+        throw _failure(
+          'deletePrefix',
+          prefix,
+          _bucketUri(const {'delete': ''}),
+          response.statusCode,
+          response.body,
+        );
+      }
+    }
+  }
+
+  /// The bucket's own URI, for the two requests addressed at it rather than at
+  /// an object.
+  Uri _bucketUri(Map<String, String> query) => endpoint.replace(
+    host: pathStyle ? endpoint.host : '$bucket.${endpoint.host}',
+    pathSegments: [
+      ...endpoint.pathSegments.where((s) => s.isNotEmpty),
+      if (pathStyle) bucket,
+    ],
+    queryParameters: query.isEmpty ? null : query,
+  );
+
+  /// The five XML entities, for a key going into a request body.
+  static String _escapeXml(String value) => value
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&apos;');
+
+  /// The same five, coming back out of a response.
+  static String _unescapeXml(String value) => value
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&apos;', "'")
+      .replaceAll('&amp;', '&');
 
   @override
   Future<bool> doDelete(String key) async {

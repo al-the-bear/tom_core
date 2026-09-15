@@ -236,6 +236,16 @@ class _ZipReader {
   }
 }
 
+/// A blob store that cannot reclaim by prefix.
+///
+/// Every shipped backend can, so an application's own backend is the only thing
+/// left that answers `false` — and the adaptor's refusal has to be driven by
+/// something that does, or it is a branch no test reaches.
+class _NoPrefixDeleteBlobStore extends TomMemoryBlobStore {
+  @override
+  bool get supportsPrefixDelete => false;
+}
+
 void main() {
   // ===========================================================================
   // THE TABULAR ENVELOPE
@@ -2778,11 +2788,17 @@ void main() {
       expect(await store.exists('2026/07/09/sales.csv'), isTrue);
     });
 
-    test('a store that cannot enumerate says so instead of reporting zero', () {
+    test('a store that cannot says so instead of reporting zero', () {
       // The difference between "the purge found nothing" and "this backend
       // cannot purge" is the difference between a healthy deployment and one
       // whose disk fills up while a nightly job reports success.
-      final store = TomBlobExportStore(TomMemoryBlobStore());
+      //
+      // No *shipped* store answers `false` any more: the blob contract grew the
+      // same primitive for the same reason, so the adaptor delegates and every
+      // blob backend can. The flag still belongs to the contract, and an
+      // application writing its own backend may answer `false` — which is what
+      // this drives, through a blob store that does.
+      final store = TomBlobExportStore(_NoPrefixDeleteBlobStore());
       expect(store.supportsPrefixDelete, isFalse);
       expect(
         () => store.deletePrefix('2026/07/08'),
@@ -2799,6 +2815,23 @@ void main() {
                 'TomBlobExportStore',
               ),
         ),
+      );
+    });
+
+    test('an adaptor over a capable blob store reclaims a partition', () {
+      // The other half: the adaptor answers whatever the blob store underneath
+      // does rather than a flat `false`, so a partition is one call here too.
+      final store = TomBlobExportStore(TomMemoryBlobStore());
+      expect(store.supportsPrefixDelete, isTrue);
+      return expectLater(
+        store
+            .store(
+              key: '2026/07/08/a.csv',
+              bytes: Stream.value(utf8.encode('x')),
+              mediaType: 'text/csv',
+            )
+            .then((_) => store.deletePrefix('2026/07/08')),
+        completion(1),
       );
     });
 

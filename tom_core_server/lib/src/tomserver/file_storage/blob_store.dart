@@ -130,7 +130,13 @@ enum TomBlobStoreOperation {
   copy('storage.blob.copy_failed', 'The stored file could not be copied.'),
 
   /// Moving what one key holds to another.
-  move('storage.blob.move_failed', 'The stored file could not be moved.');
+  move('storage.blob.move_failed', 'The stored file could not be moved.'),
+
+  /// Removing everything under a key prefix.
+  deletePrefix(
+    'storage.blob.prefix_delete_failed',
+    'The stored files under that prefix could not be deleted.',
+  );
 
   const TomBlobStoreOperation(this.errorKey, this.message);
 
@@ -470,6 +476,58 @@ abstract class TomBlobStore {
     () => doDescribe(validateKey(key)),
   );
 
+  /// Whether this backend can delete every blob under a key prefix.
+  ///
+  /// Asked at wire-up, because it decides whether a deployment's retention pass
+  /// is one call per partition or one per blob. `false` by default: a backend
+  /// that does not answer the question does not get to be assumed capable.
+  bool get supportsPrefixDelete => false;
+
+  /// Deletes every blob whose key lies under [prefix], returning how many went.
+  ///
+  /// The reclaim primitive, and the only part of retention this module owns.
+  /// *What* to keep and *how long* are a deployment's decisions, taken against
+  /// its own record of what it stored; this is the one operation that record
+  /// cannot assemble from the outside, because deleting a partition key by key
+  /// is a call per blob and a prefix delete is a call per partition.
+  ///
+  /// **The prefix is matched by key segment, never by characters.** `2026/07`
+  /// removes `2026/07` and everything beneath it, and never `2026/070` — a
+  /// string prefix that can reach a sibling is an ordinary convenience
+  /// everywhere except in a delete, where it is how a month's retention takes
+  /// the next month with it.
+  ///
+  /// Throws [TomStorageException] (`storage.blob.prefix_delete_unsupported`) on
+  /// a backend that cannot, naming it. A backend that answered `0` instead
+  /// would make "the purge found nothing" and "this backend cannot purge" the
+  /// same answer, and the deployment would learn the difference from a disk
+  /// filling up.
+  ///
+  /// An empty prefix is refused (`storage.blob.invalid_key`): it names every
+  /// blob there is, and a delete whose argument came from a configuration value
+  /// that turned out empty should not empty the store.
+  Future<int> deletePrefix(String prefix) {
+    if (prefix.isEmpty) {
+      throw TomStorageException(
+        'storage.blob.invalid_key',
+        'A prefix delete needs a prefix; an empty one names every file.',
+        parameters: {'prefix': prefix},
+      );
+    }
+    if (!supportsPrefixDelete) {
+      throw TomStorageException(
+        'storage.blob.prefix_delete_unsupported',
+        'This file store cannot delete a key prefix.',
+        parameters: {'prefix': prefix, 'store': '$runtimeType'},
+      );
+    }
+    return _translating(
+      TomBlobStoreOperation.deletePrefix,
+      prefix,
+      () => doDeletePrefix(validateKey(prefix)),
+    );
+  }
+
   /// Copies the blob at [fromKey] to [toKey], returning the new descriptor.
   ///
   /// A relocation is an ordinary thing to want: the documented pattern for
@@ -641,6 +699,18 @@ abstract class TomBlobStore {
     await doDelete(fromKey);
     return moved;
   }
+
+  /// Deletes everything under [prefix]. Implemented by backends that declare
+  /// [supportsPrefixDelete]; called by [deletePrefix].
+  ///
+  /// [prefix] is already validated and non-empty. The default throws, so a
+  /// backend that claims the capability and forgets the method fails loudly
+  /// rather than reporting an empty purge.
+  Future<int> doDeletePrefix(String prefix) => throw TomStorageException(
+    'storage.blob.prefix_delete_unsupported',
+    'This file store cannot delete a key prefix.',
+    parameters: {'prefix': prefix, 'store': '$runtimeType'},
+  );
 
   /// Whether a validated [key] holds a blob. Called by [exists].
   ///
@@ -1058,6 +1128,24 @@ class TomMemoryBlobStore extends TomBlobStore {
     _content.remove(fromKey);
     _descriptors.remove(fromKey);
     return moved;
+  }
+
+  @override
+  bool get supportsPrefixDelete => true;
+
+  @override
+  Future<int> doDeletePrefix(String prefix) async {
+    // Matched by segment: `2026/07` is the key itself or anything beneath it,
+    // and `2026/070` is neither.
+    final doomed = [
+      for (final key in _content.keys)
+        if (key == prefix || key.startsWith('$prefix/')) key,
+    ];
+    for (final key in doomed) {
+      _content.remove(key);
+      _descriptors.remove(key);
+    }
+    return doomed.length;
   }
 
   @override

@@ -460,6 +460,19 @@ class _FourMethodBlobStore extends TomBlobStore {
   }
 }
 
+/// A backend that claims a prefix delete and does not implement one.
+///
+/// The half-finished backend: it must fail loudly rather than report an empty
+/// purge, which is what the contract's throwing default is for. Built on the
+/// four-method store because that one inherits the default — a subclass of the
+/// memory backend would get its working override instead.
+class _ClaimsPrefixDelete extends _WholeReadsOnlyBlobStore {
+  _ClaimsPrefixDelete() : super(const []);
+
+  @override
+  bool get supportsPrefixDelete => true;
+}
+
 /// A data source that answers one blob's manifest and chunk rows from memory.
 ///
 /// Enough to drive [TomDatabaseBlobStore]'s reads without a database, which is
@@ -1494,6 +1507,319 @@ void main() {
       expect(report.copied, 0);
       expect(report.claimed, isEmpty);
       expect(report.complete, isTrue);
+    });
+  });
+
+  // A store grew without limit and forgot nothing. Quota and expiry are the
+  // deployment's — they are questions about *its* data, answered against its own
+  // record of what it stored — but one operation that record cannot assemble
+  // from outside is the reclaim: deleting a partition key by key is a call per
+  // blob where a prefix delete is a call per partition. So the module owns that
+  // one primitive and nothing else of retention.
+  group('deletePrefix (the reclaim retention is built on)', () {
+    /// A store of each kind that can be built without infrastructure, seeded
+    /// with three blobs across two day partitions plus one deliberate trap.
+    Future<Map<String, TomBlobStore>> seeded() async {
+      final root = Directory.systemTemp.createTempSync('tom_purge_');
+      addTearDown(() {
+        if (root.existsSync()) root.deleteSync(recursive: true);
+      });
+      final stores = <String, TomBlobStore>{
+        'memory': TomMemoryBlobStore(),
+        'directory': TomDirectoryBlobStore(root),
+      };
+      for (final store in stores.values) {
+        for (final key in const [
+          '2026/07/08/a.bin',
+          '2026/07/08/b.bin',
+          '2026/07/09/c.bin',
+          // The sibling a character-wise prefix would take with it.
+          '2026/070/d.bin',
+        ]) {
+          await store.putBytes(key: key, bytes: const [1, 2, 3]);
+        }
+      }
+      return stores;
+    }
+
+    test('a partition goes in one call, on every backend that can', () async {
+      for (final entry in (await seeded()).entries) {
+        final store = entry.value;
+        expect(store.supportsPrefixDelete, isTrue, reason: entry.key);
+        expect(await store.deletePrefix('2026/07/08'), 2, reason: entry.key);
+        expect(
+          await store.exists('2026/07/08/a.bin'),
+          isFalse,
+          reason: entry.key,
+        );
+        expect(
+          await store.exists('2026/07/08/b.bin'),
+          isFalse,
+          reason: entry.key,
+        );
+        expect(
+          await store.exists('2026/07/09/c.bin'),
+          isTrue,
+          reason: entry.key,
+        );
+      }
+    });
+
+    test('the prefix is matched by segment, never by characters', () async {
+      // The defect this rules out: `2026/07` taking `2026/070` with it. A
+      // string prefix that can reach a sibling is an ordinary convenience
+      // everywhere except in a delete, where it is how a month's retention
+      // takes the next month.
+      for (final entry in (await seeded()).entries) {
+        final store = entry.value;
+        expect(await store.deletePrefix('2026/07'), 3, reason: entry.key);
+        expect(
+          await store.exists('2026/070/d.bin'),
+          isTrue,
+          reason: '${entry.key} took the sibling partition',
+        );
+      }
+    });
+
+    test('a prefix naming one blob removes that blob', () async {
+      // The segment rule read the other way: a key is under itself. Without
+      // this a retention pass over a key space with no partitions — which
+      // `keyFor` does not produce but an application may — would silently
+      // reclaim nothing.
+      for (final entry in (await seeded()).entries) {
+        final store = entry.value;
+        expect(
+          await store.deletePrefix('2026/07/09/c.bin'),
+          1,
+          reason: entry.key,
+        );
+        expect(
+          await store.exists('2026/07/09/c.bin'),
+          isFalse,
+          reason: entry.key,
+        );
+        expect(
+          await store.exists('2026/07/08/a.bin'),
+          isTrue,
+          reason: entry.key,
+        );
+      }
+    });
+
+    test('a prefix holding nothing answers zero', () async {
+      for (final entry in (await seeded()).entries) {
+        expect(await entry.value.deletePrefix('2027/01'), 0, reason: entry.key);
+      }
+    });
+
+    test(
+      'the directory backend counts blobs, not its own bookkeeping',
+      () async {
+        // Each blob has a `~meta` sidecar beside it, so a count of files in the
+        // tree reports twice what was reclaimed — and tells a retention pass it
+        // freed more than it did.
+        final root = Directory.systemTemp.createTempSync('tom_purge_meta_');
+        addTearDown(() => root.deleteSync(recursive: true));
+        final store = TomDirectoryBlobStore(root);
+        await store.putBytes(key: '2026/07/a.bin', bytes: const [1]);
+        await store.putBytes(key: '2026/07/b.bin', bytes: const [2]);
+        expect(
+          root.listSync(recursive: true).whereType<File>().length,
+          4,
+          reason: 'the fixture is supposed to have a sidecar per blob',
+        );
+        expect(await store.deletePrefix('2026/07'), 2);
+      },
+    );
+
+    test('an empty prefix is refused before any backend is touched', () {
+      // It names every file there is, and a delete whose argument came from a
+      // configuration value that turned out empty should not empty the store.
+      // The stores below fail the test if a request or a statement reaches
+      // them.
+      for (final store in <TomBlobStore>[
+        TomMemoryBlobStore(),
+        TomDatabaseBlobStore(_UntouchableDataSource()),
+        _s3(
+          (request) => fail('the request reached the network: ${request.url}'),
+        ),
+      ]) {
+        expect(
+          () => store.deletePrefix(''),
+          throwsA(
+            isA<TomStorageException>()
+                .having((e) => e.key, 'key', 'storage.blob.invalid_key')
+                .having(
+                  (e) => e.defaultUserMessage,
+                  'message',
+                  contains('every file'),
+                ),
+          ),
+          reason: '$store',
+        );
+      }
+    });
+
+    test('an invalid prefix is refused like an invalid key', () {
+      expect(
+        () => TomMemoryBlobStore().deletePrefix('../escape'),
+        throwsA(
+          isA<TomStorageException>().having(
+            (e) => e.key,
+            'key',
+            'storage.blob.invalid_key',
+          ),
+        ),
+      );
+    });
+
+    test('a backend that cannot says so rather than answering zero', () {
+      // "The purge found nothing" and "this backend cannot purge" must not be
+      // the same answer: a deployment would learn the difference from a disk
+      // filling up.
+      expect(
+        () => _WholeReadsOnlyBlobStore(const []).deletePrefix('2026/07'),
+        throwsA(
+          isA<TomStorageException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'storage.blob.prefix_delete_unsupported',
+              )
+              .having((e) => e.parameters?['prefix'], 'prefix', '2026/07'),
+        ),
+      );
+    });
+
+    test(
+      'a backend claiming the capability without the method fails loudly',
+      () {
+        // The default `doDeletePrefix` throws rather than returning zero, so
+        // the half-finished backend reports a failure and not an empty purge.
+        //
+        // It arrives *wrapped*, and that is right rather than incidental. A
+        // backend declaring `false` refuses before the translation and the
+        // caller hears `prefix_delete_unsupported` directly — a condition a
+        // caller asks about with `supportsPrefixDelete` and branches on. A
+        // backend that claims the capability and forgets the method is a defect
+        // in that backend, which is what `prefix_delete_failed` carrying the
+        // cause says.
+        expect(
+          () => _ClaimsPrefixDelete().deletePrefix('2026/07'),
+          throwsA(
+            _translated(
+              'storage.blob.prefix_delete_failed',
+              'storage.blob.prefix_delete_unsupported',
+            ),
+          ),
+        );
+      },
+    );
+
+    test('the S3 backend lists, deletes in batches, and pages', () async {
+      // S3 has no prefix delete: it has a paginated listing and a batched
+      // delete, and this is those two. The cost is stated rather than hidden —
+      // which is the difference between this and the `list` the contract
+      // refused, where a caller would have been handed a paginated scan wearing
+      // the shape of a map lookup.
+      final requests = <http.Request>[];
+      final store = _s3((request) async {
+        requests.add(request);
+        if (request.method == 'GET') {
+          final first = !request.url.queryParameters.containsKey(
+            'continuation-token',
+          );
+          return http.Response(
+            '<ListBucketResult>'
+            '<Key>2026/07/08/a.bin</Key>'
+            '<Key>2026/07/08/b.bin</Key>'
+            // The sibling S3's own prefix match returns and the segment rule
+            // filters out: `prefix=2026/07/08` matches `2026/07/080` too.
+            '<Key>2026/07/080/z.bin</Key>'
+            '<IsTruncated>${first ? 'true' : 'false'}</IsTruncated>'
+            '${first ? '<NextContinuationToken>page-2</NextContinuationToken>' : ''}'
+            '</ListBucketResult>',
+            200,
+          );
+        }
+        return http.Response('<DeleteResult/>', 200);
+      });
+
+      expect(await store.deletePrefix('2026/07/08'), 4);
+
+      final lists = requests.where((r) => r.method == 'GET').toList();
+      expect(lists, hasLength(2), reason: 'the second page was not fetched');
+      expect(lists.first.url.queryParameters['list-type'], '2');
+      expect(lists.first.url.queryParameters['prefix'], '2026/07/08');
+      expect(lists.last.url.queryParameters['continuation-token'], 'page-2');
+
+      final deletes = requests.where((r) => r.method == 'POST').toList();
+      expect(deletes, hasLength(2));
+      expect(deletes.first.url.queryParameters.containsKey('delete'), isTrue);
+      expect(deletes.first.body, contains('<Key>2026/07/08/a.bin</Key>'));
+      expect(
+        deletes.first.body,
+        isNot(contains('080')),
+        reason: 'the sibling S3 matched by characters was deleted',
+      );
+      // Required by the protocol rather than chosen: S3 refuses a
+      // `DeleteObjects` without it.
+      expect(deletes.first.headers['content-md5'], isNotNull);
+      expect(deletes.first.headers['authorization'], contains('content-md5'));
+    });
+
+    test('a failure S3 reports inside a 200 is still a failure', () async {
+      // `Quiet` suppresses the per-key success entries, so anything left in the
+      // body is a failure — and S3 reports those with a 200, which is the one
+      // place the status code is not the answer.
+      final store = _s3((request) async {
+        if (request.method == 'GET') {
+          return http.Response(
+            '<ListBucketResult><Key>2026/07/a.bin</Key>'
+            '<IsTruncated>false</IsTruncated></ListBucketResult>',
+            200,
+          );
+        }
+        return http.Response(
+          '<DeleteResult><Error><Key>2026/07/a.bin</Key>'
+          '<Code>AccessDenied</Code></Error></DeleteResult>',
+          200,
+        );
+      });
+
+      await expectLater(
+        store.deletePrefix('2026/07'),
+        throwsA(
+          _translated(
+            'storage.blob.prefix_delete_failed',
+            'storage.s3.request_failed',
+          ),
+        ),
+      );
+    });
+
+    test('an export store over a blob store reclaims a partition', () async {
+      // The gap this closes: the adaptor used to answer `false`, on the
+      // argument that widening the blob contract for the export module's
+      // retention was the wrong direction. File storage then acquired the same
+      // need of its own, and a prefix delete turned out not to be the listing
+      // that argument was about.
+      final blobs = TomMemoryBlobStore();
+      final exports = TomBlobExportStore(blobs, keyPrefix: 'exports');
+      for (final key in const ['2026/07/08/a.csv', '2026/07/09/b.csv']) {
+        await exports.store(
+          key: key,
+          bytes: Stream.value(utf8.encode('x')),
+          mediaType: 'text/csv',
+        );
+      }
+
+      expect(exports.supportsPrefixDelete, isTrue);
+      expect(await exports.deletePrefix('2026/07/08'), 1);
+      expect(await exports.exists('2026/07/08/a.csv'), isFalse);
+      expect(await exports.exists('2026/07/09/b.csv'), isTrue);
+      // And it reached the *prefixed* key space, not the caller's.
+      expect(blobs.keys, ['exports/2026/07/09/b.csv']);
     });
   });
 

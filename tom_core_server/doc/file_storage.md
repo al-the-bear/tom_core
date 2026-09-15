@@ -20,6 +20,7 @@ without the second; the second is built entirely on the first.
   - [A Broken Transfer Delivers What It Got](#a-broken-transfer-delivers-what-it-got)
   - [A Byte Range, and Who Is Obliged to Serve It](#a-byte-range-and-who-is-obliged-to-serve-it)
   - [The Content Digest](#the-content-digest)
+  - [Quota and Expiry](#quota-and-expiry)
   - [Migrating Between Backends](#migrating-between-backends)
   - [Relocating a Blob](#relocating-a-blob)
 - [Keys Are a Grammar, Not a String](#keys-are-a-grammar-not-a-string)
@@ -57,12 +58,12 @@ without the second; the second is built entirely on the first.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomBlobStore` | abstract class | The contract: `put` / `get` (whole or a byte range) / `describe` / `exists` / `delete` / `copy` / `move`, by key |
+| `TomBlobStore` | abstract class | The contract: `put` / `get` (whole or a byte range) / `describe` / `exists` / `delete` / `deletePrefix` / `copy` / `move`, by key |
 | `TomStoredBlob` | class | What was stored — key, media type, size, time, digest, name, location |
 | `TomBlobDigest` | class | The running SHA-256 a backend feeds while it writes |
 | `TomBlobRange` | class | A half-open byte range of a blob, for the partial read `get` takes |
 | `TomStorageException` | class | The module's base error |
-| `TomBlobStoreOperation` | enum | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete` / `copy` / `move`, each carrying a stable error key |
+| `TomBlobStoreOperation` | enum | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete` / `copy` / `move` / `deletePrefix`, each carrying a stable error key |
 | `TomMemoryBlobStore` | class | In-memory; tests and development |
 | `TomDirectoryBlobStore` | class | A directory on disk, with a metadata sidecar |
 | `TomDatabaseBlobStore` | class | Chunk rows in an existing data source |
@@ -120,6 +121,7 @@ Future<TomStoredBlob> put({
 });
 
 Stream<List<int>> get(String key, {TomBlobRange? range});
+Future<int> deletePrefix(String prefix);
 Future<TomStoredBlob> copy(String fromKey, String toKey);
 Future<TomStoredBlob> move(String fromKey, String toKey);
 ```
@@ -280,6 +282,71 @@ sentinel is empty rather than `null` so that "not recorded" cannot be confused
 with the digest of zero bytes, which is a real and well-known value
 (`e3b0c442…`); a nullable field would make every caller write the same `?? ''`
 and an accidental `''` would then read as a hash.
+
+### Quota and Expiry
+
+A store grew without limit and forgot nothing: no per-tenant ceiling, no total
+ceiling, no retention, and nothing that would notice a caller uploading until
+the volume filled. The database backend is the sharpest case, because its blobs
+sit on the same disk as the rows they belong to — an unbounded blob store there
+is an unbounded outage for everything else in that database.
+
+**The deployment owns both, and the module owns one primitive.** A quota is a
+question about *whose* data — a tenant, an account, a plan — and expiry is a
+question about *what kind* of file and *how long* it is worth keeping. Storage
+knows neither, and a store that tried to answer them would need a schema for
+tenancy and a policy language, both of which already exist one layer up. What a
+deployment needs to answer them is a **row per stored blob**, which it very
+likely has already: `TomStoredBlob` is that row — key, media type, size, time
+and the content digest — so the quota is a `SUM(byte_count)` and the expiry is a
+`WHERE stored_at <`.
+
+**The one thing that record cannot assemble from outside is the reclaim**, and
+that is what the module adds:
+
+```dart
+// Everything stored on 8 July, in one call.
+final removed = await store.deletePrefix('2026/07/08');
+```
+
+Deleting a partition key by key is a call per blob; a prefix delete is a call
+per partition. It is the operation the date partitioning in a generated key
+exists for — `TomFileReferenceKeys.generate` writes `<prefix>/<yyyy>/<mm>/<uuid>`
+precisely so a month is expressible as a prefix.
+
+**The prefix is matched by key segment, never by characters.** `2026/07` removes
+`2026/07` and everything beneath it, and never `2026/070`. A string prefix that
+can reach a sibling is an ordinary convenience everywhere except in a delete,
+where it is how a month's retention takes the next month with it. An empty
+prefix is refused (`storage.blob.invalid_key`) for the same reason: it names
+every file there is, and a delete whose argument came from a configuration value
+that turned out empty should not empty the store.
+
+**Every shipped backend can, and `supportsPrefixDelete` is how to ask:**
+
+| Backend | How, and what it costs |
+| ------- | ---------------------- |
+| `TomMemoryBlobStore` | a scan of its own key space |
+| `TomDirectoryBlobStore` | one recursive directory delete — and it counts *blobs*, not the sidecars beside them |
+| `TomDatabaseBlobStore` | one `DELETE` over the manifest, then the chunks of each upload no row still names |
+| `TomS3BlobStore` | a paginated `ListObjectsV2` plus batched `DeleteObjects` — the one operation here whose cost is not a single request, and it says so |
+
+A backend that cannot throws `storage.blob.prefix_delete_unsupported` naming
+itself, rather than answering `0`: "the purge found nothing" and "this backend
+cannot purge" must not be the same answer, or the deployment learns the
+difference from a disk filling up.
+
+**S3's is eventually consistent**, and that is a property of the service rather
+than of this code: a `LIST` may not yet show an object written a moment ago, so
+a prefix delete run against a key space something is still writing to can leave
+one behind. Retention runs against partitions nothing is still writing to, which
+is what the date in a key is for.
+
+**The schedule is the deployment's.** Nothing here runs on a timer. A nightly
+purge belongs in the back-office tier beside the other passes that tidy up after
+the day — the scheduling module already provides the machinery, and a second
+copy of it here would give this module two reasons to change. The same is true
+of `purgeOrphanedChunks`.
 
 ### Migrating Between Backends
 
@@ -615,14 +682,15 @@ So every failure is translated into four keys, one per operation:
 | `storage.blob.delete_failed` | The key holds a blob; removing it failed. |
 | `storage.blob.copy_failed` | The source exists; putting it under the second key failed. |
 | `storage.blob.move_failed` | The relocation failed. Because the destination commits first, the residue is a duplicate rather than a hole. |
+| `storage.blob.prefix_delete_failed` | The reclaim of a key prefix failed. |
 
 The division is by *what the caller asked for*, not by which call threw: a
 sidecar that cannot be read during a `describe` is a probe failure even though a
 file read is what failed.
 
 The translating is `TomBlobStore`'s own, not each backend's. `put`, `get`,
-`describe`, `exists`, `delete`, `copy` and `move` are the contract's methods; a
-backend
+`describe`, `exists`, `delete`, `deletePrefix`, `copy` and `move` are the
+contract's methods; a backend
 implements `doPut`, `doGet`, `doDescribe`, `doDelete` and lets its failures out
 raw, and the wrapper around each names the operation. For `get` this covers the
 whole transfer and not just its opening: a socket that dies after the first
@@ -645,6 +713,7 @@ them. They are a closed list, `TomBlobStore.passThroughErrorKeys`:
 | `storage.blob.invalid_key_prefix` | The key is fine and the deployment's configured prefix leaves no room for it. A different fault from the one above, calling for a different action. |
 | `storage.blob.missing_chunk` | The blob is there and its parts do not add up. |
 | `storage.blob.same_key` | A copy or move named one key twice. A caller's mistake, refused before any backend is touched. |
+| `storage.blob.prefix_delete_unsupported` | The backend cannot reclaim by prefix, and says so rather than answering `0`. Ask `supportsPrefixDelete` first. |
 
 `storage.blob.invalid_range` is the same shape one step earlier: a `TomBlobRange`
 with a negative start, or an end at or before it, is refused by its own
@@ -1253,8 +1322,11 @@ and the count of them is the assertion. Every step checks its own result, and
   refuses. The report names what it claimed, and a deployment diffs that against
   its old backend with that backend's own tooling. See
   [Migrating Between Backends](#migrating-between-backends).
-- **Quota and expiry.** `delete` exists and nothing calls it on a schedule; how
-  long a file is worth keeping is a deployment's decision.
+- **A quota that refuses a write, and a schedule.** The reclaim primitive is
+  here; the ceiling and the timer are the deployment's, for the reason
+  [Quota and Expiry](#quota-and-expiry) gives. Nothing in this module refuses a
+  `put` because an account has stored too much, and nothing runs a purge on a
+  timer.
 - **`purgeOrphanedChunks` on a schedule.** The method exists; wiring it to a
   periodic task belongs to whatever scheduler the application runs.
 
@@ -1266,7 +1338,7 @@ and the count of them is the assertion. Every step checks its own result, and
 | `dart:convert` | dart | `aws_v4_signer.dart`, `blob_store.dart`, `database_blob_store.dart`, `directory_blob_store.dart`, `s3_blob_store.dart` | `base64`, `jsonDecode`, `jsonEncode`, `utf8` |
 | `dart:io` | dart | `blob_store_registry.dart`, `directory_blob_store.dart` | `File` / `Directory` for the directory backend |
 | `dart:typed_data` | dart | `blob_store.dart` | `Uint8List` |
-| `crypto` | package | `aws_v4_signer.dart`, `blob_store.dart` | HMAC-SHA256 and SHA-256 for SigV4; the chunked SHA-256 behind `TomBlobDigest` |
+| `crypto` | package | `aws_v4_signer.dart`, `blob_store.dart`, `s3_blob_store.dart` | HMAC-SHA256 and SHA-256 for SigV4; the chunked SHA-256 behind `TomBlobDigest`; the MD5 S3 requires on a `DeleteObjects` body |
 | `http` | package | `s3_blob_store.dart` | the S3 backend's transport (injectable, so it is mockable) |
 | `path` | package | `directory_blob_store.dart` | key-to-path joining in the directory backend |
 | `tom_core_kernel` | package | `database_blob_store.dart` | `TomServerException` by way of `TomStorageException`, `tomLog`, and the `TomAuthState` grades the C-4 gate reads |

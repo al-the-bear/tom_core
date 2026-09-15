@@ -20,9 +20,11 @@
 /// report id on it, and none of those are storage's business.
 ///
 /// That split is what makes retention work on *every* backend rather than the
-/// ones that can enumerate. Step 6 runs the same pass against
-/// `TomBlobExportStore`, which cannot prefix-delete at all, and it reclaims the
-/// same partition.
+/// ones that can reclaim by prefix. Step 6 runs the same pass against
+/// `TomBlobExportStore` and asks `supportsPrefixDelete` rather than assuming
+/// it: every shipped store answers `true` today, and the fallback is there
+/// because the flag belongs to the contract and an application's own backend
+/// may not.
 ///
 /// Run with `dart run example/export/export_retention.dart`. Every step checks
 /// its own result and the run fails when one does not hold, so a green run is a
@@ -193,14 +195,12 @@ Future<void> run() async {
     'the expired one is gone',
   );
 
-  // 6. The same pass against a backend that cannot prefix-delete at all.
-  //    `TomBlobExportStore` says so through `supportsPrefixDelete`, because
-  //    `TomBlobStore` has no enumeration to build one from. The register does
-  //    not care: it already knows the keys, so the pass deletes them one at a
-  //    time and reclaims the same partition. This is the point of keeping the
-  //    record — retention that depends on a storage capability works on the
-  //    backends that have it, and retention that depends on the deployment's
-  //    own rows works everywhere.
+  // 6. The same pass over a blob-backed store. It reclaims by prefix — the
+  //    blob contract grew the same primitive for the same reason, so the
+  //    adaptor delegates — and the pass is written so that either branch is
+  //    correct. `supportsPrefixDelete` is what it asks, not what it assumes:
+  //    the flag belongs to the contract, and an application writing its own
+  //    backend may answer `false`.
   final blobStore = TomBlobExportStore(
     TomMemoryBlobStore(),
     keyPrefix: 'exports',
@@ -209,49 +209,41 @@ Future<void> run() async {
   final blobRegister = _ExportRegister();
   await renderInto(blobService, blobRegister, _renderedOn);
   print('6. supportsPrefixDelete      : ${blobStore.supportsPrefixDelete}');
-  check(
-    !blobStore.supportsPrefixDelete,
-    'the blob-backed store declares that it cannot reclaim by prefix',
-  );
 
-  var deleted = 0;
+  var reclaimedElsewhere = 0;
   for (final partition in blobRegister.partitionsBefore(cutoff)) {
-    for (final key in blobRegister.keysUnder(partition)) {
-      if (await blobStore.delete(key)) deleted++;
+    if (blobStore.supportsPrefixDelete) {
+      reclaimedElsewhere += await blobStore.deletePrefix(partition);
+    } else {
+      for (final key in blobRegister.keysUnder(partition)) {
+        if (await blobStore.delete(key)) reclaimedElsewhere++;
+      }
     }
     blobRegister.forget(partition);
   }
-  print('   reclaimed key by key      : $deleted exports');
-  check(deleted == 2, 'the same two days went, one key at a time');
+  print('   reclaimed                 : $reclaimedElsewhere exports');
+  check(reclaimedElsewhere == 2, 'the same two days went on the other backend');
   check(
     blobRegister.length == 1 &&
         await blobStore.exists(blobRegister.keys.single),
     'and the current export survived here too',
   );
 
-  // 7. Two refusals worth knowing about, both of which turn a silent wrong
-  //    answer into a loud one. Calling `deletePrefix` on the blob-backed store
-  //    fails rather than answering 0 — "found nothing" and "cannot purge" are
-  //    different facts, and a deployment that could not tell them apart would
-  //    learn the difference from a disk filling up. An empty prefix is refused
-  //    because it names every export there is, and a configuration value that
-  //    turned out empty should not empty the store.
-  var refusals = 0;
-  for (final attempt in <(String, Future<int> Function())>[
-    ('unsupported', () => blobStore.deletePrefix('exports/2026')),
-    ('empty prefix', () => store.deletePrefix('')),
-  ]) {
-    try {
-      await attempt.$2();
-    } on TomExportException catch (error) {
-      refusals++;
-      print('7. ${attempt.$1.padRight(26)}: ${error.key}');
-    }
+  // 7. The refusal worth knowing about: an empty prefix names every export
+  //    there is, and a configuration value that turned out empty should not
+  //    empty the store. The count would otherwise be the whole store's, and a
+  //    nightly job would report a very successful purge.
+  var refused = false;
+  try {
+    await store.deletePrefix('');
+  } on TomExportException catch (error) {
+    refused = true;
+    print('7. empty prefix              : ${error.key}');
   }
-  check(refusals == 2, 'both refusals are exceptions rather than a zero count');
+  check(refused, 'an empty prefix is an exception rather than a purge');
   check(
     await blobStore.exists(blobRegister.keys.single),
-    'the refused prefix delete removed nothing',
+    'and nothing was removed on the way to finding that out',
   );
 
   print('\nExport retention example completed.');
