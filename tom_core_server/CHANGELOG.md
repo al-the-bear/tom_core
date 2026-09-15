@@ -2,6 +2,30 @@
 
 ### Added
 
+- **DKIM is stated as a requirement on the relay, and the seam is named
+  (tcopen169).** "DKIM signing … not implemented" sat under *Not Yet
+  Implemented*, which reads as a gap the framework will close. It is a
+  **requirement on the deployment**: `TomSmtpTransport` writes the document to
+  the socket exactly as the encoder produced it, so a deployment relying on that
+  relies on its relay to sign, and one sending directly to destination MX hosts
+  must sign elsewhere.
+
+  Stating it matters more here than for the other boundaries, because **nothing
+  in this module can detect the violation**: unsigned mail is accepted, the
+  conversation ends `250`, the receipt says delivered, and the message is filed
+  as spam. There is no failure to classify and no status a delivery report could
+  carry.
+
+  The todo recording this said the encoder had "no extension point at which one
+  could be inserted". Measured, and it has one: `TomSmtpTransport` takes its
+  `TomMimeEncoder` as a constructor argument, so a subclass overriding `encode`
+  to prepend a signature to `super.encode(message)` signs without forking the
+  transport. That seam is now documented on the constructor argument, in the
+  SMTP chapter, and asserted by a test that drives a signing-shaped encoder to
+  the wire. What the framework still does not ship is the *signer*:
+  canonicalisation is the whole of DKIM, and getting it wrong produces a
+  signature that verifies nowhere while costing the work of having signed.
+
 - **A locale-aware list join, and markup named as a non-goal (tcopen168).**
   `TomTemplatedMessageService.requiredList(items, {locale})` joins a variable
   number of items with separators the bundle gives — `messaging.list.separator`

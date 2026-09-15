@@ -224,8 +224,19 @@ class TomSmtpTransport extends TomMessageTransport {
   /// Where and how to connect.
   final TomSmtpSettings settings;
 
-  /// Renders the message document. Injectable so a test can pin the boundaries
-  /// and the date.
+  /// Renders the message document.
+  ///
+  /// Injectable so a test can pin the boundaries and the date — and so a
+  /// deployment that must **sign** its mail can, without forking the transport:
+  /// a subclass overriding [TomMimeEncoder.encode] to prepend a
+  /// `DKIM-Signature` header to `super.encode(message)` is the whole seam.
+  ///
+  /// It is needed because this transport writes the document to the socket
+  /// exactly as the encoder produced it. **A deployment relying on that relies
+  /// on its relay to sign**, which is fine for a provider relay and is a
+  /// requirement to state for one sending directly to destination MX hosts:
+  /// unsigned mail is accepted and then filed as spam, so nothing here can ever
+  /// report that it happened. See `doc/messaging.md`.
   final TomMimeEncoder encoder;
 
   /// Opens the connection. Injectable so the protocol can be tested against an

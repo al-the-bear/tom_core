@@ -115,6 +115,20 @@ class _ScriptedSmtpConnection implements TomSmtpConnection {
   }
 }
 
+/// An encoder shaped like a signing one: it prepends a header to the document
+/// the base class produced.
+///
+/// Not a DKIM implementation — canonicalisation is the whole of DKIM and is not
+/// what this asserts. What it asserts is that the *seam* exists: a deployment
+/// that must sign overrides `encode` and hands the result to `TomSmtpTransport`
+/// through `encoder:`, without forking the transport.
+class _SigningEncoder extends TomMimeEncoder {
+  @override
+  String encode(TomMessage message) =>
+      'DKIM-Signature: v=1; a=rsa-sha256; d=example.com\r\n'
+      '${super.encode(message)}';
+}
+
 TomSmtpReply _reply(int code, String text) => TomSmtpReply(code, [text]);
 
 /// The replies of a relay that accepts everything, up to but excluding `RCPT`.
@@ -1862,13 +1876,62 @@ void main() {
     });
   });
 
-  group('the four boundaries are stated, and stay true', () {
+  group('signing is a deployment\'s, through a seam that already exists', () {
+    // The module states that it relies on the relay for DKIM. That is only an
+    // honest requirement if a deployment which cannot rely on one has somewhere
+    // to sign, and these two assert that it does — and that the document the
+    // seam produces is the document that reaches the wire.
+
+    test('an injected encoder is what goes to the socket', () {
+      final connection = _ScriptedSmtpConnection([
+        ..._opening(),
+        _reply(250, 'sender ok'),
+        _reply(250, 'recipient ok'),
+        _reply(354, 'go ahead'),
+        _reply(250, 'queued'),
+        _reply(221, 'bye'),
+      ]);
+      return TomSmtpTransport(
+        _settings(),
+        encoder: _SigningEncoder(),
+        connect: (_) async => connection,
+      ).send(_mail(id: 'm1')).then((receipt) {
+        expect(receipt.isDelivered, isTrue);
+        expect(connection.data, startsWith('DKIM-Signature: v=1;'));
+        expect(
+          connection.data,
+          contains('Subject: Subject'),
+          reason: 'super.encode keeps every header the module owns',
+        );
+      });
+    });
+
+    test('the framework signs nothing of its own', () async {
+      // The other half: the default document carries no signature, which is
+      // what makes the requirement a requirement rather than a courtesy.
+      final connection = _ScriptedSmtpConnection([
+        ..._opening(),
+        _reply(250, 'sender ok'),
+        _reply(250, 'recipient ok'),
+        _reply(354, 'go ahead'),
+        _reply(250, 'queued'),
+        _reply(221, 'bye'),
+      ]);
+      await TomSmtpTransport(
+        _settings(),
+        connect: (_) async => connection,
+      ).send(_mail(id: 'm1'));
+      expect(connection.data, isNot(contains('DKIM-Signature')));
+    });
+  });
+
+  group('the five boundaries are stated, and stay true', () {
     // A non-goal is only worth writing down if something notices when it stops
     // being one. `doc/messaging.md` says plainly that the notification model
     // belongs to the application, that this module sends and will not receive,
-    // that a webhook has nothing to template, and that a template language is
-    // not coming; the rules below are what make those sentences falsifiable
-    // rather than decorative.
+    // that a webhook has nothing to template, that a template language is not
+    // coming, and that DKIM is the relay's; the rules below are what make those
+    // sentences falsifiable rather than decorative.
 
     const sourceRoot = 'lib/src/tomserver/messaging';
 
@@ -1992,7 +2055,7 @@ void main() {
       expect(services, isEmpty, reason: services.join(', '));
     });
 
-    test('the guide states all four boundaries rather than deferring them', () {
+    test('the guide states all five boundaries rather than deferring them', () {
       // The sentence itself, and where it sits. "Not Yet Implemented" promises
       // the framework will get to a thing, so a non-goal filed there reads as a
       // deferral — which is the one reading this section exists to prevent.
@@ -2005,6 +2068,7 @@ void main() {
       expect(section, contains('will not receive'));
       expect(section, contains('no reader and no locale'));
       expect(section, contains('template *language* is not coming'));
+      expect(section, contains('requires a relay that signs'));
       expect(
         guide.indexOf('## Not in This Framework'),
         lessThan(guide.indexOf('## Not Yet Implemented')),
@@ -2018,6 +2082,7 @@ void main() {
       expect(section, contains('dedicated IMAP package'));
       expect(section, contains('puts it in a body part'));
       expect(section, contains('requiredList'));
+      expect(section, contains('SigningMimeEncoder'));
     });
   });
 

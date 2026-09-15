@@ -34,6 +34,14 @@ tolerant parsing, character-set recovery, reply threading and attachment
 extraction are each a package's worth of work whose half-done version is worse
 than none. An application that needs to read mail uses a dedicated IMAP package.
 
+**`TomSmtpTransport` requires a relay that signs.** The document goes to the
+socket exactly as the encoder produced it — no `DKIM-Signature`, no key — so a
+deployment sending directly to destination MX hosts must sign it. The seam needs
+no new API: `encoder:` takes a `TomMimeEncoder`, and a subclass overriding
+`encode` to prepend a signature to `super.encode(message)` is the whole of it.
+Nothing here can report a violation, because unsigned mail is accepted and then
+filed as spam.
+
 **A template resolves to a string, and a template language is not coming.**
 Conditionals, loops and partials cost their own escaping rules, their own
 injection surface between a bundle and an HTML body, and a second language a

@@ -67,6 +67,8 @@ out of.
   - [A templated service for webhook](#a-templated-service-for-webhook)
     - [One service per channel](#one-service-per-channel)
   - [Markup in templates](#markup-in-templates)
+  - [DKIM signing](#dkim-signing)
+    - [The seam is already there](#the-seam-is-already-there)
   - [Inbound mail](#inbound-mail)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
@@ -322,6 +324,12 @@ Details worth knowing:
   continuing in the clear would send the password in the clear.
 - **A rejected credential names `smtpPassword`** in the failure, because the
   operator's next action is to fix a setting, and the setting should be named.
+- **The relay is relied on for DKIM.** The document goes to the socket exactly
+  as the encoder produced it, unsigned. A deployment sending directly to
+  destination MX hosts must sign it — the `encoder:` argument is where — and
+  nothing here can tell it that it did not, because unsigned mail is accepted
+  and then filed as spam. See
+  [DKIM signing](#dkim-signing).
 - **`QUIT` and `close` are best-effort, but not silent.** A failure while
   hanging up does not undo a delivery the server already accepted — reporting
   one would produce a *duplicate* on the retry — so it is written to the debug
@@ -1328,7 +1336,7 @@ produce either on demand.
 
 ## Not in This Framework
 
-Four things a reader might reasonably come here looking for are **not coming**,
+Five things a reader might reasonably come here looking for are **not coming**,
 and this section says so rather than leaving them on a list that reads as a
 schedule. Each names who owns the concern and what to build it with, because a
 non-goal that names no alternative is a refusal rather than an answer.
@@ -1431,6 +1439,57 @@ and it is the right way round — a translator changing wording is the frequent
 act, and a bundle that can change a message's shape is a bundle that can break
 it.
 
+### DKIM signing
+
+**`TomSmtpTransport` requires a relay that signs.** It writes the RFC 5322
+document to the socket exactly as `TomMimeEncoder` produced it: there is no
+`DKIM-Signature` header, no key, and no other outbound authentication beyond
+what the relay performs on the framework's behalf. That is a **requirement on
+the deployment**, not an observation about the code — a deployment that sends
+directly to destination MX hosts, or relays through something that does not
+sign, must sign elsewhere.
+
+**The framework cannot tell you that you got this wrong.** Unsigned mail is a
+*deliverability* problem rather than an error: the destination accepts it, the
+conversation ends `250`, the receipt says delivered — and the message is filed
+as spam. There is no failure for the transport to classify, no status for a
+delivery report to carry, and nothing in this module that could ever notice. A
+requirement nobody can detect the violation of has to be written down, which is
+why this is here rather than in a list of things not yet done.
+
+#### The seam is already there
+
+Signing needs no new API, and a deployment that must do it does not fork the
+transport. `TomSmtpTransport` takes its encoder as a constructor argument:
+
+```dart
+class SigningMimeEncoder extends TomMimeEncoder {
+  SigningMimeEncoder(this._signer);
+
+  final DkimSigner _signer;
+
+  @override
+  String encode(TomMessage message) => _signer.sign(super.encode(message));
+}
+
+TomSmtpTransport(settings, encoder: SigningMimeEncoder(signer));
+```
+
+`encode` returns the whole document, and a `DKIM-Signature` header is prepended
+to it — so the override is the natural shape, and `super.encode` keeps every
+other header this module is responsible for.
+
+What the framework does not ship is the *signer*. Canonicalising the headers and
+the body to the letter is the whole of DKIM: get `relaxed/relaxed` folding or
+the trailing-CRLF rule wrong and the signature verifies nowhere, which looks
+exactly like not signing at all while costing the work of having signed. That is
+worth doing against a real verifier for a concrete consumer, and is not worth
+guessing at — the same argument that keeps vendor SMS presets out of the
+package.
+
+`TomSmtpSettings` carries no key material for the same reason it carries no
+signer.
+
 ### Inbound mail
 
 **This module sends, and will not receive.** `TomSmtpTransport` speaks the
@@ -1498,8 +1557,6 @@ correlation index, never through a mailbox.
   generalising either existing one**. See
   [One service per channel](#one-service-per-channel) for why that instruction
   is load-bearing.
-- **DKIM signing**, and other outbound authentication beyond what the relay
-  itself performs.
 
 ## Dependencies
 
