@@ -345,6 +345,54 @@ class _WholeReadsOnlyBlobStore extends TomBlobStore {
       throw UnimplementedError('${invocation.memberName} is not under test');
 }
 
+/// A backend that implements only the four required methods, to exercise the
+/// inherited copy and move.
+///
+/// Deliberately not `TomMemoryBlobStore`: that one overrides both, so a test
+/// driven through it would say nothing about the defaults a backend an
+/// application writes will actually get.
+class _FourMethodBlobStore extends TomBlobStore {
+  final Map<String, List<int>> content = {};
+  final Map<String, TomStoredBlob> _descriptors = {};
+
+  @override
+  Future<TomStoredBlob> doPut({
+    required String key,
+    required Stream<List<int>> bytes,
+    String mediaType = TomStoredBlob.defaultMediaType,
+    String? fileName,
+  }) async {
+    final collected = <int>[];
+    await for (final chunk in bytes) {
+      collected.addAll(chunk);
+    }
+    content[key] = collected;
+    return _descriptors[key] = TomStoredBlob(
+      key: key,
+      mediaType: mediaType,
+      byteCount: collected.length,
+      storedAt: DateTime.utc(2026, 7, 8),
+      fileName: fileName,
+    );
+  }
+
+  @override
+  Stream<List<int>> doGet(String key) async* {
+    final bytes = content[key];
+    if (bytes == null) throw TomBlobStore.notFound(key);
+    yield bytes;
+  }
+
+  @override
+  Future<TomStoredBlob?> doDescribe(String key) async => _descriptors[key];
+
+  @override
+  Future<bool> doDelete(String key) async {
+    _descriptors.remove(key);
+    return content.remove(key) != null;
+  }
+}
+
 /// A data source that answers one blob's manifest and chunk rows from memory.
 ///
 /// Enough to drive [TomDatabaseBlobStore]'s reads without a database, which is
@@ -675,6 +723,366 @@ void main() {
       expect(identical(exact.clampedTo(100), exact), isTrue);
       expect(TomBlobRange(10, 20).length, 10);
       expect(TomBlobRange(10).length, isNull);
+    });
+  });
+
+  // Relocating a blob meant streaming it out of the store and back in, which is
+  // not theoretical: the documented pattern for expiry is a date-prefixed key,
+  // so re-partitioning is a thing deployments do. Every backend has a native
+  // answer — a filesystem copies and renames, a map assigns, a manifest row is
+  // a second row against the same chunks, S3 has CopyObject — and the contract
+  // now has the two methods to reach them through.
+  //
+  // The default is concrete rather than abstract, which is the decision worth
+  // holding: unlike a listing, a stream round trip costs exactly what it looks
+  // like it costs, so a concrete default hides nothing.
+  group('copy and move', () {
+    final payload = Uint8List.fromList([
+      for (var i = 0; i < 2048; i++) (i * 31) % 251,
+    ]);
+
+    /// Every backend a connection-free suite can build, by name.
+    Map<String, TomBlobStore> backends() {
+      final root = Directory.systemTemp.createTempSync('tom_relocate_');
+      addTearDown(() {
+        if (root.existsSync()) root.deleteSync(recursive: true);
+      });
+      return {
+        'memory': TomMemoryBlobStore(),
+        'directory': TomDirectoryBlobStore(root),
+        'only the four methods': _FourMethodBlobStore(),
+      };
+    }
+
+    test(
+      'a copy is the same bytes under a second key, on every backend',
+      () async {
+        for (final entry in backends().entries) {
+          final store = entry.value;
+          await store.putBytes(
+            key: 'a/source.bin',
+            bytes: payload,
+            mediaType: 'image/png',
+            fileName: 'picture.png',
+          );
+
+          final copied = await store.copy('a/source.bin', 'b/copy.bin');
+          expect(copied.key, 'b/copy.bin', reason: entry.key);
+          expect(copied.byteCount, payload.length, reason: entry.key);
+          // The media type and the file name travel with the bytes. A copy that
+          // lost its Content-Type would be served as application/octet-stream
+          // and download as a file nothing opens.
+          expect(copied.mediaType, 'image/png', reason: entry.key);
+          expect(copied.fileName, 'picture.png', reason: entry.key);
+          expect(
+            await store.getBytes('b/copy.bin'),
+            payload,
+            reason: entry.key,
+          );
+          // And the source is still there — that is what makes it a copy.
+          expect(
+            await store.getBytes('a/source.bin'),
+            payload,
+            reason: entry.key,
+          );
+          expect(
+            (await store.describe('b/copy.bin'))!.mediaType,
+            'image/png',
+            reason: '${entry.key} did not persist the copied media type',
+          );
+        }
+      },
+    );
+
+    test('a move leaves nothing behind, on every backend', () async {
+      for (final entry in backends().entries) {
+        final store = entry.value;
+        await store.putBytes(
+          key: 'a/source.bin',
+          bytes: payload,
+          mediaType: 'image/png',
+          fileName: 'picture.png',
+        );
+
+        final moved = await store.move('a/source.bin', 'b/moved.bin');
+        expect(moved.key, 'b/moved.bin', reason: entry.key);
+        expect(moved.mediaType, 'image/png', reason: entry.key);
+        expect(moved.fileName, 'picture.png', reason: entry.key);
+        expect(await store.getBytes('b/moved.bin'), payload, reason: entry.key);
+        expect(await store.exists('a/source.bin'), isFalse, reason: entry.key);
+        expect(
+          store.getBytes('a/source.bin'),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.not_found',
+            ),
+          ),
+          reason: entry.key,
+        );
+      }
+    });
+
+    test('both replace whatever the destination held', () async {
+      // The same rule `put` has, and stated because the alternative — refusing
+      // an occupied destination — would be a second rule to remember for the
+      // one operation most likely to be run over a key space in bulk.
+      for (final entry in backends().entries) {
+        final store = entry.value;
+        await store.putBytes(key: 'a.bin', bytes: payload);
+        await store.putBytes(key: 'b.bin', bytes: const [1, 2, 3]);
+        await store.copy('a.bin', 'b.bin');
+        expect(await store.getBytes('b.bin'), payload, reason: entry.key);
+
+        await store.putBytes(key: 'c.bin', bytes: const [4, 5, 6]);
+        await store.move('b.bin', 'c.bin');
+        expect(await store.getBytes('c.bin'), payload, reason: entry.key);
+      }
+    });
+
+    test('an absent source is not_found, not an empty destination', () async {
+      // The failure that matters most: a relocation loop over a key list that
+      // silently created empty blobs for the keys that had gone would be worse
+      // than one that stopped.
+      for (final entry in backends().entries) {
+        final store = entry.value;
+        for (final relocate in <Future<TomStoredBlob> Function()>[
+          () => store.copy('gone.bin', 'new.bin'),
+          () => store.move('gone.bin', 'new.bin'),
+        ]) {
+          await expectLater(
+            relocate(),
+            throwsA(
+              isA<TomStorageException>().having(
+                (e) => e.key,
+                'key',
+                'storage.blob.not_found',
+              ),
+            ),
+            reason: entry.key,
+          );
+        }
+        expect(await store.exists('new.bin'), isFalse, reason: entry.key);
+      }
+    });
+
+    test('a key onto itself is refused before any backend is touched', () {
+      // There is no reading of this that is worth guessing at, and the obvious
+      // implementation — read it, write it back — is a truncation on any
+      // backend whose write is not atomic. S3 refuses it outright. So it is one
+      // error rather than four behaviours, raised by the contract: the stores
+      // below fail the test if a request or a statement reaches them.
+      for (final store in <TomBlobStore>[
+        TomMemoryBlobStore(),
+        TomDatabaseBlobStore(_UntouchableDataSource()),
+        _s3(
+          (request) => fail('the request reached the network: ${request.url}'),
+        ),
+      ]) {
+        for (final relocate in <Future<TomStoredBlob> Function()>[
+          () => store.copy('same.bin', 'same.bin'),
+          () => store.move('same.bin', 'same.bin'),
+        ]) {
+          expect(
+            relocate,
+            throwsA(
+              isA<TomStorageException>()
+                  .having((e) => e.key, 'key', 'storage.blob.same_key')
+                  .having(
+                    (e) => e.parameters?['key'],
+                    'key parameter',
+                    'same.bin',
+                  ),
+            ),
+            reason: '$store',
+          );
+        }
+      }
+    });
+
+    test('an invalid key on either side is refused, on every backend', () {
+      // Both sides, because validating only the source would let a traversal in
+      // through the destination — which is the half a caller building a new key
+      // from a date or a user-supplied name is most likely to get wrong.
+      for (final store in backends().values) {
+        for (final relocate in <Future<TomStoredBlob> Function()>[
+          () => store.copy('../escape', 'ok.bin'),
+          () => store.copy('ok.bin', '../escape'),
+          () => store.move('../escape', 'ok.bin'),
+          () => store.move('ok.bin', '../escape'),
+        ]) {
+          expect(
+            relocate,
+            throwsA(
+              isA<TomStorageException>().having(
+                (e) => e.key,
+                'key',
+                'storage.blob.invalid_key',
+              ),
+            ),
+            reason: '$store',
+          );
+        }
+      }
+    });
+
+    test('overwriting a copied key leaves the copy alone', () async {
+      // Two keys, two blobs — the property a bulk relocation depends on. The
+      // memory backend also copies the *list*, which this cannot see: nothing
+      // mutates a stored list in place, so an aliased one has no observable
+      // consequence. That copy is defensive, and the source says so rather than
+      // this test implying it is checked.
+      final store = TomMemoryBlobStore();
+      await store.putBytes(
+        key: 'a.bin',
+        bytes: payload,
+        mediaType: 'image/png',
+      );
+      await store.copy('a.bin', 'b.bin');
+      await store.putBytes(key: 'a.bin', bytes: const [9, 9, 9]);
+      expect(await store.getBytes('b.bin'), payload);
+      expect((await store.describe('b.bin'))!.mediaType, 'image/png');
+      expect((await store.describe('a.bin'))!.byteCount, 3);
+    });
+
+    test('the directory backend moves by renaming, not by copying', () async {
+      // The claim is what makes a re-partitioning of a terabyte affordable, and
+      // it is not visible in the bytes. What is visible: the source file is
+      // gone from the filesystem, the destination exists, and the metadata
+      // sidecar travelled with it — a move that left the sidecar behind would
+      // serve the blob as application/octet-stream.
+      final root = Directory.systemTemp.createTempSync('tom_rename_');
+      addTearDown(() => root.deleteSync(recursive: true));
+      final store = TomDirectoryBlobStore(root);
+      await store.putBytes(
+        key: 'old/a.bin',
+        bytes: payload,
+        mediaType: 'image/png',
+      );
+
+      await store.move('old/a.bin', 'new/b.bin');
+      expect(File('${root.path}/old/a.bin').existsSync(), isFalse);
+      expect(File('${root.path}/new/b.bin').existsSync(), isTrue);
+      expect(
+        File(
+          '${root.path}/old/a.bin${TomDirectoryBlobStore.metadataSuffix}',
+        ).existsSync(),
+        isFalse,
+        reason: 'the sidecar was left behind, describing a blob that moved',
+      );
+      expect((await store.describe('new/b.bin'))!.mediaType, 'image/png');
+    });
+
+    test('the directory backend leaves no partial when a copy fails', () {
+      // The staging protocol `doPut` uses, applied here for the same reason: a
+      // copy interrupted half way must not leave a truncated blob under a key
+      // that already held a complete one. Provoked with a destination whose
+      // parent is a *file*, so creating the directory fails.
+      final root = Directory.systemTemp.createTempSync('tom_partial_');
+      addTearDown(() => root.deleteSync(recursive: true));
+      final store = TomDirectoryBlobStore(root);
+      File('${root.path}/blocked').writeAsStringSync('not a directory');
+      return store.putBytes(key: 'a.bin', bytes: payload).then((_) async {
+        await expectLater(
+          store.copy('a.bin', 'blocked/b.bin'),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.copy_failed',
+            ),
+          ),
+        );
+        // Nothing staged survives under the root, whatever the failure was.
+        final leftovers = root
+            .listSync(recursive: true)
+            .where((e) => e.path.contains(TomDirectoryBlobStore.partialSuffix));
+        expect(leftovers, isEmpty);
+      });
+    });
+
+    test('the S3 backend copies inside the object store', () async {
+      // `CopyObject`: a PUT at the destination naming the source in a header,
+      // with no body. The inherited default would have pulled every byte down
+      // to this process and pushed it back up, which for an object store is the
+      // one cost the native operation exists to avoid.
+      final requests = <http.Request>[];
+      final store = _s3((request) async {
+        requests.add(request);
+        if (request.method == 'HEAD') {
+          return http.Response(
+            '',
+            200,
+            headers: const {
+              'content-type': 'image/png',
+              'content-length': '2048',
+              TomS3BlobStore.fileNameHeader: 'picture.png',
+            },
+          );
+        }
+        return http.Response('', 200);
+      }, keyPrefix: 'tenant-7');
+
+      final copied = await store.copy('a/source.bin', 'b/copy.bin');
+      final put = requests.singleWhere((r) => r.method == 'PUT');
+      expect(put.url.path, '/examplebucket/tenant-7/b/copy.bin');
+      expect(
+        put.headers['x-amz-copy-source'],
+        '/examplebucket/tenant-7/a/source.bin',
+        reason: 'the source names the bucket and the configured prefix',
+      );
+      expect(put.bodyBytes, isEmpty, reason: 'the bytes crossed the wire');
+      expect(put.headers['authorization'], contains('x-amz-copy-source'));
+      // The descriptor is the source's, under the new key: S3 answers a copy
+      // with an XML body carrying no size, so re-describing would be a second
+      // round trip for what is already known.
+      expect(copied.mediaType, 'image/png');
+      expect(copied.byteCount, 2048);
+      expect(copied.fileName, 'picture.png');
+    });
+
+    test('an S3 move is a copy and then a delete, in that order', () async {
+      // S3 has no rename, so the inherited `doMove` is the right one — and the
+      // *order* is the contract: an interrupted move leaves the blob readable
+      // under both keys rather than under neither. A duplicate converges on a
+      // retry; a deletion does not.
+      final calls = <String>[];
+      final store = _s3((request) async {
+        calls.add(request.method);
+        if (request.method == 'HEAD') {
+          return http.Response('', 200, headers: const {'content-length': '3'});
+        }
+        return http.Response('', request.method == 'DELETE' ? 204 : 200);
+      });
+
+      await store.move('a.bin', 'b.bin');
+      expect(calls.where((c) => c == 'PUT' || c == 'DELETE'), [
+        'PUT',
+        'DELETE',
+      ]);
+    });
+
+    test('a failure reaches the caller as copy_failed or move_failed', () {
+      // The operation the caller asked for, not the one the default happened to
+      // run underneath. A `move` that reported `write_failed` from the copy
+      // inside it would send whoever reads the log to the wrong half.
+      final failing = _ThrowingBlobStore(
+        const SocketException('connection reset by peer'),
+      );
+      for (final entry in <String, Future<TomStoredBlob> Function()>{
+        'storage.blob.copy_failed': () => failing.copy('a.bin', 'b.bin'),
+        'storage.blob.move_failed': () => failing.move('a.bin', 'b.bin'),
+      }.entries) {
+        expect(
+          entry.value,
+          throwsA(
+            isA<TomStorageException>()
+                .having((e) => e.key, 'key', entry.key)
+                .having((e) => e.parameters?['key'], 'key parameter', 'a.bin'),
+          ),
+        );
+      }
     });
   });
 
@@ -2431,16 +2839,20 @@ void main() {
       },
     );
 
-    test('the pass-through list is the four the module raises itself', () {
+    test('the pass-through list is the five the module raises itself', () {
       // Pinned by name, because membership is a judgement — "raised by code
       // every backend shares, or by a rule every backend is held to" — and a
-      // fifth key added without that argument being made is the drift this
-      // guards.
+      // key added without that argument being made is the drift this guards.
+      // `same_key` earns it on both counts: it is raised by the contract's own
+      // key check, before any backend is reached, and every backend is held to
+      // the rule. Wrapped as `copy_failed` instead, it would tell a caller the
+      // storage broke when what broke was their arithmetic.
       expect(TomBlobStore.passThroughErrorKeys, {
         'storage.blob.not_found',
         'storage.blob.invalid_key',
         'storage.blob.invalid_key_prefix',
         'storage.blob.missing_chunk',
+        'storage.blob.same_key',
       });
       expect(
         TomBlobStore.passThroughErrorKeys.intersection({

@@ -19,6 +19,7 @@ without the second; the second is built entirely on the first.
   - [Who Owns a Chunk](#who-owns-a-chunk)
   - [A Broken Transfer Delivers What It Got](#a-broken-transfer-delivers-what-it-got)
   - [A Byte Range, and Who Is Obliged to Serve It](#a-byte-range-and-who-is-obliged-to-serve-it)
+  - [Relocating a Blob](#relocating-a-blob)
 - [Keys Are a Grammar, Not a String](#keys-are-a-grammar-not-a-string)
   - [Prefixes obey the same grammar](#prefixes-obey-the-same-grammar)
 - [The Backends](#the-backends)
@@ -53,11 +54,11 @@ without the second; the second is built entirely on the first.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomBlobStore` | abstract class | The contract: `put` / `get` (whole or a byte range) / `describe` / `exists` / `delete` by key |
+| `TomBlobStore` | abstract class | The contract: `put` / `get` (whole or a byte range) / `describe` / `exists` / `delete` / `copy` / `move`, by key |
 | `TomStoredBlob` | class | What was stored — key, media type, size, time, name, location |
 | `TomBlobRange` | class | A half-open byte range of a blob, for the partial read `get` takes |
 | `TomStorageException` | class | The module's base error |
-| `TomBlobStoreOperation` | enum | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete`, each carrying a stable error key |
+| `TomBlobStoreOperation` | enum | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete` / `copy` / `move`, each carrying a stable error key |
 | `TomMemoryBlobStore` | class | In-memory; tests and development |
 | `TomDirectoryBlobStore` | class | A directory on disk, with a metadata sidecar |
 | `TomDatabaseBlobStore` | class | Chunk rows in an existing data source |
@@ -114,6 +115,8 @@ Future<TomStoredBlob> put({
 });
 
 Stream<List<int>> get(String key, {TomBlobRange? range});
+Future<TomStoredBlob> copy(String fromKey, String toKey);
+Future<TomStoredBlob> move(String fromKey, String toKey);
 ```
 
 `getBytes` and `putBytes` exist as conveniences for the cases that genuinely are
@@ -218,6 +221,55 @@ worth naming. A download endpoint honouring HTTP `Range` needs *a* range read
 from whatever backend is configured; writing the discard at the endpoint instead
 would mean the S3 backend's native capability could not be reached through the
 interface at all.
+
+### Relocating a Blob
+
+`copy` and `move` are on the contract for the same reason, and with the same
+shape: a concrete default built from the four required methods, and an override
+on every backend that can do better.
+
+Relocation is not a hypothetical. The documented pattern for expiry is a
+date-prefixed key, so re-partitioning a key space is a thing deployments do —
+and without these it means pulling every byte through the server and pushing it
+back.
+
+| Backend | Copy | Move |
+| ------- | ---- | ---- |
+| default | `get` piped into `put` | the copy, then a delete |
+| `TomMemoryBlobStore` | a second map entry | remove and re-insert |
+| `TomDirectoryBlobStore` | `File.copy`, staged and renamed | a `rename` — no bytes move, and it is atomic |
+| `TomDatabaseBlobStore` | a second manifest row against the **same** upload | one `UPDATE` of the key column |
+| `TomS3BlobStore` | `x-amz-copy-source` — the object never leaves the store | the copy, then a delete |
+
+A concrete default is right here in a way it would not be for a listing. The
+cost of this one is not misleading — a stream round trip is exactly as expensive
+as it looks — whereas a default `list` would hide a paginated scan behind a
+method that reads like a map lookup.
+
+**Rules both share.** Anything at the destination is **replaced**, as it is by
+`put`; refusing an occupied destination would be a second rule to remember for
+the operation most likely to be run in bulk. The media type and the file name
+travel with the bytes, because a copy that lost its `Content-Type` is served as
+`application/octet-stream` and downloads as a file nothing opens. An absent
+source is `storage.blob.not_found` rather than an empty destination — a
+relocation loop that quietly created empty blobs for the keys that had gone
+would be worse than one that stopped. A key onto itself is
+`storage.blob.same_key`: there is no reading of it worth guessing at, the
+obvious implementation is a truncation on any backend whose write is not atomic,
+and S3 refuses it outright.
+
+**The order inside `move` is the contract**, not an implementation detail. The
+destination is committed before the source is removed, so an interrupted move
+leaves the blob readable under *both* keys rather than under neither. The
+residue of a failure is a duplicate, which a retry converges on; the residue of
+the other order is a deletion.
+
+**The database backend's copy shares chunks**, which is what makes a gigabyte
+copy in one statement — and what makes the guard on the chunk delete
+load-bearing rather than tidy. Deleting or overwriting either key releases the
+chunks only when no manifest row still names the upload, the same predicate
+`purgeOrphanedChunks` applies to the whole table. Without it, deleting one key
+would take the bytes the other still points at, with no error anywhere.
 
 ## Keys Are a Grammar, Not a String
 
@@ -445,13 +497,16 @@ So every failure is translated into four keys, one per operation:
 | `storage.blob.read_failed` | The key holds a blob; reading its bytes failed. |
 | `storage.blob.probe_failed` | `describe` or `exists` could not ask storage about the key. |
 | `storage.blob.delete_failed` | The key holds a blob; removing it failed. |
+| `storage.blob.copy_failed` | The source exists; putting it under the second key failed. |
+| `storage.blob.move_failed` | The relocation failed. Because the destination commits first, the residue is a duplicate rather than a hole. |
 
 The division is by *what the caller asked for*, not by which call threw: a
 sidecar that cannot be read during a `describe` is a probe failure even though a
 file read is what failed.
 
 The translating is `TomBlobStore`'s own, not each backend's. `put`, `get`,
-`describe`, `exists` and `delete` are the contract's methods; a backend
+`describe`, `exists`, `delete`, `copy` and `move` are the contract's methods; a
+backend
 implements `doPut`, `doGet`, `doDescribe`, `doDelete` and lets its failures out
 raw, and the wrapper around each names the operation. For `get` this covers the
 whole transfer and not just its opening: a socket that dies after the first
@@ -473,6 +528,7 @@ them. They are a closed list, `TomBlobStore.passThroughErrorKeys`:
 | `storage.blob.invalid_key` | The key is not a key — the caller's mistake, and the same one on every backend. |
 | `storage.blob.invalid_key_prefix` | The key is fine and the deployment's configured prefix leaves no room for it. A different fault from the one above, calling for a different action. |
 | `storage.blob.missing_chunk` | The blob is there and its parts do not add up. |
+| `storage.blob.same_key` | A copy or move named one key twice. A caller's mistake, refused before any backend is touched. |
 
 `storage.blob.invalid_range` is the same shape one step earlier: a `TomBlobRange`
 with a negative start, or an end at or before it, is refused by its own
@@ -1047,9 +1103,6 @@ and the count of them is the assertion. Every step checks its own result, and
 
 ## Not Yet Implemented
 
-- **Server-side copy and move.** Currently a copy is a `get` piped into a `put`,
-  which is correct but crosses the network twice for S3, where a single
-  `x-amz-copy-source` request would do.
 - **Content addressing / deduplication.** Two identical uploads are two blobs.
   Deduplicating means hashing the payload, which means either buffering it or
   a second pass — a real cost to weigh against a benefit no deployment has yet

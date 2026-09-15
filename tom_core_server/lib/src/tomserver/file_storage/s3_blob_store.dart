@@ -309,6 +309,44 @@ class TomS3BlobStore extends TomBlobStore {
   }
 
   @override
+  Future<TomStoredBlob> doCopy(String fromKey, String toKey) async {
+    // `CopyObject`: a PUT at the destination naming the source in a header. The
+    // object never leaves the object store — which is the whole reason this
+    // override exists, since the inherited default would pull every byte down
+    // to this process and push it back up.
+    final described = await doDescribe(fromKey);
+    if (described == null) throw TomBlobStore.notFound(fromKey);
+    await _send(
+      method: 'PUT',
+      operation: 'copy',
+      key: fromKey,
+      uri: _objectUri(toKey, const {}),
+      headers: {'x-amz-copy-source': _copySource(fromKey)},
+    );
+    return TomStoredBlob(
+      key: toKey,
+      mediaType: described.mediaType,
+      byteCount: described.byteCount,
+      storedAt: DateTime.now().toUtc(),
+      fileName: described.fileName,
+      location: _objectUri(toKey, const {}),
+    );
+  }
+
+  /// The `x-amz-copy-source` value naming [key] in this store's bucket.
+  ///
+  /// `/<bucket>/<prefixed key>`, and **URI-encoded per segment**: the header
+  /// carries a path, so a key containing a character that is legal in a key and
+  /// reserved in a path would otherwise name a different object — or none. The
+  /// bucket is always in the value, whatever `pathStyle` puts in the URL,
+  /// because the header is addressed against the service and not against the
+  /// request's host.
+  String _copySource(String key) {
+    final segments = _prefixed(key).split('/').map(Uri.encodeComponent);
+    return '/$bucket/${segments.join('/')}';
+  }
+
+  @override
   Future<bool> doDelete(String key) async {
     // S3 answers `204` to a delete whether or not the object was there, so the
     // "did it exist" the contract promises has to be asked separately.

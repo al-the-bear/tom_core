@@ -230,6 +230,66 @@ class TomDirectoryBlobStore extends TomBlobStore {
     return true;
   }
 
+  @override
+  Future<TomStoredBlob> doCopy(String fromKey, String toKey) async {
+    final source = _fileFor(fromKey);
+    if (!source.existsSync()) throw TomBlobStore.notFound(fromKey);
+    final target = _fileFor(toKey);
+    await target.parent.create(recursive: true);
+
+    // Staged and renamed, the same protocol `doPut` uses and for the same
+    // reason: a copy interrupted half way must not leave a truncated blob under
+    // a key that already held a complete one.
+    final partial = File('${target.path}$partialSuffix');
+    try {
+      await source.copy(partial.path);
+      final meta = _metadataFileFor(source);
+      // The sidecar before the rename, so the blob is never visible without the
+      // media type that says how to serve it. An absent sidecar is copied as an
+      // absent sidecar: `describe` already falls back for one.
+      if (meta.existsSync()) {
+        await meta.copy(_metadataFileFor(target).path);
+      } else if (_metadataFileFor(target).existsSync()) {
+        // The destination's own sidecar would otherwise survive its bytes and
+        // describe the wrong blob.
+        await _metadataFileFor(target).delete();
+      }
+      await partial.rename(target.path);
+    } on Object {
+      if (partial.existsSync()) await partial.delete();
+      rethrow;
+    }
+    final described = await doDescribe(toKey);
+    if (described == null) throw TomBlobStore.notFound(toKey);
+    return described;
+  }
+
+  @override
+  Future<TomStoredBlob> doMove(String fromKey, String toKey) async {
+    final source = _fileFor(fromKey);
+    if (!source.existsSync()) throw TomBlobStore.notFound(fromKey);
+    final target = _fileFor(toKey);
+    await target.parent.create(recursive: true);
+
+    // A rename, not a copy and a delete: within one filesystem it moves no
+    // bytes and is atomic, which makes a re-partitioning of a terabyte of blobs
+    // a metadata operation. The sidecar goes first, so the window in which the
+    // two disagree holds a blob whose metadata has already arrived rather than
+    // one whose metadata is still elsewhere.
+    final meta = _metadataFileFor(source);
+    final targetMeta = _metadataFileFor(target);
+    if (meta.existsSync()) {
+      await meta.rename(targetMeta.path);
+    } else if (targetMeta.existsSync()) {
+      await targetMeta.delete();
+    }
+    await source.rename(target.path);
+
+    final described = await doDescribe(toKey);
+    if (described == null) throw TomBlobStore.notFound(toKey);
+    return described;
+  }
+
   File _metadataFileFor(File file) => File('${file.path}$metadataSuffix');
 
   Future<void> _writeMetadata(File file, TomStoredBlob descriptor) async {

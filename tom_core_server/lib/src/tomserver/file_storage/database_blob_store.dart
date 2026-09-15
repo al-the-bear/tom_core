@@ -379,6 +379,81 @@ class TomDatabaseBlobStore extends TomBlobStore {
   }
 
   @override
+  Future<TomStoredBlob> doCopy(String fromKey, String toKey) async {
+    await ensureSchema();
+    final source = await _manifestOf(fromKey);
+    if (source == null) throw TomBlobStore.notFound(fromKey);
+    final displaced = await _manifestOf(toKey);
+
+    // A second manifest row against the *same* upload id: the chunks are not
+    // read, not written and not counted, so a copy of a gigabyte is one row.
+    // What makes it safe is that "delete the chunks" is guarded by whether any
+    // manifest row still names the upload — see [_deleteChunks] — so the two
+    // keys have independent lifetimes despite sharing bytes.
+    final storedAt = clock();
+    await datasource.executeCommand(
+      _manifest.insert('REPLACE', const {
+        'storage_key': ':key',
+        'upload_id': ':uploadId',
+        'media_type': ':mediaType',
+        'file_name': ':fileName',
+        'byte_count': ':byteCount',
+        'chunk_count': ':chunkCount',
+        'chunk_size': ':chunkSize',
+        'stored_at': ':storedAt',
+      }),
+      {
+        'key': toKey,
+        'uploadId': source.uploadId,
+        'mediaType': source.mediaType,
+        'fileName': source.fileName,
+        'byteCount': source.byteCount,
+        'chunkCount': source.chunkCount,
+        'chunkSize': source.chunkSize,
+        'storedAt': storedAt,
+      },
+    );
+
+    // Whatever the destination held is now unreferenced, exactly as it is after
+    // a `doPut` over an occupied key — and released the same way, through the
+    // guard, since the displaced upload may be one this copy now shares.
+    if (displaced != null) await _deleteChunks(displaced.uploadId);
+
+    return TomStoredBlob(
+      key: toKey,
+      mediaType: source.mediaType,
+      byteCount: source.byteCount,
+      storedAt: storedAt,
+      fileName: source.fileName,
+    );
+  }
+
+  @override
+  Future<TomStoredBlob> doMove(String fromKey, String toKey) async {
+    await ensureSchema();
+    final source = await _manifestOf(fromKey);
+    if (source == null) throw TomBlobStore.notFound(fromKey);
+
+    // Anything at the destination goes first: the key is the primary key, so an
+    // UPDATE onto an occupied one is a constraint violation rather than the
+    // replacement every other write performs. Deleting through `doDelete` is
+    // what releases the displaced blob's chunks under the same guard.
+    if (toKey != fromKey) await doDelete(toKey);
+    await datasource.executeCommand(
+      'UPDATE $manifestTable SET storage_key = :toKey '
+      'WHERE storage_key = :fromKey',
+      {'toKey': toKey, 'fromKey': fromKey},
+    );
+    return TomStoredBlob(
+      key: toKey,
+      mediaType: source.mediaType,
+      byteCount: source.byteCount,
+      storedAt: source.storedAt,
+      fileName: source.fileName,
+    );
+  }
+
+  @override
   Future<bool> doDelete(String key) async {
     await ensureSchema();
     final manifest = await _manifestOf(key);
@@ -429,8 +504,18 @@ class TomDatabaseBlobStore extends TomBlobStore {
     );
   }
 
+  /// Deletes the chunks of [uploadId], unless a manifest row still names it.
+  ///
+  /// The guard is what makes [doCopy]'s sharing safe. A copy is a second
+  /// manifest row against the *same* upload, so the bytes are reachable by two
+  /// keys; deleting either key, or overwriting either, must not take the chunks
+  /// the other still points at. The predicate is the same one
+  /// [purgeOrphanedChunks] applies to the whole table, narrowed to one upload:
+  /// chunks are unreferenced bytes, and unreferenced is a question about the
+  /// manifest rather than about who asked.
   Future<void> _deleteChunks(String uploadId) => datasource.executeCommand(
-    'DELETE FROM $chunkTable WHERE upload_id = :uploadId',
+    'DELETE FROM $chunkTable WHERE upload_id = :uploadId '
+    'AND upload_id NOT IN (SELECT upload_id FROM $manifestTable)',
     {'uploadId': uploadId},
   );
 

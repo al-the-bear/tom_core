@@ -307,6 +307,153 @@ void main() async {
       },
     );
 
+    // The backend's whole argument for a native copy: a manifest row is what
+    // makes a blob visible, so a second row against the *same* upload is a
+    // copy in which no chunk is read, written or counted. A gigabyte copies in
+    // one statement. What makes it safe rather than clever is the guard on the
+    // chunk delete, which these pin from both sides.
+    group('copy and move are manifest work, not chunk work', () {
+      /// How many chunk rows exist for [uploadId].
+      Future<int> chunkRows(String uploadId) async {
+        final rows = await dsi.datasource.executeQuery<TomBlobChunkRow>(
+          'SELECT chunk_data FROM ${store.chunkTable} '
+          'WHERE upload_id = :uploadId',
+          {'uploadId': uploadId},
+        );
+        return rows.length;
+      }
+
+      /// The `upload_id` recorded for [key].
+      Future<String> uploadOf(String key) async {
+        final rows = await dsi.datasource.executeQuery<TomBlobManifestRow>(
+          'SELECT ${store.manifestTable}.* FROM ${store.manifestTable} '
+          'WHERE storage_key = :key',
+          {'key': key},
+        );
+        return rows.single.uploadId;
+      }
+
+      test('a copy shares the upload rather than duplicating chunks', () async {
+        // Four chunks at the 1 KiB the suite configures, so "no new chunks"
+        // is a claim about several rows rather than about one.
+        final payload = _bytes(4096);
+        await store.put(key: 'db/a.bin', bytes: _stream([payload]));
+        final upload = await uploadOf('db/a.bin');
+        expect(await chunkRows(upload), 4);
+
+        final copied = await store.copy('db/a.bin', 'db/b.bin');
+        expect(copied.byteCount, 4096);
+        expect(await uploadOf('db/b.bin'), upload);
+        expect(
+          await chunkRows(upload),
+          4,
+          reason: 'the copy wrote chunk rows it did not need to',
+        );
+        // Both keys serve the bytes, which is what makes the sharing a copy
+        // rather than an alias with one reader.
+        expect(await store.getBytes('db/a.bin'), payload);
+        expect(await store.getBytes('db/b.bin'), payload);
+      });
+
+      test(
+        'deleting one side of a shared upload leaves the other readable',
+        () async {
+          // The hazard the guard exists for, and the reason `doDelete` cannot
+          // simply delete by upload id: without it this test reads back nothing
+          // and the blob is gone with no error anywhere.
+          final payload = _bytes(4096);
+          await store.put(key: 'db/a.bin', bytes: _stream([payload]));
+          await store.copy('db/a.bin', 'db/b.bin');
+
+          expect(await store.delete('db/a.bin'), isTrue);
+          expect(await store.exists('db/a.bin'), isFalse);
+          expect(
+            await store.getBytes('db/b.bin'),
+            payload,
+            reason: 'deleting one key took the chunks the other pointed at',
+          );
+          // And the sweep agrees: the upload is still referenced.
+          expect(await store.purgeOrphanedChunks(), 0);
+        },
+      );
+
+      test('overwriting one side of a shared upload leaves the other', () async {
+        // The same hazard through the other door. `doPut` releases the
+        // superseded upload's chunks, and the superseded upload here is one the
+        // copy still names.
+        final payload = _bytes(4096);
+        await store.put(key: 'db/a.bin', bytes: _stream([payload]));
+        await store.copy('db/a.bin', 'db/b.bin');
+
+        await store.put(key: 'db/a.bin', bytes: _text('something else'));
+        expect(utf8.decode(await store.getBytes('db/a.bin')), 'something else');
+        expect(await store.getBytes('db/b.bin'), payload);
+      });
+
+      test('the last key released takes the chunks with it', () async {
+        // The other side of the guard: sharing must not leak. Once no manifest
+        // row names the upload, its chunks go on that delete rather than being
+        // left for a sweep somebody has to remember to run.
+        await store.put(key: 'db/a.bin', bytes: _stream([_bytes(4096)]));
+        final upload = await uploadOf('db/a.bin');
+        await store.copy('db/a.bin', 'db/b.bin');
+
+        await store.delete('db/a.bin');
+        expect(await chunkRows(upload), 4);
+        await store.delete('db/b.bin');
+        expect(await chunkRows(upload), 0);
+        expect(await store.purgeOrphanedChunks(), 0);
+      });
+
+      test('a move is one update, keeping the upload and the chunks', () async {
+        final payload = _bytes(4096);
+        await store.put(
+          key: 'db/a.bin',
+          bytes: _stream([payload]),
+          mediaType: 'image/png',
+          fileName: 'picture.png',
+        );
+        final upload = await uploadOf('db/a.bin');
+
+        final moved = await store.move('db/a.bin', 'db/moved.bin');
+        expect(moved.mediaType, 'image/png');
+        expect(moved.fileName, 'picture.png');
+        expect(await uploadOf('db/moved.bin'), upload);
+        expect(await chunkRows(upload), 4);
+        expect(await store.exists('db/a.bin'), isFalse);
+        expect(await store.getBytes('db/moved.bin'), payload);
+      });
+
+      test(
+        'a move onto an occupied key replaces it and frees its chunks',
+        () async {
+          // The key is the primary key, so an UPDATE onto an occupied one is a
+          // constraint violation rather than the replacement every other write
+          // performs — the destination has to be released first, and releasing it
+          // is what stops its chunks becoming orphans.
+          await store.put(key: 'db/a.bin', bytes: _stream([_bytes(4096)]));
+          await store.put(key: 'db/b.bin', bytes: _stream([_bytes(2048, 7)]));
+          final displaced = await uploadOf('db/b.bin');
+
+          await store.move('db/a.bin', 'db/b.bin');
+          expect(await store.getBytes('db/b.bin'), _bytes(4096));
+          expect(await chunkRows(displaced), 0);
+          expect(await store.purgeOrphanedChunks(), 0);
+        },
+      );
+
+      test('a copy onto an occupied key frees what it displaced', () async {
+        await store.put(key: 'db/a.bin', bytes: _stream([_bytes(4096)]));
+        await store.put(key: 'db/b.bin', bytes: _stream([_bytes(2048, 7)]));
+        final displaced = await uploadOf('db/b.bin');
+
+        await store.copy('db/a.bin', 'db/b.bin');
+        expect(await store.getBytes('db/b.bin'), _bytes(4096));
+        expect(await chunkRows(displaced), 0);
+        expect(await store.purgeOrphanedChunks(), 0);
+      });
+    });
+
     test('purgeOrphanedChunks collects rows no manifest refers to', () async {
       await store.put(key: 'db/orphan.txt', bytes: _text('body'));
       // Simulates the one residue the store tolerates: a chunk-delete that did

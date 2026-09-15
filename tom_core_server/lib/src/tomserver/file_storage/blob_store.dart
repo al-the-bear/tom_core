@@ -46,16 +46,16 @@
 /// depend on which backend it was configured with, and slips past every
 /// `on TomServerException` between it and the request boundary.
 ///
-/// So a failure is translated into [TomBlobStoreOperation]'s four keys, keeping
-/// the original as `rootException`. The module's own answers — `not_found`,
-/// `invalid_key`, `missing_chunk` — pass through untranslated, because callers
-/// branch on them.
+/// So a failure is translated into one of [TomBlobStoreOperation]'s keys,
+/// keeping the original as `rootException`. The module's own answers —
+/// `not_found`, `invalid_key`, `missing_chunk`, `same_key` — pass through
+/// untranslated, because callers branch on them.
 ///
 /// The translation is [TomBlobStore]'s own, not each backend's: a backend
-/// implements `doPut`, `doGet`, `doDescribe`, `doDelete` and the five public
-/// methods wrap them. The same wrapper is what validates the key, so both
-/// obligations hold for every backend including ones written later — see
-/// [TomBlobStore]'s "Why the five methods are final".
+/// implements `doPut`, `doGet`, `doDescribe`, `doDelete` and the public methods
+/// wrap them. The same wrapper is what validates the key, so both obligations
+/// hold for every backend including ones written later — see [TomBlobStore]'s
+/// "Why the public methods are final".
 library;
 
 import 'dart:async';
@@ -122,7 +122,13 @@ enum TomBlobStoreOperation {
   ),
 
   /// Removing what a key holds.
-  delete('storage.blob.delete_failed', 'The stored file could not be deleted.');
+  delete('storage.blob.delete_failed', 'The stored file could not be deleted.'),
+
+  /// Putting what one key holds under a second one as well.
+  copy('storage.blob.copy_failed', 'The stored file could not be copied.'),
+
+  /// Moving what one key holds to another.
+  move('storage.blob.move_failed', 'The stored file could not be moved.');
 
   const TomBlobStoreOperation(this.errorKey, this.message);
 
@@ -259,11 +265,12 @@ class TomBlobRange {
 /// `TomDatabaseBlobStore` and `TomS3BlobStore`; an application registers its own
 /// with `TomBlobStoreInfo.registerBackend`.
 ///
-/// ## Why the five methods are final
+/// ## Why the public methods are final
 ///
-/// A backend implements [doPut], [doGet], [doDescribe], [doDelete] and
-/// optionally [doExists]; the five public methods are this class's own and wrap
-/// them. That indirection buys two guarantees no backend can forget:
+/// A backend implements [doPut], [doGet], [doDescribe] and [doDelete], and
+/// optionally sharpens [doExists], [doGetRange], [doCopy] and [doMove], each of
+/// which is concrete and built from the four; the public methods are this
+/// class's own and wrap them. That indirection buys two guarantees no backend can forget:
 ///
 /// - **Every key is validated**, on reads as well as writes, so a key that is
 ///   refused is refused the same way whichever backend is configured — and a
@@ -371,6 +378,72 @@ abstract class TomBlobStore {
     () => doDescribe(validateKey(key)),
   );
 
+  /// Copies the blob at [fromKey] to [toKey], returning the new descriptor.
+  ///
+  /// A relocation is an ordinary thing to want: the documented pattern for
+  /// expiry is a date-prefixed key, so re-partitioning happens, and without
+  /// this it means pulling every byte through the server and pushing it back.
+  ///
+  /// Anything already at [toKey] is **replaced**, as it is by [put] — the same
+  /// rule, because a copy is a write and a second one about overwriting would
+  /// be a rule to remember. The media type and file name travel with the bytes:
+  /// a copy that lost its `Content-Type` would be served as
+  /// `application/octet-stream` and download as a file nothing opens.
+  ///
+  /// Throws [TomStorageException] (`storage.blob.not_found`) when [fromKey]
+  /// holds nothing, (`storage.blob.invalid_key`) for a key outside the grammar,
+  /// (`storage.blob.same_key`) when the two are equal, and
+  /// (`storage.blob.copy_failed`) when the backend fails.
+  Future<TomStoredBlob> copy(String fromKey, String toKey) => _translating(
+    TomBlobStoreOperation.copy,
+    fromKey,
+    () => doCopy(
+      validateKey(fromKey),
+      _differentKey(TomBlobStoreOperation.copy, fromKey, toKey),
+    ),
+  );
+
+  /// Moves the blob at [fromKey] to [toKey], returning the new descriptor.
+  ///
+  /// The source is gone when this returns. Ordering is the whole contract: the
+  /// destination is committed *before* the source is removed, so an interrupted
+  /// move leaves the blob readable under both keys rather than under neither.
+  /// The residue of a failed move is a duplicate, which a retry converges on;
+  /// the residue of the other order is a deletion.
+  ///
+  /// Same replacement rule, same errors as [copy], under
+  /// `storage.blob.move_failed`.
+  Future<TomStoredBlob> move(String fromKey, String toKey) => _translating(
+    TomBlobStoreOperation.move,
+    fromKey,
+    () => doMove(
+      validateKey(fromKey),
+      _differentKey(TomBlobStoreOperation.move, fromKey, toKey),
+    ),
+  );
+
+  /// [toKey] validated, and refused when it is [fromKey].
+  ///
+  /// Copying a key onto itself has no meaning worth guessing at, and the
+  /// obvious implementation — read it, write it back — is a truncation on any
+  /// backend whose write is not atomic. S3 refuses it outright without a
+  /// metadata directive. So it is one error rather than four behaviours.
+  static String _differentKey(
+    TomBlobStoreOperation operation,
+    String fromKey,
+    String toKey,
+  ) {
+    final validated = validateKey(toKey);
+    if (validated == validateKey(fromKey)) {
+      throw TomStorageException(
+        'storage.blob.same_key',
+        'A file cannot be ${operation == TomBlobStoreOperation.copy ? 'copied' : 'moved'} onto itself.',
+        parameters: {'key': toKey, 'operation': operation.name},
+      );
+    }
+    return validated;
+  }
+
   /// Deletes [key], returning whether anything was there to delete.
   Future<bool> delete(String key) => _translating(
     TomBlobStoreOperation.delete,
@@ -441,6 +514,41 @@ abstract class TomBlobStore {
 
   /// Deletes a validated [key]. Implemented by backends; called by [delete].
   Future<bool> doDelete(String key);
+
+  /// Copies a validated [fromKey] to a validated [toKey]. Called by [copy].
+  ///
+  /// Concrete, and a stream round trip: read the source, write it to the
+  /// destination. **Override it wherever the backend can do it without the
+  /// bytes leaving** — which is every backend shipped here, because each has a
+  /// native answer: a filesystem copy, a map entry, an `INSERT` that shares the
+  /// chunks, an `x-amz-copy-source` header.
+  ///
+  /// A concrete default is right here in a way it would not be for a listing.
+  /// The cost of this one is not misleading — a stream round trip is exactly as
+  /// expensive as it looks — whereas a default `list` would hide a paginated
+  /// scan behind a method that reads like a map lookup.
+  Future<TomStoredBlob> doCopy(String fromKey, String toKey) async {
+    final source = await doDescribe(fromKey);
+    if (source == null) throw notFound(fromKey);
+    return doPut(
+      key: toKey,
+      bytes: doGet(fromKey),
+      mediaType: source.mediaType,
+      fileName: source.fileName,
+    );
+  }
+
+  /// Moves a validated [fromKey] to a validated [toKey]. Called by [move].
+  ///
+  /// Concrete, and defined as a copy followed by a delete — in that order, so
+  /// an interruption leaves a duplicate rather than a hole. Override it where
+  /// the backend can rename: a filesystem does, and a manifest row's key is a
+  /// column to update.
+  Future<TomStoredBlob> doMove(String fromKey, String toKey) async {
+    final moved = await doCopy(fromKey, toKey);
+    await doDelete(fromKey);
+    return moved;
+  }
 
   /// Whether a validated [key] holds a blob. Called by [exists].
   ///
@@ -665,6 +773,7 @@ abstract class TomBlobStore {
     'storage.blob.invalid_key',
     'storage.blob.invalid_key_prefix',
     'storage.blob.missing_chunk',
+    'storage.blob.same_key',
   };
 
   /// The error raised when [key] holds nothing — one spelling, so a caller can
@@ -818,6 +927,38 @@ class TomMemoryBlobStore extends TomBlobStore {
     final end = (range.endExclusive ?? bytes.length).clamp(0, bytes.length);
     final start = range.start.clamp(0, end);
     yield Uint8List.fromList(bytes.sublist(start, end));
+  }
+
+  @override
+  Future<TomStoredBlob> doCopy(String fromKey, String toKey) async {
+    final bytes = _content[fromKey];
+    final source = _descriptors[fromKey];
+    if (bytes == null || source == null) throw TomBlobStore.notFound(fromKey);
+    // Copied rather than aliased. Defensive rather than load-bearing, and worth
+    // saying which: nothing mutates a stored list in place today — `doGet`
+    // hands out a copy and `doPut` assigns a fresh buffer — so a shared list
+    // has no observable consequence and no test can catch its absence. What it
+    // buys is that the first code to mutate one in place finds two blobs rather
+    // than one, on the backend whose stated trade is fidelity over speed.
+    final copied = Uint8List.fromList(bytes);
+    final descriptor = TomStoredBlob(
+      key: toKey,
+      mediaType: source.mediaType,
+      byteCount: copied.length,
+      storedAt: DateTime.now(),
+      fileName: source.fileName,
+    );
+    _content[toKey] = copied;
+    _descriptors[toKey] = descriptor;
+    return descriptor;
+  }
+
+  @override
+  Future<TomStoredBlob> doMove(String fromKey, String toKey) async {
+    final moved = await doCopy(fromKey, toKey);
+    _content.remove(fromKey);
+    _descriptors.remove(fromKey);
+    return moved;
   }
 
   @override

@@ -2,6 +2,37 @@
 
 ### Added
 
+- **`copy` and `move` on the blob contract (tcopen147).** Relocating a blob
+  meant streaming it out of the store and back in, which is not theoretical: the
+  documented pattern for expiry is a date-prefixed key, so re-partitioning is a
+  thing deployments do.
+
+  Both are concrete on `TomBlobStore` — a stream round trip, and a copy followed
+  by a delete — so a backend an application writes still gets them. Every
+  shipped backend overrides them with a relocation in which the bytes do not
+  move: a `File.copy` staged and renamed, a `rename`, a map entry, a second
+  manifest row against the **same** upload, and `x-amz-copy-source`. A concrete
+  default is right here in a way it would not be for a listing: a stream round
+  trip costs exactly what it looks like it costs, where a default `list` would
+  hide a paginated scan behind a method that reads like a map lookup.
+
+  The rules both share: the destination is replaced as `put` replaces, the media
+  type and file name travel with the bytes, an absent source is
+  `storage.blob.not_found` rather than an empty destination, and a key onto
+  itself is `storage.blob.same_key` — refused by the contract before any backend
+  is touched, because the obvious implementation is a truncation on any backend
+  whose write is not atomic and S3 refuses it outright. The **order** inside
+  `move` is contract rather than detail: the destination commits before the
+  source is removed, so an interrupted move leaves a duplicate — which a retry
+  converges on — rather than a hole.
+
+  `TomDatabaseBlobStore.doDelete` now releases an upload's chunks only when no
+  manifest row still names it. That guard is what makes the shared-upload copy
+  safe rather than merely clever: without it, deleting or overwriting either key
+  would take the bytes the other still pointed at, with no error anywhere. It is
+  the predicate `purgeOrphanedChunks` already applies to the whole table,
+  narrowed to one upload.
+
 - **A byte range on the blob contract, and `Range` on the download endpoint
   (tcopen146).** `get` took a key and nothing else, so a download endpoint
   honouring HTTP `Range` had to read from zero and throw the prefix away — the
