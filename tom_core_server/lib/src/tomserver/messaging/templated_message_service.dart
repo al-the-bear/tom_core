@@ -63,11 +63,47 @@ abstract class TomTemplatedMessageService<R> {
   /// one outbox usually carries every channel's traffic.
   final TomMessageOutbox outbox;
 
-  /// The bundle set every template is resolved against.
-  final TomLocalizedTextResources texts;
+  /// The bundle set passed to the constructor, or `null` to use the installed
+  /// one.
+  final TomLocalizedTextResources? _texts;
 
-  /// Creates the service over an [outbox] and a bundle set.
-  const TomTemplatedMessageService({required this.outbox, required this.texts});
+  /// The bundle set every template is resolved against: the one this service
+  /// was given, else the one the deployment installed as a bean.
+  ///
+  /// Resolved per call rather than at construction, which is what lets a
+  /// service be built before the bundles are loaded — a bootstrap that
+  /// constructs its services and *then* reads its resource files off disk is
+  /// the ordinary shape, and an eagerly resolved field would make that order
+  /// wrong for no reason a caller could see.
+  ///
+  /// **Throws rather than rendering without text.** With neither a passed set
+  /// nor an installed one there is nothing to resolve a template against, and
+  /// the alternatives are both worse: an empty set would send every message
+  /// blank, and a blank message that was *sent* cannot be recalled, while
+  /// falling back to the key would put `email.invoice.subject` in front of a
+  /// recipient. The same argument [TomLocalizedTextResources.resolve] makes for
+  /// answering `null` instead of an empty set.
+  TomLocalizedTextResources get texts =>
+      _texts ??
+      TomLocalizedTextResources.resolve() ??
+      (throw TomMessagingException(
+        'messaging.$channelName.texts.not_configured',
+        'The $channelName service has no bundle set: none was passed to it and '
+            'no TomLocalizedTextResources bean is installed.',
+        parameters: {'channel': channelName},
+      ));
+
+  /// Creates the service over an [outbox] and, optionally, a bundle set.
+  ///
+  /// [texts] is an **override**. Leave it out and the service reads the
+  /// installed [TomLocalizedTextResources] bean, which is how a deployment
+  /// wires one bundle set into every channel; pass one to give this service
+  /// its own — a test with a fixture bundle, or a second service rendering
+  /// from a different set.
+  const TomTemplatedMessageService({
+    required this.outbox,
+    TomLocalizedTextResources? texts,
+  }) : _texts = texts;
 
   /// The channel's name as it appears in this service's error keys — `email`,
   /// `sms`.

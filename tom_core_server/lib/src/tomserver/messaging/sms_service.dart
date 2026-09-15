@@ -186,11 +186,7 @@ class TomSmsService extends TomTemplatedMessageService<TomSmsRequest> {
   final int? maxSegments;
 
   /// Creates the service over an [outbox] and a bundle set.
-  const TomSmsService({
-    required super.outbox,
-    required super.texts,
-    this.maxSegments,
-  });
+  const TomSmsService({required super.outbox, super.texts, this.maxSegments});
 
   @override
   String get channelName => 'sms';

@@ -919,7 +919,7 @@ text is what makes the rule enforceable by the compiler.
 ```dart
 const TomTemplatedMessageService({
   required TomMessageOutbox outbox,
-  required TomLocalizedTextResources texts,
+  TomLocalizedTextResources? texts,
 })
 ```
 
@@ -928,7 +928,7 @@ const TomTemplatedMessageService({
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `outbox` | `TomMessageOutbox` | Where rendered messages are queued. Not owned: closing it is the application's call, because one outbox usually carries every channel's traffic (final). |
-| `texts` | `TomLocalizedTextResources` | The bundle set every template is resolved against (final). |
+| `texts` | `TomLocalizedTextResources` | *(getter)* The bundle set every template is resolved against: the one passed to the constructor, else the installed `TomLocalizedTextResources` bean. Resolved per call, so a service may be built before the bundles are read off disk. Throws `messaging.<channel>.texts.not_configured` when there is neither, rather than rendering blank. |
 | `channelName` | `String` | *(abstract getter)* The channel's name as it appears in this service's error keys — `email`, `sms`. A missing SMS template must not report itself as an email fault. |
 | `listTemplateKey` | `static const String` | `'messaging.list'` — the well-known key `requiredList` resolves its separators under. One key rather than a per-template one, because a list's punctuation is a fact about the *language* and not about the mail. |
 | `listSeparatorSubKey` | `static const String` | `'separator'` — what goes between all but the last two items. |
@@ -1016,7 +1016,7 @@ markup, but a mail with no plain-text part is a deliverability problem.
 ```dart
 const TomEmailService({
   required TomMessageOutbox outbox,
-  required TomLocalizedTextResources texts,
+  TomLocalizedTextResources? texts,
 })
 ```
 
@@ -1621,7 +1621,7 @@ template.
 ```dart
 const TomSmsService({
   required TomMessageOutbox outbox,
-  required TomLocalizedTextResources texts,
+  TomLocalizedTextResources? texts,
   int? maxSegments,
 })
 ```

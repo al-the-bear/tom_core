@@ -2,6 +2,37 @@
 
 ### Added
 
+- **The bean pathway is the wiring, and now has users (tcopen178).** Three
+  documents presented `TomBean.withType(TomLocalizedTextResources, …)` plus
+  `resolve()` as *the* way to wire the module, and neither half had a caller
+  anywhere — no library, no sample, no test. Meanwhile the one real deployment,
+  `advanced_ops_server`, had rolled its own `static TomLocalizedTextResources?`
+  behind a `resources()` accessor: a process-wide singleton with none of a
+  bean's substitutability, written by someone who had the documents. That is
+  the evidence that decided it — when there is nowhere to put the set, a
+  deployment invents somewhere worse.
+
+  `TomTemplatedMessageService.texts` is now an **optional** constructor
+  argument and a getter: the passed set if there is one, else the installed
+  bean, else a refusal keyed `messaging.<channel>.texts.not_configured` rather
+  than a blank render. Resolved per render rather than at construction, which
+  lets a bootstrap build its services before it reads its bundles off disk —
+  the ordinary order, which an eagerly resolved field would have made wrong for
+  no visible reason. `TomEmailService` and `TomSmsService` follow; both keep
+  their `const` constructors.
+
+  `OpsTexts` installs the bean instead of caching privately, `ops_runtime`
+  calls `OpsTexts.install()` at boot, and its digest service is constructed
+  with no `texts` argument at all. `OpsTexts.reset()` is gone: it had no caller,
+  and a binding is removed only by `TomBean.resetBeanContext()`, which clears
+  every bean — a helper hiding how wide that is would be worse than none.
+
+  Seven tests in `resources_test.dart` cover what had none: `resolve` answering
+  null, the installed set, and null again for a type bound to something else;
+  a service reading the bean; a passed set overriding it; and the two-channel
+  refusal. Mutation-tested — reversing the precedence, substituting an empty
+  set for the throw, and dropping `resolve`'s type test each fail.
+
 - **The resources example reaches the two cases it was missing, and the README
   indexes it (tcopen177).** `example/resources/` already existed — the todo's
   premise was written before it landed — and covered the chain's outer rungs:

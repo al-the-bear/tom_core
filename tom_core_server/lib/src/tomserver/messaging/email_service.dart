@@ -204,7 +204,7 @@ class TomEmailService extends TomTemplatedMessageService<TomEmailRequest> {
   static const String htmlSubKey = 'html';
 
   /// Creates the service over an [outbox] and a bundle set.
-  const TomEmailService({required super.outbox, required super.texts});
+  const TomEmailService({required super.outbox, super.texts});
 
   @override
   String get channelName => 'email';

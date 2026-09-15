@@ -1,8 +1,9 @@
 /// Where the ops server's user-facing text comes from.
 ///
 /// Two YAML bundles under `assets/`, one per locale, loaded into a
-/// [TomLocalizedTextResources] and handed to [TomEmailService]. Nothing a
-/// recipient reads is written in Dart.
+/// [TomLocalizedTextResources], installed as the process-wide bean and read
+/// from there by [TomEmailService]. Nothing a recipient reads is written in
+/// Dart.
 ///
 /// ## Why a bundle *set* rather than one bundle
 ///
@@ -59,10 +60,33 @@ class OpsTexts {
   /// The locale a recipient without one is served in.
   static const String defaultLocaleTag = 'en';
 
-  static TomLocalizedTextResources? _cache;
+  /// Installs the bundle set as the process-wide
+  /// [TomLocalizedTextResources] bean, and returns it.
+  ///
+  /// The bean *is* the cache. An earlier version of this class kept a
+  /// `static TomLocalizedTextResources?` of its own, which is a process-wide
+  /// singleton with none of a bean's advantages: nothing else could reach it,
+  /// and no test or deployment could substitute a different set without
+  /// editing this file. `TomBean` already provides exactly that, and the
+  /// framework's services read it — a `TomEmailService` built with no `texts`
+  /// argument resolves this one.
+  ///
+  /// Idempotent: a second call answers the installed set rather than reading
+  /// the files again, so a caller may treat it as "make sure the text is
+  /// there" without tracking whether boot already did.
+  static TomLocalizedTextResources install({
+    String directory = assetDirectory,
+  }) {
+    final installed = TomLocalizedTextResources.resolve();
+    if (installed != null) return installed;
+    final texts = load(directory: directory);
+    TomBean.withType(TomLocalizedTextResources, texts);
+    return texts;
+  }
 
-  /// The bundle set, loaded once.
-  static TomLocalizedTextResources resources() => _cache ??= load();
+  /// The installed bundle set, installing it from [assetDirectory] on the
+  /// first call.
+  static TomLocalizedTextResources resources() => install();
 
   /// Reads the bundles from [directory] without consulting the cache.
   ///
@@ -84,7 +108,4 @@ class OpsTexts {
       defaultLocale: TomTextLocale(defaultLocaleTag),
     );
   }
-
-  /// Forgets the cached set, so the next [resources] call re-reads the files.
-  static void reset() => _cache = null;
 }

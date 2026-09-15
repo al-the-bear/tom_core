@@ -93,6 +93,12 @@ class OpsRuntime {
     // its own table would mean the schema exists in two places — the migration
     // chain and a start-up side effect — and the schema-convergence test could
     // no longer tell which one the running server used.
+    // Text first, and installed rather than held: the bundles are read off disk
+    // here, at boot, so a missing or malformed one stops the server instead of
+    // surfacing at 06:00 as a blank digest. Installing it as the bean is what
+    // lets every service that renders text find it without being handed it.
+    OpsTexts.install();
+
     final nodes = TomSqlSchedulerNodes(
       datasource,
       nodeId: nodeId,
@@ -148,10 +154,13 @@ class OpsRuntime {
       digest: OpsDigestService(
         audience: const RepositoryDigestAudience(),
         // The service, not the outbox: the digest must have no way to write a
-        // subject line. `OpsTexts.resources()` reads `assets/text_*.yaml` here,
+        // subject line. `OpsTexts.install()` above reads `assets/text_*.yaml`
         // at boot, so a missing or malformed bundle stops the server rather
-        // than being discovered at 06:00 as a blank mail.
-        email: TomEmailService(outbox: outbox, texts: OpsTexts.resources()),
+        // than being discovered at 06:00 as a blank mail — and the service is
+        // built with no `texts` argument, because it reads the bean that
+        // install put there. That is the framework's wiring rather than this
+        // sample's: any other service rendering text resolves the same set.
+        email: TomEmailService(outbox: outbox),
         sender: digestSender,
       ),
       report: OpsReportService(

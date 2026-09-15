@@ -589,4 +589,99 @@ void main() {
       expect(set.textOrNull('k', locale: TomTextLocale('en')), 'second');
     });
   });
+
+  // ===========================================================================
+  // THE INSTALLED BUNDLE SET
+  // ===========================================================================
+
+  group('the deployment installs one set, and services find it', () {
+    // The bean is the module's answer to "where does text come from", and it
+    // is the answer precisely because the alternative writes itself: a
+    // deployment with nowhere to put the set reaches for a static field of its
+    // own, which is a process-wide singleton with none of a bean's
+    // substitutability. The sample did exactly that until it had this.
+    //
+    // The bean context is process-global, so every test here puts it back.
+    tearDown(TomBean.resetBeanContext);
+
+    test('resolve answers null when nothing is installed', () {
+      // Null rather than an empty set, and the reason is the same one
+      // `TomTemplatedMessageService.texts` makes: an empty set renders every
+      // message blank, and a blank message that was *sent* cannot be recalled.
+      expect(TomLocalizedTextResources.resolve(), isNull);
+    });
+
+    test('resolve answers the installed set', () {
+      final texts = fixtureTexts();
+      TomBean.withType(TomLocalizedTextResources, texts);
+
+      expect(TomLocalizedTextResources.resolve(), same(texts));
+    });
+
+    test('resolve answers null when the type is bound to something else', () {
+      // It type-tests what it finds rather than casting, so a mis-wired
+      // deployment fails as an absence its caller already handles rather than
+      // as a cast error raised at whichever consumer asked first.
+      TomBean.overrideWithType(TomLocalizedTextResources, 'not a bundle set');
+
+      expect(TomLocalizedTextResources.resolve(), isNull);
+    });
+
+    test('a service with no texts argument reads the installed set', () {
+      final texts = fixtureTexts();
+      TomBean.withType(TomLocalizedTextResources, texts);
+
+      expect(TomEmailService(outbox: _outbox()).texts, same(texts));
+    });
+
+    test('a service given a set uses that one, installed or not', () {
+      // The argument is an override, so a test with a fixture bundle or a
+      // second service rendering from another set is unaffected by what the
+      // deployment installed.
+      final installed = fixtureTexts();
+      final own = fixtureTexts();
+      TomBean.withType(TomLocalizedTextResources, installed);
+
+      final service = TomEmailService(outbox: _outbox(), texts: own);
+
+      expect(service.texts, same(own));
+      expect(service.texts, isNot(same(installed)));
+    });
+
+    test('a service with neither refuses rather than rendering blank', () {
+      // The failure a deployment must not be able to reach silently. It is
+      // raised on the first render rather than at construction, because the
+      // set is resolved per call — which is what lets a bootstrap build its
+      // services before it reads its bundles off disk.
+      expect(
+        () => TomEmailService(outbox: _outbox()).texts,
+        throwsA(
+          isA<TomMessagingException>().having(
+            (error) => error.key,
+            'key',
+            'messaging.email.texts.not_configured',
+          ),
+        ),
+      );
+    });
+
+    test('the refusal names the channel that could not render', () {
+      // Two services, two keys: an operator reading `messaging.sms.*` must not
+      // be sent to the mail bundle.
+      expect(
+        () => TomSmsService(outbox: _outbox()).texts,
+        throwsA(
+          isA<TomMessagingException>().having(
+            (error) => error.key,
+            'key',
+            'messaging.sms.texts.not_configured',
+          ),
+        ),
+      );
+    });
+  });
 }
+
+/// An outbox for a service that never queues anything: every test above reads
+/// `texts` and stops there.
+TomMessageOutbox _outbox() => TomMessageOutbox(router: TomMessageRouter([]));

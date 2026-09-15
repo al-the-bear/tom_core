@@ -17,6 +17,7 @@ concurrently. This module makes the locale an argument.
 - [A Miss Is Null, Never the Key](#a-miss-is-null-never-the-key)
 - [Parameters](#parameters)
 - [Installing a Bundle Set](#installing-a-bundle-set)
+  - [The bean is what a service reads when it is not handed one](#the-bean-is-what-a-service-reads-when-it-is-not-handed-one)
   - [The keys are validated, not just normalised](#the-keys-are-validated-not-just-normalised)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
@@ -296,6 +297,34 @@ loading rules — a database, an asset archive, `TomTextResourceProvider.load`.
 is nullable with **no** fallback: an empty default would render every message
 blank, and a blank message that was *sent* is worse than a wiring error that was
 raised.
+
+### The bean is what a service reads when it is not handed one
+
+`TomTemplatedMessageService` — and so `TomEmailService` and `TomSmsService` —
+takes `texts` as an **optional** argument. Leave it out and the service resolves
+the installed bean per render; pass one and that set wins, which is how a test
+uses a fixture bundle and how a second service renders from a different set.
+With neither, the first render throws
+`messaging.<channel>.texts.not_configured` rather than rendering blank.
+
+```dart
+TomBean.withType(TomLocalizedTextResources, texts);   // once, at bootstrap
+
+final email = TomEmailService(outbox: outbox);        // reads the bean
+final fixture = TomEmailService(outbox: outbox, texts: testBundles); // overrides it
+```
+
+Resolved per render rather than at construction, so a bootstrap may build its
+services before it reads its bundles off disk — an order that is otherwise
+wrong for no reason the caller could see.
+
+**This is the wiring, not a convenience.** A deployment with nowhere to put the
+set writes a static field of its own, which is a process-wide singleton with
+none of a bean's substitutability: nothing else can reach it and no test can
+replace it without editing the file that declares it.
+`advanced_ops_server` did exactly that until it had this — `OpsTexts.install()`
+is now the one line, and its digest service is constructed with no `texts`
+argument at all.
 
 ### The Keys Are Validated, Not Just Normalised
 
