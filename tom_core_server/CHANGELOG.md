@@ -2,6 +2,29 @@
 
 ### Added
 
+- **`purgeOrphanedChunks` gets the schedule it was documented as needing
+  (tcopen151).** `TomDatabaseBlobStore` stores a blob as a manifest row plus
+  chunk rows and deletes the manifest first, so a cleanup that fails between the
+  two leaves chunk rows nothing refers to. The sweep for them shipped with no
+  caller outside the framework's own tests — a maintenance operation a backend
+  admits it needs and nobody is told to run, whose residue no read finds and
+  whose first symptom is a table larger than the blobs it holds, on the same
+  disk as the application's rows.
+
+  `doc/file_storage.md` now names the cadence and the cost of skipping it:
+  weekly, because the residue accumulates at the rate of a *failed* cleanup
+  rather than of the deletions, so a nightly sweep spends six full-table
+  anti-joins a week finding nothing; after whatever removes blobs, because that
+  is where the residue comes from; and a missed run collects nothing extra,
+  since the sweep is a predicate over the table rather than a window.
+
+  `advanced_ops_server` runs it as `OpsBlobSweepJob` at 04:00 on Sunday, between
+  its 03:00 retention purge and its 05:00 export. `OpsBlobSweepService` resolves
+  the configured store at wire-up and refuses anything that is not a database
+  backend (`ops.blob_sweep.unsupported_backend`) — a directory store has no
+  chunk rows and an object store has no manifest, so repointing the store
+  elsewhere would leave a weekly no-op that reports success.
+
 - **`TomBlobStore.deletePrefix`, the reclaim retention is built on
   (tcopen150).** A store grew without limit and forgot nothing: no per-tenant
   ceiling, no total ceiling, no retention, and nothing that would notice a

@@ -61,7 +61,7 @@ void main() {
   });
 
   group('the publisher is not on the scheduler, and must stay off it', () {
-    test('this server declares exactly three scheduled jobs', () {
+    test('this server declares exactly four scheduled jobs', () {
       // Named rather than counted, so the failure message says *which* job
       // appeared — a bare `hasLength(3)` would report a number and leave the
       // reader to work out what it means. Scoped to this server's `ops.`
@@ -75,6 +75,7 @@ void main() {
         opsPurgeJobName,
         opsReportJobName,
         opsDigestJobName,
+        opsBlobSweepJobName,
       });
     });
 

@@ -1,13 +1,13 @@
-/// The three scheduled jobs, and nothing else.
+/// The four scheduled jobs, and nothing else.
 ///
 /// ## Why every class here is four lines
 ///
 /// A job class is a *trigger*: a name, a schedule, a retry policy, and one call.
-/// The work lives in [OpsRetentionService], [OpsDigestService] and
-/// [OpsReportService], which take their collaborators through their
-/// constructors and can therefore be exercised with a fake store, a memory
-/// transport and a memory export store — no scheduler, no reflection, no
-/// database.
+/// The work lives in [OpsRetentionService], [OpsDigestService],
+/// [OpsReportService] and [OpsBlobSweepService], which take their collaborators
+/// through their constructors and can therefore be exercised with a fake store,
+/// a memory transport and a memory export store — no scheduler, no reflection,
+/// no database.
 ///
 /// That split is not tidiness. `scheduled_job.dart` builds a job body per run
 /// with `newInstance('', const [])`, so a job class *cannot* take constructor
@@ -28,18 +28,23 @@
 ///
 /// ## Why the schedules are spread across the night
 ///
-/// 03:00 purge, 05:00 report, 06:00 digest. The order is the dependency: the
-/// digest counts open work and would be wrong if it ran while the purge was
-/// still deleting, and the report describes a closed week that the purge must
-/// not still be trimming. They are separate jobs rather than one because their
-/// retry budgets are genuinely different — a failed purge should be retried, a
-/// failed digest must not recompose after the outbox already accepted half of
-/// it — and one job with three phases could only have one policy.
+/// 03:00 purge, 04:00 blob sweep (Sunday), 05:00 report (Sunday), 06:00 digest.
+/// The order is the dependency: the digest counts open work and would be wrong
+/// if it ran while the purge was still deleting, the report describes a closed
+/// week that the purge must not still be trimming, and the sweep collects the
+/// residue the purge's cascading deletes can leave — so it has to follow the
+/// purge and precede the report, which writes into the same store. They are
+/// separate jobs rather than one because their retry budgets are genuinely
+/// different — a failed purge should be retried, a failed digest must not
+/// recompose after the outbox already accepted half of it, a missed sweep costs
+/// one week of residue — and one job with four phases could only have one
+/// policy.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../ops_identity.dart';
+import 'blob_sweep_service.dart';
 import 'digest_service.dart';
 import 'report_service.dart';
 import 'retention_service.dart';
@@ -57,6 +62,9 @@ const String opsDigestServiceBean = 'opsDigestService';
 /// Bean name of the [OpsReportService] the report job resolves.
 const String opsReportServiceBean = 'opsReportService';
 
+/// Bean name of the [OpsBlobSweepService] the blob-sweep job resolves.
+const String opsBlobSweepServiceBean = 'opsBlobSweepService';
+
 // =============================================================================
 // JOB NAMES
 // =============================================================================
@@ -69,6 +77,9 @@ const String opsReportJobName = 'ops.report';
 
 /// Store key of the morning digest.
 const String opsDigestJobName = 'ops.digest';
+
+/// Store key of the weekly blob-store sweep.
+const String opsBlobSweepJobName = 'ops.blobSweep';
 
 // =============================================================================
 // JOBS
@@ -132,6 +143,41 @@ class OpsReportJob extends TomJobBase {
   Future<Object?> execute() => runAsOpsService(() async {
     final outcome = await _service.get().publishReport(run.scheduledFor);
     return outcome.toString();
+  });
+}
+
+/// Deletes the chunk rows no manifest refers to.
+///
+/// [TomRetryPolicy.none] and no recovery, which is the opposite of the purge
+/// above and for a reason worth stating: skipping this costs one week of
+/// residue that the next run collects anyway, because the sweep is defined by a
+/// predicate over the table rather than by a window. There is nothing for a
+/// retry to rescue and nothing for a recovery to resume.
+///
+/// `TomMissedWindowPolicy.skip` follows from the same fact. A sweep that fired
+/// late would do exactly what the next scheduled one will, so running it twice
+/// in quick succession spends a full-table anti-join to find what the first run
+/// already took.
+@tomReflector
+@TomScheduledJob(
+  name: opsBlobSweepJobName,
+  cron: '0 4 * * 0',
+  retry: TomRetryPolicy.none,
+  timeout: Duration(minutes: 20),
+  missedWindow: TomMissedWindowPolicy.skip,
+)
+class OpsBlobSweepJob extends TomJobBase {
+  final TomBean<OpsBlobSweepService> _service =
+      TomBean<OpsBlobSweepService>.fromName(opsBlobSweepServiceBean);
+
+  @override
+  Future<Object?> execute() => runAsOpsService(() async {
+    // No `run.scheduledFor`: unlike the other three this job has no window. It
+    // deletes what no manifest refers to *now*, which is the same answer
+    // whenever it is asked — which is also why a missed run is skipped rather
+    // than caught up.
+    final report = await _service.get().sweep();
+    return report.toString();
   });
 }
 

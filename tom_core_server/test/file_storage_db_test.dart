@@ -1652,7 +1652,7 @@ void main() async {
         expect(await newStore.exists(key), isFalse);
       }
     });
-  });
+  }, skip: skipReason);
 
   group('blob access under a row scope', () {
     late TomDataSourceInfo dsi;

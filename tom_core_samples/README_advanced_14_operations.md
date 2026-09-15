@@ -30,15 +30,17 @@ demonstrated from inside either one:
 | an application mail names a template key, not a body | `messaging.md` § *Application Email: A Template Key, Not a Body* | the digest holds no sentence a recipient reads; `assets/text_{en,de}.yaml` do, and `ops_digest_test.dart` renders one digest in two languages |
 | an export's only real seam is storage | `export.md` § *Storage: A Deliberately Narrow Seam* | the weekly report is rows in the same `tom_blob` pair as an item attachment |
 | the repository is the audit chokepoint | `audit.md` | a machine's 03:00 delete produces the same trail a human's would |
+| the blob store's orphan sweep needs a schedule | `file_storage.md` § *Sweeping the database backend's residue* | `ops.blobSweep` runs it weekly, after what creates the residue and before what adds rows that cannot be orphans |
 
-The server runs four pieces of recurring work. Three are `@TomScheduledJob`s;
-the fourth deliberately is not, and the difference is the most instructive thing
+The server runs five pieces of recurring work. Four are `@TomScheduledJob`s;
+the fifth deliberately is not, and the difference is the most instructive thing
 in this part.
 
 | Work | Schedule | Retry policy | The reasoning |
 | --- | --- | --- | --- |
 | `ops.purge` | `0 3 * * *` | 2 attempts, `requestsRecovery: true` | idempotent by construction — a destroyed row is not returned by the next scan, so a recovered run *resumes*. Two attempts, not three: a purge that fails twice fails for a reason the next window will not fix, and the rows are still there to find. |
 | `ops.digest` | `0 6 * * *` | **`TomRetryPolicy.none`**, `missedWindow: skip` | the retry budget belongs to the outbox, per message. Skipping a missed window because a summary of yesterday's open work, delivered at noon after an outage, is a mail contradicted by the board its reader is already looking at. |
+| `ops.blobSweep` | `0 4 * * 0` | **`TomRetryPolicy.none`**, `missedWindow: skip` | the one maintenance operation `TomDatabaseBlobStore` admits it needs, and until this job it had no caller outside the framework's own tests. Weekly because the residue accumulates at the rate of a *failed* cleanup, not of the deletions; between the purge and the report because the purge is where the residue comes from and the report only adds rows that cannot be orphans yet. No retry and no recovery: the sweep is a predicate over the table rather than a window, so a missed run costs one week of rows and the next run takes them. |
 | `ops.report` | `0 5 * * 0` | 3 attempts | `allowOverlap: false` matters more here than anywhere: two concurrent runs compute two windows, render two reports, and store them under two date-partitioned keys — leaving a reader to guess which of two plausible files is the week's. |
 | the anchor publisher | a plain `Timer`, hourly | — | see below. |
 
@@ -328,6 +330,7 @@ Composing four modules over live data is what walked into it.
 | retention | `ops_retention_test.dart` | one `destroy` per candidate, each carrying an entity; the terminal-status filter; the unscoped pass |
 | messaging | `ops_digest_test.dart` | composition from template keys in two languages, that the shipped bundles carry every key the digest resolves, that an unknown template fails before anything is queued, the message id as idempotence key, and a failed send redelivered *without* recomposition |
 | export | `ops_report_test.dart` | the rendered projection, the date-partitioned key, the window derived from `run.scheduledFor` |
+| file storage | `ops_blob_sweep_test.dart` | that the sweep is called and its count reported, that zero is reported as a result rather than as silence, and that a store which cannot sweep is refused at wire-up rather than becoming a weekly no-op |
 | audit anchoring | `ops_anchor_test.dart` | the publisher's schedule — and that no `@TomScheduledJob` declares it |
 | declarations | `ops_jobs_test.dart` | every schedule, retry policy, timeout and overlap flag, read back from the annotations |
 | authorization | `ops_authorization_meet_test.dart` | `min(user, server)`: the same actor refused under the cap, the refusal recorded, and no retry requested |

@@ -21,6 +21,7 @@ without the second; the second is built entirely on the first.
   - [A Byte Range, and Who Is Obliged to Serve It](#a-byte-range-and-who-is-obliged-to-serve-it)
   - [The Content Digest](#the-content-digest)
   - [Quota and Expiry](#quota-and-expiry)
+    - [Sweeping the database backend's residue](#sweeping-the-database-backends-residue)
   - [Migrating Between Backends](#migrating-between-backends)
   - [Relocating a Blob](#relocating-a-blob)
 - [Keys Are a Grammar, Not a String](#keys-are-a-grammar-not-a-string)
@@ -345,8 +346,42 @@ is what the date in a key is for.
 **The schedule is the deployment's.** Nothing here runs on a timer. A nightly
 purge belongs in the back-office tier beside the other passes that tidy up after
 the day — the scheduling module already provides the machinery, and a second
-copy of it here would give this module two reasons to change. The same is true
-of `purgeOrphanedChunks`.
+copy of it here would give this module two reasons to change.
+
+#### Sweeping the database backend's residue
+
+`TomDatabaseBlobStore` stores a blob as one manifest row plus N chunk rows, and
+every path that removes one deletes the manifest **first** — that is the point
+at which the blob is gone — and the chunks after. A failure between the two
+leaves chunk rows nothing refers to. `purgeOrphanedChunks()` is the sweep for
+them, and it needs a caller.
+
+**Weekly, and after whatever deletes blobs.** The residue needs a cleanup that
+*failed*, not a blob that was deleted, so it accumulates at the rate of that
+failure and not at the rate of the deletions — a nightly sweep would spend six
+full-table anti-joins a week finding nothing. Run it after the pass that removes
+blobs (a retention purge, a cascading row delete), since that is where the
+residue is created; run it before anything that writes into the same store, so
+the scan reads the fewest rows that can never be orphans.
+
+**What it costs to skip.** The sweep is a predicate over the table rather than a
+window, so a missed run collects nothing extra and the next one takes everything
+— there is no backlog to catch up. What grows in the meantime is the chunk
+table, by the size of each blob whose cleanup failed. Those rows are *invisible*:
+no read finds them, no `describe` reports them, and `purgeOrphanedChunks` is the
+only thing that counts them. The first symptom is a table larger than the blobs
+it holds — and on this backend that disk is the same disk the application's rows
+are on.
+
+A number that is routinely non-zero is not a sweep doing its job. It is a
+cleanup path failing somewhere, and the sweep being the only thing that notices.
+
+`advanced_ops_server` runs it — 04:00 on Sunday, after its 03:00 retention purge
+and before its 05:00 export — as `OpsBlobSweepJob` over `OpsBlobSweepService`.
+That service resolves the configured store at **wire-up** and refuses anything
+that is not a database backend, because a directory store has no chunk rows and
+an object store has no manifest: repointing the store elsewhere does not make
+the job harmless, it makes it a scheduled no-op that reports success.
 
 ### Migrating Between Backends
 
@@ -598,7 +633,9 @@ Three design points, each forced rather than chosen:
   a single statement. A reader sees the previous blob or the complete new one; a
   write that fails deletes its own chunks and leaves the manifest alone.
   `purgeOrphanedChunks()` collects the residue of a cleanup that itself failed —
-  housekeeping for a schedule, not repair.
+  housekeeping for a schedule, not repair. See
+  [Sweeping the database backend's residue](#sweeping-the-database-backends-residue)
+  for how often to run it and what grows if nobody does.
 
 `chunkSize` sizes those rows, in *raw* bytes, and defaults to
 `TomDatabaseBlobStore.defaultChunkSize` — 256 KiB, declared once so the number
@@ -1327,8 +1364,6 @@ and the count of them is the assertion. Every step checks its own result, and
   [Quota and Expiry](#quota-and-expiry) gives. Nothing in this module refuses a
   `put` because an account has stored too much, and nothing runs a purge on a
   timer.
-- **`purgeOrphanedChunks` on a schedule.** The method exists; wiring it to a
-  periodic task belongs to whatever scheduler the application runs.
 
 ## Dependencies
 

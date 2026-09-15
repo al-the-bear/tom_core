@@ -38,6 +38,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 import 'jobs/digest_service.dart';
 import 'jobs/ops_jobs.dart';
 import 'jobs/report_service.dart';
+import 'jobs/blob_sweep_service.dart';
 import 'jobs/retention_service.dart';
 import 'ops_anchoring.dart';
 import 'ops_identity.dart';
@@ -159,6 +160,11 @@ class OpsRuntime {
           store: TomBlobExportStore.named(null, keyPrefix: opsExportKeyPrefix),
         ),
       ),
+      // Resolved and *checked* here rather than at 04:00 on Sunday: the sweep
+      // is a property of the database backend, so a deployment that repoints
+      // its `files` store elsewhere would otherwise keep a scheduled no-op that
+      // reports success every week.
+      blobSweep: OpsBlobSweepService.configured(),
     );
   }
 
@@ -178,7 +184,7 @@ class OpsRuntime {
   /// The cluster roll call, when this runtime has one.
   final TomSqlSchedulerNodes? nodes;
 
-  /// Publishes the three services under the names the job classes resolve.
+  /// Publishes the four services under the names the job classes resolve.
   ///
   /// Separate from the constructor because the job classes cannot be handed
   /// collaborators — they are built per run by `newInstance('', const [])` —
@@ -189,10 +195,12 @@ class OpsRuntime {
     required OpsRetentionService retention,
     required OpsDigestService digest,
     required OpsReportService report,
+    required OpsBlobSweepService blobSweep,
   }) {
     TomBean<OpsRetentionService>.withName(opsRetentionServiceBean, retention);
     TomBean<OpsDigestService>.withName(opsDigestServiceBean, digest);
     TomBean<OpsReportService>.withName(opsReportServiceBean, report);
+    TomBean<OpsBlobSweepService>.withName(opsBlobSweepServiceBean, blobSweep);
   }
 
   /// Installs the trail, registers the declared jobs, and starts everything.

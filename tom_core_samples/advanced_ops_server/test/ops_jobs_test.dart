@@ -33,14 +33,19 @@ TomJobDefinition _definition(String name) =>
     TomScheduledJobs.discover().firstWhere((job) => job.name == name);
 
 /// The jobs *this sample* declares.
-const _sampleJobs = {opsPurgeJobName, opsReportJobName, opsDigestJobName};
+const _sampleJobs = {
+  opsPurgeJobName,
+  opsReportJobName,
+  opsDigestJobName,
+  opsBlobSweepJobName,
+};
 
 /// The jobs the *framework* registers into the same scheduler.
 ///
 /// Subtracted rather than counted, and that is the whole point of naming them.
-/// The assertions below used to state that the scheduler holds exactly three
-/// jobs, which stopped being true the day `tom_core_server` began registering
-/// its own anchor-verification job — and read as a regression in this sample,
+/// The assertions below once stated that the scheduler holds exactly the jobs
+/// this sample declares, which stopped being true the day `tom_core_server`
+/// began registering its own anchor-verification job — and read as a regression in this sample,
 /// which had not changed. The framework will add more; what this sample can
 /// assert is which jobs are *its own*.
 const _frameworkJobs = {tomAuditAnchorVerificationJobName};
@@ -57,20 +62,20 @@ void main() {
     TomAuditTrail.uninstall();
   });
 
-  group('the three jobs are discoverable and distinctly named', () {
-    test('discovery finds exactly the three this server declares', () {
+  group('the four jobs are discoverable and distinctly named', () {
+    test('discovery finds exactly the four this server declares', () {
       // Filtered to this server's own namespace, because discovery scans the
       // whole reflection build and the framework declares jobs of its own —
       // `tom_core_server` ships an audit-anchor verification job, and any
       // package this one depends on may ship more. An unfiltered "exactly
-      // three" would be an assertion about *everybody's* declarations, which
+      // four" would be an assertion about *everybody's* declarations, which
       // this suite has no business making and could not keep true.
       expect(
         TomScheduledJobs.discover()
             .map((job) => job.name)
             .where((name) => name.startsWith('ops.'))
             .toSet(),
-        {opsPurgeJobName, opsReportJobName, opsDigestJobName},
+        _sampleJobs,
       );
     });
 
@@ -79,13 +84,31 @@ void main() {
       // another package's rows in it. An unprefixed `purge` would collide with
       // any other package's purge — and the collision would look like a job
       // that mysteriously stopped firing.
-      for (final name in [
-        opsPurgeJobName,
-        opsReportJobName,
-        opsDigestJobName,
-      ]) {
+      for (final name in _sampleJobs) {
         expect(name, startsWith('ops.'));
       }
+    });
+  });
+
+  group('the blob sweep is weekly, after the purge and before the report', () {
+    late TomJobDefinition sweep;
+    setUp(() => sweep = _definition(opsBlobSweepJobName));
+
+    test('04:00 on Sunday — after what creates residue, before what adds', () {
+      // 03:00 is the retention purge, whose cascading deletes are where the
+      // residue comes from; 05:00 is the report, which writes into the same
+      // store and can only add rows that cannot be orphans yet.
+      expect((sweep.schedule as TomCronSchedule).expression, '0 4 * * 0');
+    });
+
+    test('one attempt, no recovery, and a missed window is skipped', () {
+      // The opposite of the purge, and for a reason: skipping this costs one
+      // week of residue that the next run collects anyway, because the sweep is
+      // a predicate over the table rather than a window. There is nothing for a
+      // retry to rescue and nothing for a recovery to resume.
+      expect(sweep.retryPolicy.maxAttempts, 1);
+      expect(sweep.requestsRecovery, isFalse);
+      expect(sweep.missedWindowPolicy, TomMissedWindowPolicy.skip);
     });
   });
 
@@ -222,7 +245,7 @@ void main() {
 
     tearDown(() => runtime.close());
 
-    test('start registers all three and installs the trail', () async {
+    test('start registers all four and installs the trail', () async {
       final definitions = await runtime.start();
 
       expect(
@@ -446,6 +469,7 @@ void main() {
           source: _EmptyReportSource(),
           exports: TomExportService(store: TomMemoryExportStore()),
         ),
+        blobSweep: OpsBlobSweepService(store: _sweepableStore()),
       );
 
       // The bean locator is the only channel a job class has — it is built per
@@ -474,6 +498,21 @@ void main() {
       },
     );
   });
+}
+
+/// A database blob store over a data source that is never reached.
+///
+/// The sweep's *service* needs a store to hold; this test is about the bean
+/// arriving under the name the job body resolves, and a store that touched a
+/// database would make that assertion need one.
+TomDatabaseBlobStore _sweepableStore() =>
+    TomDatabaseBlobStore(_UnreachableDataSource(), createSchema: false);
+
+/// A data source that fails the test if anything asks it for a statement.
+class _UnreachableDataSource implements TomDataSource {
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw StateError('the sweep service reached its data source');
 }
 
 /// An audience with nobody in it.
