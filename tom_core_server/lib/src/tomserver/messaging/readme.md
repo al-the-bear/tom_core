@@ -26,6 +26,14 @@ layer a file belongs to. From the bottom:
    services on it, plus `outbox.dart`) — resource-keyed templates, a per-channel
    request type, and the queue that makes a send survive a restart.
 
+**This module sends, and will not receive.** There is no IMAP or POP3 client, no
+mailbox, and no parser for an inbound message: `TomMimeEncoder` encodes and
+never decodes. Emitting MIME is a closed problem — the framework chooses the
+encoding, the boundary and the headers — while parsing it is an open one, and
+tolerant parsing, character-set recovery, reply threading and attachment
+extraction are each a package's worth of work whose half-done version is worse
+than none. An application that needs to read mail uses a dedicated IMAP package.
+
 **The notification model is not here and is not coming.** Which events notify,
 who subscribes to them, and through which channels is the *application's*
 domain vocabulary and its product's policy; this module answers only how a
@@ -33,7 +41,9 @@ message on a named channel leaves. That is a statement of ownership rather than
 a deferral — see "Not in This Framework" in `doc/messaging.md` for what an
 application builds it out of, all of which is already here: an open channel
 value, a durable idempotent outbox, per-principal preference storage, and a
-templated-service base to render each type against.
+templated-service base to render each type against. Both boundaries are stated
+under "Not in This Framework" in `doc/messaging.md`, with the reasoning and the
+alternative for each.
 
 `mime_encoder.dart` sits beside the SMTP transport rather than under it: the
 RFC 5322 document is a value the encoder produces, not a step of the

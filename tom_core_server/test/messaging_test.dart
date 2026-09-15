@@ -1862,12 +1862,12 @@ void main() {
     });
   });
 
-  group('the notification model is not here, and is stated not to be', () {
+  group('the two boundaries are stated, and stay true', () {
     // A non-goal is only worth writing down if something notices when it stops
-    // being one. `doc/messaging.md` says plainly that notification types,
-    // subscriptions and per-user channel preferences belong to the application
-    // and that tom_core will not provide them; the two rules below are what
-    // make that sentence falsifiable rather than decorative.
+    // being one. `doc/messaging.md` says plainly that the notification model
+    // belongs to the application and that this module sends and will not
+    // receive; the rules below are what make those sentences falsifiable rather
+    // than decorative.
 
     const sourceRoot = 'lib/src/tomserver/messaging';
 
@@ -1923,7 +1923,44 @@ void main() {
       expect(names, contains('tomVendorValueAt'));
     });
 
-    test('the guide states the ownership rather than deferring it', () {
+    test('nothing here is named for reading mail', () {
+      // The other boundary, and the words it would arrive under. Emitting MIME
+      // is a closed problem the framework controls; parsing it is an open one
+      // whose input is whatever some other system sent, and a half-done parser
+      // is worse than none because one that mis-decodes a character set
+      // produces text that looks right.
+      const reserved = ['imap', 'pop3', 'mailbox', 'inbound'];
+      final offenders = [
+        for (final name in declarations())
+          if (reserved.any((word) => name.toLowerCase().contains(word))) name,
+      ];
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'this module sends and does not receive — see "Not in This '
+            'Framework" in doc/messaging.md. These declarations say otherwise: '
+            '${offenders.join(', ')}',
+      );
+    });
+
+    test('the MIME encoder encodes and does not decode', () {
+      // The specific claim the boundary rests on, read from the file that would
+      // have to stop being true for it to change.
+      final source = File(
+        'lib/src/tomserver/messaging/mime_encoder.dart',
+      ).readAsStringSync();
+      expect(source, contains('class TomMimeEncoder'));
+      expect(
+        RegExp(r'\b(decode|parse)[A-Z]\w*\(').hasMatch(source),
+        isFalse,
+        reason:
+            'a decoder here is the inbound path arriving one method at a '
+            'time',
+      );
+    });
+
+    test('the guide states both boundaries rather than deferring them', () {
       // The sentence itself, and where it sits. "Not Yet Implemented" promises
       // the framework will get to a thing, so a non-goal filed there reads as a
       // deferral — which is the one reading this section exists to prevent.
@@ -1933,17 +1970,18 @@ void main() {
         guide.indexOf('## Not Yet Implemented'),
       );
       expect(section, contains('will not provide'));
+      expect(section, contains('will not receive'));
       expect(
         guide.indexOf('## Not in This Framework'),
         lessThan(guide.indexOf('## Not Yet Implemented')),
       );
-      expect(
-        section,
-        contains('TomUserPreferences'),
-        reason:
-            'a non-goal that names no alternative is a refusal, not an '
-            'answer',
-      );
+      // A non-goal that names no alternative is a refusal rather than an
+      // answer, so each of the two names what to use instead. Matched on the
+      // recommendation rather than on the bare word: "there is no IMAP client"
+      // also contains "IMAP", and an assertion satisfied by the sentence that
+      // states the absence would pass however the alternative was worded.
+      expect(section, contains('TomUserPreferences'));
+      expect(section, contains('dedicated IMAP package'));
     });
   });
 

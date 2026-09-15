@@ -2,6 +2,18 @@
 
 ### Added
 
+- **Inbound mail is named as a boundary, not as a backlog item (tcopen166).**
+  `doc/messaging.md` said "This module sends only" under *Not Yet Implemented*,
+  which reads as "not yet" and invites the question every time somebody reads
+  it. It now sits under *Not in This Framework* with the reason and the
+  alternative: emitting MIME is a closed problem the framework fully controls,
+  parsing it is an open one whose input is whatever some other system sent, and
+  tolerant parsing, character-set recovery, reply threading and attachment
+  extraction are each a package's worth of work — a half-done version of any of
+  which is worse than none, because a parser that silently mis-decodes a
+  character set produces text that looks right. An application that needs to
+  read mail uses a dedicated IMAP package.
+
 - **The notification model is named as an application's, not as a gap
   (tcopen165).** `doc/messaging.md` declined to design notification types,
   subscriptions and per-user channel preferences, and said so under *Not Yet

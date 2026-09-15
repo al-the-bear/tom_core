@@ -61,7 +61,9 @@ out of.
 - [Verification](#verification)
 - [Core Components](#core-components)
 - [Not in This Framework](#not-in-this-framework)
-  - [What to build it out of](#what-to-build-it-out-of)
+  - [The notification model](#the-notification-model)
+    - [What to build it out of](#what-to-build-it-out-of)
+  - [Inbound mail](#inbound-mail)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
 
@@ -1283,8 +1285,14 @@ produce either on demand.
 
 ## Not in This Framework
 
-**The notification model is an application's, and `tom_core` will not provide
-one.** "Which events notify, who subscribes to them, and through which channels"
+Two things a reader might reasonably come here looking for are **not coming**,
+and this section says so rather than leaving them on a list that reads as a
+schedule. Each names who owns the concern and what to build it with, because a
+non-goal that names no alternative is a refusal rather than an answer.
+
+### The notification model
+
+**It is an application's, and `tom_core` will not provide one.** "Which events notify, who subscribes to them, and through which channels"
 is a different question from "deliver this message on this channel", and the
 list below is what a reader should expect to find in their own code rather than
 here:
@@ -1302,7 +1310,7 @@ declined the work without saying who does it, which left the concern claimed by
 nobody — and an unclaimed concern is one every application rebuilds while
 assuming the framework is about to.
 
-### What to build it out of
+#### What to build it out of
 
 The substrate is deliberately complete for this:
 
@@ -1321,6 +1329,37 @@ channel preferences, render one message per pair through a templated service,
 and hand each to the outbox. `messaging` stays unaware of all of it, which is
 the separation that lets a channel be added without touching the notification
 layer and a notification type without touching a transport.
+
+### Inbound mail
+
+**This module sends, and will not receive.** `TomSmtpTransport` speaks the
+client half of an SMTP conversation; there is no IMAP or POP3 client, no mailbox
+abstraction, and no parser for an inbound message — `TomMimeEncoder` encodes and
+never decodes. An application that needs to *read* mail should reach for a
+dedicated IMAP package, and nothing here stands in its way.
+
+The asymmetry is not laziness, it is the shape of the problem. Emitting MIME is
+a closed problem: the framework chooses the encoding, the boundary, the line
+endings and the headers, and `TomMimeEncoder` produces one document it fully
+controls. Parsing MIME is an open one, because the input is whatever some other
+system sent:
+
+| Reading mail needs | Which is its own problem |
+| ------------------ | ------------------------ |
+| Nested `multipart/*` of arbitrary depth, with malformed boundaries in the wild | A tolerant parser, and a policy for what "tolerant" means |
+| Character-set recovery — declared, mis-declared, or absent | Heuristics, and a decision about what to do when they disagree |
+| Reply threading over `In-Reply-To` / `References`, which senders mangle | A correlation model this module has no place to put |
+| Attachment extraction, including content the sender says is inline | A storage decision, which is `file_storage`'s question and not this module's |
+
+Each of those is a package's worth of work with its own maintenance burden, and
+a half-done version of any of them is worse than none: a parser that silently
+mis-decodes a character set produces text that *looks* right.
+
+**What is already here and is not this.** The webhook transport is outbound —
+the framework POSTs, it does not receive. `TomDeliveryReportService` *is* an
+inbound HTTP route, but what arrives on it is a carrier's status about a message
+this deployment sent, not a message somebody sent to it; it resolves through a
+correlation index, never through a mailbox.
 
 ## Not Yet Implemented
 
@@ -1350,7 +1389,6 @@ layer and a notification type without touching a transport.
   `example/messaging/sms_gateway_presets.dart` carries worked mappings for three
   named vendors, and none of them is exported as library API — see
   [Describing a gateway](#describing-a-gateway) for the argument.
-- **Inbound mail.** This module sends only.
 - **Templating for the remaining channels.** `TomEmailService` and
   `TomSmsService` cover their channels; `push` and `webhook` have no equivalent
   yet. A webhook rarely wants one — its body is structured data rather than
