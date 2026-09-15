@@ -1319,7 +1319,7 @@ void main() {
       TomBean.withType(FixtureApiServer, FixtureApiServer());
       TomBean.withType(TomHealthServer, TomHealthServer());
       TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
-      TomHealthServer.healthAnalyzer = TomDefaultHealthAnalyzer();
+      TomHealthServer.livenessAnalyzer = TomDefaultHealthAnalyzer();
       router = TomEndpointRouting().initializeRouter();
     });
 
@@ -1445,10 +1445,38 @@ void main() {
       );
     });
 
-    test('an unhealthy analyzer answers 503 through the mounted route', () async {
-      TomHealthServer.healthAnalyzer = _DegradedAnalyzer();
+    test('/ready is mounted beside it, and answers independently', () async {
+      // Two routes because the two questions have opposite consequences: a
+      // failing readiness probe takes the pod out of the load balancer, a
+      // failing liveness probe restarts it. "The container started but its
+      // database is unreachable" is ready-false with live-true, and one route
+      // could only pick one of those.
+      //
+      // Asserted through the *mounted* routes: a second `@TomEndpoint` on the
+      // same service is exactly the declaration a reflection build can fail to
+      // pick up, and nothing else would notice.
+      TomHealthServer.readinessAnalyzer = _DegradedAnalyzer();
       addTearDown(
-        () => TomHealthServer.healthAnalyzer = TomDefaultHealthAnalyzer(),
+        () => TomHealthServer.readinessAnalyzer = TomDefaultHealthAnalyzer(),
+      );
+
+      final ready = await router.call(_get('/ready'));
+      expect(ready.statusCode, 503);
+      expect(await ready.readAsString(), 'DEGRADED');
+
+      final live = await router.call(_get('/health'));
+      expect(
+        live.statusCode,
+        200,
+        reason: 'an unready process is still alive, and must not be restarted',
+      );
+      expect(await live.readAsString(), 'OK');
+    });
+
+    test('an unhealthy analyzer answers 503 through the mounted route', () async {
+      TomHealthServer.livenessAnalyzer = _DegradedAnalyzer();
+      addTearDown(
+        () => TomHealthServer.livenessAnalyzer = TomDefaultHealthAnalyzer(),
       );
       // The route binds the same singleton server, whose health() delegates to
       // the now-unhealthy analyzer.

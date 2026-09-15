@@ -1,8 +1,9 @@
 /// Executable example for the health-check module of `tom_core_server`.
 ///
-/// This example shows the surface you can drive directly: the pluggable
-/// [TomHealthAnalyzer], and the way [TomHealthServer.health] turns its verdict
-/// into the status code a probe reads and its message into the body.
+/// This example shows the surface you can drive directly: the two pluggable
+/// [TomHealthAnalyzer]s, the way each turns its verdict into the status code a
+/// probe reads and its message into the body, and why there are two of them —
+/// an unready process is still alive.
 /// The `GET /health` route that publishes it is mounted by the reflection-based
 /// endpoints pipeline, so showing it here would mean initializing generated
 /// reflection and building a router — machinery that would bury the one thing
@@ -62,16 +63,20 @@ Future<void> run() async {
     'a healthy process answers the status code every probe already checks',
   );
 
-  // 3. Swapping the global analyzer changes what every request returns — and
-  //    the status code with it. This is the whole point: a load balancer's
-  //    default check reads the code and nothing else, so an unhealthy verdict
-  //    that answered 200 would leave a broken process receiving traffic.
-  final previous = TomHealthServer.healthAnalyzer;
+  // 3. Swapping an analyzer changes what that route returns — and the status
+  //    code with it. A load balancer's default check reads the code and nothing
+  //    else, so an unhealthy verdict that answered 200 would leave a broken
+  //    process receiving traffic. The dependency check goes on *readiness*, for
+  //    the reason step 4 shows.
+  final previous = TomHealthServer.readinessAnalyzer;
   try {
-    TomHealthServer.healthAnalyzer = _DemoAnalyzer(dbOk: true, cacheOk: false);
-    final unhealthy = await server.health();
+    TomHealthServer.readinessAnalyzer = _DemoAnalyzer(
+      dbOk: true,
+      cacheOk: false,
+    );
+    final unhealthy = await server.ready();
     final body = await unhealthy.readAsString();
-    print('3. health() when degraded    => ${unhealthy.statusCode} $body');
+    print('3. ready() when degraded     => ${unhealthy.statusCode} $body');
     check(
       unhealthy.statusCode == 503,
       'an unhealthy verdict reaches the status code, not only the body',
@@ -80,8 +85,23 @@ Future<void> run() async {
       body == 'db=true, cache=false',
       'and the message still names which dependency failed',
     );
+
+    // 4. …and `/health` is still 200. This is why there are two routes: a
+    //    failing readiness probe takes the pod out of the load balancer, a
+    //    failing liveness probe restarts it. A dependency being down is a
+    //    reason to stop receiving traffic and not a reason to be killed — a
+    //    restart would not bring the cache back, and the loop would not end.
+    final live = await server.health();
+    print(
+      '4. health() at the same time => ${live.statusCode} '
+      '${await live.readAsString()}',
+    );
+    check(
+      live.statusCode == 200,
+      'an unready process is still alive, and must not be restarted',
+    );
   } finally {
-    TomHealthServer.healthAnalyzer = previous;
+    TomHealthServer.readinessAnalyzer = previous;
   }
 
   print('\nHealth-check example completed.');

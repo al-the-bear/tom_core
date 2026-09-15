@@ -87,8 +87,10 @@ class TomHealthStatus {
 ///   }
 /// }
 ///
-/// // Set globally before server starts
-/// TomHealthServer.healthAnalyzer = MyHealthAnalyzer();
+/// // Set globally before server starts. A dependency check belongs on
+/// // readiness: a database being down is a reason to stop receiving traffic
+/// // and not a reason for the process to be restarted.
+/// TomHealthServer.readinessAnalyzer = MyHealthAnalyzer();
 /// ```
 abstract class TomHealthAnalyzer {
   /// Analyzes the health of the server.
@@ -110,24 +112,46 @@ class TomDefaultHealthAnalyzer extends TomHealthAnalyzer {
 
 /// Health check service interface for server health monitoring.
 ///
-/// Declares the `GET /health` endpoint that container orchestration tools
-/// (Docker, Kubernetes) call to verify server availability. The response body
-/// is the installed [TomHealthAnalyzer]'s message verbatim — `"OK"` is the
-/// [TomDefaultHealthAnalyzer]'s answer, not a constant of the endpoint — and
-/// the **status code is the verdict**: `200` for
+/// Declares the two endpoints container orchestration tools (Docker,
+/// Kubernetes, Cloud Run, every load balancer) expect. Both answer the
+/// installed analyzer's message verbatim — `"OK"` is the
+/// [TomDefaultHealthAnalyzer]'s answer, not a constant of the endpoint — with
+/// the **status code carrying the verdict**: `200` for
 /// [TomHealthVerdict.healthy], `503` for [TomHealthVerdict.unhealthy].
 ///
 /// Which is what makes an ordinary probe correct. A load balancer's default
 /// check reads the status code and nothing else, as does a Kubernetes `httpGet`
-/// probe unless the deployment adds a body matcher; both now stop sending
-/// traffic to a process whose analyzer says it cannot serve. A probe that wants
-/// the *reason* still reads the body, which is where it has always been.
+/// probe unless the deployment adds a body matcher. A probe that wants the
+/// *reason* still reads the body, which is where it has always been.
+///
+/// ## Two routes, because the two questions have opposite consequences
+///
+/// `GET /health` is **liveness** — am I running — and a failure restarts the
+/// process. `GET /ready` is **readiness** — can I serve traffic — and a failure
+/// takes it out of the load balancer and leaves it alone. One route cannot
+/// answer both: "the container started but its database is unreachable" is
+/// ready-false with live-true, and a single verdict forces a deployment to pick
+/// which consequence it wants. Answering unhealthy there restarts a pod that
+/// would have recovered, in a loop, because restarting does not bring the
+/// database back; answering healthy sends it traffic it cannot serve.
+///
+/// So the split is by *what the check touches*: a liveness analyzer looks at
+/// the process — is the event loop turning, is a critical isolate still there —
+/// and a readiness analyzer looks at what the process needs — the pool, the
+/// cache, the downstream API. A dependency being down is a reason to stop
+/// receiving traffic and not a reason to be killed.
+///
+/// A route per question rather than one route with a `?probe=` parameter: query
+/// parameters on a health check are awkward to configure in several
+/// orchestrators, and a single route stays a single point of failure for both
+/// answers.
 @tomReflector
 @tomService
 abstract class TomHealthService {
-  /// The `GET /health` endpoint: a plain-text status string, with the status
-  /// code carrying the verdict. Marked `@TomPublicAccess` (no authentication)
-  /// and `logRequests: false` so probe traffic does not flood the logs.
+  /// The `GET /health` endpoint — **liveness**: a plain-text status string,
+  /// with the status code carrying the verdict. Marked `@TomPublicAccess` (no
+  /// authentication) and `logRequests: false` so probe traffic does not flood
+  /// the logs.
   ///
   /// Returns a shelf [Response] rather than a `String`, because the status is
   /// part of the answer and a `String` has nowhere to put it. That is the
@@ -144,33 +168,73 @@ abstract class TomHealthService {
     logRequests: false,
   )
   Future<Response> health();
+
+  /// The `GET /ready` endpoint — **readiness**: the same shape as [health],
+  /// answered by [TomHealthServer.readinessAnalyzer].
+  ///
+  /// `/ready` rather than `/health/ready`: a sub-path of the liveness route
+  /// reads as a refinement of it, and these are two questions rather than one
+  /// asked in more detail. It is also the path the platforms' own examples use,
+  /// which is the path an operator will try first.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: "/ready",
+    produces: TomMimeType.plainText,
+    logRequests: false,
+  )
+  Future<Response> ready();
 }
 
 /// Default implementation of [TomHealthService].
 ///
-/// Delegates every request to [healthAnalyzer]; assign a custom
-/// [TomHealthAnalyzer] there before server startup to add real checks.
+/// Delegates each route to its own analyzer — [livenessAnalyzer] for `/health`,
+/// [readinessAnalyzer] for `/ready` — and turns the verdict it gets back into
+/// the response. Assign a custom [TomHealthAnalyzer] to either before server
+/// startup to add real checks.
 @tomReflector
 @tomComponent
 class TomHealthServer implements TomHealthService {
-  /// The analyzer every `/health` request is answered by.
+  /// The analyzer every `GET /health` request is answered by — **liveness**.
   ///
   /// Defaults to [TomDefaultHealthAnalyzer], which reports healthy. Replace it
   /// with a custom implementation before the server starts.
   ///
+  /// Named for the question rather than for the module, now that there are two:
+  /// a `healthAnalyzer` sitting beside a [readinessAnalyzer] reads as though it
+  /// covered both.
+  ///
   /// It is `static`, so it is process-wide: one assignment applies to every
   /// request and to every [TomHealthServer] instance. There is no per-instance
   /// or per-request override.
-  static TomHealthAnalyzer healthAnalyzer = TomDefaultHealthAnalyzer();
+  static TomHealthAnalyzer livenessAnalyzer = TomDefaultHealthAnalyzer();
+
+  /// The analyzer every `GET /ready` request is answered by — **readiness**.
+  ///
+  /// A separate instance rather than the same object, so assigning one does not
+  /// silently change the other.
+  ///
+  /// Defaults to always-ready, and that default is a choice worth naming. The
+  /// cautious alternative — not ready until something says so — would make a
+  /// deployment that never configures readiness receive no traffic at all, and
+  /// the cause would be invisible: a healthy process, a passing liveness probe
+  /// and an empty load balancer. Always-ready keeps the framework's default a
+  /// working server, and a deployment that has a real readiness question
+  /// answers it here.
+  static TomHealthAnalyzer readinessAnalyzer = TomDefaultHealthAnalyzer();
 
   @override
   Future<Response> health() async =>
-      responseFor(await healthAnalyzer.analyzeHealth());
+      responseFor(await livenessAnalyzer.analyzeHealth());
+
+  @override
+  Future<Response> ready() async =>
+      responseFor(await readinessAnalyzer.analyzeHealth());
 
   /// The HTTP response one [status] is served as.
   ///
-  /// Public and static so a deployment writing its own health endpoint — a
-  /// second route, a different path — answers with the same shape rather than
+  /// Public and static so a deployment writing a health endpoint of its own —
+  /// a third route, a different path — answers with the same shape rather than
   /// a second spelling of it.
   ///
   /// The content type is set here because a handler returning a `Response`

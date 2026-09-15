@@ -1,8 +1,8 @@
 # Tom Core Server API Reference: Health Check Module
 
-Health-check service for server monitoring: a `GET /health` endpoint plus a
-pluggable analyzer so applications can report custom health status to container
-orchestration tools (Docker, Kubernetes).
+Health-check service for server monitoring: `GET /health` (liveness) and
+`GET /ready` (readiness), each with a pluggable analyzer, so applications can
+report custom status to container orchestration tools (Docker, Kubernetes).
 
 ## Table of Contents
 
@@ -21,13 +21,22 @@ orchestration tools (Docker, Kubernetes).
 
 Source: `lib/src/tomserver/healthcheck/health_check.dart`.
 
-`TomHealthService` is a `@tomService` interface declaring the `GET /health`
-endpoint (public, unlogged). `TomHealthServer` is its `@tomComponent`
-implementation; it delegates each request to the static `healthAnalyzer` and
-turns the `TomHealthStatus` it gets back into the response. Applications provide
-custom logic by extending `TomHealthAnalyzer` (overriding `analyzeHealth`) and
-assigning an instance to `TomHealthServer.healthAnalyzer` before startup; the
-shipped `TomDefaultHealthAnalyzer` always reports healthy.
+`TomHealthService` is a `@tomService` interface declaring two endpoints, both
+public and unlogged: `GET /health` (**liveness** — am I running) and
+`GET /ready` (**readiness** — can I serve traffic). `TomHealthServer` is its
+`@tomComponent` implementation; it delegates each route to its own static
+analyzer — `livenessAnalyzer` and `readinessAnalyzer` — and turns the
+`TomHealthStatus` it gets back into the response. Applications provide custom
+logic by extending `TomHealthAnalyzer` (overriding `analyzeHealth`) and
+assigning an instance to either before startup; both default to the shipped
+`TomDefaultHealthAnalyzer`, which always reports healthy.
+
+Two routes because the questions have **opposite consequences**: a failing
+liveness probe restarts the process, a failing readiness probe takes it out of
+the load balancer and leaves it running. So the split is by what the check
+touches — a liveness analyzer looks at the process, a readiness analyzer at what
+the process needs. A dependency being down is a reason to stop receiving traffic
+and not a reason to be killed.
 
 **The status code is the verdict and the body is the reason**: `200` for
 `TomHealthVerdict.healthy`, `503` for `TomHealthVerdict.unhealthy`, with the
@@ -124,7 +133,7 @@ TomDefaultHealthAnalyzer()
 
 Health check service interface for server health monitoring. Declares the
 `GET /health` endpoint that container orchestration tools call to verify
-availability. The response body is the installed `TomHealthAnalyzer`'s message
+availability. Each response body is the installed `TomHealthAnalyzer`'s message
 verbatim — so `"OK"` is the `TomDefaultHealthAnalyzer`'s answer rather than a
 constant of the endpoint — and the status code is the verdict. Annotated
 `@tomReflector` / `@tomService`.
@@ -135,13 +144,14 @@ constant of the endpoint — and the status code is the verdict. Annotated
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `health` | `Future<Response> health()` | The `GET /health` endpoint: a plain-text status string with the status code carrying the verdict. Marked `@TomPublicAccess` and `logRequests: false`. Returns a shelf `Response` rather than a `String` because the status is part of the answer and a `String` has nowhere to put it — the pipeline's documented escape hatch, used here rather than inventing a directive in `endpoint_results.dart` because one caller is not a pattern. |
+| `health` | `Future<Response> health()` | The `GET /health` endpoint — **liveness**: a plain-text status string with the status code carrying the verdict. Marked `@TomPublicAccess` and `logRequests: false`. Returns a shelf `Response` rather than a `String` because the status is part of the answer and a `String` has nowhere to put it — the pipeline's documented escape hatch, used here rather than inventing a directive in `endpoint_results.dart` because one caller is not a pattern. |
+| `ready` | `Future<Response> ready()` | The `GET /ready` endpoint — **readiness**: the same shape, answered by `TomHealthServer.readinessAnalyzer`. `/ready` rather than `/health/ready`, because a sub-path reads as a refinement of the liveness answer while these are two questions; it is also the path the platforms' own examples use. |
 
 ### TomHealthServer
 
-Default implementation of `TomHealthService`. Delegates health checks to
-`healthAnalyzer`; set it to a custom `TomHealthAnalyzer` before server startup
-for advanced logic. Annotated `@tomReflector` / `@tomComponent`.
+Default implementation of `TomHealthService`. Delegates each route to its own
+analyzer; set either to a custom `TomHealthAnalyzer` before server startup for
+advanced logic. Annotated `@tomReflector` / `@tomComponent`.
 
 - **Implements:** `TomHealthService`
 
@@ -155,13 +165,15 @@ TomHealthServer()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `healthAnalyzer` | `static TomHealthAnalyzer` | Global health analyzer instance used by all health check requests (defaults to `TomDefaultHealthAnalyzer`). |
+| `livenessAnalyzer` | `static TomHealthAnalyzer` | The analyzer every `GET /health` request is answered by (defaults to `TomDefaultHealthAnalyzer`). Named for the question rather than for the module, now that there are two: a `healthAnalyzer` beside a `readinessAnalyzer` would read as though it covered both. |
+| `readinessAnalyzer` | `static TomHealthAnalyzer` | The analyzer every `GET /ready` request is answered by — a separate instance, so assigning one does not silently change the other. Defaults to always-ready: "not ready until told" would leave a deployment that never configures readiness with an empty load balancer, a healthy process and a passing liveness probe — a failure with no visible cause. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `health` | `Future<Response> health()` | *(override)* Delegates to `healthAnalyzer.analyzeHealth()` and hands the result to `responseFor`. |
+| `health` | `Future<Response> health()` | *(override)* Delegates to `livenessAnalyzer.analyzeHealth()` and hands the result to `responseFor`. |
+| `ready` | `Future<Response> ready()` | *(override)* Delegates to `readinessAnalyzer.analyzeHealth()` and hands the result to `responseFor`. |
 | `responseFor` | `static Response responseFor(TomHealthStatus status)` | The HTTP response one status is served as: `status.statusCode`, the message as the body, and `text/plain` — set here because a handler returning a `Response` bypasses the endpoint's `produces`. Public and static so a deployment writing its own health route answers with the same shape rather than a second spelling of it. |
 
 ## Enums

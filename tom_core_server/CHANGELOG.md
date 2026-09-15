@@ -1,5 +1,36 @@
 ## 1.3.0
 
+### Added
+
+- **`GET /ready`, so liveness and readiness are separable (tcopen154).** There
+  was one route, one static analyzer and one verdict, and the two questions have
+  **opposite consequences**: a failing liveness probe restarts the process, a
+  failing readiness probe takes it out of the load balancer and leaves it
+  running. "The container started but its database is unreachable" is
+  ready-false with live-true, and one route forced a deployment to pick which
+  consequence it wanted — restart a pod that would have recovered, in a loop
+  because restarting does not bring the database back, or send traffic to a
+  process that cannot serve it.
+
+  `TomHealthService.ready` is the second route, answered by
+  `TomHealthServer.readinessAnalyzer`, with the same shape as `/health`:
+  plain text, public, unlogged, and the verdict in the status code. Both
+  analyzers default to the always-healthy one, so a server that configures
+  neither answers `200` on both.
+
+  The guidance that makes the pair useful is **what the check touches**: a
+  liveness analyzer looks at the process, a readiness analyzer at what the
+  process needs. A dependency being down is a reason to stop receiving traffic
+  and not a reason to be killed.
+
+  Readiness defaults to always-ready rather than to the cautious opposite,
+  because "not ready until told" would leave a deployment that never configures
+  it with an empty load balancer, a healthy process and a passing liveness probe
+  — a failure with no visible cause.
+
+  `TomHealthServer.healthAnalyzer` is renamed `livenessAnalyzer`: beside a
+  `readinessAnalyzer` the old name reads as though it covered both.
+
 ### Changed
 
 - **`/health` answers `503` when the analyzer says the process cannot serve

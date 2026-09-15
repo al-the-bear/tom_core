@@ -34,10 +34,12 @@ class _FixedAnalyzer extends TomHealthAnalyzer {
 Future<String> _bodyOf(Response response) => response.readAsString();
 
 void main() {
-  // Restore the global analyzer after each test so swaps do not leak.
-  final original = TomHealthServer.healthAnalyzer;
+  // Restore both global analyzers after each test so swaps do not leak.
+  final liveness = TomHealthServer.livenessAnalyzer;
+  final readiness = TomHealthServer.readinessAnalyzer;
   tearDown(() {
-    TomHealthServer.healthAnalyzer = original;
+    TomHealthServer.livenessAnalyzer = liveness;
+    TomHealthServer.readinessAnalyzer = readiness;
   });
 
   group('the verdict and the message are two facts', () {
@@ -86,7 +88,7 @@ void main() {
 
   group('TomHealthServer', () {
     test('defaults to the always-healthy analyzer', () {
-      expect(TomHealthServer.healthAnalyzer, isA<TomDefaultHealthAnalyzer>());
+      expect(TomHealthServer.livenessAnalyzer, isA<TomDefaultHealthAnalyzer>());
     });
 
     test('health() answers 200 and OK with the default analyzer', () async {
@@ -99,7 +101,7 @@ void main() {
       // The defect this closes: a load balancer's default check reads the
       // status code and nothing else, so a deployment watching its analyzer
       // correctly report a dead database still received traffic.
-      TomHealthServer.healthAnalyzer = _FixedAnalyzer(
+      TomHealthServer.livenessAnalyzer = _FixedAnalyzer(
         const TomHealthStatus.unhealthy('DEGRADED: db=false'),
       );
       final response = await TomHealthServer().health();
@@ -121,8 +123,60 @@ void main() {
       },
     );
 
+    test('ready() answers 200 and OK with the default analyzer', () async {
+      // The default is always-ready, and that is a choice rather than an
+      // oversight: "not ready until told" would leave a deployment that never
+      // configures readiness with an empty load balancer, a healthy process and
+      // a passing liveness probe — a failure with no visible cause.
+      final response = await TomHealthServer().ready();
+      expect(response.statusCode, 200);
+      expect(await _bodyOf(response), 'OK');
+    });
+
+    test('the two analyzers are independent', () async {
+      // The whole point of two routes. A dependency being down is a reason to
+      // stop receiving traffic and not a reason for the process to be
+      // restarted, so the readiness verdict must not reach the liveness route.
+      TomHealthServer.readinessAnalyzer = _FixedAnalyzer(
+        const TomHealthStatus.unhealthy('db=false'),
+      );
+
+      final ready = await TomHealthServer().ready();
+      expect(ready.statusCode, 503);
+      expect(await _bodyOf(ready), 'db=false');
+
+      final live = await TomHealthServer().health();
+      expect(
+        live.statusCode,
+        200,
+        reason: 'an unready process is still alive, and must not be restarted',
+      );
+      expect(await _bodyOf(live), 'OK');
+    });
+
+    test('and the independence holds the other way too', () async {
+      // The control. Without it the assertion above is satisfied by a server
+      // whose readiness analyzer is simply ignored on the other route by
+      // accident rather than by design.
+      TomHealthServer.livenessAnalyzer = _FixedAnalyzer(
+        const TomHealthStatus.unhealthy('the isolate is gone'),
+      );
+
+      expect((await TomHealthServer().health()).statusCode, 503);
+      expect((await TomHealthServer().ready()).statusCode, 200);
+    });
+
+    test('they default to two instances, not one shared object', () {
+      // Assigning one must not change the other, which a shared default would
+      // not guarantee the moment somebody mutated an analyzer in place.
+      expect(
+        TomHealthServer.livenessAnalyzer,
+        isNot(same(TomHealthServer.readinessAnalyzer)),
+      );
+    });
+
     test('the analyzer is shared across instances (static field)', () async {
-      TomHealthServer.healthAnalyzer = _FixedAnalyzer(
+      TomHealthServer.livenessAnalyzer = _FixedAnalyzer(
         const TomHealthStatus.unhealthy('CUSTOM'),
       );
       expect((await TomHealthServer().health()).statusCode, 503);
@@ -158,16 +212,40 @@ void main() {
     /// false` appears in both — so a check against the file text passes on a
     /// mutated annotation, which is how the first version of this test was
     /// found wanting.
+    /// The liveness endpoint's annotation — the first in the file.
     final opened = source.indexOf('@TomEndpoint(');
     final annotation = source.substring(
       opened,
       source.indexOf(');', opened) + 1,
     );
 
-    test('is mounted at /health', () {
-      // The path a container orchestrator is configured with. Renaming it is a
-      // deployment break that no compiler and no mirror-driven test reports.
+    /// The readiness endpoint's, which is the next one.
+    final opened2 = source.indexOf('@TomEndpoint(', opened + 1);
+    final readiness = source.substring(
+      opened2,
+      source.indexOf(');', opened2) + 1,
+    );
+
+    test('is mounted at /health, with /ready beside it', () {
+      // The paths a container orchestrator is configured with. Renaming either
+      // is a deployment break that no compiler and no mirror-driven test
+      // reports.
       expect(annotation, contains('uri: "/health"'));
+      expect(readiness, contains('uri: "/ready"'));
+    });
+
+    test('readiness is public and unlogged too', () {
+      // Both facts matter for the same reasons they do on liveness: a probe
+      // carries no credential, and it arrives every few seconds. A readiness
+      // route that authenticated would report every pod as unready.
+      expect(readiness, contains('logRequests: false'));
+      expect(readiness, contains('produces: TomMimeType.plainText'));
+      expect(
+        source,
+        contains(
+          RegExp(r'@TomPublicAccess\(\)\s*\n\s*@TomEndpoint\([^)]*/ready'),
+        ),
+      );
     });
 
     test('is public, so an unauthenticated probe reaches it', () {

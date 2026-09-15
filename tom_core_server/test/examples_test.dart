@@ -100,7 +100,7 @@ const _stepCounts = <String, int>{
   'example/export/export_retention.dart': 7,
   'example/export/export_example.dart': 14,
   'example/file_storage/file_storage_example.dart': 12,
-  'example/healthcheck/healthcheck_example.dart': 3,
+  'example/healthcheck/healthcheck_example.dart': 4,
   'example/little_things/little_things_example.dart': 6,
   'example/messaging/messaging_example.dart': 12,
   'example/messaging/messaging_templated_example.dart': 12,
