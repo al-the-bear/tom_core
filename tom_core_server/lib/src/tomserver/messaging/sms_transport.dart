@@ -23,7 +23,7 @@
 ///
 /// | Layer | Owner | Rule |
 /// |-------|-------|------|
-/// | HTTP status | this file | `408`, `425`, `429` and `5xx` are transient; every other non-`2xx` is permanent |
+/// | HTTP status | [TomDeliveryException.isTransientHttpStatus] | `408`, `425`, `429` and `5xx` are transient; every other non-`2xx` is permanent |
 /// | provider payload | the deployment's [TomSmsGatewayProtocol] | named codes are classified explicitly; an unrecognised code defers to the layer above |
 ///
 /// The second layer is configuration rather than code because the codes are a
@@ -731,15 +731,6 @@ class TomSmsTransport extends TomMessageTransport {
   @override
   TomMessageChannel get channel => TomMessageChannel.sms;
 
-  /// Whether an HTTP status is worth trying again.
-  ///
-  /// `408` and `425` are the server saying it did not get there in time, `429`
-  /// is it asking for later, and `5xx` is it having a problem of its own —
-  /// none of which is a statement about the message. Every other non-`2xx`
-  /// says the request was wrong, and a retry sends the same wrong request.
-  static bool isTransientStatus(int status) =>
-      status == 408 || status == 425 || status == 429 || status >= 500;
-
   @override
   Future<TomDeliveryReceipt> send(TomMessage message) async {
     checkSupported(message);
@@ -839,7 +830,9 @@ class TomSmsTransport extends TomMessageTransport {
     final answer = protocol.decode(status, body);
     if (answer.isAccepted) return answer;
 
-    final permanent = answer.isPermanent ?? !isTransientStatus(status);
+    final permanent =
+        answer.isPermanent ??
+        !TomDeliveryException.isTransientHttpStatus(status);
     if (permanent) return answer;
     throw TomDeliveryException.transient(
       'messaging.sms.gateway_deferred',

@@ -51,6 +51,8 @@ every channel's messages from resource keys.
   - [TomSmsTransport](#tomsmstransport)
   - [TomSmsRequest](#tomsmsrequest)
   - [TomSmsService](#tomsmsservice)
+  - [TomWebhookSettings](#tomwebhooksettings)
+  - [TomWebhookTransport](#tomwebhooktransport)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -63,7 +65,8 @@ Source: `lib/src/tomserver/messaging/email_service.dart`,
 `lib/src/tomserver/messaging/sms_service.dart`,
 `lib/src/tomserver/messaging/sms_transport.dart`,
 `lib/src/tomserver/messaging/smtp_transport.dart`,
-`lib/src/tomserver/messaging/templated_message_service.dart`.
+`lib/src/tomserver/messaging/templated_message_service.dart`,
+`lib/src/tomserver/messaging/webhook_transport.dart`.
 
 The module separates three things a single `sendMail()` call conflates.
 *Composition* is `TomMessage` and the value types around it — `TomRecipient`
@@ -554,6 +557,7 @@ whether the subtype mixes in `TomPermanentFailure`.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `isTransientHttpStatus` | `static bool isTransientHttpStatus(int status)` | Whether an HTTP status is worth trying again: `408`, `425`, `429` and `5xx`. Every other non-`2xx` says the request was wrong, and a retry sends the same wrong request. It lives here rather than on a transport because two of them need it — an SMS gateway and a webhook endpoint are both HTTP — and a second copy is a second thing to keep in step with the retry policy it feeds. |
 | `permanent` | `static TomPermanentDeliveryException permanent(String key, String message, {int? statusCode, Map<String, dynamic>? parameters, Object? rootException, StackTrace? stack})` | A failure that retrying cannot fix; the returned type carries the scheduler's give-up marker. |
 | `transient` | `static TomTransientDeliveryException transient(String key, String message, {int? statusCode, Map<String, dynamic>? parameters, Object? rootException, StackTrace? stack})` | A failure that a later attempt may well survive. |
 
@@ -1522,12 +1526,6 @@ TomSmsTransport(
 | `channel` | `TomMessageChannel` | *(override getter)* `TomMessageChannel.sms`. |
 | `senderIdMetadataKey` | `static const String` | `'senderId'` — the `TomMessage.metadata` key a message uses to name its own sender id. |
 
-#### Static Methods
-
-| Method | Signature | Description |
-| ------ | --------- | ----------- |
-| `isTransientStatus` | `static bool isTransientStatus(int status)` | Whether an HTTP status is worth trying again: `408`, `425`, `429` and `5xx`. Every other non-`2xx` says the request was wrong, and a retry sends the same wrong request. |
-
 #### Methods
 
 | Method | Signature | Description |
@@ -1622,6 +1620,84 @@ const TomSmsService({
 | `render` | `TomMessage render(TomSmsRequest request)` | *(override)* Resolves `.text`, measures the result, and raises `TomMessagingException` (`messaging.sms.too_long`, carrying `segments`) when it exceeds `maxSegments`. Both faults surface before the outbox, so neither becomes a queued message somebody pays for. |
 | `segmentationOf` | `TomSmsSegmentation segmentationOf(TomSmsRequest request)` | What `request` will cost, without sending or capping it. Renders first, so the answer accounts for the parameters — which is where the surprises live. Deliberately does not throw: a measurement used to *decide* whether a message is too long cannot be one that raises when it is. |
 | `resolve` | `static TomSmsService? resolve()` | The service this deployment installed, or `null`. Nullable with no fallback, for the reason `TomEmailService.resolve` is. |
+
+### TomWebhookSettings
+
+How the webhook transport calls an endpoint. Deliberately small: the endpoint is
+addressed by the *message*, so nothing here names a host. What is here is what a
+deployment decides once and every call shares.
+
+#### Constructors
+
+```dart
+TomWebhookSettings({
+  Duration timeout = const Duration(seconds: 30),
+  Map<String, String>? headers,
+  int maxDetailChars = 512,
+})
+```
+
+Throws `TomMessagingException` (`messaging.webhook.bad_detail_cap`) on a
+negative cap.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `timeout` | `Duration` | How long to wait for the endpoint to answer (final). |
+| `headers` | `Map<String, String>` | Headers applied to every call — an API key, a signature, a tenant id. **They win over `TomMessage.headers`**: the settings carry the credential, and letting composing code overwrite one would let it strip the authentication off a call (final, unmodifiable). |
+| `maxDetailChars` | `int` | How much of the endpoint's answer is kept in the receipt. A cap rather than the whole body, because the body is a stranger's and the receipt is logged (final). |
+
+### TomWebhookTransport
+
+Delivers `TomMessageChannel.webhook` by POSTing `TomMessage.toJson()` to the URL
+in its recipient's address, as `application/json` — the same representation the
+outbox already round-trips, so what an endpoint receives and what a queued
+message *is* cannot drift apart.
+
+**One endpoint per message, and a second is refused permanently.** The outbox
+retries a message rather than a recipient, so a POST that succeeded at one
+endpoint and failed at another would be re-sent to both — and a webhook is not
+idempotent. Fan-out is two messages, retried independently.
+
+Classification is a single layer, the HTTP status through
+`TomDeliveryException.isTransientHttpStatus`; a webhook endpoint answers for
+itself, where an SMS gateway answers for a carrier and needs a second,
+payload-level layer. Neither copies nor attachments are supported — the base
+defaults were already right.
+
+The call sets `includeBearerAuthentication: false`: the kernel call layer would
+otherwise inject the *caller's* bearer token, handing a user credential to a
+third party. Requests are not signed, because a signature scheme is a
+per-consumer contract and a guess at one is a guess the receiver cannot verify;
+a deployment that has such a contract puts the header in
+`TomWebhookSettings.headers`.
+
+- **Extends:** `TomMessageTransport`
+
+#### Constructors
+
+```dart
+TomWebhookTransport({
+  TomWebhookSettings? settings,
+  TomServerChannel Function(Uri endpoint)? openChannel,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `settings` | `TomWebhookSettings` | What a deployment decided once, for every call (final). |
+| `openChannel` | `TomServerChannel Function(Uri)` | Opens the connection to an endpoint. Injectable so the whole classification is testable against a scripted client without a socket. It takes the endpoint because a webhook's host comes from the *message*: there is no configured server to cache a channel for, so one is opened per delivery and closed again (final). |
+| `channel` | `TomMessageChannel` | *(override getter)* `TomMessageChannel.webhook`. |
+| `contentType` | `static const String` | `'application/json; charset=utf-8'` — what every call declares and every body is. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `send` | `Future<TomDeliveryReceipt> send(TomMessage message)` | *(override)* Permanent before any request leaves: a channel that is not `webhook`, an attachment, a copied recipient, more or fewer than one recipient (`messaging.webhook.not_one_endpoint`), or an address that is not an `http`/`https` URL (`messaging.webhook.bad_endpoint`). After the call: `2xx` is a `delivered` receipt carrying the answer as `detail`, `408`/`425`/`429`/`5xx` is transient (`messaging.webhook.refused`), any other status permanent (`messaging.webhook.rejected`), and an unreachable or unanswering endpoint transient (`messaging.webhook.unreachable`). |
 
 ## Global Functions and Constants
 

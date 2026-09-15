@@ -157,6 +157,21 @@ abstract class TomDeliveryException extends TomMessagingException {
     super.stack,
   });
 
+  /// Whether an HTTP status is worth trying again.
+  ///
+  /// `408` and `425` are the far side saying the request did not get there in
+  /// time, `429` is it asking for later, and `5xx` is it having a problem of
+  /// its own — none of which is a statement about the message. Every other
+  /// non-`2xx` says the request was wrong, and a retry sends the same wrong
+  /// request.
+  ///
+  /// It lives here rather than on a transport because two of them need it and
+  /// the rule is the same one: an SMS gateway and a webhook endpoint are both
+  /// HTTP, and a second copy is a second thing to keep in step with the retry
+  /// policy it feeds.
+  static bool isTransientHttpStatus(int status) =>
+      status == 408 || status == 425 || status == 429 || status >= 500;
+
   /// A failure that retrying cannot fix.
   static TomPermanentDeliveryException permanent(
     String key,

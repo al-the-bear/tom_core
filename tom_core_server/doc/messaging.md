@@ -26,6 +26,12 @@ lets it be made on the merits rather than around a missing substrate.
   - [Segments, not characters](#segments-not-characters)
   - [Two layers of classification](#two-layers-of-classification)
   - [Describing a gateway](#describing-a-gateway)
+- [Webhook: The Message Is the Payload](#webhook-the-message-is-the-payload)
+  - [One endpoint per message](#one-endpoint-per-message)
+  - [Headers, and who wins](#headers-and-who-wins)
+  - [No signing](#no-signing)
+  - [Classification](#classification)
+    - [Failure keys](#failure-keys)
 - [Configuration and Secrets](#configuration-and-secrets)
 - [The MIME Document](#the-mime-document)
 - [Delivery Semantics: One Retry Mechanism](#delivery-semantics-one-retry-mechanism)
@@ -70,6 +76,7 @@ lets it be made on the merits rather than around a missing substrate.
 | `TomSmsGatewayProtocol` / `TomFieldMappedSmsProtocol` | abstract class / class | The vendor mapping: field names in, status and error codes out |
 | `TomSmsSubmission` / `TomSmsGatewayRequest` / `TomSmsGatewayAnswer` / `TomSmsBodyFormat` | classes / enum | The values a protocol maps between, so `encode` and `decode` stay pure |
 | `TomSmsSegmentation` / `TomSmsEncoding` | class / enum | GSM 03.38 length arithmetic: the unit an SMS is actually billed in |
+| `TomWebhookTransport` / `TomWebhookSettings` | classes | Real delivery over HTTP: the message's own JSON POSTed to the URL that addresses it |
 | `TomMimeEncoder` | class | Renders a `TomMessage` as an RFC 5322 / MIME document |
 | `TomMessageOutbox` | class | The durable send queue in front of a router |
 | `TomTemplatedMessageService` | abstract class | The rule every channel shares: a message is a template key plus parameters |
@@ -385,7 +392,7 @@ is an accepted *request* and a refused *message*.
 
 | Layer | Owner | Rule |
 | --- | --- | --- |
-| HTTP status | `TomSmsTransport.isTransientStatus` | `408`, `425`, `429` and `5xx` are transient; every other non-`2xx` is permanent |
+| HTTP status | `TomDeliveryException.isTransientHttpStatus` | `408`, `425`, `429` and `5xx` are transient; every other non-`2xx` is permanent |
 | provider payload | the deployment's `TomSmsGatewayProtocol` | named codes are classified explicitly; an unrecognised code returns `null` and defers to the layer above |
 
 `TomSmsGatewayAnswer.isPermanent` is deliberately **three-valued**. A protocol
@@ -444,6 +451,94 @@ provides with `connect`. That is how `test/sms_transport_test.dart` asserts a
 `429`, a `401`, a provider failure code on a `200`, a socket failure, a gateway
 that never answers, and one dead number among three — none of which a real
 gateway produces on demand.
+
+## Webhook: The Message Is the Payload
+
+`TomWebhookTransport` POSTs `TomMessage.toJson()` to the URL in the message's
+recipient address, as `application/json`. That is the whole protocol — there is
+no vendor between the framework and the far side, so there is nothing to map.
+
+```dart
+router.register(
+  TomWebhookTransport(
+    settings: TomWebhookSettings(
+      timeout: const Duration(seconds: 10),
+      headers: {'X-Api-Key': config.webhookKey},
+    ),
+  ),
+);
+
+await outbox.send(
+  TomMessage(
+    channel: TomMessageChannel.webhook,
+    recipients: [TomRecipient('https://hooks.example.com/orders')],
+    bodies: [TomMessageBody.text('{"order":42}')],
+    headers: {'X-Event': 'order.created'},
+  ),
+);
+```
+
+The body is the message's own representation rather than a shape invented here,
+which is what keeps a delivered webhook and a queued message from drifting
+apart: the outbox already round-trips exactly that JSON.
+
+### One endpoint per message
+
+**A message addressing two URLs is refused, permanently.** The outbox retries a
+*message*, not a recipient, so a POST that succeeded at one endpoint and failed
+at another would be re-sent to both — and a webhook is not idempotent, so the
+far side would process it twice. Fan-out is expressed as two messages, which
+the outbox then retries independently and correctly.
+
+That constraint comes from the channel rather than from this implementation.
+SMTP hands one submission to a server that owns the per-recipient outcome and
+reports it back, which is what `TomDeliveryReceipt.rejectedRecipients` is for;
+HTTP has no such server.
+
+An address that is not an `http`/`https` URL is refused the same way, and for
+the same reason: neither becomes deliverable by being tried again.
+
+### Headers, and who wins
+
+The call carries `TomMessage.headers` — which is what that field's
+documentation always said it was for — and then `TomWebhookSettings.headers`
+on top. **The deployment's win.** The settings carry the credential; a message
+is composed by application code, and letting it overwrite one would let it strip
+the authentication off a call, which is not a decision a message gets to make.
+
+No bearer token is attached. The kernel's call layer injects the caller's by
+default, and a subscribed endpoint has no idea what that is — presenting it
+would hand a user credential to a third party.
+
+### No signing
+
+The transport does not sign its requests. Signature schemes are a per-consumer
+contract — the header name, the digest, what exactly is canonicalised — and a
+guess at one is a guess the receiver cannot verify. A deployment that has such a
+contract puts the header in `TomWebhookSettings.headers`.
+
+### Classification
+
+One layer: the HTTP status, through
+`TomDeliveryException.isTransientHttpStatus`. There is no second, payload-level
+layer of the kind SMS needs — an SMS gateway answers for a *carrier* and can
+accept a request while refusing a message, whereas a webhook endpoint answers
+for itself.
+
+The endpoint's answer is kept on the receipt as `detail`, truncated to
+`TomWebhookSettings.maxDetailChars` (512 by default): the body is a stranger's
+and the receipt is logged.
+
+#### Failure keys
+
+| Key | Classification | Raised when |
+| --- | -------------- | ----------- |
+| `messaging.webhook.not_one_endpoint` | permanent | The message names more or fewer than one recipient |
+| `messaging.webhook.bad_endpoint` | permanent | The address is not an `http` or `https` URL |
+| `messaging.webhook.rejected` | permanent | The endpoint answered a non-`2xx` status that a retry cannot change |
+| `messaging.webhook.refused` | transient | The endpoint answered `408`, `425`, `429` or `5xx` |
+| `messaging.webhook.unreachable` | transient | The call failed or the endpoint did not answer within the timeout |
+| `messaging.webhook.bad_detail_cap` | — | `TomWebhookSettings` was built with a negative `maxDetailChars`; a `TomMessagingException` at construction, not a delivery failure |
 
 ## Configuration and Secrets
 
@@ -961,6 +1056,9 @@ produce either on demand.
   `TomSmsGatewayRequest` / `TomSmsGatewayAnswer` / `TomSmsBodyFormat`** — the
   vendor mapping, and the values it maps between.
 - **`TomSmsSegmentation` / `TomSmsEncoding`** — GSM 03.38 length arithmetic.
+- **`TomWebhookTransport` / `TomWebhookSettings`** — real delivery over HTTP:
+  `TomMessage.toJson()` POSTed to the URL that addresses the message, one
+  endpoint per message, classified by HTTP status alone.
 - **`TomMimeEncoder`** — the RFC 5322 / MIME document.
 - **`TomMessageOutbox` / `tomOutboxJobName`** — the durable send queue.
 - **`TomTemplatedMessageService`** — the template-key rule every channel shares.
@@ -972,12 +1070,21 @@ produce either on demand.
 
 ## Not Yet Implemented
 
-- **Transports for the remaining channels.** `push` and `webhook` are named
-  constants with no implementation; the contract is what they will implement,
-  and a `TomNoOpMessageTransport` registered on those channels makes a spec that
-  names them runnable in the meantime. `email` and `sms` are implemented, and
-  the second one is the evidence that the contract carries a channel it was not
-  designed around.
+- **A push transport.** `TomMessageChannel.push` is a **reserved name**, not an
+  unfinished implementation: the channel set is open (see
+  [Channels Are Open, Not an Enum](#channels-are-open-not-an-enum)), and what
+  the constant buys is that every deployment which wires up its own push
+  transport spells the channel the same way. No transport ships, because one
+  would have to pick a vendor — FCM, APNs, or both — and a preset for an API
+  this repository cannot test against is a plausible-looking guess that fails in
+  production, the same reason no SMS vendor preset ships. A
+  `TomNoOpMessageTransport` registered on the channel makes a spec that names it
+  runnable in the meantime, at the cost of discarding the message silently,
+  which is right for a development environment and wrong for anything else.
+
+  `email`, `sms` and `webhook` are implemented. The second is the evidence that
+  the contract carries a channel it was not designed around; the third needed no
+  widening of it at all.
 - **Delivery reports.** `TomDeliveryReceipt.remoteId` carries the gateway's id
   precisely so an asynchronous status callback can be correlated with the
   message that produced it, but nothing here consumes one. An SMS accepted by a
@@ -992,8 +1099,10 @@ produce either on demand.
 - **Inbound mail.** This module sends only.
 - **Templating for the remaining channels.** `TomEmailService` and
   `TomSmsService` cover their channels; `push` and `webhook` have no equivalent
-  yet. Each will extend `TomTemplatedMessageService` with its own sub-key set
-  rather than generalising either existing one.
+  yet. A webhook rarely wants one — its body is structured data rather than
+  prose in a locale — but a push notification does. Each will extend
+  `TomTemplatedMessageService` with its own sub-key set rather than generalising
+  either existing one.
 - **Markup in templates.** A template resolves to a string. Conditionals, loops
   and partials are not offered: a template that needs one renders the varying
   part in the caller — as its own resource key, through `requiredText` — and
@@ -1006,14 +1115,14 @@ produce either on demand.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `message_transport.dart`, `outbox.dart`, `sms_transport.dart`, `smtp_transport.dart` | `Future`, `Stream`, `StreamController`, `unawaited` |
-| `dart:convert` | dart | `message.dart`, `mime_encoder.dart`, `sms_transport.dart`, `smtp_transport.dart` | `Encoding`, `LineSplitter`, `base64`, `json`, `jsonDecode`, `jsonEncode` |
+| `dart:async` | dart | `message_transport.dart`, `outbox.dart`, `sms_transport.dart`, `smtp_transport.dart`, `webhook_transport.dart` | `Future`, `Stream`, `StreamController`, `unawaited` |
+| `dart:convert` | dart | `message.dart`, `mime_encoder.dart`, `sms_transport.dart`, `smtp_transport.dart`, `webhook_transport.dart` | `Encoding`, `LineSplitter`, `base64`, `json`, `jsonDecode`, `jsonEncode` |
 | `dart:io` | dart | `message_transport.dart`, `smtp_transport.dart` | `Socket` / `SecureSocket` |
 | `dart:math` | dart | `mime_encoder.dart` | `Random`, `min` |
 | `dart:typed_data` | dart | `message.dart` | `Uint8List` |
 | `async` | package | `smtp_transport.dart` | `StreamQueue` drives the SMTP line protocol |
 | `path` | package | `message_transport.dart` | file naming in `TomFileMessageTransport` |
-| `tom_core_kernel` | package | `email_service.dart`, `message_transport.dart`, `outbox.dart`, `sms_service.dart`, `sms_transport.dart`, `smtp_transport.dart` | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `tomLog`, and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport` reaches its gateway through, rather than a raw client |
+| `tom_core_kernel` | package | 7 of 10 files | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `tomLog`, and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport` and `TomWebhookTransport` reach their endpoints through, rather than a raw client, plus `TomHeader` for the `Content-Type` name |
 | `uuid` | package | `message.dart` | `UuidV4`, for a message id when the caller supplies none |
 | [configuration](configuration.md) | module | `sms_transport.dart`, `smtp_transport.dart` | `TomBaseServerConfiguration` |
 | [little_things](little_things.md) | module | `message.dart` | `TomServerException` |

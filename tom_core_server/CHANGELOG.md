@@ -2,6 +2,34 @@
 
 ### Added
 
+- **A webhook transport (tcopen162).** `TomMessageChannel.webhook` was a named
+  constant with nothing behind it, so a spec naming the channel resolved to no
+  transport — the documented mitigation, a `TomNoOpMessageTransport`, runs the
+  spec by discarding the message silently.
+
+  `TomWebhookTransport` POSTs `TomMessage.toJson()` to the URL in the message's
+  recipient address as `application/json`. The body is the message's own
+  representation rather than a shape invented for the wire, which is what keeps
+  a delivered webhook and a queued message from drifting apart: the outbox
+  already round-trips exactly that JSON.
+
+  **A message addressing two endpoints is refused, permanently.** The outbox
+  retries a *message*, not a recipient, so a POST that succeeded at one endpoint
+  and failed at another would be re-sent to both — and a webhook is not
+  idempotent. Fan-out is two messages, retried independently.
+
+  `TomWebhookSettings` carries the timeout, the headers applied to every call
+  and how much of the endpoint's answer the receipt keeps. The deployment's
+  headers win over the message's: they carry the credential, and letting
+  composing code overwrite one would let it strip the authentication off a call.
+  Requests are not signed — a signature scheme is a per-consumer contract, and a
+  guess at one is a guess the receiver cannot verify.
+
+  `TomMessageChannel.push` stays a **reserved name** and is documented as one.
+  Shipping a transport would mean picking FCM or APNs, and a preset for an API
+  this repository cannot test against is the guess no SMS vendor preset ships
+  either.
+
 - **`GET /ready`, so liveness and readiness are separable (tcopen154).** There
   was one route, one static analyzer and one verdict, and the two questions have
   **opposite consequences**: a failing liveness probe restarts the process, a
@@ -32,6 +60,14 @@
   `readinessAnalyzer` the old name reads as though it covered both.
 
 ### Changed
+
+- **The HTTP retry rule moved off the SMS transport (tcopen162).**
+  `TomSmsTransport.isTransientStatus` is now
+  `TomDeliveryException.isTransientHttpStatus`. Two transports need it and the
+  rule is the same one — an SMS gateway and a webhook endpoint are both HTTP —
+  and a second copy is a second thing to keep in step with the retry policy it
+  feeds.
+
 
 - **`TomServerException` forwards the kernel's whole parameter list
   (tcopen161).** It accepted six of the kernel's nine and silently dropped

@@ -4,8 +4,8 @@
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Outbound messaging: one channel-neutral message shape, one delivery contract,
-and one durable queue — with SMTP and an HTTP SMS gateway as the two real
-implementations of that contract.
+and one durable queue — with SMTP, an HTTP SMS gateway and an HTTP webhook as
+the three real implementations of that contract.
 
 The module is built in four layers, and the file names alone do not say which
 layer a file belongs to. From the bottom:
@@ -18,9 +18,10 @@ layer a file belongs to. From the bottom:
    This one file also holds the router and the three transports that need **no
    network**, which is the thing its name does not say: a reader looking for the
    in-memory transport will not think to open it.
-3. **The real transports** (`smtp_transport.dart`, `sms_transport.dart`) — the
-   two implementations that do touch a wire, each with the wire itself behind an
-   injectable seam so the protocol is testable without a server.
+3. **The real transports** (`smtp_transport.dart`, `sms_transport.dart`,
+   `webhook_transport.dart`) — the three implementations that do touch a wire,
+   each with the wire itself behind an injectable seam so the protocol is
+   testable without a server.
 4. **The application layer** (`templated_message_service.dart` and the two
    services on it, plus `outbox.dart`) — resource-keyed templates, a per-channel
    request type, and the queue that makes a send survive a restart.
@@ -96,6 +97,20 @@ vocabulary goes behind a protocol object instead.
 | `TomSmsBodyFormat` | How the request body is encoded. |
 | `TomSmsSegmentation` | GSM 03.38 length arithmetic. `text.length` is the wrong number in three separate ways, and an SMS is billed per *segment*. |
 | `TomSmsEncoding` | GSM or UCS-2 — one character outside GSM 03.38 moves the whole message. |
+
+### Webhook
+
+Source: `webhook_transport.dart`
+
+| Type | What it is |
+| ---- | ---------- |
+| `TomWebhookTransport` | POSTs `TomMessage.toJson()` to the URL in the message's recipient address, as `application/json`. Classified by HTTP status alone — a webhook endpoint answers for itself, where an SMS gateway answers for a carrier. |
+| `TomWebhookSettings` | The timeout, headers applied to every call (they win over the message's, because they carry the credential), and how much of the answer the receipt keeps. |
+
+A message addressing two URLs is refused **permanently**: the outbox retries a
+message rather than a recipient, so a POST that succeeded at one endpoint and
+failed at another would be re-sent to both, and a webhook is not idempotent.
+Fan-out is two messages.
 
 ### The MIME document
 

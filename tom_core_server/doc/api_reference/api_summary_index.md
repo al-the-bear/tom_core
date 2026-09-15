@@ -444,6 +444,8 @@ surface documented here.
 | `TomSmsGatewayRequest` | class | One gateway call, ready to send. |
 | `TomSmsGatewayAnswer` | class | What the gateway said, with a three-valued permanence. |
 | `TomSmsBodyFormat` | enum | `form`, `json`. |
+| `TomWebhookTransport` | class | Real delivery over HTTP: the message's own JSON POSTed to the URL that addresses it. |
+| `TomWebhookSettings` | class | The timeout, the always-applied headers, and how much of the answer the receipt keeps. |
 | `TomSmsSubmission` | class | One recipient's share of a message, as handed to a protocol. |
 | `TomSmsSegmentation` | class | What a text costs: encoding, units, segments. |
 | `TomSmsEncoding` | enum | `gsm7`, `ucs2`. |
@@ -1071,6 +1073,8 @@ surface documented here.
 | `TomUserPreferencesServer` | Preferences |
 | `TomUserTwoFactorEnrolment` | Authentication |
 | `TomUserTwoFactorEnrolmentRepository` | Authentication |
+| `TomWebhookSettings` | Messaging |
+| `TomWebhookTransport` | Messaging |
 | `TomWebSocketConnection` | Endpoints |
 | `TomWebSocketEndpoint` | Endpoints |
 | `TomWebSocketException` | Endpoints |

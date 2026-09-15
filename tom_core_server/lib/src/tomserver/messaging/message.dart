@@ -87,9 +87,21 @@ class TomMessageChannel {
   static const TomMessageChannel sms = TomMessageChannel('sms');
 
   /// Mobile or browser push notification.
+  ///
+  /// **A reserved name, not an unfinished implementation.** No transport ships
+  /// for it, and the constant is still worth having: the channel set is open,
+  /// so what a name in this class buys is that every deployment wiring up its
+  /// own push transport spells the channel the same way. Shipping one would
+  /// mean picking a vendor — FCM, APNs, or both — and a preset for an API this
+  /// repository cannot test against is a plausible-looking guess that fails in
+  /// production, which is the same reason no SMS vendor preset ships.
+  ///
+  /// A [TomNoOpMessageTransport] registered here makes a spec that names the
+  /// channel runnable, at the cost of discarding the message silently.
   static const TomMessageChannel push = TomMessageChannel('push');
 
-  /// An HTTP callback to a subscribed endpoint.
+  /// An HTTP callback to a subscribed endpoint, delivered by
+  /// [TomWebhookTransport].
   static const TomMessageChannel webhook = TomMessageChannel('webhook');
 
   /// The four channels CE-NT names, for validation and for iteration.
