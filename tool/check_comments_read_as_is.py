@@ -196,7 +196,7 @@ CAPS_SHAPE = re.compile(r"\b([A-Z]{2,12})\d+\b")
 #: mermaid node prefixes the design diagrams use (``RT1``, ``FB1``).
 KNOWN_CAPS = frozenset(
     """
-    AES AWS FB FF HS INT ISO MGF MP PKCS RFC RGBA RS RT SHA SIGUSR SKU USR
+    AES AWS FB FF HS INT ISO MD MGF MP PKCS RFC RGBA RS RT SHA SIGUSR SKU USR
     UTF X ZIP
     """.split()
 )

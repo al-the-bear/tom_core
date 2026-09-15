@@ -1228,6 +1228,7 @@ const TomFileMetadata({
   required int byteCount,
   String? fileName,
   DateTime? storedAt,
+  String? digest,
 })
 ```
 
@@ -1251,7 +1252,8 @@ is a protocol error and throws `TomFileTransferException` keyed
 | `byteCount` | `int` | The stored size in bytes. |
 | `fileName` | `String?` | The original file name, when the server kept one. |
 | `storedAt` | `DateTime?` | When the file was stored, when the server reports it. |
-| `hashCode` | `int` | *(override)* Hash over key, media type, byte count, file name and `storedAt`. |
+| `digest` | `String?` | The SHA-256 of the stored bytes as lowercase hex, when the server has one — for verifying a finished download, skipping an upload whose bytes are already stored, or recognising two keys as one file. Nullable here and not on the server's own `TomStoredBlob`, for two reasons that are both about this being the wire: a server may be older than this field, and a blob the server did not write itself has no recorded hash. Absent means "not told", never "empty file" — the digest of zero bytes is a real and well-known value. |
+| `hashCode` | `int` | *(override)* Hash over key, media type, byte count, file name, `storedAt` and `digest`. |
 
 ##### Methods
 
@@ -1484,6 +1486,6 @@ None — this module exposes no public enums.
 | `tomRemoteApis` | `TomRemoteApis get tomRemoteApis` | Global accessor (getter) for the `TomRemoteApis` singleton. |
 | `tomRunWithAuthRetry` | `Future<R> tomRunWithAuthRetry<R>({required Future<R> Function() send, required int Function(R response) statusOf, required TomAuthRefresher refresher, TomAuthRetryPolicy? policy, String? Function(R response)? errorKeyOf})` | Runs `send` under the active refresh/retry policy: replays the request after refreshing the token on an expiry status, and throws `TomAuthExpiredException` when the status persists after the retries. |
 | `decodeFileDescriptor` | `TomFileMetadata decodeFileDescriptor(String body)` | Decodes the JSON descriptor body shared by the upload and describe responses; throws `file_transfer.invalid_descriptor` when the body is not valid JSON or not a JSON object. Extracted so both the HTTP client and any server implementing the wire contract read the same shape. |
-| `tomFileDescriptorHeaders` | `Map<String, String> tomFileDescriptorHeaders(TomFileMetadata metadata)` | Writes the `x-tom-file` descriptor header (plus `Content-Type` / `Content-Length` / `Content-Disposition`) that a `HEAD` response needs so `describe` can answer without a body. Lives beside the client because it is the *contract*, not an implementation. |
+| `tomFileDescriptorHeaders` | `Map<String, String> tomFileDescriptorHeaders(TomFileMetadata metadata)` | Writes the `x-tom-file` descriptor header (plus `Content-Type` / `Content-Length` / `Content-Disposition`, and `ETag` when the descriptor carries a digest) that a `HEAD` response needs so `describe` can answer without a body. The `ETag` is *strong* — quoted, no `W/` prefix — because the digest identifies the bytes exactly, which is what makes a conditional range request legal against it. Lives beside the client because it is the *contract*, not an implementation. |
 | `tomEscapeFileNameForDisposition` | `String tomEscapeFileNameForDisposition(String fileName)` | Escapes a file name for a quoted `Content-Disposition` parameter. Only the two characters that can terminate or escape the quoted string are touched; anything more aggressive would mangle legitimate names. |
 | `tomFileNameFromDisposition` | `String? tomFileNameFromDisposition(String? disposition)` | Extracts `filename="…"` (including the RFC 5987 `filename*=` form) from a `Content-Disposition` header, or `null` when the header is absent or names no file. Public, beside its writing counterpart, so the two halves cannot drift. |

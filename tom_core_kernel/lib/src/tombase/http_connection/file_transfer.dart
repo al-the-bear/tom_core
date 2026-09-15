@@ -215,6 +215,7 @@ class TomFileMetadata {
     required this.byteCount,
     this.fileName,
     this.storedAt,
+    this.digest,
   });
 
   /// Reads metadata from the JSON descriptor the server returns.
@@ -240,6 +241,7 @@ class TomFileMetadata {
       byteCount: byteCount,
       fileName: json['fileName'] as String?,
       storedAt: storedAt is String ? DateTime.tryParse(storedAt) : null,
+      digest: json['digest'] as String?,
     );
   }
 
@@ -258,6 +260,17 @@ class TomFileMetadata {
   /// When the file was stored, when the server reports it.
   final DateTime? storedAt;
 
+  /// The SHA-256 of the stored bytes as lowercase hex, when the server has one.
+  ///
+  /// What a client does with it: verify a download it has just finished, skip
+  /// an upload whose bytes it can see are already stored, or recognise two
+  /// keys as one file. Nullable *here* and not on the server's own
+  /// `TomStoredBlob`, for two reasons that are both about this being the wire:
+  /// a server may be older than this field, and a blob the server did not write
+  /// itself has no recorded hash. Absent means "not told", never "empty file" —
+  /// the digest of zero bytes is a real and well-known value.
+  final String? digest;
+
   /// The JSON descriptor for this metadata.
   ///
   /// Optional members are omitted rather than written as `null` so a round trip
@@ -268,6 +281,7 @@ class TomFileMetadata {
     'byteCount': byteCount,
     if (fileName != null) 'fileName': fileName,
     if (storedAt != null) 'storedAt': storedAt!.toIso8601String(),
+    if (digest != null) 'digest': digest,
   };
 
   @override
@@ -277,11 +291,12 @@ class TomFileMetadata {
       other.mediaType == mediaType &&
       other.byteCount == byteCount &&
       other.fileName == fileName &&
-      other.storedAt == storedAt;
+      other.storedAt == storedAt &&
+      other.digest == digest;
 
   @override
   int get hashCode =>
-      Object.hash(key, mediaType, byteCount, fileName, storedAt);
+      Object.hash(key, mediaType, byteCount, fileName, storedAt, digest);
 
   @override
   String toString() =>

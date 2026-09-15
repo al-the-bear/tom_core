@@ -4863,8 +4863,17 @@ class RealClass {}
     // name should be, not finding it, and concluding it is not there.
     test('the alphabetical table is in alphabetical order', () {
       final rows = _indexAlphaOrder();
+      // Ties broken on the raw name. Two rows that differ only in case —
+      // `TomService` and `tomService` — compare equal case-insensitively, and
+      // `List.sort` is **not stable**, so with no tie-break the expected order
+      // of such a pair depended on where in the list an unrelated row had been
+      // inserted. That made this check fail at random on an edit nowhere near
+      // it. Uppercase first is the order the table already holds.
       final sorted = [...rows]
-        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+        ..sort((a, b) {
+          final folded = a.toLowerCase().compareTo(b.toLowerCase());
+          return folded != 0 ? folded : a.compareTo(b);
+        });
       final firstOutOfPlace = [
         for (var i = 0; i < rows.length; i++)
           if (rows[i] != sorted[i]) '${rows[i]} (expected ${sorted[i]})',

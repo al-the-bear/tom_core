@@ -243,6 +243,10 @@ class _TypedFileSlot<T extends Object, K> extends TomFileSlot {
     byteCount: stored.byteCount,
     fileName: stored.fileName,
     storedAt: stored.storedAt,
+    // `unknownDigest` becomes `null` rather than an empty string: the wire
+    // descriptor omits what it does not know, and an empty `digest` member
+    // would read as a value.
+    digest: stored.hasDigest ? stored.digest : null,
   );
 }
 
@@ -495,7 +499,7 @@ class TomFileEndpoint {
         case 'GET':
           return await _download(request, slot, id);
         case 'HEAD':
-          return await _head(slot, id);
+          return await _head(request, slot, id);
         case 'DELETE':
           return await _delete(slot, id);
         default:
@@ -583,6 +587,19 @@ class TomFileEndpoint {
       'accept-ranges': 'bytes',
     };
 
+    // Answered before the range, and before anything is read: a conditional
+    // request the caller already satisfies costs one `describe`, whatever it
+    // asked for. RFC 9110 puts `If-None-Match` ahead of `Range` for exactly
+    // this reason — a client resuming a download it turns out already has in
+    // full should not be handed a `206`.
+    if (_matches(request.headers['if-none-match'], metadata.digest)) {
+      // A 304 carries the validators and no body. `Content-Length` is dropped
+      // rather than set to 0: it describes the representation, and a zero here
+      // tells a cache the resource is empty.
+      final unchanged = Map.of(headers)..remove('content-length');
+      return Response.notModified(headers: unchanged);
+    }
+
     final asked = _rangeOf(request.headers['range'], metadata.byteCount);
     if (asked == null) {
       return Response.ok(_inCurrentZone(() => slot.open(id)), headers: headers);
@@ -621,6 +638,30 @@ class TomFileEndpoint {
         'content-range': 'bytes ${range.start}-$end/${metadata.byteCount}',
       },
     );
+  }
+
+  /// Whether [header] lists an entity tag matching [digest].
+  ///
+  /// `*` matches anything that exists, which is what it means in
+  /// `If-None-Match`. Otherwise each comma-separated tag is compared to the
+  /// strong tag this endpoint writes; a `W/` prefix is accepted because the
+  /// *weak* comparison is the one `If-None-Match` specifies, and a cache is
+  /// entitled to send back a tag it weakened.
+  ///
+  /// A file with no digest matches nothing: it has no validator, so a
+  /// conditional request against it cannot be satisfied and the bytes are
+  /// served.
+  static bool _matches(String? header, String? digest) {
+    if (header == null) return false;
+    if (digest == null || digest.isEmpty) return false;
+    final tag = '"$digest"';
+    for (final candidate in header.split(',')) {
+      final trimmed = candidate.trim();
+      if (trimmed == '*') return true;
+      final strong = trimmed.startsWith('W/') ? trimmed.substring(2) : trimmed;
+      if (strong == tag) return true;
+    }
+    return false;
   }
 
   /// The single byte range [header] asks for, or `null` for no usable one.
@@ -716,7 +757,11 @@ class TomFileEndpoint {
     return controller.stream;
   }
 
-  static Future<Response> _head(TomFileSlot slot, String id) async {
+  static Future<Response> _head(
+    Request request,
+    TomFileSlot slot,
+    String id,
+  ) async {
     final metadata = await slot.describe(id);
     if (metadata == null) {
       return _error(404, 'file_endpoint.no_file', 'No file is stored there.');
@@ -731,6 +776,13 @@ class TomFileEndpoint {
       // plans a resumable download actually reads it: it asks HEAD for the
       // size, and learns here that it may ask for part of it.
       ..['accept-ranges'] = 'bytes';
+    // The same condition the `GET` answers. A client that probes with `HEAD`
+    // before deciding whether to download is precisely the one this saves a
+    // transfer, and answering it differently from `GET` would make the probe
+    // and the request disagree about the same resource.
+    if (_matches(request.headers['if-none-match'], metadata.digest)) {
+      return Response.notModified(headers: headers);
+    }
     return Response.ok(null, headers: headers);
   }
 

@@ -105,6 +105,9 @@ class TomDirectoryBlobStore extends TomBlobStore {
     // upload connection dropped.
     final partial = File('${file.path}$partialSuffix');
     var written = 0;
+    // Hashed on the same pass that writes: the chunks are already flowing
+    // through this `map`, so the digest costs no second read of the file.
+    final digest = TomBlobDigest();
     // Whether the rename has happened, which is what decides *what the residue
     // is* if a later step fails. Before it, the leftover is the partial and the
     // previous blob is untouched; after it, there is no partial and the
@@ -117,6 +120,7 @@ class TomDirectoryBlobStore extends TomBlobStore {
       await sink.addStream(
         bytes.map((chunk) {
           written += chunk.length;
+          digest.add(chunk);
           return chunk;
         }),
       );
@@ -137,6 +141,7 @@ class TomDirectoryBlobStore extends TomBlobStore {
         mediaType: mediaType,
         byteCount: written,
         storedAt: DateTime.now(),
+        digest: digest.close(),
         fileName: fileName,
         location: file.absolute.uri,
       );
@@ -195,6 +200,12 @@ class TomDirectoryBlobStore extends TomBlobStore {
           meta?['mediaType'] as String? ?? TomStoredBlob.defaultMediaType,
       byteCount: stat.size,
       storedAt: stat.modified,
+      // Read back rather than recomputed. `describe` is the cheap question —
+      // one `stat` and one small file — and hashing here would turn it into a
+      // full read of a blob the caller may not want. A file this store did not
+      // write has no sidecar and so no digest, which is what
+      // `TomStoredBlob.unknownDigest` is for.
+      digest: meta?['digest'] as String? ?? TomStoredBlob.unknownDigest,
       fileName: meta?['fileName'] as String?,
       location: file.absolute.uri,
     );
@@ -296,6 +307,7 @@ class TomDirectoryBlobStore extends TomBlobStore {
     await _metadataFileFor(file).writeAsString(
       jsonEncode({
         'mediaType': descriptor.mediaType,
+        if (descriptor.hasDigest) 'digest': descriptor.digest,
         if (descriptor.fileName != null) 'fileName': descriptor.fileName,
       }),
       flush: true,

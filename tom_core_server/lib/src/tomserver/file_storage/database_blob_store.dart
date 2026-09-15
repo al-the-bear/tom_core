@@ -194,6 +194,11 @@ class TomDatabaseBlobStore extends TomBlobStore {
     var byteCount = 0;
     var chunkIndex = 0;
     final buffer = <int>[];
+    // Hashed from the incoming chunks rather than from the buffered ones. The
+    // buffer is re-cut to `chunkSize`, so hashing it would be the same bytes in
+    // different pieces — the same digest, but only because SHA-256 does not
+    // care, and a reader should not need to know that to believe this line.
+    final digest = TomBlobDigest();
 
     Future<void> flush() async {
       if (buffer.isEmpty) return;
@@ -216,6 +221,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
     try {
       await for (final incoming in bytes) {
         byteCount += incoming.length;
+        digest.add(incoming);
         var offset = 0;
         // A single incoming chunk may be larger than `chunkSize` (a file read
         // hands out whatever the OS gave it), so the loop slices rather than
@@ -252,6 +258,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
         'byte_count': ':byteCount',
         'chunk_count': ':chunkCount',
         'chunk_size': ':chunkSize',
+        'digest': ':digest',
         'stored_at': ':storedAt',
       }),
       {
@@ -262,6 +269,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
         'byteCount': byteCount,
         'chunkCount': chunkIndex,
         'chunkSize': chunkSize,
+        'digest': digest.close(),
         // Bound as a `DateTime`, not as text this store renders itself. The
         // data source binds every instant through `sqlInstant`, which is what
         // puts a UTC reading in the column; a local one formatted here read
@@ -287,6 +295,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
       mediaType: mediaType,
       byteCount: byteCount,
       storedAt: storedAt,
+      digest: digest.close(),
       fileName: fileName,
     );
   }
@@ -372,6 +381,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
       mediaType: manifest.mediaType,
       byteCount: manifest.byteCount,
       storedAt: manifest.storedAt,
+      digest: manifest.digest,
       // An empty string is treated as absent too: a `NOT NULL` variant of this
       // table (a migration may well declare one) stores "no name" that way.
       fileName: (manifest.fileName?.isEmpty ?? true) ? null : manifest.fileName,
@@ -400,6 +410,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
         'byte_count': ':byteCount',
         'chunk_count': ':chunkCount',
         'chunk_size': ':chunkSize',
+        'digest': ':digest',
         'stored_at': ':storedAt',
       }),
       {
@@ -410,6 +421,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
         'byteCount': source.byteCount,
         'chunkCount': source.chunkCount,
         'chunkSize': source.chunkSize,
+        'digest': source.digest,
         'storedAt': storedAt,
       },
     );
@@ -500,6 +512,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
       byteCount: row.byteCount,
       chunkCount: row.chunkCount,
       chunkSize: row.chunkSize,
+      digest: row.digest,
       storedAt: row.storedAt,
     );
   }
@@ -534,6 +547,7 @@ class _BlobManifest {
     required this.byteCount,
     required this.chunkCount,
     required this.chunkSize,
+    required this.digest,
     required this.storedAt,
   });
 
@@ -544,6 +558,7 @@ class _BlobManifest {
   final int byteCount;
   final int chunkCount;
   final int chunkSize;
+  final String digest;
   final DateTime storedAt;
 }
 
@@ -591,6 +606,10 @@ class TomBlobManifestRow {
   /// The size every chunk but the last was written at.
   @TomDbColumn(columnName: "chunk_size")
   int chunkSize = 0;
+
+  /// The SHA-256 of the content, as 64 lowercase hex characters.
+  @TomDbColumn(columnName: "digest")
+  String digest = "";
 
   /// When the write completed.
   @TomDbColumn(columnName: "stored_at")

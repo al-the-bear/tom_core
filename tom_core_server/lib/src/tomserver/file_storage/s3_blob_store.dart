@@ -133,6 +133,16 @@ class TomS3BlobStore extends TomBlobStore {
   /// The header the original file name is carried in.
   static const String fileNameHeader = 'x-amz-meta-filename';
 
+  /// The header the content digest is carried in.
+  ///
+  /// User metadata rather than a protocol header, because S3 has none that
+  /// means this. `x-amz-content-sha256` is the *signature's* payload hash, sent
+  /// per request — on a multipart upload it is a part's hash, never the
+  /// object's — and `ETag` is an MD5 only for single-part objects and an opaque
+  /// string otherwise. Neither survives as a whole-object SHA-256, so the store
+  /// records its own.
+  static const String digestHeader = 'x-amz-meta-digest';
+
   @override
   Future<TomStoredBlob> doPut({
     required String key,
@@ -140,18 +150,30 @@ class TomS3BlobStore extends TomBlobStore {
     String mediaType = TomStoredBlob.defaultMediaType,
     String? fileName,
   }) async {
-    final metadata = <String, String>{
-      'content-type': mediaType,
-      if (fileName != null) fileNameHeader: fileName,
-    };
-
     final buffer = <int>[];
     var byteCount = 0;
+    // Hashed as the bytes arrive, which is the only place the *whole* object
+    // passes through on a multipart upload: each part is signed with its own
+    // payload hash, and nothing downstream ever sees them joined.
+    final digest = TomBlobDigest();
     String? uploadId;
     final etags = <String>[];
 
+    // Deferred until the digest is known, so a single PUT carries it in the
+    // same request as the bytes. A multipart upload cannot: its metadata is
+    // fixed when the upload is created, before the last part has been seen —
+    // so that path sets the digest afterwards, with a copy onto itself.
+    Map<String, String> metadataWith(String contentDigest) => {
+      'content-type': mediaType,
+      if (fileName != null) fileNameHeader: fileName,
+      if (contentDigest.isNotEmpty) digestHeader: contentDigest,
+    };
+
     Future<void> uploadPart() async {
-      uploadId ??= await _createMultipartUpload(key, metadata);
+      uploadId ??= await _createMultipartUpload(
+        key,
+        metadataWith(TomStoredBlob.unknownDigest),
+      );
       final partNumber = etags.length + 1;
       final response = await _send(
         method: 'PUT',
@@ -179,6 +201,7 @@ class TomS3BlobStore extends TomBlobStore {
     try {
       await for (final incoming in bytes) {
         byteCount += incoming.length;
+        digest.add(incoming);
         var offset = 0;
         while (offset < incoming.length) {
           final take = (partSize - buffer.length).clamp(
@@ -199,12 +222,30 @@ class TomS3BlobStore extends TomBlobStore {
           operation: 'put',
           key: key,
           uri: _objectUri(key, const {}),
-          headers: metadata,
+          headers: metadataWith(digest.close()),
           body: List<int>.of(buffer),
         );
       } else {
         if (buffer.isNotEmpty) await uploadPart();
         await _completeMultipartUpload(key, uploadId!, etags);
+        // The digest is only known now, and multipart metadata was fixed when
+        // the upload was created. A copy onto the same key with
+        // `REPLACE` is S3's own way of rewriting metadata in place: the object
+        // store moves the bytes internally, so this is one request rather than
+        // a re-upload. Without it a multipart object would come back from
+        // `describe` with no digest — the one size where a caller most wants
+        // one.
+        await _send(
+          method: 'PUT',
+          operation: 'setMetadata',
+          key: key,
+          uri: _objectUri(key, const {}),
+          headers: {
+            ...metadataWith(digest.close()),
+            'x-amz-copy-source': _copySource(key),
+            'x-amz-metadata-directive': 'REPLACE',
+          },
+        );
       }
     } on Object catch (error, stack) {
       if (uploadId != null) {
@@ -223,6 +264,7 @@ class TomS3BlobStore extends TomBlobStore {
       mediaType: mediaType,
       byteCount: byteCount,
       storedAt: DateTime.now(),
+      digest: digest.close(),
       fileName: fileName,
       location: _objectUri(key, const {}),
     );
@@ -303,6 +345,9 @@ class TomS3BlobStore extends TomBlobStore {
           response.headers['content-type'] ?? TomStoredBlob.defaultMediaType,
       byteCount: int.tryParse(response.headers['content-length'] ?? '') ?? 0,
       storedAt: _lastModified(response.headers['last-modified']),
+      // An object this store did not write carries no such header, and reports
+      // `unknownDigest` rather than a hash nobody computed.
+      digest: response.headers[digestHeader] ?? TomStoredBlob.unknownDigest,
       fileName: response.headers[fileNameHeader],
       location: _objectUri(key, const {}),
     );
@@ -328,6 +373,10 @@ class TomS3BlobStore extends TomBlobStore {
       mediaType: described.mediaType,
       byteCount: described.byteCount,
       storedAt: DateTime.now().toUtc(),
+      // `CopyObject` without a metadata directive copies the source's user
+      // metadata, so the digest header travels with the bytes — and it is the
+      // same bytes, so it is still true.
+      digest: described.digest,
       fileName: described.fileName,
       location: _objectUri(toKey, const {}),
     );

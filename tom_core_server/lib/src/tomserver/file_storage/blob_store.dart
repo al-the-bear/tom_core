@@ -62,6 +62,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart';
+
 import '../little_things/server_exception.dart';
 
 /// The base error for every file-storage failure.
@@ -159,6 +161,7 @@ class TomStoredBlob {
     required this.mediaType,
     required this.byteCount,
     required DateTime storedAt,
+    this.digest = unknownDigest,
     this.fileName,
     this.location,
   }) : storedAt = storedAt.toUtc();
@@ -190,11 +193,100 @@ class TomStoredBlob {
   /// its keys map to addresses.
   final Uri? location;
 
+  /// The lowercase hex SHA-256 of the stored bytes, or [unknownDigest].
+  ///
+  /// **Every blob written through [TomBlobStore.put] has one**, whichever
+  /// backend is configured: the hash is computed while the bytes stream past,
+  /// on a pass the backend is making anyway, and recorded beside the media type
+  /// and the file name. That is what makes it something a caller can build on —
+  /// an integrity check after a transfer, a deduplication key before one, an
+  /// `ETag` a download endpoint can serve.
+  ///
+  /// It is [unknownDigest] for a blob **this framework did not write**: a file
+  /// dropped into a directory store's tree by hand, an object already in a
+  /// bucket the store was pointed at. Those have no recorded media type either
+  /// and fall back to [defaultMediaType]; the digest's counterpart is a named
+  /// empty string rather than `null`, so that "not recorded" cannot be confused
+  /// with the digest of zero bytes — which is a real, well-known value.
+  /// [hasDigest] is the question to ask.
+  final String digest;
+
   /// The media type used when a caller states none.
   static const String defaultMediaType = 'application/octet-stream';
 
+  /// The [digest] of a blob whose hash was never recorded.
+  static const String unknownDigest = '';
+
+  /// Whether [digest] holds a hash rather than [unknownDigest].
+  bool get hasDigest => digest != unknownDigest;
+
   @override
   String toString() => 'TomStoredBlob($key, $byteCount bytes, $mediaType)';
+}
+
+/// The running SHA-256 of a blob, fed chunk by chunk as it is stored.
+///
+/// A backend hashes on the pass it is already making — a file write, a chunk
+/// insert, a part upload — so the digest costs no extra read. Public because
+/// [TomStoredBlob.digest] is a promise every backend has to keep, including one
+/// an application writes, and a promise the framework does not make easy to
+/// keep is one that gets broken.
+///
+/// ```dart
+/// final digest = TomBlobDigest();
+/// await for (final chunk in bytes) {
+///   digest.add(chunk);
+///   await sink.add(chunk);
+/// }
+/// final hex = digest.close();
+/// ```
+class TomBlobDigest {
+  /// Starts an empty hash.
+  TomBlobDigest() {
+    _input = sha256.startChunkedConversion(_output);
+  }
+
+  final _DigestSink _output = _DigestSink();
+  late final ByteConversionSink _input;
+  String? _hex;
+
+  /// Feeds [chunk] to the running hash.
+  ///
+  /// The chunk is read, never retained — which is what lets a backend pass the
+  /// same borrowed buffer here that it is about to write.
+  void add(List<int> chunk) {
+    if (_hex != null) {
+      throw StateError('TomBlobDigest.add after close');
+    }
+    _input.add(chunk);
+  }
+
+  /// The lowercase hex digest of everything added.
+  ///
+  /// Idempotent: calling it again returns the same string rather than closing a
+  /// closed hash, so a backend with more than one exit path does not have to
+  /// track which one ran.
+  String close() {
+    if (_hex != null) return _hex!;
+    _input.close();
+    return _hex = _output.value
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join();
+  }
+
+  /// The hex SHA-256 of [bytes], for a caller holding them whole.
+  static String of(List<int> bytes) => (TomBlobDigest()..add(bytes)).close();
+}
+
+/// Catches the one digest `startChunkedConversion` emits on close.
+class _DigestSink implements Sink<Digest> {
+  late final List<int> value;
+
+  @override
+  void add(Digest data) => value = data.bytes;
+
+  @override
+  void close() {}
 }
 
 /// A half-open byte range of a stored blob: [start] inclusive, [endExclusive]
@@ -894,11 +986,15 @@ class TomMemoryBlobStore extends TomBlobStore {
       builder.add(chunk);
     }
     final content = builder.takeBytes();
+    // Hashed from the assembled buffer rather than chunk by chunk: this is the
+    // one backend that holds the whole blob anyway, so there is nothing to
+    // stream past.
     final descriptor = TomStoredBlob(
       key: key,
       mediaType: mediaType,
       byteCount: content.length,
       storedAt: DateTime.now(),
+      digest: TomBlobDigest.of(content),
       fileName: fileName,
     );
     _content[key] = content;
@@ -946,6 +1042,9 @@ class TomMemoryBlobStore extends TomBlobStore {
       mediaType: source.mediaType,
       byteCount: copied.length,
       storedAt: DateTime.now(),
+      // The same bytes, so the same hash — and carried rather than recomputed,
+      // which is the point of a copy that does not read the blob.
+      digest: source.digest,
       fileName: source.fileName,
     );
     _content[toKey] = copied;

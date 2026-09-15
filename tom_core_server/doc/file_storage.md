@@ -19,6 +19,7 @@ without the second; the second is built entirely on the first.
   - [Who Owns a Chunk](#who-owns-a-chunk)
   - [A Broken Transfer Delivers What It Got](#a-broken-transfer-delivers-what-it-got)
   - [A Byte Range, and Who Is Obliged to Serve It](#a-byte-range-and-who-is-obliged-to-serve-it)
+  - [The Content Digest](#the-content-digest)
   - [Relocating a Blob](#relocating-a-blob)
 - [Keys Are a Grammar, Not a String](#keys-are-a-grammar-not-a-string)
   - [Prefixes obey the same grammar](#prefixes-obey-the-same-grammar)
@@ -39,6 +40,7 @@ without the second; the second is built entirely on the first.
   - [Slots Are Derived, Not Declared](#slots-are-derived-not-declared)
   - [Exposure Is Default-Closed](#exposure-is-default-closed)
   - [The Wire Contract](#the-wire-contract)
+    - [ETag and If-None-Match](#etag-and-if-none-match)
     - [Range](#range)
   - [Serving a File by Hand](#serving-a-file-by-hand)
   - [A File That Arrives as Part of a Form](#a-file-that-arrives-as-part-of-a-form)
@@ -55,7 +57,8 @@ without the second; the second is built entirely on the first.
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
 | `TomBlobStore` | abstract class | The contract: `put` / `get` (whole or a byte range) / `describe` / `exists` / `delete` / `copy` / `move`, by key |
-| `TomStoredBlob` | class | What was stored — key, media type, size, time, name, location |
+| `TomStoredBlob` | class | What was stored — key, media type, size, time, digest, name, location |
+| `TomBlobDigest` | class | The running SHA-256 a backend feeds while it writes |
 | `TomBlobRange` | class | A half-open byte range of a blob, for the partial read `get` takes |
 | `TomStorageException` | class | The module's base error |
 | `TomBlobStoreOperation` | enum | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete` / `copy` / `move`, each carrying a stable error key |
@@ -221,6 +224,60 @@ worth naming. A download endpoint honouring HTTP `Range` needs *a* range read
 from whatever backend is configured; writing the discard at the endpoint instead
 would mean the S3 backend's native capability could not be reached through the
 interface at all.
+
+### The Content Digest
+
+Every blob `put` stores carries the **SHA-256 of its content**, as 64 lowercase
+hex characters on `TomStoredBlob.digest`, recorded beside the media type and the
+file name and read back by `describe`.
+
+It is unconditional rather than optional, and that is the decision. A nullable
+digest is one no caller can build on — every use of it would begin by handling
+the case where it is missing, which is the case a caller cannot do anything
+about. What it buys once it is always there:
+
+- **Integrity.** A transfer that completes is not a transfer that arrived
+  intact. A caller that hashes what it received has something to compare it to.
+- **Deduplication.** A caller can ask whether the bytes it is about to send are
+  already stored, before sending them.
+- **A validator.** The file endpoint serves it as an `ETag` and answers
+  `If-None-Match` with `304`, so a client that already holds the bytes is not
+  sent them again.
+
+The cost is one pass over bytes the backend is already touching — the hash rides
+the write, never a second read:
+
+| Backend | Where the hash is taken |
+| ------- | ----------------------- |
+| `TomMemoryBlobStore` | the assembled buffer, which it holds anyway |
+| `TomDirectoryBlobStore` | the chunks flowing into the file sink |
+| `TomDatabaseBlobStore` | the incoming chunks, before they are re-cut to `chunkSize` |
+| `TomS3BlobStore` | the incoming chunks — the only place the *whole* object passes on a multipart upload |
+
+**Where each backend keeps it.** The directory store writes it into the metadata
+sidecar, the database store into a `digest CHAR(64)` column, and the S3 store
+into `x-amz-meta-digest`. S3 has no protocol header that means this:
+`x-amz-content-sha256` is the *signature's* payload hash, which on a multipart
+upload is a part's hash rather than the object's, and `ETag` is an MD5 only for
+single-part objects. A multipart upload therefore sets its digest *after* the
+parts are in, with a copy onto the same key and
+`x-amz-metadata-directive: REPLACE` — one request, the object store moving
+nothing — because multipart metadata is fixed when the upload is created, before
+the last part has been seen. Skip that and the largest objects, the ones a
+caller most wants to verify, would be the ones with no digest.
+
+**A copy carries the digest rather than recomputing it.** The bytes are the
+same, so the hash is; recomputing would mean reading a blob the whole point of
+[Relocating a Blob](#relocating-a-blob) is not to read.
+
+**`TomStoredBlob.unknownDigest` is the empty string, and `hasDigest` is the
+question to ask.** A blob this framework did not write — a file dropped into a
+directory store's tree by hand, an object already in a bucket the store was
+pointed at — has no recorded hash, exactly as it has no recorded media type. The
+sentinel is empty rather than `null` so that "not recorded" cannot be confused
+with the digest of zero bytes, which is a real and well-known value
+(`e3b0c442…`); a nullable field would make every caller write the same `?? ''`
+and an accidental `''` would then read as a hash.
 
 ### Relocating a Blob
 
@@ -910,7 +967,8 @@ cannot drift, because they share the code that defines the shape.
 | `HEAD` | — | `200` + descriptor headers | `404` |
 | `DELETE` | — | `204` | `404` |
 
-The descriptor is `{"key", "mediaType", "byteCount", "fileName"?, "storedAt"?}`.
+The descriptor is
+`{"key", "mediaType", "byteCount", "fileName"?, "storedAt"?, "digest"?}`.
 `storedAt` is always UTC and therefore always carries the zone marker on the
 wire — `TomStoredBlob` normalises it whatever backend produced it, so a client
 never has to guess which server's local zone an instant was read in. Note that
@@ -930,6 +988,27 @@ Errors are reported as `{"key", "message"}` with the same key the repository
 threw — `storage.file_reference.row_not_found`,
 `column_authorization.read.field_forbidden`, and so on — so a client can
 distinguish causes without parsing prose.
+
+#### ETag and If-None-Match
+
+`GET` and `HEAD` carry the blob's digest as a **strong** `ETag` — quoted, with
+no `W/` prefix, because the digest identifies the bytes exactly, which is what
+makes a conditional range request legal against it. A blob with no recorded
+digest carries no `ETag` and so has no validator; the bytes are served.
+
+`If-None-Match` is answered with `304` and no body. The comparison is the weak
+one the header specifies, so `W/"…"` matches too — a cache is entitled to send
+back a tag it weakened — and `*` matches anything that exists.
+
+**The condition is answered before `Range`**, which is RFC 9110's ordering and
+not a detail: a client resuming a download it turns out already holds in full
+must get a `304`, not a `206` carrying bytes it did not need. It is also
+answered before anything is read, so a conditional request the caller already
+satisfies costs one `describe`.
+
+The `304` drops `Content-Length` rather than setting it to `0`: the header
+describes the representation, and a zero there tells a cache the resource is
+empty.
 
 #### Range
 
@@ -1103,10 +1182,12 @@ and the count of them is the assertion. Every step checks its own result, and
 
 ## Not Yet Implemented
 
-- **Content addressing / deduplication.** Two identical uploads are two blobs.
-  Deduplicating means hashing the payload, which means either buffering it or
-  a second pass — a real cost to weigh against a benefit no deployment has yet
-  asked for.
+- **Deduplication.** Every blob now carries a content digest, so a caller *can*
+  recognise two uploads as one file — and nothing here acts on that. Collapsing
+  two keys onto one blob means reference counting, and a store that silently
+  shares bytes between keys is a store where deleting one can break the other:
+  that bookkeeping belongs where the keys are known, which is the deployment's
+  own record. See [The Content Digest](#the-content-digest).
 - **A blob-store migration.** Moving a deployment from the database backend to
   S3 is currently an application script; the key stays valid, so this is a copy
   loop rather than a schema change, but it is not shipped.
@@ -1123,7 +1204,7 @@ and the count of them is the assertion. Every step checks its own result, and
 | `dart:convert` | dart | `aws_v4_signer.dart`, `blob_store.dart`, `database_blob_store.dart`, `directory_blob_store.dart`, `s3_blob_store.dart` | `base64`, `jsonDecode`, `jsonEncode`, `utf8` |
 | `dart:io` | dart | `blob_store_registry.dart`, `directory_blob_store.dart` | `File` / `Directory` for the directory backend |
 | `dart:typed_data` | dart | `blob_store.dart` | `Uint8List` |
-| `crypto` | package | `aws_v4_signer.dart` | HMAC-SHA256 and SHA-256 for SigV4 |
+| `crypto` | package | `aws_v4_signer.dart`, `blob_store.dart` | HMAC-SHA256 and SHA-256 for SigV4; the chunked SHA-256 behind `TomBlobDigest` |
 | `http` | package | `s3_blob_store.dart` | the S3 backend's transport (injectable, so it is mockable) |
 | `path` | package | `directory_blob_store.dart` | key-to-path joining in the directory backend |
 | `tom_core_kernel` | package | `database_blob_store.dart` | `TomServerException` by way of `TomStorageException`, `tomLog`, and the `TomAuthState` grades the C-4 gate reads |

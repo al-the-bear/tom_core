@@ -36,6 +36,11 @@
 --    read would otherwise seek to the wrong row and serve the wrong bytes. It is
 --    not derivable from the two columns above either: ten bytes in two chunks is
 --    6+4 or 9+1 or 5+5.
+--  * `digest` is the SHA-256 of the content as 64 lowercase hex characters, and
+--    it is CHAR rather than VARCHAR because every value is exactly that width —
+--    which says so to the reader and to any index put on it. Empty for a row
+--    written without one; the store never writes one that way, but a manifest
+--    populated by hand can be.
 --  * `stored_at` is DATETIME(6), and the width is not a precision preference —
 --    it is the column agreeing with its writer. Every DateTime the framework
 --    binds is rendered with six fractional digits, and MariaDB does not reject
@@ -51,6 +56,7 @@ CREATE TABLE IF NOT EXISTS tom_blob (
   byte_count  BIGINT       NOT NULL,
   chunk_count INT          NOT NULL,
   chunk_size  INT          NOT NULL,
+  digest      CHAR(64)     NOT NULL,
   stored_at   DATETIME(6)  NOT NULL,
   PRIMARY KEY (storage_key)
 );

@@ -398,6 +398,13 @@ Map<String, String> tomFileDescriptorHeaders(TomFileMetadata metadata) => {
   'x-tom-file': jsonEncode(metadata.toJson()),
   TomHeader.contentType: metadata.mediaType,
   'content-length': '${metadata.byteCount}',
+  // A *strong* validator, quoted and without the `W/` prefix, because the
+  // digest identifies the bytes exactly — which is what makes a conditional
+  // range request legal against it. Written here rather than at the endpoint so
+  // the client reading `x-tom-file` and the cache reading `ETag` get the same
+  // fact from the same place.
+  if (metadata.digest != null && metadata.digest!.isNotEmpty)
+    'etag': '"${metadata.digest}"',
   if (metadata.fileName != null)
     TomHeader.contentDisposition:
         'attachment; filename="${tomEscapeFileNameForDisposition(metadata.fileName!)}"',

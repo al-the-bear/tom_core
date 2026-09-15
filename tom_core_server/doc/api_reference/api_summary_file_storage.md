@@ -202,6 +202,7 @@ TomStoredBlob({
   required String mediaType,
   required int byteCount,
   required DateTime storedAt,
+  String digest = TomStoredBlob.unknownDigest,
   String? fileName,
   Uri? location,
 })
@@ -215,6 +216,7 @@ of the type rather than of whichever backend built the descriptor.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `defaultMediaType` | `static const String` | The media type used when a caller states none: `application/octet-stream`. |
+| `unknownDigest` | `static const String` | The `digest` of a blob whose hash was never recorded — a named empty string, so "not recorded" cannot be confused with the digest of zero bytes, which is a real and well-known value. |
 
 #### Properties
 
@@ -226,12 +228,44 @@ of the type rather than of whichever backend built the descriptor.
 | `storedAt` | `DateTime` | When the write completed, always in UTC — the constructor normalises whatever it is given (final). |
 | `fileName` | `String?` | The original file name, when one was supplied — kept because the storage key is chosen by the framework while the name a person expects in their downloads folder is the one they uploaded (final). |
 | `location` | `Uri?` | A backend-specific address (a `file:` URI, an object-store URL); useful to a human chasing a blob down, never the thing to read it back with (final). |
+| `digest` | `String` | The lowercase hex SHA-256 of the stored bytes (final). Every blob written through `TomBlobStore.put` has one, whichever backend is configured: the hash is computed while the bytes stream past, on a pass the backend is making anyway, and recorded beside the media type and the file name. `unknownDigest` for a blob this framework did not write — a file dropped into a directory store's tree, an object already in a bucket — which has no recorded media type either. |
+| `hasDigest` | `bool` | *(getter)* Whether `digest` holds a hash rather than `unknownDigest`. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `toString` | `String toString()` | *(override)* Renders `TomStoredBlob(<key>, <byteCount> bytes, <mediaType>)`. |
+
+### TomBlobDigest
+
+The running SHA-256 of a blob, fed chunk by chunk as it is stored. A backend
+hashes on the pass it is already making — a file write, a chunk insert, a part
+upload — so the digest costs no extra read. Public because
+`TomStoredBlob.digest` is a promise every backend has to keep, including one an
+application writes, and a promise the framework does not make easy to keep is
+one that gets broken.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+TomBlobDigest()
+```
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `of` | `static String of(List<int> bytes)` | The hex SHA-256 of `bytes`, for a caller holding them whole. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `add` | `void add(List<int> chunk)` | Feeds `chunk` to the running hash. The chunk is read, never retained, which is what lets a backend pass the same borrowed buffer it is about to write. Throws `StateError` after `close`. |
+| `close` | `String close()` | The lowercase hex digest of everything added. Idempotent — calling it again returns the same string rather than closing a closed hash, so a backend with more than one exit path does not have to track which one ran. |
 
 ### TomBlobRange
 
@@ -529,6 +563,7 @@ TomBlobManifestRow()
 | `byteCount` | `int` | The blob's size in bytes (column `byte_count`). |
 | `chunkCount` | `int` | How many chunk rows the content occupies (column `chunk_count`). |
 | `chunkSize` | `int` | The size every chunk but the last was written at (column `chunk_size`). Recorded rather than assumed because a ranged read divides a byte offset by it and the store's `chunkSize` is a constructor argument; it is not derivable from `byte_count` and `chunk_count` either — ten bytes in two chunks is 6+4 or 9+1 or 5+5. |
+| `digest` | `String` | The SHA-256 of the content as 64 lowercase hex characters (column `digest`). |
 | `storedAt` | `DateTime` | When the write completed, read back as UTC (column `stored_at`). |
 
 ### TomBlobChunkRow
@@ -679,6 +714,7 @@ render it unawares.
 | -------- | ---- | ----------- |
 | `minimumPartSize` | `static const int` | S3's minimum size for any part but the last: 5 MiB. |
 | `defaultPartSize` | `static const int` | The default bytes per multipart part: 8 MiB — above `minimumPartSize` with room to spare, and small enough that the upload buffer it bounds stays a reasonable per-upload allocation. Declared once here rather than repeated at each defaulting site, so a change lands everywhere. |
+| `digestHeader` | `static const String` | The header the content digest is carried in, `x-amz-meta-digest`. User metadata rather than a protocol header, because S3 has none that means this: `x-amz-content-sha256` is the *signature's* payload hash — on a multipart upload it is a part's hash, never the object's — and `ETag` is an MD5 only for single-part objects and an opaque string otherwise. |
 | `fileNameHeader` | `static const String` | The header the original file name is carried in: `x-amz-meta-filename`. |
 
 #### Static Methods

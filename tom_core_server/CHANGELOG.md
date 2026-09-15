@@ -2,6 +2,44 @@
 
 ### Added
 
+- **Every stored blob carries the SHA-256 of its content (tcopen148).** Nothing
+  hashed what was stored, so two identical uploads were two copies, a caller
+  could not ask whether the bytes it was about to send were already there, and
+  nothing could verify that what came back was what went in.
+
+  `TomStoredBlob.digest` is unconditional rather than optional, and that is the
+  decision: a nullable digest is one every use of would begin by handling the
+  case a caller cannot do anything about. The hash rides the write — the
+  assembled buffer on the memory backend, the chunks flowing into the file sink
+  on the directory one, the incoming chunks on the database and S3 ones — so it
+  costs no second read. `TomBlobDigest` is the running hash, public because the
+  promise is one every backend has to keep, including one an application writes.
+
+  Each backend persists it where it already keeps the media type: the metadata
+  sidecar, a `digest CHAR(64)` column, `x-amz-meta-digest`. S3 has no protocol
+  header that means this — `x-amz-content-sha256` is the signature's payload
+  hash, a *part's* hash on a multipart upload, and `ETag` is an MD5 only for
+  single-part objects — so a multipart upload sets its digest after the parts
+  are in, with a copy onto the same key and `x-amz-metadata-directive: REPLACE`.
+  Without that the largest objects would be the ones with no digest. A copy
+  carries the digest rather than recomputing it: same bytes, same hash, and
+  recomputing would mean reading a blob the whole point of a native copy is not
+  to read.
+
+  `TomStoredBlob.unknownDigest` is a named empty string for a blob this
+  framework did not write, with `hasDigest` as the question to ask. Empty rather
+  than `null` so "not recorded" cannot be confused with the digest of zero
+  bytes, which is a real and well-known value.
+
+  `TomFileMetadata` carries it on the wire, and the file endpoint serves it as a
+  strong `ETag` and answers `If-None-Match` with `304` — before `Range`, which
+  is RFC 9110's ordering and not a detail: a client resuming a download it turns
+  out already holds in full must not be handed a `206`.
+
+  Deduplication itself is still the caller's: collapsing two keys onto one blob
+  means reference counting, and a store that silently shares bytes is one where
+  deleting a key can break another.
+
 - **`copy` and `move` on the blob contract (tcopen147).** Relocating a blob
   meant streaming it out of the store and back in, which is not theoretical: the
   documented pattern for expiry is a date-prefixed key, so re-partitioning is a

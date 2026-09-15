@@ -376,6 +376,7 @@ surface documented here.
 | `TomBlobStore` | abstract class | Stores and retrieves blobs by key, streaming. |
 | `TomStoredBlob` | class | A stored blob: key, content type, size. |
 | `TomBlobRange` | class | A half-open byte range of a blob, for a partial read. |
+| `TomBlobDigest` | class | The running SHA-256 a backend feeds while it writes. |
 | `TomMemoryBlobStore` | class | In-memory blob store, for tests and development. |
 | `TomDirectoryBlobStore` | class | Blob store over a local directory tree. |
 | `TomDatabaseBlobStore` | class | Blob store over a manifest and chunk table pair. |
@@ -749,6 +750,7 @@ surface documented here.
 | `TomBaseServerConfiguration` | Configuration |
 | `TomBinaryOperator` | Object Persistence |
 | `TomBlobChunkRow` | File Storage |
+| `TomBlobDigest` | File Storage |
 | `TomBlobExportStore` | Export |
 | `TomBlobManifestRow` | File Storage |
 | `TomBlobRange` | File Storage |

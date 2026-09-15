@@ -25,7 +25,7 @@ transaction.
 | `TomRedirect` | Returned from an endpoint to answer with a 3xx and a `Location` rather than a body — the one result type that is not the endpoint's own return value encoded. |
 | `TomMultipartForm` · `TomFormFile` · `tomConsumesForm` | HTML form bodies, both `multipart/form-data` and URL-encoded, decoded into the parameters an endpoint declares. A `TomFormFile` streams: `openRead()`, never a whole buffer. |
 | `TomWebSocketEndpoint` · `TomWebSocketConnection` | The socket transport over the same router: an annotation that mounts a socket route beside the HTTP ones, and the connection an endpoint is handed. |
-| `TomFileEndpoint` · `TomFileSlot` · `TomFileSlots` · `TomFileServer` | The HTTP face of a `@TomFileReference` column — upload, download and describe for a named slot, gated by the same authorization as the row it hangs off. A download honours `Range`, so a resumed transfer or a seek costs the slice rather than the file. |
+| `TomFileEndpoint` · `TomFileSlot` · `TomFileSlots` · `TomFileServer` | The HTTP face of a `@TomFileReference` column — upload, download and describe for a named slot, gated by the same authorization as the row it hangs off. A download honours `Range`, so a resumed transfer or a seek costs the slice rather than the file, and serves the blob's digest as an `ETag` so a client that already holds the bytes is answered `304`. |
 
 ## Quick start
 

@@ -908,6 +908,117 @@ void main() {
       });
     });
 
+    // The payoff of the stored digest reaching the wire: a client that already
+    // holds the bytes should not be sent them again, and a client that has just
+    // received them should be able to check that they are the bytes the server
+    // has.
+    group('ETag and If-None-Match', () {
+      const slot = 'fixture_file_slot/1/poster';
+      final payload = utf8.encode('the bytes that crossed the socket');
+
+      /// Boots the server, stores [payload], and answers its descriptor.
+      Future<TomFileMetadata> withPayload() async {
+        await start();
+        return client.upload(
+          slot: slot,
+          source: TomFileSource.bytes('poster.txt', payload),
+        );
+      }
+
+      /// The body of [response], drained.
+      Future<List<int>> bodyOf(HttpClientResponse response) async {
+        final bytes = <int>[];
+        await for (final chunk in response) {
+          bytes.addAll(chunk);
+        }
+        return bytes;
+      }
+
+      test(
+        'the descriptor carries the digest and the ETag quotes it',
+        () async {
+          final uploaded = await withPayload();
+          final expected = TomBlobDigest.of(payload);
+          expect(uploaded.digest, expected);
+
+          for (final method in const ['GET', 'HEAD']) {
+            final response = await _raw(server.port, method, '/files/$slot');
+            expect(
+              response.headers.value('etag'),
+              '"$expected"',
+              reason: '$method: a strong validator is quoted and unprefixed',
+            );
+            await bodyOf(response);
+          }
+        },
+      );
+
+      test('a matching If-None-Match is 304 with no body', () async {
+        final uploaded = await withPayload();
+        for (final method in const ['GET', 'HEAD']) {
+          final response = await _raw(
+            server.port,
+            method,
+            '/files/$slot',
+            headers: {'if-none-match': '"${uploaded.digest}"'},
+          );
+          expect(response.statusCode, 304, reason: method);
+          expect(await bodyOf(response), isEmpty, reason: method);
+        }
+      });
+
+      test('a stale If-None-Match is served in full', () async {
+        // The other half, without which the first test is satisfied by an
+        // endpoint that answers 304 to everything.
+        await withPayload();
+        final response = await _raw(
+          server.port,
+          'GET',
+          '/files/$slot',
+          headers: {'if-none-match': '"${'0' * 64}"'},
+        );
+        expect(response.statusCode, 200);
+        expect(await bodyOf(response), payload);
+      });
+
+      test(
+        'a weakened tag still matches, and a star matches anything',
+        () async {
+          // `If-None-Match` specifies the *weak* comparison, and a cache is
+          // entitled to send back a tag it weakened. `*` means "if it exists".
+          final uploaded = await withPayload();
+          for (final header in {'W/"${uploaded.digest}"', '*'}) {
+            final response = await _raw(
+              server.port,
+              'GET',
+              '/files/$slot',
+              headers: {'if-none-match': header},
+            );
+            expect(response.statusCode, 304, reason: header);
+            await bodyOf(response);
+          }
+        },
+      );
+
+      test('the condition is answered before the range', () async {
+        // RFC 9110's ordering, and it is not cosmetic: a client resuming a
+        // download it turns out already holds in full must get a 304, not a
+        // 206 carrying bytes it did not need.
+        final uploaded = await withPayload();
+        final response = await _raw(
+          server.port,
+          'GET',
+          '/files/$slot',
+          headers: {
+            'if-none-match': '"${uploaded.digest}"',
+            'range': 'bytes=0-9',
+          },
+        );
+        expect(response.statusCode, 304);
+        expect(await bodyOf(response), isEmpty);
+      });
+    });
+
     test('a download produces its bytes inside the request execution context', () async {
       // A response body is *lazy*. The handler returns a stream and shelf hands
       // it to the socket, so the bytes are pulled after the request's zone —

@@ -372,6 +372,7 @@ class _FourMethodBlobStore extends TomBlobStore {
       mediaType: mediaType,
       byteCount: collected.length,
       storedAt: DateTime.utc(2026, 7, 8),
+      digest: TomBlobDigest.of(collected),
       fileName: fileName,
     );
   }
@@ -448,6 +449,7 @@ class _StoredBlobDataSource implements TomDataSource {
       ..byteCount = content.length
       ..chunkCount = _chunkCount
       ..chunkSize = unrecordedChunkSize ? 0 : chunkSize
+      ..digest = 'd' * 64
       ..storedAt = DateTime.utc(2026, 7, 8);
     return <TomBlobManifestRow>[row].cast<T>();
   }
@@ -1083,6 +1085,220 @@ void main() {
           ),
         );
       }
+    });
+  });
+
+  // Nothing hashed what was stored, so two identical uploads were two copies, a
+  // caller could not ask whether the bytes it was about to send were already
+  // there, and nothing could verify that what came back was what went in. The
+  // digest is computed on the pass the backend is already making, which is what
+  // makes it affordable enough to be unconditional — and unconditional is what
+  // makes it something a caller can build on rather than a field to check for.
+  group('a stored blob carries the SHA-256 of its content', () {
+    /// The published SHA-256 of "abc", so the hash is checked against a value
+    /// from outside this codebase rather than against itself.
+    const abc =
+        'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
+
+    /// The published SHA-256 of the empty input — the value that makes a
+    /// sentinel of `''` necessary, since "no digest" must not read as this.
+    const empty =
+        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+
+    test('the hash agrees with the published vectors', () {
+      expect(TomBlobDigest.of(utf8.encode('abc')), abc);
+      expect(TomBlobDigest.of(const []), empty);
+      // Fed in pieces, which is how every backend feeds it. A chunked hash that
+      // disagreed with a whole one would be wrong on exactly the blobs too big
+      // to check by hand.
+      final chunked = TomBlobDigest()
+        ..add(utf8.encode('a'))
+        ..add(utf8.encode('b'))
+        ..add(utf8.encode('c'));
+      expect(chunked.close(), abc);
+      // Idempotent, because a backend with more than one exit path should not
+      // have to track which one closed it.
+      expect(chunked.close(), abc);
+    });
+
+    test(
+      'every backend records it on write and reports it on describe',
+      () async {
+        final root = Directory.systemTemp.createTempSync('tom_digest_');
+        addTearDown(() => root.deleteSync(recursive: true));
+        final backends = <String, TomBlobStore>{
+          'memory': TomMemoryBlobStore(),
+          'directory': TomDirectoryBlobStore(root),
+          'database': TomDatabaseBlobStore(
+            _RecordingBlobDataSource(),
+            createSchema: false,
+          ),
+          's3': _s3((request) async => http.Response('', 200)),
+        };
+
+        for (final entry in backends.entries) {
+          final stored = await entry.value.putBytes(
+            key: 'a/abc.txt',
+            bytes: utf8.encode('abc'),
+          );
+          expect(stored.digest, abc, reason: entry.key);
+          expect(stored.hasDigest, isTrue, reason: entry.key);
+        }
+
+        // Read back, which is the half that needs the digest *persisted* rather
+        // than merely returned. The database and S3 backends are driven against
+        // fakes that do not store, so they are covered by the db suite and the
+        // round trip below instead.
+        for (final key in const ['memory', 'directory']) {
+          final store = backends[key]!;
+          expect((await store.describe('a/abc.txt'))!.digest, abc, reason: key);
+        }
+      },
+    );
+
+    test('the digest survives a copy and a move, without a re-read', () async {
+      // Carried rather than recomputed: a copy that does not read the blob
+      // cannot hash it, and it does not need to — the same bytes have the same
+      // hash. A backend that dropped the digest here would make every relocated
+      // blob unverifiable.
+      final root = Directory.systemTemp.createTempSync('tom_digest_move_');
+      addTearDown(() => root.deleteSync(recursive: true));
+      for (final store in <TomBlobStore>[
+        TomMemoryBlobStore(),
+        TomDirectoryBlobStore(root),
+      ]) {
+        await store.putBytes(key: 'a.txt', bytes: utf8.encode('abc'));
+        expect(
+          (await store.copy('a.txt', 'b.txt')).digest,
+          abc,
+          reason: '$store',
+        );
+        expect((await store.describe('b.txt'))!.digest, abc, reason: '$store');
+        expect(
+          (await store.move('b.txt', 'c.txt')).digest,
+          abc,
+          reason: '$store',
+        );
+        expect((await store.describe('c.txt'))!.digest, abc, reason: '$store');
+      }
+    });
+
+    test('a blob this framework did not write reports no digest', () async {
+      // The one case a non-nullable field has to answer honestly. A file
+      // dropped into the tree by hand has no sidecar, so no media type and no
+      // hash; `unknownDigest` says that without pretending the file is empty,
+      // which is what a digest of `e3b0c442…` would have said.
+      final root = Directory.systemTemp.createTempSync('tom_foreign_');
+      addTearDown(() => root.deleteSync(recursive: true));
+      File('${root.path}/dropped.txt').writeAsStringSync('abc');
+
+      final described = await TomDirectoryBlobStore(
+        root,
+      ).describe('dropped.txt');
+      expect(described!.digest, TomStoredBlob.unknownDigest);
+      expect(described.hasDigest, isFalse);
+      expect(
+        described.digest,
+        isNot(empty),
+        reason: '"not recorded" must not read as "the empty file"',
+      );
+      expect(described.mediaType, TomStoredBlob.defaultMediaType);
+    });
+
+    test(
+      'identical bytes under two keys hash the same, and different bytes do not',
+      () async {
+        // The property deduplication is built on, which is the reason the todo
+        // asked for a digest at all. The framework does not deduplicate — it
+        // gives a caller the key it would need to.
+        final store = TomMemoryBlobStore();
+        final first = await store.putBytes(
+          key: 'one.txt',
+          bytes: utf8.encode('abc'),
+        );
+        final second = await store.putBytes(
+          key: 'two.txt',
+          bytes: utf8.encode('abc'),
+          mediaType: 'text/plain',
+          fileName: 'other-name.txt',
+        );
+        final third = await store.putBytes(
+          key: 'three.txt',
+          bytes: utf8.encode('abd'),
+        );
+
+        // The media type and the name differ and the digest does not: it is a
+        // hash of the *content*, not of the descriptor around it.
+        expect(second.digest, first.digest);
+        expect(third.digest, isNot(first.digest));
+      },
+    );
+
+    test('the S3 backend records the digest as user metadata', () async {
+      // S3 has no protocol header that means this. `x-amz-content-sha256` is
+      // the signature's payload hash — on a multipart upload it is a *part's*
+      // hash — and `ETag` is an MD5 only for single-part objects. So the store
+      // records its own, and reads its own back.
+      final requests = <http.Request>[];
+      final store = _s3((request) async {
+        requests.add(request);
+        if (request.method == 'HEAD') {
+          return http.Response(
+            '',
+            200,
+            headers: {'content-length': '3', TomS3BlobStore.digestHeader: abc},
+          );
+        }
+        return http.Response('', 200);
+      });
+
+      await store.putBytes(key: 'a.txt', bytes: utf8.encode('abc'));
+      expect(requests.single.headers[TomS3BlobStore.digestHeader], abc);
+      expect((await store.describe('a.txt'))!.digest, abc);
+    });
+
+    test('a multipart upload sets the digest after the parts are in', () async {
+      // The one path where the digest cannot ride the upload: multipart
+      // metadata is fixed when the upload is created, before the last part has
+      // been seen. Without the follow-up the largest objects — the ones a
+      // caller most wants to verify — would come back with no digest at all.
+      final requests = <http.Request>[];
+      final store = _s3((request) async {
+        requests.add(request);
+        if (request.method == 'POST' && request.url.query.contains('uploads')) {
+          return http.Response('<UploadId>upload-1</UploadId>', 200);
+        }
+        if (request.method == 'PUT') {
+          return http.Response('', 200, headers: {'etag': '"e"'});
+        }
+        return http.Response('<CompleteMultipartUploadResult/>', 200);
+      });
+
+      const mib = 1024 * 1024;
+      final payload = [for (var i = 0; i < 6; i++) _bytes(mib)];
+      final stored = await store.put(
+        key: 'big.bin',
+        bytes: Stream.fromIterable(payload),
+      );
+
+      final whole = TomBlobDigest();
+      for (final part in payload) {
+        whole.add(part);
+      }
+      expect(
+        stored.digest,
+        whole.close(),
+        reason: 'the digest is of the object, not of one part',
+      );
+
+      // The last request rewrites the metadata in place rather than re-uploading
+      // the object: a copy onto the same key with REPLACE.
+      final last = requests.last;
+      expect(last.method, 'PUT');
+      expect(last.headers['x-amz-metadata-directive'], 'REPLACE');
+      expect(last.headers['x-amz-copy-source'], '/examplebucket/big.bin');
+      expect(last.headers[TomS3BlobStore.digestHeader], stored.digest);
+      expect(last.bodyBytes, isEmpty);
     });
   });
 
@@ -2477,23 +2693,26 @@ void main() {
         expect(requests.first.method, 'POST');
         expect(requests.first.url.query, contains('uploads'));
 
-        final parts = requests
-            .where((r) => r.method == 'PUT')
-            .map((r) => r.url.queryParameters['partNumber'])
+        // Selected on `partNumber` rather than on the method: a multipart
+        // upload ends with a *fourth* PUT that carries no part, the copy onto
+        // the same key that records the object's digest once the last part has
+        // been seen. Its own assertions live in the digest group.
+        final uploads = requests
+            .where((r) => r.url.queryParameters.containsKey('partNumber'))
             .toList();
-        expect(parts, ['1', '2', '3']);
-        for (final part in requests.where((r) => r.method == 'PUT')) {
+        expect(uploads.map((r) => r.url.queryParameters['partNumber']), [
+          '1',
+          '2',
+          '3',
+        ]);
+        for (final part in uploads) {
           expect(part.url.queryParameters['uploadId'], 'upload-7');
         }
-        expect(
-          requests
-              .where((r) => r.method == 'PUT')
-              .map((r) => r.bodyBytes.length),
-          [5 * mib, 5 * mib, mib],
-        );
+        expect(uploads.map((r) => r.bodyBytes.length), [5 * mib, 5 * mib, mib]);
 
-        final complete = requests.last;
-        expect(complete.method, 'POST');
+        final complete = requests.firstWhere(
+          (r) => r.method == 'POST' && !r.url.query.contains('uploads'),
+        );
         expect(complete.url.queryParameters['uploadId'], 'upload-7');
         expect(complete.body, contains('<PartNumber>3</PartNumber>'));
         expect(complete.body, contains('"etag-x"'));

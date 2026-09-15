@@ -67,6 +67,10 @@ TomFrameworkTable blobManifestTable(String table) => TomFrameworkTable(
     // It is not derivable from `byte_count` and `chunk_count` either --
     // 10 bytes in 2 chunks is 6+4 or 9+1 or 5+5.
     const TomFrameworkColumn('chunk_size', 'INT'),
+    // The SHA-256 of the content, as 64 lowercase hex characters. Fixed width
+    // because every value is exactly that: a CHAR says so to the reader and
+    // to the index. Empty for a manifest row written without one.
+    const TomFrameworkColumn('digest', 'CHAR(64)'),
     const TomFrameworkColumn('stored_at', 'DATETIME(6)'),
   ],
   primaryKey: const ['storage_key'],
