@@ -1862,6 +1862,91 @@ void main() {
     });
   });
 
+  group('the notification model is not here, and is stated not to be', () {
+    // A non-goal is only worth writing down if something notices when it stops
+    // being one. `doc/messaging.md` says plainly that notification types,
+    // subscriptions and per-user channel preferences belong to the application
+    // and that tom_core will not provide them; the two rules below are what
+    // make that sentence falsifiable rather than decorative.
+
+    const sourceRoot = 'lib/src/tomserver/messaging';
+
+    /// Every public declaration under [sourceRoot].
+    List<String> declarations() {
+      final names = <String>[];
+      final pattern = RegExp(
+        r'^(?:abstract )?(?:class|enum|mixin|extension) ([A-Za-z_]\w*)',
+        multiLine: true,
+      );
+      final functions = RegExp(
+        r'^[A-Za-z_][\w<>?, ]* ([a-z]\w*)\(',
+        multiLine: true,
+      );
+      for (final file
+          in Directory(sourceRoot)
+              .listSync(recursive: true)
+              .whereType<File>()
+              .where((f) => f.path.endsWith('.dart'))) {
+        final source = file.readAsStringSync();
+        names.addAll(pattern.allMatches(source).map((m) => m.group(1)!));
+        names.addAll(functions.allMatches(source).map((m) => m.group(1)!));
+      }
+      return names;
+    }
+
+    test('nothing here is named for a notification concept', () {
+      // The words a notification model would arrive under. A declaration
+      // carrying one is either the concern starting to grow here — which the
+      // guide says it must not — or a name that will read to every later
+      // reader as though it had.
+      const reserved = ['notification', 'subscription', 'subscriber', 'digest'];
+      final offenders = [
+        for (final name in declarations())
+          if (reserved.any((word) => name.toLowerCase().contains(word))) name,
+      ];
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'the notification model belongs to the application — see "Not in '
+            'This Framework" in doc/messaging.md. These declarations say '
+            'otherwise: ${offenders.join(', ')}',
+      );
+    });
+
+    test('the scan reads the declarations it claims to', () {
+      // Without this the rule above is satisfied by a scan that matched
+      // nothing at all.
+      final names = declarations();
+      expect(names, contains('TomMessage'));
+      expect(names, contains('TomMessageOutbox'));
+      expect(names, contains('tomVendorValueAt'));
+    });
+
+    test('the guide states the ownership rather than deferring it', () {
+      // The sentence itself, and where it sits. "Not Yet Implemented" promises
+      // the framework will get to a thing, so a non-goal filed there reads as a
+      // deferral — which is the one reading this section exists to prevent.
+      final guide = File('doc/messaging.md').readAsStringSync();
+      final section = guide.substring(
+        guide.indexOf('## Not in This Framework'),
+        guide.indexOf('## Not Yet Implemented'),
+      );
+      expect(section, contains('will not provide'));
+      expect(
+        guide.indexOf('## Not in This Framework'),
+        lessThan(guide.indexOf('## Not Yet Implemented')),
+      );
+      expect(
+        section,
+        contains('TomUserPreferences'),
+        reason:
+            'a non-goal that names no alternative is a refusal, not an '
+            'answer',
+      );
+    });
+  });
+
   // The module ships three examples — the hand-composed substrate, the
   // templated services above it, and the worked gateway mappings — and all
   // three need the same two guarantees, so the group is written once and

@@ -26,6 +26,15 @@ layer a file belongs to. From the bottom:
    services on it, plus `outbox.dart`) — resource-keyed templates, a per-channel
    request type, and the queue that makes a send survive a restart.
 
+**The notification model is not here and is not coming.** Which events notify,
+who subscribes to them, and through which channels is the *application's*
+domain vocabulary and its product's policy; this module answers only how a
+message on a named channel leaves. That is a statement of ownership rather than
+a deferral — see "Not in This Framework" in `doc/messaging.md` for what an
+application builds it out of, all of which is already here: an open channel
+value, a durable idempotent outbox, per-principal preference storage, and a
+templated-service base to render each type against.
+
 `mime_encoder.dart` sits beside the SMTP transport rather than under it: the
 RFC 5322 document is a value the encoder produces, not a step of the
 conversation, and it is asserted directly by the test suite.

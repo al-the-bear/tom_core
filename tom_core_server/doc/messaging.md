@@ -7,8 +7,9 @@ the kernel's job scheduler, and a templating layer that composes every message
 from resource keys so no user-facing string is written in Dart.
 
 This module does **not** model notification types, subscriptions or user
-preferences. That is a separate decision, and building the wire first is what
-lets it be made on the merits rather than around a missing substrate.
+preferences, and it is not going to — that belongs to the application, and
+[Not in This Framework](#not-in-this-framework) says why and what to build it
+out of.
 
 ## Table of Contents
 
@@ -59,6 +60,8 @@ lets it be made on the merits rather than around a missing substrate.
   - [Addressing a principal](#addressing-a-principal)
 - [Verification](#verification)
 - [Core Components](#core-components)
+- [Not in This Framework](#not-in-this-framework)
+  - [What to build it out of](#what-to-build-it-out-of)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
 
@@ -1278,6 +1281,47 @@ produce either on demand.
   configuration behind it.
 - **`TomMessagingException`** — the module's base error.
 
+## Not in This Framework
+
+**The notification model is an application's, and `tom_core` will not provide
+one.** "Which events notify, who subscribes to them, and through which channels"
+is a different question from "deliver this message on this channel", and the
+list below is what a reader should expect to find in their own code rather than
+here:
+
+| Concern | Why it is not framework work |
+| ------- | ---------------------------- |
+| Notification *types* — `taskAssigned`, `invoiceOverdue` | The set is the application's domain vocabulary. A framework enum of it would be a framework that knows what the application is for. |
+| Which channels a type may use | A policy about the business, not about delivery: "a password reset never goes to a webhook" is a rule the deployment owns. |
+| Per-user channel preferences | The *granularity* is the whole design — per type, per category, per quiet-hours window — and it is decided by what the product lets a user say. Guessing it produces a schema nobody wants to migrate off. |
+| Subscription resolution — who gets this | A query over the application's own entities. |
+| Fan-out | One notification becomes N messages, one per resolved recipient-channel pair; each is then an ordinary `outbox.send`. |
+
+This is a statement of ownership, not a deferral. The framework's earlier text
+declined the work without saying who does it, which left the concern claimed by
+nobody — and an unclaimed concern is one every application rebuilds while
+assuming the framework is about to.
+
+### What to build it out of
+
+The substrate is deliberately complete for this:
+
+- `TomMessageChannel` is an **open** named value, so a resolved channel is a
+  name the framework already understands — including one it has never heard of.
+- `TomMessageOutbox.send` is the fan-out's terminus: durable, retried, and
+  idempotent on `TomMessage.id`, so a dispatcher that re-runs does not
+  double-send.
+- `TomUserPreferences` stores per-principal values and is scoped by owner, which
+  is where channel choices go without a second storage mechanism.
+- `TomTemplatedMessageService` is the base a per-type renderer extends, the way
+  `TomEmailService` and `TomSmsService` do.
+
+A dispatcher above those is roughly: resolve the subscribers, read each one's
+channel preferences, render one message per pair through a templated service,
+and hand each to the outbox. `messaging` stays unaware of all of it, which is
+the separation that lets a channel be added without touching the notification
+layer and a notification type without touching a transport.
+
 ## Not Yet Implemented
 
 - **A push transport.** `TomMessageChannel.push` is a **reserved name**, not an
@@ -1300,14 +1344,12 @@ produce either on demand.
   it: a `failed` state does not suppress the next message to that address, and
   an `expired` one does not re-queue anything. Both are policy — whose address
   to stop using, and when a re-send is worth paying for — and belong to the
-  notification model this module deliberately stops short of.
+  notification model, which is
+  [not this framework's](#not-in-this-framework).
 - **Vendor protocol presets in `lib/`.** Deliberate, not missing:
   `example/messaging/sms_gateway_presets.dart` carries worked mappings for three
   named vendors, and none of them is exported as library API — see
   [Describing a gateway](#describing-a-gateway) for the argument.
-- **The notification model.** Channels, notification types, per-user
-  preferences and subscription resolution are a separate concern, deliberately
-  not designed here.
 - **Inbound mail.** This module sends only.
 - **Templating for the remaining channels.** `TomEmailService` and
   `TomSmsService` cover their channels; `push` and `webhook` have no equivalent

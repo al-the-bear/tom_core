@@ -2,6 +2,21 @@
 
 ### Added
 
+- **The notification model is named as an application's, not as a gap
+  (tcopen165).** `doc/messaging.md` declined to design notification types,
+  subscriptions and per-user channel preferences, and said so under *Not Yet
+  Implemented* — which promises the framework will get to it. Nothing else in
+  `tom_core` claimed the concern either, so it was declined by the only module
+  that touches the subject and owned by none.
+
+  A new **Not in This Framework** section states the ownership, gives the reason
+  per concern (the type set is the application's domain vocabulary; the
+  preference *granularity* is decided by what the product lets a user say), and
+  names what the substrate already provides to build it out of: an open
+  `TomMessageChannel`, an outbox that is durable and idempotent on the message
+  id, `TomUserPreferences` for the per-principal choices, and
+  `TomTemplatedMessageService` as the per-type renderer's base.
+
 - **Worked SMS gateway mappings, as an example (tcopen164).**
   `TomFieldMappedSmsProtocol` described a gateway declaratively and shipped no
   mapping for any named vendor, so every deployment re-derived the same one from
