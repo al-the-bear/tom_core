@@ -33,6 +33,31 @@
 
 ### Changed
 
+- **`TomServerException` forwards the kernel's whole parameter list
+  (tcopen161).** It accepted six of the kernel's nine and silently dropped
+  `uuid`, `requestUuid` and `serverCallError`. All 27 exception types in the
+  package chain through that one constructor, so none of them could set any of
+  the three:
+
+  - `uuid` is generated when omitted, which is right for a failure raised here
+    and wrong for one reconstructed from a wire representation — a fresh
+    identity cannot be matched to the log line written where the failure
+    happened;
+  - `requestUuid` was reachable by one route only, the zone lookup, so a worker
+    isolate handed the request id as a plain string had no way to say which
+    request the failure belonged to;
+  - `serverCallError` is the kernel's slot for "this came from an HTTP call",
+    unreachable from the package most likely to make outbound ones.
+
+  An explicitly supplied `requestUuid` now wins over the ambient one: a caller
+  that names a request is relaying a failure from elsewhere and knows something
+  the surrounding zone does not, and overwriting it would re-label another
+  request's failure with this one's id.
+
+  `TomServerSelfLoginException` is the first to fill `serverCallError` — a
+  refused or unreachable auth server now reports the status, the body and the
+  underlying exception instead of only whatever the message interpolated.
+
 - **`isolateName` says which question it answers (tcopen160).** The field
   captures `Isolate.current.debugName` at construction, so an exception raised
   in a pool worker and re-thrown in the main isolate names the worker. That is

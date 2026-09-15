@@ -544,7 +544,20 @@ void main() {
     };
 
     /// Package-relative paths (below [_sourceRoot]) that read it, excluding
-    /// dartdoc, line comments and constructor forwarding.
+    /// dartdoc, line comments and the two shapes that pass the value along
+    /// without looking at it.
+    ///
+    /// The exclusions are narrow on purpose — a filter that quietly drops a
+    /// real read is worse than no filter — so the last two are whole-line
+    /// matches rather than a substring anywhere on the line:
+    ///
+    ///  * `super.defaultUserMessage` / `this.defaultUserMessage`, the
+    ///    forwarding form every subtype constructor uses;
+    ///  * `String defaultUserMessage` as a parameter declaration (with or
+    ///    without the `{` that opens the named group after it), and a bare
+    ///    `defaultUserMessage,` as an argument — what a constructor that cannot
+    ///    use `super.` parameters writes instead, because it also needs an
+    ///    explicit `super(...)` call.
     final readers = <String>{};
     for (final file
         in Directory(_sourceRoot)
@@ -558,6 +571,11 @@ void main() {
         if (!code.contains('defaultUserMessage')) continue;
         if (code.contains('super.defaultUserMessage')) continue;
         if (code.contains('this.defaultUserMessage')) continue;
+        // The trailing `,` of an argument and the `{` that opens a named
+        // parameter group are punctuation, not part of the expression.
+        final bare = code.replaceAll(',', '').replaceAll('{', '').trim();
+        if (bare == 'String defaultUserMessage') continue;
+        if (bare == 'defaultUserMessage') continue;
         readers.add(file.path.substring(_sourceRoot.length + 1));
       }
     }

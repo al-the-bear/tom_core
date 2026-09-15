@@ -284,8 +284,30 @@ class TomHttpServiceLoginTransport extends TomServiceLoginTransport {
 /// instead (see [TomServerSelfLogin.loginAndInstall]).
 class TomServerSelfLoginException extends TomServerException {
   /// Creates the exception.
-  TomServerSelfLoginException(super.key, super.defaultUserMessage)
-    : super(clientThrow: false);
+  ///
+  /// [serverCallError] carries the kernel's account of the outbound HTTP call
+  /// when the failure came from one — the status, the body, the underlying
+  /// exception. Without it the only record of *why* the auth server could not
+  /// be reached is whatever the message interpolated, which is a string an
+  /// operator has to read rather than a value anything can branch on. It never
+  /// reaches a client: this type masks its message, and `tomErrorEnvelope` does
+  /// not serialise the field at all.
+  ///
+  /// Written out rather than using `super.` parameters because the `super(...)`
+  /// call is explicit — it hard-wires `clientThrow: false`, which is the point
+  /// of the type — and Dart allows only one of the two forms.
+  TomServerSelfLoginException(
+    String key,
+    String defaultUserMessage, {
+    TomServerCallError? serverCallError,
+    Object? rootException,
+  }) : super(
+         key,
+         defaultUserMessage,
+         serverCallError: serverCallError,
+         rootException: rootException,
+         clientThrow: false,
+       );
 }
 
 /// Logs the deployment in as itself and installs the resulting principal.
@@ -314,9 +336,15 @@ class TomServerSelfLogin {
         credential.toRequestBody(),
       );
     } catch (e) {
+      // The kernel raises a TomServerConnectionException for a call that failed
+      // or was refused, and it carries the status, the body and the underlying
+      // error. Passing it on is what turns "could not be reached" from a
+      // sentence into something an operator can act on.
       throw TomServerSelfLoginException(
         'server.selflogin.unreachable',
         'Auth server ${credential.loginUri} could not be reached: $e',
+        serverCallError: e is TomException ? e.serverCallError : null,
+        rootException: e,
       );
     }
 

@@ -133,6 +133,89 @@ void main() {
     });
   });
 
+  group('the kernel parameter list is forwarded whole', () {
+    // Every exception type in the package chains through TomServerException's
+    // constructor, so a parameter missing from that list is missing from all 27
+    // of them. Three were: the ones that *identify* an exception rather than
+    // describe it.
+
+    test('an explicit uuid is kept, not replaced by a fresh one', () {
+      // The deserialisation case. An exception reconstructed from a wire
+      // representation with a new identity can no longer be matched to the log
+      // line written where the failure actually happened.
+      final e = TomServerException(
+        'K',
+        'm',
+        uuid: '11111111-2222-3333-4444-555555555555',
+      );
+      expect(e.uuid, '11111111-2222-3333-4444-555555555555');
+    });
+
+    test('a uuid is still generated when none is given', () {
+      final e = TomServerException('K', 'm');
+      expect(e.uuid, isNotEmpty);
+      expect(e.uuid, isNot(TomServerException('K', 'm').uuid));
+    });
+
+    test('an explicit requestUuid works outside any zone', () {
+      // The cross-boundary case: a worker handed the request id as a plain
+      // string has no zone to read it from, and until now no other way to say
+      // which request the failure belongs to.
+      expect(
+        TomServerException(
+          'K',
+          'm',
+          requestUuid: 'inbound-request',
+        ).requestUuid,
+        'inbound-request',
+      );
+    });
+
+    test('an explicit requestUuid wins over the ambient one', () {
+      // A caller that names a request is relaying a failure from elsewhere and
+      // knows something the surrounding zone does not. Overwriting it would
+      // re-label another request's failure with this one's id, which is worse
+      // than no correlation at all.
+      final ambient = TomRequestId();
+      runZoned(() {
+        final e = TomServerException('K', 'm', requestUuid: 'inbound-request');
+        expect(e.requestUuid, 'inbound-request');
+        expect(e.requestUuid, isNot(ambient.uuid));
+      }, zoneValues: {TomRequestId: ambient});
+    });
+
+    test('the ambient one still applies when the caller says nothing', () {
+      // The control for the rule above: the zone lookup must still run in the
+      // ordinary case, which is every exception raised while serving.
+      final ambient = TomRequestId();
+      runZoned(
+        () => expect(TomServerException('K', 'm').requestUuid, ambient.uuid),
+        zoneValues: {TomRequestId: ambient},
+      );
+    });
+
+    test('serverCallError reaches the base', () {
+      // The kernel's slot for "this came from an HTTP call", previously
+      // unreachable from the package most likely to make one.
+      final call = TomServerCallError(statusCode: 503, response: 'no upstream');
+      final e = TomServerException('K', 'm', serverCallError: call);
+      expect(e.serverCallError, same(call));
+      expect(e.serverCallError?.statusCode, 503);
+    });
+
+    test('serverCallError stays off the wire', () {
+      // It describes the server's own outbound call, which is nobody else's
+      // business — the envelope reports the fields a client branches on and
+      // this is not one of them.
+      final e = TomServerException(
+        'K',
+        'm',
+        serverCallError: TomServerCallError(statusCode: 503),
+      );
+      expect(tomErrorEnvelope(e).containsKey('serverCallError'), isFalse);
+    });
+  });
+
   group('isolate attribution names the origin, not the reader', () {
     // The field exists so a failure can be attributed to one of several
     // identical workers — the server spreads work across an isolate pool, and

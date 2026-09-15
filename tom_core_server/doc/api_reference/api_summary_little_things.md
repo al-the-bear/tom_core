@@ -115,15 +115,31 @@ kernel's `TomException` with isolate attribution, request correlation and the
 TomServerException(
   String key,
   String defaultUserMessage, {
+  String? uuid,
+  String? requestUuid,
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
   bool autoLog = false,
+  TomServerCallError? serverCallError,
   bool clientThrow = true,
 })
 ```
 
-Copies the current zone's `TomRequestId` UUID into `requestUuid` when present.
+The kernel's whole parameter list is forwarded. Every exception type in the
+package chains through here, so a parameter missing from this list is missing
+from all of them: `uuid` is what lets an exception *reconstructed* from a wire
+representation keep the identity its log line was written under, `requestUuid`
+is the only route to correlation for a worker or a deserialiser that holds the
+request id as a plain string rather than as a zone value, and `serverCallError`
+is the kernel's slot for "this came from an HTTP call" — filled by
+`TomServerSelfLoginException`.
+
+Copies the current zone's `TomRequestId` UUID into `requestUuid` **when the
+caller did not supply one**. An explicit value wins: a caller that names a
+request is relaying a failure from elsewhere and knows something the surrounding
+zone does not, and overwriting it would re-label another request's failure with
+this one's id.
 
 #### Properties
 

@@ -102,18 +102,47 @@ class TomServerException extends TomException {
   /// message; both are forwarded to [TomException]. Set [clientThrow] to `false`
   /// for errors that must not leak to the client.
   ///
-  /// If a [TomRequestId] is present in the current zone, its UUID is copied into
-  /// [TomException.requestUuid] so the error is correlated with the active
-  /// request.
+  /// **The kernel's whole parameter list is forwarded**, including the three
+  /// that identify an exception rather than describe it — `uuid`, `requestUuid`
+  /// and `serverCallError`. Every one of the package's exception types chains
+  /// through here, so a parameter missing from this list is missing from all of
+  /// them; the three were, and each had a case that could not be expressed:
+  ///
+  ///  * `uuid` is generated when omitted, which is right for a failure raised
+  ///    here and wrong for one *reconstructed* from a wire representation — a
+  ///    fresh identity cannot be matched to the log line written where the
+  ///    failure actually happened.
+  ///  * `requestUuid` was reachable by one route only, the zone lookup below.
+  ///    A worker isolate handed the request id as a plain string, or a
+  ///    deserialiser holding it as a field, had no way to say which request the
+  ///    failure belongs to — which is the correlation this module exists for.
+  ///  * `serverCallError` is the kernel's slot for "this came from an HTTP
+  ///    call", and the server package is the one most likely to make outbound
+  ///    calls. [TomServerSelfLoginException] is the first to fill it.
+  ///
+  /// **An explicitly supplied [requestUuid] wins over the ambient one.** The
+  /// zone lookup runs only when the caller did not say, because a caller that
+  /// names a request is reconstructing or relaying a failure from elsewhere and
+  /// knows something the surrounding zone does not — overwriting it would
+  /// re-label another request's failure with this one's id, which is worse than
+  /// no correlation at all.
+  ///
+  /// Otherwise, if a [TomRequestId] is present in the current zone, its UUID is
+  /// copied into [TomException.requestUuid] so the error is correlated with the
+  /// active request.
   TomServerException(
     super.key,
     super.defaultUserMessage, {
+    super.uuid,
+    super.requestUuid,
     super.parameters,
     super.stack,
     super.rootException,
     super.autoLog,
+    super.serverCallError,
     this.clientThrow = true,
   }) {
+    if (requestUuid != null) return;
     TomRequestId? requestId = getFromCurrentZone<TomRequestId>();
     if (requestId != null) {
       requestUuid = requestId.uuid;

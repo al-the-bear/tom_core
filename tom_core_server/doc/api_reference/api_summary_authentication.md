@@ -1641,8 +1641,19 @@ an unconfigured deployment — that path returns `false` instead. Constructed wi
 #### Constructors
 
 ```dart
-TomServerSelfLoginException(String key, String defaultUserMessage)
+TomServerSelfLoginException(
+  String key,
+  String defaultUserMessage, {
+  TomServerCallError? serverCallError,
+  Object? rootException,
+})
 ```
+
+`serverCallError` carries the kernel's account of the outbound HTTP call when
+the failure came from one — the status, the body, the underlying exception —
+which is what turns "could not be reached" from a sentence an operator reads
+into a value anything can branch on. It never reaches a client: this type masks
+its message, and `tomErrorEnvelope` does not serialise the field.
 
 Keys raised: `server.selflogin.unreachable`, `server.selflogin.rejected`,
 `server.selflogin.bad_response`, `server.selflogin.no_token`,

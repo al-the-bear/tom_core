@@ -313,6 +313,60 @@ void main() {
       );
     });
 
+    test('an unreachable auth server carries the call detail', () async {
+      // "Could not be reached" as a sentence is something an operator reads; a
+      // TomServerCallError is something anything can branch on. The kernel
+      // raises one for a refused or failed call, and until the base
+      // constructor forwarded the parameter there was nowhere to put it — so
+      // the status and body the transport actually saw were dropped, leaving
+      // only whatever the message had interpolated.
+      final refused = TomServerConnectionException(
+        'error.unknown_server_error',
+        'no upstream',
+        serverCallError: TomServerCallError(
+          statusCode: 502,
+          response: 'bad gateway',
+        ),
+      );
+      final transport = _FakeTransport('', throws: refused);
+
+      await expectLater(
+        TomServerSelfLogin.logIn(
+          TomServiceCredential.fromConfiguration(_configured())!,
+          transport: transport,
+        ),
+        throwsA(
+          isA<TomServerSelfLoginException>()
+              .having((e) => e.key, 'key', 'server.selflogin.unreachable')
+              .having(
+                (e) => e.serverCallError?.statusCode,
+                'serverCallError.statusCode',
+                502,
+              )
+              .having((e) => e.rootException, 'rootException', same(refused)),
+        ),
+      );
+    });
+
+    test('a non-HTTP failure leaves the call detail unset', () async {
+      // The control. Without it the assertion above is satisfied by a field
+      // that is filled with something regardless of what was caught.
+      final transport = _FakeTransport('', throws: StateError('no route'));
+      await expectLater(
+        TomServerSelfLogin.logIn(
+          TomServiceCredential.fromConfiguration(_configured())!,
+          transport: transport,
+        ),
+        throwsA(
+          isA<TomServerSelfLoginException>().having(
+            (e) => e.serverCallError,
+            'serverCallError',
+            isNull,
+          ),
+        ),
+      );
+    });
+
     test('a tokenless success body throws', () async {
       final transport = _FakeTransport('{"error":""}');
       await expectLater(

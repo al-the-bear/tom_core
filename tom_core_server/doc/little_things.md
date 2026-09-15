@@ -13,6 +13,7 @@ the exception constructor recovers from the zone — plus one function,
 - [Overview](#overview)
 - [TomRequestId](#tomrequestid)
 - [TomServerException](#tomserverexception)
+  - [The Whole Kernel Parameter List](#the-whole-kernel-parameter-list)
 - [Isolate Attribution](#isolate-attribution)
 - [Request Correlation](#request-correlation)
 - [The clientThrow Flag](#the-clientthrow-flag)
@@ -139,6 +140,23 @@ cannot say whether its message may be shown; and the isolate and request
 attribution below is added by the base constructor, so a non-member arrives
 naming neither the worker that raised it nor the request that caused it.
 
+### The Whole Kernel Parameter List
+
+`TomServerException`'s constructor forwards **every** parameter the kernel's
+`TomException` accepts. That matters more than it sounds: all 27 exception types
+in the package chain through this one constructor, so a parameter missing here
+is missing from every one of them — and three were.
+
+| Parameter | What it makes possible |
+| --------- | ---------------------- |
+| `uuid` | An exception *reconstructed* from a wire representation keeps the identity its log line was written under. Generated when omitted, so nothing changes for a failure raised here. |
+| `requestUuid` | Correlation for an exception built outside the request zone — a worker isolate handed the id as a plain string, a deserialiser holding it as a field. Until it was forwarded, the zone was the only route. |
+| `serverCallError` | The kernel's slot for "this came from an HTTP call", in the package most likely to make outbound ones. `TomServerSelfLoginException` fills it, so a refused auth server reports the status and body rather than a sentence. |
+
+`serverCallError` describes the server's own outbound call and is deliberately
+**not** in the error envelope: it is nobody else's business, and the envelope
+carries the fields a client branches on.
+
 ## Isolate Attribution
 
 Server work is spread across an isolate pool, so the bare error message alone
@@ -179,6 +197,13 @@ UUID into the inherited `requestUuid` field. The error is therefore linked to
 the request that triggered it without any code threading the id through the call
 stack. Outside a request zone (e.g. during startup) `requestUuid` is simply left
 unset.
+
+**An explicitly supplied `requestUuid` wins over the ambient one**, and the zone
+lookup runs only when the caller said nothing. A caller that names a request is
+relaying or reconstructing a failure from elsewhere — a worker isolate handed
+the id as a plain string, a deserialiser holding it as a field — and knows
+something the surrounding zone does not. Overwriting it would re-label another
+request's failure with this one's id, which is worse than no correlation at all.
 
 `toString()` renders the correlation as a trailing `request: <uuid>` segment,
 and omits that segment altogether when the exception was raised outside a
@@ -406,7 +431,8 @@ without either reaching the other.
 `TomRequestId` and the zone it is read out of, `TomServerException`'s isolate
 attribution — including that the name survives an isolate hop and still names
 the origin — its `clientThrow` flag and the `clientMessage` read that honours
-it, the request correlation it picks up, the
+it, the three kernel parameters it forwards and the explicit-wins-over-ambient
+rule for `requestUuid`, the request correlation it picks up, the
 one subclass declared beside it (`TomLoginException`) with its `TomLoginFailure`
 reason and the values that set deliberately omits, and `tomErrorEnvelope` — the
 wire shape every error response uses, including the `loginFailure` field a login
