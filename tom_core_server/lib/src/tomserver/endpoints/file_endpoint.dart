@@ -513,7 +513,7 @@ class TomFileEndpoint {
       // C-4 refused the column. Reported as 403 and not as 404: the caller is
       // addressing a slot that exists and they may not have, and a repository
       // that says so explicitly should not be softened into "no such thing".
-      return _error(403, error.key, error.defaultUserMessage);
+      return _error(403, error.key, error.clientMessage(_refused));
     } on TomDataScopeAuthorizationException catch (error) {
       // C-3 refused the row — and unlike the column above this is a 404, not a
       // 403. The two gates answer different questions. A column refusal says
@@ -531,7 +531,7 @@ class TomFileEndpoint {
       // is stricter than its read gate would escape to the pipeline's generic
       // handler as a 500 — itself distinguishable from a 404, and so itself the
       // leak.
-      return _error(404, error.key, error.defaultUserMessage);
+      return _error(404, error.key, error.clientMessage(_refused));
     } on TomStorageException catch (error) {
       final status = switch (error.key) {
         'storage.file_reference.row_not_found' => 404,
@@ -541,10 +541,10 @@ class TomFileEndpoint {
         _ => null,
       };
       if (status == null) rethrow;
-      return _error(status, error.key, error.defaultUserMessage);
+      return _error(status, error.key, error.clientMessage(_refused));
     } on TomFileSlotException catch (error) {
       if (error.key != 'file_endpoint.invalid_id') rethrow;
-      return _error(400, error.key, error.defaultUserMessage);
+      return _error(400, error.key, error.clientMessage(_refused));
     }
   }
 
@@ -796,6 +796,15 @@ class TomFileEndpoint {
 
   /// A JSON error body carrying the error [key], so a client sees the same
   /// stable code the server logged.
+  /// What a response says in place of a message its thrower marked internal.
+  ///
+  /// Deliberately uninformative and deliberately the same for every status: an
+  /// exception that says its text is not for a client has said that the text is
+  /// the part to withhold, and a fallback that varied by case would put some of
+  /// it back. The `key` beside it is what a client resolves for something to
+  /// show.
+  static const String _refused = 'The request could not be completed.';
+
   static Response _error(int status, String key, String message) => Response(
     status,
     body: jsonEncode({'key': key, 'message': message}),

@@ -278,6 +278,21 @@ class _MemoryFileRepository
 /// real one. A test is its own host, so it installs one too.
 /// (`tom_core_kernel`'s own `file_transfer_test.dart` does exactly this — the
 /// package is named by its directory so the pointer resolves against it.)
+/// A store whose reads fail with a message its thrower marked internal.
+///
+/// `clientThrow: false` is the promise "this text describes the server, not the
+/// caller"; the endpoint's job is to keep it.
+class _MaskedFailureBlobStore extends TomMemoryBlobStore {
+  @override
+  Future<TomStoredBlob?> doDescribe(String key) async {
+    throw TomStorageException(
+      'storage.blob.not_found',
+      'blob s3://prod-internal-bucket/$key is absent from the pool',
+      clientThrow: false,
+    );
+  }
+}
+
 class _TestClientFactory implements TomHttpClientAbstractFactory {
   @override
   Client getClient() => Client();
@@ -1485,12 +1500,17 @@ void main() {
     // branch is reachable at all.
 
     late HttpServer server;
+    late _MemoryFileRepository repository;
 
     setUp(() async {
       TomFileSlots.reset();
       TomBlobStoreInfo.stores.clear();
       TomBlobStoreInfo.register('files', TomMemoryBlobStore(), asDefault: true);
-      TomFileSlots.register(_MemoryFileRepository());
+      repository = _MemoryFileRepository();
+      repository.rows[1] = FixtureFileSlotRecord()
+        ..id = 1
+        ..title = 'a row that exists';
+      TomFileSlots.register(repository);
       final router = Router()
         ..all('/files/<entity>/<id>/<column>', TomFileEndpoint.handle);
       server = await shelf_io.serve(
@@ -1520,6 +1540,45 @@ void main() {
         );
       });
     }
+
+    test('a masked storage failure answers its key, not its message', () async {
+      // The leak this closes. `clientThrow: false` says the text describes the
+      // server — here a bucket name and an internal path — and the endpoint
+      // used to serialise `defaultUserMessage` unconditionally, so the promise
+      // held only as long as nothing it caught happened to make one.
+      //
+      // The key is deliberately *not* masked: it is a stable code a client
+      // resolves against its own resources, so a masked response still has
+      // something to render.
+      TomBlobStoreInfo.stores.clear();
+      TomBlobStoreInfo.register(
+        'files',
+        _MaskedFailureBlobStore(),
+        asDefault: true,
+      );
+      // The row names a blob, so the endpoint reaches the store rather than
+      // answering its own `no_file` — and the store refuses the lookup.
+      repository.rows[1]!.poster = 'fixture/poster/anything';
+
+      final response = await _raw(
+        server.port,
+        'GET',
+        '/files/fixture_file_slot/1/poster',
+      );
+      final body =
+          jsonDecode(await response.transform(utf8.decoder).join())
+              as Map<String, Object?>;
+
+      expect(response.statusCode, 404);
+      expect(body['key'], 'storage.blob.not_found');
+      expect(
+        body['message'],
+        isNot(contains('prod-internal-bucket')),
+        reason:
+            'the message the thrower marked internal must not be on the '
+            'wire',
+      );
+    });
 
     test('an unsupported method on an unknown slot is still 404', () async {
       // Slot resolution runs before the method switch, and it must: answering

@@ -16,6 +16,7 @@ the exception constructor recovers from the zone — plus one function,
 - [Isolate Attribution](#isolate-attribution)
 - [Request Correlation](#request-correlation)
 - [The clientThrow Flag](#the-clientthrow-flag)
+  - [Read it through clientMessage](#read-it-through-clientmessage)
 - [TomLoginException and Its Reason](#tomloginexception-and-its-reason)
   - [The five values, and the three that are missing](#the-five-values-and-the-three-that-are-missing)
   - [Consistency is enforced, not reviewed](#consistency-is-enforced-not-reviewed)
@@ -193,6 +194,46 @@ omission. Every other exception the authentication subsystem raises is hidden:
 login failure is the exception whose message is written for the person who
 mistyped a password, so it is the one that may reach them.
 
+### Read it through `clientMessage`
+
+`clientThrow` binds the *value*, not the handler. A response built from
+`defaultUserMessage` directly shows the message of an exception marked `false`,
+and nothing complains — a leak by **omission** rather than by decision, which is
+the kind that survives review.
+
+`TomServerException.clientMessage(maskedFallback)` is the sanctioned read:
+
+```dart
+return _error(403, error.key, error.clientMessage('Request refused.'));
+```
+
+It returns `defaultUserMessage` when `clientThrow` is true and `maskedFallback`
+when it is not. The fallback is required and has no default, because the
+framework does not own the text a deployment shows in place of a hidden one:
+text belongs to the rendering tier, reached through a resource key, and a
+generic English sentence baked into the framework would be putting words in a
+client's mouth.
+
+**Only the message is masked.** `key` stays on the wire for every exception —
+`tomErrorEnvelope` reports it unconditionally — because it is a stable code a
+client resolves against its own resources, not free text an author wrote for a
+person. A masked response therefore still has something to render.
+
+The type system cannot enforce this, and the module does not pretend otherwise:
+`defaultUserMessage` is a public field on the kernel's `TomException`, used by
+`tom_core_kernel` and `tom_core_flutter` alike, and hiding it would be a kernel
+change. What is enforced instead is *visibility*.
+`test/server_exception_family_test.dart` scans `lib/src/tomserver/` for direct
+reads of `defaultUserMessage` and fails on one that is not pinned with a reason.
+Two are pinned: `clientMessage`'s own implementation, and a self-login failure
+written to the operator's log. A third has to be argued for rather than merely
+written.
+
+**The default error handler is safe by construction**, because
+`tomErrorEnvelope` carries no message at all — see
+[The Error Envelope](#the-error-envelope). A replacement `errorHandler` that
+adds one takes on the obligation the envelope avoids.
+
 Both `clientThrow` and `isolateName` are `final`, so what the constructor fixes
 is the value and not merely a default. That is deliberate: an exception is a
 value describing something that has already happened, and both fields record a
@@ -342,7 +383,8 @@ without either reaching the other.
 
 `test/little_things_test.dart` covers all four types the module contributes:
 `TomRequestId` and the zone it is read out of, `TomServerException`'s isolate
-attribution, its `clientThrow` flag and the request correlation it picks up, the
+attribution, its `clientThrow` flag and the `clientMessage` read that honours
+it, the request correlation it picks up, the
 one subclass declared beside it (`TomLoginException`) with its `TomLoginFailure`
 reason and the values that set deliberately omits, and `tomErrorEnvelope` — the
 wire shape every error response uses, including the `loginFailure` field a login
@@ -374,8 +416,9 @@ transcript; `test/examples_test.dart` runs it, which is what keeps that true.
   zone; recovered with `getFromCurrentZone<TomRequestId>()` by the exception
   base, the endpoints pipeline and `TomAuditTrail.currentRequestId`.
 - **`TomServerException`** — the base server exception. Adds `isolateName`
-  (originating worker), `clientThrow` (client-safe flag), and zone-based
-  `requestUuid` population to the kernel's `TomException`.
+  (originating worker), `clientThrow` (client-safe flag) with the
+  `clientMessage` read that honours it, and zone-based `requestUuid` population
+  to the kernel's `TomException`.
 - **`TomLoginException`** — a login that cannot succeed: unknown client or user,
   invalid credentials, no enrolled second factor, an expired challenge. Raised
   by `TomAuthenticationService`, `Tom2FAService` and their helpers, and caught

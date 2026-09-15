@@ -33,6 +33,29 @@
 
 ### Changed
 
+- **`clientThrow` has a sanctioned read (tcopen159).** The flag marks whether an
+  exception's `defaultUserMessage` may be shown to a caller, and five types in
+  the package set it `false` because their messages describe server internals —
+  an unreachable data source, a failed audit write, a misconfigured identity
+  provider. Nothing read it. `defaultUserMessage` is a plain public field, so a
+  handler that serialised it showed those messages and nothing complained: a
+  leak by *omission* rather than by decision.
+
+  `TomServerException.clientMessage(maskedFallback)` returns the message when
+  `clientThrow` is true and the fallback when it is not, and the framework's own
+  four message-carrying responses — `TomFileEndpoint`'s error translations — now
+  go through it. Only the message is masked; `key` stays on the wire for every
+  exception, because a client resolves it against its own resources.
+
+  The type system cannot enforce this — `defaultUserMessage` is declared in the
+  kernel and used by `tom_core_flutter` too — so what is enforced is visibility:
+  `server_exception_family_test` scans `lib/src/tomserver/` for direct reads and
+  fails on one that is not pinned with a reason. Two are pinned, both
+  server-side. The default error handler is safe by construction, because
+  `tomErrorEnvelope` carries no message at all; the dartdoc of both
+  `errorHandler` declarations now says that a replacement adding one takes the
+  obligation on.
+
 - **`TomLoginException` carries a structured reason (tcopen158).** It was a
   marker subtype — no fields, no members beyond a constructor that forwarded
   everything to the base — so everything a caller might branch on was encoded in

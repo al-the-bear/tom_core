@@ -757,6 +757,15 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// answering, which is the way to handle some failures and leave the rest to
   /// shelf. The error and its stack trace are already logged before the handler
   /// is called, so a handler that only wants to log has nothing to add.
+  ///
+  /// **A handler that puts a message in its body must read it through
+  /// `TomServerException.clientMessage`,** not from `defaultUserMessage`. The
+  /// `clientThrow` flag is the thrower's statement about its own text, and five
+  /// types in the package set it `false` because their messages describe server
+  /// internals — an unreachable data source, a failed audit write, a
+  /// misconfigured identity provider. The default handler is safe by
+  /// construction because [tomErrorEnvelope] carries no message at all; a
+  /// handler that adds one takes the obligation on.
   Response? Function(Request, Object, StackTrace)? errorHandler;
 
   /// Replaces the error response for failures raised *at or above* the

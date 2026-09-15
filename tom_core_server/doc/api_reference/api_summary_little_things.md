@@ -104,7 +104,8 @@ TomRequestId()
 ### TomServerException
 
 Base class for every exception raised by `tom_core_server`, extending the
-kernel's `TomException` with isolate attribution and request correlation.
+kernel's `TomException` with isolate attribution, request correlation and the
+`clientThrow` flag its `clientMessage` read honours.
 
 - **Extends:** `TomException`
 
@@ -129,12 +130,13 @@ Copies the current zone's `TomRequestId` UUID into `requestUuid` when present.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `isolateName` | `final String` | The debug name of the isolate that constructed this exception (falls back to `"unnamed isolate"`). |
-| `clientThrow` | `final bool` | Whether this exception is safe to propagate to the client (default `true`). Fixed at construction — a catch site that must not surface a particular failure masks it in the response it builds. |
+| `clientThrow` | `final bool` | Whether this exception is safe to propagate to the client (default `true`). Fixed at construction — a catch site that must not surface a particular failure masks it in the response it builds. Read it through `clientMessage`, not by hand: the flag binds the value, not the handler. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `clientMessage` | `String clientMessage(String maskedFallback)` | The message this exception may be shown to a client as: `defaultUserMessage` when `clientThrow` is true, `maskedFallback` when it is not. **Every response that carries a message reads it from here** — a handler reading `defaultUserMessage` directly breaks the thrower's promise by omission, and five types in the package set the flag `false` precisely because their messages describe server internals. The fallback is required and has no default: text belongs to the rendering tier, reached through a resource key. Only the *message* is masked; `key` stays on the wire for every exception. |
 | `toString` | `String toString()` | *(override)* The base `TomException` string extended with `isolateName`, the `clientThrow` flag, and — only when the exception was raised inside a request — a labelled ` request: <uuid>` segment. The segment is omitted entirely when `requestUuid` is null. |
 
 ## Enums

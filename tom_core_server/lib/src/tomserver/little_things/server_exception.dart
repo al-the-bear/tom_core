@@ -72,6 +72,11 @@ class TomServerException extends TomException {
   /// error is raised and by the party that knows what the message contains. A
   /// catch site that decides a particular failure must not leave the server
   /// masks it in the response it builds; it does not rewrite the error.
+  ///
+  /// Read it through [clientMessage] rather than by hand. The flag binds the
+  /// *value*, not the handler: a response built from `defaultUserMessage`
+  /// directly shows the message of an exception marked `false` and nothing
+  /// complains, which is a leak by omission rather than by decision.
   final bool clientThrow;
 
   /// Creates a server exception.
@@ -97,6 +102,36 @@ class TomServerException extends TomException {
       requestUuid = requestId.uuid;
     }
   }
+
+  /// The message this exception may be shown to a client as: its
+  /// [TomException.defaultUserMessage] when [clientThrow] is true, and
+  /// [maskedFallback] when it is not.
+  ///
+  /// **Every response that carries a message reads it from here.** The flag is
+  /// a promise the thrower makes about its own text — five types in the package
+  /// default it to `false` because their messages describe server internals, an
+  /// unreachable data source, a failed audit write, a misconfigured identity
+  /// provider — and a handler that reads `defaultUserMessage` directly breaks
+  /// that promise by *omission* rather than by decision. Nothing in the type
+  /// system can stop it; what this does is make the correct call shorter than
+  /// the wrong one, and give a reviewer one name to search for.
+  ///
+  /// [maskedFallback] is required and has no default, because the framework
+  /// does not own the text a deployment shows in place of a hidden one: text
+  /// belongs to the rendering tier, reached through a resource key, and a
+  /// generic English sentence baked in here would be the framework putting
+  /// words in a client's mouth.
+  ///
+  /// Only the *message* is masked. [TomException.key] stays on the wire for
+  /// every exception — `tomErrorEnvelope` reports it unconditionally — because
+  /// it is a stable code a client resolves against its own resources, not free
+  /// text an author wrote for a person.
+  ///
+  /// ```dart
+  /// return Response(403, body: error.clientMessage('Request refused.'));
+  /// ```
+  String clientMessage(String maskedFallback) =>
+      clientThrow ? defaultUserMessage : maskedFallback;
 
   /// Returns the base [TomException] string extended with the originating
   /// [isolateName], the [clientThrow] flag, and — for an exception raised

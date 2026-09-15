@@ -132,6 +132,71 @@ void main() {
     });
   });
 
+  group('clientMessage', () {
+    test('a client-visible exception hands over its own message', () {
+      expect(
+        TomServerException(
+          'order.not-found',
+          'No such order.',
+        ).clientMessage('Request refused.'),
+        'No such order.',
+      );
+    });
+
+    test('a masked exception hands over the fallback instead', () {
+      // The leak this closes. Five types in the package default the flag to
+      // false because their messages describe server internals — an
+      // unreachable data source, a failed audit write, a misconfigured
+      // identity provider — and a handler reading `defaultUserMessage`
+      // directly shows them.
+      expect(
+        TomServerException(
+          'audit.sink.unavailable',
+          'The audit datasource "audit_db" is not registered.',
+          clientThrow: false,
+        ).clientMessage('Request refused.'),
+        'Request refused.',
+      );
+    });
+
+    test('the exception still carries the masked message for a log', () {
+      // Masking is a decision about the *response*, not an erasure: the server
+      // still has to be able to say in its own log what actually failed.
+      final e = TomServerException(
+        'audit.sink.unavailable',
+        'The audit datasource "audit_db" is not registered.',
+        clientThrow: false,
+      );
+      expect(e.defaultUserMessage, contains('audit_db'));
+      expect(e.toString(), contains('audit_db'));
+    });
+
+    test('the key is never masked, only the message', () {
+      // The key is a stable code a client resolves against its own resources,
+      // not free text an author wrote for a person — so it stays on the wire
+      // for every exception, which is what leaves a masked response something
+      // to render.
+      final e = TomServerException(
+        'audit.sink.unavailable',
+        'internals',
+        clientThrow: false,
+      );
+      expect(tomErrorEnvelope(e)['errorKey'], 'audit.sink.unavailable');
+      expect(tomErrorEnvelope(e)['clientThrow'], isFalse);
+    });
+
+    test('a login failure is client-visible, so it keeps its message', () {
+      expect(
+        TomLoginException(
+          'error.invalid-user-or-password',
+          'The username or password is not correct.',
+          reason: TomLoginFailure.accountProblem,
+        ).clientMessage('Request refused.'),
+        'The username or password is not correct.',
+      );
+    });
+  });
+
   group('TomLoginException', () {
     test('is a TomServerException and a TomException', () {
       final e = TomLoginException(

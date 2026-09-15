@@ -342,6 +342,13 @@ class TomServer {
   /// response carries the `x-tom-error: true` header and declares
   /// `application/json`. Overridden by
   /// `TomBaseServerConfiguration.errorHandler` when provided.
+  ///
+  /// It carries **no message**, which is also what makes it safe: the envelope
+  /// reports `errorKey` for a client to resolve against its own resources and
+  /// never `defaultUserMessage`, so no exception's text can escape through it.
+  /// A replacement that adds a message takes on the obligation the envelope
+  /// avoids, and must read it through [TomServerException.clientMessage] rather
+  /// than from the field — `clientThrow` binds the value, not the handler.
   Response? Function(Request, Object, StackTrace) errorHandler =
       (request, error, stacktrace) {
         // The media type is part of the contract, not decoration: the body is

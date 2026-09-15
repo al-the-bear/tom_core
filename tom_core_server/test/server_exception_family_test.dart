@@ -515,4 +515,76 @@ void main() {
       }
     });
   });
+
+  group('clientThrow is read through clientMessage', () {
+    // `clientThrow` is the thrower's promise about its own text, and five types
+    // in the package default it to `false` because their messages describe
+    // server internals — an unreachable data source, a failed audit write, a
+    // misconfigured identity provider. The flag binds the *value*; it cannot
+    // bind the handler. A response built from `defaultUserMessage` directly
+    // shows those messages and nothing complains, which is a leak by omission
+    // rather than by decision.
+    //
+    // `TomServerException.clientMessage` is the sanctioned read, so the guard
+    // is: nothing under `lib/src/tomserver/` touches `defaultUserMessage`
+    // directly except the sites pinned below, each with the reason it is not a
+    // wire response. A sixth site has to be argued for rather than merely
+    // written — the same discipline the direct-raise rule above uses, and for
+    // the same reason: a convention nobody can see erodes.
+
+    /// Files under [_sourceRoot] that read `defaultUserMessage` directly, and
+    /// why each is not a message on the wire.
+    const permitted = <String, String>{
+      'little_things/server_exception.dart':
+          'the implementation of clientMessage itself, which is what the flag '
+          'is read by',
+      'server/server.dart':
+          'a server-side log line for a failed self-login, written to the '
+          'operator log and never to a response',
+    };
+
+    /// Package-relative paths (below [_sourceRoot]) that read it, excluding
+    /// dartdoc, line comments and constructor forwarding.
+    final readers = <String>{};
+    for (final file
+        in Directory(_sourceRoot)
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.dart'))
+            .where((f) => !f.path.endsWith('.reflection.dart'))) {
+      for (final line in file.readAsLinesSync()) {
+        final code = line.trim();
+        if (code.startsWith('//')) continue;
+        if (!code.contains('defaultUserMessage')) continue;
+        if (code.contains('super.defaultUserMessage')) continue;
+        if (code.contains('this.defaultUserMessage')) continue;
+        readers.add(file.path.substring(_sourceRoot.length + 1));
+      }
+    }
+
+    test('no unpinned file reads the message directly', () {
+      expect(
+        readers.difference(permitted.keys.toSet()),
+        isEmpty,
+        reason:
+            'these read defaultUserMessage without going through '
+            'clientMessage; if the value reaches a response, an exception '
+            'marked clientThrow: false has had its message shown',
+      );
+    });
+
+    test('every pinned exemption is still a real one', () {
+      // A pin nobody removed after the site went away reads as permission that
+      // was granted rather than as a fact, and the next site to want it finds
+      // an entry already there.
+      expect(permitted.keys.toSet().difference(readers), isEmpty);
+    });
+
+    test('the scan is reading the files it claims to', () {
+      // Without this the two rules above are satisfied by a scan that matched
+      // nothing at all.
+      expect(readers, isNotEmpty);
+      expect(readers, contains('little_things/server_exception.dart'));
+    });
+  });
 }
