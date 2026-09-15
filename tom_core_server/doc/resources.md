@@ -399,13 +399,25 @@ still reaches it.
 dart run example/resources/resources_example.dart
 ```
 
-`example/resources/resources_example.dart` walks the same ground in seven steps,
+`example/resources/resources_example.dart` walks the same ground in nine steps,
 all in memory: bundles are maps, so nothing there opens a file or a connection.
-It ends on the two properties a reader most needs to have seen happen rather
-than read about — a half-translated bundle serving what it has and falling
-through for the rest, and a placeholder with no value left standing where a
-proof-reader can see it. Every step checks its own result through the package's
-throwing `check` helper, and `test/examples_test.dart` runs it.
+Its bundles are built so that each rung of the chain is reachable on its own —
+`de` is half translated and `de_AT` thinner still — because the properties a
+reader most needs to have seen happen rather than read about are the ones the
+chain makes: a country variant answering before its language, a key the variant
+does not carry landing on **that language** rather than on the default, a
+half-translated bundle serving what it has and falling through for the rest, and
+a placeholder with no value left standing where a proof-reader can see it.
+
+It closes on the completeness check a deployment runs in CI — `isTranslated`
+asked key by key over the default locale's own bundle, naming what a target
+locale has not translated. The step asserts beside it that `exists` answers true
+for every one of those keys, which is why `exists` cannot be that check: the
+chain always reaches the default locale, so it reports that a render will find
+*something*, not that anybody wrote a translation.
+
+Every step checks its own result through the package's throwing `check` helper,
+and `test/examples_test.dart` runs it.
 
 It renders against `test/fixtures/localized_texts.dart`, a deliberately
 half-translated set that `test/email_service_test.dart` shares. That

@@ -2,6 +2,29 @@
 
 ### Added
 
+- **The resources example reaches the two cases it was missing, and the README
+  indexes it (tcopen177).** `example/resources/` already existed — the todo's
+  premise was written before it landed — and covered the chain's outer rungs:
+  a country variant answering before its language, and a half-translated bundle
+  falling through to the default. The **middle** rung was not covered anywhere
+  in the example: a key the country variant does not carry landing on *that
+  language* rather than on the default, which is the distinction the three-rung
+  chain exists for. `de_AT` now carries a greeting and nothing else, so each
+  rung is reachable on its own, and the new step asserts an Austrian reader gets
+  the German subject.
+
+  It also closes on the completeness check a deployment runs in CI:
+  `isTranslated` asked key by key over the default locale's own bundle, naming
+  what a target locale has not translated. The step asserts beside it that
+  `exists` answers true for every one of those keys — which is why `exists`
+  cannot be that check, since the chain always reaches the default locale.
+  Mutation-tested: dropping the bare language from the chain, and letting
+  `isTranslated` follow the chain, each fail the run.
+
+  `README.md`'s example map gained the row it was missing, which is how a
+  reader reaches a module example — the package example indexes nothing, filed
+  as tcfinal24.
+
 - **`framework_schema_db_test` applies every shipped migration chain, not four
   of seven (tcfinal23).** The chain list was hand-maintained and three chains —
   `authorization`, `messaging`, `preferences` — were never added to it. The
