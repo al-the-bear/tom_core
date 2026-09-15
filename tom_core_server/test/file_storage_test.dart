@@ -39,6 +39,10 @@ import 'package:tom_core_server/tom_core_server.dart';
 import 'package:yaml/yaml.dart';
 
 import 'fixtures/posix_permissions.dart';
+// For the migration's guards, which read a *reflected* entity's file columns:
+// the annotations are the subject, so a real fixture entity is the fixture.
+import 'fixtures/reflection_fixture.dart';
+import 'fixtures/reflection_fixture.reflection.dart';
 
 /// A stream that delivers [chunks] and then fails with [error].
 ///
@@ -343,6 +347,68 @@ class _WholeReadsOnlyBlobStore extends TomBlobStore {
   @override
   dynamic noSuchMethod(Invocation invocation) =>
       throw UnimplementedError('${invocation.memberName} is not under test');
+}
+
+/// A repository that answers from a list, for the migration's own guards.
+///
+/// The sweep itself is exercised against a real database in
+/// `file_storage_db_test.dart`; what belongs here are the checks that run
+/// before any row is read, and the verification that runs after a copy.
+class _ListRepository<T extends Object> implements TomRepository<T, int> {
+  _ListRepository(this.rows);
+
+  final List<T> rows;
+
+  /// How many times the sweep asked for a page.
+  int pages = 0;
+
+  @override
+  Future<List<T>> findAll([TomPageRequest? page]) async {
+    pages++;
+    final offset = page?.offset ?? 0;
+    final limit = page?.limit ?? 0;
+    if (offset >= rows.length) return [];
+    final end = limit == 0
+        ? rows.length
+        : (offset + limit).clamp(0, rows.length);
+    return rows.sublist(offset, end);
+  }
+
+  @override
+  Never noSuchMethod(Invocation invocation) => throw UnimplementedError(
+    'The list repository was asked for ${invocation.memberName}, which the '
+    'migration does not use.',
+  );
+}
+
+/// A store whose `put` reports a different size than it was given.
+///
+/// The one failure a later pass cannot detect: the next run finds the key
+/// present and moves on, so a copy that silently differs has to be caught on
+/// the pass that made it.
+class _LyingBlobStore extends TomMemoryBlobStore {
+  @override
+  Future<TomStoredBlob> doPut({
+    required String key,
+    required Stream<List<int>> bytes,
+    String mediaType = TomStoredBlob.defaultMediaType,
+    String? fileName,
+  }) async {
+    final stored = await super.doPut(
+      key: key,
+      bytes: bytes,
+      mediaType: mediaType,
+      fileName: fileName,
+    );
+    return TomStoredBlob(
+      key: stored.key,
+      mediaType: stored.mediaType,
+      byteCount: stored.byteCount - 1,
+      storedAt: stored.storedAt,
+      digest: 'f' * 64,
+      fileName: stored.fileName,
+    );
+  }
 }
 
 /// A backend that implements only the four required methods, to exercise the
@@ -1299,6 +1365,135 @@ void main() {
       expect(last.headers['x-amz-copy-source'], '/examplebucket/big.bin');
       expect(last.headers[TomS3BlobStore.digestHeader], stored.digest);
       expect(last.bodyBytes, isEmpty);
+    });
+  });
+
+  // Moving a deployment's files to a different backend means knowing what to
+  // move, and the blob contract cannot enumerate itself. The rows can: a
+  // `@TomFileReference` column *is* the index of what a deployment stored. What
+  // is asserted here is the part that runs before and after the sweep — the
+  // guards. The sweep itself needs real rows and lives in the db suite.
+  group('TomBlobMigration guards what it cannot see', () {
+    // The file columns come from the reflected entity, so the mirror has to be
+    // registered before the first `findFileColumns` — this is the only group in
+    // the file that reads annotations rather than bytes.
+    setUpAll(initializeReflection);
+
+    test('it refuses to run inside a request', () async {
+      // The trap this exists for. `findAll` applies the entity's row scope
+      // (C-3) and masks the columns the principal may not read (C-4), so under
+      // a request principal the sweep would migrate *that principal's view* and
+      // report success — and a masked file column reads back `null`, which is
+      // indistinguishable from a row holding no file. A migration that quietly
+      // moved a subset is the worst outcome available, so it refuses.
+      final repository = _ListRepository<FixtureDocumentRecord>([]);
+      final migration = TomBlobMigration(
+        source: TomMemoryBlobStore(),
+        target: TomMemoryBlobStore(),
+      );
+
+      await runZoned(() async {
+        await expectLater(
+          migration.migrate(repository),
+          throwsA(
+            isA<TomBlobMigrationException>().having(
+              (e) => e.key,
+              'key',
+              'storage.migration.scoped_run',
+            ),
+          ),
+        );
+      }, zoneValues: {TomPrincipal: TomPrincipal(authenticated: true)});
+
+      expect(
+        repository.pages,
+        0,
+        reason: 'it read rows before deciding it should not',
+      );
+    });
+
+    test('allowScopedRun is how an operator says the scope opens', () async {
+      // The escape, and it is explicit rather than a default: a deployment
+      // whose scope resolver opts out for its system principal has a legitimate
+      // reason to run inside one.
+      final repository = _ListRepository<FixtureDocumentRecord>([]);
+      final migration = TomBlobMigration(
+        source: TomMemoryBlobStore(),
+        target: TomMemoryBlobStore(),
+        allowScopedRun: true,
+      );
+
+      final report = await runZoned(
+        () => migration.migrate(repository),
+        zoneValues: {TomPrincipal: TomPrincipal(authenticated: true)},
+      );
+      expect(report.rows, 0);
+      expect(repository.pages, greaterThan(0));
+    });
+
+    test('an entity that stores no files is refused, not swept', () {
+      // Naming it is the point: a migration that reported "0 blobs" for an
+      // entity with no file columns would look exactly like one that worked.
+      expect(
+        TomBlobMigration(
+          source: TomMemoryBlobStore(),
+          target: TomMemoryBlobStore(),
+        ).migrate(_ListRepository<TomBlobChunkRow>([])),
+        throwsA(
+          isA<TomBlobMigrationException>().having(
+            (e) => e.key,
+            'key',
+            'storage.migration.no_file_columns',
+          ),
+        ),
+      );
+    });
+
+    test(
+      'a copy that does not match what was read stops the migration',
+      () async {
+        final source = TomMemoryBlobStore();
+        await source.putBytes(key: 'fixture/a.txt', bytes: utf8.encode('abc'));
+        final row = FixtureDocumentRecord()..attachment = 'fixture/a.txt';
+
+        await expectLater(
+          TomBlobMigration(
+            source: source,
+            target: _LyingBlobStore(),
+          ).migrate(_ListRepository<FixtureDocumentRecord>([row])),
+          throwsA(
+            isA<TomBlobMigrationException>()
+                .having(
+                  (e) => e.key,
+                  'key',
+                  'storage.migration.verification_failed',
+                )
+                .having(
+                  (e) => e.parameters?['key'],
+                  'key parameter',
+                  'fixture/a.txt',
+                ),
+          ),
+        );
+      },
+    );
+
+    test('a row holding no key costs nothing', () async {
+      // The ordinary case in any table with an optional attachment, and it must
+      // not become a `describe` per empty column against an object store.
+      final source = TomMemoryBlobStore();
+      final target = TomMemoryBlobStore();
+      final report = await TomBlobMigration(source: source, target: target)
+          .migrate(
+            _ListRepository<FixtureDocumentRecord>([
+              FixtureDocumentRecord(),
+              FixtureDocumentRecord()..attachment = '',
+            ]),
+          );
+      expect(report.rows, 2);
+      expect(report.copied, 0);
+      expect(report.claimed, isEmpty);
+      expect(report.complete, isTrue);
     });
   });
 

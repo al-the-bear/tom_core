@@ -2,6 +2,40 @@
 
 ### Added
 
+- **`TomBlobMigration`: moving a deployment's files between backends, driven by
+  the rows (tcopen149).** The hard part was never the copying, it was knowing
+  what to copy — a blob store cannot enumerate itself, so a deployment that
+  outgrew the directory backend could not move to S3 through this module at all.
+
+  The key list comes from the other side. A `@TomFileReference` column holds a
+  storage key, which makes a sweep of the table an enumeration of the blobs the
+  deployment can still reach — and it is that enumeration which matters, since a
+  blob no row points at is one nothing can serve. The sweep uses only `get`,
+  `describe` and `put`, so it works between any two backends including one an
+  application wrote.
+
+  It does **not** write to the rows: a backend migration changes no key, because
+  the column holds the key and which store it is read from is configuration.
+  Saving each row back would be a no-op that ran both authorization gates,
+  stamped the audit trail and moved every `updated` timestamp, so the sweep is
+  read-only and can run against a live system.
+
+  It **refuses to run inside a request**. `findAll` applies the row scope (C-3)
+  and masks the columns the principal may not read (C-4), so under a request
+  principal it would migrate that principal's view and report success — and a
+  masked file column reads back `null`, indistinguishable from a row holding no
+  file. `allowScopedRun` is the explicit escape.
+
+  "Already there" is a digest comparison, so a second run confirms the first and
+  an interrupted one is resumed by running it again; a target holding different
+  bytes under the same key is overwritten rather than mistaken for a finished
+  copy. A dangling reference is reported in `TomBlobMigrationReport.absent`
+  rather than thrown, while a copy that does not match what was read throws and
+  stops — that being the one failure a later pass cannot detect.
+
+  Finding blobs no row claims stays outside the module, and the report's
+  `claimed` list is what a deployment diffs its old backend against.
+
 - **Every stored blob carries the SHA-256 of its content (tcopen148).** Nothing
   hashed what was stored, so two identical uploads were two copies, a caller
   could not ask whether the bytes it was about to send were already there, and

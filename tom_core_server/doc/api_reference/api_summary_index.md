@@ -484,6 +484,9 @@ surface documented here.
 | `TomResourceScopeSource` | abstract class | The grant-driven source behind the built-in `resource` scope kind. |
 | `TomFileReference` | class | Annotation marking a `String` column as holding a blob storage key rather than the bytes. |
 | `TomFileReferenceKeys` | class | Resolves the store and mints the keys for a `@TomFileReference` column (static). |
+| `TomBlobMigration` | class | Moves the blobs a repository's rows name from one blob store to another. |
+| `TomBlobMigrationReport` | class | What one blob migration did. |
+| `TomBlobMigrationException` | class | A blob migration cannot proceed, or cannot be trusted. |
 | `TomFileRepository<T, K>` | abstract class | The subset of a repository the file surfaces need: load a row, move one column's bytes. |
 | `TomDataScope` | class | Row-level data scoping (static). |
 | `TomDataScopeRegistry` / `TomDataScopePredicate` / `TomDataScopeBypass` | class | Data-scope machinery. |
@@ -753,6 +756,9 @@ surface documented here.
 | `TomBlobDigest` | File Storage |
 | `TomBlobExportStore` | Export |
 | `TomBlobManifestRow` | File Storage |
+| `TomBlobMigration` | Object Persistence |
+| `TomBlobMigrationException` | Object Persistence |
+| `TomBlobMigrationReport` | Object Persistence |
 | `TomBlobRange` | File Storage |
 | `TomBlobStore` | File Storage |
 | `TomBlobStoreFactory` | File Storage |

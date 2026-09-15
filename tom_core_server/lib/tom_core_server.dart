@@ -91,6 +91,7 @@ export 'src/tomserver/messaging/sms_transport.dart';
 export 'src/tomserver/messaging/smtp_transport.dart';
 export 'src/tomserver/messaging/templated_message_service.dart';
 export 'src/tomserver/object_persistence/annotation_analyzer.dart';
+export 'src/tomserver/object_persistence/blob_migration.dart';
 export 'src/tomserver/object_persistence/column_authorization.dart';
 export 'src/tomserver/object_persistence/crud_repository.dart';
 export 'src/tomserver/object_persistence/data_scope.dart';

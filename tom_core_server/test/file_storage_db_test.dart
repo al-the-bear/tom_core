@@ -1348,6 +1348,207 @@ void main() async {
   /// So the read tests assert *indistinguishability from an absent row*, which
   /// is a stronger claim than "it refuses", and the write test asserts the
   /// explicit refusal.
+  // Moving a deployment's files from one backend to another has the hardest
+  // precondition in the module: it means enumerating what to move, and the blob
+  // contract deliberately cannot. The rows can — a `@TomFileReference` column
+  // *is* the index of what a deployment stored — so the sweep reads the table
+  // and uses only `get` / `describe` / `put`.
+  group('migrating blobs between backends, driven by the rows', () {
+    late TomDataSourceInfo dsi;
+    late FixtureDocumentRepository repo;
+    late TomMemoryBlobStore oldStore;
+    late TomMemoryBlobStore newStore;
+
+    setUpAll(() async {
+      initializeReflection();
+      dsi = await TestDatabase.register();
+      await TestDatabase.ensureFixtureDocumentTable(dsi);
+    });
+
+    setUp(() async {
+      await TestDatabase.truncateFixtureDocument(dsi);
+      repo = FixtureDocumentRepository();
+      oldStore = TomMemoryBlobStore();
+      newStore = TomMemoryBlobStore();
+      TomBlobStoreInfo.register('fixture', oldStore, asDefault: true);
+    });
+
+    tearDown(() async {
+      TomAuthorization.reset();
+      await TomBlobStoreInfo.closeAll();
+    });
+
+    tearDownAll(TestDatabase.reset);
+
+    /// Stores [count] documents, each with an attachment, and answers the keys.
+    Future<List<String>> seed(int count) async {
+      final keys = <String>[];
+      for (var i = 0; i < count; i++) {
+        final saved = await repo.saveFile(
+          _document('doc $i'),
+          'attachment',
+          _text('body of $i'),
+          mediaType: 'text/plain',
+          fileName: 'doc$i.txt',
+        );
+        keys.add(saved.attachment!);
+      }
+      return keys;
+    }
+
+    TomBlobMigration migration({
+      bool deleteFromSource = false,
+      int pageSize = 200,
+    }) => TomBlobMigration(
+      source: oldStore,
+      target: newStore,
+      pageSize: pageSize,
+      deleteFromSource: deleteFromSource,
+    );
+
+    test('every blob a row names arrives, with its media type and name', () async {
+      final keys = await seed(3);
+
+      final report = await migration().migrate(repo);
+      expect(report.rows, 3);
+      expect(report.copied, 3);
+      expect(report.alreadyPresent, 0);
+      expect(report.complete, isTrue);
+      // Sorted copies: the keys carry a UUID, so the sweep's order is the
+      // table's and not the seeding order, and mutating either list here would
+      // make the per-key assertions below read the wrong document.
+      expect([...report.claimed]..sort(), [...keys]..sort());
+
+      for (var i = 0; i < keys.length; i++) {
+        final described = await newStore.describe(keys[i]);
+        expect(described, isNotNull, reason: keys[i]);
+        // The descriptor travels, not just the bytes: a migrated blob served as
+        // application/octet-stream downloads as a file nothing opens.
+        expect(described!.mediaType, 'text/plain');
+        expect(described.fileName, endsWith('.txt'));
+      }
+      expect(utf8.decode(await newStore.getBytes(keys.first)), 'body of 0');
+    });
+
+    test('the rows are not written, only read', () async {
+      // The premise worth correcting: a backend migration changes no key. The
+      // column holds the key; which *store* it is read from is configuration.
+      // Saving each row back would be a no-op that ran the authorization gates,
+      // stamped the audit trail and moved every `updated` timestamp — so this
+      // is a read-only sweep and can run against a live system.
+      final keys = await seed(2);
+      final before = await repo.findAll();
+
+      await migration().migrate(repo);
+
+      final after = await repo.findAll();
+      expect(
+        after.map((row) => row.attachment).toList(),
+        before.map((row) => row.attachment).toList(),
+      );
+      expect(
+        keys.every((key) => after.any((r) => r.attachment == key)),
+        isTrue,
+      );
+    });
+
+    test('a second run copies nothing and confirms the first', () async {
+      // What makes an interrupted migration resumable: run it again. The
+      // "already present" check is a digest comparison, so it is a fact rather
+      // than a guess about a key that happens to exist.
+      await seed(3);
+      await migration().migrate(repo);
+
+      final again = await migration().migrate(repo);
+      expect(again.copied, 0);
+      expect(again.alreadyPresent, 3);
+      expect(again.bytes, 0);
+      expect(again.complete, isTrue);
+    });
+
+    test(
+      'a target holding different bytes under the same key is overwritten',
+      () async {
+        // The other side of the digest check. A key that exists in the target but
+        // holds something else is not a completed copy, and treating it as one
+        // would leave the deployment serving the wrong file for ever.
+        final keys = await seed(1);
+        await newStore.putBytes(key: keys.single, bytes: utf8.encode('stale'));
+
+        final report = await migration().migrate(repo);
+        expect(report.copied, 1);
+        expect(utf8.decode(await newStore.getBytes(keys.single)), 'body of 0');
+      },
+    );
+
+    test('a dangling reference is reported, not thrown', () async {
+      // One row pointing at a blob that is gone must not stop a migration of
+      // ten thousand. It is a fault in the data that predates the migration, so
+      // an operator wants the whole list rather than the first one.
+      final keys = await seed(3);
+      await oldStore.delete(keys[1]);
+
+      final report = await migration().migrate(repo);
+      expect(report.copied, 2);
+      expect(report.absent, [keys[1]]);
+      expect(report.complete, isFalse);
+      expect(report.claimed, isNot(contains(keys[1])));
+    });
+
+    test(
+      'deleteFromSource empties the old store only after verifying',
+      () async {
+        final keys = await seed(2);
+
+        final report = await migration(deleteFromSource: true).migrate(repo);
+        expect(report.copied, 2);
+        for (final key in keys) {
+          expect(await oldStore.exists(key), isFalse, reason: key);
+          expect(await newStore.exists(key), isTrue, reason: key);
+        }
+      },
+    );
+
+    test('paging reaches every row', () async {
+      // The sweep is run against the table that grew large enough to need one,
+      // so reading it whole is the shape that fails in production and nowhere
+      // else. A page size below the row count is the only way to see it.
+      await seed(7);
+      final report = await migration(pageSize: 2).migrate(repo);
+      expect(report.rows, 7);
+      expect(report.copied, 7);
+    });
+
+    test('a column the entity does not have is refused by name', () async {
+      await seed(1);
+      await expectLater(
+        migration().migrate(repo, fields: const {'attachment', 'nope'}),
+        throwsA(
+          isA<TomBlobMigrationException>()
+              .having((e) => e.key, 'key', 'storage.migration.unknown_field')
+              .having((e) => e.parameters?['fields'], 'fields', 'nope'),
+        ),
+      );
+    });
+
+    test('fields narrows the sweep to the named column', () async {
+      final keys = await seed(2);
+      final report = await migration().migrate(
+        repo,
+        fields: const {'secretAttachment'},
+      );
+      // Nothing is stored in that column, so the sweep reads two rows and
+      // claims nothing — which is the difference between "no files" and "not
+      // looked at" being visible in the report.
+      expect(report.rows, 2);
+      expect(report.copied, 0);
+      expect(report.claimed, isEmpty);
+      for (final key in keys) {
+        expect(await newStore.exists(key), isFalse);
+      }
+    });
+  });
+
   group('blob access under a row scope', () {
     late TomDataSourceInfo dsi;
     late FixtureScopedDocumentRepository repo;

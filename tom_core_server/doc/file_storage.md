@@ -20,6 +20,7 @@ without the second; the second is built entirely on the first.
   - [A Broken Transfer Delivers What It Got](#a-broken-transfer-delivers-what-it-got)
   - [A Byte Range, and Who Is Obliged to Serve It](#a-byte-range-and-who-is-obliged-to-serve-it)
   - [The Content Digest](#the-content-digest)
+  - [Migrating Between Backends](#migrating-between-backends)
   - [Relocating a Blob](#relocating-a-blob)
 - [Keys Are a Grammar, Not a String](#keys-are-a-grammar-not-a-string)
   - [Prefixes obey the same grammar](#prefixes-obey-the-same-grammar)
@@ -84,6 +85,7 @@ file" needs the whole route, not one layer of it:
 | ---- | ------ | ------- |
 | `TomFileReference` | `object_persistence` | Marks a column as holding a storage key |
 | `TomFileReferenceKeys` | `object_persistence` | Key generation and store resolution for that annotation |
+| `TomBlobMigration` | `object_persistence` | Moving a deployment's blobs between backends, driven by the rows that name them |
 | `TomSqlDatasourceRepository.saveFile` / `.openFile` / `.describeFile` / `.clearFile` | `object_persistence` | The entity-level file API |
 | `TomFileRepository` | `object_persistence` | The five-method file contract — `findById`, `saveFile`, `openFile`, `describeFile`, `clearFile` — independent of SQL |
 | `TomFileSlots` / `TomFileSlot` | `endpoints` | Reflection-derived `<table>/<column>` slot registry |
@@ -278,6 +280,63 @@ sentinel is empty rather than `null` so that "not recorded" cannot be confused
 with the digest of zero bytes, which is a real and well-known value
 (`e3b0c442…`); a nullable field would make every caller write the same `?? ''`
 and an accidental `''` would then read as a hash.
+
+### Migrating Between Backends
+
+A deployment that starts on the directory backend and outgrows it has to move
+its files. The hard part is not the copying, it is knowing *what* to copy: a
+blob store cannot enumerate itself, deliberately.
+
+**So the key list comes from the rows.** A `@TomFileReference` column holds a
+storage key, which makes a sweep of the table an enumeration of the blobs the
+deployment can still reach — and it is the enumeration that matters, because a
+blob no row points at is one nothing can serve. `TomBlobMigration` is that
+sweep, and it uses only `get`, `describe` and `put`, so it works between any two
+backends including one an application wrote.
+
+```dart
+final report = await TomBlobMigration(
+  source: TomBlobStoreInfo.storeNamed('files-on-disk').store,
+  target: TomBlobStoreInfo.storeNamed('files-on-s3').store,
+).migrate(documentRepository);
+```
+
+Then repoint the configuration and run it again: the second pass copies nothing
+and confirms the first. That is also how an interrupted migration is resumed —
+"already there" is a **digest** comparison, so it is a fact rather than a guess
+about a key that happens to exist, and a target holding *different* bytes under
+the same key is overwritten rather than mistaken for a finished copy.
+
+**It does not write to the rows**, and that is worth stating because the obvious
+design does. A backend migration changes no key: the column holds the key, and
+which *store* that key is read from is configuration — `@TomFileReference(store:)`
+and `TomBlobStoreInfo` — not data. Saving each row back would be a no-op that
+ran both authorization gates, stamped the audit trail and moved every `updated`
+timestamp in the table. So the sweep is read-only on the database and can run
+against a live system.
+
+**It refuses to run inside a request.** `findAll` applies the entity's row scope
+(C-3) and masks the columns the principal may not read (C-4), so under a request
+principal the sweep would migrate that principal's *view* of the table and
+report success — and a masked file column reads back `null`, which is
+indistinguishable from a row holding no file. A migration that quietly moved a
+subset is the worst outcome available here, so `storage.migration.scoped_run` is
+raised before a single row is read. `allowScopedRun: true` is the explicit
+escape for a deployment whose scope resolver opts out for its system principal.
+
+**A dangling reference is reported, not thrown.** One row pointing at a blob
+that is gone must not stop a migration of ten thousand: it is a fault in the
+data that predates the migration, and an operator wants the whole list. A copy
+that does not *match* what was read is the opposite — it throws and stops,
+because that is the one failure a later pass cannot detect, the next run finding
+the key present and moving on.
+
+**What it cannot do is find orphans.** No care here changes that. The report's
+`claimed` list is what a deployment diffs its old store against, using that
+backend's own tooling: `find` over a directory, `ListObjectsV2` over a bucket, a
+`SELECT` over the manifest table. That is a fair thing to ask of a one-off
+migration against a known backend, and not a fair thing to put on a contract
+every backend must implement.
 
 ### Relocating a Blob
 
@@ -1188,9 +1247,12 @@ and the count of them is the assertion. Every step checks its own result, and
   shares bytes between keys is a store where deleting one can break the other:
   that bookkeeping belongs where the keys are known, which is the deployment's
   own record. See [The Content Digest](#the-content-digest).
-- **A blob-store migration.** Moving a deployment from the database backend to
-  S3 is currently an application script; the key stays valid, so this is a copy
-  loop rather than a schema change, but it is not shipped.
+- **Finding what the rows do not claim.** `TomBlobMigration` moves every blob a
+  row points at; a blob no row names is invisible to it, and always will be —
+  finding one means enumerating the source, which is the one thing the contract
+  refuses. The report names what it claimed, and a deployment diffs that against
+  its old backend with that backend's own tooling. See
+  [Migrating Between Backends](#migrating-between-backends).
 - **Quota and expiry.** `delete` exists and nothing calls it on a schedule; how
   long a file is worth keeping is a deployment's decision.
 - **`purgeOrphanedChunks` on a schedule.** The method exists; wiring it to a

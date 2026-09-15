@@ -90,6 +90,9 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `TomColumnWriteDecision<C>` | class | The write partition: which columns the caller may write, and which are preserved from the baseline |
 | `TomFileReference` | class | Declares that a column holds a blob-storage key |
 | `TomFileReferenceKeys` | class | Resolves a file column's store and mints its keys. Statics only |
+| `TomBlobMigration` | class | Moves the blobs a repository's rows name from one blob store to another |
+| `TomBlobMigrationReport` | class | What one migration did: rows read, blobs copied, keys claimed, references it could not satisfy |
+| `TomBlobMigrationException` | class | Raised when a migration cannot proceed, or cannot be trusted |
 | `TomFileRepository<T, K>` | abstract class | The five-method file surface the HTTP file endpoint depends on |
 | `TomRepositoryException` / `TomQuerySyntaxException` | class | A failed operation / a query sentence that will not parse |
 | `TomAnnotationAnalyzerException` / `TomAnnotationAnalyzerSyntaxException` | class | An entity the analyzer cannot resolve / annotation arguments it cannot read |
@@ -305,6 +308,17 @@ The `*ByQuerySentence` methods add three keys of their own,
 `crud_repository.<method>.sentence_verb_mismatch`, raised as
 `TomQuerySyntaxException` because a sentence whose verb does not match the method
 is the caller's mistake and the caller's to correct.
+
+`TomBlobMigrationException` covers the row-driven blob migration
+([Migrating Between Backends](file_storage.md#migrating-between-backends)),
+under `storage.migration.*` keys:
+
+| Key | Raised when |
+| --- | ----------- |
+| `storage.migration.scoped_run` | A request principal is in the zone. The sweep would migrate that principal's *view* of the table — row scope applied, protected columns masked to `null` — and report success. Raised before a single row is read. |
+| `storage.migration.no_file_columns` | The entity declares no `@TomFileReference` column. Named rather than swept, because a migration reporting "0 blobs" for an entity that stores none looks exactly like one that worked. |
+| `storage.migration.unknown_field` | `fields` names a column that is not a file column of the entity. |
+| `storage.migration.verification_failed` | A copy did not match what was read. The one failure a later pass cannot detect — the next run finds the key present and moves on — so it stops the migration rather than being reported. |
 
 ### Paging and Sorting
 
@@ -1375,10 +1389,10 @@ from the grammar, and a sentence using it is refused.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `data_scope.dart` | `Future` |
-| `tom_core_kernel` | package | 7 of 12 files | `tomReflector` (mirrors), the `TomZoned*` date/time types |
+| `dart:async` | dart | `blob_migration.dart`, `data_scope.dart` | `Future` |
+| `tom_core_kernel` | package | 8 of 13 files | `tomReflector` (mirrors), the `TomZoned*` date/time types |
 | `uuid` | package | `file_reference.dart` | `Uuid.v4`, for the file name in a blob key |
 | [audit](audit.md) | module | `crud_repository.dart` | `TomAuditAction`, `TomAuditTrail` |
-| [datasources](datasources.md) | module | 9 of 12 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement` |
-| [file_storage](file_storage.md) | module | `crud_repository.dart`, `file_reference.dart` | `TomBlobStore`, `TomBlobStoreInfo`, `TomStorageException`, `TomStoredBlob` |
-| [little_things](little_things.md) | module | `annotation_analyzer.dart`, `column_authorization.dart`, `crud_repository.dart`, `data_scope.dart`, `operators_expressions.dart` | `TomServerException` (base of the module's exceptions) |
+| [datasources](datasources.md) | module | 9 of 13 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement` |
+| [file_storage](file_storage.md) | module | `blob_migration.dart`, `crud_repository.dart`, `file_reference.dart` | `TomBlobStore`, `TomBlobStoreInfo`, `TomStorageException`, `TomStoredBlob` |
+| [little_things](little_things.md) | module | `annotation_analyzer.dart`, `blob_migration.dart`, `column_authorization.dart`, `crud_repository.dart`, `data_scope.dart`, `operators_expressions.dart` | `TomServerException` (base of the module's exceptions) |

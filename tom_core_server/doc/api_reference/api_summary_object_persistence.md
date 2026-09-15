@@ -69,6 +69,7 @@ column-level access rights (C-4).
 
 Source:
 `lib/src/tomserver/object_persistence/annotation_analyzer.dart`,
+`lib/src/tomserver/object_persistence/blob_migration.dart`,
 `lib/src/tomserver/object_persistence/column_authorization.dart`,
 `lib/src/tomserver/object_persistence/crud_repository.dart`,
 `lib/src/tomserver/object_persistence/data_scope.dart`,
@@ -1528,12 +1529,76 @@ and names what is absent; a caller asking *whether* it holds one reads the looku
 into a local and tests it. `test/annotation_analyzer_null_memo_test.dart` pins
 the read-back at runtime and the absence of assertions by scanning `lib/`.
 
+### Migrating Blobs Between Backends
+
+`TomBlobMigration` moves the blobs a repository's rows point at from one
+`TomBlobStore` to another. The key list comes from the rows because the blob
+contract cannot enumerate itself: a `@TomFileReference` column *is* the index of
+what a deployment stored, and it is the index that matters, since a blob no row
+names is one nothing can serve.
+
+#### TomBlobMigration
+
+- **Extends:** none
+
+##### Constructors
+
+```dart
+const TomBlobMigration({
+  required TomBlobStore source,
+  required TomBlobStore target,
+  int pageSize = 200,
+  bool deleteFromSource = false,
+  bool allowScopedRun = false,
+})
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `source` | `TomBlobStore` | The store blobs are read from (final). |
+| `target` | `TomBlobStore` | The store they are written to (final). |
+| `pageSize` | `int` | How many rows are read at a time; paged rather than read whole, because a migration is run against the table that grew large enough to need one (final). |
+| `deleteFromSource` | `bool` | Whether a *verified* copy is then deleted from `source`. `false` by default, and the asymmetry is deliberate: a migration that leaves both copies is undone by changing one setting back, where one that deleted as it went is undone by restoring a backup (final). |
+| `allowScopedRun` | `bool` | Whether to run with a request principal in the zone. `false` by default, because `findAll` applies the entity's row scope (C-3) and masks the columns the principal may not read (C-4) — so the sweep would migrate that principal's *view* and report success, and a masked file column reads back `null`, indistinguishable from a row holding no file (final). |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `migrate` | `Future<TomBlobMigrationReport> migrate<T extends Object, K>(TomRepository<T, K> repository, {Set<String> fields = const {}})` | Copies every blob the rows name, using only `get` / `describe` / `put`, so it works between any two backends including one an application wrote. Read-only on the database: a backend migration changes no key, since the column holds the key and which *store* it is read from is configuration. "Already there" is a digest comparison, which makes a second run confirm the first and an interrupted one resumable; a target holding different bytes under the same key is overwritten. A dangling reference is reported rather than thrown — an operator wants the whole list — while a copy that does not match what was read throws, that being the one failure a later pass cannot detect. `fields` narrows the sweep to named file columns. |
+
+#### TomBlobMigrationReport
+
+What one migration did. Counts rather than a boolean, because "it worked" is not
+the question an operator has afterwards.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `rows` | `int` | How many rows the sweep read (final). |
+| `copied` | `int` | How many blobs it copied into the target (final). |
+| `alreadyPresent` | `int` | How many it found already there, verified and left alone (final). |
+| `bytes` | `int` | How many bytes were copied — the transfer, not the total stored (final). |
+| `claimed` | `List<String>` | Every key the target now holds because a row named it. The list a deployment diffs its old store against to find what the rows do not claim; that diff cannot happen here, because it needs an enumeration of the source (final). |
+| `absent` | `List<String>` | The keys a row names that the source does not hold (final). |
+| `complete` | `bool` | *(getter)* Whether every key a row named ended up in the target. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* Renders the five counts. |
+
 ### Exceptions
 
 All extend the server `TomServerException`.
 
 | Class | Source | Thrown when |
 | ----- | ------ | ----------- |
+| `TomBlobMigrationException` | `blob_migration.dart` | A blob migration cannot proceed — a request principal is in the zone (`storage.migration.scoped_run`), the entity stores no files (`no_file_columns`), a named column is not one (`unknown_field`) — or cannot be trusted, a copy not matching what was read (`verification_failed`). |
 | `TomAnnotationAnalyzerException` | `annotation_analyzer.dart` | An entity's persistence metadata cannot be resolved (not registered / no `@TomDbTable`), or reflecting it failed for a reason that is not "unregistered" — see *Reflection failures*. |
 | `TomAnnotationAnalyzerSyntaxException` | `annotation_analyzer.dart` | Persistence annotations are present but malformed (e.g. `@TomDbColumn` on a non-variable). |
 | `TomColumnAuthorizationException` | `column_authorization.dart` | A write changes a column visible-but-not-editable to the principal (C-4 violation). |
