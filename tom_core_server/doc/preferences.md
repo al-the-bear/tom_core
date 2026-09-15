@@ -474,10 +474,8 @@ deployment that shipped the endpoints without installing a store is a genuine
 server fault and stays an opaque `500`.
 
 `test/preferences_db_test.dart` is the sequence [The Table and Its
-Migration](#the-table-and-its-migration) describes, run against a live server: it
-is what the module ships instead of an example program, because every step needs
-generated reflection in the consuming package, a real database and an
-authenticated principal. It asserts the three things only a server can answer —
+Migration](#the-table-and-its-migration) describes, run against a live server. It
+asserts the three things only a server can answer —
 that a preference written in one session is read back in another, so the value
 lives in `tom_user_preference` and not in a service instance; that one principal
 cannot read another's, which is the whole reason the entity carries
@@ -506,6 +504,31 @@ only the miss carries the envelope naming `tomUserPreferencesNotFoundErrorKey`.
 And it carries both ceilings to the wire: a write beyond the count answers `409`
 naming `preferences.limit.exceeded` while a replacement still answers `200`, and
 an oversized value answers `400` naming `preferences.encoded.too_large`.
+
+```bash
+dart run example/preferences/preferences_example.dart
+```
+
+`example/preferences/preferences_example.dart` is the bootstrap sequence as a
+program rather than as a snippet. That matters for this module more than for
+most: five things have to be in place before the store answers — reflection, a
+datasource under the name the entity declares, the bean, a request zone carrying
+a principal, and the table — and four of them fail at the *bootstrap* line
+rather than at the call you were making, with a message that does not obviously
+name the missing step. The example puts them in the order a deployment does, in
+thirteen checked steps: `resolve`'s deliberate `null` before the bean is
+installed, the refusals outside a zone and the key check that runs ahead of them,
+a scalar and a `@tomReflector` object written and read back, a type mismatch
+against `getOr`'s fallback, a second principal seeing none of the first's, the
+per-caller list, `remove`'s answer, the endpoint's encoded write path, and the
+migration on disk.
+
+**The table is the one substitution**, by a map behind the repository interface,
+which is what lets the program run with no database. Where that changes what can
+be claimed, the example says so instead of quietly claiming it: the row scope is
+enforced by the *repository*, and the contract's key ordering is an `ORDER BY`
+clause, so neither is demonstrated there and neither is asserted. Both are the
+subject of `preferences_db_test.dart` above.
 
 ## Dependencies
 

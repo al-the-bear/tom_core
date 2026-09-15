@@ -2,6 +2,38 @@
 
 ### Added
 
+- **The preferences module ships a runnable example (tcopen174).**
+  `example/preferences/` held one migration file and no Dart, which made it the
+  only module of the twenty without a program — and the one whose wiring is
+  hardest to get right. Five things have to be in place before the store
+  answers (reflection, a datasource under the name the entity declares, the
+  bean, a request zone carrying a principal, and the table), four of them fail
+  at the *bootstrap* line rather than at the call you were making, and every
+  demonstration of them was a fragment inside prose that nothing compiled.
+
+  `preferences_example.dart` runs the sequence in thirteen checked steps:
+  `resolve`'s deliberate `null` before the bean is installed, the refusals
+  outside a zone and the key check that runs ahead of them, a scalar and a
+  `@tomReflector` object (`ExampleDashboardPreference`, new in
+  `example/example_reflection.dart`) written and read back, a type mismatch
+  against `getOr`'s fallback, a second principal seeing none of the first's,
+  the per-caller list, `remove`'s answer, the endpoint's encoded write path,
+  and the migration on disk against the DDL the entity declares.
+
+  **The table is the one substitution** — a map behind the repository
+  interface, which is what lets the program run with no database — and where
+  that changes what can be claimed the example says so rather than claiming it
+  anyway. The row scope is the *repository's*, and the contract's key ordering
+  is an `ORDER BY` clause; neither is something a map can demonstrate, so
+  neither is asserted, and both are named as `preferences_db_test.dart`'s
+  subject. The stand-in deliberately does not sort, because a map that sorted
+  would make the ordering step pass whether the service's clause was there or
+  not.
+
+  The module readme's claim that it "ships that migration rather than an
+  example program … so a `dart run` of it could only fail at its first line" is
+  replaced by a pointer to the program; `doc/preferences.md` gains the same.
+
 - **One option step for all four sentence kinds, and three things it stops
   dropping (tcopen173).** `distinct`, the row cap, the skip and the trailing
   `order by` are parsed once by one step, and each kind now *declares* which of

@@ -105,10 +105,16 @@ const _quickStarts = <_QuickStart>[
     _NotRunnable.needsReflection,
     reasonPrefix: "> **Needs your package's generated reflection.**",
   ),
+  // The snippet is the *deployment* sequence, so it still opens a socket and
+  // still needs the consuming package's generated reflection. What changed is
+  // that there is now a program to point at: the blockquote's job is no longer
+  // to explain an absence but to send the reader to
+  // `example/preferences/preferences_example.dart`, which runs the same
+  // sequence with the table substituted.
   _QuickStart.notRunnable(
     'preferences',
-    _NotRunnable.needsReflection,
-    reasonPrefix: "> **Needs your package's generated reflection, a live",
+    _NotRunnable.needsDatabase,
+    reasonPrefix: '> **This is the deployment sequence, and it opens a real',
   ),
   _QuickStart.notRunnable(
     'scheduling',

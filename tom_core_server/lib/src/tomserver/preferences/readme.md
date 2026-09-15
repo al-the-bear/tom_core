@@ -88,31 +88,47 @@ Future<void> main() async {
 }
 ```
 
-> **Needs your package's generated reflection, a live database and a
-> principal.** `main.reflection.dart` is written by `dart run build_runner
-> build` in *your* package, the datasource in step 2 opens a real socket, and
-> `principal` stands for the `TomPrincipal` a server would have authenticated —
-> so this is a sequence to build into an application rather than a program to
-> paste and run. The three preconditions are exactly what makes it worth showing
-> whole: each one fails at bootstrap with a message that does not obviously
-> point at the missing step.
+> **This is the deployment sequence, and it opens a real socket.**
+> `main.reflection.dart` is written by `dart run build_runner build` in *your*
+> package, the datasource in step 2 connects, and `principal` stands for the
+> `TomPrincipal` a server would have authenticated — so it is a sequence to
+> build into an application rather than a program to paste and run. The three
+> preconditions are what make it worth showing whole: each fails at bootstrap
+> with a message that does not obviously point at the missing step.
+>
+> To *run* the same sequence, see the example below — it substitutes the table
+> and nothing else.
 
 The table the second step connects to is created by the framework migration
 `example/preferences/migrations/main/tomcore/[1]-create_tom_user_preference.sql`,
 which is untagged so it applies in every environment.
 
-See [`doc/preferences.md`](../../../../doc/preferences.md) for the key registry,
-the principal scoping and the endpoint surface. The module ships that migration
-rather than an example program, for the reason the note above gives: every step
-of the sequence needs reflection generated in the consuming package, a live
-database and an authenticated principal, so a `dart run` of it could only fail
-at its first line. The sequence is demonstrated instead by
-`test/preferences_db_test.dart`, which runs exactly it against a live MariaDB —
-its `asSession` helper is the `runZoned` above and its `setUpAll` is steps 1
-and 2. `test/preferences_service_test.dart`, `test/preferences_key_test.dart`
-and `test/preferences_dto_test.dart` cover the module without a database,
+```bash
+dart run example/preferences/preferences_example.dart
+```
+
+`example/preferences/preferences_example.dart` runs the sequence above in
+thirteen checked steps — the bean's deliberate `null` before it is installed,
+the refusals outside a request zone, a scalar and a `@tomReflector` object
+written and read back, a type mismatch, a second principal seeing none of the
+first's, the per-caller list, the endpoint's encoded write path, and the
+migration on disk. **One thing is substituted**: the table, by a map behind the
+repository interface, so the program needs no database. It says so where it
+matters rather than implying otherwise — the entity's
+`@TomDbScope(field: 'principal_id', scope: 'owner')` is enforced by the
+*repository*, and the contract's key ordering is an `ORDER BY` clause, so
+neither is something a map can demonstrate and neither is claimed.
+
+Both belong to `test/preferences_db_test.dart`, which runs the deployment
+sequence against a live MariaDB — its `asSession` helper is the `runZoned`
+above and its `setUpAll` is steps 1 and 2.
+`test/preferences_service_test.dart`, `test/preferences_key_test.dart` and
+`test/preferences_dto_test.dart` cover the module without a database,
 `test/preferences_endpoints_test.dart` the HTTP surface, and
 `test/preferences_roundtrip_db_test.dart` the store-and-read-back path.
+
+See [`doc/preferences.md`](../../../../doc/preferences.md) for the key registry,
+the principal scoping and the endpoint surface.
 
 ---
 
