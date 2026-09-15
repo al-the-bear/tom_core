@@ -530,7 +530,6 @@ mixin TomAnnotationAnalyzer {
     TomDbColumn? column;
     TomEntityId? entityId;
     TomReference? reference;
-    TomPersistenceEventHandler? eventHandler;
     TomFileReference? fileReference;
     TomProtectedField? protectedField;
     for (var md in decl.metadata) {
@@ -540,8 +539,6 @@ mixin TomAnnotationAnalyzer {
         entityId = md;
       } else if (md is TomReference) {
         reference = md;
-      } else if (md is TomPersistenceEventHandler) {
-        eventHandler = md;
       } else if (md is TomFileReference) {
         fileReference = md;
       } else if (md is TomProtectedField) {
@@ -560,7 +557,6 @@ mixin TomAnnotationAnalyzer {
         column: column,
         entityId: entityId,
         reference: reference,
-        eventHandler: eventHandler,
         fileReference: fileReference,
         protectedField: protectedField,
       );

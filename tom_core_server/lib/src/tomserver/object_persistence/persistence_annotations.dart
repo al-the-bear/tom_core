@@ -308,51 +308,12 @@ class TomReference<
       "TomReference Target: ${getReferencedType()}, Key: ${getKeyType()}, Repo: ${getRepositoryType()}, 1:1: $isOneToOne joinEntity: $joinEntity leftSide: $leftSideColumns, rightSide: $rightSideColumns, context: $contextColumns";
 }
 
-/// Annotation registering lifecycle callbacks that receive the entity
-/// ([DBTYPE]).
-///
-/// **Resolved, but never invoked.** [TomAnnotationAnalyzer] reads it off a
-/// field's metadata and stores it on that field's
-/// [TomColumnInformation.eventHandler], so an annotation written here is
-/// detected and reachable — but nothing in the persistence layer reads that
-/// property back, and none of [prePersist], [postPersist], [preLoad] or
-/// [postLoad] is ever called. Declaring one currently has no effect.
-///
-/// The resolution is *field-level*: the analyzer looks for this annotation only
-/// in a field's metadata, so although the callbacks take the whole entity, one
-/// placed on a class declaration is not seen at all.
-///
-/// Listed under *Not Yet Implemented* in `doc/object_persistence.md`, beside
-/// the other thing the module does not yet do, which is where a reader meets
-/// them together rather than one declaration at a time.
-class TomPersistenceEventHandler<DBTYPE> {
-  /// Called after the entity is persisted.
-  final void Function(DBTYPE)? postPersist;
-
-  /// Called after the entity is loaded.
-  final void Function(DBTYPE)? postLoad;
-
-  /// Called before the entity is persisted.
-  final void Function(DBTYPE)? prePersist;
-
-  /// Called before the entity is loaded.
-  final void Function(DBTYPE)? preLoad;
-
-  /// Registers the lifecycle callbacks.
-  TomPersistenceEventHandler({
-    this.postPersist,
-    this.postLoad,
-    this.preLoad,
-    this.prePersist,
-  });
-}
-
 /// The resolved persistence metadata for a single entity field.
 ///
 /// Produced by [TomAnnotationAnalyzer] from the field's annotations, it bundles
-/// the owning [table], the field's [column] / [entityId] / [reference] /
-/// [eventHandler] annotations, the [declaredType] and [declaredName], and the
-/// mapped column [field]. It also provides reflection-backed accessors to read
+/// the owning [table], the field's [column] / [entityId] / [reference]
+/// annotations, the [declaredType] and [declaredName], and the mapped column
+/// [field]. It also provides reflection-backed accessors to read
 /// and write the field on a concrete entity instance.
 ///
 /// Every field is `final`, because an instance is not private to the caller who
@@ -379,12 +340,6 @@ class TomColumnInformation {
 
   /// The reference annotation, if this field is an association.
   final TomReference? reference;
-
-  /// The lifecycle-callback annotation, if any.
-  ///
-  /// Populated by the analyzer but read by nothing — see
-  /// [TomPersistenceEventHandler] for why the callbacks never fire.
-  final TomPersistenceEventHandler? eventHandler;
 
   /// The file-reference annotation, if this column holds a blob storage key.
   final TomFileReference? fileReference;
@@ -414,10 +369,10 @@ class TomColumnInformation {
   ///
   /// The five required parameters are the ones every mapped field has: the
   /// owning entity type ([tableType]) and its table ([table]), and the field's
-  /// own [declaredType], [declaredName] and mapped [field] name. The six
+  /// own [declaredType], [declaredName] and mapped [field] name. The five
   /// optional ones each correspond to an annotation the field may or may not
-  /// carry — [column], [entityId], [reference], [eventHandler],
-  /// [fileReference], [protectedField] — and are `null` when it does not.
+  /// carry — [column], [entityId], [reference], [fileReference],
+  /// [protectedField] — and are `null` when it does not.
   ///
   /// All are named. Two pairs are the reason: [declaredName] and [field] are
   /// both `String`, and passing them the wrong way round type-checks — it maps
@@ -435,7 +390,6 @@ class TomColumnInformation {
     this.column,
     this.entityId,
     this.reference,
-    this.eventHandler,
     this.fileReference,
     this.protectedField,
   });

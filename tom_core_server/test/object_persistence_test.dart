@@ -205,88 +205,105 @@ void main() {
     });
   });
 
-  // `TomPersistenceEventHandler` is resolved and then ignored, and two places
-  // say so in prose: the annotation's own dartdoc and the "Not Yet Implemented"
-  // section of `doc/object_persistence.md`. That pair drifted apart once
-  // already — the analyzer began resolving the annotation while the dartdoc went
-  // on telling readers it was not detected at all, which is the wrong direction
-  // to be wrong in: a reader concludes the annotation is inert metadata when it
-  // is in fact live and reachable.
+  // Lifecycle work — do something just before a row is written, or just after
+  // one is read — is done by overriding the repository method that performs
+  // the operation. There is no annotation for it.
   //
-  // Prose cannot be kept true by remembering to update it, so the two halves of
-  // the claim are pinned here against the source. Implementing the callbacks
-  // should fail these tests, and the failure names the prose that then has to
-  // change.
-  group('TomPersistenceEventHandler is resolved but never invoked', () {
-    /// Every library source file, as (path, contents) pairs.
-    final library = [
-      for (final f in Directory('lib').listSync(recursive: true))
-        if (f is File && f.path.endsWith('.dart'))
-          (f.path, f.readAsStringSync()),
-    ];
+  // There was one: `@TomPersistenceEventHandler` carried `prePersist`,
+  // `postPersist`, `preLoad` and `postLoad`, the analyzer resolved it onto
+  // `TomColumnInformation.eventHandler`, and nothing ever read that back. It
+  // could not be completed as declared. Its constructor was not `const`, so
+  // writing `@TomPersistenceEventHandler(...)` on a field was a compile error
+  // (`non_constant_annotation_constructor`) and the analyzer's branch for it
+  // was unreachable by any legal program; `preLoad` took the entity but ran
+  // before any entity existed; and the callbacks were `void`, so none of them
+  // could await the I/O such a hook is usually wanted for.
+  //
+  // The override has none of those problems, and it is not an extra thing to
+  // learn: every repository in this workspace is already declared as a
+  // subclass, so the hook is a method added to a class that exists.
+  //
+  // These tests run the seam rather than describing it. They use the scripted
+  // datasource, so the round trip is real without a server.
+  group('lifecycle work runs in a repository override', () {
+    late ScriptedDataSource scripted;
 
-    /// Where the annotation and its four callbacks are *declared*, and so the
-    /// one file expected to name them without invoking anything.
-    const declarationSite =
-        'lib/src/tomserver/object_persistence/persistence_annotations.dart';
+    setUp(() => scripted = registerScriptedDatasource());
+    tearDown(unregisterScriptedDatasource);
 
-    test('the analyzer resolves it onto TomColumnInformation.eventHandler', () {
-      final analyzer = File(
-        'lib/src/tomserver/object_persistence/annotation_analyzer.dart',
-      ).readAsStringSync();
-      expect(
-        analyzer,
-        allOf(
-          contains('md is TomPersistenceEventHandler'),
-          contains('eventHandler = md'),
-        ),
-        reason:
-            'the annotation must stay detected, or the dartdoc on '
-            'TomPersistenceEventHandler and the "Not Yet Implemented" section '
-            'of doc/object_persistence.md both become wrong',
-      );
+    test(
+      'save runs the caller\'s work either side of the framework\'s',
+      () async {
+        // Two scripted answers: the INSERT itself, then the read-back `save`
+        // does to return the stored row.
+        scripted.generatedId = 7;
+        scripted.answers.add(<FixtureTaskRecord>[]);
+        scripted.answers.add([
+          FixtureTaskRecord()
+            ..id = 7
+            ..title = 'write tests',
+        ]);
+
+        final repo = _HookedTaskRepository();
+        final saved = await repo.save(
+          FixtureTaskRecord()..title = 'write tests',
+        );
+
+        expect(saved.id, 7);
+        // The order is the assertion: the pre step saw the caller's entity before
+        // any statement ran, the post step saw the stored row with its assigned
+        // key. A hook that fired on the wrong side would still record both.
+        //
+        // `postLoad` between them is the seam's one surprise, and the reason it
+        // is asserted here rather than only in the load test: `save` returns
+        // the *stored* row, which it obtains by calling `findById` — on
+        // `this`, so the subclass's override. A load hook therefore also runs
+        // on the write path, once per save. That is right for a hook that
+        // decorates a materialised row and wrong for one that counts reads, so
+        // it is a property a deployment has to be told rather than discover.
+        expect(repo.events, [
+          'prePersist:write tests',
+          'postLoad:7',
+          'postPersist:7',
+        ]);
+      },
+    );
+
+    test('findById runs the caller\'s work on the materialised row', () async {
+      scripted.answers.add([
+        FixtureTaskRecord()
+          ..id = 3
+          ..title = 'find me',
+      ]);
+
+      final repo = _HookedTaskRepository();
+      final loaded = await repo.findById(3);
+
+      expect(loaded, isNotNull);
+      expect(repo.events, ['postLoad:3']);
     });
 
-    test('no library file invokes a lifecycle callback', () {
-      // The declaration names all four; anywhere else naming one means the
-      // callbacks have been wired up and "never invoked" has stopped being
-      // true.
-      final callbacks = ['prePersist', 'postPersist', 'preLoad', 'postLoad'];
-      final users = [
-        for (final (path, source) in library)
-          if (!path.endsWith(declarationSite.split('/').last) &&
-              callbacks.any(source.contains))
-            path,
-      ];
-      expect(
-        users,
-        isEmpty,
-        reason:
-            'a lifecycle callback is now referenced outside its declaration; '
-            'if it is invoked, drop "never invoked" from the dartdoc on '
-            'TomPersistenceEventHandler and from the "Not Yet Implemented" '
-            'section of doc/object_persistence.md',
-      );
-    });
+    test('the framework waits for an override that suspends', () async {
+      // The withdrawn callbacks were `void Function(T)`: the repository could
+      // not have waited for one, so a hook that did any asynchronous work
+      // would have had it still outstanding when the row reached the caller.
+      // An override is awaited, and this asserts it against the framework
+      // rather than against the test's own `await`: `save` is what calls
+      // `findById` here, and the hook's post-suspension work is already done
+      // by the time `save` returns to us.
+      scripted.generatedId = 7;
+      scripted.answers.add(<FixtureTaskRecord>[]);
+      scripted.answers.add([
+        FixtureTaskRecord()
+          ..id = 7
+          ..title = 'write tests',
+      ]);
 
-    test('nothing reads the resolved handler back', () {
-      // The other half of "no effect": the analyzer writes `eventHandler`, and
-      // no code path ever reads it. A read is the first thing an implementation
-      // would add, and it would appear here before any callback was called.
-      final readers = [
-        for (final (path, source) in library)
-          if (!path.endsWith(declarationSite.split('/').last) &&
-              source.contains('.eventHandler'))
-            path,
-      ];
-      expect(
-        readers,
-        isEmpty,
-        reason:
-            'TomColumnInformation.eventHandler is now read somewhere; the '
-            'annotation may no longer be inert, so the prose that says it has '
-            'no effect must be revisited',
-      );
+      final repo = _HookedTaskRepository();
+      await repo.save(FixtureTaskRecord()..title = 'write tests');
+
+      expect(repo.awaited, isTrue);
+      expect(repo.events, contains('postLoad:7'));
     });
   });
 
@@ -680,6 +697,41 @@ void main() {
       expect(claims, isEmpty);
     });
   });
+}
+
+/// A repository that does lifecycle work by overriding the methods that do the
+/// persisting — the shape that replaced `@TomPersistenceEventHandler`.
+///
+/// Every repository in this workspace is declared exactly like this minus the
+/// two overrides, which is the point: the hook is a method on a class the
+/// deployment already writes, it is `async`, and it closes over the
+/// repository's own state ([events]).
+class _HookedTaskRepository
+    extends TomSqlDatasourceRepository<FixtureTaskRecord, int> {
+  /// What ran, in order.
+  final List<String> events = [];
+
+  /// Whether the load hook reached its work after a suspension point.
+  bool awaited = false;
+
+  @override
+  Future<FixtureTaskRecord> save(FixtureTaskRecord toSave) async {
+    events.add('prePersist:${toSave.title}');
+    final saved = await super.save(toSave);
+    events.add('postPersist:${saved.id}');
+    return saved;
+  }
+
+  @override
+  Future<FixtureTaskRecord?> findById(int id) async {
+    final loaded = await super.findById(id);
+    if (loaded != null) {
+      await Future<void>.delayed(Duration.zero);
+      awaited = true;
+      events.add('postLoad:${loaded.id}');
+    }
+    return loaded;
+  }
 }
 
 /// A plain type with no persistence reflection, used to drive the analyzer's

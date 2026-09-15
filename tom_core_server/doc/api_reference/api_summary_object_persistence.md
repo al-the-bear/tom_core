@@ -19,7 +19,6 @@ column-level access rights (C-4).
     - [TomEntityId](#tomentityid)
     - [TomDbScope](#tomdbscope)
     - [TomReference&lt;TARGET, K, REPO&gt;](#tomreferencetarget-k-repo)
-    - [TomPersistenceEventHandler&lt;DBTYPE&gt;](#tompersistenceeventhandlerdbtype)
     - [TomColumnInformation](#tomcolumninformation)
   - [Repositories](#repositories)
     - [TomCountResult](#tomcountresult)
@@ -341,37 +340,6 @@ const TomReference({
 | `getKeyType` | `Type getKeyType()` | The key type linking the two sides. |
 | `toString` | `String toString()` | *(override)* A debug rendering of the reference. |
 
-#### TomPersistenceEventHandler&lt;DBTYPE&gt;
-
-Annotation registering lifecycle callbacks that receive the entity `DBTYPE`.
-**Resolved, but never invoked:** `TomAnnotationAnalyzer` reads it off a field's
-metadata onto [`TomColumnInformation.eventHandler`](#tomcolumninformation), but
-nothing reads that property back and none of the four callbacks is ever called,
-so declaring one currently has no effect. Resolution is *field-level* — an
-annotation placed on a class declaration is not seen at all.
-
-- **Type Parameters:** `DBTYPE` — the entity type the callbacks receive.
-
-##### Constructors
-
-```dart
-TomPersistenceEventHandler({
-  void Function(DBTYPE)? postPersist,
-  void Function(DBTYPE)? postLoad,
-  void Function(DBTYPE)? preLoad,
-  void Function(DBTYPE)? prePersist,
-})
-```
-
-##### Properties
-
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `postPersist` | `void Function(DBTYPE)?` | Intended to run after the entity is persisted; never invoked. |
-| `postLoad` | `void Function(DBTYPE)?` | Intended to run after the entity is loaded; never invoked. |
-| `prePersist` | `void Function(DBTYPE)?` | Intended to run before the entity is persisted; never invoked. |
-| `preLoad` | `void Function(DBTYPE)?` | Intended to run before the entity is loaded; never invoked. |
-
 #### TomColumnInformation
 
 The resolved persistence metadata for a single entity field: the owning table,
@@ -390,13 +358,12 @@ TomColumnInformation({
   TomDbColumn? column,
   TomEntityId? entityId,
   TomReference? reference,
-  TomPersistenceEventHandler? eventHandler,
   TomFileReference? fileReference,
   TomProtectedField? protectedField,
 })
 ```
 
-The five required parameters are the ones every mapped field has; the six
+The five required parameters are the ones every mapped field has; the five
 optional ones each correspond to an annotation the field may or may not carry,
 and are `null` when it does not.
 
@@ -423,7 +390,6 @@ editing its metadata in place.
 | `column` | `TomDbColumn?` | The field's column mapping, if annotated. |
 | `entityId` | `TomEntityId?` | The entity-id annotation, if this field is the primary key. |
 | `reference` | `TomReference?` | The reference annotation, if this field is an association. |
-| `eventHandler` | `TomPersistenceEventHandler?` | The lifecycle-callback annotation, if any. Populated by the analyzer but read by nothing. |
 | `fileReference` | `TomFileReference?` | The file-reference annotation, if this column holds a blob storage key. |
 | `protectedField` | `TomProtectedField?` | The kernel's field-protection annotation, if the field carries one. |
 | `authKey` | `String?` | *(getter)* The resource key gating this column (C-4): `column.authKey`, else `protectedField.resourceKey`, else `null`. One `@TomProtectedField` therefore protects the field in the JSON tier and here. |

@@ -484,7 +484,7 @@ surface documented here.
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
-| `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomDbScope` / `TomReference` / `TomPersistenceEventHandler` | class | Persistence annotations. |
+| `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomDbScope` / `TomReference` | class | Persistence annotations. |
 | `TomDartType` | class | Dart-type descriptor for persistence. |
 | `TomColumnInformation` | class | Column metadata. |
 | `TomRepository<T, K>` | abstract class | Repository contract. |
@@ -987,7 +987,6 @@ surface documented here.
 | `TomPageRequest` | Object Persistence |
 | `TomPdfRenderer` | Export |
 | `TomPermanentDeliveryException` | Messaging |
-| `TomPersistenceEventHandler` | Object Persistence |
 | `TomPersistent2FAEnrolmentStore` | Authentication |
 | `TomPersistentExternalIdentityStore` | Authentication |
 | `TomPersistentOAuthTokenStore` | Authentication |

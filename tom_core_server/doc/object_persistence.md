@@ -14,6 +14,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
   - [What a delete returns](#what-a-delete-returns)
   - [How a repository fails](#how-a-repository-fails)
   - [Paging and Sorting](#paging-and-sorting)
+  - [Lifecycle work](#lifecycle-work)
 - [Query Sentences](#query-sentences)
   - [`IS IN` lists](#is-in-lists)
   - [Column types a predicate can address](#column-types-a-predicate-can-address)
@@ -75,7 +76,6 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `TomGroupedRow` | class | One group's result: the group keys plus the aggregate values, keyed by alias |
 | `TomAnnotationAnalyzer` | mixin | Resolves an entity's persistence metadata by reflection |
 | `TomColumnInformation` | class | The resolved metadata for one entity field |
-| `TomPersistenceEventHandler` | class | A field-level lifecycle-callback annotation; resolved by the analyzer, and no callback is invoked yet |
 | `TomDbScope` | class | Declares (or explicitly opts out of) an entity's row scope |
 | `TomDataScopeRegistry` | class | The named scope-kind resolvers, read and write. Statics only |
 | `TomDataScope` | class | Renders a resolver's answer into a bound `IN` / union predicate. Statics only |
@@ -362,6 +362,52 @@ A `TomPageRequest` that SQL cannot express is rejected where it is built: a
 negative bound, or an offset with no limit (MariaDB's grammar is
 `LIMIT n [OFFSET m]`, so there is no bare `OFFSET` and the skip would be
 silently dropped).
+
+### Lifecycle work
+
+Work that has to happen just before a row is written, or just after one is read,
+is an **override of the repository method that performs it**. There is no
+annotation for it.
+
+```dart
+class TaskRepository extends TomSqlDatasourceRepository<Task, int> {
+  @override
+  Future<Task> save(Task toSave) async {
+    toSave.updatedAt = TomZonedDateTime.now();   // before the statement runs
+    final saved = await super.save(toSave);
+    await _searchIndex.reindex(saved);           // after, with the stored row
+    return saved;
+  }
+
+  @override
+  Future<Task?> findById(int id) async {
+    final loaded = await super.findById(id);
+    if (loaded != null) loaded.displayTitle = _decorate(loaded);
+    return loaded;
+  }
+}
+```
+
+This costs a deployment nothing to reach: a repository is *already* declared as a
+subclass — every one in this framework and its samples is `class XRepository
+extends TomSqlDatasourceRepository<E, K> {}` — so the hook is a method added to a
+class that exists. It is `async`, so it can await the I/O such a step usually
+needs; it closes over whatever the repository holds; and it is typed to the
+entity rather than to `Object`.
+
+Two properties are worth knowing before you write one.
+
+**`save` calls `findById`, on `this`.** The row `save` returns is the *stored*
+row, which it reads back through `findById` — so a `findById` override also runs
+on the write path, once per save. That is right for a hook that decorates a
+materialised row and wrong for one that counts reads; if you need to tell the
+two apart, do the counting in a separate method the read callers use.
+
+**The read side has four entry points, not one.** `findById`, `findAll`,
+`findAllById` and the query-sentence / query-builder finds each materialise rows
+independently, and the masking funnel they share is private. A hook that must
+see *every* loaded row is therefore repeated per method rather than declared
+once.
 
 ## Query Sentences
 
@@ -1298,10 +1344,10 @@ the operator tree's literals, comparisons, parameters, typed column references
 and compound predicates, `BETWEEN` arity, the persistence annotations and
 `TomColumnInformation`, the save SQL builders,
 `TomAnnotationAnalyzer.getPersistentColumns`, the C-7 injection neutralisation,
-the dialect's `objectOp` dispatch, the fact that `TomPersistenceEventHandler` is
-resolved and then never invoked — pinned against the source, because two
-documents say so in prose — and that a repository is constructed rather than
-discovered.
+the dialect's `objectOp` dispatch, the lifecycle overrides of
+[Lifecycle work](#lifecycle-work) — run end to end against a scripted data
+source, so the ordering claims are asserted and not merely written down — and
+that a repository is constructed rather than discovered.
 
 `test/object_persistence_db_test.dart` is tagged `db` and skips when no server
 is reachable, so the default run stays green without one. It covers CRUD through
@@ -1334,7 +1380,7 @@ its own result, and `test/examples_test.dart` runs it.
 ## Core Components
 
 - **Annotations** — `TomDbTable`, `TomDbColumn`, `TomEntityId`, `TomReference`,
-  `TomPersistenceEventHandler`, plus `TomDartType`.
+  plus `TomDartType`.
 - **`TomColumnInformation`** — resolved per-field metadata + reflection accessors.
 - **`TomRepository` / `TomSqlDatasourceRepository` / `MariadbRepository`** — the
   CRUD/query contract and its SQL/MariaDB implementations.
@@ -1366,15 +1412,9 @@ its own result, and `test/examples_test.dart` runs it.
 
 ## Not Yet Implemented
 
-The first is *declared*, so it can look available from the outside — an
-annotation you can write and the analyzer accepts. The second is simply absent
-from the grammar, and a sentence using it is refused.
+One thing is missing, and it is missing from the grammar, so a sentence using it
+is refused rather than quietly ignored.
 
-- `@TomPersistenceEventHandler` is *detected* (`TomAnnotationAnalyzer` resolves
-  it onto `TomColumnInformation.eventHandler`) but never invoked, so declaring
-  one currently has no effect. Detection is field-level — the analyzer reads a
-  field's metadata — so although the callbacks take the whole entity, one placed
-  on a class declaration is not seen at all.
 - Additional query-sentence keywords — *After*, *Before*, *Containing*,
   *EndsWith*, *StartsWith*, *Exists*, *isEmpty* / *isNotEmpty*, *Within* and
   the like. They are set in italics, not as code, because none of them is

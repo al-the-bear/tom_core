@@ -2,6 +2,39 @@
 
 ### Added
 
+- **`@TomPersistenceEventHandler` is removed, and lifecycle work is a repository
+  override (tcopen171).** The annotation carried `prePersist`, `postPersist`,
+  `preLoad` and `postLoad`; `TomAnnotationAnalyzer` resolved it onto
+  `TomColumnInformation.eventHandler` and nothing read that back, so no callback
+  ever fired. It could not be completed as declared, for a reason nobody had
+  measured: its constructor was not `const`, so `@TomPersistenceEventHandler(…)`
+  on a field is a compile error (`non_constant_annotation_constructor`). The
+  annotation could not be written at all, which makes the analyzer's branch for
+  it unreachable by any legal program — a declaration no program could reach,
+  not a feature awaiting a call site.
+
+  Three obstacles stood behind that one, each forcing a redesign rather than a
+  wiring. `preLoad` took the entity but ran before any entity existed.
+  Const-ness would have limited a callback to a top-level or static tear-off,
+  capturing nothing. And `void` callbacks could not be awaited, ruling out the
+  I/O a post-persist hook is usually wanted for. The resolution was also
+  field-level while the semantics were entity-level: two annotated fields had no
+  defined winner, and one on the class was not seen at all.
+
+  Lifecycle work is now an override of the repository method that performs it —
+  `save` for the write side, `findById` (or whichever find the caller uses) for
+  the read side. Not an extra mechanism: every repository here and in the
+  samples is already `class XRepository extends TomSqlDatasourceRepository<E, K>
+  {}`, so the hook is a method on a class the deployment already writes, and
+  unlike the annotation it is `async`, closes over the repository's own state and
+  is typed to the entity. `doc/object_persistence.md` gains a *Lifecycle work*
+  section with the example and the two non-obvious properties: `save` reads its
+  result back through `this.findById`, so a load override also runs once per
+  save; and the read side has four entry points rather than one. Both are
+  asserted end to end against the scripted data source by
+  `object_persistence_test.dart`, in `lifecycle work runs in a repository
+  override`.
+
 - **`@TomJoinTable` is removed (tcopen170).** It was declared, exported and
   documented, and nothing outside its own declaration ever named the type — so
   placing it on an entity had no effect at all, not a partial one and not a
@@ -19,9 +52,7 @@
   `reference_association_db_test.dart` covers against a live database.
 
   Nothing used it — no sample, no test, no example, no `tom_uam` — so the
-  removal is a deletion rather than a migration. `@TomPersistenceEventHandler`
-  stays: it is inert in the other way, resolved onto `TomColumnInformation` and
-  never read back, which needs a call site rather than a reader.
+  removal is a deletion rather than a migration.
 
 - **DKIM is stated as a requirement on the relay, and the seam is named
   (tcopen169).** "DKIM signing … not implemented" sat under *Not Yet
