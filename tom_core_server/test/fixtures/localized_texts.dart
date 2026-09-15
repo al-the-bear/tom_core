@@ -28,10 +28,24 @@ import 'package:tom_core_server/tom_core_server.dart';
 /// `no_text` and `no_subject` are the templates a mail cannot be built from,
 /// and exist so the email service's two loud failures have something to fail
 /// on.
+///
+/// `messaging.list` carries the separators `requiredList` joins with, and the
+/// German conjunction differs from the English one — which is what lets a suite
+/// tell a locale-aware join from a hard-coded comma. The *missing*-separator
+/// case is not modelled here: a bundle set without them is one line to build in
+/// the suite that needs it, and adding a fourth axis of incompleteness to this
+/// fixture would make every assertion in both suites harder to read.
 TomLocalizedTextResources fixtureTexts() => TomLocalizedTextResources(
   defaultLocale: TomTextLocale('en'),
   bundles: {
     'en': {
+      // The list separators `requiredList` joins with. English in the default
+      // bundle and German in `de`, so a suite can tell a locale-aware join from
+      // a hard-coded comma — which is the one thing a single-locale fixture
+      // cannot distinguish.
+      'messaging': {
+        'list': {'separator': ', ', 'last': ' and '},
+      },
       'email': {
         'password_reset': {
           'subject': 'Reset your password, {firstname}',
@@ -44,6 +58,9 @@ TomLocalizedTextResources fixtureTexts() => TomLocalizedTextResources(
       },
     },
     'de': {
+      'messaging': {
+        'list': {'separator': ', ', 'last': ' und '},
+      },
       'email': {
         'password_reset': {
           'subject': 'Passwort zurücksetzen, {firstname}',

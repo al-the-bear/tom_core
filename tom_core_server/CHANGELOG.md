@@ -2,6 +2,31 @@
 
 ### Added
 
+- **A locale-aware list join, and markup named as a non-goal (tcopen168).**
+  `TomTemplatedMessageService.requiredList(items, {locale})` joins a variable
+  number of items with separators the bundle gives — `messaging.list.separator`
+  and `messaging.list.last` — so "Alpha, Beta and Gamma" needs neither the comma
+  nor the conjunction written in Dart. Three items join with both, two with the
+  conjunction alone, one consults no separator at all (so a deployment that
+  never joins more than one never supplies the keys), and an empty list is the
+  empty string, because a caller needing "you have nothing outstanding" is in
+  the conditional case rather than the list case.
+
+  **The separators have no Dart default.** `", "` and `" and "` are English, and
+  a framework that routes every user-facing string through a bundle cannot make
+  these the two it writes in code; a bundle missing them fails the send naming
+  the key, exactly as a missing subject does.
+
+  That closes the weaker half of "a template has no control flow" — the
+  conditional half was already answered by `requiredText` — so **markup in
+  templates** moves from *Not Yet Implemented* to *Not in This Framework*. A
+  template *language* costs its own escaping rules, its own injection surface
+  between a resource bundle and an HTML body, and a second language for a
+  translator to learn; the trade it avoids is stated plainly rather than
+  glossed: a message's structure lives in Dart rather than in the bundle, which
+  is the right way round because a translator changing wording is the frequent
+  act and a bundle that can change a message's shape is one that can break it.
+
 - **Templating for the remaining channels splits by channel (tcopen167).** One
   bullet covered `push` and `webhook` together, and the two are not the same
   question.

@@ -52,6 +52,7 @@ out of.
   - [The three sub-keys](#the-three-sub-keys)
   - [Locale comes from the recipient, not the process](#locale-comes-from-the-recipient-not-the-process)
   - [Sentences a mail includes only sometimes](#sentences-a-mail-includes-only-sometimes)
+  - [Lists a mail renders a variable number of](#lists-a-mail-renders-a-variable-number-of)
   - [A missing key fails before anything is queued](#a-missing-key-fails-before-anything-is-queued)
   - [Always through the outbox](#always-through-the-outbox)
 - [Application SMS: The Same Rule, Plus a Length](#application-sms-the-same-rule-plus-a-length)
@@ -65,6 +66,7 @@ out of.
     - [What to build it out of](#what-to-build-it-out-of)
   - [A templated service for webhook](#a-templated-service-for-webhook)
     - [One service per channel](#one-service-per-channel)
+  - [Markup in templates](#markup-in-templates)
   - [Inbound mail](#inbound-mail)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
@@ -1059,6 +1061,45 @@ Substitution is a single pass over the parameter map, so a fragment inserted wit
 `advanced_ops_server`'s morning digest is the worked example
 (`jobs/digest_service.dart`, `assets/text_en.yaml`, `assets/text_de.yaml`).
 
+### Lists a mail renders a variable number of
+
+The other half of "a template has no control flow". A conditional sentence is a
+fragment resolved separately; a list is `requiredList`, which joins with the
+separators the bundle gives for the recipient's locale:
+
+```yaml
+messaging:
+  list:
+    separator: ", "
+    last: " and "
+```
+
+```dart
+parameters: {
+  'overdueTitles': emailService.requiredList(
+    overdue.map((task) => task.title),
+    locale: locale,
+  ),
+},
+```
+
+Three items render `Alpha, Beta and Gamma`; two render `Alpha and Beta`; one
+renders itself and consults no separator at all, so a deployment that never
+joins more than one never has to supply the keys. An empty list is the empty
+string rather than a failure — a caller that needs "you have nothing
+outstanding" is in the *conditional* case, not the list case, and renders that
+sentence as its own key.
+
+**The separators have no Dart default.** `", "` and `" and "` are English:
+German wants `" und "`, French `" et "`, and a locale that draws no distinction
+sets both keys to the same value. A framework that routes every user-facing
+string through a bundle cannot make these the two it writes in code, so a bundle
+missing them fails the send naming `messaging.list.last` — exactly as a missing
+subject does.
+
+`requiredList` joins strings and substitutes nothing, so resolve the items
+fully before passing them in, for the same reason fragments must be.
+
 ### A missing key fails before anything is queued
 
 `render` raises `TomMessagingException` when `.subject` or `.text` does not
@@ -1287,7 +1328,7 @@ produce either on demand.
 
 ## Not in This Framework
 
-Three things a reader might reasonably come here looking for are **not coming**,
+Four things a reader might reasonably come here looking for are **not coming**,
 and this section says so rather than leaving them on a list that reads as a
 schedule. Each names who owns the concern and what to build it with, because a
 non-goal that names no alternative is a refusal rather than an answer.
@@ -1366,6 +1407,30 @@ exactly as shared as it already is. It would buy nothing and cost the compiler
 its ability to say that an email request has no `text` field to write a literal
 into.
 
+### Markup in templates
+
+**A template resolves to a string, and a template *language* is not coming.**
+Conditionals, loops and partials are not offered, and the reason is what a
+template engine costs rather than what it would take to write: its own escaping
+rules, its own injection surface between a resource bundle and an HTML body, its
+own error reporting for a template that parses but means nothing, and a second
+language for a translator to learn before they can change a sentence.
+
+Both cases that want one are answered without it, and both keep every string in
+the bundle — which is the property that matters for translation:
+
+| Case | Answer |
+| ---- | ------ |
+| A sentence included only sometimes | The caller resolves it as its own key through `requiredText` and passes the result in — see [Sentences a mail includes only sometimes](#sentences-a-mail-includes-only-sometimes) |
+| A variable number of items | `requiredList` joins them with separators from the bundle — see [Lists a mail renders a variable number of](#lists-a-mail-renders-a-variable-number-of) |
+
+The cost is real and is worth naming: the *structure* of a message lives in Dart
+rather than in the bundle, so a translator can change the words and not the
+shape, and a newly conditional sentence needs a code change. That is the trade,
+and it is the right way round — a translator changing wording is the frequent
+act, and a bundle that can change a message's shape is a bundle that can break
+it.
+
 ### Inbound mail
 
 **This module sends, and will not receive.** `TomSmtpTransport` speaks the
@@ -1433,11 +1498,6 @@ correlation index, never through a mailbox.
   generalising either existing one**. See
   [One service per channel](#one-service-per-channel) for why that instruction
   is load-bearing.
-- **Markup in templates.** A template resolves to a string. Conditionals, loops
-  and partials are not offered: a template that needs one renders the varying
-  part in the caller — as its own resource key, through `requiredText` — and
-  passes it in as a parameter. See
-  [Sentences a mail includes only sometimes](#sentences-a-mail-includes-only-sometimes).
 - **DKIM signing**, and other outbound authentication beyond what the relay
   itself performs.
 

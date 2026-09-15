@@ -34,6 +34,17 @@ tolerant parsing, character-set recovery, reply threading and attachment
 extraction are each a package's worth of work whose half-done version is worse
 than none. An application that needs to read mail uses a dedicated IMAP package.
 
+**A template resolves to a string, and a template language is not coming.**
+Conditionals, loops and partials cost their own escaping rules, their own
+injection surface between a bundle and an HTML body, and a second language a
+translator must learn before changing a sentence. Both cases that want one are
+answered without it: a sentence included only sometimes is resolved as its own
+key through `requiredText` and passed in, and a variable number of items is
+joined by `requiredList` with separators from the bundle. The cost is that a
+message's *structure* lives in Dart rather than in the bundle — which is the
+right way round, since a translator changing wording is the frequent act and a
+bundle that can change a message's shape is one that can break it.
+
 **A webhook has nothing to template.** `TomEmailService` and `TomSmsService` are
 the two templated services, and a third channel gets its own subclass rather
 than a generalisation of either — but a webhook's recipient is a program and its

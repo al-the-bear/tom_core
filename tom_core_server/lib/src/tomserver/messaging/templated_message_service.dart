@@ -121,6 +121,76 @@ abstract class TomTemplatedMessageService<R> {
   Future<TomDeliveryReceipt> deliverNow(R request) =>
       outbox.router.send(render(request));
 
+  /// The template key the list separators are resolved under.
+  ///
+  /// One well-known key rather than a per-template one, because a list's
+  /// punctuation is a fact about the *language* and not about the mail: every
+  /// template in a bundle joins a list the same way, and a per-template copy
+  /// would be the same two strings written once per template for a translator
+  /// to keep in step.
+  static const String listTemplateKey = 'messaging.list';
+
+  /// The sub-key holding what goes between all but the last two items.
+  static const String listSeparatorSubKey = 'separator';
+
+  /// The sub-key holding what goes between the last two.
+  static const String listLastSeparatorSubKey = 'last';
+
+  /// Joins [items] into one string using the separators the bundle gives for
+  /// [locale].
+  ///
+  /// The answer to the other half of "a template has no control flow". A
+  /// conditional sentence is a fragment resolved separately — see
+  /// [requiredText] — and a *list* is this: a caller with three overdue tasks
+  /// renders "Alpha, Beta and Gamma" without the separator or the conjunction
+  /// being written in Dart.
+  ///
+  /// ```yaml
+  /// messaging:
+  ///   list:
+  ///     separator: ", "
+  ///     last: " and "
+  /// ```
+  ///
+  /// **The separators come from the bundle and have no default.** `", "` and
+  /// `" and "` are English, and a framework that routes every user-facing
+  /// string through a bundle cannot make these the two it writes in Dart —
+  /// German wants `" und "`, French `" et "`, and a locale that draws no
+  /// distinction sets both keys to the same value. A bundle missing them fails
+  /// the send naming the key, exactly as a missing subject does.
+  ///
+  /// They are resolved **only when they are needed**, so a deployment that
+  /// never joins more than one item never has to supply them, and one that does
+  /// finds out on the first two-item list rather than at start-up. That is the
+  /// same moment any optional fragment is discovered, and it is still before
+  /// anything is queued.
+  ///
+  /// An **empty** list is the empty string rather than a failure. A caller that
+  /// needs "you have nothing outstanding" is in the conditional case, not the
+  /// list case, and renders that sentence as its own key.
+  ///
+  /// Resolve the items **fully** before passing them in, for the reason
+  /// [requiredText] gives: this joins strings and substitutes nothing, so an
+  /// item that still carries a placeholder keeps it.
+  String requiredList(Iterable<String> items, {TomTextLocale? locale}) {
+    final parts = items.toList(growable: false);
+    if (parts.isEmpty) return '';
+    if (parts.length == 1) return parts.first;
+    final last = requiredText(
+      listTemplateKey,
+      listLastSeparatorSubKey,
+      locale: locale,
+    );
+    if (parts.length == 2) return '${parts.first}$last${parts.last}';
+    final separator = requiredText(
+      listTemplateKey,
+      listSeparatorSubKey,
+      locale: locale,
+    );
+    return '${parts.sublist(0, parts.length - 1).join(separator)}'
+        '$last${parts.last}';
+  }
+
   /// Resolves `<templateKey>.<subKey>`, or explains precisely what is missing.
   ///
   /// Used internally for each channel's required sub-keys, and public for the

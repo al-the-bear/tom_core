@@ -1862,12 +1862,13 @@ void main() {
     });
   });
 
-  group('the three boundaries are stated, and stay true', () {
+  group('the four boundaries are stated, and stay true', () {
     // A non-goal is only worth writing down if something notices when it stops
     // being one. `doc/messaging.md` says plainly that the notification model
     // belongs to the application, that this module sends and will not receive,
-    // and that a webhook has nothing to template; the rules below are what make
-    // those sentences falsifiable rather than decorative.
+    // that a webhook has nothing to template, and that a template language is
+    // not coming; the rules below are what make those sentences falsifiable
+    // rather than decorative.
 
     const sourceRoot = 'lib/src/tomserver/messaging';
 
@@ -1991,7 +1992,7 @@ void main() {
       expect(services, isEmpty, reason: services.join(', '));
     });
 
-    test('the guide states all three boundaries rather than deferring them', () {
+    test('the guide states all four boundaries rather than deferring them', () {
       // The sentence itself, and where it sits. "Not Yet Implemented" promises
       // the framework will get to a thing, so a non-goal filed there reads as a
       // deferral — which is the one reading this section exists to prevent.
@@ -2003,6 +2004,7 @@ void main() {
       expect(section, contains('will not provide'));
       expect(section, contains('will not receive'));
       expect(section, contains('no reader and no locale'));
+      expect(section, contains('template *language* is not coming'));
       expect(
         guide.indexOf('## Not in This Framework'),
         lessThan(guide.indexOf('## Not Yet Implemented')),
@@ -2015,6 +2017,7 @@ void main() {
       expect(section, contains('TomUserPreferences'));
       expect(section, contains('dedicated IMAP package'));
       expect(section, contains('puts it in a body part'));
+      expect(section, contains('requiredList'));
     });
   });
 

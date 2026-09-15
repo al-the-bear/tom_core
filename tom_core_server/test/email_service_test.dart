@@ -133,6 +133,89 @@ void main() {
       );
     });
 
+    test('requiredList joins with the separators the bundle gives', () {
+      // The other half of "a template has no control flow". A conditional
+      // sentence is a fragment resolved separately; a list is this, and neither
+      // the comma nor the conjunction is written in Dart.
+      expect(
+        service.requiredList(['Alpha', 'Beta', 'Gamma']),
+        'Alpha, Beta and Gamma',
+      );
+      expect(service.requiredList(['Alpha', 'Beta']), 'Alpha and Beta');
+    });
+
+    test('requiredList joins in the recipient\'s language', () {
+      // The assertion a single-locale fixture cannot make: the conjunction is
+      // resolved, not hard-coded. German says "und".
+      expect(
+        service.requiredList(['Alpha', 'Beta'], locale: TomTextLocale('de')),
+        'Alpha und Beta',
+      );
+    });
+
+    test('one item consults no separator at all', () {
+      // So a deployment that never joins more than one never has to supply the
+      // keys — asserted against a bundle set that does not have them, which is
+      // the only way to show the resolution did not happen.
+      final bare = TomEmailService(
+        outbox: outbox,
+        texts: TomLocalizedTextResources(
+          defaultLocale: TomTextLocale('en'),
+          bundles: const {'en': <String, Object?>{}},
+        ),
+      );
+      expect(bare.requiredList(['Alpha']), 'Alpha');
+    });
+
+    test('an empty list is the empty string, not a failure', () {
+      // A caller that needs "you have nothing outstanding" is in the
+      // conditional case rather than the list case, and renders that sentence
+      // as its own key.
+      final bare = TomEmailService(
+        outbox: outbox,
+        texts: TomLocalizedTextResources(
+          defaultLocale: TomTextLocale('en'),
+          bundles: const {'en': <String, Object?>{}},
+        ),
+      );
+      expect(bare.requiredList(const []), '');
+    });
+
+    test('a bundle with no separators fails the send, naming the key', () {
+      // The separators have no Dart default: ", " and " and " are English, and
+      // a framework that routes every user-facing string through a bundle
+      // cannot make these the two it writes in code.
+      final bare = TomEmailService(
+        outbox: outbox,
+        texts: TomLocalizedTextResources(
+          defaultLocale: TomTextLocale('en'),
+          bundles: const {'en': <String, Object?>{}},
+        ),
+      );
+      expect(
+        () => bare.requiredList(['Alpha', 'Beta']),
+        throwsA(
+          isA<TomMessagingException>()
+              .having((e) => e.key, 'key', 'messaging.email.template.missing')
+              .having(
+                (e) => e.parameters?['resourceKey'],
+                'resourceKey',
+                'messaging.list.last',
+              ),
+        ),
+      );
+    });
+
+    test('requiredList substitutes nothing, so items arrive as written', () {
+      // It joins strings. An item that still carries a placeholder keeps it —
+      // the same rule fragments have, and the reason both say "resolve fully
+      // before passing in".
+      expect(
+        service.requiredList(['{firstname}', 'Beta']),
+        '{firstname} and Beta',
+      );
+    });
+
     test('requiredText fails the same way a missing subject does', () {
       // One failure mode for one class of fault: a fragment nobody wrote must
       // not be the one part of a mail that silently renders empty.
