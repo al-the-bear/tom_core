@@ -113,8 +113,10 @@ void run() {
     );
   }, zoneValues: {TomRequestId: requestId});
 
-  // 6. TomLoginException adds no members, so one clause written for the base
-  //    type catches it along with every other server exception. Note it is
+  // 6. One clause written for the base type catches TomLoginException along
+  //    with every other server exception, and the subclass arrives with its
+  //    own payload intact — including the closed-set `reason` a client
+  //    switches on instead of matching the free-form key. Note it is
   //    client-visible: its constructor does not accept `clientThrow`, while
   //    the rest of the authentication subsystem's exceptions set it false.
   //    `clientThrow` is final, so that holds for every instance rather than
@@ -123,14 +125,25 @@ void run() {
     throw TomLoginException(
       'error.invalid-user-or-password',
       'The username or password is not correct.',
+      reason: TomLoginFailure.accountProblem,
     );
   } on TomServerException catch (e) {
     print('6. caught as       => ${e.runtimeType}');
     print('   key             => ${e.key}');
     print('   clientThrow     => ${e.clientThrow}');
+    print('   loginFailure    => ${tomErrorEnvelope(e)['loginFailure']}');
     check(
       e is TomLoginException,
       'one clause on the base type reaches the login subclass as well',
+    );
+    check(
+      e is TomLoginException && e.reason == TomLoginFailure.accountProblem,
+      'the reason travels with the exception, so a caller branches on a '
+      'closed set rather than matching the key string',
+    );
+    check(
+      tomErrorEnvelope(e)['loginFailure'] == 'accountProblem',
+      'and it reaches the wire, which is where a client reads it',
     );
     check(
       e.key == 'error.invalid-user-or-password',

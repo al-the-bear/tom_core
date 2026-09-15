@@ -134,7 +134,11 @@ void main() {
 
   group('TomLoginException', () {
     test('is a TomServerException and a TomException', () {
-      final e = TomLoginException('K', 'm');
+      final e = TomLoginException(
+        'K',
+        'm',
+        reason: TomLoginFailure.accountProblem,
+      );
       expect(e, isA<TomServerException>());
       expect(e, isA<TomException>());
     });
@@ -143,6 +147,7 @@ void main() {
       final e = TomLoginException(
         'error.invalid-user-or-password',
         'The username or password is not correct.',
+        reason: TomLoginFailure.accountProblem,
       );
       expect(e.key, 'error.invalid-user-or-password');
       expect(e.defaultUserMessage, 'The username or password is not correct.');
@@ -152,6 +157,7 @@ void main() {
       final e = TomLoginException(
         'K',
         'm',
+        reason: TomLoginFailure.accountProblem,
         parameters: {'username': 'mallory'},
       );
       expect(e.parameters, containsPair('username', 'mallory'));
@@ -172,22 +178,93 @@ void main() {
       // Because `clientThrow` is final, this is an invariant of the type and
       // not merely the value it is born with: no instance of
       // TomLoginException is ever hidden from the caller.
-      expect(TomLoginException('K', 'm').clientThrow, isTrue);
+      expect(
+        TomLoginException(
+          'K',
+          'm',
+          reason: TomLoginFailure.accountProblem,
+        ).clientThrow,
+        isTrue,
+      );
     });
 
     test('captures a non-empty isolate name like the base', () {
-      expect(TomLoginException('K', 'm').isolateName, isNotEmpty);
+      expect(
+        TomLoginException(
+          'K',
+          'm',
+          reason: TomLoginFailure.accountProblem,
+        ).isolateName,
+        isNotEmpty,
+      );
     });
 
     test('requestUuid is unset when constructed outside a request zone', () {
-      expect(TomLoginException('K', 'm').requestUuid, isNull);
+      expect(
+        TomLoginException(
+          'K',
+          'm',
+          reason: TomLoginFailure.accountProblem,
+        ).requestUuid,
+        isNull,
+      );
     });
 
     test('correlates requestUuid from a TomRequestId in the zone', () {
       final requestId = TomRequestId();
       runZoned(() {
-        expect(TomLoginException('K', 'm').requestUuid, requestId.uuid);
+        expect(
+          TomLoginException(
+            'K',
+            'm',
+            reason: TomLoginFailure.accountProblem,
+          ).requestUuid,
+          requestId.uuid,
+        );
       }, zoneValues: {TomRequestId: requestId});
+    });
+
+    test('carries a closed-set reason beside the free-form key', () {
+      // The defect this closes. Everything a caller might branch on — is this
+      // the wrong code, are the attempts spent, is the provider down — used to
+      // be encoded only in the key string, so a client that wanted to act on
+      // it had to match strings that no type or constant enumerated.
+      final e = TomLoginException(
+        'login.error.2fa.enrolment-code-invalid',
+        'That code does not match',
+        reason: TomLoginFailure.secondFactorInvalid,
+      );
+      expect(e.reason, TomLoginFailure.secondFactorInvalid);
+      expect(
+        e.key,
+        'login.error.2fa.enrolment-code-invalid',
+        reason: 'the reason does not replace the key; the key stays specific',
+      );
+    });
+
+    test('the reason is five values, and there is no bad-password value', () {
+      // Pinned by name, because the omissions are the design. Splitting
+      // "unknown user" from "wrong password" — or naming "locked" at all —
+      // hands any caller a user-enumeration oracle, so all three are
+      // accountProblem. The server keeps the distinction in the key.
+      expect(TomLoginFailure.values, [
+        TomLoginFailure.accountProblem,
+        TomLoginFailure.secondFactorRequired,
+        TomLoginFailure.secondFactorInvalid,
+        TomLoginFailure.rateLimited,
+        TomLoginFailure.providerError,
+      ]);
+    });
+
+    test('toString carries the reason beside the key', () {
+      expect(
+        TomLoginException(
+          'K',
+          'm',
+          reason: TomLoginFailure.providerError,
+        ).toString(),
+        endsWith('login-failure: providerError'),
+      );
     });
 
     test('is caught by a clause written for the base type', () {
@@ -195,7 +272,11 @@ void main() {
       // server exception, including the ones declared elsewhere.
       Object? caught;
       try {
-        throw TomLoginException('auth.rejected', 'Login rejected.');
+        throw TomLoginException(
+          'auth.rejected',
+          'Login rejected.',
+          reason: TomLoginFailure.accountProblem,
+        );
       } on TomServerException catch (e) {
         caught = e;
       }
@@ -265,6 +346,35 @@ void main() {
       ]);
     });
 
+    test('a login failure adds the closed-set reason', () {
+      // The field that makes a login failure actionable without string
+      // matching: a client shows "try the code again" for secondFactorInvalid
+      // and "start the login over" for rateLimited by switching on a closed
+      // set, where before it had to recognise `key` values no type enumerated.
+      expect(
+        tomErrorEnvelope(
+          TomLoginException(
+            'login.error.2fa.attempts-exhausted',
+            'm',
+            reason: TomLoginFailure.rateLimited,
+          ),
+        )['loginFailure'],
+        'rateLimited',
+      );
+    });
+
+    test('anything that is not a login failure omits the reason', () {
+      // Absent rather than null, like every other conditional field: the
+      // presence of `loginFailure` is itself the statement that this failure
+      // was a login.
+      expect(
+        tomErrorEnvelope(
+          TomServerException('some.key', 'm'),
+        ).containsKey('loginFailure'),
+        isFalse,
+      );
+    });
+
     test('every value in the envelope is JSON-encodable', () {
       // The envelope exists to be a response body, so a field that cannot be
       // encoded is not a rendering detail — it is a 500 raised while reporting
@@ -284,7 +394,13 @@ void main() {
       // this actually was even when every catch site in the package is written
       // for TomServerException.
       expect(
-        tomErrorEnvelope(TomLoginException('auth.rejected', 'm'))['errorType'],
+        tomErrorEnvelope(
+          TomLoginException(
+            'auth.rejected',
+            'm',
+            reason: TomLoginFailure.accountProblem,
+          ),
+        )['errorType'],
         'TomLoginException',
       );
     });

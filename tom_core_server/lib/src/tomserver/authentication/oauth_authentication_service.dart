@@ -110,6 +110,7 @@ abstract class TomExternalIdentityDirectory {
       'Provider auto-provisioning is configured, but this deployment\'s '
           'TomExternalIdentityDirectory does not implement '
           'provisionFromExternalIdentity.',
+      reason: TomLoginFailure.providerError,
     );
   }
 
@@ -183,6 +184,7 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
             'is installed. Register one (for example '
             'TomPersistentExternalIdentityStore over '
             'TomExternalIdentityLinkRepository) before enabling a provider.',
+        reason: TomLoginFailure.providerError,
       );
     }
 
@@ -202,6 +204,7 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
           'login.error.oauth.linked-account-missing',
           "The external identity $identity is linked to the local account "
               "'$linkedUsername', which no longer exists.",
+          reason: TomLoginFailure.accountProblem,
         );
       }
       await store.recordLogin(identity);
@@ -287,6 +290,7 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
         'The external identity $identity authenticated successfully, but no '
             'local account is linked to it and provider '
             "'${provider.id}' is configured to refuse provisioning.",
+        reason: TomLoginFailure.accountProblem,
       );
     }
 
@@ -343,6 +347,7 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
         'This deployment authenticates only through an external identity '
             'provider, and the login carried a '
             '${authData.key.runtimeType} rather than an OAuth credential.',
+        reason: TomLoginFailure.providerError,
       );
     }
     return next.authenticateUser(authData);

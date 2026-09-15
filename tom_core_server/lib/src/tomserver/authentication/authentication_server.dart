@@ -285,6 +285,7 @@ class TomAuthenticationServer {
         throw TomLoginException(
           'login.error.2fa.no-challenge',
           'No pending two-factor challenge was presented',
+          reason: TomLoginFailure.secondFactorInvalid,
         );
       }
 
@@ -293,18 +294,21 @@ class TomAuthenticationServer {
         throw TomLoginException(
           'login.error.2fa.no-challenge',
           'The presented token carries no two-factor challenge',
+          reason: TomLoginFailure.secondFactorInvalid,
         );
       }
       if (challenge.isExpired()) {
         throw TomLoginException(
           'login.error.2fa.expired',
           'The two-factor challenge has expired',
+          reason: TomLoginFailure.secondFactorInvalid,
         );
       }
       if (challenge.isExhausted) {
         throw TomLoginException(
           'login.error.2fa.attempts-exhausted',
           'No two-factor attempts remain',
+          reason: TomLoginFailure.rateLimited,
         );
       }
 
@@ -334,6 +338,7 @@ class TomAuthenticationServer {
         throw TomLoginException(
           'login.error.2fa.challenge-already-answered',
           'This two-factor challenge token has already been answered',
+          reason: TomLoginFailure.secondFactorInvalid,
         );
       }
 
@@ -343,6 +348,7 @@ class TomAuthenticationServer {
           'login.error.2fa.unsupported-mechanism',
           'No adaptor is registered for two-factor mechanism '
               '"${challenge.type}"',
+          reason: TomLoginFailure.providerError,
         );
       }
 
@@ -367,6 +373,7 @@ class TomAuthenticationServer {
         throw TomLoginException(
           'login.error.2fa.attempts-exhausted',
           'No two-factor attempts remain',
+          reason: TomLoginFailure.rateLimited,
         );
       }
 
@@ -529,6 +536,7 @@ class TomAuthenticationServer {
             ? 'The account requires a second factor but names no mechanism'
             : 'No adaptor is registered for any two-factor mechanism this '
                   'account may use: ${decision.allowedMechanisms.join(', ')}',
+        reason: TomLoginFailure.providerError,
       );
     }
     // What this user has actually set up, narrowed to what they may use.
@@ -609,6 +617,7 @@ class TomAuthenticationServer {
         throw TomLoginException(
           'login.error.2fa.enrolment-not-offered',
           'Two-factor mechanism "$type" was not offered for enrolment',
+          reason: TomLoginFailure.secondFactorInvalid,
         );
       }
       final support = Tom2FARegistry.enrolmentSupportFor(type);
@@ -617,6 +626,7 @@ class TomAuthenticationServer {
           'login.error.2fa.unsupported-mechanism',
           'No enrollable adaptor is registered for two-factor mechanism '
               '"$type"',
+          reason: TomLoginFailure.providerError,
         );
       }
 
@@ -666,18 +676,21 @@ class TomAuthenticationServer {
         throw TomLoginException(
           'login.error.2fa.enrolment-offer-invalid',
           'No two-factor enrolment has been begun on this token',
+          reason: TomLoginFailure.secondFactorInvalid,
         );
       }
       if (state.isExpired()) {
         throw TomLoginException(
           'login.error.2fa.enrolment-expired',
           'The two-factor enrolment has expired',
+          reason: TomLoginFailure.secondFactorInvalid,
         );
       }
       if (state.isExhausted) {
         throw TomLoginException(
           'login.error.2fa.enrolment-attempts-exhausted',
           'No two-factor enrolment attempts remain',
+          reason: TomLoginFailure.rateLimited,
         );
       }
 
@@ -706,6 +719,7 @@ class TomAuthenticationServer {
         throw TomLoginException(
           'login.error.2fa.enrolment-already-answered',
           'This two-factor enrolment token has already been answered',
+          reason: TomLoginFailure.secondFactorInvalid,
         );
       }
 
@@ -715,6 +729,7 @@ class TomAuthenticationServer {
           'login.error.2fa.unsupported-mechanism',
           'No enrollable adaptor is registered for two-factor mechanism '
               '"${offer.type}"',
+          reason: TomLoginFailure.providerError,
         );
       }
       final store = Tom2FAEnrolmentStore.resolve();
@@ -723,6 +738,7 @@ class TomAuthenticationServer {
           'login.error.2fa.enrolment-unavailable',
           'This deployment has no two-factor enrolment store, so the factor '
               'cannot be recorded',
+          reason: TomLoginFailure.providerError,
         );
       }
 
@@ -743,6 +759,7 @@ class TomAuthenticationServer {
           throw TomLoginException(
             'login.error.2fa.enrolment-attempts-exhausted',
             'No two-factor enrolment attempts remain',
+            reason: TomLoginFailure.rateLimited,
           );
         }
         final retry = await _issueTokens(
@@ -793,6 +810,7 @@ class TomAuthenticationServer {
         throw TomLoginException(
           'login.error.2fa.enrolment-required',
           'This two-factor enrolment cannot be declined',
+          reason: TomLoginFailure.secondFactorRequired,
         );
       }
 
@@ -829,6 +847,7 @@ class TomAuthenticationServer {
       throw TomLoginException(
         'login.error.2fa.no-enrolment',
         'No pending two-factor enrolment was presented',
+        reason: TomLoginFailure.secondFactorInvalid,
       );
     }
     final state = Tom2FAEnrolmentState.fromClaims(
@@ -839,6 +858,7 @@ class TomAuthenticationServer {
       throw TomLoginException(
         'login.error.2fa.no-enrolment',
         'The presented token carries no pending two-factor enrolment',
+        reason: TomLoginFailure.secondFactorInvalid,
       );
     }
     return (token, state);
@@ -867,6 +887,7 @@ class TomAuthenticationServer {
         'The account requires a second factor it has not set up, and none of '
             'the mechanisms it may use can be enrolled here: '
             '${offerable.join(', ')}',
+        reason: TomLoginFailure.providerError,
       );
     }
 

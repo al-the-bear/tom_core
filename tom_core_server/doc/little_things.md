@@ -3,10 +3,10 @@
 The server-side base exception, the correlation id it reads, and the wire shape
 it is rendered into. This module contributes three types — `TomServerException`,
 which every other `tom_core_server` exception extends; `TomLoginException`, the
-one subclass declared here rather than beside the module that raises it; and
-`TomRequestId`, the per-request id the exception constructor recovers from the
-zone — plus one function, `tomErrorEnvelope`, which turns any error into the
-body a client receives.
+one subclass declared here rather than beside the module that raises it, with
+its closed-set `TomLoginFailure` reason; and `TomRequestId`, the per-request id
+the exception constructor recovers from the zone — plus one function,
+`tomErrorEnvelope`, which turns any error into the body a client receives.
 
 ## Table of Contents
 
@@ -16,6 +16,9 @@ body a client receives.
 - [Isolate Attribution](#isolate-attribution)
 - [Request Correlation](#request-correlation)
 - [The clientThrow Flag](#the-clientthrow-flag)
+- [TomLoginException and Its Reason](#tomloginexception-and-its-reason)
+  - [The five values, and the three that are missing](#the-five-values-and-the-three-that-are-missing)
+  - [Consistency is enforced, not reviewed](#consistency-is-enforced-not-reviewed)
 - [The Error Envelope](#the-error-envelope)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
@@ -30,7 +33,8 @@ body a client receives.
 | ---- | ---- | ------- |
 | `TomRequestId` | class | Per-request v4-UUID correlation id, published into the request zone by the server's authentication middleware |
 | `TomServerException` | class | Base class for all server-raised exceptions; extends the kernel's `TomException` |
-| `TomLoginException` | class | A failed login, raised by the authentication services; extends `TomServerException` and adds nothing |
+| `TomLoginException` | class | A failed login, raised by the authentication services; extends `TomServerException` and adds a `TomLoginFailure` reason |
+| `TomLoginFailure` | enum | The closed set a client branches on: `accountProblem`, `secondFactorRequired`, `secondFactorInvalid`, `rateLimited`, `providerError` |
 | `tomErrorEnvelope` | function | Renders any error into the package's wire error body — the shape every error response uses |
 
 The kernel already provides `TomException` (UUID tracking, parameters,
@@ -178,7 +182,8 @@ masked behind a generic error response — use it for internal failures whose
 detail must not leak.
 
 `TomLoginException` does not offer the choice at construction: its constructor
-forwards the rest of the payload but not `clientThrow`, so every
+forwards the rest of the payload and adds `reason`, but not `clientThrow`, so
+every
 `TomLoginException` is client-visible. Omitting the parameter is the common
 shape — fifteen of the package's twenty-eight subtypes inherit the `true`
 default the same way — but the neighbourhood makes it a decision rather than an
@@ -198,6 +203,64 @@ builds, rather than rewriting the error's account of itself. On this path the
 question rarely arises anyway, because `TomAuthenticationServer` catches the
 exception and turns its `key` into a failed `TomAuthenticationResult` rather
 than letting it reach the pipeline that reads the flag.
+
+## TomLoginException and Its Reason
+
+A login failure carries two audiences with opposite needs. The **server** wants
+every distinction it can get, for its logs and its lockout logic; the **client**
+must not be told more than it has earned. `TomLoginException` serves both by
+carrying two things:
+
+| Field | Audience | Shape |
+| ----- | -------- | ----- |
+| `key` | the server, and a message catalogue | free-form, as specific as the throw site likes (`login.error.2fa.enrolment-code-invalid`) |
+| `reason` | the client | a closed set of five values, switchable without matching strings |
+
+`reason` is a **required** named argument, and required rather than defaulted on
+purpose: a default is a classification nobody made, so every new throw site
+would silently join it and the value a client branches on would quietly stop
+meaning anything. The compiler asking the question at each site is the whole
+mechanism.
+
+```dart
+throw TomLoginException(
+  'login.error.2fa.attempts-exhausted',
+  'No two-factor attempts remain',
+  reason: TomLoginFailure.rateLimited,
+);
+```
+
+### The five values, and the three that are missing
+
+| Value | The caller's remedy |
+| ----- | ------------------- |
+| `accountProblem` | the account cannot authenticate — no such account, wrong credentials, or locked |
+| `secondFactorRequired` | a second factor is needed and has not been supplied or enrolled |
+| `secondFactorInvalid` | the factor supplied is not usable: wrong code, expired, already answered |
+| `rateLimited` | the attempts for this challenge or enrolment are spent; start the login over |
+| `providerError` | the deployment's side failed — a provider refused, a code could not be delivered, a mechanism has no adaptor |
+
+**There is no `badCredentials`, no `unknownUser` and no `accountLocked`.** All
+three are `accountProblem`, because telling a caller which of them it hit is a
+**user-enumeration oracle**: "unknown user" and "wrong password" as separate
+answers let anyone confirm which accounts exist, and "locked" confirms it a
+second way. The server keeps the distinction — it is in the `key` — and the
+account's owner learns the detail through a channel that already knows who they
+are.
+
+`rateLimited` is separated from `secondFactorInvalid` for the opposite reason:
+the remedies differ. Trying the same factor again can succeed after an invalid
+code and cannot after the attempts are spent, so a client that cannot tell them
+apart shows the wrong instruction in one of the two cases.
+
+### Consistency is enforced, not reviewed
+
+Thirty-five throw sites across five files classify themselves.
+`test/server_exception_family_test.dart` scans them from source and holds three
+rules: every `TomLoginFailure` value has at least one producer (a value nothing
+raises is a client branch that is dead code), a given key maps to one reason
+wherever it is raised (one condition, one remedy), and every key belongs to the
+`login.error.` vocabulary.
 
 ## The Error Envelope
 
@@ -219,18 +282,34 @@ tomErrorEnvelope(TomServerException('order.not-found', 'No such order.'));
 // }
 ```
 
+A `TomLoginException` adds one more field:
+
+```dart
+tomErrorEnvelope(
+  TomLoginException(
+    'login.error.2fa.attempts-exhausted',
+    'No two-factor attempts remain',
+    reason: TomLoginFailure.rateLimited,
+  ),
+);
+// {  …, clientThrow: true, loginFailure: 'rateLimited' }
+```
+
 The body is built in layers, each reporting only what the error actually
 carries. `errorType` is unconditional — every failure has a runtime type, and a
 client that recognises nothing else can still log something specific.
 `errorKey`, `uuid`, `autoLog` and `requestUuid` are added for a `TomException`,
 which is what a client branches on. `clientThrow` is added for a
-`TomServerException`, and only there.
+`TomServerException`, and `loginFailure` for a `TomLoginException` — the field
+that makes a login failure actionable without string-matching a key no type
+enumerates.
 
 A field is **absent rather than null** when the error does not carry it, so its
 presence means something. A body with no `errorKey` came from something that is
 not a Tom error at all; a body with no `clientThrow` came from outside this
 package — the kernel raises plain `TomException`s, so a validation refusal
-relayed from there is distinguishable from a failure raised on the server side.
+relayed from there is distinguishable from a failure raised on the server side;
+a body with no `loginFailure` is not a login failure.
 Padding the shape out with defaults would make every body look like a server
 error and cost a client that distinction.
 
@@ -261,11 +340,20 @@ without either reaching the other.
 
 ## Verification
 
-`test/little_things_test.dart` covers all three types the module contributes:
+`test/little_things_test.dart` covers all four types the module contributes:
 `TomRequestId` and the zone it is read out of, `TomServerException`'s isolate
 attribution, its `clientThrow` flag and the request correlation it picks up, the
-one subclass declared beside it (`TomLoginException`), and `tomErrorEnvelope` —
-the wire shape every error response uses.
+one subclass declared beside it (`TomLoginException`) with its `TomLoginFailure`
+reason and the values that set deliberately omits, and `tomErrorEnvelope` — the
+wire shape every error response uses, including the `loginFailure` field a login
+failure adds and everything else omits.
+
+`test/server_exception_family_test.dart` holds the classification itself. Its
+rules read every `throw TomLoginException(` under `lib/src/tomserver/` from
+source, which is the only way to cover a site nobody thought to reach: every
+`TomLoginFailure` value must have a producer, a key must map to one reason
+wherever it is raised, and every key must belong to the `login.error.`
+vocabulary.
 
 ```bash
 dart run example/little_things/little_things_example.dart
@@ -292,9 +380,12 @@ transcript; `test/examples_test.dart` runs it, which is what keeps that true.
   invalid credentials, no enrolled second factor, an expired challenge. Raised
   by `TomAuthenticationService`, `Tom2FAService` and their helpers, and caught
   by `TomAuthenticationServer`, which turns its `key` into a failed
-  `TomAuthenticationResult`. It adds **nothing** over the base — no fields, no
-  methods, no behaviour; it exists so that the two sides can name the same
-  failure. See `doc/authentication.md` for the login flow it belongs to.
+  `TomAuthenticationResult`. It adds a required `TomLoginFailure` reason over
+  the base — see
+  [TomLoginException and Its Reason](#tomloginexception-and-its-reason). See
+  `doc/authentication.md` for the login flow it belongs to.
+- **`TomLoginFailure`** — the closed set a client switches on, deliberately
+  coarser than the server's own knowledge.
 - **`tomErrorEnvelope`** — renders any error into the wire error body, reporting
   `errorType` always, the `TomException` fields for a Tom error, and
   `clientThrow` for a server one. Used by `TomServer.errorHandler` and

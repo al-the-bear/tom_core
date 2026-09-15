@@ -70,6 +70,7 @@ class _DirectoryService implements TomAuthenticationService {
       throw TomLoginException(
         'error.invalid-user-or-password',
         'Invalid user or password',
+        reason: TomLoginFailure.accountProblem,
       );
     }
     return TomAuthenticationInfo(

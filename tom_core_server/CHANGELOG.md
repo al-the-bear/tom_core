@@ -33,6 +33,29 @@
 
 ### Changed
 
+- **`TomLoginException` carries a structured reason (tcopen158).** It was a
+  marker subtype — no fields, no members beyond a constructor that forwarded
+  everything to the base — so everything a caller might branch on was encoded in
+  the free-form `key` at the throw site. A client that wanted to show "start the
+  login over" rather than "login failed" had to string-match keys that no type
+  or constant enumerated, across 35 throw sites in five files.
+
+  `TomLoginFailure` is now a required named argument at every one of them:
+  `accountProblem`, `secondFactorRequired`, `secondFactorInvalid`, `rateLimited`,
+  `providerError`. `tomErrorEnvelope` reports it as `loginFailure`, so the wire
+  carries the closed set beside the key.
+
+  **There is no `badCredentials`, `unknownUser` or `accountLocked`** — all three
+  are `accountProblem`, because telling a caller which of them it hit is a
+  user-enumeration oracle. The server keeps the distinction where it needs it,
+  in the `key`.
+
+  Required rather than defaulted: a default is a classification nobody made, so
+  every new throw site would silently join it. `server_exception_family_test`
+  scans the sites from source and holds three rules — every value has a
+  producer, a key maps to one reason wherever it is raised, and every key
+  belongs to the `login.error.` vocabulary.
+
 - **A probe answers even when its analyzer does not (tcopen156, tcopen157).**
   `analyzeHealth()` was awaited with no deadline. It is `async` precisely so a
   `SELECT 1` and a cache `PING` can be awaited, and a TCP connection to a host

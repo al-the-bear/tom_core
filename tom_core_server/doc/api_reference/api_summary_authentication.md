@@ -333,9 +333,10 @@ const Tom2FAAdaptor(String type)
 
 ### TomLoginException
 
-A server-side login failure carrying the `TomServerException` payload.
-Thrown by a `TomAuthenticationService` when a login cannot succeed;
-`TomAuthenticationServer` catches it and turns its `key` into a failed result.
+A server-side login failure carrying the `TomServerException` payload plus a
+closed-set `TomLoginFailure` reason. Thrown by a `TomAuthenticationService` when
+a login cannot succeed; `TomAuthenticationServer` catches it and turns its `key`
+into a failed result.
 
 - **Extends:** `TomServerException`
 
@@ -345,12 +346,25 @@ Thrown by a `TomAuthenticationService` when a login cannot succeed;
 TomLoginException(
   String key,
   String defaultUserMessage, {
+  required TomLoginFailure reason,
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
   bool autoLog = false,
 })
 ```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `reason` | `TomLoginFailure` | Which closed-set failure this is — the five values are tabled in [api_summary_little_things.md](api_summary_little_things.md#tomloginfailure), beside the module that declares the enum. Required, and required rather than defaulted, because a default is a classification nobody made: every new throw site would silently join it and the value a client branches on would stop meaning anything. It does not replace `key` — the key stays as specific as the throw site can make it and is what the server logs. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* The base string extended with `login-failure: <reason>`, so a log line carries the classification beside the key it was classified from. |
 
 ### Tom2FAException
 

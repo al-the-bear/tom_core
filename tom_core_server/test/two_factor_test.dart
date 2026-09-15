@@ -261,6 +261,7 @@ class _EnrollableAdaptor implements Tom2FAService, Tom2FAEnrolmentSupport {
       throw TomLoginException(
         'login.error.2fa.enrolment-invalid-code',
         'The confirmation code does not match the offered factor',
+        reason: TomLoginFailure.secondFactorInvalid,
       );
     }
     return Tom2FAEnrolment(
@@ -2470,6 +2471,7 @@ void main() {
           failIssueWith: TomLoginException(
             'login.error.2fa.not-enrolled',
             'nothing enrolled',
+            reason: TomLoginFailure.secondFactorRequired,
           ),
         ),
       );

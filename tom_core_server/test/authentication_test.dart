@@ -25,6 +25,7 @@ class _DemoAuthService implements TomAuthenticationService {
         'error.invalid-user-or-password',
         'Invalid user or password',
         parameters: {'username': a.username},
+        reason: TomLoginFailure.accountProblem,
       );
     }
     final dummy = TomDummyAuthenticationService()..showErrorMessage = false;
@@ -544,7 +545,11 @@ void main() {
       () async {
         TomAuthenticationServer.globalSettingUserAuthenticationService =
             _RecordingAuthService(
-              throwThis: TomLoginException('auth.bad-credentials', 'nope'),
+              throwThis: TomLoginException(
+                'auth.bad-credentials',
+                'nope',
+                reason: TomLoginFailure.accountProblem,
+              ),
             );
 
         final result = await TomAuthenticationServer().authenticatePass1(

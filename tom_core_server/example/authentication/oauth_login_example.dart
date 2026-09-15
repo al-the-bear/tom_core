@@ -191,6 +191,7 @@ class _AccountDirectory implements TomExternalIdentityDirectory {
       throw TomLoginException(
         'login.error.oauth.provisioning-unsupported',
         'This directory does not create accounts',
+        reason: TomLoginFailure.providerError,
       );
     }
     provisioned.add(identity);

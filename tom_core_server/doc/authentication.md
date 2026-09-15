@@ -168,7 +168,7 @@ rest of the package's exception hierarchy:
 
 | Name | Module | Purpose |
 | ---- | ------ | ------- |
-| `TomLoginException` | `little_things` | A login failure; carried back as a failed result rather than propagated |
+| `TomLoginException` | `little_things` | A login failure; carried back as a failed result rather than propagated. Carries a required `TomLoginFailure` reason — the closed set a client branches on, documented in [little_things.md](little_things.md#tomloginexception-and-its-reason) |
 
 ## The Login Flow
 
@@ -214,6 +214,7 @@ class MyAuthService implements TomAuthenticationService {
       throw TomLoginException(
         'error.invalid-user-or-password',
         'Invalid login',
+        reason: TomLoginFailure.accountProblem,
       );
     }
     final principal = _buildPrincipal(user, authData);

@@ -254,6 +254,7 @@ abstract class TomDeliveredCode2FAService<S extends Object>
         'login.error.2fa.not-enrolled',
         'There is no address on record to send a one-time code to',
         parameters: {'mechanism': type},
+        reason: TomLoginFailure.secondFactorRequired,
       );
     }
 
@@ -336,6 +337,7 @@ abstract class TomDeliveredCode2FAService<S extends Object>
         'login.error.2fa.no-destination',
         'There is no address on record to confirm',
         parameters: {'mechanism': type},
+        reason: TomLoginFailure.secondFactorRequired,
       );
     }
 
@@ -374,6 +376,7 @@ abstract class TomDeliveredCode2FAService<S extends Object>
         'login.error.2fa.enrolment-offer-invalid',
         'This enrolment can no longer be completed; please start again',
         parameters: {'mechanism': type},
+        reason: TomLoginFailure.secondFactorInvalid,
       );
     }
 
@@ -385,6 +388,7 @@ abstract class TomDeliveredCode2FAService<S extends Object>
         'login.error.2fa.enrolment-code-invalid',
         'That code does not match the one that was just sent',
         parameters: {'mechanism': type},
+        reason: TomLoginFailure.secondFactorInvalid,
       );
     }
 
@@ -448,6 +452,7 @@ abstract class TomDeliveredCode2FAService<S extends Object>
         rootException: error,
         stack: stack,
         autoLog: true,
+        reason: TomLoginFailure.providerError,
       );
     }
   }

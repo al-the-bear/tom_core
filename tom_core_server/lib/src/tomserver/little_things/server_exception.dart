@@ -129,14 +129,22 @@ class TomServerException extends TomException {
 ///    client that recognises nothing else can still log something specific;
 ///  * `errorKey`, `uuid`, `autoLog`, `requestUuid` — for a [TomException],
 ///    which is what a client branches on;
-///  * `clientThrow` — for a [TomServerException], the masking flag.
+///  * `clientThrow` — for a [TomServerException], the masking flag;
+///  * `loginFailure` — for a [TomLoginException], the closed-set reason.
 ///
 /// A field is **absent rather than null** when the error does not carry it, so
 /// its presence means something: a body with no `errorKey` came from something
 /// that is not a Tom error at all, and one with no `clientThrow` came from
-/// outside the server package (the kernel raises plain [TomException]s). Padding
-/// the shape out with defaults would make every body look like a server error
-/// and cost a client the distinction.
+/// outside the server package (the kernel raises plain [TomException]s), and one
+/// with no `loginFailure` is not a login failure. Padding the shape out with
+/// defaults would make every body look like a server error and cost a client the
+/// distinction.
+///
+/// `loginFailure` is the field that makes a login failure actionable without
+/// string-matching: a client shows "try the code again" for
+/// [TomLoginFailure.secondFactorInvalid] and "start the login over" for
+/// [TomLoginFailure.rateLimited] by switching on a closed set, where before it
+/// had to recognise `key` values that no type enumerated.
 ///
 /// It lives here, beside [TomServerException], because [TomServerException] is
 /// what decides the one conditional field and because this module is the one
@@ -160,7 +168,56 @@ Map<String, Object?> tomErrorEnvelope(Object error) {
   if (error is TomServerException) {
     envelope['clientThrow'] = error.clientThrow;
   }
+  if (error is TomLoginException) {
+    envelope['loginFailure'] = error.reason.name;
+  }
   return envelope;
+}
+
+/// Why a login could not succeed, as a closed set a caller can switch on.
+///
+/// The set is deliberately **coarser than the framework's own knowledge**. A
+/// login failure carries two audiences with opposite needs: the server, which
+/// wants every distinction it can get for its logging and its lockout logic,
+/// and the client, which must not be told more than it has earned. This enum
+/// serves the client, and the `key` — free-form, and as specific as the throw
+/// site likes — still serves the server.
+///
+/// That is why there is no `badCredentials`, no `unknownUser` and no
+/// `accountLocked`: all three are [accountProblem]. Telling a caller which of
+/// the three it hit is a **user-enumeration oracle** — "unknown user" and "wrong
+/// password" as separate answers let anyone confirm which accounts exist, and
+/// "locked" confirms it a second way. One value, and the account's owner learns
+/// the detail through a channel that already knows who they are.
+///
+/// The rest are separated because a client can act on each differently and
+/// none of them says anything about whether an account exists.
+enum TomLoginFailure {
+  /// The account cannot authenticate: no such account, wrong credentials, or
+  /// the account is locked. One value for the three on purpose — see above.
+  accountProblem,
+
+  /// The first factor was accepted and a second one is needed that the caller
+  /// has not supplied or not enrolled. The remedy is to complete or begin
+  /// enrolment; the credentials themselves were not refused.
+  secondFactorRequired,
+
+  /// A second factor was supplied and is not usable: the wrong code, an expired
+  /// challenge, one already answered, or one this token does not carry. The
+  /// remedy is to try the factor again.
+  secondFactorInvalid,
+
+  /// The attempts for this challenge or enrolment are spent. Distinct from
+  /// [secondFactorInvalid] because the remedy differs: trying the same factor
+  /// again cannot succeed, and the caller has to start the login over.
+  rateLimited,
+
+  /// The failure is on the deployment's side rather than the caller's: an
+  /// identity provider refused or is unreachable, a one-time code could not be
+  /// delivered, or the configuration names a mechanism nothing implements.
+  /// Retrying the same credentials may well work once the cause is fixed, and
+  /// nothing the caller did is wrong.
+  providerError,
 }
 
 /// A server-side login failure.
@@ -169,20 +226,41 @@ Map<String, Object?> tomErrorEnvelope(Object error) {
 /// when a login cannot succeed — unknown client/user, invalid credentials, no
 /// enrolled second factor, an expired challenge. Carries the [TomServerException]
 /// payload (`key`, user message, `parameters`, `stack`, `rootException`,
-/// `autoLog`); `TomAuthenticationServer` catches it and turns its `key` into a
-/// failed `TomAuthenticationResult` rather than propagating.
+/// `autoLog`) plus a [reason]; `TomAuthenticationServer` catches it and turns
+/// its `key` into a failed `TomAuthenticationResult` rather than propagating.
 ///
 /// It lives here, next to the exception base, rather than beside the
 /// authentication server, so that the 2FA subsystem can throw it without
 /// importing the server that consumes it.
 class TomLoginException extends TomServerException {
-  /// Creates a login failure with a resource [key] and a default user message.
+  /// Which closed-set failure this is.
+  ///
+  /// Required, and required rather than defaulted, because a default would be
+  /// a classification nobody made: every new throw site would silently join
+  /// whichever value was chosen as the default, and the value a client branches
+  /// on would quietly stop meaning anything. The compiler asking the question
+  /// at each site is the whole mechanism.
+  ///
+  /// It does not replace [TomException.key]. The key stays as specific as the
+  /// throw site can make it and is what the server logs and what a message
+  /// catalogue looks up; the reason is the coarse, closed set a client switches
+  /// on without matching strings no type enumerates.
+  final TomLoginFailure reason;
+
+  /// Creates a login failure with a resource [key], a default user message and
+  /// the closed-set [reason] a caller branches on.
   TomLoginException(
     super.key,
     super.defaultUserMessage, {
+    required this.reason,
     super.parameters,
     super.stack,
     super.rootException,
     super.autoLog,
   });
+
+  /// The base string extended with the [reason], so a log line carries the
+  /// classification beside the key it was classified from.
+  @override
+  String toString() => '${super.toString()} login-failure: ${reason.name}';
 }

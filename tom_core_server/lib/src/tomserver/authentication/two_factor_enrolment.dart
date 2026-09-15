@@ -486,6 +486,7 @@ class Tom2FAEnrolmentState {
       throw TomLoginException(
         'login.error.2fa.enrolment-offer-invalid',
         'The pending enrolment carries no usable expiry',
+        reason: TomLoginFailure.secondFactorInvalid,
       );
     }
 

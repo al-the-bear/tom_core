@@ -2,9 +2,9 @@
 
 The base exception type for every error raised by `tom_core_server`, adding
 isolate attribution and request correlation to the kernel exception — plus
-`TomLoginException`, the one subclass declared beside it, `TomRequestId`, the
-correlation id the base reads out of the zone, and `tomErrorEnvelope`, which
-renders any of them into the wire error body.
+`TomLoginException` and its `TomLoginFailure` reason, the one subclass declared
+beside it, `TomRequestId`, the correlation id the base reads out of the zone, and
+`tomErrorEnvelope`, which renders any of them into the wire error body.
 
 ## Table of Contents
 
@@ -13,6 +13,8 @@ renders any of them into the wire error body.
 - [Classes](#classes)
   - [TomRequestId](#tomrequestid)
   - [TomServerException](#tomserverexception)
+- [Enums](#enums)
+  - [TomLoginFailure](#tomloginfailure)
 - [Global Functions and Constants](#global-functions-and-constants)
   - [tomErrorEnvelope](#tomerrorenvelope)
 
@@ -44,15 +46,16 @@ surface to the client.
 
 The module declares one of those subtypes itself: `TomLoginException`, which
 sits here rather than in `authentication` so the 2FA subsystem can throw it
-without importing the server that catches it. It adds no members — its
-constructor forwards the base payload minus `clientThrow`, so a
-`TomLoginException` always carries the base default `true` — and because the
-field is `final`, that is an invariant of the type rather than a starting value.
-It is documented in
+without importing the server that catches it, together with the
+`TomLoginFailure` enum it carries. Its constructor forwards the base payload
+minus `clientThrow` and adds a required `reason`, so a `TomLoginException`
+always carries the base default `true` — and because the field is `final`, that
+is an invariant of the type rather than a starting value. Both are documented
+in
 [api_summary_authentication.md](api_summary_authentication.md#tomloginexception),
-under the module a reader meets it in; the index files it there too, and this
-summary gives it no section of its own so that the two documents cannot drift
-apart.
+under the module a reader meets them in; the index files them there too, and
+this summary gives them no section of its own so that the two documents cannot
+drift apart.
 
 ## Class Hierarchy
 
@@ -62,6 +65,7 @@ TomRequestId          (standalone)
 TomException  (kernel)
     └── TomServerException
             ├── TomLoginException  (declared here; documented under Auth)
+            │                      (with TomLoginFailure, its reason enum)
             └── …                  (every other module's exception type)
 ```
 
@@ -132,6 +136,32 @@ Copies the current zone's `TomRequestId` UUID into `requestUuid` when present.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `toString` | `String toString()` | *(override)* The base `TomException` string extended with `isolateName`, the `clientThrow` flag, and — only when the exception was raised inside a request — a labelled ` request: <uuid>` segment. The segment is omitted entirely when `requestUuid` is null. |
+
+## Enums
+
+### TomLoginFailure
+
+Why a login could not succeed, as a closed set a caller can switch on. The set
+is deliberately **coarser than the framework's own knowledge**: the `key` serves
+the server, which wants every distinction for its logs and lockout logic, and
+this enum serves the client, which must not be told more than it has earned.
+
+There is no `badCredentials`, no `unknownUser` and no `accountLocked` — all three
+are `accountProblem`, because telling a caller which of them it hit is a
+user-enumeration oracle.
+
+`tomErrorEnvelope` reports it as `loginFailure`, so a client branches on a closed
+set rather than matching `key` values that no type enumerates.
+
+#### Values
+
+| Value | Meaning |
+| ----- | ------- |
+| `accountProblem` | The account cannot authenticate: no such account, wrong credentials, or locked. One value for the three on purpose. |
+| `secondFactorRequired` | A second factor is needed that the caller has not supplied or not enrolled; the credentials themselves were not refused. |
+| `secondFactorInvalid` | A second factor was supplied and is not usable: wrong code, expired challenge, one already answered. The remedy is to try again. |
+| `rateLimited` | The attempts for this challenge or enrolment are spent. Distinct from `secondFactorInvalid` because trying the same factor again cannot succeed. |
+| `providerError` | The deployment's side failed: a provider refused or is unreachable, a code could not be delivered, or a mechanism has no adaptor. |
 
 ## Global Functions and Constants
 

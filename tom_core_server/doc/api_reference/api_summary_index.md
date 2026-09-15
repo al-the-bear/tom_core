@@ -21,7 +21,7 @@ surface documented here.
 | Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF, and stored for later retrieval. |
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends. |
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server. |
-| Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the per-request correlation id `TomRequestId` it reads, and `tomErrorEnvelope`, the wire shape every error response uses. |
+| Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries, the per-request correlation id `TomRequestId` it reads, and `tomErrorEnvelope`, the wire shape every error response uses. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, and resource-keyed email and SMS. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, and the `/preferences/*` endpoints. |
@@ -126,7 +126,7 @@ surface documented here.
 | `Tom2FAAdaptor` | class | Reflection marker for 2FA adaptors. |
 | `TomAuthenticationData` | class | Reflected authentication payload. |
 | `TomAuthenticationInfo` | class | Resolved authentication result. |
-| `TomLoginException` | class | Login failure (extends `TomServerException`). |
+| `TomLoginException` | class | Login failure (extends `TomServerException`), carrying a `TomLoginFailure` reason. |
 | `TomServerSelfLogin` | class | Logs the deployment in as itself, installs the server principal, and renews it before its token expires. |
 | `TomServerSession` | class | What a self-login produced: the principal, and when its tokens expire. |
 | `TomServiceCredential` | class | The deployment's own login credential and where to present it. |
@@ -410,6 +410,7 @@ surface documented here.
 | ---- | ---- | ----------- |
 | `TomRequestId` | class | Per-request v4-UUID correlation id, published into the request zone. |
 | `TomServerException` | class | Server-side base exception (extends `TomException`). |
+| `TomLoginFailure` | enum | The closed set a login failure classifies itself as, and what a client branches on. |
 | `tomErrorEnvelope` | function | Renders any error into the package's wire error body — the shape every error response uses. |
 
 ### Messaging (`lib/src/tomserver/messaging/`)
@@ -904,6 +905,7 @@ surface documented here.
 | `TomLocalizedTextResources` | Resources |
 | `tomLoggingMiddleware` | Server |
 | `TomLoginException` | Authentication |
+| `TomLoginFailure` | Little Things |
 | `TomMemory2FAEnrolmentStore` | Authentication |
 | `TomMemory2FAGraceStore` | Authentication |
 | `TomMemoryAuditAnchorStore` | Audit |

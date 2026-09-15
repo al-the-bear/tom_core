@@ -696,6 +696,7 @@ class TomTotp2FAService implements Tom2FAService, Tom2FAEnrolmentSupport {
       throw TomLoginException(
         'login.error.2fa.not-enrolled',
         'No authenticator is enrolled for this account',
+        reason: TomLoginFailure.secondFactorRequired,
       );
     }
     return Tom2FAChallengeSpec(
@@ -788,6 +789,7 @@ class TomTotp2FAService implements Tom2FAService, Tom2FAEnrolmentSupport {
       throw TomLoginException(
         'login.error.2fa.enrolment-offer-invalid',
         'This enrolment can no longer be completed; please start again',
+        reason: TomLoginFailure.secondFactorInvalid,
       );
     }
 
@@ -798,6 +800,7 @@ class TomTotp2FAService implements Tom2FAService, Tom2FAEnrolmentSupport {
       throw TomLoginException(
         'login.error.2fa.enrolment-code-invalid',
         'That code does not match the authenticator that was just set up',
+        reason: TomLoginFailure.secondFactorInvalid,
       );
     }
 

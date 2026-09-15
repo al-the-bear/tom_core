@@ -98,6 +98,7 @@ class AuthTokenService {
       throw TomLoginException(
         'login.error.2fa.no-challenge',
         'No pending two-factor challenge was presented',
+        reason: TomLoginFailure.secondFactorInvalid,
       );
     }
     // The interim *authorization* token: decrypting it is what recovers the
@@ -177,6 +178,7 @@ class AuthTokenService {
       throw TomLoginException(
         'login.error.2fa.no-enrolment',
         'No pending two-factor enrolment was presented',
+        reason: TomLoginFailure.secondFactorInvalid,
       );
     }
     final message = _messageFor(LoginRequest(username: '', password: payload));
@@ -298,7 +300,16 @@ class AuthTokenService {
         challengeToken: result.authorizationToken,
       );
     }
-    return TomLoginException(result.error, 'Login failed (${result.error})');
+    // No re-issued token came back, so this challenge cannot be answered again
+    // and the caller has to start the login over — which is what rateLimited
+    // says. The two branches are the framework's own distinction: every failed
+    // TomAuthenticationResult it produces is a refused second factor, and the
+    // token is how it says whether another attempt is on offer.
+    return TomLoginException(
+      result.error,
+      'Login failed (${result.error})',
+      reason: TomLoginFailure.rateLimited,
+    );
   }
 }
 
@@ -326,7 +337,7 @@ class SecondFactorRetryException extends TomLoginException {
     super.key,
     super.defaultUserMessage, {
     required this.challengeToken,
-  });
+  }) : super(reason: TomLoginFailure.secondFactorInvalid);
 }
 
 /// Returns HTTP 401 for a rejected login and falls back to the opaque 500 for

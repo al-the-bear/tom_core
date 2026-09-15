@@ -84,11 +84,19 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
       throw TomLoginException(
         'error.invalid-user-or-password',
         'Invalid user or password',
+        reason: TomLoginFailure.accountProblem,
       );
     }
 
     if (record.status == UserStatus.suspended.name) {
-      throw TomLoginException('error.user.suspended', 'Account is suspended');
+      throw TomLoginException(
+        'error.user.suspended',
+        'Account is suspended',
+        // One reason for "no such user", "wrong password" and "suspended" on
+        // purpose: telling the caller which it was confirms which accounts
+        // exist. The key keeps the distinction for this server's own log.
+        reason: TomLoginFailure.accountProblem,
+      );
     }
 
     final password = authData.key?.toString() ?? '';
@@ -96,6 +104,7 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
       throw TomLoginException(
         'error.invalid-user-or-password',
         'Invalid user or password',
+        reason: TomLoginFailure.accountProblem,
       );
     }
 

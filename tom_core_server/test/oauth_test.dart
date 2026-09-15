@@ -403,6 +403,7 @@ class _StubDirectory implements TomExternalIdentityDirectory {
       throw TomLoginException(
         'login.error.oauth.provisioning-unsupported',
         'This directory does not provision.',
+        reason: TomLoginFailure.providerError,
       );
     }
     provisioned.add(identity);

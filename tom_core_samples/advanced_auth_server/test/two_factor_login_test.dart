@@ -398,7 +398,11 @@ void main() {
 
     test('a terminal refusal carries no token to retry with', () async {
       final response = handler.handleInvocationError(
-        TomLoginException('login.error.2fa.attempts-exhausted', 'spent'),
+        TomLoginException(
+          'login.error.2fa.attempts-exhausted',
+          'spent',
+          reason: TomLoginFailure.rateLimited,
+        ),
         StackTrace.current,
         request,
       );

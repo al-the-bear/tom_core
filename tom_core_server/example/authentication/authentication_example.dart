@@ -61,6 +61,7 @@ class DemoAuthService implements TomAuthenticationService {
         'error.invalid-user-or-password',
         'Invalid user or password',
         parameters: {'username': authData.username},
+        reason: TomLoginFailure.accountProblem,
       );
     }
     // Reuse the dummy service to assemble a principal for the accepted user.

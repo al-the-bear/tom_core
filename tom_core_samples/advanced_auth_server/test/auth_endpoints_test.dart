@@ -161,7 +161,11 @@ void main() {
       'maps a TomLoginException to HTTP 401 carrying the stable error key',
       () async {
         final response = handler.handleInvocationError(
-          TomLoginException('error.invalid-user-or-password', 'Invalid user'),
+          TomLoginException(
+            'error.invalid-user-or-password',
+            'Invalid user',
+            reason: TomLoginFailure.accountProblem,
+          ),
           StackTrace.current,
           request,
         );

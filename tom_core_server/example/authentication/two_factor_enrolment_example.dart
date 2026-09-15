@@ -153,6 +153,7 @@ class _AuthenticatorApp implements Tom2FAService, Tom2FAEnrolmentSupport {
       throw TomLoginException(
         'login.error.2fa.enrolment-invalid-code',
         'The confirmation code does not match the offered factor',
+        reason: TomLoginFailure.secondFactorInvalid,
       );
     }
     return Tom2FAEnrolment(

@@ -417,4 +417,102 @@ void main() {
       }
     });
   });
+
+  group('TomLoginException classification', () {
+    // A login failure carries two audiences. The `key` is as specific as the
+    // throw site can make it and serves the server's logs and its message
+    // catalogue; `reason` is the coarse closed set a client switches on. The
+    // set only earns that role if it is applied consistently, and consistency
+    // across 35 sites in five files is not something review sustains.
+    //
+    // Read from source for the same reason the rules above are: a runtime
+    // sweep verifies the sites somebody remembered to reach, and the sites
+    // that go wrong are the ones nobody reaches.
+
+    /// Every `throw TomLoginException(` under [_sourceRoot], as
+    /// `(key, reason)` pairs.
+    final classifications = <({String key, String reason, String file})>[];
+    for (final file
+        in Directory(_sourceRoot)
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.dart'))
+            .where((f) => !f.path.endsWith('.reflection.dart'))) {
+      final source = file.readAsStringSync();
+      final chunks = source.split('throw TomLoginException(');
+      for (final chunk in chunks.skip(1)) {
+        final key = RegExp(
+          r"""['"]([a-z][a-z0-9_.\-]*)['"]""",
+        ).firstMatch(chunk);
+        final reason = RegExp(
+          r'reason: TomLoginFailure\.(\w+)',
+        ).firstMatch(chunk);
+        classifications.add((
+          key: key?.group(1) ?? '<no literal key>',
+          reason: reason?.group(1) ?? '<none>',
+          file: file.path,
+        ));
+      }
+    }
+
+    test('every throw site names a reason', () {
+      // The compiler already requires it, so this is not the guard — it is the
+      // check that the scan below is reading what it thinks it is. A scan that
+      // silently matched nothing would make every rule after it vacuous.
+      expect(classifications, hasLength(greaterThan(30)));
+      for (final c in classifications) {
+        expect(c.reason, isNot('<none>'), reason: '[${c.key}] in ${c.file}');
+        expect(c.key, isNot('<no literal key>'), reason: c.file);
+      }
+    });
+
+    test('every reason has at least one producer', () {
+      // A value nothing raises is a promise to a client that nothing keeps:
+      // the client writes a branch for it, and the branch is dead. If a value
+      // here has no site, either the classification is wrong or the value
+      // should not exist.
+      final produced = classifications.map((c) => c.reason).toSet();
+      for (final value in TomLoginFailure.values) {
+        expect(
+          produced,
+          contains(value.name),
+          reason:
+              'no throw site classifies itself as ${value.name}, so a client '
+              'branching on it branches on nothing',
+        );
+      }
+    });
+
+    test('a key maps to one reason wherever it is raised', () {
+      // The property that makes the closed set trustworthy. The same key
+      // classified two ways is a client shown two different remedies for one
+      // condition, and it is the way a 35-site classification decays.
+      final byKey = <String, Set<String>>{};
+      for (final c in classifications) {
+        byKey.putIfAbsent(c.key, () => <String>{}).add(c.reason);
+      }
+      for (final entry in byKey.entries) {
+        expect(
+          entry.value,
+          hasLength(1),
+          reason:
+              '[${entry.key}] is classified as ${entry.value.join(" and ")} at '
+              'different sites; one condition has one remedy',
+        );
+      }
+    });
+
+    test('every login key is scoped to the login vocabulary', () {
+      expect(classifications, isNotEmpty);
+      for (final c in classifications) {
+        expect(
+          c.key,
+          startsWith('login.error.'),
+          reason:
+              '[${c.key}] in ${c.file} is raised as a login failure, so it '
+              'belongs to the login key vocabulary a message catalogue reads',
+        );
+      }
+    });
+  });
 }
