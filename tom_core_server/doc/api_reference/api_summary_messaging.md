@@ -1129,7 +1129,7 @@ TomSmtpTransport(
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `settings` | `TomSmtpSettings` | Where and how to connect (final). |
-| `encoder` | `TomMimeEncoder` | Renders the message document; injectable so a test can pin the boundaries and the date (final). |
+| `encoder` | `TomMimeEncoder` | Renders the message document; injectable so a test can pin the boundaries and the date — and so a deployment that must **sign** its mail can, without forking the transport: a subclass overriding `encode` to prepend a `DKIM-Signature` header to `super.encode(message)` is the whole seam. The transport writes the document to the socket exactly as the encoder produced it, so a deployment relying on that relies on its relay to sign (final). |
 | `connect` | `Future<TomSmtpConnection> Function(TomSmtpSettings settings)` | Opens the connection, defaulting to `TomSocketSmtpConnection.open`; injectable so the protocol can be tested against an in-process fake server (final). |
 | `channel` | `TomMessageChannel` | *(getter)* *(override)* Always `TomMessageChannel.email`. |
 | `supportsCopies` | `bool` | *(getter)* *(override)* Always `true`. |
