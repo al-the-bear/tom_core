@@ -446,6 +446,22 @@ surface documented here.
 | `TomSmsBodyFormat` | enum | `form`, `json`. |
 | `TomWebhookTransport` | class | Real delivery over HTTP: the message's own JSON POSTed to the URL that addresses it. |
 | `TomWebhookSettings` | class | The timeout, the always-applied headers, and how much of the answer the receipt keeps. |
+| `TomDeliveryReport` | class | What a carrier says became of a message after accepting it. |
+| `TomDeliveryState` | enum | `delivered`, `failed`, `expired`, `unknown` — not the same question as `TomDeliveryOutcome`. |
+| `TomDeliveryCorrelation` | class | The `remoteId` → message row, and the last state reported against it. |
+| `TomDeliveryReportStore` | abstract class | The correlation index, addressed by the carrier's id. |
+| `TomMemoryDeliveryReportStore` | class | The index in memory; right for a test, wrong across a restart. |
+| `TomSqlDeliveryReportStore` | class | The index in a table — the durable half. |
+| `TomDeliveryReportRow` | class | One row of that table as the driver hands it back. |
+| `deliveryReportTable` | function | The correlation table, declared once. |
+| `deliveryReportTableDdl` | function | The `CREATE TABLE` for it, for a deployment that applies DDL by hand. |
+| `defaultDeliveryReportTable` | constant | `tom_delivery_report`. |
+| `TomDeliveryCallback` | class | What a callback carried, independent of how it arrived. |
+| `TomDeliveryReportProtocol` | abstract class | The carrier's callback shape, behind an interface. |
+| `TomFieldMappedDeliveryReportProtocol` | class | That shape described by field names and status tokens; no vendor presets. |
+| `TomDeliveryReportEndpoint` | class | The static configuration behind the callback route, and its handler. |
+| `TomDeliveryReportService` | abstract class | The reflected `POST /messaging/delivery-report` declaration. |
+| `TomDeliveryReportServer` | class | Its default implementation. |
 | `TomSmsSubmission` | class | One recipient's share of a message, as handed to a protocol. |
 | `TomSmsSegmentation` | class | What a text costs: encoding, units, segments. |
 | `TomSmsEncoding` | enum | `gsm7`, `ucs2`. |
@@ -597,11 +613,14 @@ surface documented here.
 | `defaultAuditTrailTable` | Audit |
 | `defaultBlobChunkTable` | File Storage |
 | `defaultBlobManifestTable` | File Storage |
+| `defaultDeliveryReportTable` | Messaging |
 | `defaultJobRunTable` | Scheduling |
 | `defaultLeaseTable` | Scheduling |
 | `defaultNodeFailureSlack` | Scheduling |
 | `defaultOAuthStateTable` | Authentication |
 | `defaultSchedulerNodeTable` | Scheduling |
+| `deliveryReportTable` | Messaging |
+| `deliveryReportTableDdl` | Messaging |
 | `DoubleCol` | Object Persistence |
 | `DoubleLiteral` | Object Persistence |
 | `Eq` | Object Persistence |
@@ -830,9 +849,19 @@ surface documented here.
 | `TomDelegationResolver` | Authorization |
 | `TomDelete` | Datasources |
 | `TomDeliveredCode2FAService` | Authentication |
+| `TomDeliveryCallback` | Messaging |
+| `TomDeliveryCorrelation` | Messaging |
 | `TomDeliveryException` | Messaging |
 | `TomDeliveryOutcome` | Messaging |
 | `TomDeliveryReceipt` | Messaging |
+| `TomDeliveryReport` | Messaging |
+| `TomDeliveryReportEndpoint` | Messaging |
+| `TomDeliveryReportProtocol` | Messaging |
+| `TomDeliveryReportRow` | Messaging |
+| `TomDeliveryReportServer` | Messaging |
+| `TomDeliveryReportService` | Messaging |
+| `TomDeliveryReportStore` | Messaging |
+| `TomDeliveryState` | Messaging |
 | `TomDirectoryBlobStore` | File Storage |
 | `TomDirectoryExportStore` | Export |
 | `TomDoubleConfig` | Configuration |
@@ -865,6 +894,7 @@ surface documented here.
 | `TomExternalIdentityStore` | Authentication |
 | `TomExternalIdentityToken` | Authentication |
 | `TomExternalIdentityTokenRepository` | Authentication |
+| `TomFieldMappedDeliveryReportProtocol` | Messaging |
 | `TomFieldMappedSmsProtocol` | Messaging |
 | `TomFileAuditAnchorStore` | Audit |
 | `TomFileAuditSink` | Audit |
@@ -913,6 +943,7 @@ surface documented here.
 | `TomMemoryAuditAnchorStore` | Audit |
 | `TomMemoryAuditSink` | Audit |
 | `TomMemoryBlobStore` | File Storage |
+| `TomMemoryDeliveryReportStore` | Messaging |
 | `TomMemoryExportStore` | Export |
 | `TomMemoryExternalIdentityStore` | Authentication |
 | `TomMemoryMessageTransport` | Messaging |
@@ -1034,6 +1065,7 @@ surface documented here.
 | `TomSortField` | Object Persistence |
 | `TomSqlAuditSink` | Audit |
 | `TomSqlDatasourceRepository` | Object Persistence |
+| `TomSqlDeliveryReportStore` | Messaging |
 | `TomSqlFailureMode` | Datasources |
 | `TomSqlJobStore` | Scheduling |
 | `TomSqlLeaseLock` | Scheduling |

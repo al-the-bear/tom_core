@@ -129,6 +129,9 @@ final Map<String, String> _guardedElsewhere = {
   _migration('audit', '[3]-guard_tom_audit_trail_no_delete@immutable.sql'):
       'trigger, not a table — audit_sql_test.dart compares the file to '
       'auditTrailNoDeleteTriggerDdl',
+  _migration('messaging', '[1]-create_tom_delivery_report.sql'):
+      'descriptor table — framework_schema_test.dart converges the chain '
+      'against deliveryReportTable',
   _migration('file_storage', '[1]-create_tom_blob.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'file_storage_schema_test.dart compares the file to '

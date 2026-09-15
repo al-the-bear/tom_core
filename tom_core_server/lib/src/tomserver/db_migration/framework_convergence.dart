@@ -45,6 +45,7 @@ import '../datasources/framework_table.dart';
 import '../datasources/mariadb_sql_dialect.dart';
 import '../datasources/sql_dialects.dart';
 import '../file_storage/database_blob_sql.dart';
+import '../messaging/delivery_report_sql.dart';
 import '../object_persistence/annotation_analyzer.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../scheduling/sql_scheduling_sql.dart';
@@ -62,8 +63,8 @@ import 'schema_model.dart';
 /// be checked wherever someone remembered to add it.
 ///
 /// The direction of the dependency is deliberate: this module reaches into
-/// `scheduling/`, `file_storage/`, `audit/` and `authentication/` for their
-/// descriptors, and none of them reaches back. A deployment can run the
+/// `scheduling/`, `file_storage/`, `audit/`, `authentication/` and `messaging/`
+/// for their descriptors, and none of them reaches back. A deployment can run the
 /// scheduler without ever loading a migration.
 List<TomFrameworkTable> frameworkOwnedTables({
   String jobRun = defaultJobRunTable,
@@ -73,6 +74,7 @@ List<TomFrameworkTable> frameworkOwnedTables({
   String blobChunk = defaultBlobChunkTable,
   String auditTrail = defaultAuditTrailTable,
   String oauthState = defaultOAuthStateTable,
+  String deliveryReport = defaultDeliveryReportTable,
 }) => [
   jobRunTable(jobRun),
   leaseTable(lease),
@@ -81,6 +83,7 @@ List<TomFrameworkTable> frameworkOwnedTables({
   blobChunkTable(blobChunk),
   auditTrailTable(auditTrail),
   oauthStateTable(oauthState),
+  deliveryReportTable(deliveryReport),
 ];
 
 /// Compares framework-owned table descriptors against everything else that

@@ -153,6 +153,12 @@ void main() {
       ]);
     });
 
+    test('the messaging chain builds the delivery-report descriptor', () {
+      converges('example/messaging/migrations/main/tomcore', [
+        deliveryReportTable(defaultDeliveryReportTable),
+      ]);
+    });
+
     test('a chain that omits a column is reported, not tolerated', () {
       // The guard's own proof. Without it, all three tests above would still
       // pass against a comparison that reported nothing whatsoever.
@@ -201,6 +207,12 @@ void main() {
 
     test('the lease table', () {
       maps(leaseTable(defaultLeaseTable), [TomLeaseRow]);
+    });
+
+    test('the delivery-report index', () {
+      maps(deliveryReportTable(defaultDeliveryReportTable), [
+        TomDeliveryReportRow,
+      ]);
     });
 
     test('the roll call', () {
@@ -392,6 +404,39 @@ void main() {
           await _issuing(
             () => store.purgeExpired(DateTime.utc(2026, 7, 28, 12)),
           );
+          await _issuing(() => store.deleteAll());
+        },
+      );
+    });
+
+    test('the delivery-report store', () async {
+      final datasource = _RecordingDataSource();
+      final store = TomSqlDeliveryReportStore(datasource);
+      await audit(
+        datasource,
+        [deliveryReportTable(defaultDeliveryReportTable)],
+        () async {
+          await _issuing(
+            () => store.remember(
+              TomDeliveryCorrelation(
+                remoteId: 'SM1',
+                messageId: 'm1',
+                channel: TomMessageChannel.sms,
+                sentAt: DateTime.utc(2026, 9, 15, 12),
+              ),
+            ),
+          );
+          await _issuing(() => store.messageOf('SM1'));
+          await _issuing(
+            () => store.record(
+              TomDeliveryReport(
+                remoteId: 'SM1',
+                state: TomDeliveryState.delivered,
+                at: DateTime.utc(2026, 9, 15, 12, 5),
+              ),
+            ),
+          );
+          await _issuing(() => store.purgeSentBefore(DateTime.utc(2026, 9, 1)));
           await _issuing(() => store.deleteAll());
         },
       );

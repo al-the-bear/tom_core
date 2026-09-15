@@ -2,6 +2,41 @@
 
 ### Added
 
+- **Delivery reports are consumed (tcopen163).** `TomDeliveryReceipt.remoteId`
+  was written by every transport that had an id to give — SMTP from the relay's
+  accept text, SMS from the gateway answer, the stand-ins synthetically — and
+  read by nothing. So the module could report that a message was *paid for* and
+  never that it arrived, which for SMS is the whole difference.
+
+  Four pieces, deliberately separable:
+
+  - `TomDeliveryReport` / `TomDeliveryState` — what a carrier says became of a
+    message *after* accepting it. A state is not an outcome: a message can be
+    `TomDeliveryOutcome.delivered` and `TomDeliveryState.failed`. `expired` is
+    separate from `failed` because the remedies differ, and an unmapped carrier
+    status becomes `unknown` rather than `delivered`.
+  - `TomDeliveryReportStore` — the `remoteId` → message index, with
+    `TomMemoryDeliveryReportStore` and `TomSqlDeliveryReportStore` over the new
+    `tom_delivery_report` table. `TomMessageOutbox` takes an optional
+    `reportStore` and remembers each id as the receipt comes back, before the
+    run is completed — a carrier can post a status within the second.
+  - `TomDeliveryReportProtocol` / `TomFieldMappedDeliveryReportProtocol` — the
+    carrier's callback shape described in configuration rather than coded, the
+    same seam `TomSmsGatewayProtocol` is, and with no vendor presets for the
+    same reason.
+  - `TomDeliveryReportService` — `POST /messaging/delivery-report`.
+
+  **The endpoint is public and gated by a shared secret**, compared in constant
+  time. A carrier's callback is a machine on someone else's network with no
+  account here, so `@TomAuthenticatedAccess` would refuse every real report.
+  Nothing is installed by default and an uninstalled endpoint answers `503`:
+  the opposite default ships an open endpoint to anyone who mounts the
+  component.
+
+  The correlation index is its own table rather than the outbox's job store.
+  `TomJobStore` is addressed by run id and offers no lookup by any other field,
+  so `remoteId` → message would be a full scan of every run ever queued.
+
 - **A webhook transport (tcopen162).** `TomMessageChannel.webhook` was a named
   constant with nothing behind it, so a spec naming the channel resolved to no
   transport — the documented mitigation, a `TomNoOpMessageTransport`, runs the

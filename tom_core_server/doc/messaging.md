@@ -32,6 +32,14 @@ lets it be made on the merits rather than around a missing substrate.
   - [No signing](#no-signing)
   - [Classification](#classification)
     - [Failure keys](#failure-keys)
+- [Delivery Reports: What Happened After Acceptance](#delivery-reports-what-happened-after-acceptance)
+  - [Three pieces, and why they are separate](#three-pieces-and-why-they-are-separate)
+  - [Wiring it](#wiring-it)
+  - [Why an index rather than the job store](#why-an-index-rather-than-the-job-store)
+  - [The correlation table](#the-correlation-table)
+  - [The endpoint is public, and gated by a secret](#the-endpoint-is-public-and-gated-by-a-secret)
+    - [What a carrier is told](#what-a-carrier-is-told)
+    - [Failure keys](#failure-keys-1)
 - [Configuration and Secrets](#configuration-and-secrets)
 - [The MIME Document](#the-mime-document)
 - [Delivery Semantics: One Retry Mechanism](#delivery-semantics-one-retry-mechanism)
@@ -77,6 +85,12 @@ lets it be made on the merits rather than around a missing substrate.
 | `TomSmsSubmission` / `TomSmsGatewayRequest` / `TomSmsGatewayAnswer` / `TomSmsBodyFormat` | classes / enum | The values a protocol maps between, so `encode` and `decode` stay pure |
 | `TomSmsSegmentation` / `TomSmsEncoding` | class / enum | GSM 03.38 length arithmetic: the unit an SMS is actually billed in |
 | `TomWebhookTransport` / `TomWebhookSettings` | classes | Real delivery over HTTP: the message's own JSON POSTed to the URL that addresses it |
+| `TomDeliveryReport` / `TomDeliveryState` | class / enum | What a carrier says became of a message *after* accepting it |
+| `TomDeliveryCorrelation` / `TomDeliveryReportStore` | class / abstract class | The `remoteId` → message index |
+| `TomMemoryDeliveryReportStore` / `TomSqlDeliveryReportStore` / `TomDeliveryReportRow` | classes | That index in memory and in a table, and the row the driver hands back |
+| `deliveryReportTable` / `deliveryReportTableDdl` / `defaultDeliveryReportTable` | functions / constant | The correlation table, declared once — the DDL, the statements and the convergence guard all derive from it |
+| `TomDeliveryReportProtocol` / `TomFieldMappedDeliveryReportProtocol` / `TomDeliveryCallback` | abstract class / class / class | The carrier's callback shape, described rather than coded |
+| `TomDeliveryReportService` / `TomDeliveryReportServer` / `TomDeliveryReportEndpoint` | abstract class / classes | The inbound `POST /messaging/delivery-report` route and what answers it |
 | `TomMimeEncoder` | class | Renders a `TomMessage` as an RFC 5322 / MIME document |
 | `TomMessageOutbox` | class | The durable send queue in front of a router |
 | `TomTemplatedMessageService` | abstract class | The rule every channel shares: a message is a template key plus parameters |
@@ -539,6 +553,147 @@ and the receipt is logged.
 | `messaging.webhook.refused` | transient | The endpoint answered `408`, `425`, `429` or `5xx` |
 | `messaging.webhook.unreachable` | transient | The call failed or the endpoint did not answer within the timeout |
 | `messaging.webhook.bad_detail_cap` | — | `TomWebhookSettings` was built with a negative `maxDetailChars`; a `TomMessagingException` at construction, not a delivery failure |
+
+## Delivery Reports: What Happened After Acceptance
+
+A transport's receipt records that the far side took responsibility, and for SMS
+that is the *beginning* of delivery rather than the end. A gateway answers `202`
+and hands back an id; the handset is reached, or is not, minutes or hours later,
+and the carrier says so on a callback. `TomDeliveryReceipt.remoteId` exists
+precisely so that callback can be matched to the message.
+
+**The state a carrier reports is not the outcome a transport saw.** A message
+can be `TomDeliveryOutcome.delivered` and `TomDeliveryState.failed`: accepted
+for delivery, and then not delivered.
+
+| State | Meaning | What it is worth doing about |
+| ----- | ------- | ---------------------------- |
+| `delivered` | The carrier reached the recipient | — |
+| `failed` | It did not, and will not try again | Stop using the address |
+| `expired` | The carrier gave up after its own retry window | Worth re-sending later |
+| `unknown` | A report arrived carrying a status this module does not recognise | Read `detail`; a carrier added a status |
+
+`expired` is separated from `failed` because the remedies differ, and `unknown`
+is kept rather than dropped because the report *happened* — and because it is
+what an unmapped status maps to, which is what keeps a new carrier status from
+being read as success.
+
+### Three pieces, and why they are separate
+
+| Piece | What it does | Why it is not part of the next |
+| ----- | ------------ | ------------------------------ |
+| `TomDeliveryReportProtocol` | Maps a carrier's callback to reports | The wire shape is a vendor's; the correlation is not |
+| `TomDeliveryReportStore` | Remembers which message a `remoteId` belongs to | Durable and addressed by id; a protocol is pure |
+| `TomDeliveryReportService` | Receives the callback over HTTP | Needs the endpoints pipeline; the other two do not |
+
+The split is what lets a deployment whose gateway offers no callback still use
+the store — recording the correlation costs nothing, and a support engineer
+answering "was this delivered" can at least resolve an id — and lets one that
+receives reports some other way (a file drop, a queue consumer) reuse the
+protocol and the store without the endpoint.
+
+### Wiring it
+
+```dart
+final reports = TomSqlDeliveryReportStore.named('main');
+
+final outbox = TomMessageOutbox(
+  router: router,
+  store: jobStore,
+  reportStore: reports,          // remembers each carrier id
+);
+
+TomDeliveryReportEndpoint.install(
+  store: reports,
+  protocol: const TomFieldMappedDeliveryReportProtocol(
+    batchPath: 'statuses',
+    remoteIdPath: 'sid',
+    statusPath: 'status',
+    detailPath: 'message',
+    codePath: 'code',
+    atPath: 'occurredAt',
+  ),
+  secret: config.deliveryReportSecret,
+);
+```
+
+`reportStore` is optional and defaults to none: a deployment whose channels
+report nothing back configures none, and nothing about delivery changes. Only
+receipts that actually carry an id are remembered, so a transport with nothing
+to put there writes no row nobody could match.
+
+The correlation is written **before** the run is completed. A carrier can post a
+status within the second, and an index written afterwards would have a window in
+which the report is unmatchable.
+
+### Why an index rather than the job store
+
+The outbox already writes a run per message, so it is tempting to look the
+message up there. `TomJobStore` is addressed by run id and offers no lookup by
+any other field, so `remoteId` → message would be a full scan of every run ever
+queued. The index is its own small table —
+[`tom_delivery_report`](#the-correlation-table) — with the same memory-plus-SQL
+pair every other store in the framework has.
+
+### The correlation table
+
+`TomMemoryDeliveryReportStore` is right for a test and for a process that only
+cares while it runs; it is wrong for anything else, because a restart loses
+every id and the reports that arrive afterwards match nothing.
+`TomSqlDeliveryReportStore` is the durable half. Its DDL is declared once, as
+`deliveryReportTable()`, and shipped as a reference migration under
+`example/messaging/migrations/`; `test/framework_schema_test.dart` fails if the
+two drift apart.
+
+Nothing purges automatically. `purgeSentBefore` exists so the retention decision
+can be made — the index is a delivery audit trail, and how long to keep one is a
+deployment's call, exactly as `TomMessageOutbox.purgeFinished` leaves it.
+
+### The endpoint is public, and gated by a secret
+
+A carrier's callback is a machine on someone else's network with no account
+here. It cannot present a bearer token, so `@TomAuthenticatedAccess` — which the
+file endpoint uses and which the pipeline applies by default — would refuse
+every real report. The route is `@TomPublicAccess` and carries its own gate: a
+shared secret in the `x-tom-delivery-secret` header, compared in **constant
+time**.
+
+That is a weaker guarantee than a token, and it is stated rather than glossed.
+What the secret buys is that a passer-by cannot mark messages delivered; what it
+does not buy is confidentiality of the secret itself, which travels on every
+callback and is only as safe as the TLS under it. A deployment wanting more puts
+the endpoint behind a gateway that does mutual TLS and leaves the secret as the
+second factor.
+
+**Refusing is the default.** Nothing is installed until `install` is called, and
+an uninstalled endpoint answers `503` to everything. The opposite default ships
+an open endpoint to anyone who mounts the component without reading this
+paragraph. An empty secret is refused at installation, because a gate that lets
+everything through is worse than no gate — it reads like one.
+
+#### What a carrier is told
+
+| Situation | Status | Why |
+| --------- | ------ | --- |
+| report recorded | `200` | |
+| some of a batch matched | `200` | A carrier cannot act on "three of your five ids are unknown to me", and re-posting would re-report the ones that matched |
+| body carried no readable report | `400` | A carrier retries a `5xx` and gives up on a `4xx`; a malformed body will not parse on the second attempt either |
+| no correlation for the id | `404` | Not an error here — another deployment may share the carrier account — but the carrier's dashboard should show the mismatch |
+| secret missing or wrong | `401` | |
+| nothing installed | `503` | A `404` would read as "wrong URL" |
+
+#### Failure keys
+
+| Key | Answered with | Raised when |
+| --- | ------------- | ----------- |
+| `messaging.delivery_report.recorded` | `200` | At least one report in the callback matched a remembered id |
+| `messaging.delivery_report.not_configured` | `503` | The component is mounted and `install` was never called |
+| `messaging.delivery_report.unauthorized` | `401` | The shared secret is missing or wrong |
+| `messaging.delivery_report.unreadable` | `400` | The body is not JSON |
+| `messaging.delivery_report.no_report` | `400` | The body parsed and the protocol found no report in it |
+| `messaging.delivery_report.unknown_message` | `404` | Nothing was remembered under any id the callback named |
+| `messaging.delivery_report.empty_secret` | — | `install` was called with an empty secret; a `TomException` at installation, not a callback answer |
+| `messaging.delivery_report.unknown_datasource` | — | `TomSqlDeliveryReportStore.named` was given a data source that is not registered; a `TomServerException` at construction |
 
 ## Configuration and Secrets
 
@@ -1066,6 +1221,18 @@ produce either on demand.
   rendered in the recipient's locale and queued on the outbox.
 - **`TomSmsRequest` / `TomSmsService`** — the same for SMS, plus the segment
   budget.
+- **`TomDeliveryReport` / `TomDeliveryState` / `TomDeliveryCorrelation`** — what
+  a carrier says became of a message after accepting it, and the row that ties
+  its id back to the message.
+- **`TomDeliveryReportStore` / `TomMemoryDeliveryReportStore` /
+  `TomSqlDeliveryReportStore`** — the correlation index, in memory and in a
+  table.
+- **`TomDeliveryReportProtocol` / `TomFieldMappedDeliveryReportProtocol` /
+  `TomDeliveryCallback`** — the carrier's callback shape, described rather than
+  coded.
+- **`TomDeliveryReportService` / `TomDeliveryReportServer` /
+  `TomDeliveryReportEndpoint`** — the inbound route, and the static
+  configuration behind it.
 - **`TomMessagingException`** — the module's base error.
 
 ## Not Yet Implemented
@@ -1085,11 +1252,12 @@ produce either on demand.
   `email`, `sms` and `webhook` are implemented. The second is the evidence that
   the contract carries a channel it was not designed around; the third needed no
   widening of it at all.
-- **Delivery reports.** `TomDeliveryReceipt.remoteId` carries the gateway's id
-  precisely so an asynchronous status callback can be correlated with the
-  message that produced it, but nothing here consumes one. An SMS accepted by a
-  gateway is not an SMS that reached a handset, and this module currently knows
-  only the former.
+- **Nothing acts on a delivery report.** A report is recorded and published on
+  `TomDeliveryReportEndpoint.reports`, and the module draws no conclusion from
+  it: a `failed` state does not suppress the next message to that address, and
+  an `expired` one does not re-queue anything. Both are policy — whose address
+  to stop using, and when a re-send is worth paying for — and belong to the
+  notification model this module deliberately stops short of.
 - **Vendor protocol presets.** `TomFieldMappedSmsProtocol` can express the
   common gateways, but no per-vendor preset ships — see
   [Describing a gateway](#describing-a-gateway) for why.
@@ -1115,15 +1283,20 @@ produce either on demand.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `message_transport.dart`, `outbox.dart`, `sms_transport.dart`, `smtp_transport.dart`, `webhook_transport.dart` | `Future`, `Stream`, `StreamController`, `unawaited` |
-| `dart:convert` | dart | `message.dart`, `mime_encoder.dart`, `sms_transport.dart`, `smtp_transport.dart`, `webhook_transport.dart` | `Encoding`, `LineSplitter`, `base64`, `json`, `jsonDecode`, `jsonEncode` |
+| `dart:async` | dart | `delivery_report_endpoint.dart`, `message_transport.dart`, `outbox.dart`, `sms_transport.dart`, `smtp_transport.dart`, `webhook_transport.dart` | `Future`, `Stream`, `StreamController`, `unawaited` |
+| `dart:convert` | dart | `delivery_report_endpoint.dart`, `message.dart`, `mime_encoder.dart`, `sms_transport.dart`, `smtp_transport.dart`, `webhook_transport.dart` | `Encoding`, `LineSplitter`, `base64`, `json`, `jsonDecode`, `jsonEncode` |
 | `dart:io` | dart | `message_transport.dart`, `smtp_transport.dart` | `Socket` / `SecureSocket` |
 | `dart:math` | dart | `mime_encoder.dart` | `Random`, `min` |
 | `dart:typed_data` | dart | `message.dart` | `Uint8List` |
 | `async` | package | `smtp_transport.dart` | `StreamQueue` drives the SMTP line protocol |
 | `path` | package | `message_transport.dart` | file naming in `TomFileMessageTransport` |
-| `tom_core_kernel` | package | 7 of 10 files | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `tomLog`, and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport` and `TomWebhookTransport` reach their endpoints through, rather than a raw client, plus `TomHeader` for the `Content-Type` name |
+| `shelf` | package | `delivery_report_endpoint.dart` | `Request` / `Response`, because a carrier acts on the status code and the pipeline's own envelope would make every refusal a `500` |
+| `tom_core_kernel` | package | 9 of 14 files | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `TomDataSource`, `tomLog`, `TomHeader` / `TomMimeType`, and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport` and `TomWebhookTransport` reach their endpoints through, rather than a raw client |
 | `uuid` | package | `message.dart` | `UuidV4`, for a message id when the caller supplies none |
 | [configuration](configuration.md) | module | `sms_transport.dart`, `smtp_transport.dart` | `TomBaseServerConfiguration` |
-| [little_things](little_things.md) | module | `message.dart` | `TomServerException` |
+| [datasources](datasources.md) | module | `delivery_report_sql.dart`, `sql_delivery_report_store.dart` | `TomFrameworkTable` — the single declaration the DDL, the statements and the convergence guard all derive from — plus `TomDataSourceInfo` and `sqlInstant` |
+| [endpoints](endpoints.md) | module | `delivery_report_endpoint.dart` | `tomService` and `TomEndpoint`, the two annotations by which the pipeline discovers the callback route |
+| [little_things](little_things.md) | module | `message.dart`, `sql_delivery_report_store.dart` | `TomServerException` |
+| [object_persistence](object_persistence.md) | module | `sql_delivery_report_store.dart` | `TomDbTable` / `TomDbColumn` on the reflected row type the driver maps |
+| [resources](resources.md) | module | `email_service.dart`, `sms_service.dart` | `TomLocalizedTextResources` |
 | [resources](resources.md) | module | `email_service.dart`, `sms_service.dart`, `templated_message_service.dart` | `TomLocalizedTextResources` and `TomTextLocale`, which `TomTemplatedMessageService` resolves every template through (see `doc/resources.md`) |

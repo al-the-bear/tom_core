@@ -55,6 +55,7 @@ import 'dart:async';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'delivery_report.dart';
 import 'message.dart';
 import 'message_transport.dart';
 
@@ -99,6 +100,19 @@ class TomMessageOutbox implements TomClosable {
   /// pending, count failures, or purge history.
   final TomJobStore store;
 
+  /// Where a carrier's identifier for a delivered message is remembered, so a
+  /// later delivery report can be matched back to the message.
+  ///
+  /// `null` — the default — means the ids are not kept, which is the right
+  /// answer for a deployment whose channels report nothing back and the wrong
+  /// one for SMS: a gateway's acceptance is not a handset reached, and
+  /// `remoteId` is the only thread between the two.
+  ///
+  /// Only receipts that actually carry an id are remembered. A transport with
+  /// nothing to put there — the memory and file stand-ins mint one, SMTP takes
+  /// the relay's accept text — writes no row nobody could ever match.
+  final TomDeliveryReportStore? reportStore;
+
   final StreamController<TomDeliveryReceipt> _receipts =
       StreamController<TomDeliveryReceipt>.broadcast();
 
@@ -124,6 +138,7 @@ class TomMessageOutbox implements TomClosable {
   factory TomMessageOutbox({
     required TomMessageRouter router,
     TomJobStore? store,
+    TomDeliveryReportStore? reportStore,
     String jobName = tomOutboxJobName,
     TomRetryPolicy retryPolicy = const TomRetryPolicy(
       maxAttempts: 5,
@@ -144,6 +159,7 @@ class TomMessageOutbox implements TomClosable {
     return TomMessageOutbox._(
       router: router,
       store: queue,
+      reportStore: reportStore,
       jobName: jobName,
       clock: clock ?? DateTime.now,
       scheduler: TomScheduler(
@@ -162,6 +178,7 @@ class TomMessageOutbox implements TomClosable {
   TomMessageOutbox._({
     required this.router,
     required this.store,
+    required this.reportStore,
     required this.jobName,
     required this.scheduler,
     required DateTime Function() clock,
@@ -276,8 +293,26 @@ class TomMessageOutbox implements TomClosable {
   /// decision can be made.
   Future<int> purgeFinished(DateTime before) => store.purgeFinished(before);
 
-  /// Emits [receipt] to [receipts]. Called by the delivery body.
-  void _report(TomDeliveryReceipt receipt) {
+  /// Emits [receipt] to [receipts] and remembers its carrier id. Called by the
+  /// delivery body.
+  ///
+  /// The correlation is written *before* the run is completed, which is the
+  /// order that matters: a report can arrive while the process is still
+  /// recording the send — carriers are fast and some post the first status
+  /// within the second — and an index written afterwards would have a window in
+  /// which the report is unmatchable.
+  Future<void> _report(TomDeliveryReceipt receipt, TomMessage message) async {
+    final index = reportStore;
+    if (index != null && receipt.remoteId != null) {
+      await index.remember(
+        TomDeliveryCorrelation(
+          remoteId: receipt.remoteId!,
+          messageId: receipt.messageId,
+          channel: message.channel,
+          sentAt: receipt.at,
+        ),
+      );
+    }
     if (!_receipts.isClosed) _receipts.add(receipt);
   }
 
@@ -327,7 +362,7 @@ class _TomDeliveryCommand extends TomCommand {
     }
     final message = TomMessage.fromJson(payload);
     final receipt = await _outbox.router.send(message);
-    _outbox._report(receipt);
+    await _outbox._report(receipt, message);
     return receipt.toJson();
   }
 }

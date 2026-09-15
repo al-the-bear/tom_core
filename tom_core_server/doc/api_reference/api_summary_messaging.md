@@ -53,6 +53,19 @@ every channel's messages from resource keys.
   - [TomSmsService](#tomsmsservice)
   - [TomWebhookSettings](#tomwebhooksettings)
   - [TomWebhookTransport](#tomwebhooktransport)
+  - [TomDeliveryReport](#tomdeliveryreport)
+  - [TomDeliveryState](#tomdeliverystate)
+  - [TomDeliveryCorrelation](#tomdeliverycorrelation)
+  - [TomDeliveryReportStore](#tomdeliveryreportstore)
+  - [TomMemoryDeliveryReportStore](#tommemorydeliveryreportstore)
+  - [TomSqlDeliveryReportStore](#tomsqldeliveryreportstore)
+  - [TomDeliveryReportRow](#tomdeliveryreportrow)
+  - [TomDeliveryCallback](#tomdeliverycallback)
+  - [TomDeliveryReportProtocol](#tomdeliveryreportprotocol)
+  - [TomFieldMappedDeliveryReportProtocol](#tomfieldmappeddeliveryreportprotocol)
+  - [TomDeliveryReportEndpoint](#tomdeliveryreportendpoint)
+  - [TomDeliveryReportService](#tomdeliveryreportservice)
+  - [TomDeliveryReportServer](#tomdeliveryreportserver)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -66,7 +79,11 @@ Source: `lib/src/tomserver/messaging/email_service.dart`,
 `lib/src/tomserver/messaging/sms_transport.dart`,
 `lib/src/tomserver/messaging/smtp_transport.dart`,
 `lib/src/tomserver/messaging/templated_message_service.dart`,
-`lib/src/tomserver/messaging/webhook_transport.dart`.
+`lib/src/tomserver/messaging/webhook_transport.dart`,
+`lib/src/tomserver/messaging/delivery_report.dart`,
+`lib/src/tomserver/messaging/delivery_report_sql.dart`,
+`lib/src/tomserver/messaging/delivery_report_endpoint.dart`,
+`lib/src/tomserver/messaging/sql_delivery_report_store.dart`.
 
 The module separates three things a single `sendMail()` call conflates.
 *Composition* is `TomMessage` and the value types around it — `TomRecipient`
@@ -838,6 +855,7 @@ factory below.
 factory TomMessageOutbox({
   required TomMessageRouter router,
   TomJobStore? store,
+  TomDeliveryReportStore? reportStore,
   String jobName = tomOutboxJobName,
   TomRetryPolicy retryPolicy = const TomRetryPolicy(
     maxAttempts: 5,
@@ -865,6 +883,7 @@ all — are routinely measured in minutes.
 | `jobName` | `String` | The name the delivery job is registered under (final). |
 | `scheduler` | `TomScheduler` | The scheduler driving delivery; owned and closed by `close` (final). |
 | `store` | `TomJobStore` | The queue behind `scheduler`, exposed so a caller can inspect what is pending, count failures, or purge history (final). |
+| `reportStore` | `TomDeliveryReportStore?` | Where a carrier's identifier for a delivered message is remembered, so a later delivery report can be matched back to it. `null` — the default — means the ids are not kept, which is right for a deployment whose channels report nothing back and wrong for SMS. Only receipts that actually carry an id are remembered (final). |
 | `receipts` | `Stream<TomDeliveryReceipt>` | *(getter)* A broadcast stream of every delivery that reached a transport, including partial ones and discards. Failures are not here — they go to the scheduler's `TomJobAlertSink`. |
 
 #### Methods
@@ -1699,6 +1718,330 @@ TomWebhookTransport({
 | ------ | --------- | ----------- |
 | `send` | `Future<TomDeliveryReceipt> send(TomMessage message)` | *(override)* Permanent before any request leaves: a channel that is not `webhook`, an attachment, a copied recipient, more or fewer than one recipient (`messaging.webhook.not_one_endpoint`), or an address that is not an `http`/`https` URL (`messaging.webhook.bad_endpoint`). After the call: `2xx` is a `delivered` receipt carrying the answer as `detail`, `408`/`425`/`429`/`5xx` is transient (`messaging.webhook.refused`), any other status permanent (`messaging.webhook.rejected`), and an unreachable or unanswering endpoint transient (`messaging.webhook.unreachable`). |
 
+### TomDeliveryReport
+
+One thing a carrier said about one message, *after* accepting it. Tied to
+anything only by `remoteId` — the value a transport put in
+`TomDeliveryReceipt.remoteId`.
+
+`at` is the **carrier's** instant where the callback supplies one, not the
+moment the report was received: a report delayed by an hour of queueing
+describes an hour-old event, and stamping it with arrival time would make every
+latency measurement read zero.
+
+#### Constructors
+
+```dart
+TomDeliveryReport({
+  required String remoteId,
+  required TomDeliveryState state,
+  DateTime? at,
+  String? detail,
+  String? providerCode,
+})
+
+factory TomDeliveryReport.fromJson(Map<String, Object?> map)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `remoteId` | `final String` | The carrier's identifier for the message. |
+| `state` | `final TomDeliveryState` | What the carrier says became of it. |
+| `at` | `final DateTime` | When the carrier says that happened; arrival time when it gave none. |
+| `detail` | `final String?` | The carrier's own words, verbatim. |
+| `providerCode` | `final String?` | The carrier's status or error code. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `stateOf` | `static TomDeliveryState stateOf(String? name)` | The state `name` denotes, or `unknown`. Shared by the decoder and by every store that reads a state out of a column: a name written by one version and read by another must not throw, and an unrecognised state is exactly what `unknown` means. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | JSON-native values; absent rather than null for `detail` and `providerCode`. |
+| `toString` | `String toString()` | *(override)* The id, the state and the provider code when there is one. |
+
+### TomDeliveryState
+
+What became of a message after the far side accepted it. Distinct from
+`TomDeliveryOutcome`, and the distinction is the point: an outcome is what *this
+attempt* achieved, a state is what the carrier did with it afterwards. A message
+can be `TomDeliveryOutcome.delivered` and `TomDeliveryState.failed`.
+
+| Value | Meaning |
+| ----- | ------- |
+| `delivered` | The carrier says it reached the recipient. |
+| `failed` | It did not, and the carrier will not try again. |
+| `expired` | The carrier gave up after its own retry window. Separate from `failed` because the remedy differs: an expiry is worth re-sending later, a failure is an address to stop using. |
+| `unknown` | A report arrived carrying a status this module does not recognise. Kept rather than dropped — the report happened — and it is what an unmapped status maps to, which keeps a new carrier status from being read as success. |
+
+### TomDeliveryCorrelation
+
+What the module remembers about one sent message, so a later report can be
+attributed to it. One row per `remoteId`, because that is the only key a carrier
+callback carries; `messageId` is what a deployment actually wants back.
+
+#### Constructors
+
+```dart
+TomDeliveryCorrelation({
+  required String remoteId,
+  required String messageId,
+  required TomMessageChannel channel,
+  required DateTime sentAt,
+  TomDeliveryState? state,
+  DateTime? reportedAt,
+  String? detail,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `remoteId` | `final String` | The carrier's identifier — the row's identity. |
+| `messageId` | `final String` | The `TomMessage.id` it stands for. |
+| `channel` | `final TomMessageChannel` | Which channel delivered it, so a deployment routing several carriers through one endpoint can tell whose report it is reading. |
+| `sentAt` | `final DateTime` | When the transport accepted the message. |
+| `state` | `final TomDeliveryState?` | The last state reported, or `null` while none has arrived. |
+| `reportedAt` | `final DateTime?` | When that report was recorded. |
+| `detail` | `final String?` | The carrier's own words from that report. |
+| `isReported` | `bool` | *(getter)* Whether a report has been recorded. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `withReport` | `TomDeliveryCorrelation withReport(TomDeliveryReport report)` | This correlation with `report` applied. |
+| `toString` | `String toString()` | *(override)* The id, the message and either the state or `unreported`. |
+
+### TomDeliveryReportStore
+
+Remembers which message a carrier's id stands for, and the last report against
+it. Addressed by `remoteId` because that is the only key a callback carries.
+
+- **Abstract.** Implemented by `TomMemoryDeliveryReportStore` and
+  `TomSqlDeliveryReportStore`.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `remember` | `Future<void> remember(TomDeliveryCorrelation correlation)` | Records that the message was accepted under its remote id, replacing any row for the same id. A carrier re-using an id across messages could not be correlated at all, so the later message is the one worth keeping. |
+| `messageOf` | `Future<TomDeliveryCorrelation?> messageOf(String remoteId)` | The correlation for `remoteId`, or `null`. |
+| `record` | `Future<TomDeliveryCorrelation?> record(TomDeliveryReport report)` | Applies `report` and returns the updated row, or `null` when nothing was remembered under that id. A `null` is not an error: a report can arrive for a message this node never sent, or after the row was purged. |
+| `purgeSentBefore` | `Future<int> purgeSentBefore(DateTime before)` | Drops correlations for messages sent before `before`. Nothing purges automatically — the index is a delivery audit trail, and how long to keep one is a deployment's decision. |
+
+### TomMemoryDeliveryReportStore
+
+A `TomDeliveryReportStore` in memory. Right for tests and for a single process
+that only cares while it runs; wrong for anything else, because a restart loses
+every id and the reports that arrive afterwards match nothing — the same caveat
+`TomMessageOutbox` states about its own default store.
+
+- **Extends:** `TomDeliveryReportStore`
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `correlations` | `Iterable<TomDeliveryCorrelation>` | *(getter)* Everything remembered, for a test that wants to assert on the index. |
+
+### TomSqlDeliveryReportStore
+
+A `TomDeliveryReportStore` over a relational table — the durable half, and what
+a deployment needs, because a carrier's callback arrives minutes or hours after
+the send and a restart in between must not lose the only thing tying the two
+together.
+
+Every statement is derived from the single `deliveryReportTable` declaration, so
+the DDL this store issues, the columns its statements name and the model the
+convergence guard compares cannot come apart.
+
+- **Extends:** `TomDeliveryReportStore`
+
+#### Constructors
+
+```dart
+TomSqlDeliveryReportStore(
+  TomDataSource datasource, {
+  String table = defaultDeliveryReportTable,
+  bool createSchema = true,
+})
+
+factory TomSqlDeliveryReportStore.named(
+  String datasourceName, {
+  String table = defaultDeliveryReportTable,
+  bool createSchema = true,
+})
+```
+
+`named` throws a `TomServerException` keyed
+`messaging.delivery_report.unknown_datasource` when no such data source is
+registered — a configuration error far better caught at start-up than on the
+first callback.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `datasource` | `final TomDataSource` | The data source the table lives in. |
+| `table` | `final String` | The correlation table. |
+| `createSchema` | `final bool` | Whether to create the table on first use. Set it `false` when the schema is owned by the migration module. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `ensureSchema` | `Future<void> ensureSchema()` | Creates the table if it does not exist. Idempotent and called by every operation; exposed so a start-up sequence can provision before serving. |
+| `deleteAll` | `Future<void> deleteAll()` | Empties the table, for provisioning and for tests. |
+
+`remember` uses `REPLACE` rather than `INSERT`, unlike the OAuth state store: the
+outbox guarantees at-least-once, so re-sending a message already accepted can
+hand back an id already on file, and an insert that failed would turn a
+documented duplicate into an error. `record` reads the row back rather than
+believing the affected count — MariaDB reports *changed* rows, so a carrier
+repeating a status it already sent affects nothing and would otherwise be
+indistinguishable from an id nobody remembered.
+
+### TomDeliveryReportRow
+
+One row of the correlation table, as the driver hands it back. Instants are
+mapped as text and parsed by `parseSqlInstant`, matching every other framework
+store: the driver's own coercion differs by dialect, and that function is the
+single place the framework decides what a stored instant means.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `remoteId` | `String` | `remote_id` — the carrier's identifier. |
+| `messageId` | `String` | `message_id` — the message it stands for. |
+| `channel` | `String` | `channel` — which channel delivered it. |
+| `sentAt` | `String` | `sent_at`, as the stored `DATETIME(6)` text. |
+| `state` | `String?` | `state` — the last state reported, `null` while none has arrived. |
+| `reportedAt` | `String?` | `reported_at`, as the stored text. |
+| `detail` | `String?` | `detail` — the carrier's own words from that report. |
+
+### TomDeliveryCallback
+
+What a callback carried, independent of how it arrived — a value rather than the
+request itself, so a protocol can be driven from a file drop or a queue consumer
+as easily as from the endpoint, and so a protocol test needs no HTTP.
+
+#### Constructors
+
+```dart
+TomDeliveryCallback({
+  Object? body,
+  Map<String, String>? parameters,
+  Map<String, String>? headers,
+})
+```
+
+### TomDeliveryReportProtocol
+
+Turns a carrier's callback into reports. The same seam `TomSmsGatewayProtocol`
+is, for the same reason: the callback shape is a vendor's and changes when the
+vendor changes, so it is configuration rather than code. A protocol is **pure**,
+which is what makes every carrier's mapping testable without an HTTP server.
+
+- **Abstract.**
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `decode` | `List<TomDeliveryReport> decode(TomDeliveryCallback callback)` | The reports one callback carried. A list because carriers batch. An empty list for a body the protocol cannot read, which the endpoint answers `400` for — throwing would be worse, because a carrier retries a `500` and gives up on a `400`. |
+
+### TomFieldMappedDeliveryReportProtocol
+
+A protocol described by field names and status tokens. Expresses the common
+carriers without naming any of them, exactly as `TomFieldMappedSmsProtocol` does
+for the submission direction — and no vendor preset ships here either, for the
+reason stated there.
+
+- **Extends:** `TomDeliveryReportProtocol`
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `remoteIdPath` | `final String` | Dotted path to the carrier's message id within one report. |
+| `statusPath` | `final String` | Dotted path to the status token. |
+| `detailPath` | `final String?` | Dotted path to the carrier's description. |
+| `codePath` | `final String?` | Dotted path to the error or status code. |
+| `atPath` | `final String?` | Dotted path to the instant the carrier says the event happened. Parsed as ISO-8601; a value that does not parse leaves the report stamped with arrival time, because a bad timestamp is not a reason to refuse a status. |
+| `batchPath` | `final String?` | Dotted path to the array, when the carrier batches reports in one call. `null` means the body *is* one report. |
+| `deliveredStatuses` | `final Set<String>` | Tokens meaning `delivered`, lowercased. |
+| `failedStatuses` | `final Set<String>` | Tokens meaning `failed`. |
+| `expiredStatuses` | `final Set<String>` | Tokens meaning `expired`. |
+
+A status in none of the three sets is `TomDeliveryState.unknown`, never
+`delivered`: reading an unmapped status as success would report every new
+carrier state as a delivery.
+
+### TomDeliveryReportEndpoint
+
+The static configuration behind `TomDeliveryReportService`, and the handler.
+Static for the same reason the health module's analyzers are: a callback arrives
+before any request has established a zone, and the configuration has to be
+installable at start-up, before the bean context exists.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `routeUri` | `static const String` | `'/messaging/delivery-report'`. |
+| `secretHeader` | `static const String` | `'x-tom-delivery-secret'`. A header rather than a query parameter, because a URL is logged by every proxy in between and a secret in a log is a secret somebody has to rotate. |
+| `store` | `static TomDeliveryReportStore?` | *(getter)* The installed index, or `null`. |
+| `protocol` | `static TomDeliveryReportProtocol?` | *(getter)* The installed mapping, or `null`. |
+| `isGated` | `static bool` | *(getter)* Whether a secret has been installed. The secret itself is deliberately not readable: a getter returning it would put it in every diagnostic dump that walks a class's properties. |
+| `reports` | `static Stream<TomDeliveryCorrelation>` | *(getter)* Correlations as each report is recorded. Carries the correlation rather than the bare report, because "the order-confirmation message failed" is actionable and "the carrier id it came back under failed" is not. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `install` | `static void install({required TomDeliveryReportStore store, required TomDeliveryReportProtocol protocol, required String secret})` | Installs what the endpoint needs, logging at info. `secret` has no default: a deployment that supplies none gets a route that refuses everything, which is the safe direction for a public URL. Throws on an empty secret — a gate that lets everything through is worse than no gate, because it reads like one. |
+| `reset` | `static void reset()` | Puts the endpoint back to refusing. The supported spelling for a test, and it logs like the installation it is. |
+| `handle` | `static Future<Response> handle(Request request)` | Handles one callback. `200` recorded, `400` unreadable or no report, `401` secret missing or wrong, `404` no correlation for any id named, `503` nothing installed. |
+
+### TomDeliveryReportService
+
+The delivery-report service interface, mounted by the endpoints pipeline.
+`POST /messaging/delivery-report`, `@TomPublicAccess`, `logRequests: false`.
+
+Public because the caller is a carrier with no account here: it cannot present a
+bearer token, so `@TomAuthenticatedAccess` would refuse every real report. The
+shared secret is what gates it instead.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `deliveryReport` | `Future<Response> deliveryReport(Request request)` | The route. Returns a shelf `Response` rather than a value, because the status *is* the answer a carrier acts on — it retries a `5xx` and gives up on a `4xx` — and the pipeline's own envelope would make every refusal a `500`. |
+
+### TomDeliveryReportServer
+
+The default `TomDeliveryReportService` implementation. Holds no state — the
+configuration is `TomDeliveryReportEndpoint`'s and the request is the argument —
+so the pipeline may construct it itself when an application has registered no
+bean of its own.
+
+- **Implements:** `TomDeliveryReportService`
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `deliveryReport` | `Future<Response> deliveryReport(Request request)` | *(override)* Hands the request to `TomDeliveryReportEndpoint.handle`. |
+
 ## Global Functions and Constants
 
 ### Constants
@@ -1708,7 +2051,11 @@ TomWebhookTransport({
 | `tomMimeLineEnding` | `const String` | `\r\n`, the line ending every mail protocol requires. A bare `\n` is accepted by some servers and silently corrupts the message on others. |
 | `tomMimeMaxLineLength` | `const int` | `76` — the maximum line length RFC 5322 permits, excluding the line ending. |
 | `tomOutboxJobName` | `const String` | `'messaging.outbox'`, the default job name the outbox registers under. Stable across restarts by necessity: it is the store key tying queued runs to the definition that knows how to execute them. |
+| `defaultDeliveryReportTable` | `const String` | `'tom_delivery_report'`, the correlation index's table name when nothing overrides it. |
 
 ### Functions
 
-None — this module exposes no top-level functions.
+| Function | Signature | Description |
+| -------- | --------- | ----------- |
+| `deliveryReportTable` | `TomFrameworkTable deliveryReportTable(String table)` | The correlation table, declared **once**. The DDL `TomSqlDeliveryReportStore` issues, the column lists its statements interpolate and the schema model the convergence guard compares are all derived from this one declaration, so they cannot come apart. |
+| `deliveryReportTableDdl` | `String deliveryReportTableDdl(String table)` | The `CREATE TABLE` for a correlation table named `table` — what a deployment applies by hand when its database user may not run DDL and the store is constructed with `createSchema: false`. |

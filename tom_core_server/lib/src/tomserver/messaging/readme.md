@@ -112,6 +112,24 @@ message rather than a recipient, so a POST that succeeded at one endpoint and
 failed at another would be re-sent to both, and a webhook is not idempotent.
 Fan-out is two messages.
 
+### Delivery reports
+
+Source: `delivery_report.dart`, `delivery_report_sql.dart`,
+`sql_delivery_report_store.dart`, `delivery_report_endpoint.dart`
+
+A transport's receipt records that the far side *accepted* the message. What the
+carrier did with it afterwards arrives minutes or hours later, on a callback, and
+`TomDeliveryReceipt.remoteId` is the only thread between the two.
+
+| Type | What it is |
+| ---- | ---------- |
+| `TomDeliveryReport` · `TomDeliveryState` | What a carrier says became of a message. A state is not an outcome: a message can be `TomDeliveryOutcome.delivered` and `TomDeliveryState.failed`. |
+| `TomDeliveryCorrelation` | The `remoteId` → message row: which message an id stands for, and the last state reported. |
+| `TomDeliveryReportStore` · `TomMemoryDeliveryReportStore` · `TomSqlDeliveryReportStore` · `TomDeliveryReportRow` | The index. Memory is right for a test; the SQL store is what a deployment needs, because a callback that arrives after a restart must still match. |
+| `deliveryReportTable` · `deliveryReportTableDdl` · `defaultDeliveryReportTable` | The table, declared once — the DDL, the statements and the convergence guard all derive from it. |
+| `TomDeliveryReportProtocol` · `TomFieldMappedDeliveryReportProtocol` · `TomDeliveryCallback` | The carrier's callback shape, described in configuration rather than coded — the same seam `TomSmsGatewayProtocol` is, and with no vendor presets for the same reason. |
+| `TomDeliveryReportService` · `TomDeliveryReportServer` · `TomDeliveryReportEndpoint` | The inbound `POST /messaging/delivery-report` route. Public, because a carrier has no account here, and gated by a shared secret compared in constant time. Nothing is installed by default, and an uninstalled endpoint refuses everything. |
+
 ### The MIME document
 
 Source: `mime_encoder.dart`

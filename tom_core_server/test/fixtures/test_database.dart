@@ -485,6 +485,14 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $table');
   }
 
+  /// Drops the delivery-correlation table, for the same reason.
+  static Future<void> dropDeliveryReportTable(
+    TomDataSourceInfo dsi, {
+    String table = defaultDeliveryReportTable,
+  }) async {
+    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $table');
+  }
+
   /// Drops the `<schemaName>_versioning` table the migration orchestrator keeps.
   ///
   /// The orchestrator is idempotent by design: it skips a version it has already
