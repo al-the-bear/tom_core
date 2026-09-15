@@ -30,17 +30,35 @@ class _FixedAnalyzer extends TomHealthAnalyzer {
   Future<TomHealthStatus> analyzeHealth() async => status;
 }
 
+/// Collects the info-level lines the installer writes.
+class _InfoLog extends TomLogOutput {
+  final List<String> lines = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    final text = convertToString(message);
+    if (text.contains('TomHealthServer:')) {
+      lines.add(text);
+    }
+  }
+}
+
 /// The body of [response], read back.
 Future<String> _bodyOf(Response response) => response.readAsString();
 
 void main() {
-  // Restore both global analyzers after each test so swaps do not leak.
-  final liveness = TomHealthServer.livenessAnalyzer;
-  final readiness = TomHealthServer.readinessAnalyzer;
-  tearDown(() {
-    TomHealthServer.livenessAnalyzer = liveness;
-    TomHealthServer.readinessAnalyzer = readiness;
-  });
+  // Put the process back the way a fresh one starts, so installations do not
+  // leak between tests. One supported call, rather than a hand-written
+  // save-restore per global.
+  tearDown(TomHealthServer.resetHealthAnalyzers);
 
   group('the verdict and the message are two facts', () {
     test('a verdict carries the status code a probe acts on', () {
@@ -101,8 +119,8 @@ void main() {
       // The defect this closes: a load balancer's default check reads the
       // status code and nothing else, so a deployment watching its analyzer
       // correctly report a dead database still received traffic.
-      TomHealthServer.livenessAnalyzer = _FixedAnalyzer(
-        const TomHealthStatus.unhealthy('DEGRADED: db=false'),
+      TomHealthServer.installLivenessAnalyzer(
+        _FixedAnalyzer(const TomHealthStatus.unhealthy('DEGRADED: db=false')),
       );
       final response = await TomHealthServer().health();
       expect(response.statusCode, 503);
@@ -137,8 +155,8 @@ void main() {
       // The whole point of two routes. A dependency being down is a reason to
       // stop receiving traffic and not a reason for the process to be
       // restarted, so the readiness verdict must not reach the liveness route.
-      TomHealthServer.readinessAnalyzer = _FixedAnalyzer(
-        const TomHealthStatus.unhealthy('db=false'),
+      TomHealthServer.installReadinessAnalyzer(
+        _FixedAnalyzer(const TomHealthStatus.unhealthy('db=false')),
       );
 
       final ready = await TomHealthServer().ready();
@@ -158,8 +176,8 @@ void main() {
       // The control. Without it the assertion above is satisfied by a server
       // whose readiness analyzer is simply ignored on the other route by
       // accident rather than by design.
-      TomHealthServer.livenessAnalyzer = _FixedAnalyzer(
-        const TomHealthStatus.unhealthy('the isolate is gone'),
+      TomHealthServer.installLivenessAnalyzer(
+        _FixedAnalyzer(const TomHealthStatus.unhealthy('the isolate is gone')),
       );
 
       expect((await TomHealthServer().health()).statusCode, 503);
@@ -167,20 +185,124 @@ void main() {
     });
 
     test('they default to two instances, not one shared object', () {
-      // Assigning one must not change the other, which a shared default would
-      // not guarantee the moment somebody mutated an analyzer in place.
+      // Installing on one must not change the other, which a shared default
+      // would not guarantee the moment somebody mutated an analyzer in place.
       expect(
         TomHealthServer.livenessAnalyzer,
         isNot(same(TomHealthServer.readinessAnalyzer)),
       );
     });
 
-    test('the analyzer is shared across instances (static field)', () async {
-      TomHealthServer.livenessAnalyzer = _FixedAnalyzer(
-        const TomHealthStatus.unhealthy('CUSTOM'),
+    test('the analyzer is shared across instances (static state)', () async {
+      TomHealthServer.installLivenessAnalyzer(
+        _FixedAnalyzer(const TomHealthStatus.unhealthy('CUSTOM')),
       );
       expect((await TomHealthServer().health()).statusCode, 503);
       expect(await _bodyOf(await TomHealthServer().health()), 'CUSTOM');
+    });
+  });
+
+  group('installing an analyzer is a boundary, not an assignment', () {
+    test('the analyzers are read-only from outside the class', () {
+      // The point of the boundary. A public assignable static can be replaced
+      // by anything in the process at any moment, including after the server is
+      // serving, and the replacement leaves no trace. Read from the source that
+      // declares it, because `analyze` alone would not catch a getter growing a
+      // setter beside it.
+      final source = File(
+        'lib/src/tomserver/healthcheck/health_check.dart',
+      ).readAsStringSync();
+      expect(
+        source,
+        contains('static TomHealthAnalyzer get livenessAnalyzer'),
+        reason: 'the liveness analyzer is exposed by a getter',
+      );
+      expect(
+        source,
+        contains('static TomHealthAnalyzer get readinessAnalyzer'),
+        reason: 'the readiness analyzer is exposed by a getter',
+      );
+      expect(
+        source,
+        isNot(contains('set livenessAnalyzer')),
+        reason: 'a setter would put the unguarded assignment straight back',
+      );
+      expect(
+        source,
+        isNot(contains('set readinessAnalyzer')),
+        reason: 'a setter would put the unguarded assignment straight back',
+      );
+    });
+
+    test('installing announces the replacement, naming both types', () async {
+      // The trace an assignment did not leave. A deployment answering probes
+      // with the wrong analyzer can now read which one is installed and when it
+      // arrived, instead of inferring it from the body.
+      final log = _InfoLog();
+      final previousOutput = tomLog.logOutput;
+      final previousLevel = tomLog.logLevel;
+      addTearDown(() {
+        tomLog.logOutput = previousOutput;
+        tomLog.setLogLevel(previousLevel);
+      });
+      tomLog.logOutput = log;
+      tomLog.setLogLevel(TomLogLevel.all);
+
+      TomHealthServer.installReadinessAnalyzer(
+        _FixedAnalyzer(const TomHealthStatus.unhealthy('db=false')),
+      );
+
+      expect(log.lines, hasLength(1));
+      expect(log.lines.single, contains('readiness'));
+      expect(
+        log.lines.single,
+        contains('_FixedAnalyzer'),
+        reason: 'the incoming analyzer is what the reader is looking for',
+      );
+      expect(
+        log.lines.single,
+        contains('TomDefaultHealthAnalyzer'),
+        reason: 'naming the outgoing one is how a double install reads',
+      );
+    });
+
+    test('a reset is an installation, and says so', () async {
+      // A reset that went unrecorded would be the one replacement the log could
+      // not account for — and it is the one every test and example performs.
+      TomHealthServer.installLivenessAnalyzer(
+        _FixedAnalyzer(const TomHealthStatus.unhealthy('gone')),
+      );
+
+      final log = _InfoLog();
+      final previousOutput = tomLog.logOutput;
+      final previousLevel = tomLog.logLevel;
+      addTearDown(() {
+        tomLog.logOutput = previousOutput;
+        tomLog.setLogLevel(previousLevel);
+      });
+      tomLog.logOutput = log;
+      tomLog.setLogLevel(TomLogLevel.all);
+
+      TomHealthServer.resetHealthAnalyzers();
+
+      expect(log.lines, hasLength(2));
+      expect(log.lines.first, contains('liveness'));
+      expect(log.lines.last, contains('readiness'));
+      expect((await TomHealthServer().health()).statusCode, 200);
+    });
+
+    test('a reset restores two instances, not one shared object', () {
+      // The invariant a fresh process starts with. Handing both probes the same
+      // default would make an analyzer mutated in place answer both routes.
+      TomHealthServer.resetHealthAnalyzers();
+      expect(
+        TomHealthServer.livenessAnalyzer,
+        isA<TomDefaultHealthAnalyzer>().having(
+          (a) => identical(a, TomHealthServer.readinessAnalyzer),
+          'shares the readiness instance',
+          isFalse,
+        ),
+      );
     });
   });
 

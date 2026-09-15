@@ -87,10 +87,10 @@ class TomHealthStatus {
 ///   }
 /// }
 ///
-/// // Set globally before server starts. A dependency check belongs on
+/// // Install globally before the server starts. A dependency check belongs on
 /// // readiness: a database being down is a reason to stop receiving traffic
 /// // and not a reason for the process to be restarted.
-/// TomHealthServer.readinessAnalyzer = MyHealthAnalyzer();
+/// TomHealthServer.installReadinessAnalyzer(MyHealthAnalyzer());
 /// ```
 abstract class TomHealthAnalyzer {
   /// Analyzes the health of the server.
@@ -190,29 +190,32 @@ abstract class TomHealthService {
 ///
 /// Delegates each route to its own analyzer — [livenessAnalyzer] for `/health`,
 /// [readinessAnalyzer] for `/ready` — and turns the verdict it gets back into
-/// the response. Assign a custom [TomHealthAnalyzer] to either before server
+/// the response. Install a custom [TomHealthAnalyzer] on either before server
 /// startup to add real checks.
 @tomReflector
 @tomComponent
 class TomHealthServer implements TomHealthService {
+  static TomHealthAnalyzer _livenessAnalyzer = TomDefaultHealthAnalyzer();
+  static TomHealthAnalyzer _readinessAnalyzer = TomDefaultHealthAnalyzer();
+
   /// The analyzer every `GET /health` request is answered by — **liveness**.
   ///
-  /// Defaults to [TomDefaultHealthAnalyzer], which reports healthy. Replace it
-  /// with a custom implementation before the server starts.
+  /// Defaults to [TomDefaultHealthAnalyzer], which reports healthy. Install a
+  /// custom implementation with [installLivenessAnalyzer].
   ///
   /// Named for the question rather than for the module, now that there are two:
   /// a `healthAnalyzer` sitting beside a [readinessAnalyzer] reads as though it
   /// covered both.
   ///
-  /// It is `static`, so it is process-wide: one assignment applies to every
+  /// It is `static`, so it is process-wide: one installation applies to every
   /// request and to every [TomHealthServer] instance. There is no per-instance
   /// or per-request override.
-  static TomHealthAnalyzer livenessAnalyzer = TomDefaultHealthAnalyzer();
+  static TomHealthAnalyzer get livenessAnalyzer => _livenessAnalyzer;
 
   /// The analyzer every `GET /ready` request is answered by — **readiness**.
   ///
-  /// A separate instance rather than the same object, so assigning one does not
-  /// silently change the other.
+  /// A separate instance rather than the same object, so installing one does
+  /// not silently change the other.
   ///
   /// Defaults to always-ready, and that default is a choice worth naming. The
   /// cautious alternative — not ready until something says so — would make a
@@ -221,15 +224,71 @@ class TomHealthServer implements TomHealthService {
   /// and an empty load balancer. Always-ready keeps the framework's default a
   /// working server, and a deployment that has a real readiness question
   /// answers it here.
-  static TomHealthAnalyzer readinessAnalyzer = TomDefaultHealthAnalyzer();
+  static TomHealthAnalyzer get readinessAnalyzer => _readinessAnalyzer;
+
+  /// Installs [analyzer] as the process-wide liveness analyzer, logging the
+  /// replacement at info.
+  ///
+  /// Read-only storage with one installing function, rather than an assignable
+  /// field, because installation is the whole of the module's configuration and
+  /// it happens through a process-wide global. A bare public static can be
+  /// replaced by anything in the process at any moment — including after the
+  /// server is serving — and an assignment leaves no trace, so a deployment
+  /// answering a probe with the wrong analyzer has nothing to read. The log
+  /// line, naming the outgoing and incoming runtime types, is that trace.
+  ///
+  /// It is not sealed after startup, and deliberately: the analyzer has to be
+  /// replaceable before the bean context exists, which is what rules out making
+  /// it a bean, and the framework has no way to know when a given deployment
+  /// has finished installing. A seal nothing can call is dead code; a visible
+  /// late installation is the boundary that can actually be enforced.
+  static void installLivenessAnalyzer(TomHealthAnalyzer analyzer) =>
+      _livenessAnalyzer = _installed('liveness', _livenessAnalyzer, analyzer);
+
+  /// Installs [analyzer] as the process-wide readiness analyzer, logging the
+  /// replacement at info. See [installLivenessAnalyzer] for why installation
+  /// goes through a function.
+  static void installReadinessAnalyzer(TomHealthAnalyzer analyzer) =>
+      _readinessAnalyzer = _installed(
+        'readiness',
+        _readinessAnalyzer,
+        analyzer,
+      );
+
+  /// Installs a fresh [TomDefaultHealthAnalyzer] on both probes.
+  ///
+  /// The supported spelling for a test or an example that installed an analyzer
+  /// and wants the process back the way it found it. Each probe gets its own
+  /// instance, which is the state a fresh process starts in.
+  ///
+  /// It logs like any other installation, because it is one: a reset that went
+  /// unrecorded would be the one replacement the log could not account for.
+  static void resetHealthAnalyzers() {
+    installLivenessAnalyzer(TomDefaultHealthAnalyzer());
+    installReadinessAnalyzer(TomDefaultHealthAnalyzer());
+  }
+
+  /// Announces that [next] replaces [previous] on the [probe] analyzer, and
+  /// returns [next] for the caller to store.
+  static TomHealthAnalyzer _installed(
+    String probe,
+    TomHealthAnalyzer previous,
+    TomHealthAnalyzer next,
+  ) {
+    tomLog.info(
+      'TomHealthServer: $probe analyzer is now ${next.runtimeType}, '
+      'installed over ${previous.runtimeType}',
+    );
+    return next;
+  }
 
   @override
   Future<Response> health() async =>
-      responseFor(await livenessAnalyzer.analyzeHealth());
+      responseFor(await _livenessAnalyzer.analyzeHealth());
 
   @override
   Future<Response> ready() async =>
-      responseFor(await readinessAnalyzer.analyzeHealth());
+      responseFor(await _readinessAnalyzer.analyzeHealth());
 
   /// The HTTP response one [status] is served as.
   ///

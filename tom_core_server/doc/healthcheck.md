@@ -1,14 +1,16 @@
 # Health Check Module
 
-A ready-made `GET /health` endpoint for an orchestrator's liveness probe. The
-endpoint is public (no authentication) and unlogged, and returns a plain-text
-status string produced by a pluggable `TomHealthAnalyzer` — `"OK"` by default,
-or any descriptive string a custom analyzer returns.
+Ready-made `GET /health` and `GET /ready` endpoints for an orchestrator's
+liveness and readiness probes. Both are public (no authentication) and unlogged,
+and both return a plain-text status string produced by a pluggable
+`TomHealthAnalyzer` — `"OK"` by default, or any descriptive string a custom
+analyzer returns — with the verdict in the status code.
 
-One endpoint, one process-wide analyzer, one verdict. Liveness ("am I running")
-and readiness ("can I serve traffic") cannot be answered separately, so this is
-not a readiness endpoint — see
-[Two Questions, Two Routes](#two-questions-two-routes).
+Two routes, because liveness ("am I running") and readiness ("can I serve
+traffic") have opposite consequences — see
+[Two Questions, Two Routes](#two-questions-two-routes). Each has its own
+process-wide analyzer, installed through a function that records the
+replacement — see [Installing an Analyzer](#installing-an-analyzer).
 
 ## Table of Contents
 
@@ -17,6 +19,7 @@ not a readiness endpoint — see
 - [Two Questions, Two Routes](#two-questions-two-routes)
   - [Kubernetes](#kubernetes)
 - [Customizing the Health Check](#customizing-the-health-check)
+  - [Installing an Analyzer](#installing-an-analyzer)
 - [How It Is Wired](#how-it-is-wired)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
@@ -99,10 +102,10 @@ where a given check belongs.
 
 ```dart
 // Dependencies: a failure here empties the load balancer, and the pod lives.
-TomHealthServer.readinessAnalyzer = DependencyAnalyzer();
+TomHealthServer.installReadinessAnalyzer(DependencyAnalyzer());
 
 // The process itself: a failure here is a restart, so put very little in it.
-TomHealthServer.livenessAnalyzer = TomDefaultHealthAnalyzer();
+TomHealthServer.installLivenessAnalyzer(TomDefaultHealthAnalyzer());
 ```
 
 Most deployments need only the first. The liveness default answers `200` for as
@@ -143,10 +146,10 @@ class MyHealthAnalyzer extends TomHealthAnalyzer {
   }
 }
 
-// Set globally before the server starts. A dependency check belongs on
+// Install globally before the server starts. A dependency check belongs on
 // readiness: a database being down is a reason to stop receiving traffic and
 // not a reason for the process to be restarted.
-TomHealthServer.readinessAnalyzer = MyHealthAnalyzer();
+TomHealthServer.installReadinessAnalyzer(MyHealthAnalyzer());
 ```
 
 An analyzer returns a **verdict** and a **message**, and they are two facts
@@ -163,18 +166,50 @@ map to one of those two — a distinction no probe can act on — or invent a st
 code no orchestrator reads. Gradation belongs in the message, which is where
 `db=false, cache=true` says what a number cannot.
 
+### Installing an Analyzer
+
+`livenessAnalyzer` and `readinessAnalyzer` are read-only. Installation goes
+through a function:
+
+| Call | Effect |
+| ---- | ------ |
+| `TomHealthServer.installLivenessAnalyzer(a)` | `a` answers every `GET /health` |
+| `TomHealthServer.installReadinessAnalyzer(a)` | `a` answers every `GET /ready` |
+| `TomHealthServer.resetHealthAnalyzers()` | both probes go back to a fresh `TomDefaultHealthAnalyzer`, one instance each |
+
+**Each call logs at info, naming the outgoing and the incoming analyzer.** That
+line is the whole reason installation is a function rather than an assignment.
+The analyzers are process-wide globals, so anything in the process can replace
+one at any moment — including after the server is serving — and a bare
+assignment leaves no trace, which means a deployment answering probes with the
+wrong analyzer has nothing to read. The log line is that trace:
+
+```text
+INFO  TomHealthServer: readiness analyzer is now DependencyAnalyzer, installed over TomDefaultHealthAnalyzer
+```
+
+**Installation is not sealed after startup, and deliberately.** An analyzer has
+to be replaceable before the bean context exists, which is what rules out making
+it a bean, and the framework has no way to know when a given deployment has
+finished installing — so a seal would either be dead code or fire on a legitimate
+late install. A late installation is *visible* instead, which is the boundary
+that can actually be enforced.
+
+`resetHealthAnalyzers()` is the supported way back for a test or an example that
+installed an analyzer. It logs like any other installation, because it is one.
+
 ## How It Is Wired
 
 `TomHealthServer` is annotated `@tomComponent` and implements the
 `@tomService`-annotated `TomHealthService`, so the endpoints pipeline discovers
-it by reflection, resolves its bean, and mounts the `/health` route — no manual
-registration needed. The analyzer is a `static` field on `TomHealthServer`, so a
-single assignment applies to every request.
+it by reflection, resolves its bean, and mounts the `/health` and `/ready`
+routes — no manual registration needed. The analyzers are `static` state on
+`TomHealthServer`, so a single installation applies to every request.
 
 ## Not Yet Implemented
 
 - **The analyzers are process-wide.** `TomHealthServer.livenessAnalyzer` and
-  `readinessAnalyzer` are `static`, so one assignment answers every request on
+  `readinessAnalyzer` are `static`, so one installation answers every request on
   every isolate; there is no per-instance, per-port or per-request override. A
   deployment that wants two different *liveness* checks needs two processes.
 - **`analyzeHealth` is awaited with no deadline.** An analyzer that probes a
@@ -187,7 +222,9 @@ single assignment applies to every request.
 
 `test/healthcheck_test.dart` covers the surface a deployment drives directly:
 `TomDefaultHealthAnalyzer`'s verdict, each route delegating to its own analyzer,
-that the two are independent in both directions, and the declared routes. The
+that the two are independent in both directions, that installation is read-only
+from outside and announces every replacement including a reset, and the declared
+routes. The
 *mounted* routes are a different claim — they are produced by the
 reflection-based endpoints pipeline — so they are asserted where that pipeline
 runs, in `test/endpoints_pipeline_test.dart`, in the group named
@@ -215,8 +252,10 @@ it.
 - **`TomHealthService`** — the reflected service interface carrying the
   `GET /health` and `GET /ready` endpoint annotations.
 - **`TomHealthServer`** — the reflected default implementation; holds the two
-  global analyzers (`livenessAnalyzer`, `readinessAnalyzer`), delegates each
-  route to its own, and turns the verdict into the response with `responseFor`.
+  global analyzers (`livenessAnalyzer`, `readinessAnalyzer`) behind
+  `installLivenessAnalyzer` / `installReadinessAnalyzer` /
+  `resetHealthAnalyzers`, delegates each route to its own, and turns the verdict
+  into the response with `responseFor`.
 - **`TomHealthAnalyzer`** / **`TomDefaultHealthAnalyzer`** — the analyzer
   contract and its always-healthy default.
 - **`TomHealthStatus`** / **`TomHealthVerdict`** — what an analyzer concludes:

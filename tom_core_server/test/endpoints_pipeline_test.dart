@@ -1319,7 +1319,7 @@ void main() {
       TomBean.withType(FixtureApiServer, FixtureApiServer());
       TomBean.withType(TomHealthServer, TomHealthServer());
       TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
-      TomHealthServer.livenessAnalyzer = TomDefaultHealthAnalyzer();
+      TomHealthServer.resetHealthAnalyzers();
       router = TomEndpointRouting().initializeRouter();
     });
 
@@ -1455,10 +1455,8 @@ void main() {
       // Asserted through the *mounted* routes: a second `@TomEndpoint` on the
       // same service is exactly the declaration a reflection build can fail to
       // pick up, and nothing else would notice.
-      TomHealthServer.readinessAnalyzer = _DegradedAnalyzer();
-      addTearDown(
-        () => TomHealthServer.readinessAnalyzer = TomDefaultHealthAnalyzer(),
-      );
+      TomHealthServer.installReadinessAnalyzer(_DegradedAnalyzer());
+      addTearDown(TomHealthServer.resetHealthAnalyzers);
 
       final ready = await router.call(_get('/ready'));
       expect(ready.statusCode, 503);
@@ -1474,10 +1472,8 @@ void main() {
     });
 
     test('an unhealthy analyzer answers 503 through the mounted route', () async {
-      TomHealthServer.livenessAnalyzer = _DegradedAnalyzer();
-      addTearDown(
-        () => TomHealthServer.livenessAnalyzer = TomDefaultHealthAnalyzer(),
-      );
+      TomHealthServer.installLivenessAnalyzer(_DegradedAnalyzer());
+      addTearDown(TomHealthServer.resetHealthAnalyzers);
       // The route binds the same singleton server, whose health() delegates to
       // the now-unhealthy analyzer.
       final response = await router.call(_get('/health'));

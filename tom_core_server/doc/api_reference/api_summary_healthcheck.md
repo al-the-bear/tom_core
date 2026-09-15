@@ -28,7 +28,9 @@ public and unlogged: `GET /health` (**liveness** — am I running) and
 analyzer — `livenessAnalyzer` and `readinessAnalyzer` — and turns the
 `TomHealthStatus` it gets back into the response. Applications provide custom
 logic by extending `TomHealthAnalyzer` (overriding `analyzeHealth`) and
-assigning an instance to either before startup; both default to the shipped
+installing an instance on either before startup, through
+`installLivenessAnalyzer` / `installReadinessAnalyzer`, which log the
+replacement; both default to the shipped
 `TomDefaultHealthAnalyzer`, which always reports healthy.
 
 Two routes because the questions have **opposite consequences**: a failing
@@ -165,13 +167,16 @@ TomHealthServer()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `livenessAnalyzer` | `static TomHealthAnalyzer` | The analyzer every `GET /health` request is answered by (defaults to `TomDefaultHealthAnalyzer`). Named for the question rather than for the module, now that there are two: a `healthAnalyzer` beside a `readinessAnalyzer` would read as though it covered both. |
-| `readinessAnalyzer` | `static TomHealthAnalyzer` | The analyzer every `GET /ready` request is answered by — a separate instance, so assigning one does not silently change the other. Defaults to always-ready: "not ready until told" would leave a deployment that never configures readiness with an empty load balancer, a healthy process and a passing liveness probe — a failure with no visible cause. |
+| `livenessAnalyzer` | `static TomHealthAnalyzer get` | The analyzer every `GET /health` request is answered by (defaults to `TomDefaultHealthAnalyzer`). Read-only: install with `installLivenessAnalyzer`. Named for the question rather than for the module, now that there are two: a `healthAnalyzer` beside a `readinessAnalyzer` would read as though it covered both. |
+| `readinessAnalyzer` | `static TomHealthAnalyzer get` | The analyzer every `GET /ready` request is answered by — a separate instance, so installing one does not silently change the other. Defaults to always-ready: "not ready until told" would leave a deployment that never configures readiness with an empty load balancer, a healthy process and a passing liveness probe — a failure with no visible cause. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `installLivenessAnalyzer` | `static void installLivenessAnalyzer(TomHealthAnalyzer analyzer)` | Installs the process-wide liveness analyzer, logging the replacement at info with both runtime types. A function rather than a setter because the analyzer is a global anything in the process can replace at any moment, including mid-serving, and an assignment leaves no trace for a deployment to read. Not sealed after startup: the analyzer must be replaceable before the bean context exists, and the framework cannot know when a deployment has finished installing. |
+| `installReadinessAnalyzer` | `static void installReadinessAnalyzer(TomHealthAnalyzer analyzer)` | The same for the readiness analyzer. |
+| `resetHealthAnalyzers` | `static void resetHealthAnalyzers()` | Installs a fresh `TomDefaultHealthAnalyzer` on each probe — the state a new process starts in, one instance per probe. The supported way back for a test or an example; it logs like any other installation, because it is one. |
 | `health` | `Future<Response> health()` | *(override)* Delegates to `livenessAnalyzer.analyzeHealth()` and hands the result to `responseFor`. |
 | `ready` | `Future<Response> ready()` | *(override)* Delegates to `readinessAnalyzer.analyzeHealth()` and hands the result to `responseFor`. |
 | `responseFor` | `static Response responseFor(TomHealthStatus status)` | The HTTP response one status is served as: `status.statusCode`, the message as the body, and `text/plain` — set here because a handler returning a `Response` bypasses the endpoint's `produces`. Public and static so a deployment writing its own health route answers with the same shape rather than a second spelling of it. |

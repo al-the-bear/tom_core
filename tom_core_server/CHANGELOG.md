@@ -33,6 +33,27 @@
 
 ### Changed
 
+- **The health analyzers are installed, not assigned (tcopen155).**
+  `TomHealthServer.livenessAnalyzer` and `readinessAnalyzer` were bare public
+  mutable statics, read on every request. Anything in the process could replace
+  one at any moment — including after the server was serving — and the
+  replacement left no trace, so a deployment answering probes with the wrong
+  analyzer had nothing to read but the body.
+
+  Both are now read-only getters over private storage, installed through
+  `installLivenessAnalyzer` / `installReadinessAnalyzer`, which log the
+  replacement at info naming the outgoing and incoming runtime types.
+  `resetHealthAnalyzers()` puts both back to a fresh `TomDefaultHealthAnalyzer`
+  and is the one supported spelling for the save-restore the module's own tests
+  and example were each writing by hand.
+
+  Installation is **not** sealed after startup. The analyzer has to be
+  replaceable before the bean context exists, which is what rules out making it
+  a bean, and the framework cannot know when a deployment has finished
+  installing — so a seal would be either dead code or a refusal of a legitimate
+  late install. A visible late installation is the boundary that can be
+  enforced.
+
 - **`/health` answers `503` when the analyzer says the process cannot serve
   (tcopen153).** Every verdict was HTTP 200: `TomHealthAnalyzer.analyzeHealth`
   returned a `String` and there was no argument, return channel or thrown type

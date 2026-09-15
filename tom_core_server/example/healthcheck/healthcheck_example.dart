@@ -68,11 +68,9 @@ Future<void> run() async {
   //    else, so an unhealthy verdict that answered 200 would leave a broken
   //    process receiving traffic. The dependency check goes on *readiness*, for
   //    the reason step 4 shows.
-  final previous = TomHealthServer.readinessAnalyzer;
   try {
-    TomHealthServer.readinessAnalyzer = _DemoAnalyzer(
-      dbOk: true,
-      cacheOk: false,
+    TomHealthServer.installReadinessAnalyzer(
+      _DemoAnalyzer(dbOk: true, cacheOk: false),
     );
     final unhealthy = await server.ready();
     final body = await unhealthy.readAsString();
@@ -101,7 +99,9 @@ Future<void> run() async {
       'an unready process is still alive, and must not be restarted',
     );
   } finally {
-    TomHealthServer.readinessAnalyzer = previous;
+    // One supported call rather than a hand-written save-restore: the example
+    // is where a reader learns how to put the process back.
+    TomHealthServer.resetHealthAnalyzers();
   }
 
   print('\nHealth-check example completed.');

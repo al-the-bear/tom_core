@@ -34,6 +34,17 @@
 --    new one, never a manifest pointing at chunks still arriving.
 --  * chunk_count is what a download iterates, so a manifest and its chunks
 --    disagree loudly (a missing-chunk error) rather than quietly truncating.
+--  * chunk_size is the size every chunk but the last was written at, recorded
+--    rather than assumed because a ranged read divides a byte offset by it to
+--    name the first chunk row it needs. It is not derivable from the two columns
+--    above: ten bytes in two chunks is 6+4 or 9+1 or 5+5.
+--  * digest is the SHA-256 of the content as 64 lowercase hex characters, CHAR
+--    rather than VARCHAR because every value is exactly that width.
+--  * stored_at is DATETIME(6), which is the column agreeing with its writer:
+--    every DateTime the framework binds carries six fractional digits, and
+--    MariaDB silently rounds them onto a narrower column — so a plain DATETIME
+--    would hold a different moment, not a coarser one, and a read would not
+--    give back the value the write returned.
 --  * chunk_data is LONGTEXT and holds **base64**, not raw bytes: the MariaDB
 --    driver decodes every column value into a Dart String before the row mapper
 --    sees it, so a BLOB would come back mangled by UTF-8 decoding. Text is the
@@ -46,7 +57,9 @@ CREATE TABLE IF NOT EXISTS tom_blob (
   file_name   VARCHAR(255) NULL,
   byte_count  BIGINT       NOT NULL,
   chunk_count INT          NOT NULL,
-  stored_at   DATETIME     NOT NULL,
+  chunk_size  INT          NOT NULL,
+  digest      CHAR(64)     NOT NULL,
+  stored_at   DATETIME(6)  NOT NULL,
   PRIMARY KEY (storage_key)
 );
 
