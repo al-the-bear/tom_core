@@ -53,13 +53,30 @@ import 'request_id.dart';
 /// eroding into "the base class is fine anywhere". Anywhere else, name a
 /// subtype.
 class TomServerException extends TomException {
-  /// The debug name of the isolate that constructed this exception.
+  /// The debug name of the isolate that **raised** this exception.
   ///
   /// Resolved from `Isolate.current.debugName` at construction time, falling
   /// back to `"unnamed isolate"` when the current isolate has no debug name.
   ///
-  /// Final, so the attribution can be trusted: the isolate named here is the
-  /// one that raised the error, not one that later handled it.
+  /// **It names the origin and is deliberately never updated.** An exception
+  /// raised inside a pool worker and re-thrown in the main isolate still names
+  /// the worker, which is the whole point: the server spreads work across
+  /// identical isolates, so "which worker" is the question the message alone
+  /// cannot answer, and "which isolate is reading this" is the one question
+  /// whose answer is never useful. Resolving the name lazily would give exactly
+  /// that useless answer.
+  ///
+  /// So the value answers *where this failed*, not *where this surfaced*. A
+  /// reader wanting the latter has to record it at the rethrow site; nothing
+  /// here tracks a hop, because a trail would need every rethrow site to
+  /// cooperate and rethrow sites are where the least work is done.
+  ///
+  /// The name travels however the exception does. Within one isolate group —
+  /// which is what `Isolate.spawn`, `Isolate.run` and the server's isolate
+  /// pooling create — an exception handed over a `SendPort` arrives with this
+  /// field intact, so a worker's failure is still attributed to the worker
+  /// after the hand-off. That is measured rather than assumed:
+  /// `little_things_test.dart` sends one and reads it back.
   final String isolateName = Isolate.current.debugName ?? "unnamed isolate";
 
   /// Whether this exception is safe to propagate to the client.

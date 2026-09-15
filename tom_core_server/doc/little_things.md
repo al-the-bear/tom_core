@@ -148,6 +148,27 @@ back to `"unnamed isolate"` when the isolate has no debug name), and appends it
 to `toString()`. This makes a logged error self-identifying without the call
 site having to record the isolate explicitly.
 
+**The field answers "where did this fail", not "where did this surface".** It
+names the isolate of origin and is never updated afterwards: an exception raised
+inside a pool worker and re-thrown in the main isolate still names the worker.
+That is the reading worth having — the workers are identical, so *which one* is
+precisely what the message cannot say, while "which isolate is reading this"
+has an answer that is never useful. Resolving the name lazily, at `toString()`
+time, would give exactly that useless answer and destroy the attribution the
+field exists for.
+
+Nothing records a *hop*. A trail of the isolates an exception passed through
+would need every rethrow site to cooperate, and rethrow sites are where the
+least work is done; a reader who needs where-it-surfaced records it at the
+rethrow.
+
+**The name travels however the exception does.** Within one isolate group —
+which is what `Isolate.spawn`, `Isolate.run` and the server's own isolate
+pooling create — an exception handed over a `SendPort` arrives with the field
+intact, so a worker's failure is still attributed to the worker after the
+hand-off. That is measured, not assumed: `test/little_things_test.dart` spawns a
+named worker, sends one back, and reads the name on the other side.
+
 ## Request Correlation
 
 `tomDefaultAuthenticationMiddleware` sets a `TomRequestId` in the zone for the
@@ -383,7 +404,8 @@ without either reaching the other.
 
 `test/little_things_test.dart` covers all four types the module contributes:
 `TomRequestId` and the zone it is read out of, `TomServerException`'s isolate
-attribution, its `clientThrow` flag and the `clientMessage` read that honours
+attribution — including that the name survives an isolate hop and still names
+the origin — its `clientThrow` flag and the `clientMessage` read that honours
 it, the request correlation it picks up, the
 one subclass declared beside it (`TomLoginException`) with its `TomLoginFailure`
 reason and the values that set deliberately omits, and `tomErrorEnvelope` — the

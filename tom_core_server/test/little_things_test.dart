@@ -31,6 +31,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:isolate';
 
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
@@ -129,6 +130,65 @@ void main() {
         final s = TomServerException('K', 'm', clientThrow: false).toString();
         expect(s, endsWith('client-throw: false request: ${requestId.uuid}'));
       }, zoneValues: {TomRequestId: requestId});
+    });
+  });
+
+  group('isolate attribution names the origin, not the reader', () {
+    // The field exists so a failure can be attributed to one of several
+    // identical workers — the server spreads work across an isolate pool, and
+    // the message alone is ambiguous. That only works if the name travels with
+    // the exception, which is the property these three pin. Resolving the name
+    // lazily instead would report whichever isolate happened to read it, which
+    // is the one isolate that is never the answer.
+
+    test('an exception raised in a worker names the worker', () async {
+      final reader = Isolate.current.debugName;
+      Object? caught;
+      try {
+        await Isolate.run(
+          () => throw TomServerException('probe.run', 'raised in a worker'),
+          debugName: 'attribution-worker',
+        );
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught, isA<TomServerException>());
+      expect((caught as TomServerException).isolateName, 'attribution-worker');
+      expect(
+        caught.isolateName,
+        isNot(reader),
+        reason: 'the name must not follow the isolate that caught it',
+      );
+    });
+
+    test('and it survives being sent over a port', () async {
+      // The half that had been assumed lost. An exception handed across a
+      // SendPort is not the same object on the other side, so the question is
+      // whether the field arrives at all — and within one isolate group, which
+      // is what Isolate.spawn, Isolate.run and the server's isolate pooling
+      // create, it does.
+      final port = ReceivePort();
+      await Isolate.spawn<SendPort>(
+        (SendPort reply) =>
+            reply.send(TomServerException('probe.port', 'raised in a worker')),
+        port.sendPort,
+        debugName: 'port-worker',
+      );
+      final received = await port.first;
+      port.close();
+
+      expect(received, isA<TomServerException>());
+      expect((received as TomServerException).isolateName, 'port-worker');
+    });
+
+    test('an exception built here names this isolate', () {
+      // The control. Without it the two above are satisfied by a field that is
+      // simply always a string somebody else set.
+      expect(
+        TomServerException('K', 'm').isolateName,
+        Isolate.current.debugName,
+      );
     });
   });
 

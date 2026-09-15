@@ -129,7 +129,7 @@ Copies the current zone's `TomRequestId` UUID into `requestUuid` when present.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `isolateName` | `final String` | The debug name of the isolate that constructed this exception (falls back to `"unnamed isolate"`). |
+| `isolateName` | `final String` | The debug name of the isolate that **raised** this exception (falls back to `"unnamed isolate"`). It names the origin and is never updated: an exception raised in a pool worker and re-thrown in the main isolate still names the worker, which is the reading worth having — the workers are identical, so *which one* is what the message cannot say. It answers "where did this fail", not "where did this surface", and no hop is recorded. The name survives a `SendPort` hand-off within an isolate group. |
 | `clientThrow` | `final bool` | Whether this exception is safe to propagate to the client (default `true`). Fixed at construction — a catch site that must not surface a particular failure masks it in the response it builds. Read it through `clientMessage`, not by hand: the flag binds the value, not the handler. |
 
 #### Methods

@@ -33,6 +33,25 @@
 
 ### Changed
 
+- **`isolateName` says which question it answers (tcopen160).** The field
+  captures `Isolate.current.debugName` at construction, so an exception raised
+  in a pool worker and re-thrown in the main isolate names the worker. That is
+  the reading worth having — the workers are identical, so *which one* is
+  exactly what the message cannot say — but no document said so, and a reader
+  taking it for "where this surfaced" got a wrong answer with no warning.
+
+  The dartdoc, `doc/little_things.md` and the API summary now state that it
+  names the **origin** and is never updated, that no hop is recorded, and why
+  resolving it lazily would be strictly worse: it would report whichever isolate
+  happened to read it, the one isolate whose identity is never the answer.
+
+  The open end also claimed the field is lost when an exception crosses a
+  `SendPort`. Measured, and it is not: within one isolate group — what
+  `Isolate.spawn`, `Isolate.run` and the server's pooling create — the exception
+  arrives with the field intact. `little_things_test` now spawns a named worker,
+  sends one back and reads the name on the other side, so the guarantee is
+  pinned rather than asserted.
+
 - **`clientThrow` has a sanctioned read (tcopen159).** The flag marks whether an
   exception's `defaultUserMessage` may be shown to a caller, and five types in
   the package set it `false` because their messages describe server internals —
