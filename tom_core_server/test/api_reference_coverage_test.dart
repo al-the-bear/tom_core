@@ -8393,9 +8393,9 @@ class After {}
     });
 
     test('a limitation the source has closed is reported', () {
-      // Each of the three read independently, so a parser that answered
-      // `false` to everything would pass the group above by accident. Feed it a
-      // source in which all three are fixed and check it says so.
+      // The finding above is a single flag, and a reader that answered
+      // `false` to everything would pass the group by accident. Feed it a
+      // source in which the limitation is fixed and check it says so.
       final fixed = _serverLimitationsOf(const [
         'Response? Function(Request, Object, StackTrace) errorHandler =',
         '    (request, error, stacktrace) {',
@@ -8409,13 +8409,77 @@ class After {}
         '      .addHandler(routerHandler);',
         '  return await serve(handler, ip, port);',
         '}',
-        '',
-        '(TomPrincipal?, TomClientJwtToken?) '
-            'extractAuthentication(Request r) {',
-        '  return (principalOf(r), tokenOf(r));',
-        '}',
       ]);
       expect(fixed.defaultErrorHandlerAlwaysFails, isFalse);
+    });
+  });
+
+  // `extractAuthentication` answers with a named outcome as well as with a
+  // principal and a token, because `(null, null)` is the answer to four
+  // different requests and an operator cannot act on a value that cannot tell
+  // them apart. Three of the four can be produced by sending a header, and
+  // `test/server_test.dart` sends one for each. The fourth cannot: a verified
+  // token whose claims yield no principal is refused by `TomClientJwtToken`
+  // before the converter is reached, so the guard that answers
+  // `noPrincipal` is defensive and no request reaches it.
+  //
+  // An unreachable branch can still be pinned by the shape of the function,
+  // and that is what this group does — every value the enum declares is
+  // answered somewhere in the extractor, and nothing else is. It fails when a
+  // value is added that nothing returns (a name with no meaning), and when a
+  // branch is changed to answer with the wrong one (the defensive guard
+  // quietly folded into `unreadableToken`, say, which would put a non-null
+  // token behind an outcome that says there is none).
+  group('extractAuthentication answers every outcome it declares', () {
+    const source = 'lib/src/tomserver/server/server.dart';
+
+    List<String> lines() => File(source).readAsLinesSync();
+
+    test('the declared values and the answered values are the same set', () {
+      final declared = _credentialOutcomeValuesOf(lines());
+      expect(
+        _credentialOutcomesAnsweredIn(lines()),
+        declared.toSet(),
+        reason:
+            'every value of `TomCredentialOutcome` has to be an answer '
+            '`extractAuthentication` gives, and every answer it gives has to '
+            'be a declared value',
+      );
+    });
+
+    test('the parser found the enum it claims to have read', () {
+      // Both halves above are set comparisons, and two empty sets are equal:
+      // a parser that recovered nothing would pronounce the pair in agreement.
+      expect(
+        _credentialOutcomeValuesOf(lines()),
+        containsAll(const [
+          'noCredentials',
+          'unsupportedScheme',
+          'unreadableToken',
+          'noPrincipal',
+          'authenticated',
+        ]),
+      );
+    });
+
+    test('a value nothing returns is reported', () {
+      const invented = [
+        'enum TomCredentialOutcome {',
+        '  noCredentials,',
+        '  invented,',
+        '}',
+        '',
+        '(TomPrincipal?, TomClientJwtToken?, TomCredentialOutcome) '
+            'extractAuthentication(',
+        '  Request req,',
+        ') {',
+        '  return (null, null, TomCredentialOutcome.noCredentials);',
+        '}',
+      ];
+      expect(
+        _credentialOutcomesAnsweredIn(invented),
+        isNot(_credentialOutcomeValuesOf(invented).toSet()),
+      );
     });
   });
 
@@ -9076,16 +9140,60 @@ List<String> _disownedFileComplaints(
               'the guide is disowning something the module ships',
 ];
 
+/// The values `enum TomCredentialOutcome` declares, read from [lines].
+///
+/// A value is a bare identifier on its own line inside the enum body, which is
+/// how the enum is written and how the formatter keeps it.
+List<String> _credentialOutcomeValuesOf(List<String> lines) {
+  final values = <String>[];
+  var inEnum = false;
+  for (final line in lines) {
+    if (!inEnum) {
+      if (line.startsWith('enum TomCredentialOutcome {')) inEnum = true;
+      continue;
+    }
+    if (line == '}') break;
+    final match = RegExp(r'^  ([a-z]\w*),$').firstMatch(line);
+    if (match != null) values.add(match.group(1)!);
+  }
+  return values;
+}
+
+/// The outcomes `extractAuthentication` actually answers with, read from
+/// [lines].
+///
+/// Scoped to that function's body: a `TomCredentialOutcome` named in the
+/// middleware, or in a doc comment above the enum, is not an answer the
+/// extractor gives.
+Set<String> _credentialOutcomesAnsweredIn(List<String> lines) {
+  final answered = <String>{};
+  var inFunction = false;
+  for (final line in lines) {
+    if (!inFunction) {
+      if (line.contains('extractAuthentication(')) inFunction = true;
+      continue;
+    }
+    if (line == '}') break;
+    if (line.trimLeft().startsWith('///')) continue;
+    for (final match in RegExp(
+      r'TomCredentialOutcome\.(\w+)',
+    ).allMatches(line)) {
+      answered.add(match.group(1)!);
+    }
+  }
+  return answered;
+}
+
 /// The one limitation `doc/server.md` records, as the source still shows it.
 ///
 /// There were four. `extractAuthentication` could not report a bad token and now
-/// reports both of its failures; `start()` could not be awaited and handed back
-/// no handle, and now returns the bound `HttpServer`; a request rejected during
-/// authentication produced no access-log line, and the logging middleware now
-/// sits above both error layers. In each case the guide says so where the
-/// bullet was, and the flag that measured it went with the bullet — a flag kept
-/// after its limitation is fixed only ever asserts that the fix is still
-/// absent.
+/// reports every way one can fail, by a named outcome as well as in the log;
+/// `start()` could not be awaited and handed back no handle, and now returns
+/// the bound `HttpServer`; a request rejected during authentication produced no
+/// access-log line, and the logging middleware now sits above both error
+/// layers. In each case the guide says so where the bullet was, and the flag
+/// that measured it went with the bullet — a flag kept after its limitation is
+/// fixed only ever asserts that the fix is still absent.
 typedef _ServerLimitations = ({bool defaultErrorHandlerAlwaysFails});
 
 /// Reads the remaining limitation out of [lines].
@@ -9094,19 +9202,6 @@ typedef _ServerLimitations = ({bool defaultErrorHandlerAlwaysFails});
 /// builds — so that fixing it flips exactly this flag.
 _ServerLimitations _serverLimitationsOf(List<String> lines) {
   final joined = lines.join('\n');
-
-  // The extractor's body, so an empty catch elsewhere in the file does not
-  // stand in for the two that make a bad token unreportable.
-  final extractor = <String>[];
-  var inExtractor = false;
-  for (final line in lines) {
-    if (!inExtractor) {
-      if (line.contains('extractAuthentication(Request')) inExtractor = true;
-      continue;
-    }
-    if (line == '}') break;
-    extractor.add(line);
-  }
 
   return (
     // The default handler is a field initialiser, and `internalServerError` is

@@ -567,6 +567,7 @@ surface documented here.
 | ---- | ---- | ----------- |
 | `TomServer` | class | The HTTP server. |
 | `TomRequestLogInfo` | class | Per-request log record. |
+| `TomCredentialOutcome` | enum | Why a request carries the credentials it does. |
 | `contextSetupMiddleware` | function | Establishes the execution context per request. |
 | `extractAuthentication` | function | Extracts principal + JWT from a request. |
 | `tomDefaultAuthenticationMiddleware` | function | Default auth middleware. |
@@ -812,6 +813,7 @@ surface documented here.
 | `tomConsumesMultipartForm` | Endpoints |
 | `TomCount` | Datasources |
 | `TomCountResult` | Object Persistence |
+| `TomCredentialOutcome` | Server |
 | `TomCsvRenderer` | Export |
 | `TomDartType` | Object Persistence |
 | `TomDatabaseBlobStore` | File Storage |

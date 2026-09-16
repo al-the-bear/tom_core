@@ -70,6 +70,18 @@ String _withEditedPayload(
   return '${parts[0]}.$edited.${parts[2]}';
 }
 
+/// Every [length]-character window of [value].
+///
+/// A leak does not have to be the whole credential to be a leak: a decoder
+/// that quotes the first line of what it choked on writes a slice, and a slice
+/// of a signature is still material nobody should be able to read out of an
+/// access log.
+Iterable<String> _slicesOf(String value, int length) sync* {
+  for (var i = 0; i + length <= value.length; i++) {
+    yield value.substring(i, i + length);
+  }
+}
+
 Request _get([Map<String, String>? headers]) =>
     Request('GET', Uri.parse('http://localhost/resource'), headers: headers);
 
@@ -129,13 +141,13 @@ void main() {
 
   group('extractAuthentication', () {
     test('returns (null, null) when no Authorization header is present', () {
-      final (principal, token) = extractAuthentication(_get());
+      final (principal, token, _) = extractAuthentication(_get());
       expect(principal, isNull);
       expect(token, isNull);
     });
 
     test('returns (null, null) for a non-bearer scheme', () {
-      final (principal, token) = extractAuthentication(
+      final (principal, token, _) = extractAuthentication(
         _get({'authorization': 'Basic dXNlcjpwYXNz'}),
       );
       expect(principal, isNull);
@@ -143,7 +155,7 @@ void main() {
     });
 
     test('returns (null, null) for a malformed bearer token', () {
-      final (principal, token) = extractAuthentication(
+      final (principal, token, _) = extractAuthentication(
         _get({'authorization': 'Bearer not-a-jwt'}),
       );
       expect(principal, isNull);
@@ -151,7 +163,7 @@ void main() {
     });
 
     test('accepts a token this deployment signed', () {
-      final (principal, token) = extractAuthentication(
+      final (principal, token, _) = extractAuthentication(
         _get({
           'authorization': 'Bearer ${_signed({'userId': 'u'})}',
         }),
@@ -170,7 +182,7 @@ void main() {
         _signed({'userId': 'u', 'role': 'user'}),
         (claims) => claims['role'] = 'admin',
       );
-      final (principal, token) = extractAuthentication(
+      final (principal, token, _) = extractAuthentication(
         _get({'authorization': 'Bearer $forged'}),
       );
       expect(token, isNull, reason: 'an edited payload must not decode at all');
@@ -184,7 +196,7 @@ void main() {
       final foreign = jwt
           .JWT({'userId': 'u'}, issuer: 'other-server')
           .sign(jwt.SecretKey('a-different-secret'));
-      final (principal, token) = extractAuthentication(
+      final (principal, token, _) = extractAuthentication(
         _get({'authorization': 'Bearer $foreign'}),
       );
       expect(token, isNull);
@@ -202,10 +214,173 @@ void main() {
       final expired = TomServerJwtToken({
         'userId': 'u',
       }, expiresIn: const Duration(hours: -1)).getJWT('issuer');
-      final (_, token) = extractAuthentication(
+      final (_, token, _) = extractAuthentication(
         _get({'authorization': 'Bearer $expired'}),
       );
       expect(token, isNotNull);
+    });
+  });
+
+  // Four requests arrive without credentials and answer `(null, null)` alike:
+  // one that sent no header, one that sent a scheme this server does not
+  // speak, one whose token would not verify, and one whose verified token
+  // yielded no principal. Those are an anonymous caller, a misconfigured
+  // client, a rotated signing key and a malformed claim set — four different
+  // things to do about them, and until the outcome element existed the
+  // module's own trace line read the same for all four.
+  group('extractAuthentication says why a request is anonymous', () {
+    late _CapturingLogOutput captured;
+    late TomLogOutput installed;
+
+    setUp(() {
+      installed = tomLog.logOutput;
+      captured = _CapturingLogOutput();
+      tomLog.logOutput = captured;
+    });
+
+    tearDown(() => tomLog.logOutput = installed);
+
+    TomCredentialOutcome outcomeOf(String? header) => extractAuthentication(
+      _get(header == null ? null : {'authorization': header}),
+    ).$3;
+
+    String written() => captured.messages.join('\n');
+
+    test(
+      'the three reachable ways of arriving anonymous are three answers',
+      () {
+        expect(outcomeOf(null), TomCredentialOutcome.noCredentials);
+        expect(
+          outcomeOf('Basic dXNlcjpwYXNz'),
+          TomCredentialOutcome.unsupportedScheme,
+        );
+        expect(
+          outcomeOf('Bearer not-a-jwt'),
+          TomCredentialOutcome.unreadableToken,
+        );
+      },
+    );
+
+    test('a token this deployment signed reports authenticated', () {
+      expect(
+        outcomeOf('Bearer ${_signed({'userId': 'u'})}'),
+        TomCredentialOutcome.authenticated,
+      );
+    });
+
+    test('the scheme is matched case-insensitively, as RFC 7235 requires', () {
+      // The scheme is a case-insensitive token in the grammar, so a client
+      // that sends `bearer` is conformant. Matching it case-sensitively made
+      // every one of its requests anonymous, and wrote nothing anywhere.
+      final token = _signed({'userId': 'u'});
+      expect(outcomeOf('bearer $token'), TomCredentialOutcome.authenticated);
+      expect(outcomeOf('BEARER $token'), TomCredentialOutcome.authenticated);
+    });
+
+    test('an ignored header is named by its scheme and by nothing else', () {
+      outcomeOf('Basic dXNlcjpwYXNz');
+      expect(written(), contains('scheme "Basic"'));
+      expect(
+        written(),
+        isNot(contains('dXNlcjpwYXNz')),
+        reason: 'what follows the scheme is the credential',
+      );
+    });
+
+    test('a header with no scheme is reported without being quoted', () {
+      // There is no scheme to name here, and the obvious fallback — print the
+      // first word — would print the credential, because the whole header is
+      // one.
+      outcomeOf('dXNlcjpwYXNzd29yZA==');
+      expect(written(), contains('names no scheme'));
+      expect(written(), isNot(contains('dXNlcjpwYXNzd29yZA')));
+    });
+
+    test('a scheme long enough to flood the log is cut short', () {
+      // Client-supplied, and a client can supply kilobytes of it.
+      outcomeOf('${'S' * 4000} credentials');
+      expect(captured.messages, hasLength(1));
+      expect(captured.messages.single.length, lessThan(200));
+    });
+
+    test('an absent header is not worth a line', () {
+      outcomeOf(null);
+      expect(
+        captured.messages,
+        isEmpty,
+        reason: 'anonymous traffic is ordinary; a warning per request is noise',
+      );
+    });
+  });
+
+  // A token this server cannot read is very often a live credential somewhere
+  // else — the commonest reason it is unreadable is that it was minted for a
+  // different deployment — and an access log is the least protected place it
+  // could end up. The route by which one gets there is short:
+  // `dart_jsonwebtoken` wraps anything it did not anticipate in an exception
+  // whose message is the underlying one's `toString()`, and a base64
+  // `FormatException` prints the input it choked on. Interpolating a decoder's
+  // message whole therefore writes a slice of the presented credential, which
+  // is why the reason is read a line at a time and why this battery exists
+  // rather than a comment saying to be careful.
+  group('a refused credential is never written to the log', () {
+    late _CapturingLogOutput captured;
+    late TomLogOutput installed;
+
+    setUp(() {
+      installed = tomLog.logOutput;
+      captured = _CapturingLogOutput();
+      tomLog.logOutput = captured;
+    });
+
+    tearDown(() => tomLog.logOutput = installed);
+
+    test('for every shape of bearer token the module refuses', () {
+      final signed = _signed({'userId': 'u'});
+      final refused = <String, String>{
+        'not a jwt at all': 'not-a-jwt',
+        'a jwt whose payload is not base64': 'eyJhbGciOiJIUzI1NiJ9.!!!!.sig',
+        'a signature truncated by one character': signed.substring(
+          0,
+          signed.length - 1,
+        ),
+        'a payload edited after issue': _withEditedPayload(
+          signed,
+          (claims) => claims['role'] = 'admin',
+        ),
+        'a token signed with another key': jwt
+            .JWT({'userId': 'u'}, issuer: 'other')
+            .sign(jwt.SecretKey('a-different-secret')),
+        'a long string that is not a token': 'Z' * 400,
+      };
+
+      for (final entry in refused.entries) {
+        captured.messages.clear();
+        final (principal, token, outcome) = extractAuthentication(
+          _get({'authorization': 'Bearer ${entry.value}'}),
+        );
+        expect(principal, isNull);
+        expect(token, isNull);
+        expect(outcome, TomCredentialOutcome.unreadableToken);
+
+        final written = captured.messages.join('\n');
+        expect(
+          written,
+          isNotEmpty,
+          reason:
+              'the refusal of ${entry.key} still has to be recorded — a '
+              'credential refused in silence is the one nobody can investigate',
+        );
+        for (final slice in _slicesOf(entry.value, 8)) {
+          expect(
+            written,
+            isNot(contains(slice)),
+            reason:
+                'the log line for ${entry.key} quotes the credential '
+                '(found "$slice" in: $written)',
+          );
+        }
+      }
     });
   });
 

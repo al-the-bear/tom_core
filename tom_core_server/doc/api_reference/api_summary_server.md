@@ -12,6 +12,7 @@ helpers, and per-request state that make up that pipeline.
 - [Classes](#classes)
   - [TomRequestLogInfo](#tomrequestloginfo)
   - [TomServer](#tomserver)
+- [Enums](#enums)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -30,8 +31,8 @@ pre/post handlers, and binds the socket (with TLS unless `noSsl`).
 
 The module exposes the composable middleware as top-level functions
 (`contextSetupMiddleware`, `tomDefaultAuthenticationMiddleware`,
-`tomLoggingMiddleware`), a credential helper (`extractAuthentication`), and a
-`noopHandler`. Per-request state travels in the request context
+`tomLoggingMiddleware`), a credential helper (`extractAuthentication`) with the
+`TomCredentialOutcome` it reports, and a `noopHandler`. Per-request state travels in the request context
 (`TomRequestLogInfo`), the request zone, and — because the authentication
 middleware also opens a `TomTransactionManager.runInTransactionScope` — the
 current transaction. The zone-carried correlation id
@@ -109,12 +110,35 @@ TomServer(TomBaseServerConfiguration configuration)
 | `warnOnDevelopmentTlsMaterial` | `void warnOnDevelopmentTlsMaterial()` | Warns when this server is about to serve TLS with the checked-in development pair, naming which half is still at its default. Called by `start` before it builds the `SecurityContext`. Silent when `noSsl` is set, since nothing is served over TLS. Nothing refuses to start: an opt-in flag would cost every local TLS run an extra setting. Public and separate from `start` because `start` binds a socket and returns nothing, so a property of the boot is otherwise unobservable. |
 | `start` | `Future<HttpServer> start()` | Logs the deployment in as itself (`TomServerSelfLogin.loginAndInstall`) before anything else, then warns if the TLS material is still the development pair, initialises the router, composes the pipeline, builds TLS, resolves the listen address, and binds the socket. The future completes **when the socket is listening**, with the bound `HttpServer` — so a bind failure rejects it rather than surfacing as an unhandled asynchronous error, and the socket can be closed by its opener. A deployment that configured a service credential and cannot log in has the error rethrown and **no socket is bound**; one that configured none is unaffected. Awaiting is optional: the bound socket keeps the isolate alive on its own. |
 
+## Enums
+
+### TomCredentialOutcome
+
+Why a request carries the credentials it does — the third element of
+`extractAuthentication`'s result. A `null` principal and a `null` token is the
+answer to four different requests: an anonymous caller, a misconfigured client,
+a signing key rotated past an issuer, and a malformed claim set. Those call for
+four different actions, and the first two elements cannot tell them apart.
+
+The distinction is for the reader of the function, not for the HTTP client —
+all four still receive the same answer over the wire, because a client able to
+tell "your signature was wrong" from "you sent nothing" is an attacker able to
+tell whether they guessed.
+
+| Value | Meaning |
+| ----- | ------- |
+| `noCredentials` | No `Authorization` header. An ordinary anonymous caller. |
+| `unsupportedScheme` | The header named a scheme other than `Bearer`, or none at all. Nothing was read from it. |
+| `unreadableToken` | A bearer token `verifyBearerToken` refused: a wrong signature, a key this deployment cannot check against, a body that would not decode, or an empty one. |
+| `noPrincipal` | The token verified but yielded no principal, so the claims are malformed rather than forged; the token is handed back with the outcome. No request can currently produce this — `TomClientJwtToken` refuses every payload shape that would defeat the converter first — and the guard is kept because the alternative to catching is a 500 for a token this deployment signed. |
+| `authenticated` | The token verified and yielded a principal. |
+
 ## Global Functions and Constants
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
 | `contextSetupMiddleware` | `Middleware contextSetupMiddleware(String id, [Map<String, Object>? context])` | A pass-through shelf `Middleware` that merges `context` into a copy of the request context before the inner handler runs (`id` labels it for tracing). |
-| `extractAuthentication` | `(TomPrincipal?, TomClientJwtToken?) extractAuthentication(Request req)` | Extracts bearer credentials from the `Authorization` header, returning `(principal, token)`; either element is `null` when absent or unparseable (errors are swallowed). |
+| `extractAuthentication` | `(TomPrincipal?, TomClientJwtToken?, TomCredentialOutcome) extractAuthentication(Request req)` | Extracts bearer credentials from the `Authorization` header, returning `(principal, token, outcome)`. The first two elements are `null` whenever the request is not authenticated; [`TomCredentialOutcome`](#tomcredentialoutcome) says which of the four ways that happened, because `(null, null)` is the answer to all four and an operator cannot act on it. Never raises and never refuses — a public endpoint is served through this same pipeline — but every refusal is recorded at warning level, and never with the credential in it. The scheme is matched case-insensitively, as RFC 7235 requires. |
 | `tomDefaultAuthenticationMiddleware` | `Middleware tomDefaultAuthenticationMiddleware(String id, [Map<String, Object>? context])` | The default authentication middleware: resolves the effective `TomPrincipal` and runs the inner handler in a zone exposing the request, execution context, principal, token, and a fresh `TomRequestId` — and inside a `TomTransactionManager.runInTransactionScope`, so the current transaction is per-request rather than per-isolate. A replacement must establish both. |
 | `tomLoggingMiddleware` | `Middleware tomLoggingMiddleware()` | The default request-logging middleware: emits one access-log line per request, guarded by the request's `TomRequestLogInfo`. Both guards are the reason shelf's `logRequests()` is not the default — it reads no request context, so it can honour neither. |
 | `noopHandler` | `Handler noopHandler(String id, int statusCode)` | A `Handler` that ignores the request and always replies with `statusCode` (`id` labels it for tracing). |

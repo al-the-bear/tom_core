@@ -68,8 +68,11 @@ the matching principal before falling back to the principal carried on the
 request itself:
 
 ```dart
-var (TomPrincipal? callPrincipal, TomClientJwtToken? clientToken) =
-    extractAuthentication(request);
+var (
+  TomPrincipal? callPrincipal,
+  TomClientJwtToken? clientToken,
+  TomCredentialOutcome outcome,
+) = extractAuthentication(request);
 
 // A cache hit wins; a miss falls back to callPrincipal; an *expired* entry
 // resolves to no principal at all.

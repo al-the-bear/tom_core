@@ -33,6 +33,7 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
 | ------ | ---- | ------- |
 | `TomServer` | class | Composes the pipeline and binds the socket |
 | `TomRequestLogInfo` | class | Per-request logging state in the request context |
+| `TomCredentialOutcome` | enum | Why a request carries the credentials it does |
 | `contextSetupMiddleware` | function | Seeds entries into the request context |
 | `tomDefaultAuthenticationMiddleware` | function | Extracts credentials and publishes request zone values |
 | `tomLoggingMiddleware` | function | Emits the one-shot access-log line, prefixed with the application id |
@@ -159,9 +160,38 @@ Three channels carry per-request state:
   is *within* an isolate. See `doc/transactions.md` for the manager itself.
 
 `extractAuthentication` is the credential reader: it parses a `Bearer <jwt>`
-`Authorization` header into a `(TomPrincipal?, TomClientJwtToken?)` record,
-returning nulls when the header is absent, not a bearer token, or fails to parse
-(an invalid token is treated as "no credentials", not an error).
+`Authorization` header into a `(TomPrincipal?, TomClientJwtToken?,
+TomCredentialOutcome)` record. The first two elements are `null` whenever the
+request is not authenticated — an invalid token is treated as "no credentials",
+not an error, because an endpoint marked `@TomPublicAccess()` is served through
+this same pipeline. The scheme is matched case-insensitively, as RFC 7235
+requires.
+
+`TomCredentialOutcome` is the third element, and it exists because the first two
+cannot say what happened. `(null, null)` is the answer to four different
+requests:
+
+| Outcome | The request |
+| ------- | ----------- |
+| `noCredentials` | Sent no `Authorization` header. An ordinary anonymous caller. |
+| `unsupportedScheme` | Sent a scheme other than `Bearer`, or a header with no scheme at all. |
+| `unreadableToken` | Sent a bearer token `verifyBearerToken` refused — a wrong signature, a key this deployment cannot check against, a body that would not decode, or an empty one. |
+| `noPrincipal` | Sent a token that verified but yielded no principal, so the claims are malformed rather than forged. The token is handed back with the outcome; no request can currently produce this, because `TomClientJwtToken` refuses every payload shape that would defeat the converter first. |
+| `authenticated` | Sent a token that verified and yielded a principal. |
+
+An anonymous caller and a client whose signing key this deployment stopped
+recognising are the two worth separating. Rotate a key, miss an issuer, and
+every affected client silently becomes anonymous: the server sees anonymous
+traffic and the authorization layer answers `401`, and without the outcome
+nothing anywhere says a token arrived and could not be read.
+
+Every refusal is also written to the log at warning level — `unsupportedScheme`
+by `extractAuthentication`, `unreadableToken` by `verifyBearerToken` — and never
+with the credential in it. A header is named by its *scheme*, and one with no
+scheme is reported as having none rather than by quoting what the client sent in
+its place; a refused token is named by the decoder's reason and not by its text.
+A token this server cannot read is very often a live credential somewhere else,
+and an access log is the least protected place it could end up.
 
 The principal the zone finally carries is resolved from those two: a principal
 `TomAuthorizationCache` holds for the token wins, a cache miss falls back to the
@@ -227,7 +257,9 @@ Three suites cover this module, split by what each can be asked without a
 socket.
 
 `test/server_test.dart` covers the pipeline as composed functions:
-`TomRequestLogInfo`, `extractAuthentication` reading a credential off a request,
+`TomRequestLogInfo`, `extractAuthentication` reading a credential off a request
+— naming each `TomCredentialOutcome`, and holding the battery that requires no
+refused token to appear in any line the module writes —
 `verifyBearerToken` refusing a token this deployment did not sign,
 `contextSetupMiddleware` and `tomLoggingMiddleware`,
 `tomDefaultAuthenticationMiddleware` — including the case where the cached
@@ -250,8 +282,9 @@ dart run example/server/server_example.dart
 ```
 
 `example/server/server_example.dart` exercises the socket-free surface the
-server is composed from — the per-request log state, the credential reader, and
-two middlewares. `TomServer.start()` binds a real socket and needs a reflected
+server is composed from — the per-request log state, the credential reader
+(including the three outcomes that answer `(null, null)` alike and are still
+told apart), and two middlewares. `TomServer.start()` binds a real socket and needs a reflected
 configuration plus TLS material, so the assembled server is described here
 rather than run there. Every step checks its own result, and
 `test/examples_test.dart` runs it.
@@ -274,17 +307,15 @@ somewhere other than the call site.
 It is pinned by a test in `test/api_reference_coverage_test.dart`, in the group
 "the server guide's Not Yet Implemented section matches the module", so closing
 it turns a test red rather than leaving this section quietly wrong.
-There were four: `extractAuthentication` could not report a bad token, because
-it swallowed both its failures into empty catches. It reports both now — the
-signature rejection from `verifyBearerToken` and the derivation failure at the
-call site, each at warning level with its reason.
+There were four: `extractAuthentication` could not report a bad token. It
+reports every way one can fail now — by a named `TomCredentialOutcome` and, for
+each refusal, by a warning naming the reason without the credential in it. See
+[The Pipeline](#the-pipeline).
 
-What it still does not do is *distinguish* them to the caller. An absent header,
-a non-bearer scheme, an unverifiable token and a verified token that yields no
-principal all answer `(null, null)`, and that is deliberate rather than
-outstanding: a caller who could tell "your signature was wrong" from "you sent
-nothing" is an attacker who can tell whether they guessed. The operator gets the
-detail, through the log; the caller gets one answer.
+What it still does not do is distinguish them to the *HTTP client*, and that is
+deliberate rather than outstanding: a client who could tell "your signature was
+wrong" from "you sent nothing" is an attacker who can tell whether they guessed.
+The operator gets the detail; the client gets one answer.
 
 ### What this module does not do at all
 

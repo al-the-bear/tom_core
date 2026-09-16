@@ -226,6 +226,32 @@ TomJwtConfiguration installJwtSigning(
 /// either a misconfigured pair of deployments or somebody probing, and both are
 /// things an operator wants to see. It is a warning rather than an error
 /// because a caller can produce it at will.
+///
+/// The warning never contains the token. See [_reasonWithoutTheToken] for the
+/// one path that would otherwise put it there.
+/// [error]'s reason, with the part that may quote the token it failed on cut
+/// off.
+///
+/// `dart_jsonwebtoken` raises fixed strings for everything it anticipates
+/// (`invalid signature`, `not a jwt`, `invalid header`), and wraps everything
+/// else in a `JWTUndefinedException` whose message is the underlying
+/// exception's `toString()`. That one path is the leak: a `FormatException`
+/// from the base64 decoder prints the input it choked on, so interpolating the
+/// message whole writes a slice of the presented credential into the log — and
+/// a token this deployment cannot read is very often a live credential
+/// somewhere else.
+///
+/// A `FormatException` puts its own text first and the quoted source on the
+/// lines after it, so the first line is the reason and nothing but. That is the
+/// rule here, and `test/server_test.dart` holds the battery that falsifies it:
+/// a set of malformed tokens, and the requirement that no line the module
+/// writes contains any of them.
+String _reasonWithoutTheToken(Object error) {
+  final text = error is jwt.JWTException ? error.message : error.toString();
+  final firstLine = text.split('\n').first.trim();
+  return firstLine.isEmpty ? error.runtimeType.toString() : firstLine;
+}
+
 TomClientJwtToken? verifyBearerToken(String token, {bool decrypt = true}) {
   final configuration = TomJwtConfiguration.defaultSignConfiguration;
   try {
@@ -239,14 +265,16 @@ TomClientJwtToken? verifyBearerToken(String token, {bool decrypt = true}) {
       checkNotBefore: false,
     );
   } on jwt.JWTException catch (e) {
-    tomLog.warn('Rejected a bearer token: ${e.message}');
+    tomLog.warn('Rejected a bearer token: ${_reasonWithoutTheToken(e)}');
     return null;
   } on Object catch (e) {
     // Anything else the decoder objects to — a malformed token, a payload that
     // is not JSON — is the same answer to the caller: this is not a token this
     // server issued. Reported separately because an unexpected type here means
     // the library changed under us, and a silent `null` would hide that.
-    tomLog.warn('Rejected an unreadable bearer token: $e');
+    tomLog.warn(
+      'Rejected an unreadable bearer token: ${_reasonWithoutTheToken(e)}',
+    );
     return null;
   }
   try {
@@ -255,7 +283,10 @@ TomClientJwtToken? verifyBearerToken(String token, {bool decrypt = true}) {
     // A verified signature and an undecryptable body is a genuine oddity: the
     // token is ours, so this is a key rotation caught mid-flight or a corrupted
     // `encrypted` section rather than a forgery.
-    tomLog.warn('Rejected a signed bearer token that would not decode: $e');
+    tomLog.warn(
+      'Rejected a signed bearer token that would not decode: '
+      '${_reasonWithoutTheToken(e)}',
+    );
     return null;
   }
 }

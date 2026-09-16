@@ -2,6 +2,31 @@
 
 ### Added
 
+- **A malformed bearer token is no longer indistinguishable from no token
+  (tcopen186).** `extractAuthentication` answered `(null, null)` to four
+  different requests — one with no `Authorization` header, one with a scheme
+  this server does not speak, one whose token failed verification, and one whose
+  verified token yielded no principal. Those are an anonymous caller, a
+  misconfigured client, a signing key rotated past an issuer and a malformed
+  claim set, and nothing in the record told them apart: the module's own trace
+  line interpolated the two nulls, so it read identically for all four. Rotate a
+  key, miss an issuer, and every affected client silently became anonymous while
+  the server logged anonymous traffic.
+
+  It now returns `(principal, token, TomCredentialOutcome)`. The wire answer is
+  unchanged and deliberately so — a client able to tell "your signature was
+  wrong" from "you sent nothing" is an attacker able to tell whether they
+  guessed — but the operator gets the distinction, in the trace line and in a
+  warning per refusal.
+
+  Two defects surfaced measuring it. A present header that is *not* a bearer
+  token was ignored in complete silence; it is now reported by its scheme —
+  truncated, and a header with no scheme at all reported as having none rather
+  than by quoting what the client sent in its place. And the scheme was matched
+  case-sensitively: RFC 7235 makes it case-insensitive, so every request from a
+  conformant client spelling it `bearer` was anonymous, with nothing written
+  anywhere naming it.
+
 - **A request rejected during authentication now produces an access-log line
   (tcopen185).** `loggingMiddleware` sat *inside* both error layers, and an
   error layer answers the request it caught — so nothing further in ran for a
@@ -666,6 +691,20 @@
 
   `TomHealthServer.healthAnalyzer` is renamed `livenessAnalyzer`: beside a
   `readinessAnalyzer` the old name reads as though it covered both.
+
+### Fixed
+
+- **A refused bearer token no longer reaches the log (tcopen186).**
+  `dart_jsonwebtoken` wraps anything it did not anticipate in an exception whose
+  message is the underlying one's `toString()`, and a base64 `FormatException`
+  prints the input it choked on — so `Bearer not-a-jwt` wrote `not-a-jwt` into
+  the log verbatim. A token this server cannot read is very often a live
+  credential somewhere else, the commonest reason being that it was minted for a
+  different deployment, and an access log is the least protected place it could
+  end up. `verifyBearerToken` now reports the reason without the text it failed
+  on, and `test/server_test.dart` holds the battery that falsifies it: a set of
+  malformed tokens, and the requirement that no eight-character window of any of
+  them appears in any line the module writes.
 
 ### Changed
 

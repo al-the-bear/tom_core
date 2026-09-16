@@ -38,16 +38,83 @@ Middleware contextSetupMiddleware(String id, [Map<String, Object>? context]) =>
       };
     };
 
+/// Why a request carries the credentials it does — the third element of
+/// [extractAuthentication]'s result.
+///
+/// The first two elements cannot say. A `null` principal and a `null` token is
+/// the answer to four different requests: one that sent no `Authorization`
+/// header, one that sent a scheme this server does not speak, one whose bearer
+/// token failed verification, and one whose verified token yielded no
+/// principal. Those are an anonymous caller, a misconfigured client, a rotated
+/// signing key and a malformed claim set respectively, and an operator who
+/// cannot tell them apart cannot act on any of them.
+///
+/// The distinction is for the *reader of this function*, not for the HTTP
+/// client. All four still receive the same answer over the wire — see
+/// `doc/server.md`, "Not Yet Implemented" — because a client able to tell "your
+/// signature was wrong" from "you sent nothing" is an attacker able to tell
+/// whether they guessed.
+enum TomCredentialOutcome {
+  /// The request had no `Authorization` header — an ordinary anonymous caller.
+  noCredentials,
+
+  /// The header named a scheme other than `Bearer`, or had no scheme at all.
+  ///
+  /// Nothing was read from it. A `Basic` header against a Tom server is a
+  /// client configured for a different service, not an attack.
+  unsupportedScheme,
+
+  /// The header carried a bearer token that [verifyBearerToken] refused.
+  ///
+  /// A wrong signature, a token this deployment's key cannot check, a body
+  /// that would not decode, or an empty one. This is the outcome a key
+  /// rotation that missed an issuer produces, for every request from every
+  /// client of that issuer.
+  unreadableToken,
+
+  /// The token verified, but no [TomPrincipal] could be built from its claims.
+  ///
+  /// The token is this deployment's own — it carries a signature this server
+  /// can check — so the claim set is malformed rather than forged, and the
+  /// token is handed back with the outcome: a refresh endpoint is reached with
+  /// exactly it.
+  ///
+  /// **No request can currently produce this.** `TomClientJwtToken` refuses
+  /// every payload shape that would defeat
+  /// [TomBearerAuthentication.convertTokenPayloadToPrincipal] — a payload that
+  /// is not a map, or absent — before the converter is reached, and the
+  /// converter itself reads every claim defensively. The guard is kept because
+  /// the alternative to catching is a 500 for a token this deployment signed,
+  /// and this value is what the guard answers with. `test/server_test.dart`
+  /// pins the guard by the shape of the function rather than by a request,
+  /// which is the only way an unreachable branch can be pinned at all.
+  noPrincipal,
+
+  /// The token verified and yielded a principal.
+  authenticated,
+}
+
+/// [value] shortened to a length an access log can carry.
+///
+/// What is truncated here is client-supplied, and a client can supply
+/// kilobytes of it.
+String _forTheLog(String value) =>
+    value.length <= 20 ? value : '${value.substring(0, 20)}…';
+
 /// Extracts the bearer credentials from a request's `Authorization` header.
 ///
 /// Reads the `Authorization` header and, when it carries a `Bearer <jwt>`
 /// token, **verifies its signature** with [verifyBearerToken] and derives the
 /// [TomPrincipal] via [TomBearerAuthentication.convertTokenPayloadToPrincipal].
-/// Returns a record `(principal, token)`; either element is `null` when the
-/// header is absent, not a bearer token, or fails verification. Derivation
-/// errors are swallowed (the corresponding element stays `null`) so an
-/// unusable token is treated as "no credentials" rather than raising —
-/// authorization decisions are made downstream.
+/// Returns a record `(principal, token, outcome)`. The first two elements are
+/// `null` whenever the request is not authenticated; [TomCredentialOutcome]
+/// says which of the four ways that happened.
+///
+/// It never raises and never refuses: an unusable credential is treated as "no
+/// credentials", because an endpoint marked `@TomPublicAccess()` has to be
+/// servable through this same pipeline. Authorization decisions are made
+/// downstream. Every refusal is *recorded*, though, at warning level and
+/// without the credential in it — see "What reaches the log" below.
 ///
 /// ## Why the signature is checked here
 ///
@@ -64,34 +131,66 @@ Middleware contextSetupMiddleware(String id, [Map<String, Object>? context]) =>
 /// deployment shape that might have wanted it — a server running the
 /// framework's bundled sample keys — is already refused at boot by
 /// [installJwtSigning] outside a development or test environment.
-(TomPrincipal?, TomClientJwtToken?) extractAuthentication(Request req) {
-  TomPrincipal? resultA;
-  TomClientJwtToken? resultB;
-  String? header = req.headers["authorization"];
-  if (header != null) {
-    if (header.startsWith("Bearer ")) {
-      // Verification and decoding in one call: a token that fails the signature
-      // check never becomes a `TomClientJwtToken` here at all, so there is no
-      // window in which an unverified one is in hand.
-      resultB = verifyBearerToken(header.substring(7));
-      try {
-        if (resultB != null) {
-          resultA = TomBearerAuthentication.convertTokenPayloadToPrincipal(
-            resultB,
-          );
-        }
-      } catch (e) {
-        // A verified token whose payload will not yield a principal is a
-        // genuine oddity — the token is ours, so the claims are malformed
-        // rather than forged — and the request proceeds anonymously either
-        // way. Reported for the same reason the signature rejection is: a
-        // credential that was refused and said nothing is the one an operator
-        // cannot investigate.
-        tomLog.warn('Bearer token verified but yielded no principal: $e');
-      }
-    }
+///
+/// ## What reaches the log
+///
+/// Never the credential. A token this server cannot read may still be a live
+/// credential somewhere else — the commonest reason it is unreadable is that it
+/// was minted for a different deployment — and an access log is the least
+/// protected place it could end up.
+///
+/// So a refused bearer token is described by its *reason* (from
+/// [verifyBearerToken]) and a refused header by its *scheme*, and a header with
+/// no scheme at all is reported as having none rather than by quoting what the
+/// client sent in its place. `test/server_test.dart` holds the battery that
+/// checks a presented token never appears in any line the module writes.
+(TomPrincipal?, TomClientJwtToken?, TomCredentialOutcome) extractAuthentication(
+  Request req,
+) {
+  final String? header = req.headers["authorization"];
+  if (header == null) return (null, null, TomCredentialOutcome.noCredentials);
+
+  // RFC 7235 §2.1: the scheme is a token, separated from the credentials by a
+  // space, and matched **case-insensitively**. Reading it case-sensitively
+  // turned every request from a conformant client that spells it `bearer` into
+  // an anonymous one, and said nothing anywhere.
+  final space = header.indexOf(' ');
+  final scheme = space < 0 ? header : header.substring(0, space);
+  if (scheme.toLowerCase() != "bearer") {
+    tomLog.warn(
+      'Ignored an Authorization header this server cannot read: '
+      '${space < 0 ? 'it names no scheme' : 'scheme "${_forTheLog(scheme)}"'}. '
+      'The request proceeds unauthenticated.',
+    );
+    return (null, null, TomCredentialOutcome.unsupportedScheme);
   }
-  return (resultA, resultB);
+
+  // Verification and decoding in one call: a token that fails the signature
+  // check never becomes a `TomClientJwtToken` here at all, so there is no
+  // window in which an unverified one is in hand. `verifyBearerToken` has
+  // already logged the reason it refused.
+  final token = verifyBearerToken(
+    space < 0 ? "" : header.substring(space + 1).trim(),
+  );
+  if (token == null) return (null, null, TomCredentialOutcome.unreadableToken);
+
+  try {
+    return (
+      TomBearerAuthentication.convertTokenPayloadToPrincipal(token),
+      token,
+      TomCredentialOutcome.authenticated,
+    );
+  } catch (e) {
+    // A verified token whose payload will not yield a principal is a genuine
+    // oddity — the token is ours, so the claims are malformed rather than
+    // forged — and the request proceeds anonymously either way. Reported for
+    // the same reason the signature rejection is: a credential that was
+    // refused and said nothing is the one an operator cannot investigate. The
+    // token itself is kept: it is still this deployment's, and a refresh
+    // endpoint is reached with exactly it.
+    tomLog.warn('Bearer token verified but yielded no principal: $e');
+    return (null, token, TomCredentialOutcome.noPrincipal);
+  }
 }
 
 /// Resolves the effective [TomPrincipal] for a request from its credentials.
@@ -177,10 +276,18 @@ Middleware tomDefaultAuthenticationMiddleware(
       newRequest = request.change(context: newContext);
     }
     return Future<Response>.sync(() async {
-      var (TomPrincipal? callPrincipal, TomClientJwtToken? clientToken) =
-          extractAuthentication(request);
+      var (
+        TomPrincipal? callPrincipal,
+        TomClientJwtToken? clientToken,
+        TomCredentialOutcome outcome,
+      ) = extractAuthentication(
+        request,
+      );
+      // The outcome leads, because it is the part the other two cannot express:
+      // an anonymous request and one whose token this deployment could not read
+      // both interpolate as "null and null".
       tomLog.trace(
-        "extracted $callPrincipal and $clientToken from incoming request to ${request.requestedUri}",
+        "${outcome.name}: extracted $callPrincipal and $clientToken from incoming request to ${request.requestedUri}",
       );
       var principal = await _resolveRequestPrincipal(
         clientToken,
