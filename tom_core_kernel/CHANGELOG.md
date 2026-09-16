@@ -44,6 +44,16 @@ anyone who was writing them.
   vocabulary, so a key added without a documented home is visible.
 
 ### Documentation
+
+- **The package library has a dartdoc (tcopen188).** `lib/tom_core_kernel.dart`
+  opened with "More dartdocs go here." — the `dart create` template line, and
+  the text that heads the generated API reference. It now says what the kernel
+  is, that it assumes no server, no Flutter and no database, that one import
+  reaches all of it including the `tom_basics` and `tom_crypto` surfaces it
+  re-exports, and where the per-module guides and samples are. Found while
+  clearing the same line out of `tom_core_server`, which was the only other
+  library in the core packages still carrying it.
+
 - **The web startup refusal is a `StateError` by a stated rule (tcopen98).**
   Every other failure in `timezoned` is a `TomTimezoneException`, which made
   the one a browser application actually meets look like an oversight. It stays

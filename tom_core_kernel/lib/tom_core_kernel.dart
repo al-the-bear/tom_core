@@ -1,6 +1,22 @@
-/// Core library for the TOM framework.
+/// Tom Core Kernel — the platform-neutral foundation of the Tom stack.
 ///
-/// More dartdocs go here.
+/// Seventeen modules that assume no server, no Flutter and no database:
+/// dependency lookup, the execution context and its zone values, observables,
+/// the security model — principals, grants and the access-control meet —
+/// resources, settings and preferences, scheduling, reflection, logging, JSON,
+/// timezone-aware instants and shutdown coordination. `tom_core_server` and
+/// `tom_flutter_ui` are built on it and neither is needed to use it.
+///
+/// Everything is exported from this one library — including the `tom_basics`
+/// and `tom_crypto` surfaces it re-exports — so a single import reaches all of
+/// it:
+///
+/// ```dart
+/// import 'package:tom_core_kernel/tom_core_kernel.dart';
+/// ```
+///
+/// Each module has a guide under `doc/` and runnable samples under
+/// `example/samples/`; `example/run_all_samples.dart` runs them all.
 library;
 
 export 'package:tom_basics/tom_basics.dart';

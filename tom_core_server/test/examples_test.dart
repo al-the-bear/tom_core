@@ -14,6 +14,7 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import '../example/_support/check.dart';
+import '../example/tom_core_server_example.dart' as package_example;
 
 /// Examples whose own module suite already spawns them, and where.
 ///
@@ -62,6 +63,11 @@ const _notSpawnedHere = <String, String>{
   // seconds to observe that an empty function returns.
   'example/example_reflection.dart':
       'a generator root: its `main` is empty by contract and checks nothing',
+  // The package example is the runner for every other one. Spawning it here
+  // would run the whole set a second time, serially, inside one test.
+  'example/tom_core_server_example.dart':
+      'the tour: it spawns every example below, so running it here runs them '
+      'twice',
 };
 
 /// How many numbered steps each example's transcript prints.
@@ -80,9 +86,9 @@ const _notSpawnedHere = <String, String>{
 /// reads exactly as intended and would fail a rule counting lines.
 ///
 /// `0` means the program's transcript is not numbered — the four authentication
-/// programs narrate a flow in prose instead, and the package example is a tour.
-/// Recorded rather than omitted, so a transcript that *starts* being numbered
-/// has to be registered here rather than arriving unmeasured.
+/// programs narrate a flow in prose instead. Recorded rather than omitted, so a
+/// transcript that *starts* being numbered has to be registered here rather
+/// than arriving unmeasured.
 const _stepCounts = <String, int>{
   'example/audit/audit_example.dart': 11,
   'example/authentication/authentication_example.dart': 0,
@@ -111,7 +117,6 @@ const _stepCounts = <String, int>{
   'example/resources/resources_example.dart': 10,
   'example/scheduling/scheduling_example.dart': 10,
   'example/server/server_example.dart': 6,
-  'example/tom_core_server_example.dart': 0,
   'example/transactions/transactions_example.dart': 7,
 };
 
@@ -473,6 +478,55 @@ void main() {
         );
       });
     }
+  });
+
+  // The package example is the one file a reader lands on first — it is what
+  // pub.dev shows for a package and the conventional entry point of
+  // `example/`. It is an index of the other twenty-eight programs, and an
+  // index is only worth the thing it indexes: a module example added later and
+  // left off it would leave the entry point describing a package one program
+  // smaller than the one that shipped.
+  group('The package example indexes every other example', () {
+    test('the tour and its exclusions are exactly the example programs', () {
+      // Read from the runner itself rather than restated here, so this
+      // compares the shipped list against the directory instead of comparing
+      // two copies of the same list.
+      final indexed = [
+        ...package_example.tour.map((stop) => stop.path),
+        ...package_example.notOnTheTour.keys,
+      ]..sort();
+      expect(
+        indexed,
+        _examplePrograms()
+            .where((f) => f != 'example/tom_core_server_example.dart')
+            .toList(),
+        reason:
+            'the package example is the index of this directory, so every '
+            'program in it is either a stop on the tour or named in '
+            '`notOnTheTour` with a reason',
+      );
+    });
+
+    test('every stop names a file that is there', () {
+      // The runner checks this itself before it spawns anything, which is the
+      // right place for it — but that check only runs when somebody runs the
+      // tour, and the tour takes minutes. Here it costs nothing.
+      final missing = [
+        for (final stop in package_example.tour)
+          if (!File(stop.path).existsSync()) stop.path,
+      ];
+      expect(missing, isEmpty);
+    });
+
+    test('and each stop says what it shows', () {
+      // The list is an index, and an index with a blank entry is a path a
+      // reader has to open to find out whether they wanted it.
+      final silent = [
+        for (final stop in package_example.tour)
+          if (stop.shows.trim().length < 20) stop.path,
+      ];
+      expect(silent, isEmpty);
+    });
   });
 
   group('Every example transcript prints the steps it is recorded as having', () {

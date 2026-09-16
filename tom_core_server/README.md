@@ -195,11 +195,20 @@ there, or excluded with a stated reason.
 | [`example/scheduling/`](example/scheduling/) | The relational job queue and lease lock: the schema and why each constraint is load-bearing, the shipped migrations, the UTC instant encoding, and the cluster wiring. [`example/scheduling/cluster/`](example/scheduling/cluster/) adds the part that needs a database — two real nodes arbitrating over one MariaDB, asserted rather than narrated |
 | [`example/healthcheck/`](example/healthcheck/) · [`example/cmdline/`](example/cmdline/) · [`example/little_things/`](example/little_things/) | Health, CLI, and exceptions |
 
-Run a single example:
+Run a single example, or all of them:
 
 ```bash
 dart run example/datasources/datasources_example.dart
+dart run example/tom_core_server_example.dart   # every sample, in reading order
 ```
+
+[`example/tom_core_server_example.dart`](example/tom_core_server_example.dart)
+is the runnable form of the table above: one line per program saying what it
+shows, and a runner that spawns each in turn and fails if any of them does not
+exit 0. The four programs it declines are named in it with their reasons, and
+`test/examples_test.dart` requires the two lists together to be exactly the
+example programs in the package — so a sample added later appears there rather
+than quietly not being on the tour.
 
 ## Usage
 

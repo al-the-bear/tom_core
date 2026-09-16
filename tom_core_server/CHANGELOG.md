@@ -2,6 +2,23 @@
 
 ### Added
 
+- **The package example is the index of the other twenty-eight (tcopen188).**
+  `example/tom_core_server_example.dart` was eight lines of `dart create`
+  scaffolding: it printed `TomServer type: $TomServer` and reached none of its
+  siblings. It is the conventional entry point of `example/` and the file
+  pub.dev surfaces first, so what a visitor met was a type name and the
+  impression that there is not much here — while twenty modules shipped a
+  runnable sample each.
+
+  It is now the index in both senses: one entry per program with a line saying
+  what it shows, in the order the README's sample map uses, and a runner that
+  spawns each in turn and fails if any does not exit 0. The four programs it
+  declines — the three cluster members that need a live MariaDB and each other,
+  and the reflection generator root — are named with their reasons.
+  `test/examples_test.dart` requires the two lists together to be exactly the
+  example programs in the package, so a sample added later has to appear there
+  rather than quietly not being on the tour.
+
 - **`start()`'s login-before-bind ordering is asserted against a running server
   (tcopen187).** The module's central safety claim — the deployment principal
   is installed before the socket accepts, because it caps every user's grants at
@@ -12139,6 +12156,27 @@
   in an order the document does not follow. Across the repository's 118
   documents with a table of contents, this was the only defect outside the
   families already tracked for a deliberate decision.
+
+### Removed
+
+- **`test/tom_core_server_test.dart` (tcopen188).** Sixteen lines holding one
+  test named "Server module exports correctly" whose body was
+  `expect(TomServer is Type, isTrue)` — a tautology that cannot fail, preceded
+  by the `// ignore: unnecessary_type_check` that silenced the analyzer saying
+  so. It asserted nothing about exports and would have passed with every other
+  symbol deleted from the barrel. What it gestured at is already guarded, and
+  guarded properly: `test/api_reference_coverage_test.dart` requires the barrel
+  to export every file of every module and every exported name to be documented,
+  in both directions. Four of the five sibling core packages ship no top-level
+  package test either.
+
+### Documentation
+
+- **The package library has a dartdoc (tcopen188).** `lib/tom_core_server.dart`
+  opened with "More dartdocs go here." — the third artefact of the same
+  `dart create` generation, and the text that heads the generated API reference.
+  It now says what the package is, that one import reaches all of it, and where
+  the per-module guides and samples are.
 
 ## 1.2.0
 

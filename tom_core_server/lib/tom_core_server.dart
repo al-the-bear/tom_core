@@ -1,6 +1,23 @@
-/// Server library for the TOM framework.
+/// Tom Core Server — the server half of the Tom stack.
 ///
-/// More dartdocs go here.
+/// Twenty modules over `tom_core_kernel`: the `TomServer` that composes a shelf
+/// pipeline in front of a reflected endpoint router, the object persistence,
+/// datasource and migration layers beneath it, and the services a deployment
+/// builds on those — authentication and authorization, audit, messaging,
+/// export, file storage, scheduling, caching, preferences and localized
+/// resources.
+///
+/// Everything is exported from this one library, so `TomServer`,
+/// `TomSqlDatasourceRepository` and `TomAuditTrail` are all reachable from a
+/// single import:
+///
+/// ```dart
+/// import 'package:tom_core_server/tom_core_server.dart';
+/// ```
+///
+/// Each module has a guide under `doc/` and a runnable sample under
+/// `example/`; `example/tom_core_server_example.dart` is the index of the
+/// samples and runs them all.
 library;
 
 export 'src/tomserver/audit/audit_anchor.dart';
