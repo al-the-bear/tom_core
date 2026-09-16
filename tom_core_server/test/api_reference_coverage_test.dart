@@ -8168,7 +8168,7 @@ class After {}
       // both still in `start()`, only their order swapped. Nothing about such a
       // server fails to compile or fails a functional test.
       final swapped = _startStepsOf(const [
-        '  void start() async {',
+        '  Future<HttpServer> start() async {',
         '    HttpServer server = await serve(handler, ip, port);',
         '    await _installServerPrincipal();',
         '  }',
@@ -8246,7 +8246,7 @@ class After {}
         'class TomServer {',
         '  SecurityContext? securityContext;',
         '',
-        '  void start() async {',
+        '  Future<HttpServer> start() async {',
         '    SecurityContext? securityContext;',
         '    securityContext = SecurityContext();',
         '  }',
@@ -8265,7 +8265,7 @@ class After {}
         'class TomServer {',
         '  Router? router;',
         '',
-        '  void start() async {',
+        '  Future<HttpServer> start() async {',
         '    doSomethingElse();',
         '  }',
         '}',
@@ -8367,13 +8367,6 @@ class After {}
             'middleware sitting below the authentication layer — move it above '
             'and the explanation is wrong as well as the limitation gone',
       );
-      expect(
-        limitations.startIsFireAndForget,
-        isTrue,
-        reason:
-            'the guide says `start()` cannot be awaited and hands back no '
-            'handle; a signature that returns one makes that paragraph stale',
-      );
     });
 
     test('a module file matching a disowned capability is reported', () {
@@ -8432,7 +8425,6 @@ class After {}
       ]);
       expect(fixed.defaultErrorHandlerAlwaysFails, isFalse);
       expect(fixed.logsBelowAuthentication, isFalse);
-      expect(fixed.startIsFireAndForget, isFalse);
     });
   });
 
@@ -9093,24 +9085,24 @@ List<String> _disownedFileComplaints(
               'the guide is disowning something the module ships',
 ];
 
-/// The three limitations `doc/server.md` records, as the source still shows
-/// them.
+/// The two limitations `doc/server.md` records, as the source still shows them.
 ///
-/// There were four. `extractAuthentication` could not report a bad token, and
-/// now reports both of its failures; the guide says so where the bullet was,
-/// and the flag that measured it went with the bullet.
+/// There were four. `extractAuthentication` could not report a bad token and now
+/// reports both of its failures; `start()` could not be awaited and handed back
+/// no handle, and now returns the bound `HttpServer`. In each case the guide
+/// says so where the bullet was, and the flag that measured it went with the
+/// bullet — a flag kept after its limitation is fixed only ever asserts that
+/// the fix is still absent.
 typedef _ServerLimitations = ({
   bool defaultErrorHandlerAlwaysFails,
   bool logsBelowAuthentication,
-  bool startIsFireAndForget,
 });
 
-/// Reads the three limitations out of [lines].
+/// Reads the two limitations out of [lines].
 ///
 /// Each is read from the one construct that decides it, so that fixing a
 /// limitation flips exactly the one flag: the status the default handler
-/// builds, the order the two middlewares are added to the pipeline, and the
-/// return type `start()` declares.
+/// builds, and the order the two middlewares are added to the pipeline.
 _ServerLimitations _serverLimitationsOf(List<String> lines) {
   final joined = lines.join('\n');
 
@@ -9143,7 +9135,6 @@ _ServerLimitations _serverLimitationsOf(List<String> lines) {
     // it.
     logsBelowAuthentication:
         logging >= 0 && authentication >= 0 && logging > authentication,
-    startIsFireAndForget: joined.contains('void start() async'),
   );
 }
 
@@ -9240,7 +9231,7 @@ _StartSteps _startStepsOf(List<String> lines) {
   var inStart = false;
   for (final line in lines) {
     if (!inStart) {
-      if (line.contains('void start()')) inStart = true;
+      if (line.contains('start() async {')) inStart = true;
       continue;
     }
     // `start()` is a method, so its closing brace is the first at method

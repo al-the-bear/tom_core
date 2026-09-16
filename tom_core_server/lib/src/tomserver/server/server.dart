@@ -399,11 +399,25 @@ class TomServer {
   /// optionally wraps the router in a [Cascade] with the configuration's
   /// pre/post handlers, then serves the assembled pipeline on the configured
   /// port (with `shared` sockets when running multiple isolates).
-  /// Fire-and-forget: it starts listening and logs the bound address; it does
-  /// not return the [HttpServer] — and a failed self-login therefore surfaces
-  /// as an unhandled asynchronous error rather than a rejected future the
-  /// caller holds.
-  void start() async {
+  ///
+  /// Returns the bound [HttpServer], so the future completes **when the socket
+  /// is listening** and not before. Three things follow, and each was missing
+  /// while this returned `void`:
+  ///
+  ///  * a bind failure — a port already in use, an unreadable certificate, a
+  ///    malformed private key — rejects the returned future instead of
+  ///    surfacing as an unhandled asynchronous error from a future nobody
+  ///    holds;
+  ///  * a caller can tell *listening* from *called*, which is what a test or a
+  ///    supervisor needs before it sends the first request;
+  ///  * the socket can be closed, so a server can be shut down by whoever
+  ///    started it rather than only by ending the process.
+  ///
+  /// Awaiting is optional and nothing about the old shape is lost: a caller
+  /// that ignores the future gets exactly the fire-and-forget behaviour it had,
+  /// because the bound socket keeps the isolate alive on its own. What changes
+  /// is that ignoring it is now a choice rather than the only option.
+  Future<HttpServer> start() async {
     await _installServerPrincipal();
 
     if (!configuration.noSsl) {
@@ -503,6 +517,7 @@ class TomServer {
     tomLog.info(
       'Server listening on port ${server.port} ${server.address} ${securityContext != null ? "SSL" : "no SSL"} at ${DateTime.now()}',
     );
+    return server;
   }
 
   /// Warns when this server is about to serve TLS with the checked-in

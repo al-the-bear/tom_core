@@ -6,6 +6,9 @@ import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
+import 'fixtures/reflection_fixture.dart';
+import 'fixtures/reflection_fixture.reflection.dart';
+
 /// Tests for the socket-free surface of the server module: the per-request
 /// log state ([TomRequestLogInfo]), the credential reader
 /// ([extractAuthentication]), the pipeline middlewares that can run without
@@ -734,4 +737,80 @@ void main() {
       );
     });
   });
+
+  group('start binds, and hands back what it bound', () {
+    // The header above says the bind is covered only by the samples' own
+    // integration scripts. That was true while `start()` returned `void`:
+    // nothing could tell *listening* from *called*, and nothing could close the
+    // socket afterwards, so a suite that started a server could not end. Both
+    // follow from the returned handle, which is why these run here now.
+    setUpAll(() {
+      initializeReflection();
+      TomPlatformUtils.setCurrentPlatform(TomStandalonePlatformUtils());
+    });
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      registerFixtureAccessApi();
+    });
+
+    test('the future completes with a listening socket', () async {
+      final server = await TomServer(_BindableConfig()).start();
+      addTearDown(() => server.close(force: true));
+
+      // Port 0 asks the OS to choose, so a non-zero port is the proof that a
+      // bind actually happened rather than that a future completed.
+      expect(server.port, isNot(0));
+      expect(server.address.address, '127.0.0.1');
+    });
+
+    test('a bind failure rejects the future', () async {
+      // The failure the fire-and-forget shape turned into an unhandled
+      // asynchronous error: a deployment meets it on its first port collision,
+      // and used to meet it as a stack trace from nowhere rather than as a
+      // rejected future at the call site.
+      final first = await TomServer(_BindableConfig()).start();
+      addTearDown(() => first.close(force: true));
+
+      await expectLater(
+        TomServer(_BindableConfig(port: first.port)).start(),
+        throwsA(isA<SocketException>()),
+      );
+    });
+
+    test('the handle closes the socket', () async {
+      // The other half of "returns no handle to close": without this a test or
+      // a supervisor can start a server and never stop it, which is what kept
+      // the bind out of this suite.
+      final server = await TomServer(_BindableConfig()).start();
+      final port = server.port;
+
+      await server.close(force: true);
+
+      // Closed for real, not merely forgotten: the port binds again, which it
+      // could not while the first socket held it.
+      final second = await TomServer(_BindableConfig(port: port)).start();
+      addTearDown(() => second.close(force: true));
+      expect(second.port, port);
+    });
+  });
+}
+
+/// A configuration that binds a real socket on the loopback interface.
+///
+/// Port `0` asks the OS for a free one, so the suite never collides with a
+/// developer's running server — and the chosen port is readable off the handle,
+/// which is what lets the collision test *aim* at it.
+class _BindableConfig extends TomBaseServerConfiguration {
+  _BindableConfig({int port = 0}) : super([]) {
+    noSsl = true;
+    host = '127.0.0.1';
+    isolateCount = 1;
+    this.port = port;
+  }
+
+  @override
+  void setValues(Map<String, Object?> values) {}
 }

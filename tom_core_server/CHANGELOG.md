@@ -2,6 +2,32 @@
 
 ### Added
 
+- **`start()` returns the bound `HttpServer` (tcopen184).** It was
+  `void start() async`, so a bind failure — a port already in use, an unreadable
+  certificate, a malformed private key — was raised inside a future nobody held
+  and surfaced as an unhandled asynchronous error; a caller could not tell
+  *listening* from *called*; and there was no socket to close. The signature is
+  now `Future<HttpServer> start()`.
+
+  Nothing is lost. A caller that ignores the future gets exactly the
+  fire-and-forget behaviour it had, because the bound socket keeps the isolate
+  alive on its own — what changes is that ignoring it is a choice. The four
+  sample servers and `tom_uam` now await it, which is what turns their first
+  port collision into an error at that line.
+
+  The change makes the bind testable in process, which it had not been: three
+  tests in `server_test.dart` bind on port 0 and assert the chosen port, drive a
+  second server at that port to see the collision reject the future, and close
+  the handle and re-bind the freed port to show the close was real. That suite's
+  header used to say the bind was covered only by the samples' integration
+  scripts, for exactly the reason this change removes.
+
+  `doc/server.md` loses the corresponding *Not Yet Implemented* bullet, and
+  `api_reference_coverage_test` loses the flag that measured it — following the
+  precedent its own dartdoc records for the `extractAuthentication` bullet: a
+  flag kept after its limitation is fixed only ever asserts that the fix is
+  still absent.
+
 - **An endpoint's default failure answers the framework envelope, and a status
   is three lines to declare (tcopen182).** Two things were wrong with the todo's
   premise and worth recording. `TomDefaultErrorHandler` is not "the other half

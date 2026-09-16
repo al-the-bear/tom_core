@@ -223,8 +223,12 @@ void initializeServerResources() {
 
 /// Boots the HTTP server (fire-and-forget; the bound socket + open DB
 /// connection keep the isolate alive).
-void startServer(ServerConfiguration configuration) {
-  TomServer(configuration).start();
+Future<void> startServer(ServerConfiguration configuration) async {
+  // Awaited, so a bind failure — the port already in use is the everyday one —
+  // arrives here rather than as an unhandled asynchronous error from a future
+  // nobody held. The call still returns as soon as the socket is listening;
+  // it is that socket, not this function, that keeps the isolate alive.
+  await TomServer(configuration).start();
 }
 
 Future<void> main(List<String> args) async {
@@ -246,7 +250,7 @@ Future<void> main(List<String> args) async {
     configuration.databaseMigrationsDirectory,
   );
 
-  startServer(configuration);
+  await startServer(configuration);
 
   // Names the resolved environment as well as the port: which overlay won is
   // the first thing anyone asks when a server behaves like the wrong one, and

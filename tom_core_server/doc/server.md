@@ -42,8 +42,8 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
 ## Starting a Server
 
 ```dart
-final server = TomServer(configuration); // a TomBaseServerConfiguration
-server.start(); // fire-and-forget: binds the socket and starts listening
+final server = TomServer(configuration);   // a TomBaseServerConfiguration
+final socket = await server.start();       // completes when it is listening
 ```
 
 `TomServer` reads everything it needs from the configuration: the service
@@ -51,8 +51,17 @@ credential (below), TLS material (`certificateChain` / `privateKey`, unless
 `noSsl`), the listen address (`host`, or any-IPv4 when empty or
 `listenToAnyIP`), the `port`, `isolateCount` (sockets are `shared` when more
 than one), `autoCompress`, and the `serverHeader` / `poweredByHeader`.
-`start()` is fire-and-forget — it begins listening and logs the bound address;
-it does not return the `HttpServer`.
+`start()` completes **when the socket is listening**, with the bound
+`HttpServer`. So a bind failure — a port already in use, an unreadable
+certificate, a malformed private key — rejects the returned future instead of
+surfacing as an unhandled asynchronous error; a caller can tell *listening* from
+*called*, which is what a test or a supervisor needs before it sends the first
+request; and the socket can be closed by whoever opened it.
+
+Awaiting is optional. A caller that ignores the future gets the fire-and-forget
+behaviour a `void` return used to give, because the bound socket keeps the
+isolate alive on its own — which is why the sample servers' `main` still ends on
+this call. What changed is that ignoring it is a choice.
 
 ### The Deployment Logs Itself In First
 
@@ -71,9 +80,8 @@ There are three outcomes, and only the middle one is new to a deployment:
   info line records the skip, no server principal is installed, and access
   evaluation is the user's grant alone. Nothing about such a server changes.
 - **Configured and the login fails** — the error is logged and **rethrown, and
-  the socket is never bound**. Because `start()` is fire-and-forget this arrives
-  as an unhandled asynchronous error at boot with the log line
-  `Server self-login failed — refusing to bind the socket`. Starting anyway
+  the socket is never bound**: `start()`'s future rejects with it, under the log
+  line `Server self-login failed — refusing to bind the socket`. Starting anyway
   would mean running uncapped after explicitly asking to be capped, so this
   aborts rather than degrades.
 - **Configured and the login succeeds** — the principal is installed and user
@@ -260,14 +268,7 @@ somewhere other than the call site.
   a transaction scope that cannot be opened. A deployment that supplies a
   rejecting middleware loses the line for every rejection, which is the class of
   request most worth having one.
-- **`start()` cannot be awaited and hands back no handle.** It is
-  `void … async`, so a failure after the self-login — a port already in use, an
-  unreadable certificate — arrives as an unhandled asynchronous error rather
-  than at the call site, and the caller never receives the bound `HttpServer`
-  to close. That the socket is bound at all is observable only through the log
-  line `start()` emits.
-
-All three are pinned by tests in `test/api_reference_coverage_test.dart`, in the
+Both are pinned by tests in `test/api_reference_coverage_test.dart`, in the
 group "the server guide's Not Yet Implemented section matches the module", so
 closing one turns a test red rather than leaving this section quietly wrong.
 There were four: `extractAuthentication` could not report a bad token, because

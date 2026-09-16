@@ -385,8 +385,12 @@ void installTwoFactorPolicy() {
 
 /// Boots the HTTP server (fire-and-forget; the bound socket + open DB connection
 /// keep the isolate alive).
-void startServer(AuthServerConfiguration configuration) {
-  TomServer(configuration).start();
+Future<void> startServer(AuthServerConfiguration configuration) async {
+  // Awaited, so a bind failure — the port already in use is the everyday one —
+  // arrives here rather than as an unhandled asynchronous error from a future
+  // nobody held. The call still returns as soon as the socket is listening;
+  // it is that socket, not this function, that keeps the isolate alive.
+  await TomServer(configuration).start();
 }
 
 Future<void> main(List<String> args) async {
@@ -449,7 +453,7 @@ Future<void> main(List<String> args) async {
   // when it mounts the reflected endpoint pipeline.
   TomFileSlots.register(userRepository);
 
-  startServer(configuration);
+  await startServer(configuration);
 
   tomLog.info('Advanced auth server started on port ${configuration.port}.');
 }
