@@ -2092,30 +2092,23 @@ void main() {
   // Each exit is therefore driven here with a start that actually succeeded,
   // and the assertion is always the same one — a following start is allowed.
   //
-  // The exceptions are the two failing exits of `commit`, which keep the id on
-  // purpose. A `false` from `commit()` is a veto, and the coordinator answers a
-  // veto by rolling *every* participant back, this one included; `rollback`
-  // needs the branch to name, and clears it in its `finally`. So the pair is
-  // read together — commit leaves the id for rollback, rollback closes it —
-  // and through the SQL, which is the only place the id is observable: a
+  // The exceptions are the failing exits of `prepare`, which keep the id on
+  // purpose. A `false` from `prepare()` is the veto, and the coordinator
+  // answers a veto by rolling *every* participant back, this one included;
+  // `rollback` needs the branch to name, and clears it in its `finally`. So the
+  // pair is read together — prepare leaves the id for rollback, rollback closes
+  // it — and through the SQL, which is the only place the id is observable: a
   // wrongly cleared one surfaces as the literal `XA ROLLBACK null`.
-  // The order the *coordinator* chooses, which is the one that ships.
   //
-  // Every other XA test in this file calls `startTransaction` / `commit` /
-  // `endTransaction` in the order the test picks, and every test picks the
-  // XA-correct one. That is why a suite this size could hold a driver whose
-  // commit path could not work: the driver put `XA END` + `XA PREPARE` in
-  // `endTransaction`, and `TomTransaction.commitTransaction` drains its
-  // `commit()` loop *first*. Against a real server `XA COMMIT` on a branch that
-  // was never ended is rejected, `commit()` returns `false`, a `false` is a
-  // veto, and the coordinator turns the whole transaction into a rollback —
-  // leaving the branch ACTIVE, holding its locks, with nothing to reclaim it
-  // because nothing issues `XA RECOVER`.
-  //
-  // So these drive the participant through `TomTransaction` and read the SQL.
-  // The branch id has no accessor, which is what makes the SQL the only place
-  // the defect is visible: a statement issued against a cleared id arrives as
-  // the literal `XA PREPARE null`.
+  // Every other XA test in this file calls the lifecycle methods in an order
+  // the test picks, and every test picks the XA-correct one. That is what lets
+  // a suite this size agree with a driver the coordinator cannot drive: the
+  // statements are right and the order they are *issued* in is the
+  // coordinator's, not the test's. So these tests drive the participant through
+  // a real `TomTransaction` and read the SQL it produced. The branch id has no
+  // accessor, which makes the SQL the only place a mistake about it is visible:
+  // a statement issued against a cleared id arrives as the literal
+  // `XA PREPARE null`.
   group('MariaDb XA through the coordinator', () {
     tearDown(() async {
       await TomTransactionManager.getCurrentTransaction()
@@ -2177,26 +2170,40 @@ void main() {
       );
     });
 
-    test('a refused commit rolls the branch back, naming it', () async {
-      // The veto path end to end. `XA COMMIT` failing must not leave the branch
-      // ACTIVE: the coordinator turns the failure into a rollback, and the
-      // rollback has to name the same branch rather than a cleared id.
-      final ds = _ScriptedXADatasource(failing: {'XA COMMIT'});
-      final (txn, _) = TomTransactionManager.startTransaction();
-      await txn.registerParticipant(ds);
+    test(
+      'a commit refused after a prepare is left in doubt, not rolled back',
+      () async {
+        // The in-doubt path end to end, and the one place the two-phase contract
+        // is visible in SQL: the branch prepared, so the server has undertaken to
+        // be able to commit it, and a rollback issued now would throw away a
+        // resolvable branch on the strength of one failed round trip. The
+        // coordinator leaves it — `XA RECOVER` is how it is found — and reports
+        // the transaction as partially committed.
+        final ds = _ScriptedXADatasource(failing: {'XA COMMIT'});
+        final (txn, _) = TomTransactionManager.startTransaction();
+        await txn.registerParticipant(ds);
 
-      expect(await txn.commitTransaction(), isTrue);
+        expect(
+          await txn.commitTransaction(),
+          isFalse,
+          reason: 'a broken promise is reported, not repaired',
+        );
 
-      final branch = _branchOf(ds);
-      expect(ds.commands, [
-        'XA START $branch;',
-        'XA END $branch; XA PREPARE $branch;',
-        'XA COMMIT $branch;',
-        // Prepared already, so no second `XA END` — which the server would
-        // refuse, leaving the branch where it was.
-        'XA ROLLBACK $branch;',
-      ]);
-    });
+        final branch = _branchOf(ds);
+        expect(ds.commands, [
+          'XA START $branch;',
+          'XA END $branch; XA PREPARE $branch;',
+          'XA COMMIT $branch;',
+        ]);
+        expect(
+          ds.commands.any((c) => c.contains('XA ROLLBACK')),
+          isFalse,
+          reason:
+              'rolling back a prepared branch whose peers may have committed is '
+              'the outcome the prepare phase exists to prevent',
+        );
+      },
+    );
 
     test('a refused prepare rolls back and does not commit', () async {
       // A prepare that fails is a veto, and the branch must not be committed
@@ -2256,16 +2263,15 @@ void main() {
     });
 
     test('a failed prepare keeps the branch id for the rollback', () async {
-      // The prepare is the first half of `commit`, so a branch that will not
-      // prepare is not committed — and is not abandoned either. The `false`
-      // reaches the coordinator as a veto, the coordinator rolls every
-      // participant back, and this one has to be able to name the branch it
-      // opened. Clearing here would send `XA ROLLBACK null` and leave the real
-      // branch behind, which is the state nothing reclaims.
+      // A branch that will not prepare is not committed — and is not abandoned
+      // either. The `false` reaches the coordinator as a veto, the coordinator
+      // rolls every participant back, and this one has to be able to name the
+      // branch it opened. Clearing here would send `XA ROLLBACK null` and leave
+      // the real branch behind, which is the state nothing reclaims.
       final ds = _ScriptedXADatasource(failing: {'XA END'});
       expect(await ds.startTransaction(), isTrue);
       final branch = _branchOf(ds);
-      expect(await ds.commit(), isFalse);
+      expect(await ds.prepare(), isFalse);
       expect(ds.commands.last, 'XA END $branch; XA PREPARE $branch;');
       await ds.rollback();
       // The prepare failed, so the branch is still ACTIVE and has to be ended
@@ -2274,36 +2280,40 @@ void main() {
       expect(await ds.startTransaction(), isTrue);
     });
 
-    test('a failed commit keeps the branch id for the rollback', () async {
+    test('a failed commit keeps the branch id for XA RECOVER', () async {
       // Same contract one step later, and the sharper case: the branch is
-      // prepared, so it is holding its locks in the PREPARED state and a
-      // rollback that cannot name it strands it there permanently.
+      // prepared, so it is holding its locks in the PREPARED state. The
+      // coordinator does not roll it back — a prepared branch whose peers may
+      // have committed is in doubt, not failed — so what the id is kept *for*
+      // is an operator, or an `XA RECOVER`, having something to name. A
+      // rollback issued by hand still finds it.
       final ds = _ScriptedXADatasource(failing: {'XA COMMIT'});
       expect(await ds.startTransaction(), isTrue);
       final branch = _branchOf(ds);
+      expect(await ds.prepare(), isTrue);
       expect(await ds.commit(), isFalse);
       await ds.rollback();
       expect(ds.commands.last, 'XA ROLLBACK $branch;');
       expect(await ds.startTransaction(), isTrue);
     });
 
-    test('a successful commit prepares before it commits', () async {
-      // The order the branch's own state machine requires, read through the
-      // SQL because `_txId` has no accessor. Both statements live in `commit`
-      // because that is the only point the coordinator gives a participant
-      // before the outcome is decided — `endTransaction` runs after every
-      // commit, so a prepare there would follow the commit it is a
-      // precondition of.
+    test('prepare ends and prepares, commit commits', () async {
+      // The order the branch's own state machine requires, read through the SQL
+      // because `_txId` has no accessor. One statement per lifecycle method,
+      // each in the phase the coordinator gives it: `XA END` + `XA PREPARE` in
+      // `prepare`, where a refusal is still free, and `XA COMMIT` in `commit`,
+      // where the decision has been made.
       final ds = _ScriptedXADatasource();
       expect(await ds.startTransaction(), isTrue);
       final branch = _branchOf(ds);
       expect(branch, isNot(contains('null')));
-      expect(await ds.commit(), isTrue);
+      expect(await ds.prepare(), isTrue);
       expect(ds.commands, [
         'XA START $branch;',
         'XA END $branch; XA PREPARE $branch;',
-        'XA COMMIT $branch;',
       ]);
+      expect(await ds.commit(), isTrue);
+      expect(ds.commands.last, 'XA COMMIT $branch;');
       expect(await ds.endTransaction(), isTrue);
     });
 

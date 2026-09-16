@@ -19,13 +19,14 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 import '../_support/check.dart';
 
-/// A participant that records the lifecycle calls made on it. [vetoCommit]
-/// makes [commit] return `false`, which turns a commit into a rollback.
+/// A participant that records the lifecycle calls made on it. [vetoPrepare]
+/// makes [prepare] return `false`, which is the veto and turns the commit into
+/// a rollback.
 class _RecordingParticipant extends TomTransactionParticipant {
-  _RecordingParticipant(this.id, {this.vetoCommit = false});
+  _RecordingParticipant(this.id, {this.vetoPrepare = false});
 
   final String id;
-  final bool vetoCommit;
+  final bool vetoPrepare;
   final List<String> calls = [];
 
   @override
@@ -38,9 +39,15 @@ class _RecordingParticipant extends TomTransactionParticipant {
   }
 
   @override
+  Future<bool> prepare() async {
+    calls.add('prepare');
+    return !vetoPrepare;
+  }
+
+  @override
   Future<bool> commit() async {
     calls.add('commit');
-    return !vetoCommit;
+    return true;
   }
 
   @override
@@ -68,7 +75,7 @@ Future<void> run() async {
   check(identical(txn, sameTxn), 'both callers hold the same transaction');
   check(TomTransactionManager.transactional, 'a transaction is now active');
 
-  // 2. Enlist a participant and commit; it is committed then ended.
+  // 2. Enlist a participant and commit; it is prepared, committed, then ended.
   final a = _RecordingParticipant('a');
   await txn.registerParticipant(a);
   final ok = await txn.commitTransaction();
@@ -78,24 +85,27 @@ Future<void> run() async {
   );
   check(ok, 'the commit succeeded');
   check(
-    a.calls.join(',') == 'start,commit,end',
-    'the participant was started, committed and then ended, in that order',
+    a.calls.join(',') == 'start,prepare,commit,end',
+    'the participant was started, prepared, committed and then ended, in that '
+    'order — the prepare is phase one of the two-phase commit',
   );
   check(
     TomTransactionManager.getCurrentTransaction() == null,
     'a concluded transaction clears itself from its scope',
   );
 
-  // 3. A participant that vetoes the commit turns it into a rollback.
+  // 3. A participant that vetoes in phase one turns the commit into a
+  //    rollback — and, because the veto arrives during prepare, nobody has
+  //    committed when it does. That is what the phase is for.
   final (txn3, _) = TomTransactionManager.startTransaction();
-  final b = _RecordingParticipant('b', vetoCommit: true);
+  final b = _RecordingParticipant('b', vetoPrepare: true);
   await txn3.registerParticipant(b);
   final ok3 = await txn3.commitTransaction();
   print('3. veto -> ok=$ok3 calls=${b.calls}');
   check(
-    b.calls.join(',') == 'start,commit,rollback,end',
-    'the veto turned the commit into a rollback, and the participant that '
-    'had already been asked to commit was rolled back too',
+    b.calls.join(',') == 'start,prepare,rollback,end',
+    'the veto turned the commit into a rollback, and `commit` was never '
+    'reached — no participant made anything durable',
   );
   check(
     TomTransactionManager.getCurrentTransaction() == null,

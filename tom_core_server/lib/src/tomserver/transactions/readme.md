@@ -4,22 +4,26 @@
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Commit/rollback coordination across participants (datasources and other
-resources). A `TomTransaction` collects `TomTransactionParticipant`s; on commit
-it calls `commit()` on each — if any returns `false` the whole transaction rolls
-back. The `TomTransactionManager` binds a transaction to a `@TomTransactional`
-endpoint call and commits or rolls it back when the call returns.
+resources). A `TomTransaction` collects `TomTransactionParticipant`s and
+concludes them with a **two-phase commit**: `prepare()` on every participant
+first, and only if all of them promise does `commit()` run on any of them. A
+`false` from `prepare()` is the veto, and it arrives while nothing is durable,
+so the transaction aborts by rolling everyone back. The `TomTransactionManager`
+binds a transaction to a `@TomTransactional` endpoint call and commits or rolls
+it back when the call returns.
 
-There is no prepare phase, so this is not two-phase commit: a veto from a later
-participant arrives after earlier ones have already committed, and the rollback
-that follows has to undo committed work.
+Two phases do not make a commit infallible. A participant that promises and then
+fails leaves the transaction **partially committed** — its peers are durable and
+cannot be rolled back — which the coordinator reports by name and no coordinator
+can repair.
 
 ## Key types
 
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomTransactionManager` | Zone-scoped coordinator; `startTransaction([isReadOnly])` returns `(transaction, isNew)`, `getCurrentTransaction()`, `transactional`, plus `runInTransactionScope(body)` / `hasTransactionScope` for isolating one flow of work from another. Binds the transaction to a `@TomTransactional` endpoint call. |
-| `TomTransaction` | The running transaction (created via the manager); `registerParticipant` (all or nothing — a participant whose `startTransaction` refuses or throws is not enlisted, and the failure is raised naming it), `commitTransaction()` (rolls back on any failed participant), `rollbackTransaction()`. |
-| `TomTransactionParticipant` | Abstract resource that enlists in a transaction (`commit`, `rollback`, `endTransaction`). Datasources implement this. |
+| `TomTransaction` | The running transaction (created via the manager); `registerParticipant` (all or nothing — a participant whose `startTransaction` refuses or throws is not enlisted, and the failure is raised naming it), `commitTransaction()` (prepare-all then commit-all, rolling back on any veto), `rollbackTransaction()`. |
+| `TomTransactionParticipant` | Abstract resource that enlists in a transaction (`prepare`, `commit`, `rollback`, `endTransaction`). Datasources implement this; `MariaDbXADatasource` maps `prepare` onto `XA END` + `XA PREPARE` and `commit` onto `XA COMMIT`. |
 
 ## Quick start
 
@@ -57,15 +61,15 @@ await Future.wait([
 ```
 
 See [`doc/transactions.md`](../../../../doc/transactions.md) for the
-participant contract, what a veto costs without a prepare phase, and how a
+participant contract, what the prepare phase buys and what it cannot, and how a
 request acquires its scope, and
 `example/transactions/transactions_example.dart` for a walkthrough
 that checks its own results against an in-memory participant, so it needs no
 database. `test/transactions_test.dart` covers the module, runs the example, and
 holds this readme, `doc/transactions.md` and the API summary to what
-`TomTransactionParticipant` actually declares — so a prepare phase added to the
-contract fails the suite rather than leaving four texts describing yesterday's
-answer. `test/readme_quick_start_test.dart` runs the snippet above.
+`TomTransactionParticipant` actually declares — so the prepare phase being
+removed from the contract fails the suite rather than leaving four texts
+describing yesterday's answer. `test/readme_quick_start_test.dart` runs the snippet above.
 
 ---
 

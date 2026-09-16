@@ -2,6 +2,29 @@
 
 ### Added
 
+- **The transaction coordinator performs a two-phase commit (tcopen189).**
+  `TomTransactionParticipant` had four lifecycle methods and no prepare, so
+  `commitTransaction` committed participants one at a time: a veto from the
+  third arrived after the first two had committed **for real**, and the
+  coordinator's only answer was to call `rollback()` on them and hope it could
+  undo durable work. That is not a coordination protocol, it is a sequence of
+  commits with a compensation request at the end.
+
+  The contract now declares `Future<bool> prepare()`, and `commitTransaction`
+  runs it on every participant before it commits any of them. A `false` — or a
+  throw — is the veto, and it arrives while nothing is durable, so the abort is
+  a real abort. `MariaDbXADatasource` maps onto the two phases exactly:
+  `prepare()` issues `XA END` + `XA PREPARE` and `commit()` issues `XA COMMIT`,
+  which is what a prepared XA branch is for. `MariaDbDatasource` has nothing to
+  promise and returns `true`, and the guide says what that costs: a transaction
+  mixing the two is atomic unless the one-phase participant's commit fails.
+
+  A `commit()` that fails after a successful `prepare()` is **not** answered
+  with a rollback. The peers are durable, and rolling them back would discard
+  work the transaction decided to keep — the very failure the prepare phase
+  exists to prevent. The coordinator logs the partial commit at error level,
+  naming every participant that broke its promise, and commits the rest.
+
 - **The package example is the index of the other twenty-eight (tcopen188).**
   `example/tom_core_server_example.dart` was eight lines of `dart create`
   scaffolding: it printed `TomServer type: $TomServer` and reached none of its
@@ -733,6 +756,16 @@
   `readinessAnalyzer` the old name reads as though it covered both.
 
 ### Fixed
+
+- **No participant exception escapes the conclusion (tcopen189).**
+  `registerParticipant` caught both a `false` and a throw from
+  `startTransaction`, but the concluding loops caught neither: a `commit()`,
+  `rollback()` or `endTransaction()` that threw propagated out, leaving the
+  participants behind it neither concluded nor ended — their pooled connections
+  unreleased with nothing coming back for them — and the scope still pointing
+  at a transaction that was over. Every participant call in `commitTransaction`
+  and `rollbackTransaction` is now caught, logged against the participant that
+  raised it, and treated as that call's failure.
 
 - **A refused bearer token no longer reaches the log (tcopen186).**
   `dart_jsonwebtoken` wraps anything it did not anticipate in an exception whose

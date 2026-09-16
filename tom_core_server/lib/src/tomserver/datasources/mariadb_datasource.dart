@@ -1520,6 +1520,21 @@ class MariaDbDatasource implements TomDataSource {
   @override
   Future<bool> endTransaction() async => true;
 
+  /// Phase one for a resource that has no phase one: always `true`.
+  ///
+  /// A plain `START TRANSACTION` / `COMMIT` has no statement that makes the
+  /// commit certain without performing it, so there is nothing to issue here
+  /// and nothing this data source can promise beyond what the connection is
+  /// already doing. Its `COMMIT` can still fail.
+  ///
+  /// That is the cost of enlisting it beside a two-phase participant, and it is
+  /// worth naming: the transaction is atomic unless *this* participant's commit
+  /// fails, at which point the peers that prepared have already committed. A
+  /// deployment that needs the full guarantee across two databases uses
+  /// [MariaDbXADatasource] for both.
+  @override
+  Future<bool> prepare() async => true;
+
   @override
   Future<bool> commit() async {
     try {
@@ -1557,18 +1572,20 @@ class MariaDbDatasource implements TomDataSource {
 /// id, so this data source can take part in a two-phase commit across multiple
 /// resources.
 ///
+/// The lifecycle maps onto the coordinator's two phases exactly: [prepare]
+/// issues `XA END` + `XA PREPARE`, [commit] issues `XA COMMIT`, [rollback]
+/// issues `XA ROLLBACK` (preceded by `XA END` when the branch is still active),
+/// and [endTransaction] has nothing to do. That is what makes this data source
+/// able to keep the promise the phase asks for: a prepared branch commits.
+///
 /// The branch id doubles as the in-transaction guard: [startTransaction] throws
 /// while one is set rather than opening a nested branch. **Every exit therefore
-/// clears it except a failing [commit]**, which hands it on to [rollback] —
-/// because a `false` from `commit()` is a veto, and the coordinator answers a
-/// veto by rolling every participant back, this one included. An exit that
-/// forgets locks this data source out of every later transaction for good, and
-/// the caller cannot recover by rolling back, because the branch it would have
-/// to name never began.
-///
-/// `XA END` and `XA PREPARE` live in [commit] rather than in [endTransaction]
-/// because the coordinator drains its `commit()` loop first; see
-/// [endTransaction].
+/// clears it except a failing [prepare]**, which hands it on to [rollback] —
+/// a veto is answered by rolling every participant back, this one included, and
+/// [rollback] needs the branch to name. An exit that forgets locks this data
+/// source out of every later transaction for good, and the caller cannot
+/// recover by rolling back, because the branch it would have to name never
+/// began.
 @tomReflector
 @TomDatasourceDriver("mariadb_xa")
 class MariaDbXADatasource extends MariaDbDatasource {
@@ -1611,16 +1628,10 @@ class MariaDbXADatasource extends MariaDbDatasource {
   /// Ends this participant's part of the transaction: a no-op that always
   /// succeeds, exactly as its one-phase sibling's does.
   ///
-  /// The XA statements all belong to [commit] and [rollback], which is a
-  /// statement about *when the coordinator calls what*, not about XA. A branch
-  /// has to be `XA END`ed and `XA PREPARE`d before it can be committed, and
-  /// [TomTransaction.commitTransaction] drains its `commit()` loop before it
-  /// calls `endTransaction()` on anyone — so a prepare living here would run
-  /// after the commit it is a precondition of. Against a real server that
-  /// commit is rejected, `commit()` reports `false`, a `false` is a veto, and
-  /// the coordinator turns the whole transaction into a rollback while the
-  /// branch stays ACTIVE holding its locks. Nothing issues `XA RECOVER`, so
-  /// nothing reclaims it.
+  /// Every XA statement belongs to a phase the coordinator decides something
+  /// with, and this method is called after the decision — so a statement placed
+  /// here could not influence the outcome it is part of. `XA END` and
+  /// `XA PREPARE` are [prepare]'s; `XA COMMIT` is [commit]'s.
   ///
   /// Reporting `true` is not a formality. The coordinator ands every
   /// participant's result into the outcome, so a `false` here would fail a
@@ -1628,26 +1639,26 @@ class MariaDbXADatasource extends MariaDbDatasource {
   @override
   Future<bool> endTransaction() async => true;
 
-  /// Prepares the branch and commits it, in that order and in one call.
+  /// Phase one: `XA END` then `XA PREPARE` against this branch.
   ///
-  /// Both statements are here because this is the only point in the lifecycle
-  /// the coordinator gives a participant before the outcome is decided; see
-  /// [endTransaction] for what happens when the prepare is left to it. They are
-  /// issued as two round trips rather than one batch so that a refused prepare
-  /// stops before the commit — which is the whole reason a branch is prepared.
+  /// This is the statement XA exists for. A prepared branch is one the server
+  /// has undertaken to be able to commit — it survives a restart, and nothing
+  /// but `XA COMMIT` or `XA ROLLBACK` can resolve it — which is exactly the
+  /// promise the coordinator's prepare phase asks every participant for.
   ///
-  /// A failure at either step keeps `_txId`, and that is the opposite of every
-  /// other exit. The coordinator answers a `false` from `commit()` by rolling
-  /// *every* participant back, this one included, and [rollback] needs the
-  /// branch to name; clearing it here would send `XA ROLLBACK null` and leave
-  /// the real branch behind. [rollback] clears it in its `finally`, so the data
-  /// source is not wedged either way.
+  /// A failure here keeps `_txId`, and that is the opposite of every other
+  /// exit. The coordinator answers a veto by rolling *every* participant back,
+  /// this one included, and [rollback] needs the branch to name; clearing it
+  /// would send `XA ROLLBACK null` and leave the real branch behind.
+  /// [rollback] clears it in its `finally`, so the data source is not wedged
+  /// either way.
   @override
-  Future<bool> commit() async {
+  Future<bool> prepare() async {
     final branch = _txId;
     try {
       await executeCommand("XA END $branch; XA PREPARE $branch;");
       _prepared = true;
+      return true;
     } catch (error) {
       tomLog.error(
         "Preparing XA database transaction $branch of ${getParticipantId()} "
@@ -1655,6 +1666,19 @@ class MariaDbXADatasource extends MariaDbDatasource {
       );
       return false;
     }
+  }
+
+  /// Phase two: `XA COMMIT` against the prepared branch.
+  ///
+  /// Reached only once every participant has prepared, so the branch here is
+  /// always a prepared one and this call is the promise being kept. A failure
+  /// is an in-doubt branch rather than a veto: the coordinator reports the
+  /// transaction as partially committed and does not roll anybody back, because
+  /// peers have already committed. The branch is left set and prepared so that
+  /// an operator — or a later `XA RECOVER` — has something to name.
+  @override
+  Future<bool> commit() async {
+    final branch = _txId;
     try {
       await executeCommand("XA COMMIT $branch;");
       _txId = null;
@@ -1662,7 +1686,9 @@ class MariaDbXADatasource extends MariaDbDatasource {
       return true;
     } catch (error) {
       tomLog.error(
-        "Committing XA database transaction $branch of ${getParticipantId()} failed $error",
+        "Committing prepared XA database transaction $branch of "
+        "${getParticipantId()} failed $error — the branch is in doubt and is "
+        "left for XA RECOVER",
       );
       return false;
     }
@@ -1670,10 +1696,11 @@ class MariaDbXADatasource extends MariaDbDatasource {
 
   @override
   Future<void> rollback() async {
-    // A participant whose commit succeeded before another vetoed is rolled back
-    // too — the coordinator has no prepare phase, so a veto can arrive after
-    // someone has committed. There is no branch left to name and nothing to
-    // undo, and issuing the statement anyway would send `XA ROLLBACK null`.
+    // A participant that never opened a branch — its `startTransaction` failed
+    // — is still rolled back with everyone else, and so is one whose branch a
+    // successful commit has already cleared, which happens when a later
+    // participant's commit fails. There is nothing to undo in either case, and
+    // issuing the statement anyway would send `XA ROLLBACK null`.
     if (_txId == null) return;
     try {
       // An ACTIVE branch has to be ended before it can be rolled back; a

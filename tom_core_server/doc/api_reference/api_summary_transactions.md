@@ -4,10 +4,10 @@ A lightweight transaction coordinator: enlistable participants, a unit of work
 that commits or rolls them back as a group, and an ambient manager that holds
 the current transaction of the running flow — zone-scoped, so concurrent flows
 in one isolate do not share it — allowing the endpoint pipeline and data sources
-to join it without threading a handle through every call. There is no prepare
-phase, so this is not two-phase commit; see
-[TomTransactionParticipant](#tomtransactionparticipant) for what that costs an
-implementer.
+to join it without threading a handle through every call. The conclusion is a
+**two-phase commit** — every participant is prepared before any is committed —
+see [TomTransactionParticipant](#tomtransactionparticipant) for what that asks
+of an implementer and for the one outcome it cannot rule out.
 
 ## Table of Contents
 
@@ -27,8 +27,8 @@ Source: `lib/src/tomserver/transactions/transaction_manager.dart`.
 `TomTransactionParticipant` is the contract for a resource (e.g. a data source)
 that can enlist in a transaction, keyed by `getParticipantId`. `TomTransaction`
 is a single unit of work: participants enlist via `registerParticipant`, and the
-work concludes with `commitTransaction` (commit-all, rolling back if any
-participant vetoes) or `rollbackTransaction`. Instances are created only by
+work concludes with `commitTransaction` (prepare-all then commit-all, rolling
+back if any participant vetoes during prepare) or `rollbackTransaction`. Instances are created only by
 `TomTransactionManager.startTransaction` (the constructor is private).
 
 `TomTransactionManager` provides ambient access to the current transaction. The
@@ -81,17 +81,23 @@ TomTransactionException(
 A resource that can enlist in a `TomTransaction`. Implemented by
 `TomDataSource`, so any data source used during a transaction joins it. The
 coordinator drives the lifecycle: `startTransaction` on enlistment, then
-`commit`/`endTransaction` on success or `rollback`/`endTransaction` on failure.
+`prepare`/`commit`/`endTransaction` on success or `rollback`/`endTransaction` on
+failure.
 
-**This is not two-phase commit: there is no prepare step.** Under a prepare
-phase a veto arrives while nothing has been committed yet; here `commit` *is*
-the commit, participants are committed in registration order, and a veto from
-the third arrives after the first two have already committed. The coordinator
-answers by calling `rollback` on all of them, so an implementer must treat
-`rollback` as reachable after their own `commit` has returned `true`, and the
-transaction is repaired only if that rollback can undo committed work. A
-participant that cannot undo its commit should do the work that can fail inside
-`commit` itself, so its veto is raised before anything is made durable.
+**This is two-phase commit.** `prepare` runs on every participant before
+`commit` runs on any of them, so a veto — a `false` from `prepare`, or a throw —
+arrives while nothing is durable and the coordinator can abort by rolling
+everyone back. Everything that can fail therefore belongs in `prepare`: it is
+the last point at which failing is free, and the only place a refusal is a veto.
+`commit` is the promise being kept, not a decision.
+
+The outcome two phases cannot rule out is a participant that promises and then
+fails in `commit`. That leaves the transaction **partially committed**: the
+coordinator logs it at error level naming the participants that failed, commits
+the rest, and rolls nobody back, because rolling back a peer whose commit
+succeeded would discard work the transaction decided to keep. A participant with
+nothing to prepare returns `true`; `MariaDbXADatasource` is the two-phase one,
+mapping `prepare` onto `XA END` + `XA PREPARE` and `commit` onto `XA COMMIT`.
 
 - **Extends:** none (abstract)
 
@@ -101,9 +107,10 @@ participant that cannot undo its commit should do the work that can fail inside
 | ------ | --------- | ----------- |
 | `getParticipantId` | `String getParticipantId()` | A stable id used to deduplicate this participant within a transaction. |
 | `startTransaction` | `Future<bool> startTransaction()` | Begins the participant's part of the transaction; called once on enlist. |
-| `endTransaction` | `Future<bool> endTransaction()` | Releases per-transaction resources after commit or rollback. |
-| `commit` | `Future<bool> commit()` | Commits the participant's work; returning `false` vetoes the transaction. |
-| `rollback` | `Future<void> rollback()` | Undoes the participant's work when the transaction is rolled back. |
+| `prepare` | `Future<bool> prepare()` | Phase one: promises that `commit` will succeed. Returning `false` — or throwing — vetoes the transaction, while nothing is durable. A participant with nothing to prepare returns `true`. |
+| `commit` | `Future<bool> commit()` | Phase two: makes the work durable. Reached only after every participant prepared, so a `false` is not a veto — it reports a broken promise and leaves the transaction partially committed. |
+| `rollback` | `Future<void> rollback()` | Undoes the participant's work when the transaction is rolled back. Reachable after a successful `prepare`, never after this participant's own `commit`. |
+| `endTransaction` | `Future<bool> endTransaction()` | Releases per-transaction resources after commit or rollback. Decides nothing. |
 
 ### TomTransaction
 
@@ -129,7 +136,7 @@ None — the constructor is private; obtain instances via
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `registerParticipant` | `Future<void> registerParticipant(TomTransactionParticipant ttp)` | Enlists `ttp`, calling its `startTransaction()` once; deduplicated by participant id. Enlistment is all or nothing: the participant is recorded only after a `true`, and a `false` or a throw leaves it unenlisted and raises `TomTransactionException` naming it (`…start_failed` / `…start_threw`, the latter carrying the original as `rootException`). Also throws when the transaction is no longer running. |
-| `commitTransaction` | `Future<bool> commitTransaction()` | Commits every participant then ends them; if any vetoes, rolls back instead. Clears the transaction from its scope and returns whether it succeeded. |
+| `commitTransaction` | `Future<bool> commitTransaction()` | Prepares every participant, then — only if all promised — commits every participant, then ends them all. A veto or a throw during prepare rolls the transaction back instead; a `commit` that fails after a successful prepare does not, and is logged as a partial commit. Clears the transaction from its scope and returns whether it succeeded. |
 | `rollbackTransaction` | `Future<bool> rollbackTransaction()` | Rolls back every participant then ends them; clears the transaction from its scope and returns whether all end calls succeeded. |
 
 "Ends them" is unconditional on both paths: a participant whose

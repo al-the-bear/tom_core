@@ -12,10 +12,29 @@ import 'package:test/test.dart';
 /// [TomTransactionManager.runInTransactionScope]. The module is self-contained
 /// (no reflection, no database), so the whole surface is exercised here with a
 /// recording fake participant.
+/// A [TomLogOutput] that keeps every message instead of printing it, so a test
+/// can assert on what the coordinator actually wrote.
+class _CapturingLogOutput extends TomLogOutput {
+  final List<String> messages = [];
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) => messages.add(convertToString(message));
+}
 
 /// A participant that records the lifecycle calls made on it.
 ///
-/// [vetoCommit] makes `commit()` return `false` (vetoing the transaction).
+/// [vetoPrepare] makes `prepare()` return `false`, which is the veto; a
+/// [prepareThrows] makes it throw, which the coordinator has to treat the same
+/// way. [vetoCommit] makes `commit()` return `false` — *not* a veto, since the
+/// transaction is decided by then, but the in-doubt outcome the coordinator
+/// has to report without rolling anybody back.
 /// [endResult] is the value returned by `endTransaction()` — set it `false` to
 /// exercise the "an end call failed" branch of the commit/rollback drive. When
 /// a [sharedLog] is supplied, every call is also appended to it as `id:call`,
@@ -24,12 +43,16 @@ import 'package:test/test.dart';
 class _RecordingParticipant extends TomTransactionParticipant {
   _RecordingParticipant(
     this.id, {
+    this.vetoPrepare = false,
+    this.prepareThrows = false,
     this.vetoCommit = false,
     this.endResult = true,
     this.sharedLog,
   });
 
   final String id;
+  final bool vetoPrepare;
+  final bool prepareThrows;
   final bool vetoCommit;
   final bool endResult;
   final List<String>? sharedLog;
@@ -47,6 +70,13 @@ class _RecordingParticipant extends TomTransactionParticipant {
   Future<bool> startTransaction() async {
     _record('start');
     return true;
+  }
+
+  @override
+  Future<bool> prepare() async {
+    _record('prepare');
+    if (prepareThrows) throw StateError('the resource cannot promise');
+    return !vetoPrepare;
   }
 
   @override
@@ -89,6 +119,12 @@ class _UnstartableParticipant extends TomTransactionParticipant {
     calls.add('start');
     if (byThrowing) throw StateError('the resource is not there');
     return false;
+  }
+
+  @override
+  Future<bool> prepare() async {
+    calls.add('prepare');
+    return true;
   }
 
   @override
@@ -193,7 +229,7 @@ void main() {
         await txn.registerParticipant(p);
         final ok = await txn.commitTransaction();
         expect(ok, isTrue);
-        expect(p.calls, ['start', 'commit', 'end']);
+        expect(p.calls, ['start', 'prepare', 'commit', 'end']);
         expect(txn.isRunning, isFalse);
         expect(TomTransactionManager.getCurrentTransaction(), isNull);
       },
@@ -206,11 +242,17 @@ void main() {
       await txn.registerParticipant(_RecordingParticipant('b', sharedLog: log));
       final ok = await txn.commitTransaction();
       expect(ok, isTrue);
-      // All commits run (in order) before any endTransaction, and both phases
-      // follow registration order.
+      // The whole point of the two-phase shape, in one list: **every**
+      // participant is prepared before **any** is committed. A commit
+      // interleaved into the prepare loop would make the first commit durable
+      // before the second participant had said whether it could, which is the
+      // window a prepare phase exists to close. Every loop follows registration
+      // order, and the ends come last because they decide nothing.
       expect(log, [
         'a:start',
         'b:start',
+        'a:prepare',
+        'b:prepare',
         'a:commit',
         'b:commit',
         'a:end',
@@ -218,32 +260,116 @@ void main() {
       ]);
     });
 
-    test('a vetoing participant turns the commit into a rollback', () async {
+    test(
+      'a participant vetoing in prepare turns the commit into a rollback',
+      () async {
+        final (txn, _) = TomTransactionManager.startTransaction();
+        final p = _RecordingParticipant('a', vetoPrepare: true);
+        await txn.registerParticipant(p);
+        await txn.commitTransaction();
+        expect(p.calls, ['start', 'prepare', 'rollback', 'end']);
+        expect(
+          p.calls,
+          isNot(contains('commit')),
+          reason: 'a vetoed transaction commits nobody',
+        );
+        expect(TomTransactionManager.getCurrentTransaction(), isNull);
+      },
+    );
+
+    test('a participant throwing in prepare is treated as a veto', () async {
+      // `false` and a throw are the same event to the coordinator — the
+      // participant cannot promise — and letting the throw escape would leave
+      // the transaction not-running, nobody rolled back, and the scope still
+      // pointing at it.
       final (txn, _) = TomTransactionManager.startTransaction();
-      final p = _RecordingParticipant('a', vetoCommit: true);
-      await txn.registerParticipant(p);
-      await txn.commitTransaction();
-      expect(p.calls, contains('rollback'));
+      final thrower = _RecordingParticipant('a', prepareThrows: true);
+      final other = _RecordingParticipant('b');
+      await txn.registerParticipant(thrower);
+      await txn.registerParticipant(other);
+
+      final ok = await txn.commitTransaction();
+
+      expect(ok, isTrue, reason: 'the rollback itself succeeded');
+      expect(thrower.calls, ['start', 'prepare', 'rollback', 'end']);
+      expect(other.calls, ['start', 'rollback', 'end']);
       expect(TomTransactionManager.getCurrentTransaction(), isNull);
     });
 
+    test('a later veto stops the commit before anyone has committed', () async {
+      // The property the prepare phase buys, stated as the thing that used to
+      // be false: the first participant is rolled back having never been
+      // asked to commit, so there is nothing durable to undo and the rollback
+      // is a real abort rather than a compensation nobody can guarantee.
+      final (txn, _) = TomTransactionManager.startTransaction();
+      final first = _RecordingParticipant('a');
+      final vetoer = _RecordingParticipant('b', vetoPrepare: true);
+      await txn.registerParticipant(first);
+      await txn.registerParticipant(vetoer);
+
+      final ok = await txn.commitTransaction();
+
+      expect(ok, isTrue); // rollback's end calls all succeeded
+      expect(first.calls, ['start', 'prepare', 'rollback', 'end']);
+      expect(vetoer.calls, ['start', 'prepare', 'rollback', 'end']);
+      expect(
+        [...first.calls, ...vetoer.calls],
+        isNot(contains('commit')),
+        reason:
+            'the veto arrived in phase one, so no participant was asked to '
+            'make anything durable',
+      );
+    });
+
     test(
-      'a later veto also rolls back the participants that already committed',
+      'a commit that fails after a successful prepare is not a veto',
       () async {
+        // The in-doubt outcome, and the one the coordinator must NOT answer
+        // with a rollback: the participants that committed are durable, and
+        // rolling them back would discard work the transaction decided to keep.
+        // Every participant is still committed — the broken promise does not
+        // stop the ones behind it — and the failure comes out in the result.
         final (txn, _) = TomTransactionManager.startTransaction();
-        final committed = _RecordingParticipant('a');
-        final vetoer = _RecordingParticipant('b', vetoCommit: true);
-        await txn.registerParticipant(committed);
-        await txn.registerParticipant(vetoer);
+        final broken = _RecordingParticipant('a', vetoCommit: true);
+        final kept = _RecordingParticipant('b');
+        await txn.registerParticipant(broken);
+        await txn.registerParticipant(kept);
+
         final ok = await txn.commitTransaction();
-        // The veto aborts the commit loop and rolls the whole transaction back,
-        // so the participant that already committed successfully is still rolled
-        // back and ended.
-        expect(ok, isTrue); // rollback's end calls all succeeded
-        expect(committed.calls, ['start', 'commit', 'rollback', 'end']);
-        expect(vetoer.calls, ['start', 'commit', 'rollback', 'end']);
+
+        expect(ok, isFalse);
+        expect(broken.calls, ['start', 'prepare', 'commit', 'end']);
+        expect(kept.calls, ['start', 'prepare', 'commit', 'end']);
+        expect(
+          [...broken.calls, ...kept.calls],
+          isNot(contains('rollback')),
+          reason:
+              'rolling back a participant whose commit succeeded is the '
+              'failure two-phase commit exists to prevent',
+        );
       },
     );
+
+    test('and the partial commit is reported by name', () async {
+      // An operator repairing it has to go to the named resources, so the
+      // names are the whole message. Nothing else in the run can produce it:
+      // this is the only path that logs at error level from the coordinator.
+      final output = _CapturingLogOutput();
+      final previous = tomLog.logOutput;
+      addTearDown(() => tomLog.logOutput = previous);
+      tomLog.logOutput = output;
+
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(
+        _RecordingParticipant('ledger', vetoCommit: true),
+      );
+      await txn.registerParticipant(_RecordingParticipant('audit'));
+      await txn.commitTransaction();
+
+      final written = output.messages.join('\n');
+      expect(written, contains('partially committed'));
+      expect(written, contains('ledger'));
+    });
 
     test(
       'a failing endTransaction makes a clean commit report false',
@@ -255,7 +381,7 @@ void main() {
         // The work committed, but the resource-release step failed, which the
         // return value surfaces.
         expect(ok, isFalse);
-        expect(p.calls, ['start', 'commit', 'end']);
+        expect(p.calls, ['start', 'prepare', 'commit', 'end']);
         expect(TomTransactionManager.getCurrentTransaction(), isNull);
       },
     );
@@ -277,9 +403,9 @@ void main() {
         // source, returning its connection to the pool. Skipping it because
         // somebody *else* reported failure leaks that resource, and the work is
         // already committed, so nothing later comes back to release it.
-        expect(failing.calls, ['start', 'commit', 'end']);
-        expect(second.calls, ['start', 'commit', 'end']);
-        expect(third.calls, ['start', 'commit', 'end']);
+        expect(failing.calls, ['start', 'prepare', 'commit', 'end']);
+        expect(second.calls, ['start', 'prepare', 'commit', 'end']);
+        expect(third.calls, ['start', 'prepare', 'commit', 'end']);
         // And the two successes behind it must not erase the failure: the
         // result is the conjunction of every end call, not the last one.
         expect(ok, isFalse);
@@ -494,7 +620,7 @@ void main() {
 
         expect(txn.isRunning, isTrue);
         expect(await txn.commitTransaction(), isTrue);
-        expect(good.calls, ['start', 'commit', 'end']);
+        expect(good.calls, ['start', 'prepare', 'commit', 'end']);
       },
     );
 
@@ -517,7 +643,7 @@ void main() {
         await txn.registerParticipant(retry);
 
         expect(await txn.commitTransaction(), isTrue);
-        expect(retry.calls, ['start', 'commit', 'end']);
+        expect(retry.calls, ['start', 'prepare', 'commit', 'end']);
       },
     );
 
@@ -591,8 +717,8 @@ void main() {
         expect(identical(transactions[0], transactions[1]), isFalse);
         // Each participant joined exactly one transaction and was driven by it
         // once — nobody was committed twice or by the wrong flow.
-        expect(pa.calls, ['start', 'commit', 'end']);
-        expect(pb.calls, ['start', 'commit', 'end']);
+        expect(pa.calls, ['start', 'prepare', 'commit', 'end']);
+        expect(pb.calls, ['start', 'prepare', 'commit', 'end']);
       },
     );
 
@@ -696,7 +822,7 @@ void main() {
           expect(await enlistAmbiently(p), isTrue);
           await txn.commitTransaction();
         });
-        expect(p.calls, ['start', 'commit', 'end']);
+        expect(p.calls, ['start', 'prepare', 'commit', 'end']);
       },
     );
 
@@ -720,7 +846,7 @@ void main() {
       mayFinish.complete();
       await flow;
 
-      expect(inside.calls, ['start', 'commit', 'end']);
+      expect(inside.calls, ['start', 'prepare', 'commit', 'end']);
       expect(outside.calls, isEmpty);
     });
   });
@@ -787,6 +913,13 @@ void main() {
     });
   });
 
+  // The module's guarantee is decided by one declaration — whether
+  // `TomTransactionParticipant` has a prepare step — and it is described in
+  // four places a reader can reach. Those four have to say what the code does,
+  // in both directions: a document promising two-phase commit over a contract
+  // that has no prepare phase invites a caller to rely on atomicity it will not
+  // get, and a document still denying one over a contract that has it sends a
+  // reader to build compensation they no longer need.
   group('the documents agree with the contract about a prepare phase', () {
     // Every text a reader could reach for the module's guarantees. The source
     // is first because it is also the contract these tests read.
@@ -799,9 +932,10 @@ void main() {
 
     /// Whether `TomTransactionParticipant` declares a prepare step.
     ///
-    /// Read from the source rather than hard-coded, so that adding a prepare
-    /// phase flips these tests instead of leaving them asserting yesterday's
-    /// answer: the documents are forced to follow the code either way.
+    /// Read from the source rather than hard-coded, so that removing the
+    /// prepare phase flips these tests instead of leaving them asserting
+    /// yesterday's answer: the documents are forced to follow the code either
+    /// way.
     bool contractHasPrepare() =>
         RegExp(r'abstract class TomTransactionParticipant \{[\s\S]*?\n\}')
             .firstMatch(File(texts.first).readAsStringSync())!
@@ -809,20 +943,31 @@ void main() {
             .contains('prepare(');
 
     test('the contract is the one the documents describe', () {
-      // Pins today's answer in one place. When a prepare phase is added this
-      // is the test that fails first, and its failure is the instruction to
-      // rewrite the four texts rather than to edit this line.
+      // Pins today's answer in one place. If the prepare phase is ever taken
+      // out, this is the test that fails first, and its failure is the
+      // instruction to rewrite the four texts rather than to edit this line.
       expect(
         contractHasPrepare(),
-        isFalse,
+        isTrue,
         reason:
-            'TomTransactionParticipant gained a prepare step — the four texts '
+            'TomTransactionParticipant lost its prepare step — the four texts '
             'listed here now say the opposite of the code',
       );
     });
 
-    test('no text claims two-phase commit while the contract lacks one', () {
-      if (contractHasPrepare()) return;
+    test('no text denies the two-phase commit the contract performs', () {
+      if (!contractHasPrepare()) return;
+      // The denial this module carried while it had no prepare phase, in every
+      // spelling the old texts used. Leaving one behind is worse than saying
+      // nothing: it is a specific, confident, wrong instruction to a reader
+      // deciding whether they need their own compensation logic.
+      const denials = [
+        'not two-phase commit',
+        'no prepare step',
+        'there is no prepare',
+        'has no prepare',
+        'lacks a prepare',
+      ];
       final offenders = <String>[];
       for (final path in texts) {
         // Line breaks fall anywhere in prose, so a claim and its denial can be
@@ -830,45 +975,70 @@ void main() {
         final prose = File(
           path,
         ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
-        for (final match in RegExp(
-          r'[\w-]*two[- ]phase[\w-]*',
-          caseSensitive: false,
-        ).allMatches(prose)) {
-          final before = prose.substring(
-            match.start < 40 ? 0 : match.start - 40,
-            match.start,
-          );
-          if (RegExp(r'\bnot\b', caseSensitive: false).hasMatch(before)) {
-            continue;
+        for (final denial in denials) {
+          if (prose.toLowerCase().contains(denial)) {
+            offenders.add('$path: "$denial"');
           }
-          offenders.add('$path: ...$before${match.group(0)}...');
         }
       }
       expect(
         offenders,
         isEmpty,
         reason:
-            'the coordinator has no prepare step, so an unqualified "two-phase" '
-            'promises a veto that can abort before anything is committed',
+            'the coordinator prepares every participant before it commits any '
+            'of them, so these sentences are false',
       );
     });
 
-    test('every text says so, rather than merely not saying otherwise', () {
-      if (contractHasPrepare()) return;
-      // Deleting the word would satisfy the test above while leaving a reader
-      // to discover the limitation from the source. The absent prepare phase is
-      // the module's single most consequential property — a rollback runs after
-      // a peer has already committed — so each text has to state it.
+    test('every text says so, rather than merely not denying it', () {
+      if (!contractHasPrepare()) return;
+      // Deleting the denial would satisfy the test above while leaving a reader
+      // to discover the guarantee from the source. The prepare phase is the
+      // module's single most consequential property — it is what makes a veto
+      // arrive before anything is durable — so each text has to state it.
       for (final path in texts) {
         final prose = File(
           path,
-        ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
+        ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
         expect(
           prose,
-          contains('not two-phase commit'),
-          reason: '$path does not tell the reader this is not two-phase commit',
+          contains('two-phase'),
+          reason: '$path does not tell the reader this is two-phase commit',
+        );
+        expect(
+          prose,
+          contains('prepare'),
+          reason: '$path does not name the prepare phase',
         );
       }
     });
+
+    test(
+      'and every text states the one outcome two phases cannot rule out',
+      () {
+        if (!contractHasPrepare()) return;
+        // A prepare phase makes a veto free; it does not make a commit
+        // infallible. A participant that promised and then failed leaves the
+        // transaction durable in part, and no coordinator can undo that — so a
+        // text that describes the guarantee without the residue is describing
+        // something stronger than what ships.
+        for (final path in texts) {
+          final prose = File(
+            path,
+          ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+          expect(
+            prose,
+            anyOf(
+              contains('partially committed'),
+              contains('in doubt'),
+              contains('in-doubt'),
+            ),
+            reason:
+                '$path describes the two-phase commit without the outcome it '
+                'cannot prevent',
+          );
+        }
+      },
+    );
   });
 }

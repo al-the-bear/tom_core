@@ -40,7 +40,8 @@ A participant is keyed by a stable id and exposes five lifecycle hooks:
 abstract class TomTransactionParticipant {
   String getParticipantId();
   Future<bool> startTransaction(); // on enlistment
-  Future<bool> commit();           // returning false vetoes the transaction
+  Future<bool> prepare();          // phase one; returning false vetoes
+  Future<bool> commit();           // phase two; the promise being kept
   Future<void> rollback();         // undo on failure
   Future<bool> endTransaction();   // release resources, after commit or rollback
 }
@@ -49,20 +50,34 @@ abstract class TomTransactionParticipant {
 `TomDataSource` implements this contract, so any data source touched during a
 transaction enlists in it.
 
-There is no `prepare()` among them, and that absence is the module's single most
-important limitation: **this is not two-phase commit.** Under a prepare phase a
-veto arrives while nothing has been committed yet, so aborting is free. Here
-`commit()` *is* the commit, and participants are committed in registration
-order — so a veto from the third participant arrives after the first two have
-already committed for real. The coordinator's answer is to roll all of them
-back, which repairs the transaction only if their `rollback()` can undo
-committed work.
+**This is two-phase commit.** `prepare()` runs on every participant before
+`commit()` runs on any of them, so a veto arrives while nothing is durable and
+aborting costs nothing: the coordinator rolls everyone back and no participant
+has to undo committed work. That is the whole reason for the phase, and it is
+what makes a transaction spanning two resources atomic.
 
-Two things follow for anyone implementing a participant. `rollback()` must be
-treated as reachable *after* your own `commit()` has succeeded and returned
-`true` — it is not only the failure path. And if your commit cannot be undone,
-do the work that can fail inside `commit()` itself, so that your veto is raised
-before you have made anything durable rather than after.
+Two things follow for anyone implementing a participant. **Everything that can
+fail belongs in `prepare()`** — it is the last point at which failing is free,
+and it is the only place a refusal is a veto. And `commit()` is a promise being
+kept rather than a decision: a `false` there is not acted on as a refusal,
+because peers may already be durable.
+
+The residue is the outcome two phases cannot rule out. A participant that
+promises and then fails in `commit()` leaves the transaction **partially
+committed** — the coordinator logs it at error level naming the participants
+that failed, commits the rest anyway, and rolls nobody back, because rolling
+back a peer whose commit succeeded would discard work the transaction decided to
+keep. No coordinator can repair that; the repair is at the named resources.
+
+A participant with nothing to prepare returns `true` and does its work in
+`commit()`. `MariaDbDatasource` is that participant — a plain
+`START TRANSACTION` / `COMMIT` has no statement that makes a commit certain
+without performing it — so enlisting one beside an XA data source weakens the
+guarantee to "atomic unless the one-phase participant's commit fails". Use
+`MariaDbXADatasource` for every resource in a transaction that has to be atomic
+across them: it maps `prepare()` onto `XA END` + `XA PREPARE` and `commit()`
+onto `XA COMMIT`, and a prepared XA branch is one the server has undertaken to
+be able to commit.
 
 ## The Transaction Lifecycle
 
@@ -116,11 +131,14 @@ coherent to drive.
 
 The work is concluded one of two ways:
 
-- **`commitTransaction()`** — marks the transaction not-running, then calls
-  `commit()` on each participant in registration order. If any participant
-  returns `false`, the whole transaction falls back to `rollbackTransaction()`.
-  On a clean commit, `endTransaction()` is called on every participant and the
-  current transaction is cleared.
+- **`commitTransaction()`** — marks the transaction not-running, then runs the
+  two phases in registration order: `prepare()` on every participant, and only
+  if all of them answered `true`, `commit()` on every participant. A participant
+  that vetoes — or throws — during prepare turns the whole thing into a
+  `rollbackTransaction()`. A `commit()` that fails after a successful prepare
+  does **not**: the remaining participants are committed anyway and the partial
+  commit is logged by name. Either way `endTransaction()` is called on every
+  participant and the current transaction is cleared.
 - **`rollbackTransaction()`** — marks not-running, calls `rollback()` then
   `endTransaction()` on every participant, and clears the current transaction.
 
@@ -219,20 +237,12 @@ identity-guarded, so a concluded transaction can never wipe a successor.
 
 ## Not Yet Implemented
 
-- **There is no prepare phase, so a late veto is repaired rather than
-  prevented.** Participants commit in registration order and
-  [The Participant Contract](#the-participant-contract) says what follows: a
-  veto from the third arrives after the first two have committed for real, and
-  the coordinator's only answer is to call `rollback()` on all of them. A
-  participant that cannot undo a completed commit must do the work that can fail
-  *inside* `commit()`, so its veto is raised before anything is durable.
-- **A `commit()` or `rollback()` that throws is not caught.** `registerParticipant`
-  handles both a `false` and a thrown error from `startTransaction`, but the
-  concluding loops do not: an exception from a participant propagates out of
-  `commitTransaction`, leaving the participants behind it neither committed,
-  rolled back, nor ended — and their per-transaction resources, typically pooled
-  connections, unreleased. A participant should report failure by returning
-  `false` from `commit()`, which the coordinator understands.
+- **A participant that breaks its promise leaves the transaction partially
+  committed.** A `commit()` that fails after a successful `prepare()` is not a
+  veto and cannot be answered with a rollback — peers are already durable. The
+  coordinator logs the failure at error level naming every participant that
+  broke its promise and commits the rest, and repair is at those resources. Two
+  phases make a veto free; they do not make a commit infallible.
 - **`isReadOnly` is recorded and never enforced.** `startTransaction(true)`
   stores the flag on the transaction and `@TomTransactional(isReadOnly: true)`
   passes it through, but no participant in the package reads it — a read-only
@@ -240,11 +250,11 @@ identity-guarded, so a concluded transaction can never wipe a successor.
   chooses to honour it, not a guarantee the coordinator makes.
 - **There is no transaction log, so a process that dies mid-commit is not
   recovered.** The coordinator's state lives in a zone value; nothing is written
-  down before the first `commit()` and nothing replays afterwards. A crash
-  between two participants' commits leaves the work half-done with no record of
-  it, and repair is the database's problem (or the operator's). Use a single
-  data source where atomicity matters, so that the participant's own transaction
-  is the guarantee.
+  down between the phases and nothing replays afterwards. A crash after the
+  prepare phase leaves every participant's work prepared and unresolved — for
+  `MariaDbXADatasource`, XA branches holding their locks until somebody issues
+  `XA RECOVER`, which nothing here does. The prepare phase is what makes those
+  branches *recoverable*; recovering them is the operator's.
 - **The commit is not concurrent and has no timeout.** Participants are driven
   one at a time, awaited in order, with no deadline — so one participant that
   blocks blocks the transaction and the request behind it indefinitely. Timeouts
@@ -253,14 +263,16 @@ identity-guarded, so a concluded transaction can never wipe a successor.
 ## Verification
 
 `test/transactions_test.dart` covers the manager end to end against a scripted
-participant: opening and concluding a transaction, the commit veto that turns a
-commit into a rollback, `registerParticipant`'s all-or-nothing enlistment —
-including the two failures a participant can present, a `startTransaction` that
-returns `false` and one that throws — scope isolation through
-`runInTransactionScope`, ambient enlistment, and `TomTransactionException`. It
-also holds the group named `The example runs green`, which spawns the example and
-asserts its transcript, and a check that this guide and the contract agree about
-there being no prepare phase.
+participant: opening and concluding a transaction, the two phases in order
+across two participants — every participant prepared before any is committed —
+the prepare veto and the prepare that throws, the commit that fails after a
+successful prepare and is reported rather than rolled back,
+`registerParticipant`'s all-or-nothing enlistment — including the two failures a
+participant can present, a `startTransaction` that returns `false` and one that
+throws — scope isolation through `runInTransactionScope`, ambient enlistment,
+and `TomTransactionException`. It also holds the group named `The example runs
+green`, which spawns the example and asserts its transcript, and a check that
+this guide and the contract agree about the prepare phase.
 
 ```bash
 dart run example/transactions/transactions_example.dart
@@ -289,6 +301,7 @@ transaction around a `@TomTransactional` endpoint.
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | every file | `Future`, `Zone` |
+| `tom_core_kernel` | package | `transaction_manager.dart` | `tomLog`, for the coordinator's own account of a veto, a participant that threw, and a partial commit |
 | [little_things](little_things.md) | module | every file | `TomServerException` (base of `TomTransactionException`) |
 
 - The datasources module — `TomDataSource` is the concrete

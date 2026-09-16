@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
 import '../little_things/server_exception.dart';
 
 /// Raised when a transaction operation is attempted in an invalid state — for
@@ -21,37 +23,75 @@ class TomTransactionException extends TomServerException {
 ///
 /// Implemented by `TomDataSource`, so any data source used during a transaction
 /// joins it. Participants are keyed by [getParticipantId] — registering the same
-/// id twice enlists once. The coordinator drives the lifecycle:
-/// [startTransaction] on enlistment, then either [commit] followed by
-/// [endTransaction] on success, or [rollback] followed by [endTransaction] on
-/// failure. [commit] returns `false` to veto the commit (which turns the whole
-/// transaction into a rollback); [endTransaction] releases any per-transaction
-/// resources (e.g. returning a connection to the pool).
+/// id twice enlists once.
 ///
-/// **This is not two-phase commit: there is no prepare step.** The distinction
-/// decides what a participant has to be able to do. Under a prepare phase a
-/// veto arrives while nothing has been committed yet, so aborting costs
-/// nothing; here [commit] *is* the commit, participants are committed in
-/// registration order, and a veto from the third one arrives after the first
-/// two have already committed for real. The coordinator's answer is to call
-/// [rollback] on all of them — so an implementer must treat [rollback] as
-/// reachable after their own [commit] has succeeded and returned `true`, and
-/// the transaction is only repaired if that rollback can genuinely undo
-/// committed work. A participant that cannot undo its commit should do the work
-/// that can fail inside [commit] itself, so that its veto is raised before it
-/// has made anything durable rather than after.
+/// ## The lifecycle
 ///
-/// `MariaDbXADatasource` is that participant. A branch has to be `XA END`ed and
-/// `XA PREPARE`d before it can be committed, and both statements live in its
-/// [commit] for the reason above — a prepare in [endTransaction] would run
-/// after the commit it is a precondition of, because the loops run in the order
-/// stated here.
+/// [startTransaction] on enlistment, and then one of two endings. On the happy
+/// path the coordinator runs **two phases**: [prepare] on every participant,
+/// and — only if all of them answered `true` — [commit] on every participant.
+/// On failure, [rollback] on every participant. Either ending is followed by
+/// [endTransaction] on every participant, which releases per-transaction
+/// resources (a pooled connection, typically) and decides nothing.
+///
+/// ## What the prepare phase is for
+///
+/// [prepare] is where a participant does everything that can still fail, and
+/// its `false` is the veto. A veto therefore arrives while **nothing has been
+/// committed**, so the coordinator can abort by rolling everyone back and the
+/// transaction is genuinely atomic across resources — which is the property
+/// the phase exists to buy and the reason [commit] is not a veto.
+///
+/// [commit] runs after the decision. Every participant has already promised it
+/// can commit, so a `false` from one of them is not a refusal the coordinator
+/// can act on: peers may have committed already, and rolling *them* back would
+/// undo work the transaction decided to keep. It is reported, loudly, as a
+/// partially committed transaction — the classic in-doubt outcome — and a
+/// participant that wants to be able to refuse has to refuse in [prepare].
+///
+/// A participant with nothing to prepare returns `true` from [prepare] and does
+/// its work in [commit]; that is what a one-phase resource like a plain
+/// `MariaDbDatasource` does, and it is why enlisting one alongside a
+/// two-phase resource weakens the guarantee to "atomic unless the one-phase
+/// participant's commit fails". `MariaDbXADatasource` is the two-phase one:
+/// [prepare] issues `XA END` + `XA PREPARE` and [commit] issues `XA COMMIT`.
 abstract class TomTransactionParticipant {
   /// A stable id used to deduplicate this participant within a transaction.
   String getParticipantId();
 
   /// Begins the participant's part of the transaction; called once on enlist.
   Future<bool> startTransaction();
+
+  /// Phase one: promises that [commit] will succeed. `false` vetoes.
+  ///
+  /// Everything that can still fail belongs here, because this is the last
+  /// point at which failing is free: the coordinator answers a `false` — or a
+  /// throw — by rolling every participant back, and no participant has
+  /// committed yet.
+  ///
+  /// The promise is the point. A participant that returns `true` and then fails
+  /// in [commit] has broken the contract the phase exists to enforce, and the
+  /// coordinator has no way to repair it.
+  ///
+  /// A participant with nothing to prepare returns `true`.
+  Future<bool> prepare();
+
+  /// Phase two: makes the work durable.
+  ///
+  /// Reached only after **every** participant's [prepare] returned `true`, so
+  /// the transaction is already decided. A `false` is not a veto — see the
+  /// class documentation — it reports that this participant failed to honour
+  /// its promise, leaving the transaction partially committed. The coordinator
+  /// logs that and commits the remaining participants anyway, because the
+  /// alternative is to abandon work peers have already made durable.
+  Future<bool> commit();
+
+  /// Undoes the participant's work when the transaction is rolled back.
+  ///
+  /// Reachable after a successful [prepare] — that is the ordinary abort, when
+  /// a later participant vetoed — and before one, when the veto came earlier.
+  /// It is **not** reachable after this participant's [commit].
+  Future<void> rollback();
 
   /// Releases per-transaction resources after commit or rollback.
   ///
@@ -61,12 +101,6 @@ abstract class TomTransactionParticipant {
   /// `false` reports a failure to release, not a veto — the transaction has
   /// already happened.
   Future<bool> endTransaction();
-
-  /// Commits the participant's work; returning `false` vetoes the transaction.
-  Future<bool> commit();
-
-  /// Undoes the participant's work when the transaction is rolled back.
-  Future<void> rollback();
 }
 
 /// A single unit of work coordinating one or more [TomTransactionParticipant]s.
@@ -171,31 +205,121 @@ class TomTransaction {
     _participants[id] = ttp;
   }
 
-  /// Commits every participant, then ends them; clears the current transaction.
+  /// Runs the two-phase commit, then ends every participant; clears the
+  /// current transaction.
   ///
-  /// Marks the transaction not-running, then calls `commit()` on each
-  /// participant in registration order. If any participant vetoes (returns
-  /// `false`), the whole transaction is rolled back via [rollbackTransaction]
-  /// instead. On a clean commit, `endTransaction()` is called on every
-  /// participant and the transaction is cleared from its scope. Returns
-  /// whether the commit (and all end calls) succeeded.
+  /// Marks the transaction not-running, then:
+  ///
+  ///  1. **Prepare.** `prepare()` on every participant in registration order.
+  ///     A participant that answers `false` — or throws — vetoes, and the whole
+  ///     transaction becomes a [rollbackTransaction]. Nothing has been
+  ///     committed at that point, which is the property the phase buys.
+  ///  2. **Commit.** `commit()` on every participant. The transaction is
+  ///     decided by now, so a `false` here is *not* a veto: it is reported as a
+  ///     partially committed transaction and the remaining participants are
+  ///     committed anyway. Rolling back instead would discard work peers have
+  ///     already made durable, which is the failure the prepare phase exists to
+  ///     prevent and would reintroduce at the worst moment.
+  ///  3. **End.** `endTransaction()` on every participant, and the transaction
+  ///     is cleared from its scope.
+  ///
+  /// Returns whether every phase succeeded. Both loops run to completion rather
+  /// than stopping at the first failure — a participant left uncommitted or
+  /// un-ended has nothing coming back for it, because the transaction is over.
   Future<bool> commitTransaction() async {
-    bool ok = true;
     _isRunning = false;
-    for (var p in _participants.values) {
-      ok = await p.commit();
-      if (!ok) {
+
+    for (final p in _participants.values) {
+      final bool prepared;
+      try {
+        prepared = await p.prepare();
+      } catch (error, stack) {
+        // Deliberately wide, and for the same reason `registerParticipant`
+        // catches: a participant is a driver or a client, and whatever it
+        // raises means the one thing the coordinator can act on — it cannot
+        // promise to commit. Letting it escape would leave the transaction
+        // not-running, nobody rolled back and the scope still pointing at it.
+        tomLog.error(
+          "Participant '${p.getParticipantId()}' threw while preparing; "
+          "rolling the transaction back: $error",
+        );
+        tomLog.debug('$stack');
+        return rollbackTransaction();
+      }
+      if (!prepared) {
+        tomLog.info(
+          "Participant '${p.getParticipantId()}' vetoed the transaction during "
+          "prepare; rolling back.",
+        );
         return rollbackTransaction();
       }
     }
-    for (var p in _participants.values) {
-      // Evaluated before it is combined: `ok && await p.endTransaction()` would
-      // short-circuit, so one participant reporting failure would stop every
-      // participant behind it from being ended at all. See [rollbackTransaction].
-      final ended = await p.endTransaction();
+
+    // Past this point the transaction is committing. Every participant has
+    // promised it can, and a broken promise is reported rather than acted on.
+    bool ok = true;
+    final broken = <String>[];
+    for (final p in _participants.values) {
+      bool committed;
+      try {
+        committed = await p.commit();
+      } catch (error) {
+        tomLog.error(
+          "Participant '${p.getParticipantId()}' threw while committing a "
+          "prepared transaction: $error",
+        );
+        committed = false;
+      }
+      if (!committed) broken.add(p.getParticipantId());
+      ok = ok && committed;
+    }
+    if (broken.isNotEmpty) {
+      // The one outcome two-phase commit cannot rule out, and the one an
+      // operator has to be able to find: every participant promised, so the
+      // ones that are not named here committed, and the transaction is
+      // durable in part. Named individually because repairing it means going
+      // to those resources.
+      tomLog.error(
+        "Transaction partially committed: ${broken.length} of "
+        "${_participants.length} participants failed to commit after a "
+        "successful prepare (${broken.join(', ')}). The remaining "
+        "participants are committed and cannot be rolled back.",
+      );
+    }
+
+    ok = await _endAll() && ok;
+    _scope._clear(this);
+    return ok;
+  }
+
+  /// Calls `endTransaction()` on every participant and reports whether all of
+  /// them released.
+  ///
+  /// Unconditional, and evaluated before it is combined: `ok && await
+  /// p.endTransaction()` would short-circuit, so one participant reporting
+  /// failure would stop every participant behind it from being ended at all —
+  /// and nothing calls back later to release what they hold, because the
+  /// transaction is over. For a data source that is a pooled connection that
+  /// never returns.
+  ///
+  /// A throw is a failure to release like any other. Letting it escape would
+  /// skip the participants behind it and leave the scope still pointing at a
+  /// concluded transaction, which is the same leak with a stack trace.
+  Future<bool> _endAll() async {
+    bool ok = true;
+    for (final p in _participants.values) {
+      bool ended;
+      try {
+        ended = await p.endTransaction();
+      } catch (error) {
+        tomLog.error(
+          "Participant '${p.getParticipantId()}' threw while releasing its "
+          "transaction resources: $error",
+        );
+        ended = false;
+      }
       ok = ok && ended;
     }
-    _scope._clear(this);
     return ok;
   }
 
@@ -204,20 +328,24 @@ class TomTransaction {
   /// Marks the transaction not-running, calls `rollback()` on every participant,
   /// then `endTransaction()` on each, and clears the transaction from its
   /// scope. Returns whether all end calls succeeded.
+  ///
+  /// A participant that throws while rolling back is logged and the rest are
+  /// rolled back anyway: an abort that stopped at the first failure would leave
+  /// every participant behind it holding an open transaction, which is strictly
+  /// worse than the failure that interrupted it.
   Future<bool> rollbackTransaction() async {
     _isRunning = false;
-    for (var p in _participants.values) {
-      await p.rollback();
+    for (final p in _participants.values) {
+      try {
+        await p.rollback();
+      } catch (error) {
+        tomLog.error(
+          "Participant '${p.getParticipantId()}' threw while rolling back: "
+          "$error",
+        );
+      }
     }
-    bool ok = true;
-    for (var p in _participants.values) {
-      // `ok && await p.endTransaction()` would short-circuit once a participant
-      // reported failure, leaving every participant behind it un-ended and its
-      // per-transaction resources — a pooled connection, typically — leaked.
-      // Nothing calls back later to release them: the transaction is over.
-      final ended = await p.endTransaction();
-      ok = ok && ended;
-    }
+    final ok = await _endAll();
     _scope._clear(this);
     return ok;
   }
