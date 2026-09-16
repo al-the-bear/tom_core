@@ -2212,7 +2212,11 @@ void main() {
       final (txn, _) = TomTransactionManager.startTransaction();
       await txn.registerParticipant(ds);
 
-      expect(await txn.commitTransaction(), isTrue);
+      expect(
+        await txn.commitTransaction(),
+        isFalse,
+        reason: 'the branch would not prepare, so nothing committed',
+      );
 
       final branch = _branchOf(ds);
       expect(

@@ -339,7 +339,13 @@ void main() {
 
       final ok = await txn.commitTransaction();
 
-      expect(ok, isTrue, reason: 'the rollback itself succeeded');
+      expect(
+        ok,
+        isFalse,
+        reason:
+            'the work did not commit, however cleanly the rollback ran — the '
+            'rollback\'s own answer belongs to rollbackTransaction',
+      );
       expect(thrower.calls, ['start', 'prepare', 'rollback', 'end']);
       expect(other.calls, ['start', 'rollback', 'end']);
       expect(TomTransactionManager.getCurrentTransaction(), isNull);
@@ -358,7 +364,7 @@ void main() {
 
       final ok = await txn.commitTransaction();
 
-      expect(ok, isTrue); // rollback's end calls all succeeded
+      expect(ok, isFalse, reason: 'a vetoed transaction did not commit');
       expect(first.calls, ['start', 'prepare', 'rollback', 'end']);
       expect(vetoer.calls, ['start', 'prepare', 'rollback', 'end']);
       expect(
@@ -842,6 +848,231 @@ void main() {
         txn.registerParticipant(_RecordingParticipant('late')),
         throwsA(isA<TomTransactionException>()),
       );
+    });
+  });
+
+  // Written by hand, the flow is a scope, a `startTransaction`, the work, a
+  // `commitTransaction` and a `catch` that rolls back and rethrows — and the
+  // version without the last part is shorter, reads correctly, and leaks. Every
+  // assertion here is about the part a caller forgets.
+  group('runInTransaction', () {
+    test('commits on a normal return and hands back the body result', () async {
+      final p = _RecordingParticipant('a');
+
+      final result = await TomTransactionManager.runInTransaction((txn) async {
+        await txn.registerParticipant(p);
+        return 'the body result';
+      });
+
+      expect(result, 'the body result');
+      expect(p.calls, ['start', 'prepare', 'commit', 'end']);
+      expect(TomTransactionManager.getCurrentTransaction(), isNull);
+    });
+
+    test('rolls back on a throw, and rethrows the body failure', () async {
+      // Both halves matter. The rollback is what the hand-written form omits;
+      // rethrowing the *body's* exception is what keeps the caller's own error
+      // reaching the caller rather than a transaction error standing in for it.
+      final p = _RecordingParticipant('a');
+
+      await expectLater(
+        TomTransactionManager.runInTransaction((txn) async {
+          await txn.registerParticipant(p);
+          throw StateError('the work failed');
+        }),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'the work failed',
+          ),
+        ),
+      );
+
+      expect(p.calls, ['start', 'rollback', 'end']);
+      expect(
+        p.calls,
+        isNot(contains('commit')),
+        reason: 'a body that threw must not have its work committed',
+      );
+    });
+
+    test(
+      'and leaves no transaction behind in a scope it did not open',
+      () async {
+        // The leak stated where it is observable. When the helper forks its own
+        // scope the abandoned transaction goes away with it, which is a bound
+        // rather than a fix; in a scope that outlives the call — every request,
+        // and every flow a caller wrapped itself — an unrolled-back transaction
+        // stays current, and the next `startTransaction` here hands it back with
+        // `isNew == false` instead of opening one.
+        final p = _RecordingParticipant('a');
+
+        await TomTransactionManager.runInTransactionScope(() async {
+          await expectLater(
+            TomTransactionManager.runInTransaction((txn) async {
+              await txn.registerParticipant(p);
+              throw StateError('the work failed');
+            }),
+            throwsA(isA<StateError>()),
+          );
+
+          expect(TomTransactionManager.getCurrentTransaction(), isNull);
+          expect(TomTransactionManager.transactional, isFalse);
+
+          final (next, isNew) = TomTransactionManager.startTransaction();
+          expect(isNew, isTrue, reason: 'the abandoned transaction came back');
+          await next.rollbackTransaction();
+        });
+
+        expect(
+          p.calls,
+          ['start', 'rollback', 'end'],
+          reason: 'and the participant was released rather than left holding',
+        );
+      },
+    );
+
+    test('a body that throws synchronously is still a rollback', () async {
+      // `Future.sync` and the `await` in the owning half both have to carry it;
+      // a synchronous throw that escaped before the try would leak exactly as
+      // the hand-written form does.
+      final p = _RecordingParticipant('a');
+
+      await expectLater(
+        TomTransactionManager.runInTransaction((txn) {
+          // Enlisted first so there is something to leak.
+          return txn.registerParticipant(p).then((_) {
+            throw StateError('synchronously, from the continuation');
+          });
+        }),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(p.calls, ['start', 'rollback', 'end']);
+      expect(TomTransactionManager.getCurrentTransaction(), isNull);
+    });
+
+    test('a commit that does not succeed is not a silent success', () async {
+      // The boolean cannot say which of the three it was, so the helper refuses
+      // to hand back the body's result as though the work had happened. Here it
+      // is the sharpest of the three: a veto, so nothing is durable at all.
+      final vetoer = _RecordingParticipant('a', vetoPrepare: true);
+
+      await expectLater(
+        TomTransactionManager.runInTransaction((txn) async {
+          await txn.registerParticipant(vetoer);
+          return 'the body result';
+        }),
+        throwsA(
+          isA<TomTransactionException>().having(
+            (e) => e.key,
+            'key',
+            'transaction_manager.run_in_transaction.commit_failed',
+          ),
+        ),
+      );
+
+      expect(vetoer.calls, ['start', 'prepare', 'rollback', 'end']);
+      expect(TomTransactionManager.getCurrentTransaction(), isNull);
+    });
+
+    test(
+      'joins a transaction that is already running, and concludes nothing',
+      () async {
+        // The nesting contract the `isNew` half of `startTransaction` states,
+        // reached through the helper. An inner call that opened a second,
+        // isolated transaction would let the inner work commit while the outer
+        // rolled back.
+        final outer = _RecordingParticipant('outer');
+        final inner = _RecordingParticipant('inner');
+
+        final (txn, isNew) = TomTransactionManager.startTransaction();
+        expect(isNew, isTrue);
+        await txn.registerParticipant(outer);
+
+        final seen = await TomTransactionManager.runInTransaction((
+          joined,
+        ) async {
+          await joined.registerParticipant(inner);
+          return joined;
+        });
+
+        expect(
+          seen,
+          same(txn),
+          reason: 'the helper opened a second transaction',
+        );
+        expect(
+          inner.calls,
+          ['start'],
+          reason: 'the joined transaction was concluded by the helper',
+        );
+        expect(txn.isRunning, isTrue);
+        expect(TomTransactionManager.getCurrentTransaction(), same(txn));
+
+        await txn.commitTransaction();
+        expect(outer.calls, ['start', 'prepare', 'commit', 'end']);
+        expect(inner.calls, ['start', 'prepare', 'commit', 'end']);
+      },
+    );
+
+    test(
+      'a throw inside a joined transaction is the opener\'s to answer',
+      () async {
+        // The other half of joining: the helper does not roll back a transaction
+        // it does not own, because the opener may well intend to carry on with
+        // the participants it has.
+        final (txn, _) = TomTransactionManager.startTransaction();
+        final p = _RecordingParticipant('a');
+        await txn.registerParticipant(p);
+
+        await expectLater(
+          TomTransactionManager.runInTransaction((_) async {
+            throw StateError('the inner work failed');
+          }),
+          throwsA(isA<StateError>()),
+        );
+
+        expect(txn.isRunning, isTrue);
+        expect(p.calls, ['start']);
+        expect(TomTransactionManager.getCurrentTransaction(), same(txn));
+
+        await txn.rollbackTransaction();
+      },
+    );
+
+    test('establishes a scope when the flow has none', () async {
+      // Off the request path there is no scope, and the fallback is shared by
+      // every flow in the process. The helper forks one for the same reason a
+      // transactional endpoint does: the failure it prevents — one flow
+      // concluding another's transaction — is silent.
+      expect(TomTransactionManager.hasTransactionScope, isFalse);
+
+      final inScope = await TomTransactionManager.runInTransaction(
+        (_) async => TomTransactionManager.hasTransactionScope,
+      );
+
+      expect(inScope, isTrue);
+      expect(TomTransactionManager.hasTransactionScope, isFalse);
+    });
+
+    test('opens read-only when asked, and only when it opens', () async {
+      final opened = await TomTransactionManager.runInTransaction(
+        (txn) async => txn.isReadOnly,
+        isReadOnly: true,
+      );
+      expect(opened, isTrue);
+
+      // Joined: the flag belongs to the transaction that was opened, exactly as
+      // `startTransaction` documents.
+      final (txn, _) = TomTransactionManager.startTransaction();
+      addTearDown(() => txn.rollbackTransaction());
+      final joined = await TomTransactionManager.runInTransaction(
+        (t) async => t.isReadOnly,
+        isReadOnly: true,
+      );
+      expect(joined, isFalse);
     });
   });
 

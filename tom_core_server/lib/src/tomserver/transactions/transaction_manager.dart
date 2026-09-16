@@ -223,9 +223,14 @@ class TomTransaction {
   ///  3. **End.** `endTransaction()` on every participant, and the transaction
   ///     is cleared from its scope.
   ///
-  /// Returns whether every phase succeeded. Both loops run to completion rather
-  /// than stopping at the first failure — a participant left uncommitted or
-  /// un-ended has nothing coming back for it, because the transaction is over.
+  /// Returns whether the **work committed**, which is what the caller asked.
+  /// A vetoed transaction answers `false` however cleanly its rollback ran: the
+  /// rollback's own result belongs to [rollbackTransaction], and reporting it
+  /// here told a caller its work was durable at the moment it was discarded.
+  ///
+  /// Both loops run to completion rather than stopping at the first failure — a
+  /// participant left uncommitted or un-ended has nothing coming back for it,
+  /// because the transaction is over.
   Future<bool> commitTransaction() async {
     _isRunning = false;
     // The scope is cleared in a `finally` rather than on the way out, so that
@@ -258,14 +263,14 @@ class TomTransaction {
             "transaction back: $error",
           );
           tomLog.debug('$stack');
-          return rollbackTransaction();
+          return _vetoed();
         }
         if (!prepared) {
           tomLog.info(
             "Participant '${entry.key}' vetoed the transaction during prepare; "
             "rolling back.",
           );
-          return rollbackTransaction();
+          return _vetoed();
         }
       }
 
@@ -305,6 +310,18 @@ class TomTransaction {
     } finally {
       _scope._clear(this);
     }
+  }
+
+  /// Rolls the vetoed transaction back and reports the commit as failed.
+  ///
+  /// The rollback's own answer — whether every participant released — is not
+  /// this method's answer. `commitTransaction` is asked whether the work
+  /// committed, and after a veto it did not, however cleanly the rollback ran.
+  /// Returning the rollback's `true` told a caller its work was durable at the
+  /// exact moment the coordinator had thrown it away.
+  Future<bool> _vetoed() async {
+    await rollbackTransaction();
+    return false;
   }
 
   /// Calls `endTransaction()` on every participant and reports whether all of
@@ -434,19 +451,115 @@ abstract class TomTransactionManager {
   /// The transaction opened inside [body] — including inside anything it
   /// `await`s — is invisible outside, and a transaction opened outside is
   /// invisible within. Returns whatever [body] returns, so an asynchronous body
-  /// is awaited by the caller rather than here:
+  /// is awaited by the caller rather than here.
   ///
-  /// ```dart
-  /// await TomTransactionManager.runInTransactionScope(() async {
-  ///   final (txn, _) = TomTransactionManager.startTransaction();
-  ///   await doWork();
-  ///   await txn.commitTransaction();
-  /// });
-  /// ```
+  /// This establishes the *scope*; it opens no transaction and concludes none.
+  /// Use it where the two are genuinely separate — the server's authentication
+  /// middleware opens a scope per request whether or not the endpoint turns out
+  /// to be transactional. To open a transaction and have it concluded on both
+  /// the normal and the failing path, use [runInTransaction], which is this
+  /// plus the `try`/`catch` a caller otherwise has to remember.
   static R runInTransactionScope<R>(R Function() body) => runZoned(
     zoneValues: {_TomTransactionScope: _TomTransactionScope()},
     body,
   );
+
+  /// Runs [body] in a transaction, committing it on a normal return and rolling
+  /// it back on a throw.
+  ///
+  /// ```dart
+  /// await TomTransactionManager.runInTransaction((txn) async {
+  ///   await repository.save(order);
+  ///   await ledger.record(order);
+  /// });
+  /// ```
+  ///
+  /// The conclusion is the point. Written by hand the same flow is
+  /// [runInTransactionScope], [startTransaction], the work, `commitTransaction`
+  /// **and** a `catch` that rolls back and rethrows — and the version without
+  /// the last part is shorter, reads correctly, and leaks: the participants
+  /// that enlisted are never rolled back, never ended, and their connections
+  /// never return to the pool, while the transaction stays current in its scope
+  /// until the scope is discarded. Off the request path that scope is the
+  /// process-wide fallback, so one throwing body poisons the flow that follows
+  /// it. A protocol whose correct use is four lines longer than its natural use
+  /// gets used the short way.
+  ///
+  /// ## What it does
+  ///
+  ///  * **Joins a transaction that is already running**, passing it to [body]
+  ///    and concluding nothing — the caller that opened it owns its conclusion,
+  ///    which is the same contract the `isNew` half of [startTransaction]
+  ///    states. [isReadOnly] is then ignored, exactly as it is there.
+  ///  * Otherwise **establishes a scope if the flow has none** (as a
+  ///    transactional endpoint does rather than trusting the chain in front of
+  ///    it), opens a transaction, and owns it: `commitTransaction` after [body]
+  ///    returns, `rollbackTransaction` if it throws, and the throw is rethrown
+  ///    so the caller sees its own failure rather than a transaction error.
+  ///
+  /// ## When the commit does not succeed
+  ///
+  /// It throws [TomTransactionException]
+  /// (`transaction_manager.run_in_transaction.commit_failed`). A `false` from
+  /// [TomTransaction.commitTransaction] is one of three things — the
+  /// transaction was vetoed during prepare and rolled back, it was partially
+  /// committed, or it committed and a participant failed to release — and the
+  /// boolean does not distinguish them. Two of the three mean the work is not
+  /// durable and the third is a leaked resource, so none of them is a result to
+  /// hand back as though [body] had succeeded. The coordinator's own log does
+  /// distinguish them, naming the participant in each case.
+  ///
+  /// A caller that needs to tell them apart, or to decide commit-or-rollback
+  /// itself, drives [startTransaction] and the conclusion directly; that form
+  /// stays documented in `doc/transactions.md` for exactly this reason.
+  static Future<R> runInTransaction<R>(
+    FutureOr<R> Function(TomTransaction transaction) body, {
+    bool isReadOnly = false,
+  }) {
+    final current = getCurrentTransaction();
+    if (current != null && current.isRunning) {
+      // Joined rather than nested. Opening a second, isolated transaction here
+      // would give this flow two current transactions with no relationship, and
+      // work enlisted in the inner one would commit while the outer rolled
+      // back.
+      return Future.sync(() => body(current));
+    }
+    return hasTransactionScope
+        ? _runOwnedTransaction(body, isReadOnly)
+        : runInTransactionScope(() => _runOwnedTransaction(body, isReadOnly));
+  }
+
+  /// [runInTransaction]'s owning half: opens the transaction and concludes it.
+  static Future<R> _runOwnedTransaction<R>(
+    FutureOr<R> Function(TomTransaction transaction) body,
+    bool isReadOnly,
+  ) async {
+    final (transaction, isNew) = startTransaction(isReadOnly);
+    if (!isNew) {
+      // Unreachable from [runInTransaction], which checks for a running
+      // transaction first. Kept because ownership is the contract this method
+      // is written against, not an assumption about its caller: concluding a
+      // transaction somebody else opened is the one mistake here that no test
+      // of the happy path would show.
+      return await body(transaction);
+    }
+    final R result;
+    try {
+      result = await body(transaction);
+    } catch (_) {
+      await transaction.rollbackTransaction();
+      rethrow;
+    }
+    if (!await transaction.commitTransaction()) {
+      throw TomTransactionException(
+        "transaction_manager.run_in_transaction.commit_failed",
+        "The transaction did not commit cleanly. It was vetoed and rolled "
+            "back, partially committed, or committed with a participant "
+            "failing to release — the log names which, and which participant.",
+      );
+    }
+    return result;
+  }
 
   /// Whether the current zone carries a transaction scope of its own.
   ///

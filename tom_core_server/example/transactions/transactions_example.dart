@@ -108,6 +108,11 @@ Future<void> run() async {
     'reached — no participant made anything durable',
   );
   check(
+    !ok3,
+    'and commitTransaction reports the work as not committed, however cleanly '
+    'the rollback ran',
+  );
+  check(
     TomTransactionManager.getCurrentTransaction() == null,
     'the vetoed transaction cleared itself as well',
   );
@@ -209,6 +214,47 @@ Future<void> run() async {
     'asking read-only did not downgrade a transaction opened for writing',
   );
   await readWrite.commitTransaction();
+
+  // 8. `runInTransaction` is the whole flow in one call: it opens the
+  //    transaction, commits it when the body returns, and rolls it back when
+  //    the body throws. The rollback is what the hand-written form forgets,
+  //    and forgetting it leaks — the enlisted participants are never rolled
+  //    back, never ended, and the transaction stays current in its scope.
+  final committed = _RecordingParticipant('committed');
+  final value = await TomTransactionManager.runInTransaction((txn) async {
+    await txn.registerParticipant(committed);
+    return 'the body result';
+  });
+  print('8. runInTransaction -> $value calls=${committed.calls}');
+  check(value == 'the body result', 'the body result reaches the caller');
+  check(
+    committed.calls.join(',') == 'start,prepare,commit,end',
+    'a body that returned had its transaction committed',
+  );
+
+  //    And the failing path, which is the reason the helper exists. The body's
+  //    own exception reaches the caller — not a transaction error standing in
+  //    for it — and the transaction is rolled back on the way out.
+  final abandoned = _RecordingParticipant('abandoned');
+  Object? thrown;
+  try {
+    await TomTransactionManager.runInTransaction((txn) async {
+      await txn.registerParticipant(abandoned);
+      throw StateError('the work failed');
+    });
+  } catch (error) {
+    thrown = error;
+  }
+  print('   a body that threw -> $thrown calls=${abandoned.calls}');
+  check(thrown is StateError, "the body's own exception reaches the caller");
+  check(
+    abandoned.calls.join(',') == 'start,rollback,end',
+    'the transaction was rolled back and every participant ended',
+  );
+  check(
+    TomTransactionManager.getCurrentTransaction() == null,
+    'and nothing is left current in the scope for the next flow to inherit',
+  );
 
   print('\nTransactions example completed.');
 }

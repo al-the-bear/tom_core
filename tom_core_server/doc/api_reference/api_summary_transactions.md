@@ -136,7 +136,7 @@ None — the constructor is private; obtain instances via
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `registerParticipant` | `Future<void> registerParticipant(TomTransactionParticipant ttp)` | Enlists `ttp`, calling its `startTransaction()` once; deduplicated by participant id. Enlistment is all or nothing: the participant is recorded only after a `true`, and a `false` or a throw leaves it unenlisted and raises `TomTransactionException` naming it (`…start_failed` / `…start_threw`, the latter carrying the original as `rootException`). Also throws when the transaction is no longer running. |
-| `commitTransaction` | `Future<bool> commitTransaction()` | Prepares every participant, then — only if all promised — commits every participant, then ends them all. A veto or a throw during prepare rolls the transaction back instead; a `commit` that fails after a successful prepare does not, and is logged as a partial commit. Clears the transaction from its scope and returns whether it succeeded. |
+| `commitTransaction` | `Future<bool> commitTransaction()` | Prepares every participant, then — only if all promised — commits every participant, then ends them all. A veto or a throw during prepare rolls the transaction back instead; a `commit` that fails after a successful prepare does not, and is logged as a partial commit. Clears the transaction from its scope (in a `finally`, so a transaction that is not running is never the current one) and returns whether **the work committed** — a vetoed transaction answers `false` however cleanly its rollback ran. |
 | `rollbackTransaction` | `Future<bool> rollbackTransaction()` | Rolls back every participant then ends them; clears the transaction from its scope and returns whether all end calls succeeded. |
 
 "Ends them" is unconditional on both paths: a participant whose
@@ -154,7 +154,8 @@ cannot wipe a successor.
 ### TomTransactionManager
 
 Ambient access to the current `TomTransaction`, so participants and the endpoint
-pipeline can join or conclude it without threading a handle through every call.
+pipeline can join or conclude it without threading a handle through every call,
+plus `runInTransaction` to drive one from end to end.
 "Current" means current to the running flow: the transaction lives in a `Zone`
 value, exactly as the request principal does, so two flows interleaving in one
 isolate cannot see each other's work. Abstract with a static-only surface.
@@ -165,7 +166,8 @@ isolate cannot see each other's work. Abstract with a static-only surface.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `runInTransactionScope` | `static R runInTransactionScope<R>(R Function() body)` | Runs `body` with its own current transaction, isolated from every other flow in this isolate. Returns whatever `body` returns, so an asynchronous body is awaited by the caller. |
+| `runInTransaction` | `static Future<R> runInTransaction<R>(FutureOr<R> Function(TomTransaction transaction) body, {bool isReadOnly = false})` | Runs `body` in a transaction, committing it on a normal return and **rolling it back on a throw**, rethrowing the body's own exception. Establishes a scope if the flow has none; joins a transaction that is already running and concludes nothing it did not open. A commit that does not succeed raises `TomTransactionException` (`transaction_manager.run_in_transaction.commit_failed`) rather than returning quietly. |
+| `runInTransactionScope` | `static R runInTransactionScope<R>(R Function() body)` | Runs `body` with its own current transaction, isolated from every other flow in this isolate. Establishes the scope and opens no transaction — what the authentication middleware needs, since every request gets one whether or not its endpoint is transactional. Returns whatever `body` returns, so an asynchronous body is awaited by the caller. |
 | `startTransaction` | `static (TomTransaction, bool) startTransaction([bool isReadOnly = false])` | Returns the current transaction, creating one if none is active; the boolean is `true` when a new one was created. `isReadOnly` is honoured only for a new transaction. |
 | `getCurrentTransaction` | `static TomTransaction? getCurrentTransaction()` | The current transaction, or `null` if none is active. |
 

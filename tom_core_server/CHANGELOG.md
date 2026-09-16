@@ -2,6 +2,32 @@
 
 ### Added
 
+- **`TomTransactionManager.runInTransaction` (tcopen191).** Every teaching
+  surface in the module showed the same four lines — a scope, a
+  `startTransaction`, the work, a `commitTransaction` — and none of them showed
+  a failure path. If the work throws, the commit is never reached: the
+  participants that enlisted are never rolled back, never ended, and their
+  connections never return to the pool, while the transaction stays current in
+  its scope. On the request path the endpoint pipeline supplies the missing
+  `catch`, but every one of those snippets is written for the case the pipeline
+  does not cover — the scheduler, the batch tool and the script the same
+  documents tell the reader to wrap.
+
+  The helper opens the transaction, commits it when the body returns, rolls it
+  back when the body throws, and rethrows the body's own exception. It
+  establishes a scope if the flow has none, joins a transaction that is already
+  running rather than nesting a second one, and concludes nothing it did not
+  open. A commit that does not succeed raises `TomTransactionException`
+  (`transaction_manager.run_in_transaction.commit_failed`) rather than returning
+  quietly, because a `false` there means the work was vetoed and rolled back,
+  partially committed, or committed with a participant failing to release — none
+  of which is a result to hand back as though the body had succeeded.
+
+  The explicit form stays documented beside it, for the caller that decides
+  commit-or-rollback on something other than a throw. This is the wrapper the
+  endpoint pipeline had already written by hand, which is the evidence that it
+  belongs in the module.
+
 - **A transaction that is not running is never the current one (tcopen190).**
   Both conclusions set `_isRunning = false` on their first line and cleared the
   scope on their last, so anything that left either of them in between left the
@@ -780,6 +806,14 @@
   `readinessAnalyzer` the old name reads as though it covered both.
 
 ### Fixed
+
+- **A vetoed `commitTransaction()` reports `false` (tcopen191).** It returned
+  the *rollback's* answer — whether every participant released — so a
+  transaction that was vetoed during prepare and thrown away reported `true`,
+  telling the caller its work was durable at the exact moment the coordinator
+  discarded it. The method is asked whether the work committed; after a veto it
+  did not, however cleanly the rollback ran. The rollback's own result belongs
+  to `rollbackTransaction`.
 
 - **No participant exception escapes the conclusion (tcopen189).**
   `registerParticipant` caught both a `false` and a throw from

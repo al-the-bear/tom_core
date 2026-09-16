@@ -29,7 +29,7 @@ handle around.
 | ------ | ---- | ------- |
 | `TomTransactionParticipant` | abstract class | A resource that can enlist in a transaction |
 | `TomTransaction` | class | One unit of work coordinating its participants |
-| `TomTransactionManager` | abstract class | Zone-scoped ambient access to the current transaction. Statics only |
+| `TomTransactionManager` | abstract class | Zone-scoped ambient access to the current transaction, and `runInTransaction` to drive one. Statics only |
 | `TomTransactionException` | class | Raised on an invalid transaction operation |
 
 ## The Participant Contract
@@ -191,17 +191,56 @@ does. A scope is the unit of isolation: the transaction opened inside one is
 invisible outside it, and a transaction opened outside is invisible within.
 
 ```dart
-await TomTransactionManager.runInTransactionScope(() async {
-  final (txn, _) = TomTransactionManager.startTransaction();
+await TomTransactionManager.runInTransaction((txn) async {
   await doWork();               // data sources enlist with *this* transaction
-  await txn.commitTransaction();
+});
+```
+
+`runInTransaction` establishes the scope if the flow has none, opens the
+transaction, commits it when the body returns and **rolls it back when the body
+throws**, rethrowing the body's own exception. It joins a transaction that is
+already running instead of nesting a second one, and concludes nothing it did
+not open — the `isNew` contract of `startTransaction`, reached without the
+caller having to read it.
+
+The last part is the reason it exists. Written out, the same flow is a scope, a
+`startTransaction`, the work, a `commitTransaction` *and* a `catch` that rolls
+back and rethrows; the version without the `catch` is shorter, reads correctly,
+and leaks — the participants that enlisted are never rolled back, never ended,
+their connections never return to the pool, and the transaction stays current in
+its scope. Off the request path that scope is the process-wide fallback, so the
+next flow inherits it.
+
+A commit that does not succeed is a `TomTransactionException`
+(`transaction_manager.run_in_transaction.commit_failed`) rather than a quiet
+return, because a `false` from `commitTransaction` means the work was vetoed and
+rolled back, partially committed, or committed with a participant failing to
+release — none of which is a result to hand back as though the body had
+succeeded.
+
+Drive the transaction yourself when you need to decide commit-or-rollback on
+something other than a throw, or to tell those three apart:
+
+```dart
+await TomTransactionManager.runInTransactionScope(() async {
+  final (txn, isNew) = TomTransactionManager.startTransaction();
+  try {
+    await doWork();
+    if (!await txn.commitTransaction()) reportNotCommitted();
+  } catch (_) {
+    await txn.rollbackTransaction();   // the part that is easy to forget
+    rethrow;
+  }
 });
 ```
 
 `runInTransactionScope` returns whatever its body returns, so an asynchronous
-body is awaited by the caller rather than swallowed. `hasTransactionScope`
-reports whether the current zone carries a scope of its own; `false` means
-`startTransaction()` would fall back to the process-wide scope.
+body is awaited by the caller rather than swallowed. It establishes a scope and
+opens no transaction, which is what the authentication middleware needs — every
+request gets a scope whether or not its endpoint turns out to be transactional.
+`hasTransactionScope` reports whether the current zone carries a scope of its
+own; `false` means `startTransaction()` would fall back to the process-wide
+scope.
 
 Scopes are established for you on the request path:
 
@@ -217,7 +256,8 @@ Code running outside every scope — a script, a test, a `main()` — shares one
 process-wide fallback scope. That is correct for a program with a single flow of
 work, and it is what preserves the nesting contract for existing callers. Code
 that runs *concurrent* flows off the request path (a scheduler running two jobs,
-a batch tool fanning out) must wrap each flow in `runInTransactionScope` to get
+a batch tool fanning out) must wrap each flow in `runInTransaction` — or, where
+the transaction is opened separately, `runInTransactionScope` — to get
 the isolation a request gets for free.
 
 ## How the Pipeline Uses It
@@ -313,8 +353,9 @@ transaction around a `@TomTransactional` endpoint.
 - **`TomTransaction`** — registration, dedup-by-id, and the commit/rollback
   drive (with commit-veto → rollback).
 - **`TomTransactionManager`** — the zone-scoped ambient accessor, plus
-  `runInTransactionScope` / `hasTransactionScope` for establishing and detecting
-  a scope.
+  `runInTransaction` for the whole flow, and `runInTransactionScope` /
+  `hasTransactionScope` for establishing and detecting a scope without opening
+  a transaction.
 - **`TomTransactionException`** — invalid-state signalling (a
   `TomServerException`).
 

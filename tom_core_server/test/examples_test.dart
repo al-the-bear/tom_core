@@ -117,7 +117,7 @@ const _stepCounts = <String, int>{
   'example/resources/resources_example.dart': 10,
   'example/scheduling/scheduling_example.dart': 10,
   'example/server/server_example.dart': 6,
-  'example/transactions/transactions_example.dart': 7,
+  'example/transactions/transactions_example.dart': 8,
 };
 
 /// The distinct step numbers [transcript] prints, in the order they first
