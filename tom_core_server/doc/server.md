@@ -253,8 +253,7 @@ to guess from and an intermediary free to sniff it as anything it likes.
 
 ## Verification
 
-Three suites cover this module, split by what each can be asked without a
-socket.
+Three suites cover this module.
 
 `test/server_test.dart` covers the pipeline as composed functions:
 `TomRequestLogInfo`, `extractAuthentication` reading a credential off a request
@@ -266,6 +265,17 @@ refused token to appear in any line the module writes —
 principal has expired and the credentials survive it — and `TomServer`'s
 constructor wiring and error handler. None of that needs a bound port, because
 a middleware is a function of a request.
+
+It also drives `start()` against real sockets on the loopback interface. Two
+properties are worth naming. **The deployment is logged in before the socket
+accepts**: a stub auth server in the suite holds the login open, and while it is
+held a connection to the port `start()` is about to bind is refused — a server
+that bound first would answer it, and would be serving requests with user grants
+uncapped. **A configured deployment that cannot log in binds nothing**: the port
+is still free afterwards, which says more than "the future rejected" — it says
+`serve` was never reached. The same ordering is read from the *source* by
+`test/api_reference_coverage_test.dart`, because a rewrite that keeps both calls
+and swaps them compiles and passes everything a running server can be asked.
 
 `test/server_self_login_test.dart` covers the deployment logging in as itself:
 reading `TomServiceCredential` out of the configuration, `logIn`,
@@ -284,9 +294,9 @@ dart run example/server/server_example.dart
 `example/server/server_example.dart` exercises the socket-free surface the
 server is composed from — the per-request log state, the credential reader
 (including the three outcomes that answer `(null, null)` alike and are still
-told apart), and two middlewares. `TomServer.start()` binds a real socket and needs a reflected
-configuration plus TLS material, so the assembled server is described here
-rather than run there. Every step checks its own result, and
+told apart), and two middlewares. It binds no socket: an example is read as much
+as run, and a listening port in one is a process a reader has to know to stop.
+The bind is covered by the suite instead. Every step checks its own result, and
 `test/examples_test.dart` runs it.
 
 ## Not Yet Implemented

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -9,40 +10,39 @@ import 'package:test/test.dart';
 import 'fixtures/reflection_fixture.dart';
 import 'fixtures/reflection_fixture.reflection.dart';
 
-/// Tests for the socket-free surface of the server module: the per-request
-/// log state ([TomRequestLogInfo]), the credential reader
-/// ([extractAuthentication]), the pipeline middlewares that can run without
-/// binding a port ([contextSetupMiddleware], [tomLoggingMiddleware],
-/// [tomDefaultAuthenticationMiddleware], [noopHandler]), and the default
-/// [TomServer.errorHandler] mapping closure.
+/// Tests for the server module: the per-request log state
+/// ([TomRequestLogInfo]), the credential reader ([extractAuthentication]) and
+/// the [TomCredentialOutcome] that tells its answers apart, the pipeline
+/// middlewares ([contextSetupMiddleware], [tomLoggingMiddleware],
+/// [tomDefaultAuthenticationMiddleware], [noopHandler]), the default
+/// [TomServer.errorHandler] mapping closure, and [TomServer.start] itself.
 ///
-/// [TomServer.start] binds a real socket and needs a reflected
-/// `TomConfiguration` plus TLS material, so **nothing in this package calls
-/// it** — no suite here binds a port. Its coverage is in two places, and each
-/// answers a different half:
+/// `start()` is driven here against real sockets on the loopback interface —
+/// it binds, hands back the [HttpServer], and the handle is what lets a test
+/// close it again. The two properties worth naming:
 ///
-///  * the one property of `start()` that a running server cannot demonstrate
-///    is asserted from the *source*, by
-///    `test/api_reference_coverage_test.dart`, in the group named
-///    `start() logs the deployment in before it binds`. It requires the server
-///    self-login to precede the bind, because a socket accepting requests
-///    before the deployment principal is installed serves them with user grants
-///    uncapped — a window a passing integration run would not notice.
-///  * the bind itself, end to end against real databases, by the sample
-///    integration scripts in `tom_core_samples`:
-///    `core_server_sample/tool/run_integration.sh` and
-///    `advanced_client_core/tool/run_cross_tier_integration.sh`, whose servers
-///    end their `main` with `TomServer(configuration).start()`.
+///  * **the deployment is logged in before the socket accepts.** The stub auth
+///    server in this file holds the login open, and the assertion is made while
+///    it is held: a connection to the port `start()` is about to bind is
+///    refused. A server that bound first would answer it, and would be serving
+///    requests with user grants uncapped — the one direction in which getting
+///    the order wrong grants access rather than denying it. The *source* is
+///    also read for the same ordering, by `test/api_reference_coverage_test.dart`
+///    in the group `start() logs the deployment in before it binds`, because a
+///    rewrite that kept both calls and swapped them compiles and passes
+///    everything else.
+///  * **a configured deployment that cannot log in binds nothing.** The port is
+///    still free afterwards, which is a stronger statement than "the future
+///    rejected": it says `serve` was never reached.
 ///
-/// That second half is a *sample's* script rather than an integration suite of
-/// this package's, and saying so is the point: this package has no integration
-/// directory and no integration suite, so a header claiming one sends the
-/// reader looking for something that does not exist.
-///
-/// The default [TomServer.errorHandler] is a self-contained closure that maps a
-/// thrown error to a JSON HTTP-500 response; it touches no socket, so it *is*
-/// pinned here (constructing a [TomServer] from a no-op configuration subclass,
-/// without bootstrapping codegen reflection).
+/// What no suite in this package covers is a server against real databases and
+/// a real auth server. That is the sample integration scripts in
+/// `tom_core_samples` — `core_server_sample/tool/run_integration.sh` and
+/// `advanced_client_core/tool/run_cross_tier_integration.sh` — and they are a
+/// *sample's* scripts rather than an integration suite of this package's.
+/// Saying so is the point: this package has no integration directory, so a
+/// header implying one sends the reader looking for something that does not
+/// exist.
 ///
 /// Named by group and by script rather than by line number on purpose: these
 /// pointers have to survive the files they point into being edited.
@@ -1057,6 +1057,206 @@ void main() {
       expect(second.port, port);
     });
   });
+
+  // The module's central safety claim, asserted against a running server rather
+  // than against the order of two statements. The server principal caps every
+  // user's grants at `min(user, server)`, so a socket that accepted before the
+  // principal was installed would serve those requests **uncapped** — the one
+  // direction in which getting it wrong grants access rather than denying it.
+  //
+  // The login is held open by the stub auth server, and the assertion is made
+  // while it is held: at that moment `start()` is inside the login, and a
+  // connection to the port it will bind is refused. A `start()` that bound
+  // first would answer it.
+  group('start() installs the deployment principal before the socket accepts', () {
+    setUpAll(() {
+      initializeReflection();
+      TomPlatformUtils.setCurrentPlatform(TomStandalonePlatformUtils());
+    });
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      registerFixtureAccessApi();
+    });
+
+    tearDown(() {
+      // The principal is process-global and the renewal is a live timer: a test
+      // that left either behind would cap, or wake up inside, every test after
+      // it.
+      TomServerSelfLogin.stopRenewal();
+      TomServerPrincipal.clear();
+    });
+
+    test('a held-open login means nothing is listening yet', () async {
+      final stub = await _StubAuthServer.start();
+      addTearDown(stub.close);
+
+      final port = await _freePort();
+      final started = TomServer(
+        _SelfLoginConfig(loginUri: stub.loginUri, port: port),
+      ).start();
+
+      // Deterministic rather than timed: the stub has the request in hand, so
+      // `start()` is demonstrably inside the login. Anything bound now was
+      // bound before it.
+      await stub.loginArrived;
+      expect(
+        TomServerPrincipal.isConfigured,
+        isFalse,
+        reason: 'the login has not answered yet',
+      );
+      await expectLater(
+        Socket.connect(
+          InternetAddress.loopbackIPv4,
+          port,
+          timeout: const Duration(seconds: 2),
+        ),
+        throwsA(isA<SocketException>()),
+        reason:
+            'the socket accepted a connection while the deployment was still '
+            'logging in, so a request arriving there would have been served '
+            'with user grants uncapped',
+      );
+
+      stub.release();
+      final server = await started;
+      addTearDown(() => server.close(force: true));
+
+      // And the other half: once the future completes, both are true.
+      expect(server.port, port);
+      expect(TomServerPrincipal.current?.user.username, 'svc-app');
+    });
+
+    test('a configured deployment that cannot log in binds nothing', () async {
+      // Port 1 on the loopback interface refuses immediately — the shape of an
+      // auth server that is down, without waiting for a timeout.
+      final port = await _freePort();
+
+      await expectLater(
+        TomServer(
+          _SelfLoginConfig(
+            loginUri: 'http://127.0.0.1:1/auth/login',
+            port: port,
+          ),
+        ).start(),
+        throwsA(isA<TomServerSelfLoginException>()),
+      );
+
+      expect(TomServerPrincipal.isConfigured, isFalse);
+      // Free, not merely unanswered: the port binds, which it could not if
+      // `start()` had reached `serve` before giving up.
+      final rebound = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
+      addTearDown(() => rebound.close(force: true));
+      expect(rebound.port, port);
+    });
+
+    test(
+      'a deployment that configured no credential binds with no principal',
+      () async {
+        // The guard the whole feature stands on: a server built before
+        // server-as-principal existed configures no credential, must start, and
+        // must cap nothing. `null` is not an empty principal — an empty one
+        // would be entitled to nothing and deny every feature.
+        final server = await TomServer(_BindableConfig()).start();
+        addTearDown(() => server.close(force: true));
+
+        expect(server.port, isNot(0));
+        expect(TomServerPrincipal.current, isNull);
+      },
+    );
+  });
+}
+
+/// A port the OS has just confirmed is free.
+///
+/// `start()` needs the port *in advance* here, because the assertion is about
+/// what is listening on it before `start()` binds — so port 0, which the other
+/// bind tests use, cannot be read off a handle that does not exist yet.
+Future<int> _freePort() async {
+  final probe = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+  final port = probe.port;
+  await probe.close();
+  return port;
+}
+
+/// An auth server that answers one service login, when told to.
+///
+/// Answers the real wire shape over a real socket, so the login goes through
+/// `TomHttpServiceLoginTransport` rather than around it — the transport seam
+/// exists for unit tests of the login itself, and substituting it here would
+/// leave the boot's own HTTP call unexercised.
+class _StubAuthServer {
+  _StubAuthServer._(this._server);
+
+  final HttpServer _server;
+  final Completer<void> _arrived = Completer<void>();
+  final Completer<void> _release = Completer<void>();
+
+  /// Completes when the login request has been received and is being held.
+  Future<void> get loginArrived => _arrived.future;
+
+  /// Where a configuration should point.
+  String get loginUri => 'http://127.0.0.1:${_server.port}/auth/login';
+
+  static Future<_StubAuthServer> start() async {
+    final stub = _StubAuthServer._(
+      await HttpServer.bind(InternetAddress.loopbackIPv4, 0),
+    );
+    stub._serve();
+    return stub;
+  }
+
+  void _serve() {
+    _server.listen((request) async {
+      await request.drain<void>();
+      if (!_arrived.isCompleted) _arrived.complete();
+      await _release.future;
+      final token = TomServerJwtToken(
+        {'username': 'svc-app', 'userId': 42},
+        encryptedData: {'entitlements': <String>[]},
+      ).getJWT('tom');
+      request.response
+        ..statusCode = 200
+        ..headers.contentType = ContentType.json
+        ..write(
+          jsonEncode({
+            'authenticationToken': token,
+            'authorizationToken': token,
+          }),
+        );
+      await request.response.close();
+    });
+  }
+
+  /// Lets the held login answer.
+  void release() {
+    if (!_release.isCompleted) _release.complete();
+  }
+
+  Future<void> close() async {
+    release();
+    await _server.close(force: true);
+  }
+}
+
+/// A [_BindableConfig] that also carries a deployment identity to log in with.
+class _SelfLoginConfig extends TomBaseServerConfiguration {
+  _SelfLoginConfig({required String loginUri, required int port}) : super([]) {
+    noSsl = true;
+    host = '127.0.0.1';
+    isolateCount = 1;
+    this.port = port;
+    authServerLoginUri = loginUri;
+    serviceAccountName = 'svc-app';
+    serviceAccountCredential = 's3cret';
+    serviceAccountOrganization = 'org';
+    serviceAccountApplication = 'app';
+  }
+
+  @override
+  void setValues(Map<String, Object?> values) {}
 }
 
 /// A configuration that binds a real socket on the loopback interface.

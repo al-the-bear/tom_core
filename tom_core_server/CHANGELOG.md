@@ -2,6 +2,29 @@
 
 ### Added
 
+- **`start()`'s login-before-bind ordering is asserted against a running server
+  (tcopen187).** The module's central safety claim — the deployment principal
+  is installed before the socket accepts, because it caps every user's grants at
+  `min(user, server)` and a socket bound first would serve requests uncapped —
+  was protected by the order two statements happen to appear in and by a source
+  reading of that order. Neither watches a server run.
+
+  `test/server_test.dart` now stands up a stub auth server that **holds the
+  login open**, starts a `TomServer` pointed at it, and asserts while the login
+  is still held that a connection to the port `start()` is about to bind is
+  refused. A server that bound first answers it. Releasing the login completes
+  the start, and the installed principal is the one the stub issued. The failure
+  half is asserted by the port rather than by the future: a deployment pointed
+  at an auth server that refuses throws `TomServerSelfLoginException`, and the
+  port **binds afterwards** — which says `serve` was never reached. A third test
+  pins the guard the feature stands on: a deployment with no credential starts
+  and installs nothing.
+
+  The stub answers the real wire shape over a real socket, so the login goes
+  through `TomHttpServiceLoginTransport` rather than around it. The source
+  reading stays: a rewrite that keeps both calls and swaps them is caught there
+  whatever a stub was doing at the time.
+
 - **A malformed bearer token is no longer indistinguishable from no token
   (tcopen186).** `extractAuthentication` answered `(null, null)` to four
   different requests — one with no `Authorization` header, one with a scheme

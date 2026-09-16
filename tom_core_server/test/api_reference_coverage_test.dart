@@ -8093,11 +8093,17 @@ class After {}
   // is a security property rather than a preference: the server principal caps
   // every user's grant at `min(user, server)`, so a socket bound first would
   // serve requests uncapped for as long as the login took — the one direction
-  // in which getting it wrong grants access rather than denying it. Two things
-  // can rot. The order can be lost in an edit to `start()`, silently, because
-  // nothing fails; and the documents can go on describing `start()` as though
-  // binding were all it did, which is what left a reader who hit a failed login
-  // with an unhandled asynchronous error at boot and nothing to search for.
+  // in which getting it wrong grants access rather than denying it.
+  //
+  // `test/server_test.dart` asserts the same thing against a running server,
+  // by holding the login open and finding the port refused. This group reads
+  // the source, and the two are not redundant: a rewrite that keeps both calls
+  // and swaps them is caught by the line numbers here regardless of what a
+  // stub auth server was doing at the time, and the mirrors are documents no
+  // running server can check. What they catch between them is the order being
+  // lost in an edit, silently, because nothing else fails — and the documents
+  // going on describing `start()` as though binding were all it did, which
+  // leaves a reader who hits a failed login with nothing to search for.
   group('start() logs the deployment in before it binds', () {
     const source = 'lib/src/tomserver/server/server.dart';
 
@@ -8131,9 +8137,9 @@ class After {}
 
     test('every server mirror says a failed login binds nothing', () {
       // The capability alone is not the caller-visible part. What a reader
-      // needs is that this is the one thing that can stop `start()`, and that
-      // it stops it *silently* as far as the call site is concerned, because
-      // `start()` returns nothing to hold a rejected future.
+      // needs is that this is the one thing that can stop `start()` outright —
+      // everything else it does either succeeds or is a warning — and that it
+      // leaves the port free rather than bound to a server that will refuse.
       expect(_failedLoginComplaints(_shippedMirrorLines()), isEmpty);
     });
 
