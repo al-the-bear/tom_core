@@ -596,12 +596,10 @@ subject of `preferences_db_test.dart` above.
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `user_preferences_service.dart` | `Future` |
-| `dart:convert` | dart | `user_preferences_endpoints.dart` | `json`, `jsonEncode` |
-| `shelf` | package | `user_preferences_endpoints.dart` | `Request` and `Response`, the shapes the endpoint error handlers take and return |
 | `tom_core_kernel` | package | every file | `TomUserPreferenceKeys`, the wire DTOs, `TomUserPreferenceCodec`, `tomUserPreferencesApi`, `TomBean`, `TomPrincipal` |
 | [datasources](datasources.md) | module | `user_preference.dart` | `TomDbDateTime`, `TomDbInt`, `TomDbString` |
 | [endpoints](endpoints.md) | module | `user_preferences_endpoints.dart` | `@TomApiImplementation`, `@TomApiEndpointImplementation`, the routing pipeline (see `doc/endpoints.md`) |
-| [little_things](little_things.md) | module | `user_preferences_endpoints.dart`, `user_preferences_service.dart` | `TomServerException`, `tomErrorEnvelope` |
+| [little_things](little_things.md) | module | `user_preferences_service.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `user_preference.dart`, `user_preferences_service.dart` | `@TomDbTable`, `@TomDbColumn`, `@TomDbScope`, `TomSqlDatasourceRepository` (see `doc/object_persistence.md`) |
 
 - The database-migration module — the untagged framework migration (see

@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'dart:convert';
+
 import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
@@ -349,6 +351,105 @@ void main() {
         42,
       );
       expect(r.statusCode, 500);
+    });
+
+    test('the body is the framework envelope, not a sentence', () async {
+      // What every endpoint that declares no handler answers with. It used to
+      // be the plain-text string "Internal server error", which told a client
+      // nothing it could branch on and an operator nothing to quote — while
+      // `TomServer.errorHandler`, the pipeline's own default one layer out,
+      // answered the envelope. Two defaults, two shapes, for the same event.
+      final r = handler.handleInvocationError(
+        TomServerException('orders.submit.rejected', 'the secret reason'),
+        st,
+        _req(),
+      );
+
+      expect(r.headers['x-tom-error'], 'true');
+      expect(
+        TomMimeType.parse(r.headers[TomHeader.contentType]!),
+        TomMimeType.json,
+      );
+      final body = jsonDecode(await r.readAsString()) as Map;
+      expect(body['errorKey'], 'orders.submit.rejected');
+      expect(body['uuid'], isNotEmpty);
+    });
+
+    test('the message never reaches the wire', () async {
+      // The property the plain-text body used to buy by saying nothing at all.
+      // The envelope reports `errorKey` for a client to resolve against its own
+      // resources and never `defaultUserMessage`, so this holds for an
+      // exception whose text is sensitive — which is the only case it matters
+      // for.
+      final r = handler.handleInvocationError(
+        TomServerException('orders.submit.rejected', 'the secret reason'),
+        st,
+        _req(),
+      );
+
+      expect(await r.readAsString(), isNot(contains('the secret reason')));
+    });
+  });
+
+  group('TomStatusMappingErrorHandler', () {
+    final st = StackTrace.current;
+
+    test('a declared key answers its own status', () {
+      final r = const _MappingHandler().handleInvocationError(
+        TomServerException('orders.fetch.not_found', 'gone'),
+        st,
+        _req(),
+      );
+
+      expect(r.statusCode, 404);
+    });
+
+    test('an undeclared key stays a 500', () {
+      // The half that makes the map a *mapping* rather than a blanket: a
+      // handler that answered its one status for everything would pass the
+      // test above.
+      final r = const _MappingHandler().handleInvocationError(
+        TomServerException('orders.submit.exploded', 'boom'),
+        st,
+        _req(),
+      );
+
+      expect(r.statusCode, 500);
+    });
+
+    test('a non-framework error stays a 500', () {
+      // The map is keyed by error key, and an error that has none cannot be in
+      // it however it is spelled.
+      final r = const _MappingHandler().handleInvocationError(
+        StateError('orders.fetch.not_found'),
+        st,
+        _req(),
+      );
+
+      expect(r.statusCode, 500);
+    });
+
+    test('the mapped response carries the same envelope as the fallback', () {
+      // Only the *status* is a subclass's contribution. If the body differed
+      // too, a client would branch on shape as well as on key — which is the
+      // duplication this base class exists to remove.
+      final mapped = const _MappingHandler().handleInvocationError(
+        TomServerException('orders.fetch.not_found', 'gone'),
+        st,
+        _req(),
+      );
+      final fallback = const TomDefaultErrorHandler().handleInvocationError(
+        TomServerException('orders.fetch.not_found', 'gone'),
+        st,
+        _req(),
+      );
+
+      expect(mapped.headers['x-tom-error'], fallback.headers['x-tom-error']);
+      expect(
+        mapped.headers[TomHeader.contentType],
+        fallback.headers[TomHeader.contentType],
+      );
+      expect(fallback.statusCode, 500);
     });
   });
 
@@ -1180,4 +1281,14 @@ void main() {
       expect(ex.key, 'key');
     });
   });
+}
+
+/// A handler that declares one status, for the mapping tests above.
+class _MappingHandler extends TomStatusMappingErrorHandler {
+  const _MappingHandler();
+
+  @override
+  Map<String, int> get statusByErrorKey => const {
+    'orders.fetch.not_found': 404,
+  };
 }

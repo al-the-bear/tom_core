@@ -52,7 +52,7 @@ method, and converts the result (or any error) into a `Response`.
 | `TomApiImplementation` | class | Marks a class as the implementation of a registry-defined API |
 | `TomComponentReference` | class | Points a service at its implementation bean (by name or type) |
 | `TomTransactional` | class | Requests transaction wrapping for an endpoint method |
-| `TomErrorHandler` / `TomDefaultErrorHandler` | class | Turns an error into a `Response` (default: opaque `500`) |
+| `TomErrorHandler` / `TomStatusMappingErrorHandler` / `TomDefaultErrorHandler` | class | Turns an error into a `Response`: the framework envelope, at the status the error key is declared to mean (default: `500` for every key) |
 | `TomEndpointRouting` | class | Scans the annotated classes and builds the `Router` |
 | `TomEndpointHandler` | class | Serves one endpoint (the per-request pipeline) |
 | `TomMethodMetadata` / `TomClassScanResult` | class | Collected metadata / scan partitions |
@@ -885,10 +885,49 @@ at the same line count. That is a degradation no request counter can see.
 
 Each endpoint has a `TomErrorHandler`. The pipeline calls
 `handleInvocationError` when the method throws and `handleConversionError` when
-serialising the result fails; both default to `handleErrorDefault`. The default
-handler, `TomDefaultErrorHandler`, returns an opaque plain-text `500` so error
-detail never leaks. If a handler itself throws, the pipeline raises a
-`TomEndpointHandlerException` wrapping both errors.
+serialising the result fails; both default to `handleErrorDefault`. If a handler
+itself throws, the pipeline raises a `TomEndpointHandlerException` wrapping both
+errors.
+
+The default handler, `TomDefaultErrorHandler`, answers **the framework
+envelope** at a `500` — `tomErrorEnvelope(error)` under `x-tom-error: true` and
+declared `application/json`, the same shape `TomServer.errorHandler` answers one
+layer out and the same shape every module handler answers. No detail leaks: the
+envelope reports `errorKey` for a client to resolve against its own resources
+and never `defaultUserMessage`. What it does carry is the `uuid`, which is what
+makes an otherwise unexplainable `500` traceable to a log line.
+
+**A status other than `500` is declared, not guessed.** Subclass
+`TomStatusMappingErrorHandler` and give it a map:
+
+```dart
+class OrdersErrorHandler extends TomStatusMappingErrorHandler {
+  const OrdersErrorHandler();
+
+  @override
+  Map<String, int> get statusByErrorKey => const {
+    'orders.fetch.not_found': 404,
+    'orders.submit.no_positions': 400,
+  };
+}
+```
+
+Keyed by the **error key** rather than by exception type, because the key is
+what crosses the wire and what a client branches on: two modules may raise one
+type for conditions a caller must tell apart, and one type may be raised for
+conditions with different statuses. A key the map does not name stays a `500`,
+and the body is the same envelope either way — only the status is the
+subclass's contribution. For a rule a map cannot express, such as a whole key
+family, override `statusFor` and call `super.statusFor(error)` for the rest;
+`TomUserPreferencesErrorHandler` does exactly that for `preferences.encoded.*`.
+
+The framework declares no status of its own here, and that is a decision rather
+than an omission: it cannot know an application's keys, and the two
+classifications it *does* make are made elsewhere and differently — an access
+denial answers `404` from `TomEndpointHandler.accessDeniedResponse`,
+deliberately indistinguishable from a route that is not there, and a login
+failure is the authentication pipeline's to report. A status invented here would
+contradict one of them.
 
 Every hook takes the trace as a **`StackTrace`**. Each call site binds one from
 a `catch (error, stacktrace)`, so a looser `Object` bought nothing and cost each
@@ -1109,7 +1148,7 @@ and `test/examples_test.dart` runs it.
 | `web_socket_channel` | package | `endpoint_pipeline.dart`, `web_socket_endpoint.dart` | the handshake upgrade and the channel a socket handler talks through |
 | [audit](audit.md) | module | `endpoint_pipeline.dart` | `TomAuditAction`, `TomAuditOutcome`, `TomAuditTrail`, `TomAudited` |
 | [file_storage](file_storage.md) | module | `file_endpoint.dart` | `TomBlobRange`, `TomStorageException`, `TomStoredBlob` |
-| [little_things](little_things.md) | module | `endpoint_pipeline.dart`, `file_endpoint.dart`, `form_binding.dart`, `web_socket_endpoint.dart` | `TomServerException`, `TomRequestId` |
+| [little_things](little_things.md) | module | `endpoint_annotation.dart`, `endpoint_pipeline.dart`, `file_endpoint.dart`, `form_binding.dart`, `web_socket_endpoint.dart` | `TomServerException`, `TomRequestId`, `tomErrorEnvelope` |
 | [object_persistence](object_persistence.md) | module | `file_endpoint.dart` | `TomAnnotationAnalyzer`, `TomColumnAuthorizationException`, `TomColumnInformation`, `TomDataScopeAuthorizationException`, `TomDbTable`, `TomFileReference` |
 | [server](server.md) | module | `endpoint_pipeline.dart` | `TomRequestLogInfo` |
 | [transactions](transactions.md) | module | `endpoint_pipeline.dart` | `TomTransactionManager` / `TomTransaction` |

@@ -24,14 +24,10 @@
 /// contract that nothing implements.
 library;
 
-import 'dart:convert';
-
-import 'package:shelf/shelf.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../endpoints/endpoint_annotation.dart';
 import '../endpoints/endpoint_pipeline.dart';
-import '../little_things/server_exception.dart';
 import 'user_preferences_service.dart';
 
 /// Answers the failures that are the caller's business with a status of their
@@ -70,73 +66,46 @@ import 'user_preferences_service.dart';
 /// Nothing else is translated. `preferences.not_configured` is a deployment
 /// fault, not the client's business, and stays opaque along with everything
 /// else.
-class TomUserPreferencesErrorHandler extends TomErrorHandler {
+class TomUserPreferencesErrorHandler extends TomStatusMappingErrorHandler {
   /// Const constructor so the handler can be used as an annotation argument.
   const TomUserPreferencesErrorHandler();
 
   /// The error key raised for a key that violates [TomUserPreferenceKeys].
   static const String invalidKeyKey = 'preferences.key.invalid';
 
+  /// The family every refusal of the write boundary
+  /// (`TomUserPreferenceCodec.validateEncoded`) is raised under.
+  static const String _encodedRefusalPrefix = 'preferences.encoded.';
+
   /// The status each translated error key answers with.
   ///
   /// The miss is keyed by the contract's [tomUserPreferencesNotFoundErrorKey]
   /// rather than a key of this module's own, because the client has to
   /// recognise it: a `404` is absence only when it carries that key.
-  static const Map<String, int> _statusByErrorKey = {
+  ///
+  /// Only the *status* is this module's contribution. The body is the
+  /// framework's envelope, rendered by the base class — so a client branches on
+  /// `errorKey` and sees one shape rather than one per endpoint.
+  @override
+  Map<String, int> get statusByErrorKey => const {
     tomUserPreferencesNotFoundErrorKey: 404,
     invalidKeyKey: 400,
     tomUserPreferencesLimitExceededErrorKey: 409,
   };
 
-  /// The family every refusal of the write boundary
-  /// (`TomUserPreferenceCodec.validateEncoded`) is raised under.
-  static const String _encodedRefusalPrefix = 'preferences.encoded.';
-
-  /// The status [errorKey] answers with, or `null` for one left opaque.
-  static int? _statusFor(String errorKey) =>
-      _statusByErrorKey[errorKey] ??
-      (errorKey.startsWith(_encodedRefusalPrefix) ? 400 : null);
-
+  /// [statusByErrorKey], plus the whole `preferences.encoded.*` family.
+  ///
+  /// A prefix rather than four entries: the write boundary raises one key per
+  /// way a pair can disagree, and every one of them is the caller's malformed
+  /// request. Listing them would mean a fifth refusal silently becoming a
+  /// `500`.
   @override
-  Response handleInvocationError(
-    Object error,
-    StackTrace stacktrace,
-    Request r,
-  ) {
-    final status = error is TomException ? _statusFor(error.key) : null;
-    if (error is TomException && status != null) {
-      // The body is the framework's own envelope, rendered by the same function
-      // `TomServer.errorHandler` uses, so a client branches on `errorKey` and
-      // sees one shape rather than one per endpoint. Only the *status* is this
-      // module's contribution; the body is not.
-      //
-      // Which is also why the media type is declared: a client that is expected
-      // to decode the body needs to be told there is one to decode, and an
-      // undeclared body is one an intermediary may sniff as anything it likes.
-      return Response(
-        status,
-        body: jsonEncode(tomErrorEnvelope(error)),
-        headers: {
-          'x-tom-error': 'true',
-          TomHeader.contentType: TomMimeType.json.toHeaderValue(),
-        },
-      );
+  int statusFor(Object error) {
+    if (error is TomException && error.key.startsWith(_encodedRefusalPrefix)) {
+      return 400;
     }
-    return handleErrorDefault(error, stacktrace, r, null);
+    return super.statusFor(error);
   }
-
-  @override
-  Response handleErrorDefault(
-    Object error,
-    StackTrace stacktrace,
-    Request r,
-    Object? result,
-  ) => const TomDefaultErrorHandler().handleErrorDefault(
-    error,
-    stacktrace,
-    r,
-    result,
-  );
 }
 
 /// The default [TomUserPreferencesApiService] implementation.

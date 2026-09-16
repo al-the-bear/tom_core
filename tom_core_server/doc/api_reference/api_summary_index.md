@@ -325,7 +325,8 @@ surface documented here.
 | `TomMethodMetadata` | class | Reflected method metadata. |
 | `TomClassScanResult` | class | Result of scanning a service class. |
 | `TomErrorHandler` | abstract class | Error-handler contract. |
-| `TomDefaultErrorHandler` | class | Default error handler. |
+| `TomStatusMappingErrorHandler` | class | Error handler answering the framework envelope at a declared per-key status. |
+| `TomDefaultErrorHandler` | class | Default error handler: the envelope, always `500`. |
 | `TomEndpointHandlerException` | class | Handler error. |
 | `TomEndpointPipelineException` | class | Pipeline error. |
 | `TomMultipartForm` | class | A decoded HTML form body: its text fields and its uploaded files. |
@@ -1074,6 +1075,7 @@ surface documented here.
 | `TomSqlTypeFamily` | Datasources |
 | `TomSqlTypeFamilyCompatibility` | Database Migration |
 | `TomStandardSqlDialect` | Datasources |
+| `TomStatusMappingErrorHandler` | Endpoints |
 | `TomStorageException` | File Storage |
 | `TomStoredBlob` | File Storage |
 | `TomStoredExport` | Export |

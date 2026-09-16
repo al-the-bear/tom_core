@@ -259,9 +259,13 @@ maps `preferences.not_found` (the kernel's `tomUserPreferencesNotFoundErrorKey`)
 to a `404`; `preferences.key.invalid` and every key under `preferences.encoded.`
 — the write boundary's refusals — to a `400`; and `preferences.limit.exceeded`
 (`tomUserPreferencesLimitExceededErrorKey`) to a `409` — and *only* those —
-leaving every other failure to `handleErrorDefault`.
+leaving every other failure a `500`.
 
-- **Extends:** `TomErrorHandler`.
+Only the *status* is this module's contribution: the body is the framework
+envelope, rendered by the base class, so a client sees one shape whichever
+endpoint answered.
+
+- **Extends:** `TomStatusMappingErrorHandler`.
 
 #### Constructors
 
@@ -289,8 +293,13 @@ const TomUserPreferencesErrorHandler()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `handleInvocationError` | `Response handleInvocationError(Object error, StackTrace stacktrace, Request r)` | Answers with the mapped status when `error` is a `TomException` whose `key` is one of the translated ones, carrying `tomErrorEnvelope(error)` as the body, the `x-tom-error` header and `Content-Type: application/json` so a client branches on `errorKey` rather than on a status alone. Everything else falls through to `handleErrorDefault`. |
-| `handleErrorDefault` | `Response handleErrorDefault(Object error, StackTrace stacktrace, Request r, Object? result)` | Delegates to `TomDefaultErrorHandler`, so every failure that is not one of the translated keys is answered exactly as it would have been without this handler. |
+| `statusFor` | `int statusFor(Object error)` | *(override)* `400` for every key under `preferences.encoded.` — a prefix rather than four entries, so a fifth refusal of the write boundary does not silently become a `500` — and otherwise the base class's lookup in `statusByErrorKey`. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `statusByErrorKey` | `Map<String, int>` | *(getter, override)* `tomUserPreferencesNotFoundErrorKey` → `404`, `invalidKeyKey` → `400`, `tomUserPreferencesLimitExceededErrorKey` → `409`. The miss is keyed by the *contract's* key rather than one of this module's own, because the client has to recognise it: a `404` is absence only when it carries that key. |
 
 Why only those keys: a client must be able to tell **"you have no such
 preference"** from **"the server is broken"**, and a client that cannot must

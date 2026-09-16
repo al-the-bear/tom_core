@@ -2,6 +2,43 @@
 
 ### Added
 
+- **An endpoint's default failure answers the framework envelope, and a status
+  is three lines to declare (tcopen182).** Two things were wrong with the todo's
+  premise and worth recording. `TomDefaultErrorHandler` is not "the other half
+  of the answer" — it mapped nothing and returned the plain-text sentence
+  `"Internal server error"`, which is *less* than `TomServer.errorHandler` gave.
+  And it, not the pipeline default, is what actually answers an endpoint
+  failure: every endpoint falls back to it, so the pipeline handler is only
+  reached by errors raised outside one.
+
+  So the two defaults answered the same event in two shapes. They now answer
+  one: `tomErrorEnvelope(error)` under `x-tom-error: true`, declared
+  `application/json`. No detail leaks — the envelope reports `errorKey` and
+  never `defaultUserMessage` — and it carries the `uuid`, which is what makes an
+  otherwise unexplainable `500` traceable to a log line.
+
+  `TomStatusMappingErrorHandler` is the new base: override `statusByErrorKey`
+  and nothing else. Keyed by the error key rather than the exception type,
+  because the key is what crosses the wire and what a client branches on.
+  `TomDefaultErrorHandler` is that class with an empty map, and
+  `TomUserPreferencesErrorHandler` is now its map plus one `statusFor` override
+  for the `preferences.encoded.*` family — forty lines of envelope rendering
+  gone, with its suite unchanged.
+
+  **The framework still declares no status of its own**, and that is a decision:
+  it cannot know an application's keys, and the two classifications it does make
+  are made elsewhere and differently — an access denial answers `404` from
+  `TomEndpointHandler.accessDeniedResponse`, deliberately indistinguishable from
+  a route that is not there, and a login failure belongs to the authentication
+  pipeline. A status invented in the default would contradict one of them.
+
+  One test changed its premise rather than its expectation: it asserted the
+  opaque fallback stays plain text because "the opaque fallback has no envelope
+  to parse". Measured, that is false for the case it exercised — a framework
+  exception's envelope carries `errorKey`, `uuid` and `requestUuid`, and not the
+  message. It now asserts the property that matters, that the message never
+  reaches the wire, which a plain-text body never proved.
+
 - **The terminal-transition guard is asserted, not just argued (tcopen180).**
   The todo reported `complete` and `fail` as the only job-store mutators
   updating by id alone; both tiers had since been fenced on

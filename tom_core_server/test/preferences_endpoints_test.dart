@@ -368,12 +368,19 @@ void main() {
       );
 
       expect(response.statusCode, 500);
-      // And it stays plain text: the opaque fallback has no envelope to parse,
-      // so declaring JSON there would promise a body that is not one.
-      expect(
-        TomMimeType.parse(response.headers[TomHeader.contentType]!),
-        TomMimeType.plainText,
-      );
+      // Opaque is about the *status* and the message, not about the shape. The
+      // body is the framework envelope like every other error this package
+      // answers with, so a client decodes one shape whichever endpoint replied
+      // — and an operator gets the `uuid` to quote, which is the whole value of
+      // a 500 that is otherwise unexplainable. What must not appear is the
+      // message, and that is what is asserted here rather than the media type:
+      // a plain-text body proves nothing about leaking, since the leak this
+      // guards against is `defaultUserMessage` reaching the wire.
+      final body = jsonDecode(await response.readAsString()) as Map;
+      expect(body['errorKey'], 'preferences.not_configured');
+      expect(body['uuid'], isNotEmpty);
+      expect(body.containsKey('defaultUserMessage'), isFalse);
+      expect(body.values.join(' '), isNot(contains('store')));
     });
 
     test('leaves a plain error opaque', () async {
@@ -384,6 +391,12 @@ void main() {
       );
 
       expect(response.statusCode, 500);
+      // A non-framework error has no key, no uuid and no message to carry, so
+      // its envelope names the type and nothing else. Asserted because that is
+      // the one case where the envelope really is nearly empty — and it still
+      // must not carry the `StateError`'s own text.
+      final body = jsonDecode(await response.readAsString()) as Map;
+      expect(body, {'errorType': 'StateError'});
     });
   });
 

@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:shelf/shelf.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../little_things/server_exception.dart';
+
 /// Turns an error raised while serving an endpoint into a shelf [Response].
 ///
 /// The endpoint pipeline calls a hook depending on *where* the failure
@@ -64,11 +66,64 @@ abstract class TomErrorHandler {
   );
 }
 
-/// The default [TomErrorHandler]: hides the error and returns a plain-text
-/// `500 Internal Server Error`, so error details never leak to the client.
-class TomDefaultErrorHandler extends TomErrorHandler {
-  /// Const constructor so the default handler can be shared as a `const` value.
-  const TomDefaultErrorHandler();
+/// A [TomErrorHandler] that answers with the framework's error envelope, and
+/// with the status an error key is declared to mean.
+///
+/// Two things every handler in this framework was writing for itself. The
+/// **body** is [tomErrorEnvelope] — the package's single definition of the wire
+/// error shape — under `x-tom-error: true` and declared `application/json`, so
+/// a client decodes one shape whichever endpoint answered and branches on
+/// `errorKey`. The **status** comes from [statusByErrorKey], which a subclass
+/// overrides with its own keys; anything it does not name is a `500`.
+///
+/// The envelope is what makes this safe to use as a default. It reports
+/// `errorKey` for a client to resolve against its own resources and never
+/// `defaultUserMessage`, so no exception's text escapes through it — the
+/// property the plain-text `"Internal server error"` body used to buy by saying
+/// nothing at all, at the price of saying nothing at all.
+///
+/// A deployment that wants a miss to read as a miss therefore writes a map
+/// rather than a handler:
+///
+/// ```dart
+/// class OrdersErrorHandler extends TomStatusMappingErrorHandler {
+///   const OrdersErrorHandler();
+///
+///   @override
+///   Map<String, int> get statusByErrorKey => const {
+///     'orders.fetch.not_found': 404,
+///     'orders.submit.no_positions': 400,
+///   };
+/// }
+/// ```
+///
+/// **It maps no status of its own**, and that is deliberate rather than
+/// unfinished. The framework cannot know an application's keys, and the two
+/// classifications it *does* make are already made elsewhere and differently:
+/// an access denial answers `404` from
+/// [TomEndpointHandler.accessDeniedResponse], deliberately indistinguishable
+/// from a route that is not there, and a login failure is the authentication
+/// pipeline's to report. A status invented here would contradict one of them.
+abstract class TomStatusMappingErrorHandler extends TomErrorHandler {
+  /// Const base constructor so handlers stay usable as `const` annotations.
+  const TomStatusMappingErrorHandler();
+
+  /// The status each error key answers with; every other key is a `500`.
+  ///
+  /// Keyed by the error key rather than by exception type because the key is
+  /// what crosses the wire and what a client branches on — two modules may
+  /// raise the same type for conditions a caller must tell apart, and one type
+  /// may be raised for conditions with different statuses.
+  Map<String, int> get statusByErrorKey => const {};
+
+  /// The status [error] answers with: [statusByErrorKey]'s entry for a
+  /// [TomException]'s key, else `500`.
+  ///
+  /// `protected`-by-convention rather than private, so a subclass with a rule
+  /// a map cannot express — a whole key family, say — extends it by calling
+  /// `super.statusFor(error)` for everything else.
+  int statusFor(Object error) =>
+      (error is TomException ? statusByErrorKey[error.key] : null) ?? 500;
 
   @override
   Response handleErrorDefault(
@@ -76,17 +131,25 @@ class TomDefaultErrorHandler extends TomErrorHandler {
     StackTrace stacktrace,
     Request r,
     Object? result,
-  ) {
-    Map<String, Object> headers = {
-      TomHeader.contentType: TomMimeType.plainText.toHeaderValue(),
-    };
+  ) => Response(
+    statusFor(error),
+    body: jsonEncode(tomErrorEnvelope(error)),
+    headers: {
+      'x-tom-error': 'true',
+      TomHeader.contentType: TomMimeType.json.toHeaderValue(),
+    },
+  );
+}
 
-    return Response.internalServerError(
-      body: "Internal server error",
-      headers: headers,
-      encoding: Encoding.getByName("UTF-8"),
-    );
-  }
+/// The default [TomErrorHandler]: the framework envelope with a `500`.
+///
+/// What every endpoint gets when it declares no handler of its own. It maps no
+/// key to any other status — see [TomStatusMappingErrorHandler] for why the
+/// framework declines to guess one, and for the three lines a deployment writes
+/// to declare its own.
+class TomDefaultErrorHandler extends TomStatusMappingErrorHandler {
+  /// Const constructor so the default handler can be shared as a `const` value.
+  const TomDefaultErrorHandler();
 }
 
 /// The shared default error handler instance used when an endpoint does not

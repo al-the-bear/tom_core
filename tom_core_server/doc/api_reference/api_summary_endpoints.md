@@ -11,6 +11,7 @@ method, and runs the per-request handling.
 - [Class Hierarchy](#class-hierarchy)
 - [Classes](#classes)
   - [TomErrorHandler](#tomerrorhandler)
+  - [TomStatusMappingErrorHandler](#tomstatusmappingerrorhandler)
   - [TomDefaultErrorHandler](#tomdefaulterrorhandler)
   - [TomService](#tomservice)
   - [TomApiImplementation](#tomapiimplementation)
@@ -101,7 +102,8 @@ grammar and the store registry — and the row-side contract
 
 ```
 TomErrorHandler  (abstract)
-    └── TomDefaultErrorHandler
+    └── TomStatusMappingErrorHandler  (abstract)
+            └── TomDefaultErrorHandler
 
 TomService
     └── TomApiImplementation
@@ -167,24 +169,51 @@ const TomErrorHandler()
 | `handleUnknowResultTypeError` | `Response handleUnknowResultTypeError(Object error, StackTrace stacktrace, Request r, Object? result)` | Builds the response for a `result` whose type cannot be mapped to a body (delegates to `handleErrorDefault`). Declared, and not reached by the pipeline today — that case leaves as a conversion error. |
 | `handleErrorDefault` | `Response handleErrorDefault(Object error, StackTrace stacktrace, Request r, Object? result)` | The fallback every hook delegates to; the one method a concrete handler must implement. |
 
-### TomDefaultErrorHandler
+### TomStatusMappingErrorHandler
 
-The default `TomErrorHandler`: hides the error and returns a plain-text
-`500 Internal Server Error`, so error details never leak to the client.
+A `TomErrorHandler` that answers with the framework's error envelope
+(`tomErrorEnvelope` under `x-tom-error: true`, declared `application/json`) and
+with the status an error key is declared to mean. A subclass overrides
+`statusByErrorKey`; every key it does not name is a `500`. It maps no status of
+its own — the framework cannot know an application's keys, and the two
+classifications it does make are made elsewhere and differently (an access
+denial answers `404` from `TomEndpointHandler.accessDeniedResponse`, a login
+failure is the authentication pipeline's).
 
 - **Extends:** `TomErrorHandler`
 
 #### Constructors
 
 ```dart
-const TomDefaultErrorHandler()
+const TomStatusMappingErrorHandler()
 ```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `statusByErrorKey` | `Map<String, int>` | *(getter)* The status each error key answers with; every other key is a `500`. Keyed by the error key rather than by exception type, because the key is what crosses the wire and what a client branches on. Empty by default. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `handleErrorDefault` | `Response handleErrorDefault(Object error, StackTrace stacktrace, Request r, Object? result)` | *(override)* Returns a plain-text `500 Internal Server Error` with no leaked detail. |
+| `statusFor` | `int statusFor(Object error)` | The status `error` answers with: `statusByErrorKey`'s entry for a `TomException`'s key, else `500`. Overridable for a rule a map cannot express — a whole key family, say — calling `super.statusFor(error)` for the rest. |
+| `handleErrorDefault` | `Response handleErrorDefault(Object error, StackTrace stacktrace, Request r, Object? result)` | *(override)* The envelope at `statusFor(error)`. |
+
+### TomDefaultErrorHandler
+
+The default `TomErrorHandler`: the framework envelope with a `500`. What every
+endpoint gets when it declares no handler of its own. It maps no key to any
+other status.
+
+- **Extends:** `TomStatusMappingErrorHandler`
+
+#### Constructors
+
+```dart
+const TomDefaultErrorHandler()
+```
 
 ### TomService
 
