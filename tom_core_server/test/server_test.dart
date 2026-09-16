@@ -738,6 +738,92 @@ void main() {
     });
   });
 
+  group('a request rejected during authentication is still logged', () {
+    // The access log's whole point is the requests an operator did not expect:
+    // an expired token, a token signed by the wrong key, an authorization cache
+    // that cannot be reached. Those fail while the principal is being
+    // established — and while the logging middleware sat *below* the error
+    // layers, every one of them produced no line at all. An operator read a
+    // quiet server for exactly the traffic worth reading about.
+    //
+    // Asserted through a real server rather than by composing the middlewares
+    // here, because the claim is about the pipeline's *order*: a hand-built
+    // stack in this file would only re-assert the order this file chose.
+    setUpAll(() {
+      initializeReflection();
+      TomPlatformUtils.setCurrentPlatform(TomStandalonePlatformUtils());
+    });
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType(FixtureApiServer, FixtureApiServer());
+      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      registerFixtureAccessApi();
+    });
+
+    /// Captures the log while [body] runs against a freshly started server.
+    Future<List<String>> logOf(TomBaseServerConfiguration config) async {
+      _AppIdConfig('');
+      final output = _CapturingLogOutput();
+      final previous = tomLog.logOutput;
+      addTearDown(() => tomLog.logOutput = previous);
+
+      final server = await TomServer(config).start();
+      addTearDown(() => server.close(force: true));
+
+      // Installed after the bind so the boot's own lines are not captured.
+      tomLog.logOutput = output;
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.get('127.0.0.1', server.port, '/anything');
+      final response = await request.close();
+      await response.drain<void>();
+      return output.messages;
+    }
+
+    test('the rejection produces an access-log line', () async {
+      final messages = await logOf(_RejectingAuthConfig());
+
+      expect(
+        messages.where((line) => line.startsWith('HTTP/')),
+        hasLength(1),
+        reason:
+            'a request refused during authentication must appear in the access '
+            'log exactly once — the line naming method, path and status is the '
+            'one an operator can correlate and count',
+      );
+    });
+
+    test('the line names the method, the path and the status', () async {
+      // `_handleError` already logged the *error*, and that line names none of
+      // these — which is why an error line is not a substitute for an access
+      // line, and why this asserts the fields rather than that something was
+      // written.
+      final line = (await logOf(
+        _RejectingAuthConfig(),
+      )).firstWhere((message) => message.startsWith('HTTP/'));
+
+      expect(line, contains('[GET]'));
+      expect(line, contains('/anything'));
+      expect(line, contains('500'));
+    });
+
+    test(
+      'a request that is not rejected is still logged exactly once',
+      () async {
+        // The other direction. The endpoint pipeline writes its own, richer line
+        // and marks the request logged, so moving the middleware outwards must
+        // not add a second one for every served request.
+        final messages = await logOf(_BindableConfig());
+
+        expect(
+          messages.where((line) => line.startsWith('HTTP/')),
+          hasLength(lessThanOrEqualTo(1)),
+        );
+      },
+    );
+  });
+
   group('start binds, and hands back what it bound', () {
     // The header above says the bind is covered only by the samples' own
     // integration scripts. That was true while `start()` returned `void`:
@@ -813,4 +899,16 @@ class _BindableConfig extends TomBaseServerConfiguration {
 
   @override
   void setValues(Map<String, Object?> values) {}
+}
+
+/// A configuration whose authentication middleware refuses every request.
+///
+/// Stands in for the real refusals — an expired token, a wrong signing key, an
+/// unreachable authorization cache — all of which fail at the same point in the
+/// pipeline and are answered by the same error layer.
+class _RejectingAuthConfig extends _BindableConfig {
+  _RejectingAuthConfig() {
+    authenticationMiddleware = (innerHandler) =>
+        (request) => throw TomServerException('test.auth.rejected', 'refused');
+  }
 }

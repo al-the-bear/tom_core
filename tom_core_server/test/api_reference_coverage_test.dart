@@ -8359,14 +8359,6 @@ class After {}
             'the guide says the default `errorHandler` answers 500 for '
             'everything; if it now chooses a status, say so there instead',
       );
-      expect(
-        limitations.logsBelowAuthentication,
-        isTrue,
-        reason:
-            'the guide explains the missing access-log line by the logging '
-            'middleware sitting below the authentication layer — move it above '
-            'and the explanation is wrong as well as the limitation gone',
-      );
     });
 
     test('a module file matching a disowned capability is reported', () {
@@ -8424,7 +8416,6 @@ class After {}
         '}',
       ]);
       expect(fixed.defaultErrorHandlerAlwaysFails, isFalse);
-      expect(fixed.logsBelowAuthentication, isFalse);
     });
   });
 
@@ -9085,29 +9076,24 @@ List<String> _disownedFileComplaints(
               'the guide is disowning something the module ships',
 ];
 
-/// The two limitations `doc/server.md` records, as the source still shows them.
+/// The one limitation `doc/server.md` records, as the source still shows it.
 ///
 /// There were four. `extractAuthentication` could not report a bad token and now
 /// reports both of its failures; `start()` could not be awaited and handed back
-/// no handle, and now returns the bound `HttpServer`. In each case the guide
-/// says so where the bullet was, and the flag that measured it went with the
-/// bullet — a flag kept after its limitation is fixed only ever asserts that
-/// the fix is still absent.
-typedef _ServerLimitations = ({
-  bool defaultErrorHandlerAlwaysFails,
-  bool logsBelowAuthentication,
-});
+/// no handle, and now returns the bound `HttpServer`; a request rejected during
+/// authentication produced no access-log line, and the logging middleware now
+/// sits above both error layers. In each case the guide says so where the
+/// bullet was, and the flag that measured it went with the bullet — a flag kept
+/// after its limitation is fixed only ever asserts that the fix is still
+/// absent.
+typedef _ServerLimitations = ({bool defaultErrorHandlerAlwaysFails});
 
-/// Reads the two limitations out of [lines].
+/// Reads the remaining limitation out of [lines].
 ///
-/// Each is read from the one construct that decides it, so that fixing a
-/// limitation flips exactly the one flag: the status the default handler
-/// builds, and the order the two middlewares are added to the pipeline.
+/// Read from the one construct that decides it — the status the default handler
+/// builds — so that fixing it flips exactly this flag.
 _ServerLimitations _serverLimitationsOf(List<String> lines) {
   final joined = lines.join('\n');
-
-  final logging = joined.indexOf('.addMiddleware(loggingMiddleware)');
-  final authentication = joined.indexOf('authenticationMiddleware ??');
 
   // The extractor's body, so an empty catch elsewhere in the file does not
   // stand in for the two that make a bad token unreportable.
@@ -9129,12 +9115,6 @@ _ServerLimitations _serverLimitationsOf(List<String> lines) {
     defaultErrorHandlerAlwaysFails: joined.contains(
       'return Response.internalServerError(',
     ),
-    // Both present and the logging one added later: shelf applies middleware in
-    // the order it is added, so "later" is "further from the client" — which is
-    // exactly why a response decided by the authentication layer never reaches
-    // it.
-    logsBelowAuthentication:
-        logging >= 0 && authentication >= 0 && logging > authentication,
   );
 }
 

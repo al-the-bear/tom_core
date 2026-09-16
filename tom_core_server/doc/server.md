@@ -100,12 +100,7 @@ order:
 
 1. **`contextSetupMiddleware`** — seeds a fresh `TomRequestLogInfo` into the
    request context under `TomRequestLogInfo.contextName`.
-2. **Outer error handler** — catches errors from the authentication phase using
-   the `authenticationErrorHandler`.
-3. **Authentication middleware** — the configuration's `authenticationMiddleware`
-   or `tomDefaultAuthenticationMiddleware`.
-4. **Inner error handler** — catches errors from handling using `errorHandler`.
-5. **Logging middleware** — `loggingMiddleware` (defaults to
+2. **Logging middleware** — `loggingMiddleware` (defaults to
    `tomLoggingMiddleware`), which emits one line per served request:
 
    ```text
@@ -118,8 +113,27 @@ order:
    the requested URI carries a port, but that only separates them while they are
    separate ports on one host. A deployment that configures no `appId` sees the
    line without the prefix.
+3. **Outer error handler** — catches errors from the authentication phase using
+   the `authenticationErrorHandler`.
+4. **Authentication middleware** — the configuration's `authenticationMiddleware`
+   or `tomDefaultAuthenticationMiddleware`.
+5. **Inner error handler** — catches errors from handling using `errorHandler`.
 6. **Router** — optionally wrapped in a `Cascade` with the configuration's
    `preExecutionHandler` / `postExecutionHandler`.
+
+**Logging sits above both error layers**, and that is what makes the access log
+complete. A request that fails while its principal is being established — an
+expired token, a token signed by the wrong key, an authorization cache that
+cannot be reached — has been turned into a response by the error layer *below*
+the logging middleware, so it is logged like any other request. Below them it
+could not be: the error layer answers the request, and nothing further in runs,
+so the traffic most worth reading about produced no line at all.
+
+It logs a response, not an outcome. The one case still absent is an error that
+escapes *both* layers, where no response was produced and there is no status to
+write; `_handleError` logs that error itself and shelf answers the client.
+The endpoint pipeline's own richer line still wins for a served request — it
+marks `hasBeenLogged`, so moving the middleware outwards adds no second line.
 
 ## Request Context and Zone Values
 
@@ -257,20 +271,9 @@ somewhere other than the call site.
   handler's job, and `TomUserPreferencesErrorHandler` is the worked example — an
   `errorKey`-to-status map, the same `tomErrorEnvelope` body, and only the
   *status* contributed. See [Error Mapping](#error-mapping).
-- **A request answered above the logging middleware leaves no access-log line.**
-  `loggingMiddleware` sits below the authentication layer (see
-  [The Pipeline](#the-pipeline)), so whatever is decided above it — the outer
-  error handler, or a substitute `authenticationMiddleware` that rejects —
-  returns without ever reaching it. `tomDefaultAuthenticationMiddleware` never
-  rejects — an expired cached principal resolves to no principal rather than to
-  a refusal, and the request is logged like any other — so under the default
-  the way in is narrow: a cache read forwarded to another isolate that fails, or
-  a transaction scope that cannot be opened. A deployment that supplies a
-  rejecting middleware loses the line for every rejection, which is the class of
-  request most worth having one.
-Both are pinned by tests in `test/api_reference_coverage_test.dart`, in the
-group "the server guide's Not Yet Implemented section matches the module", so
-closing one turns a test red rather than leaving this section quietly wrong.
+It is pinned by a test in `test/api_reference_coverage_test.dart`, in the group
+"the server guide's Not Yet Implemented section matches the module", so closing
+it turns a test red rather than leaving this section quietly wrong.
 There were four: `extractAuthentication` could not report a bad token, because
 it swallowed both its failures into empty catches. It reports both now — the
 signature rejection from `verifyBearerToken` and the derivation failure at the

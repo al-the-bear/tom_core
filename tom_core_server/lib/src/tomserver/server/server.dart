@@ -224,6 +224,14 @@ Middleware tomDefaultAuthenticationMiddleware(
 /// carries a port, but that only separates them while they are separate ports
 /// on one host. The prefix is omitted entirely when no application id is
 /// configured, so a single-server deployment sees the line unchanged.
+///
+/// **It logs a response, not an outcome.** [TomServer.start] places it above
+/// both error layers precisely so that a request rejected during authentication
+/// has been turned into a response before it arrives here — which is what makes
+/// a rejection appear in the access log at all. The one case still absent is an
+/// error that escapes *both* layers, because no response was produced and there
+/// is no status to write; `_handleError` logs that error itself, and shelf
+/// answers the client.
 Middleware tomLoggingMiddleware() => (innerHandler) {
   // FutureOr<Response> Function(Request request)
   return (request) {
@@ -461,12 +469,28 @@ class TomServer {
     }
 
     // Configure a pipeline that handles errors and logs requests.
+    //
+    // The logging middleware sits **above both error layers**, and that
+    // placement is the whole of what makes the access log complete. Shelf
+    // applies middleware in the order it is added, so "earlier" is "closer to
+    // the client": logging here wraps the error layers, which means a request
+    // that fails while its principal is being established — an expired token, a
+    // token signed by the wrong key, an authorization cache that cannot be
+    // reached — has already been turned into a response by the time logging
+    // sees it, and is logged like any other.
+    //
+    // Below them it could not be. The error layer converts a throw into a
+    // response, so anything further in never runs for a rejected request; the
+    // operator read a quiet server for exactly the requests worth reading
+    // about, while `_handleError`'s own error line named neither method, path,
+    // status nor protocol version and so could be correlated with nothing.
     final handler = Pipeline()
         .addMiddleware(
           contextSetupMiddleware("Setup context", {
             TomRequestLogInfo.contextName: TomRequestLogInfo(),
           }),
         )
+        .addMiddleware(loggingMiddleware)
         .addMiddleware(
           _handleError(
             authenticationErrorHandler ?? errorHandler,
@@ -480,7 +504,6 @@ class TomServer {
               ),
         )
         .addMiddleware(_handleError(errorHandler, "InnerErrorHandler"))
-        .addMiddleware(loggingMiddleware)
         .addHandler(routerHandler);
 
     // For running in containers, we respect the PORT environment variable.

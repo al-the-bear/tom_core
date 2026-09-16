@@ -2,6 +2,41 @@
 
 ### Added
 
+- **A request rejected during authentication now produces an access-log line
+  (tcopen185).** `loggingMiddleware` sat *inside* both error layers, and an
+  error layer answers the request it caught — so nothing further in ran for a
+  rejected one and no line was written. Those are the requests an operator most
+  wants: an expired token, a token signed by the wrong key, an authorization
+  cache that cannot be reached. The log read as a quiet server for exactly the
+  traffic worth reading about, while `_handleError`'s own error line named
+  neither method, path, status nor protocol version and so could be correlated
+  with nothing.
+
+  It now sits **above both error layers**, second in the pipeline after
+  `contextSetupMiddleware`. Above the authentication middleware alone would not
+  have been enough, and that is the part worth stating: the middleware logs in
+  its `.then`, so a rejection that is still a *throw* when it reaches it is
+  skipped. It has to be outside the layer that converts the throw into a
+  response.
+
+  One case remains absent by construction — an error escaping *both* layers
+  produced no response, so there is no status to write; the dartdoc and both
+  guides say so rather than implying full coverage. A served request is
+  unaffected: the endpoint pipeline writes its own richer line and marks
+  `hasBeenLogged`.
+
+  Three tests in `server_test.dart` drive a real server whose authentication
+  middleware refuses, and assert the line exists exactly once, names the method,
+  path and status, and that a normal request still yields at most one. Through a
+  server rather than a hand-composed stack, because the claim is about the
+  pipeline's order — a stack built in the test would only re-assert the order
+  the test chose. Mutation-tested: putting the middleware back below both
+  layers, *and* putting it between them, each fail.
+
+  `doc/server.md` loses the bullet and `api_reference_coverage_test` the
+  `logsBelowAuthentication` flag that measured it, leaving one limitation where
+  there were four.
+
 - **`start()` returns the bound `HttpServer` (tcopen184).** It was
   `void start() async`, so a bind failure — a port already in use, an unreadable
   certificate, a malformed private key — was raised inside a future nobody held
