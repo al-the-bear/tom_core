@@ -2,6 +2,30 @@
 
 ### Added
 
+- **A transaction that is not running is never the current one (tcopen190).**
+  Both conclusions set `_isRunning = false` on their first line and cleared the
+  scope on their last, so anything that left either of them in between left the
+  scope pinned to a dead transaction. Each symptom points away from the cause:
+  `getCurrentTransaction()` answers non-null while `transactional` answers
+  `false`, every later `startTransaction()` in that scope hands back the dead
+  transaction with `isNew == false` — read as "I am nested inside somebody
+  else's transaction", so the caller neither concludes it nor opens its own —
+  and every enlistment on it is refused with `transaction_not_running`. Off the
+  request path the scope is the process-wide fallback, so one throwing
+  participant poisoned every later transaction in the process.
+
+  The clear now happens in a `finally`. Every participant call in both drives is
+  caught as well, so nothing reaches it today — and that is exactly why it is a
+  `finally` rather than a last line: the catches are a property of this body,
+  the invariant is not. `test/transactions_test.dart` drives a participant that
+  throws from each of the four conclusion hooks and reads the `finally` itself
+  out of the source, because no test can otherwise reach it.
+
+  Participant ids in both drives are now read from the enlistment map's keys
+  rather than by calling `getParticipantId()` again: the key cannot throw while
+  the coordinator is reporting a failure, and it is the name the participant is
+  registered under, which a later answer from its own getter need not be.
+
 - **The transaction coordinator performs a two-phase commit (tcopen189).**
   `TomTransactionParticipant` had four lifecycle methods and no prepare, so
   `commitTransaction` committed participants one at a time: a veto from the

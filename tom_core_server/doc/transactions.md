@@ -151,6 +151,24 @@ source would mean a connection that never returns to the pool. The boolean each
 method returns is the conjunction of *all* the end calls, so one failure among
 them is reported however many succeed after it.
 
+**A transaction that is not running is never the current one.** Both
+conclusions clear the scope in a `finally`, so the invariant holds however the
+method leaves — and every participant call inside them is caught, so a data
+source whose connection drops mid-conclusion is logged against its id rather
+than propagated. The two are separate guarantees on purpose: the catches keep
+one participant's failure from stopping its neighbours, and the `finally` keeps
+*anything* that escapes from leaving the scope pinned to a dead transaction.
+
+That state is worth naming, because each of its symptoms points away from its
+cause. `getCurrentTransaction()` answers non-null while `transactional` answers
+`false`, so a caller that tests the other accessor gets the opposite answer.
+Every later `startTransaction()` in that scope hands back the dead transaction
+with `isNew == false`, which the caller reads as "I am nested inside somebody
+else's transaction" — so it neither concludes it nor opens one of its own. And
+every enlistment on it is refused with `transaction_not_running`. On the request
+path the scope goes away with the request; off it, the scope is the process-wide
+fallback and the state outlives the flow that produced it.
+
 A transaction runs once: after it concludes, `isRunning` is `false`.
 
 ## Ambient Access
@@ -233,7 +251,8 @@ transaction.
 A transaction may conclude in a different zone from the one that opened it (after
 an `await`, or from a callback scheduled elsewhere), so each `TomTransaction`
 holds a reference to the scope it is current in and clears *that* scope —
-identity-guarded, so a concluded transaction can never wipe a successor.
+identity-guarded, so a concluded transaction can never wipe a successor, and in
+a `finally`, so it clears it whatever happens on the way.
 
 ## Not Yet Implemented
 
@@ -269,7 +288,10 @@ the prepare veto and the prepare that throws, the commit that fails after a
 successful prepare and is reported rather than rolled back,
 `registerParticipant`'s all-or-nothing enlistment — including the two failures a
 participant can present, a `startTransaction` that returns `false` and one that
-throws — scope isolation through `runInTransactionScope`, ambient enlistment,
+throws — a participant throwing from each of the four conclusion hooks, which
+has to leave the scope clear and the next `startTransaction()` new, with the
+`finally` that guarantees it read from the source because nothing can reach it —
+scope isolation through `runInTransactionScope`, ambient enlistment,
 and `TomTransactionException`. It also holds the group named `The example runs
 green`, which spawns the example and asserts its transcript, and a check that
 this guide and the contract agree about the prepare phase.

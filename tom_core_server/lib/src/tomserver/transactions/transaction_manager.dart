@@ -228,68 +228,83 @@ class TomTransaction {
   /// un-ended has nothing coming back for it, because the transaction is over.
   Future<bool> commitTransaction() async {
     _isRunning = false;
+    // The scope is cleared in a `finally` rather than on the way out, so that
+    // it is cleared *whatever* leaves this method. Every participant call
+    // below is caught, so nothing should escape — but "nothing should" is a
+    // property of today's body, and the invariant is not: a transaction that
+    // is no longer running must not be the current one. Broken, it makes
+    // `getCurrentTransaction()` and `transactional` disagree, hands every
+    // later `startTransaction()` in this scope the dead transaction with
+    // `isNew == false`, and answers every enlistment on it with
+    // `transaction_not_running` — three symptoms, none of which names the
+    // exception that caused them. Off the request path the scope is the
+    // process-wide fallback, so that state outlives the flow that produced it.
+    try {
+      // Read from the map's keys rather than by calling `getParticipantId()`
+      // again: the key is the id the participant was enlisted under, it cannot
+      // throw here, and a participant whose id getter answers differently later
+      // would otherwise be reported under a name nothing else knows it by.
+      for (final entry in _participants.entries) {
+        final bool prepared;
+        try {
+          prepared = await entry.value.prepare();
+        } catch (error, stack) {
+          // Deliberately wide, and for the same reason `registerParticipant`
+          // catches: a participant is a driver or a client, and whatever it
+          // raises means the one thing the coordinator can act on — it cannot
+          // promise to commit.
+          tomLog.error(
+            "Participant '${entry.key}' threw while preparing; rolling the "
+            "transaction back: $error",
+          );
+          tomLog.debug('$stack');
+          return rollbackTransaction();
+        }
+        if (!prepared) {
+          tomLog.info(
+            "Participant '${entry.key}' vetoed the transaction during prepare; "
+            "rolling back.",
+          );
+          return rollbackTransaction();
+        }
+      }
 
-    for (final p in _participants.values) {
-      final bool prepared;
-      try {
-        prepared = await p.prepare();
-      } catch (error, stack) {
-        // Deliberately wide, and for the same reason `registerParticipant`
-        // catches: a participant is a driver or a client, and whatever it
-        // raises means the one thing the coordinator can act on — it cannot
-        // promise to commit. Letting it escape would leave the transaction
-        // not-running, nobody rolled back and the scope still pointing at it.
+      // Past this point the transaction is committing. Every participant has
+      // promised it can, and a broken promise is reported rather than acted on.
+      bool ok = true;
+      final broken = <String>[];
+      for (final entry in _participants.entries) {
+        bool committed;
+        try {
+          committed = await entry.value.commit();
+        } catch (error) {
+          tomLog.error(
+            "Participant '${entry.key}' threw while committing a prepared "
+            "transaction: $error",
+          );
+          committed = false;
+        }
+        if (!committed) broken.add(entry.key);
+        ok = ok && committed;
+      }
+      if (broken.isNotEmpty) {
+        // The one outcome two-phase commit cannot rule out, and the one an
+        // operator has to be able to find: every participant promised, so the
+        // ones that are not named here committed, and the transaction is
+        // durable in part. Named individually because repairing it means going
+        // to those resources.
         tomLog.error(
-          "Participant '${p.getParticipantId()}' threw while preparing; "
-          "rolling the transaction back: $error",
+          "Transaction partially committed: ${broken.length} of "
+          "${_participants.length} participants failed to commit after a "
+          "successful prepare (${broken.join(', ')}). The remaining "
+          "participants are committed and cannot be rolled back.",
         );
-        tomLog.debug('$stack');
-        return rollbackTransaction();
       }
-      if (!prepared) {
-        tomLog.info(
-          "Participant '${p.getParticipantId()}' vetoed the transaction during "
-          "prepare; rolling back.",
-        );
-        return rollbackTransaction();
-      }
-    }
 
-    // Past this point the transaction is committing. Every participant has
-    // promised it can, and a broken promise is reported rather than acted on.
-    bool ok = true;
-    final broken = <String>[];
-    for (final p in _participants.values) {
-      bool committed;
-      try {
-        committed = await p.commit();
-      } catch (error) {
-        tomLog.error(
-          "Participant '${p.getParticipantId()}' threw while committing a "
-          "prepared transaction: $error",
-        );
-        committed = false;
-      }
-      if (!committed) broken.add(p.getParticipantId());
-      ok = ok && committed;
+      return await _endAll() && ok;
+    } finally {
+      _scope._clear(this);
     }
-    if (broken.isNotEmpty) {
-      // The one outcome two-phase commit cannot rule out, and the one an
-      // operator has to be able to find: every participant promised, so the
-      // ones that are not named here committed, and the transaction is
-      // durable in part. Named individually because repairing it means going
-      // to those resources.
-      tomLog.error(
-        "Transaction partially committed: ${broken.length} of "
-        "${_participants.length} participants failed to commit after a "
-        "successful prepare (${broken.join(', ')}). The remaining "
-        "participants are committed and cannot be rolled back.",
-      );
-    }
-
-    ok = await _endAll() && ok;
-    _scope._clear(this);
-    return ok;
   }
 
   /// Calls `endTransaction()` on every participant and reports whether all of
@@ -307,14 +322,14 @@ class TomTransaction {
   /// concluded transaction, which is the same leak with a stack trace.
   Future<bool> _endAll() async {
     bool ok = true;
-    for (final p in _participants.values) {
+    for (final entry in _participants.entries) {
       bool ended;
       try {
-        ended = await p.endTransaction();
+        ended = await entry.value.endTransaction();
       } catch (error) {
         tomLog.error(
-          "Participant '${p.getParticipantId()}' threw while releasing its "
-          "transaction resources: $error",
+          "Participant '${entry.key}' threw while releasing its transaction "
+          "resources: $error",
         );
         ended = false;
       }
@@ -335,19 +350,23 @@ class TomTransaction {
   /// worse than the failure that interrupted it.
   Future<bool> rollbackTransaction() async {
     _isRunning = false;
-    for (final p in _participants.values) {
-      try {
-        await p.rollback();
-      } catch (error) {
-        tomLog.error(
-          "Participant '${p.getParticipantId()}' threw while rolling back: "
-          "$error",
-        );
+    // Cleared in a `finally` for the reason [commitTransaction] gives: the
+    // scope must never hold a transaction that is no longer running, and that
+    // has to hold however this method leaves.
+    try {
+      for (final entry in _participants.entries) {
+        try {
+          await entry.value.rollback();
+        } catch (error) {
+          tomLog.error(
+            "Participant '${entry.key}' threw while rolling back: $error",
+          );
+        }
       }
+      return await _endAll();
+    } finally {
+      _scope._clear(this);
     }
-    final ok = await _endAll();
-    _scope._clear(this);
-    return ok;
   }
 }
 

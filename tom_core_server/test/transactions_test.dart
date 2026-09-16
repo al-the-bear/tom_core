@@ -97,6 +97,55 @@ class _RecordingParticipant extends TomTransactionParticipant {
   }
 }
 
+/// A participant that throws from exactly one of the conclusion hooks.
+///
+/// A data source whose connection has dropped mid-conclusion is the case: it
+/// fails at whichever hook happens to be next, and which one that is depends on
+/// timing rather than on anything the coordinator chose. So all four are driven
+/// from one class.
+class _ThrowingParticipant extends TomTransactionParticipant {
+  _ThrowingParticipant(this.id, this.throwsFrom);
+
+  final String id;
+
+  /// One of `prepare`, `commit`, `rollback`, `end`.
+  final String throwsFrom;
+
+  final List<String> calls = [];
+
+  void _maybeThrow(String hook) {
+    calls.add(hook);
+    if (hook == throwsFrom) throw StateError('the connection dropped');
+  }
+
+  @override
+  String getParticipantId() => id;
+
+  @override
+  Future<bool> startTransaction() async => true;
+
+  @override
+  Future<bool> prepare() async {
+    _maybeThrow('prepare');
+    return true;
+  }
+
+  @override
+  Future<bool> commit() async {
+    _maybeThrow('commit');
+    return true;
+  }
+
+  @override
+  Future<void> rollback() async => _maybeThrow('rollback');
+
+  @override
+  Future<bool> endTransaction() async {
+    _maybeThrow('end');
+    return true;
+  }
+}
+
 /// A participant whose `startTransaction` fails, in whichever of the two ways
 /// the caller asks for.
 ///
@@ -514,6 +563,128 @@ void main() {
       expect(second.isRunning, isTrue);
 
       await second.rollbackTransaction();
+    });
+  });
+
+  // The invariant the rest of the module assumes: a transaction that is no
+  // longer running is not the current one. It is set `false` on the first line
+  // of both conclusions, so anything that leaves either of them without
+  // clearing the scope leaves the two public accessors contradicting each
+  // other — `getCurrentTransaction()` non-null while `transactional` is
+  // `false` — and hands every later `startTransaction()` in that scope the dead
+  // transaction with `isNew == false`. The caller reads that as "I am nested
+  // inside somebody else's transaction", so it neither concludes it nor opens
+  // one of its own, and every enlistment on it is refused with
+  // `transaction_not_running`: three symptoms, none of which names the cause.
+  //
+  // On the request path the blast radius is one request, because the scope goes
+  // away with it. Off it — a script, a scheduler, a test — the scope is the
+  // process-wide fallback, so the state outlives the flow that produced it.
+  group('a participant that throws while concluding leaves the scope clear', () {
+    /// Drives a transaction whose single participant throws from [hook] and
+    /// reports what the scope holds afterwards.
+    Future<({bool escaped, bool cleared, bool transactional})> conclude(
+      String hook, {
+      required bool byRollback,
+    }) async {
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(_ThrowingParticipant('p', hook));
+      var escaped = false;
+      try {
+        await (byRollback
+            ? txn.rollbackTransaction()
+            : txn.commitTransaction());
+      } catch (_) {
+        escaped = true;
+      }
+      return (
+        escaped: escaped,
+        cleared: TomTransactionManager.getCurrentTransaction() == null,
+        transactional: TomTransactionManager.transactional,
+      );
+    }
+
+    for (final hook in ['prepare', 'commit', 'end']) {
+      test('a commit whose participant throws from $hook', () async {
+        final result = await conclude(hook, byRollback: false);
+        expect(result.escaped, isFalse, reason: 'the coordinator handles it');
+        expect(result.cleared, isTrue);
+        expect(result.transactional, isFalse);
+      });
+    }
+
+    for (final hook in ['rollback', 'end']) {
+      test('a rollback whose participant throws from $hook', () async {
+        final result = await conclude(hook, byRollback: true);
+        expect(result.escaped, isFalse);
+        expect(result.cleared, isTrue);
+        expect(result.transactional, isFalse);
+      });
+    }
+
+    test('the scope is usable again afterwards', () async {
+      // The consequence a caller actually meets, rather than the state that
+      // causes it: the next flow in this scope has to get a *new* transaction
+      // it can enlist in. A pinned scope answers `isNew == false` and then
+      // refuses the enlistment.
+      await conclude('commit', byRollback: false);
+
+      final (next, isNew) = TomTransactionManager.startTransaction();
+      addTearDown(() async {
+        if (next.isRunning) await next.rollbackTransaction();
+      });
+
+      expect(isNew, isTrue, reason: 'the dead transaction was handed back');
+      expect(next.isRunning, isTrue);
+      await next.registerParticipant(_RecordingParticipant('after'));
+    });
+
+    test('the two accessors never disagree', () async {
+      // They are read from different places — `transactional` from the
+      // transaction's own flag, `getCurrentTransaction()` from the scope — and
+      // a caller that happens to test the other one gets the opposite answer.
+      // Stated over every hook, because the disagreement is the state, not the
+      // hook that produced it.
+      for (final hook in ['prepare', 'commit', 'rollback', 'end']) {
+        final result = await conclude(hook, byRollback: hook == 'rollback');
+        expect(
+          result.cleared,
+          isTrue,
+          reason: 'a throw from $hook left the scope pinned',
+        );
+        expect(result.transactional, result.cleared ? isFalse : isTrue);
+      }
+    });
+
+    test('and the clear is in a finally, not on the way out', () async {
+      // Every participant call in both conclusions is caught, so nothing
+      // reaches the `finally` today and no test can drive it. That is exactly
+      // why it is read from the source: the guarantee is that the scope is
+      // cleared *however* the method leaves, and a later edit that adds one
+      // uncaught call — or moves the clear back to the last line — would
+      // silently return the module to the state this group describes, with
+      // every test above still green.
+      final source = File(
+        'lib/src/tomserver/transactions/transaction_manager.dart',
+      ).readAsStringSync();
+
+      for (final method in ['commitTransaction', 'rollbackTransaction']) {
+        final body = source.substring(
+          source.indexOf('Future<bool> $method() async {'),
+        );
+        final end = body.indexOf('\n  }\n');
+        final drive = body.substring(0, end);
+        expect(
+          drive,
+          contains('} finally {\n      _scope._clear(this);\n    }'),
+          reason: '$method no longer clears its scope in a finally',
+        );
+        expect(
+          '_scope._clear(this)'.allMatches(drive).length,
+          1,
+          reason: '$method clears its scope more than once',
+        );
+      }
     });
   });
 
