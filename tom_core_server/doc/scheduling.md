@@ -222,6 +222,15 @@ is the queue's counterpart of `tom_lease.token`, which is the point: the queue
 and the lock must agree about who holds a run, and they cannot if only one of
 them can order two claims.
 
+That case is asserted rather than argued, and it has to be asserted separately:
+every other guard test reaches a row that is *not* running — purged, pending,
+already terminal — and a state-only guard satisfies all of them. The contract
+suite drives the sequence a cluster actually produces (claim, lose the lease to
+recovery, let a peer take it, then report the first node's outcome) for
+`complete`, for terminal `fail` and for retrying `fail`, and asserts beside them
+that the *successor* still completes normally — a fence that rejected everything
+would pass the first three.
+
 The single fragment is written once in the store (`_heldByClaim`) rather than
 spelled out five times, because a lost conjunct only ever *widens* what a
 statement matches — it fails nothing until two nodes race.

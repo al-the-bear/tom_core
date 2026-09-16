@@ -2,6 +2,29 @@
 
 ### Added
 
+- **The terminal-transition guard is asserted, not just argued (tcopen180).**
+  The todo reported `complete` and `fail` as the only job-store mutators
+  updating by id alone; both tiers had since been fenced on
+  `id + running + claimed_by + claim_token`, through one shared fragment
+  (`_heldByClaim` in SQL, `_held` in memory) used by five transitions each,
+  with the affected-row check. The contract states the rule and both guides
+  explain it. What nothing did was **test the case the rule exists for**.
+
+  Every existing guard test reaches a row that is *not* running — purged,
+  pending, already terminal — and a state-only guard satisfies all of them. The
+  displaced holder is the discriminating case: the row is running **again**,
+  under a peer, and the stale claim must still be refused. Four tests now drive
+  the sequence a cluster produces (claim, lose the lease to recovery, let a peer
+  take it, then report the first node's outcome) for `complete`, terminal
+  `fail` and retrying `fail` — and assert beside them that the *successor* still
+  completes, because a fence that rejected everything would pass the first
+  three.
+
+  They live in `tom_core_kernel`'s shared contract suite, so all three stores
+  run them: memory, file and `TomSqlJobStore`. Mutation-tested by weakening each
+  fence to option (B), state-only — nine failures at the SQL tier, eighteen at
+  the kernel's.
+
 - **`resolveLocale` has a caller in shipped code, and tests (tcopen179).** It
   was the best-documented member of the class — a titled section in the
   completion document, a paragraph in the guide — and was called from nowhere,

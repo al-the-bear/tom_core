@@ -382,6 +382,96 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
       expect(stored.lastError, isNull);
     });
 
+    // The displaced holder. Every test above reaches a row that is *not*
+    // running — purged, pending, already terminal — and a guard on state alone
+    // would satisfy all of them. This is the case that separates the two: the
+    // row is running **again**, under somebody else, and the stale claim must
+    // still be refused. Without the owner and token in the predicate, the
+    // first node's completion overwrites the successor's live row and the
+    // successor then runs to the end against a row that says the job is
+    // already finished.
+    //
+    // Reached the way a cluster reaches it: claim, lose the lease to recovery,
+    // let a peer take it, then have the first node report its outcome.
+    Future<TomJobClaim> displacedHolderOf(String id) async {
+      await store.enqueue(makeRun(id));
+      final first = (await store.claimDue(at, 'node-a')).single;
+      final later = at.add(const Duration(minutes: 20));
+      await store.recoverAbandoned(later, const Duration(minutes: 15));
+      final second = (await store.claimDue(later, 'node-b')).single;
+      expect(
+        second.owner,
+        'node-b',
+        reason: 'the peer must actually hold it, or the test proves nothing',
+      );
+      return first;
+    }
+
+    test(
+      'complete from a displaced holder leaves the successor running',
+      () async {
+        final displaced = await displacedHolderOf('r1');
+
+        await store.complete(displaced, at.add(const Duration(minutes: 25)));
+
+        final stored = await reload('r1');
+        expect(stored.state, TomJobRunState.running);
+        expect(stored.claimedBy, 'node-b');
+        expect(stored.completedAt, isNull);
+      },
+    );
+
+    test('fail from a displaced holder leaves the successor running', () async {
+      final displaced = await displacedHolderOf('r1');
+
+      await store.fail(displaced, 'nope', at.add(const Duration(minutes: 25)));
+
+      final stored = await reload('r1');
+      expect(stored.state, TomJobRunState.running);
+      expect(stored.claimedBy, 'node-b');
+      expect(stored.lastError, isNull);
+    });
+
+    test(
+      'a retrying fail from a displaced holder charges no attempt',
+      () async {
+        // The second reason the retrying branch is fenced: it increments the
+        // attempt count, so an unguarded one spends a retry out of a budget the
+        // caller no longer owns.
+        final displaced = await displacedHolderOf('r1');
+        final before = (await reload('r1')).attempt;
+
+        await store.fail(
+          displaced,
+          'nope',
+          at.add(const Duration(minutes: 25)),
+          retryAt: at.add(const Duration(minutes: 30)),
+        );
+
+        final stored = await reload('r1');
+        expect(stored.attempt, before);
+        expect(stored.state, TomJobRunState.running);
+      },
+    );
+
+    test('the successor can still complete after the stale attempt', () async {
+      // The other half: the guard refuses the displaced holder without
+      // damaging the live claim. A fence that rejected everything would pass
+      // all three tests above.
+      await store.enqueue(makeRun('r1'));
+      final first = (await store.claimDue(at, 'node-a')).single;
+      final later = at.add(const Duration(minutes: 20));
+      await store.recoverAbandoned(later, const Duration(minutes: 15));
+      final second = (await store.claimDue(later, 'node-b')).single;
+
+      await store.complete(first, later);
+      await store.complete(second, later);
+
+      final stored = await reload('r1');
+      expect(stored.state, TomJobRunState.succeeded);
+      expect(stored.completedAt, later);
+    });
+
     test('a second complete does not refresh the retention clock', () async {
       await store.enqueue(makeRun('r1'));
       final claimed = (await store.claimDue(at, 'node-a')).single;
