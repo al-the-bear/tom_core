@@ -2,6 +2,33 @@
 
 ### Added
 
+- **`resolveLocale` has a caller in shipped code, and tests (tcopen179).** It
+  was the best-documented member of the class — a titled section in the
+  completion document, a paragraph in the guide — and was called from nowhere,
+  tested by nothing. The documents named where it belonged, so that is where it
+  went: `TomEmailService.render` now puts a `Content-Language` header on every
+  message, naming the bundle that **answered** rather than the locale that was
+  asked for. The two differ exactly when the fallback chain did something, and
+  echoing the request would put `fr` on a message anyone can see is English.
+
+  The tag is written the way a header spells it (`de-AT`, not the internal
+  `de_AT`), a `Content-Language` passed in `TomEmailRequest.headers` wins, and
+  the header reaches the wire — `TomMimeEncoder` writes `message.headers` into
+  the document.
+
+  Eleven tests in `resources_test.dart` where there were none: the exact hit,
+  the fall to the bare language, the fall to the default, the no-locale case,
+  the bundle-not-key distinction, and the `null` that means "no bundle for the
+  set's own default locale" — asserted against a set that is *not* empty, which
+  is the misreading the dartdoc exists to prevent. Plus the header: requested,
+  fallen-through, hyphenated, caller-overridden.
+
+  One thing the tests establish rather than assume: `_contentLanguage`'s empty
+  branch is **defensive, not reachable** from `render`. A chain that reaches no
+  bundle has no subject either, so `requiredText` refuses the message first —
+  which is the stronger guarantee, and what the test asserts instead. The
+  dartdoc says so rather than implying a case a reader could go looking for.
+
 - **The bean pathway is the wiring, and now has users (tcopen178).** Three
   documents presented `TomBean.withType(TomLocalizedTextResources, …)` plus
   `resolve()` as *the* way to wire the module, and neither half had a caller

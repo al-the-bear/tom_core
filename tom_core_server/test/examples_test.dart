@@ -108,7 +108,7 @@ const _stepCounts = <String, int>{
   'example/messaging/sms_gateway_presets.dart': 7,
   'example/object_persistence/object_persistence_example.dart': 17,
   'example/preferences/preferences_example.dart': 13,
-  'example/resources/resources_example.dart': 9,
+  'example/resources/resources_example.dart': 10,
   'example/scheduling/scheduling_example.dart': 10,
   'example/server/server_example.dart': 5,
   'example/tom_core_server_example.dart': 0,

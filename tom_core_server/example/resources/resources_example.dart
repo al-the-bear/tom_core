@@ -156,7 +156,27 @@ void run() {
     'hasLocale is exact: it answers "did someone write this translation"',
   );
 
-  // 9. The completeness check a deployment runs in CI. `isTranslated` reports
+  // 9. Which bundle actually answered — the question a caller has to settle
+  //     before it can *state* the language it rendered, in a
+  //     `Content-Language` header or in a stored copy of a sent mail. Neither
+  //     of the two above answers it: `hasLocale` is exact, and the text itself
+  //     says nothing about where it came from.
+  final answered = texts.resolveLocale(TomTextLocale('de', 'CH'));
+  print('9. de_CH is served from    => $answered');
+  check(
+    '$answered' == 'de',
+    'a locale nobody wrote is served from the one the chain reaches, and that '
+    'is what a message may truthfully claim it is written in',
+  );
+  check(
+    texts.resolveLocale(TomTextLocale('fr'))?.tag == 'en',
+    'and a language the set does not carry at all is served from the default, '
+    'so echoing the request would label an English mail French',
+  );
+  // `TomEmailService` uses exactly this for its `Content-Language` header, so
+  // the header names the bundle that answered rather than the one asked for.
+
+  // 10. The completeness check a deployment runs in CI. `isTranslated` reports
   //    the bundle somebody *wrote*, un-chained, which is what makes it the
   //    right question here: `exists` would answer true for every key, because
   //    the chain always reaches the default locale. Asking it key by key turns
@@ -166,7 +186,7 @@ void run() {
     for (final key in _keysOf(texts, texts.defaultLocale))
       if (!texts.isTranslated(key, TomTextLocale('de'))) key,
   ];
-  print('9. untranslated in de => $untranslated');
+  print('10. untranslated in de      => $untranslated');
   check(
     untranslated.length == 1 && untranslated.single == 'mail.footer',
     'the completeness check names the keys a locale has not translated, and '

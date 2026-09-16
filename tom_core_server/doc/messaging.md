@@ -52,6 +52,7 @@ out of.
   - [The three sub-keys](#the-three-sub-keys)
   - [Locale comes from the recipient, not the process](#locale-comes-from-the-recipient-not-the-process)
   - [Sentences a mail includes only sometimes](#sentences-a-mail-includes-only-sometimes)
+    - [The message says which language it is in](#the-message-says-which-language-it-is-in)
   - [Lists a mail renders a variable number of](#lists-a-mail-renders-a-variable-number-of)
   - [A missing key fails before anything is queued](#a-missing-key-fails-before-anything-is-queued)
   - [Always through the outbox](#always-through-the-outbox)
@@ -1068,6 +1069,20 @@ Substitution is a single pass over the parameter map, so a fragment inserted wit
 
 `advanced_ops_server`'s morning digest is the worked example
 (`jobs/digest_service.dart`, `assets/text_en.yaml`, `assets/text_de.yaml`).
+
+#### The message says which language it is in
+
+`render` puts a `Content-Language` header on every message, naming the bundle
+that **answered** rather than the locale that was asked for
+(`TomLocalizedTextResources.resolveLocale`). The two differ exactly when the
+fallback chain did something: a request for `fr` against a set that carries none
+is labelled `en`, because that is what the recipient receives, and echoing the
+request would put `fr` on a message anyone can see is English.
+
+The tag is written the way a header spells it — `de-AT`, not the internal
+`de_AT`. A `Content-Language` the caller passes in `TomEmailRequest.headers`
+wins, because a deployment assembling one message from several bundles knows
+something the resolver cannot.
 
 ### Lists a mail renders a variable number of
 

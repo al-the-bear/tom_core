@@ -251,7 +251,37 @@ class TomEmailService extends TomTemplatedMessageService<TomEmailRequest> {
       text: text,
       html: html,
       attachments: request.attachments,
-      headers: request.headers,
+      headers: {..._contentLanguage(request.locale), ...?request.headers},
     );
+  }
+
+  /// The `Content-Language` header naming the locale this message was rendered
+  /// **from**, or empty when there is none to name.
+  ///
+  /// Not the locale that was *asked for*. The fallback chain is per key, so a
+  /// request for `de` against a half-translated bundle is served partly from
+  /// `de` and partly from the default — and the bundle that answers is what
+  /// [TomLocalizedTextResources.resolveLocale] reports. Echoing the request
+  /// instead would put `de` on a message a recipient can see is English.
+  ///
+  /// Empty rather than a guess when the chain reaches no bundle at all — the
+  /// wiring fault where the set carries nothing even for its own default
+  /// locale. **Defensive rather than reachable from [render]**: a chain that
+  /// reaches no bundle has no subject either, so `requiredText` refuses the
+  /// message before this is asked. The branch is kept because the alternative
+  /// is a `!` on a value whose null case the type states, and because a
+  /// subclass rendering optional text alone could reach it. What it buys is
+  /// the guarantee one level up — a message that exists never names a language
+  /// it was not rendered in, since a message that could not be rendered does
+  /// not exist.
+  ///
+  /// A `Content-Language` the caller supplied wins, because the spread below
+  /// puts `request.headers` last — a deployment assembling one message from
+  /// several bundles knows something this cannot.
+  Map<String, String> _contentLanguage(TomTextLocale? locale) {
+    final rendered = texts.resolveLocale(locale);
+    return rendered == null
+        ? const {}
+        : {'Content-Language': rendered.tag.replaceAll('_', '-')};
   }
 }

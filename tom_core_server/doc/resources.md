@@ -194,6 +194,14 @@ ambient assumption this module exists to remove.
 must state the language it rendered — a `Content-Language` header, a stored copy
 of a sent mail — can say so truthfully rather than echoing what was asked for.
 
+**The framework is one such caller.** `TomEmailService.render` puts a
+`Content-Language` header on every message from exactly this, so a request for
+`fr` against a set that carries none is labelled `en` — what the recipient
+actually receives. The tag is written the way a header spells it (`de-AT`, not
+`de_AT`), and a `Content-Language` the caller supplied wins, because a
+deployment assembling one message from several bundles knows something the
+resolver cannot.
+
 It answers `null` when the chain reaches no bundle, which is not the same as the
 set being empty. Every chain ends with the default locale's own tags, so `null`
 says precisely that the set carries no bundle for its **default** locale — a set
@@ -428,7 +436,7 @@ still reaches it.
 dart run example/resources/resources_example.dart
 ```
 
-`example/resources/resources_example.dart` walks the same ground in nine steps,
+`example/resources/resources_example.dart` walks the same ground in ten steps,
 all in memory: bundles are maps, so nothing there opens a file or a connection.
 Its bundles are built so that each rung of the chain is reachable on its own —
 `de` is half translated and `de_AT` thinner still — because the properties a
@@ -437,6 +445,13 @@ chain makes: a country variant answering before its language, a key the variant
 does not carry landing on **that language** rather than on the default, a
 half-translated bundle serving what it has and falling through for the rest, and
 a placeholder with no value left standing where a proof-reader can see it.
+
+Its ninth step is `resolveLocale`: which bundle actually answered, which is the
+question a caller has to settle before it can *state* the language it rendered.
+`TomEmailService` settles it the same way for the `Content-Language` header it
+puts on every message it renders, so the header names the bundle that answered
+rather than the locale that was asked for — a request for `fr` against a set
+that carries none is labelled `en`, because that is what a recipient receives.
 
 It closes on the completeness check a deployment runs in CI — `isTranslated`
 asked key by key over the default locale's own bundle, naming what a target

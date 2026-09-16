@@ -591,6 +591,168 @@ void main() {
   });
 
   // ===========================================================================
+  // WHICH BUNDLE ANSWERED
+  // ===========================================================================
+
+  group('resolveLocale reports the bundle a lookup reads from', () {
+    // The question no other member answers. `hasLocale` is exact and
+    // `textOrNull` gives the text without saying where it came from, so a
+    // caller that must *state* the language it rendered — a `Content-Language`
+    // header, a stored copy of a sent mail, an audit row — has only this.
+    final texts = fixtureTexts();
+
+    test('an exact tag answers itself', () {
+      expect(texts.resolveLocale(TomTextLocale('de', 'AT'))?.tag, 'de_AT');
+    });
+
+    test('a country variant nobody wrote falls to its bare language', () {
+      expect(texts.resolveLocale(TomTextLocale('de', 'CH'))?.tag, 'de');
+    });
+
+    test('a language nobody wrote falls to the default locale', () {
+      expect(texts.resolveLocale(TomTextLocale('fr'))?.tag, 'en');
+    });
+
+    test('no locale at all answers the default locale', () {
+      expect(texts.resolveLocale(null)?.tag, 'en');
+    });
+
+    test('it reports the bundle, not the key', () {
+      // The distinction the dartdoc leads with. `de` carries no
+      // `email.welcome.subject`, so *that key* is served from `en` — and
+      // resolveLocale still answers `de`, because the question is which bundle
+      // the lookup starts in. A caller wanting the other answer is asking
+      // about one key and should test `isTranslated`.
+      expect(texts.resolveLocale(TomTextLocale('de'))?.tag, 'de');
+      expect(
+        texts.isTranslated('email.welcome.subject', TomTextLocale('de')),
+        isFalse,
+      );
+    });
+
+    test('null means the set has no bundle for its own default locale', () {
+      // The case the dartdoc goes out of its way to explain, because reading
+      // `null` as "the set is empty" makes the usual
+      // `resolveLocale(x) ?? defaultLocale` look unreachable — when it is the
+      // branch that fires on exactly this wiring fault. The set below is not
+      // empty: it carries a perfectly good `fr`.
+      final misconfigured = TomLocalizedTextResources(
+        defaultLocale: TomTextLocale('en'),
+        bundles: {
+          'fr': {
+            'email': {
+              'welcome': {'subject': 'Bienvenue'},
+            },
+          },
+        },
+      );
+
+      expect(misconfigured.resolveLocale(TomTextLocale('de')), isNull);
+      expect(misconfigured.locales, ['fr']);
+      expect(
+        misconfigured.resolveLocale(TomTextLocale('fr'))?.tag,
+        'fr',
+        reason:
+            'the bundle it does carry still answers, which is what makes '
+            'null a statement about the default locale rather than about the '
+            'set being empty',
+      );
+    });
+  });
+
+  // ===========================================================================
+  // THE LANGUAGE A MESSAGE STATES
+  // ===========================================================================
+
+  group('a rendered email states the language it was rendered in', () {
+    // `resolveLocale`'s reason for existing, as shipped code rather than as a
+    // documented possibility: the header names the bundle that answered, so a
+    // recipient's client and anything downstream read what was actually sent.
+    TomMessage rendered({
+      TomTextLocale? locale,
+      Map<String, String>? headers,
+      TomLocalizedTextResources? texts,
+    }) => TomEmailService(outbox: _outbox(), texts: texts ?? fixtureTexts())
+        .render(
+          TomEmailRequest(
+            to: [TomRecipient('a@example.com')],
+            templateKey: 'email.welcome',
+            locale: locale,
+            headers: headers,
+          ),
+        );
+
+    test('the header names the requested locale when it answered', () {
+      expect(
+        rendered(locale: TomTextLocale('de')).headers['Content-Language'],
+        'de',
+      );
+    });
+
+    test('it names the bundle that answered, not the one asked for', () {
+      // The whole point. `fr` is not carried, so the message is English —
+      // and echoing the request would put `fr` on a message a recipient can
+      // see is not French.
+      expect(
+        rendered(locale: TomTextLocale('fr')).headers['Content-Language'],
+        'en',
+      );
+    });
+
+    test('the tag is written the way a header spells it', () {
+      // `de_AT` internally, `de-AT` on the wire: the header field takes a
+      // language tag, and an underscore is not one.
+      expect(
+        rendered(locale: TomTextLocale('de', 'AT')).headers['Content-Language'],
+        'de-AT',
+      );
+    });
+
+    test('a caller that supplies one keeps it', () {
+      expect(
+        rendered(
+          locale: TomTextLocale('de'),
+          headers: {'Content-Language': 'de-CH'},
+        ).headers['Content-Language'],
+        'de-CH',
+      );
+    });
+
+    test('a set that can answer nothing refuses before the header arises', () {
+      // The header's empty case is defensive rather than reachable through
+      // `render`, and this is why. `resolveLocale` answers `null` only when
+      // the chain reaches no bundle at all — and a chain that reaches no
+      // bundle has no subject either, so `requiredText` refuses first. The
+      // guarantee worth asserting is therefore the stronger one: a message
+      // that exists never carries a header naming a language it was not
+      // rendered in, because a message that could not be rendered does not
+      // exist.
+      final misconfigured = TomLocalizedTextResources(
+        defaultLocale: TomTextLocale('en'),
+        bundles: {
+          'fr': {
+            'email': {
+              'welcome': {'subject': 'Bienvenue', 'text': 'Salut.'},
+            },
+          },
+        },
+      );
+
+      expect(misconfigured.resolveLocale(TomTextLocale('de')), isNull);
+      expect(
+        () => rendered(locale: TomTextLocale('de'), texts: misconfigured),
+        throwsA(
+          isA<TomMessagingException>().having(
+            (error) => error.key,
+            'key',
+            'messaging.email.template.missing',
+          ),
+        ),
+      );
+    });
+  });
+
+  // ===========================================================================
   // THE INSTALLED BUNDLE SET
   // ===========================================================================
 
