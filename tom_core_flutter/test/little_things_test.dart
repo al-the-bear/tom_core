@@ -230,6 +230,86 @@ void main() {
     }
   });
 
+  group('the rest of the documented surface', () {
+    test('toString names the identity, the type and the whole payload', () {
+      // The format a log line and a debugger both show. Asserted by its parts
+      // rather than as one literal: the order is the kernel's to change, the
+      // presence of each part is what a reader relies on.
+      final cause = TomException('server.down', 'Service unavailable');
+      final error = TomClientUIException(
+        'tasks.unavailable',
+        'Tasks are not available right now.',
+        requestUuid: 'REQ-9',
+        parameters: {'retryable': true},
+        rootException: cause,
+      );
+
+      final rendered = error.toString();
+      expect(rendered, contains(error.uuid));
+      expect(rendered, contains('REQ-9'));
+      expect(rendered, contains('TomClientUIException'));
+      expect(rendered, contains('tasks.unavailable'));
+      expect(rendered, contains('Tasks are not available right now.'));
+      expect(rendered, contains('retryable'));
+      expect(rendered, contains('server.down'));
+    });
+
+    test('and logRepresentation is the same string', () {
+      // `TomLoggable`'s rendering. Equal by construction today, which is worth
+      // pinning precisely because it is: a log line and a debugger view that
+      // silently diverged would be two descriptions of one failure.
+      final error = TomClientException('cache.miss', 'No cached profile');
+
+      expect(error.logRepresentation, error.toString());
+    });
+
+    test('a non-trace stack is refused at the call site', () {
+      // `stack` is `StackTrace?` on both the field and the kernel constructor,
+      // so a literal non-trace does not compile. `dynamic` is the only way
+      // past the compiler, and it fails at the *argument*: the downcast happens
+      // at the call boundary, so the exception object is never built and the
+      // trace names the mistake rather than the reporting code.
+      //
+      // Worth a case because the opposite has been reported twice — as a
+      // `TypeError` thrown from inside the constructor, "while reporting some
+      // other failure". It is not that, and this is what says so.
+      dynamic notATrace = 'not-a-trace';
+
+      expect(
+        () => TomClientException('client.error', 'msg', stack: notATrace),
+        throwsA(isA<TypeError>()),
+      );
+    });
+
+    test('a real trace is kept as given', () {
+      // The other arm of the same boundary, so the refusal above cannot be
+      // read as "stack is awkward".
+      final trace = StackTrace.current;
+      final error = TomClientUIException('ui.error', 'msg', stack: trace);
+
+      expect(identical(error.stack, trace), isTrue);
+      expect(error.stackTrace, isNotEmpty);
+    });
+
+    test('the UI subtype inherits the autoLog default, and its silence', () {
+      // The `TomClientException` case pins both arms; this one is the arm that
+      // travels through *two* super calls carrying an inherited default value,
+      // which is the fragile one. The flag alone is not enough — a default that
+      // arrived as `false` but logged anyway would pass a field check.
+      late final TomClientUIException ex;
+      final records = recordedLogs(() {
+        ex = TomClientUIException('ui.error', 'Please try again');
+      });
+
+      expect(ex.autoLog, isFalse);
+      expect(
+        records,
+        isEmpty,
+        reason: 'construction must be silent without the flag, two hops down',
+      );
+    });
+  });
+
   group('discriminating with catch clauses', () {
     // The `is` check above and these `on` clauses answer the same question, but
     // they are not equally easy to get wrong. An `is` check has no order: each
@@ -488,15 +568,40 @@ void main() {
         parameters: {'bytes': 1},
       );
 
+      final laterTrace = StackTrace.current;
+      final laterCause = TomException('server.down', 'Service unavailable');
+
       error.key = 'something.else';
       error.defaultUserMessage = 'Rewritten';
       error.requestUuid = 'REQ-LATER';
       error.uuid = 'UUID-LATER';
+      error.parameters = {'bytes': 99};
+      error.stack = laterTrace;
+      error.rootException = laterCause;
 
+      // All seven the Limitations bullet names, asserted together: the bullet
+      // is a claim about the whole payload, and a test covering four of them
+      // would let the other three become `final` without anyone noticing the
+      // document had gone stale.
       expect(error.key, 'something.else');
       expect(error.defaultUserMessage, 'Rewritten');
       expect(error.requestUuid, 'REQ-LATER');
       expect(error.uuid, 'UUID-LATER');
+      expect(error.parameters, {'bytes': 99});
+      expect(identical(error.stack, laterTrace), isTrue);
+      expect(identical(error.rootException, laterCause), isTrue);
+    });
+
+    test('but autoLog and serverCallError are constructor-only', () {
+      // The two the kernel declares `final`, and the reason the seven above
+      // are worth naming individually rather than as "the payload": this is
+      // not a class where everything is writable. Both are read off the kernel
+      // source, because "you cannot assign it" is exactly the assertion a test
+      // cannot make by assigning it — the line would not compile.
+      final kernel = File(kernelExceptionPath).readAsStringSync();
+
+      expect(kernel, contains('final bool autoLog;'));
+      expect(kernel, contains('final TomServerCallError? serverCallError;'));
     });
 
     test('and the parameters map is held by reference', () {

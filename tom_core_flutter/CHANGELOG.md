@@ -2,6 +2,31 @@
 
 ### Documentation
 
+- **Six behaviours the documents describe now have a case (tcopen209).** The
+  suite pinned constructor forwarding and the type relationships, which is the
+  module's core, and stopped there. Added: `toString`'s format, asserted by its
+  parts rather than as one literal so the kernel stays free to reorder them;
+  `logRepresentation`'s equality with it, pinned precisely because it is equal by
+  construction and two silently diverging renderings of one failure is the
+  failure mode; both arms of the `stack` boundary, including the `dynamic`
+  non-trace that is refused at the **call site** rather than inside the
+  constructor; and `TomClientUIException`'s `autoLog` default — the arm that
+  travels through two `super` calls carrying an inherited default value, checked
+  for its silence as well as its flag, since a default that arrived as `false`
+  and logged anyway would pass a field check.
+
+  The post-construction-assignment case now covers all seven writable members
+  rather than four, and a companion case reads `final` off the kernel source for
+  the two that are not: "you cannot assign it" is the one assertion a test
+  cannot make by assigning it.
+
+- **`serverCallError` was described as settable and is `final`.** So is
+  `autoLog`. The class dartdoc, `doc/little_things.md` and the completion
+  document each said all three identifying arguments were writable fields as
+  well as constructor arguments; for `serverCallError` the constructor is the
+  only route there has ever been. Corrected in all three, and the Limitations
+  bullet about the writable payload now names the two exceptions to it.
+
 - **`doc/little_things.md` now carries a Limitations section (tcopen208).** It
   is the document a consumer of the package reads and it stated no constraint
   anywhere; the list that did exist was quest-internal. Of the four the todo

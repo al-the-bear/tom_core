@@ -26,10 +26,12 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 ///    `TomUserPreferencesClientException` is the first to fill it.
 ///
 /// The three are deliberately constructor arguments rather than fields assigned
-/// afterwards. All of them are writable on a kernel exception, so the payload
-/// was always *reachable* — but a report edited between the throw and the catch
-/// describes a failure the code in between decided on, and everything these
-/// three carry is known where the exception is raised.
+/// afterwards. Two of them — `uuid` and `requestUuid` — are writable on a kernel
+/// exception, so that much of the payload was always *reachable*; but a report
+/// edited between the throw and the catch describes a failure the code in
+/// between decided on, and everything these three carry is known where the
+/// exception is raised. [TomException.serverCallError] is `final`, so for it the
+/// constructor is the only route there has ever been.
 ///
 /// ## The message is not resolved here
 ///

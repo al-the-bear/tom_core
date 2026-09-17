@@ -73,11 +73,12 @@ was, and both client types forward all three:
 | `requestUuid` | which request it belongs to | The client is the side that *issues* requests, so it is the side holding the correlation id. |
 | `serverCallError` | which HTTP call it came from | A client is where outbound calls originate; this is the kernel's typed record of one. |
 
-They are constructor arguments rather than fields assigned afterwards. All
-three are writable on a kernel exception, so the payload was always *reachable*
-— but a report edited between the throw and the catch describes a failure the
-code in between decided on, and everything these three carry is known where the
-exception is raised.
+They are constructor arguments rather than fields assigned afterwards. `uuid`
+and `requestUuid` are writable on a kernel exception, so that much was always
+*reachable* — but a report edited between the throw and the catch describes a
+failure the code in between decided on, and everything these three carry is
+known where the exception is raised. `serverCallError` is `final`: for it the
+constructor is the only route there has ever been.
 
 `TomUserPreferencesClientException` is the first to fill them, and shows the
 shape. Every rejection carries the whole answer as a `TomServerCallError`,
@@ -175,13 +176,13 @@ finished, user-appropriate message. The common pattern is
   test, or built on a branch that then decided not to throw it, is logged all
   the same. The flag is tied to *building* the object, which is also what makes
   it observable at all — there is no hook at the throw.
-- **The payload stays writable after construction.** `key`,
+- **Most of the payload stays writable after construction.** `key`,
   `defaultUserMessage`, `parameters`, `uuid`, `requestUuid`, `stack` and
   `rootException` are public mutable fields on the kernel base, and
   `parameters` is held **by reference** rather than copied — so a caller's map
   can be edited through the exception and vice versa. The constructor is where
   a complete report is assembled; nothing enforces that it stays the report
-  that was assembled.
+  that was assembled. Only `autoLog` and `serverCallError` are `final`.
 - **A wrap does not share its cause's identity.** `rootException` is the only
   link between a wrapped failure and the one it came from: the wrap gets its own
   `uuid`, and does not inherit the cause's `requestUuid`. Two log lines about
