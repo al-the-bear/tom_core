@@ -29,6 +29,33 @@
 
 ### Documentation
 
+- **What sharing a store location actually costs (tcopen200).** The module
+  documented the hazard as a narrow race — "re-reading means a holder preserves
+  keys another writer has added", exposure "one store round-trip rather than the
+  whole session". Measured: true for a key another *build* owns, false for a key
+  both holders declare. A second holder that has not adopted the first's change
+  holds that key at its baseline, so its view is "this install has no override"
+  and that is what it writes. The first holder's value is erased
+  **sequentially**, with no concurrency involved.
+
+  The behaviour is unchanged and is the design: `save()` writes this holder's
+  own complete view of the keys it declares, which is what keeps the holder and
+  the store in agreement and what keeps shipped defaults unfrozen. What changes
+  is that `doc/configuration.md`, the `save()` dartdoc and the completion
+  document now say so, and `test/configuration_test.dart` pins all four cases —
+  the foreign key that survives, the declared key that does not, the reload that
+  makes sharing workable, and the interleaved save that loses a change even when
+  both holders reloaded.
+
+  Closing it properly means `save()` writing only the keys this holder changed,
+  which the snapshot added alongside `hasUnsavedChanges` now makes possible. It
+  is recorded as an extension rather than done, because it costs a `save()` that
+  is no longer idempotent against an externally edited store and a holder that
+  can disagree with it silently — the right trade only if shared locations turn
+  out to be supported rather than accidental.
+
+### Documentation
+
 - **The single load/resetAll notification survives a caller's own mute
   (tcopen197).** A screen batching a multi-setting edit around a reload mutes
   the holder itself and calls `load()` inside its batch, so `load()`'s mute is
