@@ -116,6 +116,63 @@ class _RecordingParticipant extends TomTransactionParticipant {
   }
 }
 
+/// A participant whose every hook **suspends** before it answers.
+///
+/// The recording fakes above are `async` but complete without yielding, so a
+/// coordinator that drove them with `Future.wait` would produce exactly the
+/// recorded order a sequential one does. Ordering is only observable across a
+/// real asynchronous gap, so this one takes one: it records entering a hook,
+/// awaits, and records leaving it. A sequential drive produces
+/// `a:enter, a:leave, b:enter, b:leave`; a parallel drive interleaves.
+class _SuspendingParticipant extends TomTransactionParticipant {
+  _SuspendingParticipant(this.id, this.log);
+
+  final String id;
+  final List<String> log;
+
+  @override
+  String getParticipantId() => id;
+
+  Future<void> _span(String hook) async {
+    log.add('$id:$hook:enter');
+    // Two hops rather than one, so that a parallel drive has somewhere to
+    // interleave even if the scheduler runs the first continuation eagerly.
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    log.add('$id:$hook:leave');
+  }
+
+  @override
+  Future<bool> startTransaction(TomTransaction transaction) async {
+    await _span('start');
+    return true;
+  }
+
+  @override
+  Future<bool> prepare() async {
+    await _span('prepare');
+    return true;
+  }
+
+  @override
+  Future<bool> commit() async {
+    await _span('commit');
+    return true;
+  }
+
+  @override
+  Future<bool> rollback() async {
+    await _span('rollback');
+    return true;
+  }
+
+  @override
+  Future<bool> endTransaction() async {
+    await _span('end');
+    return true;
+  }
+}
+
 /// A participant that throws from exactly one of the conclusion hooks.
 ///
 /// A data source whose connection has dropped mid-conclusion is the case: it
@@ -720,6 +777,96 @@ void main() {
       expect(result.toString(), contains('rolledBackWithFailures'));
       expect(result.toString(), contains('ledger'));
       expect(result.toString(), contains('audit'));
+    });
+  });
+
+  // Both drives are `for` loops with an `await` in the body, which is a
+  // decision rather than an accident. The order they give is the contract —
+  // "in registration order", in four documents — and a veto depends on it: which
+  // participants have already been asked to commit when one arrives is knowable
+  // only because they were asked one at a time. Driven with `Future.wait`, "the
+  // participants that had already committed" stops being a knowable set.
+  //
+  // The cost is real and is stated where a reader meets it: a transaction
+  // spanning n resources pays n sequential round trips on each phase, at the
+  // point in a request where the client is waiting and the connections are
+  // still held. A transaction spanning enough resources for that to matter is a
+  // design problem before it is a performance one.
+  //
+  // This group exists because the ordering tests above cannot see the
+  // difference. The recording fakes are `async` but complete without yielding,
+  // so a coordinator using `Future.wait` produces exactly the order they
+  // record. Ordering is only observable across a real asynchronous gap.
+  group('the drives are sequential, not merely ordered', () {
+    /// The hooks of [log] that belong to [phase], as `<id>:enter|leave`.
+    List<String> phaseOf(List<String> log, String phase) => [
+      for (final entry in log)
+        if (entry.split(':')[1] == phase)
+          '${entry.split(':')[0]}:${entry.split(':')[2]}',
+    ];
+
+    /// Asserts that no two participants were inside [phase] at once.
+    void expectSerial(List<String> log, String phase) {
+      expect(
+        phaseOf(log, phase),
+        ['a:enter', 'a:leave', 'b:enter', 'b:leave'],
+        reason:
+            'the $phase phase interleaved: the coordinator drove its '
+            'participants concurrently, so registration order no longer says '
+            'which of them had been reached when a failure arrived',
+      );
+    }
+
+    Future<List<String>> drive({required bool byRollback}) async {
+      final log = <String>[];
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(_SuspendingParticipant('a', log));
+      await txn.registerParticipant(_SuspendingParticipant('b', log));
+      await (byRollback ? txn.rollbackTransaction() : txn.commitTransaction());
+      return log;
+    }
+
+    test('a commit prepares one participant at a time', () async {
+      expectSerial(await drive(byRollback: false), 'prepare');
+    });
+
+    test('and commits one at a time', () async {
+      expectSerial(await drive(byRollback: false), 'commit');
+    });
+
+    test('and ends one at a time', () async {
+      // The phase with the weakest case for staying sequential — releasing a
+      // connection is not ordered by anything — and therefore the one most
+      // likely to be quietly parallelised. If that is ever wanted it is a
+      // decision to take, measure and write down, not one to arrive at by edit.
+      expectSerial(await drive(byRollback: false), 'end');
+    });
+
+    test('a rollback rolls back one participant at a time', () async {
+      expectSerial(await drive(byRollback: true), 'rollback');
+    });
+
+    test('and ends one at a time as well', () async {
+      expectSerial(await drive(byRollback: true), 'end');
+    });
+
+    test('and the fixture can tell the two apart', () async {
+      // Every assertion above is a list comparison, and a fixture that could
+      // not interleave would satisfy them whatever the coordinator did. So it
+      // is shown a genuinely concurrent drive of the same participants.
+      final log = <String>[];
+      final a = _SuspendingParticipant('a', log);
+      final b = _SuspendingParticipant('b', log);
+
+      await Future.wait([a.prepare(), b.prepare()]);
+
+      expect(
+        phaseOf(log, 'prepare'),
+        isNot(['a:enter', 'a:leave', 'b:enter', 'b:leave']),
+        reason:
+            'the fixture completes without suspending, so nothing it is '
+            'used for can distinguish sequential from parallel',
+      );
     });
   });
 

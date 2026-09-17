@@ -373,6 +373,16 @@ class TomTransaction {
   /// Both loops run to completion rather than stopping at the first failure — a
   /// participant left uncommitted or un-ended has nothing coming back for it,
   /// because the transaction is over.
+  ///
+  /// And both are **sequential**, which is a decision rather than an accident.
+  /// A transaction spanning *n* resources pays *n* round trips per phase, at
+  /// the point in a request where the client is waiting; what that buys is that
+  /// the order is knowable. A veto's meaning depends on it — which participants
+  /// have already been reached when one arrives is answerable only because they
+  /// were reached one at a time — and `Future.wait` would make "the ones
+  /// already asked" an arbitrary subset. `test/transactions_test.dart` pins it
+  /// with participants that suspend inside every hook; see
+  /// `doc/transactions.md`, "Sequential by design".
   Future<TomTransactionResult> commitTransaction() async {
     _isRunning = false;
     // The scope is cleared in a `finally` rather than on the way out, so that

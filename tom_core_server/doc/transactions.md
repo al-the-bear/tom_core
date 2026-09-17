@@ -17,6 +17,7 @@ handle around.
 - [Transaction Scopes](#transaction-scopes)
 - [How the Pipeline Uses It](#how-the-pipeline-uses-it)
 - [Read-Only](#read-only)
+- [Sequential by design](#sequential-by-design)
 - [Concurrency Model](#concurrency-model)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
@@ -355,6 +356,35 @@ hook the coordinator just called, and it would be wrong in the case the scoping
 exists for: the answer comes from whatever zone the call is running in, which
 need not be the zone the transaction was opened in.
 
+## Sequential by design
+
+Both conclusions are `for` loops with an `await` in the body. A transaction
+spanning *n* resources therefore pays *n* sequential round trips on each phase,
+at the point in a request where the client is waiting and the connections are
+still held. That cost is real and is not an oversight.
+
+**The order is the contract.** `commitTransaction` prepares and commits "in
+registration order", and a veto depends on it: which participants have already
+been reached when one arrives is knowable only because they were reached one at
+a time. Driven with `Future.wait`, "the participants that had already been
+asked" stops being a knowable set, and the rollback a veto triggers has to undo
+an arbitrary subset.
+
+**And the latency is the wrong thing to optimise first.** A transaction spanning
+enough resources for the sum to matter is a design problem before it is a
+performance one — the framework's own answer to "this must be atomic across two
+databases" is `MariaDbXADatasource`, not more of them. Nobody has reported this
+latency; weakening a guarantee two suites enforce, to buy an unmeasured
+improvement, is the wrong trade.
+
+The end phase has the weakest case for staying sequential — releasing a
+connection is not ordered by anything — and is therefore the one most likely to
+be quietly parallelised. `test/transactions_test.dart` holds the group
+`the drives are sequential, not merely ordered`, which drives participants that
+suspend inside every hook and fails if any two are ever inside one phase at
+once. Ordering tests alone cannot see this: a fake that completes without
+yielding records the same order under `Future.wait` as under a loop.
+
 ## Concurrency Model
 
 The current transaction is **per flow of work, not per isolate**. Two requests
@@ -389,10 +419,11 @@ a `finally`, so it clears it whatever happens on the way.
   `MariaDbXADatasource`, XA branches holding their locks until somebody issues
   `XA RECOVER`, which nothing here does. The prepare phase is what makes those
   branches *recoverable*; recovering them is the operator's.
-- **The commit is not concurrent and has no timeout.** Participants are driven
-  one at a time, awaited in order, with no deadline — so one participant that
-  blocks blocks the transaction and the request behind it indefinitely. Timeouts
-  belong to the participant.
+- **A conclusion has no deadline.** Participants are awaited with no timeout, so
+  one that blocks blocks the transaction and the request behind it indefinitely.
+  Timeouts belong to the participant, which is the layer that knows what its
+  resource's round trip should cost. (That participants are driven *one at a
+  time* is not part of this — see [Sequential by design](#sequential-by-design).)
 
 ## Verification
 

@@ -1429,6 +1429,26 @@
 
 ### Documentation
 
+- **Sequential conclusion is a decision, and is now enforced (tcopen196).** Both
+  drives are `for` loops with an `await` in the body, so a transaction spanning
+  *n* resources pays *n* round trips per phase at the point in a request where
+  the client is waiting. That stays: the order is the contract, and a veto's
+  meaning depends on it — which participants have already been reached when one
+  arrives is answerable only because they were reached one at a time. Under
+  `Future.wait` that becomes an arbitrary subset.
+
+  What changed is that the guarantee was measurable only in prose.
+  Parallelising the prepare, commit, rollback or end phase left the whole suite
+  green, because the recording fakes are `async` but complete without yielding
+  — so a coordinator using `Future.wait` produces exactly the order the ordering
+  tests record. `test/transactions_test.dart` now drives participants that
+  suspend inside every hook and fails if two are ever inside one phase at once;
+  all three parallelisations are mutation-tested against it.
+
+  `doc/transactions.md` gains a "Sequential by design" section, and its
+  "not concurrent and has no timeout" limitation narrows to the timeout, which
+  is the half that really is one.
+
 - **The email delivery channel is worked end to end (tcopen141).** The
   specification names three channels; the module implements two and documents
   the third as composing out of this module and `messaging` — which was true,
