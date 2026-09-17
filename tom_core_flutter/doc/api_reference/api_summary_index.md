@@ -11,7 +11,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
-| Configuration | [api_summary_configuration.md](api_summary_configuration.md) | Machine-scoped client settings (`TomBaseClientConfiguration`, `TomSetting`, stores). |
+| Configuration | [api_summary_configuration.md](api_summary_configuration.md) | Machine-scoped client settings (`TomBaseClientConfiguration`, `TomSetting`, stores) and their composition with the narrower preference scopes. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | Client-side exception types (`TomClientException`, `TomClientUIException`). |
 | Observing | [api_summary_observing.md](api_summary_observing.md) | Kernel-observable → Flutter bridges (`TomObservingWidget`, `ValueListenableObserver`). |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Device-stored preferences (`TomDevicePreferences`, per-platform stores) and the account store's client (`TomUserPreferencesClient`). |
@@ -28,6 +28,9 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomBaseClientConfiguration` | class | Abstract holder of one install's machine-scoped settings. |
 | `TomSetting<T>` | class | One observable, addressable setting (`TomObject<T>` + key + baseline). |
 | `TomClientEnvironment` | abstract class | Where a setting's `envAlias` is looked up; the reader is replaceable. Statics only. |
+| `TomOverridableBy` | enum | Which narrower client scope, if any, may shadow a setting — `none` / `user` / `device`. |
+| `TomEffectiveSettings` | class | Reads a setting together with the preference scopes it opens itself to. |
+| `TomPreferenceLookup` | typedef | `Future<T?> Function<T extends Object>(String key)` — the one-key read both preference stores carry. |
 | `TomClientConfigurationStore` | class | Two-method (`read`/`write`) interface for persisting overrides. |
 | `TomMemoryClientConfigurationStore` | class | Process-lifetime override store. |
 | `TomFileClientConfigurationStore` | class | JSON file store (io variant; neutral variant throws). |
@@ -121,14 +124,17 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomDevicePreferences` | Preferences |
 | `TomDevicePreferenceStore` | Preferences |
 | `TomDoubleProperty` | Resources |
+| `TomEffectiveSettings` | Configuration |
 | `TomFileClientConfigurationStore` | Configuration |
 | `TomFlutterPlatformUtils` | Runtime (internal — not exported) |
 | `TomIntProperty` | Resources |
 | `TomMemoryClientConfigurationStore` | Configuration |
 | `TomMemoryDevicePreferenceStore` | Preferences |
 | `TomObservingWidget<T>` | Observing |
+| `TomOverridableBy` | Configuration |
 | `TomObservingWidgetState<T>` | Observing |
 | `TomPlatformDevicePreferenceStore` | Preferences |
+| `TomPreferenceLookup` | Configuration |
 | `TomProperty<T>` | Resources |
 | `TomQrCodeView` | Security |
 | `TomSetting<T>` | Configuration |

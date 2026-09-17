@@ -2,6 +2,41 @@
 
 ### Added
 
+- **Composition of the three client value scopes (tcopen203).** Every
+  configuration artefact deflected an out-of-scope value to "a user-preferences
+  holder" or "a user-profile holder" without naming one, though both ship in
+  this package through this barrel — and nothing composed them, so a caller who
+  wanted "the user's override of the install's server URL" wrote the fallback
+  chain by hand at every call site. The CodeSpecs model for this scope carries a
+  **required, undefaulted** `CsClientConfig.overridableBy`, so the relation was
+  modelled and had no runtime to land in.
+
+  The four declaration methods take `overridableBy:`, and `TomEffectiveSettings`
+  applies it: the narrowest store holding the key answers, failing that the
+  next, failing all of them the setting's own value. Shadowing is **opt-in and
+  authored at the wider scope** — the default is `TomOverridableBy.none`, so a
+  preference sharing a key with a pinned setting is never read rather than
+  merely outranked, and the permission is stated once with nothing to disagree
+  with it. The arm names the narrowest scope permitted and every scope between
+  is permitted too, so `device` opens `user` while `user` does not open
+  `device`.
+
+  Both stores arrive as `TomPreferenceLookup` callbacks rather than as
+  dependencies, for the reason `getPreferred` already gives: an application with
+  no account store must not be made to carry an HTTP client. `TomDevicePreferences.get`
+  and `TomUserPreferencesClient.get` are each one as written, and an omitted
+  lookup is never consulted.
+
+  A setting that opens itself is validated against `TomUserPreferenceKeys` at
+  declaration and refused with `preferences.key.invalid`, because a key the
+  stores would reject makes the declaration a promise nothing can keep. The
+  environment layer is independent of all of this: layer 0 decides the install's
+  value, `overridableBy` decides who may shadow the install.
+
+  There is no composed write and no composed observation, and both absences are
+  decisions: a value is written by whichever holder owns its scope, and a
+  preference has no change notification to re-emit.
+
 - **An environment layer for client settings (tcopen202).** Resolution had three
   layers — persisted override, shipped config resource, declared default — and
   no way for an operator to configure an install. That is the module's own

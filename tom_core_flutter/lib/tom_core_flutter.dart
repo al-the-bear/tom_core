@@ -7,6 +7,7 @@ export 'package:tom_core_kernel/tom_core_kernel.dart';
 
 export 'src/tomclient/configuration/client_configuration.dart';
 export 'src/tomclient/configuration/client_configuration_store.dart';
+export 'src/tomclient/configuration/effective_settings.dart';
 export 'src/tomclient/configuration/environment_reader.dart';
 export 'src/tomclient/configuration/file_configuration_store.dart';
 export 'src/tomclient/observing/tom_observing_widget.dart';

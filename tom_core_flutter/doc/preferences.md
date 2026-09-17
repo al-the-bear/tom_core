@@ -348,10 +348,18 @@ only a key this device has never written.
 That ordering matches what a user did: writing a preference on *this* device is
 a deliberate, later, more specific act than the value that arrived with the
 account. So the account value behaves as a cross-device default and the device
-value as this machine's override — the same relationship the client-configuration
-module has between shipped defaults and install overrides. Reversing it would
-make a setting the user changed here revert the moment their other device wrote
-the same key.
+value as this machine's override — the same relationship the
+[client-configuration module](configuration.md) has between shipped defaults and
+install overrides. Reversing it would make a setting the user changed here
+revert the moment their other device wrote the same key.
+
+Both stores sit **beneath** that module's scope, and a third rung continues the
+same ladder: an install's `TomSetting` may declare that a user or device
+preference of the same key is allowed to shadow it, and `TomEffectiveSettings`
+reads all three as one value. `getPreferred` is the two-store case of that
+chain, kept because a preference that no setting declares is the ordinary case
+and should not need a configuration holder to be read. See
+[Shadowing by a Narrower Scope](configuration.md#shadowing-by-a-narrower-scope).
 
 The rule is stated once on `TomDevicePreferences` and applied once in
 `getPreferred`:

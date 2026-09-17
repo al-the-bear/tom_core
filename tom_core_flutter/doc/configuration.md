@@ -16,6 +16,7 @@ they are observable, writable, persistent, and addressable as a set.
 - [Quick Start](#quick-start)
 - [Resolution Order](#resolution-order)
   - [The environment layer](#the-environment-layer)
+- [Shadowing by a Narrower Scope](#shadowing-by-a-narrower-scope)
 - [Core Components](#core-components)
 - [Observation](#observation)
 - [Persistence](#persistence)
@@ -34,6 +35,9 @@ they are observable, writable, persistent, and addressable as a set.
 | `TomClientConfigurationStore` | Where overrides are persisted (two methods) |
 | `TomMemoryClientConfigurationStore` | Process-lifetime store — tests, examples, deliberately stateless clients |
 | `TomFileClientConfigurationStore` | JSON file on the local filesystem (native targets) |
+| `TomOverridableBy` | Which narrower client scope, if any, may shadow a setting |
+| `TomEffectiveSettings` | Resolves a setting against the scopes it opens itself to |
+| `TomPreferenceLookup` | The one-key read both preference stores already carry |
 | `TomClientConfigurationException` | Failures of this module, with stable dotted keys |
 
 ## Scope
@@ -48,13 +52,19 @@ persisted format, by design:
 | Varies by | Belongs to |
 | --------- | ---------- |
 | client install / machine | **this module** |
-| user (device-local) | a user-preferences holder — different lifecycle, needs a session |
-| user (server-persisted) | a user-profile holder — syncs across devices |
+| user, on this device | [`TomDevicePreferences`](preferences.md) — no session needed, but it does not follow the account |
+| user, on every device | [`TomUserPreferencesClient`](preferences.md) — server-persisted, so it needs a session |
 | server deployment | `TomBaseServerConfiguration` (`tom_core_server`) |
+
+Both preference holders ship in this package, through this barrel; the
+[preferences module](preferences.md) documents them.
 
 Mixing those scopes into one holder is what turns a settings class into a junk
 drawer, and it breaks the guarantee that reading a client setting never
-requires a login.
+requires a login. Keeping them apart is not the same as keeping them unrelated:
+a setting may declare that a narrower scope is allowed to shadow it, and
+[Shadowing by a Narrower Scope](#shadowing-by-a-narrower-scope) is how the three
+are read as one value.
 
 Per-field **validation** is likewise not the holder's job, and nothing else in
 the module does it either. The *type* is checked — a raw value that cannot be
@@ -181,6 +191,100 @@ else throws `client_configuration.value.type_mismatch` naming the key rather
 than quietly falling back to the default — a fallback would hide a config typo
 behind behaviour that merely looks correct.
 
+## Shadowing by a Narrower Scope
+
+The four resolution layers all answer one question — what does **this install**
+hold? Two narrower scopes exist beside it, and a setting may declare that one of
+them is allowed to answer instead:
+
+```dart
+theme = stringSetting(
+  'client.ui.theme',
+  'system',
+  overridableBy: TomOverridableBy.device,
+);
+```
+
+```dart
+final effective = TomEffectiveSettings(
+  fromDeviceStore: TomDevicePreferences.resolve()?.get,
+  fromUserStore: accountPreferences.get,
+);
+
+final theme = await effective.valueOf(config.theme); // device ▸ user ▸ install
+```
+
+### Opt-in, and declared at the wider scope
+
+`overridableBy` defaults to `TomOverridableBy.none`, so a setting is
+**scope-pinned** until its author opens it. A preference that happens to carry
+the same key as a pinned setting is a different value that is spelled the same,
+and reading it would be a scope leak nobody asked for — so `valueOf` does not
+merely rank it below the install's value, it never asks the store at all.
+
+The permission is written once, on the setting, and is never restated by the
+preference. There is therefore no second statement of the relation that could
+drift out of agreement with the first, and no store that can open a key by
+itself.
+
+The arm names the **narrowest** scope permitted, and every scope between the
+setting and that one is permitted too:
+
+| Arm | Consulted, in order |
+| --- | ------------------- |
+| `none` | the setting alone |
+| `user` | the account store, then the setting |
+| `device` | the device store, the account store, then the setting |
+
+`user` therefore does *not* open the device store: a value the author decided
+should follow the account is not one an individual device may fork.
+
+### What the composition is not
+
+It does not **write**. A value is written by whichever holder owns its scope —
+`config.theme | 'dark'` then `config.save()`, or `preferences.set(key, value)` —
+because "where does this change belong" is the question the scopes exist to
+answer, and a composed setter would have to guess.
+
+It is not **observable**. A `TomSetting` is a `TomObject`; a preference is a
+stored document with no change notification, so an effective value has nothing
+to fire on when the narrower scope moves. A screen that must follow one re-reads
+it at the points it already knows about — a sign-in, a preference edit it made
+itself, a refresh.
+
+It is not a **merge**. The narrowest store holding the key wins outright; there
+is no per-field blending, and a preference stored under the key as the wrong
+type raises `TomUserPreferenceCodecException` from the store rather than falling
+through to the install's value. An unwritten preference is an ordinary state
+that the wider scope answers; one written as the wrong type is a bug, and
+quietly answering around it would hide it.
+
+### The environment does not close a setting
+
+Layer 0 and `overridableBy` are independent, and deliberately so. The
+environment decides the **install's** value; `overridableBy` decides who may
+shadow the install. So a setting an operator has configured can still be
+shadowed by a user preference if its declaration says it may — and a setting the
+operator must win is declared `TomOverridableBy.none`, which is the only lever
+for that.
+
+### Both stores arrive as callbacks
+
+`TomEffectiveSettings` holds two `TomPreferenceLookup`s rather than the stores
+themselves, for the reason [preferences.md](preferences.md) gives for
+`getPreferred`: an application with no account store must not be made to carry
+an HTTP client, and one with no device store must not be made to carry a
+platform backend. `TomDevicePreferences.get` and `TomUserPreferencesClient.get`
+are each a `TomPreferenceLookup` as written, so an application passes the method
+rather than an adapter, and an omitted lookup is simply never consulted.
+
+A setting that opens itself must carry a key **both preference stores accept**.
+The declaration checks it against `TomUserPreferenceKeys` and refuses with
+`preferences.key.invalid` — the preference vocabulary's own refusal rather than
+a second spelling of it here — so the failure lands on the line that made the
+promise rather than on the first effective read. A pinned setting is not
+checked: its key never reaches a preference store.
+
 ## Core Components
 
 ### `TomBaseClientConfiguration`
@@ -240,7 +344,22 @@ A `TomObject<T>` — so `~`, `|`, `<<`, `call()`, `addObserver` and
   by.
 - `declaredDefault` — the default written at the declaration site.
 - `baseline` — the value when the install has not overridden it.
+- `envAlias` — the environment variable this setting may also be read from, or
+  `null`; `isFromEnvironment` says whether it answered.
+- `overridableBy` — which narrower client scope may shadow it.
 - `isOverridden`, `reset()`.
+
+### `TomEffectiveSettings`
+
+| Member | Purpose |
+| ------ | ------- |
+| `valueOf(setting)` | The setting's value after the scopes it opens itself to have had their say |
+| `fromUserStore` | Reads the signed-in user's server-stored preferences, or `null` when there is no account store |
+| `fromDeviceStore` | Reads this device's preferences, or `null` when there is no device store |
+
+Both fields are `TomPreferenceLookup`s — `Future<T?> Function<T extends
+Object>(String key)`, the shape both shipped stores' `get` already has. See
+[Shadowing by a Narrower Scope](#shadowing-by-a-narrower-scope).
 
 ### Stores
 
@@ -328,6 +447,12 @@ text:
 | `client_configuration.key.unknown` | `reset`/`isOverridden` on an undeclared key |
 | `client_configuration.store.unsupported_platform` | A file store on a target without a filesystem |
 | `client_configuration.store.invalid_content` | The store holds content that is not a readable override map |
+
+One failure of this module deliberately carries a **foreign** key: declaring a
+setting `overridableBy` anything but `none` under a name the preference stores
+would refuse raises `preferences.key.invalid`, from `TomUserPreferenceKeys`. The
+rule is the preference vocabulary's, and restating it here would create a second
+spelling that could disagree with the first.
 
 ## Limitations
 

@@ -11,18 +11,23 @@ and persist **only the ones the install actually changed**.
 The scope is the `(client app, machine)` pair and nothing else. There is no user
 parameter in the holder, in the store interface, or in the persisted format, by
 design: a value that varies per *user* is a preference and belongs in
-[`preferences/`](../preferences/readme.md), where it follows the account and
-needs a session; a value that configures the *server* belongs in
+[`preferences/`](../preferences/readme.md) — `TomUserPreferencesClient` when it
+follows the account and needs a session, `TomDevicePreferences` when it stays on
+this machine; a value that configures the *server* belongs in
 `TomBaseServerConfiguration` (`tom_core_server`). Keeping them apart is what
 makes "reading a client setting never needs a login" true rather than merely
-usual.
+usual — and keeping them apart is not the same as keeping them unrelated: see
+[Shadowing by a narrower scope](#shadowing-by-a-narrower-scope).
 
 ## Key types
 
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomBaseClientConfiguration` | The holder. Declare settings in `declareSettings()`, then `load()` / `save()` / `reset(key)` / `resetAll()`. Is a `TomObservable` **and** observes each of its settings, so one observer sees every change. |
-| `TomSetting<T>` | One addressable setting, and a `TomObject<T>` — so `~`/`\|`/`<<`/`call()`, `addObserver` and `TomObservingWidget` all work on it unchanged. Adds `key` (the dotted identity), `declaredDefault`, `baseline`, `isOverridden` and `reset()`. Constructed only by the holder's four `*Setting` methods. |
+| `TomSetting<T>` | One addressable setting, and a `TomObject<T>` — so `~`/`\|`/`<<`/`call()`, `addObserver` and `TomObservingWidget` all work on it unchanged. Adds `key` (the dotted identity), `declaredDefault`, `baseline`, `envAlias`, `isFromEnvironment`, `overridableBy`, `isOverridden` and `reset()`. Constructed only by the holder's four `*Setting` methods. |
+| `TomOverridableBy` | Which narrower client scope, if any, may shadow a setting: `none` (the default — scope-pinned), `user`, `device`. Declared on the setting, at the wider scope, so the relation is stated once. |
+| `TomEffectiveSettings` | Reads a setting together with the preference scopes it opens itself to — the one place the order between the three client scopes is written. |
+| `TomPreferenceLookup` | `Future<T?> Function<T extends Object>(String key)` — the one-key read both preference stores already carry, so an application passes the method rather than an adapter. |
 | `TomClientConfigurationStore` | Where overrides are persisted: `read()` and `write()`, and deliberately nothing else — writing an empty map *is* clearing. Two methods is the whole cost of adapting a new backend. |
 | `TomMemoryClientConfigurationStore` | Persists nothing beyond the process — for tests, examples, and clients that keep no machine-local state. Not a fallback for platforms lacking a real backend: a store that silently forgets is worse than a loud one. |
 | `TomFileClientConfigurationStore` | A JSON file holding the override map, selected by conditional export: the real `dart:io` store where there is a filesystem, and a variant that **throws from its constructor** where there is not. |
@@ -77,6 +82,8 @@ exhaustive rather than "exhaustive so far".
 
 A setting's value is, highest precedence first:
 
+0. the **environment**, when the setting declares an `envAlias` that
+   `TomClientEnvironment` reports set;
 1. the **persisted override** — what this install last saved;
 2. the **shipped config-resources value** for the key
    (`TomConfigResourceProvider`);
@@ -93,6 +100,46 @@ freezing the shipped defaults at the moment of the first save. Keys the current
 build does not declare are carried forward untouched, so an older build during a
 staged rollout cannot destroy a value it merely does not know about.
 
+Layer 0 is not persisted either, for the opposite reason: it is the operator's
+value rather than the install's, so `save()` never writes it, `isOverridden` is
+`false` for it, and both `reset()` and `load()` restore it.
+
+## Shadowing by a narrower scope
+
+All four layers answer one question — what does *this install* hold? A setting
+may declare that a narrower scope is allowed to answer instead:
+
+```dart
+theme = stringSetting(
+  'client.ui.theme',
+  'system',
+  overridableBy: TomOverridableBy.device,
+);
+
+final effective = TomEffectiveSettings(
+  fromDeviceStore: TomDevicePreferences.resolve()?.get,
+  fromUserStore: accountPreferences.get,
+);
+final value = await effective.valueOf(config.theme); // device ▸ user ▸ install
+```
+
+The permission is **opt-in and authored at the wider scope**: `overridableBy`
+defaults to `none`, so a preference that happens to share a key with a pinned
+setting is never even read — it is a different value that is spelled the same.
+The arm names the *narrowest* scope permitted and every scope between is
+permitted too, so `device` opens `user` as well while `user` does not open
+`device`: a value that should follow the account is not one a single device may
+fork.
+
+A setting that opens itself must carry a key both preference stores accept, so
+the declaration validates it against `TomUserPreferenceKeys` and refuses with
+`preferences.key.invalid` — the preference vocabulary's own refusal — rather
+than letting an unkeepable promise surface at the first effective read.
+
+The environment layer does not close a setting: layer 0 decides the *install's*
+value, `overridableBy` decides who may shadow the install, and a setting the
+operator must win is declared `none`.
+
 ## What this module does not do
 
 - **No validation.** The *type* is checked — `coerceSettingValue` throws
@@ -105,6 +152,11 @@ staged rollout cannot destroy a value it merely does not know about.
   unawaited write gives the caller no way to know whether it landed, no way to
   handle its failure, and one write per keystroke when a settings screen is bound
   field by field. Call `save()` when the edit is complete.
+- **No composed write, and no composed observation.** `TomEffectiveSettings`
+  reads. A value is written by whichever holder owns its scope, because "where
+  does this change belong" is the question the scopes exist to answer; and a
+  preference is a stored document with no change notification, so an effective
+  value has nothing to fire on when the narrower scope moves.
 - **No concurrency control.** `save()` re-reads the store to seed its
   carry-forward, which narrows but does not close the window: read-then-write is
   not atomic, so two holders saving at genuinely the same moment can still lose

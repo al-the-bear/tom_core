@@ -1,3 +1,11 @@
+/// The machine-scoped settings holder of a client app, its observable settings
+/// and the resolution order behind them.
+///
+/// @docImport 'effective_settings.dart';
+/// @docImport '../preferences/device_preferences.dart';
+/// @docImport '../preferences/user_preferences_client.dart';
+library;
+
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'client_configuration_store.dart';
@@ -31,6 +39,36 @@ abstract class TomClientEnvironment {
   static void useDefaultReader() => reader = readPlatformEnvironment;
 }
 
+/// Which narrower client scope, if any, may shadow a [TomSetting].
+///
+/// A client value lives at one of three scopes, from widest to narrowest: the
+/// **install** (this app on this machine — a [TomSetting]), the **user** (it
+/// follows the account onto any device — a server-stored preference), and the
+/// **user on this device** (a device-stored preference). Shadowing is **opt-in
+/// and declared at the wider scope**: an install setting is scope-pinned unless
+/// it says otherwise, so a narrower store that happens to hold the same key
+/// cannot silently take a value over.
+///
+/// The value names the **narrowest** scope permitted, and every scope between
+/// the setting and that one is permitted too — so [device] opens [user] as
+/// well. [TomEffectiveSettings] is what applies the declaration.
+///
+/// [none] is the arm every security and infrastructure setting keeps, and it is
+/// the **default** on the declaration methods. That is not the fail-safe rule
+/// weakened: `none` *is* the closed arm, so a setting whose author said nothing
+/// about shadowing is pinned, and opening one is the deliberate act.
+enum TomOverridableBy {
+  /// Scope-pinned: neither preference store may shadow this setting.
+  none,
+
+  /// A server-stored user preference under the same key may shadow it.
+  user,
+
+  /// A device-stored preference may shadow it — and so may a user one, which
+  /// lies between the two.
+  device,
+}
+
 /// One observable, addressable client setting.
 ///
 /// A [TomSetting] is a [TomObject] — so everything that already works on an
@@ -57,6 +95,7 @@ class TomSetting<T> extends TomObject<T> {
     this.baseline,
     this.envAlias,
     this.isFromEnvironment,
+    this.overridableBy,
   ) : super(baseline);
 
   /// The dotted configuration key — the setting's stable identity.
@@ -97,6 +136,20 @@ class TomSetting<T> extends TomObject<T> {
   /// [reset] and a reload put the operator's value back. A settings screen
   /// reads this to disable the field, which is what this member is for.
   final bool isFromEnvironment;
+
+  /// Which narrower client scope may shadow this setting, if any.
+  ///
+  /// Declared here, at the wider scope, and applied by
+  /// [TomEffectiveSettings.valueOf]. It does not change what [get] answers:
+  /// this holder stays synchronous and login-free, and a preference store is
+  /// neither. What it changes is what an *effective* read returns once a store
+  /// is in the picture.
+  ///
+  /// A setting that opens itself carries a key both preference stores accept —
+  /// the declaration validates it against [TomUserPreferenceKeys], because a
+  /// key the stores would refuse could never be shadowed and the declaration
+  /// would be a promise nothing can keep.
+  final TomOverridableBy overridableBy;
 
   /// Whether the **install** has changed this setting away from its [baseline].
   ///
@@ -207,12 +260,19 @@ T coerceSettingValue<T>(String key, Object? raw) {
 /// on this machine**: the server URL to talk to, a log level, a polling
 /// interval, whether the debug overlay is on. There is no user parameter in
 /// this class, in the store interface, or in the persisted format — by design.
-/// A value that varies per *user* is a user preference and belongs in a
-/// different holder with a different lifecycle (it follows the account, it
-/// syncs, it needs a login before it can be read); a value that configures the
-/// *server* belongs in `TomBaseServerConfiguration`. Adding either here turns
-/// the holder into a junk drawer and quietly breaks the guarantee that reading
-/// a client setting never needs a session.
+/// A value that varies per *user* belongs in one of the two preference holders
+/// this package also ships, which have a different lifecycle (they follow the
+/// account or the device, and the account one needs a login before it can be
+/// read): [TomUserPreferencesClient] for a value that follows the user onto
+/// every device, [TomDevicePreferences] for one that stays on this machine. A
+/// value that configures the *server* belongs in `TomBaseServerConfiguration`.
+/// Adding any of them here turns the holder into a junk drawer and quietly
+/// breaks the guarantee that reading a client setting never needs a session.
+///
+/// Those three scopes are related rather than merely adjacent: a setting
+/// declared [TomOverridableBy.user] or [TomOverridableBy.device] may be
+/// shadowed by a preference of the same key, and [TomEffectiveSettings]
+/// resolves the chain.
 ///
 /// Per-field *validation* is likewise not this class's job, and nothing else in
 /// the module does it either. The **type** is checked — [coerceSettingValue]
@@ -228,6 +288,8 @@ T coerceSettingValue<T>(String key, Object? raw) {
 ///
 /// A setting's value is, highest precedence first:
 ///
+/// 0. the **environment**, for a setting declared with an
+///    [TomSetting.envAlias] that [TomClientEnvironment] reports set;
 /// 1. the **persisted override** — what this install last saved;
 /// 2. the **shipped config-resources value** for the key
 ///    ([TomConfigResourceProvider]);
@@ -237,7 +299,15 @@ T coerceSettingValue<T>(String key, Object? raw) {
 /// from layers 2–3 at every start, so shipping a new default in an app update
 /// actually reaches installs that never touched that key. Persisting the full
 /// value set instead would freeze the shipped defaults at the moment of the
-/// first save.
+/// first save. Layer 0 is not persisted either, for the opposite reason: it is
+/// the operator's value, not the install's, and baking it into the store would
+/// outlive the variable being unset.
+///
+/// All four layers produce **this install's** value. A value belonging to a
+/// narrower scope — the user, or the user on this device — lives in a
+/// preference store and may shadow the whole stack, but only for a setting
+/// whose declaration opens it: see [TomOverridableBy] and
+/// [TomEffectiveSettings].
 ///
 /// ## Lifecycle
 ///
@@ -420,44 +490,66 @@ abstract class TomBaseClientConfiguration extends TomObservable
   /// [TomClientEnvironment] reports it set, supplies this setting's value and
   /// takes it out of the install's hands — see [TomSetting.isFromEnvironment]
   /// and the resolution order on this class.
+  ///
+  /// [overridableBy] opens the key to a narrower client scope — see
+  /// [TomOverridableBy] and [TomEffectiveSettings]. It defaults to the closed
+  /// arm, so a setting is scope-pinned until its author says otherwise.
   TomSetting<String> stringSetting(
     String key,
     String declaredDefault, {
     String? envAlias,
-  }) => _declare<String>(key, declaredDefault, envAlias);
+    TomOverridableBy overridableBy = TomOverridableBy.none,
+  }) => _declare<String>(key, declaredDefault, envAlias, overridableBy);
 
   /// Declares an `int` setting under the dotted [key].
   TomSetting<int> intSetting(
     String key,
     int declaredDefault, {
     String? envAlias,
-  }) => _declare<int>(key, declaredDefault, envAlias);
+    TomOverridableBy overridableBy = TomOverridableBy.none,
+  }) => _declare<int>(key, declaredDefault, envAlias, overridableBy);
 
   /// Declares a `double` setting under the dotted [key].
   TomSetting<double> doubleSetting(
     String key,
     double declaredDefault, {
     String? envAlias,
-  }) => _declare<double>(key, declaredDefault, envAlias);
+    TomOverridableBy overridableBy = TomOverridableBy.none,
+  }) => _declare<double>(key, declaredDefault, envAlias, overridableBy);
 
   /// Declares a `bool` setting under the dotted [key].
   TomSetting<bool> boolSetting(
     String key,
     bool declaredDefault, {
     String? envAlias,
-  }) => _declare<bool>(key, declaredDefault, envAlias);
+    TomOverridableBy overridableBy = TomOverridableBy.none,
+  }) => _declare<bool>(key, declaredDefault, envAlias, overridableBy);
 
   // The four public declaration methods fix the value types to exactly those
   // that survive a JSON round-trip through the store. A public generic
   // `declare<T>` would let a caller declare a type the store cannot persist,
   // and the failure would surface at save time rather than at the declaration.
-  TomSetting<T> _declare<T>(String key, T declaredDefault, [String? envAlias]) {
+  TomSetting<T> _declare<T>(
+    String key,
+    T declaredDefault,
+    String? envAlias,
+    TomOverridableBy overridableBy,
+  ) {
     if (_settings.containsKey(key)) {
       throw TomClientConfigurationException(
         'client_configuration.key.duplicate',
         "Configuration key '$key' is declared more than once.",
         parameters: {'key': key},
       );
+    }
+    if (overridableBy != TomOverridableBy.none) {
+      // A declaration that opens a key is a promise that a preference store may
+      // answer for it. Both stores enforce `TomUserPreferenceKeys`, so a key
+      // they would refuse makes the promise unkeepable — and the refusal would
+      // otherwise surface at the first effective read, far from the line that
+      // made it. The rule is the preference vocabulary's, so the refusal is
+      // `preferences.key.invalid` rather than a second spelling of it here.
+      TomUserPreferenceKeys.validate(key);
     }
     // One lookup, not two. `exists` and `getObjectOrNull` are the same
     // resolver — `_resolveObjectOrNull` — so the guarded pair walked the nested
@@ -491,6 +583,7 @@ abstract class TomBaseClientConfiguration extends TomObservable
       baseline,
       envAlias,
       fromEnvironment,
+      overridableBy,
     );
     if (fromEnvironment) {
       setting._environmentValue = coerceSettingValue<T>(key, raw);

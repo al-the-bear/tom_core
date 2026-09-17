@@ -11,6 +11,9 @@ install's overrides.
 - [Classes](#classes)
   - [TomBaseClientConfiguration](#tombaseclientconfiguration)
   - [TomSetting&lt;T&gt;](#tomsettingt)
+  - [TomOverridableBy](#tomoverridableby)
+  - [TomEffectiveSettings](#tomeffectivesettings)
+  - [TomPreferenceLookup](#tompreferencelookup)
   - [TomClientEnvironment](#tomclientenvironment)
   - [TomClientConfigurationStore](#tomclientconfigurationstore)
   - [TomMemoryClientConfigurationStore](#tommemoryclientconfigurationstore)
@@ -31,6 +34,11 @@ install's persisted overrides on top; `save()` writes back exactly the settings
 that differ from their baseline. Scope is **(client app, machine)**: there is no
 user parameter anywhere in the module.
 
+A setting may nevertheless declare that a narrower scope is allowed to shadow
+it — `TomOverridableBy` — and `TomEffectiveSettings` reads the install's value
+and the two preference stores as one value. The permission is authored on the
+setting; the stores arrive as callbacks and neither is a dependency.
+
 ## Class Hierarchy
 
 ```
@@ -44,6 +52,9 @@ TomClientConfigurationStore          (abstract)
     └── TomFileClientConfigurationStore   (compile-time io / neutral variant)
 
 TomException → TomClientException → TomClientConfigurationException
+
+TomEffectiveSettings                 (composes the three client scopes)
+TomOverridableBy                     (enum: none / user / device)
 ```
 
 ## Classes
@@ -66,10 +77,10 @@ Abstract base for a client app's machine-scoped settings holder.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `declareSettings` | `void declareSettings()` | **Abstract.** Declares every setting; called from the constructor. |
-| `stringSetting` | `TomSetting<String> stringSetting(String key, String declaredDefault, {String? envAlias})` | Declares a `String` setting. `envAlias` names an environment variable that, when set, supplies the value and takes the setting out of the install's hands — layer 0 of the resolution order. |
-| `intSetting` | `TomSetting<int> intSetting(String key, int declaredDefault)` | Declares an `int` setting. |
-| `doubleSetting` | `TomSetting<double> doubleSetting(String key, double declaredDefault, {String? envAlias})` | Declares a `double` setting. `envAlias` names an environment variable that, when set, supplies the value and takes the setting out of the install's hands — layer 0 of the resolution order. |
-| `boolSetting` | `TomSetting<bool> boolSetting(String key, bool declaredDefault, {String? envAlias})` | Declares a `bool` setting. `envAlias` names an environment variable that, when set, supplies the value and takes the setting out of the install's hands — layer 0 of the resolution order. |
+| `stringSetting` | `TomSetting<String> stringSetting(String key, String declaredDefault, {String? envAlias, TomOverridableBy overridableBy = TomOverridableBy.none})` | Declares a `String` setting. `envAlias` names an environment variable that, when set, supplies the value and takes the setting out of the install's hands — layer 0 of the resolution order. `overridableBy` opens the key to a narrower client scope; the default is the closed arm. |
+| `intSetting` | `TomSetting<int> intSetting(String key, int declaredDefault, {String? envAlias, TomOverridableBy overridableBy = TomOverridableBy.none})` | Declares an `int` setting. Same two arguments, same meanings. |
+| `doubleSetting` | `TomSetting<double> doubleSetting(String key, double declaredDefault, {String? envAlias, TomOverridableBy overridableBy = TomOverridableBy.none})` | Declares a `double` setting. Same two arguments, same meanings. |
+| `boolSetting` | `TomSetting<bool> boolSetting(String key, bool declaredDefault, {String? envAlias, TomOverridableBy overridableBy = TomOverridableBy.none})` | Declares a `bool` setting. Same two arguments, same meanings. |
 | `load` | `Future<void> load()` | Adopts the persisted overrides; idempotent; one notification. |
 | `save` | `Future<void> save()` | Persists the overrides only; carries forward undeclared persisted keys. |
 | `settingFor` | `TomSetting? settingFor(String key)` | The setting declared under `key`, or `null`. |
@@ -105,6 +116,7 @@ One observable, addressable setting.
 | `baseline` | `T` | The value when the install has not overridden it. |
 | `envAlias` | `String?` | The environment variable this setting may also be read from, verbatim; `null` when it is declared without one. |
 | `isFromEnvironment` | `bool` | Whether `TomClientEnvironment` supplied the value. Such a setting is not loaded, not saved and not overridden; `reset` restores the operator's value. A settings screen reads this to disable the field — the setter is not taken away, since a `TomSetting` is a `TomObject`. |
+| `overridableBy` | `TomOverridableBy` | Which narrower client scope may shadow this setting. Declared here, at the wider scope, and applied by `TomEffectiveSettings.valueOf`; it does not change what `get` answers. A setting that opens itself is validated against `TomUserPreferenceKeys` at declaration. |
 | `isOverridden` | `bool` | `!isFromEnvironment && get() != baseline`. An operator's variable is not the install's override, and reporting it as one would have `save` bake it into the store. |
 
 #### Methods
@@ -114,6 +126,63 @@ One observable, addressable setting.
 | `reset` | `void reset()` | Restores the value the setting has with no install override: `baseline`, or the **environment's** value when `isFromEnvironment`. |
 | `applyRaw` | `void applyRaw(Object? raw)` | Coerces a store/config-shaped value to `T` and sets it. |
 | `toString` | `String toString()` | `'key=value'`, with ` (overridden)` appended when it is. |
+
+### TomOverridableBy
+
+Which narrower client scope, if any, may shadow a `TomSetting`. Declared on the
+setting — at the **wider** scope — so the relation is stated once and no
+preference can open a key by itself. The value names the *narrowest* scope
+permitted, and every scope between the setting and that one is permitted too.
+
+| Value | Consulted, in order |
+| ----- | ------------------- |
+| `none` | the setting alone; no store is asked. The default on every declaration method, and the arm every security or infrastructure setting keeps. |
+| `user` | the account store, then the setting. It does **not** open the device store: a value that should follow the account is not one a single device may fork. |
+| `device` | the device store, the account store, then the setting. |
+
+### TomEffectiveSettings
+
+Reads a `TomSetting` together with the narrower scopes it opens itself to. The
+one place the order between the three client scopes is written.
+
+- **Extends:** none
+
+#### Constructors
+
+| Constructor | Signature | Description |
+| ----------- | --------- | ----------- |
+| default | `const TomEffectiveSettings({TomPreferenceLookup? fromUserStore, TomPreferenceLookup? fromDeviceStore})` | Composes the scopes reachable through the given lookups. Both are optional and independent; an omitted one is never consulted, so a holder built with neither resolves every setting to the install's value. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `fromUserStore` | `TomPreferenceLookup?` | Reads the signed-in user's server-stored preferences, or `null` when the application has no account store. |
+| `fromDeviceStore` | `TomPreferenceLookup?` | Reads this device's preferences, or `null` when the application has no device store. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `valueOf` | `Future<T> valueOf<T extends Object>(TomSetting<T> setting)` | The narrowest store holding the key answers; failing that the next; failing all of them the setting's own value, which always exists. A `TomOverridableBy.none` setting is answered from the setting alone and costs no round trip. A preference stored under the key as a different type throws `TomUserPreferenceCodecException` from the store rather than falling through to the wider scope. |
+
+There is no write path and no observation: a value is written by whichever
+holder owns its scope, and a preference is a stored document with no change
+notification, so an effective value has nothing to fire on when the narrower
+scope moves.
+
+### TomPreferenceLookup
+
+```dart
+typedef TomPreferenceLookup = Future<T?> Function<T extends Object>(String key);
+```
+
+Reads one key from a preference store; `null` means the store has never been
+given that key. `TomDevicePreferences.get` and `TomUserPreferencesClient.get`
+are each a `TomPreferenceLookup` as written, so an application passes the method
+rather than an adapter. A callback rather than the store itself, so that an
+application with no account store is not made to carry an HTTP client and one
+with no device store is not made to carry a platform backend.
 
 ### TomClientEnvironment
 
@@ -232,6 +301,11 @@ passing `null` does not compile.
 | `client_configuration.key.unknown` | `reset`/`isOverridden` on an undeclared key |
 | `client_configuration.store.unsupported_platform` | A file store without a filesystem |
 | `client_configuration.store.invalid_content` | The store holds unreadable content |
+
+Declaring a setting `overridableBy` anything but `none` under a name the
+preference stores would refuse raises the preference vocabulary's own
+`preferences.key.invalid`, from `TomUserPreferenceKeys` — restating it here
+would create a second spelling that could disagree with the first.
 
 ## Global Functions and Constants
 

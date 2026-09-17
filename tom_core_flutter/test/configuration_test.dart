@@ -127,6 +127,89 @@ class _DuplicateConfiguration extends TomBaseClientConfiguration {
   }
 }
 
+/// A holder declaring one setting per shadowing arm.
+class _ShadowedConfiguration extends TomBaseClientConfiguration {
+  late final TomSetting<String> pinned;
+  late final TomSetting<String> byUser;
+  late final TomSetting<String> byDevice;
+  late final TomSetting<int> retries;
+
+  @override
+  void declareSettings() {
+    pinned = stringSetting('client.pinned', 'install');
+    byUser = stringSetting(
+      'client.byUser',
+      'install',
+      overridableBy: TomOverridableBy.user,
+    );
+    byDevice = stringSetting(
+      'client.byDevice',
+      'install',
+      overridableBy: TomOverridableBy.device,
+    );
+    retries = intSetting(
+      'client.retries',
+      3,
+      overridableBy: TomOverridableBy.device,
+    );
+  }
+}
+
+/// A holder whose environment-bound setting also opens itself to a device
+/// preference — the two layers the module treats as independent.
+class _EnvShadowedConfiguration extends TomBaseClientConfiguration {
+  late final TomSetting<String> endpoint;
+
+  @override
+  void declareSettings() {
+    endpoint = stringSetting(
+      'client.endpoint',
+      'https://default.example',
+      envAlias: 'APP_ENDPOINT',
+      overridableBy: TomOverridableBy.device,
+    );
+  }
+}
+
+/// A preference lookup that answers from a map and records what it was asked.
+///
+/// Recording is the point: half of what [TomEffectiveSettings] promises is
+/// which stores it does **not** consult, and a value-only fake cannot show
+/// that.
+class _RecordingPreferences {
+  _RecordingPreferences([Map<String, Object>? values]) : values = {...?values};
+
+  final Map<String, Object> values;
+  final List<String> reads = [];
+
+  Future<T?> get<T extends Object>(String key) async {
+    reads.add(key);
+    return values[key] as T?;
+  }
+}
+
+/// A holder that opens a key the preference vocabulary rejects.
+class _IllegalShadowKeyConfiguration extends TomBaseClientConfiguration {
+  @override
+  void declareSettings() {
+    stringSetting(
+      'client/byUser',
+      'install',
+      overridableBy: TomOverridableBy.user,
+    );
+  }
+}
+
+/// The same key, pinned — where the vocabulary has no say.
+class _PinnedOddKeyConfiguration extends TomBaseClientConfiguration {
+  late final TomSetting<String> odd;
+
+  @override
+  void declareSettings() {
+    odd = stringSetting('client/byUser', 'install');
+  }
+}
+
 Matcher throwsConfigException(String key) => throwsA(
   isA<TomClientConfigurationException>().having((e) => e.key, 'key', key),
 );
@@ -1004,6 +1087,193 @@ void main() {
     });
   });
 
+  group('shadowing by a narrower scope', () {
+    test('a pinned setting is answered from the install alone', () async {
+      final device = _RecordingPreferences({'client.pinned': 'device'});
+      final user = _RecordingPreferences({'client.pinned': 'user'});
+      final config = _ShadowedConfiguration();
+      final effective = TomEffectiveSettings(
+        fromDeviceStore: device.get,
+        fromUserStore: user.get,
+      );
+
+      expect(await effective.valueOf(config.pinned), 'install');
+      // Not merely outranked — never asked. A pinned key costs no round trip.
+      expect(device.reads, isEmpty);
+      expect(user.reads, isEmpty);
+    });
+
+    test('a user-overridable setting takes the account value', () async {
+      final user = _RecordingPreferences({'client.byUser': 'account'});
+      final config = _ShadowedConfiguration();
+      final effective = TomEffectiveSettings(fromUserStore: user.get);
+
+      expect(await effective.valueOf(config.byUser), 'account');
+    });
+
+    test('a user-overridable setting is not opened to the device', () async {
+      // The arm names the *narrowest* scope permitted, so `user` stops there.
+      final device = _RecordingPreferences({'client.byUser': 'device'});
+      final user = _RecordingPreferences();
+      final config = _ShadowedConfiguration();
+      final effective = TomEffectiveSettings(
+        fromDeviceStore: device.get,
+        fromUserStore: user.get,
+      );
+
+      expect(await effective.valueOf(config.byUser), 'install');
+      expect(device.reads, isEmpty);
+      expect(user.reads, ['client.byUser']);
+    });
+
+    test('a device-overridable setting takes the device value', () async {
+      final device = _RecordingPreferences({'client.byDevice': 'device'});
+      final user = _RecordingPreferences({'client.byDevice': 'account'});
+      final config = _ShadowedConfiguration();
+      final effective = TomEffectiveSettings(
+        fromDeviceStore: device.get,
+        fromUserStore: user.get,
+      );
+
+      expect(await effective.valueOf(config.byDevice), 'device');
+      // The account is the wider of the two and is not consulted once this
+      // device has answered.
+      expect(user.reads, isEmpty);
+    });
+
+    test('a device-overridable setting falls through to the account', () async {
+      final device = _RecordingPreferences();
+      final user = _RecordingPreferences({'client.byDevice': 'account'});
+      final config = _ShadowedConfiguration();
+      final effective = TomEffectiveSettings(
+        fromDeviceStore: device.get,
+        fromUserStore: user.get,
+      );
+
+      expect(await effective.valueOf(config.byDevice), 'account');
+      expect(device.reads, ['client.byDevice']);
+    });
+
+    test('and to the install when neither store holds the key', () async {
+      final device = _RecordingPreferences();
+      final user = _RecordingPreferences();
+      final config = _ShadowedConfiguration();
+      final effective = TomEffectiveSettings(
+        fromDeviceStore: device.get,
+        fromUserStore: user.get,
+      );
+
+      expect(await effective.valueOf(config.byDevice), 'install');
+      expect(device.reads, ['client.byDevice']);
+      expect(user.reads, ['client.byDevice']);
+    });
+
+    test('an omitted store is skipped rather than failing', () async {
+      final config = _ShadowedConfiguration();
+
+      expect(
+        await const TomEffectiveSettings().valueOf(config.byDevice),
+        'install',
+      );
+    });
+
+    test('the install value it falls back to is the resolved one', () async {
+      installConfig({
+        'client': {'byDevice': 'shipped'},
+      });
+      final config = _ShadowedConfiguration();
+      final effective = TomEffectiveSettings(
+        fromDeviceStore: _RecordingPreferences().get,
+      );
+
+      // Not the declared default: the floor is the whole install stack, which
+      // the setting has already resolved.
+      expect(await effective.valueOf(config.byDevice), 'shipped');
+    });
+
+    test('a non-String setting keeps its type', () async {
+      final device = _RecordingPreferences({'client.retries': 9});
+      final config = _ShadowedConfiguration();
+      final effective = TomEffectiveSettings(fromDeviceStore: device.get);
+
+      final int resolved = await effective.valueOf(config.retries);
+      expect(resolved, 9);
+    });
+
+    test('the environment layer does not close a setting', () async {
+      addTearDown(TomClientEnvironment.useDefaultReader);
+      TomClientEnvironment.reader = (name) =>
+          name == 'APP_ENDPOINT' ? 'https://operator.example' : null;
+      final config = _EnvShadowedConfiguration();
+      final device = _RecordingPreferences({
+        'client.endpoint': 'https://device.example',
+      });
+      final effective = TomEffectiveSettings(fromDeviceStore: device.get);
+
+      // The operator sets the *install's* value; `overridableBy` says who may
+      // shadow the install. A setting the operator must win is declared
+      // `none`, and that is the only lever.
+      expect(config.endpoint.isFromEnvironment, isTrue);
+      expect(
+        await effective.valueOf(config.endpoint),
+        'https://device.example',
+      );
+    });
+
+    test(
+      'a preference of the wrong type is raised, not stepped over',
+      () async {
+        final store = TomStoredDevicePreferences(
+          TomMemoryDevicePreferenceStore(),
+        );
+        await store.set<int>('client.byDevice', 7);
+        final config = _ShadowedConfiguration();
+        final effective = TomEffectiveSettings(fromDeviceStore: store.get);
+
+        await expectLater(
+          () => effective.valueOf(config.byDevice),
+          throwsA(isA<TomUserPreferenceCodecException>()),
+        );
+      },
+    );
+
+    test('both shipped stores read as a TomPreferenceLookup', () {
+      // The typedef's claim: a caller passes the method, not an adapter.
+      final device = TomStoredDevicePreferences(
+        TomMemoryDevicePreferenceStore(),
+      );
+      final account = TomUserPreferencesClient(
+        baseUri: Uri.parse('https://example.invalid'),
+      );
+      addTearDown(account.close);
+
+      final TomPreferenceLookup fromDevice = device.get;
+      final TomPreferenceLookup fromAccount = account.get;
+      expect(fromDevice, isNotNull);
+      expect(fromAccount, isNotNull);
+    });
+
+    test('opening a key the preference stores would refuse is refused', () {
+      expect(
+        _IllegalShadowKeyConfiguration.new,
+        throwsA(
+          isA<TomUserPreferenceKeyException>().having(
+            (e) => e.key,
+            'key',
+            'preferences.key.invalid',
+          ),
+        ),
+      );
+    });
+
+    test('a pinned setting may carry any key', () {
+      // The rule applies where the promise is made. A key no preference store
+      // will ever see is none of the preference vocabulary's business.
+      final config = _PinnedOddKeyConfiguration();
+      expect(~config.odd, 'install');
+    });
+  });
+
   group('observation', () {
     test('a per-field observer sees only its own setting', () {
       final config = _TestConfiguration();
@@ -1317,6 +1587,7 @@ void main() {
           'TomFileClientConfigurationStore',
           'TomClientConfigurationException',
           'TomBaseClientConfiguration',
+          'TomEffectiveSettings',
         ])
           // The paren must abut the name. Allowing whitespace between them
           // matches the alignment spaces in the class-hierarchy diagram

@@ -36,12 +36,22 @@ class AppConfiguration extends TomBaseClientConfiguration {
   late final TomSetting<String> serverUrl;
   late final TomSetting<int> refreshSeconds;
   late final TomSetting<bool> darkMode;
+  late final TomSetting<String> theme;
 
   @override
   void declareSettings() {
     serverUrl = stringSetting('client.server.url', 'https://api.example.com');
     refreshSeconds = intSetting('client.refresh.seconds', 60);
     darkMode = boolSetting('client.ui.darkMode', false);
+    // The one setting this app lets a narrower scope answer for. The install
+    // ships a theme; a user may pick their own, and may pick a different one
+    // on this device. Every other setting above stays scope-pinned, which is
+    // what omitting `overridableBy` means.
+    theme = stringSetting(
+      'client.ui.theme',
+      'system',
+      overridableBy: TomOverridableBy.device,
+    );
   }
 }
 
@@ -181,6 +191,35 @@ Future<void> run() async {
   } finally {
     directory.deleteSync(recursive: true);
   }
+
+  // Example 9: the three client scopes composed. The install's configuration
+  // is the floor; a preference stored for the user, or for the user on this
+  // device, shadows it — but only for a setting whose declaration opened it.
+  //
+  // A real app passes its account client's `get` as `fromUserStore`. This
+  // example has no server, so only the device store is wired; an omitted
+  // lookup is simply never consulted.
+  final devicePreferences = TomStoredDevicePreferences(
+    TomMemoryDevicePreferenceStore(),
+  );
+  final effective = TomEffectiveSettings(
+    fromDeviceStore: devicePreferences.get,
+  );
+
+  // Nothing stored yet: the install answers.
+  assert(await effective.valueOf(config.theme) == 'system');
+
+  await devicePreferences.set<String>('client.ui.theme', 'dark');
+  print('effective theme=${await effective.valueOf(config.theme)}');
+  assert(await effective.valueOf(config.theme) == 'dark');
+
+  // A pinned setting is not merely outranked by a preference of the same key —
+  // the store is never asked at all.
+  await devicePreferences.set<String>(
+    'client.server.url',
+    'https://not-yours.example',
+  );
+  assert(await effective.valueOf(config.serverUrl) == 'https://eu.example.com');
 }
 
 Future<void> main() => run();
