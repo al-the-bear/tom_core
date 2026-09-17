@@ -234,6 +234,115 @@ void main() {
       expect(first, 0); // replaced, never called
       expect(second, 1);
     });
+
+    group('dispose ends the subscription', () {
+      test('a disposed adaptor stops forwarding', () {
+        final source = TomBool(false);
+        final adaptor = ValueListenableObserver<TomBool>(source);
+
+        var calls = 0;
+        adaptor.addListener(() => calls++);
+        source | true;
+        expect(calls, 1);
+
+        adaptor.dispose();
+
+        source | false;
+        expect(calls, 1, reason: 'the listener is dropped by dispose');
+      });
+
+      test('and is off the observer list, not merely silent', () {
+        // The case that tells `dispose` from `removeListener`, and the one a
+        // test has to go out of its way to write: clearing the callback makes
+        // an adaptor silent too, so "no callback fired" cannot distinguish
+        // them. `voidCallback` is a public field, so the slot can be refilled
+        // *without* going through `addListener` — and then the only thing that
+        // decides whether `onNotify` runs is whether the adaptor is still on
+        // the observable's observer list.
+        final source = TomBool(false);
+        final silenced = ValueListenableObserver<TomBool>(source);
+        final disposed = ValueListenableObserver<TomBool>(source);
+
+        var silencedCalls = 0;
+        var disposedCalls = 0;
+        silenced.removeListener(() {});
+        disposed.dispose();
+
+        silenced.voidCallback = () => silencedCalls++;
+        disposed.voidCallback = () => disposedCalls++;
+
+        source | true;
+
+        expect(
+          silencedCalls,
+          1,
+          reason: 'removeListener leaves the kernel registration in place',
+        );
+        expect(
+          disposedCalls,
+          0,
+          reason: 'dispose deregisters, so onNotify is never reached',
+        );
+      });
+
+      test('a disposed adaptor refuses a new listener in debug', () {
+        // Left as a silent no-op this is the shape that wastes an afternoon:
+        // the builder is wired, the value changes, and nothing happens. The
+        // assert costs nothing in release and fails where the mistake is.
+        final adaptor = ValueListenableObserver<TomBool>(TomBool(false));
+        adaptor.dispose();
+
+        expect(
+          () => adaptor.addListener(() {}),
+          throwsA(isA<AssertionError>()),
+        );
+      });
+
+      test('and releases the listener closure', () {
+        // Not observable through notifications — a deregistered adaptor never
+        // reaches `onNotify` whether or not the slot still holds something. It
+        // matters for retention: a builder's closure captures the element it
+        // rebuilds, so an adaptor that kept it would pin a disposed subtree.
+        // Asserted on the field, because the field is where the effect is.
+        final adaptor = ValueListenableObserver<TomBool>(TomBool(false));
+        adaptor.addListener(() {});
+        expect(adaptor.voidCallback, isNotNull);
+
+        adaptor.dispose();
+
+        expect(adaptor.voidCallback, isNull);
+      });
+
+      test('dispose is idempotent', () {
+        // What a `State` that disposes and then nulls its field ends up doing.
+        // A teardown that punishes a second call makes every call site
+        // defensive instead of simple.
+        final source = TomBool(false);
+        final adaptor = ValueListenableObserver<TomBool>(source);
+        adaptor.addListener(() {});
+
+        adaptor.dispose();
+        expect(adaptor.dispose, returnsNormally);
+      });
+
+      test('disposing one adaptor leaves another on the same observable', () {
+        // Two adaptors is the documented answer to "two parts of a screen need
+        // this observable", so one screen going away must not silence the
+        // other.
+        final source = TomBool(false);
+        final going = ValueListenableObserver<TomBool>(source);
+        final staying = ValueListenableObserver<TomBool>(source);
+
+        var stayingCalls = 0;
+        going.addListener(() {});
+        staying.addListener(() => stayingCalls++);
+
+        going.dispose();
+        source | true;
+
+        expect(stayingCalls, 1);
+      });
+    });
   });
 
   testWidgets('ValueListenableObserver drives a ValueListenableBuilder', (

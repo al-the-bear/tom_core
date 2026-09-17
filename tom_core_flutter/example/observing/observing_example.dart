@@ -4,7 +4,8 @@
 /// to a Flutter listener, how observable mutation (`|`) propagates a
 /// notification, and both ways the adaptor's single listener slot departs from
 /// the `ValueListenable` contract — `removeListener` ignoring its argument and
-/// `addListener` replacing rather than appending. `TomObservingWidget` is
+/// `addListener` replacing rather than appending, and the teardown that
+/// distinguishes `dispose` from `removeListener`. `TomObservingWidget` is
 /// exercised in the widget tests (`test/observing_test.dart`) because it needs
 /// a `WidgetTester` pump loop.
 ///
@@ -58,11 +59,41 @@ void run() {
   flag | false;
   print('after replacing the listener: first=$first latest=$latest');
 
+  // Example 5: ending the subscription. Construction is the subscription, so
+  // `dispose` is what ends it — and `removeListener` above did not. The
+  // adaptor silenced in Example 3 is still on the observable's observer list
+  // and forwards again the moment its slot is refilled; the disposed one is
+  // off the list and cannot be refilled at all.
+  //
+  // `second` is finished with, so it is disposed first — and that is the point
+  // being made: every adaptor in this example is subscribed to the same `flag`,
+  // and one that is not disposed keeps counting every mutation made after the
+  // code that created it has moved on.
+  second.dispose();
+
+  adaptor.voidCallback = () => notifications++;
+  flag | true;
+  print('after refilling the silenced slot: notifications=$notifications');
+
+  adaptor.dispose();
+  adaptor.voidCallback = () => notifications++;
+  flag | false;
+  print('after dispose: notifications=$notifications (unchanged)');
+
+  // An adaptor held beyond one build — in a `State` field — must be disposed
+  // in that `State`'s `dispose`, the same way `TomObservingWidget` deregisters
+  // itself. Disposing twice is harmless.
+  second.dispose();
+
   // Assertions
   assert(identical(adaptor.value, flag));
-  assert(notifications == 2);
   assert(first == 0); // replaced before it ever fired
   assert(latest == 1);
+  assert(
+    notifications == 3,
+    'two before removeListener, one after the slot was refilled, none after '
+    'dispose',
+  );
 }
 
 void main() => run();

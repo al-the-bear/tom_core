@@ -81,7 +81,8 @@ notification, and `removeListener` clears it. Use it to plug kernel state into
 `ValueListenableBuilder`, `AnimatedBuilder`, or anything else accepting a
 `ValueListenable` — but read
 [Lifecycle and Limitations](#lifecycle-and-limitations) first: there is one
-listener slot, and both accessors behave differently from the contract's name.
+listener slot, both accessors behave differently from the contract's name, and
+**an adaptor held beyond a single build must be disposed**.
 
 ## Lifecycle and Limitations
 
@@ -91,6 +92,37 @@ listener slot, and both accessors behave differently from the contract's name.
   rebuilds with a different `subState` (dropping the old one), and deregisters in
   `dispose`. A mutation after the widget unmounts therefore never triggers
   `setState() called after dispose()`.
+- **Construction subscribes; `dispose` is what ends it.** The adaptor registers
+  itself on the observable in its constructor, and `ValueListenableObserver.dispose()`
+  is the only thing that deregisters it. An adaptor held beyond a single build —
+  in a `State` field, which is the normal way to hold one — **must** be disposed,
+  exactly like the `TomObservingWidget` it is the non-widget counterpart of:
+
+  ```dart
+  class _MyScreenState extends State<MyScreen> {
+    late final ValueListenableObserver<TomString> error =
+        ValueListenableObserver(widget.state.error);
+
+    @override
+    void dispose() {
+      error.dispose();
+      super.dispose();
+    }
+  }
+  ```
+
+  `removeListener` is **not** a substitute. It clears the Flutter listener and
+  leaves the kernel registration in place, so the adaptor stays on the
+  observer list and keeps running `onNotify`; refill the slot and it forwards
+  again. After `dispose` there is no registration to resume from, and adding a
+  listener to a disposed adaptor fails an `assert` rather than silently never
+  firing. `dispose` is idempotent, and disposing one adaptor leaves any other
+  adaptor on the same observable working.
+
+  The weak-observer sweep below is not an answer here. It ends the subscription
+  when the adaptor becomes unreachable *and* something else happens to notify —
+  not a moment a caller can choose — and an adaptor still held in a field never
+  becomes unreachable at all.
 - **Which side holds which.** The two references point in opposite directions,
   and confusing them leads to reasoning about observer lifetime backwards:
   - The **observable holds its observers weakly**. `addObserver` stores a

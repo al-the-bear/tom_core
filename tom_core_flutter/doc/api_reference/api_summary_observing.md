@@ -108,13 +108,20 @@ Adapts a kernel `TomObservable` to Flutter's `ValueListenable` contract.
 > adaptor. There is one slot, so there is nothing to match against. It is not a
 > general-purpose multicast `ValueListenable`.
 
+> **Construction subscribes; `dispose` ends it.** An adaptor held beyond a
+> single build — in a `State` field — **must** be disposed. `removeListener` is
+> not a substitute: it clears the Flutter listener and leaves the kernel
+> registration in place, so the adaptor stays on the observer list and forwards
+> again as soon as the slot is refilled.
+
 #### Constructors
 
 ```dart
 ValueListenableObserver(T observable)
 ```
 
-Registers this adaptor as an observer of `observable`.
+Registers this adaptor as an observer of `observable`. The subscription ends
+only at `dispose`.
 
 #### Properties
 
@@ -130,7 +137,8 @@ Registers this adaptor as an observer of `observable`.
 | ------ | --------- | ----------- |
 | `onNotify` | `void onNotify(T observable)` | *(override)* Forwards the notification to the registered listener. |
 | `addListener` | `void addListener(VoidCallback listener)` | *(override)* Registers `listener`, replacing any previous one. |
-| `removeListener` | `void removeListener(VoidCallback listener)` | *(override)* Clears the single listener slot. `listener` is ignored — any argument clears it. |
+| `removeListener` | `void removeListener(VoidCallback listener)` | *(override)* Clears the single listener slot. `listener` is ignored — any argument clears it. **Not a teardown**: the kernel registration survives it. |
+| `dispose` | `void dispose()` | Ends the subscription — deregisters from `observable` and drops the listener. Required for any adaptor that outlives one build. Idempotent; after it, `addListener` fails an `assert` in debug, because a deregistered adaptor would never fire. |
 
 ## Global Functions and Constants
 

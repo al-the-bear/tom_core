@@ -1,5 +1,28 @@
 ## 1.2.1
 
+### Added
+
+- **`ValueListenableObserver.dispose()` (tcopen210).** The adaptor subscribed in
+  its constructor and had no way to unsubscribe: `removeListener` clears the
+  Flutter listener and leaves the kernel registration in place, so a silenced
+  adaptor stays on the observable's observer list and forwards again as soon as
+  the slot is refilled. The only thing that ended a subscription was the kernel's
+  weak-reference sweep — which fires when the adaptor becomes unreachable *and*
+  something else happens to notify, not at a moment the caller can choose, and
+  an adaptor held in a field never becomes unreachable at all.
+
+  `dispose()` deregisters and drops the listener, and is **required** for any
+  adaptor held beyond a single build — the counterpart of the `removeObserver`
+  that `TomObservingWidgetState` already performs in its own `dispose`. It is
+  idempotent, because a `State` that disposes and then nulls its field ends up
+  calling it twice; and `addListener` on a disposed adaptor fails an `assert` in
+  debug, because a wired builder that silently never fires is the shape that
+  wastes an afternoon.
+
+  `tom_uam`'s login page moved with it: it constructed an adaptor inside
+  `build`, subscribing afresh on every rebuild and ending none of them, and is
+  now a `StatefulWidget` holding one adaptor and disposing it.
+
 ### Documentation
 
 - **Six behaviours the documents describe now have a case (tcopen209).** The
