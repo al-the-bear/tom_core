@@ -6,12 +6,28 @@ import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
 /// Tests for the transactions module: the [TomTransaction] lifecycle, the
-/// commit/rollback drive (including the commit-veto path and participant
-/// deduplication), and the ambient [TomTransactionManager] accessors — both in
-/// the process-wide fallback scope and inside an explicit
+/// two-phase commit and the rollback drive, participant enlistment and its
+/// refusals, [TomTransactionManager.runInTransaction], and the ambient
+/// accessors — both in the process-wide fallback scope and inside an explicit
 /// [TomTransactionManager.runInTransactionScope]. The module is self-contained
-/// (no reflection, no database), so the whole surface is exercised here with a
-/// recording fake participant.
+/// (no reflection, no database), so the whole surface is exercised here with
+/// fake participants.
+///
+/// **The failure paths are driven with two participants, not one.** One is
+/// exactly the population size at which a drive that stops at the first
+/// failure looks correct: the single participant reports its failure, the
+/// return value carries it, and nothing shows that the participant *behind* it
+/// was never concluded. Every test of a `false` or a throw from a conclusion
+/// hook therefore enlists a second participant and asserts that it was driven.
+///
+/// **A participant that throws does not reach the caller**, and that is a
+/// decision rather than an omission: one resource's failure must not stop its
+/// neighbours being concluded, and an exception escaping the drive would also
+/// leave the scope pointing at a concluded transaction. What makes the
+/// catching safe is that the failure is on the record — so the suite asserts,
+/// for every conclusion hook, that the swallowed throw is logged naming the
+/// participant that raised it and what it raised. A throw the coordinator
+/// swallows and never mentions is the one nobody can investigate.
 /// A [TomLogOutput] that keeps every message instead of printing it, so a test
 /// can assert on what the coordinator actually wrote.
 class _CapturingLogOutput extends TomLogOutput {
@@ -613,7 +629,13 @@ void main() {
     for (final hook in ['prepare', 'commit', 'end']) {
       test('a commit whose participant throws from $hook', () async {
         final result = await conclude(hook, byRollback: false);
-        expect(result.escaped, isFalse, reason: 'the coordinator handles it');
+        expect(
+          result.escaped,
+          isFalse,
+          reason:
+              'the coordinator handles it, deliberately — see the header, and '
+              'the group that pins the log line it writes instead',
+        );
         expect(result.cleared, isTrue);
         expect(result.transactional, isFalse);
       });
@@ -689,6 +711,165 @@ void main() {
           '_scope._clear(this)'.allMatches(drive).length,
           1,
           reason: '$method clears its scope more than once',
+        );
+      }
+    });
+  });
+
+  // A participant that throws is caught, which is right — one resource's
+  // failure must not stop its neighbours being concluded — but a throw the
+  // coordinator swallows and never mentions is the one nobody can investigate.
+  // These are the two halves that make the catching safe: the neighbours are
+  // still driven, and the failure is on the record with the participant's name
+  // on it.
+  //
+  // One participant is exactly the population size at which the first half is
+  // invisible, which is why every test here uses two.
+  group('a throwing participant does not take its neighbours with it', () {
+    late _CapturingLogOutput captured;
+    late TomLogOutput installed;
+
+    setUp(() {
+      installed = tomLog.logOutput;
+      captured = _CapturingLogOutput();
+      tomLog.logOutput = captured;
+    });
+
+    tearDown(() => tomLog.logOutput = installed);
+
+    String written() => captured.messages.join('\n');
+
+    test(
+      'a commit that throws still commits the participant behind it',
+      () async {
+        final thrower = _ThrowingParticipant('thrower', 'commit');
+        final behind = _RecordingParticipant('behind');
+        final (txn, _) = TomTransactionManager.startTransaction();
+        await txn.registerParticipant(thrower);
+        await txn.registerParticipant(behind);
+
+        final ok = await txn.commitTransaction();
+
+        expect(ok, isFalse, reason: 'the transaction is partially committed');
+        expect(behind.calls, ['start', 'prepare', 'commit', 'end']);
+        expect(thrower.calls, ['prepare', 'commit', 'end']);
+        expect(written(), contains('thrower'));
+        expect(
+          written(),
+          contains('partially committed'),
+          reason: 'a broken promise is reported by name, not only counted',
+        );
+      },
+    );
+
+    test(
+      'an endTransaction that throws still ends the one behind it',
+      () async {
+        // A `false` from `endTransaction` is already covered with three
+        // participants. A throw is a different path through the same loop, and
+        // the leak it would cause is the same one: a pooled connection with
+        // nothing coming back for it.
+        final thrower = _ThrowingParticipant('thrower', 'end');
+        final behind = _RecordingParticipant('behind');
+        final (txn, _) = TomTransactionManager.startTransaction();
+        await txn.registerParticipant(thrower);
+        await txn.registerParticipant(behind);
+
+        final ok = await txn.commitTransaction();
+
+        expect(
+          ok,
+          isFalse,
+          reason: 'a release that threw is a release that failed',
+        );
+        expect(
+          behind.calls,
+          ['start', 'prepare', 'commit', 'end'],
+          reason: 'the participant behind the throw was never released',
+        );
+        expect(written(), contains('thrower'));
+      },
+    );
+
+    test('a rollback that throws still rolls back the one behind it', () async {
+      // The path a failure already arrives on, so a participant skipped here is
+      // skipped exactly when things are already wrong.
+      final thrower = _ThrowingParticipant('thrower', 'rollback');
+      final behind = _RecordingParticipant('behind');
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(thrower);
+      await txn.registerParticipant(behind);
+
+      final ok = await txn.rollbackTransaction();
+
+      expect(ok, isTrue, reason: 'every participant released');
+      expect(behind.calls, ['start', 'rollback', 'end']);
+      expect(thrower.calls, ['rollback', 'end']);
+      expect(written(), contains('thrower'));
+    });
+
+    test(
+      'an endTransaction that throws during a rollback is the same',
+      () async {
+        final thrower = _ThrowingParticipant('thrower', 'end');
+        final behind = _RecordingParticipant('behind');
+        final (txn, _) = TomTransactionManager.startTransaction();
+        await txn.registerParticipant(thrower);
+        await txn.registerParticipant(behind);
+
+        final ok = await txn.rollbackTransaction();
+
+        expect(ok, isFalse);
+        expect(behind.calls, ['start', 'rollback', 'end']);
+        expect(written(), contains('thrower'));
+      },
+    );
+
+    test('a prepare that throws rolls back the participant behind it', () async {
+      // The one hook where the throw is a veto rather than a report: nothing is
+      // durable, so the participant behind it is rolled back having never been
+      // asked to commit.
+      final thrower = _ThrowingParticipant('thrower', 'prepare');
+      final behind = _RecordingParticipant('behind');
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(thrower);
+      await txn.registerParticipant(behind);
+
+      final ok = await txn.commitTransaction();
+
+      expect(ok, isFalse, reason: 'a vetoed transaction did not commit');
+      expect(behind.calls, ['start', 'rollback', 'end']);
+      expect(
+        behind.calls,
+        isNot(contains('commit')),
+        reason: 'the veto arrived in phase one',
+      );
+      expect(written(), contains('thrower'));
+    });
+
+    test('every conclusion hook names the participant that threw', () async {
+      // Read as a set rather than per test: the four catches are four separate
+      // `tomLog.error` calls, and one of them interpolating the wrong thing —
+      // or nothing — is a failure that looks identical from outside.
+      for (final hook in ['prepare', 'commit', 'rollback', 'end']) {
+        captured.messages.clear();
+        final (txn, _) = TomTransactionManager.startTransaction();
+        await txn.registerParticipant(_ThrowingParticipant('p-$hook', hook));
+        await (hook == 'rollback'
+            ? txn.rollbackTransaction()
+            : txn.commitTransaction());
+
+        expect(
+          written(),
+          contains("'p-$hook'"),
+          reason:
+              'a throw from $hook was swallowed without naming the participant '
+              'that raised it',
+        );
+        expect(
+          written(),
+          contains('the connection dropped'),
+          reason: 'and without saying what it raised',
         );
       }
     });

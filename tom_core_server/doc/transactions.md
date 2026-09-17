@@ -372,7 +372,16 @@ throws — a participant throwing from each of the four conclusion hooks, which
 has to leave the scope clear and the next `startTransaction()` new, with the
 `finally` that guarantees it read from the source because nothing can reach it —
 scope isolation through `runInTransactionScope`, ambient enlistment,
-and `TomTransactionException`. It also holds the group named `The example runs
+and `TomTransactionException`.
+
+Every failure path is driven with **two** participants. One is exactly the
+population size at which a drive that stops at the first failure looks correct:
+the single participant reports its failure, the return value carries it, and
+nothing shows that the participant *behind* it was never concluded. And because
+a throwing participant is caught rather than propagated — one resource's failure
+must not stop its neighbours — the suite pins the other half of that bargain:
+for every conclusion hook, the swallowed throw is logged naming the participant
+that raised it and what it raised. It also holds the group named `The example runs
 green`, which spawns the example and asserts its transcript, and a check that
 this guide and the contract agree about the prepare phase.
 

@@ -2,6 +2,21 @@
 
 ### Added
 
+- **The transaction suite drives its failure paths with two participants
+  (tcopen194).** One is exactly the population size at which a drive that stops
+  at the first failure looks correct: the single participant reports its
+  failure, the return value carries it, and nothing shows that the participant
+  *behind* it was never concluded. A `false` from `endTransaction` was already
+  covered that way; a **throw** was not, on either drive, and neither was the
+  commit loop's refusal to stop at a broken promise.
+
+  And because a throwing participant is caught rather than propagated — one
+  resource's failure must not stop its neighbours, and an escaping exception
+  would leave the scope pointing at a concluded transaction — the suite now pins
+  the other half of that bargain: for every conclusion hook, the swallowed throw
+  is logged naming the participant that raised it and what it raised. A throw
+  the coordinator swallows and never mentions is the one nobody can investigate.
+
 - **`isReadOnly` reaches the participant that can act on it (tcopen193).**
   Four documents said the flag was "surfaced to participants" and the contract
   did not carry it: `startTransaction()` took no arguments and no other
