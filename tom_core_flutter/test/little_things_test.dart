@@ -165,6 +165,71 @@ void main() {
     });
   });
 
+  group('the three identifying arguments', () {
+    // `uuid`, `requestUuid` and `serverCallError` say *which* failure this is
+    // and where it came from, rather than what it was. They were reachable only
+    // by assignment after construction, which is a different promise: a report
+    // edited between the throw and the catch describes a failure the code in
+    // between decided on.
+    for (final build
+        in <
+          TomClientException Function({
+            String? uuid,
+            String? requestUuid,
+            TomServerCallError? serverCallError,
+          })
+        >[
+          ({uuid, requestUuid, serverCallError}) => TomClientException(
+            'client.error',
+            'msg',
+            uuid: uuid,
+            requestUuid: requestUuid,
+            serverCallError: serverCallError,
+          ),
+          ({uuid, requestUuid, serverCallError}) => TomClientUIException(
+            'ui.error',
+            'msg',
+            uuid: uuid,
+            requestUuid: requestUuid,
+            serverCallError: serverCallError,
+          ),
+        ]) {
+      final typeName = build().runtimeType.toString();
+
+      test('$typeName forwards a supplied uuid', () {
+        // The case that needs it: a failure rebuilt from a server's envelope
+        // has to keep the identity the far side logged it under, and a
+        // generated one can never be matched back to that log line.
+        expect(
+          build(uuid: 'UUID-FROM-THE-SERVER').uuid,
+          'UUID-FROM-THE-SERVER',
+        );
+      });
+
+      test('$typeName still generates a uuid when none is given', () {
+        final first = build();
+        final second = build();
+        expect(first.uuid, isNotEmpty);
+        expect(first.uuid, isNot(second.uuid));
+      });
+
+      test('$typeName forwards requestUuid', () {
+        expect(build(requestUuid: 'REQ-7').requestUuid, 'REQ-7');
+        expect(build().requestUuid, isNull);
+      });
+
+      test('$typeName forwards serverCallError', () {
+        final callError = TomServerCallError(
+          statusCode: 503,
+          response: 'unavailable',
+        );
+        final ex = build(serverCallError: callError);
+        expect(identical(ex.serverCallError, callError), isTrue);
+        expect(build().serverCallError, isNull);
+      });
+    }
+  });
+
   group('discriminating with catch clauses', () {
     // The `is` check above and these `on` clauses answer the same question, but
     // they are not equally easy to get wrong. An `is` check has no order: each

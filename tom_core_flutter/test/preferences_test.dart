@@ -1351,6 +1351,100 @@ void main() {
       });
     });
 
+    group('correlating a failure with the server', () {
+      /// The answer a Tom server gives when an endpoint refuses: the error
+      /// envelope, announced by the header a [TomServerCallError] reads.
+      void answerEnvelope({
+        int statusCode = 409,
+        String errorKey = 'preferences.limit_exceeded',
+        String uuid = 'SERVER-EXC-1',
+        String requestUuid = 'SERVER-REQ-1',
+      }) => transport.answer(
+        statusCode: statusCode,
+        body: jsonEncode({
+          'errorKey': errorKey,
+          'uuid': uuid,
+          'requestUuid': requestUuid,
+        }),
+        headers: const {'x-tom-error': 'true'},
+      );
+
+      test('a rejection carries the whole answer as a call error', () async {
+        transport.answer(statusCode: 502, body: 'Bad gateway');
+
+        final error = await _rejectionFrom(build());
+        final call = error.serverCallError;
+
+        expect(call, isNotNull);
+        expect(call!.statusCode, 502);
+        expect(call.response, 'Bad gateway');
+        expect(
+          call.hasError,
+          isTrue,
+          reason: 'a gateway answering HTML is still an answer worth carrying',
+        );
+      });
+
+      test("and names the request the server logged it under", () async {
+        // The correlation this module exists for: one id on both sides of one
+        // failed call, so the client's report and the server's log line can be
+        // read together.
+        answerEnvelope();
+
+        final error = await _rejectionFrom(build());
+
+        expect(error.requestUuid, 'SERVER-REQ-1');
+        expect(error.serverCallError?.requestUuid, 'SERVER-REQ-1');
+        expect(error.serverCallError?.errorKey, 'preferences.limit_exceeded');
+        expect(error.serverCallError?.uuid, 'SERVER-EXC-1');
+      });
+
+      test('a body that is not an envelope leaves it uncorrelated', () async {
+        // Reading an id out of an arbitrary body would invent a correlation,
+        // and a wrong correlation is worse than none because it is believed.
+        transport.answer(statusCode: 500, body: '{"requestUuid":"NOT-OURS"}');
+
+        final error = await _rejectionFrom(build());
+
+        expect(error.requestUuid, isNull);
+        expect(error.serverCallError?.response, '{"requestUuid":"NOT-OURS"}');
+      });
+
+      test('the client keeps its own identity', () async {
+        // `uuid` is forwardable, but this exception is raised *here* — it is
+        // not the server's exception rebuilt, so it does not borrow its id.
+        answerEnvelope();
+
+        final error = await _rejectionFrom(build());
+
+        expect(error.uuid, isNotEmpty);
+        expect(error.uuid, isNot('SERVER-EXC-1'));
+      });
+
+      test('an unreadable answer reports a decoding failure', () async {
+        // The status was very likely a 200; what failed is this client's
+        // reading of the body, and the call error says so rather than
+        // implying the server refused.
+        transport.answer(body: 'not a preference');
+
+        late final TomUserPreferencesClientException error;
+        try {
+          await build().read('tom.theme');
+          fail('expected the undecodable answer to throw');
+        } on TomUserPreferencesClientException catch (caught) {
+          error = caught;
+        }
+
+        expect(error.key, 'preferences.client.invalid_response');
+        expect(
+          error.serverCallError?.internalError,
+          TomServerCallError.jsonDecodingError,
+        );
+        expect(error.serverCallError?.response, 'not a preference');
+        expect(error.serverCallError?.exception, isNotNull);
+      });
+    });
+
     group('precedence against the device store', () {
       test('the device value wins and the server is never asked', () async {
         final device = TomStoredDevicePreferences(
@@ -1661,6 +1755,21 @@ TypeMatcher<TomUserPreferencesClientException> _rejectedWith(int statusCode) =>
 String _dtoBody(String key, Object value) => tomReflectionInfo
     .convertToJsonString(TomUserPreferenceCodec.encode(key, value));
 
+/// The `preferences.client.rejected` failure [client] raises for a read.
+///
+/// The three correlation assertions all need the *exception object* rather
+/// than a matcher, so the try/fail/catch is written once here.
+Future<TomUserPreferencesClientException> _rejectionFrom(
+  TomUserPreferencesClient client,
+) async {
+  try {
+    await client.get<String>('tom.theme');
+  } on TomUserPreferencesClientException catch (error) {
+    return error;
+  }
+  fail('expected the rejected call to throw');
+}
+
 /// A [TomHttpClientAbstractFactory] that answers every call from a script and
 /// records what was asked.
 ///
@@ -1691,10 +1800,24 @@ class _ScriptedTransport implements TomHttpClientAbstractFactory {
   /// use, and a test would fail over the casing rather than over the header.
   Map<String, String> lastHeaders = const {};
 
+  /// The headers the next answer carries.
+  ///
+  /// `x-tom-error` is the one that matters: it is what tells a
+  /// [TomServerCallError] the body is a framework error envelope worth reading
+  /// the `errorKey`, `uuid` and `requestUuid` out of. Without a way to script
+  /// it here, the client's correlation with the server's own log could only be
+  /// asserted against a live server.
+  Map<String, String> _headers = const {};
+
   /// Scripts the answer the next call receives.
-  void answer({int statusCode = 200, String body = ''}) {
+  void answer({
+    int statusCode = 200,
+    String body = '',
+    Map<String, String> headers = const {},
+  }) {
     _statusCode = statusCode;
     _body = body;
+    _headers = headers;
   }
 
   @override
@@ -1707,6 +1830,6 @@ class _ScriptedTransport implements TomHttpClientAbstractFactory {
       for (final entry in request.headers.entries)
         entry.key.toLowerCase(): entry.value,
     };
-    return Response(_body, _statusCode);
+    return Response(_body, _statusCode, headers: _headers);
   });
 }

@@ -12,7 +12,7 @@ UI) by **type**, not just by message.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomClientException` | Client-side `TomException`; same `key` / `defaultUserMessage` / `parameters` / `stack` / `rootException` / `autoLog` payload, distinguishable via `is TomClientException`. |
+| `TomClientException` | Client-side `TomException`, distinguishable via `is TomClientException`. Forwards the kernel's whole argument list — `key`, `defaultUserMessage`, `uuid`, `requestUuid`, `parameters`, `stack`, `rootException`, `autoLog`, `serverCallError` — because every client exception type chains through this constructor, so one missing here is missing from all of them. |
 | `TomClientUIException` | A `TomClientException` whose `defaultUserMessage` is safe and intended for display; consumers branch on its type to bubble presentable errors to the UI. |
 
 ## Quick start
@@ -32,6 +32,21 @@ void main() {
   }
 }
 ```
+
+## Naming the request a failure belongs to
+
+`uuid`, `requestUuid` and `serverCallError` say *which* failure this is rather
+than what it was, and a client has a use for each: a failure rebuilt from a
+server's error envelope must keep the identity the far side logged it under; the
+client is the side that issues requests, so it holds the correlation id; and a
+client is where outbound HTTP calls originate.
+
+`TomUserPreferencesClientException` is the first to fill them. Every rejection
+carries the answer as a `TomServerCallError`, and when the server replied with
+the framework's error envelope its `requestUuid` is copied onto the exception —
+so the client's report and the server's log line name the same request. The
+server's `uuid` is *not* borrowed: this exception was raised here, not rebuilt
+from the server's.
 
 ---
 

@@ -23,11 +23,17 @@ the *type*, which lets client code branch — e.g.
 `if (e is TomClientUIException)` — to decide whether an error is safe to show in
 the UI.
 
-Both constructors forward six arguments (`key`, `defaultUserMessage`,
-`parameters`, `stack`, `rootException`, `autoLog`). The kernel `TomException`
-takes three more — `requestUuid`, `uuid` and `serverCallError` — which the
-client constructors do not surface; those fields are settable, so assign them
-after construction if you need them.
+Both constructors forward the kernel's **whole** parameter list, including the
+three that identify a failure rather than describe it — `uuid`, `requestUuid`
+and `serverCallError`. Every client-side exception type chains through
+`TomClientException`, so an argument missing here is missing from all of them,
+and each of the three has a case the client cannot otherwise express: a failure
+*reconstructed* from a server's error envelope must keep the identity the far
+side logged it under; the client is the side that issues requests, so it is the
+side that holds the correlation id; and a client is where HTTP calls originate,
+which is what `serverCallError` records. The fields are settable too, but a
+report edited between the throw and the catch describes a failure the code in
+between decided on.
 
 ## Class Hierarchy
 
@@ -57,10 +63,13 @@ An exception originating on the client side of a Tom application.
 TomClientException(
   String key,
   String defaultUserMessage, {
+  String? uuid,
+  String? requestUuid,
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
   bool autoLog = false,
+  TomServerCallError? serverCallError,
 })
 ```
 
@@ -72,6 +81,10 @@ the field's original declaration. That matters for `stack`: the field on
 `StackTrace?`, so that is what a caller may pass here. `autoLog` is
 non-nullable and defaults to `false`; the default is inherited too, so omitting
 it is not the same as passing `null` — passing `null` does not compile.
+`serverCallError` is the kernel's typed record of an HTTP answer;
+`TomUserPreferencesClientException` fills it for every rejection, and copies the
+server's `requestUuid` out of it onto the exception so both sides of one failed
+call carry the same id.
 
 ### TomClientUIException
 
@@ -86,10 +99,13 @@ in the UI. The distinct type — not just the message — is the contract.
 TomClientUIException(
   String key,
   String defaultUserMessage, {
+  String? uuid,
+  String? requestUuid,
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
   bool autoLog = false,
+  TomServerCallError? serverCallError,
 })
 ```
 

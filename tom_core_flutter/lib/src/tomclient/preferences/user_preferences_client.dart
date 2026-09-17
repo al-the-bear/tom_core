@@ -89,10 +89,13 @@ class TomUserPreferencesClientException extends TomClientException {
   TomUserPreferencesClientException(
     super.key,
     super.defaultUserMessage, {
+    super.uuid,
+    super.requestUuid,
     super.parameters,
     super.stack,
     super.rootException,
     super.autoLog,
+    super.serverCallError,
   });
 }
 
@@ -366,7 +369,11 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
         )
         .readAsString(endpoint.responseEncoding ?? utf8);
 
-    return _PreferencesResponse(await call.getResponseStatusCode(), text);
+    return _PreferencesResponse(
+      await call.getResponseStatusCode(),
+      text,
+      await call.getResponseHeaders(),
+    );
   }
 
   /// The headers one request carries, with the bearer token resolved last.
@@ -427,6 +434,7 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
   void _requireSuccess(_PreferencesResponse response, {String? key}) {
     if (response.statusCode >= 200 && response.statusCode < 300) return;
     final errorKey = _envelopeErrorKey(response);
+    final callError = _callErrorOf(response);
     throw TomUserPreferencesClientException(
       'preferences.client.rejected',
       'The server rejected the preference request.',
@@ -436,8 +444,34 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
         if (errorKey != null) 'errorKey': errorKey,
         if (response.body.isNotEmpty) 'response': response.body,
       },
+      requestUuid: callError.requestUuid,
+      serverCallError: callError,
     );
   }
+
+  /// The whole HTTP answer as the kernel's typed failure record.
+  ///
+  /// Built for every rejection rather than only for a framework envelope,
+  /// because a caller reaching for [TomException.serverCallError] is asking
+  /// "what did the call do" — and "the gateway answered 502 with HTML" is an
+  /// answer. [TomServerCallError]'s own constructor reads the envelope when
+  /// `x-tom-error` claims one, which is where `errorKey`, `uuid` and
+  /// `requestUuid` come from; a body that is not one simply leaves them null.
+  ///
+  /// The server's `requestUuid` is then copied onto the exception, so a client
+  /// failure names the request the server logged it under. Both sides of one
+  /// failed call carry the same id, which is the only way the two logs can be
+  /// read together.
+  static TomServerCallError _callErrorOf(_PreferencesResponse response) =>
+      TomServerCallError(
+        statusCode: response.statusCode,
+        response: response.body,
+        headers: {...response.headers},
+        internalError:
+            TomServerCallError.isSuccessStatusCode(response.statusCode)
+            ? 0
+            : TomServerCallError.serverError,
+      );
 
   /// Decodes a single-DTO response body.
   TomUserPreferenceDto _decodeDto(
@@ -481,17 +515,34 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
     String? key,
     Object? error,
     StackTrace? stack,
-  }) => TomUserPreferencesClientException(
-    'preferences.client.invalid_response',
-    'The server did not answer with a preference.',
-    parameters: {
-      if (key != null) 'key': key,
-      'statusCode': response.statusCode,
-      'response': response.body,
-    },
-    rootException: error,
-    stack: stack,
-  );
+  }) {
+    // A body this client could not read is a *decoding* failure, so the call
+    // error carries `jsonDecodingError` rather than the status — the status was
+    // very likely a 200. What the two failures share is the answer itself, and
+    // a caller that wants to see what arrived reads it from the same place
+    // either way.
+    final callError = TomServerCallError(
+      statusCode: response.statusCode,
+      response: response.body,
+      headers: {...response.headers},
+      internalError: TomServerCallError.jsonDecodingError,
+      exception: error,
+      stackTrace: stack,
+    );
+    return TomUserPreferencesClientException(
+      'preferences.client.invalid_response',
+      'The server did not answer with a preference.',
+      parameters: {
+        if (key != null) 'key': key,
+        'statusCode': response.statusCode,
+        'response': response.body,
+      },
+      rootException: error,
+      stack: stack,
+      requestUuid: callError.requestUuid,
+      serverCallError: callError,
+    );
+  }
 
   static int _portOf(Uri uri) =>
       uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 80);
@@ -503,11 +554,20 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
 /// A pair rather than two futures because the status and the body are read
 /// together at every call site, and a `TomServerCall` can be read only once.
 class _PreferencesResponse {
-  const _PreferencesResponse(this.statusCode, this.body);
+  const _PreferencesResponse(this.statusCode, this.body, this.headers);
 
   /// The HTTP status the server answered with.
   final int statusCode;
 
   /// The response body as text.
   final String body;
+
+  /// The response headers, as the transport keyed them.
+  ///
+  /// Carried because `x-tom-error` is what tells a [TomServerCallError] that
+  /// the body is a framework error envelope and worth reading the `errorKey`,
+  /// `uuid` and `requestUuid` out of. Dropping the headers here would leave
+  /// every failure from this client uncorrelated with the server's own record
+  /// of it.
+  final Map<String, String> headers;
 }

@@ -452,10 +452,13 @@ framework's error envelope.
 TomUserPreferencesClientException(
   String key,
   String defaultUserMessage, {
+  String? uuid,
+  String? requestUuid,
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
   bool autoLog = false,
+  TomServerCallError? serverCallError,
 })
 ```
 
@@ -466,8 +469,14 @@ the type `TomException`'s constructor narrows the `Object?` field to — and
 
 A rejection carries the `statusCode` and, when
 non-empty, the `response` body in `parameters`, so a caller diagnosing a failure
-does not need the log. As with the device store, a *value* failure arrives as the
-kernel's `TomUserPreferenceCodecException`.
+does not need the log. It also carries the whole answer as a
+`TomServerCallError` — the kernel's typed record of an HTTP call — and, when the
+server answered with its framework error envelope, the `requestUuid` read out of
+it, so the client's failure and the server's log line name the same request. A
+body this client could not read produces the same record with
+`internalError: jsonDecodingError`, because the status was very likely a `200`
+and the failure is the decoding. As with the device store, a *value* failure
+arrives as the kernel's `TomUserPreferenceCodecException`.
 
 ## Global Functions and Constants
 

@@ -8,6 +8,7 @@ provides two **exception types** layered on the kernel's exception model.
 - [Overview](#overview)
 - [Quick Start](#quick-start)
 - [Why a distinct type](#why-a-distinct-type)
+- [Naming the request a failure belongs to](#naming-the-request-a-failure-belongs-to)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -20,10 +21,12 @@ provides two **exception types** layered on the kernel's exception model.
 | `TomClientException` | `TomException` (kernel) | A failure raised on the client side |
 | `TomClientUIException` | `TomClientException` | A client failure whose message is safe to show the user |
 
-Both are thin subtypes — they carry the same payload as the kernel
-[`TomException`](../../tom_core_kernel/doc/little_things/little_things.md) (`key`,
-`defaultUserMessage`, `parameters`, `stack`, `rootException`, `autoLog`) and add
-only a **semantic type** that client code can branch on.
+Both are thin subtypes — they carry the kernel
+[`TomException`](../../tom_core_kernel/doc/little_things/little_things.md)'s
+payload unchanged and add only a **semantic type** that client code can branch
+on. "Unchanged" is literal: every one of the kernel's arguments is forwarded,
+including `uuid`, `requestUuid` and `serverCallError` — see
+[Naming the request a failure belongs to](#naming-the-request-a-failure-belongs-to).
 
 ## Quick Start
 
@@ -57,12 +60,49 @@ the error can be displayed verbatim or must be wrapped/sanitized first. Throwing
 a plain `TomException` would force callers to inspect `key` strings; the subtype
 makes the "is this safe to show?" decision a compile-checked `is` test.
 
+## Naming the request a failure belongs to
+
+Three of the kernel's arguments say *which* failure this is rather than what it
+was, and both client types forward all three:
+
+| Argument | What it answers | Why a client needs it |
+| -------- | --------------- | --------------------- |
+| `uuid` | which failure | A failure **reconstructed** from a server's error envelope has to keep the identity the far side logged it under. A generated one can never be matched back to that log line. |
+| `requestUuid` | which request it belongs to | The client is the side that *issues* requests, so it is the side holding the correlation id. |
+| `serverCallError` | which HTTP call it came from | A client is where outbound calls originate; this is the kernel's typed record of one. |
+
+They are constructor arguments rather than fields assigned afterwards. All
+three are writable on a kernel exception, so the payload was always *reachable*
+— but a report edited between the throw and the catch describes a failure the
+code in between decided on, and everything these three carry is known where the
+exception is raised.
+
+`TomUserPreferencesClientException` is the first to fill them, and shows the
+shape. Every rejection carries the whole answer as a `TomServerCallError`,
+because a caller reaching for it is asking "what did the call do" and "the
+gateway answered 502 with HTML" is an answer. When the server replied with the
+framework's error envelope — announced by the `x-tom-error` header —
+`TomServerCallError` reads the `errorKey`, `uuid` and `requestUuid` out of it,
+and the client copies that `requestUuid` onto the exception. Both sides of one
+failed call then name the same request, which is the only way the two logs can
+be read together.
+
+What the client does **not** do is borrow the server's `uuid`. The exception was
+raised here; it is not the server's exception rebuilt. Nor does it read an id out
+of a body that is not an envelope: inventing a correlation is worse than having
+none, because a wrong one is believed.
+
 ## Core Components
 
 ### `TomClientException`
 
 A client-originated error. Use it for failures that should be handled in code
 but are **not** necessarily safe to present to a user.
+
+Its constructor is the one every client-side exception type chains through, so
+an argument missing from it is missing from all of them. It forwards the kernel's
+whole list: `key`, `defaultUserMessage`, `uuid`, `requestUuid`, `parameters`,
+`stack`, `rootException`, `autoLog`, `serverCallError`.
 
 ### `TomClientUIException`
 

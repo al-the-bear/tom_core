@@ -2,6 +2,31 @@
 
 ### Fixed
 
+- **A client failure could not name the request it belonged to (tcopen205).**
+  `TomClientException` and `TomClientUIException` forwarded six of the kernel's
+  nine constructor arguments while both their dartdoc and `doc/little_things.md`
+  called the payload "the same". The three missing ones — `uuid`, `requestUuid`
+  and `serverCallError` — are the ones that say *which* failure this is rather
+  than what it was, and each had a case the client could not express: a failure
+  rebuilt from a server's error envelope has to keep the identity the far side
+  logged it under; the client is the side that issues requests, so it holds the
+  correlation id; and a client is where outbound HTTP calls originate.
+
+  All three are forwarded now, matching the decision already taken for
+  `TomServerException`. They are constructor arguments rather than fields
+  assigned afterwards — all three were always writable, but a report edited
+  between the throw and the catch describes a failure the code in between
+  decided on.
+
+  They were given a **producer** rather than shipped reachable-but-unused.
+  `TomUserPreferencesClient` now builds a `TomServerCallError` for every
+  rejection and for every answer it could not decode, and copies the server's
+  `requestUuid` out of the framework error envelope onto the exception — so both
+  sides of one failed call name the same request. It does not borrow the
+  server's `uuid` (this exception was raised here, not rebuilt), and it reads no
+  id out of a body that is not an envelope, because a wrong correlation is worse
+  than none.
+
 - **The construction-order case was documented as a silent failure and was not
   tested (tcopen204).** The completion document's open list said a holder built
   before its resource providers left "every setting silently sitting on its
