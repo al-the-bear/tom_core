@@ -3,8 +3,9 @@
 /// Demonstrates the two client exception types, both ways UI layers
 /// discriminate between them — an `is` check and a pair of `on` clauses, where
 /// the order is load-bearing — the boundary wrap that gives a lower-layer
-/// failure a presentable face, and the forwarded kernel payload, including
-/// `autoLog`, whose records are captured and printed rather than described.
+/// failure a presentable face, the forwarded kernel payload, including
+/// `autoLog`, whose records are captured and printed rather than described, and
+/// the message resolution a UI layer performs at the display boundary.
 ///
 /// The barrel import pulls in `flutter/material` (and thus `dart:ui`), so this
 /// runs under the Flutter toolchain, not bare `dart run`. Run it with
@@ -189,7 +190,56 @@ void run() {
     'cause preserved: ${identical(unavailable.rootException, serverFailure)}',
   );
 
+  // Example 8: resolving the message for display — at the boundary, not on
+  // the exception.
+  //
+  // `key` is what a UI resolves against the text resources; `defaultUserMessage`
+  // is the fallback for when no resource exists. Neither client exception type
+  // performs that lookup, and that is the design: an exception is raised in
+  // places a resource tree may not exist yet — early start-up, a worker
+  // isolate, a unit test — and a type that resolved on construction would fail
+  // or quietly degrade in exactly those places.
+  //
+  // So the lookup belongs to the one layer that already knows a resource tree
+  // is installed. It is four lines, and they are these.
+  String messageFor(TomException failure) {
+    // `getTextOrNull`, never `getText`: the latter echoes the key when the
+    // bundle has no entry, which would put `login.failed` in front of a user
+    // and discard the fallback this message exists to be.
+    final resources = TomTextResourceProvider.getAppResources();
+    return resources.getTextOrNull(failure.key) ?? failure.defaultUserMessage;
+  }
+
+  TomTextResourceProvider.setAppResourceProvider(
+    TomTextResourceProvider.from({
+      'login': {'failed': 'Anmeldung fehlgeschlagen.'},
+    }),
+  );
+
+  final resolved = messageFor(uiError);
+  final unresolved = messageFor(internal);
+  print('resolved   : ${uiError.key} -> $resolved');
+  print('unresolved : ${internal.key} -> $unresolved');
+  print(
+    'getText would have shown: '
+    '${TomTextResourceProvider.getAppResources().getText(internal.key)}',
+  );
+
+  // The exception itself is untouched by any of this. The bundle carries an
+  // entry under `login.failed` and `defaultUserMessage` still reads as it was
+  // written — which is what makes the two independently testable.
+  print('the exception still carries: ${uiError.defaultUserMessage}');
+
   // Assertions
+  assert(resolved == 'Anmeldung fehlgeschlagen.');
+  assert(
+    unresolved == 'No cached profile',
+    'a key with no resource falls back to the message the throw site wrote',
+  );
+  assert(
+    uiError.defaultUserMessage == 'Could not sign you in.',
+    'resolution happens at the boundary; the exception is not rewritten',
+  );
   assert(internal is! TomClientUIException);
   assert(identical(surfacedUi, uiError));
   assert(surfacedInternal.rootException == internal);

@@ -355,6 +355,124 @@ void main() {
     });
   });
 
+  group('resolving the message for display', () {
+    // Every artefact says the same thing: `key` is what a UI resolves against
+    // the text resources and `defaultUserMessage` is the fallback. Nothing in
+    // the exception types performs that lookup, and that is the decision rather
+    // than an omission — so both halves are asserted here, the refusal and the
+    // pattern that replaces it.
+    setUp(TomTextResourceProvider.clearAppResourceProvider);
+    tearDown(TomTextResourceProvider.clearAppResourceProvider);
+
+    void installResources(Map<String, dynamic> bundle) =>
+        TomTextResourceProvider.setAppResourceProvider(
+          TomTextResourceProvider.from(bundle),
+        );
+
+    /// The lookup a UI layer performs at the display boundary — the shape
+    /// `doc/little_things.md` documents, executed rather than quoted.
+    String messageFor(TomException failure) =>
+        TomTextResourceProvider.getAppResources().getTextOrNull(failure.key) ??
+        failure.defaultUserMessage;
+
+    test('the exception does not resolve, even when the bundle could', () {
+      // The negative with teeth: a resource entry exists under this exact key,
+      // and the exception still answers the string the throw site wrote. A
+      // convenience getter added later would have to break this.
+      installResources({
+        'login': {'failed': 'Anmeldung fehlgeschlagen.'},
+      });
+
+      final error = TomClientUIException('login.failed', 'Could not sign in.');
+
+      expect(error.defaultUserMessage, 'Could not sign in.');
+      expect(error.toString(), contains('Could not sign in.'));
+    });
+
+    test('the source names no part of the resource layer', () {
+      // The dependency-free half of the decision, read off the file rather
+      // than trusted. A resolving getter cannot be added without touching one
+      // of these names.
+      final source = File(
+        'lib/src/tomclient/little_things/client_exceptions.dart',
+      ).readAsStringSync();
+      // The dartdoc explains what the class deliberately does not do, so only
+      // the code is read.
+      final code = source
+          .split('\n')
+          .where((line) => !line.trimLeft().startsWith('///'))
+          .join('\n');
+
+      for (final name in const [
+        'TomTextResourceProvider',
+        'getAppResources',
+        'getText',
+        'TomProperty',
+      ]) {
+        expect(
+          code,
+          isNot(contains(name)),
+          reason: 'the exception types stay independent of the resource layer',
+        );
+      }
+    });
+
+    test('the documented lookup answers from the bundle when it can', () {
+      installResources({
+        'login': {'failed': 'Anmeldung fehlgeschlagen.'},
+      });
+
+      expect(
+        messageFor(TomClientUIException('login.failed', 'Could not sign in.')),
+        'Anmeldung fehlgeschlagen.',
+      );
+    });
+
+    test('and falls back to the message the throw site wrote', () {
+      installResources({});
+
+      expect(
+        messageFor(TomClientUIException('login.failed', 'Could not sign in.')),
+        'Could not sign in.',
+      );
+    });
+
+    test('which is why the contract names getTextOrNull, not getText', () {
+      // The trap the wording exists to avoid: `getText` echoes the key on a
+      // miss, so a helper written with it shows `login.failed` to a user and
+      // discards the fallback entirely. Asserted rather than warned about,
+      // because the two calls differ by four characters.
+      installResources({});
+      final resources = TomTextResourceProvider.getAppResources();
+
+      expect(resources.getText('login.failed'), 'login.failed');
+      expect(resources.getTextOrNull('login.failed'), isNull);
+    });
+
+    test('an uninstalled bundle throws, so the boundary must expect it', () {
+      // The situation the decision's reasoning names — early start-up, a worker
+      // isolate, a unit test. Reading resources there does not degrade quietly;
+      // it fails. An exception type that resolved on construction would carry
+      // that failure into every one of those places, which is the case for
+      // keeping the lookup at the boundary that knows a tree exists.
+      final error = TomClientUIException('login.failed', 'Could not sign in.');
+
+      expect(
+        () => messageFor(error),
+        throwsA(
+          isA<TomResourceException>().having(
+            (e) => e.key,
+            'key',
+            'resources.text_provider.not_installed',
+          ),
+        ),
+      );
+      // Constructing and reading the exception itself is unaffected, which is
+      // the property that makes it usable there at all.
+      expect(error.defaultUserMessage, 'Could not sign in.');
+    });
+  });
+
   group('the module readme describes a role, not just its contents', () {
     // `little_things` is the same directory in all three tom_core packages:
     // where a small cross-cutting thing lands once more than one module needs

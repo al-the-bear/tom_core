@@ -9,6 +9,7 @@ provides two **exception types** layered on the kernel's exception model.
 - [Quick Start](#quick-start)
 - [Why a distinct type](#why-a-distinct-type)
 - [Naming the request a failure belongs to](#naming-the-request-a-failure-belongs-to)
+- [Resolving the message for display](#resolving-the-message-for-display)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
 
@@ -91,6 +92,46 @@ What the client does **not** do is borrow the server's `uuid`. The exception was
 raised here; it is not the server's exception rebuilt. Nor does it read an id out
 of a body that is not an envelope: inventing a correlation is worse than having
 none, because a wrong one is believed.
+
+## Resolving the message for display
+
+`key` is what a UI resolves against the text resources; `defaultUserMessage` is
+the fallback for when no resource exists. **Neither exception type performs that
+lookup.** It belongs to the layer that displays the error, and it is four lines:
+
+```dart
+String messageFor(TomException failure) =>
+    TomTextResourceProvider.getAppResources().getTextOrNull(failure.key) ??
+    failure.defaultUserMessage;
+```
+
+**`getTextOrNull`, never `getText`.** The latter echoes the key when the bundle
+has no entry, so a helper written with it puts `login.failed` in front of a user
+and discards the fallback the message exists to be. The two calls differ by four
+characters and by everything.
+
+### Why the exception does not do it
+
+An exception is raised in places a resource tree may not exist yet — early
+start-up before resources load, a worker isolate, a unit test — and
+`getAppResources()` does not degrade quietly there: it **throws**
+`resources.text_provider.not_installed`. A type that resolved on construction
+would carry that failure into exactly the situations where reporting a failure
+matters most, and it would make every `throw TomClientUIException(...)` depend on
+a bootstrap step that has nothing to do with the failure being reported.
+
+The module's one design decision is that the value of these classes is the
+**type** and that they add nothing else; a resource-layer getter would be the
+first thing they added, and it would be the wrong one. The display boundary is
+the single place that already knows a resource tree is installed, which is what
+makes it the right home.
+
+This is a **contract, not a limitation**. Both branches of the lookup and the
+`getText` trap are executed and asserted by
+`example/little_things/little_things_example.dart`, and
+`test/little_things_test.dart`'s group `resolving the message for display` pins
+the other half: with a resource entry present under the exception's own key,
+`defaultUserMessage` still answers what the throw site wrote.
 
 ## Core Components
 

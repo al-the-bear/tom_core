@@ -30,6 +30,31 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// was always *reachable* — but a report edited between the throw and the catch
 /// describes a failure the code in between decided on, and everything these
 /// three carry is known where the exception is raised.
+///
+/// ## The message is not resolved here
+///
+/// `key` is what a UI resolves against the text resources; `defaultUserMessage`
+/// is the fallback for when no resource exists. **Neither is performed by this
+/// class**, and that is the design rather than an omission: an exception is
+/// raised in places a resource tree may not exist yet — early start-up, a
+/// worker isolate, a unit test — and `TomTextResourceProvider.getAppResources`
+/// *throws* where none is installed. A type that resolved on construction would
+/// carry that failure into precisely the situations where reporting a failure
+/// matters most.
+///
+/// So the lookup belongs to the one layer that already knows a resource tree is
+/// installed — the code that displays the error:
+///
+/// ```dart
+/// String messageFor(TomException failure) =>
+///     TomTextResourceProvider.getAppResources().getTextOrNull(failure.key) ??
+///     failure.defaultUserMessage;
+/// ```
+///
+/// `getTextOrNull`, never `getText`: the latter echoes the key when the bundle
+/// has no entry, which would put `login.failed` in front of a user and discard
+/// the fallback this message exists to be. Both branches, and that trap, are
+/// executed by `example/little_things/little_things_example.dart`.
 class TomClientException extends TomException {
   /// Creates a client-side exception. See [TomException] for the meaning of
   /// each argument.

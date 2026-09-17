@@ -1,5 +1,28 @@
 ## 1.2.1
 
+### Documentation
+
+- **Message resolution is now a stated contract with a mechanism, not an open
+  item (tcopen207).** Every artefact said `key` is what a UI resolves against
+  the resource layer and `defaultUserMessage` is the fallback, and every one of
+  them added that nothing enforces the order. It stays the **UI layer's** job —
+  an exception is raised where a resource tree may not exist yet (early
+  start-up, a worker isolate, a unit test) and `getAppResources()` throws there
+  rather than degrading quietly, so a type that resolved on construction would
+  carry that failure into the situations where reporting one matters most.
+
+  What changes is that the contract is written down and executed. The class
+  dartdoc, `doc/little_things.md` and the module readme all show the four-line
+  lookup, and all three name `getTextOrNull` rather than `getText` — the latter
+  echoes the key on a miss, so a helper written with it shows `login.failed` to
+  a user and discards the fallback entirely.
+
+  The example runs the lookup in both its states and prints what `getText`
+  would have shown instead. The suite pins the other half: with a resource entry
+  present under the exception's own key, `defaultUserMessage` still answers what
+  the throw site wrote, and the source is read to confirm it names no part of
+  the resource layer.
+
 ### Fixed
 
 - **A client failure could not name the request it belonged to (tcopen205).**

@@ -48,6 +48,26 @@ so the client's report and the server's log line name the same request. The
 server's `uuid` is *not* borrowed: this exception was raised here, not rebuilt
 from the server's.
 
+## The message is resolved at the display boundary
+
+`key` is what a UI resolves against the text resources; `defaultUserMessage` is
+the fallback for when no resource exists. Neither type performs that lookup:
+
+```dart
+String messageFor(TomException failure) =>
+    TomTextResourceProvider.getAppResources().getTextOrNull(failure.key) ??
+    failure.defaultUserMessage;
+```
+
+`getTextOrNull`, never `getText` — the latter echoes the key on a miss and would
+show `login.failed` to a user instead of the fallback.
+
+An exception is raised where a resource tree may not exist yet — early start-up,
+a worker isolate, a unit test — and `getAppResources()` throws there rather than
+degrading quietly. Resolving on construction would carry that failure into the
+situations where reporting one matters most, so the lookup stays with the layer
+that already knows a tree is installed.
+
 ---
 
 Part of [`tom_core_flutter`](../../../../README.md) — see the package README for
