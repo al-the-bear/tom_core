@@ -2,6 +2,16 @@
 
 ### Added
 
+- **A persisted value equal to the baseline no longer reports a holder as dirty
+  (tcopen201).** `hasUnsavedChanges` counted such an entry, because `save()`
+  would indeed drop it — so a freshly loaded, untouched holder answered `true`,
+  which is the warning the getter was added to stop `hasOverrides` producing,
+  reappearing for one input. It now agrees with `isOverridden` and with `save()`
+  about what an override is: a persisted value that *reads as* the baseline
+  (coerced, since the store may spell `3` as `'3'`) is not one. A persisted
+  override the user has reset back to the baseline still is, and that
+  distinction is what the comparison turns on.
+
 - **`hasUnsavedChanges` (tcopen199).** There was no way to ask whether anything
   was unsaved, and the obvious substitute is wrong in the direction that warns
   every time. `hasOverrides` means "differs from **baseline**" — a fact about
@@ -28,6 +38,24 @@
   it is not a dirty flag.
 
 ### Documentation
+
+- **The pin an install cannot make (tcopen201).** Only overrides are stored, so
+  a shipped default can still move in an app update — the module's central
+  decision. Its consequence was written down nowhere: a stored value that merely
+  *equals* the baseline is not an override either, so it survives `load()` and
+  is deleted by the next `save()`, after which the setting follows whatever the
+  shipped default becomes. "Keep this build's refresh interval whatever the next
+  update ships" is a real operation, and the module silently turns it into its
+  opposite, with no error and no signal.
+
+  Accepted rather than closed: pinning needs a third state per setting —
+  untouched / set-to-baseline / overridden — and a store format able to carry
+  it, which is a real format change for a use case nobody has asked for. What
+  changes is that `doc/configuration.md` Limitations, the `save()` dartdoc and
+  the completion document say so, and `test/configuration_test.dart` pins the
+  behaviour — including that a `save()` which starts keeping the key turns the
+  suite red rather than leaving the documentation describing a limitation
+  somebody has lifted.
 
 - **What sharing a store location actually costs (tcopen200).** The module
   documented the hazard as a narrow race — "re-reading means a holder preserves

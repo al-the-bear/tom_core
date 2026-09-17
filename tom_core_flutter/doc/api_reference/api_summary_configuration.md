@@ -85,7 +85,7 @@ Abstract base for a client app's machine-scoped settings holder.
 | `store` | `TomClientConfigurationStore?` | Where overrides are persisted; assignable after construction. |
 | `settings` | `Map<String, TomSetting>` | Every declared setting, keyed by dotted key (unmodifiable). |
 | `hasOverrides` | `bool` | Whether any setting differs from its baseline. **Not a dirty flag** — a setting `load` adopted from the store is already overridden with nothing unsaved. |
-| `hasUnsavedChanges` | `bool` | Whether `save` would write something other than what the store last held — a value changed, an override added, or an override dropped. The dirty flag a settings screen asks before it lets itself be dismissed. Reads no store: the comparison is against the snapshot the last `load` or `save` took, so it is answerable in a build. Keys this build does not declare are never unsaved, since `save` carries them forward untouched. With no store wired any override reads as unsaved. |
+| `hasUnsavedChanges` | `bool` | Whether `save` would write something other than what the store last held — a value changed, an override added, or an override dropped. The dirty flag a settings screen asks before it lets itself be dismissed. Reads no store: the comparison is against the snapshot the last `load` or `save` took, so it is answerable in a build. Keys this build does not declare are never unsaved, since `save` carries them forward untouched. With no store wired any override reads as unsaved. A persisted value that merely equals the baseline is not an override — `save` drops it and this does not report it — so an untouched holder that loaded one is not dirty. |
 
 ### TomSetting&lt;T&gt;
 

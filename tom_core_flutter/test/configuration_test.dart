@@ -400,6 +400,90 @@ void main() {
   // (this app, this machine), so two holders over one location are two sources
   // of truth for the same keys — and no merge rule reconciles them without
   // changing what `save()` means. See `doc/configuration.md`, Limitations.
+  // Only overrides are stored, so a shipped default can still move in an app
+  // update — the module's central decision, argued in the class documentation.
+  // This group is what keeps its consequence visible: a stored value that
+  // merely *equals* the baseline is not an override either, so it survives
+  // `load()` and is deleted by the next `save()`. An install therefore cannot
+  // pin a setting to the value it sees today, which is a real operation the
+  // module silently turns into its opposite.
+  group('a persisted value equal to the baseline', () {
+    test('survives load and is dropped by the next save', () async {
+      final store = TomMemoryClientConfigurationStore({'client.retries': 3});
+      final config = _TestConfiguration(store: store);
+
+      await config.load();
+      expect(~config.retries, 3, reason: 'the value is applied and is right');
+      expect(config.retries.isOverridden, isFalse);
+
+      await config.save();
+
+      expect(
+        await store.read(),
+        isEmpty,
+        reason:
+            'if this now keeps the key, the module has gained the ability to '
+            'pin a value and the Limitations section is out of date',
+      );
+    });
+
+    test('and the holder is not reported as dirty before that save', () async {
+      // `hasUnsavedChanges` agrees with `isOverridden` and with `save()` about
+      // what an override is. Counting this entry would warn on a freshly
+      // loaded, untouched holder — the defect the getter exists to prevent.
+      final config = _TestConfiguration(
+        store: TomMemoryClientConfigurationStore({'client.retries': 3}),
+      );
+
+      await config.load();
+
+      expect(config.hasOverrides, isFalse);
+      expect(config.hasUnsavedChanges, isFalse);
+    });
+
+    test('even when the store spells it in another type', () async {
+      // The store round-trips JSON and a config file may spell `3` as `'3'`,
+      // so the comparison has to coerce. Raw equality would call this dirty.
+      final config = _TestConfiguration(
+        store: TomMemoryClientConfigurationStore({'client.retries': '3'}),
+      );
+
+      await config.load();
+
+      expect(~config.retries, 3);
+      expect(config.hasUnsavedChanges, isFalse);
+    });
+
+    test('and changing it away from the baseline is unsaved work', () async {
+      // The skip must not swallow a real edit to the same key.
+      final config = _TestConfiguration(
+        store: TomMemoryClientConfigurationStore({'client.retries': 3}),
+      );
+      await config.load();
+
+      config.retries | 11;
+
+      expect(config.hasUnsavedChanges, isTrue);
+    });
+
+    test(
+      'a persisted override reset to the baseline is still unsaved work',
+      () async {
+        // The case the skip must not be confused with: here the stored value is
+        // 9, the user reset to 3, and the store still holds an override this
+        // holder has dropped.
+        final config = _TestConfiguration(
+          store: TomMemoryClientConfigurationStore({'client.retries': 9}),
+        );
+        await config.load();
+
+        config.reset('client.retries');
+
+        expect(config.hasUnsavedChanges, isTrue);
+      },
+    );
+  });
+
   group('two holders over one store location', () {
     test(
       'a key the saving holder does not declare is carried forward',

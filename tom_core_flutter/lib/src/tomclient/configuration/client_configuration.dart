@@ -50,6 +50,24 @@ class TomSetting<T> extends TomObject<T> {
   /// Notifies observers when the value actually changes, like any other set.
   void reset() => set(baseline);
 
+  /// Whether [raw] reads as this setting's [baseline].
+  ///
+  /// The store is loosely typed — a `3` may arrive as `'3'` — so the comparison
+  /// coerces first. Used by [TomBaseClientConfiguration.hasUnsavedChanges] to
+  /// recognise a persisted entry that is not an override: [save] does not write
+  /// one and [isOverridden] does not report one, so a holder that loaded one
+  /// and was not touched has nothing unsaved.
+  ///
+  /// A value that will not coerce cannot be the baseline, but it also cannot
+  /// reach here: [TomBaseClientConfiguration.load] throws on it first.
+  bool _readsAsBaseline(Object? raw) {
+    try {
+      return coerceSettingValue<T>(key, raw) == baseline;
+    } on TomClientConfigurationException {
+      return false;
+    }
+  }
+
   /// Applies a raw (store- or config-shaped) value, coercing it to [T].
   ///
   /// Throws [TomClientConfigurationException]
@@ -293,7 +311,16 @@ abstract class TomBaseClientConfiguration extends TomObservable
     final live = _declaredOverrides;
     var persisted = 0;
     for (final entry in _persisted.entries) {
-      if (!_settings.containsKey(entry.key)) continue;
+      final setting = _settings[entry.key];
+      if (setting == null) continue;
+      // A persisted value that reads as the baseline is not an override: [save]
+      // does not write it and [isOverridden] does not report it. Counting it
+      // would report a freshly loaded, untouched holder as dirty — the warning
+      // this getter exists to stop [hasOverrides] producing, reappearing for
+      // one input. That such an entry is nevertheless *dropped* by the next
+      // save is the documented consequence of storing overrides only; see
+      // [save].
+      if (setting._readsAsBaseline(entry.value)) continue;
       persisted++;
       if (!live.containsKey(entry.key)) return true;
       if (live[entry.key] != entry.value) return true;
@@ -417,6 +444,15 @@ abstract class TomBaseClientConfiguration extends TomObservable
   /// A setting sitting at its baseline is *not* written, and is removed from
   /// the store if it was there before; see the class documentation for why
   /// storing the full value set would be wrong.
+  ///
+  /// That applies to a persisted value which merely *equals* the baseline, and
+  /// the consequence is worth stating: **an install cannot pin a setting to the
+  /// value it sees today.** Such a key survives [load] — it is applied, and it
+  /// is the right value — and is deleted by the next save, after which the
+  /// setting follows whatever the shipped default becomes. There is no error
+  /// and no signal; pinning would need a third state per setting (untouched /
+  /// set-to-baseline / overridden) and a store format able to carry it, which
+  /// the module does not have.
   ///
   /// Keys in the store that this build does not declare are carried forward
   /// untouched. A build that has dropped a setting — or an older build during

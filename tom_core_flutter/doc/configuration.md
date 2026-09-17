@@ -280,6 +280,18 @@ text:
   when you asked.
 - **No web file store.** See `client_configuration.store.unsupported_platform`
   above; supply a browser-appropriate store explicitly.
+- **An install cannot pin a setting to the value it sees today.** Only overrides
+  are stored, and a stored value that merely *equals* the baseline is not one:
+  it survives `load()` — it is applied, and it is the right value — and is
+  deleted by the next `save()`, after which the setting follows whatever the
+  shipped default becomes. There is no error and no signal. "Keep this build's
+  refresh interval whatever the next update ships" is a real operation, and the
+  module silently turns it into its opposite. Pinning would need a third state
+  per setting — untouched / set-to-baseline / overridden — and a store format
+  able to carry it; the override-only design is deliberate and is what lets a
+  shipped default still move, so this is the price of it rather than an
+  oversight. `hasUnsavedChanges` agrees with `save()` about such a key and does
+  not report an untouched holder as dirty because of one.
 - **No autosave.** `save()` is the only write path, so a screen that changes a
   setting and is dismissed without calling it loses the change on the next
   start. What the holder *can* do is answer whether that would happen — see
