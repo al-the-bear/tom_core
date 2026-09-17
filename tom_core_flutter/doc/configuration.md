@@ -134,8 +134,42 @@ behind behaviour that merely looks correct.
 | `save()` | Persist the overrides, and only those |
 | `store` | The override store; may be wired after construction. Changing it discards the loaded snapshot, keeps the settings — call `load()` to adopt the new store |
 | `settings` / `settingFor(key)` | The declared settings, addressable as a set |
-| `isOverridden(key)` / `hasOverrides` | Whether the install has changed something |
+| `isOverridden(key)` / `hasOverrides` | Whether a setting differs from its **baseline** — a fact about the install, not a dirty flag |
+| `hasUnsavedChanges` | Whether `save()` would write something other than what the store last held |
 | `reset(key)` / `resetAll()` | Drop overrides in memory (call `save()` to make it stick) |
+
+### Unsaved changes
+
+`hasOverrides` answers "has the install changed something", and that is not the
+question a settings screen asks before it lets itself be dismissed. A setting
+`load()` adopted from the store is already overridden with nothing unsaved, so
+`if (config.hasOverrides) warn()` warns every time, on a holder that was loaded
+and never touched.
+
+`hasUnsavedChanges` is the dirty flag: `true` exactly when `save()` would write
+something other than what the store last held — a value changed, an override
+added, or an override **dropped**, since a removal is unsaved work too.
+
+```dart
+if (config.hasUnsavedChanges) {
+  final keep = await confirmDiscard(context);
+  if (!keep) return;
+}
+Navigator.of(context).pop();
+```
+
+It reads no store, so it is answerable in a build or a dismiss guard where there
+is no `await` — the comparison is against the snapshot the last `load()` or
+`save()` took. It changes only when a setting changes, so a widget observing the
+holder re-reads it at exactly the right moments. Keys this build does not
+declare are never unsaved: `save()` carries them forward untouched, so nothing
+here can make them differ. With no store wired there is no snapshot and any
+override reads as unsaved — the honest answer, and a getter rather than a throw
+because a dismiss guard has to be answerable.
+
+There is still no autosave: `save()` remains the only write path, and a screen
+that changes a setting and is dismissed without calling it loses the change.
+What has changed is that the screen can now *ask*.
 
 ### `TomSetting<T>`
 
@@ -246,6 +280,11 @@ text:
   when you asked.
 - **No web file store.** See `client_configuration.store.unsupported_platform`
   above; supply a browser-appropriate store explicitly.
+- **No autosave.** `save()` is the only write path, so a screen that changes a
+  setting and is dismissed without calling it loses the change on the next
+  start. What the holder *can* do is answer whether that would happen — see
+  [Unsaved changes](#unsaved-changes) — so the warning is the caller's to show,
+  not the caller's to derive.
 - **No per-field validation, and no hook to add one.** The type is enforced, the
   value is not: `-1` is an acceptable refresh interval and `''` an acceptable
   server URL. `TomSetting`'s constructor is private, so a validating subclass

@@ -472,6 +472,123 @@ void main() {
     });
   });
 
+  // The question a settings screen asks before it lets itself be dismissed, and
+  // the one `hasOverrides` cannot answer: "differs from baseline" is a fact
+  // about the install, so a holder that `load` filled from the store is already
+  // overridden with nothing unsaved.
+  group('unsaved changes', () {
+    test('a freshly loaded holder is overridden and not dirty', () async {
+      // The confusion stated as a test. A screen guarding its dismiss with
+      // `if (hasOverrides) warn()` warns here, on a holder nobody has touched.
+      final config = _TestConfiguration(
+        store: TomMemoryClientConfigurationStore({'client.retries': 9}),
+      );
+
+      await config.load();
+
+      expect(config.hasOverrides, isTrue);
+      expect(config.hasUnsavedChanges, isFalse);
+    });
+
+    test('changing a setting makes it dirty, saving makes it clean', () async {
+      final config = _TestConfiguration(
+        store: TomMemoryClientConfigurationStore({'client.retries': 9}),
+      );
+      await config.load();
+
+      config.retries | 11;
+      expect(config.hasUnsavedChanges, isTrue);
+
+      await config.save();
+      expect(config.hasUnsavedChanges, isFalse);
+    });
+
+    test('adding an override the store never had is dirty', () async {
+      final config = _TestConfiguration(
+        store: TomMemoryClientConfigurationStore({'client.retries': 9}),
+      );
+      await config.load();
+
+      config.darkMode | true;
+
+      expect(config.hasUnsavedChanges, isTrue);
+    });
+
+    test('dropping a persisted override is unsaved work too', () async {
+      // A removal is a change to what the store should hold, and the naive
+      // "any setting is overridden" reading calls this one clean — which is the
+      // direction that loses work silently.
+      final config = _TestConfiguration(
+        store: TomMemoryClientConfigurationStore({'client.retries': 9}),
+      );
+      await config.load();
+
+      config.reset('client.retries');
+
+      expect(config.hasOverrides, isFalse);
+      expect(
+        config.hasUnsavedChanges,
+        isTrue,
+        reason: 'the store still holds an override this holder has dropped',
+      );
+    });
+
+    test('resetAll on a loaded holder is dirty until it is saved', () async {
+      final config = _TestConfiguration(
+        store: TomMemoryClientConfigurationStore({
+          'client.retries': 9,
+          'client.darkMode': true,
+        }),
+      );
+      await config.load();
+
+      config.resetAll();
+      expect(config.hasUnsavedChanges, isTrue);
+
+      await config.save();
+      expect(config.hasUnsavedChanges, isFalse);
+    });
+
+    test('a key this build does not declare is never unsaved', () async {
+      // `save` carries a foreign key forward untouched, so nothing this holder
+      // does can make it differ. Counting it would leave a settings screen
+      // permanently dirty because an older build wrote a setting this one
+      // dropped.
+      final config = _TestConfiguration(
+        store: TomMemoryClientConfigurationStore({'client.gone': 'legacy'}),
+      );
+
+      await config.load();
+
+      expect(config.hasUnsavedChanges, isFalse);
+    });
+
+    test('with no store wired an override reads as unsaved', () async {
+      // There is nowhere it could have been saved, and the getter has to answer
+      // rather than throw: a dismiss guard runs where an exception is not an
+      // option.
+      final config = _TestConfiguration();
+
+      expect(config.hasUnsavedChanges, isFalse);
+      config.retries | 11;
+      expect(config.hasUnsavedChanges, isTrue);
+    });
+
+    test('pointing at a different store discards the snapshot', () async {
+      // The snapshot describes the store it was read from. Keeping it across a
+      // swap would report a holder as clean against a store it has never read.
+      final config = _TestConfiguration(
+        store: TomMemoryClientConfigurationStore({'client.retries': 9}),
+      );
+      await config.load();
+      expect(config.hasUnsavedChanges, isFalse);
+
+      config.store = TomMemoryClientConfigurationStore();
+
+      expect(config.hasUnsavedChanges, isTrue);
+    });
+  });
+
   group('observation', () {
     test('a per-field observer sees only its own setting', () {
       final config = _TestConfiguration();

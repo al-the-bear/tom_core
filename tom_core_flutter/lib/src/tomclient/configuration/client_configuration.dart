@@ -259,7 +259,60 @@ abstract class TomBaseClientConfiguration extends TomObservable
   TomSetting? settingFor(String key) => _settings[key];
 
   /// Whether any setting currently differs from its baseline.
+  ///
+  /// **Not a dirty flag.** "Differs from baseline" is a fact about the
+  /// *install*, not about this session: a setting `load` adopted from the store
+  /// is already overridden with nothing unsaved, so a screen guarding its
+  /// dismiss with `if (hasOverrides) warn()` warns every time on a holder that
+  /// was loaded and never touched. The question a settings screen is asking is
+  /// [hasUnsavedChanges].
   bool get hasOverrides => _settings.values.any((s) => s.isOverridden);
+
+  /// Whether [save] would write something other than what the store last held.
+  ///
+  /// The dirty flag: `true` exactly when this holder's overrides differ from
+  /// the snapshot taken by the last [load] or [save] — a value changed, an
+  /// override added, or an override dropped, since a *removal* is unsaved work
+  /// too. Contrast [hasOverrides], which compares against the baseline and so
+  /// answers a question about the install rather than about this session.
+  ///
+  /// Reads no store. It is meant to be asked during a build or a dismiss guard,
+  /// where an `await` is not available and a round trip would be wrong anyway;
+  /// the comparison is against the holder's own snapshot. It also changes only
+  /// when a setting changes, so a widget observing the holder re-reads it at
+  /// exactly the right moments.
+  ///
+  /// Keys in the store this build does not declare are never unsaved: [save]
+  /// carries them forward untouched, so nothing here can make them differ.
+  ///
+  /// With no store wired there is no snapshot, so any override reads as
+  /// unsaved. That is the honest answer — the changes are not persisted and
+  /// there is nowhere to persist them — and it is a getter rather than a throw
+  /// because a dismiss guard has to be answerable.
+  bool get hasUnsavedChanges {
+    final live = _declaredOverrides;
+    var persisted = 0;
+    for (final entry in _persisted.entries) {
+      if (!_settings.containsKey(entry.key)) continue;
+      persisted++;
+      if (!live.containsKey(entry.key)) return true;
+      if (live[entry.key] != entry.value) return true;
+    }
+    // Counted rather than compared whole, so an override added since the
+    // snapshot is caught without building a second map to diff against.
+    return live.length != persisted;
+  }
+
+  /// The overrides this holder would contribute to the store, by key.
+  ///
+  /// The one definition of "what this build has to say about the store", read
+  /// by both [save] and [hasUnsavedChanges]. Two copies would be two answers to
+  /// "is there anything to save", and the getter would eventually disagree with
+  /// the writer it is supposed to predict.
+  Map<String, Object?> get _declaredOverrides => {
+    for (final setting in _settings.values)
+      if (setting.isOverridden) setting.key: setting.get(),
+  };
 
   // ---------------------------------------------------------------------------
   // Declaration
@@ -393,12 +446,8 @@ abstract class TomBaseClientConfiguration extends TomObservable
     final overrides = <String, Object?>{
       for (final entry in live.entries)
         if (!_settings.containsKey(entry.key)) entry.key: entry.value,
+      ..._declaredOverrides,
     };
-    for (final setting in _settings.values) {
-      if (setting.isOverridden) {
-        overrides[setting.key] = setting.get();
-      }
-    }
     await store.write(overrides);
     _persisted = overrides;
   }

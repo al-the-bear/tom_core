@@ -1,5 +1,32 @@
 ## 1.2.1
 
+### Added
+
+- **`hasUnsavedChanges` (tcopen199).** There was no way to ask whether anything
+  was unsaved, and the obvious substitute is wrong in the direction that warns
+  every time. `hasOverrides` means "differs from **baseline**" — a fact about
+  the install — so a setting `load()` adopted from the store is already
+  overridden with nothing unsaved, and a screen guarding its dismiss with
+  `if (hasOverrides) warn()` warns on a holder that was loaded and never
+  touched. `doc/configuration.md` invited exactly that reading, labelling it
+  "whether the install has changed something".
+
+  The holder already kept the answer: `_persisted` is what the store last held.
+  `hasUnsavedChanges` is `true` exactly when `save()` would write something
+  else — a value changed, an override added, or an override **dropped**, since a
+  removal is unsaved work too. It reads no store, so it is answerable in a build
+  or a dismiss guard; keys this build does not declare are never unsaved,
+  because `save()` carries them forward untouched; and with no store wired any
+  override reads as unsaved rather than throwing, because a dismiss guard has to
+  be answerable.
+
+  `save()` and the new getter now build the override map through one private
+  helper. Two copies would be two answers to "is there anything to save", and
+  the getter would eventually disagree with the writer it exists to predict.
+
+  `hasOverrides` keeps its meaning and its name and says in its own dartdoc that
+  it is not a dirty flag.
+
 ### Documentation
 
 - **The single load/resetAll notification survives a caller's own mute
