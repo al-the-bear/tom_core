@@ -67,6 +67,29 @@ class _TestConfiguration extends TomBaseClientConfiguration {
   }
 }
 
+/// A holder whose two settings name environment variables.
+///
+/// Separate from [_TestConfiguration] on purpose: an `envAlias` changes what
+/// `load`, `save` and `reset` do to a setting, so putting one in the shared
+/// fixture would quietly change the subject of every test that counts the
+/// document `save` writes.
+class _EnvConfiguration extends TomBaseClientConfiguration {
+  _EnvConfiguration({super.store});
+
+  late final TomSetting<String> endpoint;
+  late final TomSetting<int> retries;
+
+  @override
+  void declareSettings() {
+    endpoint = stringSetting(
+      'client.endpoint',
+      'https://default.example',
+      envAlias: 'APP_ENDPOINT',
+    );
+    retries = intSetting('client.retries', 3, envAlias: 'APP_RETRIES');
+  }
+}
+
 /// A holder with a single `String` setting and no other type.
 ///
 /// The echo a missing key can produce is a `String`, so `String` is the one
@@ -407,6 +430,160 @@ void main() {
   // `load()` and is deleted by the next `save()`. An install therefore cannot
   // pin a setting to the value it sees today, which is a real operation the
   // module silently turns into its opposite.
+  // Layer 0 of the resolution order, and the one the module's own headline use
+  // case wants: "point this install at a different server" is what an installer
+  // or a CI job does with a variable, not by editing a file or shipping a build.
+  //
+  // It sits *above* the persisted override because the two answer different
+  // people — an override is what this install chose, a variable is what the
+  // operator who launched it decided — and a layer the install could quietly
+  // out-vote would not configure a deployment at all. Everything below follows
+  // from that one placement.
+  group('the environment layer', () {
+    setUp(() {
+      addTearDown(TomClientEnvironment.useDefaultReader);
+    });
+
+    void environment(Map<String, String> values) {
+      TomClientEnvironment.reader = (name) => values[name];
+    }
+
+    test('an unset variable leaves the layers below alone', () {
+      environment({});
+      final config = _EnvConfiguration();
+
+      expect(~config.endpoint, 'https://default.example');
+      expect(config.endpoint.isFromEnvironment, isFalse);
+      expect(config.endpoint.envAlias, 'APP_ENDPOINT');
+    });
+
+    test('a set variable supplies the value', () {
+      environment({'APP_ENDPOINT': 'https://staging.example'});
+      final config = _EnvConfiguration();
+
+      expect(~config.endpoint, 'https://staging.example');
+      expect(config.endpoint.isFromEnvironment, isTrue);
+    });
+
+    test('and outranks a persisted override', () async {
+      // The placement, stated as the case that decides it.
+      environment({'APP_ENDPOINT': 'https://staging.example'});
+      final config = _EnvConfiguration(
+        store: TomMemoryClientConfigurationStore({
+          'client.endpoint': 'https://stored.example',
+        }),
+      );
+
+      await config.load();
+
+      expect(~config.endpoint, 'https://staging.example');
+    });
+
+    test('an empty value is set, not absent', () {
+      // `APP_ENDPOINT=` is an operator saying "present and empty". Reading it
+      // as unset would send the setting to a shipped default the operator was
+      // deliberately replacing.
+      environment({'APP_ENDPOINT': ''});
+      final config = _EnvConfiguration();
+
+      expect(~config.endpoint, '');
+      expect(config.endpoint.isFromEnvironment, isTrue);
+    });
+
+    test('the value is coerced, and a bad one fails at declaration', () {
+      environment({'APP_RETRIES': '11'});
+      expect(~_EnvConfiguration().retries, 11);
+
+      environment({'APP_RETRIES': 'not-a-number'});
+      expect(
+        _EnvConfiguration.new,
+        throwsConfigException('client_configuration.value.type_mismatch'),
+        reason:
+            'a typo in a deployment variable has to fail where it names the '
+            'key, not at the first read of whatever screen shows it',
+      );
+    });
+
+    test('save never writes an environment-configured setting', () async {
+      // The other half of "outranks the override": if it were written, the
+      // operator's value would outlive the variable being unset.
+      environment({'APP_ENDPOINT': 'https://staging.example'});
+      final store = TomMemoryClientConfigurationStore();
+      final config = _EnvConfiguration(store: store);
+      await config.load();
+
+      await config.save();
+
+      expect(await store.read(), isEmpty);
+      expect(config.endpoint.isOverridden, isFalse);
+      expect(config.hasOverrides, isFalse);
+      expect(config.hasUnsavedChanges, isFalse);
+    });
+
+    test('and unsetting it later restores the layers below', () async {
+      // The consequence of not writing it, driven end to end: the store never
+      // held the operator's value, so a run without the variable resolves from
+      // the shipped default.
+      environment({'APP_ENDPOINT': 'https://staging.example'});
+      final store = TomMemoryClientConfigurationStore();
+      await _EnvConfiguration(store: store).load();
+      await _EnvConfiguration(store: store).save();
+
+      environment({});
+      final after = _EnvConfiguration(store: store);
+      await after.load();
+
+      expect(~after.endpoint, 'https://default.example');
+    });
+
+    test('reset restores the operator value, not the baseline', () async {
+      // `reset` means "drop the install's override". The environment is not the
+      // install's override, so dropping it would be resetting somebody else's
+      // decision.
+      environment({'APP_ENDPOINT': 'https://staging.example'});
+      final config = _EnvConfiguration();
+
+      config.endpoint | 'https://typed-by-the-user.example';
+      config.reset('client.endpoint');
+
+      expect(~config.endpoint, 'https://staging.example');
+    });
+
+    test('an in-memory change does not survive a reload', () async {
+      // `set` is not taken away — a TomSetting is a TomObject and removing the
+      // setter would remove the observable with it — so the guarantee is that
+      // nothing persists the change and a reload puts the operator's value
+      // back. A settings screen reads `isFromEnvironment` and disables the
+      // field; this is what happens if it does not.
+      environment({'APP_ENDPOINT': 'https://staging.example'});
+      final store = TomMemoryClientConfigurationStore();
+      final config = _EnvConfiguration(store: store);
+      await config.load();
+
+      config.endpoint | 'https://typed-by-the-user.example';
+      await config.save();
+      await config.load();
+
+      expect(~config.endpoint, 'https://staging.example');
+      expect(await store.read(), isEmpty);
+    });
+
+    test('a setting with no alias is untouched by the layer', () async {
+      // The control: declaring one env-aliased setting must not change how its
+      // neighbours behave.
+      environment({'APP_ENDPOINT': 'https://staging.example'});
+      final store = TomMemoryClientConfigurationStore();
+      final config = _EnvConfiguration(store: store);
+      await config.load();
+
+      config.retries | 9;
+      await config.save();
+
+      expect(await store.read(), {'client.retries': 9});
+      expect(config.retries.isFromEnvironment, isFalse);
+    });
+  });
+
   group('a persisted value equal to the baseline', () {
     test('survives load and is dropped by the next save', () async {
       final store = TomMemoryClientConfigurationStore({'client.retries': 3});

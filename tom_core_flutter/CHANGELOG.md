@@ -2,6 +2,44 @@
 
 ### Added
 
+- **An environment layer for client settings (tcopen202).** Resolution had three
+  layers — persisted override, shipped config resource, declared default — and
+  no way for an operator to configure an install. That is the module's own
+  headline use case: every artefact opens with "the server URL to talk to ... an
+  installer can point at a different environment", and an environment variable
+  is how an installer or a CI job does that without editing a file or shipping a
+  build. The CodeSpecs model for this exact scope already named the field
+  (`CsClientConfig.envAlias`), so the runtime was behind a decision that had
+  been made.
+
+  The four declaration methods take `envAlias:`, and a variable the reader
+  reports set becomes **layer 0** — above the persisted override, because the
+  two answer different people: an override is what this install chose, a
+  variable is what the operator who launched it decided. A layer the install
+  could quietly out-vote would not configure a deployment.
+
+  Four consequences follow from that placement rather than being separate rules.
+  `save()` never writes such a setting, so unsetting the variable restores the
+  layers below instead of finding the operator's value baked into the store;
+  `isOverridden` is `false` for one, so it is absent from `hasOverrides` and
+  `hasUnsavedChanges`; `reset()` restores the operator's value, since "drop the
+  install's override" cannot mean "drop somebody else's decision"; and `load()`
+  restores it too, because `load()` produces the state a fresh start would
+  produce.
+
+  `TomClientEnvironment.reader` is where the value comes from, selected through
+  the same `dart.library.io` conditional as the file store — the process
+  environment where there is one, `null` where there is not. A browser has no
+  environment and a mobile app is launched by the OS; those platforms answer the
+  question with a `--dart-define`, a startup fetch or an MDM payload, and only
+  the app knows which, so the reader is replaceable rather than the framework
+  picking one source and calling it *the* environment.
+
+  A value counts as set when the reader answers non-null, the empty string
+  included — `APP_SERVER_URL=` is an operator saying "present and empty". It is
+  coerced like any other external value, so `APP_RETRIES=abc` against an `int`
+  setting throws at declaration, where it names the key.
+
 - **A persisted value equal to the baseline no longer reports a holder as dirty
   (tcopen201).** `hasUnsavedChanges` counted such an entry, because `save()`
   would indeed drop it — so a freshly loaded, untouched holder answered `true`,

@@ -15,6 +15,7 @@ they are observable, writable, persistent, and addressable as a set.
 - [Scope](#scope)
 - [Quick Start](#quick-start)
 - [Resolution Order](#resolution-order)
+  - [The environment layer](#the-environment-layer)
 - [Core Components](#core-components)
 - [Observation](#observation)
 - [Persistence](#persistence)
@@ -106,6 +107,8 @@ exactly those that survive a JSON round-trip through a store.
 
 Highest precedence first:
 
+0. the **environment** — when the setting declares an `envAlias` and
+   `TomClientEnvironment` reports it set;
 1. the **persisted override** — what this install last saved;
 2. the **shipped config-resources value** for the key
    (`TomConfigResourceProvider`);
@@ -114,6 +117,62 @@ Highest precedence first:
 Layers 2–3 form the setting's `baseline`, resolved once at declaration time.
 A setting is *overridden* exactly when its value differs from that baseline —
 and that is precisely the set `save()` persists.
+
+### The environment layer
+
+```dart
+serverUrl = stringSetting(
+  'client.server.url',
+  'https://api.example.com',
+  envAlias: 'APP_SERVER_URL',
+);
+```
+
+`APP_SERVER_URL=https://staging.example` then decides that setting for the run.
+This is the ordinary way an installer points a build at a different environment,
+or a CI job runs a suite against a throwaway endpoint, without editing a file or
+shipping a build.
+
+**It outranks the override**, and that placement is the whole design. The two
+layers answer different people: an override is what *this install* chose, an
+environment variable is what the **operator who launched it** decided. A layer
+the install could quietly out-vote would not configure a deployment at all.
+
+Four things follow, and each is a consequence rather than a separate rule:
+
+- `save()` **never writes** an environment-configured setting, so unsetting the
+  variable later restores the layers below instead of finding the operator's
+  value baked into the store;
+- `isOverridden` is `false` for one — the install has not overridden it — so it
+  is absent from `hasOverrides` and from `hasUnsavedChanges` too;
+- `reset()` restores the **operator's** value, not the baseline: "drop the
+  install's override" cannot mean "drop somebody else's decision";
+- `load()` restores it as well, because `load()` produces the state a fresh
+  start would produce and a fresh start reads the environment.
+
+A value is *set* when the reader returns non-null, including the empty string:
+`APP_SERVER_URL=` is an operator saying "present and empty", and reading that as
+absent would send the setting to a shipped default they were deliberately
+replacing. The value is coerced like any other external one, so
+`APP_RETRIES=abc` against an `int` setting throws
+`client_configuration.value.type_mismatch` at declaration — where it names the
+key — rather than at the first read of whatever screen shows it.
+
+`TomSetting.isFromEnvironment` is what a settings screen reads to disable the
+field. The setter is not taken away — a `TomSetting` is a `TomObject`, and
+removing its setter would remove the observable with it — so a screen that does
+not check it lets the user type a value that nothing persists and that the next
+`load()` replaces.
+
+**Where the value comes from is the app's choice.** `TomClientEnvironment.reader`
+starts as the process environment where there is one, and answers `null` where
+there is not: a browser has no environment, and a mobile app is launched by the
+OS rather than by a shell. Those platforms have their own answer — a
+`--dart-define` baked at build time, a value fetched at startup, an
+MDM-delivered payload — and only the app knows which, so it replaces the reader
+rather than the framework picking one and calling it *the* environment. Replace
+it **before** the holder is constructed; settings resolve their environment
+value at declaration, which happens in the constructor.
 
 External values are loosely typed (a JSON store, a YAML config file), so the
 readings with exactly one sensible interpretation are accepted: the exact type,
@@ -333,6 +392,6 @@ text:
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:convert` | dart | `file_configuration_store_io.dart` | `jsonDecode`, `jsonEncode` |
-| `dart:io` | dart | `file_configuration_store_io.dart` | `File` |
+| `dart:io` | dart | `environment_reader_io.dart`, `file_configuration_store_io.dart` | `File`, `Platform` |
 | `tom_core_kernel` | package | `client_configuration.dart`, `client_configuration_store.dart` | `TomObservable` / `TomObject` (the observation substrate), `TomConfigResourceProvider` (the shipped config layer), `TomException` |
 | [little_things](little_things.md) | module | `client_configuration_store.dart` | `TomClientException` |

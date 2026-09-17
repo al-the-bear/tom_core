@@ -1,6 +1,35 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'client_configuration_store.dart';
+import 'environment_reader.dart';
+
+/// Where a setting's [TomSetting.envAlias] is looked up.
+///
+/// A seam, not a test hook — though it is both. `dart:io`'s process environment
+/// is the right source on a desktop install and is what [reader] starts as, and
+/// it is empty or absent everywhere else: a browser has none, and a mobile app
+/// is launched by the OS rather than by a shell. Those platforms have their own
+/// answer to "what did the operator configure" — a `--dart-define` baked at
+/// build time, a value fetched at startup, an MDM-delivered payload — and only
+/// the app knows which. So the framework reads through one function the app can
+/// replace, rather than picking one and calling it *the* environment.
+///
+/// ```dart
+/// TomClientEnvironment.reader = (name) => myLaunchArguments[name];
+/// ```
+///
+/// Replace it **before** the holder is constructed: settings resolve their
+/// environment value at declaration, which happens in the constructor.
+abstract class TomClientEnvironment {
+  /// Reads [name], or answers `null` when it is not set.
+  ///
+  /// Defaults to the process environment where there is one and to a function
+  /// answering `null` where there is not.
+  static String? Function(String name) reader = readPlatformEnvironment;
+
+  /// Restores the platform default, undoing an assignment to [reader].
+  static void useDefaultReader() => reader = readPlatformEnvironment;
+}
 
 /// One observable, addressable client setting.
 ///
@@ -22,7 +51,13 @@ import 'client_configuration_store.dart';
 /// [TomBaseClientConfiguration.save] persists. Nothing else needs to track
 /// dirtiness.
 class TomSetting<T> extends TomObject<T> {
-  TomSetting._(this.key, this.declaredDefault, this.baseline) : super(baseline);
+  TomSetting._(
+    this.key,
+    this.declaredDefault,
+    this.baseline,
+    this.envAlias,
+    this.isFromEnvironment,
+  ) : super(baseline);
 
   /// The dotted configuration key — the setting's stable identity.
   final String key;
@@ -42,13 +77,47 @@ class TomSetting<T> extends TomObject<T> {
   /// what gets persisted — depend on when you asked.
   final T baseline;
 
-  /// Whether the install has changed this setting away from its [baseline].
-  bool get isOverridden => get() != baseline;
+  /// The environment variable this setting may also be read from, verbatim, or
+  /// `null` when it is not declared with one.
+  ///
+  /// Looked up through [TomClientEnvironment.reader] at declaration time.
+  final String? envAlias;
 
-  /// Restores the [baseline], dropping the install's override.
+  /// Whether [TomClientEnvironment] supplied this setting's value.
+  ///
+  /// An environment-configured setting sits **above** the install's override:
+  /// [TomBaseClientConfiguration.load] does not adopt a stored value for it,
+  /// [TomBaseClientConfiguration.save] never writes it, and [reset] restores
+  /// the environment's value rather than the [baseline]. The operator has taken
+  /// the setting out of the install's hands.
+  ///
+  /// It is not enforced against `set`, because a [TomSetting] is a
+  /// [TomObject] and taking its setter away would take the observable with it.
+  /// An in-memory change simply does not survive: nothing persists it and
+  /// [reset] and a reload put the operator's value back. A settings screen
+  /// reads this to disable the field, which is what this member is for.
+  final bool isFromEnvironment;
+
+  /// Whether the **install** has changed this setting away from its [baseline].
+  ///
+  /// Always `false` for an [isFromEnvironment] setting: an operator's variable
+  /// is not the install's override, and reporting it as one would have [save]
+  /// bake the environment's value into the store — where it would outlive the
+  /// variable being unset.
+  bool get isOverridden => !isFromEnvironment && get() != baseline;
+
+  /// Restores the value this setting has with no install override.
+  ///
+  /// The [baseline] normally; the **environment's** value when
+  /// [isFromEnvironment], because that layer sits above the override and
+  /// resetting to the baseline would drop the operator's configuration rather
+  /// than the install's.
   ///
   /// Notifies observers when the value actually changes, like any other set.
-  void reset() => set(baseline);
+  void reset() => set(_environmentValue ?? baseline);
+
+  /// The coerced environment value, held so [reset] can restore it.
+  T? _environmentValue;
 
   /// Whether [raw] reads as this setting's [baseline].
   ///
@@ -346,26 +415,43 @@ abstract class TomBaseClientConfiguration extends TomObservable
   // ---------------------------------------------------------------------------
 
   /// Declares a `String` setting under the dotted [key].
-  TomSetting<String> stringSetting(String key, String declaredDefault) =>
-      _declare<String>(key, declaredDefault);
+  ///
+  /// [envAlias] names an environment variable that, when
+  /// [TomClientEnvironment] reports it set, supplies this setting's value and
+  /// takes it out of the install's hands — see [TomSetting.isFromEnvironment]
+  /// and the resolution order on this class.
+  TomSetting<String> stringSetting(
+    String key,
+    String declaredDefault, {
+    String? envAlias,
+  }) => _declare<String>(key, declaredDefault, envAlias);
 
   /// Declares an `int` setting under the dotted [key].
-  TomSetting<int> intSetting(String key, int declaredDefault) =>
-      _declare<int>(key, declaredDefault);
+  TomSetting<int> intSetting(
+    String key,
+    int declaredDefault, {
+    String? envAlias,
+  }) => _declare<int>(key, declaredDefault, envAlias);
 
   /// Declares a `double` setting under the dotted [key].
-  TomSetting<double> doubleSetting(String key, double declaredDefault) =>
-      _declare<double>(key, declaredDefault);
+  TomSetting<double> doubleSetting(
+    String key,
+    double declaredDefault, {
+    String? envAlias,
+  }) => _declare<double>(key, declaredDefault, envAlias);
 
   /// Declares a `bool` setting under the dotted [key].
-  TomSetting<bool> boolSetting(String key, bool declaredDefault) =>
-      _declare<bool>(key, declaredDefault);
+  TomSetting<bool> boolSetting(
+    String key,
+    bool declaredDefault, {
+    String? envAlias,
+  }) => _declare<bool>(key, declaredDefault, envAlias);
 
   // The four public declaration methods fix the value types to exactly those
   // that survive a JSON round-trip through the store. A public generic
   // `declare<T>` would let a caller declare a type the store cannot persist,
   // and the failure would surface at save time rather than at the declaration.
-  TomSetting<T> _declare<T>(String key, T declaredDefault) {
+  TomSetting<T> _declare<T>(String key, T declaredDefault, [String? envAlias]) {
     if (_settings.containsKey(key)) {
       throw TomClientConfigurationException(
         'client_configuration.key.duplicate',
@@ -393,10 +479,26 @@ abstract class TomBaseClientConfiguration extends TomObservable
     final baseline = configured != null
         ? coerceSettingValue<T>(key, configured)
         : declaredDefault;
-    final setting = TomSetting<T>._(key, declaredDefault, baseline);
-    // A setting declared after load() must still see its persisted override —
-    // registration order is not the caller's problem.
-    if (_persisted.containsKey(key)) {
+    // Layer 0. Read here rather than at every `get()` so that one declaration
+    // is one lookup, and so that a value the environment cannot supply as this
+    // type fails at start-up — where it names the key — rather than at the
+    // first read of a screen that happens to show it.
+    final raw = envAlias == null ? null : TomClientEnvironment.reader(envAlias);
+    final fromEnvironment = raw != null;
+    final setting = TomSetting<T>._(
+      key,
+      declaredDefault,
+      baseline,
+      envAlias,
+      fromEnvironment,
+    );
+    if (fromEnvironment) {
+      setting._environmentValue = coerceSettingValue<T>(key, raw);
+      setting.set(setting._environmentValue as T);
+    } else if (_persisted.containsKey(key)) {
+      // A setting declared after load() must still see its persisted override —
+      // registration order is not the caller's problem. An environment-bound
+      // one does not: the operator's value outranks the store's.
       setting.applyRaw(_persisted[key]);
     }
     setting.addObserver(this);
@@ -428,6 +530,16 @@ abstract class TomBaseClientConfiguration extends TomObservable
     try {
       for (final entry in _settings.entries) {
         final setting = entry.value;
+        // An environment-configured setting is not the store's to set, but it
+        // is still `load`'s to restore: this method promises the state a fresh
+        // start would produce, and a fresh start applies the operator's value.
+        // `reset` is that value for such a setting, which is why it is called
+        // here rather than skipped — an in-memory change made against the
+        // operator's decision does not survive a reload.
+        if (setting.isFromEnvironment) {
+          setting.reset();
+          continue;
+        }
         if (_persisted.containsKey(entry.key)) {
           setting.applyRaw(_persisted[entry.key]);
         } else {
@@ -443,7 +555,11 @@ abstract class TomBaseClientConfiguration extends TomObservable
   ///
   /// A setting sitting at its baseline is *not* written, and is removed from
   /// the store if it was there before; see the class documentation for why
-  /// storing the full value set would be wrong.
+  /// storing the full value set would be wrong. Neither is a setting the
+  /// environment configured — [TomSetting.isOverridden] is `false` for one, so
+  /// it never enters the written document, and unsetting the variable later
+  /// restores the layers below rather than finding the operator's value baked
+  /// in.
   ///
   /// That applies to a persisted value which merely *equals* the baseline, and
   /// the consequence is worth stating: **an install cannot pin a setting to the

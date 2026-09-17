@@ -11,6 +11,7 @@ install's overrides.
 - [Classes](#classes)
   - [TomBaseClientConfiguration](#tombaseclientconfiguration)
   - [TomSetting&lt;T&gt;](#tomsettingt)
+  - [TomClientEnvironment](#tomclientenvironment)
   - [TomClientConfigurationStore](#tomclientconfigurationstore)
   - [TomMemoryClientConfigurationStore](#tommemoryclientconfigurationstore)
   - [TomFileClientConfigurationStore](#tomfileclientconfigurationstore)
@@ -65,10 +66,10 @@ Abstract base for a client app's machine-scoped settings holder.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `declareSettings` | `void declareSettings()` | **Abstract.** Declares every setting; called from the constructor. |
-| `stringSetting` | `TomSetting<String> stringSetting(String key, String declaredDefault)` | Declares a `String` setting. |
+| `stringSetting` | `TomSetting<String> stringSetting(String key, String declaredDefault, {String? envAlias})` | Declares a `String` setting. `envAlias` names an environment variable that, when set, supplies the value and takes the setting out of the install's hands — layer 0 of the resolution order. |
 | `intSetting` | `TomSetting<int> intSetting(String key, int declaredDefault)` | Declares an `int` setting. |
-| `doubleSetting` | `TomSetting<double> doubleSetting(String key, double declaredDefault)` | Declares a `double` setting. |
-| `boolSetting` | `TomSetting<bool> boolSetting(String key, bool declaredDefault)` | Declares a `bool` setting. |
+| `doubleSetting` | `TomSetting<double> doubleSetting(String key, double declaredDefault, {String? envAlias})` | Declares a `double` setting. `envAlias` names an environment variable that, when set, supplies the value and takes the setting out of the install's hands — layer 0 of the resolution order. |
+| `boolSetting` | `TomSetting<bool> boolSetting(String key, bool declaredDefault, {String? envAlias})` | Declares a `bool` setting. `envAlias` names an environment variable that, when set, supplies the value and takes the setting out of the install's hands — layer 0 of the resolution order. |
 | `load` | `Future<void> load()` | Adopts the persisted overrides; idempotent; one notification. |
 | `save` | `Future<void> save()` | Persists the overrides only; carries forward undeclared persisted keys. |
 | `settingFor` | `TomSetting? settingFor(String key)` | The setting declared under `key`, or `null`. |
@@ -102,15 +103,43 @@ One observable, addressable setting.
 | `key` | `String` | The dotted configuration key — the setting's identity. |
 | `declaredDefault` | `T` | The default written at the declaration site. |
 | `baseline` | `T` | The value when the install has not overridden it. |
-| `isOverridden` | `bool` | `get() != baseline`. |
+| `envAlias` | `String?` | The environment variable this setting may also be read from, verbatim; `null` when it is declared without one. |
+| `isFromEnvironment` | `bool` | Whether `TomClientEnvironment` supplied the value. Such a setting is not loaded, not saved and not overridden; `reset` restores the operator's value. A settings screen reads this to disable the field — the setter is not taken away, since a `TomSetting` is a `TomObject`. |
+| `isOverridden` | `bool` | `!isFromEnvironment && get() != baseline`. An operator's variable is not the install's override, and reporting it as one would have `save` bake it into the store. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `reset` | `void reset()` | Restores `baseline`. |
+| `reset` | `void reset()` | Restores the value the setting has with no install override: `baseline`, or the **environment's** value when `isFromEnvironment`. |
 | `applyRaw` | `void applyRaw(Object? raw)` | Coerces a store/config-shaped value to `T` and sets it. |
 | `toString` | `String toString()` | `'key=value'`, with ` (overridden)` appended when it is. |
+
+### TomClientEnvironment
+
+Where a setting's `envAlias` is looked up. Abstract with a static-only surface.
+
+A seam rather than a fixed source: `dart:io`'s process environment is right on a
+desktop install and is what `reader` starts as, and it is absent everywhere else
+— a browser has none, a mobile app is launched by the OS. Those platforms answer
+"what did the operator configure" with a `--dart-define`, a value fetched at
+startup or an MDM payload, and only the app knows which. Replace `reader`
+**before** the holder is constructed: settings resolve their environment value at
+declaration.
+
+- **Extends:** none (abstract, static members only)
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `reader` | `String? Function(String name)` | Reads a variable, or answers `null` when it is not set. Defaults to the process environment where there is one. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `useDefaultReader` | `static void useDefaultReader()` | Restores the platform default, undoing an assignment to `reader`. |
 
 ### TomClientConfigurationStore
 

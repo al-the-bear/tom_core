@@ -27,6 +27,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | ---- | ---- | ----------- |
 | `TomBaseClientConfiguration` | class | Abstract holder of one install's machine-scoped settings. |
 | `TomSetting<T>` | class | One observable, addressable setting (`TomObject<T>` + key + baseline). |
+| `TomClientEnvironment` | abstract class | Where a setting's `envAlias` is looked up; the reader is replaceable. Statics only. |
 | `TomClientConfigurationStore` | class | Two-method (`read`/`write`) interface for persisting overrides. |
 | `TomMemoryClientConfigurationStore` | class | Process-lifetime override store. |
 | `TomFileClientConfigurationStore` | class | JSON file store (io variant; neutral variant throws). |
@@ -112,6 +113,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomBoolProperty` | Resources |
 | `TomClientConfigurationException` | Configuration |
 | `TomClientConfigurationStore` | Configuration |
+| `TomClientEnvironment` | Configuration |
 | `TomClientException` | Little Things |
 | `TomClientUIException` | Little Things |
 | `TomDevicePreferenceException` | Preferences |
