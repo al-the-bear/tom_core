@@ -2149,7 +2149,7 @@ void main() {
         final (txn, _) = TomTransactionManager.startTransaction();
         await txn.registerParticipant(ds);
 
-        expect(await txn.commitTransaction(), isTrue);
+        expect((await txn.commitTransaction()).isClean, isTrue);
 
         final branch = _branchOf(ds);
         expect(branch, isNot(contains('null')));
@@ -2183,7 +2183,7 @@ void main() {
       final (txn, _) = TomTransactionManager.startTransaction();
       await txn.registerParticipant(ds);
 
-      expect(await txn.rollbackTransaction(), isTrue);
+      expect((await txn.rollbackTransaction()).isClean, isTrue);
 
       final branch = _branchOf(ds);
       expect(ds.commands, [
@@ -2211,8 +2211,8 @@ void main() {
         await txn.registerParticipant(ds);
 
         expect(
-          await txn.commitTransaction(),
-          isFalse,
+          (await txn.commitTransaction()).outcome,
+          TomTransactionOutcome.partiallyCommitted,
           reason: 'a broken promise is reported, not repaired',
         );
 
@@ -2239,11 +2239,19 @@ void main() {
       final (txn, _) = TomTransactionManager.startTransaction();
       await txn.registerParticipant(ds);
 
+      // `rolledBackWithFailures`, not `rolledBack`, and the scripted failure is
+      // why: this driver refuses every `XA END`, and rolling back an ACTIVE
+      // branch has to end it first. So the branch that would not prepare will
+      // not roll back either — it is still there, holding its locks, with
+      // nothing but `XA RECOVER` to find it. That is precisely the outcome a
+      // boolean built from the `endTransaction` calls reported as success.
+      final result = await txn.commitTransaction();
       expect(
-        await txn.commitTransaction(),
-        isFalse,
+        result.outcome,
+        TomTransactionOutcome.rolledBackWithFailures,
         reason: 'the branch would not prepare, so nothing committed',
       );
+      expect(result.failed, [ds.getParticipantId()]);
 
       final branch = _branchOf(ds);
       expect(
@@ -2266,7 +2274,7 @@ void main() {
       final (txn, _) = TomTransactionManager.startTransaction();
       await txn.registerParticipant(ds);
 
-      expect(await txn.commitTransaction(), isTrue);
+      expect((await txn.commitTransaction()).isClean, isTrue);
       expect(ds.commands, ['START TRANSACTION;', 'COMMIT;']);
     });
   });

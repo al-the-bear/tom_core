@@ -12,6 +12,7 @@ handle around.
 - [The Participant Contract](#the-participant-contract)
 - [The Transaction Lifecycle](#the-transaction-lifecycle)
   - [Failure keys](#failure-keys)
+  - [The Result](#the-result)
 - [Ambient Access](#ambient-access)
 - [Transaction Scopes](#transaction-scopes)
 - [How the Pipeline Uses It](#how-the-pipeline-uses-it)
@@ -30,6 +31,8 @@ handle around.
 | ------ | ---- | ------- |
 | `TomTransactionParticipant` | abstract class | A resource that can enlist in a transaction |
 | `TomTransaction` | class | One unit of work coordinating its participants |
+| `TomTransactionResult` | class | What a conclusion did, and to whom |
+| `TomTransactionOutcome` | enum | What became of the work: committed, partially committed, rolled back, rolled back with failures |
 | `TomTransactionManager` | abstract class | Zone-scoped ambient access to the current transaction, and `runInTransaction` to drive one. Statics only |
 | `TomTransactionException` | class | Raised on an invalid transaction operation |
 
@@ -43,7 +46,7 @@ abstract class TomTransactionParticipant {
   Future<bool> startTransaction(TomTransaction transaction); // on enlistment
   Future<bool> prepare();          // phase one; returning false vetoes
   Future<bool> commit();           // phase two; the promise being kept
-  Future<void> rollback();         // undo on failure
+  Future<bool> rollback();         // undo on failure; false = it did not
   Future<bool> endTransaction();   // release resources, after commit or rollback
 }
 ```
@@ -157,14 +160,46 @@ The work is concluded one of two ways:
 - **`rollbackTransaction()`** — marks not-running, calls `rollback()` then
   `endTransaction()` on every participant, and clears the current transaction.
 
+Both return a **`TomTransactionResult`** rather than a boolean — see
+[The Result](#the-result).
+
 "Every participant" is unconditional on both paths: a participant whose
 `endTransaction()` returns `false` does not stop the participants behind it from
 being ended, so when implementing one you can count on your release running even
 when a peer's has already failed. Nothing calls back afterwards to release what a
 skipped participant still holds — the transaction is over — which for a data
-source would mean a connection that never returns to the pool. The boolean each
-method returns is the conjunction of *all* the end calls, so one failure among
-them is reported however many succeed after it.
+source would mean a connection that never returns to the pool.
+
+### The Result
+
+```dart
+final result = await txn.commitTransaction();
+result.outcome;       // TomTransactionOutcome
+result.failed;        // the participants that did not do what they said
+result.notReleased;   // the participants that did not release
+result.isCommitted;   // outcome == committed
+result.isClean;       // failed.isEmpty && notReleased.isEmpty
+```
+
+| Outcome | Meaning |
+| ------- | ------- |
+| `committed` | Every participant committed. The work is durable. |
+| `partiallyCommitted` | Every participant promised in `prepare()` and at least one then failed to commit. Some of the work is durable and some is not, and no coordinator can repair that. |
+| `rolledBack` | The transaction was rolled back — a veto, or an explicit `rollbackTransaction()` — and every participant undid its work. Nothing is durable and nothing is outstanding. |
+| `rolledBackWithFailures` | Rolled back, and at least one participant could not undo its work. **The outcome that requires a human**: the work was neither committed nor undone. |
+
+A boolean could not say which of the four it was, and it merged them further
+with a fifth, unrelated fact: whether every participant released its
+per-transaction resources. A caller reading `false` could not tell "your work is
+gone" from "your work is durable and a connection leaked" — and those call for
+opposite responses, since the second must not be retried. `notReleased` is
+therefore a separate list, and `outcome` describes the *work* alone.
+
+`rollback()` returning `bool` is what makes `rolledBackWithFailures` reachable.
+While it returned `void`, the coordinator never learned that an undo had failed,
+and the value it returned was built only from the subsequent `endTransaction()`
+calls — so a rollback in which every participant failed to undo its work and
+every participant released cleanly reported success.
 
 **A transaction that is not running is never the current one.** Both
 conclusions clear the scope in a `finally`, so the invariant holds however the

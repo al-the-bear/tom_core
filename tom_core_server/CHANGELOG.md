@@ -2,6 +2,31 @@
 
 ### Added
 
+- **A conclusion answers what became of the work, not a boolean (tcopen195).**
+  `TomTransactionParticipant.rollback()` returned `Future<void>`, so the
+  coordinator never learned that an undo had failed — and the boolean
+  `rollbackTransaction` returned was built only from the subsequent
+  `endTransaction()` calls. A rollback in which *every* participant failed to
+  undo its work and every participant released its connection cleanly therefore
+  returned `true`: the module reporting success for the one outcome that
+  requires a human, because the work was neither committed nor undone.
+
+  `rollback()` now returns `bool`, and both conclusions return a
+  `TomTransactionResult`: a `TomTransactionOutcome` — `committed`,
+  `partiallyCommitted`, `rolledBack`, `rolledBackWithFailures` — the
+  participants that did not do what they said, and, separately, the
+  participants that did not release. The boolean merged all five. A caller
+  reading `false` could not tell "your work is gone" from "your work is durable
+  and a connection leaked", and those call for opposite responses: the second
+  must not be retried.
+
+  `runInTransaction` reads the outcome rather than a boolean, which lets it drop
+  the compromise it shipped with: it throws when the work is not durable and
+  names the outcome and the participants in the message, and *logs* rather than
+  throws when the only failure was a release. `commitTransaction` on a veto now
+  simply returns the rollback's own result, so the private `_vetoed` helper that
+  existed to turn the rollback's `true` into `false` is gone.
+
 - **The transaction suite drives its failure paths with two participants
   (tcopen194).** One is exactly the population size at which a drive that stops
   at the first failure looks correct: the single participant reports its

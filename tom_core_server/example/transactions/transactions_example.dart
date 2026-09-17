@@ -51,8 +51,9 @@ class _RecordingParticipant extends TomTransactionParticipant {
   }
 
   @override
-  Future<void> rollback() async {
+  Future<bool> rollback() async {
     calls.add('rollback');
+    return true;
   }
 
   @override
@@ -80,10 +81,11 @@ Future<void> run() async {
   await txn.registerParticipant(a);
   final ok = await txn.commitTransaction();
   print(
-    '2. commit ok=$ok calls=${a.calls} '
+    '2. commit ${ok.outcome.name} calls=${a.calls} '
     'cleared=${TomTransactionManager.getCurrentTransaction() == null}',
   );
-  check(ok, 'the commit succeeded');
+  check(ok.isCommitted, 'the commit succeeded');
+  check(ok.isClean, 'and left nothing outstanding');
   check(
     a.calls.join(',') == 'start,prepare,commit,end',
     'the participant was started, prepared, committed and then ended, in that '
@@ -101,16 +103,16 @@ Future<void> run() async {
   final b = _RecordingParticipant('b', vetoPrepare: true);
   await txn3.registerParticipant(b);
   final ok3 = await txn3.commitTransaction();
-  print('3. veto -> ok=$ok3 calls=${b.calls}');
+  print('3. veto -> ${ok3.outcome.name} calls=${b.calls}');
   check(
     b.calls.join(',') == 'start,prepare,rollback,end',
     'the veto turned the commit into a rollback, and `commit` was never '
     'reached — no participant made anything durable',
   );
   check(
-    !ok3,
-    'and commitTransaction reports the work as not committed, however cleanly '
-    'the rollback ran',
+    ok3.outcome == TomTransactionOutcome.rolledBack,
+    'and the result names what happened rather than merging it into a boolean: '
+    'the work was rolled back, cleanly',
   );
   check(
     TomTransactionManager.getCurrentTransaction() == null,

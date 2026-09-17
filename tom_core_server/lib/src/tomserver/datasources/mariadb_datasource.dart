@@ -1578,16 +1578,27 @@ class MariaDbDatasource implements TomDataSource {
     }
   }
 
+  /// Undoes the connection's transaction, reporting whether it was undone.
+  ///
+  /// A `false` here is the outcome that needs a human: the statements this
+  /// connection issued are neither committed nor rolled back. The coordinator
+  /// puts this data source in [TomTransactionResult.failed] and reports the
+  /// transaction as [TomTransactionOutcome.rolledBackWithFailures]; before the
+  /// result carried it, a failed rollback returned the same `true` as a clean
+  /// one and the error log was the entire record.
   @override
-  Future<void> rollback() async {
+  Future<bool> rollback() async {
     try {
       await executeCommand("ROLLBACK;");
+      _transactional = false;
+      return true;
     } catch (error) {
       tomLog.error(
         "Rolling back database transaction of ${getParticipantId()} failed $error",
       );
+      _transactional = false;
+      return false;
     }
-    _transactional = false;
   }
 }
 
@@ -1736,13 +1747,14 @@ class MariaDbXADatasource extends MariaDbDatasource {
   }
 
   @override
-  Future<void> rollback() async {
+  Future<bool> rollback() async {
     // A participant that never opened a branch — its `startTransaction` failed
     // — is still rolled back with everyone else, and so is one whose branch a
     // successful commit has already cleared, which happens when a later
     // participant's commit fails. There is nothing to undo in either case, and
     // issuing the statement anyway would send `XA ROLLBACK null`.
-    if (_txId == null) return;
+    if (_txId == null) return true;
+    var undone = true;
     try {
       // An ACTIVE branch has to be ended before it can be rolled back; a
       // prepared one has already been ended and would refuse a second `XA END`.
@@ -1757,6 +1769,9 @@ class MariaDbXADatasource extends MariaDbDatasource {
       tomLog.error(
         "Rolling back XA database transaction of ${getParticipantId()} failed $error",
       );
+      // Reported as well as logged. A branch that would not roll back is still
+      // there, holding its locks, and the log line was the entire record of it.
+      undone = false;
     } finally {
       // Always clear the branch id — even on a failed rollback — so the next
       // startTransaction is allowed. Leaving it set wedges the data source after
@@ -1764,5 +1779,6 @@ class MariaDbXADatasource extends MariaDbDatasource {
       _txId = null;
       _prepared = false;
     }
+    return undone;
   }
 }

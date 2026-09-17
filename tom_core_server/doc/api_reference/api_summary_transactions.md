@@ -16,8 +16,10 @@ of an implementer and for the one outcome it cannot rule out.
 - [Classes](#classes)
   - [TomTransactionException](#tomtransactionexception)
   - [TomTransactionParticipant](#tomtransactionparticipant)
+  - [TomTransactionResult](#tomtransactionresult)
   - [TomTransaction](#tomtransaction)
   - [TomTransactionManager](#tomtransactionmanager)
+- [Enums](#enums)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -109,8 +111,43 @@ mapping `prepare` onto `XA END` + `XA PREPARE` and `commit` onto `XA COMMIT`.
 | `startTransaction` | `Future<bool> startTransaction(TomTransaction transaction)` | Begins the participant's part of `transaction`; called once on enlist. The transaction is handed over rather than looked up, which is how `isReadOnly` reaches the resource that can act on it — `MariaDbDatasource` opens `START TRANSACTION READ ONLY` for one. |
 | `prepare` | `Future<bool> prepare()` | Phase one: promises that `commit` will succeed. Returning `false` — or throwing — vetoes the transaction, while nothing is durable. A participant with nothing to prepare returns `true`. |
 | `commit` | `Future<bool> commit()` | Phase two: makes the work durable. Reached only after every participant prepared, so a `false` is not a veto — it reports a broken promise and leaves the transaction partially committed. |
-| `rollback` | `Future<void> rollback()` | Undoes the participant's work when the transaction is rolled back. Reachable after a successful `prepare`, never after this participant's own `commit`. |
+| `rollback` | `Future<bool> rollback()` | Undoes the participant's work when the transaction is rolled back. Reachable after a successful `prepare`, never after this participant's own `commit`. `false` is the one outcome needing a human — the work was neither committed nor undone — and puts this participant in `TomTransactionResult.failed` with the transaction reported as `rolledBackWithFailures`. |
 | `endTransaction` | `Future<bool> endTransaction()` | Releases per-transaction resources after commit or rollback. Decides nothing. |
+
+### TomTransactionResult
+
+What a transaction's conclusion did, and to whom. Returned by
+`commitTransaction` and `rollbackTransaction` in place of a boolean, which could
+not say which of four things had happened — committed, partially committed,
+rolled back, rolled back badly — and merged them further with a fifth,
+unrelated fact: whether every participant released its per-transaction
+resources. A caller reading `false` could not tell "your work is gone" from
+"your work is durable and a connection leaked", and those call for opposite
+responses, since the second must not be retried.
+
+- **Extends:** none
+
+#### Constructors
+
+| Constructor | Signature | Description |
+| ----------- | --------- | ----------- |
+| `TomTransactionResult` | `const TomTransactionResult(TomTransactionOutcome outcome, {List<String> failed = const [], List<String> notReleased = const []})` | Creates a result. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `outcome` | `TomTransactionOutcome` | What became of the work (final). |
+| `failed` | `List<String>` | The participants whose commit or rollback did not do what it said — names rather than a count, because repairing a partial commit or a failed rollback means going to those resources (final). |
+| `notReleased` | `List<String>` | The participants whose `endTransaction()` did not release. Separate because it is a separate fact: the work may be perfectly durable and a pooled connection still lost (final). |
+| `isCommitted` | `bool` | *(getter)* Whether the work committed — `outcome == committed`. The question most callers are asking. |
+| `isClean` | `bool` | *(getter)* Whether the conclusion left nothing outstanding at all. Stronger than `isCommitted`: a transaction whose work committed and whose connection leaked is committed and not clean. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | Names the outcome and everyone who failed or did not release — the result reaches a log line or an exception message more often than it is destructured. |
 
 ### TomTransaction
 
@@ -136,8 +173,8 @@ None — the constructor is private; obtain instances via
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `registerParticipant` | `Future<void> registerParticipant(TomTransactionParticipant ttp)` | Enlists `ttp`, calling its `startTransaction()` once; registering the same participant again is a no-op. A **different** object claiming an enlisted id is refused with `…duplicate_id` rather than dropped — a dropped resource's work is neither committed with the transaction nor rolled back with it. Enlistment is all or nothing: the participant is recorded only after a `true`, and a `false` or a throw leaves it unenlisted and raises `TomTransactionException` naming it (`…start_failed` / `…start_threw`, the latter carrying the original as `rootException`). Also throws when the transaction is no longer running. |
-| `commitTransaction` | `Future<bool> commitTransaction()` | Prepares every participant, then — only if all promised — commits every participant, then ends them all. A veto or a throw during prepare rolls the transaction back instead; a `commit` that fails after a successful prepare does not, and is logged as a partial commit. Clears the transaction from its scope (in a `finally`, so a transaction that is not running is never the current one) and returns whether **the work committed** — a vetoed transaction answers `false` however cleanly its rollback ran. |
-| `rollbackTransaction` | `Future<bool> rollbackTransaction()` | Rolls back every participant then ends them; clears the transaction from its scope and returns whether all end calls succeeded. |
+| `commitTransaction` | `Future<TomTransactionResult> commitTransaction()` | Prepares every participant, then — only if all promised — commits every participant, then ends them all. A veto or a throw during prepare rolls the transaction back instead; a `commit` that fails after a successful prepare does not, and is logged as a partial commit. Clears the transaction from its scope (in a `finally`, so a transaction that is not running is never the current one) and returns a `TomTransactionResult` — a vetoed transaction returns the rollback's own result rather than claiming a commit that did not happen. |
+| `rollbackTransaction` | `Future<TomTransactionResult> rollbackTransaction()` | Rolls back every participant then ends them; clears the transaction from its scope (in a `finally`). Returns `rolledBack` when every participant undid its work and `rolledBackWithFailures` when one did not, naming it. |
 
 "Ends them" is unconditional on both paths: a participant whose
 `endTransaction()` returns `false` does not stop the ones behind it from being
@@ -177,6 +214,21 @@ isolate cannot see each other's work. Abstract with a static-only surface.
 | -------- | ---- | ----------- |
 | `hasTransactionScope` | `static bool` | *(getter)* Whether the current zone carries a transaction scope of its own; `false` means `startTransaction` would use the process-wide fallback scope. |
 | `transactional` | `static bool` | *(getter)* Whether a transaction is currently active and still running. |
+
+## Enums
+
+### TomTransactionOutcome
+
+What became of a transaction's **work**. The four are distinguished because
+three of them need different things done about them, and a boolean merged all
+four into "did something go wrong".
+
+| Value | Meaning |
+| ----- | ------- |
+| `committed` | Every participant committed. The work is durable. |
+| `partiallyCommitted` | Every participant promised in `prepare()` and at least one then failed to commit. Some of the work is durable and some is not, and no coordinator can repair that. |
+| `rolledBack` | The transaction was rolled back — a veto during prepare, or an explicit `rollbackTransaction()` — and every participant undid its work. Nothing is durable and nothing is outstanding. |
+| `rolledBackWithFailures` | Rolled back, and at least one participant could not undo its work. The outcome a caller most needs told, because it is the one that requires a human: the work was neither committed nor undone. |
 
 ## Global Functions and Constants
 

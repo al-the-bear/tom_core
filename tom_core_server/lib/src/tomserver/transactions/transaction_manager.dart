@@ -19,6 +19,85 @@ class TomTransactionException extends TomServerException {
   });
 }
 
+/// What became of a transaction's **work**.
+///
+/// The four are distinguished because three of them need different things done
+/// about them, and a boolean merged all four into "did something go wrong".
+enum TomTransactionOutcome {
+  /// Every participant committed. The work is durable.
+  committed,
+
+  /// Every participant promised in [TomTransactionParticipant.prepare] and at
+  /// least one then failed to commit. Some of the work is durable and some is
+  /// not, and no coordinator can repair that — see
+  /// [TomTransaction.commitTransaction].
+  partiallyCommitted,
+
+  /// The transaction was rolled back and every participant undid its work.
+  ///
+  /// The ordinary abort: a veto during prepare, or an explicit
+  /// [TomTransaction.rollbackTransaction]. Nothing is durable and nothing is
+  /// outstanding.
+  rolledBack,
+
+  /// The transaction was rolled back and at least one participant could not
+  /// undo its work.
+  ///
+  /// The outcome a caller most needs told, because it is the one that requires
+  /// a human: the work was neither committed nor undone.
+  rolledBackWithFailures,
+}
+
+/// What a transaction's conclusion did, and to whom.
+///
+/// Returned by [TomTransaction.commitTransaction] and
+/// [TomTransaction.rollbackTransaction] in place of a boolean. The boolean
+/// could not say which of four things had happened — committed, partially
+/// committed, rolled back, rolled back badly — and it merged them further with
+/// a fifth, unrelated fact: whether every participant released its
+/// per-transaction resources. A caller reading `false` could not tell "your
+/// work is gone" from "your work is durable and a connection leaked".
+class TomTransactionResult {
+  /// Creates a result.
+  const TomTransactionResult(
+    this.outcome, {
+    this.failed = const [],
+    this.notReleased = const [],
+  });
+
+  /// What became of the work.
+  final TomTransactionOutcome outcome;
+
+  /// The participants whose commit or rollback did not do what it said.
+  ///
+  /// Names rather than a count, because repairing a partial commit or a failed
+  /// rollback means going to those resources.
+  final List<String> failed;
+
+  /// The participants whose `endTransaction()` did not release.
+  ///
+  /// A separate list because it is a separate fact: the work may be perfectly
+  /// durable and a pooled connection still lost. For a data source that is a
+  /// connection that never returns to the pool, and nothing calls back to
+  /// release it — the transaction is over.
+  final List<String> notReleased;
+
+  /// Whether the work committed. The question most callers are asking.
+  bool get isCommitted => outcome == TomTransactionOutcome.committed;
+
+  /// Whether the conclusion left nothing outstanding at all.
+  ///
+  /// Stronger than [isCommitted]: a transaction whose work committed and whose
+  /// connection leaked is committed and not clean.
+  bool get isClean => failed.isEmpty && notReleased.isEmpty;
+
+  @override
+  String toString() =>
+      'TomTransactionResult(${outcome.name}'
+      '${failed.isEmpty ? '' : ', failed: ${failed.join(', ')}'}'
+      '${notReleased.isEmpty ? '' : ', not released: ${notReleased.join(', ')}'})';
+}
+
 /// A resource that can enlist in a [TomTransaction].
 ///
 /// Implemented by `TomDataSource`, so any data source used during a transaction
@@ -113,7 +192,13 @@ abstract class TomTransactionParticipant {
   /// Reachable after a successful [prepare] — that is the ordinary abort, when
   /// a later participant vetoed — and before one, when the veto came earlier.
   /// It is **not** reachable after this participant's [commit].
-  Future<void> rollback();
+  ///
+  /// Returns whether the work was undone. `false` is the one outcome that
+  /// needs a human: the work was neither committed nor rolled back, and the
+  /// coordinator reports the transaction as
+  /// [TomTransactionOutcome.rolledBackWithFailures] naming this participant.
+  /// A participant with nothing to undo returns `true`.
+  Future<bool> rollback();
 
   /// Releases per-transaction resources after commit or rollback.
   ///
@@ -280,15 +365,15 @@ class TomTransaction {
   ///  3. **End.** `endTransaction()` on every participant, and the transaction
   ///     is cleared from its scope.
   ///
-  /// Returns whether the **work committed**, which is what the caller asked.
-  /// A vetoed transaction answers `false` however cleanly its rollback ran: the
-  /// rollback's own result belongs to [rollbackTransaction], and reporting it
-  /// here told a caller its work was durable at the moment it was discarded.
+  /// Returns a [TomTransactionResult]: what became of the work, and which
+  /// participants did not do what they said. A vetoed transaction returns the
+  /// rollback's own result, so the answer says `rolledBack` rather than
+  /// claiming a commit that did not happen.
   ///
   /// Both loops run to completion rather than stopping at the first failure — a
   /// participant left uncommitted or un-ended has nothing coming back for it,
   /// because the transaction is over.
-  Future<bool> commitTransaction() async {
+  Future<TomTransactionResult> commitTransaction() async {
     _isRunning = false;
     // The scope is cleared in a `finally` rather than on the way out, so that
     // it is cleared *whatever* leaves this method. Every participant call
@@ -320,20 +405,19 @@ class TomTransaction {
             "transaction back: $error",
           );
           tomLog.debug('$stack');
-          return _vetoed();
+          return rollbackTransaction();
         }
         if (!prepared) {
           tomLog.info(
             "Participant '${entry.key}' vetoed the transaction during prepare; "
             "rolling back.",
           );
-          return _vetoed();
+          return rollbackTransaction();
         }
       }
 
       // Past this point the transaction is committing. Every participant has
       // promised it can, and a broken promise is reported rather than acted on.
-      bool ok = true;
       final broken = <String>[];
       for (final entry in _participants.entries) {
         bool committed;
@@ -347,7 +431,6 @@ class TomTransaction {
           committed = false;
         }
         if (!committed) broken.add(entry.key);
-        ok = ok && committed;
       }
       if (broken.isNotEmpty) {
         // The one outcome two-phase commit cannot rule out, and the one an
@@ -363,39 +446,31 @@ class TomTransaction {
         );
       }
 
-      return await _endAll() && ok;
+      return TomTransactionResult(
+        broken.isEmpty
+            ? TomTransactionOutcome.committed
+            : TomTransactionOutcome.partiallyCommitted,
+        failed: broken,
+        notReleased: await _endAll(),
+      );
     } finally {
       _scope._clear(this);
     }
   }
 
-  /// Rolls the vetoed transaction back and reports the commit as failed.
+  /// Calls `endTransaction()` on every participant and names the ones that did
+  /// not release.
   ///
-  /// The rollback's own answer — whether every participant released — is not
-  /// this method's answer. `commitTransaction` is asked whether the work
-  /// committed, and after a veto it did not, however cleanly the rollback ran.
-  /// Returning the rollback's `true` told a caller its work was durable at the
-  /// exact moment the coordinator had thrown it away.
-  Future<bool> _vetoed() async {
-    await rollbackTransaction();
-    return false;
-  }
-
-  /// Calls `endTransaction()` on every participant and reports whether all of
-  /// them released.
-  ///
-  /// Unconditional, and evaluated before it is combined: `ok && await
-  /// p.endTransaction()` would short-circuit, so one participant reporting
-  /// failure would stop every participant behind it from being ended at all —
-  /// and nothing calls back later to release what they hold, because the
-  /// transaction is over. For a data source that is a pooled connection that
-  /// never returns.
+  /// Unconditional: stopping at the first failure would leave every
+  /// participant behind it un-ended, and nothing calls back later to release
+  /// what they hold, because the transaction is over. For a data source that
+  /// is a pooled connection that never returns.
   ///
   /// A throw is a failure to release like any other. Letting it escape would
   /// skip the participants behind it and leave the scope still pointing at a
   /// concluded transaction, which is the same leak with a stack trace.
-  Future<bool> _endAll() async {
-    bool ok = true;
+  Future<List<String>> _endAll() async {
+    final notReleased = <String>[];
     for (final entry in _participants.entries) {
       bool ended;
       try {
@@ -407,37 +482,64 @@ class TomTransaction {
         );
         ended = false;
       }
-      ok = ok && ended;
+      if (!ended) notReleased.add(entry.key);
     }
-    return ok;
+    return notReleased;
   }
 
   /// Rolls back every participant, then ends them; clears the current transaction.
   ///
   /// Marks the transaction not-running, calls `rollback()` on every participant,
   /// then `endTransaction()` on each, and clears the transaction from its
-  /// scope. Returns whether all end calls succeeded.
+  /// scope.
   ///
   /// A participant that throws while rolling back is logged and the rest are
   /// rolled back anyway: an abort that stopped at the first failure would leave
   /// every participant behind it holding an open transaction, which is strictly
-  /// worse than the failure that interrupted it.
-  Future<bool> rollbackTransaction() async {
+  /// worse than the failure that interrupted it. A throw and a `false` are the
+  /// same answer here — this participant did not undo its work — and both put
+  /// it in [TomTransactionResult.failed].
+  ///
+  /// Returns [TomTransactionOutcome.rolledBack] when every participant undid
+  /// its work, and [TomTransactionOutcome.rolledBackWithFailures] when one did
+  /// not. That distinction is the point of the type: the second is the outcome
+  /// requiring a human, because the work was neither committed nor undone, and
+  /// a boolean built only from the `endTransaction` calls reported it as
+  /// success.
+  Future<TomTransactionResult> rollbackTransaction() async {
     _isRunning = false;
     // Cleared in a `finally` for the reason [commitTransaction] gives: the
     // scope must never hold a transaction that is no longer running, and that
     // has to hold however this method leaves.
     try {
+      final notUndone = <String>[];
       for (final entry in _participants.entries) {
+        bool undone;
         try {
-          await entry.value.rollback();
+          undone = await entry.value.rollback();
         } catch (error) {
           tomLog.error(
             "Participant '${entry.key}' threw while rolling back: $error",
           );
+          undone = false;
         }
+        if (!undone) notUndone.add(entry.key);
       }
-      return await _endAll();
+      if (notUndone.isNotEmpty) {
+        tomLog.error(
+          "Transaction rolled back with failures: ${notUndone.length} of "
+          "${_participants.length} participants could not undo their work "
+          "(${notUndone.join(', ')}). That work is neither committed nor "
+          "rolled back.",
+        );
+      }
+      return TomTransactionResult(
+        notUndone.isEmpty
+            ? TomTransactionOutcome.rolledBack
+            : TomTransactionOutcome.rolledBackWithFailures,
+        failed: notUndone,
+        notReleased: await _endAll(),
+      );
     } finally {
       _scope._clear(this);
     }
@@ -557,18 +659,23 @@ abstract class TomTransactionManager {
   /// ## When the commit does not succeed
   ///
   /// It throws [TomTransactionException]
-  /// (`transaction_manager.run_in_transaction.commit_failed`). A `false` from
-  /// [TomTransaction.commitTransaction] is one of three things — the
-  /// transaction was vetoed during prepare and rolled back, it was partially
-  /// committed, or it committed and a participant failed to release — and the
-  /// boolean does not distinguish them. Two of the three mean the work is not
-  /// durable and the third is a leaked resource, so none of them is a result to
-  /// hand back as though [body] had succeeded. The coordinator's own log does
-  /// distinguish them, naming the participant in each case.
+  /// (`transaction_manager.run_in_transaction.commit_failed`) when the work is
+  /// not durable — the transaction was vetoed and rolled back, rolled back with
+  /// failures, or partially committed. The message and `parameters` carry the
+  /// [TomTransactionOutcome] and the participants that failed, because handing
+  /// back [body]'s return value would be handing back a result for work that
+  /// did not happen.
   ///
-  /// A caller that needs to tell them apart, or to decide commit-or-rollback
-  /// itself, drives [startTransaction] and the conclusion directly; that form
-  /// stays documented in `doc/transactions.md` for exactly this reason.
+  /// A participant that failed to **release** is not that. The work committed;
+  /// a connection leaked. That is logged at warning level and the body's result
+  /// is returned, because throwing would tell a caller its work did not happen
+  /// when it did — and for a non-idempotent operation that invites a retry
+  /// which applies it twice.
+  ///
+  /// A caller that needs to decide commit-or-rollback on something other than a
+  /// throw drives [startTransaction] and the conclusion directly, reading the
+  /// [TomTransactionResult] itself; that form stays documented in
+  /// `doc/transactions.md`.
   static Future<R> runInTransaction<R>(
     FutureOr<R> Function(TomTransaction transaction) body, {
     bool isReadOnly = false,
@@ -607,12 +714,29 @@ abstract class TomTransactionManager {
       await transaction.rollbackTransaction();
       rethrow;
     }
-    if (!await transaction.commitTransaction()) {
+    final concluded = await transaction.commitTransaction();
+    if (!concluded.isCommitted) {
+      // The work is not durable — vetoed and rolled back, rolled back badly, or
+      // partially committed — so the body's return value would be a result for
+      // work that did not happen.
       throw TomTransactionException(
         "transaction_manager.run_in_transaction.commit_failed",
-        "The transaction did not commit cleanly. It was vetoed and rolled "
-            "back, partially committed, or committed with a participant "
-            "failing to release — the log names which, and which participant.",
+        "The transaction did not commit: ${concluded.outcome.name}"
+            "${concluded.failed.isEmpty ? '' : ' (${concluded.failed.join(', ')})'}.",
+        parameters: {
+          'outcome': concluded.outcome.name,
+          'failed': concluded.failed,
+        },
+      );
+    }
+    if (concluded.notReleased.isNotEmpty) {
+      // Not a failure of the body: the work committed. A leaked resource is
+      // still worth a line, and throwing here would tell a caller its work did
+      // not happen when it did — which for a non-idempotent operation invites
+      // a retry that applies it twice.
+      tomLog.warn(
+        "The transaction committed, but ${concluded.notReleased.length} "
+        "participant(s) did not release: ${concluded.notReleased.join(', ')}.",
       );
     }
     return result;

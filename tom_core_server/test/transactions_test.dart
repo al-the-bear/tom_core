@@ -62,6 +62,7 @@ class _RecordingParticipant extends TomTransactionParticipant {
     this.vetoPrepare = false,
     this.prepareThrows = false,
     this.vetoCommit = false,
+    this.failRollback = false,
     this.endResult = true,
     this.sharedLog,
   });
@@ -70,6 +71,7 @@ class _RecordingParticipant extends TomTransactionParticipant {
   final bool vetoPrepare;
   final bool prepareThrows;
   final bool vetoCommit;
+  final bool failRollback;
   final bool endResult;
   final List<String>? sharedLog;
   final List<String> calls = [];
@@ -102,8 +104,9 @@ class _RecordingParticipant extends TomTransactionParticipant {
   }
 
   @override
-  Future<void> rollback() async {
+  Future<bool> rollback() async {
     _record('rollback');
+    return !failRollback;
   }
 
   @override
@@ -153,7 +156,10 @@ class _ThrowingParticipant extends TomTransactionParticipant {
   }
 
   @override
-  Future<void> rollback() async => _maybeThrow('rollback');
+  Future<bool> rollback() async {
+    _maybeThrow('rollback');
+    return true;
+  }
 
   @override
   Future<bool> endTransaction() async {
@@ -199,7 +205,10 @@ class _UnstartableParticipant extends TomTransactionParticipant {
   }
 
   @override
-  Future<void> rollback() async => calls.add('rollback');
+  Future<bool> rollback() async {
+    calls.add('rollback');
+    return true;
+  }
 
   @override
   Future<bool> endTransaction() async {
@@ -293,7 +302,7 @@ void main() {
         final p = _RecordingParticipant('a');
         await txn.registerParticipant(p);
         final ok = await txn.commitTransaction();
-        expect(ok, isTrue);
+        expect(ok.isClean, isTrue);
         expect(p.calls, ['start', 'prepare', 'commit', 'end']);
         expect(txn.isRunning, isFalse);
         expect(TomTransactionManager.getCurrentTransaction(), isNull);
@@ -306,7 +315,7 @@ void main() {
       await txn.registerParticipant(_RecordingParticipant('a', sharedLog: log));
       await txn.registerParticipant(_RecordingParticipant('b', sharedLog: log));
       final ok = await txn.commitTransaction();
-      expect(ok, isTrue);
+      expect(ok.isClean, isTrue);
       // The whole point of the two-phase shape, in one list: **every**
       // participant is prepared before **any** is committed. A commit
       // interleaved into the prepare loop would make the first commit durable
@@ -356,11 +365,11 @@ void main() {
       final ok = await txn.commitTransaction();
 
       expect(
-        ok,
-        isFalse,
+        ok.outcome,
+        TomTransactionOutcome.rolledBack,
         reason:
             'the work did not commit, however cleanly the rollback ran — the '
-            'rollback\'s own answer belongs to rollbackTransaction',
+            'result names the rollback rather than reporting a commit',
       );
       expect(thrower.calls, ['start', 'prepare', 'rollback', 'end']);
       expect(other.calls, ['start', 'rollback', 'end']);
@@ -380,7 +389,11 @@ void main() {
 
       final ok = await txn.commitTransaction();
 
-      expect(ok, isFalse, reason: 'a vetoed transaction did not commit');
+      expect(
+        ok.outcome,
+        TomTransactionOutcome.rolledBack,
+        reason: 'a vetoed transaction did not commit',
+      );
       expect(first.calls, ['start', 'prepare', 'rollback', 'end']);
       expect(vetoer.calls, ['start', 'prepare', 'rollback', 'end']);
       expect(
@@ -408,7 +421,7 @@ void main() {
 
         final ok = await txn.commitTransaction();
 
-        expect(ok, isFalse);
+        expect(ok.outcome, TomTransactionOutcome.partiallyCommitted);
         expect(broken.calls, ['start', 'prepare', 'commit', 'end']);
         expect(kept.calls, ['start', 'prepare', 'commit', 'end']);
         expect(
@@ -451,7 +464,8 @@ void main() {
         final ok = await txn.commitTransaction();
         // The work committed, but the resource-release step failed, which the
         // return value surfaces.
-        expect(ok, isFalse);
+        expect(ok.isCommitted, isTrue, reason: 'the work is durable');
+        expect(ok.notReleased, ['a']);
         expect(p.calls, ['start', 'prepare', 'commit', 'end']);
         expect(TomTransactionManager.getCurrentTransaction(), isNull);
       },
@@ -479,7 +493,7 @@ void main() {
         expect(third.calls, ['start', 'prepare', 'commit', 'end']);
         // And the two successes behind it must not erase the failure: the
         // result is the conjunction of every end call, not the last one.
-        expect(ok, isFalse);
+        expect(ok.notReleased, ['a']);
       },
     );
   });
@@ -492,7 +506,7 @@ void main() {
         final p = _RecordingParticipant('a');
         await txn.registerParticipant(p);
         final ok = await txn.rollbackTransaction();
-        expect(ok, isTrue);
+        expect(ok.isClean, isTrue);
         expect(p.calls, ['start', 'rollback', 'end']);
         expect(txn.isRunning, isFalse);
         expect(TomTransactionManager.getCurrentTransaction(), isNull);
@@ -511,7 +525,7 @@ void main() {
           _RecordingParticipant('b', sharedLog: log),
         );
         final ok = await txn.rollbackTransaction();
-        expect(ok, isTrue);
+        expect(ok.isClean, isTrue);
         expect(log, [
           'a:start',
           'b:start',
@@ -528,7 +542,8 @@ void main() {
       final p = _RecordingParticipant('a', endResult: false);
       await txn.registerParticipant(p);
       final ok = await txn.rollbackTransaction();
-      expect(ok, isFalse);
+      expect(ok.outcome, TomTransactionOutcome.rolledBack);
+      expect(ok.notReleased, ['a']);
       expect(p.calls, ['start', 'rollback', 'end']);
     });
 
@@ -549,9 +564,163 @@ void main() {
         expect(failing.calls, ['start', 'rollback', 'end']);
         expect(second.calls, ['start', 'rollback', 'end']);
         expect(third.calls, ['start', 'rollback', 'end']);
-        expect(ok, isFalse);
+        expect(ok.notReleased, ['a']);
       },
     );
+  });
+
+  // A conclusion has four possible fates for the work and one further, unrelated
+  // fact about resources, and a single boolean can carry none of them
+  // separately. The case that shows why is a rollback in which every
+  // participant failed to undo its work and every participant released its
+  // connection cleanly: the work is neither committed nor undone — the one
+  // outcome that requires a human — while every release succeeded. A value
+  // built from the releases calls that success.
+  group('the conclusion names what became of the work', () {
+    late _CapturingLogOutput captured;
+    late TomLogOutput installed;
+
+    setUp(() {
+      installed = tomLog.logOutput;
+      captured = _CapturingLogOutput();
+      tomLog.logOutput = captured;
+    });
+
+    tearDown(() => tomLog.logOutput = installed);
+
+    test('a clean commit is committed and clean', () async {
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(_RecordingParticipant('a'));
+
+      final result = await txn.commitTransaction();
+
+      expect(result.outcome, TomTransactionOutcome.committed);
+      expect(result.isCommitted, isTrue);
+      expect(result.isClean, isTrue);
+      expect(result.failed, isEmpty);
+      expect(result.notReleased, isEmpty);
+    });
+
+    test('a clean rollback is rolledBack, not committed', () async {
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(_RecordingParticipant('a'));
+
+      final result = await txn.rollbackTransaction();
+
+      expect(result.outcome, TomTransactionOutcome.rolledBack);
+      expect(result.isCommitted, isFalse);
+      expect(result.isClean, isTrue);
+    });
+
+    test('a rollback that could not undo is rolledBackWithFailures', () async {
+      // The case the boolean could not express at all. Both participants
+      // release cleanly, so every value the old signature could see said the
+      // conclusion had gone well.
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(
+        _RecordingParticipant('ledger', failRollback: true),
+      );
+      await txn.registerParticipant(_RecordingParticipant('audit'));
+
+      final result = await txn.rollbackTransaction();
+
+      expect(result.outcome, TomTransactionOutcome.rolledBackWithFailures);
+      expect(result.failed, ['ledger']);
+      expect(
+        result.notReleased,
+        isEmpty,
+        reason:
+            'every participant released — which is exactly what made this '
+            'invisible before',
+      );
+      expect(result.isClean, isFalse);
+      expect(
+        captured.messages.join('\n'),
+        contains('neither committed nor rolled back'),
+      );
+    });
+
+    test(
+      'a participant that throws while rolling back is a failure too',
+      () async {
+        // A throw and a `false` are the same answer: this participant did not
+        // undo its work.
+        final (txn, _) = TomTransactionManager.startTransaction();
+        await txn.registerParticipant(
+          _ThrowingParticipant('thrower', 'rollback'),
+        );
+        await txn.registerParticipant(_RecordingParticipant('behind'));
+
+        final result = await txn.rollbackTransaction();
+
+        expect(result.outcome, TomTransactionOutcome.rolledBackWithFailures);
+        expect(result.failed, ['thrower']);
+      },
+    );
+
+    test('a veto answers with the rollback it became', () async {
+      // `commitTransaction` returns the rollback's own result, so the answer
+      // says what happened rather than reporting a commit that did not.
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(
+        _RecordingParticipant('a', vetoPrepare: true),
+      );
+
+      final result = await txn.commitTransaction();
+
+      expect(result.outcome, TomTransactionOutcome.rolledBack);
+      expect(result.isCommitted, isFalse);
+    });
+
+    test(
+      'a broken promise is partiallyCommitted, naming the participant',
+      () async {
+        final (txn, _) = TomTransactionManager.startTransaction();
+        await txn.registerParticipant(
+          _RecordingParticipant('ledger', vetoCommit: true),
+        );
+        await txn.registerParticipant(_RecordingParticipant('audit'));
+
+        final result = await txn.commitTransaction();
+
+        expect(result.outcome, TomTransactionOutcome.partiallyCommitted);
+        expect(result.failed, ['ledger']);
+        expect(result.isCommitted, isFalse);
+      },
+    );
+
+    test('a release failure is separate from the outcome', () async {
+      // The fifth fact the boolean merged in. The work is durable; a connection
+      // is not back in the pool. A caller told "false" could not tell this from
+      // "your work is gone", and the two call for opposite responses — this one
+      // must not be retried.
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(
+        _RecordingParticipant('a', endResult: false),
+      );
+
+      final result = await txn.commitTransaction();
+
+      expect(result.outcome, TomTransactionOutcome.committed);
+      expect(result.isCommitted, isTrue, reason: 'the work is durable');
+      expect(result.notReleased, ['a']);
+      expect(result.isClean, isFalse);
+    });
+
+    test('and toString names the outcome and everyone who failed', () async {
+      // The result reaches a log line or an exception message far more often
+      // than it is destructured, and `Instance of TomTransactionResult` is the
+      // same silence in a new place.
+      const result = TomTransactionResult(
+        TomTransactionOutcome.rolledBackWithFailures,
+        failed: ['ledger'],
+        notReleased: ['audit'],
+      );
+
+      expect(result.toString(), contains('rolledBackWithFailures'));
+      expect(result.toString(), contains('ledger'));
+      expect(result.toString(), contains('audit'));
+    });
   });
 
   group('clearing the scope', () {
@@ -698,7 +867,7 @@ void main() {
 
       for (final method in ['commitTransaction', 'rollbackTransaction']) {
         final body = source.substring(
-          source.indexOf('Future<bool> $method() async {'),
+          source.indexOf('Future<TomTransactionResult> $method() async {'),
         );
         final end = body.indexOf('\n  }\n');
         final drive = body.substring(0, end);
@@ -750,7 +919,7 @@ void main() {
 
         final ok = await txn.commitTransaction();
 
-        expect(ok, isFalse, reason: 'the transaction is partially committed');
+        expect(ok.outcome, TomTransactionOutcome.partiallyCommitted);
         expect(behind.calls, ['start', 'prepare', 'commit', 'end']);
         expect(thrower.calls, ['prepare', 'commit', 'end']);
         expect(written(), contains('thrower'));
@@ -777,10 +946,13 @@ void main() {
 
         final ok = await txn.commitTransaction();
 
+        expect(ok.notReleased, [
+          'thrower',
+        ], reason: 'a release that threw is a release that failed');
         expect(
-          ok,
-          isFalse,
-          reason: 'a release that threw is a release that failed',
+          ok.isCommitted,
+          isTrue,
+          reason: 'the work committed; a connection is what leaked',
         );
         expect(
           behind.calls,
@@ -802,7 +974,12 @@ void main() {
 
       final ok = await txn.rollbackTransaction();
 
-      expect(ok, isTrue, reason: 'every participant released');
+      expect(
+        ok.outcome,
+        TomTransactionOutcome.rolledBackWithFailures,
+        reason: 'a throw and a `false` are the same answer: it did not undo',
+      );
+      expect(ok.failed, ['thrower']);
       expect(behind.calls, ['start', 'rollback', 'end']);
       expect(thrower.calls, ['rollback', 'end']);
       expect(written(), contains('thrower'));
@@ -819,7 +996,7 @@ void main() {
 
         final ok = await txn.rollbackTransaction();
 
-        expect(ok, isFalse);
+        expect(ok.notReleased, ['thrower']);
         expect(behind.calls, ['start', 'rollback', 'end']);
         expect(written(), contains('thrower'));
       },
@@ -837,7 +1014,11 @@ void main() {
 
       final ok = await txn.commitTransaction();
 
-      expect(ok, isFalse, reason: 'a vetoed transaction did not commit');
+      expect(
+        ok.outcome,
+        TomTransactionOutcome.rolledBack,
+        reason: 'a vetoed transaction did not commit',
+      );
       expect(behind.calls, ['start', 'rollback', 'end']);
       expect(
         behind.calls,
@@ -922,7 +1103,7 @@ void main() {
       // The point of the throw: concluding the transaction must not reach a
       // resource that never opened one. `commit` here would be the wrong
       // operation on a branch that is not there.
-      expect(await txn.commitTransaction(), isTrue);
+      expect((await txn.commitTransaction()).isClean, isTrue);
       expect(refuser.calls, ['start']);
     });
 
@@ -955,7 +1136,7 @@ void main() {
         ),
       );
 
-      expect(await txn.commitTransaction(), isTrue);
+      expect((await txn.commitTransaction()).isClean, isTrue);
       expect(thrower.calls, ['start']);
     });
 
@@ -977,7 +1158,7 @@ void main() {
         );
 
         expect(txn.isRunning, isTrue);
-        expect(await txn.commitTransaction(), isTrue);
+        expect((await txn.commitTransaction()).isClean, isTrue);
         expect(good.calls, ['start', 'prepare', 'commit', 'end']);
       },
     );
@@ -1000,7 +1181,7 @@ void main() {
         final retry = _RecordingParticipant('flaky');
         await txn.registerParticipant(retry);
 
-        expect(await txn.commitTransaction(), isTrue);
+        expect((await txn.commitTransaction()).isClean, isTrue);
         expect(retry.calls, ['start', 'prepare', 'commit', 'end']);
       },
     );
@@ -1177,7 +1358,7 @@ void main() {
 
       final other = _RecordingParticipant('other');
       await txn.registerParticipant(other);
-      expect(await txn.commitTransaction(), isTrue);
+      expect((await txn.commitTransaction()).isClean, isTrue);
       expect(other.calls, ['start', 'prepare', 'commit', 'end']);
     });
 
@@ -1326,6 +1507,27 @@ void main() {
 
       expect(vetoer.calls, ['start', 'prepare', 'rollback', 'end']);
       expect(TomTransactionManager.getCurrentTransaction(), isNull);
+    });
+
+    test('a release failure is a warning, not a failure of the body', () async {
+      // The compromise the boolean forced and the result type removes. The work
+      // committed; a connection did not come back. Throwing would tell the
+      // caller its work did not happen when it did — and for a non-idempotent
+      // operation that invites a retry which applies it twice.
+      final output = _CapturingLogOutput();
+      final previous = tomLog.logOutput;
+      addTearDown(() => tomLog.logOutput = previous);
+      tomLog.logOutput = output;
+
+      final result = await TomTransactionManager.runInTransaction((txn) async {
+        await txn.registerParticipant(
+          _RecordingParticipant('a', endResult: false),
+        );
+        return 'the body result';
+      });
+
+      expect(result, 'the body result');
+      expect(output.messages.join('\n'), contains('did not release'));
     });
 
     test(

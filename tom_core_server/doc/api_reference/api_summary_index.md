@@ -581,6 +581,8 @@ surface documented here.
 | `TomTransactionManager` | abstract class | Transaction coordination (static, zone-scoped per flow). |
 | `TomTransaction` | class | An in-flight transaction. |
 | `TomTransactionParticipant` | abstract class | Participant contract (2-phase commit). |
+| `TomTransactionResult` | class | What a conclusion did, and to whom. |
+| `TomTransactionOutcome` | enum | Committed, partially committed, rolled back, rolled back with failures. |
 | `TomTransactionException` | class | Transaction error. |
 
 ## Alphabetical Type Index
@@ -1095,7 +1097,9 @@ surface documented here.
 | `TomTransactional` | Endpoints |
 | `TomTransactionException` | Transactions |
 | `TomTransactionManager` | Transactions |
+| `TomTransactionOutcome` | Transactions |
 | `TomTransactionParticipant` | Transactions |
+| `TomTransactionResult` | Transactions |
 | `TomTransientDeliveryException` | Messaging |
 | `TomTypedPersistenceBase` | Datasources |
 | `TomTypePersistenceInfo` | Datasources |
