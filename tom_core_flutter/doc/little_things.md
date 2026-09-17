@@ -11,6 +11,7 @@ provides two **exception types** layered on the kernel's exception model.
 - [Naming the request a failure belongs to](#naming-the-request-a-failure-belongs-to)
 - [Resolving the message for display](#resolving-the-message-for-display)
 - [Core Components](#core-components)
+- [Limitations](#limitations)
 - [Dependencies](#dependencies)
 
 ---
@@ -150,6 +151,51 @@ whole list: `key`, `defaultUserMessage`, `uuid`, `requestUuid`, `parameters`,
 A client error intended for display. Throw it when `defaultUserMessage` is a
 finished, user-appropriate message. The common pattern is
 `if (e is TomClientUIException) rethrow;` to let presentable errors bubble up.
+
+## Limitations
+
+- **The types add no behaviour.** There is no severity, no retryability, no
+  category and no message formatting — `key` and `parameters` are the whole
+  structure a handler gets, and the rest is what the kernel `TomException`
+  already carried. That is the design (the value is the *type*), but it means a
+  consumer wanting richer error classification builds it above these, not by
+  subclassing further.
+- **Clause order is load-bearing, and getting it wrong fails silently.**
+  `TomClientUIException` is a subtype, so a handler with only
+  `on TomClientException` catches it too and its presentable message never
+  reaches the banner. Nothing warns; the error is merely logged instead of
+  shown. The subtype clause must come first — `example/little_things/little_things_example.dart`
+  executes both orders.
+- **The message is not resolved here.** `defaultUserMessage` is a literal
+  string; resolving `key` against the text resources is the display boundary's
+  job, and `getAppResources()` **throws** where no bundle is installed. See
+  [Resolving the message for display](#resolving-the-message-for-display) for
+  the shape and the reasoning.
+- **`autoLog` writes at construction, not at throw.** An exception built for a
+  test, or built on a branch that then decided not to throw it, is logged all
+  the same. The flag is tied to *building* the object, which is also what makes
+  it observable at all — there is no hook at the throw.
+- **The payload stays writable after construction.** `key`,
+  `defaultUserMessage`, `parameters`, `uuid`, `requestUuid`, `stack` and
+  `rootException` are public mutable fields on the kernel base, and
+  `parameters` is held **by reference** rather than copied — so a caller's map
+  can be edited through the exception and vice versa. The constructor is where
+  a complete report is assembled; nothing enforces that it stays the report
+  that was assembled.
+- **A wrap does not share its cause's identity.** `rootException` is the only
+  link between a wrapped failure and the one it came from: the wrap gets its own
+  `uuid`, and does not inherit the cause's `requestUuid`. Two log lines about
+  one incident therefore carry two ids, and joining them means following the
+  reference rather than matching on an id.
+- **`serverCallError` has one producer in this package.**
+  `TomUserPreferencesClient` fills it for every rejection it raises; no other
+  client code does. A handler must treat it as present-or-absent rather than
+  expecting every HTTP-shaped failure to carry one.
+
+Each of these is executed by `test/little_things_test.dart` — the behavioural
+ones in the group `the limitations the module document states`, the clause order
+in `discriminating with catch clauses`, and the message resolution in
+`resolving the message for display`.
 
 ---
 

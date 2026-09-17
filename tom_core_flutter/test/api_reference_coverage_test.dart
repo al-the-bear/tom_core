@@ -212,10 +212,11 @@ void main() {
     // The name check above cannot see this. An exception class whose
     // constructor is undocumented still has its *name* on the page as a type,
     // so the omission reads as covered — and a parameter shown with the wrong
-    // type reads as usable and is not. `stack` is the recurring one: it is
-    // `StackTrace?` because `super.stack` resolves against `TomException`'s
-    // constructor, which narrows the `Object?` field, and `Object?` is the
-    // plausible wrong answer.
+    // type reads as usable and is not. The types have to be read off the kernel
+    // constructor, because `super.x` resolves against it rather than against
+    // the field: `uuid`'s field is a non-nullable `late String` while its
+    // parameter is `String?`, and documenting either from the other gives the
+    // wrong answer.
     for (final module in modules) {
       // Each class is matched against *its own* file, not against the module.
       // `constructorBodyFrom` finds a constructor by looking for `Name(\n`,

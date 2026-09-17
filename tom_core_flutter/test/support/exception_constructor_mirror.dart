@@ -10,13 +10,18 @@
 ///
 /// **Why the types cannot be read off the fields.** A super-parameter takes its
 /// type from the *immediate superclass constructor*, not from wherever the field
-/// was first declared. For `stack` the two differ: `TomBaseException`
-/// (`tom_basics`) declares the field `Object? stack`, but `TomException`'s
-/// constructor narrows the parameter to `StackTrace?` and forwards
-/// `stack ?? StackTrace.current`. Documenting the parameter from the field
+/// was first declared, so the two can differ. `uuid` is the standing example:
+/// `TomBaseException` (`tom_basics`) declares the field a non-nullable
+/// `late String` — every exception has one, generated when the caller did not
+/// supply it — while the constructor parameter is `String?`, because "not
+/// supplied" is what omitting it means. Documenting the parameter from the field
 /// declaration therefore gives the wrong answer — plausibly enough that it gets
 /// reported as a defect in each of the three modules in turn. Reading the kernel
 /// constructor is not a convenience here; it is the only place the answer is.
+///
+/// `stack` was the example until `tom_basics` 3.1.1 narrowed the field to
+/// `StackTrace?`, the same width `TomException`'s constructor accepts. The rule
+/// is unchanged; only its illustration moved.
 ///
 /// The parser's own self-check lives in `little_things_test.dart` ("the kernel
 /// constructor parser reports the types it should"): without it, every check

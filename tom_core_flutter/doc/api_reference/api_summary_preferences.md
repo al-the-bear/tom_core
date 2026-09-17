@@ -289,9 +289,10 @@ TomDevicePreferenceException(
 
 Parameters mirror `TomException`. The types above are the *kernel constructor's*,
 reached through Dart super-parameters — which resolve against the immediate
-superclass, not against the field's original declaration. That matters for
-`stack`: the field on `TomBaseException` is `Object?`, but `TomException`'s
-constructor narrows it to `StackTrace?`, so that is what a caller may pass here.
+superclass, not against the field's original declaration. The two can differ:
+`uuid`'s field is a non-nullable `late String` while the parameter is `String?`,
+because omitting it is how a caller asks for a generated one. `stack` is
+`StackTrace?`, the width `TomException`'s constructor declares.
 `autoLog` is non-nullable and defaults to `false`; the default is inherited too,
 so omitting it is not the same as passing `null` — passing `null` does not
 compile.
@@ -464,8 +465,8 @@ TomUserPreferencesClientException(
 
 Parameters mirror `TomException`, with the same super-parameter resolution
 described for `TomDevicePreferenceException` above: `stack` is `StackTrace?` —
-the type `TomException`'s constructor narrows the `Object?` field to — and
-`autoLog` is non-nullable with an inherited default of `false`.
+the width `TomException`'s constructor declares — and `autoLog` is non-nullable
+with an inherited default of `false`.
 
 A rejection carries the `statusCode` and, when
 non-empty, the `response` body in `parameters`, so a caller diagnosing a failure

@@ -287,9 +287,10 @@ TomClientConfigurationException(
 See `TomException` (kernel) for the meaning of each argument. The types above are
 the *kernel constructor's*, reached through Dart super-parameters — which resolve
 against the immediate superclass, not against the field's original declaration.
-That matters for `stack`: the field on `TomBaseException` is `Object?`, but
-`TomException`'s constructor narrows it to `StackTrace?`, so that is what a
-caller may pass here. `autoLog` is non-nullable and defaults to `false`; the
+The two can differ: `uuid`'s field is a non-nullable `late String` while the
+parameter is `String?`, because omitting it is how a caller asks for a generated
+one. `stack` is `StackTrace?`, the width `TomException`'s constructor declares.
+`autoLog` is non-nullable and defaults to `false`; the
 default is inherited too, so omitting it is not the same as passing `null` —
 passing `null` does not compile.
 

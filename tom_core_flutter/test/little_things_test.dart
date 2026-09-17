@@ -473,6 +473,101 @@ void main() {
     });
   });
 
+  group('the limitations the module document states', () {
+    // Each bullet of `doc/little_things.md`'s Limitations section is a claim
+    // about behaviour, so each one that can be executed is executed here. A
+    // limitation nobody can check is indistinguishable from a limitation that
+    // has quietly stopped being true.
+    test('the payload stays writable after construction', () {
+      // The constructor is where a complete report is assembled — but nothing
+      // *enforces* that, and the fields are public. A caller five frames up can
+      // rewrite the failure it is about to report.
+      final error = TomClientException(
+        'upload.failed',
+        'Upload failed',
+        parameters: {'bytes': 1},
+      );
+
+      error.key = 'something.else';
+      error.defaultUserMessage = 'Rewritten';
+      error.requestUuid = 'REQ-LATER';
+      error.uuid = 'UUID-LATER';
+
+      expect(error.key, 'something.else');
+      expect(error.defaultUserMessage, 'Rewritten');
+      expect(error.requestUuid, 'REQ-LATER');
+      expect(error.uuid, 'UUID-LATER');
+    });
+
+    test('and the parameters map is held by reference', () {
+      // Not a copy: the caller's map is the exception's map, so editing either
+      // edits both. Worth stating because `parameters` is the one argument
+      // callers routinely build inline and then reuse.
+      final context = <String, Object?>{'bytes': 1};
+      final error = TomClientException(
+        'upload.failed',
+        'msg',
+        parameters: context,
+      );
+
+      context['bytes'] = 2;
+
+      expect(error.parameters!['bytes'], 2);
+    });
+
+    test('a wrap does not share its cause identity', () {
+      // `rootException` is the only link between a wrapped failure and its
+      // cause. Two log lines about one incident carry two uuids, so joining
+      // them means following the reference, not matching an id.
+      final cause = TomException('server.down', 'Service unavailable');
+      final wrap = TomClientUIException(
+        'tasks.unavailable',
+        'Tasks are not available right now.',
+        rootException: cause,
+      );
+
+      expect(identical(wrap.rootException, cause), isTrue);
+      expect(wrap.uuid, isNot(cause.uuid));
+      expect(wrap.requestUuid, isNull);
+    });
+
+    test('autoLog writes at construction, with no throw involved', () {
+      // The flag is named for logging, but what it is tied to is *building*
+      // the object. An exception constructed for a test, or built and then
+      // discarded on a branch that decided not to throw, is logged all the
+      // same.
+      final records = recordedLogs(() {
+        TomClientException('sync.failed', 'Sync failed', autoLog: true);
+      });
+
+      expect(records, hasLength(2));
+    });
+
+    test('the document carries the section, and it is not empty', () {
+      // The section is the deliverable; this is what keeps it from being
+      // quietly dropped in a later edit that finds it inconvenient.
+      final document = File('doc/little_things.md').readAsStringSync();
+
+      expect(document, contains('## Limitations'));
+      final section = document
+          .split('## Limitations')
+          .last
+          .split('\n## ')
+          .first;
+      final bullets = section
+          .split('\n')
+          .where((line) => line.startsWith('- '))
+          .toList();
+      expect(
+        bullets.length,
+        greaterThanOrEqualTo(5),
+        reason:
+            'the Limitations section exists to tell a consumer what this '
+            'module does not do; an empty one is worse than none',
+      );
+    });
+  });
+
   group('the module readme describes a role, not just its contents', () {
     // `little_things` is the same directory in all three tom_core packages:
     // where a small cross-cutting thing lands once more than one module needs

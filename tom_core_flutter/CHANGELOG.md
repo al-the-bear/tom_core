@@ -2,6 +2,28 @@
 
 ### Documentation
 
+- **`doc/little_things.md` now carries a Limitations section (tcopen208).** It
+  is the document a consumer of the package reads and it stated no constraint
+  anywhere; the list that did exist was quest-internal. Of the four the todo
+  named, none survived re-measurement: two were resolved, one was false, and one
+  had become a stated contract with its own section. The section is therefore
+  written from what is true today — the types add no behaviour beyond the
+  distinction; clause order is load-bearing and gets it wrong silently; the
+  message is not resolved here; `autoLog` writes at construction rather than at
+  throw; the payload stays writable after construction and `parameters` is held
+  by reference; a wrap does not share its cause's identity; and
+  `serverCallError` has one producer in this package. Each is executed by the
+  suite rather than asserted in prose.
+
+- **The `stack` field and parameter no longer differ, and seven artefacts said
+  they did.** `tom_basics` 3.1.1 declares `StackTrace? stack`, the same width
+  `TomException`'s constructor accepts, so the standing illustration of
+  "super-parameters resolve against the superclass constructor, not the field"
+  had stopped being one. The rule is unchanged and still load-bearing, so it
+  keeps a live example — `uuid`, whose field is a non-nullable `late String`
+  while its parameter is `String?` — across the four API summaries, the shared
+  constructor-mirror helper, and the two test files that explain the guard.
+
 - **Message resolution is now a stated contract with a mechanism, not an open
   item (tcopen207).** Every artefact said `key` is what a UI resolves against
   the resource layer and `defaultUserMessage` is the fallback, and every one of

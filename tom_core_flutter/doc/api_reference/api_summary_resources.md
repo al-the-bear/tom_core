@@ -189,9 +189,10 @@ TomPropertyException(
 See `TomException` (kernel) for the meaning of each argument. The types above
 are the *kernel constructor's*, reached through Dart super-parameters — which
 resolve against the immediate superclass, not against the field's original
-declaration. That matters for `stack`: the field is `Object?`, but the
-constructor narrows it to `StackTrace?`, so `Object?` here would be a plausible
-and wrong answer.
+declaration. The two can differ: `uuid`'s field is a non-nullable `late String`
+while the parameter is `String?`, because omitting it is how a caller asks for a
+generated one. `stack` is `StackTrace?`, the width `TomException`'s constructor
+declares.
 
 | `key` | Condition | Message |
 | ----- | --------- | ------- |

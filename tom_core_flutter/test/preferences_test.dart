@@ -1651,13 +1651,12 @@ void main() {
   });
 
   group('the API summary mirrors the preferences exception sources', () {
-    // The `stack` parameter in these two constructor blocks reads as mistyped
-    // and is not — a reading it attracts here, in `little_things` and in the
-    // server's summary alike. `TomException`'s constructor declares
-    // `StackTrace? stack` outright, and `super.stack` resolves against *that*,
-    // not against the `Object? stack` field on `TomBaseException`. Reading the
-    // field is the plausible-looking wrong answer, which is why the mistake
-    // keeps being made by eye.
+    // The parameter types in these two constructor blocks have to be read off
+    // `TomException`'s constructor, because `super.x` resolves against *that*
+    // rather than against the field it eventually lands in. The two can differ
+    // — `uuid`'s field is a non-nullable `late String` while its parameter is
+    // `String?` — so documenting either from the other is the plausible-looking
+    // wrong answer, which is why the mistake keeps being made by eye.
     //
     // So this guard exists as much to reject the "correction" as to catch real
     // drift — and the real drift these blocks attract is the opposite kind:
