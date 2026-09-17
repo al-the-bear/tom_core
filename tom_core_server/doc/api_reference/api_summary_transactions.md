@@ -105,7 +105,7 @@ mapping `prepare` onto `XA END` + `XA PREPARE` and `commit` onto `XA COMMIT`.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `getParticipantId` | `String getParticipantId()` | A stable id used to deduplicate this participant within a transaction. |
+| `getParticipantId` | `String getParticipantId()` | A stable id naming the **resource** this participant speaks for, not the object — `MariaDbDatasource` answers `"MariaDb-<database>@<host>:@<port>"`. Registering the same participant twice enlists once; a *different* object claiming an enlisted id is refused with `…duplicate_id`. A participant needing its own enlistment returns an id nothing else answers. |
 | `startTransaction` | `Future<bool> startTransaction()` | Begins the participant's part of the transaction; called once on enlist. |
 | `prepare` | `Future<bool> prepare()` | Phase one: promises that `commit` will succeed. Returning `false` — or throwing — vetoes the transaction, while nothing is durable. A participant with nothing to prepare returns `true`. |
 | `commit` | `Future<bool> commit()` | Phase two: makes the work durable. Reached only after every participant prepared, so a `false` is not a veto — it reports a broken promise and leaves the transaction partially committed. |
@@ -135,7 +135,7 @@ None — the constructor is private; obtain instances via
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `registerParticipant` | `Future<void> registerParticipant(TomTransactionParticipant ttp)` | Enlists `ttp`, calling its `startTransaction()` once; deduplicated by participant id. Enlistment is all or nothing: the participant is recorded only after a `true`, and a `false` or a throw leaves it unenlisted and raises `TomTransactionException` naming it (`…start_failed` / `…start_threw`, the latter carrying the original as `rootException`). Also throws when the transaction is no longer running. |
+| `registerParticipant` | `Future<void> registerParticipant(TomTransactionParticipant ttp)` | Enlists `ttp`, calling its `startTransaction()` once; registering the same participant again is a no-op. A **different** object claiming an enlisted id is refused with `…duplicate_id` rather than dropped — a dropped resource's work is neither committed with the transaction nor rolled back with it. Enlistment is all or nothing: the participant is recorded only after a `true`, and a `false` or a throw leaves it unenlisted and raises `TomTransactionException` naming it (`…start_failed` / `…start_threw`, the latter carrying the original as `rootException`). Also throws when the transaction is no longer running. |
 | `commitTransaction` | `Future<bool> commitTransaction()` | Prepares every participant, then — only if all promised — commits every participant, then ends them all. A veto or a throw during prepare rolls the transaction back instead; a `commit` that fails after a successful prepare does not, and is logged as a partial commit. Clears the transaction from its scope (in a `finally`, so a transaction that is not running is never the current one) and returns whether **the work committed** — a vetoed transaction answers `false` however cleanly its rollback ran. |
 | `rollbackTransaction` | `Future<bool> rollbackTransaction()` | Rolls back every participant then ends them; clears the transaction from its scope and returns whether all end calls succeeded. |
 

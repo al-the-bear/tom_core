@@ -83,9 +83,22 @@ be able to commit.
 
 A `TomTransaction` is created only through `TomTransactionManager.startTransaction`
 (its constructor is private). Participants enlist with `registerParticipant`,
-which calls their `startTransaction()` exactly once — registering the same id
-again is a no-op, so callers never have to track membership. Enlisting after the
-transaction has concluded throws `TomTransactionException`.
+which calls their `startTransaction()` exactly once — registering the *same
+participant* again is a no-op, so callers never have to track membership.
+Enlisting after the transaction has concluded throws `TomTransactionException`.
+
+**An id belongs to one object.** `getParticipantId()` names a *resource* rather
+than an object — `MariaDbDatasource` answers
+`"MariaDb-<database>@<host>:@<port>"` — so two instances configured for one
+database share an id by construction. Registering the second is not a
+re-registration and is refused with `…duplicate_id`, because the two are two
+connections with two transactions of their own and only one of them can be the
+transaction's. Collapsing the second to the first is the one failure here that
+says nothing at all: the caller's `await` completes, the resource is never
+started, prepared, committed, rolled back or ended, and the work issued against
+it is neither committed with the transaction nor rolled back with it — the first
+sign being data that should have been undone and was not. A participant that
+needs an enlistment of its own returns an id nothing else answers.
 
 **Enlistment is all or nothing.** A participant is recorded only after its
 `startTransaction()` returns `true`. One that returns `false` or throws is not
@@ -126,6 +139,7 @@ coherent to drive.
 | Key | Meaning |
 | --- | ------- |
 | `transaction_manager.register_participant.transaction_not_running` | The transaction has already committed or rolled back. Nothing was enlisted. |
+| `transaction_manager.register_participant.duplicate_id` | A *different* object claimed an id already enlisted. `parameters['participant']` names the id; the newcomer is not enlisted and was never started, and the participant already holding the id is untouched. Registering the same object again is a no-op and raises nothing. |
 | `transaction_manager.register_participant.start_failed` | The participant's `startTransaction()` returned `false`. `parameters['participant']` names it; it is not enlisted. |
 | `transaction_manager.register_participant.start_threw` | The participant's `startTransaction()` threw. `parameters['participant']` names it and `rootException` carries what it raised; it is not enlisted. |
 

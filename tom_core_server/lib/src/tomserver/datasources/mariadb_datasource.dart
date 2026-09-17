@@ -1455,6 +1455,20 @@ class MariaDbDatasource implements TomDataSource {
     return _wasClosed ? "closed" : "never opened";
   }
 
+  /// The database this source speaks to, not the object speaking to it.
+  ///
+  /// Two instances configured for one database therefore answer the same id,
+  /// which is deliberate: a transaction wants the *resource* enlisted once.
+  /// What it does not permit is both of them enlisting — they are two
+  /// connections with two transactions of their own, and only one of them can
+  /// be the transaction's. `TomTransaction.registerParticipant` refuses the
+  /// second with `…duplicate_id` rather than dropping it, because a dropped
+  /// connection's writes are neither committed with the transaction nor rolled
+  /// back with it.
+  ///
+  /// A deployment that genuinely needs two enlistments against one database —
+  /// two XA branches, say — gives the second source a distinct `databaseName`,
+  /// `host` or `port`, or overrides this.
   @override
   String getParticipantId() => "MariaDb-$databaseName@$host:@$port";
 

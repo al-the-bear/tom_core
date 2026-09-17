@@ -56,7 +56,17 @@ class TomTransactionException extends TomServerException {
 /// participant's commit fails". `MariaDbXADatasource` is the two-phase one:
 /// [prepare] issues `XA END` + `XA PREPARE` and [commit] issues `XA COMMIT`.
 abstract class TomTransactionParticipant {
-  /// A stable id used to deduplicate this participant within a transaction.
+  /// A stable id naming the **resource** this participant speaks for.
+  ///
+  /// It identifies the resource, not the object: `MariaDbDatasource` answers
+  /// `"MariaDb-<database>@<host>:@<port>"`, so two instances pointing at one
+  /// database share it by construction. That is what makes registering the same
+  /// participant twice a no-op the caller need not track — and what makes two
+  /// *different* objects claiming one id a refusal rather than a silent
+  /// collapse; see [TomTransaction.registerParticipant].
+  ///
+  /// A participant that needs an enlistment of its own returns an id nothing
+  /// else answers.
   String getParticipantId();
 
   /// Begins the participant's part of the transaction; called once on enlist.
@@ -160,6 +170,22 @@ class TomTransaction {
   /// — a commit-time error naming the wrong operation, arriving exactly when
   /// the coordinator is deciding whether to roll everyone back.
   ///
+  /// **An id belongs to one object.** Registering the *same* participant again
+  /// is the no-op above. Registering a *different* object under an id that is
+  /// already enlisted throws `…duplicate_id` — it is not a re-registration, and
+  /// collapsing it to the first is the one failure here that says nothing at
+  /// all: the second resource never receives `startTransaction`, `prepare`,
+  /// `commit`, `rollback` or `endTransaction`, the caller's `await` completes
+  /// normally, and the work issued against it is neither committed with the
+  /// transaction nor rolled back with it. The first sign is data that should
+  /// have been undone and was not.
+  ///
+  /// [TomTransactionParticipant.getParticipantId] names a *resource*, so the
+  /// collision is not exotic: two `MariaDbDatasource` instances pointing at one
+  /// database answer the same id by construction, and they are two connections
+  /// with two transactions of their own — which is exactly why one of them has
+  /// to be refused rather than quietly dropped.
+  ///
   /// Also throws [TomTransactionException] if the transaction is no longer
   /// running.
   Future<void> registerParticipant(TomTransactionParticipant ttp) async {
@@ -170,7 +196,17 @@ class TomTransaction {
       );
     }
     final id = ttp.getParticipantId();
-    if (_participants[id] != null) return;
+    final enlisted = _participants[id];
+    if (enlisted != null) {
+      if (identical(enlisted, ttp)) return;
+      throw TomTransactionException(
+        "transaction_manager.register_participant.duplicate_id",
+        "Participant '$id' is already enlisted as a different "
+            "${enlisted.runtimeType}; two resources cannot share one "
+            "participant id.",
+        parameters: {'participant': id},
+      );
+    }
 
     final bool started;
     try {

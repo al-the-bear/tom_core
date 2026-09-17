@@ -2,6 +2,26 @@
 
 ### Added
 
+- **Two distinct participants can no longer share one id (tcopen192).**
+  `registerParticipant` enlisted only when the id was unseen, and every document
+  described that as the convenience it is for a caller registering the same
+  participant twice. None of them covered the other case: a *different* object
+  claiming an enlisted id was dropped without a word. It never received
+  `startTransaction`, `prepare`, `commit`, `rollback` or `endTransaction`, the
+  caller's `await` completed normally, and the work issued against that resource
+  was neither committed with the transaction nor rolled back with it — the first
+  sign being data that should have been undone and was not.
+
+  The ids here are resource identities, so the collision is the default shape
+  rather than an exotic one: `MariaDbDatasource` answers
+  `"MariaDb-<database>@<host>:@<port>"`, and two instances configured for one
+  database collide by construction while being two connections with two
+  transactions of their own. The second is now refused with
+  `transaction_manager.register_participant.duplicate_id`, naming the id. The
+  no-op for a genuine re-registration is unchanged, and the transaction the
+  refusal interrupted is intact — the participants that did enlist are
+  untouched, so a caller that catches it may carry on or roll back.
+
 - **`TomTransactionManager.runInTransaction` (tcopen191).** Every teaching
   surface in the module showed the same four lines — a scope, a
   `startTransaction`, the work, a `commitTransaction` — and none of them showed

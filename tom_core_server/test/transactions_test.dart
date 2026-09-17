@@ -855,6 +855,111 @@ void main() {
   // `commitTransaction` and a `catch` that rolls back and rethrows — and the
   // version without the last part is shorter, reads correctly, and leaks. Every
   // assertion here is about the part a caller forgets.
+  // `getParticipantId` names a resource, not an object — `MariaDbDatasource`
+  // answers `"MariaDb-<database>@<host>:@<port>"` — so two instances pointing
+  // at one database collide by construction. Collapsing the second to the first
+  // is the one failure in this method that says nothing at all: the caller's
+  // `await` completes, the resource is never started, prepared, committed,
+  // rolled back or ended, and the work issued against it is neither committed
+  // with the transaction nor rolled back with it. The first sign is data that
+  // should have been undone and was not.
+  group('two distinct participants cannot share one id', () {
+    test('the second is refused, naming the id', () async {
+      final (txn, _) = TomTransactionManager.startTransaction();
+      addTearDown(() async {
+        if (txn.isRunning) await txn.rollbackTransaction();
+      });
+      final first = _RecordingParticipant('MariaDb-app@db:@3306');
+      final second = _RecordingParticipant('MariaDb-app@db:@3306');
+      await txn.registerParticipant(first);
+
+      await expectLater(
+        txn.registerParticipant(second),
+        throwsA(
+          isA<TomTransactionException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'transaction_manager.register_participant.duplicate_id',
+              )
+              .having(
+                (e) => e.parameters?['participant'],
+                'participant',
+                'MariaDb-app@db:@3306',
+              ),
+        ),
+      );
+    });
+
+    test('and is never started, so it holds nothing to release', () async {
+      final (txn, _) = TomTransactionManager.startTransaction();
+      final first = _RecordingParticipant('shared');
+      final second = _RecordingParticipant('shared');
+      await txn.registerParticipant(first);
+      await expectLater(
+        txn.registerParticipant(second),
+        throwsA(isA<TomTransactionException>()),
+      );
+
+      await txn.commitTransaction();
+
+      expect(first.calls, ['start', 'prepare', 'commit', 'end']);
+      expect(
+        second.calls,
+        isEmpty,
+        reason:
+            'a refused participant opened nothing, so there is nothing for the '
+            'conclusion to reach',
+      );
+    });
+
+    test('the transaction the refusal interrupted is intact', () async {
+      // The refusal is a report to the caller, not a conclusion: the
+      // participants that did enlist are untouched, so a caller that catches it
+      // may carry on with them or roll back — the same contract a failed
+      // enlistment already has.
+      final (txn, _) = TomTransactionManager.startTransaction();
+      final first = _RecordingParticipant('shared');
+      await txn.registerParticipant(first);
+      await expectLater(
+        txn.registerParticipant(_RecordingParticipant('shared')),
+        throwsA(isA<TomTransactionException>()),
+      );
+
+      expect(txn.isRunning, isTrue);
+      expect(TomTransactionManager.getCurrentTransaction(), same(txn));
+
+      final other = _RecordingParticipant('other');
+      await txn.registerParticipant(other);
+      expect(await txn.commitTransaction(), isTrue);
+      expect(other.calls, ['start', 'prepare', 'commit', 'end']);
+    });
+
+    test(
+      'registering the very same participant again is still a no-op',
+      () async {
+        // The convenience the id-keying exists for, and the half that must not
+        // change: a data source used twice in one request enlists once, without
+        // the caller tracking membership.
+        final (txn, _) = TomTransactionManager.startTransaction();
+        final p = _RecordingParticipant('shared');
+
+        await txn.registerParticipant(p);
+        await txn.registerParticipant(p);
+        await txn.registerParticipant(p);
+
+        await txn.commitTransaction();
+
+        expect(p.calls, [
+          'start',
+          'prepare',
+          'commit',
+          'end',
+        ], reason: 'one enlistment, however many times it was registered');
+      },
+    );
+  });
+
   group('runInTransaction', () {
     test('commits on a normal return and hands back the body result', () async {
       final p = _RecordingParticipant('a');
