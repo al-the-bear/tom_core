@@ -92,6 +92,18 @@ listener slot, both accessors behave differently from the contract's name, and
   rebuilds with a different `subState` (dropping the old one), and deregisters in
   `dispose`. A mutation after the widget unmounts therefore never triggers
   `setState() called after dispose()`.
+- **An adaptor is bound to one observable, for life.** `observable` is `final`:
+  the constructor registers against that observable and nothing moves the
+  registration. A settable field would produce an adaptor that reports one
+  observable through `value` while `onNotify` fires from another — a
+  `ValueListenableBuilder` rebuilding on one observable's changes while
+  rendering the other's contents. Retargeting is what a new adaptor is for.
+  `TomObservingWidget` migrates instead, and can, because a widget has a
+  `didUpdateWidget` to migrate in; the adaptor has no lifecycle at all.
+
+  The listener slot is private for the same reason it is a slot: assigning it
+  would bypass `addListener`, which is where the single-slot replacement is
+  documented and traced and where use after `dispose` is caught.
 - **Construction subscribes; `dispose` is what ends it.** The adaptor registers
   itself on the observable in its constructor, and `ValueListenableObserver.dispose()`
   is the only thing that deregisters it. An adaptor held beyond a single build —

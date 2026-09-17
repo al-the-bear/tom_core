@@ -1,5 +1,29 @@
 ## 1.2.1
 
+### Changed
+
+- **`ValueListenableObserver`'s two fields stopped being public surface
+  (tcopen211).** `observable` is `final` and the listener slot is private.
+
+  Assigning `observable` never retargeted an adaptor — it produced one that was
+  internally inconsistent. The constructor's registration stayed on the *old*
+  observable, so `onNotify` kept firing from the observable the adaptor no longer
+  reported while `value` returned the new one: a `ValueListenableBuilder`
+  rebuilding on one observable's changes and rendering another's contents.
+  Retargeting is what a new adaptor is for; `TomObservingWidget` migrates
+  instead, and can, because a widget has a `didUpdateWidget` to migrate in.
+
+  The listener slot is implementation state. Assigning it bypassed
+  `addListener`, which is where the single-slot replacement is documented and
+  traced and where use after `dispose` is caught. `value` is the reader, and the
+  API summary's property table now says so.
+
+  Making the slot private cost the suite its previous probe, and the replacement
+  is better: the test that tells `dispose` from `removeListener` counted on
+  refilling the slot directly, and now counts `onNotify` calls through a
+  subclass — which measures the thing that actually differs, whether the adaptor
+  is still reached, rather than a field that happened to correlate with it.
+
 ### Added
 
 - **`ValueListenableObserver.dispose()` (tcopen210).** The adaptor subscribed in

@@ -15,6 +15,27 @@ class _CountingObserver implements TomObserver<TomBool> {
   void onNotify(TomBool observable) => calls++;
 }
 
+/// A [ValueListenableObserver] that counts the notifications it is handed.
+///
+/// `onNotify` is the inherited forwarding step, so counting calls to it answers
+/// the one question the adaptor's public surface otherwise cannot: whether this
+/// adaptor is still registered on its observable. A cleared listener and a
+/// removed registration both produce silence; only the second stops `onNotify`
+/// from being reached — which is why this is a subclass rather than a reach
+/// into the listener slot, now that the slot is private.
+class _CountingAdaptor extends ValueListenableObserver<TomBool> {
+  _CountingAdaptor(super.observable);
+
+  /// How many times the observable has notified this adaptor.
+  int notifications = 0;
+
+  @override
+  void onNotify(TomBool observable) {
+    notifications++;
+    super.onNotify(observable);
+  }
+}
+
 /// Tests for the observing module (`TomObservingWidget`,
 /// `ValueListenableObserver`).
 ///
@@ -253,33 +274,29 @@ void main() {
 
       test('and is off the observer list, not merely silent', () {
         // The case that tells `dispose` from `removeListener`, and the one a
-        // test has to go out of its way to write: clearing the callback makes
-        // an adaptor silent too, so "no callback fired" cannot distinguish
-        // them. `voidCallback` is a public field, so the slot can be refilled
-        // *without* going through `addListener` — and then the only thing that
-        // decides whether `onNotify` runs is whether the adaptor is still on
-        // the observable's observer list.
+        // test has to go out of its way to write: clearing the listener makes
+        // an adaptor silent too, so "no listener fired" cannot distinguish
+        // them. What distinguishes them is whether `onNotify` is *reached* at
+        // all, which a subclass can count — and counting it needs no access to
+        // the adaptor's internals.
         final source = TomBool(false);
-        final silenced = ValueListenableObserver<TomBool>(source);
-        final disposed = ValueListenableObserver<TomBool>(source);
+        final silenced = _CountingAdaptor(source);
+        final disposed = _CountingAdaptor(source);
 
-        var silencedCalls = 0;
-        var disposedCalls = 0;
         silenced.removeListener(() {});
         disposed.dispose();
-
-        silenced.voidCallback = () => silencedCalls++;
-        disposed.voidCallback = () => disposedCalls++;
 
         source | true;
 
         expect(
-          silencedCalls,
+          silenced.notifications,
           1,
-          reason: 'removeListener leaves the kernel registration in place',
+          reason:
+              'removeListener clears the listener and leaves the kernel '
+              'registration in place, so onNotify still runs',
         );
         expect(
-          disposedCalls,
+          disposed.notifications,
           0,
           reason: 'dispose deregisters, so onNotify is never reached',
         );
@@ -299,18 +316,59 @@ void main() {
       });
 
       test('and releases the listener closure', () {
-        // Not observable through notifications — a deregistered adaptor never
-        // reaches `onNotify` whether or not the slot still holds something. It
-        // matters for retention: a builder's closure captures the element it
-        // rebuilds, so an adaptor that kept it would pin a disposed subtree.
-        // Asserted on the field, because the field is where the effect is.
-        final adaptor = ValueListenableObserver<TomBool>(TomBool(false));
-        adaptor.addListener(() {});
-        expect(adaptor.voidCallback, isNotNull);
+        // Retention, not notification: a builder's closure captures the element
+        // it rebuilds, so an adaptor that kept it would pin a disposed subtree.
+        // The slot is private, so the closure itself is the witness — it is the
+        // only strong reference the test keeps, and after `dispose` the adaptor
+        // must not be holding it. Asserted through a re-registered subclass
+        // that can see whether the inherited forwarding still has anything to
+        // forward to.
+        final source = TomBool(false);
+        final adaptor = _CountingAdaptor(source);
+
+        var listenerCalls = 0;
+        adaptor.addListener(() => listenerCalls++);
+        source | true;
+        expect(listenerCalls, 1);
+        expect(adaptor.notifications, 1);
 
         adaptor.dispose();
+        // Drive `onNotify` directly, bypassing the deregistration, so the only
+        // question left is whether the listener slot still holds the closure.
+        adaptor.onNotify(source);
 
-        expect(adaptor.voidCallback, isNull);
+        expect(adaptor.notifications, 2, reason: 'onNotify did run');
+        expect(
+          listenerCalls,
+          1,
+          reason: 'dispose dropped the closure, so there was nothing to call',
+        );
+      });
+
+      test('the adaptor cannot be retargeted or reached past', () {
+        // Both are compile-time facts, so both are read off the source: "you
+        // cannot assign it" is the one assertion a test cannot make by
+        // assigning it.
+        //
+        // `observable` is final because the constructor registers against
+        // *this* observable and nothing moves that registration. A settable
+        // field would leave an adaptor reporting one observable through `value`
+        // while firing from another — a builder rebuilding on one's changes
+        // while rendering the other's. `_voidCallback` is private because
+        // assigning it would bypass `addListener`, which is where the
+        // single-slot replacement is traced and where use after `dispose` is
+        // caught.
+        final source = File(
+          'lib/src/tomclient/observing/value_listenable_observer.dart',
+        ).readAsStringSync();
+
+        expect(source, contains('final T observable;'));
+        expect(source, contains('void Function()? _voidCallback;'));
+        expect(
+          source,
+          isNot(contains('void Function()? voidCallback;')),
+          reason: 'the listener slot is implementation state, not surface',
+        );
       });
 
       test('dispose is idempotent', () {

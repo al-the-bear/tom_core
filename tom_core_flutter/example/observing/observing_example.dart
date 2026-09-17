@@ -60,23 +60,25 @@ void run() {
   print('after replacing the listener: first=$first latest=$latest');
 
   // Example 5: ending the subscription. Construction is the subscription, so
-  // `dispose` is what ends it — and `removeListener` above did not. The
-  // adaptor silenced in Example 3 is still on the observable's observer list
-  // and forwards again the moment its slot is refilled; the disposed one is
-  // off the list and cannot be refilled at all.
+  // `dispose` is what ends it — and `removeListener` in Example 3 did not. The
+  // adaptor silenced there is still on the observable's observer list, so
+  // giving it a listener again resumes forwarding.
   //
-  // `second` is finished with, so it is disposed first — and that is the point
-  // being made: every adaptor in this example is subscribed to the same `flag`,
-  // and one that is not disposed keeps counting every mutation made after the
-  // code that created it has moved on.
+  // `second` is finished with, so it is disposed first, and that is itself the
+  // point: every adaptor here is subscribed to the same `flag`, and one that is
+  // never disposed keeps running on every mutation made long after the code
+  // that created it has moved on.
   second.dispose();
 
-  adaptor.voidCallback = () => notifications++;
+  adaptor.addListener(() => notifications++);
   flag | true;
-  print('after refilling the silenced slot: notifications=$notifications');
+  print('after re-arming the silenced adaptor: notifications=$notifications');
 
+  // Disposing is not reversible. The adaptor comes off the observer list, so
+  // nothing reaches it again — and `addListener` on it would now fail an
+  // assert rather than leave a caller waiting for notifications that cannot
+  // arrive. That is why this line is the last thing done with `adaptor`.
   adaptor.dispose();
-  adaptor.voidCallback = () => notifications++;
   flag | false;
   print('after dispose: notifications=$notifications (unchanged)');
 
@@ -91,8 +93,7 @@ void run() {
   assert(latest == 1);
   assert(
     notifications == 3,
-    'two before removeListener, one after the slot was refilled, none after '
-    'dispose',
+    'two before removeListener, one after re-arming, none after dispose',
   );
 }
 

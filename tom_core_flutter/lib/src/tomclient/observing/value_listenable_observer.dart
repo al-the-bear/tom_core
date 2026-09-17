@@ -72,10 +72,24 @@ class ValueListenableObserver<T extends TomObservable>
   }
 
   /// The kernel observable whose notifications are forwarded to Flutter.
-  T observable;
+  ///
+  /// `final`, because the subscription is made against *this* observable in the
+  /// constructor and nothing moves it. A settable field would let an adaptor be
+  /// pointed at a second observable while still registered on the first, so
+  /// [value] would report one and [onNotify] would fire from the other — a
+  /// `ValueListenableBuilder` rebuilding on one observable's changes while
+  /// rendering another's. Retargeting is what a new adaptor is for; a
+  /// `TomObservingWidget` migrates instead, because a widget has a
+  /// `didUpdateWidget` to migrate in and this has no lifecycle at all.
+  final T observable;
 
   /// The single Flutter listener to invoke on each notification, if any.
-  void Function()? voidCallback;
+  ///
+  /// Private: it is implementation state, not surface. Assigning it directly
+  /// would bypass [addListener], which is where the single-slot replacement is
+  /// documented, traced, and guarded against use after [dispose]. [value] is
+  /// the type's reader.
+  void Function()? _voidCallback;
 
   /// Whether [dispose] has run. Read by the debug assertions below.
   bool _isDisposed = false;
@@ -95,14 +109,14 @@ class ValueListenableObserver<T extends TomObservable>
   /// call sites defensive instead of simple.
   void dispose() {
     observable.removeObserver(this);
-    voidCallback = null;
+    _voidCallback = null;
     _isDisposed = true;
   }
 
   @override
   void onNotify(T observable) {
-    if (voidCallback != null) {
-      voidCallback!();
+    if (_voidCallback != null) {
+      _voidCallback!();
       tomLog.trace(
         "ValueListenableObserver: notified ${observable.runtimeType} ${observable.toString()}",
       );
@@ -121,7 +135,7 @@ class ValueListenableObserver<T extends TomObservable>
       'list, so this listener would never fire. Build a new adaptor.',
     );
     tomLog.trace("ValueListenableObserver: Listener added $listener");
-    voidCallback = listener;
+    _voidCallback = listener;
   }
 
   /// Clears the single listener slot so notifications are no longer forwarded.
@@ -137,7 +151,7 @@ class ValueListenableObserver<T extends TomObservable>
   @override
   void removeListener(VoidCallback listener) {
     tomLog.trace("ValueListenableObserver: Listener removed $listener");
-    voidCallback = null;
+    _voidCallback = null;
   }
 
   /// The current value — the observed [observable] itself.

@@ -127,9 +127,12 @@ only at `dispose`.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `observable` | `T` | The kernel observable whose notifications are forwarded. |
-| `voidCallback` | `void Function()?` | The single Flutter listener to invoke on each notification, if any. |
-| `value` | `T` | *(override)* The current value — the observed `observable` itself. |
+| `observable` | `T` | **`final`.** The kernel observable whose notifications are forwarded. The constructor registers against *this* one and nothing moves that registration, so an adaptor cannot be retargeted — build a new one. |
+| `value` | `T` | *(override)* The current value — the observed `observable` itself. The type's reader. |
+
+The listener slot is private. It is implementation state rather than surface:
+assigning it would bypass `addListener`, which is where the single-slot
+replacement is documented and traced and where use after `dispose` is caught.
 
 #### Methods
 
