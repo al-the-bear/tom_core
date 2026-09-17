@@ -7,6 +7,7 @@ import '../object_persistence/grouped_query.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../object_persistence/query_sentence_compiler.dart';
 import '../object_persistence/annotation_analyzer.dart';
+import '../transactions/transaction_manager.dart';
 
 import 'mariadb_sql_dialect.dart';
 import 'sql_dialects.dart';
@@ -1503,11 +1504,24 @@ class MariaDbDatasource implements TomDataSource {
     );
   }
 
+  /// Opens the connection's transaction, read-only when [transaction] is.
+  ///
+  /// `START TRANSACTION READ ONLY` is what makes the flag mean something: the
+  /// server refuses every write on this connection until the transaction ends,
+  /// with `ER_CANT_EXECUTE_IN_READ_ONLY_TRANSACTION`. The coordinator cannot
+  /// enforce it — it has no idea what a write is — so the resource that can is
+  /// the only place it can be enforced, and a flag declared on an endpoint and
+  /// enforced nowhere is a statement of intent a reader will take for a
+  /// guarantee.
   @override
-  Future<bool> startTransaction() async {
+  Future<bool> startTransaction(TomTransaction transaction) async {
     if (_transactional) _refuseNestedTransaction();
     try {
-      await executeCommand("START TRANSACTION;");
+      await executeCommand(
+        transaction.isReadOnly
+            ? "START TRANSACTION READ ONLY;"
+            : "START TRANSACTION;",
+      );
       _transactional = true;
       return true;
     } catch (error) {
@@ -1617,9 +1631,22 @@ class MariaDbXADatasource extends MariaDbDatasource {
   /// issuing a statement and ignoring the failure.
   bool _prepared = false;
 
+  /// Opens an XA branch. A read-only [transaction] cannot be honoured here.
+  ///
+  /// `XA START` has no `READ ONLY` form in MariaDB or MySQL, so this data
+  /// source cannot ask the server to refuse writes the way its one-phase
+  /// sibling does. Reported rather than ignored: a deployment that declared
+  /// `@TomTransactional(isReadOnly: true)` and reads nothing anywhere would
+  /// otherwise believe the branch was protected.
   @override
-  Future<bool> startTransaction() async {
+  Future<bool> startTransaction(TomTransaction transaction) async {
     if (_txId != null) _refuseNestedTransaction(_txId);
+    if (transaction.isReadOnly) {
+      tomLog.warn(
+        "${getParticipantId()} joined a read-only transaction, but XA has no "
+        "read-only branch: writes on this connection are not prevented.",
+      );
+    }
     _txId = "'${databaseName}_${host}_${port}_${DateTime.now()}'";
     _prepared = false;
     try {

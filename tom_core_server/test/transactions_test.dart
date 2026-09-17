@@ -67,8 +67,8 @@ class _RecordingParticipant extends TomTransactionParticipant {
   String getParticipantId() => id;
 
   @override
-  Future<bool> startTransaction() async {
-    _record('start');
+  Future<bool> startTransaction(TomTransaction transaction) async {
+    _record(transaction.isReadOnly ? 'start(read-only)' : 'start');
     return true;
   }
 
@@ -122,7 +122,7 @@ class _ThrowingParticipant extends TomTransactionParticipant {
   String getParticipantId() => id;
 
   @override
-  Future<bool> startTransaction() async => true;
+  Future<bool> startTransaction(TomTransaction transaction) async => true;
 
   @override
   Future<bool> prepare() async {
@@ -164,7 +164,7 @@ class _UnstartableParticipant extends TomTransactionParticipant {
   String getParticipantId() => id;
 
   @override
-  Future<bool> startTransaction() async {
+  Future<bool> startTransaction(TomTransaction transaction) async {
     calls.add('start');
     if (byThrowing) throw StateError('the resource is not there');
     return false;
@@ -863,6 +863,71 @@ void main() {
   // rolled back or ended, and the work issued against it is neither committed
   // with the transaction nor rolled back with it. The first sign is data that
   // should have been undone and was not.
+  // The flag exists to reach the resource that can act on it, and the contract
+  // is the only path between the `@TomTransactional(isReadOnly: true)` that
+  // declares it and the data source that opens the connection. Handed over
+  // rather than looked up: an ambient `getCurrentTransaction()` asks the
+  // participant to re-derive, from inside a call the coordinator just made,
+  // which transaction made it — and it answers from whatever zone the call is
+  // running in, which is the case the scoping exists to separate.
+  group('a participant is handed the transaction it joins', () {
+    test('and can read whether it was opened read-only', () async {
+      await TomTransactionManager.runInTransactionScope(() async {
+        final (txn, _) = TomTransactionManager.startTransaction(true);
+        final p = _RecordingParticipant('a');
+        await txn.registerParticipant(p);
+        await txn.commitTransaction();
+
+        expect(p.calls, ['start(read-only)', 'prepare', 'commit', 'end']);
+      });
+    });
+
+    test('a read-write transaction is reported as one', () async {
+      await TomTransactionManager.runInTransactionScope(() async {
+        final (txn, _) = TomTransactionManager.startTransaction();
+        final p = _RecordingParticipant('a');
+        await txn.registerParticipant(p);
+        await txn.commitTransaction();
+
+        expect(p.calls.first, 'start');
+      });
+    });
+
+    test('it is the transaction it joined, not whatever is current', () async {
+      // The distinction an ambient lookup cannot make. The participant is
+      // enlisted in a read-only transaction from inside a *different* scope
+      // whose own current transaction is read-write; a lookup would answer with
+      // that one.
+      late _RecordingParticipant p;
+      await TomTransactionManager.runInTransactionScope(() async {
+        final (outer, _) = TomTransactionManager.startTransaction();
+        addTearDown(() async {
+          if (outer.isRunning) await outer.rollbackTransaction();
+        });
+        expect(outer.isReadOnly, isFalse);
+
+        late TomTransaction readOnly;
+        await TomTransactionManager.runInTransactionScope(() async {
+          (readOnly, _) = TomTransactionManager.startTransaction(true);
+        });
+
+        // Enlisting from out here, in the read-write scope, into the read-only
+        // transaction held from the inner one.
+        p = _RecordingParticipant('a');
+        await readOnly.registerParticipant(p);
+        await readOnly.commitTransaction();
+      });
+
+      expect(
+        p.calls.first,
+        'start(read-only)',
+        reason:
+            'the participant was told about the ambient transaction rather '
+            'than the one it was enlisted in',
+      );
+    });
+  });
+
   group('two distinct participants cannot share one id', () {
     test('the second is refused, naming the id', () async {
       final (txn, _) = TomTransactionManager.startTransaction();

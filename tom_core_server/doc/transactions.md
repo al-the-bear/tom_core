@@ -15,6 +15,7 @@ handle around.
 - [Ambient Access](#ambient-access)
 - [Transaction Scopes](#transaction-scopes)
 - [How the Pipeline Uses It](#how-the-pipeline-uses-it)
+- [Read-Only](#read-only)
 - [Concurrency Model](#concurrency-model)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
@@ -39,7 +40,7 @@ A participant is keyed by a stable id and exposes five lifecycle hooks:
 ```dart
 abstract class TomTransactionParticipant {
   String getParticipantId();
-  Future<bool> startTransaction(); // on enlistment
+  Future<bool> startTransaction(TomTransaction transaction); // on enlistment
   Future<bool> prepare();          // phase one; returning false vetoes
   Future<bool> commit();           // phase two; the promise being kept
   Future<void> rollback();         // undo on failure
@@ -192,8 +193,8 @@ A transaction runs once: after it concludes, `isRunning` is `false`.
 was created, so the caller that actually opened the transaction is the one
 responsible for concluding it; a nested caller receives the existing transaction
 and `false`. `getCurrentTransaction()` and the `transactional` getter expose the
-current state. `isReadOnly` is advisory and only honoured when a new transaction
-is created.
+current state. `isReadOnly` is only honoured when a new transaction is created —
+a nested caller receives the enclosing transaction unchanged.
 
 "Current" means current *to this flow of work*, not to this isolate — see
 [Transaction Scopes](#transaction-scopes).
@@ -290,9 +291,34 @@ try {
 }
 ```
 
-`@TomTransactional(isReadOnly: true)` is passed through to the transaction, so a
-read-only endpoint opens a read-only transaction and participants can act on the
-flag.
+`@TomTransactional(isReadOnly: true)` is passed through to the transaction and
+reaches every participant as the argument of `startTransaction`, so a read-only
+endpoint opens a read-only transaction and the data source opens
+`START TRANSACTION READ ONLY` — see [Read-Only](#read-only).
+
+## Read-Only
+
+A transaction opened read-only —
+`TomTransactionManager.startTransaction(true)`, or
+`@TomTransactional(isReadOnly: true)` on an endpoint — carries that as
+`TomTransaction.isReadOnly`, and every participant is handed the transaction as
+the argument of `startTransaction`. That argument is the only path between the
+annotation that declares the intent and the resource that can act on it.
+
+**The coordinator enforces nothing.** It has no idea what a write is. What the
+flag means is therefore decided by each participant:
+
+| Participant | What it does with it |
+| ----------- | -------------------- |
+| `MariaDbDatasource` | Opens `START TRANSACTION READ ONLY`, so the server refuses every write on that connection until the transaction ends (`ER_CANT_EXECUTE_IN_READ_ONLY_TRANSACTION`). |
+| `MariaDbXADatasource` | Cannot honour it — `XA START` has no `READ ONLY` form — and logs a warning saying so rather than appearing to. |
+| Anything else | Whatever it chooses; the flag is an argument, not an instruction. |
+
+The transaction is **handed over, not looked up**. A participant could in
+principle read `TomTransactionManager.getCurrentTransaction()` from inside the
+hook the coordinator just called, and it would be wrong in the case the scoping
+exists for: the answer comes from whatever zone the call is running in, which
+need not be the zone the transaction was opened in.
 
 ## Concurrency Model
 
@@ -316,11 +342,11 @@ a `finally`, so it clears it whatever happens on the way.
   coordinator logs the failure at error level naming every participant that
   broke its promise and commits the rest, and repair is at those resources. Two
   phases make a veto free; they do not make a commit infallible.
-- **`isReadOnly` is recorded and never enforced.** `startTransaction(true)`
-  stores the flag on the transaction and `@TomTransactional(isReadOnly: true)`
-  passes it through, but no participant in the package reads it — a read-only
-  transaction will happily execute a write. It is a hint for a participant that
-  chooses to honour it, not a guarantee the coordinator makes.
+- **`isReadOnly` is not enforced on an XA branch.** `MariaDbXADatasource` gets
+  the flag like every participant and cannot act on it: `XA START` has no
+  `READ ONLY` form in MariaDB or MySQL, so writes on that connection are not
+  prevented. It warns rather than failing the start, because refusing would take
+  the distributed transaction with it. See [Read-Only](#read-only).
 - **There is no transaction log, so a process that dies mid-commit is not
   recovered.** The coordinator's state lives in a zone value; nothing is written
   down between the phases and nothing replays afterwards. A crash after the

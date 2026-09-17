@@ -106,7 +106,7 @@ mapping `prepare` onto `XA END` + `XA PREPARE` and `commit` onto `XA COMMIT`.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `getParticipantId` | `String getParticipantId()` | A stable id naming the **resource** this participant speaks for, not the object — `MariaDbDatasource` answers `"MariaDb-<database>@<host>:@<port>"`. Registering the same participant twice enlists once; a *different* object claiming an enlisted id is refused with `…duplicate_id`. A participant needing its own enlistment returns an id nothing else answers. |
-| `startTransaction` | `Future<bool> startTransaction()` | Begins the participant's part of the transaction; called once on enlist. |
+| `startTransaction` | `Future<bool> startTransaction(TomTransaction transaction)` | Begins the participant's part of `transaction`; called once on enlist. The transaction is handed over rather than looked up, which is how `isReadOnly` reaches the resource that can act on it — `MariaDbDatasource` opens `START TRANSACTION READ ONLY` for one. |
 | `prepare` | `Future<bool> prepare()` | Phase one: promises that `commit` will succeed. Returning `false` — or throwing — vetoes the transaction, while nothing is durable. A participant with nothing to prepare returns `true`. |
 | `commit` | `Future<bool> commit()` | Phase two: makes the work durable. Reached only after every participant prepared, so a `false` is not a veto — it reports a broken promise and leaves the transaction partially committed. |
 | `rollback` | `Future<void> rollback()` | Undoes the participant's work when the transaction is rolled back. Reachable after a successful `prepare`, never after this participant's own `commit`. |
@@ -128,7 +128,7 @@ None — the constructor is private; obtain instances via
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `isReadOnly` | `bool` | Whether this transaction was opened as read-only (advisory; does not itself prevent writes). |
+| `isReadOnly` | `bool` | Whether this transaction was opened as read-only. Handed to every participant through `startTransaction`, which is the only path from the `@TomTransactional(isReadOnly: true)` that declares it to the resource that can act on it. The coordinator enforces nothing — it has no idea what a write is — so what it means is each participant's to decide: `MariaDbDatasource` opens `START TRANSACTION READ ONLY` and the server refuses the writes; `MariaDbXADatasource` cannot, XA having no read-only branch, and warns rather than appearing to. |
 | `isRunning` | `bool` | *(getter)* Whether the transaction is still open (not yet committed or rolled back). |
 
 #### Methods

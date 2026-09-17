@@ -2,6 +2,29 @@
 
 ### Added
 
+- **`isReadOnly` reaches the participant that can act on it (tcopen193).**
+  Four documents said the flag was "surfaced to participants" and the contract
+  did not carry it: `startTransaction()` took no arguments and no other
+  lifecycle method did either, so a participant was never handed the transaction
+  it joined. A grep across `lib/` found every use of `TomTransaction.isReadOnly`
+  — the field, the constructor, the dartdoc, the parameter and the one call site
+  that sets it from `@TomTransactional(isReadOnly: true)`. Nothing read it. The
+  value travelled from the annotation into the object and stopped.
+
+  `startTransaction` now takes the `TomTransaction` being joined. Handed over
+  rather than looked up, and that is the point: an ambient
+  `getCurrentTransaction()` asks the participant to re-derive, from inside a
+  call the coordinator has just made, which transaction made it — and it answers
+  from whatever zone the call is running in, which is the case the scoping
+  exists to separate.
+
+  It is read. `MariaDbDatasource` opens `START TRANSACTION READ ONLY` for a
+  read-only transaction, so the server refuses every write on that connection
+  until it ends — which turns the flag from a statement of intent into something
+  enforced by the only layer that can enforce it; the coordinator has no idea
+  what a write is. `MariaDbXADatasource` cannot: `XA START` has no `READ ONLY`
+  form, and it warns rather than appearing to honour the flag.
+
 - **Two distinct participants can no longer share one id (tcopen192).**
   `registerParticipant` enlisted only when the id was unseen, and every document
   described that as the convenience it is for a caller registering the same

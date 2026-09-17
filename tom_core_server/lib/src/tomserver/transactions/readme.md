@@ -23,7 +23,7 @@ can repair.
 | ---- | -------------- |
 | `TomTransactionManager` | Zone-scoped coordinator; `runInTransaction(body)` opens a transaction, commits it on return and rolls it back on a throw. Also `startTransaction([isReadOnly])` returning `(transaction, isNew)`, `getCurrentTransaction()`, `transactional`, plus `runInTransactionScope(body)` / `hasTransactionScope` for isolating one flow of work from another. Binds the transaction to a `@TomTransactional` endpoint call. |
 | `TomTransaction` | The running transaction (created via the manager); `registerParticipant` (all or nothing — a participant whose `startTransaction` refuses or throws is not enlisted, and the failure is raised naming it), `commitTransaction()` (prepare-all then commit-all, rolling back on any veto), `rollbackTransaction()`. |
-| `TomTransactionParticipant` | Abstract resource that enlists in a transaction (`prepare`, `commit`, `rollback`, `endTransaction`). Datasources implement this; `MariaDbXADatasource` maps `prepare` onto `XA END` + `XA PREPARE` and `commit` onto `XA COMMIT`. |
+| `TomTransactionParticipant` | Abstract resource that enlists in a transaction (`startTransaction(transaction)`, `prepare`, `commit`, `rollback`, `endTransaction`). The transaction is handed over on enlistment, which is how `isReadOnly` reaches the resource — `MariaDbDatasource` opens `START TRANSACTION READ ONLY` for one. Datasources implement this; `MariaDbXADatasource` maps `prepare` onto `XA END` + `XA PREPARE` and `commit` onto `XA COMMIT`. |
 
 ## Quick start
 

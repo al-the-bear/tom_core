@@ -69,8 +69,20 @@ abstract class TomTransactionParticipant {
   /// else answers.
   String getParticipantId();
 
-  /// Begins the participant's part of the transaction; called once on enlist.
-  Future<bool> startTransaction();
+  /// Begins the participant's part of [transaction]; called once on enlist.
+  ///
+  /// [transaction] is the one being joined, handed over rather than looked up.
+  /// The lookup is the reason: an ambient
+  /// `TomTransactionManager.getCurrentTransaction()` asks the participant to
+  /// re-derive, from inside a call the coordinator has just made, which
+  /// transaction made it — and it answers from whatever zone the call happens
+  /// to be running in, which is the case the scoping exists to separate.
+  ///
+  /// What a participant reads from it today is
+  /// [TomTransaction.isReadOnly]: `MariaDbDatasource` opens
+  /// `START TRANSACTION READ ONLY` for one, which is what turns the flag from a
+  /// statement of intent into something the server enforces.
+  Future<bool> startTransaction(TomTransaction transaction);
 
   /// Phase one: promises that [commit] will succeed. `false` vetoes.
   ///
@@ -134,8 +146,17 @@ class TomTransaction {
 
   final Map<String, TomTransactionParticipant> _participants = {};
 
-  /// Whether this transaction was opened as read-only (advisory; surfaced to
-  /// participants / callers — it does not by itself prevent writes).
+  /// Whether this transaction was opened as read-only.
+  ///
+  /// Handed to every participant through
+  /// [TomTransactionParticipant.startTransaction], which is the only path
+  /// between the `@TomTransactional(isReadOnly: true)` that declares it and the
+  /// resource that can act on it. The coordinator itself enforces nothing — it
+  /// has no idea what a write is — so what the flag *means* is decided by each
+  /// participant: `MariaDbDatasource` opens `START TRANSACTION READ ONLY`, and
+  /// the server refuses the writes from there on; `MariaDbXADatasource` cannot,
+  /// because XA has no read-only branch, and says so rather than appearing to
+  /// honour it.
   final bool isReadOnly;
 
   bool _isRunning = true;
@@ -210,7 +231,7 @@ class TomTransaction {
 
     final bool started;
     try {
-      started = await ttp.startTransaction();
+      started = await ttp.startTransaction(this);
     } catch (error, stack) {
       // Deliberately wide: the participant is application code — a driver, a
       // pooled connection, a queue client — and whatever it raises means the

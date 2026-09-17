@@ -33,8 +33,8 @@ class _RecordingParticipant extends TomTransactionParticipant {
   String getParticipantId() => id;
 
   @override
-  Future<bool> startTransaction() async {
-    calls.add('start');
+  Future<bool> startTransaction(TomTransaction transaction) async {
+    calls.add(transaction.isReadOnly ? 'start(read-only)' : 'start');
     return true;
   }
 

@@ -41,6 +41,17 @@ Future<List<FixtureTaskRecord>> _allTasks(MariaDbDatasource ds) =>
       'SELECT id, title, priority, done FROM fixture_task ORDER BY id',
     );
 
+/// A transaction to hand a data source that is being driven directly.
+///
+/// The lifecycle methods take the transaction they are joining rather than
+/// looking it up, so a test that calls one outside a coordinator drive still
+/// has to produce one — and `TomTransaction`'s constructor is private, so the
+/// manager is the only way to get one. Concluded by the caller where the test
+/// cares; several of these never conclude, which is what `startTransaction`'s
+/// get-or-create makes harmless.
+TomTransaction _aTransaction({bool readOnly = false}) =>
+    TomTransactionManager.startTransaction(readOnly).$1;
+
 void main() async {
   // Probe once, before declaring the group, so the group can skip when nothing
   // is listening — keeping the default run green with no database.
@@ -141,7 +152,7 @@ void main() async {
     );
 
     test('a rolled-back transaction discards its inserts', () async {
-      expect(await ds.startTransaction(), isTrue);
+      expect(await ds.startTransaction(_aTransaction()), isTrue);
       await ds.executeCommand(
         "INSERT INTO fixture_task (title) VALUES ('temporary')",
       );
@@ -150,7 +161,7 @@ void main() async {
     });
 
     test('a committed transaction persists its inserts', () async {
-      expect(await ds.startTransaction(), isTrue);
+      expect(await ds.startTransaction(_aTransaction()), isTrue);
       await ds.executeCommand(
         "INSERT INTO fixture_task (title) VALUES ('kept')",
       );
@@ -161,7 +172,7 @@ void main() async {
     });
 
     test('startTransaction rejects a second concurrent transaction', () async {
-      expect(await ds.startTransaction(), isTrue);
+      expect(await ds.startTransaction(_aTransaction()), isTrue);
       // Against a real server, because this is the one place where the guard
       // and a genuine database refusal are both reachable through the same
       // call: `isA<Exception>()` would pass on either, and so would pass on a

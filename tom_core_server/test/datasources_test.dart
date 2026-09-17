@@ -58,6 +58,33 @@ mixin _ScriptedCommands on MariaDbDatasource {
 /// `_txId` is private and has no accessor, which is what makes the SQL the only
 /// place a wrongly cleared id is observable — it arrives there as the literal
 /// `null`.
+/// A [TomLogOutput] that keeps every message instead of printing it, so a test
+/// can assert on what a driver actually wrote.
+class _CapturingLogOutput extends TomLogOutput {
+  final List<String> messages = [];
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) => messages.add(convertToString(message));
+}
+
+/// A transaction to hand a data source that is being driven directly.
+///
+/// The lifecycle methods take the transaction they are joining rather than
+/// looking it up, so a test that calls one outside a coordinator drive still
+/// has to produce one — and `TomTransaction`'s constructor is private, so the
+/// manager is the only way to get one. Concluded by the caller where the test
+/// cares; several of these never conclude, which is what `startTransaction`'s
+/// get-or-create makes harmless.
+TomTransaction _aTransaction({bool readOnly = false}) =>
+    TomTransactionManager.startTransaction(readOnly).$1;
+
 String _branchOf(_ScriptedCommands ds) {
   final start = ds.commands.firstWhere((c) => c.startsWith('XA START '));
   return start.substring('XA START '.length, start.length - 1);
@@ -2247,22 +2274,22 @@ void main() {
   group('MariaDb transaction lifecycle: the state each exit leaves', () {
     test('a failed start clears the branch id it had already set', () async {
       final ds = _ScriptedXADatasource(failing: {'XA START'});
-      expect(await ds.startTransaction(), isFalse);
+      expect(await ds.startTransaction(_aTransaction()), isFalse);
       // The id is assigned before the command is issued, so a failure that
       // leaves it set locks out every later transaction. Recovering by calling
       // `rollback` is not available: there is no branch to roll back, and a
       // caller that got `false` has been told the transaction never began.
-      expect(await ds.startTransaction(), isFalse);
+      expect(await ds.startTransaction(_aTransaction()), isFalse);
       expect(ds.commands, hasLength(2));
       expect(ds.commands.every((c) => c.startsWith('XA START ')), isTrue);
     });
 
     test('a failed rollback clears the branch id', () async {
       final ds = _ScriptedXADatasource(failing: {'XA ROLLBACK'});
-      expect(await ds.startTransaction(), isTrue);
+      expect(await ds.startTransaction(_aTransaction()), isTrue);
       final branch = _branchOf(ds);
       await ds.rollback();
-      expect(await ds.startTransaction(), isTrue);
+      expect(await ds.startTransaction(_aTransaction()), isTrue);
       expect(ds.commands[1], 'XA END $branch; XA ROLLBACK $branch;');
     });
 
@@ -2273,7 +2300,7 @@ void main() {
       // branch it opened. Clearing here would send `XA ROLLBACK null` and leave
       // the real branch behind, which is the state nothing reclaims.
       final ds = _ScriptedXADatasource(failing: {'XA END'});
-      expect(await ds.startTransaction(), isTrue);
+      expect(await ds.startTransaction(_aTransaction()), isTrue);
       final branch = _branchOf(ds);
       expect(await ds.prepare(), isFalse);
       expect(ds.commands.last, 'XA END $branch; XA PREPARE $branch;');
@@ -2281,7 +2308,7 @@ void main() {
       // The prepare failed, so the branch is still ACTIVE and has to be ended
       // before it can be rolled back.
       expect(ds.commands.last, 'XA END $branch; XA ROLLBACK $branch;');
-      expect(await ds.startTransaction(), isTrue);
+      expect(await ds.startTransaction(_aTransaction()), isTrue);
     });
 
     test('a failed commit keeps the branch id for XA RECOVER', () async {
@@ -2292,13 +2319,13 @@ void main() {
       // is an operator, or an `XA RECOVER`, having something to name. A
       // rollback issued by hand still finds it.
       final ds = _ScriptedXADatasource(failing: {'XA COMMIT'});
-      expect(await ds.startTransaction(), isTrue);
+      expect(await ds.startTransaction(_aTransaction()), isTrue);
       final branch = _branchOf(ds);
       expect(await ds.prepare(), isTrue);
       expect(await ds.commit(), isFalse);
       await ds.rollback();
       expect(ds.commands.last, 'XA ROLLBACK $branch;');
-      expect(await ds.startTransaction(), isTrue);
+      expect(await ds.startTransaction(_aTransaction()), isTrue);
     });
 
     test('prepare ends and prepares, commit commits', () async {
@@ -2308,7 +2335,7 @@ void main() {
       // `prepare`, where a refusal is still free, and `XA COMMIT` in `commit`,
       // where the decision has been made.
       final ds = _ScriptedXADatasource();
-      expect(await ds.startTransaction(), isTrue);
+      expect(await ds.startTransaction(_aTransaction()), isTrue);
       final branch = _branchOf(ds);
       expect(branch, isNot(contains('null')));
       expect(await ds.prepare(), isTrue);
@@ -2328,8 +2355,8 @@ void main() {
       // two classes share a guard whose message is the symptom of the XA bug,
       // and a reader of that fix will ask whether the sibling has it too.
       final ds = _ScriptedDatasource(failing: {'START TRANSACTION'});
-      expect(await ds.startTransaction(), isFalse);
-      expect(await ds.startTransaction(), isFalse);
+      expect(await ds.startTransaction(_aTransaction()), isFalse);
+      expect(await ds.startTransaction(_aTransaction()), isFalse);
       expect(ds.commands, hasLength(2));
     });
 
@@ -2345,7 +2372,7 @@ void main() {
       // alone cannot tell an intentional no-op from a forgotten body, whereas a
       // statement appearing here would show up immediately.
       final ds = _ScriptedDatasource();
-      expect(await ds.startTransaction(), isTrue);
+      expect(await ds.startTransaction(_aTransaction()), isTrue);
       expect(await ds.endTransaction(), isTrue);
       expect(ds.commands, ['START TRANSACTION;']);
       expect(await ds.commit(), isTrue);
@@ -2359,7 +2386,7 @@ void main() {
       // is reachable today: `registerParticipant` enlists a participant whose
       // start returned `false`, and that participant still gets ended.
       final ds = _ScriptedDatasource(failing: {'START TRANSACTION'});
-      expect(await ds.startTransaction(), isFalse);
+      expect(await ds.startTransaction(_aTransaction()), isFalse);
       expect(await ds.endTransaction(), isTrue);
       expect(ds.commands, ['START TRANSACTION;']);
     });
@@ -2402,21 +2429,24 @@ void main() {
       'the plain guard raises the module type, not a bare Exception',
       () async {
         final ds = _ScriptedDatasource();
-        expect(await ds.startTransaction(), isTrue);
-        await expectLater(ds.startTransaction, refusesNesting());
+        expect(await ds.startTransaction(_aTransaction()), isTrue);
+        await expectLater(
+          () => ds.startTransaction(_aTransaction()),
+          refusesNesting(),
+        );
       },
     );
 
     test('the XA guard raises it too, naming the open branch', () async {
       final ds = _ScriptedXADatasource();
-      expect(await ds.startTransaction(), isTrue);
+      expect(await ds.startTransaction(_aTransaction()), isTrue);
       // The branch id is private, but it was interpolated into the SQL, so the
       // recorded command is where the value the refusal must name is readable.
       // Trimming the statement's trailing `;` leaves the id exactly as held.
       final started = ds.commands.single;
       final branch = started.substring('XA START '.length, started.length - 1);
       await expectLater(
-        ds.startTransaction,
+        () => ds.startTransaction(_aTransaction()),
         refusesNesting(withTransactionId: branch),
       );
     });
@@ -2427,13 +2457,19 @@ void main() {
       // swallow it and hand the caller the very report this case must not be
       // confused with.
       final plain = _ScriptedDatasource();
-      expect(await plain.startTransaction(), isTrue);
-      await expectLater(plain.startTransaction, refusesNesting());
+      expect(await plain.startTransaction(_aTransaction()), isTrue);
+      await expectLater(
+        () => plain.startTransaction(_aTransaction()),
+        refusesNesting(),
+      );
       expect(plain.commands, ['START TRANSACTION;']);
 
       final xa = _ScriptedXADatasource();
-      expect(await xa.startTransaction(), isTrue);
-      await expectLater(xa.startTransaction, throwsA(isA<Exception>()));
+      expect(await xa.startTransaction(_aTransaction()), isTrue);
+      await expectLater(
+        () => xa.startTransaction(_aTransaction()),
+        throwsA(isA<Exception>()),
+      );
       expect(xa.commands, hasLength(1));
     });
 
@@ -2447,7 +2483,7 @@ void main() {
         final refused = _ScriptedDatasource(failing: {'START TRANSACTION'});
         var caught = false;
         try {
-          expect(await refused.startTransaction(), isFalse);
+          expect(await refused.startTransaction(_aTransaction()), isFalse);
         } on MariadbDatasourceException {
           caught = true;
         }
@@ -2458,13 +2494,68 @@ void main() {
         );
 
         final busy = _ScriptedDatasource();
-        expect(await busy.startTransaction(), isTrue);
+        expect(await busy.startTransaction(_aTransaction()), isTrue);
         try {
-          await busy.startTransaction();
+          await busy.startTransaction(_aTransaction());
           fail('a second start on a busy data source must throw');
         } on MariadbDatasourceException catch (e) {
           expect(e.key, 'error.transaction.already_active');
         }
+      },
+    );
+  });
+
+  // The flag's whole purpose, in SQL. The coordinator enforces nothing — it has
+  // no idea what a write is — so a read-only transaction means whatever the
+  // resource makes it mean, and this is the resource that can make it mean
+  // something: `START TRANSACTION READ ONLY` has the server refuse every write
+  // on the connection until the transaction ends.
+  group('a read-only transaction reaches the connection', () {
+    test('the plain driver opens the branch read-only', () async {
+      await TomTransactionManager.runInTransactionScope(() async {
+        final ds = _ScriptedDatasource();
+        final (txn, _) = TomTransactionManager.startTransaction(true);
+        await txn.registerParticipant(ds);
+
+        expect(ds.commands, ['START TRANSACTION READ ONLY;']);
+        await txn.rollbackTransaction();
+      });
+    });
+
+    test('and read-write otherwise', () async {
+      await TomTransactionManager.runInTransactionScope(() async {
+        final ds = _ScriptedDatasource();
+        final (txn, _) = TomTransactionManager.startTransaction();
+        await txn.registerParticipant(ds);
+
+        expect(ds.commands, ['START TRANSACTION;']);
+        await txn.rollbackTransaction();
+      });
+    });
+
+    test(
+      'the XA driver says it cannot honour it, and does not pretend',
+      () async {
+        // `XA START` has no `READ ONLY` form, so this driver can only report.
+        // Silence here would leave a deployment that declared the endpoint
+        // read-only believing the branch was protected.
+        final output = _CapturingLogOutput();
+        final previous = tomLog.logOutput;
+        addTearDown(() => tomLog.logOutput = previous);
+        tomLog.logOutput = output;
+
+        await TomTransactionManager.runInTransactionScope(() async {
+          final ds = _ScriptedXADatasource();
+          final (txn, _) = TomTransactionManager.startTransaction(true);
+          await txn.registerParticipant(ds);
+
+          expect(ds.commands.single, startsWith('XA START '));
+          expect(
+            output.messages.join('\n'),
+            contains('XA has no read-only branch'),
+          );
+          await txn.rollbackTransaction();
+        });
       },
     );
   });
