@@ -78,6 +78,12 @@ and because it makes the declaration set **complete by the end of
 construction**, which is what lets `settings`, `save` and `resetAll` be
 exhaustive rather than "exhaustive so far".
 
+That also fixes the construction order: baselines are resolved before the
+constructor returns, so the config provider must already be installed. Building
+the holder first throws `resources.config_provider.not_installed` rather than
+serving declared defaults that look configured — an application with no
+configuration bundle installs an empty provider rather than none.
+
 ## Resolution order
 
 A setting's value is, highest precedence first:

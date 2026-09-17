@@ -1274,6 +1274,173 @@ void main() {
     });
   });
 
+  group('a holder built before its config provider', () {
+    // Every other test in this file installs a provider in `setUp`, so the
+    // ordering an application can actually get wrong — holder first, resource
+    // providers second — was the one case the suite never reached.
+    test('declaring a setting fails loudly rather than defaulting', () {
+      TomConfigResourceProvider.clearAppConfigProvider();
+
+      expect(
+        _TestConfiguration.new,
+        throwsA(
+          isA<TomResourceException>().having(
+            (e) => e.key,
+            'key',
+            'resources.config_provider.not_installed',
+          ),
+        ),
+        reason:
+            'a holder whose baselines were resolved against nothing would '
+            'serve declared defaults that look configured',
+      );
+    });
+
+    test('the failure names the remedy, and the remedy works', () {
+      TomConfigResourceProvider.clearAppConfigProvider();
+
+      late final TomResourceException failure;
+      try {
+        _TestConfiguration();
+        fail('expected the unbootstrapped lookup to throw');
+      } on TomResourceException catch (error) {
+        failure = error;
+      }
+      expect(
+        failure.toString(),
+        contains('TomConfigResourceProvider.from({})'),
+        reason: 'an app with no configuration bundle still installs one',
+      );
+
+      // The message is only worth its length if what it tells you to do is
+      // enough. It is: an empty provider is a complete answer, and every
+      // setting then resolves to the default written at its declaration.
+      TomConfigResourceProvider.setAppConfigProvider(
+        TomConfigResourceProvider.from({}),
+      );
+      final config = _TestConfiguration();
+      expect(~config.retries, 3);
+      expect(config.hasOverrides, isFalse);
+    });
+  });
+
+  group('applyRaw', () {
+    // The method the store side goes through. `load()` exercises it on every
+    // key it adopts, but a store that round-tripped through JSON — or one an
+    // older build wrote — can hold a `'9'` where an `int` is declared, and
+    // that widening is the reason the method is not a plain `set`.
+    test('coerces a store-shaped value to the declared type', () {
+      final config = _TestConfiguration();
+
+      config.retries.applyRaw('9');
+      config.ratio.applyRaw(2);
+      config.darkMode.applyRaw('true');
+
+      expect(~config.retries, 9);
+      expect(~config.ratio, 2.0);
+      expect(~config.darkMode, isTrue);
+      expect(config.isOverridden('client.retries'), isTrue);
+    });
+
+    test('throws type_mismatch naming the key it could not read', () {
+      final config = _TestConfiguration();
+
+      expect(
+        () => config.retries.applyRaw('not a number'),
+        throwsA(
+          isA<TomClientConfigurationException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'client_configuration.value.type_mismatch',
+              )
+              .having(
+                (e) => e.toString(),
+                'message',
+                contains('client.retries'),
+              ),
+        ),
+      );
+      expect(~config.retries, 3, reason: 'a refused value is not applied');
+    });
+
+    test('load() coerces what the store round-tripped', () async {
+      final store = TomMemoryClientConfigurationStore({
+        'client.retries': '9',
+        'client.ratio': 2,
+        'client.darkMode': 'true',
+      });
+      final config = _TestConfiguration(store: store);
+
+      await config.load();
+
+      expect(~config.retries, 9);
+      expect(~config.ratio, 2.0);
+      expect(~config.darkMode, isTrue);
+    });
+
+    test('load() throws on a stored value it cannot read', () async {
+      final store = TomMemoryClientConfigurationStore({
+        'client.retries': 'not a number',
+      });
+      final config = _TestConfiguration(store: store);
+
+      await expectLater(
+        config.load,
+        throwsConfigException('client_configuration.value.type_mismatch'),
+      );
+    });
+  });
+
+  group('toString', () {
+    // Both formats are documented with their exact shape, and a debugger's
+    // view of a settings holder is the one place a reader meets them.
+    test('a setting reads key=value', () {
+      final config = _TestConfiguration();
+      expect(config.retries.toString(), 'client.retries=3');
+    });
+
+    test('and gains the overridden suffix exactly when it is', () {
+      final config = _TestConfiguration();
+
+      config.retries | 9;
+      expect(config.retries.toString(), 'client.retries=9 (overridden)');
+
+      config.retries.reset();
+      expect(
+        config.retries.toString(),
+        'client.retries=3',
+        reason: 'the suffix tracks isOverridden, not "was ever written"',
+      );
+    });
+
+    test('an environment-bound setting is never suffixed', () {
+      // It carries the operator's value, which is not the install's override —
+      // the suffix says "this install changed it", and here it did not.
+      addTearDown(TomClientEnvironment.useDefaultReader);
+      TomClientEnvironment.reader = (name) =>
+          name == 'APP_ENDPOINT' ? 'https://staging.example' : null;
+      final config = _EnvConfiguration();
+
+      expect(
+        config.endpoint.toString(),
+        'client.endpoint=https://staging.example',
+      );
+    });
+
+    test('a holder reads as its type over every declared setting', () {
+      final config = _TestConfiguration();
+      config.darkMode | true;
+
+      expect(
+        config.toString(),
+        '_TestConfiguration(client.server.url=https://default.example, '
+        'client.retries=3, client.ratio=1.0, '
+        'client.darkMode=true (overridden))',
+      );
+    });
+  });
+
   group('observation', () {
     test('a per-field observer sees only its own setting', () {
       final config = _TestConfiguration();

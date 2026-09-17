@@ -448,11 +448,22 @@ text:
 | `client_configuration.store.unsupported_platform` | A file store on a target without a filesystem |
 | `client_configuration.store.invalid_content` | The store holds content that is not a readable override map |
 
-One failure of this module deliberately carries a **foreign** key: declaring a
-setting `overridableBy` anything but `none` under a name the preference stores
-would refuse raises `preferences.key.invalid`, from `TomUserPreferenceKeys`. The
-rule is the preference vocabulary's, and restating it here would create a second
-spelling that could disagree with the first.
+Two failures reached from this module deliberately carry a **foreign** key,
+because the rule behind each belongs to another module and restating it here
+would create a second spelling that could disagree with the first:
+
+| Key | Raised when | Owner |
+| --- | ----------- | ----- |
+| `preferences.key.invalid` | A setting declared `overridableBy` anything but `none` carries a name the preference stores would refuse | `TomUserPreferenceKeys` |
+| `resources.config_provider.not_installed` | A holder is constructed before the application's config provider is installed | `TomConfigResourceProvider` |
+
+The second is a **construction-order** failure, and it is loud on purpose.
+`declareSettings()` runs from the constructor and resolves every baseline
+against the shipped resources, so a holder built first would serve declared
+defaults that look configured. An application with no configuration bundle
+installs an empty provider —
+`TomConfigResourceProvider.setAppConfigProvider(TomConfigResourceProvider.from({}))`
+— rather than installing none.
 
 ## Limitations
 

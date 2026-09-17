@@ -1,5 +1,17 @@
 ## 1.2.1
 
+### Fixed
+
+- **The construction-order case was documented as a silent failure and was not
+  tested (tcopen204).** The completion document's open list said a holder built
+  before its resource providers left "every setting silently sitting on its
+  declared default". That has not been true since `getAppConfig()` stopped
+  bootstrapping itself: the holder throws `resources.config_provider.not_installed`
+  from its own constructor, naming the remedy. The claim is corrected, the loud
+  failure is now stated in `doc/configuration.md`, the module readme and the
+  holder's dartdoc, and a test pins both the refusal and the fact that the
+  remedy the message gives is sufficient.
+
 ### Added
 
 - **Composition of the three client value scopes (tcopen203).** Every

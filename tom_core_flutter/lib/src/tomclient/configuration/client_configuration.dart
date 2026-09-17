@@ -340,6 +340,13 @@ T coerceSettingValue<T>(String key, Object? raw) {
 /// **complete by the end of construction**, which is what lets [settings],
 /// [save] and [resetAll] be exhaustive rather than "exhaustive so far".
 ///
+/// It also fixes the construction order: every baseline is resolved against
+/// [TomConfigResourceProvider] before the constructor returns, so the provider
+/// must already be installed. Building the holder first throws
+/// `resources.config_provider.not_installed` rather than serving declared
+/// defaults that look configured — an application with no configuration bundle
+/// installs an empty provider rather than none.
+///
 /// ## Observation
 ///
 /// Both granularities are available and both are live at once:
