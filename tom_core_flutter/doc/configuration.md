@@ -290,14 +290,29 @@ text:
   server URL. `TomSetting`'s constructor is private, so a validating subclass
   cannot be substituted — range, format and enum checks are the caller's, after
   `load()` or at the point of use.
-- **Concurrent saves are not atomic, and a collision is not detected.** `save()`
-  re-reads the store before writing it, so a holder preserves keys another
-  writer has added — but read-then-write is not a single operation. Two holders
-  saving at genuinely the same moment can still lose one another's last write,
-  and nothing notices: there is no version stamp in the persisted document and
-  `save()` cannot fail on a conflict. The exposure is one store round-trip
-  rather than the whole session, which makes sharing a location workable but not
-  safe against true simultaneity.
+- **Two holders must not share a store location.** `save()` writes *this
+  holder's* complete override set for the keys it declares, plus whatever it
+  found in the store under keys it does not. The carry-forward therefore
+  protects a key another **build** owns — and does not protect a key both
+  holders declare. A second holder that has not adopted the first's change
+  holds that key at its baseline, so its view is "this install has no override"
+  and that is what it writes: the first holder's value is erased, sequentially,
+  with no concurrency involved. Reloading before every save avoids it; nothing
+  enforces that, and nothing reports it.
+
+  The narrower concurrency window stays open on top of that. Read-then-write is
+  not a single operation, so two saves that genuinely overlap lose the earlier
+  reader's change even if both reloaded, and nothing notices: there is no
+  version stamp in the persisted document and `save()` cannot fail on a
+  conflict.
+
+  Both are accepted rather than guarded. A client configuration is scoped to
+  (this app, this machine), so two holders over one location are two sources of
+  truth for the same keys, and no merge rule reconciles them without changing
+  what `save()` means: writing only the keys this holder *changed* would keep
+  the other's value, at the cost of a `save()` that is no longer idempotent
+  against an externally edited store and a holder that can disagree with it
+  silently.
 
 ---
 

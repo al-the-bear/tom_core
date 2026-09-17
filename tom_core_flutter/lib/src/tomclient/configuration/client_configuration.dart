@@ -433,10 +433,14 @@ abstract class TomBaseClientConfiguration extends TomObservable
   /// be deleted rather than carried forward, which is precisely the loss this
   /// mechanism exists to prevent.
   ///
-  /// Re-reading costs one store round-trip per save and narrows, but does not
-  /// close, the concurrent-write window: read-then-write is not atomic, so two
-  /// holders saving at genuinely the same moment can still lose one another's
-  /// last write. Nothing detects that; see the module documentation.
+  /// What re-reading does **not** do is make a store location shareable. The
+  /// carry-forward covers keys this build does not declare; a key two holders
+  /// both declare is written from the saving holder's own view, and a holder
+  /// that has not adopted the other's change holds that key at its baseline —
+  /// so it writes "no override" over it, sequentially, with no concurrency
+  /// involved. On top of that, read-then-write is not atomic, so two saves that
+  /// genuinely overlap lose the earlier reader's change even if both reloaded.
+  /// Nothing detects either; see the module documentation.
   ///
   /// Throws `client_configuration.store.not_configured` when no [store] is
   /// wired.

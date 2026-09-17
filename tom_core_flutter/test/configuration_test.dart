@@ -15,6 +15,40 @@ import 'package:tom_core_flutter/src/tomclient/configuration/file_configuration_
 import '../example/configuration/configuration_example.dart' as example;
 import 'support/conditional_export_variants.dart';
 
+/// A store that lets a test run somebody else's whole save *inside* one
+/// holder's `read()`.
+///
+/// `save()` is read-then-write, and the two are separate awaits — but from a
+/// test's side the pair is atomic unless the store can be interrupted between
+/// them. This one can: [onNextRead] fires after the snapshot is taken and
+/// before it is returned, so the second holder's save completes while the first
+/// is still holding a snapshot that predates it. That is the interleaving the
+/// module documents as undetected, reproduced deterministically rather than by
+/// racing two futures and hoping.
+class _InterleavingStore extends TomClientConfigurationStore {
+  _InterleavingStore([Map<String, Object?>? initialValues])
+    : _values = {...?initialValues};
+
+  Map<String, Object?> _values;
+
+  /// Run once, inside the next [read], after its snapshot is taken.
+  Future<void> Function()? onNextRead;
+
+  @override
+  Future<Map<String, Object?>> read() async {
+    final snapshot = {..._values};
+    final hook = onNextRead;
+    onNextRead = null;
+    if (hook != null) await hook();
+    return snapshot;
+  }
+
+  @override
+  Future<void> write(Map<String, Object?> values) async {
+    _values = {...values};
+  }
+}
+
 /// A holder with one setting of each supported type.
 class _TestConfiguration extends TomBaseClientConfiguration {
   _TestConfiguration({super.store});
@@ -349,6 +383,126 @@ void main() {
         throwsConfigException('client_configuration.store.not_configured'),
       );
     });
+  });
+
+  // Two holders over one store location. `save()` writes **this holder's**
+  // complete override set for the keys it declares, plus whatever it found in
+  // the store under keys it does not — so the carry-forward protects a key
+  // another *build* owns, and does not protect a key both holders declare.
+  //
+  // The second half is the part worth testing, because it is stronger and
+  // simpler than the race it is usually described by: a holder that has not
+  // adopted the other's change erases it on save, sequentially, with no
+  // concurrency at all. Its own view of that key is "not overridden", and the
+  // document is what this holder has to say about the keys it owns.
+  //
+  // That is accepted rather than guarded. A client configuration is scoped to
+  // (this app, this machine), so two holders over one location are two sources
+  // of truth for the same keys — and no merge rule reconciles them without
+  // changing what `save()` means. See `doc/configuration.md`, Limitations.
+  group('two holders over one store location', () {
+    test(
+      'a key the saving holder does not declare is carried forward',
+      () async {
+        // The protection that does exist, and the reason `save()` re-reads
+        // instead of seeding from its own snapshot: a key written by anyone else
+        // since this holder loaded is still in the store when it looks.
+        final store = TomMemoryClientConfigurationStore();
+        final config = _TestConfiguration(store: store);
+        await config.load();
+        await store.write({'client.fromAnotherBuild': 'keep'});
+
+        config.retries | 9;
+        await config.save();
+
+        expect(await store.read(), {
+          'client.fromAnotherBuild': 'keep',
+          'client.retries': 9,
+        });
+      },
+    );
+
+    test(
+      'a key both holders declare is erased by the one that saves last',
+      () async {
+        // No race: A saves, then B saves. B declares `client.retries` and holds
+        // it at its baseline, because B loaded before A wrote — so B's view is
+        // "this install has no override for retries", and that is what B writes.
+        final store = TomMemoryClientConfigurationStore();
+        final a = _TestConfiguration(store: store);
+        final b = _TestConfiguration(store: store);
+        await a.load();
+        await b.load();
+
+        a.retries | 9;
+        await a.save();
+        b.darkMode | true;
+        await b.save();
+
+        expect(
+          await store.read(),
+          {'client.darkMode': true},
+          reason:
+              'the saving holder writes its own complete view of the keys it '
+              'declares; A\'s override is not in it',
+        );
+      },
+    );
+
+    test('and B keeps it if B loads in between', () async {
+      // The same sequence with the step that makes it safe. Sharing a location
+      // is workable exactly when every holder reloads before it saves.
+      final store = TomMemoryClientConfigurationStore();
+      final a = _TestConfiguration(store: store);
+      final b = _TestConfiguration(store: store);
+      await a.load();
+      await b.load();
+
+      a.retries | 9;
+      await a.save();
+      await b.load();
+      b.darkMode | true;
+      await b.save();
+
+      expect(await store.read(), {
+        'client.retries': 9,
+        'client.darkMode': true,
+      });
+    });
+
+    test(
+      'an interleaved save loses the earlier reader\'s change silently',
+      () async {
+        // read-A, read-B, write-B, write-A. Even a holder that did reload cannot
+        // help itself here: A's snapshot predates B's write. Nothing throws —
+        // there is no version stamp to compare and `save()` cannot fail on a
+        // conflict — which is the property that makes the loss silent.
+        final store = _InterleavingStore({'client.fromAnotherBuild': 'keep'});
+        final a = _TestConfiguration(store: store);
+        final b = _TestConfiguration(store: store);
+        await a.load();
+        await b.load();
+
+        a.retries | 9;
+        b.darkMode | true;
+        store.onNextRead = b.save;
+
+        await a.save();
+
+        final persisted = await store.read();
+        expect(
+          persisted['client.darkMode'],
+          isNull,
+          reason: 'B\'s change is lost',
+        );
+        expect(persisted['client.retries'], 9);
+        expect(
+          persisted['client.fromAnotherBuild'],
+          'keep',
+          reason: 'a key neither holder declares is never at risk, race or not',
+        );
+      },
+    );
   });
 
   group('swapping the store', () {
