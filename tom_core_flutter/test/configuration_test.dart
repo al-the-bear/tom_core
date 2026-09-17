@@ -513,6 +513,70 @@ void main() {
       config.removeObserver(observer);
     });
 
+    // A screen batching a multi-setting edit around a reload mutes the holder,
+    // writes, reloads, writes again, and unmutes — and asks for exactly one
+    // rebuild. It gets one only because the kernel's `mute` is a depth counter:
+    // `load` and `resetAll` mute the same holder the caller already muted, and
+    // a boolean flag would let their `unmute` release the caller's batch,
+    // flushing what it had suppressed and leaving every later write notifying
+    // immediately.
+    //
+    // Nothing in this module can enforce that: the depth belongs to
+    // `TomObservable`, in another package. So it is asserted from the outside
+    // here rather than assumed. Both mutations were run — the kernel's `unmute`
+    // dropping to zero instead of decrementing, and this module releasing one
+    // mute too many — and each fails these two.
+    test('load inside a caller mute does not release it', () async {
+      final store = TomMemoryClientConfigurationStore({'client.retries': 9});
+      final config = _TestConfiguration(store: store);
+      var holderChanges = 0;
+      final observer = config >> (_) => holderChanges++;
+
+      config.mute();
+      config.serverUrl | 'https://batched.example';
+      await config.load();
+      expect(
+        holderChanges,
+        0,
+        reason: 'the load released the caller\'s mute and flushed its write',
+      );
+      config.darkMode | true;
+      expect(
+        holderChanges,
+        0,
+        reason: 'the holder came back unmuted, so the next write escaped',
+      );
+
+      config.unmute();
+
+      expect(
+        holderChanges,
+        1,
+        reason: 'the caller asked for one notification and got one',
+      );
+      config.removeObserver(observer);
+    });
+
+    test('resetAll inside a caller mute does not release it either', () async {
+      final config = _TestConfiguration(
+        store: TomMemoryClientConfigurationStore(),
+      );
+      var holderChanges = 0;
+      final observer = config >> (_) => holderChanges++;
+
+      config.mute();
+      config.serverUrl | 'https://batched.example';
+      config.resetAll();
+      expect(holderChanges, 0);
+      config.darkMode | true;
+      expect(holderChanges, 0);
+
+      config.unmute();
+
+      expect(holderChanges, 1);
+      config.removeObserver(observer);
+    });
+
     test('a load that changes nothing is silent', () async {
       final config = _TestConfiguration(
         store: TomMemoryClientConfigurationStore(),

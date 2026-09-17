@@ -177,6 +177,16 @@ Both granularities are live at once:
 `load()` and `resetAll()` emit **one** holder notification for the whole
 operation, not one per setting. Per-field observers still fire per field.
 
+That survives nesting. A screen batching a multi-setting edit around a reload
+mutes the holder itself and calls `load()` inside its own batch; because
+`TomObservable.mute` counts depth rather than setting a flag, the load's release
+does not free the caller's, and the screen still gets the one rebuild it asked
+for. Were it a flag, the caller's suppressed writes would escape during the
+load, the holder would come back unmuted without anyone asking, and every later
+write in the batch would notify immediately. The property belongs to the kernel,
+so `test/configuration_test.dart` asserts the consequence here rather than
+assuming it.
+
 > Observers are held by weak reference. Retain the observer returned by `>>`
 > for as long as you want notifications, or it will silently stop firing.
 

@@ -1,5 +1,23 @@
 ## 1.2.1
 
+### Documentation
+
+- **The single load/resetAll notification survives a caller's own mute
+  (tcopen197).** A screen batching a multi-setting edit around a reload mutes
+  the holder itself and calls `load()` inside its batch, so `load()`'s mute is
+  an inner one. That the inner release does not free the caller's batch is a
+  property of `TomObservable.mute` counting depth rather than setting a flag —
+  a property this module cannot enforce, since it lives in another package.
+
+  Were it a flag, the caller's suppressed writes would escape during the load,
+  the holder would come back unmuted without anyone asking, and every later
+  write in the "batch" would notify immediately — a screen asking for one
+  rebuild getting two or three. `test/configuration_test.dart` now asserts the
+  consequence from the outside, for both `load()` and `resetAll()`, and both
+  mutations were run: the kernel's `unmute` dropping to zero instead of
+  decrementing, and this module releasing one mute too many. `doc/configuration.md`
+  says so where it states the one-notification property.
+
 ### Fixed
 
 - **A preferences rejection now says why (tcopen54).** A
