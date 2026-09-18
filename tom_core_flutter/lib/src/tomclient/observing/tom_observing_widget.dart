@@ -42,6 +42,14 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// mistake at the call site, and `child!` says where to look.
 class TomObservingWidget<T extends TomObservable> extends StatefulWidget {
   /// Creates a widget that rebuilds [builder] whenever [subState] notifies.
+  ///
+  /// [key] is the ordinary widget key, and it is the lever that chooses between
+  /// this widget's two behaviours. Whether Flutter reuses the element or builds
+  /// a new one is what selects between [TomObservingWidgetState.didUpdateWidget]
+  /// *migrating* the registration and [State.initState] making a fresh one — so
+  /// a parent that rebuilds with the same key keeps the `State`, and one that
+  /// rebuilds with a different key disposes it and starts over. The second is
+  /// the normal wish when a list row rebinds to an unrelated model.
   TomObservingWidget({
     super.key,
     required this.builder,

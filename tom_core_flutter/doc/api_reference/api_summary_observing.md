@@ -61,6 +61,7 @@ TomObservingWidget({
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
+| `key` | `Key?` | *(inherited)* Standard widget key. Which of `didUpdateWidget`'s migration and `initState`'s fresh registration runs is Flutter's element-reuse decision, and this is how a caller makes it: the same key migrates the `State`, a different one disposes it and starts over. |
 | `builder` | `Widget Function(T state, Widget? child)` | Builds the subtree from the current observable state and the hoisted `child`. Named `builder` because that is what it is — in Flutter a `Widget Function` is a builder and `child` names a pre-built slot, and this widget has both. |
 | `child` | `Widget?` | A subtree built **once** by the parent and handed to `builder` on every rebuild, or `null`. The same escape hatch `ValueListenableBuilder` and `AnimatedBuilder` provide: the identical widget instance travels through every rebuild, so Flutter skips rebuilding its element. |
 | `subState` | `T` | The observable whose notifications drive the rebuild. |

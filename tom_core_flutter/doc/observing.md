@@ -71,6 +71,7 @@ observable. The builder receives the observable itself, so read its value with
 
 | Parameter | Type | Meaning |
 | --------- | ---- | ------- |
+| `key` | `Key?` | Standard widget key — and the lever that selects between the two behaviours below |
 | `subState` | `T` | The observable whose notifications drive the rebuild |
 | `builder` | `Widget Function(T state, Widget? child)` | Builds the subtree from the current observable and the hoisted `child` |
 | `child` | `Widget?` | A subtree built **once** and handed to `builder` on every rebuild, or `null` |
@@ -126,6 +127,19 @@ beyond a single build must be disposed**.
   rebuilds with a different `subState` (dropping the old one), and deregisters in
   `dispose`. A mutation after the widget unmounts therefore never triggers
   `setState() called after dispose()`.
+- **The `key` chooses between migrating and starting over.** Which of those two
+  paths runs is Flutter's ordinary element-reuse decision, and `key` is how a
+  caller makes it:
+
+  | The parent rebuilds with | Flutter | This widget |
+  | ------------------------ | ------- | ----------- |
+  | the same key (or none) | reuses the element | `didUpdateWidget` migrates the registration; the `State` is kept |
+  | a different key | builds a new element | `initState` registers afresh; the old `State` is disposed and deregisters |
+
+  The second is the normal wish when a list row rebinds to an unrelated model: a
+  clean `State`, not a migrated one. It is also what lets the widget be used in a
+  keyed or reorderable list at all, which is why `key` is worth naming here rather
+  than leaving as boilerplate.
 - **An adaptor is bound to one observable, for life.** `observable` is `final`:
   the constructor registers against that observable and nothing moves the
   registration. A settable field would produce an adaptor that reports one

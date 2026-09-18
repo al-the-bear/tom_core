@@ -1,5 +1,25 @@
 ## 1.2.1
 
+### Added
+
+- **`TomObservingWidget` takes a `key`, and it is documented as the lever it is
+  (tcopen216).** It was the only public widget in the package a caller could not
+  key. The parameter arrived with the constructor rewrite for the hoisted
+  `child`; what this adds is the behaviour it selects, and the tests for it.
+
+  Whether Flutter reuses an element or builds a new one is what chooses between
+  `didUpdateWidget` migrating the registration and `initState` making a fresh
+  one. Only the first was reachable. The second is the normal wish when a list
+  row rebinds to an unrelated model — a clean `State`, not a migrated one — and
+  its absence also kept the widget out of keyed and reorderable lists.
+
+- **A deregistration test that the `mounted` guard had made vacuous.** The guard
+  added in the previous change suppresses the symptom the old test asserted — no
+  exception after unmount — so it passed whether or not `dispose` deregistered.
+  Found by mutation, not review. The replacement counts the notifications that
+  *reach* the `State` through a subclass, because a removed observer is never
+  called at all.
+
 ### Fixed
 
 - **`TomObservingWidgetState.onNotify` guards on `mounted` (tcopen215).**

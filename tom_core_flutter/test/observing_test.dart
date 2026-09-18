@@ -59,6 +59,35 @@ class _BuildCounter extends StatelessWidget {
   }
 }
 
+/// A [TomObservingWidget] whose `State` counts the notifications that reach it.
+///
+/// `onNotify`'s `mounted` guard makes a notification to a disposed `State`
+/// harmless, which is what makes the ordinary "no exception after unmount"
+/// assertion blind to whether `dispose` deregistered at all. Counting the calls
+/// reaches past the guard: an observer that was removed is never called.
+class _CountingObservingWidget extends TomObservingWidget<TomBool> {
+  _CountingObservingWidget(TomBool observable, this.notifications)
+    : super(
+        subState: observable,
+        builder: (state, _) =>
+            Text(~state ? 'ON' : 'OFF', textDirection: TextDirection.ltr),
+      );
+
+  /// A single-element list so the count survives the widget being rebuilt.
+  final List<int> notifications;
+
+  @override
+  State<StatefulWidget> createState() => _CountingObservingState();
+}
+
+class _CountingObservingState extends TomObservingWidgetState<TomBool> {
+  @override
+  void onNotify(TomObservable observable) {
+    (widget as _CountingObservingWidget).notifications[0]++;
+    super.onNotify(observable);
+  }
+}
+
 void main() {
   group('TomObservingWidget', () {
     testWidgets('renders from the initial observable value', (tester) async {
@@ -288,12 +317,46 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
 
       // Mutating the (now unobserved) observable must not reach the disposed
-      // State. A surviving registration would throw "setState() called after
-      // dispose()" on this notification.
+      // State.
       flag | true;
       await tester.pump();
 
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('and the deregistration is what stops it, not the guard', (
+      tester,
+    ) async {
+      // The test above asserts the *symptom* — no exception — and `onNotify`'s
+      // `mounted` guard now suppresses that symptom whether or not `dispose`
+      // deregisters. So it no longer distinguishes a widget that unsubscribed
+      // from one that merely declines to act, and something has to.
+      //
+      // `onNotify` is public, so a `State` subclass can count the calls that
+      // reach it. A deregistered observer is never called at all, which is the
+      // difference the symptom hides.
+      final flag = TomBool(false);
+      final notifications = <int>[0];
+
+      await tester.pumpWidget(
+        MaterialApp(home: _CountingObservingWidget(flag, notifications)),
+      );
+
+      flag | true;
+      await tester.pump();
+      expect(notifications[0], 1, reason: 'registered while mounted');
+
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+
+      flag | false;
+      await tester.pump();
+      expect(
+        notifications[0],
+        1,
+        reason:
+            'dispose removed the registration, so the notification never '
+            'reached the State at all',
+      );
     });
 
     // Observable swap: a parent rebuild with a different subState must make the
@@ -307,6 +370,163 @@ void main() {
     // stale registration shows up only as a rebuild that the old observable
     // should no longer be able to cause, which is what the build counter at the
     // end of the test measures.
+    group('the key decides migrate or start over', () {
+      // Keys are how a caller tells Flutter whether to reuse an element or
+      // build a new one, and that choice is what selects between this widget's
+      // two behaviours: reuse runs `didUpdateWidget`, which *migrates* the
+      // registration, while a new element runs `initState` on a fresh `State`.
+      //
+      // A list row rebinding to an unrelated model usually wants the second,
+      // and without a `Key` parameter there was no way to ask for it.
+
+      /// Pumps the widget under [key] over [observable], and returns a setter
+      /// that rebuilds the parent with new values.
+      Future<void Function(Key?, TomBool)> pumpKeyed(
+        WidgetTester tester, {
+        required Key? key,
+        required TomBool observable,
+        required List<int> builds,
+      }) async {
+        var currentKey = key;
+        var current = observable;
+        late void Function(void Function()) rebuildParent;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: StatefulBuilder(
+              builder: (context, setState) {
+                rebuildParent = setState;
+                return TomObservingWidget<TomBool>(
+                  key: currentKey,
+                  subState: current,
+                  builder: (state, _) {
+                    builds[0]++;
+                    return Text(
+                      ~state ? 'ON' : 'OFF',
+                      textDirection: TextDirection.ltr,
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        );
+
+        return (nextKey, nextObservable) => rebuildParent(() {
+          currentKey = nextKey;
+          current = nextObservable;
+        });
+      }
+
+      TomObservingWidgetState<TomBool> stateOf(WidgetTester tester) =>
+          tester.state<TomObservingWidgetState<TomBool>>(
+            find.byType(TomObservingWidget<TomBool>),
+          );
+
+      testWidgets('the same key keeps the State and migrates it', (
+        tester,
+      ) async {
+        final first = TomBool(false);
+        final second = TomBool(false);
+        final builds = [0];
+        final rebuild = await pumpKeyed(
+          tester,
+          key: const ValueKey('row'),
+          observable: first,
+          builds: builds,
+        );
+        final before = stateOf(tester);
+
+        rebuild(const ValueKey('row'), second);
+        await tester.pump();
+
+        expect(
+          identical(stateOf(tester), before),
+          isTrue,
+          reason: 'the element was reused, so didUpdateWidget migrated',
+        );
+
+        // And the migration actually moved: the new one drives it, the old one
+        // does not.
+        second | true;
+        await tester.pump();
+        expect(find.text('ON'), findsOneWidget);
+
+        final buildsBefore = builds[0];
+        first | true;
+        await tester.pump();
+        expect(builds[0], buildsBefore);
+      });
+
+      testWidgets('a different key builds a fresh State and registration', (
+        tester,
+      ) async {
+        final first = TomBool(false);
+        final second = TomBool(false);
+        final builds = [0];
+        final rebuild = await pumpKeyed(
+          tester,
+          key: const ValueKey('row-a'),
+          observable: first,
+          builds: builds,
+        );
+        final before = stateOf(tester);
+
+        rebuild(const ValueKey('row-b'), second);
+        await tester.pump();
+
+        final after = stateOf(tester);
+        expect(
+          identical(after, before),
+          isFalse,
+          reason: 'a new key means a new element, so initState ran again',
+        );
+        expect(before.mounted, isFalse, reason: 'the old State was disposed');
+
+        // The fresh registration observes the new observable...
+        second | true;
+        await tester.pump();
+        expect(find.text('ON'), findsOneWidget);
+
+        // ...and the disposed one left nothing behind on the old observable.
+        final buildsBefore = builds[0];
+        first | true;
+        await tester.pump();
+        expect(builds[0], buildsBefore);
+      });
+
+      testWidgets('a new key starts over even on the same observable', (
+        tester,
+      ) async {
+        // The case a list row actually hits: the model is unchanged, but the
+        // caller wants a clean `State`. Without the key there is no way to
+        // distinguish this from "nothing changed".
+        final shared = TomBool(false);
+        final builds = [0];
+        final rebuild = await pumpKeyed(
+          tester,
+          key: const ValueKey('row-a'),
+          observable: shared,
+          builds: builds,
+        );
+        final before = stateOf(tester);
+
+        rebuild(const ValueKey('row-b'), shared);
+        await tester.pump();
+
+        expect(identical(stateOf(tester), before), isFalse);
+        expect(before.mounted, isFalse);
+
+        // One registration, not two: the disposed State deregistered, so a
+        // single mutation produces a single rebuild.
+        final buildsBefore = builds[0];
+        shared | true;
+        await tester.pump();
+        expect(builds[0], buildsBefore + 1);
+        expect(find.text('ON'), findsOneWidget);
+      });
+    });
+
     testWidgets('swaps to a new subState — observes/renders new, ignores old', (
       tester,
     ) async {
