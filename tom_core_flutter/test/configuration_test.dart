@@ -1916,7 +1916,7 @@ void main() {
           home: Scaffold(
             body: TomObservingWidget<TomSetting<bool>>(
               subState: config.darkMode,
-              child: (setting) =>
+              builder: (setting, _) =>
                   Switch(value: ~setting, onChanged: (next) => setting | next),
             ),
           ),
@@ -1955,7 +1955,8 @@ void main() {
           home: Scaffold(
             body: TomObservingWidget<TomSetting<bool>>(
               subState: config.darkMode,
-              child: (setting) => Switch(value: ~setting, onChanged: (_) {}),
+              builder: (setting, _) =>
+                  Switch(value: ~setting, onChanged: (_) {}),
             ),
           ),
         ),

@@ -2,6 +2,28 @@
 
 ### Changed
 
+- **`TomObservingWidget` gained a hoisted `child`, and its builder is now called
+  `builder` (tcopen213, and the rename tcopen214 asked for).** Every
+  notification rebuilt the whole subtree the builder returned, with no way to
+  pass a part that does not depend on the observable — the escape hatch
+  `ValueListenableBuilder` and `AnimatedBuilder` both provide, and the one the
+  case this module is for needs most: a form bound to a high-frequency
+  observable repainted everything on every keystroke.
+
+  `builder` now takes `(T state, Widget? child)` and an optional `child` is
+  built once by the parent and handed back on every rebuild. The rename was a
+  prerequisite rather than a separate tidy-up: the conventional name for a
+  pre-built subtree is `child`, which the builder had, and in Flutter a
+  `Widget Function` is a `builder`. The two could not both be `child`.
+
+  What makes the hoist work is the *same widget instance* travelling through
+  every rebuild — `child` is built in the parent's `build`, untouched by this
+  widget's `setState`, and Flutter skips rebuilding a child whose widget is
+  identical to the one already mounted. So the saving is the subtree's whole
+  element rebuild, not merely a closure call.
+
+### Changed
+
 - **`ValueListenableObserver` is now a real multicast `Listenable` (tcopen212).**
   It declared `ValueListenable<T>` and honoured neither half of the contract:
   `addListener` replaced any previous callback and `removeListener` ignored its

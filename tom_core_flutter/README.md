@@ -175,7 +175,7 @@ final counter = TomInt(0);
 
 final widget = TomObservingWidget<TomInt>(
   subState: counter,
-  child: (state) => Text('Count: ${~state}'), // ~ reads the value
+  builder: (state, _) => Text('Count: ${~state}'), // ~ reads the value
 );
 
 counter | 5; // | sets the value → the widget rebuilds with "Count: 5"
@@ -213,7 +213,7 @@ final name = TomString('Ada');
 
 TomObservingWidget<TomString>(
   subState: name,
-  child: (state) => Text(~state), // rebuilds on every notify
+  builder: (state, _) => Text(~state), // rebuilds on every notify
 );
 
 name | 'Grace'; // widget now shows "Grace"

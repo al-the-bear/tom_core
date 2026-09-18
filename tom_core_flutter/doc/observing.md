@@ -39,7 +39,8 @@ final showForm = TomBool(false);
 
 TomObservingWidget<TomBool>(
   subState: showForm,
-  child: (state) => ~state ? const FormPanel() : const SizedBox.shrink(),
+  builder: (state, _) =>
+      ~state ? const FormPanel() : const SizedBox.shrink(),
 );
 
 showForm | true; // the widget rebuilds and shows FormPanel
@@ -64,25 +65,58 @@ error | 'Boom'; // the builder rebuilds with "Boom"
 ### `TomObservingWidget<T extends TomObservable>`
 
 A `StatefulWidget` whose state registers as a `TomObserver` on `subState`. On
-every notification it calls `setState`, re-invoking the `child` builder with the
-(current) observable. The builder receives the observable itself, so read its
-value with `~state` inside the closure.
+every notification it calls `setState`, re-invoking `builder` with the (current)
+observable. The builder receives the observable itself, so read its value with
+`~state` inside the closure.
 
 | Parameter | Type | Meaning |
 | --------- | ---- | ------- |
 | `subState` | `T` | The observable whose notifications drive the rebuild |
-| `child` | `Widget Function(T state)` | Builds the subtree from the current observable |
+| `builder` | `Widget Function(T state, Widget? child)` | Builds the subtree from the current observable and the hoisted `child` |
+| `child` | `Widget?` | A subtree built **once** and handed to `builder` on every rebuild, or `null` |
+
+`builder` is a builder and is named like one: in Flutter, `child` names a
+pre-built `Widget` slot and a `Widget Function` is a builder. The widget has
+both, so the two names cannot be traded.
+
+#### Hoisting a subtree that does not depend on the observable
+
+`child` is the same escape hatch `ValueListenableBuilder` and `AnimatedBuilder`
+provide, and it exists for the case this module is for: a form bound to a
+high-frequency observable would otherwise repaint everything its builder returns
+on every keystroke or frame.
+
+```dart
+TomObservingWidget<TomInt>(
+  subState: progress,
+  // Built once by the parent, however often `progress` ticks.
+  child: const ExpensiveChart(),
+  builder: (value, child) => Column(
+    children: [Text('${~value}%'), child!],
+  ),
+);
+```
+
+What makes it work is that the *same widget instance* travels through every
+rebuild: `child` is built in the parent's `build`, untouched by this widget's
+`setState`, and Flutter skips rebuilding a child whose widget is identical to
+the one already there. So the saving is the subtree's whole element rebuild, not
+merely a closure call.
+
+`builder`'s second parameter is nullable because `child` is optional. A builder
+that reaches for a child it was not given should fail at the `!`, which names
+the call site, rather than render something empty.
 
 ### `ValueListenableObserver<T extends TomObservable>`
 
 Adapts a `TomObservable` to `ValueListenable<T>`. `value` returns the observed
-observable; `addListener` registers a single callback fired on each
-notification, and `removeListener` clears it. Use it to plug kernel state into
+observable; `addListener` appends a callback fired on each
+notification, and `removeListener` removes the one it is given. Use it to plug
+kernel state into
 `ValueListenableBuilder`, `AnimatedBuilder`, or anything else accepting a
 `ValueListenable` — but read
-[Lifecycle and Limitations](#lifecycle-and-limitations) first: there is one
-listener slot, both accessors behave differently from the contract's name, and
-**an adaptor held beyond a single build must be disposed**.
+[Lifecycle and Limitations](#lifecycle-and-limitations) first: **an adaptor held
+beyond a single build must be disposed**.
 
 ## Lifecycle and Limitations
 
@@ -101,9 +135,9 @@ listener slot, both accessors behave differently from the contract's name, and
   `TomObservingWidget` migrates instead, and can, because a widget has a
   `didUpdateWidget` to migrate in; the adaptor has no lifecycle at all.
 
-  The listener slot is private for the same reason it is a slot: assigning it
-  would bypass `addListener`, which is where the single-slot replacement is
-  documented and traced and where use after `dispose` is caught.
+  The listener list is private for the same reason: reaching it would bypass
+  `addListener` and `removeListener`, which is where registration is traced and
+  where use after `dispose` is caught.
 - **Construction subscribes; `dispose` is what ends it.** The adaptor registers
   itself on the observable in its constructor, and `ValueListenableObserver.dispose()`
   is the only thing that deregisters it. An adaptor held beyond a single build —

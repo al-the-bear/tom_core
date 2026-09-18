@@ -6,23 +6,72 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 ///
 /// `TomObservingWidget` bridges the kernel observation model to Flutter: it
 /// registers as a [TomObserver] on [subState] and calls [State.setState] on
-/// every notification, re-invoking [child] with the (current) observable.
+/// every notification, re-invoking [builder] with the (current) observable.
 ///
 /// ```dart
 /// final showForm = TomBool(false);
 ///
 /// TomObservingWidget<TomBool>(
 ///   subState: showForm,
-///   child: (s) => ~s ? const FormPanel() : const SizedBox.shrink(),
+///   builder: (s, _) => ~s ? const FormPanel() : const SizedBox.shrink(),
 /// );
 ///
 /// showForm | true; // the widget rebuilds
 /// ```
+///
+/// **[child] is the hoisting escape hatch**, and it is the same one
+/// [ValueListenableBuilder] and [AnimatedBuilder] provide. A subtree that does
+/// not depend on the observable is built **once**, by the parent, and handed
+/// back to [builder] as its second argument on every rebuild — so a form bound
+/// to a high-frequency observable does not repaint the part of itself that
+/// cannot have changed:
+///
+/// ```dart
+/// TomObservingWidget<TomInt>(
+///   subState: progress,
+///   // Built once, however often `progress` ticks.
+///   child: const ExpensiveChart(),
+///   builder: (value, child) => Column(
+///     children: [Text('${~value}%'), child!],
+///   ),
+/// );
+/// ```
+///
+/// It is `null` when no subtree was hoisted, which is why [builder]'s second
+/// parameter is nullable: a builder that asks for a child it was not given is a
+/// mistake at the call site, and `child!` says where to look.
 class TomObservingWidget<T extends TomObservable> extends StatefulWidget {
-  TomObservingWidget({required this.child, required this.subState});
+  /// Creates a widget that rebuilds [builder] whenever [subState] notifies.
+  TomObservingWidget({
+    super.key,
+    required this.builder,
+    required this.subState,
+    this.child,
+  });
 
-  /// Builds the subtree from the current observable state.
-  final Widget Function(T state) child;
+  /// Builds the subtree from the current observable state and the hoisted
+  /// [child].
+  ///
+  /// Named `builder` rather than `child` because that is what it is: in
+  /// Flutter, `child` names a pre-built `Widget` slot and a `Widget Function`
+  /// is a builder. The distinction is what lets a reader tell from the call
+  /// site alone whether a subtree is built eagerly or on demand — and this
+  /// widget now has both, so the two names cannot be traded.
+  ///
+  /// Read the observable **inside** the builder. The argument is the
+  /// observable itself, not a snapshot of its value, so capturing `~state`
+  /// outside and closing over it would freeze the value at the moment the
+  /// closure was created.
+  final Widget Function(T state, Widget? child) builder;
+
+  /// A subtree built once and handed to [builder] on every rebuild, or `null`.
+  ///
+  /// The part of the subtree that does not depend on [subState]. It is built by
+  /// the parent, in the parent's build, and is therefore untouched by this
+  /// widget's [State.setState] — which is the whole mechanism: a rebuild
+  /// re-runs [builder], and anything reached through this field is reused
+  /// rather than rebuilt.
+  final Widget? child;
 
   /// The observable whose notifications drive the rebuild.
   final T subState;
@@ -77,7 +126,7 @@ class TomObservingWidgetState<T extends TomObservable>
 
   @override
   Widget build(BuildContext context) {
-    return widget.child(widget.subState);
+    return widget.builder(widget.subState, widget.child);
   }
 
   @override

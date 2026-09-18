@@ -41,6 +41,24 @@ class _CountingAdaptor extends ValueListenableObserver<TomBool> {
 ///
 /// Both adapt the kernel observation model: a `TomObservable` is read with `~`
 /// and mutated with `|`, and notifies its observers on change.
+/// A widget that reports each time its element rebuilds.
+///
+/// Counting inside a builder closure would answer a different question — the
+/// closure re-runs on every notification by design. What the hoist promises is
+/// that the *element* reached through `child` is not rebuilt, and only a widget
+/// can report that.
+class _BuildCounter extends StatelessWidget {
+  const _BuildCounter({required this.onBuild});
+
+  final VoidCallback onBuild;
+
+  @override
+  Widget build(BuildContext context) {
+    onBuild();
+    return const SizedBox.shrink();
+  }
+}
+
 void main() {
   group('TomObservingWidget', () {
     testWidgets('renders from the initial observable value', (tester) async {
@@ -49,7 +67,7 @@ void main() {
         MaterialApp(
           home: TomObservingWidget<TomBool>(
             subState: flag,
-            child: (state) =>
+            builder: (state, _) =>
                 Text(~state ? 'ON' : 'OFF', textDirection: TextDirection.ltr),
           ),
         ),
@@ -64,7 +82,7 @@ void main() {
         MaterialApp(
           home: TomObservingWidget<TomBool>(
             subState: flag,
-            child: (state) =>
+            builder: (state, _) =>
                 Text(~state ? 'ON' : 'OFF', textDirection: TextDirection.ltr),
           ),
         ),
@@ -90,6 +108,81 @@ void main() {
     // observer surfaces only as the framework throw on the post-unmount
     // notification; asserting that nothing was thrown is the deregistration
     // check.
+    testWidgets('a hoisted child is built once across notifications', (
+      tester,
+    ) async {
+      // The escape hatch `ValueListenableBuilder` and `AnimatedBuilder` both
+      // provide, and the reason it matters here: a form bound to a
+      // high-frequency observable would otherwise repaint everything its
+      // builder returns on every keystroke.
+      //
+      // `_BuildCounter` counts its own builds, so what is asserted is the
+      // element actually being rebuilt rather than the closure being re-run.
+      final flag = TomBool(false);
+      var hoistedBuilds = 0;
+      var builderRuns = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TomObservingWidget<TomBool>(
+            subState: flag,
+            child: _BuildCounter(onBuild: () => hoistedBuilds++),
+            builder: (state, child) {
+              builderRuns++;
+              return Column(
+                children: [
+                  Text(~state ? 'ON' : 'OFF', textDirection: TextDirection.ltr),
+                  child!,
+                ],
+              );
+            },
+          ),
+        ),
+      );
+
+      expect(hoistedBuilds, 1);
+      expect(builderRuns, 1);
+
+      flag | true;
+      await tester.pump();
+      flag | false;
+      await tester.pump();
+      flag | true;
+      await tester.pump();
+
+      expect(builderRuns, 4, reason: 'the builder runs on every notification');
+      expect(
+        hoistedBuilds,
+        1,
+        reason: 'the hoisted subtree is the parent\'s, and is not rebuilt',
+      );
+      expect(find.text('ON'), findsOneWidget);
+    });
+
+    testWidgets('the builder is handed null when nothing was hoisted', (
+      tester,
+    ) async {
+      // `child` is optional, so the builder's second parameter is nullable. A
+      // builder that reaches for a child it was not given should fail at the
+      // `!`, where the call site is named, rather than render something empty.
+      final flag = TomBool(false);
+      Widget? received = const SizedBox.shrink();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TomObservingWidget<TomBool>(
+            subState: flag,
+            builder: (state, child) {
+              received = child;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+
+      expect(received, isNull);
+    });
+
     testWidgets('deregisters on unmount — no setState after dispose', (
       tester,
     ) async {
@@ -98,7 +191,7 @@ void main() {
         MaterialApp(
           home: TomObservingWidget<TomBool>(
             subState: flag,
-            child: (state) =>
+            builder: (state, _) =>
                 Text(~state ? 'ON' : 'OFF', textDirection: TextDirection.ltr),
           ),
         ),
@@ -144,7 +237,7 @@ void main() {
               rebuildParent = setState;
               return TomObservingWidget<TomBool>(
                 subState: current,
-                child: (state) {
+                builder: (state, _) {
                   builds++;
                   return Text(
                     ~state ? 'ON' : 'OFF',
@@ -576,7 +669,7 @@ void main() {
         MaterialApp(
           home: TomObservingWidget<TomBool>(
             subState: flag,
-            child: (state) =>
+            builder: (state, _) =>
                 Text(~state ? 'ON' : 'OFF', textDirection: TextDirection.ltr),
           ),
         ),
