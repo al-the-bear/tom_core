@@ -11,6 +11,7 @@ web, or a neutral fallback).
 - [Quick Start](#quick-start)
 - [How the Variant Is Selected](#how-the-variant-is-selected)
 - [Core Components](#core-components)
+- [The HTTP Client](#the-http-client)
 - [The Certificate Policy](#the-certificate-policy)
 - [The Isolate Name](#the-isolate-name)
 - [Notes](#notes)
@@ -97,6 +98,34 @@ registered.
 
 The hosts whose unverified TLS certificate the native client accepts — see
 [The Certificate Policy](#the-certificate-policy).
+
+## The HTTP Client
+
+`httpClient()` is one of the few members that genuinely differ per variant —
+which client each answers with is tabulated under
+[How the Variant Is Selected](#how-the-variant-is-selected). What that table does
+not say is why one row covers so many targets.
+
+**Every native target shares the `IOClient`, deliberately.** Apple targets could
+have `cupertino_http`'s `CupertinoClient`, which is backed by `URLSession` and
+brings the system proxy configuration, the platform certificate store and
+background transfers with it. That was considered and declined: it is a
+dependency carrying a native plugin, and a second HTTP path that no Linux or
+Windows host can exercise, bought for a benefit no consumer of this framework
+currently needs — none ships to iOS or macOS.
+
+If an Apple target appears, the shape to add is a **runtime branch on
+`defaultTargetPlatform` inside the native variant**, not a fourth compile-time
+variant: `dart:io` is available on iOS and macOS, so the conditional import that
+picks between native, web and neutral cannot separate an Apple target from any
+other native one.
+
+The suite holds the decision rather than describing it. `httpClient()` is driven
+over every `TargetPlatform` and must answer an `IOClient` for each, iOS and
+macOS included; the client it returns completes a real request against a
+loopback server, so the shared path is exercised on whatever host runs the suite
+— macOS on the machine this was decided on; and neither the variant's source nor
+the pubspec may name a Cupertino client.
 
 ## The Certificate Policy
 

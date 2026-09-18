@@ -23,9 +23,23 @@ class TomFlutterPlatformUtils extends TomFlutterPlatformUtilsBase {
     getTomEnvVars().addAll(Platform.environment);
   }
 
-  // Note: iOS/macOS could use a native CupertinoClient (cupertino_http) for
-  // better platform integration; for now all native targets share this
-  // IOClient.
+  /// An [IOClient] over `dart:io`'s [HttpClient], on **every** native target.
+  ///
+  /// **One client for all of them, deliberately.** Apple targets could have
+  /// `cupertino_http`'s `CupertinoClient`, which is backed by `URLSession` and
+  /// brings the system proxy configuration, the platform certificate store and
+  /// background transfers with it. That was considered and declined: it is a
+  /// dependency carrying a native plugin, and a second HTTP path that no Linux
+  /// or Windows host can exercise — bought for a benefit no consumer of this
+  /// framework currently needs, since none ships to iOS or macOS.
+  ///
+  /// If an Apple target appears, the shape to add is a runtime branch on
+  /// [defaultTargetPlatform] *here*, inside this variant. Not a fourth
+  /// compile-time variant: `dart:io` is available on iOS and macOS, so the
+  /// conditional import that selects between native, web and neutral cannot
+  /// separate an Apple target from any other native one.
+  ///
+  /// The certificate policy is [TomBadCertificatePolicy], read per handshake.
   @override
   Client httpClient() {
     return IOClient(

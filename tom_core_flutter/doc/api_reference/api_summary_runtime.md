@@ -225,9 +225,9 @@ behaviour below has something to hang on.
 
 | Variant | `httpClient()` | `getBrowserLocation()` | Notes |
 | ------- | -------------- | ---------------------- | ----- |
-| `flutter_io` (native) | `IOClient`, with `badCertificateCallback` delegating to `TomBadCertificatePolicy` | `null` | Imports the process environment into the `tom_basics` env-var map (`getTomEnvVars()`) at construction. |
+| `flutter_io` (native) | `IOClient`, with `badCertificateCallback` delegating to `TomBadCertificatePolicy`. **Every** native target shares it, Apple ones included — `cupertino_http`'s `URLSession`-backed `CupertinoClient` was considered and declined: a native-plugin dependency and a second HTTP path no Linux or Windows host can exercise, for a benefit no consumer needs today. If an Apple target appears the shape is a runtime branch on `defaultTargetPlatform` here, not a fourth compile-time variant, because `dart:io` exists on iOS and macOS. | inherited | Imports the process environment into the `tom_basics` env-var map (`getTomEnvVars()`) at construction. |
 | `web` | `FetchClient(mode: RequestMode.cors)` | `window.location.href` | — |
-| `neutral` | throws `UnsupportedError` | `null` | Fallback when neither `dart:io` nor `dart:js` is available. The refusal is permanent — such a target has no client implementation to construct. |
+| `neutral` | throws `UnsupportedError` | inherited | Fallback when neither `dart:io` nor `dart:js` is available. The refusal is permanent — such a target has no client implementation to construct. |
 
 #### Constructors
 

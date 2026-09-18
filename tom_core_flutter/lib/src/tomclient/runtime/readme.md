@@ -69,6 +69,21 @@ work happens once**: it copies the whole process environment into the kernel's
 env-var map, which a getter that constructed per read paid for on every read, on
 a call that looks like a property access.
 
+## The HTTP client
+
+`httpClient()` is one of the four members that genuinely differ per variant: an
+`IOClient` natively, a CORS `FetchClient` on web, and a refusal on the neutral
+fallback.
+
+**Every native target shares the `IOClient`, deliberately.** Apple targets could
+have `cupertino_http`'s `URLSession`-backed `CupertinoClient` — system proxy,
+platform certificate store, background transfers — and it was declined: a
+dependency carrying a native plugin, and a second HTTP path no Linux or Windows
+host can exercise, for a benefit no consumer of this framework needs today. If
+an Apple target appears, the shape is a runtime branch on
+`defaultTargetPlatform` *inside* the native variant, because `dart:io` exists on
+iOS and macOS and the conditional import cannot separate them.
+
 ## The isolate name
 
 `getIsolateName()` is printed in every log line, and it is a **label, not an

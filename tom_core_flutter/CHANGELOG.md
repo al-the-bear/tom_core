@@ -26,6 +26,27 @@
 
 ### Changed
 
+- **One HTTP client for every native target, recorded as a decision
+  (tcopen235).** The native variant carried a note: "iOS/macOS could use a
+  native CupertinoClient (cupertino_http) for better platform integration; for
+  now all native targets share this IOClient". Honest, and the one shape a
+  decision cannot be checked in — a "for now" is the absence of a choice, and
+  nothing could fail if it stopped being true.
+
+  `cupertino_http`'s `URLSession`-backed `CupertinoClient` is declined: a
+  dependency carrying a native plugin, and a second HTTP path no Linux or
+  Windows host can exercise, for a benefit no consumer of this framework needs
+  today. If an Apple target appears, the shape is a runtime branch on
+  `defaultTargetPlatform` inside the native variant — not a fourth compile-time
+  variant, because `dart:io` exists on iOS and macOS and the conditional import
+  cannot separate them. That is recorded where the branch would go.
+
+  Three assertions hold it: `httpClient()` answers an `IOClient` for every
+  `TargetPlatform`, iOS and macOS included; the client completes a real request
+  against a loopback server, so the shared path is exercised on the host running
+  the suite; and neither the variant's source nor the pubspec may name a
+  Cupertino client.
+
 - **The isolate name is documented as a label, and the neutral variant says
   `"neutral"` (tcopen234).** `getIsolateName()` is printed in every log line and
   nothing said what it could tell apart. It is a label, not an identifier: the

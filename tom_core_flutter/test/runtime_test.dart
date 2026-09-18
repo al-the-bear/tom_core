@@ -6,6 +6,7 @@ import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart';
+import 'package:http/io_client.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 import 'package:tom_core_flutter/src/tomclient/runtime/platform_detection_base.dart';
 import 'package:tom_core_flutter/src/tomclient/runtime/platform_detection_flutter_io.dart';
@@ -156,6 +157,100 @@ void main() {
 
   test('provides an HTTP client on the native branch', () {
     expect(clientPlatformUtils.httpClient(), isA<Client>());
+  });
+
+  group('one HTTP client for every native target', () {
+    // Apple targets could have `cupertino_http`'s URLSession-backed
+    // `CupertinoClient`; they deliberately do not, and share the `IOClient`
+    // with every other native target. That was a "for now" in a comment for a
+    // long time, which is the one shape a decision cannot be checked in — so
+    // these assertions are what turn it into a recorded choice that has to be
+    // flipped rather than drifted past.
+    tearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    test('every native target, Apple included, gets the same IOClient', () {
+      // Driven over the targets rather than asserted once, because the branch
+      // that would change this — `defaultTargetPlatform == TargetPlatform.iOS`
+      // inside `httpClient()` — is invisible to a test that only ever looks at
+      // the harness default.
+      for (final target in TargetPlatform.values) {
+        debugDefaultTargetPlatformOverride = target;
+        final client = clientPlatformUtils.httpClient();
+        addTearDown(client.close);
+        expect(
+          client,
+          isA<IOClient>(),
+          reason:
+              '$target no longer gets the shared IOClient; if that is an '
+              'Apple-specific client, the documents say all native targets '
+              'share one',
+        );
+      }
+    });
+
+    test('the shared client really talks to a socket on this host', () async {
+      // The type is half the claim. The other half is that the one client every
+      // native target shares actually works on the platform under it, and the
+      // only way to know that is to make a request. This machine is macOS,
+      // which is the target the decision was asked to be verified on; the
+      // assertion is written against whatever host runs the suite and names it
+      // on failure, so it stays true rather than becoming a frozen claim about
+      // one developer's laptop.
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+      unawaited(
+        server.forEach((request) {
+          request.response
+            ..statusCode = HttpStatus.ok
+            ..write('served by ${Platform.operatingSystem}');
+          unawaited(request.response.close());
+        }),
+      );
+
+      final client = clientPlatformUtils.httpClient();
+      addTearDown(client.close);
+      final response = await client.get(
+        Uri.parse('http://127.0.0.1:${server.port}/probe'),
+      );
+
+      expect(response.statusCode, 200);
+      expect(
+        response.body,
+        'served by ${Platform.operatingSystem}',
+        reason:
+            'the shared IOClient did not complete a loopback request on '
+            '${Platform.operatingSystem}',
+      );
+    });
+
+    test('no Apple-specific client is wired in, and none is depended on', () {
+      // Two statements of one decision, from the two places it could quietly
+      // change. The source may not name a Cupertino client, and the pubspec may
+      // not carry the package — adding the dependency without the branch would
+      // pass the first check alone, and a vendored branch without the
+      // dependency would not compile but would pass the second.
+      final variant = File(
+        'lib/src/tomclient/runtime/platform_detection_flutter_io.dart',
+      ).readAsStringSync();
+      final code = variant
+          .split('\n')
+          .where((line) => !line.trimLeft().startsWith('///'))
+          .join('\n');
+      expect(
+        code,
+        isNot(contains('CupertinoClient')),
+        reason:
+            'the native variant now builds a Cupertino client; the documents '
+            'record one shared IOClient for every native target',
+      );
+      expect(
+        File('pubspec.yaml').readAsStringSync(),
+        isNot(contains('cupertino_http')),
+        reason:
+            'the package depends on cupertino_http; the decision to decline '
+            'that dependency is recorded in three documents',
+      );
+    });
   });
 
   group('the certificate policy', () {
