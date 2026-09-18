@@ -26,6 +26,16 @@
 
 ### Added
 
+- **The registry's one-route claim is held to the code (tcopen242).** Removing
+  `TomClient2FAAdaptor` left a sentence in three documents — `register` is the
+  only route into the registry, there is no annotation and no scan — with
+  nothing checking it, which is the same shape of unchecked claim the annotation
+  itself had been. Three assertions check it now: exactly one insertion site
+  into the catalog, no reflection anywhere in the module's sources, and no entry
+  for the module in `build.yaml`'s `generate_for` — the last because an
+  annotation route needs generated mirrors to read a marker with, and the build
+  configuration is the half a reader would never think to look at.
+
 - **A lapsed offer or challenge says so (tcopen241).** Both wire types carry an
   `isExpired` and the flow read neither, so a user who left the set-up screen
   open scanned a QR code that would not be accepted, typed a confirmation, and

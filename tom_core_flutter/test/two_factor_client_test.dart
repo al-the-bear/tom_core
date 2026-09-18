@@ -1282,6 +1282,71 @@ void main() {
       expect(field.controller!.text, '123456');
     });
 
+    test('register is the only way a mechanism enters the catalog', () {
+      // The module had a second door: a `TomClient2FAAdaptor` annotation,
+      // exported from the barrel, documented as a route a runtime could
+      // enumerate, and read by nothing. It was removed rather than documented
+      // as decorative, because a reader who finds an annotation in a barrel
+      // reasonably concludes that annotating a class does something, ships a
+      // mechanism annotated and unregistered, and discovers at the chooser that
+      // it is absent.
+      //
+      // The module readme now says "`Tom2FAClientRegistry.register` is the only
+      // route into the registry". These three assertions are that sentence:
+      // nothing else inserts, nothing here reflects, and the build generates no
+      // mirrors for this module — which is what a scan would need.
+      final source = File(
+        'lib/src/tomclient/security/two_factor_client.dart',
+      ).readAsStringSync();
+
+      // One insertion site. `reset` clears and the readers read; an `[…] =`
+      // anywhere else would be a second way in.
+      expect(
+        RegExp(r'_mechanisms\[[^\]]*\]\s*=').allMatches(source).length,
+        1,
+        reason:
+            'something other than `register` writes into the catalog; the '
+            'module documents one route in',
+      );
+    });
+
+    test('and nothing in the module reflects or is generated for', () {
+      // The other half of "there is no annotation and no scan". An annotation
+      // route needs both a marker to read and generated mirrors to read it
+      // with, so either alone returning is enough to fail here — and the build
+      // configuration is the half a reader would never think to check.
+      for (final file
+          in Directory('lib/src/tomclient/security')
+              .listSync()
+              .whereType<File>()
+              .where((file) => file.path.endsWith('.dart'))) {
+        final source = file.readAsStringSync();
+        for (final marker in [
+          '@tomReflector',
+          'tomReflector.',
+          'reflectType',
+        ]) {
+          expect(
+            source,
+            isNot(contains(marker)),
+            reason:
+                '${file.path} uses reflection; the module dispatches through '
+                'the registry alone, and an annotation route was removed for '
+                'promising a dispatch that did not exist',
+          );
+        }
+      }
+
+      expect(
+        File('build.yaml').readAsStringSync(),
+        isNot(contains('security')),
+        reason:
+            'the reflection generator now produces mirrors for a security '
+            'file; nothing in the module needs them, and needing them is what '
+            'a scan would look like',
+      );
+    });
+
     test('a mechanism describes itself by the scoped convention', () {
       const mechanism = TomTotp2FAClientMechanism();
 

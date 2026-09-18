@@ -278,7 +278,17 @@ Both decisions are pinned: the suite asserts the exact field set of each
 context, so adding a bag — or quietly giving the challenge context an
 `accountLabel` — fails a test rather than passing as an implementation detail.
 
-`Tom2FAClientRegistry` is the catalog the flow dispatches through:
+`Tom2FAClientRegistry` is the catalog the flow dispatches through, and
+`register` is the only way into it. The module once had a second route — a
+`TomClient2FAAdaptor` annotation, exported from the barrel and documented as
+something a runtime could enumerate, which nothing enumerated — and it was
+removed rather than relabelled: an unread annotation is not inert, because a
+reader who finds one reasonably concludes that annotating a class does
+something. Three assertions hold that: one insertion site into the catalog, no
+reflection anywhere in the module's sources, and no generated mirrors for it in
+`build.yaml`, which is what a scan would need.
+
+
 
 | Member | Purpose |
 | ------ | ------- |
