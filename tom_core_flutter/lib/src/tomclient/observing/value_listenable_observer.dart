@@ -7,8 +7,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// `ValueListenableObserver` lets a [TomObservable] drive any Flutter API that
 /// consumes a [ValueListenable] — e.g. a [ValueListenableBuilder] or an
 /// [AnimatedBuilder]. It registers as a [TomObserver] on [observable] and,
-/// whenever the kernel state notifies, forwards the notification to the
-/// currently registered Flutter listener.
+/// whenever the kernel state notifies, forwards the notification to every
+/// registered Flutter listener.
 ///
 /// ```dart
 /// final error = TomString('');
@@ -22,20 +22,24 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// error | 'Boom'; // the builder rebuilds with "Boom"
 /// ```
 ///
-/// **Single-listener limitation.** This adaptor holds at most one listener, and
-/// deviates from the [ValueListenable] contract at both ends of it:
-///   * [addListener] **replaces** any previously registered callback rather
-///     than appending. Handing one adaptor to two [ValueListenableBuilder]s
-///     leaves only the last one receiving notifications.
-///   * [removeListener] **ignores its argument**. It clears the single slot
-///     unconditionally, so calling it with a listener that was never registered
-///     still silences the adaptor. There is one slot, so there is nothing to
-///     match against.
+/// **It is a real multicast [Listenable].** [addListener] appends and
+/// [removeListener] removes the callback it is given, so one adaptor may be
+/// handed to any number of consumers — two [ValueListenableBuilder]s, a builder
+/// plus an [AnimatedBuilder], a manual registration in a `State.initState` —
+/// and each is notified. That matters because a [Listenable] is *structurally*
+/// substitutable wherever Flutter asks for one: a type that replaced on add
+/// would leave the first consumer silently not rebuilding, with no error
+/// anywhere.
 ///
-/// Both suit its sole intended consumer — a single [ValueListenableBuilder] —
-/// and both are why this is not a general-purpose multicast [ValueListenable].
-/// If two parts of a screen need the same observable, give each its own adaptor
-/// rather than adding two listeners to one.
+/// The semantics are Flutter's own, including the corners:
+///   * registering the same callback twice makes it fire twice, and one
+///     [removeListener] undoes one registration;
+///   * removing a callback that was never registered does nothing, rather than
+///     silencing the adaptor;
+///   * a listener may add or remove listeners while it is being notified —
+///     dispatch walks a snapshot, so a listener removed mid-notification does
+///     not shift the ones after it, and one added mid-notification is called on
+///     the next notification rather than this one.
 ///
 /// **Construction subscribes, and [dispose] is what ends it.** An adaptor held
 /// beyond a single build — in a `State` field, which is the normal way to hold
@@ -55,9 +59,10 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// }
 /// ```
 ///
-/// [removeListener] is not a substitute: it clears the Flutter listener and
-/// leaves the kernel registration in place, so the adaptor keeps running
-/// [onNotify] on every notification. The kernel does hold its observers weakly
+/// [removeListener] is not a substitute: it unregisters one Flutter listener
+/// and leaves the kernel registration in place, so the adaptor keeps running
+/// [onNotify] on every notification — and removing the last listener does not
+/// end the subscription either. The kernel does hold its observers weakly
 /// and sweeps dead ones on the next notification, so a forgotten adaptor is not
 /// an unbounded leak — but that sweep happens when the adaptor becomes
 /// unreachable and something else happens to notify, which is not a moment a
@@ -83,18 +88,23 @@ class ValueListenableObserver<T extends TomObservable>
   /// `didUpdateWidget` to migrate in and this has no lifecycle at all.
   final T observable;
 
-  /// The single Flutter listener to invoke on each notification, if any.
+  /// The Flutter listeners to invoke on each notification, in registration
+  /// order.
   ///
-  /// Private: it is implementation state, not surface. Assigning it directly
-  /// would bypass [addListener], which is where the single-slot replacement is
-  /// documented, traced, and guarded against use after [dispose]. [value] is
+  /// Private: it is implementation state, not surface. Reaching it directly
+  /// would bypass [addListener] and [removeListener], which is where
+  /// registration is traced and where use after [dispose] is caught. [value] is
   /// the type's reader.
-  void Function()? _voidCallback;
+  ///
+  /// A [List] rather than a [Set]: the [Listenable] contract counts
+  /// registrations, so the same callback added twice is notified twice and
+  /// removed once stays registered once. A set would silently collapse that.
+  final List<VoidCallback> _listeners = [];
 
   /// Whether [dispose] has run. Read by the debug assertions below.
   bool _isDisposed = false;
 
-  /// Ends the subscription: deregisters from [observable] and drops the
+  /// Ends the subscription: deregisters from [observable] and drops every
   /// listener.
   ///
   /// **Required for any adaptor that outlives one build.** After this the
@@ -109,24 +119,31 @@ class ValueListenableObserver<T extends TomObservable>
   /// call sites defensive instead of simple.
   void dispose() {
     observable.removeObserver(this);
-    _voidCallback = null;
+    _listeners.clear();
     _isDisposed = true;
   }
 
   @override
   void onNotify(T observable) {
-    if (_voidCallback != null) {
-      _voidCallback!();
-      tomLog.trace(
-        "ValueListenableObserver: notified ${observable.runtimeType} ${observable.toString()}",
-      );
+    if (_listeners.isEmpty) return;
+    // A snapshot, because the contract lets a listener register or unregister
+    // while it is being notified — a `ValueListenableBuilder` disposing in
+    // response to a change is the ordinary case. Walking the live list would
+    // either skip the listener after a removed one or throw on concurrent
+    // modification.
+    for (final listener in List<VoidCallback>.of(_listeners)) {
+      listener();
     }
+    tomLog.trace(
+      "ValueListenableObserver: notified ${observable.runtimeType} ${observable.toString()}",
+    );
   }
 
-  /// Registers [listener] as the callback to fire on notification.
+  /// Registers [listener] to fire on every notification.
   ///
-  /// Replaces any previously registered listener (see the single-listener
-  /// limitation in the class docs).
+  /// Appends, per the [Listenable] contract. Registering the same callback
+  /// twice makes it fire twice; it then takes two [removeListener] calls to
+  /// stop it.
   @override
   void addListener(VoidCallback listener) {
     assert(
@@ -135,23 +152,28 @@ class ValueListenableObserver<T extends TomObservable>
       'list, so this listener would never fire. Build a new adaptor.',
     );
     tomLog.trace("ValueListenableObserver: Listener added $listener");
-    _voidCallback = listener;
+    _listeners.add(listener);
   }
 
-  /// Clears the single listener slot so notifications are no longer forwarded.
+  /// Stops [listener] being notified.
   ///
-  /// [listener] is **ignored**. There is one slot rather than a list, so there
-  /// is nothing to match the argument against and any argument clears it —
-  /// including a closure that was never registered. It is traced, not compared.
+  /// Removes **one** registration of it, per the [Listenable] contract, and
+  /// does nothing when it was never registered — it does not silence the other
+  /// listeners.
   ///
   /// This is **not** a teardown. The kernel registration made at construction
   /// survives it, so the adaptor stays on the observable's observer list and
-  /// keeps running [onNotify]; only the forwarding stops. Use [dispose] to end
+  /// keeps running [onNotify]; only this listener stops. Use [dispose] to end
   /// the subscription.
+  ///
+  /// Tolerated after [dispose], unlike [addListener]. A widget tearing down
+  /// cannot always control whether the listenable it registered on was disposed
+  /// first, and refusing the call would turn a correct teardown into a crash;
+  /// there is nothing left to remove, so nothing is lost by accepting it.
   @override
   void removeListener(VoidCallback listener) {
     tomLog.trace("ValueListenableObserver: Listener removed $listener");
-    _voidCallback = null;
+    _listeners.remove(listener);
   }
 
   /// The current value — the observed [observable] itself.

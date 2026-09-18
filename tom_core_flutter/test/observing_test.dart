@@ -212,48 +212,133 @@ void main() {
       expect(calls, 1); // unchanged
     });
 
-    // The other half of the same single-slot design, and the half that used to
-    // be demonstrated but not documented. The test above hands `removeListener`
-    // the listener it registered, so it passes whether or not the argument is
-    // consulted — which is why it cannot stand in for this one. The example
-    // depends on the behaviour pinned here: it clears the adaptor by passing a
-    // closure it never added.
-    test(
-      'removeListener ignores its argument — any closure clears the slot',
-      () {
+    // The `Listenable` contract, which this type declares and therefore has to
+    // keep. A `Listenable` is *structurally* substitutable wherever Flutter
+    // asks for one, so an implementation that replaced on add would leave the
+    // first consumer silently not rebuilding, with no error anywhere.
+    group('the Listenable contract', () {
+      test('addListener appends rather than replacing', () {
+        final source = TomBool(false);
+        final adaptor = ValueListenableObserver<TomBool>(source);
+
+        var first = 0;
+        var second = 0;
+        adaptor.addListener(() => first++);
+        adaptor.addListener(() => second++);
+
+        source | true;
+
+        expect(first, 1);
+        expect(second, 1);
+      });
+
+      test('removeListener removes only the listener it is given', () {
+        final source = TomBool(false);
+        final adaptor = ValueListenableObserver<TomBool>(source);
+
+        var kept = 0;
+        var dropped = 0;
+        void keptListener() => kept++;
+        void droppedListener() => dropped++;
+        adaptor.addListener(keptListener);
+        adaptor.addListener(droppedListener);
+
+        adaptor.removeListener(droppedListener);
+        source | true;
+
+        expect(kept, 1);
+        expect(dropped, 0);
+      });
+
+      test('removing a listener that was never registered does nothing', () {
+        // The old behaviour silenced the adaptor for any argument at all. A
+        // consumer removing its own listener would then have stopped every
+        // other consumer, which is the multicast failure in miniature.
         final source = TomBool(false);
         final adaptor = ValueListenableObserver<TomBool>(source);
 
         var calls = 0;
         adaptor.addListener(() => calls++);
-        source | true;
-        expect(calls, 1);
 
-        adaptor.removeListener(() {}); // never registered
+        adaptor.removeListener(() {});
+        source | true;
+
+        expect(calls, 1);
+      });
+
+      test('registrations are counted, not de-duplicated', () {
+        // Flutter's own semantics: the same callback added twice fires twice,
+        // and one removal undoes one registration. A `Set` would collapse both
+        // halves of that silently.
+        final source = TomBool(false);
+        final adaptor = ValueListenableObserver<TomBool>(source);
+
+        var calls = 0;
+        void listener() => calls++;
+        adaptor.addListener(listener);
+        adaptor.addListener(listener);
+
+        source | true;
+        expect(calls, 2);
+
+        adaptor.removeListener(listener);
+        source | false;
+        expect(calls, 3, reason: 'one removal undoes one registration');
+      });
+
+      test('a listener may remove itself while being notified', () {
+        // Dispatch walks a snapshot, so a listener removed mid-notification
+        // does not shift the ones after it. Without that this throws a
+        // concurrent-modification error, or skips a listener.
+        final source = TomBool(false);
+        final adaptor = ValueListenableObserver<TomBool>(source);
+
+        var selfRemoving = 0;
+        var following = 0;
+        late final VoidCallback listener;
+        listener = () {
+          selfRemoving++;
+          adaptor.removeListener(listener);
+        };
+        adaptor.addListener(listener);
+        adaptor.addListener(() => following++);
+
+        source | true;
+        expect(selfRemoving, 1);
+        expect(following, 1, reason: 'the listener after it still runs');
 
         source | false;
-        expect(
-          calls,
-          1,
-          reason:
-              'there is one slot rather than a list, so there is nothing '
-              'to match the argument against and any argument clears it',
-        );
-      },
-    );
+        expect(selfRemoving, 1, reason: 'it removed itself');
+        expect(following, 2);
+      });
 
-    test('addListener replaces the previous listener (single-listener)', () {
-      final source = TomBool(false);
-      final adaptor = ValueListenableObserver<TomBool>(source);
+      test('a listener added while notifying waits for the next one', () {
+        // The snapshot's other edge. Calling a listener registered *during*
+        // this dispatch would run it for a change it was not there for.
+        final source = TomBool(false);
+        final adaptor = ValueListenableObserver<TomBool>(source);
 
-      var first = 0;
-      var second = 0;
-      adaptor.addListener(() => first++);
-      adaptor.addListener(() => second++);
+        var late = 0;
+        adaptor.addListener(() => adaptor.addListener(() => late++));
 
-      source | true;
-      expect(first, 0); // replaced, never called
-      expect(second, 1);
+        source | true;
+        expect(late, 0);
+
+        source | false;
+        expect(late, greaterThan(0));
+      });
+
+      test('removeListener is tolerated after dispose', () {
+        // A widget tearing down cannot always control whether the listenable
+        // it registered on was disposed first, and refusing the call would
+        // turn a correct teardown into a crash.
+        final adaptor = ValueListenableObserver<TomBool>(TomBool(false));
+        void listener() {}
+        adaptor.addListener(listener);
+        adaptor.dispose();
+
+        expect(() => adaptor.removeListener(listener), returnsNormally);
+      });
     });
 
     group('dispose ends the subscription', () {
@@ -363,11 +448,11 @@ void main() {
         ).readAsStringSync();
 
         expect(source, contains('final T observable;'));
-        expect(source, contains('void Function()? _voidCallback;'));
+        expect(source, contains('final List<VoidCallback> _listeners = [];'));
         expect(
           source,
           isNot(contains('void Function()? voidCallback;')),
-          reason: 'the listener slot is implementation state, not surface',
+          reason: 'the listener list is implementation state, not surface',
         );
       });
 
@@ -423,6 +508,36 @@ void main() {
     source | true;
     await tester.pump();
     expect(find.text('ON'), findsOneWidget);
+  });
+
+  testWidgets('two builders over one adaptor both rebuild', (tester) async {
+    // The case the type exists to make safe, and the one a single-listener
+    // implementation broke without an error anywhere: a `Listenable` is
+    // structurally substitutable, so nothing at either call site would have
+    // shown that the first builder had silently stopped.
+    final source = TomBool(false);
+    final adaptor = ValueListenableObserver<TomBool>(source);
+    addTearDown(adaptor.dispose);
+
+    Widget label(String prefix) => ValueListenableBuilder<TomBool>(
+      valueListenable: adaptor,
+      builder: (context, value, _) => Text(
+        '$prefix:${~value ? 'ON' : 'OFF'}',
+        textDirection: TextDirection.ltr,
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: Column(children: [label('a'), label('b')])),
+    );
+    expect(find.text('a:OFF'), findsOneWidget);
+    expect(find.text('b:OFF'), findsOneWidget);
+
+    source | true;
+    await tester.pump();
+
+    expect(find.text('a:ON'), findsOneWidget);
+    expect(find.text('b:ON'), findsOneWidget);
   });
 
   group('observer lifetime', () {
@@ -552,83 +667,75 @@ void main() {
     });
   });
 
-  group('the single-listener deviation is documented at both ends', () {
-    // `ValueListenableObserver` departs from the `ValueListenable` contract in
-    // two independent ways: `addListener` replaces instead of appending, and
-    // `removeListener` ignores its argument and clears the slot regardless.
-    // State the first and omit the second — the tempting split, since only the
-    // first sounds like a deviation — and the module's own example becomes
-    // unexplainable: it clears the adaptor by passing a closure it never
-    // registered. A half-stated deviation is worse than an undocumented one,
-    // because the half that is written implies the other half behaves normally.
+  group('the documents describe a multicast listenable', () {
+    // The deviation these files used to describe is gone: `addListener`
+    // appends and `removeListener` removes the callback it is given. A
+    // document still warning about a single slot would send a reader to the
+    // one-adaptor-per-listener workaround for a problem that no longer exists —
+    // and, worse, would leave the next reader unsure which of the two
+    // descriptions the code follows.
 
-    /// Every file in this module that carries the single-listener callout.
-    const calloutFiles = <String>[
+    /// Every file in this module that describes the listener surface.
+    const surfaceFiles = <String>[
       'doc/observing.md',
       'doc/api_reference/api_summary_observing.md',
       'lib/src/tomclient/observing/value_listenable_observer.dart',
       'lib/src/tomclient/observing/readme.md',
     ];
 
-    test('every file that carries the callout still carries it', () {
-      // Without this the test below is satisfiable by deleting the callout:
-      // a file that says nothing about the single slot states nothing
-      // incomplete about it either.
-      for (final path in calloutFiles) {
+    test('every file that describes the surface still describes it', () {
+      // Without this the test below is satisfiable by deleting the prose: a
+      // file that says nothing about listeners claims nothing wrong about them.
+      for (final path in surfaceFiles) {
         final file = File(path);
         expect(file.existsSync(), isTrue, reason: '$path is missing');
         expect(
           file.readAsStringSync(),
           contains('addListener'),
-          reason: '$path no longer describes the listener slot',
+          reason: '$path no longer describes the listener surface',
         );
       }
     });
 
-    test('each one states both halves, not just the addListener half', () {
+    test('none of them still claims a single-listener limitation', () {
       final offenders = <String>[
-        for (final path in calloutFiles)
+        for (final path in surfaceFiles)
           ...() {
-            final text = File(path).readAsStringSync();
-            final lower = text.toLowerCase();
+            final lower = File(path).readAsStringSync().toLowerCase();
             return <String>[
-              if (!lower.contains('replac'))
-                '$path does not say that addListener replaces rather than '
-                    'appends',
-              if (!text.contains('removeListener'))
-                '$path describes addListener without mentioning removeListener '
-                    'at all',
-              if (!lower.contains('ignor'))
-                '$path does not say that removeListener ignores its argument',
+              if (lower.contains('single-listener'))
+                '$path still calls the adaptor single-listener',
+              if (lower.contains('ignores its argument'))
+                '$path still says removeListener ignores its argument',
+              if (RegExp(r'addlistener\*{0,2} \*{0,2}replac').hasMatch(lower))
+                '$path still says addListener replaces',
             ];
           }(),
       ];
       expect(offenders, isEmpty);
     });
 
-    test(
-      'the API summary\'s removeListener row says the argument is ignored',
-      () {
-        // The row is checked on its own because the file-wide check above passes
-        // as soon as the callout paragraph says "ignores". The table is what a
-        // reader scanning for the signature actually reads, and it used to say
-        // "Clears the registered listener" — wording that means *that* listener,
-        // which is the assumption the implementation breaks.
-        final summary = File(
-          'doc/api_reference/api_summary_observing.md',
-        ).readAsStringSync();
-        final row = RegExp(
-          r'^\| `removeListener` \|.*$',
-          multiLine: true,
-        ).firstMatch(summary);
-        expect(
-          row,
-          isNotNull,
-          reason: 'no removeListener row in the method table',
-        );
-        expect(row!.group(0)!.toLowerCase(), contains('ignor'));
-      },
-    );
+    test('the API summary row says removeListener takes its argument', () {
+      // The row is checked on its own because the file-wide check above passes
+      // as soon as the prose elsewhere is right. The table is what a reader
+      // scanning for the signature actually reads.
+      final summary = File(
+        'doc/api_reference/api_summary_observing.md',
+      ).readAsStringSync();
+      final row = RegExp(
+        r'^\| `removeListener` \|.*$',
+        multiLine: true,
+      ).firstMatch(summary);
+      expect(row, isNotNull, reason: 'no removeListener row in the table');
+
+      final text = row!.group(0)!.toLowerCase();
+      expect(text, isNot(contains('ignor')));
+      expect(
+        text,
+        contains('one'),
+        reason: 'the row must say it removes one registration of that listener',
+      );
+    });
   });
 
   group('the shipped example runs', () {

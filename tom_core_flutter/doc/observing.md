@@ -156,22 +156,33 @@ listener slot, both accessors behave differently from the contract's name, and
   that is still reachable but no longer wanted **keeps receiving notifications
   for as long as something else holds it**. Collection is not a substitute for
   removing it.
-- **`ValueListenableObserver` holds a single listener, and deviates from the
-  `ValueListenable` contract at both ends of it.** There is one slot rather than
-  a list, and each accessor departs from the contract in its own way:
-  - `addListener` **replaces** any prior callback rather than appending. Handing
-    one adaptor to two `ValueListenableBuilder`s leaves only the last one
-    receiving notifications; the first is dropped without a word.
-  - `removeListener` **ignores its argument.** It clears the single slot
-    unconditionally, so calling it with a listener that was never registered
-    still silences the adaptor. There is one slot, so there is nothing to match
-    against — which is why the shipped example's `adaptor.removeListener(() {})`
-    works while passing a closure that was never added.
+- **`ValueListenableObserver` is a real multicast `Listenable`.** `addListener`
+  appends and `removeListener` removes the callback it is given, so one adaptor
+  may be handed to any number of consumers — two `ValueListenableBuilder`s, a
+  builder plus an `AnimatedBuilder`, a manual registration in a
+  `State.initState` — and each is notified.
 
-  Both suit the intended use, one adaptor per `ValueListenableBuilder`, and both
-  are why this is not a general-purpose multicast `ValueListenable`. If two
-  parts of a screen need the same observable, give each its own adaptor rather
-  than adding two listeners to one.
+  That it keeps the contract matters more than it sounds. A `Listenable` is
+  *structurally* substitutable wherever Flutter asks for one: nothing at a call
+  site distinguishes an adaptor that multicasts from one that does not, so an
+  implementation that replaced on add would leave the first consumer silently
+  not rebuilding, with no error anywhere to find.
+
+  Flutter's own corner semantics apply, and each is asserted by the suite:
+  - registering the same callback **twice** makes it fire twice, and one
+    `removeListener` undoes one registration — the list counts registrations
+    rather than de-duplicating them;
+  - removing a callback that was **never registered** does nothing, rather than
+    silencing the adaptor;
+  - a listener may **add or remove listeners while being notified.** Dispatch
+    walks a snapshot, so one removed mid-notification does not shift those after
+    it, and one added mid-notification is called on the next notification rather
+    than this one.
+
+  `removeListener` is tolerated after `dispose`, unlike `addListener`: a widget
+  tearing down cannot always control whether the listenable it registered on was
+  disposed first, and refusing the call would turn a correct teardown into a
+  crash.
 
 ---
 

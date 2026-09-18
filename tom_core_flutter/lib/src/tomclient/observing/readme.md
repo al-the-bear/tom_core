@@ -14,7 +14,7 @@ kernel `TomObservable` drive a Flutter rebuild — either directly as a widget
 | ---- | -------------- |
 | `TomObservingWidget<T extends TomObservable>` | A `StatefulWidget` that registers as a `TomObserver` on its `subState` and rebuilds (`setState`) its `child` builder on every notification. |
 | `TomObservingWidgetState<T>` | The backing `State` that holds the observer registration. |
-| `ValueListenableObserver<T extends TomObservable>` | Adapts a `TomObservable` to `ValueListenable<T>` so it can feed a `ValueListenableBuilder`/`AnimatedBuilder`. Single-listener, deviating from the contract at both ends: `addListener` replaces rather than appends, and `removeListener` ignores its argument and clears the slot regardless. **Subscribes in its constructor**, so an adaptor held beyond one build must be ended with `dispose()` — `removeListener` only clears the Flutter listener and leaves the kernel registration in place. Bound to one observable for life (`observable` is `final`); `value` is the reader. |
+| `ValueListenableObserver<T extends TomObservable>` | Adapts a `TomObservable` to `ValueListenable<T>` so it can feed a `ValueListenableBuilder`/`AnimatedBuilder`. A real multicast `Listenable`: `addListener` appends and `removeListener` removes the callback it is given, so one adaptor serves any number of consumers. **Subscribes in its constructor**, so an adaptor held beyond one build must be ended with `dispose()` — `removeListener` unregisters one listener and leaves the kernel registration in place. Bound to one observable for life (`observable` is `final`); `value` is the reader. |
 
 ## Quick start
 

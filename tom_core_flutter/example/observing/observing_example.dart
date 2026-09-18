@@ -2,10 +2,10 @@
 ///
 /// Demonstrates how `ValueListenableObserver` bridges a kernel `TomObservable`
 /// to a Flutter listener, how observable mutation (`|`) propagates a
-/// notification, and both ways the adaptor's single listener slot departs from
-/// the `ValueListenable` contract — `removeListener` ignoring its argument and
-/// `addListener` replacing rather than appending, and the teardown that
-/// distinguishes `dispose` from `removeListener`. `TomObservingWidget` is
+/// notification, that the adaptor is a real multicast `Listenable` —
+/// `addListener` appends and `removeListener` takes the listener it is given —
+/// and the teardown that distinguishes `dispose` from `removeListener`.
+/// `TomObservingWidget` is
 /// exercised in the widget tests (`test/observing_test.dart`) because it needs
 /// a `WidgetTester` pump loop.
 ///
@@ -30,7 +30,8 @@ void run() {
 
   // Example 2: register a listener and observe notifications on mutation.
   var notifications = 0;
-  adaptor.addListener(() => notifications++);
+  void counter() => notifications++;
+  adaptor.addListener(counter);
 
   flag | true; // mutate → onNotify → listener fires
   print('after first mutation: notifications=$notifications value=${~flag}');
@@ -38,26 +39,38 @@ void run() {
   flag | false;
   print('after second mutation: notifications=$notifications');
 
-  // Example 3: removeListener stops further notifications — and ignores its
-  // argument while doing it. The closure below was never registered; there is
-  // one listener slot rather than a list, so there is nothing to match the
-  // argument against and any argument clears it. Passing the original listener
-  // would do exactly the same thing.
-  adaptor.removeListener(() {});
+  // Example 3: removeListener takes the listener it is given, and only that
+  // one. A closure that was never registered removes nothing — it does not
+  // silence the adaptor, which is what a consumer removing its own listener
+  // would otherwise do to every other consumer.
+  adaptor.removeListener(() {}); // never registered: no effect
   flag | true;
-  print('after removeListener: notifications=$notifications (unchanged)');
+  print(
+    'after removing an unregistered closure: '
+    'notifications=$notifications (still counting)',
+  );
 
-  // Example 4: the other end of the same single-slot design — addListener
-  // replaces rather than appends, so a second registration silently discards
-  // the first. Two ValueListenableBuilders over one adaptor lose one of them.
+  adaptor.removeListener(counter);
+  flag | false;
+  print(
+    'after removing the registered one: '
+    'notifications=$notifications (unchanged)',
+  );
+
+  // Example 4: one adaptor, several listeners. `addListener` appends, so every
+  // consumer of the adaptor is notified — two ValueListenableBuilders over one
+  // adaptor both rebuild, which is what the `Listenable` contract promises and
+  // what any Flutter API handed this type assumes.
   final second = ValueListenableObserver<TomBool>(flag);
   var first = 0;
   var latest = 0;
   second.addListener(() => first++);
   second.addListener(() => latest++);
 
-  flag | false;
-  print('after replacing the listener: first=$first latest=$latest');
+  // `flag` is currently false, so this is a real change — a `TomObservable`
+  // notifies on change, not on assignment.
+  flag | true;
+  print('after two registrations: first=$first latest=$latest');
 
   // Example 5: ending the subscription. Construction is the subscription, so
   // `dispose` is what ends it — and `removeListener` in Example 3 did not. The
@@ -70,8 +83,8 @@ void run() {
   // that created it has moved on.
   second.dispose();
 
-  adaptor.addListener(() => notifications++);
-  flag | true;
+  adaptor.addListener(counter);
+  flag | false;
   print('after re-arming the silenced adaptor: notifications=$notifications');
 
   // Disposing is not reversible. The adaptor comes off the observer list, so
@@ -79,7 +92,7 @@ void run() {
   // assert rather than leave a caller waiting for notifications that cannot
   // arrive. That is why this line is the last thing done with `adaptor`.
   adaptor.dispose();
-  flag | false;
+  flag | true;
   print('after dispose: notifications=$notifications (unchanged)');
 
   // An adaptor held beyond one build — in a `State` field — must be disposed
@@ -89,11 +102,12 @@ void run() {
 
   // Assertions
   assert(identical(adaptor.value, flag));
-  assert(first == 0); // replaced before it ever fired
+  assert(first == 1, 'addListener appends rather than replacing');
   assert(latest == 1);
   assert(
-    notifications == 3,
-    'two before removeListener, one after re-arming, none after dispose',
+    notifications == 4,
+    'two while registered, one more after an unregistered closure was '
+    'removed, one after re-arming — and none after dispose',
   );
 }
 

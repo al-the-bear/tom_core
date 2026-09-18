@@ -2,6 +2,37 @@
 
 ### Changed
 
+- **`ValueListenableObserver` is now a real multicast `Listenable` (tcopen212).**
+  It declared `ValueListenable<T>` and honoured neither half of the contract:
+  `addListener` replaced any previous callback and `removeListener` ignored its
+  argument and cleared the single slot. `addListener` now appends and
+  `removeListener` removes the callback it is given.
+
+  The argument is substitutability. A `Listenable` is *structurally*
+  substitutable wherever Flutter asks for one — nothing at a call site
+  distinguishes an adaptor that multicasts from one that does not — so the old
+  behaviour left the first consumer silently not rebuilding, with no error
+  anywhere to find. Two `ValueListenableBuilder`s over one adaptor was the
+  obvious case; a builder plus an `AnimatedBuilder`, or plus a manual
+  registration in a `State.initState`, was the same failure arriving less
+  visibly.
+
+  Flutter's own corner semantics come with it, each pinned by a test: one
+  callback registered twice fires twice and takes two removals to stop (a
+  `List`, not a `Set`, because the contract counts registrations); removing a
+  callback that was never registered does nothing rather than silencing the
+  adaptor; dispatch walks a snapshot, so a listener may add or remove listeners
+  while being notified; and `removeListener` is tolerated after `dispose` while
+  `addListener` is not, because a widget tearing down cannot always control
+  whether the listenable it registered on was disposed first.
+
+  The single-listener callouts are gone from all four artefacts rather than
+  softened, and a guard reads them to make sure they stay gone — a document
+  still warning about a single slot would send a reader to a workaround for a
+  problem that no longer exists.
+
+### Changed
+
 - **`ValueListenableObserver`'s two fields stopped being public surface
   (tcopen211).** `observable` is `final` and the listener slot is private.
 

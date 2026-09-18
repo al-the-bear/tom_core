@@ -100,13 +100,14 @@ Adapts a kernel `TomObservable` to Flutter's `ValueListenable` contract.
 - **Implements:** `TomObserver<T>`, `ValueListenable<T>`
 - **Type Parameters:** `T extends TomObservable`
 
-> **Single-listener limitation:** holds at most one listener, and deviates from
-> the `ValueListenable` contract at both ends of it. `addListener` **replaces**
-> any previously registered callback rather than appending. `removeListener`
-> **ignores its argument** — it clears the single slot unconditionally, so
-> calling it with a listener that was never registered still silences the
-> adaptor. There is one slot, so there is nothing to match against. It is not a
-> general-purpose multicast `ValueListenable`.
+> **A real multicast `Listenable`.** `addListener` appends and `removeListener`
+> removes the callback it is given, so one adaptor may be handed to any number
+> of consumers — two `ValueListenableBuilder`s, a builder plus an
+> `AnimatedBuilder`, a manual registration in a `State.initState` — and each is
+> notified. Flutter's own corner semantics apply: registering the same callback
+> twice makes it fire twice and takes two removals to stop; removing a callback
+> that was never registered does nothing; and dispatch walks a snapshot, so a
+> listener may add or remove listeners while it is being notified.
 
 > **Construction subscribes; `dispose` ends it.** An adaptor held beyond a
 > single build — in a `State` field — **must** be disposed. `removeListener` is
@@ -130,17 +131,18 @@ only at `dispose`.
 | `observable` | `T` | **`final`.** The kernel observable whose notifications are forwarded. The constructor registers against *this* one and nothing moves that registration, so an adaptor cannot be retargeted — build a new one. |
 | `value` | `T` | *(override)* The current value — the observed `observable` itself. The type's reader. |
 
-The listener slot is private. It is implementation state rather than surface:
-assigning it would bypass `addListener`, which is where the single-slot
-replacement is documented and traced and where use after `dispose` is caught.
+The listener list is private. It is implementation state rather than surface:
+reaching it would bypass `addListener` and `removeListener`, which is where
+registration is traced and where use after `dispose` is caught. It is a `List`
+rather than a `Set` because the contract counts registrations.
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `onNotify` | `void onNotify(T observable)` | *(override)* Forwards the notification to the registered listener. |
-| `addListener` | `void addListener(VoidCallback listener)` | *(override)* Registers `listener`, replacing any previous one. |
-| `removeListener` | `void removeListener(VoidCallback listener)` | *(override)* Clears the single listener slot. `listener` is ignored — any argument clears it. **Not a teardown**: the kernel registration survives it. |
+| `onNotify` | `void onNotify(T observable)` | *(override)* Forwards the notification to every registered listener, over a snapshot of them. |
+| `addListener` | `void addListener(VoidCallback listener)` | *(override)* Appends `listener`. Registering the same callback twice makes it fire twice. Fails an `assert` in debug after `dispose`. |
+| `removeListener` | `void removeListener(VoidCallback listener)` | *(override)* Removes **one** registration of that listener, and does nothing when it was never registered. **Not a teardown**: the kernel registration survives it, and so do the other listeners. Tolerated after `dispose`, unlike `addListener`. |
 | `dispose` | `void dispose()` | Ends the subscription — deregisters from `observable` and drops the listener. Required for any adaptor that outlives one build. Idempotent; after it, `addListener` fails an `assert` in debug, because a deregistered adaptor would never fire. |
 
 ## Global Functions and Constants
