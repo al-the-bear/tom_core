@@ -26,6 +26,30 @@ import 'reflection_readiness.dart';
 /// shape the server's `/preferences` list endpoint answers — the same text can
 /// be moved between the two stores without a reshaping step in between.
 ///
+/// ## The owned shape
+///
+/// A store told who it belongs to writes the array inside an envelope instead:
+///
+/// ```json
+/// {"owner":"alex","preferences":[{"key":"device.lastAccount", …}]}
+/// ```
+///
+/// [decode] reads both, and that is the point of having two: the bare array is
+/// the interchange shape and stays exactly the server's, so an application that
+/// never names an owner is unaffected and the "same text, both stores" property
+/// holds where it was argued for. The envelope appears only where an owner was
+/// asked for, and it exists to make one mistake loud — a device store shared by
+/// two accounts, which otherwise serves the previous user's last-used account
+/// and biometric flag to the current one, on a screen that looks entirely
+/// normal.
+///
+/// **The owner must match exactly, and absent is a value.** A document with no
+/// owner read by a store that has one is a mismatch, as is the reverse: the
+/// unowned document was written by a build that did not separate accounts, so
+/// it could belong to anyone. One rule with no exemptions is the only one a
+/// reader can hold; an application adding an owner to an install that has none
+/// clears the store or re-writes it deliberately.
+///
 /// **The DTO is encoded through reflection**, like every other Tom type and
 /// like the account half of this module. Reflection setup is a precondition of
 /// the framework rather than a favour the application does it: every entrypoint
@@ -49,18 +73,29 @@ class TomDevicePreferenceJson {
   /// document this writes always names its zone, which is what [decode] on
   /// another device requires.
   ///
+  /// With an [owner], the array is wrapped in the envelope described on this
+  /// class; without one it is written bare, which is the interchange shape.
+  ///
   /// Throws `device_preferences.store.reflection_not_initialised` when the
   /// application never called `initializeReflection()`. That is a configuration
   /// fault of the program, not of the store, and saying so is the difference
   /// between a one-line fix and an afternoon spent inspecting a file that is
   /// intact.
-  static String encode(List<TomUserPreferenceDto> values) {
+  static String encode(List<TomUserPreferenceDto> values, {String? owner}) {
+    final String entries;
     try {
-      return tomReflectionInfo.convertToJsonString(values);
+      entries = tomReflectionInfo.convertToJsonString(values);
     } catch (error, stack) {
       if (isReflectionUninitialised(error)) throw _uninitialised(error, stack);
       rethrow;
     }
+    if (owner == null) return entries;
+    // The entries are spliced in as text rather than re-encoded: reflection has
+    // already produced the exact array `decode` expects, and decoding it here
+    // only to encode it again would be two conversions for one document and a
+    // second place for the shape to be decided.
+    return '{${jsonEncode('owner')}:${jsonEncode(owner)},'
+        '${jsonEncode('preferences')}:$entries}';
   }
 
   /// The failure raised when reflection was never initialised.
@@ -87,12 +122,13 @@ class TomDevicePreferenceJson {
   static List<TomUserPreferenceDto> decode(
     String content, {
     String source = '',
+    String? owner,
   }) {
     if (content.trim().isEmpty) return [];
 
-    final Object? decoded;
+    final Object? document;
     try {
-      decoded = jsonDecode(content);
+      document = jsonDecode(content);
     } catch (error, stack) {
       throw TomDevicePreferenceException(
         'device_preferences.store.invalid_content',
@@ -102,11 +138,25 @@ class TomDevicePreferenceJson {
         stack: stack,
       );
     }
+    // Either shape: the bare array, or the envelope that names an owner. The
+    // owner is compared before anything else is read, because the question it
+    // answers — whose document is this — decides whether the rest may be read
+    // at all.
+    final Object? decoded = document is Map
+        ? document['preferences']
+        : document;
+    _requireOwner(
+      document is Map ? document['owner'] : null,
+      owner,
+      source: source,
+    );
+
     if (decoded is! List) {
       throw TomDevicePreferenceException(
         'device_preferences.store.invalid_content',
-        'The device preference store $source must contain a JSON array, but '
-            'holds a ${decoded.runtimeType}.',
+        'The device preference store $source must contain a JSON array, or an '
+            'object with a preferences array, but holds a '
+            '${document.runtimeType}.',
         parameters: {'source': source},
       );
     }
@@ -143,6 +193,33 @@ class TomDevicePreferenceJson {
       values.add(_toDto(entry, source: source));
     }
     return values;
+  }
+
+  /// Refuses a document whose owner is not [expected].
+  ///
+  /// Absent is a value on both sides, so an unowned document read by an owning
+  /// store is a mismatch exactly as two different names are. That is the whole
+  /// guarantee: a store shared by two accounts fails on its first read instead
+  /// of serving one user the other's last-used account and biometric flag.
+  static void _requireOwner(
+    Object? stored,
+    String? expected, {
+    required String source,
+  }) {
+    final String? actual = stored is String ? stored : null;
+    if (actual == expected) return;
+    throw TomDevicePreferenceException(
+      'device_preferences.store.wrong_owner',
+      'The device preference store $source holds the preferences of '
+          '${actual ?? 'no named owner'}, and was read as '
+          '${expected ?? 'no named owner'}. Give each account its own store '
+          'location, and name the owner on the store that reads it.',
+      parameters: {
+        'source': source,
+        if (actual != null) 'storedOwner': actual,
+        if (expected != null) 'expectedOwner': expected,
+      },
+    );
   }
 
   /// Builds one DTO from a decoded JSON object, through reflection.

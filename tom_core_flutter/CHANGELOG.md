@@ -1,5 +1,34 @@
 ## 1.2.1
 
+### Added
+
+- **A device store can name its owner, and refuses another's document
+  (tcopen221).** Separation between two accounts on one device was by
+  construction — a per-account `location` — and a correct construction was
+  indistinguishable from a wrong one at run time: no warning, no log line, no
+  assertion. The wrong install simply served the previous user's last-used
+  account and biometric flag to the current one, on a screen that looked
+  entirely normal.
+
+  `TomPlatformDevicePreferenceStore` takes an `owner` — an opaque string, absent
+  by default. A store told one records it in the document and refuses one
+  written under a different owner with `device_preferences.store.wrong_owner` on
+  the first read. It is a check on the arrangement rather than a substitute for
+  it: two accounts still get two locations.
+
+  **Absent is a value on both sides.** An unowned document read by an owning
+  store is a mismatch exactly as two different names are — a lenient rule
+  exempting absence would wave through precisely the direction that leaks, since
+  an unowned document was written by a build that did not separate accounts and
+  could belong to anyone.
+
+  **The interchange shape is unchanged.** Without an owner the document is still
+  the bare array the server's list endpoint answers, so "the same text moves
+  between the two stores" holds where it was argued for; the
+  `{"owner":…,"preferences":[…]}` envelope appears only where an owner was asked
+  for. Wrapping unconditionally would have been the smaller change and would
+  have quietly retired that property.
+
 ### Changed
 
 - **`all()` is unmodifiable on both preference faces (tcopen220).** The device

@@ -18,7 +18,12 @@ import 'device_preferences.dart';
 /// using [TomMemoryDevicePreferenceStore].
 class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore {
   /// Always throws — see the class documentation.
-  TomPlatformDevicePreferenceStore(this.location) {
+  ///
+  /// [owner] is retained but never used. One name must mean one signature — and
+  /// one member set — on every target for a conditional export to be worth
+  /// using, so a caller reading `store.owner` compiles here too; a variant whose
+  /// whole purpose is to fail at construction has nothing else to do with it.
+  TomPlatformDevicePreferenceStore(this.location, {this.owner}) {
     throw TomDevicePreferenceException(
       'device_preferences.unsupported_platform',
       'A device preference store needs a filesystem or a browser, and this '
@@ -30,6 +35,10 @@ class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore {
 
   /// The location that was requested. Retained only so the failure can name it.
   final String location;
+
+  /// The owner that was requested. Retained only for signature parity with the
+  /// two variants that store a document.
+  final String? owner;
 
   @override
   Future<List<TomUserPreferenceDto>> read() async => [];

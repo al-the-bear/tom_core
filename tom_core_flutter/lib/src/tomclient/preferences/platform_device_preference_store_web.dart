@@ -46,16 +46,32 @@ class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore {
   /// and fail to compile on the target that was supposed to fail *at run time*,
   /// turning a locatable startup diagnostic into a build break at an unrelated
   /// call site.
-  TomPlatformDevicePreferenceStore(this.location);
+  ///
+  /// [owner] names whose preferences these are — an opaque string the
+  /// application chooses, and absent by default. When it is given, the document
+  /// records it and a read refuses one written under a different owner (or
+  /// under none) with `device_preferences.store.wrong_owner`. It does not
+  /// replace [location] as the separation mechanism: two accounts still get two
+  /// locations. What it adds is that getting that wrong fails loudly instead of
+  /// serving one user the other's preferences.
+  TomPlatformDevicePreferenceStore(this.location, {this.owner});
 
   /// Name of the `localStorage` entry holding this device's preferences.
   final String location;
+
+  /// Whose preferences this entry holds, or `null` when the application names
+  /// no owner.
+  final String? owner;
 
   @override
   Future<List<TomUserPreferenceDto>> read() async {
     final content = window.localStorage.getItem(location);
     if (content == null) return [];
-    return TomDevicePreferenceJson.decode(content, source: location);
+    return TomDevicePreferenceJson.decode(
+      content,
+      source: location,
+      owner: owner,
+    );
   }
 
   @override
@@ -68,7 +84,7 @@ class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore {
     }
     window.localStorage.setItem(
       location,
-      TomDevicePreferenceJson.encode(values),
+      TomDevicePreferenceJson.encode(values, owner: owner),
     );
   }
 }

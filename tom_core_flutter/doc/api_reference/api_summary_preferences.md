@@ -205,7 +205,7 @@ export in `platform_device_preference_store.dart`.
 #### Constructors
 
 ```dart
-TomPlatformDevicePreferenceStore(String location)
+TomPlatformDevicePreferenceStore(String location, {String? owner})
 ```
 
 | Variant | Selected by | `location` means | Behaviour |
@@ -225,15 +225,25 @@ application on which more than one account can sign in therefore gives the store
 a per-account location and installs a new store when the account changes:
 
 ```dart
-TomPlatformDevicePreferenceStore('$supportDirectory/preferences/$accountId.json')
+TomPlatformDevicePreferenceStore(
+  '$supportDirectory/preferences/$accountId.json',
+  owner: accountId,
+)
 ```
 
 The account part must be a single path (or entry-name) segment and stable — a
 surrogate id, or an address hashed or percent-encoded, never a display name.
-Giving every account the same location gives them the same preferences: the
-second sign-in reads the first user's settings, and nothing here detects it,
-because a store is never told that a user changed. See the Scope section of
-`doc/preferences.md`.
+
+`owner` is an opaque string, absent by default, and it is a **check on that
+arrangement rather than a substitute for it**: the store records it in the
+document and refuses one written under a different owner with
+`device_preferences.store.wrong_owner` on the first read. Absent is a value on
+both sides, so an unowned document read by an owning store is a mismatch as much
+as two different names are. Giving every account the same location still gives
+them the same preferences — what the owner removes is that the mistake is
+indistinguishable from a correct install at run time. The neutral variant
+accepts and retains `owner` for signature parity and does nothing with it. See
+the Scope section of `doc/preferences.md`.
 
 The constructor is **not** `const` on any variant, including the two that could
 be. The neutral variant throws from its constructor body, so it cannot be; and a
@@ -248,6 +258,7 @@ behaviour is a run-time failure. Same reasoning, and same resolution, as
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `location` | `String` | The file path or `localStorage` entry name — and the store's scope: two locations are two independent key spaces, so a multi-account install gives each account its own. On the neutral variant, retained only so the failure can name it. |
+| `owner` | `String?` | Whose preferences the document holds, or `null` when the application names no owner. Recorded in the document and compared on every read. Present on all three variants, so a caller reading it compiles on every target; the neutral variant does nothing with it. |
 
 ### TomDevicePreferenceJson
 
@@ -260,8 +271,8 @@ server's `/preferences` list endpoint answers.
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `encode(List<TomUserPreferenceDto> values)` | `String` | The stored JSON text, written through reflection; `updatedAt` normalised to UTC and omitted when `null`. Throws `device_preferences.store.reflection_not_initialised` when the application never called `initializeReflection()`. |
-| `decode(String content, {String source})` | `List<TomUserPreferenceDto>` | Parses it back through reflection. Blank content decodes to an empty document; anything else that is not an array of objects — or that carries an `updatedAt` naming no time zone — throws `device_preferences.store.invalid_content`. `source` only names the backend in the failure. An application that never called `initializeReflection()` gets `device_preferences.store.reflection_not_initialised` instead, so a valid document is not reported as corrupt. |
+| `encode(List<TomUserPreferenceDto> values, {String? owner})` | `String` | The stored JSON text, written through reflection; `updatedAt` normalised to UTC and omitted when `null`. A bare array without an `owner` — the interchange shape, the server's own — and `{"owner":…,"preferences":[…]}` with one. Throws `device_preferences.store.reflection_not_initialised` when the application never called `initializeReflection()`. |
+| `decode(String content, {String source, String? owner})` | `List<TomUserPreferenceDto>` | Parses it back through reflection, reading either shape. The document's owner must equal `owner` — absent is a value on both sides — or it throws `device_preferences.store.wrong_owner` naming both. Blank content decodes to an empty document; anything else that is not an array of objects — or that carries an `updatedAt` naming no time zone — throws `device_preferences.store.invalid_content`. `source` only names the backend in the failure. An application that never called `initializeReflection()` gets `device_preferences.store.reflection_not_initialised` instead, so a valid document is not reported as corrupt. |
 
 The DTO is written field by field rather than through reflection: a framework
 store must keep working in an application whose generator never saw

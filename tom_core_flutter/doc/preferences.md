@@ -14,6 +14,7 @@ reached over the kernel's `/preferences/*` contract by a typed client.
 - [Choosing a Backend](#choosing-a-backend)
 - [Writing a Backend](#writing-a-backend)
 - [Scope: A Store Belongs to Its Location](#scope-a-store-belongs-to-its-location)
+  - [Name the owner, and that mistake is loud](#name-the-owner-and-that-mistake-is-loud)
 - [Reaching the Account Store](#reaching-the-account-store)
 - [Precedence Against the Server Store](#precedence-against-the-server-store)
 - [The Stored Document](#the-stored-document)
@@ -286,12 +287,39 @@ choose; one that changes when a user edits their profile strands every
 preference written under the old spelling.
 
 An install that gives every account the same location gives them the same
-preferences. The second sign-in reads the first user's last-used account,
-biometric flag and layout — and **nothing here detects it.** There is no
-warning, no log line and no assertion, because a store is never told that a user
-changed. This is the one thing about this module that an application can get
-wrong without noticing, which is why it is stated here rather than left to be
-inferred from the backend's shape.
+preferences. The second sign-in would read the first user's last-used account,
+biometric flag and layout — on a screen that looks entirely normal.
+
+### Name the owner, and that mistake is loud
+
+`owner` is an opaque string the application chooses, absent by default. A store
+told one records it in the stored document and refuses one written under a
+different owner:
+
+```dart
+TomPlatformDevicePreferenceStore(
+  '$supportDirectory/preferences/$accountId.json',
+  owner: accountId,
+);
+```
+
+The first read of another account's document throws
+`device_preferences.store.wrong_owner`, naming both owners. A correct install
+never sees it; what it removes is the case where a correct construction and a
+wrong one are indistinguishable at run time.
+
+It does **not** replace the location. Two accounts still get two locations, and
+the owner is a check on that arrangement rather than a substitute for it — a
+store is still never told that a user changed, and the marker is compared only
+against the document it was handed.
+
+**Absent is a value on both sides.** An unowned document read by an owning store
+is a mismatch, and so is an owned document read by a store with no owner. An
+unowned document was written by a build that did not separate accounts, so it
+could belong to anyone; one rule with no exemptions is the only one a reader can
+hold, and a lenient one would wave through exactly the direction that leaks. An
+application adding an owner to an install that has none clears the store or
+re-writes it deliberately.
 
 Switching accounts costs nothing beyond the new bean:
 `TomStoredDevicePreferences` holds no cache, so the next read already answers
@@ -439,6 +467,20 @@ An **array** rather than an object keyed by preference key, because that is the
 shape `TomDevicePreferenceStore` reads and writes, and because it is the shape
 the server's `/preferences` list endpoint answers — the same text moves between
 the two stores without a reshaping step.
+
+A store that names an `owner` wraps that array in an envelope instead:
+
+```json
+{"owner": "alex", "preferences": [ … ]}
+```
+
+Two shapes rather than one, and the reason is the paragraph above: the bare
+array is the interchange shape and stays exactly the server's, so an application
+that names no owner is unaffected and the "same text, both stores" property
+holds where it was argued for. The envelope appears only where an owner was
+asked for. `decode` reads both, and compares the owner before it reads anything
+else — the question of whose document this is decides whether the rest may be
+read at all.
 
 The encoding lives in one class rather than in each backend: two backends that
 each wrote their own JSON would agree only by inspection, and the day they

@@ -819,6 +819,150 @@ void main() {
     });
   });
 
+  group('a store that names its owner refuses another owner\'s document', () {
+    // The separation between two accounts on one device is by construction: an
+    // application gives each its own store `location`. Nothing could tell a
+    // correct construction from a wrong one — the wrong install simply served
+    // the previous user's last-used account and biometric flag to the current
+    // one, on a screen that looked entirely normal.
+    //
+    // The owner marker does not replace the location; it makes getting the
+    // location wrong loud.
+    final dto = TomUserPreferenceDto(
+      key: 'device.lastAccount',
+      valueType: 'String',
+      value: '"alex"',
+    );
+
+    test('a document written for one owner reads back for that owner', () {
+      final written = TomDevicePreferenceJson.encode([dto], owner: 'alex');
+
+      final read = TomDevicePreferenceJson.decode(written, owner: 'alex');
+
+      expect(read, hasLength(1));
+      expect(read.single.key, 'device.lastAccount');
+    });
+
+    test('and is refused for a different one', () {
+      final written = TomDevicePreferenceJson.encode([dto], owner: 'alex');
+
+      expect(
+        () => TomDevicePreferenceJson.decode(written, owner: 'bo'),
+        throwsA(
+          isA<TomDevicePreferenceException>()
+              .having(
+                (error) => error.key,
+                'key',
+                'device_preferences.store.wrong_owner',
+              )
+              .having(
+                (error) => error.parameters,
+                'parameters',
+                allOf(
+                  containsPair('storedOwner', 'alex'),
+                  containsPair('expectedOwner', 'bo'),
+                ),
+              ),
+        ),
+      );
+    });
+
+    test('absent is a value: an owned document is refused by a bare read', () {
+      // The direction a lenient rule would wave through, and the one that is
+      // the leak: a store with no owner reading a document that has one.
+      final written = TomDevicePreferenceJson.encode([dto], owner: 'alex');
+
+      expect(
+        () => TomDevicePreferenceJson.decode(written),
+        throwsA(
+          isA<TomDevicePreferenceException>().having(
+            (error) => error.key,
+            'key',
+            'device_preferences.store.wrong_owner',
+          ),
+        ),
+      );
+    });
+
+    test('and so is the reverse: an unowned document under an owner', () {
+      // An unowned document was written by a build that did not separate
+      // accounts, so it could belong to anyone. One rule with no exemptions is
+      // the only one a reader can hold.
+      final written = TomDevicePreferenceJson.encode([dto]);
+
+      expect(
+        () => TomDevicePreferenceJson.decode(written, owner: 'alex'),
+        throwsA(
+          isA<TomDevicePreferenceException>().having(
+            (error) => error.key,
+            'key',
+            'device_preferences.store.wrong_owner',
+          ),
+        ),
+      );
+    });
+
+    test('an unowned document still reads bare, unchanged', () {
+      // The interchange shape is untouched: an application that never names an
+      // owner writes and reads exactly the array the server's list endpoint
+      // answers.
+      final written = TomDevicePreferenceJson.encode([dto]);
+
+      expect(written.startsWith('['), isTrue);
+      expect(TomDevicePreferenceJson.decode(written), hasLength(1));
+    });
+
+    test('the owned shape carries the array under `preferences`', () {
+      final written = TomDevicePreferenceJson.encode([dto], owner: 'alex');
+      final document = jsonDecode(written) as Map<String, Object?>;
+
+      expect(document['owner'], 'alex');
+      expect(document['preferences'], isA<List<Object?>>());
+    });
+
+    test('the file backend refuses the other account end to end', () async {
+      // Through the store rather than the codec, because the codec is not what
+      // an application holds. The file is written by one account's store and
+      // read by another's — the mistake this exists to catch, with both halves
+      // pointed at one location.
+      final path = '${temporaryDirectory.path}/shared_preferences.json';
+      final alex = TomStoredDevicePreferences(
+        TomPlatformDevicePreferenceStore(path, owner: 'alex'),
+      );
+      await alex.set<String>('device.lastAccount', 'alex');
+
+      final bo = TomStoredDevicePreferences(
+        TomPlatformDevicePreferenceStore(path, owner: 'bo'),
+      );
+
+      await expectLater(
+        bo.all(),
+        throwsA(
+          isA<TomDevicePreferenceException>().having(
+            (error) => error.key,
+            'key',
+            'device_preferences.store.wrong_owner',
+          ),
+        ),
+      );
+    });
+
+    test('and serves the right account its own document', () async {
+      // The other arm, so the refusal cannot be read as "owners break reads".
+      final path = '${temporaryDirectory.path}/owned_preferences.json';
+      final alex = TomStoredDevicePreferences(
+        TomPlatformDevicePreferenceStore(path, owner: 'alex'),
+      );
+      await alex.set<String>('device.lastAccount', 'alex');
+
+      final again = TomStoredDevicePreferences(
+        TomPlatformDevicePreferenceStore(path, owner: 'alex'),
+      );
+
+      expect(await again.get<String>('device.lastAccount'), 'alex');
+    });
+  });
+
   group('both faces answer with the same kind of list', () {
     // The module's argument for its shape is that the two stores "carry the
     // same method set, which is what lets a preference *move* between them
