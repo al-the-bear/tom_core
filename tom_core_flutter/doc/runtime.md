@@ -206,23 +206,36 @@ and the neutral variant creates no client at all.
   breaks the web build. It carries no platform dependency, so it exists on every
   target and exports unconditionally — consulted only where there is a TLS
   callback to consult it.
-- The three `TomFlutterPlatformUtils` implementations override thirteen members
-  each and **duplicate nine members verbatim** — the platform predicates
-  (`isDesktop`, `isMobile`, `isWeb`, `isFuchsia`, `isWindows`, `isLinux`,
-  `isMacOs`, `isAndroid`, `isIos`). They differ in four: `httpClient()`,
-  `getBrowserLocation()`, `getIsolateName()` and `toString()`. Only the native
-  variant declares a constructor.
+- **The three variants share a base and duplicate nothing.**
+  The shared
+  base holds ten members — `TomFlutterPlatformUtilsBase` in
+  `platform_detection_base.dart` — namely the nine platform predicates (`isDesktop`, `isMobile`, `isWeb`,
+  `isFuchsia`, `isWindows`, `isLinux`, `isMacOs`, `isAndroid`, `isIos`) and
+  `getBrowserLocation()`. The variants **differ in four members**: `httpClient()`,
+  `getIsolateName()`, `toString()` and — the web variant alone —
+  `getBrowserLocation()`. Only the native variant declares a constructor.
 
-  `getBrowserLocation()` is the weakest of the four differences — native and
-  neutral both return `null`, so only the web variant actually diverges.
+  The base is a fourth file rather than a member of one variant because the
+  conditional import requires all three to declare a class of the *same* name,
+  so shared code has to sit in a differently-named class they all import
+  unconditionally.
 
-  The duplication is a known candidate for extracting a shared base, deferred
-  because the variants are compile-time-selected and cannot *all* be exercised
-  from one host. Two of the three can: `flutter_io` and `neutral` both import
-  only Flutter, `http` and the kernel, so a test on the VM can import either
-  directly — with a prefix, since they share a class name — and call it. Only
-  `web` is out of reach, because `package:web` needs JS interop the VM cannot
-  provide.
+  Each of those ten bodies stood in triplicate until the base was drawn. The
+  extraction had been deferred on the ground that the variants are
+  compile-time-selected and cannot *all* be exercised from one host — true, and
+  an argument for the base rather than against it. A conditional import means
+  no host compiles more than one variant, so while each carried its own copy
+  the other two copies were untested by construction. The base has no
+  conditional import and is deliberately concrete, so one copy is instantiable
+  and testable from any host; `runtime_test.dart`'s group *the shared
+  predicates, exercised without a variant* drives it over every
+  `TargetPlatform` Flutter declares.
+
+  `getBrowserLocation()` reached the base for the same reason the predicates
+  did: native and neutral both answered `null`. It answers `null` there — where
+  `TomFallbackPlatformUtils` answers `""` — because a target that is not a
+  browser has no location, and an empty string is a location that happens to be
+  blank. The web variant is the one that has an answer, and overrides.
 
   Console output is not part of it. `out` and `outError` are declared in no
   variant: they come from `TomFallbackPlatformUtils`, which already prints to
@@ -256,7 +269,7 @@ and the neutral variant creates no client at all.
 | `dart:io` | dart | `platform_detection_flutter_io.dart` | `HttpClient`, `Platform` |
 | `dart:isolate` | dart | `platform_detection_flutter_io.dart` | `Isolate` |
 | `fetch_client` | package | `platform_detection_web.dart` | the HTTP `Client` per target |
-| `flutter` | package | `platform_detection_client.dart`, `platform_detection_flutter_io.dart`, `platform_detection_neutral.dart`, `platform_detection_web.dart` | `defaultTargetPlatform` / `kIsWeb` for platform predicates; `@visibleForTesting` on `resetClientPlatformUtils` in the entry point |
+| `flutter` | package | `platform_detection_base.dart`, `platform_detection_client.dart` | `defaultTargetPlatform` / `kIsWeb` for the shared platform predicates; `@visibleForTesting` on `resetClientPlatformUtils` in the entry point. The three variants no longer import it — the members that read those symbols are all on the base |
 | `http` | package | `platform_detection_flutter_io.dart`, `platform_detection_neutral.dart`, `platform_detection_web.dart` | the HTTP `Client` per target |
 | `tom_core_kernel` | package | every file | The barrel each variant imports. It is the route to the contract, not its home — `tom_core_kernel.dart` re-exports the whole of `tom_basics`, where `TomPlatformUtils` and `TomFallbackPlatformUtils` are declared; `tom_core_kernel` declares neither type |
 | `web` | package | `platform_detection_web.dart` | the HTTP `Client` per target |

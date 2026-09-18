@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
+import 'package:tom_core_flutter/src/tomclient/runtime/platform_detection_base.dart';
 import 'package:tom_core_flutter/src/tomclient/runtime/platform_detection_flutter_io.dart';
 // The neutral fallback is *selected* only where neither `dart:io` nor
 // `dart:js` exists, but the file itself imports nothing target-specific, so it
@@ -624,7 +625,10 @@ void main() {
             'the API summary does not give the import path a test needs '
             'for the symbols the barrel withholds',
       );
-      for (final symbol in ['TomFlutterPlatformUtils']) {
+      for (final symbol in [
+        'TomFlutterPlatformUtils',
+        'TomFlutterPlatformUtilsBase',
+      ]) {
         expect(
           summary,
           contains(symbol),
@@ -645,7 +649,10 @@ void main() {
         'doc/api_reference/api_summary_runtime.md',
         'doc/api_reference/api_summary_index.md',
       ];
-      final withheld = RegExp(r'\bTomFlutterPlatformUtils\b');
+      // `TomFlutterPlatformUtilsBase` needs naming separately: a word boundary
+      // after `Utils` does not exist in front of `Base`, so the bare pattern
+      // would skip every line that mentions only the base.
+      final withheld = RegExp(r'\bTomFlutterPlatformUtils(Base)?\b');
       final enumerating = RegExp(r'^\s*(#{1,6} |[-*] |\|)');
       final qualified = RegExp(
         r'not exported|internal|src/',
@@ -713,38 +720,47 @@ void main() {
     );
   });
 
-  group('the documented inventory of variant duplication', () {
-    // The module document inventories what the three variants share and what
-    // they differ in, and that inventory is the input to the standing decision
-    // about extracting a shared base. It was written by hand and drifted twice
-    // in the same breath: the list of differences omitted `toString()`, and the
-    // count of duplicated members counted only the nine predicates, missing
-    // `out` and `outError`. A hand-maintained census of a set the compiler can
-    // enumerate is going to drift; these tests recompute it from the sources so
-    // the document has to keep up.
+  group('the variants share a base and duplicate nothing', () {
+    // The three variants used to declare the nine platform predicates each,
+    // byte for byte, because a conditional import requires them to share a
+    // class name and shared behaviour therefore had nowhere to live. It has
+    // somewhere now: `TomFlutterPlatformUtilsBase`, in a fourth file all three
+    // import unconditionally.
+    //
+    // The inventory these tests recompute is what the documents state, and a
+    // hand-maintained census of a set the compiler can enumerate drifts — this
+    // one did, twice in the same breath, before it was checked. What changed
+    // with the base is what the census says: the variants now share a
+    // superclass instead of sharing copies, and the number of members
+    // duplicated between them is zero.
 
     const variants = ['flutter_io', 'neutral', 'web'];
+
+    String variantSource(String variant) => File(
+      'lib/src/tomclient/runtime/platform_detection_$variant.dart',
+    ).readAsStringSync();
 
     /// The `@override` members of each variant, by member name then variant.
     Map<String, Map<String, String>> variantMembers() {
       final byName = <String, Map<String, String>>{};
       for (final variant in variants) {
-        final source = File(
-          'lib/src/tomclient/runtime/platform_detection_$variant.dart',
-        ).readAsStringSync();
-        overrideBodies(source, 'TomFlutterPlatformUtils').forEach((name, body) {
+        overrideBodies(
+          variantSource(variant),
+          'TomFlutterPlatformUtils',
+        ).forEach((name, body) {
           byName.putIfAbsent(name, () => {})[variant] = body;
         });
       }
-      expect(
-        byName.values.every((byVariant) => byVariant.length == variants.length),
-        isTrue,
-        reason:
-            'a member is not overridden in all three variants; the '
-            'document describes a set where every member is',
-      );
       return byName;
     }
+
+    /// The `@override` members of the shared base.
+    Map<String, String> baseMembers() => overrideBodies(
+      File(
+        'lib/src/tomclient/runtime/platform_detection_base.dart',
+      ).readAsStringSync(),
+      'TomFlutterPlatformUtilsBase',
+    );
 
     // Both documents state the inventory, and both had undercounted it. Holding
     // only one of them would leave the other free to drift — which is how the
@@ -755,63 +771,132 @@ void main() {
       'doc/api_reference/api_summary_runtime.md',
     ];
 
-    /// The sentence in [path] that enumerates the per-variant differences.
-    String differenceSentence(String path) {
-      final text = File(
-        path,
-      ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
-      final sentence = RegExp(r'differ in [^.]*\.').firstMatch(text)?.group(0);
+    test('the base declares what the variants answer the same way', () {
+      // Named rather than counted, because the point of the base is *which*
+      // members it holds: the ones every target answers identically. A base
+      // that had absorbed `httpClient` would be wrong however many members it
+      // had.
       expect(
-        sentence,
-        isNotNull,
-        reason: '$path no longer enumerates how the variants differ',
+        baseMembers().keys,
+        unorderedEquals(<String>[
+          'isDesktop',
+          'isMobile',
+          'isWeb',
+          'isFuchsia',
+          'isWindows',
+          'isLinux',
+          'isMacOs',
+          'isAndroid',
+          'isIos',
+          // Not a predicate, and here for the same reason they are: two of the
+          // three variants wrote `null` identically. Only a browser has a
+          // location, so only the web variant overrides it.
+          'getBrowserLocation',
+        ]),
       );
-      return sentence!;
-    }
+    });
+
+    test('no variant restates a body the base already gives it', () {
+      // The regression the extraction exists to prevent: a member copied back
+      // into one variant compiles, passes every behavioural test on the host
+      // that selects it, and silently restores the split the base removed — on
+      // the two targets no test can reach.
+      //
+      // Overriding a base member is not itself the fault. The web variant
+      // overrides `getBrowserLocation` because a browser has one, which is
+      // exactly what a base plus specialisations is for. Restating the base's
+      // *own* body is the fault, because that is a copy pretending to be a
+      // decision.
+      final base = baseMembers();
+      for (final variant in variants) {
+        overrideBodies(
+          variantSource(variant),
+          'TomFlutterPlatformUtils',
+        ).forEach((name, body) {
+          if (!base.containsKey(name)) return;
+          expect(
+            body,
+            isNot(equals(base[name])),
+            reason:
+                '$variant overrides `$name` with the body it already inherits '
+                'from TomFlutterPlatformUtilsBase; delete the override',
+          );
+        });
+      }
+    });
+
+    test('no member is written identically by two variants', () {
+      // The census, as a property rather than a number: whatever the variants
+      // still override, no two of them write the same thing. A member that
+      // appeared here would be one the base should hold.
+      final members = variantMembers();
+      expect(members, isNotEmpty, reason: 'no overrides were read at all');
+
+      for (final entry in members.entries) {
+        final bodies = entry.value;
+        expect(
+          bodies.values.toSet().length,
+          bodies.length,
+          reason:
+              '`${entry.key}` is written identically by two variants: '
+              '${bodies.keys.join(", ")} — it belongs on the shared base',
+        );
+      }
+    });
 
     test('both documents list exactly the members that differ', () {
       final members = variantMembers();
-      final differing = members.entries
-          .where((e) => e.value.values.toSet().length > 1)
-          .map((e) => e.key)
-          .toSet();
-      final shared = members.keys.toSet().difference(differing);
+
+      /// The sentence in [path] that enumerates the per-variant differences.
+      String differenceSentence(String path) {
+        final text = File(
+          path,
+        ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
+        final sentence = RegExp(
+          r'differ in [^.]*\.',
+        ).firstMatch(text)?.group(0);
+        expect(
+          sentence,
+          isNotNull,
+          reason: '$path no longer enumerates how the variants differ',
+        );
+        return sentence!;
+      }
 
       for (final path in documents) {
         // Scoped to the sentence that enumerates the differences, not the whole
-        // document, which legitimately names the shared members when saying
-        // what the duplication consists of. Only this sentence claims a member
-        // differs, so only this sentence can claim it wrongly.
+        // document, which legitimately names the base's members when saying
+        // what the base holds. Only this sentence claims a member differs, so
+        // only this sentence can claim it wrongly.
         final sentence = differenceSentence(path);
-        for (final name in differing) {
+        for (final name in members.keys) {
           expect(
             sentence,
-            // Word-bounded: `out` would otherwise match inside any word that
-            // happens to contain it, and silently pass a document that never
-            // mentions the member.
             matches(RegExp(r'\b' + name + r'\b')),
             reason:
-                '$path: `$name` differs between the variants but is not '
-                'listed among the differences',
+                '$path: `$name` is overridden per variant but is not listed '
+                'among the differences',
           );
         }
-        for (final name in shared) {
+        // A base member is only wrongly listed when *no* variant overrides it.
+        // `getBrowserLocation` is on the base and the web variant specialises
+        // it, so it is legitimately both.
+        for (final name in baseMembers().keys) {
+          if (members.containsKey(name)) continue;
           expect(
             sentence,
             isNot(matches(RegExp(r'\b' + name + r'\b'))),
             reason:
-                '$path: `$name` is identical in all three variants but is '
-                'listed as a per-variant difference',
+                '$path: `$name` lives on the shared base and no variant '
+                'overrides it, yet it is listed as a per-variant difference',
           );
         }
       }
     });
 
-    test('both documents count the members and the duplicates correctly', () {
-      final members = variantMembers();
-      final shared = members.values
-          .where((byVariant) => byVariant.values.toSet().length == 1)
-          .length;
+    test('both documents count what each side holds', () {
+      final perVariant = variantMembers().length;
+      final onBase = baseMembers().length;
 
       // Spelled out, because that is how the documents write it, and the point
       // of the check is that the sentence a reader sees agrees with the source.
@@ -839,47 +924,43 @@ void main() {
         'twenty',
       ];
       expect(
-        members.length,
+        perVariant + onBase,
         lessThan(words.length),
         reason: 'more members than this test can spell',
       );
 
-      // Both numbers, because deleting a member moves both and a check on one
+      // Both numbers, because moving a member changes both and a check on one
       // of them alone leaves the other free to keep the figure it had. That is
-      // not hypothetical: removing the two console overrides took the total
-      // from fifteen to thirteen at the same moment as it took the duplicate
-      // count from eleven to nine.
+      // not hypothetical: drawing the base took the per-variant count from
+      // thirteen to four at the same moment as it put nine on the base.
       for (final path in documents) {
         final text = File(
           path,
         ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
         expect(
           text,
-          contains('${words[members.length]} members'),
+          contains('differ in ${words[perVariant]} members'),
           reason:
-              '$path: each variant overrides ${members.length} members; '
-              'the document states another number',
+              '$path: the variants differ in $perVariant members; the '
+              'document states another number',
         );
         expect(
           text,
-          contains('${words[shared]} members'),
+          contains('base holds ${words[onBase]} members'),
           reason:
-              '$path: the sources duplicate $shared members verbatim '
-              'across the three variants; the document states another number',
+              '$path: the shared base holds $onBase members; the document '
+              'states another number',
         );
       }
     });
 
-    test('no variant override restates the body it inherits', () {
-      // The duplication between the variants is forced — they are selected by
-      // conditional import, so shared behaviour has nowhere to live but the
-      // base, and the base is in another package. Duplication *against* the
-      // base is not forced: an override that evaluates exactly what
-      // `TomFallbackPlatformUtils` already evaluates changes nothing and can
-      // simply be deleted. Six of them were, and no reading of the variants
-      // alone could have found them — the two sides write the same body in
-      // different forms, `=> print(s);` here against `{ print(s); }` there, so
-      // only a comparison that reduces both to their expression sees it.
+    test('no override restates the body it inherits', () {
+      // Duplication *against* a supertype is never forced: an override that
+      // evaluates exactly what it already inherits changes nothing and can be
+      // deleted. Six such overrides were, and no reading of the variants alone
+      // could have found them — the two sides write the same body in different
+      // forms, `=> print(s);` here against `{ print(s); }` there, so only a
+      // comparison that reduces both to their expression sees it.
       final base = File.fromUri(
         packageLibUri(
           'tom_basics',
@@ -894,20 +975,133 @@ void main() {
             'comparison below would pass by finding nothing to compare',
       );
 
-      for (final variant in variants) {
-        final source = File(
-          'lib/src/tomclient/runtime/platform_detection_$variant.dart',
-        ).readAsStringSync();
-        overrideBodies(source, 'TomFlutterPlatformUtils').forEach((name, body) {
+      final sources = {
+        for (final variant in variants)
+          variant: overrideBodies(
+            variantSource(variant),
+            'TomFlutterPlatformUtils',
+          ),
+        // The base is held to the same rule, and is the more likely offender:
+        // it overrides nine members of a class that declares all nine.
+        'base': baseMembers(),
+      };
+
+      sources.forEach((where, overridden) {
+        overridden.forEach((name, body) {
           expect(
             body,
             isNot(equals(inherited[name])),
             reason:
-                '$variant overrides `$name` with the body it already '
-                'inherits from TomFallbackPlatformUtils; delete the override',
+                '$where overrides `$name` with the body it already inherits '
+                'from TomFallbackPlatformUtils; delete the override',
           );
         });
+      });
+    });
+  });
+
+  group('the shared predicates, exercised without a variant', () {
+    // What the extraction bought, and the reason the old deferral's own
+    // argument pointed the other way. A conditional import means no host can
+    // compile more than one variant, so while each variant carried its own copy
+    // of the nine predicates, two of the three copies were untested *by
+    // construction* — nothing could reach them. One copy on a base with no
+    // conditional import can be instantiated anywhere, so these assertions hold
+    // the logic every target uses rather than the copy this host happened to
+    // select.
+    tearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    /// Every predicate answer for [target], by name.
+    Map<String, bool> answersFor(TargetPlatform target) {
+      debugDefaultTargetPlatformOverride = target;
+      final base = TomFlutterPlatformUtilsBase();
+      return {
+        'isDesktop': base.isDesktop(),
+        'isMobile': base.isMobile(),
+        'isFuchsia': base.isFuchsia(),
+        'isWindows': base.isWindows(),
+        'isLinux': base.isLinux(),
+        'isMacOs': base.isMacOs(),
+        'isAndroid': base.isAndroid(),
+        'isIos': base.isIos(),
+      };
+    }
+
+    test('each target answers exactly one operating-system predicate', () {
+      // The property that makes the six OS predicates a partition rather than
+      // six independent questions, checked over every target Flutter declares
+      // — so a target added to the enum with no predicate behind it fails here
+      // instead of answering `false` to all six.
+      const osPredicates = [
+        'isWindows',
+        'isLinux',
+        'isMacOs',
+        'isAndroid',
+        'isIos',
+        'isFuchsia',
+      ];
+      for (final target in TargetPlatform.values) {
+        final answers = answersFor(target);
+        expect(
+          osPredicates.where((name) => answers[name]!).toList(),
+          hasLength(1),
+          reason: '$target does not answer exactly one OS predicate',
+        );
       }
+    });
+
+    test('the desktop and mobile families are the documented ones', () {
+      const desktop = {
+        TargetPlatform.windows,
+        TargetPlatform.linux,
+        TargetPlatform.macOS,
+      };
+      const mobile = {TargetPlatform.android, TargetPlatform.iOS};
+
+      for (final target in TargetPlatform.values) {
+        final answers = answersFor(target);
+        expect(
+          answers['isDesktop'],
+          desktop.contains(target),
+          reason: '$target',
+        );
+        expect(answers['isMobile'], mobile.contains(target), reason: '$target');
+      }
+    });
+
+    test('fuchsia is in neither family, which is why there is no total', () {
+      // Stated in three documents as the reason `isDesktop() || isMobile()`
+      // must not be assumed. Asserted here so it is a measured fact about the
+      // enum rather than a remembered one.
+      final answers = answersFor(TargetPlatform.fuchsia);
+
+      expect(answers['isFuchsia'], isTrue);
+      expect(answers['isDesktop'], isFalse);
+      expect(answers['isMobile'], isFalse);
+    });
+
+    test('isWeb reports the build, not the target', () {
+      // The one predicate that reads `kIsWeb` rather than the target, so it
+      // does not move when the target does. On the VM it is false for every
+      // one of them.
+      for (final target in TargetPlatform.values) {
+        debugDefaultTargetPlatformOverride = target;
+        expect(
+          TomFlutterPlatformUtilsBase().isWeb(),
+          kIsWeb,
+          reason: '$target',
+        );
+      }
+    });
+
+    test('the base refuses to build a client, which is a variant\'s job', () {
+      // It is concrete so that the predicates can be reached, not so that it
+      // can stand in for a variant. What it does not answer it inherits, and
+      // what it inherits for `httpClient` is a refusal.
+      expect(
+        () => TomFlutterPlatformUtilsBase().httpClient(),
+        throwsUnimplementedError,
+      );
     });
   });
 

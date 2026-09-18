@@ -15,6 +15,7 @@ fallback.
 - [Classes](#classes)
   - [TomBadCertificatePolicy](#tombadcertificatepolicy)
 - [Internal Symbols (not exported)](#internal-symbols-not-exported)
+  - [TomFlutterPlatformUtilsBase](#tomflutterplatformutilsbase--internal)
   - [TomFlutterPlatformUtils](#tomflutterplatformutils--internal)
 
 ## Overview
@@ -74,11 +75,15 @@ breaks the web build. It is a file of its own, carries no platform dependency,
 exists on every target and is therefore exported unconditionally. Only the
 native variant consults it.
 
-To reach the internal symbol from a test on the native host:
+To reach the internal symbols from a test on the native host:
 
 ```dart
+import 'package:tom_core_flutter/src/tomclient/runtime/platform_detection_base.dart';
 import 'package:tom_core_flutter/src/tomclient/runtime/platform_detection_flutter_io.dart';
 ```
+
+The base compiles on every target, so the first of those two lines works from
+any host; the second is the one that is native-only.
 
 ## Global Functions and Constants
 
@@ -165,18 +170,50 @@ on the order clients happened to be created in.
 
 ## Internal Symbols (not exported)
 
-Documented because it carries behaviour worth knowing about, not because it can
-be called through the barrel. It requires the direct `src/` import shown above.
+Documented because they carry behaviour worth knowing about, not because they
+can be called through the barrel. Both require a direct `src/` import as shown
+above.
+
+### TomFlutterPlatformUtilsBase — internal
+
+Source: `lib/src/tomclient/runtime/platform_detection_base.dart`.
+
+What every variant answers the same way: the nine platform predicates read from
+Flutter's `defaultTargetPlatform` / `kIsWeb`, and `getBrowserLocation()`. All
+three `TomFlutterPlatformUtils` variants extend it.
+
+- **Extends:** `TomFallbackPlatformUtils`
+
+| Member | Signature | Description |
+| ------ | --------- | ----------- |
+| `isDesktop` | `bool isDesktop()` | Target is windows, linux or macOS. |
+| `isMobile` | `bool isMobile()` | Target is android or iOS. |
+| `isWeb` | `bool isWeb()` | The **build** is a web build (`kIsWeb`) — the one member that does not read the target, so it does not move when the target does. |
+| `isFuchsia` / `isWindows` / `isLinux` / `isMacOs` / `isAndroid` / `isIos` | `bool …()` | Target is that platform. Exactly one of the six answers `true` for any target. |
+| `getBrowserLocation` | `String? getBrowserLocation()` | `null` — where `TomFallbackPlatformUtils` answers `""`, because a target that is not a browser has no location and an empty string is a location that happens to be blank. The web variant overrides it. |
+
+A fourth file rather than a member of one variant: the conditional import
+requires all three variants to declare a class of the *same* name, so shared
+code has to sit in a differently-named class they all import unconditionally.
+
+**Deliberately concrete**, and that is the point of extracting it. A conditional
+import means no host compiles more than one variant, so while each variant
+carried its own copy of these bodies the other two copies were untested by
+construction. One copy on a class with no conditional import can be
+instantiated and driven over every `TargetPlatform` from any host. What it does
+not answer it inherits — `httpClient()` throws, because which client to build is
+exactly what the variants exist to decide.
 
 ### TomFlutterPlatformUtils — internal
 
 The Flutter `TomPlatformUtils` implementation. **Three source variants share
 this name**, one per compile-time target; the conditional import in
-`platform_detection_client.dart` picks exactly one. Each overrides thirteen
-members, of which **nine members are identical in all three** — the platform
-predicates read from Flutter's `defaultTargetPlatform` / `kIsWeb`. They differ
-in four: `httpClient()`, `getBrowserLocation()`, `getIsolateName()` and
-`toString()`. Only the native variant declares a constructor.
+`platform_detection_client.dart` picks exactly one. All three extend
+`TomFlutterPlatformUtilsBase`; that shared base holds ten members — the nine
+platform predicates read from Flutter's `defaultTargetPlatform` / `kIsWeb`, plus
+`getBrowserLocation()`. The variants **differ in four members**: `httpClient()`,
+`getIsolateName()`, `toString()` and — the web variant alone —
+`getBrowserLocation()`. Only the native variant declares a constructor.
 
 The name is **not exported**, and could not usefully be: it denotes a different
 class on each target. Consumers hold the instance as its supertype
@@ -184,7 +221,7 @@ class on each target. Consumers hold the instance as its supertype
 type is an implementation detail and is named here only so the per-variant
 behaviour below has something to hang on.
 
-- **Extends:** `TomFallbackPlatformUtils`
+- **Extends:** `TomFlutterPlatformUtilsBase` (internal, above)
 
 | Variant | `httpClient()` | `getBrowserLocation()` | Notes |
 | ------- | -------------- | ---------------------- | ----- |

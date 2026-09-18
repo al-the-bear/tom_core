@@ -15,7 +15,19 @@ desktop/mobile, web in the browser, or a neutral fallback — exposed through th
 | `clientPlatformUtils` | Getter answering **one** `TomPlatformUtils` per process, built on first read; its concrete type is selected at compile time. Register it process-wide at startup. |
 | `resetClientPlatformUtils` | Discards the built instance so the next read constructs again. `@visibleForTesting` — what a constructor does can only be observed by a test that can get back to "nothing built yet". |
 | `TomFlutterPlatformUtils` | The concrete `TomPlatformUtils` subtype; three variants live in `platform_detection_flutter_io.dart` (`dart:io`), `platform_detection_web.dart` (`dart:js`), and `platform_detection_neutral.dart` (fallback). |
+| `TomFlutterPlatformUtilsBase` | What all three variants answer the same way — the nine platform predicates and `getBrowserLocation()`. A fourth file they import unconditionally, so it compiles on every target. |
 | `TomBadCertificatePolicy` | The hosts whose **unverified** TLS certificate the native client accepts — both loopback families by default. Exported, replaceable through `allowOnly`, and a replacement is logged. |
+
+The variants extend the base and override only what actually differs per
+target: `httpClient()`, `getIsolateName()`, `toString()`, and — the web variant
+alone — `getBrowserLocation()`. The base is a fourth file rather than a member
+of one variant because the conditional import requires all three to declare a
+class of the *same* name, so shared code has to sit in a differently-named class.
+
+It is **deliberately concrete**. No host compiles more than one variant, so
+while each carried its own copy of those bodies the other two copies were
+untested by construction; one copy on a class with no conditional import can be
+instantiated and driven over every `TargetPlatform` from any host.
 
 The conditional import in `platform_detection_client.dart` is the seam:
 

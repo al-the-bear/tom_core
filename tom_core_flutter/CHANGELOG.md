@@ -26,6 +26,30 @@
 
 ### Changed
 
+- **The three platform variants share a base (tcopen233).** Each declared the
+  nine platform predicates byte for byte — about twenty-five lines in
+  triplicate. They now extend `TomFlutterPlatformUtilsBase`, a fourth file all
+  three import unconditionally; it has to be a fourth file and a different name,
+  because the conditional import requires the variants to share a class name.
+
+  The extraction had been deferred on the ground that the variants are
+  compile-time-selected and cannot all be exercised from one host. True, and an
+  argument for the base: no host compiles more than one variant, so while each
+  carried its own copy two of the three were untested by construction. The base
+  has no conditional import and is deliberately concrete, so the suite now
+  drives the shared predicates over every `TargetPlatform` Flutter declares.
+
+  `getBrowserLocation()` moved with them — native and neutral both answered
+  `null`, which the new "no member is written identically by two variants" guard
+  found immediately. It answers `null` on the base, where
+  `TomFallbackPlatformUtils` answers `""`, because a target that is not a
+  browser has no location; the web variant overrides.
+
+  The shared base holds ten members and the variants differ in four:
+  `httpClient()`, `getIsolateName()`, `toString()` and the web variant's
+  `getBrowserLocation()`. The standing guard is a rule rather than a number — no
+  variant may restate a body the base already gives it.
+
 - **`clientPlatformUtils` answers one instance per process (tcopen232).** It
   constructed on every read, so a caller who read it twice held two objects —
   and on the native variant each construction re-copied the whole process
