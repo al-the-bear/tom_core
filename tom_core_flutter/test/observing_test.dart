@@ -128,6 +128,34 @@ class _RecordingLogOutput extends TomLogOutput {
   }
 }
 
+/// A `TomBool` that counts the observer registrations made against it.
+///
+/// "Identical observables are left alone, so an ordinary parent rebuild costs
+/// nothing" is a claim about cost rather than behaviour — deregistering and
+/// re-registering on the same observable leaves the widget registered either
+/// way. Counting the calls is the only way to see the difference.
+class _CountingObservable extends TomBool {
+  _CountingObservable(super.value);
+
+  /// How many times an observer was registered on this observable.
+  int addCalls = 0;
+
+  /// How many times an observer was removed from it.
+  int removeCalls = 0;
+
+  @override
+  void addObserver(TomObserver observer) {
+    addCalls++;
+    super.addObserver(observer);
+  }
+
+  @override
+  void removeObserver(TomObserver observer) {
+    removeCalls++;
+    super.removeObserver(observer);
+  }
+}
+
 void main() {
   group('TomObservingWidget', () {
     testWidgets('renders from the initial observable value', (tester) async {
@@ -463,6 +491,93 @@ void main() {
             find.byType(TomObservingWidget<TomBool>),
           );
 
+      testWidgets('an identical subState is left alone across a rebuild', (
+        tester,
+      ) async {
+        // "Identical observables are left alone, so an ordinary parent rebuild
+        // costs nothing." That is a claim about *cost*, and it is invisible in
+        // behaviour: deregistering and re-registering on the same observable
+        // leaves the widget registered either way, so nothing renders
+        // differently and no notification is missed.
+        //
+        // What can be observed is the calls themselves, so the observable
+        // counts them.
+        final source = _CountingObservable(false);
+        var rebuilds = 0;
+        late void Function(void Function()) rebuildParent;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: StatefulBuilder(
+              builder: (context, setState) {
+                rebuildParent = setState;
+                rebuilds++;
+                return TomObservingWidget<_CountingObservable>(
+                  subState: source,
+                  builder: (state, _) => Text(
+                    ~state ? 'ON' : 'OFF',
+                    textDirection: TextDirection.ltr,
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+
+        expect(source.addCalls, 1, reason: 'initState registered once');
+        expect(source.removeCalls, 0);
+
+        rebuildParent(() {});
+        await tester.pump();
+        rebuildParent(() {});
+        await tester.pump();
+
+        expect(rebuilds, 3, reason: 'the parent really did rebuild');
+        expect(
+          source.addCalls,
+          1,
+          reason: 'didUpdateWidget compares by identity and does nothing',
+        );
+        expect(source.removeCalls, 0);
+      });
+
+      testWidgets('a different subState moves the registration exactly once', (
+        tester,
+      ) async {
+        // The other arm, counted rather than inferred: one removal from the old
+        // observable and one registration on the new, not a re-registration on
+        // both.
+        final first = _CountingObservable(false);
+        final second = _CountingObservable(false);
+        var current = first;
+        late void Function(void Function()) rebuildParent;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: StatefulBuilder(
+              builder: (context, setState) {
+                rebuildParent = setState;
+                return TomObservingWidget<_CountingObservable>(
+                  subState: current,
+                  builder: (state, _) => Text(
+                    ~state ? 'ON' : 'OFF',
+                    textDirection: TextDirection.ltr,
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+
+        rebuildParent(() => current = second);
+        await tester.pump();
+
+        expect(first.addCalls, 1);
+        expect(first.removeCalls, 1, reason: 'the old one was dropped');
+        expect(second.addCalls, 1, reason: 'the new one was taken up');
+        expect(second.removeCalls, 0);
+      });
+
       testWidgets('the same key keeps the State and migrates it', (
         tester,
       ) async {
@@ -765,6 +880,40 @@ void main() {
 
         source | false;
         expect(late, greaterThan(0));
+      });
+
+      test('onNotify does nothing at all when no listener is registered', () {
+        // The `_listeners.isEmpty` early return. It is invisible through
+        // rendering — an adaptor with no listener produces no visible effect
+        // either way — so the trace line is what tells the two apart: the guard
+        // returns *before* it, so a notification to a listener-less adaptor
+        // writes nothing.
+        final source = TomBool(false);
+        final adaptor = ValueListenableObserver<TomBool>(source);
+        addTearDown(adaptor.dispose);
+
+        final recorder = _RecordingLogOutput();
+        final previousOutput = tomLog.logOutput;
+        final previousLevel = tomLog.logLevel;
+        tomLog.logOutput = recorder;
+        tomLog.setLogLevel(TomLogLevel.all);
+        try {
+          source | true;
+          final withoutListener = recorder.messages
+              .where((m) => m.contains('ValueListenableObserver: notified'))
+              .length;
+          expect(withoutListener, 0, reason: 'nothing to notify, so no line');
+
+          adaptor.addListener(() {});
+          source | false;
+          final withListener = recorder.messages
+              .where((m) => m.contains('ValueListenableObserver: notified'))
+              .length;
+          expect(withListener, 1, reason: 'and the guard is the only reason');
+        } finally {
+          tomLog.setLogLevel(previousLevel);
+          tomLog.logOutput = previousOutput;
+        }
       });
 
       test('removeListener is tolerated after dispose', () {

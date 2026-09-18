@@ -1,5 +1,22 @@
 ## 1.2.1
 
+### Documentation
+
+- **Four documented behaviours that no test watched (tcopen218).** Two had
+  stopped being behaviours before they got one: `removeListener` no longer
+  ignores its argument, and `observable` is `final`, so reassignment is settled
+  by the compiler rather than by a test. Both claims are already gone from the
+  documents.
+
+  The two that remained are now pinned, and both needed a probe subclass because
+  each is a claim about work *not* done — and absence of work has no public
+  reader. That `didUpdateWidget` leaves an identical `subState` alone is a claim
+  about cost: registering and deregistering on the same observable leaves the
+  widget registered either way, so the test counts `addObserver` and
+  `removeObserver` calls instead. That `onNotify` does nothing without a
+  listener is invisible through rendering, so the trace line tells the two
+  apart — the `_listeners.isEmpty` return comes before it.
+
 ### Fixed
 
 - **Trace messages are built only when they are written (tcopen217).** Both
