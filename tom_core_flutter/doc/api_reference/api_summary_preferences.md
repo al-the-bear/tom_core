@@ -16,6 +16,8 @@ holds.
   - [TomDevicePreferenceStore](#tomdevicepreferencestore)
   - [TomMemoryDevicePreferenceStore](#tommemorydevicepreferencestore)
   - [TomPlatformDevicePreferenceStore](#tomplatformdevicepreferencestore)
+  - [TomEncryptedDevicePreferenceStore](#tomencrypteddevicepreferencestore)
+  - [TomDevicePreferenceCipher](#tomdevicepreferencecipher)
   - [TomDevicePreferenceJson](#tomdevicepreferencejson)
   - [TomDevicePreferenceException](#tomdevicepreferenceexception)
   - [TomUserPreferencesClient](#tomuserpreferencesclient)
@@ -54,7 +56,10 @@ TomDevicePreferences                                (interface; bean-resolved)
 
 TomDevicePreferenceStore                            (interface)
 ├── TomMemoryDevicePreferenceStore
-└── TomPlatformDevicePreferenceStore                (io | web | neutral variant)
+├── TomPlatformDevicePreferenceStore                (io | web | neutral variant)
+└── TomEncryptedDevicePreferenceStore               (decorator over any of them)
+
+TomDevicePreferenceCipher                           (interface; the application's)
 
 TomDevicePreferenceJson                             (namespace of statics)
 
@@ -259,6 +264,75 @@ behaviour is a run-time failure. Same reasoning, and same resolution, as
 | -------- | ---- | ----------- |
 | `location` | `String` | The file path or `localStorage` entry name — and the store's scope: two locations are two independent key spaces, so a multi-account install gives each account its own. On the neutral variant, retained only so the failure can name it. |
 | `owner` | `String?` | Whose preferences the document holds, or `null` when the application names no owner. Recorded in the document and compared on every read. Present on all three variants, so a caller reading it compiles on every target; the neutral variant does nothing with it. |
+
+### TomEncryptedDevicePreferenceStore
+
+A `TomDevicePreferenceStore` that encrypts preference **values** through a
+`TomDevicePreferenceCipher` and delegates storage to another store.
+
+- **Extends:** `TomDevicePreferenceStore`.
+
+A decorator rather than a fourth backend: encryption is orthogonal to all three
+of the existing ones, so it wraps the file store on desktop, the `localStorage`
+store in the browser and the memory store in a test, and none of them changes.
+
+#### Constructors
+
+```dart
+const TomEncryptedDevicePreferenceStore(
+  TomDevicePreferenceStore inner,
+  TomDevicePreferenceCipher cipher,
+)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `inner` | `TomDevicePreferenceStore` | The store the encrypted document is persisted in. |
+| `cipher` | `TomDevicePreferenceCipher` | The cipher values pass through. |
+
+#### Methods
+
+| Method | Returns | Description |
+| ------ | ------- | ----------- |
+| `read()` | `Future<List<TomUserPreferenceDto>>` | The inner store's document with every value decrypted. A value the cipher refuses raises `device_preferences.store.undecryptable`, naming the preference — a store is usually readable in part, and which entry failed is the first thing anyone asks. |
+| `write(List<TomUserPreferenceDto> values)` | `Future<void>` | Encrypts every value and hands the result to the inner store. |
+
+**Values only.** A preference's `key`, `valueType` and `updatedAt` are stored as
+they were: a reader of the document learns that `device.authToken` exists, that
+it holds a `String` and when it last changed — but not what it is. Encrypting
+the keys as well would have to be deterministic for a per-key read to work,
+which leaks equality while looking as though it does not.
+
+**Not a credential store.** A refresh token or a password belongs in the
+platform's own credential storage, whose guarantees — hardware backing,
+biometric gating, wipe on device reset — no wrapper around a JSON file can
+offer.
+
+### TomDevicePreferenceCipher
+
+The seam an encrypting store defers to: two methods over `String`, with no key,
+no algorithm and no lifecycle.
+
+- **Extends:** none (interface).
+
+#### Methods
+
+| Method | Returns | Description |
+| ------ | ------- | ----------- |
+| `encrypt(String plaintext)` | `FutureOr<String>` | Converts a value to the text that will be stored. |
+| `decrypt(String ciphertext)` | `FutureOr<String>` | Recovers the plaintext. May throw; the store reports it as `device_preferences.store.undecryptable`. |
+
+`FutureOr` rather than `String`, because a keystore-backed implementation is
+usually asynchronous and a synchronous one loses nothing by being allowed.
+
+The framework supplies no implementation, and that is deliberate. Key material
+belongs to a platform keystore — the Keychain, the Android keystore, a browser
+key kept outside `localStorage` — and reaching one is exactly the platform
+dependency this module exists to keep out of the call site; and `tom_crypto`
+ships no symmetric cipher, so a framework that encrypted here would either take
+a new dependency on every application's behalf or hand-roll one.
 
 ### TomDevicePreferenceJson
 

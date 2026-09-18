@@ -365,6 +365,49 @@ void runSharedStoreTests(
   });
 }
 
+/// A cipher that reverses the text — reversible, obviously not secret, and
+/// enough to tell "the decorator transformed the value" from "it did not".
+///
+/// A real cipher is the application's: the framework names the seam and holds
+/// no key, so a test that reached for one would be testing somebody else's
+/// algorithm rather than this decorator's plumbing.
+class _ReversingCipher implements TomDevicePreferenceCipher {
+  const _ReversingCipher();
+
+  @override
+  String encrypt(String plaintext) =>
+      String.fromCharCodes(plaintext.runes.toList().reversed);
+
+  @override
+  String decrypt(String ciphertext) =>
+      String.fromCharCodes(ciphertext.runes.toList().reversed);
+}
+
+/// The same transform, asynchronously — the shape a keystore-backed cipher has.
+class _AsyncReversingCipher implements TomDevicePreferenceCipher {
+  const _AsyncReversingCipher();
+
+  @override
+  Future<String> encrypt(String plaintext) async =>
+      const _ReversingCipher().encrypt(plaintext);
+
+  @override
+  Future<String> decrypt(String ciphertext) async =>
+      const _ReversingCipher().decrypt(ciphertext);
+}
+
+/// A cipher that cannot read what it is given — a rotated key, in miniature.
+class _RefusingCipher implements TomDevicePreferenceCipher {
+  const _RefusingCipher();
+
+  @override
+  String encrypt(String plaintext) => plaintext;
+
+  @override
+  String decrypt(String ciphertext) =>
+      throw StateError('this key does not open that value');
+}
+
 void main() {
   setUpAll(initializeReflection);
 
@@ -816,6 +859,138 @@ void main() {
         throwsA(isA<TomDevicePreferenceException>()),
         reason: 'a corrupt store that read as empty would be overwritten',
       );
+    });
+  });
+
+  group('an encrypting store hides values and nothing else', () {
+    // The module's own contract already names "an encrypted file" as one of the
+    // adaptations its two-method backend seam is for. This is that adaptation,
+    // as a decorator rather than a fourth backend: encryption is orthogonal to
+    // all three of the existing ones, and each keeps working underneath it.
+
+    test('the inner store holds ciphertext, the caller sees plaintext', () {
+      // Both halves in one test on purpose: either alone is satisfiable by a
+      // decorator that does nothing.
+      final inner = TomMemoryDevicePreferenceStore();
+      final preferences = TomStoredDevicePreferences(
+        TomEncryptedDevicePreferenceStore(inner, const _ReversingCipher()),
+      );
+
+      return () async {
+        await preferences.set<String>('device.authToken', 'secret-token');
+
+        final stored = await inner.read();
+        expect(stored.single.value, isNot(contains('secret-token')));
+        expect(
+          await preferences.get<String>('device.authToken'),
+          'secret-token',
+        );
+      }();
+    });
+
+    test('a value survives a round trip through the file backend', () async {
+      // Through a real persistent store, because the decorator's whole claim is
+      // that the backend underneath it is unchanged.
+      final path = '${temporaryDirectory.path}/encrypted_preferences.json';
+      final preferences = TomStoredDevicePreferences(
+        TomEncryptedDevicePreferenceStore(
+          TomPlatformDevicePreferenceStore(path),
+          const _ReversingCipher(),
+        ),
+      );
+
+      await preferences.set<String>('device.authToken', 'secret-token');
+
+      expect(
+        File(path).readAsStringSync(),
+        isNot(contains('secret-token')),
+        reason: 'the plaintext must not reach the disk',
+      );
+      expect(await preferences.get<String>('device.authToken'), 'secret-token');
+    });
+
+    test('the key, type and timestamp stay in the clear, as documented', () {
+      // The line the documentation draws, asserted so it cannot drift in either
+      // direction: a reader learns that `device.authToken` exists and holds a
+      // String, and not what it is. Claiming more than this would be the worse
+      // failure, so the test states the limit rather than only the protection.
+      final inner = TomMemoryDevicePreferenceStore();
+      final store = TomEncryptedDevicePreferenceStore(
+        inner,
+        const _ReversingCipher(),
+      );
+
+      return () async {
+        await store.write([
+          TomUserPreferenceDto(
+            key: 'device.authToken',
+            valueType: 'String',
+            value: '"secret-token"',
+            updatedAt: DateTime.utc(2026, 3, 14),
+          ),
+        ]);
+
+        final stored = (await inner.read()).single;
+        expect(stored.key, 'device.authToken');
+        expect(stored.valueType, 'String');
+        expect(stored.updatedAt, DateTime.utc(2026, 3, 14));
+        expect(stored.value, isNot(contains('secret-token')));
+      }();
+    });
+
+    test('a cipher that refuses names the preference it refused', () async {
+      // A rotated key, or a document from another install. The key is in the
+      // message because a store is usually readable in part, and "which one" is
+      // the first thing anyone asks.
+      final inner = TomMemoryDevicePreferenceStore();
+      await TomEncryptedDevicePreferenceStore(
+        inner,
+        const _ReversingCipher(),
+      ).write([
+        TomUserPreferenceDto(
+          key: 'device.authToken',
+          valueType: 'String',
+          value: '"secret-token"',
+        ),
+      ]);
+
+      final withWrongKey = TomEncryptedDevicePreferenceStore(
+        inner,
+        const _RefusingCipher(),
+      );
+
+      await expectLater(
+        withWrongKey.read(),
+        throwsA(
+          isA<TomDevicePreferenceException>()
+              .having(
+                (error) => error.key,
+                'key',
+                'device_preferences.store.undecryptable',
+              )
+              .having(
+                (error) => error.parameters,
+                'parameters',
+                containsPair('key', 'device.authToken'),
+              ),
+        ),
+      );
+    });
+
+    test('an asynchronous cipher is allowed', () async {
+      // A keystore-backed cipher is usually async, which is why the seam is
+      // `FutureOr`. A synchronous-only seam would have excluded the
+      // implementation the decorator exists for.
+      final preferences = TomStoredDevicePreferences(
+        TomEncryptedDevicePreferenceStore(
+          TomMemoryDevicePreferenceStore(),
+          const _AsyncReversingCipher(),
+        ),
+      );
+
+      await preferences.set<int>('device.launchCount', 12);
+
+      expect(await preferences.get<int>('device.launchCount'), 12);
     });
   });
 

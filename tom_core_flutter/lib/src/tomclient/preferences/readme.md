@@ -28,6 +28,8 @@ call site changing.
 | `TomDevicePreferenceStore` | The narrow backend: `read()` / `write()` of the whole set. The only platform-specific part of the module. The list `read()` returns belongs to the store and the list given to `write()` belongs to the caller, so neither side has to copy defensively. |
 | `TomPlatformDevicePreferenceStore` | The backend for the current target, chosen by conditional export: a JSON file on desktop/mobile, a `localStorage` entry on the web, a loud failure elsewhere. |
 | `TomMemoryDevicePreferenceStore` | A store that persists nothing beyond the process — for tests, examples, and clients that deliberately keep no machine-local state. |
+| `TomEncryptedDevicePreferenceStore` | A decorator that encrypts preference **values** through a `TomDevicePreferenceCipher` and delegates storage to any other backend. Keys, types and timestamps stay in the clear. |
+| `TomDevicePreferenceCipher` | The two-method cipher seam an encrypting store defers to. The framework names it and holds no key. |
 | `TomDevicePreferenceJson` | The stored JSON document, written once so every persistent backend stores the same text. Bare array without an owner — the interchange shape, the server's own — and `{"owner":…,"preferences":[…]}` with one. |
 | `TomDevicePreferenceException` | `device_preferences.unsupported_platform`, `device_preferences.store.invalid_content`. |
 | `TomUserPreferencesClient` | The account store: `all` / `read` / `get` / `getOr` / `set` / `remove` over the server's `/preferences/*` routes. Implements the kernel's `TomUserPreferencesApiService`; every URI is resolved from the contract, none is written. |
@@ -121,6 +123,41 @@ keeps it swappable with the server-side `TomUserPreferences`.
 
 Switching accounts costs nothing beyond the new bean: `TomStoredDevicePreferences`
 holds no cache, so the next read already answers from the new document.
+
+## What the store does not protect
+
+**The shipped backends write plaintext.** A JSON file on desktop and mobile, one
+`localStorage` entry in the browser — readable by anything that can read the
+file, and by any script on the origin. Nothing about a preference is secret
+because it is a preference.
+
+For a value that is merely *sensitive* — the last-used account, a device
+nickname, a flag whose value implies something about the user —
+`TomEncryptedDevicePreferenceStore` wraps any backend:
+
+```dart
+TomStoredDevicePreferences(
+  TomEncryptedDevicePreferenceStore(
+    TomPlatformDevicePreferenceStore(location, owner: accountId),
+    cipher,
+  ),
+);
+```
+
+It encrypts **values only**. A reader of the file still learns that
+`device.authToken` exists, that it holds a `String` and when it last changed —
+but not what it is. Encrypting the keys as well would have to be deterministic
+for a per-key read to work, which leaks equality while looking as though it does
+not.
+
+The cipher is the application's. The framework names a two-method seam and holds
+no key, because key material belongs to a platform keystore — the Keychain, the
+Android keystore, a browser key kept outside `localStorage` — and reaching one is
+exactly the platform dependency this module exists to keep out of the call site.
+
+**None of this is a credential store.** A refresh token or a password belongs in
+the platform's own credential storage, whose guarantees — hardware backing,
+biometric gating, wipe on device reset — no wrapper around a JSON file can offer.
 
 ## One order, both faces
 

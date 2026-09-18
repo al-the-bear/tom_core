@@ -12,6 +12,7 @@ reached over the kernel's `/preferences/*` contract by a typed client.
 - [Why the Framework Owns This](#why-the-framework-owns-this)
 - [The Same Shape as the Server Store](#the-same-shape-as-the-server-store)
 - [Choosing a Backend](#choosing-a-backend)
+- [What the Store Does Not Protect](#what-the-store-does-not-protect)
 - [Writing a Backend](#writing-a-backend)
 - [Scope: A Store Belongs to Its Location](#scope-a-store-belongs-to-its-location)
   - [Name the owner, and that mistake is loud](#name-the-owner-and-that-mistake-is-loud)
@@ -32,6 +33,8 @@ reached over the kernel's `/preferences/*` contract by a typed client.
 | `TomDevicePreferenceStore` | abstract class | The narrow backend: read / write the whole set |
 | `TomPlatformDevicePreferenceStore` | class | The backend for the current target (file / `localStorage` / loud failure) |
 | `TomMemoryDevicePreferenceStore` | class | A store that persists nothing beyond the process |
+| `TomEncryptedDevicePreferenceStore` | class | A decorator that encrypts preference **values** and delegates storage to any backend |
+| `TomDevicePreferenceCipher` | abstract class | The two-method cipher seam an encrypting store defers to |
 | `TomDevicePreferenceJson` | class | The stored JSON document, written once for every persistent backend |
 | `TomDevicePreferenceException` | class | Device-store failures, keyed by stable dotted codes |
 | `TomUserPreferencesClient` | class | The **account** store: the same typed API, over the server's `/preferences/*` routes |
@@ -216,6 +219,66 @@ what this module refuses.
 `TomUserPreferences.resolve`: a preference is optional by nature, and an
 application that has not wired a device store should fall back to its defaults
 rather than fail to start.
+
+## What the Store Does Not Protect
+
+**The shipped backends write plaintext.** A JSON file on desktop and mobile, one
+`localStorage` entry in the browser — readable by anything that can read the
+file, and by any script on the origin. Nothing about a preference is secret
+because it is a preference, and the module has never said otherwise; what it had
+not said is this, plainly.
+
+### An encrypting store, for values that are sensitive
+
+`TomEncryptedDevicePreferenceStore` wraps **any** backend:
+
+```dart
+TomStoredDevicePreferences(
+  TomEncryptedDevicePreferenceStore(
+    TomPlatformDevicePreferenceStore(location, owner: accountId),
+    cipher,
+  ),
+);
+```
+
+A decorator rather than a fourth backend, because encryption is orthogonal to
+all three of the existing ones — it wraps the file store on desktop, the
+`localStorage` store in the browser, the memory store in a test, and none of
+them changes. That the two-method backend seam makes this possible is the
+module's best structural property, and the contract already named "an encrypted
+file" as one of the adaptations it is for.
+
+**It encrypts values only, and that is a line rather than an oversight.** A
+reader of the document still learns that `device.authToken` exists, that it
+holds a `String`, and when it last changed — but not what it is. Encrypting the
+keys as well would have to be deterministic for a per-key read to work at all,
+which leaks equality while looking as though it does not, and would make the
+document unreadable to every tool that inspects one. The honest statement is the
+one worth having: this hides the secret, not the fact that a secret is kept.
+
+A value the cipher will not read back raises
+`device_preferences.store.undecryptable`, naming the preference — a rotated key,
+or a document from another install. A store is usually readable in part, and
+which entry failed is the first thing anyone asks.
+
+### The cipher is the application's
+
+`TomDevicePreferenceCipher` is two methods over `String` — `encrypt` and
+`decrypt`, either synchronous or asynchronous — with no key, no algorithm and no
+lifecycle. The framework does not choose one, for two reasons that point the
+same way: key material belongs to a **platform keystore**, and reaching one is
+exactly the platform dependency this module exists to keep out of the call site;
+and `tom_crypto` ships no symmetric cipher, so a framework that encrypted here
+would either take a new dependency on every application's behalf or hand-roll
+one.
+
+### It is not a credential store
+
+A refresh token, a password, a private key: these belong in the platform's own
+credential storage, whose guarantees — hardware backing, biometric gating, wipe
+on device reset — no wrapper around a JSON file can offer. What the encrypting
+store is for is the preference that is merely sensitive, where the alternative
+today is plaintext.
 
 ## Writing a Backend
 
@@ -529,9 +592,10 @@ between devices, so an `updatedAt` that names no time zone throws
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `encrypted_device_preference_store.dart` | `FutureOr`, so a cipher may be synchronous or not |
 | `dart:convert` | dart | `device_preference_json.dart`, `user_preferences_client.dart` | `json`, `jsonDecode`, `jsonEncode`, `utf8` |
 | `dart:io` | dart | `platform_device_preference_store_io.dart` | in the respective compile-time variants only |
-| `tom_core_kernel` | package | 8 of 10 files | `TomUserPreferenceKeys`, `TomUserPreferenceDto`, `TomUserPreferenceCodec`, `TomBean`, `TomRuntime`, and for the client `tomUserPreferencesApi`, `TomApiEndpoint.resolveUri`, `TomServerChannel`, `TomBearerAuthentication` (see `../../tom_core_kernel/doc/preferences/preferences.md`) |
+| `tom_core_kernel` | package | 9 of 11 files | `TomUserPreferenceKeys`, `TomUserPreferenceDto`, `TomUserPreferenceCodec`, `TomBean`, `TomRuntime`, and for the client `tomUserPreferencesApi`, `TomApiEndpoint.resolveUri`, `TomServerChannel`, `TomBearerAuthentication` (see `../../tom_core_kernel/doc/preferences/preferences.md`) |
 | `web` | package | `platform_device_preference_store_web.dart` | `window.localStorage` — the browser store the web implementation writes its one entry to |
 | [little_things](little_things.md) | module | `device_preferences.dart`, `user_preferences_client.dart` | `TomClientException` (see [little_things.md](little_things.md)) |
 

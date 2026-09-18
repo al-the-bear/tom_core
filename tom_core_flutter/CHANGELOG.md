@@ -2,6 +2,35 @@
 
 ### Added
 
+- **`TomEncryptedDevicePreferenceStore`, and a plain statement of what the
+  device store protects (tcopen222).** The shipped backends write plaintext — a
+  JSON file, one `localStorage` entry — and the module never said so. The
+  documented examples are innocuous, but `device.lastAccount` is already an
+  email address in the shipped example, and the store that is the obvious place
+  for "whether biometric unlock is on here" is the obvious place somebody will
+  also keep the thing biometric unlock protects.
+
+  A **decorator** over the existing two-method backend seam rather than a fourth
+  backend: encryption is orthogonal to all three, so it wraps the file store on
+  desktop, the `localStorage` store in the browser and the memory store in a
+  test, and none of them changes.
+
+  **Values only, stated as a limit.** The `key`, `valueType` and `updatedAt` are
+  stored as they were — a reader learns that `device.authToken` exists and holds
+  a `String`, not what it is. Encrypting the keys would have to be deterministic
+  for a per-key read to work, which leaks equality while looking as though it
+  does not. A test asserts the limit as well as the protection.
+
+  **The framework names the cipher seam and holds no key.** Key material belongs
+  to a platform keystore, and reaching one is the platform dependency this module
+  exists to keep out of the call site; and `tom_crypto` ships no symmetric cipher
+  — checked, not assumed — so encrypting here would mean a new dependency on
+  every application's behalf, or a hand-rolled one.
+
+  None of it is a credential store, and all three documents now say so.
+
+### Added
+
 - **A device store can name its owner, and refuses another's document
   (tcopen221).** Separation between two accounts on one device was by
   construction — a per-account `location` — and a correct construction was

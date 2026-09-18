@@ -16,6 +16,7 @@ export 'src/tomclient/little_things/client_exceptions.dart';
 export 'src/tomclient/preferences/device_preference_json.dart';
 export 'src/tomclient/preferences/device_preference_store.dart';
 export 'src/tomclient/preferences/device_preferences.dart';
+export 'src/tomclient/preferences/encrypted_device_preference_store.dart';
 export 'src/tomclient/preferences/platform_device_preference_store.dart';
 export 'src/tomclient/preferences/stored_device_preferences.dart';
 export 'src/tomclient/preferences/user_preferences_client.dart';
