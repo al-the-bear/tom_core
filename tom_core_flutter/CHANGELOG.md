@@ -24,6 +24,24 @@
   A failure this module already named passes through untouched: a conflict, an
   undecodable document, an owner mismatch, an uninitialised reflection.
 
+### Changed
+
+- **The mechanism registry's registration window is documented (tcopen237).**
+  `Tom2FAClientRegistry.register` is a start-up call. Nothing bounds when it may
+  be run, the registry is not sealed, and the flow resolves the mechanism on
+  every build — so a registration made during a live flow lands on the next
+  frame.
+
+  What that costs was measured rather than assumed, and it is narrower than it
+  looked: a replacement rendering a **different** panel widget takes the screen
+  over and the typed input goes with it, while one rendering the **same** widget
+  keeps it, because Flutter reuses the element. An application that wraps or
+  subclasses the shipped panel — the likelier substitution — loses nothing.
+
+  Sealing the registry after the first flow build was declined: it would forbid
+  a mechanism arriving from a plugin loaded after the login screen is up, to
+  prevent a misuse no shipped path performs.
+
 ### Added
 
 - **The TOTP challenge panel counts down (tcopen236).** A code lives one step,

@@ -807,6 +807,82 @@ void main() {
       expect(Tom2FAClientRegistry.types, contains('totp'));
     });
 
+    testWidgets('a registration mid-flow takes the screen over', (
+      tester,
+    ) async {
+      // The flow resolves the mechanism on every build rather than caching it
+      // at the first, so a registration lands on the next frame — including
+      // one made while a user is part-way through enrolling. The registry
+      // documents replacement as a feature; what this pins is *when* it takes
+      // effect, because the documented start-up window is a convention and not
+      // something the code enforces.
+      final controller = _FakeController(
+        enrolment: Tom2FAPendingEnrolment(type: 'totp'),
+      );
+      await pump(tester, controller);
+      await tester.enterText(
+        find.byKey(const Key('tom-2fa-totp-enrolment-code')),
+        '123456',
+      );
+      await tester.pump();
+
+      Tom2FAClientRegistry.register(const _SmsMechanism(type: 'totp'));
+      await pump(tester, controller);
+
+      expect(find.byKey(const Key('sms-enrolment')), findsOneWidget);
+      expect(
+        find.byKey(const Key('tom-2fa-totp-enrolment-code')),
+        findsNothing,
+      );
+
+      // And the typing is gone with the panel that held it: the field's
+      // controller lived in that panel's State, which Flutter disposed when the
+      // widget type under the same slot changed. Swapping back proves the loss
+      // rather than only the absence.
+      Tom2FAClientRegistry.register(const TomTotp2FAClientMechanism());
+      await pump(tester, controller);
+      final field = tester.widget<TextField>(
+        find.descendant(
+          of: find.byKey(const Key('tom-2fa-totp-enrolment-code')),
+          matching: find.byType(TextField),
+        ),
+      );
+      expect(field.controller!.text, isEmpty);
+    });
+
+    testWidgets('a replacement that renders the same panel keeps the typing', (
+      tester,
+    ) async {
+      // The other half, and the reason the warning is conditional rather than
+      // flat. What costs the user their input is not the registration: it is
+      // the *widget type* changing under the same slot, which is what makes
+      // Flutter drop the State and with it the TextEditingController. An
+      // application that wraps or subclasses the shipped panel replaces the
+      // mechanism object and keeps the shape, so nothing is lost — and that is
+      // the likelier replacement.
+      final controller = _FakeController(
+        enrolment: Tom2FAPendingEnrolment(type: 'totp'),
+      );
+      await pump(tester, controller);
+      await tester.enterText(
+        find.byKey(const Key('tom-2fa-totp-enrolment-code')),
+        '123456',
+      );
+      await tester.pump();
+
+      Tom2FAClientRegistry.register(const _WrappingTotpMechanism());
+      await pump(tester, controller);
+
+      expect(Tom2FAClientRegistry.find('totp'), isA<_WrappingTotpMechanism>());
+      final field = tester.widget<TextField>(
+        find.descendant(
+          of: find.byKey(const Key('tom-2fa-totp-enrolment-code')),
+          matching: find.byType(TextField),
+        ),
+      );
+      expect(field.controller!.text, '123456');
+    });
+
     test('a mechanism describes itself by the scoped convention', () {
       const mechanism = TomTotp2FAClientMechanism();
 
@@ -1136,4 +1212,21 @@ class _SmsMechanism extends Tom2FAClientMechanism {
     mainAxisSize: MainAxisSize.min,
     children: [Text(data.hint, key: const Key('sms-challenge-hint'))],
   );
+}
+
+/// A mechanism that renders the shipped TOTP panels from a different object.
+class _WrappingTotpMechanism extends Tom2FAClientMechanism {
+  const _WrappingTotpMechanism() : super('totp');
+
+  @override
+  Widget buildEnrolmentPanel(
+    BuildContext context,
+    Tom2FAEnrolmentPanelContext data,
+  ) => const TomTotp2FAClientMechanism().buildEnrolmentPanel(context, data);
+
+  @override
+  Widget buildChallengePanel(
+    BuildContext context,
+    Tom2FAChallengePanelContext data,
+  ) => const TomTotp2FAClientMechanism().buildChallengePanel(context, data);
 }

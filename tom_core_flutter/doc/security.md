@@ -254,6 +254,33 @@ The flow installs a built-in only where nothing is registered under that key
 (`Tom2FAFlowPanel.registerBuiltInMechanisms`, called from the panel's
 `initState` and idempotent), so registering first wins.
 
+### Register at start-up
+
+Nothing bounds *when* `register` may be called, and nothing needs to for a
+normal application: register before the first `Tom2FAFlowPanel` is built and the
+question never arises. What is worth knowing is what happens if you do not,
+because the registry is not sealed and will not complain.
+
+The flow resolves the mechanism on **every build**, so a registration made while
+a flow is on screen takes effect on the next frame. Whether the user notices
+depends on what the replacement renders:
+
+| The replacement renders | What happens |
+| ----------------------- | ------------ |
+| a **different** panel widget | it takes the screen over, and the state of the one it replaced — including the controller holding whatever was typed — goes with it |
+| the **same** panel widget | nothing is lost: the element is reused and the typing survives |
+
+The cost is therefore attached to the *shape* of a late replacement, not to
+replacement itself. An application that wraps or subclasses the shipped panel
+changes the mechanism object and keeps the widget type, which is the likelier
+substitution and is free. Registering a differently-shaped panel during a live
+flow is the one case that costs a user something, and no shipped path does it.
+
+Sealing the registry after the first flow build was considered and declined: it
+would forbid a legitimate late registration — a mechanism arriving from a plugin
+loaded after the login screen is already up — to prevent a misuse nobody has
+committed.
+
 ## The Shipped TOTP Mechanism
 
 TOTP is the mechanism every deployment has, so it ships registered rather than

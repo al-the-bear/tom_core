@@ -196,6 +196,38 @@ abstract class Tom2FAClientMechanism {
 /// builds, several levels below whoever configured it, and threading it down
 /// would put a parameter on every panel for a value that is the same everywhere
 /// in the process.
+///
+/// ## Register at start-up
+///
+/// Nothing bounds *when* [register] may be called, and nothing needs to for a
+/// normal application: register before the first [Tom2FAFlowPanel] is built and
+/// the question never arises. What is worth knowing is what happens if you do
+/// not, because the registry is not sealed and will not complain.
+///
+/// [Tom2FAFlowPanel] resolves the mechanism on **every build**, so a
+/// registration made while a flow is on screen takes effect on the next frame.
+/// Whether the user notices depends on what the replacement renders:
+///
+/// - **A different panel widget takes the screen over**, and the state of the
+///   one it replaced — including the [TextEditingController] holding whatever
+///   was typed — goes with it. Flutter disposes the old element when the
+///   widget type under a slot changes.
+/// - **A replacement that renders the same panel keeps it.** An application
+///   that wraps or subclasses the shipped panel changes the mechanism object
+///   and not the widget type, so the element is reused and the typing survives.
+///   That is the likelier replacement, which is why this is a caveat rather
+///   than a prohibition.
+///
+/// So the rule is about the *shape* of a late replacement, not about
+/// replacement itself. Registering a differently-shaped panel during a live
+/// flow is the one case that costs a user something, and no shipped path does
+/// it — [Tom2FAFlowPanel.registerBuiltInMechanisms] runs in `initState`, before
+/// the first build, and never overwrites an application's entry.
+///
+/// Sealing the registry after the first flow build was considered and declined:
+/// it would forbid a legitimate late registration — a mechanism arriving from a
+/// plugin loaded after the login screen is up — to prevent a misuse nobody has
+/// committed.
 class Tom2FAClientRegistry {
   Tom2FAClientRegistry._();
 
@@ -207,6 +239,12 @@ class Tom2FAClientRegistry {
   /// Replacing rather than rejecting: an application that wants a different
   /// TOTP panel than the shipped one should get it by registering, not by
   /// having to unregister first.
+  ///
+  /// **A start-up call.** It is accepted at any time and takes effect on the
+  /// next frame, so a replacement made during a live flow that renders a
+  /// *different* panel widget discards what the user had typed into the old
+  /// one. See the class documentation for when that happens and when it does
+  /// not.
   static void register(Tom2FAClientMechanism mechanism) {
     _mechanisms[mechanism.type] = mechanism;
   }

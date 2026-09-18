@@ -236,13 +236,19 @@ The mechanism catalog the second-factor flow dispatches through. Process-wide
 rather than injected, because it is consulted from inside widget builds several
 levels below whoever configured it.
 
+The registry is **not sealed**: registration is accepted at any time, and the
+window is a convention rather than something the code enforces. Sealing it after
+the first flow build was considered and declined — it would forbid a mechanism
+arriving from a plugin loaded after the login screen is up, to prevent a misuse
+nobody has committed. See `doc/security.md` §Register at start-up.
+
 Not constructible — the class has a private constructor and only static members.
 
 #### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `register` | `static void register(Tom2FAClientMechanism mechanism)` | Registers under the mechanism's `type`, **replacing** any previous entry. Replacing rather than rejecting, so an application substituting its own panel does not have to unregister first. |
+| `register` | `static void register(Tom2FAClientMechanism mechanism)` | Registers under the mechanism's `type`, **replacing** any previous entry. Replacing rather than rejecting, so an application substituting its own panel does not have to unregister first. **A start-up call**: it is accepted at any time and takes effect on the next frame, because the flow resolves the mechanism on every build. A late replacement that renders a *different* panel widget takes the screen over and discards what the user had typed; one that renders the same widget keeps it, so wrapping or subclassing the shipped panel is free. |
 | `find` | `static Tom2FAClientMechanism? find(String type)` | The mechanism registered under `type`, or `null`. Nullable rather than throwing: "the server offered a mechanism this build cannot render" is a real deployment state. |
 | `has` | `static bool has(String type)` | Whether a mechanism is registered under `type`. |
 | `reset` | `static void reset()` | Drops every registration, including built-ins. `@visibleForTesting`; production code has no reason to call it. |

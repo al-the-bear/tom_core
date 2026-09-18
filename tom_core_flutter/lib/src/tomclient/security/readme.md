@@ -21,7 +21,7 @@ whose auth client already handles refresh.
 | `Tom2FAFlowPanel` | Renders whichever stop the login is at — chooser, enrolment or challenge — reading the position from the controller each build. Registers the built-in mechanisms on first build. |
 | `Tom2FAFlowController` | The seam the application implements over its own auth client: five moves (choose, confirm, skip, answer, cancel) and two pieces of read-only state. |
 | `Tom2FAClientMechanism` | One mechanism's client-side rendering, paired with its server adaptor by `type` alone. |
-| `Tom2FAClientRegistry` | Process-wide catalog the flow dispatches through; `register` replaces, so an application can substitute a built-in. |
+| `Tom2FAClientRegistry` | Process-wide catalog the flow dispatches through; `register` replaces, so an application can substitute a built-in. A start-up call — not sealed, and a late replacement that renders a *different* panel widget discards what the user had typed. |
 | `Tom2FAEnrolmentPanelContext` | What an enrolment panel is given: `type`, `clientData`, `accountLabel`, `onSubmit`, `busy`. |
 | `Tom2FAChallengePanelContext` | What a challenge panel is given: the same, plus `hint` and `attemptsRemaining`. |
 | `TomTotp2FAClientMechanism` | The shipped authenticator-app mechanism, registered under `'totp'`. Its challenge panel counts down to the next code rollover and says so when one overtakes a typed code — warning, not blocking, because the server accepts one step either side of its own. Also the public `digitsOf` / `periodOf` / `secondsRemainingIn` / `groupSecret` helpers. |
@@ -59,6 +59,13 @@ widgets, so they are shown in `test/two_factor_client_test.dart` instead.
 registry is the only thing `Tom2FAFlowPanel` consults. There is no annotation
 and no scan: a mechanism the application has not registered does not appear in
 the chooser, whatever else it declares about itself.
+
+Registration is a **start-up** call. The registry is not sealed and the flow
+resolves the mechanism on every build, so a registration made during a live flow
+lands on the next frame: one that renders a *different* panel widget takes the
+screen over and discards what the user had typed, while one that renders the
+same widget — wrapping or subclassing the shipped panel — keeps it. See
+`doc/security.md` for the whole of it, including why sealing was declined.
 
 That is a deliberate asymmetry with the server, where `@Tom2FAAdaptor` *is*
 enumerated by reflection. The server owns the set of adaptors a deployment
