@@ -888,6 +888,109 @@ void main() {
     });
   });
 
+  group('the device store holds the same ceiling as the account store', () {
+    // Every operation reads the whole document and every mutation writes all of
+    // it back. That is the trade the two-method backend seam buys, and it is
+    // only safe if the document is bounded — so the account store's ceiling
+    // applies here too, and for one reason beyond symmetry: a device document
+    // the account store would refuse to accept could only ever move in one
+    // direction.
+
+    /// A store already holding [count] preferences.
+    Future<TomStoredDevicePreferences> filled(int count) async {
+      final preferences = TomStoredDevicePreferences(
+        TomMemoryDevicePreferenceStore([
+          for (var i = 0; i < count; i++)
+            TomUserPreferenceDto(
+              key: 'device.k$i',
+              valueType: 'String',
+              value: '"v"',
+            ),
+        ]),
+      );
+      return preferences;
+    }
+
+    test('a new key past the ceiling is refused', () async {
+      final preferences = await filled(tomUserPreferencesMaxPerPrincipal);
+
+      await expectLater(
+        preferences.set<String>('device.oneMore', 'v'),
+        throwsA(
+          isA<TomDevicePreferenceException>()
+              .having(
+                (error) => error.key,
+                'key',
+                tomUserPreferencesLimitExceededErrorKey,
+              )
+              .having(
+                (error) => error.parameters,
+                'parameters',
+                containsPair('maximum', tomUserPreferencesMaxPerPrincipal),
+              ),
+        ),
+      );
+    });
+
+    test('the last place is still available', () async {
+      // The boundary, from below: a store one short of the ceiling accepts one
+      // more. Without this the refusal above passes equally well on a store
+      // that refuses everything.
+      final preferences = await filled(tomUserPreferencesMaxPerPrincipal - 1);
+
+      await preferences.set<String>('device.lastPlace', 'v');
+
+      expect(await preferences.get<String>('device.lastPlace'), 'v');
+      expect(
+        await preferences.all(),
+        hasLength(tomUserPreferencesMaxPerPrincipal),
+      );
+    });
+
+    test('replacing a preference is never refused for the count', () async {
+      // A device at the ceiling can still change every setting it has. The
+      // account store's rule, so the two agree about which writes are possible.
+      final preferences = await filled(tomUserPreferencesMaxPerPrincipal);
+
+      await preferences.set<String>('device.k0', 'changed');
+
+      expect(await preferences.get<String>('device.k0'), 'changed');
+    });
+
+    test('and removing one frees a place', () async {
+      final preferences = await filled(tomUserPreferencesMaxPerPrincipal);
+
+      expect(await preferences.remove('device.k0'), isTrue);
+      await preferences.set<String>('device.oneMore', 'v');
+
+      expect(await preferences.get<String>('device.oneMore'), 'v');
+    });
+
+    test('a value past the codec ceiling is refused, as it always was', () async {
+      // The other half of the bound, which the kernel codec already enforced
+      // for both stores. Asserted here so the two ceilings are stated together:
+      // 256 entries of at most 16 KiB is what makes the worst case a number
+      // anyone can quote.
+      final preferences = TomStoredDevicePreferences(
+        TomMemoryDevicePreferenceStore(),
+      );
+
+      await expectLater(
+        preferences.set<String>(
+          'device.tooBig',
+          'x' * (TomUserPreferenceCodec.maxValueBytes + 1),
+        ),
+        throwsA(
+          isA<TomException>().having(
+            (error) => error.key,
+            'key',
+            'preferences.encode.too_large',
+          ),
+        ),
+      );
+    });
+  });
+
   group('two writers over one location', () {
     // Every write is a read-modify-write over the whole document — there is no
     // per-key storage to update in place — so two writers each read the same

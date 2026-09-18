@@ -1,5 +1,30 @@
 ## 1.2.1
 
+### Added
+
+- **The device store holds the account store's 256-key ceiling (tcopen224).**
+  Every operation reads the whole document and every mutation writes all of it
+  back — the trade that keeps the backend contract at two methods, and two
+  methods is the whole cost of adapting a new platform. What was missing was the
+  other half of the argument: nothing said where the trade stops working, so a
+  caller who put a per-item preference in the store discovered the cost as jank
+  rather than as a rule they had broken.
+
+  Half the bound existed already: the kernel codec refuses an encoded value over
+  16 KiB. The number of entries was unbounded.
+  `TomStoredDevicePreferences.set` now refuses a write that would **add** a key
+  beyond `tomUserPreferencesMaxPerPrincipal`, carrying the contract's own
+  `preferences.limit.exceeded` rather than a device-local spelling — it is one
+  rule, so it has one name. Applying the account store's ceiling is not only
+  symmetry: a preference is meant to be able to move between the two stores, and
+  a device document the account store would refuse could only move one way.
+
+  Only an insert is refused; replacing is never refused for the count, and
+  removing one frees a place. The two ceilings make the worst case about four
+  megabytes and a real document a few hundred bytes — the number
+  `doc/preferences.md` now states, mirroring the kernel's *How big the account
+  store can get*.
+
 ### Fixed
 
 - **An interleaved write is detected rather than lost (tcopen223).** Every write

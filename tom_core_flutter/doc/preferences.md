@@ -12,6 +12,7 @@ reached over the kernel's `/preferences/*` contract by a typed client.
 - [Why the Framework Owns This](#why-the-framework-owns-this)
 - [The Same Shape as the Server Store](#the-same-shape-as-the-server-store)
 - [Choosing a Backend](#choosing-a-backend)
+- [How Big the Device Store Can Get](#how-big-the-device-store-can-get)
 - [Two Writers Over One Location](#two-writers-over-one-location)
 - [What the Store Does Not Protect](#what-the-store-does-not-protect)
 - [Writing a Backend](#writing-a-backend)
@@ -221,6 +222,53 @@ what this module refuses.
 `TomUserPreferences.resolve`: a preference is optional by nature, and an
 application that has not wired a device store should fall back to its defaults
 rather than fail to start.
+
+## How Big the Device Store Can Get
+
+**Every operation reads the whole document, and every mutation writes all of it
+back.** `all`, `read`, `get`, `getOr`, `set` and `remove` each go through
+`store.read()`, which decodes the entire document; a `set` is a full
+read-modify-write.
+
+That is a decision, not an omission. It is what keeps `TomDevicePreferenceStore`
+at **two methods**, and two methods is the whole cost of adapting a new backend —
+`shared_preferences`, a keychain, an encrypted file. A per-key backend interface
+would push that cost onto every platform, to save work on a document that is a
+few hundred bytes.
+
+It is only safe because the document is bounded, by the same two ceilings the
+account store declares:
+
+| Ceiling | Value | Enforced by | Refusal |
+| ------- | ----- | ----------- | ------- |
+| `tomUserPreferencesMaxPerPrincipal` — preferences one owner may hold | 256 | `TomStoredDevicePreferences.set`, on a write that would **add** a key | `preferences.limit.exceeded` |
+| `TomUserPreferenceCodec.maxValueBytes` — the encoded value of one preference | 16 KiB of UTF-8 | the kernel codec, on the writing side | `preferences.encode.too_large` |
+
+So the largest document this store can ever hold is about **four megabytes**, and
+a real one — a theme, a language, a last-used account, a handful of flags — is a
+few hundred bytes.
+
+**The count ceiling is the account store's, applied here too**, and for a reason
+beyond symmetry: a preference is meant to be able to *move* between the two
+stores, and a device document the account store would refuse to accept could only
+ever move in one direction. Both refusals carry the contract's own key rather
+than a device-local spelling, because it is the same rule.
+
+**Only an insert is refused.** A device at the ceiling can still change every
+preference it holds, and removing one frees a place — the ceiling keeps the
+document small, it does not freeze it.
+
+### What the ceilings say a preference is for
+
+256 is far beyond what settings need, and 16 KiB holds a reflected settings
+object with dozens of members. An application that reaches either has put data in
+a preference that belongs in a store of its own — a preference **per document**
+or **per project** is the usual case, and it is exactly the shape that makes
+every read of any preference decode all of them.
+
+For that data: a table in the application's own database on the server, or a
+file the application manages itself on the device. Not this store, and not the
+account store either — the same two ceilings apply there, for the same reasons.
 
 ## Two Writers Over One Location
 

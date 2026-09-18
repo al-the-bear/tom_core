@@ -124,6 +124,36 @@ keeps it swappable with the server-side `TomUserPreferences`.
 Switching accounts costs nothing beyond the new bean: `TomStoredDevicePreferences`
 holds no cache, so the next read already answers from the new document.
 
+## How big the store can get
+
+Every operation reads the whole document and every mutation writes all of it
+back. That is what keeps `TomDevicePreferenceStore` at **two methods**, and two
+methods is the whole cost of adapting a new backend — a per-key interface would
+push that cost onto every platform to save work on a document of a few hundred
+bytes.
+
+It is safe because the document is bounded, by the two ceilings the account store
+also declares:
+
+| Ceiling | Value | Refusal |
+| ------- | ----- | ------- |
+| preferences one owner may hold (`tomUserPreferencesMaxPerPrincipal`) | 256 | `preferences.limit.exceeded`, on a write that would **add** a key |
+| the encoded value of one preference (`TomUserPreferenceCodec.maxValueBytes`) | 16 KiB | `preferences.encode.too_large` |
+
+Worst case about **four megabytes**; a real document is a few hundred bytes. Only
+an insert is refused — a store at the ceiling can still change every preference
+it holds, and removing one frees a place.
+
+The count ceiling is the account store's, applied here for a reason beyond
+symmetry: a preference is meant to move between the two stores, and a device
+document the account store would refuse could only move one way.
+
+An application that reaches either ceiling has put data in a preference that
+belongs in a store of its own — a preference *per document* or *per project* is
+the usual case, and it is exactly the shape that makes every read decode
+everything. That data belongs in the application's own table on the server, or a
+file it manages itself.
+
 ## Two writers over one location
 
 Every write is a read-modify-write over the **whole** document — there is no

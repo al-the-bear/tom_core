@@ -112,11 +112,45 @@ class TomStoredDevicePreferences extends TomDevicePreferences {
       if (existing >= 0) {
         values[existing] = written;
       } else {
+        _requireRoomForAnotherKey(values.length, key);
         values.add(written);
       }
       await store.write(values);
     });
     return written;
+  }
+
+  /// Refuses a write that would take this device past
+  /// [tomUserPreferencesMaxPerPrincipal].
+  ///
+  /// The account store's ceiling, applied here as well, and for one reason
+  /// beyond symmetry: a preference is meant to be able to *move* between the
+  /// two stores, and a device document the account store would refuse to accept
+  /// is one that can only move in one direction.
+  ///
+  /// **Only an insert is refused.** A device at the ceiling can still change
+  /// every preference it holds, and removing one frees a place — the ceiling
+  /// keeps the document small, it does not freeze it. That is the account
+  /// store's rule too, so the two agree about which writes are possible.
+  ///
+  /// It is what makes the whole-document read safe to state a bound for: 256
+  /// entries, each at most [TomUserPreferenceCodec.maxValueBytes], is a worst
+  /// case of about four megabytes, and a real document is a few hundred bytes.
+  /// Without it the document was unbounded and the cost was discovered as jank
+  /// rather than as a rule.
+  void _requireRoomForAnotherKey(int held, String key) {
+    if (held < tomUserPreferencesMaxPerPrincipal) return;
+    throw TomDevicePreferenceException(
+      tomUserPreferencesLimitExceededErrorKey,
+      'This device already holds $held preferences, the most one owner may '
+      "hold, so '$key' cannot be added. Remove one first, or keep this "
+      'data somewhere that is not a preference store.',
+      parameters: {
+        'key': key,
+        'held': held,
+        'maximum': tomUserPreferencesMaxPerPrincipal,
+      },
+    );
   }
 
   /// Runs [attempt], and runs it once more if the store reported a conflict.
