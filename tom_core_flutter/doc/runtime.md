@@ -21,8 +21,9 @@ web, or a neutral fallback).
 
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
-| `clientPlatformUtils` | getter | The platform utilities for the current Flutter target |
+| `clientPlatformUtils` | getter | The platform utilities for the current Flutter target — one instance, built on first read |
 | `TomBadCertificatePolicy` | final class | The hosts whose unverified TLS certificate the native client accepts |
+| `resetClientPlatformUtils` | function | Discards the built instance so the next read constructs again; `@visibleForTesting` |
 
 The returned object answers platform predicates (`isDesktop`, `isMobile`,
 `isWeb`, `isWindows`, `isLinux`, `isMacOs`, `isAndroid`, `isIos`, `isFuchsia`),
@@ -64,8 +65,32 @@ location.
 
 ### `clientPlatformUtils`
 
-Each read constructs a fresh `TomPlatformUtils` for the current target. Platform
-predicates read Flutter's `defaultTargetPlatform` / `kIsWeb` at call time.
+**One instance, built on first read**, for the current target. Every read
+answers the same object. Platform predicates read Flutter's
+`defaultTargetPlatform` / `kIsWeb` at call time, so caching the instance does not
+freeze the answers — what is cached is the object, not what it reports.
+
+It is a cache rather than a constant because the target is only known at run time
+on the web branch and the constructor does real work on the native one: the
+instance is built when something first asks for it, and not during library load
+in a process that never uses it.
+
+Two things follow, and both are worth having.
+
+- **Identity means something.** A caller that reads the getter again instead of
+  going through `TomPlatformUtils.current` holds what the process registered,
+  not a second equal-looking object, so comparing platform-utils identities is
+  not silently always false.
+- **The native constructor's work happens once.** It copies the whole process
+  environment into the kernel's env-var map; a getter that constructed per read
+  paid for that on every read, on a call that looks like a property access.
+
+`resetClientPlatformUtils()` discards the instance so the next read constructs
+again. It is `@visibleForTesting` and exists for one reason: what a constructor
+does can only be observed by a test that can get back to "nothing built yet" —
+the same reason `TomConfigResourceProvider.clearAppConfigProvider` exists. It
+unregisters nothing, so an instance already given to `setCurrentPlatform` stays
+registered.
 
 ### `TomBadCertificatePolicy`
 
@@ -156,8 +181,9 @@ and the neutral variant creates no client at all.
 
   There is also no target for which `isDesktop() || isMobile()` is guaranteed:
   Fuchsia belongs to neither family.
-- **The barrel exports two names: `clientPlatformUtils` and
-  `TomBadCertificatePolicy`.** The package barrel exports
+- **The barrel exports three names: `clientPlatformUtils`,
+  `TomBadCertificatePolicy` and the `@visibleForTesting`
+  `resetClientPlatformUtils`.** The package barrel exports
   `platform_detection_client.dart`, and that file pulls in the selected variant
   with a conditional *import*, so `TomFlutterPlatformUtils` does not escape
   `src/`. It is documented — in
@@ -230,7 +256,7 @@ and the neutral variant creates no client at all.
 | `dart:io` | dart | `platform_detection_flutter_io.dart` | `HttpClient`, `Platform` |
 | `dart:isolate` | dart | `platform_detection_flutter_io.dart` | `Isolate` |
 | `fetch_client` | package | `platform_detection_web.dart` | the HTTP `Client` per target |
-| `flutter` | package | `platform_detection_flutter_io.dart`, `platform_detection_neutral.dart`, `platform_detection_web.dart` | `defaultTargetPlatform` / `kIsWeb` for platform predicates |
+| `flutter` | package | `platform_detection_client.dart`, `platform_detection_flutter_io.dart`, `platform_detection_neutral.dart`, `platform_detection_web.dart` | `defaultTargetPlatform` / `kIsWeb` for platform predicates; `@visibleForTesting` on `resetClientPlatformUtils` in the entry point |
 | `http` | package | `platform_detection_flutter_io.dart`, `platform_detection_neutral.dart`, `platform_detection_web.dart` | the HTTP `Client` per target |
 | `tom_core_kernel` | package | every file | The barrel each variant imports. It is the route to the contract, not its home — `tom_core_kernel.dart` re-exports the whole of `tom_basics`, where `TomPlatformUtils` and `TomFallbackPlatformUtils` are declared; `tom_core_kernel` declares neither type |
 | `web` | package | `platform_detection_web.dart` | the HTTP `Client` per target |

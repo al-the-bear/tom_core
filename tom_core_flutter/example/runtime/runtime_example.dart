@@ -21,9 +21,13 @@ import 'package:flutter/foundation.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
 void run() {
-  // Example 1: obtain the platform utilities for the current target.
+  // Example 1: obtain the platform utilities for the current target. The getter
+  // answers one instance per process, built on this first read, so reading it
+  // again is free and gives back the same object — which is why registering it
+  // and reading it later both work.
   final utils = clientPlatformUtils;
   print('platform utils: $utils');
+  assert(identical(utils, clientPlatformUtils));
 
   // Example 2: register them process-wide (as an app would at startup).
   TomPlatformUtils.setCurrentPlatform(utils);

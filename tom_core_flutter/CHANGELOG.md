@@ -24,6 +24,29 @@
   A failure this module already named passes through untouched: a conflict, an
   undecodable document, an owner mismatch, an uninitialised reflection.
 
+### Changed
+
+- **`clientPlatformUtils` answers one instance per process (tcopen232).** It
+  constructed on every read, so a caller who read it twice held two objects —
+  and on the native variant each construction re-copied the whole process
+  environment into the kernel's static env-var map, on a call that reads like a
+  property access. It caches now: the first read builds the variant, every later
+  read answers the same object.
+
+  A cache rather than a constant, because the target is only known at run time on
+  the web branch and the constructor does real work on the native one. Caching
+  the object does not freeze what it reports — every predicate reads
+  `defaultTargetPlatform` / `kIsWeb` at call time.
+
+  Identity now means something: a caller that reads the getter again instead of
+  going through `TomPlatformUtils.current` holds what the process registered, so
+  comparing platform-utils identities is no longer silently always false.
+
+  `resetClientPlatformUtils()` discards the instance so the next read constructs
+  again. `@visibleForTesting`, and there for one reason: what a constructor does
+  can only be observed by a test that can get back to "nothing built yet" — the
+  same shape and reason as `TomConfigResourceProvider.clearAppConfigProvider`.
+
 ### Added
 
 - **The certificate allow-list covers both loopback families, and is an

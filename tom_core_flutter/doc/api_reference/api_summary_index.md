@@ -80,7 +80,8 @@ the kernel API) and adds the Flutter-specific surface documented here.
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
-| `clientPlatformUtils` | getter | Fresh `TomPlatformUtils` for the current Flutter target. |
+| `clientPlatformUtils` | getter | The `TomPlatformUtils` for the current Flutter target — one instance per process, built on first read. |
+| `resetClientPlatformUtils` | function | *(`@visibleForTesting`)* Discards the built instance so the next read constructs again. |
 | `TomBadCertificatePolicy` | final class | The hosts whose unverified TLS certificate the native client accepts — both loopback families by default; replaceable, and a replacement is logged. |
 | `TomFlutterPlatformUtils` | class | *(**not exported** — import from `src/`)* Flutter platform utils (io / web / neutral compile-time variants). |
 
@@ -104,6 +105,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | ---- | ------ |
 | `clientPlatformUtils` | Runtime |
 | `coerceSettingValue` | Configuration |
+| `resetClientPlatformUtils` | Runtime |
 | `Tom2FAChallengePanelContext` | Security |
 | `Tom2FAClientMechanism` | Security |
 | `Tom2FAClientRegistry` | Security |

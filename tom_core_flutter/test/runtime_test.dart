@@ -322,8 +322,11 @@ void main() {
       reason: 'test host is expected to expose some environment variables',
     );
     final key = Platform.environment.keys.first;
-    // Accessing the getter constructs TomFlutterPlatformUtils, whose
-    // constructor copies Platform.environment into the (static) env-var map.
+    // Reset first, so the read below is the one that constructs. Without it
+    // this passes on a map some earlier test filled, and would go on passing
+    // if the constructor stopped importing anything.
+    resetClientPlatformUtils();
+    addTearDown(resetClientPlatformUtils);
     final utils = clientPlatformUtils;
     expect(utils.getTomEnvVars()[key], Platform.environment[key]);
   });
@@ -1000,62 +1003,56 @@ void main() {
     });
   });
 
-  group('the getter allocates on every read', () {
-    // `clientPlatformUtils` is a getter that constructs, and both documents say
-    // so — "each read constructs a fresh `TomPlatformUtils`". Nothing observed
-    // it. The suite read the getter fourteen times and never once looked at
-    // what it handed back, so the contract was free to move in either
-    // direction without a single test noticing.
+  group('the getter hands out one instance', () {
+    // `clientPlatformUtils` is a getter that *caches*: the first read builds
+    // the variant, every later read answers the same object. Both documents say
+    // so, and these tests are what hold them to it.
     //
-    // Whether it *should* move is genuinely open: every construction on this
-    // variant re-copies the whole process environment into the kernel's static
-    // env-var map, work a cached instance would do once. These tests take no
-    // position on that. They record what the code does now, so that changing
-    // it has to be a decision rather than a side effect — and so that whichever
-    // way the question is answered, the answer arrives with a test that says
-    // what was chosen.
+    // It was a getter that constructed per read, and nothing observed that
+    // either — the suite read it fourteen times and never looked at what came
+    // back. The contract was free to move in either direction unnoticed, which
+    // is why it now moves only with a test that says which way it went.
+    tearDown(resetClientPlatformUtils);
 
-    test('two reads return distinct instances', () {
+    test('two reads return the same instance', () {
       final first = clientPlatformUtils;
       final second = clientPlatformUtils;
       expect(
         identical(first, second),
-        isFalse,
+        isTrue,
         reason:
-            'the getter returned the same object twice; it has started '
-            'caching, and both documents still describe a fresh instance '
-            'per read',
+            'the getter built a second object; it has stopped caching, and '
+            'both documents describe one instance per process',
       );
     });
 
-    test('a read after registration is not the registered instance', () {
-      // The consequence of the line above, and the one that can bite a caller.
-      // The documented start-up pattern registers one instance and reaches it
-      // through `TomPlatformUtils.current` afterwards; anyone who instead reads
-      // the getter again — the natural move, since it reads like a property —
-      // holds a different object. Comparing the two for identity is therefore
-      // wrong today and would become right under a cached getter, which is
-      // exactly why which of the two it is belongs in a test rather than in a
-      // reader's assumption.
+    test('a read after registration is the registered instance', () {
+      // The consequence a caller meets. The documented start-up pattern
+      // registers one instance and reaches it through `TomPlatformUtils.current`
+      // afterwards; anyone who instead reads the getter again — the natural
+      // move, since it reads like a property — now holds the same object rather
+      // than an equal-looking second one, so comparing the two for identity
+      // means what a reader would expect it to mean.
       final alreadyRegistered = TomPlatformUtils.current;
       addTearDown(() => TomPlatformUtils.setCurrentPlatform(alreadyRegistered));
 
       final atStartup = clientPlatformUtils;
       TomPlatformUtils.setCurrentPlatform(atStartup);
+
       expect(TomPlatformUtils.current, same(atStartup));
       expect(
         clientPlatformUtils,
-        isNot(same(atStartup)),
+        same(atStartup),
         reason:
-            'a later read now yields the registered instance; code that '
-            'compares platform-utils identities changes meaning',
+            'a later read yields a different object again; code comparing '
+            'platform-utils identities is silently always false',
       );
     });
 
-    test('each read re-imports the process environment', () {
-      // What the repeated construction actually costs, made observable. The
-      // merge is idempotent against an untouched map, so the only way to watch
-      // it happen is to break the map first and see a construction repair it.
+    test('the process environment is imported once, not per read', () {
+      // What the cache actually saves, made observable. The merge is idempotent
+      // against an untouched map, so the only way to see whether it happens is
+      // to break the map first and watch whether a read repairs it.
       expect(
         Platform.environment,
         isNotEmpty,
@@ -1071,26 +1068,45 @@ void main() {
 
       // The control, and it is load-bearing. `getTomEnvVars` hands back the
       // static map itself rather than a copy, which is the only reason writing
-      // to it is visible to anyone else. Were it ever to return a copy, the
-      // overwrite would land nowhere, the key would still hold its real value,
-      // and the assertion below would pass having observed nothing at all.
+      // to it is visible at all. Were it ever to return a copy, the overwrite
+      // would land nowhere and both assertions below would say nothing.
       expect(
         utils.getTomEnvVars()[key],
         sentinel,
         reason:
             'getTomEnvVars no longer exposes the shared map, so the '
-            'overwrite says nothing about what a second construction does',
+            'overwrite says nothing about what a read does',
       );
 
-      final reconstructed = clientPlatformUtils;
       expect(
-        reconstructed.getTomEnvVars()[key],
+        clientPlatformUtils.getTomEnvVars()[key],
+        sentinel,
+        reason:
+            'reading the getter re-imported the process environment; it is '
+            'constructing per read again',
+      );
+
+      // And the other half, which is what stops this from passing against a
+      // variant that never imports the environment at all: after a reset the
+      // next read constructs, and the construction repairs the map.
+      resetClientPlatformUtils();
+      expect(
+        clientPlatformUtils.getTomEnvVars()[key],
         real,
         reason:
-            'constructing the utils a second time did not re-import the '
-            'process environment; the getter is no longer doing the work '
-            'per read',
+            'a freshly constructed instance did not import the process '
+            'environment, so the assertion above observed nothing',
       );
+    });
+
+    test('a reset makes the next read build a new instance', () {
+      // The seam the two assertions above rest on, asserted in its own right:
+      // without it "one instance per process" would be indistinguishable from
+      // "one instance, ever, that no test can get behind".
+      final before = clientPlatformUtils;
+      resetClientPlatformUtils();
+
+      expect(clientPlatformUtils, isNot(same(before)));
     });
   });
 

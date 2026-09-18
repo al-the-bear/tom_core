@@ -12,7 +12,8 @@ desktop/mobile, web in the browser, or a neutral fallback — exposed through th
 
 | Type / member | Responsibility |
 | ------------- | -------------- |
-| `clientPlatformUtils` | Getter returning a fresh `TomPlatformUtils` whose concrete type is selected at compile time. Register it process-wide at startup. |
+| `clientPlatformUtils` | Getter answering **one** `TomPlatformUtils` per process, built on first read; its concrete type is selected at compile time. Register it process-wide at startup. |
+| `resetClientPlatformUtils` | Discards the built instance so the next read constructs again. `@visibleForTesting` — what a constructor does can only be observed by a test that can get back to "nothing built yet". |
 | `TomFlutterPlatformUtils` | The concrete `TomPlatformUtils` subtype; three variants live in `platform_detection_flutter_io.dart` (`dart:io`), `platform_detection_web.dart` (`dart:js`), and `platform_detection_neutral.dart` (fallback). |
 | `TomBadCertificatePolicy` | The hosts whose **unverified** TLS certificate the native client accepts — both loopback families by default. Exported, replaceable through `allowOnly`, and a replacement is logged. |
 
@@ -38,6 +39,23 @@ void main() {
   print(TomPlatformUtils.current.isWeb()); // true in the browser
 }
 ```
+
+## One instance per process
+
+The getter caches: the first read builds the variant, every later read answers
+the same object. It is a cache rather than a constant because the target is only
+known at run time on the web branch and the constructor does real work on the
+native one — so nothing is built in a process that never asks.
+
+Caching the object does not freeze what it reports; every predicate reads
+`defaultTargetPlatform` / `kIsWeb` at call time.
+
+Two things follow. **Identity means something** — a caller that reads the getter
+again instead of going through `TomPlatformUtils.current` holds what the process
+registered, not a second equal-looking object. And **the native constructor's
+work happens once**: it copies the whole process environment into the kernel's
+env-var map, which a getter that constructed per read paid for on every read, on
+a call that looks like a property access.
 
 ## The certificate policy
 

@@ -11,6 +11,7 @@ fallback.
 - [Exported Surface](#exported-surface)
 - [Global Functions and Constants](#global-functions-and-constants)
   - [clientPlatformUtils](#clientplatformutils)
+  - [resetClientPlatformUtils](#resetclientplatformutils)
 - [Classes](#classes)
   - [TomBadCertificatePolicy](#tombadcertificatepolicy)
 - [Internal Symbols (not exported)](#internal-symbols-not-exported)
@@ -24,8 +25,8 @@ surface) plus the three compile-time variants
 `platform_detection_neutral.dart`.
 
 The exported entry point is the top-level getter `clientPlatformUtils`, which
-returns a fresh `TomPlatformUtils` whose concrete type is selected at compile
-time by a conditional import: the native IO variant on desktop/mobile, the web
+answers **one** `TomPlatformUtils` per process — built on first read — whose
+concrete type is selected at compile time by a conditional import: the native IO variant on desktop/mobile, the web
 variant in the browser, or a neutral fallback. The instance answers platform
 predicates (`isDesktop`, `isWeb`, `isAndroid`, …) and provides a
 platform-appropriate HTTP `Client`. It is typically registered as the
@@ -87,8 +88,36 @@ import 'package:tom_core_flutter/src/tomclient/runtime/platform_detection_flutte
 TomPlatformUtils get clientPlatformUtils
 ```
 
-Returns a fresh `TomPlatformUtils` for the current Flutter target (concrete type
-selected at compile time).
+Answers the `TomPlatformUtils` for the current Flutter target (concrete type
+selected at compile time). **One instance per process**, built on first read;
+every read returns the same object.
+
+A cache rather than a constant, because the target is only known at run time on
+the web branch and the constructor does real work on the native one — so the
+instance is built when something first asks for it, not during library load in a
+process that never uses it. Caching the object does not freeze what it reports:
+every platform predicate reads `defaultTargetPlatform` / `kIsWeb` at call time.
+
+Two consequences. Identity is meaningful — a caller that reads the getter again
+rather than going through `TomPlatformUtils.current` holds what the process
+registered, so comparing platform-utils identities is not silently always false.
+And the native constructor's work happens once: it copies the whole process
+environment into the kernel's env-var map, which a getter that constructed per
+read paid for on every read.
+
+### resetClientPlatformUtils
+
+```dart
+@visibleForTesting
+void resetClientPlatformUtils()
+```
+
+Discards the built instance, so the next read of `clientPlatformUtils`
+constructs a new one. Exists because the construction is otherwise one-way: what
+a constructor does can only be observed by a test that can get back to "nothing
+built yet" — the same reason `TomConfigResourceProvider.clearAppConfigProvider`
+exists. It unregisters nothing; an instance already handed to
+`TomPlatformUtils.setCurrentPlatform` stays registered.
 
 ## Classes
 
