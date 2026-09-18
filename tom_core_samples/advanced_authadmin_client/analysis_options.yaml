@@ -4,4 +4,8 @@ include: package:flutter_lints/flutter.yaml
 
 analyzer:
   exclude:
+    # hides: 0 errors (measured 2026-09-18) — one generated reflection seed,
+    #   rewritten by the reflection generator on every build. The entry keeps a
+    #   machine-written file out of the LINT surface; nothing hand-written is
+    #   behind it.
     - lib/reflection_seed.reflection.dart
