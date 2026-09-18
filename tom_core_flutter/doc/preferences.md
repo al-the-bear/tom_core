@@ -21,6 +21,7 @@ reached over the kernel's `/preferences/*` contract by a typed client.
   - [Name the owner, and that mistake is loud](#name-the-owner-and-that-mistake-is-loud)
 - [Reaching the Account Store](#reaching-the-account-store)
 - [Precedence Against the Server Store](#precedence-against-the-server-store)
+- [Moving a Preference Between the Stores](#moving-a-preference-between-the-stores)
 - [The Stored Document](#the-stored-document)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
@@ -645,6 +646,69 @@ and the callback is only invoked when this device has no answer — a device tha
 has written the key never pays for the round trip. The client is simply what an
 application that has one closes over, which is why the pairing is written at the
 application layer and shown in `example/preferences/preferences_example.dart`.
+
+## Moving a Preference Between the Stores
+
+The two stores carry one method set so that a preference can change which of
+them owns it without a call site changing. That move is itself a method, in each
+direction:
+
+```dart
+// This machine's choice becomes the account's, for every device.
+await preferences.moveToUserStore<String>(
+  TomUserPreferenceKeys.theme,
+  (value) => account.set(TomUserPreferenceKeys.theme, value),
+);
+
+// And back: the account stops carrying it, this machine keeps it.
+await preferences.moveToDeviceStore<String>(
+  TomUserPreferenceKeys.theme,
+  () => account.get<String>(TomUserPreferenceKeys.theme),
+  () => account.remove(TomUserPreferenceKeys.theme),
+);
+```
+
+Each answers whether the destination holds the preference afterwards — `false`
+means there was nothing under that key to carry. The account side arrives as
+callbacks for the reason it does on `getPreferred`: a device-only application
+must not be made to carry an HTTP client, and the client is simply what an
+application that has one closes over.
+
+### At-least-once, because two stores share no transaction
+
+One store is a file on this machine; the other is a row behind an HTTP round
+trip. Nothing spans them, so a move cannot be atomic and saying otherwise would
+be a promise the shape cannot keep. What it promises instead is an **order**:
+the destination is written first and the source cleared second, so an
+interruption between the two leaves the key in *both* stores, and repeating the
+same call from there completes it.
+
+### The value in effect never changes
+
+That ordering is chosen to make the interrupted state harmless rather than
+merely recoverable. In it, both stores hold the **same** value — so the
+precedence rule picks the value the move was carrying whichever copy it picks.
+The winner before a move, during it and after it is one value.
+
+The reverse order would not have that property. Clearing the source first and
+failing before the destination is written loses the preference outright; and
+writing a *different* value into the device store would make the move visible as
+a change, on the one device where it looks correct and nowhere else.
+
+The same invariant decides what happens when both stores already hold the key
+and `moveToDeviceStore` is called: **the value already on this device is not
+overwritten.** By the precedence rule it is the one in effect and the account
+copy is the shadowed one, so the move is the removal of the shadowed copy.
+Promoting the account value would not move a preference; it would change the one
+the user sees.
+
+### What it does not promise
+
+That the source copy is gone. A caller for whom a leftover matters — a "stop
+syncing this setting" the user can see — repeats the call, or reads both stores
+and compares. Nothing retries on the caller's behalf, for the reason a
+contended write is not retried either: an unbounded wait inside a framework call
+is a decision that belongs to the application.
 
 ## The Stored Document
 

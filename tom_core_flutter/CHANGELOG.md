@@ -26,6 +26,24 @@
 
 ### Added
 
+- **A preference can be moved between the two stores by one call (tcopen226).**
+  `TomDevicePreferences.moveToUserStore` and `moveToDeviceStore` carry one key
+  across, each reaching the account store through callbacks as `getPreferred`
+  does. Both answer whether the destination holds the preference afterwards.
+
+  No transaction spans a file on this machine and a row behind an HTTP round
+  trip, so a move is **at-least-once**: the destination is written first and the
+  source cleared second, an interruption between the two leaves the key in both
+  stores, and repeating the call from there completes it.
+
+  The ordering is what makes that state harmless — both copies then hold the
+  same value, so the precedence rule picks the value the move was carrying
+  whichever copy it picks. **The value in effect never changes.** The same
+  invariant decides the overlap case: `moveToDeviceStore` onto a device that
+  already holds the key writes nothing and removes the shadowed account copy,
+  because promoting the shadowed value would not move a preference but change
+  the one the user sees.
+
 - **The device store holds the account store's 256-key ceiling (tcopen224).**
   Every operation reads the whole document and every mutation writes all of it
   back — the trade that keeps the backend contract at two methods, and two

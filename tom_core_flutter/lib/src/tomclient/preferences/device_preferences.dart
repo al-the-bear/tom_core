@@ -29,6 +29,14 @@
 /// out to belong to the user rather than the device — without a single call
 /// site changing.
 ///
+/// That move is a method rather than an exercise:
+/// [TomDevicePreferences.moveToUserStore] and
+/// [TomDevicePreferences.moveToDeviceStore] carry one key across, writing the
+/// destination before they clear the source. Two stores with no transaction
+/// between them cannot promise more than at-least-once, but that ordering makes
+/// the interrupted state harmless — both copies hold one value, so the value in
+/// effect is the same before, during and after.
+///
 /// ## Whose preferences: the scope of one store
 ///
 /// **A store is scoped to its location, not to a user.** Everything reached
@@ -178,7 +186,9 @@ class TomDevicePreferenceException extends TomClientException {
 /// changed here revert the moment their other device wrote the same key.
 ///
 /// The rule is stated once here and applied once in [getPreferred] — no caller
-/// re-derives it, and no caller may quietly invert it.
+/// re-derives it, and no caller may quietly invert it. [moveToUserStore] and
+/// [moveToDeviceStore] are ordered around it: they leave the value in effect
+/// unchanged even when they are interrupted half way.
 ///
 /// ## Keys obey the same rule as the server's
 ///
@@ -288,5 +298,86 @@ abstract class TomDevicePreferences {
     Future<T?> Function() fromUserStore,
   ) async {
     return await get<T>(key) ?? await fromUserStore();
+  }
+
+  /// Moves [key] from this device store to the account store, and answers
+  /// whether a preference was moved.
+  ///
+  /// The value stored here is written through [toUserStore] — the same callback
+  /// seam [getPreferred] uses, for the same reason — and only then removed from
+  /// this device. `false` means this device held nothing under [key], so there
+  /// was nothing to move; an account value under that key is already the one in
+  /// effect and is left alone.
+  ///
+  /// ```dart
+  /// await preferences.moveToUserStore<String>(
+  ///   TomUserPreferenceKeys.theme,
+  ///   (value) => account.set(TomUserPreferenceKeys.theme, value),
+  /// );
+  /// ```
+  ///
+  /// See [moveToDeviceStore] for the other direction and for what both promise.
+  Future<bool> moveToUserStore<T extends Object>(
+    String key,
+    Future<void> Function(T value) toUserStore,
+  ) async {
+    final onThisDevice = await get<T>(key);
+    if (onThisDevice == null) return false;
+    await toUserStore(onThisDevice);
+    await remove(key);
+    return true;
+  }
+
+  /// Moves [key] from the account store to this device store, and answers
+  /// whether this device holds it afterwards.
+  ///
+  /// [fromUserStore] reads the account copy and [removeFromUserStore] deletes
+  /// it, both through whatever client the application uses for
+  /// `/preferences/*`; they are callbacks for the reason given on
+  /// [getPreferred]. `false` means neither store held the key.
+  ///
+  /// **A value already on this device is not overwritten.** By the precedence
+  /// documented on [TomDevicePreferences] the device copy is the one in effect,
+  /// and the account copy is the shadowed one — so where both exist the move is
+  /// the removal of the account copy, and the account value is discarded rather
+  /// than promoted. Installing it instead would not move a preference; it would
+  /// change one.
+  ///
+  /// See [moveToUserStore] for the other direction and for what both promise.
+  ///
+  /// ## What a move guarantees
+  ///
+  /// Both directions write the destination **before** they remove the source,
+  /// so a move is **at-least-once**: a failure between the two steps leaves the
+  /// key in both stores, and repeating the same call from there completes it.
+  /// There is no transaction across two stores to be had — one is a file on
+  /// this machine and the other is a row behind an HTTP round trip — so the
+  /// ordering is the whole of the guarantee, and it is chosen to make the
+  /// interrupted state harmless:
+  ///
+  /// **The value in effect never changes.** In the interrupted state both
+  /// stores hold the *same* value, so the precedence rule picks the value the
+  /// move was carrying whichever copy it picks. That is why the destination is
+  /// written first, and why a move onto a device that already holds the key
+  /// writes nothing: the invariant is that the winner before a move, during it
+  /// and after it is one value.
+  ///
+  /// What the ordering does not promise is that the source copy is gone. A
+  /// caller for whom a leftover matters — a "stop syncing this setting" the
+  /// user can see — repeats the call, or reads both stores and compares.
+  Future<bool> moveToDeviceStore<T extends Object>(
+    String key,
+    Future<T?> Function() fromUserStore,
+    Future<void> Function() removeFromUserStore,
+  ) async {
+    if (await read(key) != null) {
+      await removeFromUserStore();
+      return true;
+    }
+    final inTheAccount = await fromUserStore();
+    if (inTheAccount == null) return false;
+    await set<T>(key, inTheAccount);
+    await removeFromUserStore();
+    return true;
   }
 }

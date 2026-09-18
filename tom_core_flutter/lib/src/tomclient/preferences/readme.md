@@ -17,13 +17,14 @@ which speaks the kernel's `tomUserPreferencesApi` contract. The keys, the wire
 DTO and the value codec are the kernel's, so the two stores share one vocabulary
 and one encoding rather than two that agree by inspection — and both carry the
 same method set, which is what lets a preference *move* between them without a
-call site changing.
+call site changing. That move is a method: see
+[Moving a preference between the stores](#moving-a-preference-between-the-stores).
 
 ## Key types
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomDevicePreferences` | The interface: `all` / `read` / `get` / `getOr` / `set` / `remove` / `clear`, plus `getPreferred` for the documented device-over-server precedence. Resolved as a bean. |
+| `TomDevicePreferences` | The interface: `all` / `read` / `get` / `getOr` / `set` / `remove` / `clear`, plus `getPreferred` for the documented device-over-server precedence and `moveToUserStore` / `moveToDeviceStore` for carrying one key across. Resolved as a bean. |
 | `TomStoredDevicePreferences` | The shipped implementation — the typed API over a store; holds the single encode/decode decision. |
 | `TomDevicePreferenceStore` | The narrow backend: `read()` / `write()` of the whole set. The only platform-specific part of the module. The list `read()` returns belongs to the store and the list given to `write()` belongs to the caller, so neither side has to copy defensively. |
 | `TomPlatformDevicePreferenceStore` | The backend for the current target, chosen by conditional export: a JSON file on desktop/mobile, a `localStorage` entry on the web, a loud failure elsewhere. |
@@ -286,6 +287,47 @@ The client needs the application to have registered its platform
 (`TomPlatformUtils.setCurrentPlatform(clientPlatformUtils)`); it reaches the
 network through `TomPlatformUtils.current.httpClient()`, and the neutral fallback
 throws rather than guessing one.
+
+## Moving a preference between the stores
+
+A preference that turns out to belong to the user rather than the device — or
+the other way round — is carried across by one call:
+
+```dart
+// This machine's choice becomes the account's, for every device.
+await preferences.moveToUserStore<String>(
+  TomUserPreferenceKeys.theme,
+  (value) => account.set(TomUserPreferenceKeys.theme, value),
+);
+
+// And back: the account stops carrying it, this machine keeps it.
+await preferences.moveToDeviceStore<String>(
+  TomUserPreferenceKeys.theme,
+  () => account.get<String>(TomUserPreferenceKeys.theme),
+  () => account.remove(TomUserPreferenceKeys.theme),
+);
+```
+
+Both answer whether the destination holds the preference afterwards, and both
+reach the account through callbacks, for the reason `getPreferred` does: a
+device-only app must not be made to carry an HTTP client.
+
+**The value in effect never changes.** That is the guarantee, and it is what the
+ordering buys. There is no transaction across a file on this machine and a row
+behind an HTTP round trip, so a move is **at-least-once**: it writes the
+destination first and clears the source second, and a failure between the two
+leaves the key in both stores. Harmless, because in that state both copies hold
+the *same* value — whichever one the precedence rule picks, the answer is the
+value the move was carrying. Repeating the call from there completes it.
+
+The same invariant is why **a move onto a device that already holds the key
+writes nothing**: by the precedence rule the device copy is the one in effect
+and the account copy is the shadowed one, so the move is the removal of the
+shadowed copy. Installing the account value instead would not move a
+preference; it would change the one the user sees.
+
+What the ordering does not promise is that the source copy is gone. A caller for
+whom a leftover matters repeats the call, or reads both stores and compares.
 
 ---
 

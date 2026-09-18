@@ -106,6 +106,8 @@ const TomDevicePreferences()
 | `remove(String key)` | `Future<bool>` | Deletes; answers whether a preference was removed, so a caller can tell "deleted" from "was never there". |
 | `clear()` | `Future<void>` | Deletes everything on this device. Its own method rather than a loop over `all`, because a backend can do it atomically and a loop that fails half way leaves a state no user asked for. |
 | `getPreferred<T extends Object>(String key, Future<T?> Function() fromUserStore)` | `Future<T?>` | Applies the documented precedence: the device value wins while it exists; `fromUserStore` is consulted only for a key this device has never written. |
+| `moveToUserStore<T extends Object>(String key, Future<void> Function(T value) toUserStore)` | `Future<bool>` | Carries one key from this device to the account store, writing the destination before clearing the source. `false` when this device held nothing under the key — the account copy is then already the value in effect and is left untouched. |
+| `moveToDeviceStore<T extends Object>(String key, Future<T?> Function() fromUserStore, Future<void> Function() removeFromUserStore)` | `Future<bool>` | The other direction. A value **already on this device is not overwritten**: by the precedence it is the one in effect, so the move is the removal of the shadowed account copy. `false` when neither store held the key. |
 
 There is no `getFor` — a device store has one user by definition, so a principal
 parameter would have nothing to select.
@@ -124,6 +126,18 @@ would accept. One vocabulary, one rule.
 cross-device default and the device value as this machine's override. The rule
 is stated on the interface and applied in `getPreferred`; no caller re-derives
 it.
+
+**What a move guarantees.** One store is a file on this machine and the other a
+row behind an HTTP round trip, so nothing spans them and a move is
+**at-least-once**: the destination is written first, the source cleared second,
+and an interruption between the two leaves the key in both stores, from where
+repeating the same call completes it. The ordering is chosen to make that state
+harmless — both copies then hold the *same* value, so the precedence rule picks
+the value the move was carrying whichever copy it picks. **The value in effect
+never changes**, before a move, during it or after it; that single invariant is
+also what makes a move onto a device that already holds the key write nothing.
+What is not promised is that the source copy is gone: a caller for whom a
+leftover matters repeats the call, or reads both stores and compares.
 
 ### TomStoredDevicePreferences
 

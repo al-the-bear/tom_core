@@ -2601,6 +2601,199 @@ void main() {
     );
   });
 
+  group('moving a preference between the two stores', () {
+    late _AccountStore account;
+    late _InterruptibleMemoryStore backend;
+    late TomStoredDevicePreferences device;
+
+    setUp(() {
+      account = _AccountStore();
+      backend = _InterruptibleMemoryStore();
+      device = TomStoredDevicePreferences(backend);
+    });
+
+    Future<bool> moveUp(String key) => device.moveToUserStore<String>(
+      key,
+      (value) => account.set<String>(key, value),
+    );
+
+    Future<bool> moveDown(String key) => device.moveToDeviceStore<String>(
+      key,
+      () => account.get<String>(key),
+      () => account.remove(key),
+    );
+
+    test(
+      'device to account: the value arrives and this device is cleared',
+      () async {
+        await device.set(TomUserPreferenceKeys.theme, 'dark');
+
+        expect(await moveUp(TomUserPreferenceKeys.theme), isTrue);
+
+        expect(account.values[TomUserPreferenceKeys.theme], 'dark');
+        expect(await device.read(TomUserPreferenceKeys.theme), isNull);
+      },
+    );
+
+    test('device to account: nothing here is nothing to move', () async {
+      account.values[TomUserPreferenceKeys.theme] = 'light';
+
+      expect(await moveUp(TomUserPreferenceKeys.theme), isFalse);
+
+      // The account copy is already the value in effect, so a move that has
+      // no source must not rewrite it — an untouched store is how a caller
+      // can tell "nothing to do" from "done".
+      expect(account.setCount, 0);
+      expect(account.values[TomUserPreferenceKeys.theme], 'light');
+    });
+
+    test(
+      'account to device: the value arrives and the account is cleared',
+      () async {
+        account.values[TomUserPreferenceKeys.theme] = 'light';
+
+        expect(await moveDown(TomUserPreferenceKeys.theme), isTrue);
+
+        expect(await device.get<String>(TomUserPreferenceKeys.theme), 'light');
+        expect(
+          account.values.containsKey(TomUserPreferenceKeys.theme),
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'account to device: a value already here is not overwritten',
+      () async {
+        await device.set(TomUserPreferenceKeys.theme, 'dark');
+        account.values[TomUserPreferenceKeys.theme] = 'light';
+
+        expect(await moveDown(TomUserPreferenceKeys.theme), isTrue);
+
+        // The device copy was the one in effect before the move, by the
+        // precedence rule, so it is the one that survives it. Promoting the
+        // shadowed account value would not move a preference; it would change
+        // the value the user sees.
+        expect(await device.get<String>(TomUserPreferenceKeys.theme), 'dark');
+        expect(
+          account.values.containsKey(TomUserPreferenceKeys.theme),
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'account to device: neither store holding the key moves nothing',
+      () async {
+        expect(await moveDown(TomUserPreferenceKeys.theme), isFalse);
+
+        expect(account.removeCount, 0);
+        expect(await device.read(TomUserPreferenceKeys.theme), isNull);
+      },
+    );
+
+    test(
+      'device to account: a failure between the two steps leaves the value in '
+      'effect unchanged, and repeating completes the move',
+      () async {
+        await device.set(TomUserPreferenceKeys.theme, 'dark');
+        backend.failNextWrite = true;
+
+        await expectLater(
+          moveUp(TomUserPreferenceKeys.theme),
+          throwsA(isA<StateError>()),
+        );
+
+        // The interrupted state: both stores hold the key.
+        expect(account.values[TomUserPreferenceKeys.theme], 'dark');
+        expect(await device.read(TomUserPreferenceKeys.theme), isNotNull);
+
+        // And it is harmless, because both hold the *same* value — whichever
+        // copy the precedence rule picks, the answer is the one the move was
+        // carrying.
+        expect(
+          await device.getPreferred<String>(
+            TomUserPreferenceKeys.theme,
+            () => account.get<String>(TomUserPreferenceKeys.theme),
+          ),
+          'dark',
+        );
+
+        expect(await moveUp(TomUserPreferenceKeys.theme), isTrue);
+
+        expect(account.values[TomUserPreferenceKeys.theme], 'dark');
+        expect(await device.read(TomUserPreferenceKeys.theme), isNull);
+      },
+    );
+
+    test(
+      'account to device: a failure between the two steps leaves the value in '
+      'effect unchanged, and repeating completes the move',
+      () async {
+        account.values[TomUserPreferenceKeys.theme] = 'light';
+        account.failRemove = true;
+
+        await expectLater(
+          moveDown(TomUserPreferenceKeys.theme),
+          throwsA(isA<StateError>()),
+        );
+
+        expect(account.values[TomUserPreferenceKeys.theme], 'light');
+        expect(await device.get<String>(TomUserPreferenceKeys.theme), 'light');
+        expect(
+          await device.getPreferred<String>(
+            TomUserPreferenceKeys.theme,
+            () => account.get<String>(TomUserPreferenceKeys.theme),
+          ),
+          'light',
+        );
+
+        account.failRemove = false;
+        expect(await moveDown(TomUserPreferenceKeys.theme), isTrue);
+
+        expect(
+          account.values.containsKey(TomUserPreferenceKeys.theme),
+          isFalse,
+        );
+        expect(await device.get<String>(TomUserPreferenceKeys.theme), 'light');
+      },
+    );
+
+    test('a move carries a reflected object as readily as a scalar', () async {
+      await device.set('device.layout', LayoutPreference());
+
+      final moved = await device.moveToUserStore<LayoutPreference>(
+        'device.layout',
+        (value) => account.set<LayoutPreference>('device.layout', value),
+      );
+
+      expect(moved, isTrue);
+      expect(
+        (account.values['device.layout'] as LayoutPreference).density,
+        'comfortable',
+      );
+      expect(await device.read('device.layout'), isNull);
+    });
+
+    test('the destination is written before the source is cleared', () async {
+      await device.set(TomUserPreferenceKeys.theme, 'dark');
+      final order = <String>[];
+      account.onSet = () => order.add('account written');
+      backend.onWrite = () => order.add('device written');
+
+      await device.moveToUserStore<String>(TomUserPreferenceKeys.theme, (
+        value,
+      ) async {
+        // What the destination sees at the moment it is written: the source
+        // still holds the key, which is the state the guarantee rests on.
+        expect(await device.read(TomUserPreferenceKeys.theme), isNotNull);
+        await account.set<String>(TomUserPreferenceKeys.theme, value);
+      });
+
+      expect(order, ['account written', 'device written']);
+    });
+  });
+
   group('the shipped example runs', () {
     test('preferences_example.run() completes its assertions', () async {
       // The example is quoted as documentation, so it has to be executable
@@ -2728,4 +2921,65 @@ class _ScriptedTransport implements TomHttpClientAbstractFactory {
     };
     return Response(_body, _statusCode, headers: _headers);
   });
+}
+
+/// The account store's side of a move, in memory.
+///
+/// A move is defined by the *order* of its two steps and by what an interruption
+/// between them leaves behind, so what a test of it needs is a destination it
+/// can observe and interrupt. `TomUserPreferencesClient` has its own group for
+/// its own behaviour; putting a transport in here would only stand between the
+/// assertion and the thing asserted.
+class _AccountStore {
+  final Map<String, Object> values = {};
+
+  /// Writes seen, so a move with nothing to carry can be shown to write nothing.
+  int setCount = 0;
+
+  /// Removals *attempted*, counted before the refusal below.
+  int removeCount = 0;
+
+  /// Makes the next and every following removal refuse, which is how the step
+  /// after a completed write is interrupted.
+  bool failRemove = false;
+
+  /// Called at the start of a write, for ordering assertions.
+  void Function()? onSet;
+
+  Future<T?> get<T extends Object>(String key) async => values[key] as T?;
+
+  Future<void> set<T extends Object>(String key, T value) async {
+    setCount++;
+    onSet?.call();
+    values[key] = value;
+  }
+
+  Future<void> remove(String key) async {
+    removeCount++;
+    if (failRemove) throw StateError('the account store refused the removal');
+    values.remove(key);
+  }
+}
+
+/// A memory backend whose next write can be made to fail.
+///
+/// Every mutation on `TomStoredDevicePreferences` is a write, so arming this
+/// interrupts a move exactly between its two steps — after the destination has
+/// the value and before the source has lost it.
+class _InterruptibleMemoryStore extends TomMemoryDevicePreferenceStore {
+  /// Refuses one write, then disarms.
+  bool failNextWrite = false;
+
+  /// Called on every write that is allowed through, for ordering assertions.
+  void Function()? onWrite;
+
+  @override
+  Future<void> write(List<TomUserPreferenceDto> values) async {
+    if (failNextWrite) {
+      failNextWrite = false;
+      throw StateError('the device store refused the write');
+    }
+    onWrite?.call();
+    await super.write(values);
+  }
 }
