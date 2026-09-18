@@ -732,6 +732,133 @@ void main() {
     });
   });
 
+  group('a property is a snapshot, and the ordering that implies', () {
+    // The module's central constraint, and the one a caller can get wrong
+    // without anything saying so: a property is the value config held at the
+    // moment it was built, not a view of config. Configuration is installed at
+    // bootstrap and captured by its consumers when they are built, which is
+    // why the kernel's config provider announces nothing when it is replaced
+    // (`TomConfigResourceProvider.setAppConfigProvider`) — a counter would
+    // notify a value that has already been taken.
+    //
+    // Half of the constraint is enforced and half is not, and the difference
+    // is what these tests are for.
+
+    test('a property built before any configuration fails loudly', () {
+      // The enforced half. "Construct the property after the config providers
+      // are populated" is not advice a caller can quietly ignore: with nothing
+      // installed the provider refuses the lookup, and the property's
+      // construction — not some later read — is where that surfaces.
+      TomConfigResourceProvider.clearAppConfigProvider();
+      addTearDown(() => installConfig({}));
+
+      expect(
+        () => TomStringProperty('app.title'),
+        throwsA(
+          isA<TomResourceException>().having(
+            (error) => error.key,
+            'key',
+            'resources.config_provider.not_installed',
+          ),
+        ),
+      );
+    });
+
+    test('replacing the configuration leaves a built property untouched', () {
+      // The unenforced half, and the one worth having a test for: nothing
+      // detects this, by design, so the only thing standing between the
+      // documented behaviour and a silent change to it is this assertion.
+      installConfig({'app.title': 'First'});
+      final title = TomStringProperty('app.title');
+
+      installConfig({'app.title': 'Second'});
+
+      expect(
+        title.get(),
+        'First',
+        reason: 'a property re-read config after construction',
+      );
+    });
+
+    test('a property built after the replacement reads the new one', () {
+      // What makes the assertion above mean something. Without it, a test
+      // showing the old value survives a provider that was never installed —
+      // and would pass just as well against a replacement that silently did
+      // nothing.
+      installConfig({'app.title': 'First'});
+      final before = TomStringProperty('app.title');
+
+      installConfig({'app.title': 'Second'});
+      final after = TomStringProperty('app.title');
+
+      expect(before.get(), 'First');
+      expect(after.get(), 'Second');
+    });
+
+    test('a default already taken survives the key arriving later', () {
+      // The same rule on the fallback path, where it is easier to expect
+      // otherwise: a default is not a placeholder consulted until config turns
+      // up. It was the resolution.
+      installConfig({});
+      final retries = TomIntProperty.withDefault('app.retries', 5);
+
+      installConfig({'app.retries': 9});
+
+      expect(retries.get(), 5);
+      expect(TomIntProperty.withDefault('app.retries', 5).get(), 9);
+    });
+  });
+
+  group('the documents state the snapshot constraint', () {
+    // The constraint is a decision, not an implementation detail, so every
+    // artefact a reader arrives at has to carry it — and carry the part that
+    // is actionable. "Eager" alone describes when the read happens; what a
+    // caller needs is the consequence (a later config change is not reflected)
+    // and the obligation it creates (build properties after the providers are
+    // populated).
+    const artefacts = <String>[
+      'lib/src/tomclient/resources/tom_properties.dart',
+      'lib/src/tomclient/resources/readme.md',
+      'doc/resources.md',
+      'doc/api_reference/api_summary_resources.md',
+    ];
+
+    /// [file]'s text with markdown emphasis, code markers, link brackets,
+    /// blockquote markers and line breaks flattened to spaces, so a document is
+    /// free to bold the rule, quote it in a callout or wrap it anywhere.
+    String plainTextOf(String file) => File(file)
+        .readAsStringSync()
+        .replaceAll(RegExp(r'[*`\[\]>]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ');
+
+    test('every artefact states that a later config change is not seen', () {
+      for (final artefact in artefacts) {
+        expect(
+          plainTextOf(artefact),
+          contains('not reflected'),
+          reason:
+              '$artefact no longer tells the reader that a config change '
+              'after construction does not reach a built property',
+        );
+      }
+    });
+
+    test('every artefact states the ordering it obliges', () {
+      // The half that turns the statement into something a caller can act on.
+      // Knowing a property is a snapshot is only useful alongside "so build it
+      // after the providers are populated".
+      for (final artefact in artefacts) {
+        expect(
+          plainTextOf(artefact),
+          contains(RegExp(r'after the config(uration)? provider')),
+          reason:
+              '$artefact describes the property as eager without saying what '
+              'a caller must therefore do',
+        );
+      }
+    });
+  });
+
   group('the failure report survives a config source that can fail', () {
     test('a lookup that fails is not reported as a type mismatch', () {
       // The report says a value could not be cast. Only a failed cast is

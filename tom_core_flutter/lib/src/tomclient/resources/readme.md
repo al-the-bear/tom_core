@@ -45,7 +45,11 @@ void main() {
 ```
 
 > **Eager and immutable:** the value is captured at construction and never
-> re-read, so later config changes are not reflected.
+> re-read, so later config changes are not reflected. Build properties **after
+> the config providers are populated** — with none installed the construction
+> throws `resources.config_provider.not_installed`, but a provider *replaced*
+> afterwards is silent and leaves every property built before it holding the
+> old value. See `doc/resources.md`, "A Property Is a Snapshot".
 
 ## Key resolution
 

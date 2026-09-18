@@ -12,6 +12,10 @@
 /// are shown wrapped around a declaration and not around a read — there is no
 /// read that can fail, and a property that constructs never throws again.
 ///
+/// The last example shows what that costs as well as what it buys: replacing
+/// the configuration leaves every property already built holding what it
+/// resolved, and only properties constructed afterwards see the new bundle.
+///
 /// The barrel import pulls in `flutter/material` (and thus `dart:ui`), so this
 /// runs under the Flutter toolchain, not bare `dart run`. Run it with
 /// `flutter test test/resources_test.dart`: that suite calls [run], so the
@@ -107,6 +111,31 @@ void run() {
     // only record of that, which is why it is carried rather than discarded.
     assert(error.rootException is TypeError);
   }
+
+  // Example 7: a property is a snapshot. Replacing the configuration provider
+  // is allowed and every *later* read answers from the new one — but a property
+  // is not a later read, it is a value already taken. Nothing reports this and
+  // nothing can: installing configuration announces nothing, by design, because
+  // its consumers capture it when they are built.
+  TomConfigResourceProvider.setAppConfigProvider(
+    TomConfigResourceProvider.from({
+      'app.title': 'Replaced',
+      'app.timeout': 99,
+    }),
+  );
+  final titleAfterReplacement = TomStringProperty('app.title');
+  print(
+    'title (built before)=${~title} '
+    'title (built after)=${~titleAfterReplacement}',
+  );
+  assert(~title == 'Tom Demo'); // the snapshot it was built from
+  assert(~titleAfterReplacement == 'Replaced'); // the bundle now installed
+  // A default follows the same rule, which is the easier half to expect
+  // otherwise: `timeout` took 30 because `app.timeout` was absent, and that
+  // *was* its resolution — the bundle just installed does carry the key, and
+  // the property built without it is unmoved.
+  assert(~timeout == 30);
+  assert(TomIntProperty('app.timeout').get() == 99);
 }
 
 void main() => run();

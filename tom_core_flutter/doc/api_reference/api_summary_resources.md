@@ -30,7 +30,16 @@ accepts a `double`; an absent key uses the `withDefault` default; an absent key
 with no default throws. The value is eager and
 immutable — later
 config changes are not reflected, so construct the property after the config
-providers are populated. Use the typed subclasses for the four non-nullable
+providers are populated. That ordering is a contract rather than a convention,
+and it is enforced on one side only: with no provider installed the construction
+throws the kernel's `resources.config_provider.not_installed`, at the
+declaration; a provider *replaced* after a property is built is silent, and the
+property keeps what it resolved. It is silent by design — the kernel's
+`setAppConfigProvider` announces nothing, because configuration is captured by
+its consumers when they are built and a revision counter would notify values
+already taken. A default obeys the same rule: one taken because the key was
+absent is the resolution, not a placeholder, and a later provider carrying the
+key does not displace it. Use the typed subclasses for the four non-nullable
 value types they name rather than the generic over those types; when `T` is
 nullable the generic is the intended form, because every subclass closes over
 a non-nullable type and so cannot express an optional value:

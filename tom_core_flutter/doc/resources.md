@@ -10,6 +10,7 @@ a service or view-model.
 - [Overview](#overview)
 - [Quick Start](#quick-start)
 - [Resolution Rules](#resolution-rules)
+- [A Property Is a Snapshot](#a-property-is-a-snapshot)
 - [Core Components](#core-components)
 - [Limitations](#limitations)
 - [Dependencies](#dependencies)
@@ -117,7 +118,61 @@ A path that reaches a real subtree but finds nothing in it is an ordinary miss
 
 Because resolution is eager, construct the property **after** the config
 providers are populated, and re-read is not supported — a later config change is
-not reflected.
+not reflected. That is a decision rather than a stage of development; see
+[A Property Is a Snapshot](#a-property-is-a-snapshot) for what it obliges and
+what it rules out.
+
+## A Property Is a Snapshot
+
+A `TomProperty` holds the value configuration had **at the moment the property
+was built**. It is not a view of config, and it never becomes one. So:
+
+> **Populate the config providers before any property is constructed, and treat
+> a property as fixed for the life of the object.**
+
+This is a decision, and it is the kernel's as much as this module's. Replacing
+the application `TomConfigResourceProvider` announces nothing — deliberately,
+because configuration is installed at bootstrap and *captured* by its consumers
+when they are built, so a revision counter would notify values that have already
+been taken. See
+[`setAppConfigProvider`](../../tom_core_kernel/doc/resources/resources.md).
+
+### One half of the rule is enforced, the other is not
+
+| Situation | What happens |
+| --------- | ------------ |
+| A property is built with **no** config provider installed | The construction throws `resources.config_provider.not_installed`, from the kernel provider. Loud, and at the declaration. |
+| A property is built, then the provider is **replaced** | The property keeps the value it resolved. Nothing reports this, and nothing can. |
+| A property is built **after** the replacement | It reads the new provider, like any other first read. |
+
+The first row is why "construct after the providers are populated" is not advice
+a caller can quietly skip: with nothing installed there is no value to resolve
+and the property says so where it is declared. The second row is the one to hold
+in mind — it is silent by construction, and the module's own suite is what keeps
+it from changing by accident.
+
+A default follows the same rule. `TomIntProperty.withDefault('app.retries', 5)`
+resolved against a config that does not carry the key holds `5`, and goes on
+holding `5` when a later provider does carry it. The default was the resolution,
+not a placeholder awaiting one.
+
+### What to do instead of re-reading
+
+- **Configuration that changes at a session boundary** — a per-user bundle
+  installed after sign-in — is replaced, and whatever depends on it is rebuilt.
+  That is the pattern the framework's own consumers use: the swap happens inside
+  the rebuild, so the properties constructed afterwards are the new ones.
+- **A value that genuinely has to be live** is not a property. Read it from the
+  provider at the point of use — `TomConfigResourceProvider.getAppConfig()
+  .getObjectOrNull(key)` is the single call a property makes — and pay the
+  lookup each time, which is exactly the cost a property exists to avoid paying.
+- **A setting a user changes** is not configuration at all. That is the
+  [client-configuration module](configuration.md), which layers a user or device
+  preference over an install's value and is built for the change.
+
+Nothing here is a reactive property, and adding one would need a change the
+kernel has declined for a reason: with no consumer that reconfigures under a
+running screen, a counter would cost what a counter costs and mean nothing.
 
 ## Core Components
 
@@ -168,7 +223,10 @@ value's actual runtime type — the message names only the type that was wanted.
   so a `.withDefault(key, null)` over a nullable `T` honours the explicit `null`
   rather than treating it as "no default".
 - **Eager and immutable** — the value is captured at construction and never
-  re-read.
+  re-read, so a later config change is not reflected and the property must be
+  built after the config providers are populated. Stated in full, with what is
+  and is not enforced, under
+  [A Property Is a Snapshot](#a-property-is-a-snapshot).
 - **The only conversion is `int` to `double`.** A property casts; it does not
   coerce. A `'2'` configured for a numeric property, a `'true'` for a
   `TomBoolProperty`, a `2.5` for a `TomIntProperty` — all are mismatches. Where

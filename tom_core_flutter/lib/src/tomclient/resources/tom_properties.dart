@@ -87,6 +87,26 @@ class TomPropertyException extends TomClientException {
 /// **Eager and immutable:** the value is captured at construction and never
 /// re-read, so later config changes are not reflected. Construct the property
 /// after the config providers are populated.
+///
+/// The ordering is a contract, and it is enforced on one side only. With no
+/// provider installed there is nothing to resolve and the construction throws
+/// the kernel's `resources.config_provider.not_installed` — at the declaration,
+/// which is where a bootstrap-order mistake is cheapest to find. A provider
+/// *replaced* after a property is built is silent, and the property keeps what
+/// it resolved; nothing reports that and nothing can, because
+/// `TomConfigResourceProvider.setAppConfigProvider` announces nothing by
+/// design — configuration is captured by its consumers when they are built, so
+/// a revision counter would notify values that have already been taken. A
+/// default follows the same rule: one taken because the key was absent *is* the
+/// resolution, and a later provider carrying the key does not displace it.
+///
+/// An application that replaces configuration at a session boundary rebuilds
+/// what depends on it, so the properties constructed afterwards are the new
+/// ones. A value that has to be live is not a property: read it from
+/// `TomConfigResourceProvider.getAppConfig()` at the point of use, and pay the
+/// lookup each time. A value a *user* changes is not configuration — see
+/// `TomClientConfiguration`, which layers a user or device preference over an
+/// install's value.
 class TomProperty<T> {
   /// The application config resources.
   ///

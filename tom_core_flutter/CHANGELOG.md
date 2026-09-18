@@ -26,6 +26,28 @@
 
 ### Added
 
+- **Eager resolution is stated as a contract, and tested (tcopen229).**
+  `TomProperty` has always taken its value at construction and never re-read it;
+  the obligation that creates — populate the config providers first — lived in
+  one dartdoc sentence with nothing behind it. It is now stated in the class
+  dartdoc, the module readme, `doc/resources.md` (a section of its own) and the
+  API summary, with the half that is enforced separated from the half that is
+  not: a property built with no provider installed throws the kernel's
+  `resources.config_provider.not_installed` at the declaration, while a provider
+  *replaced* afterwards is silent and leaves every property built before it
+  holding what it resolved.
+
+  Silent by design — `setAppConfigProvider` announces nothing, because
+  configuration is captured by its consumers when they are built, so a revision
+  counter would notify values already taken. A default follows the same rule:
+  one taken because the key was absent is the resolution, not a placeholder.
+
+  The documents now name the alternatives — replace configuration at a session
+  boundary and rebuild its dependents; read the provider at the point of use for
+  a value that must be live; use the client-configuration module for a setting a
+  user changes — and the example ends by replacing the provider and printing the
+  property built before beside the one built after.
+
 - **The account store can be cleared (tcopen227).**
   `TomUserPreferencesClient.clear()` deletes every preference of the calling
   principal in one request, against the kernel contract's new
