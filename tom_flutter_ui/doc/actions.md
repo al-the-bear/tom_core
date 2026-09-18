@@ -53,6 +53,8 @@ concrete action overrides:
 | `canExecute(context)` | `true` | the action is conditionally available (empty list, invalid form) |
 | `isUndoable` | `false` | the action can be reversed |
 | `undo(undoState)` | no-op | `isUndoable` is `true` |
+| `isRedoable` | `false` | the action can be re-applied after an undo |
+| `redo(undoState)` | no-op | `isRedoable` is `true` |
 
 `execute` returns a `TUndo?`: the snapshot needed to reverse the change, or
 `null` when there is nothing to undo. Actions are **stateless** — they hold no
@@ -166,32 +168,65 @@ through it, so the rule cannot drift between them.
 did not come from a call you just made.
 
 `TomUndoHistory` enforces the invariants: it refuses to `push` an uncommitted or
-empty transaction, clears the redo stack on every new push, trims to `maxSize`,
-and exposes `canUndo` / `canRedo` / `undoLabel` / `redoLabel` for driving UI.
-`TomUndoAction` and `TomRedoAction` are ready-made coordinator actions that wrap
-a history so undo/redo themselves become first-class, authorizable actions.
+empty transaction, clears the redo stack on every new push, and trims to
+`maxSize`. `TomUndoAction` and `TomRedoAction` are ready-made coordinator
+actions that wrap a history so undo/redo themselves become first-class,
+authorizable actions.
 
-**The two directions are not symmetric, and this is the one thing to know about
-the class.** `undo()` runs the transaction's `undoAll()` and genuinely reverses
-its effects. `redo()` only moves the transaction back onto the undo stack — it
-re-applies nothing, and application state does not change. The reason is what a
-transaction records: `(action, undoState)` pairs, which is precisely what
-`TomAction.undo(TUndo undoState)` needs. Running forward again would mean
-`TomAction.execute`, which also takes a `TContext`, and the context an action
-ran with is never recorded — so the history has no argument to re-execute with.
-An action that needs true redo implements it itself, executing forward with a
-context the application still holds.
+### Undo and redo are both real, and redo is opt-in per action
 
-Because redo re-applies nothing, a transaction's undos stay spent across it, and
-**a transaction can be undone once**. `undoAll` throws a `StateError` on a
-second call, and `undo()` asks the transaction before it moves either stack, so
-a refused undo leaves the history exactly as it was. The sequence that reaches
-it is three keystrokes — `undo(); redo(); undo();` — and what it would otherwise
-do depends entirely on the action: an undo that assigns (`counter.value =
-previous`) is unchanged by a repeat, while an undo that restores a deleted row
-inserts it a second time. The throw names the sequence, so the failure arrives
-at the call that is wrong rather than as data nobody can account for later. A
-transaction reports this through `isUndone`.
+`undo()` runs the transaction's `undoAll()`, reversing the entries in reverse
+order. `redo()` runs `redoAll()`, re-applying them in the order they originally
+executed — reverse one way and forward the other, because a later step may
+depend on an earlier one.
+
+What redo runs is **not** `execute`. A transaction records `(action, undoState)`
+pairs and never the `TContext` an action ran with — contexts are built per
+invocation by a `contextBuilder` and are not guaranteed valid later — so the
+history has no argument to re-execute with. `TomAction` therefore carries a
+forward hook beside its reverse one, taking the argument the history does hold:
+
+| | reverse | forward |
+| --- | --- | --- |
+| hook | `void undo(TUndo undoState)` | `void redo(TUndo undoState)` |
+| opt-in flag | `bool get isUndoable` | `bool get isRedoable` |
+| default | no-op, `false` | no-op, `false` |
+
+The undo state generally names the *target* of the change while the action holds
+the *parameters*, so one snapshot serves both directions:
+
+```dart
+@override
+bool get isRedoable => true;
+
+@override
+void redo(IncrementUndo undoState) =>
+    undoState.counter.value = undoState.previous + step;
+```
+
+Because the hook is opt-in, a history can hold undone transactions that nothing
+can put back. **`canRedo` accounts for that**: it is true only when the redo
+stack is non-empty *and* every action in the transaction on top declares
+`isRedoable`. `redoLabel` is null in the same case. So a toolbar button bound to
+`TomRedoAction` — which gates on `canRedo` — is disabled both when there is
+nothing to redo and when what there is cannot be redone, rather than enabling
+itself and doing nothing when pressed. `redoCount` counts what has been undone,
+not what can be put back; drive buttons from `canRedo`.
+
+### A transaction is applied or reversed, never both
+
+`isUndone` is the one piece of state that says which. `undoAll` sets it and
+`redoAll` clears it, and each refuses when the transaction is already the way it
+would leave it: undoing twice would apply the same undos again — invisible for
+an undo that assigns a previous value, a duplicated row for one that restores a
+deleted record — and redoing a transaction that is not undone would report a
+re-application that did not happen. `redoAll` also throws when the transaction is
+not redoable, naming the action that lacks the hook, rather than running no-op
+redos and claiming the effects are back.
+
+Both checks run before any entry is touched, and both `undo()` and `redo()` ask
+the transaction *before* they move either stack — so a refusal leaves the
+history exactly as it was rather than stranding a transaction on neither.
 
 `rollback` is deliberately not symmetric: it also marks the transaction undone,
 but a second call is a silent no-op. It is the failure path, reached from error

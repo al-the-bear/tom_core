@@ -59,6 +59,43 @@ class IncrementAction extends TomAction<CounterContext, IncrementUndo> {
   void undo(IncrementUndo undoState) {
     undoState.counter.value = undoState.previous;
   }
+
+  // Redo is a second hook beside undo, declared the same way. The history never
+  // records the context `execute` would need, so it re-applies through this
+  // instead: the undo state names the target and the action holds the step.
+  @override
+  bool get isRedoable => true;
+
+  @override
+  void redo(IncrementUndo undoState) {
+    undoState.counter.value = undoState.previous + step;
+  }
+}
+
+/// An undoable action that does **not** implement redo — the default.
+///
+/// Included to show the disabled half of the contract: a history whose next
+/// undone transaction was built from one of these reports `canRedo == false`,
+/// so a Redo button bound to `TomRedoAction` stays disabled instead of enabling
+/// itself and doing nothing when pressed.
+class UndoOnlyIncrementAction extends TomAction<CounterContext, IncrementUndo> {
+  UndoOnlyIncrementAction({required super.controller})
+    : super(actionId: 'undoOnlyIncrement');
+
+  @override
+  IncrementUndo execute(CounterContext context, TomActionTransaction tx) {
+    final previous = context.counter.value;
+    context.counter.value += 1;
+    return IncrementUndo(context.counter, previous);
+  }
+
+  @override
+  bool get isUndoable => true;
+
+  @override
+  void undo(IncrementUndo undoState) {
+    undoState.counter.value = undoState.previous;
+  }
 }
 
 /// A non-undoable action that only runs while the counter is positive.
@@ -119,32 +156,46 @@ void run() {
     'after two triggers: ${counter.value} (undo stack: ${history.undoCount})',
   );
 
-  // Example 4: undo reverses the most recent transaction. redo restores the
-  // stack position only — TomUndoHistory.redo does NOT re-apply the action's
-  // value change, so the counter is unchanged by redo. The transaction records
-  // the undo state an action needs to reverse itself, never the context it
-  // would need to run forward again; see TomUndoHistory.redo for the full
-  // reasoning.
+  // Example 4: undo reverses the most recent transaction; redo re-applies it.
+  // Redo runs each recorded action's `redo` with the undo state that entry
+  // recorded — not `execute`, because the transaction never keeps the context
+  // `execute` would need.
   history.undo();
   final afterUndo = counter.value; // 2 — second trigger reversed
   print('after undo: $afterUndo (canRedo: ${history.canRedo})');
   history.redo();
-  print('after redo: ${counter.value} (undo stack: ${history.undoCount})');
+  final afterRedo = counter.value; // 3 — re-applied
+  print('after redo: $afterRedo (undo stack: ${history.undoCount})');
 
-  // Because redo re-applied nothing, that transaction's undo states are still
-  // the spent ones, so it cannot be undone a second time. Undoing again throws
-  // rather than applying the same undos twice — harmless for this action, which
-  // assigns a previous value, but a second restore for an undo that puts a
-  // deleted row back. A gesture that must be reversible twice is two
-  // transactions.
-  var secondUndoRefused = false;
-  try {
-    history.undo();
-  } on StateError {
-    secondUndoRefused = true;
-  }
-  final afterRefusedUndo = counter.value; // still 2 — nothing was applied
-  print('second undo refused: $secondUndoRefused (value: $afterRefusedUndo)');
+  // ...and the transaction is applied again, so it can be undone again.
+  history.undo();
+  final afterSecondUndo = counter.value; // 2
+  print('after second undo: $afterSecondUndo');
+  history.redo();
+  final afterSecondRedo = counter.value; // 3 again
+
+  // Example 4b: redo is per-action opt-in. An action that leaves isRedoable at
+  // its default can be undone but not put back, and the history says so rather
+  // than offering a button that does nothing.
+  final undoOnlyHistory = TomUndoHistory();
+  final undoOnlyCounter = Counter();
+  final undoOnlyTx = TomActionTransaction(label: 'undo-only');
+  undoOnlyTx.run(
+    // Its own controller, so the demo controller above keeps the three actions
+    // it declares.
+    UndoOnlyIncrementAction(
+      controller: TomActionController(controllerId: 'undoOnly'),
+    ),
+    CounterContext(undoOnlyCounter),
+  );
+  undoOnlyTx.commit();
+  undoOnlyHistory.push(undoOnlyTx);
+  undoOnlyHistory.undo();
+  final undoOnlyCanRedo = undoOnlyHistory.canRedo; // false
+  print(
+    'undo-only: redo stack ${undoOnlyHistory.redoCount}, '
+    'canRedo $undoOnlyCanRedo, label ${undoOnlyHistory.redoLabel}',
+  );
 
   // Example 5: canExecute gating — reset only runs while positive.
   final resetCanRun = controller.reset.canExecute(ctx());
@@ -199,16 +250,20 @@ void run() {
   assert(tx.entryCount == 1);
   assert(tx.isCommitted);
 
-  // Value sequence: manual=1, +2 triggers=3, undo reverses second trigger=2,
-  // redo restores stack only (no value replay)=2.
+  // Value sequence: manual=1, +2 triggers=3, undo reverses the second
+  // trigger=2, redo re-applies it=3, undo again=2, redo again=3.
   assert(afterUndo == 2);
+  assert(afterRedo == 3);
+  assert(afterSecondUndo == 2);
+  assert(afterSecondRedo == 3);
   assert(history.undoCount == 2); // redo moved the tx back onto the undo stack
 
-  // The undone transaction stays undone across redo, and the refusal left the
-  // history and the counter exactly as they were.
-  assert(secondUndoRefused);
-  assert(afterRefusedUndo == 2);
-  assert(history.undoCount == 2);
+  // An action without a redo hook is undoable but not redoable, and the
+  // history reports that rather than offering an inert button.
+  assert(!undoOnlyCanRedo);
+  assert(undoOnlyHistory.redoCount == 1);
+  assert(undoOnlyHistory.redoLabel == null);
+  assert(undoOnlyCounter.value == 0);
 
   // Reset clears to zero and then refuses to run again.
   assert(!controller.reset.canExecute(CounterContext(Counter()..value = 0)));

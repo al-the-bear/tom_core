@@ -44,6 +44,15 @@ class IncrementAction extends TomAction<CounterContext, IncrementUndo> {
   @override
   void undo(IncrementUndo undoState) =>
       undoState.counter.value = undoState.previous;
+
+  @override
+  bool get isRedoable => true;
+
+  // The undo state names the target and the action holds the parameter, so the
+  // pair is enough to go forward as well as back.
+  @override
+  void redo(IncrementUndo undoState) =>
+      undoState.counter.value = undoState.previous + step;
 }
 
 class ResetAction extends TomSimpleAction<CounterContext> {
@@ -105,6 +114,77 @@ class DeleteRowAction extends TomAction<RowContext, RestoreRowUndo> {
 
   @override
   void undo(RestoreRowUndo undoState) => undoState.rows.add(undoState.removed);
+
+  @override
+  bool get isRedoable => true;
+
+  @override
+  void redo(RestoreRowUndo undoState) =>
+      undoState.rows.remove(undoState.removed);
+}
+
+/// Undoable but **not** redoable — it leaves [TomAction.isRedoable] at its
+/// default, which is what every action did before redo existed.
+///
+/// Exists so the disabled half of the contract has a subject: a history holding
+/// one of these reports `canRedo == false`, so a button bound to
+/// `TomRedoAction` stays disabled rather than enabling itself and doing nothing.
+class UndoOnlyIncrementAction extends TomAction<CounterContext, IncrementUndo> {
+  UndoOnlyIncrementAction({required super.controller})
+    : super(actionId: 'undoOnlyIncrement');
+
+  @override
+  IncrementUndo execute(CounterContext context, TomActionTransaction tx) {
+    final previous = context.counter.value;
+    context.counter.value += 1;
+    return IncrementUndo(context.counter, previous);
+  }
+
+  @override
+  bool get isUndoable => true;
+
+  @override
+  void undo(IncrementUndo undoState) =>
+      undoState.counter.value = undoState.previous;
+}
+
+/// Appends its step's name to a shared log on every execute, undo and redo, so
+/// a test can assert the *order* entries are applied in.
+class OrderLogUndo implements TomActionUndo {
+  final List<String> log;
+  final String name;
+  OrderLogUndo(this.log, this.name);
+}
+
+class OrderLogContext extends TomActionContext {
+  final List<String> log;
+  OrderLogContext(this.log);
+}
+
+class OrderLogAction extends TomAction<OrderLogContext, OrderLogUndo> {
+  final String name;
+  OrderLogAction({required super.controller, required this.name})
+    : super(actionId: 'log_$name');
+
+  @override
+  OrderLogUndo execute(OrderLogContext context, TomActionTransaction tx) {
+    context.log.add('do:$name');
+    return OrderLogUndo(context.log, name);
+  }
+
+  @override
+  bool get isUndoable => true;
+
+  @override
+  void undo(OrderLogUndo undoState) =>
+      undoState.log.add('undo:${undoState.name}');
+
+  @override
+  bool get isRedoable => true;
+
+  @override
+  void redo(OrderLogUndo undoState) =>
+      undoState.log.add('redo:${undoState.name}');
 }
 
 /// A second context type, unrelated to [CounterContext].
@@ -375,6 +455,95 @@ void main() {
       tx.rollback();
       expect(rows, ['a', 'b'], reason: 'one restore, not two');
     });
+
+    test('redoAll re-applies the entries and makes the tx undoable again', () {
+      final controller = TomActionController(controllerId: 'c');
+      final delete = DeleteRowAction(controller: controller);
+      final rows = ['a', 'b'];
+      final tx = freshTx();
+      tx.run(delete, RowContext(rows));
+      tx.commit();
+
+      tx.undoAll();
+      expect(rows, ['a', 'b']);
+      tx.redoAll();
+      expect(rows, ['a'], reason: 'the delete was re-applied');
+      expect(tx.isUndone, isFalse);
+
+      tx.undoAll();
+      expect(rows, ['a', 'b'], reason: 'undoable again, and once');
+    });
+
+    test('redoAll applies entries in the original execution order', () {
+      // undoAll reverses; redoAll must not, or a step that depends on an
+      // earlier one runs before it.
+      final controller = TomActionController(controllerId: 'c');
+      final log = <String>[];
+      final tx = freshTx();
+      for (final name in ['a', 'b', 'c']) {
+        tx.run(
+          OrderLogAction(controller: controller, name: name),
+          OrderLogContext(log),
+        );
+      }
+      tx.commit();
+      tx.undoAll();
+      tx.redoAll();
+      expect(log, [
+        'do:a',
+        'do:b',
+        'do:c',
+        'undo:c',
+        'undo:b',
+        'undo:a',
+        'redo:a',
+        'redo:b',
+        'redo:c',
+      ]);
+    });
+
+    test('redoAll on a transaction that is not undone throws', () {
+      final controller = TomActionController(controllerId: 'c');
+      final delete = DeleteRowAction(controller: controller);
+      final rows = ['a', 'b'];
+      final tx = freshTx();
+      tx.run(delete, RowContext(rows));
+      tx.commit();
+      expect(() => tx.redoAll(), throwsStateError);
+      expect(rows, ['a'], reason: 'the refused call changed nothing');
+    });
+
+    test('redoAll names the action that does not implement redo', () {
+      final controller = TomActionController(controllerId: 'c');
+      final undoOnly = UndoOnlyIncrementAction(controller: controller);
+      final counter = Counter();
+      final tx = freshTx();
+      tx.run(undoOnly, CounterContext(counter));
+      tx.commit();
+      expect(tx.isRedoable, isFalse);
+      tx.undoAll();
+
+      expect(
+        () => tx.redoAll(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('undoOnlyIncrement'),
+          ),
+        ),
+      );
+      expect(
+        tx.isUndone,
+        isTrue,
+        reason: 'the refusal left the transaction reversed, not half-applied',
+      );
+    });
+
+    test('isRedoable is false for an empty transaction', () {
+      final tx = freshTx()..commit();
+      expect(tx.isRedoable, isFalse);
+    });
   });
 
   group('TomUndoHistory', () {
@@ -413,13 +582,13 @@ void main() {
       expect(history.redoLabel, 'inc');
 
       history.redo();
-      // redo restores the stack position only, value is NOT replayed.
-      expect(counter.value, 1);
+      expect(counter.value, 2, reason: 'redo re-applies the increment');
       expect(history.undoCount, 2);
+      expect(history.canRedo, isFalse);
     });
 
     test(
-      'redo restores the stack position and notifies, replaying nothing',
+      'redo re-applies the transaction, restores the position, notifies',
       () {
         var changes = 0;
         final controller = TomActionController(controllerId: 'c');
@@ -434,19 +603,65 @@ void main() {
         final changesBeforeRedo = changes;
         history.redo();
 
-        // The stack position is restored in full...
+        // The application state is put back...
+        expect(counter.value, 1);
+        // ...the stack position is restored in full...
         expect(history.canUndo, isTrue);
         expect(history.undoCount, 1);
         expect(history.undoLabel, 'inc');
         expect(history.canRedo, isFalse);
-        // ...listeners are told...
+        // ...and listeners are told.
         expect(changes, changesBeforeRedo + 1);
-        // ...but the action is not run forward again. The transaction holds the
-        // undo state, never the context execute would need, so there is nothing
-        // to replay. See TomUndoHistory.redo.
-        expect(counter.value, 0);
       },
     );
+
+    test('canRedo is false when the undone transaction cannot be redone', () {
+      // The defect a Redo button used to have: enabled because something was
+      // undone, inert because nothing could put it back. canRedo asks the
+      // transaction, not just the stack.
+      final controller = TomActionController(controllerId: 'c');
+      final undoOnly = UndoOnlyIncrementAction(controller: controller);
+      final counter = Counter();
+      final history = TomUndoHistory();
+
+      final tx = TomActionTransaction(label: 'undo-only');
+      tx.run(undoOnly, CounterContext(counter));
+      tx.commit();
+      history.push(tx);
+      history.undo();
+      expect(counter.value, 0);
+
+      expect(history.redoCount, 1, reason: 'it is on the redo stack');
+      expect(history.canRedo, isFalse, reason: 'but nothing can put it back');
+      expect(history.redoLabel, isNull);
+
+      history.redo();
+      expect(counter.value, 0, reason: 'redo did nothing');
+      expect(history.redoCount, 1, reason: 'and moved nothing');
+      expect(history.undoCount, 0);
+    });
+
+    test('a TomRedoAction over an undo-only history cannot execute', () {
+      final controller = TomActionController(controllerId: 'c');
+      final undoOnly = UndoOnlyIncrementAction(controller: controller);
+      final history = TomUndoHistory();
+      final redoAction = TomRedoAction(
+        controller: controller,
+        history: history,
+      );
+
+      final tx = TomActionTransaction(label: 'undo-only');
+      tx.run(undoOnly, CounterContext(Counter()));
+      tx.commit();
+      history.push(tx);
+      history.undo();
+
+      expect(
+        redoAction.canExecute(TomUndoRedoContext()),
+        isFalse,
+        reason: 'the toolbar button stays disabled',
+      );
+    });
 
     test('push clears the redo stack', () {
       final controller = TomActionController(controllerId: 'c');
@@ -460,11 +675,11 @@ void main() {
       expect(history.canRedo, isFalse);
     });
 
-    test('undo(); redo(); undo(); cannot apply the same undo twice', () {
-      // The sequence a user reaches with three keystrokes. redo re-executes
-      // nothing, so the second undo asks for undos that are already spent —
-      // invisible against an idempotent undo, a duplicated row against this
-      // one.
+    test('undo(); redo(); undo(); applies each direction exactly once', () {
+      // The three keystrokes that used to apply the same undo twice. With a
+      // real redo the sequence is delete, restore, delete, restore — and the
+      // row is present exactly once at every step, which an undo that assigns
+      // a previous value could never have shown.
       final controller = TomActionController(controllerId: 'c');
       final delete = DeleteRowAction(controller: controller);
       final rows = ['a', 'b'];
@@ -480,15 +695,17 @@ void main() {
       expect(rows, ['a', 'b'], reason: 'the row is back, once');
 
       history.redo();
-      expect(rows, ['a', 'b'], reason: 'redo replays nothing');
+      expect(rows, ['a'], reason: 'the delete is re-applied, once');
 
-      expect(() => history.undo(), throwsStateError);
-      expect(rows, ['a', 'b'], reason: 'the row is still there exactly once');
+      history.undo();
+      expect(rows, ['a', 'b'], reason: 'back again, and still exactly once');
+      expect(history.canRedo, isTrue);
     });
 
     test('a refused undo leaves both stacks untouched', () {
       // undoAll runs before the pop, so the transaction is on neither stack
-      // only if the undo succeeded. A caller that catches the StateError sees
+      // only if the undo succeeded. Reached here by driving the transaction
+      // out from under the history: a caller that catches the StateError sees
       // a history in the state it was in before the call.
       var changes = 0;
       final controller = TomActionController(controllerId: 'c');
@@ -500,14 +717,34 @@ void main() {
       tx.run(delete, RowContext(rows));
       tx.commit();
       history.push(tx);
-      history.undo();
-      history.redo();
+      tx.undoAll(); // undone behind the history's back
 
       final changesBefore = changes;
       expect(() => history.undo(), throwsStateError);
       expect(history.undoCount, 1, reason: 'not popped');
       expect(history.redoCount, 0, reason: 'nothing pushed onto redo');
       expect(history.undoLabel, 'delete');
+      expect(changes, changesBefore, reason: 'no change was announced');
+    });
+
+    test('a refused redo leaves both stacks untouched', () {
+      var changes = 0;
+      final controller = TomActionController(controllerId: 'c');
+      final delete = DeleteRowAction(controller: controller);
+      final rows = ['a', 'b'];
+      final history = TomUndoHistory(onChanged: () => changes++);
+
+      final tx = TomActionTransaction(label: 'delete');
+      tx.run(delete, RowContext(rows));
+      tx.commit();
+      history.push(tx);
+      history.undo();
+      tx.redoAll(); // re-applied behind the history's back
+
+      final changesBefore = changes;
+      expect(() => history.redo(), throwsStateError);
+      expect(history.redoCount, 1, reason: 'not popped');
+      expect(history.undoCount, 0, reason: 'nothing pushed onto undo');
       expect(changes, changesBefore, reason: 'no change was announced');
     });
 

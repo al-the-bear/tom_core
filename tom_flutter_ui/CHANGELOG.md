@@ -1,19 +1,41 @@
 ## Unreleased
 
+### Added
+
+- **Redo re-applies the transaction (tcopen244).** `TomUndoHistory.redo`
+  restored the stack position and re-applied nothing, while `canRedo`,
+  `redoLabel`, `redoCount` and `TomRedoAction` all shipped as if it worked — so
+  the toolbar the documentation described had a working Undo and a Redo button
+  that enabled itself and did nothing. The cause was an asymmetry in
+  `TomAction`, which had a reverse hook and no forward one. It now declares
+  `redo(TUndo undoState)` and `isRedoable` beside `undo` and `isUndoable`;
+  `TomActionTransaction` gained `redoAll()`, applying entries in the order they
+  executed where `undoAll` reverses them; and `redo()` calls it. The forward
+  hook takes the undo state rather than replaying `execute`, because the
+  transaction never keeps the `TContext` an action ran with.
+
+  Redo is opt-in per action, so `canRedo` is now true only when the redo stack
+  is non-empty **and** the transaction on top reports `isRedoable` — otherwise
+  the same inert button would have survived under a new mechanism. `redoLabel`
+  is null in that case, and `redoAll` throws naming the action that lacks the
+  hook. `isUndone` is now a direction rather than a latch: `undoAll` sets it,
+  `redoAll` clears it, and each refuses when the transaction is already the way
+  it would leave it.
+
 ### Fixed
 
 - **`undo(); redo(); undo();` applied the same undo twice (tcopen243).**
-  `TomUndoHistory.redo` restores a transaction's stack position and re-executes
-  nothing, so a second `undo` asked `TomActionTransaction.undoAll` for undos
-  that were already spent — and it applied them again. Invisible for an undo
-  that assigns a previous value, a duplicated row for the module's own
-  documented `DeleteOrderAction`, whose undo restores what was deleted. A
-  transaction is now undoable once: `undoAll` throws `StateError` on a second
-  call, before touching any entry, and reports `isUndone`. `rollback` also marks
-  the transaction undone but stays a silent no-op on a second call — it runs
-  from error handling that may be reached twice, where throwing would replace
-  the original failure. `TomUndoHistory.undo` now undoes before it moves either
-  stack, so a refusal leaves the history untouched.
+  `TomUndoHistory.redo` re-executed nothing at the time, so a second `undo`
+  asked `TomActionTransaction.undoAll` for undos that were already spent — and
+  it applied them again. Invisible for an undo that assigns a previous value, a
+  duplicated row for the module's own documented `DeleteOrderAction`, whose undo
+  restores what was deleted. `undoAll` now refuses an already-undone
+  transaction, before touching any entry, and `isUndone` reports the state;
+  tcopen244 above made `redoAll` the way out of it. `rollback` also marks the
+  transaction undone but stays a silent no-op on a second call — it runs from
+  error handling that may be reached twice, where throwing would replace the
+  original failure. `TomUndoHistory.undo` undoes before it moves either stack,
+  so a refusal leaves the history untouched.
 
 ### Changed
 

@@ -138,6 +138,44 @@ abstract class TomAction<
   /// Only called if [isUndoable] is `true` and [execute] returned non-null.
   void undo(TUndo undoState) {}
 
+  /// Whether this action supports redo.
+  ///
+  /// Declared separately from [isUndoable] because knowing how to reverse a
+  /// change does not imply knowing how to re-apply it: `undo` receives the
+  /// snapshot it needs, whereas re-applying may need parameters that only the
+  /// action itself holds. An action that overrides [redo] must say so here, the
+  /// same way [undo] needs [isUndoable].
+  ///
+  /// This is what makes a Redo button honest. [TomUndoHistory.canRedo] is false
+  /// unless every action in the transaction on top of the redo stack declares
+  /// it, so a button bound to `TomRedoAction` stays disabled rather than
+  /// enabling itself and doing nothing when pressed.
+  bool get isRedoable => false;
+
+  /// Re-applies the action using the saved undo state.
+  ///
+  /// The forward counterpart of [undo], and the reason redo can work at all: a
+  /// transaction records `(action, undoState)` pairs, never the `TContext` an
+  /// action ran with, so re-running [execute] is not available to it. [redo]
+  /// takes the same argument [undo] does, which the transaction *does* hold.
+  ///
+  /// The undo state generally names the target of the change while the action
+  /// holds the parameters — an increment's undo state carries the counter and
+  /// its previous value, and the action carries the step — so the pair is
+  /// enough to go either way:
+  ///
+  /// ```dart
+  /// @override
+  /// bool get isRedoable => true;
+  ///
+  /// @override
+  /// void redo(IncrementUndo undoState) =>
+  ///     undoState.counter.value = undoState.previous + step;
+  /// ```
+  ///
+  /// Only called if [isRedoable] is `true` and the transaction was undone.
+  void redo(TUndo undoState) {}
+
   /// Gets the authorization state for this action.
   TomAuthState get authState => TomAuthorization.resolveAuth(canonicalPath);
 

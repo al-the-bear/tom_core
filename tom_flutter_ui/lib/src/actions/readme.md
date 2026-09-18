@@ -21,8 +21,8 @@ the module's central separation. Nothing on `TomActionController` runs an action
 | `TomAction` / `TomSimpleAction` / `TomCompositeAction` | The action base & primitives |
 | `TomActionController` | Owns and names a group of actions; supplies the `<scopePath>.<controllerId>` canonical-path prefix, and the scope frame its actions inherit |
 | `TomActionContext` | The per-invocation context an action operates on |
-| `TomActionTransaction` / `TomUndoHistory` / `TomUndoRedoContext` | Atomicity & undo/redo. A transaction is undoable once — `undoAll` throws on a second call, because `redo` re-applies nothing and the undos stay spent |
-| `TomUndoAction` / `TomRedoAction` | Ready-made actions over a `TomUndoHistory`, so undo/redo dispatches through the same trigger protocol as everything else. Read `TomUndoHistory.redo` before binding the second one to a button — it restores the stack position and re-applies nothing |
+| `TomActionTransaction` / `TomUndoHistory` / `TomUndoRedoContext` | Atomicity & undo/redo. A transaction is either applied or reversed — `undoAll` and `redoAll` each refuse when it is already the way they would leave it |
+| `TomUndoAction` / `TomRedoAction` | Ready-made actions over a `TomUndoHistory`, so undo/redo dispatches through the same trigger protocol as everything else. Redo is opt-in per action (`TomAction.isRedoable` / `redo`), and `canRedo` accounts for it, so the second one's button is disabled when what was undone cannot be put back |
 | `TomCompositeAction` / `TomCompositeStep` | Composed multi-step actions |
 | `TomActionTrigger` | **Dispatches** an action — binds it, a context builder and an optional undo history to a widget callback |
 

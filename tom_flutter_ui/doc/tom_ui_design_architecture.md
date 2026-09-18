@@ -1743,9 +1743,15 @@ class TomActionTransaction {
 2. A transaction is undoable only if **all** sub-actions are undoable — no partial undo.
 3. If any sub-action is non-undoable (e.g., "send email"), the entire transaction cannot be undone.
 4. Undo reverses all sub-actions in reverse order.
-5. Redo stack clears on any new action.
+5. Redo re-applies them in the order they originally executed.
+6. Redo is declared separately (`isRedoable` / `redo`, both defaulting to no-op):
+   reversing a change and re-applying it are different capabilities, so an
+   action may be undoable without being redoable. `TomUndoHistory.canRedo`
+   accounts for that, and a Redo button bound to `TomRedoAction` is disabled
+   when what was undone cannot be put back.
+7. Redo stack clears on any new action.
 
-`TomActionHistory` provides undo/redo with configurable depth (default: 50).
+`TomUndoHistory` provides undo/redo with configurable depth.
 
 ### Registration tiers
 
