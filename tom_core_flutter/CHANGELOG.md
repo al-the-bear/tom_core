@@ -2,6 +2,28 @@
 
 ### Changed
 
+- **`all()` is unmodifiable on both preference faces (tcopen220).** The device
+  store returned `List.unmodifiable`, the account client a growable literal, and
+  neither consumer document mentioned mutability on either side — so the
+  difference was discoverable only by trying it, at the one call site the
+  symmetry exists for: moving a preference between the two stores is where a
+  caller holds both results at once.
+
+  Unmodifiable is also right on each face's own terms. A returned list is a
+  snapshot of a store rather than a handle on it, and on the account side adding
+  to it would change nothing on the server — a mutation that appeared to work
+  and did nothing, which is worse than the `UnsupportedError` it now raises.
+
+  The promise is made where the list is built, so the store face and the
+  contract face cannot disagree: `all()` *is* `listPreferences()`.
+
+- **The API summary's store-face heading counted six over seven rows.** It said
+  "the same six the device store carries" above a table including `close()`. It
+  now says six plus `close()`, and why the device store has no counterpart: there
+  is no connection to release.
+
+### Changed
+
 - **One encoding rule for one DTO, and an honest failure when reflection is
   missing (tcopen219).** The module encoded `TomUserPreferenceDto` by two
   opposite rules — the disk half field by field, the account half through

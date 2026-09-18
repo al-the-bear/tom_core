@@ -105,7 +105,7 @@ The method set deliberately mirrors `TomUserPreferences` (`tom_core_server`):
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference on this device, ordered by key |
+| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference on this device, ordered by key. **Unmodifiable** — as the account client's `all()` is |
 | `read(key)` | `Future<TomUserPreferenceDto?>` | One preference as stored, or `null` |
 | `get<T>(key)` | `Future<T?>` | Decoded as a `T`; `null` when never written |
 | `getOr<T>(key, fallback)` | `Future<T>` | `get`, with a default for the unwritten case |

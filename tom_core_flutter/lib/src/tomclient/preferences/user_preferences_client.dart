@@ -168,6 +168,11 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
   /// symptom by which a server breaking the contract could be noticed. Where the
   /// two faces disagree the store is wrong, and it should be possible to see
   /// that.
+  ///
+  /// **Unmodifiable**, like `TomDevicePreferences.all`. It is a decoded snapshot
+  /// of one response, so adding to it would change nothing on the server — and
+  /// the call site this face exists for, moving a preference between the two
+  /// stores, is where a caller holds both results at once.
   Future<List<TomUserPreferenceDto>> all() => listPreferences();
 
   /// The preference stored under [key] as stored, or `null` when the server has
@@ -520,13 +525,24 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
       final mirror = tomReflector.reflectType(TomUserPreferenceDto);
       if (mirror is! ClassMirror) throw _invalidResponse(response);
 
-      return [
+      // Unmodifiable, matching what `TomDevicePreferences.all` already
+      // promises. The two faces exist to be interchangeable at a call site, and
+      // the call site the module is designed for — moving a preference from one
+      // store to the other — is exactly where a caller holds both results at
+      // once; one of them silently accepting `add` would be a difference
+      // discoverable only by trying it.
+      //
+      // Unmodifiable is also the right answer on its own terms. This list is a
+      // decoded snapshot of one response: adding to it changes nothing on the
+      // server, so a mutation that appeared to work would be a change that did
+      // nothing, which is worse than the `UnsupportedError` it now raises.
+      return List<TomUserPreferenceDto>.unmodifiable([
         for (final element in decoded)
           tomReflectionInfo.createInstanceFromJson<TomUserPreferenceDto>(
             mirror,
             element,
           ),
-      ];
+      ]);
     } on TomUserPreferencesClientException {
       rethrow;
     } catch (error, stack) {

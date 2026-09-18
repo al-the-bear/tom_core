@@ -348,12 +348,13 @@ call for a reason that has nothing to do with the call.
 
 #### Methods — the store face
 
-The same six the device store carries, so a call site reads identically
-whichever store it addresses.
+The six the device store carries, so a call site reads identically whichever
+store it addresses, plus `close()` — which has no device counterpart because
+there is no connection to release.
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference stored for the calling principal, **ordered by key**, ascending. Forwarded as received — the client does not re-sort. |
+| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference stored for the calling principal, **ordered by key**, ascending. Forwarded as received — the client does not re-sort. **Unmodifiable**, as `TomDevicePreferences.all` is: both are snapshots of a store rather than handles on it. |
 | `read(String key)` | `Future<TomUserPreferenceDto?>` | One preference as stored, or `null` when the server has never been given one. |
 | `get<T extends Object>(String key)` | `Future<T?>` | `read`, decoded as a `T`. Throws `TomUserPreferenceCodecException` on a stored-type mismatch. |
 | `getOr<T extends Object>(String key, T fallback)` | `Future<T>` | `get`, with `fallback` for a preference that has never been written. A type mismatch still throws. |
@@ -369,7 +370,7 @@ There is no `clear()`. The contract declares no bulk delete, and a loop over
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `listPreferences()` | `Future<List<TomUserPreferenceDto>>` | The list endpoint; decodes the bare JSON array the pipeline produces. |
+| `listPreferences()` | `Future<List<TomUserPreferenceDto>>` | The list endpoint; decodes the bare JSON array the pipeline produces. Unmodifiable — `all()` is this method, so the two cannot differ. |
 | `readPreference(TomUserPreferenceKeyRequest request)` | `Future<TomUserPreferenceDto>` | Throws `preferences.client.not_found` on a miss, because the contract's result type is not nullable. `read` is the same call with the miss expressed as `null`, and is what an application should use. |
 | `writePreference(TomUserPreferenceWriteRequest request)` | `Future<TomUserPreferenceDto>` | The write endpoint; passes no path parameters, because the write URI carries no `{key}` and `request.key` is the whole of what is addressed. |
 | `deletePreference(TomUserPreferenceKeyRequest request)` | `Future<void>` | The delete endpoint. Throws `preferences.client.rejected` for every non-2xx answer, a `404` included: the server's delete answers `200` for a preference that is not there, so a `404` from it is a refusal, never "already gone". |

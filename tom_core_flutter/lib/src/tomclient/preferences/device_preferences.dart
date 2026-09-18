@@ -197,6 +197,12 @@ abstract class TomDevicePreferences {
   /// order to preserve, and one of which may be rebuilt between two calls. The
   /// sequence is derived here, from the keys, so that it is the same one on
   /// every backend and for every document, however that document was produced.
+  ///
+  /// **Unmodifiable**, as `TomUserPreferencesClient.all` is. Both are snapshots
+  /// of a store rather than handles on it, so a mutation would change nothing
+  /// where it appeared to; and a caller moving a preference between the two
+  /// holds both results at once, which is where a difference between them would
+  /// be met.
   Future<List<TomUserPreferenceDto>> all();
 
   /// The preference stored under [key] as stored, or `null` when it has never

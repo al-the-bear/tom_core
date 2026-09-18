@@ -819,6 +819,104 @@ void main() {
     });
   });
 
+  group('both faces answer with the same kind of list', () {
+    // The module's argument for its shape is that the two stores "carry the
+    // same method set, which is what lets a preference *move* between them
+    // without a call site changing". The call site that move produces is
+    // exactly the one holding both results at once — so a difference between
+    // them is met precisely where the symmetry was supposed to pay off, and it
+    // is discoverable only by trying it.
+    test('the device store answers an unmodifiable list', () async {
+      final preferences = TomStoredDevicePreferences(
+        TomMemoryDevicePreferenceStore(),
+      );
+      await preferences.set<String>('tom.theme', 'dark');
+
+      final all = await preferences.all();
+
+      expect(all, hasLength(1));
+      expect(
+        () => all.add(
+          TomUserPreferenceDto(key: 'k', valueType: 'String', value: '"v"'),
+        ),
+        throwsUnsupportedError,
+      );
+    });
+
+    test('and so does the account client', () async {
+      final transport = _ScriptedTransport();
+      transport.answer(body: '[${_dtoBody('tom.theme', 'dark')}]');
+      final client = TomUserPreferencesClient(
+        baseUri: Uri.parse('https://api.example.com'),
+        channel: TomServerChannel(
+          'api.example.com',
+          443,
+          clientFactory: transport,
+        ),
+      );
+      addTearDown(client.close);
+
+      final all = await client.all();
+
+      expect(all, hasLength(1));
+      expect(
+        () => all.add(
+          TomUserPreferenceDto(key: 'k', valueType: 'String', value: '"v"'),
+        ),
+        throwsUnsupportedError,
+        reason:
+            'a decoded response is a snapshot: adding to it would change '
+            'nothing on the server',
+      );
+    });
+
+    test('the contract face cannot differ from the store face', () async {
+      // `all()` *is* `listPreferences()`, so a caller reaching the client
+      // through `TomUserPreferencesApiService` gets the same promise. Asserted
+      // rather than left to the one-line forward, because the forward is
+      // exactly the kind of thing a later change replaces with a second body.
+      final transport = _ScriptedTransport();
+      transport.answer(body: '[${_dtoBody('tom.theme', 'dark')}]');
+      final TomUserPreferencesApiService client = TomUserPreferencesClient(
+        baseUri: Uri.parse('https://api.example.com'),
+        channel: TomServerChannel(
+          'api.example.com',
+          443,
+          clientFactory: transport,
+        ),
+      );
+      addTearDown((client as TomUserPreferencesClient).close);
+
+      final listed = await client.listPreferences();
+
+      expect(
+        () => listed.add(
+          TomUserPreferenceDto(key: 'k', valueType: 'String', value: '"v"'),
+        ),
+        throwsUnsupportedError,
+      );
+    });
+
+    test('an empty answer is unmodifiable too', () async {
+      // The branch a `List.unmodifiable` around a literal is easy to get wrong
+      // by short-circuiting the empty case to `const []` — which is right — or
+      // to `[]`, which is not.
+      final preferences = TomStoredDevicePreferences(
+        TomMemoryDevicePreferenceStore(),
+      );
+
+      final all = await preferences.all();
+
+      expect(all, isEmpty);
+      expect(
+        () => all.add(
+          TomUserPreferenceDto(key: 'k', valueType: 'String', value: '"v"'),
+        ),
+        throwsUnsupportedError,
+      );
+    });
+  });
+
   group('TomUserPreferencesClient', () {
     late _ScriptedTransport transport;
 
