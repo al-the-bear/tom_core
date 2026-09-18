@@ -94,11 +94,33 @@ import '../little_things/client_exceptions.dart';
 ///
 /// A thin semantic subtype of [TomClientException] so a caller can tell a
 /// preference failure from any other client-side error with one `is` check.
-/// The `key` is a stable dotted code — `device_preferences.unsupported_platform`,
-/// `device_preferences.store.invalid_content` — so callers branch on the code
-/// rather than on message text. A *value* failure (a type mismatch, unparseable
-/// JSON) arrives as the kernel's [TomUserPreferenceCodecException] instead,
-/// because it means the same thing in both stores and is already named there.
+/// The `key` is a stable dotted code, so callers branch on the code rather than
+/// on message text:
+///
+/// | Key | Raised when |
+/// | --- | ----------- |
+/// | `device_preferences.unsupported_platform` | A platform store on a target with neither a filesystem nor a browser |
+/// | `device_preferences.store.invalid_content` | The stored document is not a readable preference document |
+/// | `device_preferences.store.wrong_owner` | The document belongs to a different owner than the store reading it |
+/// | `device_preferences.store.conflict` | The document changed between this store's read and its write |
+/// | `device_preferences.store.unreadable` | The platform refused the read — a permission, a disabled origin |
+/// | `device_preferences.store.write_refused` | The platform refused the write — a full disk, an exhausted quota |
+/// | `device_preferences.store.undecryptable` | An encrypting store's cipher would not read a stored value back |
+/// | `device_preferences.store.reflection_not_initialised` | The application never called `initializeReflection()` |
+///
+/// The last two of the storage codes name **which operation** the platform
+/// refused rather than why. A full disk, a read-only directory and an exhausted
+/// browser quota are different events with different remedies, but each
+/// platform reports them in its own vocabulary — an OS error number, a
+/// `DOMException` name — so a cause classified here would be a guess wearing a
+/// code. The original travels on `rootException` for a caller that wants it.
+///
+/// A *value* failure (a type mismatch, unparseable JSON) arrives as the kernel's
+/// [TomUserPreferenceCodecException] instead, because it means the same thing in
+/// both stores and is already named there. So does a refusal that belongs to the
+/// preference vocabulary rather than to a store: an illegal key is
+/// `preferences.key.invalid`, and a write past the account ceiling is
+/// `preferences.limit.exceeded`.
 class TomDevicePreferenceException extends TomClientException {
   /// Creates a device-preference exception. See [TomException] for the meaning
   /// of each argument.

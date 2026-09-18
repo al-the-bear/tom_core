@@ -14,6 +14,7 @@ reached over the kernel's `/preferences/*` contract by a typed client.
 - [Choosing a Backend](#choosing-a-backend)
 - [How Big the Device Store Can Get](#how-big-the-device-store-can-get)
 - [Two Writers Over One Location](#two-writers-over-one-location)
+- [When the Platform Refuses](#when-the-platform-refuses)
 - [What the Store Does Not Protect](#what-the-store-does-not-protect)
 - [Writing a Backend](#writing-a-backend)
 - [Scope: A Store Belongs to Its Location](#scope-a-store-belongs-to-its-location)
@@ -314,6 +315,43 @@ The io backend's write-then-rename makes a *single* write all-or-nothing against
 a torn file, and it still does. That was never the same guarantee as ordering
 two writes, and the web backend — a whole-value `setItem` — has no atomicity at
 all. What is new is that the *second* writer now finds out.
+
+## When the Platform Refuses
+
+A browser whose quota is exhausted; a full disk; a read-only support directory;
+storage disabled for an origin. These are the storage failures a *correctly
+configured* client actually meets, and each platform reports them in its own
+vocabulary — a `DOMException` in the browser, a `FileSystemException` under
+`dart:io`.
+
+Both backends translate them into this module's own failure, so a caller
+branches on a code rather than on whichever object the platform happened to
+throw:
+
+| Code | The operation that was refused |
+| ---- | ------------------------------ |
+| `device_preferences.store.unreadable` | the read |
+| `device_preferences.store.write_refused` | the write |
+
+### Which operation, not why
+
+A full disk, a read-only directory and an exhausted quota are different events
+with different remedies — but `dart:io` reports them as one exception type
+distinguished by an OS error number whose meaning is per-platform, and a browser
+distinguishes them by the `name` of a `DOMException`, a value the interop type
+does not promise across engines. A cause classified here would be a guess
+wearing a code.
+
+So the code names the part this module can state truthfully: which operation the
+platform refused. The platform's own error travels on `rootException` for a
+caller that wants to inspect it, and the message quotes it.
+
+### A failure already named passes through
+
+A conflict, an undecodable document, an owner mismatch, an uninitialised
+reflection — each is already a code a caller branches on, and burying one under
+a code about the filesystem would send the reader to a disk that is fine. The
+translation catches only what it did not raise itself.
 
 ## What the Store Does Not Protect
 

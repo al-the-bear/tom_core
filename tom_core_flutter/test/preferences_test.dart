@@ -434,6 +434,19 @@ class _ChangingUnderneathStore extends TomDevicePreferenceStore
   }
 }
 
+/// Whether this process can actually read [file].
+///
+/// `chmod 000` does not stop root, and some filesystems carry no permissions at
+/// all. A test that assumed otherwise would pass by asserting nothing.
+bool _isReadable(File file) {
+  try {
+    file.readAsStringSync();
+    return true;
+  } on FileSystemException {
+    return false;
+  }
+}
+
 void main() {
   setUpAll(initializeReflection);
 
@@ -884,6 +897,161 @@ void main() {
         preferences.all(),
         throwsA(isA<TomDevicePreferenceException>()),
         reason: 'a corrupt store that read as empty would be overwritten',
+      );
+    });
+  });
+
+  group('a platform refusal is this module\'s failure, not the platform\'s', () {
+    // The module is otherwise careful to name its failures — `TomDevicePreferenceException`
+    // exists so that callers branch on a code rather than on message text. A
+    // storage failure was the exception: a browser's `DOMException` for an
+    // exhausted quota, or `dart:io`'s `FileSystemException` for a full disk or
+    // a read-only support directory, propagated out of `set` unchanged.
+    //
+    // Only the io path is reachable from this suite — there is no browser here
+    // — and the two backends translate the same way, which is what makes one
+    // exercised path evidence about both.
+
+    test('a write the filesystem refuses is named', () async {
+      // The location is a *directory*, so every write against it fails at the
+      // platform. Standing in for a full disk or a read-only support
+      // directory, neither of which a test can arrange.
+      final store = TomPlatformDevicePreferenceStore(temporaryDirectory.path);
+
+      await expectLater(
+        store.write([
+          TomUserPreferenceDto(
+            key: 'device.a',
+            valueType: 'String',
+            value: '"1"',
+          ),
+        ]),
+        throwsA(
+          isA<TomDevicePreferenceException>()
+              .having(
+                (error) => error.key,
+                'key',
+                'device_preferences.store.write_refused',
+              )
+              .having(
+                (error) => error.rootException,
+                'rootException',
+                isNotNull,
+              )
+              .having(
+                (error) => error.parameters,
+                'parameters',
+                containsPair('source', temporaryDirectory.path),
+              ),
+        ),
+      );
+    });
+
+    test('and so is a read it refuses', () async {
+      // A file that exists and cannot be opened. A *directory* would not do:
+      // `File.exists()` answers false for one, so the store reports "nothing
+      // written yet" — which is the right answer and not this path.
+      final path = '${temporaryDirectory.path}/unreadable.json';
+      final file = File(path)..writeAsStringSync('[]');
+      Process.runSync('chmod', ['000', path]);
+      addTearDown(() => Process.runSync('chmod', ['600', path]));
+      // Skipped where the process can read it anyway — running as root, or a
+      // filesystem that does not carry permissions. Better than an assertion
+      // that passes for the wrong reason.
+      if (_isReadable(file)) return;
+
+      await expectLater(
+        TomPlatformDevicePreferenceStore(path).read(),
+        throwsA(
+          isA<TomDevicePreferenceException>().having(
+            (error) => error.key,
+            'key',
+            'device_preferences.store.unreadable',
+          ),
+        ),
+      );
+    });
+
+    test('it reaches a caller through the typed API', () async {
+      // Through `set` rather than the backend, because the backend is not what
+      // an application holds — and `set`'s retry-once must not turn a refusal
+      // into two refusals wearing a different code.
+      final preferences = TomStoredDevicePreferences(
+        TomPlatformDevicePreferenceStore(temporaryDirectory.path),
+      );
+
+      // `read` of a path that is a directory answers "nothing written yet",
+      // so it is the write that meets the platform — which is the ordinary
+      // shape of this failure anyway.
+      await expectLater(
+        preferences.set<String>('device.a', '1'),
+        throwsA(
+          isA<TomDevicePreferenceException>().having(
+            (error) => error.key,
+            'key',
+            'device_preferences.store.write_refused',
+          ),
+        ),
+      );
+    });
+
+    test('a failure this module already named is not re-wrapped', () async {
+      // The line the translation could most easily cross: a conflict, an
+      // undecodable document or an uninitialised reflection is already a code a
+      // caller branches on, and burying it under one about the filesystem would
+      // make the translation a loss rather than a gain.
+      final path = '${temporaryDirectory.path}/rewrap_check.json';
+      File(path).writeAsStringSync('not json at all');
+      final store = TomPlatformDevicePreferenceStore(path);
+
+      await expectLater(
+        store.read(),
+        throwsA(
+          isA<TomDevicePreferenceException>().having(
+            (error) => error.key,
+            'key',
+            'device_preferences.store.invalid_content',
+          ),
+        ),
+      );
+    });
+
+    test('and neither is a conflict', () async {
+      final path = '${temporaryDirectory.path}/conflict_not_rewrapped.json';
+      await TomPlatformDevicePreferenceStore(path).write([
+        TomUserPreferenceDto(
+          key: 'device.a',
+          valueType: 'String',
+          value: '"1"',
+        ),
+      ]);
+      final first = TomPlatformDevicePreferenceStore(path);
+      final second = TomPlatformDevicePreferenceStore(path);
+      await first.read();
+      await second.read();
+      await first.write([
+        TomUserPreferenceDto(
+          key: 'device.a',
+          valueType: 'String',
+          value: '"2"',
+        ),
+      ]);
+
+      await expectLater(
+        second.write([
+          TomUserPreferenceDto(
+            key: 'device.b',
+            valueType: 'String',
+            value: '"3"',
+          ),
+        ]),
+        throwsA(
+          isA<TomDevicePreferenceException>().having(
+            (error) => error.key,
+            'key',
+            'device_preferences.store.conflict',
+          ),
+        ),
       );
     });
   });

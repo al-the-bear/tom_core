@@ -170,7 +170,7 @@ const TomDevicePreferenceStore()
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `read()` | `Future<List<TomUserPreferenceDto>>` | Every persisted preference; empty when nothing has been written. Unreadable content throws `device_preferences.store.invalid_content` rather than reading as empty. The returned list belongs to the store — callers must not modify it. A read also **records what was there**, which is what the next write compares against. |
+| `read()` | `Future<List<TomUserPreferenceDto>>` | Every persisted preference; empty when nothing has been written. Unreadable content throws `device_preferences.store.invalid_content` rather than reading as empty, and a platform that refuses the read throws `device_preferences.store.unreadable`. The returned list belongs to the store — callers must not modify it. A read also **records what was there**, which is what the next write compares against. |
 | `write(List<TomUserPreferenceDto> values)` | `Future<void>` | Replaces the persisted set, all-or-nothing. An empty `values` clears the store. `values` belongs to the caller — an implementation must not modify it, nor retain it without copying. |
 
 Those two ownership rules are the halves of one rule, and each buys the other
@@ -379,8 +379,28 @@ store must keep working in an application whose generator never saw
 
 ### TomDevicePreferenceException
 
-A failure raised by this module — `device_preferences.unsupported_platform`,
-`device_preferences.store.invalid_content`.
+A failure raised by this module, under a stable dotted code:
+
+| Key | Raised when |
+| --- | ----------- |
+| `device_preferences.unsupported_platform` | A platform store on a target with neither a filesystem nor a browser |
+| `device_preferences.store.invalid_content` | The stored document is not a readable preference document |
+| `device_preferences.store.wrong_owner` | The document belongs to a different owner than the store reading it |
+| `device_preferences.store.conflict` | The document changed between this store's read and its write |
+| `device_preferences.store.unreadable` | The platform refused the read |
+| `device_preferences.store.write_refused` | The platform refused the write |
+| `device_preferences.store.undecryptable` | An encrypting store's cipher would not read a stored value back |
+| `device_preferences.store.reflection_not_initialised` | The application never called `initializeReflection()` |
+
+The two platform-refusal codes name **which operation** was refused rather than
+why: a full disk, a read-only directory and an exhausted browser quota are
+different events with different remedies, but each platform reports them in its
+own vocabulary, so a cause classified here would be a guess wearing a code. The
+platform's own error travels on `rootException`.
+
+A refusal belonging to the preference vocabulary rather than to a store keeps
+that vocabulary's key: an illegal key is `preferences.key.invalid`, and a write
+past the account ceiling is `preferences.limit.exceeded`.
 
 - **Extends:** `TomClientException`.
 

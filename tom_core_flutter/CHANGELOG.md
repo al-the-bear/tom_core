@@ -1,5 +1,29 @@
 ## 1.2.1
 
+### Fixed
+
+- **A platform refusal is now this module's failure (tcopen225).** A browser
+  refusing a write for an exhausted quota threw its own `DOMException`;
+  `dart:io` refusing one for a full disk or a read-only support directory threw
+  a `FileSystemException`. Both propagated out of `set` unchanged — so the one
+  storage failure a correctly configured client actually meets was the one with
+  no code to branch on, in a module whose exception type exists precisely so
+  callers branch on codes.
+
+  Both backends translate now, and both directions:
+  `device_preferences.store.unreadable` for a read the platform refused,
+  `device_preferences.store.write_refused` for a write.
+
+  **The code names which operation, not why.** A full disk, a read-only
+  directory and an exhausted quota are different events with different remedies,
+  but `dart:io` reports them as one type distinguished by a per-platform OS
+  error number and a browser by a `DOMException` name the interop type does not
+  promise across engines — so a cause classified here would be a guess wearing a
+  code. The original travels on `rootException`.
+
+  A failure this module already named passes through untouched: a conflict, an
+  undecodable document, an owner mismatch, an uninitialised reflection.
+
 ### Added
 
 - **The device store holds the account store's 256-key ceiling (tcopen224).**

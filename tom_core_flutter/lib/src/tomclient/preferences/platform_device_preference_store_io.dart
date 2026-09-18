@@ -4,6 +4,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'device_preference_json.dart';
 import 'device_preference_store.dart';
+import 'device_preferences.dart';
 
 /// A [TomDevicePreferenceStore] backed by a JSON file on the local filesystem —
 /// the native (`dart:io`) variant, used on desktop and mobile.
@@ -62,11 +63,21 @@ class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore
   @override
   Future<List<TomUserPreferenceDto>> read() async {
     final file = File(location);
-    if (!await file.exists()) {
-      rememberDocument(null);
-      return [];
+    final String content;
+    try {
+      if (!await file.exists()) {
+        rememberDocument(null);
+        return [];
+      }
+      content = await file.readAsString();
+    } on Exception catch (error, stack) {
+      throw _storeUnreachable(
+        'device_preferences.store.unreadable',
+        'could not be read',
+        error,
+        stack,
+      );
     }
-    final content = await file.readAsString();
     // Remembered before decoding: the identity is the text that is *there*, and
     // a document this build refuses to decode is still the one a concurrent
     // writer would be overwriting.
@@ -85,22 +96,73 @@ class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore
   @override
   Future<void> write(List<TomUserPreferenceDto> values) async {
     final file = File(location);
-    requireUnchanged(await _currentDocument(file), source: location);
-    if (values.isEmpty) {
-      if (await file.exists()) await file.delete();
-      rememberDocument(null);
-      return;
+    final String? current;
+    try {
+      current = await _currentDocument(file);
+    } on Exception catch (error, stack) {
+      throw _storeUnreachable(
+        'device_preferences.store.unreadable',
+        'could not be read',
+        error,
+        stack,
+      );
     }
-    await file.parent.create(recursive: true);
-    // Write-then-rename: a rename within a directory is atomic, so a failure
-    // part-way through leaves the previous content readable instead of a
-    // truncated file — which the store contract requires, and which matters
-    // here because a truncated document silently discards everything the user
-    // chose on this device.
-    final temporary = File('$location.part');
-    final document = TomDevicePreferenceJson.encode(values, owner: owner);
-    await temporary.writeAsString(document, flush: true);
-    await temporary.rename(location);
-    rememberDocument(document);
+    // Outside the `try`: a conflict is already a named failure of this module,
+    // and wrapping it would bury the one code a caller is meant to branch on
+    // under a code about the filesystem.
+    requireUnchanged(current, source: location);
+    try {
+      if (values.isEmpty) {
+        if (await file.exists()) await file.delete();
+        rememberDocument(null);
+        return;
+      }
+      await file.parent.create(recursive: true);
+      // Write-then-rename: a rename within a directory is atomic, so a failure
+      // part-way through leaves the previous content readable instead of a
+      // truncated file — which the store contract requires, and which matters
+      // here because a truncated document silently discards everything the user
+      // chose on this device.
+      final temporary = File('$location.part');
+      final document = TomDevicePreferenceJson.encode(values, owner: owner);
+      await temporary.writeAsString(document, flush: true);
+      await temporary.rename(location);
+      rememberDocument(document);
+    } on TomDevicePreferenceException {
+      // Already this module's: an unencodable document, or reflection that was
+      // never initialised. Re-wrapping would say the filesystem refused a write
+      // it was never asked to make.
+      rethrow;
+    } on Exception catch (error, stack) {
+      throw _storeUnreachable(
+        'device_preferences.store.write_refused',
+        'refused the write',
+        error,
+        stack,
+      );
+    }
   }
+
+  /// The platform's refusal, as this module's failure.
+  ///
+  /// The cause travels on `rootException` rather than being classified here. A
+  /// full disk, a read-only support directory and a path that is not a file are
+  /// different events with different remedies, but `dart:io` reports them as
+  /// one exception type distinguished by an OS error number whose meaning is
+  /// per-platform — so a classification made here would be a guess wearing a
+  /// code. What the caller gets instead is a code for *which operation* failed,
+  /// which is the part this module can state truthfully, and the original to
+  /// inspect.
+  TomDevicePreferenceException _storeUnreachable(
+    String key,
+    String what,
+    Object error,
+    StackTrace stack,
+  ) => TomDevicePreferenceException(
+    key,
+    'The device preference store $location $what: $error',
+    parameters: {'source': location},
+    rootException: error,
+    stack: stack,
+  );
 }

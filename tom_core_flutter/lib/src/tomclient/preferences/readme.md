@@ -31,7 +31,7 @@ call site changing.
 | `TomEncryptedDevicePreferenceStore` | A decorator that encrypts preference **values** through a `TomDevicePreferenceCipher` and delegates storage to any other backend. Keys, types and timestamps stay in the clear. |
 | `TomDevicePreferenceCipher` | The two-method cipher seam an encrypting store defers to. The framework names it and holds no key. |
 | `TomDevicePreferenceJson` | The stored JSON document, written once so every persistent backend stores the same text. Bare array without an owner — the interchange shape, the server's own — and `{"owner":…,"preferences":[…]}` with one. |
-| `TomDevicePreferenceException` | `device_preferences.unsupported_platform`, `device_preferences.store.invalid_content`. |
+| `TomDevicePreferenceException` | Every device-store failure, under a stable dotted code: `.unsupported_platform`, `.store.invalid_content`, `.store.wrong_owner`, `.store.conflict`, `.store.unreadable`, `.store.write_refused`, `.store.undecryptable`, `.store.reflection_not_initialised`. |
 | `TomUserPreferencesClient` | The account store: `all` / `read` / `get` / `getOr` / `set` / `remove` over the server's `/preferences/*` routes. Implements the kernel's `TomUserPreferencesApiService`; every URI is resolved from the contract, none is written. |
 | `TomUserPreferencesClientException` | `preferences.client.not_found`, `preferences.client.rejected`, `preferences.client.invalid_response`. A rejection carries the `statusCode` and, when the server sent its error envelope, the server's `errorKey` — `preferences.limit.exceeded` for an account at its ceiling. |
 
@@ -179,6 +179,30 @@ writes ordered.
 A store that has never read makes no claim about what is there, so a blind
 `write` is not a conflict — that caller is replacing the document wholesale,
 which is what they asked for.
+
+## When the platform refuses
+
+A browser whose quota is exhausted, a full disk, a read-only support directory:
+the platform says no, in its own vocabulary — a `DOMException` on one side, a
+`FileSystemException` on the other. Both backends translate that into this
+module's own failure, so a caller branches on a code rather than on whichever
+object the platform happened to throw:
+
+| Code | The operation that was refused |
+| ---- | ------------------------------ |
+| `device_preferences.store.unreadable` | the read |
+| `device_preferences.store.write_refused` | the write |
+
+**Which operation, not why.** A full disk, a read-only directory and an
+exhausted quota are different events with different remedies, but each platform
+reports them in its own vocabulary — an OS error number whose meaning is
+per-platform, a `DOMException` name the interop type does not promise across
+engines — so a cause classified here would be a guess wearing a code. The
+original travels on `rootException`.
+
+A failure this module has already named passes through untouched: a conflict, an
+undecodable document, an uninitialised reflection. Burying one of those under a
+code about the filesystem would send the reader to a disk that is fine.
 
 ## What the store does not protect
 

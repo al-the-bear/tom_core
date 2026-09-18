@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart';
 import 'package:http/testing.dart';
@@ -65,6 +67,44 @@ void main() {
         ),
       );
     });
+  });
+
+  group('a write reports the fault it met, not the one it was in', () {
+    // The file backend translates a platform refusal into
+    // `device_preferences.store.write_refused`. A failure this module already
+    // named must pass through that translation unchanged — burying
+    // `reflection_not_initialised` under a code about the filesystem would send
+    // the reader to a disk that is fine.
+    //
+    // This is the only file that can stage it: encoding is what fails, and
+    // encoding only fails where reflection was never initialised.
+    test(
+      'an unencodable document is not reported as a refused write',
+      () async {
+        final directory = Directory.systemTemp.createTempSync('tom_prefs_');
+        addTearDown(() => directory.deleteSync(recursive: true));
+        final store = TomPlatformDevicePreferenceStore(
+          '${directory.path}/preferences.json',
+        );
+
+        await expectLater(
+          store.write([
+            TomUserPreferenceDto(
+              key: 'device.a',
+              valueType: 'String',
+              value: '"1"',
+            ),
+          ]),
+          throwsA(
+            isA<TomDevicePreferenceException>().having(
+              (error) => error.key,
+              'key',
+              'device_preferences.store.reflection_not_initialised',
+            ),
+          ),
+        );
+      },
+    );
   });
 
   group('the account client does not blame the server', () {

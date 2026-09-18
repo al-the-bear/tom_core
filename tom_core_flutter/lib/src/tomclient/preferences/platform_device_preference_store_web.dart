@@ -3,6 +3,7 @@ import 'package:web/web.dart';
 
 import 'device_preference_json.dart';
 import 'device_preference_store.dart';
+import 'device_preferences.dart';
 
 /// A [TomDevicePreferenceStore] backed by the browser's `localStorage` — the
 /// web (`dart:js`) variant.
@@ -66,7 +67,20 @@ class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore
 
   @override
   Future<List<TomUserPreferenceDto>> read() async {
-    final content = window.localStorage.getItem(location);
+    final String? content;
+    try {
+      content = window.localStorage.getItem(location);
+    } on Object catch (error, stack) {
+      // A browser may refuse to hand `localStorage` over at all — third-party
+      // context, storage disabled for the origin — and it says so with its own
+      // `DOMException`, which is not a Dart `Exception`.
+      throw _storeUnreachable(
+        'device_preferences.store.unreadable',
+        'could not be read',
+        error,
+        stack,
+      );
+    }
     // Remembered before decoding: the identity is the text that is *there*, and
     // a document this build refuses to decode is still the one another tab
     // would be overwriting.
@@ -81,16 +95,71 @@ class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore
 
   @override
   Future<void> write(List<TomUserPreferenceDto> values) async {
-    requireUnchanged(window.localStorage.getItem(location), source: location);
+    final String? current;
+    try {
+      current = window.localStorage.getItem(location);
+    } on Object catch (error, stack) {
+      throw _storeUnreachable(
+        'device_preferences.store.unreadable',
+        'could not be read',
+        error,
+        stack,
+      );
+    }
+    // Outside the `try`: a conflict is already a named failure of this module,
+    // and wrapping it would bury the one code a caller is meant to branch on
+    // under a code about the browser.
+    requireUnchanged(current, source: location);
     if (values.isEmpty) {
       // Removed rather than set to `[]`, so that "never written" and "cleared"
       // are one state here exactly as they are in the file backend.
-      window.localStorage.removeItem(location);
+      _refusable(() => window.localStorage.removeItem(location));
       rememberDocument(null);
       return;
     }
     final document = TomDevicePreferenceJson.encode(values, owner: owner);
-    window.localStorage.setItem(location, document);
+    _refusable(() => window.localStorage.setItem(location, document));
     rememberDocument(document);
   }
+
+  /// Runs [write], reporting a browser refusal as this module's failure.
+  ///
+  /// The one storage failure a correctly configured web client actually meets:
+  /// `setItem` throws when the origin's quota is exhausted, and the browser
+  /// says so with a `DOMException` — not a Dart `Exception`, so `on Object` is
+  /// what catches it.
+  void _refusable(void Function() write) {
+    try {
+      write();
+    } on Object catch (error, stack) {
+      throw _storeUnreachable(
+        'device_preferences.store.write_refused',
+        'refused the write',
+        error,
+        stack,
+      );
+    }
+  }
+
+  /// The browser's refusal, as this module's failure.
+  ///
+  /// The cause travels on `rootException` rather than being classified here.
+  /// Quota exhaustion and storage disabled for the origin are different events
+  /// with different remedies, and a browser distinguishes them by the `name` of
+  /// a `DOMException` — a value the interop type does not promise across
+  /// engines, so a classification made here would be a guess wearing a code.
+  /// What the caller gets is a code for *which operation* failed, which is the
+  /// part this module can state truthfully, and the original to inspect.
+  TomDevicePreferenceException _storeUnreachable(
+    String key,
+    String what,
+    Object error,
+    StackTrace stack,
+  ) => TomDevicePreferenceException(
+    key,
+    'The device preference store $location $what: $error',
+    parameters: {'source': location},
+    rootException: error,
+    stack: stack,
+  );
 }
