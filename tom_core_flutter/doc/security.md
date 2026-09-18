@@ -11,6 +11,7 @@ registry of pluggable per-mechanism panels, and the shipped TOTP mechanism.
 - [The Flow and Its Three Stops](#the-flow-and-its-three-stops)
 - [The Controller Seam](#the-controller-seam)
 - [Mechanisms and the Registry](#mechanisms-and-the-registry)
+- [What the Framework Ships](#what-the-framework-ships)
 - [The Shipped TOTP Mechanism](#the-shipped-totp-mechanism)
 - [Text Resources](#text-resources)
 - [The QR View](#the-qr-view)
@@ -31,6 +32,12 @@ registry of pluggable per-mechanism panels, and the shipped TOTP mechanism.
 | `TomTotp2FAClientMechanism` | class | The shipped authenticator-app mechanism, registered under `'totp'` |
 | `Tom2FATexts` | class | Every resource key this feature resolves, and the one helper that resolves them — all static |
 | `TomQrCodeView` | class | A QR code painted from the pure-Dart `qr` encoder, re-encoded only when its payload changes |
+
+**TOTP is the only mechanism the framework ships.** SMS and WebAuthn appear
+throughout this document and the module's dartdoc — the registration example is
+`SmsClientMechanism()`, the `hint` field's illustration is a masked phone number
+— to show what the extension point is *for*. Neither exists. See
+[What the Framework Ships](#what-the-framework-ships).
 
 The division of labour is the point of the module. Everything about a
 second-factor login that is the *same* whichever mechanism is in play — the
@@ -292,7 +299,8 @@ Registration **replaces** rather than rejects, which is how an application
 substitutes its own TOTP panel:
 
 ```dart
-// At start-up, before the first flow build.
+// At start-up, before the first flow build. Both classes are the
+// application's own — `SmsClientMechanism` is not shipped.
 Tom2FAClientRegistry.register(SmsClientMechanism());
 Tom2FAClientRegistry.register(MyOwnTotpPanel());
 ```
@@ -327,6 +335,34 @@ Sealing the registry after the first flow build was considered and declined: it
 would forbid a legitimate late registration — a mechanism arriving from a plugin
 loaded after the login screen is already up — to prevent a misuse nobody has
 committed.
+
+## What the Framework Ships
+
+One mechanism: `TomTotp2FAClientMechanism`, installed by the flow so an
+application gets it without wiring.
+
+SMS and WebAuthn are named in at least four places across this module — an
+`if (type == 'sms')` in the library dartdoc's argument for a registry, a
+`SmsClientMechanism()` in every registration example, a masked phone number as
+the `hint` field's illustration, and "which looks nothing like enrolling an SMS
+factor … or a WebAuthn one" in the TOTP mechanism's own preamble. **None of them
+exists.** They are there because a pluggable design argued only against the one
+mechanism it ships is an argument that proves nothing: the reason the panels are
+pluggable at all is that enrolling TOTP (show a secret), SMS (type a phone
+number, wait) and WebAuthn (touch a key, no visible payload) look nothing alike.
+
+A deployment that needs one writes the mechanism, and its **server adaptor**
+with it. That is the boundary, and it is deliberate rather than an unfinished
+list: the client half of an SMS factor is a phone-number field and a code
+field — an afternoon — while the half that matters is a server adaptor that can
+deliver a message, which means a provider, a rate limit and a cost model.
+Shipping the easy half would advertise a factor the framework cannot complete.
+
+The exclusivity is held by the suite, not only by this paragraph: it asserts
+that the registry holds exactly `totp` after the built-ins install, and that
+`lib/` declares exactly one `Tom2FAClientMechanism` — the second because a
+mechanism could be declared and left unregistered and would still be part of the
+package's surface.
 
 ## The Shipped TOTP Mechanism
 

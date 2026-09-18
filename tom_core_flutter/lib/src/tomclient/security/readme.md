@@ -45,8 +45,19 @@ no set-up. Adding or substituting a mechanism is one call at start-up, before
 the first build:
 
 ```dart
+// `SmsClientMechanism` is the application's own class — see below.
 Tom2FAClientRegistry.register(SmsClientMechanism());
 ```
+
+**TOTP is the only mechanism this package ships.** SMS and WebAuthn are named
+throughout the module — in the argument for having a registry at all, in every
+registration example, as the `hint` field's illustration — to show what the
+extension point is *for*; a pluggable design argued only against its one
+built-in proves nothing. Neither exists. A deployment that needs one writes the
+mechanism **and its server adaptor**: the client half of SMS is two fields,
+while the half that matters is a server that can deliver a message — a provider,
+a rate limit, a cost model — and shipping the easy half would advertise a factor
+the framework cannot complete.
 
 `MyFlowController` is the one piece an application writes.
 [`example/security/security_example.dart`](../../../../example/security/security_example.dart)

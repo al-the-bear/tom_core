@@ -1021,6 +1021,53 @@ void main() {
       expect(Tom2FAClientRegistry.types, contains('totp'));
     });
 
+    test('and is the only one the framework ships', () {
+      // `contains` above would go on passing beside a second built-in. The
+      // documents say TOTP is the only mechanism in the box — SMS and WebAuthn
+      // appear throughout the dartdoc as illustrations of the extension point
+      // and neither exists — so the exclusivity is the claim, and this is what
+      // holds the sentence to the code.
+      Tom2FAFlowPanel.registerBuiltInMechanisms();
+
+      expect(
+        Tom2FAClientRegistry.types,
+        ['totp'],
+        reason:
+            'the framework now installs a second mechanism; four documents '
+            'say TOTP is the only one it ships',
+      );
+    });
+
+    test('and the only implementation in lib/', () {
+      // The registry is one way to ship a mechanism; declaring a class is the
+      // other, and a mechanism declared but left unregistered would still be
+      // part of the package's surface and still make the documented boundary
+      // false. Read from the sources, because there is nothing at run time
+      // that enumerates a type nobody instantiated.
+      final declared = <String>[];
+      for (final file
+          in Directory('lib/src/tomclient/security')
+              .listSync()
+              .whereType<File>()
+              .where((file) => file.path.endsWith('.dart'))) {
+        declared.addAll(
+          RegExp(
+            r'^class (\w+) extends Tom2FAClientMechanism',
+            multiLine: true,
+          ).allMatches(file.readAsStringSync()).map((match) => match.group(1)!),
+        );
+      }
+
+      expect(
+        declared,
+        ['TomTotp2FAClientMechanism'],
+        reason:
+            'lib/ declares a mechanism beside the TOTP one; the documented '
+            'boundary — TOTP is the only factor the framework provides — has '
+            'to be revisited with it',
+      );
+    });
+
     testWidgets('a registration mid-flow takes the screen over', (
       tester,
     ) async {

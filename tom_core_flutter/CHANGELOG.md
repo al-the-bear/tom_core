@@ -26,6 +26,24 @@
 
 ### Changed
 
+- **TOTP is stated as the only mechanism the framework ships (tcopen240).** SMS
+  and WebAuthn are named in four places across the second-factor module — the
+  argument for having a registry, every registration example, the `hint` field's
+  illustration, the TOTP mechanism's preamble — and neither exists. The
+  documents read as though they did, so a reader deciding whether the framework
+  covered their SMS requirement had to grep to find out it does not.
+
+  Nothing changed about what ships. The boundary is now stated once in each
+  artefact, with the reason the illustrations exist — a pluggable design argued
+  only against its one built-in proves nothing — and with where the boundary
+  runs: the client half of an SMS factor is two fields, and the half that matters
+  is a server adaptor that can deliver a message.
+
+  The claim is held by the suite in two places: the registry must hold exactly
+  `totp` after the built-ins install, and `lib/` must declare exactly one
+  `Tom2FAClientMechanism` — the second because a mechanism declared and left
+  unregistered would still be part of the package's surface.
+
 - **What an application may show a 2FA panel is stated as its own rule
   (tcopen239).** "A mechanism receives the decoded `clientData` and nothing else
   about the login" is about *credential* material — no principal, no tokens, no

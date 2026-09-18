@@ -273,6 +273,13 @@ The shipped authenticator-app mechanism, registered under `'totp'`. Ships
 registered rather than as a sample to copy, because TOTP is the mechanism every
 deployment has.
 
+**It is the only mechanism this package provides.** SMS and WebAuthn are named
+throughout the module's documentation as illustrations of what the extension
+point is for, and neither exists; a deployment that needs one writes the
+mechanism and its server adaptor. The suite asserts both halves of that — the
+registry holds exactly `totp` after the built-ins install, and `lib/` declares
+exactly one `Tom2FAClientMechanism`.
+
 Reads all four `clientData` keys the server's TOTP service writes —
 `otpauthUri`, `secret`, `digits` and `periodSeconds` — each defensively, because
 the map crossed the wire and a panel that threw on a missing key would turn a

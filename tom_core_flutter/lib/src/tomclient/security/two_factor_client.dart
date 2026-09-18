@@ -9,6 +9,8 @@
 /// passes an opaque `clientData` map through untouched precisely so a new
 /// mechanism can ship without the framework learning about it. That contract is
 /// only half kept if the *client* still has to grow an `if (type == 'sms')`
+/// — and `'sms'` here is an illustration, not a factor this package provides;
+/// see "What the framework ships, and what it does not" below
 /// somewhere. So the client mirrors it: one [Tom2FAClientMechanism] per
 /// mechanism, each knowing how to render its own two moments —
 ///
@@ -62,11 +64,32 @@
 /// useful as an enrolment screen doing so — but nothing has asked, and the
 /// discipline is that each field arrives with the case that needs it.
 ///
+/// ## What the framework ships, and what it does not
+///
+/// **TOTP is the only mechanism in the box.** `TomTotp2FAClientMechanism` is the
+/// single implementation of [Tom2FAClientMechanism] this package provides, and
+/// the flow installs it for you.
+///
+/// SMS and WebAuthn are named throughout this file and its neighbours — an
+/// `if (type == 'sms')` above, a `SmsClientMechanism()` in the example below, a
+/// masked phone number as the `hint` field's illustration. They are there to
+/// show *what the extension point is for*, because a design argued only against
+/// the one mechanism it ships is an argument that proves nothing. **None of them
+/// exists.** A deployment that needs SMS or WebAuthn writes the mechanism, and
+/// its server adaptor with it.
+///
+/// That is a deliberate boundary rather than an unfinished list. The client half
+/// of an SMS factor is a phone-number field and a code field — an afternoon; the
+/// half that matters is a server adaptor that can actually deliver a message,
+/// which means a provider, a rate limit and a cost model. Shipping the easy half
+/// would advertise a factor the framework cannot complete.
+///
 /// ## Registration
 ///
 /// The TOTP mechanism installs itself when the flow first builds
 /// (`Tom2FAFlowPanel.registerBuiltInMechanisms`), so an application gets it
-/// without wiring. Anything else registers at start-up:
+/// without wiring. Anything else — including the `SmsClientMechanism` below,
+/// which an application writes — registers at start-up:
 ///
 /// ```dart
 /// Tom2FAClientRegistry.register(SmsClientMechanism());
