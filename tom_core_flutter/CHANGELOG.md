@@ -26,6 +26,28 @@
 
 ### Added
 
+- **Where properties stop is documented, and measured (tcopen230).** The four
+  typed subclasses are scalar; a structured config value belongs to the generic
+  — `TomProperty<List<dynamic>>`, `TomProperty<Map<String, dynamic>>` — and
+  there is deliberately no `TomListProperty` / `TomMapProperty`.
+
+  Two facts about holding one are now stated in the class dartdoc, the module
+  readme, a section of `doc/resources.md` and the API summary. The element type
+  has to be `dynamic`, because every configuration format arrives through a
+  decoder and none produces a narrower one — and the narrow form fails
+  **selectively**: a hand-written config map does yield `List<String>`, so
+  `TomProperty<List<String>>` passes in a test fixture and throws once the same
+  values load from a file. And a collection is held **by reference** — the
+  provider's own object, cached — so mutating what a property handed back edits
+  the configuration every later reader sees. Copy at the call site, which is the
+  same `from` call the element type already wanted.
+
+  The reason no collection property ships is recorded with the shape to add if a
+  consumer appears: `TomListProperty<E>` alone, element-wise cast at
+  construction, unmodifiable cached copy, and no map property until the rule
+  relating a map property to a dotted scalar key over the same subtree is
+  settled.
+
 - **Eager resolution is stated as a contract, and tested (tcopen229).**
   `TomProperty` has always taken its value at construction and never re-read it;
   the obligation that creates — populate the config providers first — lived in

@@ -11,6 +11,7 @@ a service or view-model.
 - [Quick Start](#quick-start)
 - [Resolution Rules](#resolution-rules)
 - [A Property Is a Snapshot](#a-property-is-a-snapshot)
+- [Structured Values](#structured-values)
 - [Core Components](#core-components)
 - [Limitations](#limitations)
 - [Dependencies](#dependencies)
@@ -173,6 +174,78 @@ not a placeholder awaiting one.
 Nothing here is a reactive property, and adding one would need a change the
 kernel has declined for a reason: with no consumer that reconfigures under a
 running screen, a counter would cost what a counter costs and mean nothing.
+
+## Structured Values
+
+The four typed subclasses are scalar: `String`, `int`, `double`, `bool`. A
+configured list or map is not out of reach — it is held by the **generic**, with
+the `dynamic` element type:
+
+```dart
+final hosts = TomProperty<List<dynamic>>('app.allowedHosts');
+final db = TomProperty<Map<String, dynamic>>('app.db');
+```
+
+There is deliberately no `TomListProperty<E>` or `TomMapProperty<K, V>`. Two
+properties of a configured collection decide that, and both are worth knowing
+before holding one.
+
+### The element type has to be `dynamic`
+
+Every configuration format reaches the provider through a decoder, and no
+decoder produces a narrower element type: `jsonDecode` and every YAML parser
+yield `List<dynamic>` for `hosts: [alpha, beta]`. `List<dynamic>` is not a
+subtype of `List<String>`, so `TomProperty<List<String>>` fails the cast — with
+a message quoting `[alpha, beta]`, which is exactly what the operator wrote and
+looks entirely valid. Only the chained `TypeError` on `rootException` names the
+element type.
+
+What makes that worth a section rather than a footnote is that it fails
+**selectively**. A config map written by hand — which is what a test fixture is
+— really does yield `List<String>`, and the narrow construction passes against
+it. So `TomProperty<List<String>>` is a property that works in every test and
+throws at start-up once the same values are loaded from a file.
+
+Hold the decoder's type and narrow at the call site:
+
+```dart
+final hosts = TomProperty<List<dynamic>>('app.allowedHosts').get();
+final typed = hosts.cast<String>();          // a view
+final owned = List<String>.from(hosts);      // a copy — see below
+```
+
+### A structured value is held by reference
+
+A scalar is copied by value, so every other property in this module is a
+snapshot in the strong sense. A collection is not: the property caches the
+**provider's own object**. A caller that mutates what it read has edited the
+application's configuration, for every later reader of that key.
+
+```dart
+final hosts = TomProperty<List<dynamic>>('app.allowedHosts').get();
+hosts.add('gamma');   // the provider now answers with three hosts
+```
+
+Copy it if it is going to be modified — `List.from`, `Map.of` — which is the
+same `from` call the element type already wanted, so one construction settles
+both questions.
+
+### Why no collection property, yet
+
+A `TomListProperty<E>` would have to settle three things this module has no case
+to settle them against: whether it casts element-wise (and what it says when one
+element is wrong) or hands back `List<dynamic>` anyway; whether it caches an
+unmodifiable copy, which would break the symmetry with every other property that
+caches what it resolved; and, for a map, how a map property over `app.db` and a
+`TomStringProperty('app.db.host')` over the same subtree relate, which the
+dot-notation resolver makes two readings of one value.
+
+No consumer in the framework needs one, so answering those three questions now
+would mean guessing with nothing to check the guesses against — and they are
+precisely the answers that would be expensive to unpick. The shape if a consumer
+appears is `TomListProperty<E>` alone: element-wise cast at construction, an
+unmodifiable cached copy, and no map property until the dot-notation rule is
+settled.
 
 ## Core Components
 

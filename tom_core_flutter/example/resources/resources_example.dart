@@ -12,9 +12,12 @@
 /// are shown wrapped around a declaration and not around a read — there is no
 /// read that can fail, and a property that constructs never throws again.
 ///
-/// The last example shows what that costs as well as what it buys: replacing
-/// the configuration leaves every property already built holding what it
-/// resolved, and only properties constructed afterwards see the new bundle.
+/// The last two examples show where the module stops, and what its eagerness
+/// costs. A structured value belongs to the generic and is held by reference,
+/// so a caller that modifies it edits the configuration every later reader
+/// sees. And replacing the configuration leaves every property already built
+/// holding what it resolved; only properties constructed afterwards see the new
+/// bundle.
 ///
 /// The barrel import pulls in `flutter/material` (and thus `dart:ui`), so this
 /// runs under the Flutter toolchain, not bare `dart run`. Run it with
@@ -38,6 +41,8 @@ void run() {
       // Written as a whole number, read as a double — the case example 4 is
       // about. No configuration format can spell the difference.
       'app.rate': 2,
+      // A structured value, for example 7.
+      'app.hosts': ['alpha', 'beta'],
     }),
   );
 
@@ -112,7 +117,25 @@ void run() {
     assert(error.rootException is TypeError);
   }
 
-  // Example 7: a property is a snapshot. Replacing the configuration provider
+  // Example 7: a structured value. The four typed subclasses are scalar, so a
+  // list is held by the generic — with the `dynamic` element type, which is the
+  // part worth showing. This config is a Dart literal, so `app.hosts` really is
+  // a `List<String>` here and `TomProperty<List<String>>` would construct; a
+  // configuration *file* decodes to `List<dynamic>`, which is not a subtype of
+  // it, so the narrow form is a property that works in a fixture and throws at
+  // start-up. Hold what a decoder produces and narrow at the call site.
+  final hosts = TomProperty<List<dynamic>>('app.hosts');
+  print('hosts=${(~hosts).cast<String>()}');
+  assert((~hosts).cast<String>().first == 'alpha');
+
+  // A collection is held **by reference** — the provider's own object, cached —
+  // so modifying what was handed back would edit the application's
+  // configuration for every later reader of that key. Copy it first.
+  final ownedHosts = List<String>.from(~hosts)..add('gamma');
+  assert(ownedHosts.length == 3);
+  assert((~hosts).length == 2); // the configured list is untouched
+
+  // Example 8: a property is a snapshot. Replacing the configuration provider
   // is allowed and every *later* read answers from the new one — but a property
   // is not a later read, it is a value already taken. Nothing reports this and
   // nothing can: installing configuration announces nothing, by design, because

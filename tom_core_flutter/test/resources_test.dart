@@ -1,9 +1,23 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
 import '../example/resources/resources_example.dart' as example;
+
+/// [file]'s text, flattened so a document may present a rule however it likes.
+///
+/// Markdown emphasis, code fences, link brackets and line breaks become
+/// spaces. A `>` is stripped only where a blockquote can start — at the
+/// beginning of a line — because elsewhere it closes a generic, and a
+/// normaliser that removed those would make `TomProperty<List<dynamic>>`
+/// unsearchable in exactly the documents that have to show it.
+String plainTextOf(String file) => File(file)
+    .readAsStringSync()
+    .replaceAll(RegExp(r'^\s*>', multiLine: true), ' ')
+    .replaceAll(RegExp(r'[*`\[\]]'), ' ')
+    .replaceAll(RegExp(r'\s+'), ' ');
 
 /// Tests for the resources module (`TomProperty` and its typed subclasses).
 ///
@@ -537,11 +551,6 @@ void main() {
       'doc/api_reference/api_summary_resources.md',
     ];
 
-    /// [file]'s text with emphasis and code markers removed, so a document is
-    /// free to bold or quote any part of the rule without breaking the check.
-    String plainTextOf(String file) =>
-        File(file).readAsStringSync().replaceAll(RegExp(r'[*`\[\]]'), '');
-
     test('every artefact recommends the typed subclasses', () {
       // The recommendation itself is worth pinning: it is the reason the four
       // subclasses exist, and dropping it would make the exception below
@@ -732,6 +741,150 @@ void main() {
     });
   });
 
+  group('a collection value, and where the module stops', () {
+    // The module ships four typed subclasses and all four are scalar. A
+    // structured value is not out of reach — the generic holds it — but two
+    // things about holding one are not obvious, and both are measured here
+    // rather than asserted in prose.
+
+    /// `{'app': {'hosts': [...]}}` as a **decoder** produces it.
+    ///
+    /// Written as a Dart literal the nested list would be a `List<String>`;
+    /// every configuration file in existence arrives through a decoder, and
+    /// no decoder produces that. The difference is the whole point of the
+    /// first two tests, so the config has to come from one.
+    Map<String, dynamic> decodedConfig() =>
+        jsonDecode('{"app":{"hosts":["alpha","beta"]}}')
+            as Map<String, dynamic>;
+
+    test('an element-typed list refuses a decoded config value', () {
+      // `List<String>` over a configured list is the construction a reader
+      // reaches for first, and it is a trap: `jsonDecode` and every YAML
+      // parser yield `List<dynamic>`, which is not a subtype of
+      // `List<String>`, so the cast fails on the element type.
+      installConfig(decodedConfig());
+
+      expect(
+        () => TomProperty<List<String>>('app.hosts'),
+        throwsA(
+          isA<TomPropertyException>()
+              .having((e) => e.key, 'key', 'resources.property.type_mismatch')
+              // The message quotes `[alpha, beta]`, which is exactly what the
+              // operator wrote and looks valid. Only the chained TypeError
+              // names the element type, which is why it is carried.
+              .having(
+                (e) => e.rootException.toString(),
+                'rootException',
+                contains('List<dynamic>'),
+              ),
+        ),
+      );
+    });
+
+    test('the same list written as a Dart literal is accepted', () {
+      // Why the refusal above is worth a test of its own rather than a
+      // sentence: the construction *works* against a hand-written config map,
+      // which is what a test fixture is, and fails against the same values
+      // loaded from a file. A property that passes every test and throws at
+      // start-up in production is the shape of defect this pins.
+      installConfig({
+        'app': {
+          'hosts': ['alpha', 'beta'],
+        },
+      });
+
+      expect(TomProperty<List<String>>('app.hosts').get(), ['alpha', 'beta']);
+    });
+
+    test('the dynamic element type holds it, and the caller narrows', () {
+      // The construction the documents name: hold what a decoder produces,
+      // and convert where the element type is known.
+      installConfig(decodedConfig());
+
+      final hosts = TomProperty<List<dynamic>>('app.hosts').get();
+
+      expect(hosts, ['alpha', 'beta']);
+      expect(hosts.cast<String>(), isA<List<String>>());
+    });
+
+    test('a collection property holds the provider\'s own object', () {
+      // The second non-obvious thing, and the one with teeth. A scalar is
+      // copied by value, so every other property in this module is a snapshot
+      // in the strong sense. A collection is a reference: the property caches
+      // the very object the provider holds, so a caller that mutates what it
+      // read has edited the application's configuration for every later
+      // reader of it.
+      final provider = TomConfigResourceProvider.from(decodedConfig());
+      TomConfigResourceProvider.setAppConfigProvider(provider);
+
+      final hosts = TomProperty<List<dynamic>>('app.hosts').get();
+      hosts.add('gamma');
+
+      expect(
+        provider.getObjectOrNull('app.hosts'),
+        ['alpha', 'beta', 'gamma'],
+        reason:
+            'a collection property no longer hands back the provider\'s own '
+            'object, so the documented warning about mutating it is stale',
+      );
+    });
+
+    test('copying at the call site is what insulates a caller', () {
+      // The remedy the documents give, asserted so that it stays one.
+      final provider = TomConfigResourceProvider.from(decodedConfig());
+      TomConfigResourceProvider.setAppConfigProvider(provider);
+
+      final hosts = List<String>.from(
+        TomProperty<List<dynamic>>('app.hosts').get(),
+      )..add('gamma');
+
+      expect(hosts, ['alpha', 'beta', 'gamma']);
+      expect(provider.getObjectOrNull('app.hosts'), ['alpha', 'beta']);
+    });
+  });
+
+  group('the documents state where properties stop', () {
+    // The module deliberately ships no `TomListProperty` / `TomMapProperty`,
+    // and a boundary nobody wrote down is indistinguishable from an oversight.
+    // Each artefact has to say that the typed subclasses are scalar and that a
+    // structured value is read through the generic, and each has to carry the
+    // warning that a collection is held by reference — the one thing about the
+    // supported construction that can quietly damage a caller.
+    const artefacts = <String>[
+      'lib/src/tomclient/resources/tom_properties.dart',
+      'lib/src/tomclient/resources/readme.md',
+      'doc/resources.md',
+      'doc/api_reference/api_summary_resources.md',
+    ];
+
+    test('every artefact names the construction for a list', () {
+      // `List<dynamic>`, not `List<String>`: naming the wrong one is worse
+      // than naming none, because it works in a test fixture.
+      for (final artefact in artefacts) {
+        expect(
+          plainTextOf(artefact),
+          contains('TomProperty<List<dynamic>>'),
+          reason:
+              '$artefact does not show how a list config value is held, so a '
+              'reader reaches for the element-typed form that a decoder '
+              'defeats',
+        );
+      }
+    });
+
+    test('every artefact warns that a collection is shared', () {
+      for (final artefact in artefacts) {
+        expect(
+          plainTextOf(artefact),
+          contains('by reference'),
+          reason:
+              '$artefact no longer warns that a collection property hands '
+              'back the provider\'s own object',
+        );
+      }
+    });
+  });
+
   group('a property is a snapshot, and the ordering that implies', () {
     // The module's central constraint, and the one a caller can get wrong
     // without anything saying so: a property is the value config held at the
@@ -826,10 +979,6 @@ void main() {
     /// [file]'s text with markdown emphasis, code markers, link brackets,
     /// blockquote markers and line breaks flattened to spaces, so a document is
     /// free to bold the rule, quote it in a callout or wrap it anywhere.
-    String plainTextOf(String file) => File(file)
-        .readAsStringSync()
-        .replaceAll(RegExp(r'[*`\[\]>]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ');
 
     test('every artefact states that a later config change is not seen', () {
       for (final artefact in artefacts) {

@@ -61,6 +61,29 @@ answers with the nested one. Descent stops at the last segment, which makes an
 interior node a value in its own right — `TomProperty<Map<String, dynamic>>`
 holds a subtree, and no typed subclass can.
 
+## Structured values
+
+The four typed subclasses are scalar. A list or a map is held by the generic,
+with the **dynamic** element type:
+
+```dart
+final hosts = TomProperty<List<dynamic>>('app.allowedHosts');
+final db = TomProperty<Map<String, dynamic>>('app.db');
+```
+
+There is deliberately no `TomListProperty` / `TomMapProperty`. The element type
+has to be `dynamic` because every configuration format arrives through a
+decoder and none produces a narrower one, so `TomProperty<List<String>>` fails
+the cast on a configured `hosts: [a, b]` — and fails *selectively*: a
+hand-written config map in a test does yield `List<String>`, so the narrow form
+is a property that works until it is loaded from a file. Narrow at the call
+site: `.cast<String>()`, or `List<String>.from(...)`.
+
+A structured value is held **by reference** — the provider's own object,
+cached. Mutating what a property handed back edits the application's
+configuration for every later reader of that key. Copy it if it will be
+modified, which is the same `from` call the element type already wanted.
+
 A key configured with **no value** counts as absent: the lookup cannot tell
 `app.region:` from a key that was never written, so an obligatory property
 fails and a default wins. A configured `null` therefore never overrides a

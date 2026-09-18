@@ -56,6 +56,23 @@ answers with the nested one. Descent stops at the last segment, so an interior
 node is itself a resolvable value — `TomProperty<Map<String, dynamic>>` holds a
 subtree, which no typed subclass can.
 
+**Structured values are the generic's, with the `dynamic` element type.** The
+four typed subclasses are scalar, and there is deliberately no
+`TomListProperty<E>` or `TomMapProperty<K, V>`: a list is
+`TomProperty<List<dynamic>>` and a map `TomProperty<Map<String, dynamic>>`. The
+element type must be `dynamic` because every configuration format arrives
+through a decoder and none produces a narrower one, so
+`TomProperty<List<String>>` fails the cast on a configured `hosts: [alpha,
+beta]` — selectively, since a hand-written config map does yield `List<String>`
+and the narrow form therefore passes in a test fixture and throws once the same
+values are loaded from a file. Narrow at the call site with `.cast<E>()` or
+`List<E>.from(...)`.
+
+A structured value is held **by reference** — the provider's own object, cached
+— so mutating what a property handed back edits the application's configuration
+for every later reader of that key. Copy it if it will be modified, which is the
+same `from` call the element type already wanted.
+
 ## Class Hierarchy
 
 ```

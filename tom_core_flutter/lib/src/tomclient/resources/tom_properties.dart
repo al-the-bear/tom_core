@@ -84,6 +84,25 @@ class TomPropertyException extends TomClientException {
 /// that distinction matters, read the provider's public `resources` map
 /// directly.
 ///
+/// **Structured values: the generic, with the dynamic element type.** The four
+/// typed subclasses are scalar, and there is deliberately no `TomListProperty`
+/// or `TomMapProperty` — a list is `TomProperty<List<dynamic>>` and a map
+/// `TomProperty<Map<String, dynamic>>`. The element type has to be `dynamic`:
+/// every configuration format arrives through a decoder and no decoder produces
+/// a narrower one, so `TomProperty<List<String>>` fails the cast on a
+/// configured `hosts: [a, b]`. It is worth knowing that it fails *selectively*
+/// — a hand-written config map in a test does yield `List<String>` and the
+/// construction passes there — so the narrow form is a property that works
+/// until it is loaded from a file. Narrow at the call site instead, with
+/// `.cast<String>()` or `List<String>.from(...)`.
+///
+/// **A structured value is held by reference.** A scalar is copied, so every
+/// other property here is a snapshot in the strong sense; a list or map is the
+/// provider's own object, cached. Mutating what one was handed edits the
+/// application's configuration for every later reader of that key. Copy it if
+/// it is going to be modified — `List.from` / `Map.of` — which is the same
+/// `cast` or `from` call the element type already wanted.
+///
 /// **Eager and immutable:** the value is captured at construction and never
 /// re-read, so later config changes are not reflected. Construct the property
 /// after the config providers are populated.
