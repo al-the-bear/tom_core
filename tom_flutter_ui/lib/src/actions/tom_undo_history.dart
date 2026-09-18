@@ -61,10 +61,17 @@ class TomUndoHistory {
   bool get canRedo => _redoStack.isNotEmpty;
 
   /// Undoes the most recent transaction.
+  ///
+  /// The transaction is undone *before* the stacks move, so a refusal leaves
+  /// the history exactly as it was. [TomActionTransaction.undoAll] throws when
+  /// a transaction has already been undone — the `undo(); redo(); undo();`
+  /// sequence, since [redo] re-executes nothing — and popping first would have
+  /// left that failure with a transaction on neither stack.
   void undo() {
     if (!canUndo) return;
-    final tx = _undoStack.removeLast();
+    final tx = _undoStack.last;
     tx.undoAll();
+    _undoStack.removeLast();
     _redoStack.add(tx);
     onChanged?.call();
   }
@@ -87,6 +94,13 @@ class TomUndoHistory {
   /// An action that needs true redo implements it itself, executing forward
   /// with a context the application still has, rather than expecting the
   /// history to reconstruct one.
+  ///
+  /// **A second [undo] after this throws.** Because nothing is re-applied, the
+  /// transaction's undos are still spent, and applying them again would repeat
+  /// them — harmless for an idempotent undo and duplicated work for any other.
+  /// [TomActionTransaction.undoAll] refuses, loudly, rather than letting the
+  /// repetition pass as a working undo. When redo genuinely re-executes, that
+  /// is what makes a second undo legitimate again.
   void redo() {
     if (!canRedo) return;
     final tx = _redoStack.removeLast();

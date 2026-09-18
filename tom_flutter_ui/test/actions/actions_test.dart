@@ -73,6 +73,40 @@ class UnrecordedIncrementAction
   }
 }
 
+/// An action whose undo is **not** idempotent — it appends rather than assigns.
+///
+/// [IncrementAction.undo] writes `counter.value = previous`, so running it
+/// twice lands on the same value and cannot show a repeated undo. This one can:
+/// each `undo` adds the restored row back to the list, which is the shape of
+/// the module's own documented `DeleteOrderAction` — `undo` puts the deleted
+/// order back. Undo it twice and the order is there twice.
+class RestoreRowUndo implements TomActionUndo {
+  final List<String> rows;
+  final String removed;
+  RestoreRowUndo(this.rows, this.removed);
+}
+
+class RowContext extends TomActionContext {
+  final List<String> rows;
+  RowContext(this.rows);
+}
+
+class DeleteRowAction extends TomAction<RowContext, RestoreRowUndo> {
+  DeleteRowAction({required super.controller}) : super(actionId: 'deleteRow');
+
+  @override
+  RestoreRowUndo execute(RowContext context, TomActionTransaction tx) {
+    final removed = context.rows.removeLast();
+    return RestoreRowUndo(context.rows, removed);
+  }
+
+  @override
+  bool get isUndoable => true;
+
+  @override
+  void undo(RestoreRowUndo undoState) => undoState.rows.add(undoState.removed);
+}
+
 /// A second context type, unrelated to [CounterContext].
 ///
 /// Exists so a composite can be built whose steps take *different* context
@@ -291,6 +325,56 @@ void main() {
       tx.undoAll();
       expect(counter.value, 0);
     });
+
+    test('a second undoAll throws instead of applying the undos again', () {
+      final controller = TomActionController(controllerId: 'c');
+      final delete = DeleteRowAction(controller: controller);
+      final rows = ['a', 'b'];
+      final tx = freshTx();
+      tx.run(delete, RowContext(rows));
+      expect(rows, ['a'], reason: 'the row was deleted');
+      tx.commit();
+
+      tx.undoAll();
+      expect(rows, ['a', 'b'], reason: 'the row is back');
+      expect(tx.isUndone, isTrue);
+
+      expect(
+        () => tx.undoAll(),
+        throwsStateError,
+        reason: 'the undos are spent; applying them again would duplicate them',
+      );
+      expect(rows, ['a', 'b'], reason: 'the refused call changed nothing');
+    });
+
+    test('rollback marks the transaction undone and stays idempotent', () {
+      // The asymmetry with undoAll is deliberate: rollback runs from error
+      // handling that may be reached more than once, so a second call must not
+      // replace the original failure with one of its own.
+      final controller = TomActionController(controllerId: 'c');
+      final delete = DeleteRowAction(controller: controller);
+      final rows = ['a', 'b'];
+      final tx = freshTx();
+      tx.run(delete, RowContext(rows));
+      tx.rollback();
+      expect(rows, ['a', 'b']);
+      expect(tx.isUndone, isTrue);
+
+      tx.rollback();
+      expect(rows, ['a', 'b'], reason: 'the second rollback did nothing');
+    });
+
+    test('rollback after undoAll does not re-apply the undos', () {
+      final controller = TomActionController(controllerId: 'c');
+      final delete = DeleteRowAction(controller: controller);
+      final rows = ['a', 'b'];
+      final tx = freshTx();
+      tx.run(delete, RowContext(rows));
+      tx.commit();
+      tx.undoAll();
+      tx.rollback();
+      expect(rows, ['a', 'b'], reason: 'one restore, not two');
+    });
   });
 
   group('TomUndoHistory', () {
@@ -374,6 +458,57 @@ void main() {
       expect(history.canRedo, isTrue);
       history.push(committedTx(inc, counter));
       expect(history.canRedo, isFalse);
+    });
+
+    test('undo(); redo(); undo(); cannot apply the same undo twice', () {
+      // The sequence a user reaches with three keystrokes. redo re-executes
+      // nothing, so the second undo asks for undos that are already spent —
+      // invisible against an idempotent undo, a duplicated row against this
+      // one.
+      final controller = TomActionController(controllerId: 'c');
+      final delete = DeleteRowAction(controller: controller);
+      final rows = ['a', 'b'];
+      final history = TomUndoHistory();
+
+      final tx = TomActionTransaction(label: 'delete');
+      tx.run(delete, RowContext(rows));
+      tx.commit();
+      history.push(tx);
+      expect(rows, ['a'], reason: 'the row was deleted');
+
+      history.undo();
+      expect(rows, ['a', 'b'], reason: 'the row is back, once');
+
+      history.redo();
+      expect(rows, ['a', 'b'], reason: 'redo replays nothing');
+
+      expect(() => history.undo(), throwsStateError);
+      expect(rows, ['a', 'b'], reason: 'the row is still there exactly once');
+    });
+
+    test('a refused undo leaves both stacks untouched', () {
+      // undoAll runs before the pop, so the transaction is on neither stack
+      // only if the undo succeeded. A caller that catches the StateError sees
+      // a history in the state it was in before the call.
+      var changes = 0;
+      final controller = TomActionController(controllerId: 'c');
+      final delete = DeleteRowAction(controller: controller);
+      final rows = ['a', 'b'];
+      final history = TomUndoHistory(onChanged: () => changes++);
+
+      final tx = TomActionTransaction(label: 'delete');
+      tx.run(delete, RowContext(rows));
+      tx.commit();
+      history.push(tx);
+      history.undo();
+      history.redo();
+
+      final changesBefore = changes;
+      expect(() => history.undo(), throwsStateError);
+      expect(history.undoCount, 1, reason: 'not popped');
+      expect(history.redoCount, 0, reason: 'nothing pushed onto redo');
+      expect(history.undoLabel, 'delete');
+      expect(changes, changesBefore, reason: 'no change was announced');
     });
 
     test('trims to maxSize, keeping the most recent', () {

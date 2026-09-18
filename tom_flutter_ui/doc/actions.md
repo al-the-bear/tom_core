@@ -182,6 +182,22 @@ ran with is never recorded — so the history has no argument to re-execute with
 An action that needs true redo implements it itself, executing forward with a
 context the application still holds.
 
+Because redo re-applies nothing, a transaction's undos stay spent across it, and
+**a transaction can be undone once**. `undoAll` throws a `StateError` on a
+second call, and `undo()` asks the transaction before it moves either stack, so
+a refused undo leaves the history exactly as it was. The sequence that reaches
+it is three keystrokes — `undo(); redo(); undo();` — and what it would otherwise
+do depends entirely on the action: an undo that assigns (`counter.value =
+previous`) is unchanged by a repeat, while an undo that restores a deleted row
+inserts it a second time. The throw names the sequence, so the failure arrives
+at the call that is wrong rather than as data nobody can account for later. A
+transaction reports this through `isUndone`.
+
+`rollback` is deliberately not symmetric: it also marks the transaction undone,
+but a second call is a silent no-op. It is the failure path, reached from error
+handling that may itself run more than once, and throwing there would replace
+the original failure with this one.
+
 ## `TomActionTrigger` — wiring into widgets
 
 `TomActionTrigger` is the bridge from an action to a widget callback. Its

@@ -131,6 +131,21 @@ void run() {
   history.redo();
   print('after redo: ${counter.value} (undo stack: ${history.undoCount})');
 
+  // Because redo re-applied nothing, that transaction's undo states are still
+  // the spent ones, so it cannot be undone a second time. Undoing again throws
+  // rather than applying the same undos twice — harmless for this action, which
+  // assigns a previous value, but a second restore for an undo that puts a
+  // deleted row back. A gesture that must be reversible twice is two
+  // transactions.
+  var secondUndoRefused = false;
+  try {
+    history.undo();
+  } on StateError {
+    secondUndoRefused = true;
+  }
+  final afterRefusedUndo = counter.value; // still 2 — nothing was applied
+  print('second undo refused: $secondUndoRefused (value: $afterRefusedUndo)');
+
   // Example 5: canExecute gating — reset only runs while positive.
   final resetCanRun = controller.reset.canExecute(ctx());
   print('reset canExecute (positive): $resetCanRun');
@@ -188,6 +203,12 @@ void run() {
   // redo restores stack only (no value replay)=2.
   assert(afterUndo == 2);
   assert(history.undoCount == 2); // redo moved the tx back onto the undo stack
+
+  // The undone transaction stays undone across redo, and the refusal left the
+  // history and the counter exactly as they were.
+  assert(secondUndoRefused);
+  assert(afterRefusedUndo == 2);
+  assert(history.undoCount == 2);
 
   // Reset clears to zero and then refuses to run again.
   assert(!controller.reset.canExecute(CounterContext(Counter()..value = 0)));

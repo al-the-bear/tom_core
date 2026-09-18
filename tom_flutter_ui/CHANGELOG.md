@@ -1,5 +1,20 @@
 ## Unreleased
 
+### Fixed
+
+- **`undo(); redo(); undo();` applied the same undo twice (tcopen243).**
+  `TomUndoHistory.redo` restores a transaction's stack position and re-executes
+  nothing, so a second `undo` asked `TomActionTransaction.undoAll` for undos
+  that were already spent — and it applied them again. Invisible for an undo
+  that assigns a previous value, a duplicated row for the module's own
+  documented `DeleteOrderAction`, whose undo restores what was deleted. A
+  transaction is now undoable once: `undoAll` throws `StateError` on a second
+  call, before touching any entry, and reports `isUndone`. `rollback` also marks
+  the transaction undone but stays a silent no-op on a second call — it runs
+  from error handling that may be reached twice, where throwing would replace
+  the original failure. `TomUndoHistory.undo` now undoes before it moves either
+  stack, so a refusal leaves the history untouched.
+
 ### Changed
 
 - **The UI protection switch can be turned off by a define (tcopen75).**
