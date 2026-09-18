@@ -70,6 +70,7 @@ import 'dart:convert';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../little_things/client_exceptions.dart';
+import 'reflection_readiness.dart';
 
 /// A failure raised by the server-preferences client.
 ///
@@ -293,7 +294,7 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
     TomUserPreferenceKeys.validate(request.key);
     final response = await _call(
       tomUserPreferencesApi[tomUserPreferencesWriteEndpointId],
-      body: tomReflectionInfo.convertToJsonString(request),
+      body: _encodeRequest(request),
     );
     _requireSuccess(response, key: request.key);
     return _decodeDto(response, key: request.key);
@@ -488,6 +489,23 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
     }
   }
 
+  /// Encodes a request body through reflection.
+  ///
+  /// Wrapped because this is the *outbound* half of the same coupling: a write
+  /// attempted without `initializeReflection()` fails before a request is made,
+  /// and reporting that as anything but what it is sends the caller to the
+  /// network.
+  String _encodeRequest(Object request) {
+    try {
+      return tomReflectionInfo.convertToJsonString(request);
+    } catch (error, stack) {
+      if (isReflectionUninitialised(error)) {
+        throw _reflectionNotInitialised(error, stack);
+      }
+      rethrow;
+    }
+  }
+
   /// Decodes the bare JSON array the list endpoint answers.
   List<TomUserPreferenceDto> _decodeDtoList(_PreferencesResponse response) {
     final Object? decoded;
@@ -498,17 +516,37 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
     }
     if (decoded is! List) throw _invalidResponse(response);
 
-    final mirror = tomReflector.reflectType(TomUserPreferenceDto);
-    if (mirror is! ClassMirror) throw _invalidResponse(response);
+    try {
+      final mirror = tomReflector.reflectType(TomUserPreferenceDto);
+      if (mirror is! ClassMirror) throw _invalidResponse(response);
 
-    return [
-      for (final element in decoded)
-        tomReflectionInfo.createInstanceFromJson<TomUserPreferenceDto>(
-          mirror,
-          element,
-        ),
-    ];
+      return [
+        for (final element in decoded)
+          tomReflectionInfo.createInstanceFromJson<TomUserPreferenceDto>(
+            mirror,
+            element,
+          ),
+      ];
+    } on TomUserPreferencesClientException {
+      rethrow;
+    } catch (error, stack) {
+      throw _invalidResponse(response, error: error, stack: stack);
+    }
   }
+
+  /// The failure raised when the application never initialised reflection.
+  TomUserPreferencesClientException _reflectionNotInitialised(
+    Object error,
+    StackTrace stack, {
+    String? key,
+  }) => TomUserPreferencesClientException(
+    'preferences.client.reflection_not_initialised',
+    'Preferences are encoded through reflection, and this application never '
+        'called initializeReflection(). Call it as the first action in main().',
+    parameters: {if (key != null) 'key': key},
+    rootException: error,
+    stack: stack,
+  );
 
   TomUserPreferencesClientException _invalidResponse(
     _PreferencesResponse response, {
@@ -516,6 +554,17 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
     Object? error,
     StackTrace? stack,
   }) {
+    // Reflection that was never initialised is a fault of *this program*, not
+    // of the answer. Reported as `invalid_response` it blames a server that is
+    // behaving correctly, which is the worst available diagnosis: the first
+    // thing the caller does is inspect something that is fine.
+    if (error != null && isReflectionUninitialised(error)) {
+      return _reflectionNotInitialised(
+        error,
+        stack ?? StackTrace.current,
+        key: key,
+      );
+    }
     // A body this client could not read is a *decoding* failure, so the call
     // error carries `jsonDecodingError` rather than the status — the status was
     // very likely a 200. What the two failures share is the answer itself, and

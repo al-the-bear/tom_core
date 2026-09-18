@@ -38,13 +38,52 @@ import 'support/exception_constructor_mirror.dart';
 /// A module and the two artefacts this file compares.
 typedef _Module = ({String name, List<String> sources, String summary});
 
+/// The `lib/src/…` paths a caller outside the package can reach.
+///
+/// The barrel's own exports, plus the variants a conditional export selects —
+/// `export 'x_neutral.dart' if (dart.library.io) 'x_io.dart';` puts both behind
+/// one reachable name, and the members they declare are that name's members.
+///
+/// Used to decide what counts as module *surface*. The summaries describe what
+/// an application can call, and a file the barrel does not export is not that:
+/// it is how the module is built, like a private type, whose members this file
+/// already skips for the same reason. Without this, adding an internal helper
+/// to a module forces a choice between documenting something no caller can
+/// reach and leaving the guard red — and the first is the untruth the guard
+/// exists to prevent.
+Set<String> _reachableSources() {
+  final exported = RegExp(r"^export '([^']+)'", multiLine: true);
+  final conditional = RegExp(r"if \([^)]*\) '([^']+)'");
+  final reachable = <String>{};
+  final barrel = File('lib/tom_core_flutter.dart').readAsStringSync();
+  for (final match in exported.allMatches(barrel)) {
+    final target = match.group(1)!;
+    if (!target.startsWith('src/')) continue;
+    reachable.add('lib/$target');
+    final selector = File('lib/$target');
+    if (!selector.existsSync()) continue;
+    // One level deeper, and only one: a selector names its variants directly.
+    final source = selector.readAsStringSync();
+    final directory = target.substring(0, target.lastIndexOf('/') + 1);
+    for (final variant in exported.allMatches(source)) {
+      reachable.add('lib/$directory${variant.group(1)!}');
+    }
+    for (final variant in conditional.allMatches(source)) {
+      reachable.add('lib/$directory${variant.group(1)!}');
+    }
+  }
+  return reachable;
+}
+
 /// Every module under `lib/src/tomclient/`, with its sources and its summary.
 ///
 /// Read off the directory rather than declared, for the reason the library
-/// comment gives. Sources are the module's own `.dart` files; a module's
-/// `readme.md` is not one, and neither is anything a generator wrote.
+/// comment gives. Sources are the module's own `.dart` files that the package
+/// barrel actually reaches; a module's `readme.md` is not one, neither is
+/// anything a generator wrote, and neither is a file the barrel never exports.
 List<_Module> _modules() {
   final root = Directory('lib/src/tomclient');
+  final reachable = _reachableSources();
   final modules = <_Module>[];
   for (final entry in root.listSync().whereType<Directory>()) {
     final name = entry.uri.pathSegments[entry.uri.pathSegments.length - 2];
@@ -55,6 +94,7 @@ List<_Module> _modules() {
             .map((file) => file.path)
             .where((path) => path.endsWith('.dart'))
             .where((path) => !path.endsWith('.reflection.dart'))
+            .where(reachable.contains)
             .toList()
           ..sort();
     modules.add((

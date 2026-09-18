@@ -1,9 +1,11 @@
 /// The single reflection entry point shared by every example in this package.
 ///
-/// Some of the framework's own types travel over the wire as reflected objects
-/// — a `TomUserPreferenceDto` is encoded by `tomReflectionInfo`, not by a
-/// hand-written `toJson` — so an example that makes a real HTTP call has to run
-/// with reflection initialised or it fails on its first request.
+/// The framework's own types are reflected objects like any other — a
+/// `TomUserPreferenceDto` is encoded by `tomReflectionInfo`, on disk and on the
+/// wire alike — so an example that exercises them runs with reflection
+/// initialised, exactly as an application does. Every entrypoint runs
+/// `reflection_generator` and the generated seed covers the whole dependency
+/// closure, framework types included; this file is that seed for the examples.
 ///
 /// Why one seed for the whole folder rather than one per example: the generated
 /// `initializeReflection()` *assigns* the reflection data (last writer wins), so

@@ -1,5 +1,33 @@
 ## 1.2.1
 
+### Changed
+
+- **One encoding rule for one DTO, and an honest failure when reflection is
+  missing (tcopen219).** The module encoded `TomUserPreferenceDto` by two
+  opposite rules — the disk half field by field, the account half through
+  reflection — in one package, with neither file acknowledging the other. The
+  hand-written half justified itself on the premise that "a framework store must
+  keep working in an app whose generator never saw `TomUserPreferenceDto`", and
+  that premise is false: every entrypoint runs `reflection_generator` and the
+  generated seed covers the whole dependency closure, framework types included.
+  Both halves reflect now.
+
+  **The timestamp rule stayed behind.** Reflection parses a `DateTime` with
+  `DateTime.parse`, which reads a stamp naming no zone as *this* device's local
+  time — the one clock certainly not the writer's, for a document meant to move
+  between devices. `updatedAt` is validated before an entry reaches reflection.
+  The encoding side needed no such care, measured rather than assumed:
+  reflection normalises a `DateTime` to UTC on the way out.
+
+- **`*.reflection_not_initialised` instead of a misdirected failure.** With
+  reflection uninitialised, a valid stored document read as
+  `device_preferences.store.invalid_content`, and a correct HTTP 200 carrying a
+  valid preference read as `preferences.client.invalid_response` — "The server
+  did not answer with a preference". Both now name the configuration fault and
+  `initializeReflection()`, and a write fails before the request is made rather
+  than after it. `doc/preferences.md` states reflection setup as the module's
+  precondition.
+
 ### Documentation
 
 - **Four documented behaviours that no test watched (tcopen218).** Two had

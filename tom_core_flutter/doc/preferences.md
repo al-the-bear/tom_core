@@ -8,6 +8,7 @@ reached over the kernel's `/preferences/*` contract by a typed client.
 ## Table of Contents
 
 - [Overview](#overview)
+- [Reflection Is a Precondition](#reflection-is-a-precondition)
 - [Why the Framework Owns This](#why-the-framework-owns-this)
 - [The Same Shape as the Server Store](#the-same-shape-as-the-server-store)
 - [Choosing a Backend](#choosing-a-backend)
@@ -40,6 +41,48 @@ The *keys*, the *wire DTO* and the *value codec* are not here. `TomUserPreferenc
 `preferences` module, because the server-side store (C-13) uses exactly the same
 three, and a vocabulary spelled in two packages is a preference that silently
 splits in two.
+
+## Reflection Is a Precondition
+
+**Both halves of this module encode `TomUserPreferenceDto` through
+`tomReflectionInfo`**, so an application using either must call
+`initializeReflection()` as the first action in its `main`. That is a
+precondition of the framework, not a quirk of this module: every entrypoint runs
+`reflection_generator`, and the generated seed covers the whole dependency
+closure — framework types included. A real one carries the kernel's sources and
+registers `TomUserPreferenceDto` itself.
+
+One rule, not two. The stored document and the wire request are the same DTO in
+the same package, and encoding it by hand on one side while reflecting it on the
+other would leave two definitions of one shape to be kept in step by inspection.
+
+What the module does **not** delegate is the timestamp rule. `updatedAt` is
+checked before an entry reaches reflection, because reflection parses a
+`DateTime` with `DateTime.parse` — which reads a stamp naming no zone as *this*
+device's local time, the one clock certainly not the writer's. Encoding needs no
+such care: reflection normalises a `DateTime` to UTC on the way out, so a
+document this module writes always names its zone.
+
+### When it is missing, the module says so
+
+A missing seed is a configuration fault of the program, and it is reported as
+one rather than as damage to whatever it was reading:
+
+| Raised by | Key |
+| --------- | --- |
+| the device store, encoding or decoding | `device_preferences.store.reflection_not_initialised` |
+| the account client, reading or writing | `preferences.client.reflection_not_initialised` |
+
+Both messages name `initializeReflection()`. The alternative is what these
+replace: a valid stored document reported as `device_preferences.store.invalid_content`,
+and a correct HTTP 200 carrying a valid preference reported as
+`preferences.client.invalid_response` — "The server did not answer with a
+preference". Blaming a correctly behaving server for a client-side fault is the
+worst available diagnosis, because the first thing the caller does is inspect
+something that is fine.
+
+A write fails **before** the request is made, since its body is encoded through
+reflection too — so the network is never involved and nothing suggests it was.
 
 ## Why the Framework Owns This
 
@@ -446,7 +489,7 @@ between devices, so an `updatedAt` that names no time zone throws
 | ---------- | ---- | ----------- | --- |
 | `dart:convert` | dart | `device_preference_json.dart`, `user_preferences_client.dart` | `json`, `jsonDecode`, `jsonEncode`, `utf8` |
 | `dart:io` | dart | `platform_device_preference_store_io.dart` | in the respective compile-time variants only |
-| `tom_core_kernel` | package | 8 of 9 files | `TomUserPreferenceKeys`, `TomUserPreferenceDto`, `TomUserPreferenceCodec`, `TomBean`, `TomRuntime`, and for the client `tomUserPreferencesApi`, `TomApiEndpoint.resolveUri`, `TomServerChannel`, `TomBearerAuthentication` (see `../../tom_core_kernel/doc/preferences/preferences.md`) |
+| `tom_core_kernel` | package | 8 of 10 files | `TomUserPreferenceKeys`, `TomUserPreferenceDto`, `TomUserPreferenceCodec`, `TomBean`, `TomRuntime`, and for the client `tomUserPreferencesApi`, `TomApiEndpoint.resolveUri`, `TomServerChannel`, `TomBearerAuthentication` (see `../../tom_core_kernel/doc/preferences/preferences.md`) |
 | `web` | package | `platform_device_preference_store_web.dart` | `window.localStorage` — the browser store the web implementation writes its one entry to |
 | [little_things](little_things.md) | module | `device_preferences.dart`, `user_preferences_client.dart` | `TomClientException` (see [little_things.md](little_things.md)) |
 

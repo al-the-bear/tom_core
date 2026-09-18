@@ -260,8 +260,8 @@ server's `/preferences` list endpoint answers.
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `encode(List<TomUserPreferenceDto> values)` | `String` | The stored JSON text; `updatedAt` normalised to UTC and omitted when `null`. |
-| `decode(String content, {String source})` | `List<TomUserPreferenceDto>` | Parses it back. Blank content decodes to an empty document; anything else that is not an array of objects — or that carries an `updatedAt` naming no time zone — throws `device_preferences.store.invalid_content`. `source` only names the backend in the failure. |
+| `encode(List<TomUserPreferenceDto> values)` | `String` | The stored JSON text, written through reflection; `updatedAt` normalised to UTC and omitted when `null`. Throws `device_preferences.store.reflection_not_initialised` when the application never called `initializeReflection()`. |
+| `decode(String content, {String source})` | `List<TomUserPreferenceDto>` | Parses it back through reflection. Blank content decodes to an empty document; anything else that is not an array of objects — or that carries an `updatedAt` naming no time zone — throws `device_preferences.store.invalid_content`. `source` only names the backend in the failure. An application that never called `initializeReflection()` gets `device_preferences.store.reflection_not_initialised` instead, so a valid document is not reported as corrupt. |
 
 The DTO is written field by field rather than through reflection: a framework
 store must keep working in an application whose generator never saw
@@ -441,7 +441,8 @@ fallback throws rather than guessing an implementation.
 
 A failure raised by the server-preferences client —
 `preferences.client.not_found`, `preferences.client.rejected`,
-`preferences.client.invalid_response`. A `rejected` failure carries
+`preferences.client.invalid_response`,
+`preferences.client.reflection_not_initialised`. A `rejected` failure carries
 `statusCode`, `response`, and the server's `errorKey` when the answer was the
 framework's error envelope.
 
