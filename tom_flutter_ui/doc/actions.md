@@ -121,6 +121,11 @@ is also what makes an action's authorization answer independent of where it is
 read from. An action is consulted from screens, triggers and group inspection
 alike; only the zone it was built in describes where it actually lives.
 
+That independence is the reason there is a **second**, unrelated scope on the
+context — see [`TomActionContext.scope`](#the-invocation-frame). A construction
+scope says where an action *lives* and must not move; a context scope says where
+one invocation is *happening*.
+
 ## `TomActionContext` — typed inputs
 
 `TomActionContext` is the base for everything an action reads. Domain contexts
@@ -136,6 +141,35 @@ class OrderActionContext extends TomActionContext {
 
 Passing inputs through a context (rather than action fields) is what keeps the
 action stateless and the same action instance reusable across invocations.
+
+### The invocation frame
+
+`TomActionContext.scope` is the one scope in the module that is **not** a
+construction frame. It names where this particular invocation is happening, and
+it is installed — via `context.runInScope(...)` — around every consult of the
+action with that context:
+
+| Consulted from | What runs in the frame |
+| -------------- | ---------------------- |
+| `TomActionTrigger.trigger` | `canExecute`, then `execute` via the transaction |
+| `TomCompositeAction` | each step's `canExecute`, then its `execute` |
+| `TomActionTransaction.run` | `execute` |
+
+The gate and the body go through the same frame deliberately: a `canExecute`
+that read a different scope from the `execute` it guards would be worse than no
+guard.
+
+**Null is the ordinary case**, and it means *the ambient frame* — the context is
+built by a `contextBuilder` called at the moment of the gesture, so the zone in
+force then is usually already right, and capturing it would be redundant.
+Setting the field is for the case where it is not: work dispatched from a
+callback, a timer or an isolate boundary, where the gesture's frame is no longer
+installed.
+
+It does **not** move the action's canonical path or its authorization. Those
+come out of `constructionScope` and are fixed; what the invocation frame reaches
+is everything downstream that reads `TomScope.current` — a nested controller
+built during the action, a resource lookup, a widget shown in response.
 
 ## Undo: `TomActionUndo`, `TomActionTransaction`, `TomUndoHistory`
 

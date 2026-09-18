@@ -187,6 +187,38 @@ class OrderLogAction extends TomAction<OrderLogContext, OrderLogUndo> {
       undoState.log.add('redo:${undoState.name}');
 }
 
+/// Records the scope in force at each point it is consulted.
+///
+/// `TomActionContext.scope` is the only field in the module whose whole effect
+/// is on the *ambient* frame, so nothing about a return value can show it. This
+/// action reports `TomScope.current` instead, which is what any real consumer —
+/// a nested controller, a resource lookup, a widget built in response — would
+/// have read.
+class ScopeProbeContext extends TomActionContext {
+  final List<String> seenInCanExecute;
+  final List<String> seenInExecute;
+  ScopeProbeContext({
+    required this.seenInCanExecute,
+    required this.seenInExecute,
+    super.scope,
+  });
+}
+
+class ScopeProbeAction extends TomSimpleAction<ScopeProbeContext> {
+  ScopeProbeAction({required super.controller}) : super(actionId: 'probe');
+
+  @override
+  bool canExecute(ScopeProbeContext context) {
+    context.seenInCanExecute.add(TomScope.current.id);
+    return true;
+  }
+
+  @override
+  void executeSimple(ScopeProbeContext context, TomActionTransaction tx) {
+    context.seenInExecute.add(TomScope.current.id);
+  }
+}
+
 /// A second context type, unrelated to [CounterContext].
 ///
 /// Exists so a composite can be built whose steps take *different* context
@@ -544,6 +576,73 @@ void main() {
       final tx = freshTx()..commit();
       expect(tx.isRedoable, isFalse);
     });
+
+    test('run executes the action in the context scope', () {
+      final controller = TomActionController(controllerId: 'c');
+      final probe = ScopeProbeAction(controller: controller);
+      final seen = <String>[];
+      final tx = freshTx();
+      tx.run(
+        probe,
+        ScopeProbeContext(
+          seenInCanExecute: [],
+          seenInExecute: seen,
+          scope: TomScopeBase(scopeId: 'invocation'),
+        ),
+      );
+      expect(seen, ['invocation']);
+    });
+
+    test('run executes in the ambient scope when the context names none', () {
+      final controller = TomActionController(controllerId: 'c');
+      final probe = ScopeProbeAction(controller: controller);
+      final seen = <String>[];
+      TomScope.withScope('ambient', () {
+        freshTx().run(
+          probe,
+          ScopeProbeContext(seenInCanExecute: [], seenInExecute: seen),
+        );
+      });
+      expect(seen, [
+        'ambient',
+      ], reason: 'a null scope defers, it does not reset');
+    });
+
+    test('the context scope wins over the ambient one', () {
+      final controller = TomActionController(controllerId: 'c');
+      final probe = ScopeProbeAction(controller: controller);
+      final seen = <String>[];
+      TomScope.withScope('ambient', () {
+        freshTx().run(
+          probe,
+          ScopeProbeContext(
+            seenInCanExecute: [],
+            seenInExecute: seen,
+            scope: TomScopeBase(scopeId: 'invocation'),
+          ),
+        );
+      });
+      expect(seen, ['invocation']);
+    });
+  });
+
+  group('TomActionContext.runInScope', () {
+    test('returns the body result and installs the scope', () {
+      final context = TomActionContext(
+        scope: TomScopeBase(scopeId: 'somewhere'),
+      );
+      expect(context.runInScope(() => TomScope.current.id), 'somewhere');
+    });
+
+    test('runs directly when the context carries no scope', () {
+      expect(
+        TomScope.withScope(
+          'ambient',
+          () => TomActionContext().runInScope(() => TomScope.current.id),
+        ),
+        'ambient',
+      );
+    });
   });
 
   group('TomUndoHistory', () {
@@ -841,6 +940,27 @@ void main() {
       t.callback();
       expect(counter.value, 1);
     });
+
+    test('gates and executes in the context scope, not the ambient one', () {
+      // Both halves, because a guard that read a different frame from the
+      // execute it guards would be worse than no guard.
+      final controller = TomActionController(controllerId: 'c');
+      final probe = ScopeProbeAction(controller: controller);
+      final gate = <String>[];
+      final body = <String>[];
+      TomScope.withScope('ambient', () {
+        TomActionTrigger<ScopeProbeContext, TomActionUndo>(
+          action: probe,
+          contextBuilder: () => ScopeProbeContext(
+            seenInCanExecute: gate,
+            seenInExecute: body,
+            scope: TomScopeBase(scopeId: 'invocation'),
+          ),
+        ).trigger();
+      });
+      expect(gate, ['invocation']);
+      expect(body, ['invocation']);
+    });
   });
 
   group('TomCompositeAction', () {
@@ -853,6 +973,37 @@ void main() {
       contextBuilder: () => CounterContext(counter),
       guard: guard,
     );
+
+    test('gates each step in that step context scope', () {
+      // Steps carry their own contexts, so each is gated in its own frame —
+      // not the composite's, and not the caller's.
+      final controller = TomActionController(controllerId: 'c');
+      final probe = ScopeProbeAction(controller: controller);
+      final gate = <String>[];
+      final body = <String>[];
+      TomCompositeStep<ScopeProbeContext> probeStep(String scopeId) =>
+          TomCompositeStep<ScopeProbeContext>(
+            action: probe,
+            contextBuilder: () => ScopeProbeContext(
+              seenInCanExecute: gate,
+              seenInExecute: body,
+              scope: TomScopeBase(scopeId: scopeId),
+            ),
+          );
+      final composite = TomCompositeAction(
+        actionId: 'scoped',
+        controller: controller,
+        steps: [probeStep('first'), probeStep('second')],
+      );
+      TomScope.withScope('ambient', () {
+        composite.execute(
+          TomActionContext(),
+          TomActionTransaction(label: 'composite'),
+        );
+      });
+      expect(gate, ['first', 'second']);
+      expect(body, ['first', 'second']);
+    });
 
     test('runs all passing steps and records undo into the transaction', () {
       final controller = TomActionController(controllerId: 'c');

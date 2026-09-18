@@ -3,8 +3,9 @@
 /// Demonstrates the Tom Action system end to end without a widget tree: a
 /// controller owning typed, undoable actions; direct execution inside a
 /// transaction; the `TomActionTrigger` → `TomUndoHistory` wiring; undo/redo;
-/// `canExecute` gating; a guarded `TomCompositeAction`; and the scope frame an
-/// action's canonical path is built in.
+/// `canExecute` gating; a guarded `TomCompositeAction`; the invocation frame a
+/// context carries; and the scope frame an action's canonical path is built
+/// in.
 ///
 /// Because it imports `package:tom_flutter_ui/tom_flutter_ui.dart` (which pulls
 /// in `flutter/material` → `dart:ui`), bare `dart run` cannot execute it. Run
@@ -95,6 +96,31 @@ class UndoOnlyIncrementAction extends TomAction<CounterContext, IncrementUndo> {
   @override
   void undo(IncrementUndo undoState) {
     undoState.counter.value = undoState.previous;
+  }
+}
+
+/// Reports the scope in force each time it is consulted.
+///
+/// A context's `scope` affects only the *ambient* frame, so no return value can
+/// show it; this reports `TomScope.current` instead, which is what a nested
+/// controller or a resource lookup inside the action would have read.
+class FrameProbeContext extends TomActionContext {
+  final List<String> frames;
+  FrameProbeContext({required this.frames, super.scope});
+}
+
+class FrameProbeAction extends TomSimpleAction<FrameProbeContext> {
+  FrameProbeAction({required super.controller}) : super(actionId: 'frameProbe');
+
+  @override
+  bool canExecute(FrameProbeContext context) {
+    context.frames.add(TomScope.current.id);
+    return true;
+  }
+
+  @override
+  void executeSimple(FrameProbeContext context, TomActionTransaction tx) {
+    context.frames.add(TomScope.current.id);
   }
 }
 
@@ -239,9 +265,35 @@ void run() {
   final detached = CounterController(scope: TomScopeBase(scopeId: 'checkout'));
   print('detached prefix: ${detached.canonicalPrefix}');
 
+  // Example 9: the *invocation* frame, which is a different scope from the
+  // construction one above. A context's `scope` is installed around both the
+  // gate and the body, so anything they reach that reads TomScope.current sees
+  // where this invocation is happening — while the action's canonical path,
+  // fixed at construction, does not move.
+  final frames = <String>[];
+  final probeController = TomActionController(controllerId: 'probe');
+  final probe = FrameProbeAction(controller: probeController);
+  TomScope.withScope('ambient', () {
+    TomActionTrigger<FrameProbeContext, TomActionUndo>(
+      action: probe,
+      contextBuilder: () => FrameProbeContext(
+        frames: frames,
+        scope: TomScopeBase(scopeId: 'invocation'),
+      ),
+    ).trigger();
+  });
+  final probePath = probe.canonicalPath;
+  print('invocation frames: $frames (action path still $probePath)');
+
   // -------------------------------------------------------------------------
   // Assertions
   // -------------------------------------------------------------------------
+  // The gate and the body both ran in the context's frame, not the ambient
+  // one — and the action's own path is unaffected by where it was invoked.
+  assert(frames.length == 2);
+  assert(frames.every((frame) => frame == 'invocation'));
+  assert(probePath == 'probe.frameProbe');
+
   assert(controller.actions.length == 3); // increment, reset, composite
   assert(controller.increment.canonicalPath == 'counter.increment');
   assert(controller.findAction('reset') == controller.reset);

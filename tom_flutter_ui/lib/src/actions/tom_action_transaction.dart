@@ -65,13 +65,18 @@ class TomActionTransaction {
   /// `TomCompositeAction` — goes through here, so the rule cannot drift
   /// between them.
   ///
+  /// The action runs inside the context's frame — see
+  /// [TomActionContext.runInScope] — so anything it reaches that reads
+  /// `TomScope.current` sees where the invocation is happening rather than
+  /// whatever zone the dispatcher stood in.
+  ///
   /// Throws if the transaction is already committed or rolled back, via
   /// [record].
   void run<TContext extends TomActionContext, TUndo extends TomActionUndo>(
     TomAction<TContext, TUndo> action,
     TContext context,
   ) {
-    final undoState = action.execute(context, this);
+    final undoState = context.runInScope(() => action.execute(context, this));
     if (undoState != null && action.isUndoable) {
       record(action, undoState);
     }

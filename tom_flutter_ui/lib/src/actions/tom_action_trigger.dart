@@ -61,7 +61,10 @@ class TomActionTrigger<
   void trigger() {
     final context = contextBuilder();
 
-    if (!action.canExecute(context)) {
+    // The gate runs in the context's frame, as the body does — see
+    // TomActionContext.runInScope. A guard that read a different scope from
+    // the execute it guards would be worse than no guard.
+    if (!context.runInScope(() => action.canExecute(context))) {
       onCannotExecute?.call();
       return;
     }

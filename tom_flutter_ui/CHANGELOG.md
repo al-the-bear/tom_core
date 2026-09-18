@@ -2,6 +2,21 @@
 
 ### Added
 
+- **`TomActionContext.scope` is the invocation frame, and is now read
+  (tcopen245).** It was declared, constructor-assigned and read nowhere, under a
+  dartdoc naming a behaviour — "the scope in which this action is executing" —
+  that nothing performed. `TomActionContext.runInScope` is now the one place the
+  field is read, and every consult of an action with a context goes through it:
+  `canExecute` from `TomActionTrigger` and from `TomCompositeAction`, `execute`
+  from `TomActionTransaction.run`. Anything those reach that reads
+  `TomScope.current` therefore sees where the invocation is happening. The gate
+  and the body share the frame deliberately — a `canExecute` reading a different
+  scope from the `execute` it guards would be worse than no guard.
+
+  Distinct from `TomAction.scope` and `TomActionController.scope`, which are
+  *construction* frames: they fix `canonicalPath` and the group ceiling and do
+  not move. Null stays the ordinary case and means the ambient frame.
+
 - **Redo re-applies the transaction (tcopen244).** `TomUndoHistory.redo`
   restored the stack position and re-applied nothing, while `canRedo`,
   `redoLabel`, `redoCount` and `TomRedoAction` all shipped as if it worked — so

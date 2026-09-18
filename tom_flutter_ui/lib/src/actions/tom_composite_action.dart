@@ -91,7 +91,11 @@ class TomCompositeAction extends TomAction<TomActionContext, TomActionUndo> {
   TomActionContext? _contextIfRunnable(TomCompositeStep step) {
     if (step.guard != null && !step.guard!()) return null;
     final stepContext = step.contextBuilder();
-    return step.action.canExecute(stepContext) ? stepContext : null;
+    // Each step is gated in its own context's frame, the same one
+    // [TomActionTransaction.run] will execute it in.
+    return stepContext.runInScope(() => step.action.canExecute(stepContext))
+        ? stepContext
+        : null;
   }
 
   @override
