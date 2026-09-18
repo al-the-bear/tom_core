@@ -88,6 +88,46 @@ class _CountingObservingState extends TomObservingWidgetState<TomBool> {
   }
 }
 
+/// A `TomBool` that counts how often anything asks for its string form.
+///
+/// The measurement the trace-message change is about: an eagerly interpolated
+/// log line calls `toString()` on the observable whether or not the line is
+/// written, and for the containers this framework observes that walks their
+/// contents.
+class _CountingToString extends TomBool {
+  _CountingToString(super.value);
+
+  /// How many times [toString] has been called.
+  int toStringCalls = 0;
+
+  @override
+  String toString() {
+    toStringCalls++;
+    return super.toString();
+  }
+}
+
+/// A log output that keeps what it is given, so a test can read the lines the
+/// logger actually wrote rather than assert they exist unseen.
+class _RecordingLogOutput extends TomLogOutput {
+  final List<String> messages = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    if (logLevel.matches(loggerLevel)) {
+      messages.add(convertToString(message));
+    }
+  }
+}
+
 void main() {
   group('TomObservingWidget', () {
     testWidgets('renders from the initial observable value', (tester) async {
@@ -937,6 +977,90 @@ void main() {
 
     expect(find.text('a:ON'), findsOneWidget);
     expect(find.text('b:ON'), findsOneWidget);
+  });
+
+  group('a notification costs nothing while trace logging is off', () {
+    // `tomLog.trace` takes an `Object`, and every `TomLogOutput` calls a
+    // `Function` message through `convertToString` *inside* its level check. So
+    // a closure defers the whole message build — `observable.toString()`
+    // included — until the line is actually written.
+    //
+    // The cost this removes is not hypothetical for the containers this
+    // framework observes: a `TomList`'s or `TomClass`'s `toString()` walks its
+    // contents, and it would run on every mutation for the lifetime of the
+    // widget, in the one module whose purpose is being attached to state that
+    // changes often.
+
+    test('the observable is never stringified by the adaptor', () {
+      final source = _CountingToString(false);
+      final adaptor = ValueListenableObserver<_CountingToString>(source);
+      addTearDown(adaptor.dispose);
+      adaptor.addListener(() {});
+
+      source | true;
+      source | false;
+
+      expect(
+        source.toStringCalls,
+        0,
+        reason: 'the trace message is a closure, and trace output is off',
+      );
+    });
+
+    testWidgets('nor by the widget', (tester) async {
+      final source = _CountingToString(false);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TomObservingWidget<_CountingToString>(
+            subState: source,
+            builder: (state, _) =>
+                Text(~state ? 'ON' : 'OFF', textDirection: TextDirection.ltr),
+          ),
+        ),
+      );
+
+      source | true;
+      await tester.pump();
+      source | false;
+      await tester.pump();
+
+      expect(source.toStringCalls, 0);
+    });
+
+    test('and the message is still produced when trace is on', () {
+      // The other half: deferring must not mean dropping. Without this, the
+      // assertions above pass just as well on a module that logs nothing.
+      final source = _CountingToString(false);
+      final adaptor = ValueListenableObserver<_CountingToString>(source);
+      addTearDown(adaptor.dispose);
+      adaptor.addListener(() {});
+
+      final recorder = _RecordingLogOutput();
+      final previousOutput = tomLog.logOutput;
+      final previousLevel = tomLog.logLevel;
+      tomLog.logOutput = recorder;
+      tomLog.setLogLevel(TomLogLevel.all);
+      try {
+        source | true;
+      } finally {
+        tomLog.setLogLevel(previousLevel);
+        tomLog.logOutput = previousOutput;
+      }
+
+      expect(
+        recorder.messages.any(
+          (message) => message.contains('ValueListenableObserver: notified'),
+        ),
+        isTrue,
+        reason: 'the closure is called when the level admits the line',
+      );
+      expect(
+        source.toStringCalls,
+        greaterThan(0),
+        reason: 'and the observable is stringified only then',
+      );
+    });
   });
 
   group('observer lifetime', () {

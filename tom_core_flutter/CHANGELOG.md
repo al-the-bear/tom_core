@@ -1,5 +1,30 @@
 ## 1.2.1
 
+### Fixed
+
+- **Trace messages are built only when they are written (tcopen217).** Both
+  `onNotify` implementations interpolated their message, so
+  `observable.toString()` ran on every notification whether or not trace output
+  was on. For the containers this framework observes — a `TomList`, a
+  `TomClass` with registered members — that walks the contents, on every
+  mutation, for the lifetime of the widget.
+
+  The fix needed nothing new: `tomLog.trace` takes an `Object` and
+  `TomLogOutput.convertToString` calls a `Function` message *inside* every
+  output's level check, so a closure defers the whole build. All four trace
+  calls in the module are closures now rather than two of four — a module where
+  the form is used situationally reads as if the choice were a matter of taste.
+
+  A test measures it: a `TomBool` subclass counting its own `toString()` calls
+  records zero across notifications with trace off, from both the widget and the
+  adaptor, and the message is still produced with the level raised.
+
+- **`setState` no longer carries the log line.** Its callback contained only the
+  trace statement. `setState` brackets a state mutation, and the mutation here
+  is external — the observable already changed. The callback is `setState(() {})`
+  now, which says what is actually happening: record the notification, then mark
+  the element dirty.
+
 ### Added
 
 - **`TomObservingWidget` takes a `key`, and it is documented as the lever it is

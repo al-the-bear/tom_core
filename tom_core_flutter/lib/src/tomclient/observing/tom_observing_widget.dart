@@ -157,10 +157,22 @@ class TomObservingWidgetState<T extends TomObservable>
   @override
   void onNotify(TomObservable observable) {
     if (!mounted) return;
-    setState(() {
-      tomLog.trace(
-        "TomObservingWidgetState: Updating state ${observable.runtimeType} ${observable.toString()}",
-      );
-    });
+    // A closure, not a string. `TomLogOutput.convertToString` calls a `Function`
+    // message, and every output does so *inside* its level check — so the
+    // message, and `observable.toString()` with it, is built only when the line
+    // is actually written. Interpolating here would walk a `TomList`'s or a
+    // `TomClass`'s contents on every mutation for the lifetime of the widget,
+    // with trace logging off, in the one module whose purpose is being attached
+    // to state that changes often.
+    tomLog.trace(
+      () =>
+          "TomObservingWidgetState: Updating state "
+          "${observable.runtimeType} $observable",
+    );
+    // Empty on purpose. `setState` brackets a *state mutation*, and the
+    // mutation already happened — in the observable, outside this widget. What
+    // this call is for is marking the element dirty; putting anything else in
+    // the callback would say the opposite.
+    setState(() {});
   }
 }

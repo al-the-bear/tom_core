@@ -134,8 +134,13 @@ class ValueListenableObserver<T extends TomObservable>
     for (final listener in List<VoidCallback>.of(_listeners)) {
       listener();
     }
+    // A closure, not a string — see [TomObservingWidgetState.onNotify]. The
+    // message is built only if the line is written, so a notification costs no
+    // `toString()` of the observable while trace logging is off.
     tomLog.trace(
-      "ValueListenableObserver: notified ${observable.runtimeType} ${observable.toString()}",
+      () =>
+          "ValueListenableObserver: notified "
+          "${observable.runtimeType} $observable",
     );
   }
 
@@ -151,7 +156,7 @@ class ValueListenableObserver<T extends TomObservable>
       'A disposed ValueListenableObserver is off the observable\'s observer '
       'list, so this listener would never fire. Build a new adaptor.',
     );
-    tomLog.trace("ValueListenableObserver: Listener added $listener");
+    tomLog.trace(() => "ValueListenableObserver: Listener added $listener");
     _listeners.add(listener);
   }
 
@@ -172,7 +177,7 @@ class ValueListenableObserver<T extends TomObservable>
   /// there is nothing left to remove, so nothing is lost by accepting it.
   @override
   void removeListener(VoidCallback listener) {
-    tomLog.trace("ValueListenableObserver: Listener removed $listener");
+    tomLog.trace(() => "ValueListenableObserver: Listener removed $listener");
     _listeners.remove(listener);
   }
 
