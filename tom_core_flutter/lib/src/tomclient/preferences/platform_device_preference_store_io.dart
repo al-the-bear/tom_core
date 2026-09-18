@@ -16,7 +16,8 @@ import 'device_preference_store.dart';
 /// preference is removed — a device that has been reset should leave no file
 /// behind, and "no file" and "empty array" must not be two ways to say the same
 /// thing.
-class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore {
+class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore
+    with TomDevicePreferenceStoreConflictDetection {
   /// Creates a store over the file at [location].
   ///
   /// The path is the caller's choice because only the app knows where its
@@ -61,19 +62,33 @@ class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore {
   @override
   Future<List<TomUserPreferenceDto>> read() async {
     final file = File(location);
-    if (!await file.exists()) return [];
+    if (!await file.exists()) {
+      rememberDocument(null);
+      return [];
+    }
+    final content = await file.readAsString();
+    // Remembered before decoding: the identity is the text that is *there*, and
+    // a document this build refuses to decode is still the one a concurrent
+    // writer would be overwriting.
+    rememberDocument(content);
     return TomDevicePreferenceJson.decode(
-      await file.readAsString(),
+      content,
       source: location,
       owner: owner,
     );
   }
 
+  /// The file's current text, or `null` when there is no file.
+  Future<String?> _currentDocument(File file) async =>
+      await file.exists() ? file.readAsString() : null;
+
   @override
   Future<void> write(List<TomUserPreferenceDto> values) async {
     final file = File(location);
+    requireUnchanged(await _currentDocument(file), source: location);
     if (values.isEmpty) {
       if (await file.exists()) await file.delete();
+      rememberDocument(null);
       return;
     }
     await file.parent.create(recursive: true);
@@ -83,10 +98,9 @@ class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore {
     // here because a truncated document silently discards everything the user
     // chose on this device.
     final temporary = File('$location.part');
-    await temporary.writeAsString(
-      TomDevicePreferenceJson.encode(values, owner: owner),
-      flush: true,
-    );
+    final document = TomDevicePreferenceJson.encode(values, owner: owner);
+    await temporary.writeAsString(document, flush: true);
     await temporary.rename(location);
+    rememberDocument(document);
   }
 }

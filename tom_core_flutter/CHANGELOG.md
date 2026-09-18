@@ -1,5 +1,29 @@
 ## 1.2.1
 
+### Fixed
+
+- **An interleaved write is detected rather than lost (tcopen223).** Every write
+  is a read-modify-write over the whole document, so two writers over one
+  location — two desktop windows sharing a support directory, two browser tabs
+  on one origin — each read the same document and each wrote their own version
+  of it. The second won entirely and the first change was gone with nothing
+  raised anywhere. The io backend's write-then-rename makes a *single* write
+  all-or-nothing against a torn file; it never ordered two writes.
+
+  A store compares before it writes and raises
+  `device_preferences.store.conflict`; `TomStoredDevicePreferences` re-reads and
+  re-applies **once**. Two writers touching different keys both survive, two
+  touching the same key are last-writer-wins, and a continuously contended store
+  surfaces the conflict after exactly one retry — a retry loop over a location
+  somebody else is writing in a tight loop is an unbounded wait with no way out.
+
+  **The comparison is over the document's identity, not a version counter.** A
+  counter would have to live in the stored JSON, and a header in every document
+  would retire the property that an unowned document is exactly the array the
+  server's `/preferences` list endpoint answers. Comparing what is in place
+  against what was read answers the same question inside the two methods the
+  backend contract already has.
+
 ### Added
 
 - **`TomEncryptedDevicePreferenceStore`, and a plain statement of what the

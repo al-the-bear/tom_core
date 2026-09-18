@@ -1,5 +1,7 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'device_preferences.dart';
+
 /// Where a device's preferences are persisted.
 ///
 /// Deliberately the narrowest interface [TomStoredDevicePreferences] needs:
@@ -55,6 +57,62 @@ abstract class TomDevicePreferenceStore {
   Future<void> write(List<TomUserPreferenceDto> values);
 }
 
+/// Detects a [TomDevicePreferenceStore.write] over a document other than the
+/// one this store last saw.
+///
+/// Every write in this module is a read-modify-write over the **whole**
+/// document — there is no per-key storage to update in place — so two writers
+/// over one location each read the same document and each write their own
+/// version of it. The io backend's write-then-rename makes a *single* write
+/// all-or-nothing against a torn file; it does not make two writes ordered, and
+/// the web backend has no atomicity at all. Without this, the second write won
+/// entirely and the first change was gone with nothing raised anywhere.
+///
+/// **Compare-and-swap over the document's identity, not a version counter.** A
+/// counter would have to live in the stored JSON, and a header in every document
+/// would retire the property `TomDevicePreferenceJson` is built around: that an
+/// unowned document is exactly the array the server's `/preferences` list
+/// endpoint answers, so the same text moves between the two stores without a
+/// reshaping step. Comparing what is there against what was read answers the
+/// same question — "is this still the document I read?" — inside the two
+/// methods the backend contract already has, and needs no format at all.
+///
+/// The identity is whatever the backend can compare cheaply: the stored text for
+/// the two persistent backends, a revision counter for the in-memory one. It is
+/// opaque here on purpose — this mixin decides *when* to compare, and the
+/// backend decides *what*.
+mixin TomDevicePreferenceStoreConflictDetection on TomDevicePreferenceStore {
+  bool _hasSeen = false;
+  Object? _lastSeen;
+
+  /// Records the document identity a read or a completed write observed.
+  ///
+  /// Called after a write as well as after a read, so a second write with no
+  /// read between them compares against what this store itself put there rather
+  /// than against a document two writes old.
+  void rememberDocument(Object? identity) {
+    _hasSeen = true;
+    _lastSeen = identity;
+  }
+
+  /// Throws `device_preferences.store.conflict` when [identity] is not what
+  /// this store last saw.
+  ///
+  /// A store that has never read anything makes no claim about what is there,
+  /// so it does not conflict: a caller writing without reading is replacing the
+  /// document wholesale, which is what they asked for.
+  void requireUnchanged(Object? identity, {required String source}) {
+    if (!_hasSeen || identity == _lastSeen) return;
+    throw TomDevicePreferenceException(
+      'device_preferences.store.conflict',
+      'The device preference store $source changed since it was read, so '
+          'writing now would discard what the other writer stored. Read it '
+          'again and re-apply the change.',
+      parameters: {'source': source},
+    );
+  }
+}
+
 /// An in-memory [TomDevicePreferenceStore].
 ///
 /// Works on every platform and persists nothing beyond the process, which makes
@@ -65,18 +123,32 @@ abstract class TomDevicePreferenceStore {
 /// platform has no real backend — a store that silently forgets is worse than a
 /// loud one, which is why [TomPlatformDevicePreferenceStore] throws on such a
 /// platform instead of degrading to this.
-class TomMemoryDevicePreferenceStore extends TomDevicePreferenceStore {
+class TomMemoryDevicePreferenceStore extends TomDevicePreferenceStore
+    with TomDevicePreferenceStoreConflictDetection {
   /// Creates an empty store, optionally pre-seeded with [initialValues].
   TomMemoryDevicePreferenceStore([List<TomUserPreferenceDto>? initialValues])
     : _values = [...?initialValues];
 
   List<TomUserPreferenceDto> _values;
 
+  /// Bumped by every write. The document identity this backend compares.
+  ///
+  /// A counter rather than the content, because nothing here serialises: two
+  /// writes of equal content are still two writes, and an in-memory store is
+  /// where a test stages the interleave the persistent ones meet in the field.
+  int _revision = 0;
+
   @override
-  Future<List<TomUserPreferenceDto>> read() async => [..._values];
+  Future<List<TomUserPreferenceDto>> read() async {
+    rememberDocument(_revision);
+    return [..._values];
+  }
 
   @override
   Future<void> write(List<TomUserPreferenceDto> values) async {
+    requireUnchanged(_revision, source: 'in memory');
     _values = [...values];
+    _revision++;
+    rememberDocument(_revision);
   }
 }

@@ -124,6 +124,32 @@ keeps it swappable with the server-side `TomUserPreferences`.
 Switching accounts costs nothing beyond the new bean: `TomStoredDevicePreferences`
 holds no cache, so the next read already answers from the new document.
 
+## Two writers over one location
+
+Every write is a read-modify-write over the **whole** document — there is no
+per-key storage to update in place — so two writers each read the same document
+and each write their own version of it. Two desktop windows sharing a support
+directory, two browser tabs on one origin, two isolates.
+
+A store **compares before it writes**: if the document in place is not the one
+it read, the write fails with `device_preferences.store.conflict` instead of
+discarding the other writer's change. `TomStoredDevicePreferences` then re-reads
+and re-applies **once**, so two writers touching different keys both survive and
+two touching the same key are last-writer-wins.
+
+Once, not until it succeeds. A retry loop over a location somebody else is
+writing in a tight loop is an unbounded wait with no way out; a second conflict
+is a contended store rather than an unlucky interleave, and the caller is the
+one who can decide what to do about it.
+
+The io backend's write-then-rename is a different guarantee and remains: it
+makes a *single* write all-or-nothing against a torn file. It never made two
+writes ordered.
+
+A store that has never read makes no claim about what is there, so a blind
+`write` is not a conflict — that caller is replacing the document wholesale,
+which is what they asked for.
+
 ## What the store does not protect
 
 **The shipped backends write plaintext.** A JSON file on desktop and mobile, one

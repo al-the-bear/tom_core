@@ -106,31 +106,69 @@ class TomStoredDevicePreferences extends TomDevicePreferences {
     // unmodifiable view of one, is a correct implementation, and mutating it
     // here would either corrupt the cache or throw an `UnsupportedError` no
     // caller could map to a preference failure.
-    final values = [...await store.read()];
-    final existing = values.indexWhere((stored) => stored.key == key);
-    if (existing >= 0) {
-      values[existing] = written;
-    } else {
-      values.add(written);
-    }
-    await store.write(values);
+    await _retryingOnce(() async {
+      final values = [...await store.read()];
+      final existing = values.indexWhere((stored) => stored.key == key);
+      if (existing >= 0) {
+        values[existing] = written;
+      } else {
+        values.add(written);
+      }
+      await store.write(values);
+    });
     return written;
+  }
+
+  /// Runs [attempt], and runs it once more if the store reported a conflict.
+  ///
+  /// A conflict means the document changed between this read-modify-write's
+  /// read and its write. The remedy is the same work again over the document
+  /// that is now there — the second attempt re-reads, so it applies this
+  /// change *onto* the other writer's instead of over it, and two writers
+  /// touching different keys both survive.
+  ///
+  /// **Once, not until it succeeds.** A retry loop over a location somebody
+  /// else is writing in a tight loop is an unbounded wait with no way out, and
+  /// the honest end of it is the named failure: a second conflict is a
+  /// contended store rather than an unlucky interleave, and the caller is the
+  /// one who can decide what to do about that.
+  Future<void> _retryingOnce(Future<void> Function() attempt) async {
+    try {
+      await attempt();
+    } on TomDevicePreferenceException catch (failure) {
+      if (failure.key != 'device_preferences.store.conflict') rethrow;
+      await attempt();
+    }
   }
 
   @override
   Future<bool> remove(String key) async {
     TomUserPreferenceKeys.validate(key);
-    final persisted = await store.read();
-    final existing = persisted.indexWhere((stored) => stored.key == key);
-    if (existing < 0) return false;
-    // Copied for the same reason as in [set], but only on the path that
-    // actually modifies it: removing a key that is not there writes nothing, so
-    // it should not copy anything either.
-    final values = [...persisted]..removeAt(existing);
-    await store.write(values);
-    return true;
+    var removed = false;
+    await _retryingOnce(() async {
+      final persisted = await store.read();
+      final existing = persisted.indexWhere((stored) => stored.key == key);
+      if (existing < 0) {
+        removed = false;
+        return;
+      }
+      // Copied for the same reason as in [set], but only on the path that
+      // actually modifies it: removing a key that is not there writes nothing,
+      // so it should not copy anything either.
+      final values = [...persisted]..removeAt(existing);
+      await store.write(values);
+      removed = true;
+    });
+    return removed;
   }
 
   @override
-  Future<void> clear() => store.write(const []);
+  Future<void> clear() => _retryingOnce(() async {
+    // Read first, so a concurrent write is detected rather than silently
+    // overwritten — and so the retry has something current to compare against.
+    // `clear` is still a wholesale replacement; what the read buys is that
+    // "delete everything" cannot quietly delete somebody else's write too.
+    await store.read();
+    await store.write(const []);
+  });
 }

@@ -408,6 +408,32 @@ class _RefusingCipher implements TomDevicePreferenceCipher {
       throw StateError('this key does not open that value');
 }
 
+/// A store whose document changes under every write, however often it is read.
+///
+/// The contended location, in miniature: it is what makes "retried once, then
+/// surfaced" observable, since a store that settles would hide the bound.
+class _ChangingUnderneathStore extends TomDevicePreferenceStore
+    with TomDevicePreferenceStoreConflictDetection {
+  /// How many times a write reached this store.
+  int writeAttempts = 0;
+
+  int _revision = 0;
+
+  @override
+  Future<List<TomUserPreferenceDto>> read() async {
+    rememberDocument(_revision);
+    return const [];
+  }
+
+  @override
+  Future<void> write(List<TomUserPreferenceDto> values) async {
+    writeAttempts++;
+    // Somebody else got there first, every time.
+    _revision++;
+    requireUnchanged(_revision, source: 'contended');
+  }
+}
+
 void main() {
   setUpAll(initializeReflection);
 
@@ -858,6 +884,189 @@ void main() {
         preferences.all(),
         throwsA(isA<TomDevicePreferenceException>()),
         reason: 'a corrupt store that read as empty would be overwritten',
+      );
+    });
+  });
+
+  group('two writers over one location', () {
+    // Every write is a read-modify-write over the whole document — there is no
+    // per-key storage to update in place — so two writers each read the same
+    // document and each write their own version of it. The io backend's
+    // write-then-rename makes a *single* write all-or-nothing against a torn
+    // file; it does not make two writes ordered, and the web backend has no
+    // atomicity at all.
+
+    test('an interleaved set of another key keeps both', () async {
+      // The interleave, staged exactly: both stores read, then both write. The
+      // second writer's compare-and-swap sees a document that is no longer the
+      // one it read, so it re-reads and applies its change onto the first
+      // writer's instead of over it.
+      final backing = TomMemoryDevicePreferenceStore();
+      final first = TomStoredDevicePreferences(backing);
+      final second = TomStoredDevicePreferences(backing);
+
+      await first.set<String>('device.theme', 'dark');
+      // `second` reads the document as it was before `first` wrote — the state
+      // a second window or tab is in when it starts its own edit.
+      await second.read('device.theme');
+      await first.set<String>('device.locale', 'de');
+
+      await second.set<String>('device.lastAccount', 'alex');
+
+      final all = await first.all();
+      expect(
+        all.map((dto) => dto.key),
+        containsAll(<String>[
+          'device.theme',
+          'device.locale',
+          'device.lastAccount',
+        ]),
+        reason: 'no write is lost: the loser re-applies onto the winner',
+      );
+    });
+
+    test(
+      'and an interleaved set of the same key is last-writer-wins',
+      () async {
+        final backing = TomMemoryDevicePreferenceStore();
+        final first = TomStoredDevicePreferences(backing);
+        final second = TomStoredDevicePreferences(backing);
+
+        await first.set<String>('device.theme', 'dark');
+        await second.read('device.theme');
+        await first.set<String>('device.theme', 'light');
+
+        await second.set<String>('device.theme', 'system');
+
+        expect(await first.get<String>('device.theme'), 'system');
+      },
+    );
+
+    test('a store that keeps changing surfaces the conflict', () async {
+      // Once, not until it succeeds. A retry loop over a location somebody else
+      // is writing in a tight loop is an unbounded wait with no way out, so the
+      // second conflict is the caller's to handle.
+      final backing = _ChangingUnderneathStore();
+      final preferences = TomStoredDevicePreferences(backing);
+
+      await expectLater(
+        preferences.set<String>('device.theme', 'dark'),
+        throwsA(
+          isA<TomDevicePreferenceException>().having(
+            (error) => error.key,
+            'key',
+            'device_preferences.store.conflict',
+          ),
+        ),
+      );
+      expect(
+        backing.writeAttempts,
+        2,
+        reason: 'the work was retried exactly once before surfacing',
+      );
+    });
+
+    test('a store nobody else touches never conflicts', () async {
+      // The ordinary case, asserted so the detection cannot be read as a cost
+      // every write pays.
+      final preferences = TomStoredDevicePreferences(
+        TomMemoryDevicePreferenceStore(),
+      );
+
+      for (var i = 0; i < 5; i++) {
+        await preferences.set<int>('device.launchCount', i);
+      }
+
+      expect(await preferences.get<int>('device.launchCount'), 4);
+    });
+
+    test('a blind write is not a conflict', () async {
+      // A store that has never read makes no claim about what is there, so a
+      // caller replacing the document wholesale is doing what they asked for
+      // rather than racing.
+      final backing = TomMemoryDevicePreferenceStore();
+      await TomStoredDevicePreferences(backing).set<String>('device.a', '1');
+
+      final fresh = TomMemoryDevicePreferenceStore();
+      await expectLater(
+        fresh.write([
+          TomUserPreferenceDto(key: 'k', valueType: 'String', value: '"v"'),
+        ]),
+        completes,
+      );
+    });
+
+    test('the file backend detects a write from another store', () async {
+      // Through the real persistent backend, where the interleave actually
+      // happens: two desktop windows sharing a support directory.
+      //
+      // The file is populated *before* either store reads it, which is the
+      // point of the arrangement: a first read of a file that does not exist
+      // takes a different branch, so a test starting from nothing would never
+      // exercise the one that remembers a document's text.
+      final path = '${temporaryDirectory.path}/contended_preferences.json';
+      await TomPlatformDevicePreferenceStore(path).write([
+        TomUserPreferenceDto(
+          key: 'device.a',
+          valueType: 'String',
+          value: '"1"',
+        ),
+      ]);
+
+      final first = TomPlatformDevicePreferenceStore(path);
+      final second = TomPlatformDevicePreferenceStore(path);
+      expect(await first.read(), hasLength(1));
+      expect(await second.read(), hasLength(1));
+
+      await first.write([
+        TomUserPreferenceDto(
+          key: 'device.a',
+          valueType: 'String',
+          value: '"2"',
+        ),
+      ]);
+
+      await expectLater(
+        second.write([
+          TomUserPreferenceDto(
+            key: 'device.b',
+            valueType: 'String',
+            value: '"2"',
+          ),
+        ]),
+        throwsA(
+          isA<TomDevicePreferenceException>().having(
+            (error) => error.key,
+            'key',
+            'device_preferences.store.conflict',
+          ),
+        ),
+      );
+    });
+
+    test('and lets the store that did read write again', () async {
+      // The other arm on the same backend: remembering what was read must not
+      // make a store's own second write conflict with itself.
+      final path = '${temporaryDirectory.path}/sole_writer.json';
+      final store = TomPlatformDevicePreferenceStore(path);
+      await store.write([
+        TomUserPreferenceDto(
+          key: 'device.a',
+          valueType: 'String',
+          value: '"1"',
+        ),
+      ]);
+
+      expect(await store.read(), hasLength(1));
+      await expectLater(
+        store.write([
+          TomUserPreferenceDto(
+            key: 'device.a',
+            valueType: 'String',
+            value: '"2"',
+          ),
+        ]),
+        completes,
       );
     });
   });

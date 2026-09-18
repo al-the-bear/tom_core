@@ -14,6 +14,7 @@ holds.
   - [TomDevicePreferences](#tomdevicepreferences)
   - [TomStoredDevicePreferences](#tomstoreddevicepreferences)
   - [TomDevicePreferenceStore](#tomdevicepreferencestore)
+  - [TomDevicePreferenceStoreConflictDetection](#tomdevicepreferencestoreconflictdetection)
   - [TomMemoryDevicePreferenceStore](#tommemorydevicepreferencestore)
   - [TomPlatformDevicePreferenceStore](#tomplatformdevicepreferencestore)
   - [TomEncryptedDevicePreferenceStore](#tomencrypteddevicepreferencestore)
@@ -55,6 +56,7 @@ TomDevicePreferences                                (interface; bean-resolved)
 └── TomStoredDevicePreferences
 
 TomDevicePreferenceStore                            (interface)
+│   with TomDevicePreferenceStoreConflictDetection   (all three backends)
 ├── TomMemoryDevicePreferenceStore
 ├── TomPlatformDevicePreferenceStore                (io | web | neutral variant)
 └── TomEncryptedDevicePreferenceStore               (decorator over any of them)
@@ -168,7 +170,7 @@ const TomDevicePreferenceStore()
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `read()` | `Future<List<TomUserPreferenceDto>>` | Every persisted preference; empty when nothing has been written. Unreadable content throws `device_preferences.store.invalid_content` rather than reading as empty. The returned list belongs to the store — callers must not modify it. |
+| `read()` | `Future<List<TomUserPreferenceDto>>` | Every persisted preference; empty when nothing has been written. Unreadable content throws `device_preferences.store.invalid_content` rather than reading as empty. The returned list belongs to the store — callers must not modify it. A read also **records what was there**, which is what the next write compares against. |
 | `write(List<TomUserPreferenceDto> values)` | `Future<void>` | Replaces the persisted set, all-or-nothing. An empty `values` clears the store. `values` belongs to the caller — an implementation must not modify it, nor retain it without copying. |
 
 Those two ownership rules are the halves of one rule, and each buys the other
@@ -184,6 +186,29 @@ The unit is the kernel's `TomUserPreferenceDto` rather than a device-local
 record type: a device preference and a server preference are the same thing
 stored in two places, and a second record type would mean a second `valueType`
 convention that agreed with the server's only by inspection.
+
+### TomDevicePreferenceStoreConflictDetection
+
+The mixin the three shipped backends use to detect a write over a document other
+than the one they last saw.
+
+- **Mixin on:** `TomDevicePreferenceStore`.
+
+| Method | Returns | Description |
+| ------ | ------- | ----------- |
+| `rememberDocument(Object? identity)` | `void` | Records what a read — or a completed write — observed. |
+| `requireUnchanged(Object? identity, {required String source})` | `void` | Throws `device_preferences.store.conflict` when `identity` is not what this store last saw. A store that has never read makes no claim, so it does not conflict. |
+
+The identity is opaque: the mixin decides *when* to compare and the backend
+decides *what*. The two persistent backends compare the stored text; the
+in-memory one a revision counter. A version counter in the stored JSON was the
+alternative, and it would have put a header in every document — retiring the
+property that an unowned document is exactly the array the server's
+`/preferences` list endpoint answers.
+
+`TomStoredDevicePreferences` re-reads and re-applies **once** on a conflict, so
+two writers touching different keys both survive; a second conflict surfaces,
+because a retry loop over a contended location is an unbounded wait.
 
 ### TomMemoryDevicePreferenceStore
 

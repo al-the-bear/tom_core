@@ -12,6 +12,7 @@ reached over the kernel's `/preferences/*` contract by a typed client.
 - [Why the Framework Owns This](#why-the-framework-owns-this)
 - [The Same Shape as the Server Store](#the-same-shape-as-the-server-store)
 - [Choosing a Backend](#choosing-a-backend)
+- [Two Writers Over One Location](#two-writers-over-one-location)
 - [What the Store Does Not Protect](#what-the-store-does-not-protect)
 - [Writing a Backend](#writing-a-backend)
 - [Scope: A Store Belongs to Its Location](#scope-a-store-belongs-to-its-location)
@@ -33,6 +34,7 @@ reached over the kernel's `/preferences/*` contract by a typed client.
 | `TomDevicePreferenceStore` | abstract class | The narrow backend: read / write the whole set |
 | `TomPlatformDevicePreferenceStore` | class | The backend for the current target (file / `localStorage` / loud failure) |
 | `TomMemoryDevicePreferenceStore` | class | A store that persists nothing beyond the process |
+| `TomDevicePreferenceStoreConflictDetection` | mixin | What the backends use to refuse a write over a document other than the one they read |
 | `TomEncryptedDevicePreferenceStore` | class | A decorator that encrypts preference **values** and delegates storage to any backend |
 | `TomDevicePreferenceCipher` | abstract class | The two-method cipher seam an encrypting store defers to |
 | `TomDevicePreferenceJson` | class | The stored JSON document, written once for every persistent backend |
@@ -219,6 +221,51 @@ what this module refuses.
 `TomUserPreferences.resolve`: a preference is optional by nature, and an
 application that has not wired a device store should fall back to its defaults
 rather than fail to start.
+
+## Two Writers Over One Location
+
+Every write is a read-modify-write over the **whole** document. There is no
+per-key storage to update in place, so two writers over one location each read
+the same document and each write their own version of it — two desktop windows
+sharing a support directory, two browser tabs on one origin, two isolates.
+
+### Compare-and-swap, then one retry
+
+A store **compares before it writes**. If the document in place is not the one
+it read, the write fails with `device_preferences.store.conflict` rather than
+discarding the other writer's change; `TomStoredDevicePreferences` then re-reads
+and re-applies the change **once**:
+
+| Two writers | Outcome |
+| ----------- | ------- |
+| different keys | both survive — the loser re-applies *onto* the winner's document |
+| the same key | last-writer-wins, after the loser has seen the winner's document |
+| a store somebody is writing continuously | `device_preferences.store.conflict`, after exactly one retry |
+
+**Once, not until it succeeds.** A retry loop over a contended location is an
+unbounded wait with no way out, and the honest end of it is the named failure: a
+second conflict means a contended store rather than an unlucky interleave, and
+the caller is the one who can decide what to do about that.
+
+**The comparison is over the document's identity, not a version counter.** A
+counter would have to live in the stored JSON, and a header in every document
+would retire the property [The Stored Document](#the-stored-document) is built
+around — that an unowned document is exactly the array the server's
+`/preferences` list endpoint answers. Comparing what is there against what was
+read answers the same question inside the two methods the backend contract
+already has, and needs no format at all. The two persistent backends compare the
+stored text; the in-memory one a revision counter.
+
+A store that has never read makes no claim about what is there, so a blind
+`write` is **not** a conflict: that caller is replacing the document wholesale,
+which is what they asked for.
+
+### What atomicity was, and still is
+
+The io backend's write-then-rename makes a *single* write all-or-nothing against
+a torn file, and it still does. That was never the same guarantee as ordering
+two writes, and the web backend — a whole-value `setItem` — has no atomicity at
+all. What is new is that the *second* writer now finds out.
 
 ## What the Store Does Not Protect
 

@@ -21,7 +21,8 @@ import 'device_preference_store.dart';
 /// sense `localStorage` offers: a single `setItem` either happened or did not,
 /// while a loop over keys can be interrupted by the tab closing and leave a
 /// half-written set.
-class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore {
+class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore
+    with TomDevicePreferenceStoreConflictDetection {
   /// Creates a store over the `localStorage` entry named [location].
   ///
   /// The name is the caller's choice because a browser origin is shared by
@@ -66,6 +67,10 @@ class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore {
   @override
   Future<List<TomUserPreferenceDto>> read() async {
     final content = window.localStorage.getItem(location);
+    // Remembered before decoding: the identity is the text that is *there*, and
+    // a document this build refuses to decode is still the one another tab
+    // would be overwriting.
+    rememberDocument(content);
     if (content == null) return [];
     return TomDevicePreferenceJson.decode(
       content,
@@ -76,15 +81,16 @@ class TomPlatformDevicePreferenceStore extends TomDevicePreferenceStore {
 
   @override
   Future<void> write(List<TomUserPreferenceDto> values) async {
+    requireUnchanged(window.localStorage.getItem(location), source: location);
     if (values.isEmpty) {
       // Removed rather than set to `[]`, so that "never written" and "cleared"
       // are one state here exactly as they are in the file backend.
       window.localStorage.removeItem(location);
+      rememberDocument(null);
       return;
     }
-    window.localStorage.setItem(
-      location,
-      TomDevicePreferenceJson.encode(values, owner: owner),
-    );
+    final document = TomDevicePreferenceJson.encode(values, owner: owner);
+    window.localStorage.setItem(location, document);
+    rememberDocument(document);
   }
 }
