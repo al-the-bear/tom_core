@@ -129,8 +129,26 @@ class TomObservingWidgetState<T extends TomObservable>
     return widget.builder(widget.subState, widget.child);
   }
 
+  /// Rebuilds this widget for a notification from the observed observable.
+  ///
+  /// **The `mounted` guard closes a window [dispose] cannot.** Deregistering in
+  /// [dispose] makes the ordinary path safe, but [TomObservable.notifyObservers]
+  /// iterates a *snapshot* taken before the loop — so an observer removed by an
+  /// earlier observer's `onNotify` in the same round is still notified, and a
+  /// `setState` on a disposed `State` throws. The guard makes a notification
+  /// that arrives after teardown a no-op, which is the right answer: there is
+  /// no element left to rebuild.
+  ///
+  /// **A notification arriving during a build is deliberately left to throw.**
+  /// Flutter's "setState() or markNeedsBuild() called during build" names the
+  /// widget that mutated the observable from inside its own `build`, which is
+  /// an application-structure mistake. Deferring the rebuild to a post-frame
+  /// callback would make it work — one frame late, every time, silently —
+  /// trading a diagnosable failure for an undiagnosable one. See
+  /// `doc/observing.md`, "Lifecycle and Limitations".
   @override
   void onNotify(TomObservable observable) {
+    if (!mounted) return;
     setState(() {
       tomLog.trace(
         "TomObservingWidgetState: Updating state ${observable.runtimeType} ${observable.toString()}",

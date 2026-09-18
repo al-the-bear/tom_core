@@ -108,6 +108,92 @@ void main() {
     // observer surfaces only as the framework throw on the post-unmount
     // notification; asserting that nothing was thrown is the deregistration
     // check.
+    testWidgets('a notification after teardown is a no-op', (tester) async {
+      // `dispose` deregisters, so the ordinary path never reaches this. The
+      // window it cannot close is the kernel's: `notifyObservers` iterates a
+      // *snapshot* taken before the loop, so an observer removed by an earlier
+      // observer's `onNotify` in the same round is still notified — and a
+      // `setState` on a disposed `State` throws.
+      //
+      // That timing cannot be staged from a widget test: unmounting an element
+      // synchronously from inside a notification loop is not something a test
+      // can arrange. So the seam is driven directly, with the `State` retained
+      // across the unmount, which is exactly the object the kernel's snapshot
+      // hands a notification to.
+      final flag = TomBool(false);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TomObservingWidget<TomBool>(
+            subState: flag,
+            builder: (state, _) =>
+                Text(~state ? 'ON' : 'OFF', textDirection: TextDirection.ltr),
+          ),
+        ),
+      );
+      final state = tester.state<TomObservingWidgetState<TomBool>>(
+        find.byType(TomObservingWidget<TomBool>),
+      );
+
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+      expect(state.mounted, isFalse);
+
+      expect(() => state.onNotify(flag), returnsNormally);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('mutating the observable from a build throws, loudly', (
+      tester,
+    ) async {
+      // Left to throw on purpose. The message names the widget that wrote to
+      // the observable from inside its own `build`, which is where the mistake
+      // is; deferring the rebuild to a post-frame callback would make it work
+      // one frame late, every time, silently — a diagnosable failure traded for
+      // an undiagnosable one.
+      final flag = TomBool(false);
+
+      // Collected through `FlutterError.onError` rather than
+      // `tester.takeException()`: the failure produces more than one report,
+      // and the tester folds several into one "Multiple exceptions" object
+      // whose text no longer contains the message being asserted.
+      final reported = <String>[];
+      final previousOnError = FlutterError.onError;
+      FlutterError.onError = (details) =>
+          reported.add(details.exceptionAsString());
+      addTearDown(() => FlutterError.onError = previousOnError);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Column(
+            children: [
+              TomObservingWidget<TomBool>(
+                subState: flag,
+                builder: (state, _) => Text(
+                  ~state ? 'ON' : 'OFF',
+                  textDirection: TextDirection.ltr,
+                ),
+              ),
+              Builder(
+                builder: (context) {
+                  // The offending line: a plain `|` assignment, carrying no
+                  // hint that it schedules a rebuild of somebody else.
+                  flag | true;
+                  return const SizedBox.shrink();
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(
+        reported.any((message) => message.contains('called during build')),
+        isTrue,
+        reason:
+            'the throw is the signal, and it names the widget that mutated '
+            'the observable from inside its own build — reported: $reported',
+      );
+    });
+
     testWidgets('a hoisted child is built once across notifications', (
       tester,
     ) async {

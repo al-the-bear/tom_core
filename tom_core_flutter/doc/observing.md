@@ -181,6 +181,30 @@ beyond a single build must be disposed**.
     the *observable* that is kept alive by the widget — never the other way
     round. `dispose` removing the registration does nothing about that
     reference; unmounting the widget is what drops it.
+- **What a caller may and may not do from inside a `build`.** Mutating an
+  observable that something else observes, from inside a `build`, throws
+  Flutter's "setState() or markNeedsBuild() called during build". That is
+  deliberate and is not guarded against: the message names the widget that
+  performed the mutation, which is where the mistake is. Deferring the rebuild
+  to a post-frame callback would make it work — one frame late, every time,
+  silently — trading a diagnosable failure for an undiagnosable one.
+
+  The mutation itself carries no hint that it schedules anybody's rebuild: it is
+  a plain `|` assignment. So the rule is about where state is written, not about
+  which operator writes it — compute inside `build`, write outside it. A value
+  that must be derived during layout belongs in a post-frame callback the
+  *application* schedules, where the one-frame delay is a decision somebody made
+  rather than one the framework made for them.
+
+  Reading an observable during a build is unaffected, and is what the builder is
+  for.
+- **A notification arriving after teardown is a no-op.** `onNotify` returns early
+  when the `State` is no longer `mounted`. `dispose` deregisters, so the ordinary
+  path never reaches that check; the window it closes is the kernel's.
+  `TomObservable.notifyObservers` iterates a **snapshot** taken before the loop,
+  so an observer removed by an earlier observer's `onNotify` in the same round is
+  still notified — and without the guard that is a `setState` on a disposed
+  `State`.
 - **Deregistration buys promptness, not leak prevention.** Because the
   registration was weak all along, the `removeObserver` in `dispose` is not
   standing between the application and a leak. What it buys is a *known moment*:

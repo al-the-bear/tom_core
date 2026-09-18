@@ -1,5 +1,27 @@
 ## 1.2.1
 
+### Fixed
+
+- **`TomObservingWidgetState.onNotify` guards on `mounted` (tcopen215).**
+  `dispose` deregisters, so the ordinary path was already safe; the window it
+  could not close is the kernel's. `TomObservable.notifyObservers` iterates a
+  **snapshot** taken before the loop, so an observer removed by an earlier
+  observer's `onNotify` in the same round is still notified — and that was a
+  `setState` on a disposed `State`. It is now a no-op, which is the right
+  answer: there is no element left to rebuild.
+
+  **The during-build case is deliberately left to throw.** An observable mutated
+  from inside a `build` produces Flutter's "setState() or markNeedsBuild()
+  called during build", and that message names the widget that performed the
+  mutation. Deferring to a post-frame callback would make it work one frame
+  late, every time, silently — trading a diagnosable failure for an
+  undiagnosable one, and hiding an application-structure mistake rather than a
+  framework limitation. `doc/observing.md` states the rule it implies: compute
+  inside `build`, write outside it.
+
+  Both halves are pinned, so neither can be quietly reversed — removing the
+  guard fails one test, deferring the during-build notification fails the other.
+
 ### Changed
 
 - **`TomObservingWidget` gained a hoisted `child`, and its builder is now called
