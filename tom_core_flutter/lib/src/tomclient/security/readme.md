@@ -22,7 +22,7 @@ whose auth client already handles refresh.
 | `Tom2FAFlowController` | The seam the application implements over its own auth client: five moves (choose, confirm, skip, answer, cancel) and two pieces of read-only state. |
 | `Tom2FAClientMechanism` | One mechanism's client-side rendering, paired with its server adaptor by `type` alone. |
 | `Tom2FAClientRegistry` | Process-wide catalog the flow dispatches through; `register` replaces, so an application can substitute a built-in. A start-up call — not sealed, and a late replacement that renders a *different* panel widget discards what the user had typed. |
-| `Tom2FAEnrolmentPanelContext` | What an enrolment panel is given: `type`, `clientData`, `accountLabel`, `onSubmit`, `busy`. |
+| `Tom2FAEnrolmentPanelContext` | What an enrolment panel is given: `type`, `clientData`, `accountLabel`, `onSubmit`, `busy`. `accountLabel` is the one value the *application* supplies to a panel. |
 | `Tom2FAChallengePanelContext` | What a challenge panel is given: the same, plus `hint` and `attemptsRemaining`. |
 | `TomTotp2FAClientMechanism` | The shipped authenticator-app mechanism, registered under `'totp'`. Its challenge panel counts down to the next code rollover and says so when one overtakes a typed code — warning, not blocking, because the server accepts one step either side of its own. Also the public `digitsOf` / `periodOf` / `secondsRemainingIn` / `groupSecret` helpers. |
 | `Tom2FATexts` | Every resource key this feature resolves, and the `text` / `textWith` helpers that resolve them. No literal user-facing text exists anywhere in the feature. |
@@ -66,6 +66,17 @@ lands on the next frame: one that renders a *different* panel widget takes the
 screen over and discards what the user had typed, while one that renders the
 same widget — wrapping or subclassing the shipped panel — keeps it. See
 `doc/security.md` for the whole of it, including why sealing was declined.
+
+**No credential material reaches a panel** — no principal, no tokens, no backend
+handle. What the *application* may show one is a separate question with a
+separate answer: named fields on the context, supplied by the controller, one
+per case that needs it. `accountLabel` is the only one so far. An untyped
+`applicationData` bag was declined — there is already one opaque map here, the
+server's `clientData`, and a second with different provenance is how the two get
+confused — and so was routing presentation data through the server. The
+challenge context has no application field yet, which is an absence of demand
+rather than a rule; the suite pins both contexts' field sets so either becomes a
+decision rather than a drift.
 
 A mechanism the build cannot render is handled differently at each stop, because
 the two stops have different room to manoeuvre. The **chooser** filters it out

@@ -24,13 +24,43 @@
 ///
 /// ## What a mechanism may and may not assume
 ///
-/// A mechanism receives the decoded `clientData` and nothing else about the
-/// login: no principal, no tokens, no backend handle. It renders, it validates
-/// locally if it can, and it hands a string back through the context's
-/// `onSubmit`. Whether that string travels as a confirmation or as a challenge
-/// answer, and what happens to the token pair afterwards, is the flow's
-/// business. A mechanism that reached for a token would be re-implementing the
-/// choreography the framework already owns (C-15).
+/// **No credential material reaches a panel.** A mechanism gets the decoded
+/// `clientData` and nothing else about the login: no principal, no tokens, no
+/// backend handle. It renders, it validates locally if it can, and it hands a
+/// string back through the context's `onSubmit`. Whether that string travels as
+/// a confirmation or as a challenge answer, and what happens to the token pair
+/// afterwards, is the flow's business. A mechanism that reached for a token
+/// would be re-implementing the choreography the framework already owns (C-15).
+///
+/// That rule is about *credentials*, and it is worth separating from the
+/// question it is often mistaken for: what the **application** may show a panel.
+/// A device name beside a WebAuthn prompt, a tenant that disambiguates an
+/// account, a brand — none of those is credential material, and the framework
+/// has no objection to them in principle.
+///
+/// **They arrive as named fields on the context, supplied by the controller.**
+/// [Tom2FAEnrolmentPanelContext.accountLabel] is the first and so far the only
+/// one; it was added because a user with three work accounts in one
+/// authenticator cannot tell which of three identical QR codes they are
+/// scanning. The next such need adds the next named field, which is why the
+/// contexts are values rather than positional parameters — a field added later
+/// breaks no mechanism that ever shipped.
+///
+/// Two shapes were considered for the general case and declined:
+///
+/// - **An untyped `applicationData` map on both contexts.** One change would
+///   cover every future case, at the cost of a bag whose contents no reader can
+///   discover from the type. There is already one opaque map on this path — the
+///   server's `clientData` — and a second, with different provenance, is how the
+///   two come to be confused about which end owns what.
+/// - **Routing it through the server.** Putting an application's presentation
+///   data in `clientData` means putting it on the wire and through an adaptor
+///   whose job is the factor rather than the UI.
+///
+/// The challenge context carries no application-supplied field at all. Not a
+/// prohibition — a challenge screen naming the account it is for would be as
+/// useful as an enrolment screen doing so — but nothing has asked, and the
+/// discipline is that each field arrives with the case that needs it.
 ///
 /// ## Registration
 ///
@@ -68,6 +98,12 @@ class Tom2FAEnrolmentPanelContext {
 
   /// The account label to show alongside the factor being set up — typically
   /// the username the login was started with. May be empty.
+  ///
+  /// The one value the **application** supplies to a panel, through
+  /// `Tom2FAFlowController.accountLabel`. Everything else here comes from the
+  /// server's offer or from the flow. See the library documentation for why
+  /// that channel is a named field rather than a map, and why the challenge
+  /// context has no equivalent yet.
   final String accountLabel;
 
   /// Called with whatever the user typed to confirm the factor.
@@ -95,6 +131,13 @@ class Tom2FAEnrolmentPanelContext {
 ///
 /// The sibling of [Tom2FAEnrolmentPanelContext] — same shape, one step later in
 /// the story, plus the attempt budget the user is spending.
+///
+/// It carries **nothing the application supplied**, where the enrolment context
+/// carries [Tom2FAEnrolmentPanelContext.accountLabel]. That asymmetry is an
+/// absence of demand rather than a rule: a challenge screen naming the account
+/// it is for would be as useful, and adding the field is one line here and one
+/// in the flow. It is not added on the chance, because a field nobody asked for
+/// is a field nobody can say what belongs in.
 class Tom2FAChallengePanelContext {
   /// The mechanism key this panel belongs to.
   final String type;

@@ -197,7 +197,7 @@ const Tom2FAEnrolmentPanelContext({
 | -------- | ---- | ----------- |
 | `type` | `String` | The mechanism key this panel belongs to, so one class can serve several closely-related mechanisms. |
 | `clientData` | `Map<String, Object?>` | The mechanism's enrolment payload, decoded from the interim token's public claims. |
-| `accountLabel` | `String` | The account label to show alongside the factor. May be empty, in which case the shipped TOTP panel omits the caption rather than rendering a blank one. |
+| `accountLabel` | `String` | The account label to show alongside the factor. May be empty, in which case the shipped TOTP panel omits the caption rather than rendering a blank one. **The one value the application supplies to a panel** — everything else on either context comes from the server's offer or from the flow. A further need adds a further *named* field: an untyped `applicationData` map was declined, because one opaque map on this path is the server's `clientData` and a second with different provenance is how the two get confused. |
 | `onSubmit` | `ValueChanged<String>` | Called with whatever the user typed. The panel does not decide what happens next. |
 | `busy` | `bool` | Whether the flow is mid-call. Panels disable their controls on this rather than tracking a flag of their own. |
 
@@ -206,6 +206,13 @@ const Tom2FAEnrolmentPanelContext({
 What a mechanism's **challenge** panel is given to render itself — the sibling
 of `Tom2FAEnrolmentPanelContext`, one step later in the story, plus the attempt
 budget the user is spending.
+
+It carries **nothing the application supplied**, where the enrolment context
+carries `accountLabel`. An absence of demand rather than a rule: a challenge
+screen naming the account it is for would be as useful, and adding the field is
+one line here and one in the flow. It is not added on the chance, because a
+field nobody asked for is a field nobody can say what belongs in. The suite
+asserts the exact field set, so adding it is a decision rather than a drift.
 
 #### Constructors
 

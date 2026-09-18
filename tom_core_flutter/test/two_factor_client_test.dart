@@ -16,6 +16,8 @@
 /// where the *point* is that they came from the bundle (G-RES-5).
 library;
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
@@ -876,6 +878,131 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(controller.cancelled, 1);
+    });
+  });
+
+  group('the panel contexts grow one named field at a time', () {
+    // What a mechanism can see is a decision, and the decision is that the
+    // contexts are *values with named fields* — extended one field at a time,
+    // each self-describing — rather than a map an application fills with
+    // whatever it likes. `accountLabel` is the only application-supplied field
+    // so far, and it was added because a user with three work accounts in one
+    // authenticator cannot tell which QR code they are scanning.
+    //
+    // Two shapes were declined and are pinned here by their absence, because
+    // either could be added in one line and neither would break a test that
+    // only exercised behaviour:
+    //
+    //  * an untyped `applicationData` bag. There is already one opaque map on
+    //    this path — the server's `clientData` — and a second with different
+    //    provenance is how the two come to be confused.
+    //  * `accountLabel` on the challenge context. Not forbidden, and probably
+    //    right when a challenge screen wants to name the account it is for;
+    //    just not yet asked for, and the discipline is that each field arrives
+    //    with the case that needs it.
+
+    /// The `final` fields [className] declares, read out of the module source.
+    Set<String> fieldsOf(String className) {
+      final source = File(
+        'lib/src/tomclient/security/two_factor_client.dart',
+      ).readAsStringSync();
+      final start = source.indexOf('class $className {');
+      expect(start, isNot(-1), reason: '$className is no longer declared');
+      final body = source.substring(start, source.indexOf('\n}', start));
+      return RegExp(
+        r'^  final [\w<>?, ]+ (\w+);',
+        multiLine: true,
+      ).allMatches(body).map((match) => match.group(1)!).toSet();
+    }
+
+    test('the enrolment context carries exactly these fields', () {
+      expect(
+        fieldsOf('Tom2FAEnrolmentPanelContext'),
+        unorderedEquals(<String>[
+          // From the server's offer.
+          'type', 'clientData',
+          // From the application, through the controller.
+          'accountLabel',
+          // The flow's own.
+          'onSubmit', 'busy',
+        ]),
+        reason:
+            'the enrolment context gained or lost a field; the module '
+            'documents what a mechanism may see, and an untyped application '
+            'bag in particular was declined',
+      );
+    });
+
+    test('the challenge context carries exactly these fields', () {
+      expect(
+        fieldsOf('Tom2FAChallengePanelContext'),
+        unorderedEquals(<String>[
+          'type', 'clientData',
+          // The mechanism's own, from the server.
+          'hint', 'attemptsRemaining',
+          'onSubmit', 'busy',
+        ]),
+        reason:
+            'the challenge context gained or lost a field. It deliberately '
+            'carries nothing the application supplied — not because a '
+            'challenge screen may not, but because none has needed it, and '
+            'adding one is a decision to take rather than to drift into',
+      );
+    });
+
+    test('no context carries a second opaque map', () {
+      // The specific shape that was declined, asserted with its own reason so
+      // a failure says which decision is being reversed rather than only that
+      // a field appeared.
+      for (final className in [
+        'Tom2FAEnrolmentPanelContext',
+        'Tom2FAChallengePanelContext',
+      ]) {
+        final source = File(
+          'lib/src/tomclient/security/two_factor_client.dart',
+        ).readAsStringSync();
+        final start = source.indexOf('class $className {');
+        final body = source.substring(start, source.indexOf('\n}', start));
+        final maps = RegExp(
+          r'^  final Map<[^>]*> (\w+);',
+          multiLine: true,
+        ).allMatches(body).map((match) => match.group(1)!).toList();
+        expect(
+          maps,
+          ['clientData'],
+          reason:
+              '$className declares a map beside the server\'s `clientData`. '
+              'One opaque map on this path is the server\'s payload; a second '
+              'with different provenance is how the two get confused',
+        );
+      }
+    });
+
+    testWidgets('the one application field reaches the panel from the '
+        'controller, and only the enrolment one', (tester) async {
+      // The provenance the field table above describes, exercised: the label
+      // travels controller → flow → context → panel. The challenge stop is
+      // shown with the same controller and the same label, and the caption is
+      // nowhere — which is the asymmetry stated as behaviour rather than as a
+      // missing field.
+      final controller = _FakeController(
+        enrolment: Tom2FAPendingEnrolment(type: 'totp'),
+        label: 'ada@example.com',
+      );
+      await pump(tester, controller);
+      expect(find.text('ada@example.com'), findsOneWidget);
+
+      await pump(
+        tester,
+        _FakeController(
+          challenge: Tom2FAChallenge(
+            type: 'totp',
+            expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+          ),
+          label: 'ada@example.com',
+        ),
+      );
+      expect(find.text('ada@example.com'), findsNothing);
     });
   });
 

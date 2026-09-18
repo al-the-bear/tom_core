@@ -233,11 +233,41 @@ render it without a null check. `test/two_factor_client_test.dart` holds it to
 that with a test-only SMS mechanism that reads the hint — otherwise the first
 mechanism that needed it would be the one to discover it never arrived.
 
-**A mechanism receives the decoded `clientData` and nothing else about the
-login** — no principal, no tokens, no backend handle. It renders, validates
-locally if it can, and hands a string back through `onSubmit`. Whether that
-string travels as a confirmation or a challenge answer, and what happens to the
-token pair afterwards, is the flow's business.
+**No credential material reaches a panel.** A mechanism receives the decoded
+`clientData` and nothing else about the login — no principal, no tokens, no
+backend handle. It renders, validates locally if it can, and hands a string back
+through `onSubmit`. Whether that string travels as a confirmation or a challenge
+answer, and what happens to the token pair afterwards, is the flow's business.
+
+### What the application may show a panel
+
+That rule is about *credentials*, and it is worth separating from the question
+it is often mistaken for. A device name beside a WebAuthn prompt, a tenant that
+disambiguates an account, a brand — none is credential material, and the
+framework has no objection to any of them in principle.
+
+**They arrive as named fields on the context, supplied by the controller.**
+`accountLabel` is the first and so far the only one. The next such need adds the
+next named field, which is what the contexts being values rather than positional
+parameters buys: a field added later breaks no mechanism that ever shipped.
+
+Two shapes for the general case were considered and declined:
+
+| Declined | Why |
+| -------- | --- |
+| An untyped `applicationData` map on both contexts | One change would cover every future case, at the cost of a bag whose contents no reader can discover from the type. There is already one opaque map on this path — the server's `clientData` — and a second, with different provenance, is how the two come to be confused about which end owns what |
+| Routing it through the server | Putting an application's presentation data in `clientData` means putting it on the wire, and through an adaptor whose job is the factor rather than the UI |
+
+**The challenge context carries no application-supplied field at all**, and that
+is an absence of demand rather than a rule. A challenge screen naming the
+account it is for would be as useful as an enrolment screen doing so, and adding
+the field is one line in the context and one in the flow. It is not added on the
+chance, because a field nobody asked for is a field nobody can say what belongs
+in.
+
+Both decisions are pinned: the suite asserts the exact field set of each
+context, so adding a bag — or quietly giving the challenge context an
+`accountLabel` — fails a test rather than passing as an implementation detail.
 
 `Tom2FAClientRegistry` is the catalog the flow dispatches through:
 

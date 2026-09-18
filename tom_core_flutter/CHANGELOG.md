@@ -26,6 +26,29 @@
 
 ### Changed
 
+- **What an application may show a 2FA panel is stated as its own rule
+  (tcopen239).** "A mechanism receives the decoded `clientData` and nothing else
+  about the login" is about *credential* material — no principal, no tokens, no
+  backend handle — and it had been carrying a second question it does not
+  answer: what the **application** may show a panel. A device name is not
+  credential material.
+
+  The answer, now written down: named fields on the context, supplied by the
+  controller, one per case that needs it. `accountLabel` is the first and so far
+  only one. An untyped `applicationData` bag was declined — one opaque map on
+  this path is the server's `clientData`, and a second with different provenance
+  is how the two get confused — and so was routing presentation data through the
+  server.
+
+  The challenge context's having no application field is an absence of demand
+  rather than a rule, which the documents now say instead of leaving the
+  asymmetry unexplained.
+
+  Both decisions are pinned by shape: the suite reads each context's declared
+  fields and holds them to an exact set, so adding a bag or giving the challenge
+  context an `accountLabel` fails a test rather than passing as an
+  implementation detail. No API changed.
+
 - **A challenge for an unrenderable mechanism says which problem it is
   (tcopen238).** It reached the chooser's `noRenderableMethods` line — accurate
   about the registry, wrong about the situation, since "this app cannot set any
