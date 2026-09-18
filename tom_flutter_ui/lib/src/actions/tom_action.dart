@@ -32,7 +32,8 @@ abstract interface class TomActionUndo {}
 /// Actions are the behavioral counterpart to widgets:
 /// - **Stateless** — no mutable instance state between invocations
 /// - **Typed** — context requirements declared via [TContext]
-/// - **Authorized** — visibility controlled via the authorization system
+/// - **Authorized** — [effectiveAuthState] governs both whether a widget shows
+///   the action and whether [TomActionTrigger] will run it ([isAuthorized])
 /// - **Undoable** — optional undo support via [TUndo]
 ///
 /// ```dart
@@ -206,6 +207,21 @@ abstract class TomAction<
     }
     return state;
   }
+
+  /// Whether authorization permits this action to run.
+  ///
+  /// `effectiveAuthState.isInteractive` — which is `full` and nothing else, the
+  /// kernel's own predicate. Read by [TomActionTrigger] before it dispatches
+  /// and by `TomCompositeAction` before it runs a step, so the answer that
+  /// governs execution is the same one that governs the button: a widget bound
+  /// to [authorizer] narrows to the action's state, and a state below `full` is
+  /// not interactive there either.
+  ///
+  /// Not a security boundary — the server enforces. It is the check that stops
+  /// a hidden or disabled action from running when it is reached by a path that
+  /// never passed through a widget: a keyboard shortcut, a test, a callback
+  /// holding the trigger directly.
+  bool get isAuthorized => effectiveAuthState.isInteractive;
 
   /// Creates a [TomAuthorizer] backed by this action's authorization.
   ///

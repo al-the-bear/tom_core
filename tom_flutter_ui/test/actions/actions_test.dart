@@ -941,6 +941,129 @@ void main() {
       expect(counter.value, 1);
     });
 
+    group('authorization gates the dispatch', () {
+      tearDown(TomAuthorization.reset);
+
+      /// Triggers `c.gated` under [state] and reports what happened.
+      ({bool ran, bool refused, bool wasAuthorized}) triggerUnder(
+        TomAuthState state,
+      ) {
+        TomAuthorization.adapter = _PathAuthAdapter({'c.gated': state});
+        final controller = TomActionController(controllerId: 'c');
+        final action = IncrementAction(controller: controller, id: 'gated');
+        final counter = Counter();
+        var refused = false;
+        var wasAuthorized = true;
+        TomActionTrigger<CounterContext, IncrementUndo>(
+          action: action,
+          contextBuilder: () => CounterContext(counter),
+          onCannotExecute: () {
+            refused = true;
+            // The caller can tell an authorization refusal from a canExecute
+            // one without being handed a reason.
+            wasAuthorized = action.isAuthorized;
+          },
+        ).trigger();
+        return (
+          ran: counter.value == 1,
+          refused: refused,
+          wasAuthorized: wasAuthorized,
+        );
+      }
+
+      test('a hidden action is not run', () {
+        final r = triggerUnder(TomAuthState.none);
+        expect(r.ran, isFalse);
+        expect(r.refused, isTrue);
+        expect(r.wasAuthorized, isFalse);
+      });
+
+      test('a disabled action is not run', () {
+        final r = triggerUnder(TomAuthState.disabled);
+        expect(r.ran, isFalse);
+        expect(r.refused, isTrue);
+      });
+
+      test('a read-only action is not run either', () {
+        // The gate is `effectiveAuthState.isInteractive`, which is `full` and
+        // nothing else — the same predicate the widget layer applies, so the
+        // trigger and the button cannot disagree about a `read` action.
+        final r = triggerUnder(TomAuthState.read);
+        expect(r.ran, isFalse);
+        expect(r.refused, isTrue);
+      });
+
+      test('a fully authorized action runs', () {
+        final r = triggerUnder(TomAuthState.full);
+        expect(r.ran, isTrue);
+        expect(r.refused, isFalse);
+      });
+
+      test('a group ceiling that hides the action blocks it too', () {
+        // The gate reads effectiveAuthState, not authState: an action whose own
+        // rule is full but whose group hides it must not run.
+        TomAuthorization.adapter = _PathAuthAdapter({
+          'c.gated': TomAuthState.full,
+          'billing': TomAuthState.none,
+        });
+        final controller = TomActionController(
+          controllerId: 'c',
+          tomGroup: TomAuthorizationGroup(
+            'billing',
+            mode: AuthGroupMode.controlsAll,
+          ),
+        );
+        final action = IncrementAction(controller: controller, id: 'gated');
+        final counter = Counter();
+        expect(action.authState, TomAuthState.full);
+        expect(action.isAuthorized, isFalse);
+        TomActionTrigger<CounterContext, IncrementUndo>(
+          action: action,
+          contextBuilder: () => CounterContext(counter),
+        ).trigger();
+        expect(counter.value, 0);
+      });
+
+      test('the context is not built for a refused action', () {
+        TomAuthorization.adapter = _PathAuthAdapter({
+          'c.gated': TomAuthState.none,
+        });
+        final controller = TomActionController(controllerId: 'c');
+        final action = IncrementAction(controller: controller, id: 'gated');
+        var built = 0;
+        TomActionTrigger<CounterContext, IncrementUndo>(
+          action: action,
+          contextBuilder: () {
+            built++;
+            return CounterContext(Counter());
+          },
+        ).trigger();
+        expect(
+          built,
+          0,
+          reason: 'a builder is application code; a refused action runs none',
+        );
+      });
+
+      test('nothing is pushed onto the undo history', () {
+        TomAuthorization.adapter = _PathAuthAdapter({
+          'c.gated': TomAuthState.none,
+        });
+        final controller = TomActionController(controllerId: 'c');
+        final action = IncrementAction(controller: controller, id: 'gated');
+        final history = TomUndoHistory();
+        var executed = false;
+        TomActionTrigger<CounterContext, IncrementUndo>(
+          action: action,
+          contextBuilder: () => CounterContext(Counter()),
+          undoHistory: history,
+          onExecuted: () => executed = true,
+        ).trigger();
+        expect(history.canUndo, isFalse);
+        expect(executed, isFalse, reason: 'onExecuted is for what executed');
+      });
+    });
+
     test('gates and executes in the context scope, not the ambient one', () {
       // Both halves, because a guard that read a different frame from the
       // execute it guards would be worse than no guard.
@@ -973,6 +1096,83 @@ void main() {
       contextBuilder: () => CounterContext(counter),
       guard: guard,
     );
+
+    group('an unauthorized step is blocked', () {
+      tearDown(TomAuthorization.reset);
+
+      test('it does not run, and its context is never built', () {
+        // A composite is one authorizable and each step is another. The trigger
+        // checks the composite; that says nothing about what the composite then
+        // reaches — so a hidden action would run as a step of a visible one.
+        TomAuthorization.adapter = _PathAuthAdapter({
+          'c.hidden': TomAuthState.none,
+        });
+        final controller = TomActionController(controllerId: 'c');
+        final hidden = IncrementAction(controller: controller, id: 'hidden');
+        final counter = Counter();
+        var built = 0;
+        final composite = TomCompositeAction(
+          actionId: 'runsHidden',
+          controller: controller,
+          steps: [
+            TomCompositeStep<CounterContext>(
+              action: hidden,
+              contextBuilder: () {
+                built++;
+                return CounterContext(counter);
+              },
+            ),
+          ],
+        );
+        composite.execute(
+          TomActionContext(),
+          TomActionTransaction(label: 'composite'),
+        );
+        expect(counter.value, 0, reason: 'the hidden step did not run');
+        expect(built, 0, reason: 'nor did its builder');
+      });
+
+      test('canExecute agrees, so no button is enabled over it', () {
+        TomAuthorization.adapter = _PathAuthAdapter({
+          'c.hidden': TomAuthState.none,
+        });
+        final controller = TomActionController(controllerId: 'c');
+        final hidden = IncrementAction(controller: controller, id: 'hidden');
+        final composite = TomCompositeAction(
+          actionId: 'runsHidden',
+          controller: controller,
+          steps: [step(hidden, Counter())],
+        );
+        expect(composite.canExecute(TomActionContext()), isFalse);
+      });
+
+      test(
+        'with stopOnBlockedStep false, later authorized steps still run',
+        () {
+          TomAuthorization.adapter = _PathAuthAdapter({
+            'c.hidden': TomAuthState.none,
+          });
+          final controller = TomActionController(controllerId: 'c');
+          final hidden = IncrementAction(controller: controller, id: 'hidden');
+          final allowed = IncrementAction(
+            controller: controller,
+            id: 'allowed',
+          );
+          final counter = Counter();
+          final composite = TomCompositeAction(
+            actionId: 'mixed',
+            controller: controller,
+            stopOnBlockedStep: false,
+            steps: [step(hidden, counter), step(allowed, counter)],
+          );
+          composite.execute(
+            TomActionContext(),
+            TomActionTransaction(label: 'composite'),
+          );
+          expect(counter.value, 1, reason: 'only the authorized step ran');
+        },
+      );
+    });
 
     test('gates each step in that step context scope', () {
       // Steps carry their own contexts, so each is gated in its own frame —

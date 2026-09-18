@@ -5,7 +5,8 @@
 /// transaction; the `TomActionTrigger` → `TomUndoHistory` wiring; undo/redo;
 /// `canExecute` gating; a guarded `TomCompositeAction`; the invocation frame a
 /// context carries; the authorization group a controller lends its actions;
-/// and the scope frame an action's canonical path is built in.
+/// the refusal of an action authorization does not permit; and the scope frame
+/// an action's canonical path is built in.
 ///
 /// Because it imports `package:tom_flutter_ui/tom_flutter_ui.dart` (which pulls
 /// in `flutter/material` → `dart:ui`), bare `dart run` cannot execute it. Run
@@ -126,6 +127,13 @@ class FrameProbeAction extends TomSimpleAction<FrameProbeContext> {
   void executeSimple(FrameProbeContext context, TomActionTransaction tx) {
     context.frames.add(TomScope.current.id);
   }
+}
+
+/// Resolves `secured.delete` to hidden and everything else to full.
+class _HiddenDeleteAdapter implements TomAuthorizationAdapter {
+  @override
+  TomAuthState resolveAuth(String path) =>
+      path == 'secured.delete' ? TomAuthState.none : TomAuthState.full;
 }
 
 /// A non-undoable action that only runs while the counter is positive.
@@ -307,6 +315,33 @@ void run() {
     'billing members: ${billing.members.length}',
   );
 
+  // Example 11: the trigger refuses an action authorization does not permit.
+  // Normally a button bound to `action.authorizer` is already hidden or
+  // disabled, so nothing reaches here; this is for the paths that do not go
+  // through a button — a keyboard shortcut, a test, a callback holding
+  // `trigger` directly.
+  TomAuthorization.adapter = _HiddenDeleteAdapter();
+  final secured = TomActionController(controllerId: 'secured');
+  final hiddenAction = IncrementAction(controller: secured, id: 'delete');
+  final securedCounter = Counter();
+  var contextsBuilt = 0;
+  var refusals = 0;
+  TomActionTrigger<CounterContext, IncrementUndo>(
+    action: hiddenAction,
+    contextBuilder: () {
+      contextsBuilt++;
+      return CounterContext(securedCounter);
+    },
+    onCannotExecute: () => refusals++,
+  ).trigger();
+  final refusedByAuth = !hiddenAction.isAuthorized;
+  print(
+    'hidden action: state ${hiddenAction.effectiveAuthState.name}, '
+    'ran ${securedCounter.value == 1}, refused $refusals, '
+    'contexts built $contextsBuilt',
+  );
+  TomAuthorization.reset();
+
   // -------------------------------------------------------------------------
   // Assertions
   // -------------------------------------------------------------------------
@@ -315,6 +350,14 @@ void run() {
   assert(frames.length == 2);
   assert(frames.every((frame) => frame == 'invocation'));
   assert(probePath == 'probe.frameProbe');
+
+  // The hidden action did not run, the refusal was reported once, and the
+  // context builder — application code — was never called. `onCannotExecute`
+  // covers both refusals; `isAuthorized` says which one this was.
+  assert(securedCounter.value == 0);
+  assert(refusals == 1);
+  assert(contextsBuilt == 0);
+  assert(refusedByAuth);
 
   // The controller's group covers the action that named none, and only that
   // one — the overriding action never joins it.

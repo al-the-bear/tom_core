@@ -56,6 +56,9 @@ concrete action overrides:
 | `isRedoable` | `false` | the action can be re-applied after an undo |
 | `redo(undoState)` | no-op | `isRedoable` is `true` |
 
+`isAuthorized` is not overridable: it is `effectiveAuthState.isInteractive`, and
+gating belongs in `canExecute`.
+
 `execute` returns a `TUndo?`: the snapshot needed to reverse the change, or
 `null` when there is nothing to undo. Actions are **stateless** — they hold no
 mutable state between invocations; everything they touch arrives through the
@@ -272,12 +275,19 @@ the original failure with this one.
 `TomActionTrigger` is the bridge from an action to a widget callback. Its
 `trigger` (or `callback`) does the full dance so the widget doesn't have to:
 
-1. build the context via `contextBuilder`,
-2. short-circuit through `canExecute` (firing `onCannotExecute`),
-3. open a `TomActionTransaction`, run `execute`, and record undo state when the
+1. refuse outright when authorization does not permit the action
+   (`isAuthorized`), firing `onCannotExecute`,
+2. build the context via `contextBuilder`,
+3. short-circuit through `canExecute` (firing `onCannotExecute`),
+4. open a `TomActionTransaction`, run `execute`, and record undo state when the
    action `isUndoable`,
-4. `commit`, push onto the `undoHistory` if the transaction recorded anything,
-5. fire `onExecuted`.
+5. `commit`, push onto the `undoHistory` if the transaction recorded anything,
+6. fire `onExecuted`.
+
+Step 1 precedes step 2 deliberately: a `contextBuilder` is application code and
+may read the very data the refusal is about, so a refused action builds nothing.
+`onCannotExecute` covers both refusals with one callback, because the caller can
+tell them apart without being told — `action.isAuthorized` answers which.
 
 ```dart
 TomElevatedButton(
@@ -294,14 +304,15 @@ TomElevatedButton(
 
 `TomCompositeAction` runs a list of `TomCompositeStep`s in order, each with its
 own `contextBuilder` and optional `guard`. A step is *blocked* when its `guard`
-returns false **or** when the step's own action refuses via `canExecute` — a
-composite with no guards at all can still be blocked. `stopOnBlockedStep`
+returns false, when the step's own action is unauthorized, or when that action
+refuses via `canExecute` — a composite with no guards at all can still be
+blocked. `stopOnBlockedStep`
 chooses between *stop at the first blocked step* and *skip blocked steps and
 continue*.
 
 A composite's `canExecute` reports exactly whether `execute` would run at least
 one step, so gating a button on it cannot produce an enabled control that does
-nothing. It therefore checks both blocking conditions and respects
+nothing. It therefore checks every blocking condition and respects
 reachability: under `stopOnBlockedStep` only the first step can run, so a
 runnable step behind a blocked one does not make the composite executable.
 
@@ -359,6 +370,33 @@ prepares itself, before any `late final` action field is first read.
 default *widget-full + action-none ⇒ disabled* pattern, ready to hand to a
 button so its enabled/disabled state follows the action's authorization without
 any extra glue.
+
+### Authorization also refuses execution
+
+A button bound to `authorizer` is what normally stops an unauthorized action —
+it is hidden or disabled, so there is nothing to press. But a trigger can be
+reached without one: a keyboard shortcut, a test, a callback holding `trigger`
+directly. So `TomActionTrigger` refuses before it dispatches, and
+`TomCompositeAction` refuses a step the same way, both reading one predicate:
+
+```dart
+bool get isAuthorized => effectiveAuthState.isInteractive;
+```
+
+`isInteractive` is `full` and nothing else — the kernel's own predicate, and the
+same one that decides whether a widget is operable. Using it rather than *not
+`none` and not `disabled`* is what keeps the trigger and the button from
+disagreeing about a `read` action, which would be the same divergence one state
+over. It reads `effectiveAuthState`, so a group ceiling that hides an otherwise
+permitted action blocks it too.
+
+**This is not a security boundary** — the server enforces, and a client that
+wants to call the action anyway can. It is what stops the framework itself from
+silently running something the user cannot see.
+
+A step's authorization is the **step action's**, not the composite's. The
+composite is one authorizable and each step another; a trigger checks the
+composite, and that says nothing about what the composite then reaches.
 
 ## Dependencies
 

@@ -24,7 +24,7 @@ the module's central separation. Nothing on `TomActionController` runs an action
 | `TomActionTransaction` / `TomUndoHistory` / `TomUndoRedoContext` | Atomicity & undo/redo. A transaction is either applied or reversed — `undoAll` and `redoAll` each refuse when it is already the way they would leave it |
 | `TomUndoAction` / `TomRedoAction` | Ready-made actions over a `TomUndoHistory`, so undo/redo dispatches through the same trigger protocol as everything else. Redo is opt-in per action (`TomAction.isRedoable` / `redo`), and `canRedo` accounts for it, so the second one's button is disabled when what was undone cannot be put back |
 | `TomCompositeAction` / `TomCompositeStep` | Composed multi-step actions |
-| `TomActionTrigger` | **Dispatches** an action — binds it, a context builder and an optional undo history to a widget callback |
+| `TomActionTrigger` | **Dispatches** an action — binds it, a context builder and an optional undo history to a widget callback. Refuses before it dispatches when authorization does not permit the action, so a shortcut or a test cannot run what a button would not show |
 
 ## Quick start
 

@@ -48,10 +48,11 @@ class TomCompositeAction extends TomAction<TomActionContext, TomActionUndo> {
   /// What a blocked step does to the rest of the run: abandon the remaining
   /// steps (true, the default) or skip only that step and carry on (false).
   ///
-  /// This governs *both* conditions that block a step — a
-  /// [TomCompositeStep.guard] returning false and the step's own action
-  /// returning false from [TomAction.canExecute]. A composite with no guards
-  /// at all still stops at the first action that refuses.
+  /// This governs *all* the conditions that block a step — a
+  /// [TomCompositeStep.guard] returning false, the step's own action being
+  /// unauthorized, and that action returning false from
+  /// [TomAction.canExecute]. A composite with no guards at all still stops at
+  /// the first step that is blocked.
   final bool stopOnBlockedStep;
 
   TomCompositeAction({
@@ -66,10 +67,10 @@ class TomCompositeAction extends TomAction<TomActionContext, TomActionUndo> {
   /// Whether [execute] would run at least one step.
   ///
   /// This mirrors [execute] exactly, which is what makes it safe to gate a
-  /// button on: a step counts only if neither its guard nor its own action
-  /// blocks it, and when [stopOnBlockedStep] is set the run abandons
-  /// everything after the first blocked step, so only the first step is
-  /// reachable at all.
+  /// button on: a step counts only if nothing blocks it — its guard, its
+  /// action's authorization, or its action's own `canExecute` — and when
+  /// [stopOnBlockedStep] is set the run abandons everything after the first
+  /// blocked step, so only the first step is reachable at all.
   ///
   /// [context] is ignored — each step supplies its own via
   /// [TomCompositeStep.contextBuilder], which is therefore called here as
@@ -84,12 +85,24 @@ class TomCompositeAction extends TomAction<TomActionContext, TomActionUndo> {
 
   /// The context [step] would run with, or `null` if the step is blocked.
   ///
-  /// This is the single definition of *blocked* — a guard returning false, or
-  /// the step's own action refusing the context it would be given. Both
-  /// [canExecute] and [execute] route through it so the two cannot disagree
-  /// about which steps run.
+  /// This is the single definition of *blocked*: a guard returning false, the
+  /// step's action being unauthorized, or that action refusing the context it
+  /// would be given. Both [canExecute] and [execute] route through it so the
+  /// two cannot disagree about which steps run.
+  ///
+  /// A step's authorization is the step **action's**, not the composite's. The
+  /// composite is one authorizable and each step is another; a trigger checks
+  /// the composite before dispatching, and that says nothing about what the
+  /// composite then reaches. Without this a hidden action would run as a step
+  /// of a visible composite — the same defect the trigger's check closes, one
+  /// layer down.
+  ///
+  /// Checked before [TomCompositeStep.contextBuilder] runs, so a step the user
+  /// cannot reach does not build a context — the builder is application code
+  /// and may itself touch data the refusal is about.
   TomActionContext? _contextIfRunnable(TomCompositeStep step) {
     if (step.guard != null && !step.guard!()) return null;
+    if (!step.action.isAuthorized) return null;
     final stepContext = step.contextBuilder();
     // Each step is gated in its own context's frame, the same one
     // [TomActionTransaction.run] will execute it in.

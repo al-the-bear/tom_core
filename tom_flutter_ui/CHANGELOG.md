@@ -2,6 +2,23 @@
 
 ### Added
 
+- **Authorization refuses execution, not only display (tcopen247).**
+  `TomActionTrigger.trigger()` read neither `authState` nor
+  `effectiveAuthState`, so an action resolving to `none` executed when
+  triggered — while `TomAction` implements `TomAuthorizable`, its dartdoc listed
+  "Authorized" among four defining properties, and `doc/` gave authorization a
+  section of its own. `TomAction.isAuthorized` (`effectiveAuthState
+  .isInteractive`) is now read by the trigger before it dispatches and by
+  `TomCompositeAction` before it runs a step, in both cases *before* the context
+  builder runs, since a builder is application code that may read the data the
+  refusal is about. The refusal reuses `onCannotExecute` rather than adding a
+  callback — `action.isAuthorized` already distinguishes the two reasons.
+
+  `isInteractive` rather than *not `none` and not `disabled`*, so the trigger
+  and the button cannot disagree about a `read` action; `effectiveAuthState`
+  rather than `authState`, so a group ceiling blocks an otherwise permitted
+  action. Not a security boundary — the server enforces.
+
 - **A controller's `tomGroup` reaches its actions (tcopen246).**
   `TomActionController.tomGroup` was declared, constructor-assigned and read
   nowhere, under a dartdoc promising "collective action control". Collective
