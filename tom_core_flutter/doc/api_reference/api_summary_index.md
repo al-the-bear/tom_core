@@ -80,8 +80,8 @@ the kernel API) and adds the Flutter-specific surface documented here.
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
-| `clientPlatformUtils` | getter | Fresh `TomPlatformUtils` for the current Flutter target. The module's only exported symbol. |
-| `allowsBadCertificateForHost` | function | *(native variant, **not exported** — import from `src/`)* Loopback-only bad-cert TLS predicate. |
+| `clientPlatformUtils` | getter | Fresh `TomPlatformUtils` for the current Flutter target. |
+| `TomBadCertificatePolicy` | final class | The hosts whose unverified TLS certificate the native client accepts — both loopback families by default; replaceable, and a replacement is logged. |
 | `TomFlutterPlatformUtils` | class | *(**not exported** — import from `src/`)* Flutter platform utils (io / web / neutral compile-time variants). |
 
 ### Security (`lib/src/tomclient/security/`)
@@ -102,7 +102,6 @@ the kernel API) and adds the Flutter-specific surface documented here.
 
 | Type | Module |
 | ---- | ------ |
-| `allowsBadCertificateForHost` | Runtime (internal — not exported) |
 | `clientPlatformUtils` | Runtime |
 | `coerceSettingValue` | Configuration |
 | `Tom2FAChallengePanelContext` | Security |
@@ -112,6 +111,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `Tom2FAFlowController` | Security |
 | `Tom2FAFlowPanel` | Security |
 | `Tom2FATexts` | Security |
+| `TomBadCertificatePolicy` | Runtime |
 | `TomBaseClientConfiguration` | Configuration |
 | `TomBoolProperty` | Resources |
 | `TomClientConfigurationException` | Configuration |

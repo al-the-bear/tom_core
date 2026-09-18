@@ -21,6 +21,7 @@ export 'src/tomclient/preferences/platform_device_preference_store.dart';
 export 'src/tomclient/preferences/stored_device_preferences.dart';
 export 'src/tomclient/preferences/user_preferences_client.dart';
 export 'src/tomclient/resources/tom_properties.dart';
+export 'src/tomclient/runtime/bad_certificate_policy.dart';
 export 'src/tomclient/runtime/platform_detection_client.dart';
 export 'src/tomclient/security/qr_code_view.dart';
 export 'src/tomclient/security/two_factor_client.dart';

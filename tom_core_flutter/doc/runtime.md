@@ -11,6 +11,7 @@ web, or a neutral fallback).
 - [Quick Start](#quick-start)
 - [How the Variant Is Selected](#how-the-variant-is-selected)
 - [Core Components](#core-components)
+- [The Certificate Policy](#the-certificate-policy)
 - [Notes](#notes)
 - [Dependencies](#dependencies)
 
@@ -20,7 +21,8 @@ web, or a neutral fallback).
 
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
-| `clientPlatformUtils` | getter | The `TomPlatformUtils` for the current Flutter target |
+| `clientPlatformUtils` | getter | The platform utilities for the current Flutter target |
+| `TomBadCertificatePolicy` | final class | The hosts whose unverified TLS certificate the native client accepts |
 
 The returned object answers platform predicates (`isDesktop`, `isMobile`,
 `isWeb`, `isWindows`, `isLinux`, `isMacOs`, `isAndroid`, `isIos`, `isFuchsia`),
@@ -62,9 +64,78 @@ location.
 
 ### `clientPlatformUtils`
 
-The sole public symbol. Each read constructs a fresh `TomPlatformUtils` for the
-current target. Platform predicates read Flutter's `defaultTargetPlatform` /
-`kIsWeb` at call time.
+Each read constructs a fresh `TomPlatformUtils` for the current target. Platform
+predicates read Flutter's `defaultTargetPlatform` / `kIsWeb` at call time.
+
+### `TomBadCertificatePolicy`
+
+The hosts whose unverified TLS certificate the native client accepts — see
+[The Certificate Policy](#the-certificate-policy).
+
+## The Certificate Policy
+
+A client handed a certificate it cannot verify normally refuses the connection,
+and that refusal is the whole of TLS's value. Development against a local server
+with a self-signed certificate is the one case where refusing helps nobody, so
+the native variant's `badCertificateCallback` consults `TomBadCertificatePolicy`
+and accepts the handshake for the hosts it names. A **loopback address is not
+reachable from another machine**, so a certificate presented on one came from
+this machine whatever it claims.
+
+The shipped policy is `TomBadCertificatePolicy.defaultHosts`, and nothing else:
+
+| Host | Why |
+| ---- | --- |
+| `localhost` | the name |
+| `127.0.0.1` | the IPv4 loopback |
+| `::1` | the IPv6 loopback |
+| `[::1]` | the bracketed form an IPv6 literal carries in a URL |
+| `0.0.0.0` | the unspecified address, which is how a server binding every interface is often addressed in development |
+
+**Both loopback families are listed, and that is the point.** Which of them
+`localhost` resolves to is the resolver's choice and differs between machines.
+A policy naming one and not the other makes the same code, the same certificate
+and the same URL succeed on one desktop and fail on the next — reported as a TLS
+error, which sends the reader to audit the certificate rather than the address
+family.
+
+**`::1` is the spelling that arrives.** The callback is handed `Uri.host`, and
+`Uri` strips the brackets: `https://[::1]:8443` resolves to a host of `::1`.
+`[::1]` is listed anyway, for a caller that passes an authority where a host was
+wanted; it costs nothing and covers the confusion.
+
+### Changing it
+
+`allowOnly` **replaces** the list, so an application can widen it or narrow it to
+nothing:
+
+```dart
+// Trust no unverified certificate at all, not even on loopback.
+TomBadCertificatePolicy.allowOnly(const []);
+
+// A development container reached by name.
+TomBadCertificatePolicy.allowOnly([
+  ...TomBadCertificatePolicy.defaultHosts,
+  'dev.internal',
+]);
+```
+
+Matching is exact and case-sensitive on the host string — no patterns, no
+wildcards — so an entry can only admit the one host it spells. A blank entry is
+refused with an `ArgumentError`: no host string is empty, so an entry that is
+names nothing, and it is what a split over a mis-typed setting leaves behind.
+`reset()` puts the shipped policy back.
+
+A replacement is **logged at warn level**, naming the hosts. A `const` list gave
+one property a setter cannot — the policy in force was the policy in the source
+— and the log line is what replaces it, so a widened boundary leaves a record
+where an operator looks.
+
+The policy is process-wide and read **per handshake**, so a client built before
+a change obeys it too; hardening an application does not depend on the order its
+clients happened to be created in. It is consulted **only on native targets**:
+the browser performs its own validation and no application code can override it,
+and the neutral variant creates no client at all.
 
 ## Notes
 
@@ -85,20 +156,30 @@ current target. Platform predicates read Flutter's `defaultTargetPlatform` /
 
   There is also no target for which `isDesktop() || isMobile()` is guaranteed:
   Fuchsia belongs to neither family.
-- **`clientPlatformUtils` is the only symbol the barrel exports.** The package
-  barrel exports `platform_detection_client.dart`, and that file pulls in the
-  selected variant with a conditional *import*, so neither
-  `TomFlutterPlatformUtils` nor `allowsBadCertificateForHost` escapes `src/`.
-  Both are documented — in
-  [`api_summary_runtime.md`](api_reference/api_summary_runtime.md) — but a test
-  that wants them has to import the variant file directly:
+- **The barrel exports two names: `clientPlatformUtils` and
+  `TomBadCertificatePolicy`.** The package barrel exports
+  `platform_detection_client.dart`, and that file pulls in the selected variant
+  with a conditional *import*, so `TomFlutterPlatformUtils` does not escape
+  `src/`. It is documented — in
+  [`api_summary_runtime.md`](api_reference/api_summary_runtime.md) — but it is
+  **not part of the barrel's public API**, and a test that wants it has to
+  import the variant file directly:
 
   ```dart
   import 'package:tom_core_flutter/src/tomclient/runtime/platform_detection_flutter_io.dart';
   ```
 
   Consumers never need the concrete type: `clientPlatformUtils` hands back a
-  `TomPlatformUtils`, and the variant class is a different class on each target.
+  `TomPlatformUtils`, and the variant class is a different class on each target
+  — three unrelated classes sharing a name, which is why the name exports no
+  single type and the entry point uses `import` rather than `export`.
+
+  `TomBadCertificatePolicy` is **exported**, and is a file of its own for that
+  reason: an application has to be able to change it, and a policy declared
+  inside the native variant could not be reached without a `dart:io` import that
+  breaks the web build. It carries no platform dependency, so it exists on every
+  target and exports unconditionally — consulted only where there is a TLS
+  callback to consult it.
 - The three `TomFlutterPlatformUtils` implementations override thirteen members
   each and **duplicate nine members verbatim** — the platform predicates
   (`isDesktop`, `isMobile`, `isWeb`, `isFuchsia`, `isWindows`, `isLinux`,
@@ -133,12 +214,12 @@ current target. Platform predicates read Flutter's `defaultTargetPlatform` /
   declares `UnimplementedError implements UnsupportedError` — an assertion that
   only checks for the supertype accepts either.
 - The native `IOClient`'s `badCertificateCallback` tolerates a bad TLS
-  certificate **only** for loopback hosts (`0.0.0.0`, `localhost`,
-  `127.0.0.1`) and rejects every other host. The decision is the top-level
-  `allowsBadCertificateForHost(host)` in `platform_detection_flutter_io.dart`
-  — a testability hook (an `X509Certificate` has no public constructor and the
-  callback is not readable off the client), not part of the barrel's public
-  API.
+  certificate only for the hosts `TomBadCertificatePolicy` names, and rejects
+  every other host — see [The Certificate Policy](#the-certificate-policy).
+  The decision lives in the policy rather than in the callback because an
+  `X509Certificate` has no public constructor and the callback is not readable
+  back off the client, so a decision made inside it would be unreachable from a
+  test.
 
 ---
 

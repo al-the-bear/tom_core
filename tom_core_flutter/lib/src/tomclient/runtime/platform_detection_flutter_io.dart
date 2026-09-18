@@ -6,22 +6,15 @@ import 'package:http/http.dart';
 import 'package:http/io_client.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-/// Whether a TLS handshake with a bad certificate is tolerated for [host].
-///
-/// Only loopback hosts (`0.0.0.0`, `localhost`, `127.0.0.1`) are allowed; every
-/// other host is rejected. Exposed at the top level so the decision can be
-/// unit-tested directly — the [HttpClient.badCertificateCallback] receives an
-/// [X509Certificate] (which has no public constructor) and is not readable back
-/// off the client, so the logic is otherwise unreachable from a test.
-bool allowsBadCertificateForHost(String host) =>
-    host == "0.0.0.0" || host == "localhost" || host == "127.0.0.1";
+import 'bad_certificate_policy.dart';
 
 /// Native (`dart:io`) [TomPlatformUtils] for desktop and mobile targets.
 ///
 /// Imports the process environment into [getTomEnvVars] at construction,
 /// reports platform predicates from Flutter's [defaultTargetPlatform]/[kIsWeb],
-/// and provides an [IOClient] (permissive certificate handling for localhost
-/// only). Selected by the conditional import in
+/// and provides an [IOClient] whose certificate handling is
+/// [TomBadCertificatePolicy] — permissive for the loopback hosts it names and
+/// refusing for everything else. Selected by the conditional import in
 /// `platform_detection_client.dart`.
 class TomFlutterPlatformUtils extends TomFallbackPlatformUtils {
   TomFlutterPlatformUtils() {
@@ -62,9 +55,13 @@ class TomFlutterPlatformUtils extends TomFallbackPlatformUtils {
   Client httpClient() {
     return IOClient(
       HttpClient()
+        // Read per handshake, not captured: a policy narrowed after a client
+        // was built has to take effect on that client too, or hardening an
+        // application would depend on the order its clients happened to be
+        // created in.
         ..badCertificateCallback =
             (X509Certificate cert, String host, int port) =>
-                allowsBadCertificateForHost(host),
+                TomBadCertificatePolicy.allows(host),
     );
   }
 

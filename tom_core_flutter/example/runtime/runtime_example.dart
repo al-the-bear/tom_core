@@ -1,9 +1,9 @@
 /// Executable example for the runtime module of `tom_core_flutter`.
 ///
 /// Demonstrates obtaining the platform-appropriate `TomPlatformUtils` for the
-/// current target, querying its platform predicates, and taking an HTTP client
-/// from it. The concrete variant is chosen at compile time (native IO / web /
-/// neutral).
+/// current target, querying its platform predicates, taking an HTTP client from
+/// it, and reading and replacing the certificate policy that client consults.
+/// The concrete variant is chosen at compile time (native IO / web / neutral).
 ///
 /// The barrel import pulls in `flutter/material` (and thus `dart:ui`), so this
 /// runs under the Flutter toolchain, not bare `dart run`. Run it with
@@ -58,6 +58,25 @@ void run() {
   final client = utils.httpClient();
   print('httpClient=${client.runtimeType}');
   client.close();
+
+  // Example 6: the certificate policy. The native client accepts an unverified
+  // TLS certificate only for the hosts this names — a loopback address is not
+  // reachable from another machine, so a certificate presented on one came from
+  // this machine whatever it claims. Both loopback families are in the shipped
+  // list, because which one `localhost` resolves to differs between machines
+  // and naming only one makes the same code succeed here and fail there.
+  print('badCertificateHosts=${TomBadCertificatePolicy.hosts.join(", ")}');
+  assert(TomBadCertificatePolicy.allows('127.0.0.1'));
+  assert(TomBadCertificatePolicy.allows('::1'));
+  assert(!TomBadCertificatePolicy.allows('example.com'));
+
+  // An application may replace the list — to add a development host, or to
+  // narrow it to nothing for a hardened build. A replacement is logged, because
+  // from then on the policy in force is no longer the policy in the source.
+  TomBadCertificatePolicy.allowOnly(const []);
+  assert(!TomBadCertificatePolicy.allows('localhost'));
+  TomBadCertificatePolicy.reset();
+  assert(TomBadCertificatePolicy.allows('localhost'));
 
   // Assertions. The first two follow from running on the VM, where the native
   // IO variant is selected: there is no browser, so there is no location and

@@ -156,15 +156,161 @@ void main() {
     expect(clientPlatformUtils.httpClient(), isA<Client>());
   });
 
-  test('tolerates bad certificates only for loopback hosts', () {
-    // The HttpClient.badCertificateCallback delegates to this predicate; an
+  group('the certificate policy', () {
+    // The HttpClient.badCertificateCallback delegates to this policy; an
     // X509Certificate has no public constructor and the callback is not
     // readable back off the client, so the decision is tested directly.
-    expect(allowsBadCertificateForHost('localhost'), isTrue);
-    expect(allowsBadCertificateForHost('127.0.0.1'), isTrue);
-    expect(allowsBadCertificateForHost('0.0.0.0'), isTrue);
-    expect(allowsBadCertificateForHost('example.com'), isFalse);
-    expect(allowsBadCertificateForHost('10.0.0.5'), isFalse);
+    tearDown(TomBadCertificatePolicy.reset);
+
+    test('the shipped policy accepts both loopback families', () {
+      // The point of the whole entry. Which address `localhost` resolves to is
+      // the resolver's choice and differs between machines, so a policy that
+      // named one family and not the other made the same code, certificate and
+      // URL succeed on one desktop and fail on the next — reported as a TLS
+      // error, which sends the reader to audit the certificate.
+      for (final host in [
+        'localhost',
+        '127.0.0.1',
+        '0.0.0.0',
+        '::1',
+        '[::1]',
+      ]) {
+        expect(TomBadCertificatePolicy.allows(host), isTrue, reason: host);
+      }
+    });
+
+    test('it accepts nothing else, including other IPv6 addresses', () {
+      for (final host in [
+        'example.com',
+        '10.0.0.5',
+        // Not loopback, and the spelling closest to one that is: a policy
+        // widened by pattern rather than by literal would take these.
+        '::2',
+        'fe80::1',
+        '2001:db8::1',
+        'localhost.example.com',
+      ]) {
+        expect(TomBadCertificatePolicy.allows(host), isFalse, reason: host);
+      }
+    });
+
+    test('`::1` is the spelling that reaches the callback', () {
+      // Measured rather than assumed, because the list carries both and only
+      // one of them can be tested against a real URL: `Uri` strips the brackets
+      // an IPv6 literal carries in a URL, so what the callback is handed is the
+      // bare form. `[::1]` stays in the list for a caller that passes an
+      // authority, which is why it is asserted above and not here.
+      expect(Uri.parse('https://[::1]:8443/x').host, '::1');
+      expect(
+        TomBadCertificatePolicy.allows(Uri.parse('https://[::1]:8443/x').host),
+        isTrue,
+      );
+    });
+
+    test('the shipped list is the default, and reset restores it', () {
+      expect(
+        TomBadCertificatePolicy.hosts,
+        TomBadCertificatePolicy.defaultHosts,
+      );
+
+      TomBadCertificatePolicy.allowOnly(const ['dev.internal']);
+      expect(TomBadCertificatePolicy.allows('dev.internal'), isTrue);
+      expect(TomBadCertificatePolicy.allows('localhost'), isFalse);
+
+      TomBadCertificatePolicy.reset();
+      expect(
+        TomBadCertificatePolicy.hosts,
+        TomBadCertificatePolicy.defaultHosts,
+      );
+    });
+
+    test('allowOnly replaces rather than adds', () {
+      // Replacement is what makes narrowing possible, and narrowing is the
+      // direction that matters for a security boundary. A setter that only
+      // ever added could not express "trust nothing".
+      TomBadCertificatePolicy.allowOnly(const ['dev.internal']);
+
+      expect(TomBadCertificatePolicy.hosts, ['dev.internal']);
+      for (final host in TomBadCertificatePolicy.defaultHosts) {
+        expect(TomBadCertificatePolicy.allows(host), isFalse, reason: host);
+      }
+    });
+
+    test('an empty policy accepts nothing, which is the hardened setting', () {
+      TomBadCertificatePolicy.allowOnly(const []);
+
+      for (final host in [...TomBadCertificatePolicy.defaultHosts, 'other']) {
+        expect(TomBadCertificatePolicy.allows(host), isFalse, reason: host);
+      }
+    });
+
+    test('what is read back cannot be added to', () {
+      // The list *is* the policy. A caller that could append to what it read
+      // would widen the boundary without passing through the one place the
+      // change is validated and logged.
+      expect(
+        () => TomBadCertificatePolicy.hosts.add('example.com'),
+        throwsUnsupportedError,
+      );
+      expect(TomBadCertificatePolicy.allows('example.com'), isFalse);
+    });
+
+    test('a blank entry is refused, and refused before it takes effect', () {
+      // What a split over a mis-typed setting leaves behind. No host string is
+      // empty, so an entry that is names nothing — and a policy list quietly
+      // carrying one reads as though it had been configured.
+      expect(
+        () => TomBadCertificatePolicy.allowOnly(const ['dev.internal', '  ']),
+        throwsArgumentError,
+      );
+      expect(
+        TomBadCertificatePolicy.hosts,
+        TomBadCertificatePolicy.defaultHosts,
+        reason: 'a rejected policy was applied up to the bad entry',
+      );
+    });
+
+    test('a replacement is logged, because the source no longer states it', () {
+      // The property a `const` list had and a setter cannot: the policy in
+      // force was the policy in the source. The log line is what replaces it,
+      // so widening leaves a record where an operator looks.
+      final recorder = _RecordingLogOutput();
+      final previous = tomLog.logOutput;
+      tomLog.logOutput = recorder;
+      addTearDown(() => tomLog.logOutput = previous);
+
+      TomBadCertificatePolicy.allowOnly(const ['dev.internal']);
+
+      expect(
+        recorder.messages.join('\n'),
+        allOf(contains('dev.internal'), contains('TomBadCertificatePolicy')),
+      );
+    });
+
+    test('the native callback asks the policy rather than holding a copy', () {
+      // A policy narrowed after a client was built has to take effect on that
+      // client too, or hardening an application would depend on the order its
+      // clients happened to be created in. `HttpClient.badCertificateCallback`
+      // is not readable back off the client and an `X509Certificate` has no
+      // public constructor, so the handshake itself cannot be staged here —
+      // what can be checked is the property the guarantee rests on: the
+      // callback body is a live call into the policy, not a captured list.
+      final body = overrideBodies(
+        File(
+          'lib/src/tomclient/runtime/platform_detection_flutter_io.dart',
+        ).readAsStringSync(),
+        'TomFlutterPlatformUtils',
+      )['httpClient'];
+
+      expect(
+        body,
+        contains('TomBadCertificatePolicy.allows(host)'),
+        reason:
+            'the native client no longer delegates each decision to the '
+            'policy, so a policy changed after the client was built would '
+            'not reach it',
+      );
+    });
   });
 
   test('imports the process environment at construction', () {
@@ -190,6 +336,17 @@ void main() {
     // getBrowserLocation is meaningful only on the web variant; the native IO
     // implementation returns null.
     expect(clientPlatformUtils.getBrowserLocation(), isNull);
+  });
+
+  test('the conditional import selects the IO variant on this host', () {
+    // The selection itself, asserted against the type rather than through the
+    // diagnostic string below. The two are different claims: a variant that
+    // returned the right string from the wrong class would satisfy one and not
+    // the other, and the conditional import is the mechanism the whole module
+    // rests on. This is also the assertion that needs the direct `src/` import
+    // above — `TomFlutterPlatformUtils` is withheld from the barrel, so the
+    // documented path for reaching it is the one this suite compiles against.
+    expect(clientPlatformUtils, isA<TomFlutterPlatformUtils>());
   });
 
   test('toString identifies the native IO variant', () {
@@ -375,50 +532,65 @@ void main() {
   });
 
   group('the documented reach of the module surface', () {
-    // Every symbol in this module lives behind one exported file, and that file
-    // pulls the variants in with a conditional `import` rather than an
-    // `export`. So the barrel publishes exactly one name and keeps both
-    // `allowsBadCertificateForHost` and `TomFlutterPlatformUtils` inside `src/`
-    // — a distinction invisible from the source of any variant, which is how a
-    // summary came to list an unreachable function under "Global Functions".
+    // The three variants live behind one entry point that pulls them in with a
+    // conditional `import` rather than an `export`, so `TomFlutterPlatformUtils`
+    // — three unrelated classes sharing a name, one per target — never escapes
+    // `src/`. A distinction invisible from the source of any variant, which is
+    // how a summary once came to list an unreachable symbol under "Global
+    // Functions".
+    //
+    // The certificate policy is the module's second exported name and is
+    // deliberately *not* in a variant: it has no platform dependency, so it is
+    // its own file and exports unconditionally. That is what lets an
+    // application change a policy that only the native target consults.
 
-    test('the barrel publishes only clientPlatformUtils from this module', () {
-      final barrel = File('lib/tom_core_flutter.dart').readAsStringSync();
-      expect(
-        barrel,
-        contains(
-          "export 'src/tomclient/runtime/platform_detection_client.dart';",
-        ),
-        reason:
-            'the runtime module is no longer exported through its entry '
-            'point; the documented surface has to be re-derived',
-      );
-      for (final variant in ['flutter_io', 'neutral', 'web']) {
+    test(
+      'the barrel publishes the entry point and the policy, and no variant',
+      () {
+        final barrel = File('lib/tom_core_flutter.dart').readAsStringSync();
+        for (final exported in [
+          'src/tomclient/runtime/platform_detection_client.dart',
+          // Exported because an application has to be able to change it. It
+          // carries no platform import, so unlike a variant it exists on every
+          // target — which is precisely why it is a file of its own rather than
+          // a member of the native one.
+          'src/tomclient/runtime/bad_certificate_policy.dart',
+        ]) {
+          expect(
+            barrel,
+            contains("export '$exported';"),
+            reason:
+                '$exported is no longer exported; the documented surface has '
+                'to be re-derived',
+          );
+        }
+        for (final variant in ['flutter_io', 'neutral', 'web']) {
+          expect(
+            barrel,
+            isNot(contains('platform_detection_$variant.dart')),
+            reason:
+                'the barrel now reaches past the entry point into the '
+                '$variant variant; its symbols became public',
+          );
+        }
+
+        // The load-bearing line: `import`, not `export`. A conditional export
+        // could not work here anyway — `TomFlutterPlatformUtils` denotes a
+        // different class on each target, so the name exports no single type —
+        // but the guarantee a reader needs is that nothing escapes the entry
+        // point, and that is what the absence of `export` states.
+        final entry = File(
+          'lib/src/tomclient/runtime/platform_detection_client.dart',
+        ).readAsStringSync();
         expect(
-          barrel,
-          isNot(contains('platform_detection_$variant.dart')),
+          RegExp(r'^\s*export\s', multiLine: true).hasMatch(entry),
+          isFalse,
           reason:
-              'the barrel now reaches past the entry point into the '
-              '$variant variant; its symbols became public',
+              'the entry point now re-exports the selected variant; the '
+              'documents call its symbols internal and need revisiting',
         );
-      }
-
-      // The load-bearing line: `import`, not `export`. A conditional export
-      // could not work here anyway — only the IO variant declares a TLS
-      // predicate, so exporting the selected variant would demand the same
-      // symbol on all three targets — but the guarantee a reader needs is that
-      // nothing escapes, and that is what the absence of `export` states.
-      final entry = File(
-        'lib/src/tomclient/runtime/platform_detection_client.dart',
-      ).readAsStringSync();
-      expect(
-        RegExp(r'^\s*export\s', multiLine: true).hasMatch(entry),
-        isFalse,
-        reason:
-            'the entry point now re-exports the selected variant; the '
-            'documents call its symbols internal and need revisiting',
-      );
-    });
+      },
+    );
 
     test('the API summary marks the unreachable symbols and gives their path', () {
       // The import path is read out of this file rather than written into the
@@ -449,10 +621,7 @@ void main() {
             'the API summary does not give the import path a test needs '
             'for the symbols the barrel withholds',
       );
-      for (final symbol in [
-        'allowsBadCertificateForHost',
-        'TomFlutterPlatformUtils',
-      ]) {
+      for (final symbol in ['TomFlutterPlatformUtils']) {
         expect(
           summary,
           contains(symbol),
@@ -465,18 +634,15 @@ void main() {
       // Scoped to the lines that *enumerate* — headings, table rows, list items
       // — and not to explanatory prose, which legitimately names the variant
       // class while describing how one gets selected. The enumerations are
-      // where the contradiction lived: the summary carried
-      // `allowsBadCertificateForHost` under a "Global Functions" heading while
-      // the prose two files away called it not part of the public API, and the
-      // index tabulated both withheld symbols beside the exported one with
-      // nothing to distinguish them.
+      // where the contradiction lived: a summary once carried a withheld
+      // symbol under a "Global Functions" heading while the prose two files
+      // away called it not part of the public API, and the index tabulated it
+      // beside the exported ones with nothing to distinguish them.
       final documents = [
         'doc/api_reference/api_summary_runtime.md',
         'doc/api_reference/api_summary_index.md',
       ];
-      final withheld = RegExp(
-        r'\b(allowsBadCertificateForHost|TomFlutterPlatformUtils)\b',
-      );
+      final withheld = RegExp(r'\bTomFlutterPlatformUtils\b');
       final enumerating = RegExp(r'^\s*(#{1,6} |[-*] |\|)');
       final qualified = RegExp(
         r'not exported|internal|src/',
@@ -504,32 +670,44 @@ void main() {
       }
     });
 
-    test('the module document keeps its statement that the hook is internal', () {
-      // The summary's new section and this sentence are the two halves of the
-      // agreement this pins; without the sentence the summary would be the only
-      // place the reachability is stated, and the document a reader reaches
-      // first would go quiet on it.
-      // Whitespace-collapsed: the sentence is wrapped, so the phrase this looks
-      // for is split across lines in the file and would never match as written.
-      final runtimeDoc = File(
-        'doc/runtime.md',
-      ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
-      expect(
-        runtimeDoc,
-        contains('allowsBadCertificateForHost'),
-        reason: 'doc/runtime.md dropped the certificate hook entirely',
-      );
-      expect(
-        RegExp(
-          r"allowsBadCertificateForHost.{0,400}?not part of the barrel's "
-          r'public API',
-        ).hasMatch(runtimeDoc),
-        isTrue,
-        reason:
-            'doc/runtime.md no longer says the hook is outside the '
-            'exported surface; it and the API summary would disagree',
-      );
-    });
+    test(
+      'the module document states which side of the barrel each name is on',
+      () {
+        // The summary's sections and these sentences are the two halves of the
+        // agreement this pins; without them the summary would be the only place
+        // reachability is stated, and the document a reader reaches first would
+        // go quiet on it. Both directions matter now: one name is withheld and
+        // one is published, and a reader who cannot tell which is which will
+        // either reach into `src/` for something exported or give up on
+        // something that is.
+        // Whitespace-collapsed: the sentences are wrapped, so the phrases this
+        // looks for are split across lines in the file.
+        final runtimeDoc = File(
+          'doc/runtime.md',
+        ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
+
+        expect(
+          RegExp(
+            r"TomFlutterPlatformUtils.{0,400}?not part of the barrel's "
+            r'public API',
+          ).hasMatch(runtimeDoc),
+          isTrue,
+          reason:
+              'doc/runtime.md no longer says the variant class is outside the '
+              'exported surface; it and the API summary would disagree',
+        );
+        expect(
+          RegExp(
+            r'TomBadCertificatePolicy.{0,600}?(exported|published)',
+          ).hasMatch(runtimeDoc),
+          isTrue,
+          reason:
+              'doc/runtime.md no longer says the certificate policy is part of '
+              'the exported surface, which is the whole reason it is a file of '
+              'its own',
+        );
+      },
+    );
   });
 
   group('the documented inventory of variant duplication', () {
@@ -1008,4 +1186,25 @@ void main() {
       );
     });
   });
+}
+
+/// A log output that keeps what it is given, so a test can read the lines the
+/// logger actually wrote rather than assert they exist unseen.
+class _RecordingLogOutput extends TomLogOutput {
+  final List<String> messages = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    if (logLevel.matches(loggerLevel)) {
+      messages.add(convertToString(message));
+    }
+  }
 }

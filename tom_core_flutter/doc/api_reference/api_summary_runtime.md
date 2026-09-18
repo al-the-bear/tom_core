@@ -11,8 +11,9 @@ fallback.
 - [Exported Surface](#exported-surface)
 - [Global Functions and Constants](#global-functions-and-constants)
   - [clientPlatformUtils](#clientplatformutils)
+- [Classes](#classes)
+  - [TomBadCertificatePolicy](#tombadcertificatepolicy)
 - [Internal Symbols (not exported)](#internal-symbols-not-exported)
-  - [allowsBadCertificateForHost](#allowsbadcertificateforhost--internal)
   - [TomFlutterPlatformUtils](#tomflutterplatformutils--internal)
 
 ## Overview
@@ -59,14 +60,20 @@ the per-target variants with a conditional **`import`**, not an `export`. So
 else documented below lives in `src/` and is reachable only by importing a
 variant file directly.
 
-That is not an oversight to be corrected by adding an export. A conditional
-export would have to name a symbol that exists on *every* target, and
-`allowsBadCertificateForHost` is meaningful only where there is a TLS callback
-to configure — the web and neutral variants have none. `TomFlutterPlatformUtils`
-is likewise three unrelated classes that happen to share a name, one per target,
-so the name denotes no single exportable type.
+That is not an oversight to be corrected by adding an export.
+`TomFlutterPlatformUtils` is three unrelated classes that happen to share a
+name, one per target, so a conditional export of the selected variant would
+export no single type.
 
-To reach the internal symbols from a test on the native host:
+The certificate policy is the exception that shows the rule. It is
+application-facing — `TomBadCertificatePolicy` is how an application widens or
+narrows which hosts may present an unverified certificate — so it cannot live
+inside the native variant, where reaching it would need a `dart:io` import that
+breaks the web build. It is a file of its own, carries no platform dependency,
+exists on every target and is therefore exported unconditionally. Only the
+native variant consults it.
+
+To reach the internal symbol from a test on the native host:
 
 ```dart
 import 'package:tom_core_flutter/src/tomclient/runtime/platform_detection_flutter_io.dart';
@@ -81,28 +88,56 @@ TomPlatformUtils get clientPlatformUtils
 ```
 
 Returns a fresh `TomPlatformUtils` for the current Flutter target (concrete type
-selected at compile time). This is the module's entire exported surface.
+selected at compile time).
+
+## Classes
+
+### TomBadCertificatePolicy
+
+Source: `lib/src/tomclient/runtime/bad_certificate_policy.dart`. Exported.
+
+The hosts whose **unverified** TLS certificate the native HTTP client accepts.
+The native variant's `HttpClient.badCertificateCallback` delegates to it; the
+web target performs its own validation and the neutral variant builds no client,
+so on those two the policy is present and never consulted.
+
+Not instantiable — the policy is process-wide, and a second instance would
+suggest two policies could be in force.
+
+#### Static members
+
+| Member | Signature | Description |
+| ------ | --------- | ----------- |
+| `defaultHosts` | `static const List<String>` | The shipped policy: `0.0.0.0`, `localhost`, `127.0.0.1`, `::1`, `[::1]` — and nothing else. `const`, so the policy an application ships with is auditable by reading one declaration. |
+| `hosts` | `static List<String> get` | The hosts currently accepted, **unmodifiable**: the list is the policy, and a caller that could add to what it read would widen a security boundary without passing through `allowOnly`. |
+| `allows` | `static bool allows(String host)` | Whether an unverified certificate is accepted for `host`. Exact, case-sensitive match — no patterns and no wildcards, so an entry admits only the host it spells. |
+| `allowOnly` | `static void allowOnly(Iterable<String> allowed)` | **Replaces** the list. An empty `allowed` is legitimate and means "accept no unverified certificate". A blank entry is refused with `ArgumentError`, and refused before anything takes effect. Logs at warn level, naming the hosts. |
+| `reset` | `static void reset()` | Restores `defaultHosts`. |
+
+**Both loopback families are in the default, and that is the entry that
+matters.** Which of them `localhost` resolves to is the resolver's choice and
+differs between machines, so a policy naming one and not the other makes the
+same code, certificate and URL succeed on one desktop and fail on the next —
+reported as a TLS error, which sends the reader to audit the certificate rather
+than the address family.
+
+**`::1` is the spelling that arrives.** The callback is handed `Uri.host`, and
+`Uri` strips the brackets, so `https://[::1]:8443` resolves to a host of `::1`.
+`[::1]` is listed anyway for a caller that passes an authority where a host was
+wanted.
+
+**A replacement is logged** because a `const` list gave one property a setter
+cannot: the policy in force was the policy in the source. The log line is what
+replaces it, so a widened boundary leaves a record where an operator looks.
+
+The policy is read **per handshake**, not captured when a client is built, so a
+narrowing takes effect on clients that already exist — hardening does not depend
+on the order clients happened to be created in.
 
 ## Internal Symbols (not exported)
 
-Documented because they carry behaviour worth knowing about — the certificate
-policy in particular — not because they can be called through the barrel. Both
-require the direct `src/` import shown above.
-
-### allowsBadCertificateForHost — internal
-
-```dart
-bool allowsBadCertificateForHost(String host)
-```
-
-*(native IO variant only)* Whether a TLS handshake with a bad certificate is
-tolerated for `host`. Only loopback hosts (`0.0.0.0`, `localhost`,
-`127.0.0.1`) are allowed; every other host is rejected. Exposed at the top level
-of its file so the decision can be unit-tested directly — an `X509Certificate`
-has no public constructor and `HttpClient.badCertificateCallback` is not
-readable back off the client, so the policy is otherwise unreachable from a
-test. It is **not exported**; it is declared only in
-`platform_detection_flutter_io.dart`.
+Documented because it carries behaviour worth knowing about, not because it can
+be called through the barrel. It requires the direct `src/` import shown above.
 
 ### TomFlutterPlatformUtils — internal
 
@@ -124,7 +159,7 @@ behaviour below has something to hang on.
 
 | Variant | `httpClient()` | `getBrowserLocation()` | Notes |
 | ------- | -------------- | ---------------------- | ----- |
-| `flutter_io` (native) | `IOClient` (bad-cert allowed for loopback only) | `null` | Imports the process environment into the `tom_basics` env-var map (`getTomEnvVars()`) at construction. |
+| `flutter_io` (native) | `IOClient`, with `badCertificateCallback` delegating to `TomBadCertificatePolicy` | `null` | Imports the process environment into the `tom_basics` env-var map (`getTomEnvVars()`) at construction. |
 | `web` | `FetchClient(mode: RequestMode.cors)` | `window.location.href` | — |
 | `neutral` | throws `UnsupportedError` | `null` | Fallback when neither `dart:io` nor `dart:js` is available. The refusal is permanent — such a target has no client implementation to construct. |
 

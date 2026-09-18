@@ -26,6 +26,38 @@
 
 ### Added
 
+- **The certificate allow-list covers both loopback families, and is an
+  application's to change (tcopen231).** `TomBadCertificatePolicy` replaces the
+  native variant's `allowsBadCertificateForHost`. The shipped list is
+  `0.0.0.0`, `localhost`, `127.0.0.1`, `::1` and `[::1]`; `::1` was missing,
+  and because which family `localhost` resolves to is the resolver's choice,
+  the same code, certificate and URL succeeded on one desktop and failed on the
+  next — as a TLS error, which points the reader at the certificate rather than
+  the address family. `::1` is the spelling that reaches the callback: it is
+  handed `Uri.host`, and `Uri` strips the brackets an IPv6 literal carries in a
+  URL.
+
+  `allowOnly` **replaces** the list — widening it to a named development host,
+  or narrowing it to nothing for a hardened build — and `reset()` restores the
+  shipped policy. Replacement rather than addition, because narrowing is the
+  direction that matters for a security boundary.
+
+  Three things stand in for the property a `const` list had, that the policy in
+  force was the policy in the source: the default is still `const` and auditable
+  in one declaration, `hosts` answers an unmodifiable list so the boundary
+  cannot widen without passing through the validated call, and every replacement
+  is logged at warn level naming the hosts. A blank entry is refused with an
+  `ArgumentError`, before anything takes effect. Matching is exact — no patterns
+  and no wildcards — and the policy is read per handshake, so a narrowing
+  reaches clients that already exist.
+
+  **The module's exported surface grew from one name to two.**
+  `TomBadCertificatePolicy` is a file of its own rather than a member of the
+  native variant: it has no platform dependency, so it exists on every target
+  and exports unconditionally, where a policy inside the variant could only be
+  reached through a `src/` import the module's own documents call internal.
+  `TomFlutterPlatformUtils` remains withheld.
+
 - **Where properties stop is documented, and measured (tcopen230).** The four
   typed subclasses are scalar; a structured config value belongs to the generic
   — `TomProperty<List<dynamic>>`, `TomProperty<Map<String, dynamic>>` — and
