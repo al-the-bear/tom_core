@@ -77,6 +77,22 @@ its clients offers keys the build has no panel for; listing one would strand
 the user on a blank step they cannot back out of. When *nothing* offered is
 renderable, the stop says so rather than showing an empty list.
 
+**A challenge for an unrenderable mechanism has nothing to filter.** The chooser
+can drop what it cannot render and offer the rest; the challenge stop is holding
+one outstanding challenge, of one type, with no alternative to switch to. It is
+the same deployment state — a principal who enrolled through a newer client,
+signing back in from an older build — and it is not recoverable on this side.
+
+The flow says so in its own words rather than borrowing the chooser's. "This app
+cannot set any of these up" is written about enrolment, and a user being
+*challenged* is not setting anything up; the challenge stop resolves
+`unrenderableChallenge` instead, under its own key
+`tom-2fa-unrenderable-challenge`. No attempt budget is printed beside it, because
+no attempt can be spent, and the skip affordance is absent because skipping is
+enrolment-only by construction. Cancel is the one exit, and the framework does
+not pretend there is another: recovering this needs a newer build, which is what
+the message says.
+
 **Each chooser tile renders all three of the descriptor's keys** — label,
 description and icon. The icon resolves in two steps, the convention
 `tom_flutter_ui` uses throughout: `iconKey` resolves through the text bundle to
@@ -105,7 +121,8 @@ pending the panel renders nothing, so it is safe to leave mounted.
 
 Widget keys are stable and public — `tom-2fa-chooser`, `tom-2fa-enrolment`,
 `tom-2fa-challenge`, `tom-2fa-title`, `tom-2fa-error`, `tom-2fa-attempts`,
-`tom-2fa-skip`, `tom-2fa-skip-cost`, `tom-2fa-cancel`, `tom-2fa-method-<type>`
+`tom-2fa-skip`, `tom-2fa-skip-cost`, `tom-2fa-cancel`, `tom-2fa-method-<type>`,
+`tom-2fa-no-methods`, `tom-2fa-unrenderable-challenge`
 — so an integration test can drive the flow without matching on text that a
 resource bundle is free to change.
 
@@ -379,7 +396,8 @@ bundle.
 | `skipSpendsGrace` | `two_factor.skip.spendsGrace` | Beside it, when declining costs a grace login |
 | `cancel` | `two_factor.cancel.label` | The abandon affordance |
 | `attemptsRemaining` | `two_factor.attemptsRemaining` | Attempt budget; `{count}` is substituted |
-| `noRenderableMethods` | `two_factor.error.noRenderableMethods` | When nothing offered can be rendered |
+| `noRenderableMethods` | `two_factor.error.noRenderableMethods` | The chooser, when nothing offered can be rendered — about *enrolment* |
+| `unrenderableChallenge` | `two_factor.error.unrenderableChallenge` | The challenge stop, when the outstanding challenge's mechanism has no panel in this build |
 | `totpEnrolIntro` | `two_factor.totp.enrol.intro` | Above the QR code |
 | `totpEnrolQrLabel` | `two_factor.totp.enrol.qrLabel` | Announced in place of the QR code |
 | `totpEnrolManualEntry` | `two_factor.totp.enrol.manualEntry` | Introduces the typed fallback |

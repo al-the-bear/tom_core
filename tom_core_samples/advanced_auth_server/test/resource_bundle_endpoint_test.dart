@@ -58,6 +58,15 @@ void main() {
       expect(texts['two_factor.choose.title'], 'Set up two-step verification');
       expect(texts['two_factor.skip.label'], 'Not now');
       expect(texts['two_factor.totp.name'], 'Authenticator app');
+      // The two dead-end messages, which are about different dead ends: the
+      // chooser cannot offer a factor to *set up*, while the challenge stop
+      // cannot render the one already owed. A bundle carrying only the first
+      // would show an enrolment message to a user being challenged.
+      expect(texts['two_factor.error.noRenderableMethods'], contains('set up'));
+      expect(
+        texts['two_factor.error.unrenderableChallenge'],
+        contains('newer version'),
+      );
       expect(texts['two_factor.totp.enrol.submit'], 'Confirm');
       // The admin console still renders its own code form, so it keeps its own
       // scope — including the `{digits}`/`{count}` texts it substitutes into.

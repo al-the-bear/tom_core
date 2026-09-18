@@ -137,11 +137,12 @@ on text a resource bundle is free to change.
 | `tom-2fa-chooser` / `tom-2fa-enrolment` / `tom-2fa-challenge` | The frame of each stop |
 | `tom-2fa-title` | The stop title |
 | `tom-2fa-error` | The error line, present only after a failure |
-| `tom-2fa-attempts` | The attempt-budget line |
+| `tom-2fa-attempts` | The attempt-budget line. Absent on a challenge whose mechanism has no panel — no attempt can be spent there |
 | `tom-2fa-skip` / `tom-2fa-skip-cost` | The decline affordance and its grace-login warning |
 | `tom-2fa-cancel` | The abandon affordance |
 | `tom-2fa-method-<type>` | One chooser tile |
-| `tom-2fa-no-methods` | Shown when nothing offered can be rendered |
+| `tom-2fa-no-methods` | The chooser, when nothing offered can be rendered |
+| `tom-2fa-unrenderable-challenge` | The challenge stop, when the outstanding challenge's mechanism has no panel in this build. Its own key and its own message: the chooser's is about *enrolment*, and a user being challenged is not setting anything up. Cancel is the only exit — the state needs a newer build, which is what the message says — and skip is absent, being enrolment-only by construction |
 
 ### Tom2FAClientMechanism
 
@@ -341,6 +342,7 @@ hits that screen.
 | `cancel` | `two_factor.cancel.label` |
 | `attemptsRemaining` | `two_factor.attemptsRemaining` |
 | `noRenderableMethods` | `two_factor.error.noRenderableMethods` |
+| `unrenderableChallenge` | `two_factor.error.unrenderableChallenge` |
 | `totpEnrolIntro` | `two_factor.totp.enrol.intro` |
 | `totpEnrolQrLabel` | `two_factor.totp.enrol.qrLabel` |
 | `totpEnrolManualEntry` | `two_factor.totp.enrol.manualEntry` |

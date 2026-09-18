@@ -313,30 +313,49 @@ class _Tom2FAFlowPanelState extends State<Tom2FAFlowPanel> {
 
   Widget _challengeStop(BuildContext context, Tom2FAChallenge challenge) {
     final mechanism = Tom2FAClientRegistry.find(challenge.type);
+
+    // A challenge has nothing to filter. The chooser can drop a mechanism this
+    // build cannot render and offer the rest; here the server is holding one
+    // outstanding challenge, of one type, and there is no alternative to switch
+    // to. The state is a client behind its server — a principal enrolled
+    // through a newer build, signing in from an older one — and it is not
+    // recoverable on this side, which is why the message names the version gap
+    // instead of borrowing the chooser's, which is about setting a factor *up*.
+    if (mechanism == null) {
+      return _frame(
+        context,
+        key: const Key('tom-2fa-challenge'),
+        title: Tom2FATexts.text(Tom2FATexts.challengeTitle),
+        children: [
+          TomText(
+            key: const Key('tom-2fa-unrenderable-challenge'),
+            text: Tom2FATexts.text(Tom2FATexts.unrenderableChallenge),
+          ),
+        ],
+      );
+    }
+
     return _frame(
       context,
       key: const Key('tom-2fa-challenge'),
       title: Tom2FATexts.text(Tom2FATexts.challengeTitle),
       children: [
-        if (mechanism == null)
-          TomText(
-            key: const Key('tom-2fa-no-methods'),
-            text: Tom2FATexts.text(Tom2FATexts.noRenderableMethods),
-          )
-        else
-          mechanism.buildChallengePanel(
-            context,
-            Tom2FAChallengePanelContext(
-              type: challenge.type,
-              clientData: challenge.clientData,
-              hint: challenge.hint,
-              attemptsRemaining: challenge.attemptsRemaining,
-              busy: _busy,
-              onSubmit: (code) =>
-                  _run(() => widget.controller.submitSecondFactor(code)),
-            ),
+        mechanism.buildChallengePanel(
+          context,
+          Tom2FAChallengePanelContext(
+            type: challenge.type,
+            clientData: challenge.clientData,
+            hint: challenge.hint,
+            attemptsRemaining: challenge.attemptsRemaining,
+            busy: _busy,
+            onSubmit: (code) =>
+                _run(() => widget.controller.submitSecondFactor(code)),
           ),
+        ),
         const SizedBox(height: 12),
+        // Only beside a panel that can spend one. An attempt budget printed
+        // under a message saying no attempt can be made counts down something
+        // the user has no way to use.
         _attemptsLine(challenge.attemptsRemaining),
       ],
     );

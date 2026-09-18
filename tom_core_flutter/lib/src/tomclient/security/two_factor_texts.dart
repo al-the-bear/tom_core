@@ -63,7 +63,22 @@ class Tom2FATexts {
   static const String attemptsRemaining = '$scope.attemptsRemaining';
 
   /// Shown when the server offered only mechanisms this build cannot render.
+  ///
+  /// About *enrolment*: the chooser has nothing to list. The challenge stop has
+  /// its own key, because the two situations differ in what the user can do
+  /// about them — see [unrenderableChallenge].
   static const String noRenderableMethods = '$scope.error.noRenderableMethods';
+
+  /// Shown when the outstanding challenge is for a mechanism this build has no
+  /// panel for.
+  ///
+  /// Separate from [noRenderableMethods] because that one is written about
+  /// enrolment — "this app cannot set any of these up" — and a user being
+  /// *challenged* is not setting anything up. Here there is exactly one
+  /// outstanding challenge, of one type, with nothing to switch to: the honest
+  /// message names the version gap rather than the catalogue.
+  static const String unrenderableChallenge =
+      '$scope.error.unrenderableChallenge';
 
   // --- The TOTP panels ---------------------------------------------------
 

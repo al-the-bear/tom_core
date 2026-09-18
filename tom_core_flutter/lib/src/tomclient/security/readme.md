@@ -67,6 +67,15 @@ screen over and discards what the user had typed, while one that renders the
 same widget — wrapping or subclassing the shipped panel — keeps it. See
 `doc/security.md` for the whole of it, including why sealing was declined.
 
+A mechanism the build cannot render is handled differently at each stop, because
+the two stops have different room to manoeuvre. The **chooser** filters it out
+and offers the rest, saying so only when the filter empties the list. A
+**challenge** has nothing to filter — one outstanding challenge, one type, no
+alternative — so it says that this sign-in method needs a newer version of the
+app, prints no attempt budget (none can be spent) and leaves cancel as the one
+exit. Two messages, two keys, because the chooser's is about setting a factor
+*up* and a user being challenged is not.
+
 That is a deliberate asymmetry with the server, where `@Tom2FAAdaptor` *is*
 enumerated by reflection. The server owns the set of adaptors a deployment
 offers and discovers them at start-up; a client build renders only the ones it

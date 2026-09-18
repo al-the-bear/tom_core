@@ -23,7 +23,8 @@
     "cancel": { "label": "Back to sign in" },
     "attemptsRemaining": "{count} attempt(s) remaining.",
     "error": {
-      "noRenderableMethods": "This app cannot set up any of the offered methods. Please update it."
+      "noRenderableMethods": "This app cannot set up any of the offered methods. Please update it.",
+      "unrenderableChallenge": "This sign-in method needs a newer version of the app. Please update it, or sign in from a device that has."
     },
     "totp": {
       "name": "Authenticator app",

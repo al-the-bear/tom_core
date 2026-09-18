@@ -26,6 +26,28 @@
 
 ### Changed
 
+- **A challenge for an unrenderable mechanism says which problem it is
+  (tcopen238).** It reached the chooser's `noRenderableMethods` line — accurate
+  about the registry, wrong about the situation, since "this app cannot set any
+  of these up" is written about enrolment and a user being *challenged* is not
+  setting anything up. The challenge stop has its own key now,
+  `two_factor.error.unrenderableChallenge`, under its own widget key
+  `tom-2fa-unrenderable-challenge`, naming the thing that would fix it: a newer
+  build.
+
+  Two smaller wrongs in the same spot went with it. The attempt budget was
+  printed beside the message — a countdown of tries the user has no way to
+  spend — and is now rendered only beside a panel that can spend one; and the
+  skip affordance's absence, which is enrolment-only by construction, is
+  asserted rather than incidental.
+
+  The framework does not pretend to recover the state: the deployment is a
+  client behind its server, and no affordance on this side supplies the missing
+  panel. A controller hook so a deployment could offer its own exit is the right
+  shape if one ever asks for it.
+
+  A deployment's bundle needs the new key.
+
 - **The mechanism registry's registration window is documented (tcopen237).**
   `Tom2FAClientRegistry.register` is a start-up call. Nothing bounds when it may
   be run, the registry is not sealed, and the flow resolves the mechanism on

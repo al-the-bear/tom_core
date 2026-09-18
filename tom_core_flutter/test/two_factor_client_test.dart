@@ -86,6 +86,8 @@ void main() {
     Tom2FATexts.cancel: 'Back to sign-in',
     Tom2FATexts.attemptsRemaining: '{count} tries left',
     Tom2FATexts.noRenderableMethods: 'This app cannot set any of these up.',
+    Tom2FATexts.unrenderableChallenge:
+        'This sign-in method needs a newer version of the app.',
     Tom2FATexts.totpEnrolIntro: 'Scan this with your authenticator app.',
     Tom2FATexts.totpEnrolQrLabel: 'Enrolment QR code',
     Tom2FATexts.totpEnrolManualEntry: 'Or type this key:',
@@ -691,6 +693,91 @@ void main() {
       await tester.pump();
 
       expect(controller.answered, ['654321']);
+    });
+
+    testWidgets('a mechanism this build cannot render says which problem it is', (
+      tester,
+    ) async {
+      // A client behind its server: the principal enrolled through a newer
+      // build and is now signing in from an older one. The chooser can filter a
+      // mechanism it cannot render and offer the rest; a challenge has nothing
+      // to filter — one outstanding challenge, one type, no alternative.
+      //
+      // So the message is its own, not the chooser's. "This app cannot set any
+      // of these up" is about enrolment, and a user being *challenged* is not
+      // setting anything up.
+      await pump(
+        tester,
+        _FakeController(
+          challenge: Tom2FAChallenge(
+            type: 'webauthn',
+            expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+            attemptsAllowed: 3,
+            attempt: 1,
+          ),
+        ),
+      );
+
+      expect(
+        find.byKey(const Key('tom-2fa-unrenderable-challenge')),
+        findsOneWidget,
+      );
+      expect(
+        find.text('This sign-in method needs a newer version of the app.'),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('tom-2fa-no-methods')),
+        findsNothing,
+        reason:
+            'the challenge stop is showing the chooser\'s enrolment message',
+      );
+    });
+
+    testWidgets('and counts down no attempts, because none can be spent', (
+      tester,
+    ) async {
+      // The budget was printed under the message either way, counting down
+      // something the user has no way to use. It belongs beside a panel that
+      // can spend one.
+      await pump(
+        tester,
+        _FakeController(
+          challenge: Tom2FAChallenge(
+            type: 'webauthn',
+            expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+            attemptsAllowed: 3,
+            attempt: 1,
+          ),
+        ),
+      );
+
+      expect(find.byKey(const Key('tom-2fa-attempts')), findsNothing);
+    });
+
+    testWidgets('leaves cancel as the only exit, and no skip', (tester) async {
+      // The shape of the dead end, pinned rather than described. The state is
+      // not recoverable on this side, and the framework does not pretend
+      // otherwise: there is one control, and it is the one that abandons the
+      // sign-in. Skip is enrolment-only by construction — a challenge is owed,
+      // not offered — so its absence here is the frame working, and asserting
+      // it is what would catch a skip leaking onto a stop that must not have
+      // one.
+      final controller = _FakeController(
+        challenge: Tom2FAChallenge(
+          type: 'webauthn',
+          expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+        ),
+      );
+      await pump(tester, controller);
+
+      expect(find.byKey(const Key('tom-2fa-skip')), findsNothing);
+      expect(find.byKey(const Key('tom-2fa-cancel')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('tom-2fa-cancel')));
+      await tester.pumpAndSettle();
+
+      expect(controller.cancelled, 1);
     });
 
     testWidgets('outranks an enrolment owed at the same time', (tester) async {
