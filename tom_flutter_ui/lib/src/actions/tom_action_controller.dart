@@ -28,7 +28,18 @@ class TomActionController {
   /// carried at construction — see [constructionScope].
   final TomScope? scope;
 
-  /// Optional authorization group for collective action control.
+  /// The authorization group every action this controller owns joins by
+  /// default.
+  ///
+  /// This is the collective half of the group machinery: declare the group once
+  /// here and each action built against this controller registers with it and
+  /// takes its ceiling, without the per-action wiring. An action that names its
+  /// own `tomGroup` overrides it — see [TomAction.tomGroup], which is where the
+  /// fallback is resolved.
+  ///
+  /// Read when an action is *constructed*, so a controller that assigns its
+  /// group rather than taking it in the constructor must do so before its
+  /// actions are built.
   ///
   /// Named `tomGroup` like every other authorization-group parameter in this
   /// package, including the ones on `TomNodeBase` widgets, so the concept has

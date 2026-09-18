@@ -1465,6 +1465,118 @@ void main() {
       });
     });
 
+    test('an action joins its controller group when it names none', () {
+      // The collective half: declaring the group once on the controller has to
+      // reach the actions, or "collective action control" is just the per-action
+      // wiring it claims to replace.
+      TomAuthorization.adapter = _PathAuthAdapter({
+        'sec.edit': TomAuthState.full,
+        'billing': TomAuthState.read,
+      });
+      final group = TomAuthorizationGroup('billing');
+      final controller = TomActionController(
+        controllerId: 'sec',
+        tomGroup: group,
+      );
+      final action = IncrementAction(controller: controller, id: 'edit');
+
+      expect(action.tomGroup, same(group), reason: 'inherited, not null');
+      expect(
+        action.effectiveAuthState,
+        TomAuthState.read,
+        reason: 'the ceiling applies',
+      );
+      expect(
+        group.members,
+        contains(action),
+        reason: 'registered, so the group can reach it back',
+      );
+    });
+
+    test(
+      'every action of a grouped controller joins, without repeating it',
+      () {
+        TomAuthorization.adapter = _PathAuthAdapter({
+          'sec.edit': TomAuthState.full,
+          'sec.view': TomAuthState.full,
+          'billing': TomAuthState.read,
+        });
+        final group = TomAuthorizationGroup('billing');
+        final controller = TomActionController(
+          controllerId: 'sec',
+          tomGroup: group,
+        );
+        final edit = IncrementAction(controller: controller, id: 'edit');
+        final view = IncrementAction(controller: controller, id: 'view');
+
+        expect(group.members, containsAll(<Object>[edit, view]));
+        expect(edit.effectiveAuthState, TomAuthState.read);
+        expect(view.effectiveAuthState, TomAuthState.read);
+      },
+    );
+
+    test('an action group of its own overrides the controller group', () {
+      TomAuthorization.adapter = _PathAuthAdapter({
+        'sec.edit': TomAuthState.full,
+        'billing': TomAuthState.none,
+        'reporting': TomAuthState.read,
+      });
+      final controllerGroup = TomAuthorizationGroup('billing');
+      final ownGroup = TomAuthorizationGroup('reporting');
+      final controller = TomActionController(
+        controllerId: 'sec',
+        tomGroup: controllerGroup,
+      );
+      final action = _GroupedIncrement(
+        controller: controller,
+        id: 'edit',
+        group: ownGroup,
+      );
+
+      expect(action.tomGroup, same(ownGroup));
+      expect(
+        action.effectiveAuthState,
+        TomAuthState.read,
+        reason: 'the reporting ceiling, not the billing one',
+      );
+      expect(
+        controllerGroup.members,
+        isNot(contains(action)),
+        reason: 'the overridden group never sees it',
+      );
+    });
+
+    test('an ungrouped controller leaves its actions ungrouped', () {
+      TomAuthorization.adapter = _PathAuthAdapter({
+        'sec.edit': TomAuthState.full,
+      });
+      final controller = TomActionController(controllerId: 'sec');
+      final action = IncrementAction(controller: controller, id: 'edit');
+      expect(action.tomGroup, isNull);
+      expect(action.effectiveAuthState, TomAuthState.full);
+    });
+
+    test('the inherited group is resolved in the action frame', () {
+      // The group arrives from the controller, but its ceiling is still looked
+      // up in the frame the *action* captured — the pair a canonical path and a
+      // group path have to make.
+      installRules();
+      final group = TomAuthorizationGroup('billing');
+      final action = TomScope.withScope('checkout', () {
+        final controller = TomActionController(
+          controllerId: 'sec',
+          tomGroup: group,
+        );
+        return IncrementAction(controller: controller, id: 'edit');
+      });
+      expect(action.canonicalPath, 'checkout.sec.edit');
+      expect(
+        action.effectiveAuthState,
+        TomAuthState.read,
+        reason: 'checkout.billing, not the unscoped billing decoy',
+      );
+    });
+
     test('resources resolve against the same scoped path', () {
       // `label` / `tooltip` / `iconName` read `<canonicalPath>.<suffix>`, so a
       // scoped action addresses its captions in the scope too — the field is

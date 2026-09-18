@@ -76,6 +76,20 @@ abstract class TomAction<
   /// [constructionScope].
   final TomScope? scope;
 
+  /// The authorization group this action belongs to: its own when it was given
+  /// one, otherwise the controller's [TomActionController.tomGroup].
+  ///
+  /// The fallback is what makes a controller-level group mean anything. A group
+  /// declared once on the controller covers every action it owns, which is what
+  /// "collective action control" has to mean if it is to save the caller the
+  /// per-action wiring; an action that names its own group still overrides it.
+  ///
+  /// Resolved at construction, like [constructionScope] and for the same
+  /// reason — the group is *registered with* here, so it has to be known before
+  /// the constructor body runs. A controller whose group is assignable
+  /// therefore has to carry it by the time its actions are built; for a
+  /// `TomForm`, that is while the form prepares itself, before any `late final`
+  /// action field is first read.
   @override
   final TomAuthorizationGroup? tomGroup;
 
@@ -97,9 +111,10 @@ abstract class TomAction<
     required this.actionId,
     required this.controller,
     this.scope,
-    this.tomGroup,
-  }) : constructionScope = scope ?? controller.constructionScope {
-    tomGroup?.register(this);
+    TomAuthorizationGroup? tomGroup,
+  }) : tomGroup = tomGroup ?? controller.tomGroup,
+       constructionScope = scope ?? controller.constructionScope {
+    this.tomGroup?.register(this);
     controller.registerAction(this);
   }
 

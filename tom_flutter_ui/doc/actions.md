@@ -30,7 +30,7 @@ keeps widgets dumb and reusable, and keeps logic testable without a widget tree.
 | ------ | ---- | ------- |
 | `TomAction<TContext, TUndo>` | abstract class | A single unit of behaviour: typed context, authorization, optional undo. |
 | `TomSimpleAction<TContext>` | abstract class | A `TomAction` that produces no undo state. |
-| `TomActionController` | class | Owns a group of related actions and supplies the first segment of their canonical path. |
+| `TomActionController` | class | Owns a group of related actions, supplies the first segment of their canonical path, and the authorization group they join by default. |
 | `TomActionContext` | class | Base for the typed inputs an action needs; domain contexts extend it. |
 | `TomActionUndo` | abstract interface class | Marker for undo-state objects returned from `execute`. |
 | `TomActionTransaction` | class | Groups sub-actions into one atomic undo entry. |
@@ -332,6 +332,29 @@ four-state authorization model as widgets (`tomId` is the `actionId`,
 `constructionScope` — the frame `canonicalPath` was built in. The two are a
 `<prefix>.<id>` pair, and a prefix that differed between them would apply a
 ceiling belonging to some other member, or none at all.
+
+### Where an action's group comes from
+
+Declared once on the controller, or per action:
+
+| Given | The action's `tomGroup` |
+| ----- | ----------------------- |
+| `TomAction(tomGroup: …)` | that group — it overrides the controller's |
+| nothing, controller has `tomGroup` | the **controller's** group |
+| nothing, controller has none | null, and `effectiveAuthState` equals `authState` |
+
+The controller-level group is the collective half: declaring it once covers
+every action the controller owns, which is what "collective action control" has
+to mean if it is to save the per-action wiring. The inherited group is a real
+membership — the action registers with it, so the group can reach the action
+back — and its ceiling is still looked up in the **action's** frame, not the
+group object's, keeping the `<prefix>.<id>` pair above intact.
+
+Resolved when the action is *constructed*, since that is when it registers. A
+controller that assigns its group rather than taking it in the constructor —
+`TomForm` does — must do so before its actions are built; for a form, while it
+prepares itself, before any `late final` action field is first read.
+
 `action.authorizer` produces a `TomAuthorizer` with the
 default *widget-full + action-none ⇒ disabled* pattern, ready to hand to a
 button so its enabled/disabled state follows the action's authorization without

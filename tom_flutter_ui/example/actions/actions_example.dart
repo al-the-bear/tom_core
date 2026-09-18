@@ -4,8 +4,8 @@
 /// controller owning typed, undoable actions; direct execution inside a
 /// transaction; the `TomActionTrigger` → `TomUndoHistory` wiring; undo/redo;
 /// `canExecute` gating; a guarded `TomCompositeAction`; the invocation frame a
-/// context carries; and the scope frame an action's canonical path is built
-/// in.
+/// context carries; the authorization group a controller lends its actions;
+/// and the scope frame an action's canonical path is built in.
 ///
 /// Because it imports `package:tom_flutter_ui/tom_flutter_ui.dart` (which pulls
 /// in `flutter/material` → `dart:ui`), bare `dart run` cannot execute it. Run
@@ -43,8 +43,12 @@ class IncrementUndo implements TomActionUndo {
 /// An undoable action that adds [step] to the counter.
 class IncrementAction extends TomAction<CounterContext, IncrementUndo> {
   final int step;
-  IncrementAction({required super.controller, this.step = 1})
-    : super(actionId: 'increment');
+  IncrementAction({
+    required super.controller,
+    this.step = 1,
+    String id = 'increment',
+    super.tomGroup,
+  }) : super(actionId: id);
 
   @override
   IncrementUndo execute(CounterContext context, TomActionTransaction tx) {
@@ -285,6 +289,24 @@ void run() {
   final probePath = probe.canonicalPath;
   print('invocation frames: $frames (action path still $probePath)');
 
+  // Example 10: a group declared once on the controller reaches every action
+  // it owns — membership and ceiling both — without being repeated per action.
+  // An action that names its own group overrides it.
+  final billing = TomAuthorizationGroup('billing');
+  final reporting = TomAuthorizationGroup('reporting');
+  final grouped = TomActionController(controllerId: 'gsec', tomGroup: billing);
+  final inheritsGroup = IncrementAction(controller: grouped, id: 'edit');
+  final ownGroup = IncrementAction(
+    controller: grouped,
+    id: 'report',
+    tomGroup: reporting,
+  );
+  print(
+    'inherited: ${inheritsGroup.tomGroup?.groupId}, '
+    'own: ${ownGroup.tomGroup?.groupId}, '
+    'billing members: ${billing.members.length}',
+  );
+
   // -------------------------------------------------------------------------
   // Assertions
   // -------------------------------------------------------------------------
@@ -293,6 +315,13 @@ void run() {
   assert(frames.length == 2);
   assert(frames.every((frame) => frame == 'invocation'));
   assert(probePath == 'probe.frameProbe');
+
+  // The controller's group covers the action that named none, and only that
+  // one — the overriding action never joins it.
+  assert(identical(inheritsGroup.tomGroup, billing));
+  assert(identical(ownGroup.tomGroup, reporting));
+  assert(billing.members.length == 1);
+  assert(billing.members.contains(inheritsGroup));
 
   assert(controller.actions.length == 3); // increment, reset, composite
   assert(controller.increment.canonicalPath == 'counter.increment');

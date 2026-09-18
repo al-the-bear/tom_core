@@ -2,6 +2,19 @@
 
 ### Added
 
+- **A controller's `tomGroup` reaches its actions (tcopen246).**
+  `TomActionController.tomGroup` was declared, constructor-assigned and read
+  nowhere, under a dartdoc promising "collective action control". Collective
+  control was real but ran entirely off each action's own `tomGroup`, so a
+  controller constructed with a group changed nothing about its actions — every
+  one still had to be handed the same group by hand, which is the wiring the
+  field's name says it removes. `TomAction.tomGroup` is now resolved rather than
+  assigned: its own when given one, otherwise the controller's, computed in the
+  initializer list because the constructor body registers with the result. The
+  inherited group is a real membership, so the group can reach the action back;
+  an action naming its own group overrides it, and the overridden group never
+  sees that action. The ceiling is still looked up in the *action's* frame.
+
 - **`TomActionContext.scope` is the invocation frame, and is now read
   (tcopen245).** It was declared, constructor-assigned and read nowhere, under a
   dartdoc naming a behaviour — "the scope in which this action is executing" —
