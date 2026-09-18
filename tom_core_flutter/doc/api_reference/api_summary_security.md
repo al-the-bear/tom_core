@@ -142,6 +142,7 @@ on text a resource bundle is free to change.
 | `tom-2fa-cancel` | The abandon affordance |
 | `tom-2fa-method-<type>` | One chooser tile |
 | `tom-2fa-no-methods` | The chooser, when nothing offered can be rendered |
+| `tom-2fa-enrolment-expired` / `tom-2fa-challenge-expired` | Above a panel whose deadline has passed. A **notice, not a refusal**: the panel and its submit button stay, because `expiresAt` is an absolute instant the server issued, there is no skew window on this path, and a flow that hid the panel on its own verdict would lock a fast-clocked user out of a login the server would still complete. The chooser never shows one — `Tom2FAPendingEnrolment.isExpired` answers false while choosing, there being no generated material to go stale |
 | `tom-2fa-unrenderable-challenge` | The challenge stop, when the outstanding challenge's mechanism has no panel in this build. Its own key and its own message: the chooser's is about *enrolment*, and a user being challenged is not setting anything up. Cancel is the only exit — the state needs a newer build, which is what the message says — and skip is absent, being enrolment-only by construction |
 
 ### Tom2FAClientMechanism
@@ -357,6 +358,8 @@ hits that screen.
 | `attemptsRemaining` | `two_factor.attemptsRemaining` |
 | `noRenderableMethods` | `two_factor.error.noRenderableMethods` |
 | `unrenderableChallenge` | `two_factor.error.unrenderableChallenge` |
+| `enrolmentExpired` | `two_factor.error.enrolmentExpired` |
+| `challengeExpired` | `two_factor.error.challengeExpired` |
 | `totpEnrolIntro` | `two_factor.totp.enrol.intro` |
 | `totpEnrolQrLabel` | `two_factor.totp.enrol.qrLabel` |
 | `totpEnrolManualEntry` | `two_factor.totp.enrol.manualEntry` |

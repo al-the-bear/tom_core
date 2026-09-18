@@ -89,6 +89,14 @@ challenge context has no application field yet, which is an absence of demand
 rather than a rule; the suite pins both contexts' field sets so either becomes a
 decision rather than a drift.
 
+**A lapsed deadline is said out loud, not enforced.** Both wire types carry an
+`isExpired` and the flow now reads it at the two stops where a deadline exists,
+rendering a line above the panel. The panel and its submit button stay:
+`expiresAt` is an absolute instant the server issued, there is no skew window on
+this path, and a flow that hid the panel on its own verdict would lock a user
+whose clock runs fast out of a login the server would still complete. The
+chooser never reports a lapse — there is no generated material to go stale.
+
 A mechanism the build cannot render is handled differently at each stop, because
 the two stops have different room to manoeuvre. The **chooser** filters it out
 and offers the rest, saying so only when the filter empties the list. A

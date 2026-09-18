@@ -11,6 +11,7 @@ registry of pluggable per-mechanism panels, and the shipped TOTP mechanism.
 - [The Flow and Its Three Stops](#the-flow-and-its-three-stops)
 - [The Controller Seam](#the-controller-seam)
 - [Mechanisms and the Registry](#mechanisms-and-the-registry)
+- [When an Offer or a Challenge Has Lapsed](#when-an-offer-or-a-challenge-has-lapsed)
 - [What the Framework Ships](#what-the-framework-ships)
 - [The Shipped TOTP Mechanism](#the-shipped-totp-mechanism)
 - [Text Resources](#text-resources)
@@ -129,7 +130,8 @@ pending the panel renders nothing, so it is safe to leave mounted.
 Widget keys are stable and public — `tom-2fa-chooser`, `tom-2fa-enrolment`,
 `tom-2fa-challenge`, `tom-2fa-title`, `tom-2fa-error`, `tom-2fa-attempts`,
 `tom-2fa-skip`, `tom-2fa-skip-cost`, `tom-2fa-cancel`, `tom-2fa-method-<type>`,
-`tom-2fa-no-methods`, `tom-2fa-unrenderable-challenge`
+`tom-2fa-no-methods`, `tom-2fa-unrenderable-challenge`,
+`tom-2fa-enrolment-expired`, `tom-2fa-challenge-expired`
 — so an integration test can drive the flow without matching on text that a
 resource bundle is free to change.
 
@@ -336,6 +338,52 @@ would forbid a legitimate late registration — a mechanism arriving from a plug
 loaded after the login screen is already up — to prevent a misuse nobody has
 committed.
 
+## When an Offer or a Challenge Has Lapsed
+
+Both wire types carry a deadline and an `isExpired`, and the flow read neither.
+A user who left the set-up screen open past the offer's validity scanned a QR
+code that would not be accepted, typed a confirmation, and got a refusal from the
+server — correct behaviour arriving as late as it possibly can.
+
+The flow checks now, at the two stops where a deadline exists, and renders a line
+above the panel:
+
+| Stop | Key | Widget key |
+| ---- | --- | ---------- |
+| Enrolment (a mechanism chosen, its offer half-built) | `two_factor.error.enrolmentExpired` | `tom-2fa-enrolment-expired` |
+| Challenge | `two_factor.error.challengeExpired` | `tom-2fa-challenge-expired` |
+
+Two keys rather than one because the nouns differ — a set-up session and a
+sign-in request — and a deployment writing a bundle wants to say so.
+
+**The chooser never reports a lapse.** `Tom2FAPendingEnrolment.isExpired` answers
+`false` while the user is still choosing, and the kernel gives the reason: there
+is no generated material to go stale, so a chooser left open is a UX question
+rather than a security one. The flow calls `isExpired` on that same type at two
+stops and inherits the distinction rather than re-deriving it.
+
+**A begun offer carrying no deadline reads as lapsed**, which is also the
+kernel's reading and also inherited: it answers as the server would, and a panel
+showing a live confirmation form for a state the server refuses is worse than one
+saying the offer lapsed.
+
+### It is a notice, not a refusal
+
+The panel stays. The submit button stays. Whatever the user sends is judged by
+the server, which is the authority on a deadline it issued.
+
+That is the whole of the design and it follows from one measurement:
+`expiresAt` is an **absolute instant** the server put in the token, and there is
+no skew window anywhere on this path — `isExpired` is a strict comparison. So the
+client's verdict is only as good as *this device's* clock. A flow that hid the
+panel on its own verdict would lock a user whose clock runs ten minutes fast out
+of a login the server was still perfectly willing to complete, and it would do so
+silently, on every attempt.
+
+Saying it and letting the authority answer costs nothing and cannot lock anyone
+out. What it removes is the same thing the unrenderable-challenge line removes: a
+refusal arriving with no explanation, after the user has done the work.
+
 ## What the Framework Ships
 
 One mechanism: `TomTotp2FAClientMechanism`, installed by the flow so an
@@ -464,6 +512,8 @@ bundle.
 | `attemptsRemaining` | `two_factor.attemptsRemaining` | Attempt budget; `{count}` is substituted |
 | `noRenderableMethods` | `two_factor.error.noRenderableMethods` | The chooser, when nothing offered can be rendered — about *enrolment* |
 | `unrenderableChallenge` | `two_factor.error.unrenderableChallenge` | The challenge stop, when the outstanding challenge's mechanism has no panel in this build |
+| `enrolmentExpired` | `two_factor.error.enrolmentExpired` | Above a set-up panel whose offer has lapsed — a notice, the panel stays |
+| `challengeExpired` | `two_factor.error.challengeExpired` | Above a challenge panel whose challenge has lapsed — likewise |
 | `totpEnrolIntro` | `two_factor.totp.enrol.intro` | Above the QR code |
 | `totpEnrolQrLabel` | `two_factor.totp.enrol.qrLabel` | Announced in place of the QR code |
 | `totpEnrolManualEntry` | `two_factor.totp.enrol.manualEntry` | Introduces the typed fallback |

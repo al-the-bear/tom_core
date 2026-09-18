@@ -67,6 +67,11 @@ void main() {
         texts['two_factor.error.unrenderableChallenge'],
         contains('newer version'),
       );
+      // And the two lapsed-deadline notices, which are notices rather than
+      // refusals: the panel stays up, so the wording has to tell the user what
+      // to do rather than only that something is wrong.
+      expect(texts['two_factor.error.enrolmentExpired'], contains('expired'));
+      expect(texts['two_factor.error.challengeExpired'], contains('expired'));
       expect(texts['two_factor.totp.enrol.submit'], 'Confirm');
       // The admin console still renders its own code form, so it keeps its own
       // scope — including the `{digits}`/`{count}` texts it substitutes into.

@@ -284,6 +284,13 @@ class _Tom2FAFlowPanelState extends State<Tom2FAFlowPanel> {
       title: Tom2FATexts.text(Tom2FATexts.enrolTitle),
       enrolment: enrolment,
       children: [
+        if (enrolment.isExpired()) ...[
+          _expiryNotice(
+            const Key('tom-2fa-enrolment-expired'),
+            Tom2FATexts.enrolmentExpired,
+          ),
+          const SizedBox(height: 12),
+        ],
         if (mechanism == null)
           TomText(
             key: const Key('tom-2fa-no-methods'),
@@ -340,6 +347,13 @@ class _Tom2FAFlowPanelState extends State<Tom2FAFlowPanel> {
       key: const Key('tom-2fa-challenge'),
       title: Tom2FATexts.text(Tom2FATexts.challengeTitle),
       children: [
+        if (challenge.isExpired()) ...[
+          _expiryNotice(
+            const Key('tom-2fa-challenge-expired'),
+            Tom2FATexts.challengeExpired,
+          ),
+          const SizedBox(height: 12),
+        ],
         mechanism.buildChallengePanel(
           context,
           Tom2FAChallengePanelContext(
@@ -421,6 +435,27 @@ class _Tom2FAFlowPanelState extends State<Tom2FAFlowPanel> {
       ],
     );
   }
+
+  /// The line shown above a panel whose deadline has passed.
+  ///
+  /// **A notice, not a refusal.** The panel stays, the submit button stays, and
+  /// the server decides what it will accept. `expiresAt` is an absolute instant
+  /// the server issued, and the comparison against it is only as good as *this*
+  /// device's clock: a client running ten minutes fast would find every
+  /// challenge expired on arrival, and a flow that hid the panel on its own
+  /// verdict would lock that user out of a login the server was still willing
+  /// to complete. Nothing on this side tolerates skew — the deadline is a hard
+  /// one with no window — so the client says what it believes and lets the
+  /// authority answer.
+  ///
+  /// What it removes is the same thing the unrenderable-challenge line removes:
+  /// a refusal that would otherwise arrive with no explanation, as late as it
+  /// possibly can, after the user has scanned a code and typed one in.
+  Widget _expiryNotice(Key key, String textKey) => TomText(
+    key: key,
+    text: Tom2FATexts.text(textKey),
+    style: Theme.of(context).textTheme.bodySmall,
+  );
 
   Widget _attemptsLine(int remaining) => TomText(
     key: const Key('tom-2fa-attempts'),

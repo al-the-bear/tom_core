@@ -69,6 +69,22 @@ class Tom2FATexts {
   /// about them — see [unrenderableChallenge].
   static const String noRenderableMethods = '$scope.error.noRenderableMethods';
 
+  /// Shown above a **set-up** panel whose offer has lapsed.
+  ///
+  /// A notice rather than a refusal: the panel stays, because the deadline is
+  /// an absolute instant the server issued and the client's verdict on it is
+  /// only as good as the client's clock. See `doc/security.md` §When an offer
+  /// or a challenge has lapsed.
+  static const String enrolmentExpired = '$scope.error.enrolmentExpired';
+
+  /// Shown above a **challenge** panel whose challenge has lapsed.
+  ///
+  /// Its own key rather than sharing [enrolmentExpired] for the reason
+  /// [unrenderableChallenge] has its own: the nouns differ. One is a set-up
+  /// session, the other a sign-in request, and a deployment writing a bundle
+  /// wants to say so.
+  static const String challengeExpired = '$scope.error.challengeExpired';
+
   /// Shown when the outstanding challenge is for a mechanism this build has no
   /// panel for.
   ///

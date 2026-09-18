@@ -24,7 +24,9 @@
     "attemptsRemaining": "{count} attempt(s) remaining.",
     "error": {
       "noRenderableMethods": "This app cannot set up any of the offered methods. Please update it.",
-      "unrenderableChallenge": "This sign-in method needs a newer version of the app. Please update it, or sign in from a device that has."
+      "unrenderableChallenge": "This sign-in method needs a newer version of the app. Please update it, or sign in from a device that has.",
+      "enrolmentExpired": "This set-up has expired. Cancel and sign in again to start over.",
+      "challengeExpired": "This sign-in request has expired. Cancel and sign in again."
     },
     "totp": {
       "name": "Authenticator app",

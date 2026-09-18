@@ -24,6 +24,27 @@
   A failure this module already named passes through untouched: a conflict, an
   undecodable document, an owner mismatch, an uninitialised reflection.
 
+### Added
+
+- **A lapsed offer or challenge says so (tcopen241).** Both wire types carry an
+  `isExpired` and the flow read neither, so a user who left the set-up screen
+  open scanned a QR code that would not be accepted, typed a confirmation, and
+  got a refusal from the server — correct behaviour arriving as late as it
+  possibly can. The flow now checks at the two stops where a deadline exists and
+  renders a line above the panel: `two_factor.error.enrolmentExpired` and
+  `two_factor.error.challengeExpired`.
+
+  **A notice, not a refusal.** The panel and its submit button stay, and whatever
+  the user sends is judged by the server. `expiresAt` is an absolute instant the
+  server issued and there is no skew window on this path, so the client's verdict
+  is only as good as this device's clock — a flow that hid the panel on its own
+  verdict would lock a user whose clock runs fast out of a login the server would
+  still complete.
+
+  The chooser never reports a lapse, and a begun offer with no deadline reads as
+  lapsed; both readings are the kernel's and are inherited rather than
+  re-derived. A deployment's bundle needs the two new keys.
+
 ### Changed
 
 - **TOTP is stated as the only mechanism the framework ships (tcopen240).** SMS

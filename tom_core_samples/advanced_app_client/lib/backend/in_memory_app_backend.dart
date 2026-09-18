@@ -139,6 +139,10 @@ class InMemoryAppBackend implements AppBackend {
     'two_factor.error.unrenderableChallenge':
         'This sign-in method needs a newer version of the app. Please update '
         'it, or sign in from a device that has.',
+    'two_factor.error.enrolmentExpired':
+        'This set-up has expired. Cancel and sign in again to start over.',
+    'two_factor.error.challengeExpired':
+        'This sign-in request has expired. Cancel and sign in again.',
     'two_factor.totp.name': 'Authenticator app',
     'two_factor.totp.description':
         'Use a code from Google Authenticator, 1Password or a similar app.',

@@ -88,6 +88,8 @@ void main() {
     Tom2FATexts.cancel: 'Back to sign-in',
     Tom2FATexts.attemptsRemaining: '{count} tries left',
     Tom2FATexts.noRenderableMethods: 'This app cannot set any of these up.',
+    Tom2FATexts.enrolmentExpired: 'This set-up has expired. Start again.',
+    Tom2FATexts.challengeExpired: 'This sign-in has expired. Start again.',
     Tom2FATexts.unrenderableChallenge:
         'This sign-in method needs a newer version of the app.',
     Tom2FATexts.totpEnrolIntro: 'Scan this with your authenticator app.',
@@ -878,6 +880,142 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(controller.cancelled, 1);
+    });
+  });
+
+  group('a lapsed deadline is said out loud, not enforced', () {
+    // Both wire types carry `isExpired` and the flow read neither, so a user who
+    // left the screen open scanned a QR code that would not be accepted, typed a
+    // code, and got a refusal from the server — correct behaviour arriving as
+    // late as it possibly can.
+    //
+    // The flow says so now. What it does *not* do is refuse: `expiresAt` is an
+    // absolute instant the server issued, the comparison is only as good as this
+    // device's clock, and there is no skew window anywhere on the path. A flow
+    // that hid the panel on its own verdict would lock a fast-clocked user out
+    // of a login the server was still willing to complete.
+
+    DateTime ago() =>
+        DateTime.now().toUtc().subtract(const Duration(minutes: 1));
+    DateTime ahead() => DateTime.now().toUtc().add(const Duration(minutes: 5));
+
+    testWidgets('a lapsed offer says so, and the panel stays', (tester) async {
+      final controller = _FakeController(
+        enrolment: Tom2FAPendingEnrolment(type: 'totp', expiresAt: ago()),
+      );
+      await pump(tester, controller);
+
+      expect(
+        find.byKey(const Key('tom-2fa-enrolment-expired')),
+        findsOneWidget,
+      );
+      expect(
+        find.text('This set-up has expired. Start again.'),
+        findsOneWidget,
+      );
+
+      // The panel is still there and still submits. The server is the authority
+      // on a deadline it issued; this side only reports what it believes.
+      expect(
+        find.byKey(const Key('tom-2fa-totp-enrolment-code')),
+        findsOneWidget,
+      );
+      await tester.enterText(
+        find.byKey(const Key('tom-2fa-totp-enrolment-code')),
+        '123456',
+      );
+      await tester.tap(find.byKey(const Key('tom-2fa-totp-enrolment-submit')));
+      await tester.pumpAndSettle();
+
+      expect(controller.confirmed, ['123456']);
+    });
+
+    testWidgets('a live offer says nothing', (tester) async {
+      await pump(
+        tester,
+        _FakeController(
+          enrolment: Tom2FAPendingEnrolment(type: 'totp', expiresAt: ahead()),
+        ),
+      );
+
+      expect(find.byKey(const Key('tom-2fa-enrolment-expired')), findsNothing);
+    });
+
+    testWidgets('a lapsed challenge says so, and the panel stays', (
+      tester,
+    ) async {
+      final controller = _FakeController(
+        challenge: Tom2FAChallenge(type: 'totp', expiresAt: ago()),
+      );
+      await pump(tester, controller);
+
+      expect(
+        find.byKey(const Key('tom-2fa-challenge-expired')),
+        findsOneWidget,
+      );
+      expect(
+        find.text('This sign-in has expired. Start again.'),
+        findsOneWidget,
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('tom-2fa-totp-challenge-code')),
+        '654321',
+      );
+      await tester.tap(find.byKey(const Key('tom-2fa-totp-challenge-submit')));
+      await tester.pumpAndSettle();
+
+      expect(controller.answered, ['654321']);
+    });
+
+    testWidgets('a live challenge says nothing', (tester) async {
+      await pump(
+        tester,
+        _FakeController(
+          challenge: Tom2FAChallenge(type: 'totp', expiresAt: ahead()),
+        ),
+      );
+
+      expect(find.byKey(const Key('tom-2fa-challenge-expired')), findsNothing);
+    });
+
+    testWidgets('the chooser never reports a lapse', (tester) async {
+      // `Tom2FAPendingEnrolment.isExpired` answers false while the user is still
+      // choosing, and the kernel says why: there is no generated material to go
+      // stale, so a chooser left open is a UX question rather than a security
+      // one. Asserted here because the flow calls `isExpired` on the same type
+      // at two stops, and only one of them may ever report true.
+      await pump(
+        tester,
+        _FakeController(
+          enrolment: Tom2FAPendingEnrolment(
+            offeredTypes: const ['totp'],
+            expiresAt: ago(),
+          ),
+        ),
+      );
+
+      expect(find.byKey(const Key('tom-2fa-chooser')), findsOneWidget);
+      expect(find.byKey(const Key('tom-2fa-enrolment-expired')), findsNothing);
+    });
+
+    testWidgets('a begun offer with no deadline reads as lapsed', (
+      tester,
+    ) async {
+      // The kernel's backstop: a begun offer carrying no `expiresAt` answers
+      // true, because it answers as the server would and a panel showing a live
+      // confirmation form for a state the server refuses is worse than one
+      // saying the offer lapsed. The flow inherits that reading rather than
+      // second-guessing it, and this is where that inheritance is visible.
+      await pump(
+        tester,
+        _FakeController(enrolment: Tom2FAPendingEnrolment(type: 'totp')),
+      );
+
+      expect(
+        find.byKey(const Key('tom-2fa-enrolment-expired')),
+        findsOneWidget,
+      );
     });
   });
 
