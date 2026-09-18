@@ -37,7 +37,9 @@
       },
       "challenge": {
         "codeLabel": "Verification code",
-        "submit": "Verify"
+        "submit": "Verify",
+        "expiresIn": "Good for another {seconds} s",
+        "codeChanged": "Your authenticator now shows a new code — enter that one."
       }
     }
   },

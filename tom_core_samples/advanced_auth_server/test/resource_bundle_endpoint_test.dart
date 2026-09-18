@@ -43,6 +43,15 @@ void main() {
       expect(texts['two_factor.challenge.title'], 'Two-step verification');
       expect(texts['two_factor.totp.challenge.codeLabel'], 'Verification code');
       expect(texts['two_factor.totp.challenge.submit'], 'Verify');
+      // The countdown the challenge panel renders, and the line it shows once a
+      // rollover has overtaken a typed code. Both carry a placeholder or none;
+      // the first must keep its, or the panel renders the sentence without the
+      // number it is about.
+      expect(
+        texts['two_factor.totp.challenge.expiresIn'],
+        contains('{seconds}'),
+      );
+      expect(texts['two_factor.totp.challenge.codeChanged'], isNotEmpty);
       expect(texts['two_factor.attemptsRemaining'], contains('{count}'));
       // Enrolment is the other half of the same flow: the chooser, the offer's
       // decline affordance, and the TOTP set-up panel.

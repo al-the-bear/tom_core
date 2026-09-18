@@ -149,6 +149,9 @@ class InMemoryAppBackend implements AppBackend {
     'two_factor.totp.enrol.submit': 'Confirm',
     'two_factor.totp.challenge.codeLabel': 'Verification code',
     'two_factor.totp.challenge.submit': 'Verify',
+    'two_factor.totp.challenge.expiresIn': 'Good for another {seconds} s',
+    'two_factor.totp.challenge.codeChanged':
+        'Your authenticator now shows a new code — enter that one.',
     'adminLogin.title': 'Advanced Todo — Admin sign in',
     'adminLogin.intro':
         'Sign in as admin (password pw). A non-admin (alice, bob, carol) is rejected.',

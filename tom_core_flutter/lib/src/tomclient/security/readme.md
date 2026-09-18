@@ -24,7 +24,7 @@ whose auth client already handles refresh.
 | `Tom2FAClientRegistry` | Process-wide catalog the flow dispatches through; `register` replaces, so an application can substitute a built-in. |
 | `Tom2FAEnrolmentPanelContext` | What an enrolment panel is given: `type`, `clientData`, `accountLabel`, `onSubmit`, `busy`. |
 | `Tom2FAChallengePanelContext` | What a challenge panel is given: the same, plus `hint` and `attemptsRemaining`. |
-| `TomTotp2FAClientMechanism` | The shipped authenticator-app mechanism, registered under `'totp'`. Also the public `digitsOf` / `groupSecret` helpers. |
+| `TomTotp2FAClientMechanism` | The shipped authenticator-app mechanism, registered under `'totp'`. Its challenge panel counts down to the next code rollover and says so when one overtakes a typed code — warning, not blocking, because the server accepts one step either side of its own. Also the public `digitsOf` / `periodOf` / `secondsRemainingIn` / `groupSecret` helpers. |
 | `Tom2FATexts` | Every resource key this feature resolves, and the `text` / `textWith` helpers that resolve them. No literal user-facing text exists anywhere in the feature. |
 | `TomQrCodeView` | A QR code painted from the pure-Dart `qr` encoder, so it themes like any other widget. Never throws on its payload: empty, or too long to encode, renders an empty square. Re-encodes and repaints only when the payload or the styling changes, not on every parent rebuild. |
 

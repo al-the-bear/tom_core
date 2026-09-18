@@ -27,13 +27,38 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 /// Every string the panel currently renders, in tree order.
 ///
 /// Used to compare two renderings of one panel that differ only in a
-/// `clientData` key. Text is what a key the panel *started* reading would
-/// surface — a countdown adds no widget key of its own — so equality here is
-/// the assertion that the extra key changed nothing.
+/// `clientData` key: equality is the assertion that the extra key changed
+/// nothing a reader can see. Text rather than widget keys, because a panel that
+/// *started* reading a key would most likely surface it as a line rather than
+/// as a newly keyed widget.
 List<String> _renderedText(WidgetTester tester) => tester
     .widgetList<Text>(find.byType(Text))
     .map((widget) => widget.data ?? widget.textSpan?.toPlainText() ?? '')
     .toList();
+
+/// The whole seconds the challenge panel's countdown currently shows.
+///
+/// Read out of the rendered line rather than off the state, so what is asserted
+/// is what a user sees — including that the bundle's `{seconds}` placeholder
+/// was substituted at all.
+int _countdownSeconds(WidgetTester tester) {
+  final line = tester.widget<Text>(
+    find.descendant(
+      of: find.byKey(const Key('tom-2fa-totp-challenge-countdown')),
+      matching: find.byType(Text),
+    ),
+  );
+  final text = line.data ?? line.textSpan?.toPlainText() ?? '';
+  final match = RegExp(r'Good for another (\d+) s').firstMatch(text);
+  expect(
+    match,
+    isNotNull,
+    reason:
+        'the countdown line reads "$text", which is not the bundle text '
+        'with a number in it',
+  );
+  return int.parse(match!.group(1)!);
+}
 
 /// An `otpauth://` URI larger than any QR code can hold.
 ///
@@ -68,6 +93,8 @@ void main() {
     Tom2FATexts.totpEnrolSubmit: 'Finish set-up',
     Tom2FATexts.totpChallengeCodeLabel: 'Authenticator code',
     Tom2FATexts.totpChallengeSubmit: 'Sign in',
+    Tom2FATexts.totpChallengeExpiresIn: 'Good for another {seconds} s',
+    Tom2FATexts.totpChallengeCodeChanged: 'Your app shows a new code now.',
     // Descriptors the chooser falls back to when the server sent none.
     'two_factor.totp.name': 'Authenticator app',
     'two_factor.totp.description': 'A code from an app on your phone.',
@@ -467,10 +494,11 @@ void main() {
     });
 
     testWidgets('ignores the periodSeconds the server sends', (tester) async {
-      // The server writes four keys and this panel reads three. Rendering the
-      // real four-key payload beside the three-key one pins the fourth as
-      // inert, so teaching the panel about the period has to fail here and
-      // take the documented key list with it.
+      // The server writes four keys and the *enrolment* panel reads three: the
+      // period drives the challenge panel's countdown and has nothing to say
+      // here, where no code is outstanding. Rendering the real four-key payload
+      // beside the three-key one pins that, so a countdown wandering onto this
+      // panel has to fail here.
       await pump(tester, _FakeController(enrolment: offer(digits: 6)));
       final withoutPeriod = _renderedText(tester);
 
@@ -509,26 +537,20 @@ void main() {
       expect(controller.answered, ['654321']);
     });
 
-    testWidgets('sizes from digits and ignores periodSeconds', (tester) async {
+    testWidgets('sizes from digits and counts down from periodSeconds', (
+      tester,
+    ) async {
       // The challenge payload the server actually sends is exactly these two
-      // keys. The panel reads the first; the second is what a countdown would
-      // be driven from, and there is no countdown.
-      Tom2FAChallenge challenge({required bool withPeriod}) => Tom2FAChallenge(
+      // keys, and the panel now reads both: the first sizes the field, the
+      // second drives the countdown.
+      Tom2FAChallenge challenge({required int period}) => Tom2FAChallenge(
         type: 'totp',
         expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
-        clientData: {'digits': 8, if (withPeriod) 'periodSeconds': 30},
+        clientData: {'digits': 8, 'periodSeconds': period},
       );
 
-      await pump(
-        tester,
-        _FakeController(challenge: challenge(withPeriod: false)),
-      );
-      final withoutPeriod = _renderedText(tester);
-
-      await pump(
-        tester,
-        _FakeController(challenge: challenge(withPeriod: true)),
-      );
+      await pump(tester, _FakeController(challenge: challenge(period: 90)));
+      addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
 
       final field = tester.widget<TextField>(
         find.descendant(
@@ -537,7 +559,138 @@ void main() {
         ),
       );
       expect(field.maxLength, 8);
-      expect(_renderedText(tester), withoutPeriod);
+
+      // The seconds shown are the ones left in the *current* step, so the
+      // assertion is on the range rather than on a literal — the step this
+      // test happens to start in is whichever one the clock is in.
+      expect(_countdownSeconds(tester), inInclusiveRange(1, 90));
+    });
+
+    testWidgets('the countdown ticks, and wraps at the rollover', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        _FakeController(
+          challenge: Tom2FAChallenge(
+            type: 'totp',
+            expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+            clientData: {'periodSeconds': 3},
+          ),
+        ),
+      );
+      addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
+
+      final first = _countdownSeconds(tester);
+      await tester.pump(const Duration(seconds: 1));
+      expect(
+        _countdownSeconds(tester),
+        first == 1 ? 3 : first - 1,
+        reason: 'a second passed and the countdown did not move',
+      );
+
+      // Two more seconds completes one whole period from where the panel
+      // opened, and the number is back where it started: the authenticator has
+      // rolled over and the next code has its full life ahead of it.
+      await tester.pump(const Duration(seconds: 2));
+      expect(_countdownSeconds(tester), first);
+    });
+
+    testWidgets('a rollover after typing says so, and only then', (
+      tester,
+    ) async {
+      final controller = _FakeController(
+        challenge: Tom2FAChallenge(
+          type: 'totp',
+          expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+          attemptsAllowed: 3,
+          attempt: 1,
+          clientData: {'periodSeconds': 3},
+        ),
+      );
+      await pump(tester, controller);
+      addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
+
+      final changed = find.byKey(
+        const Key('tom-2fa-totp-challenge-code-changed'),
+      );
+
+      // Not while the field is empty, however many rollovers pass. A panel
+      // that announced every one of them would say something alarming every
+      // thirty seconds to a user who is still reading their screen.
+      await tester.pump(const Duration(seconds: 4));
+      expect(changed, findsNothing);
+
+      await tester.enterText(
+        find.byKey(const Key('tom-2fa-totp-challenge-code')),
+        '654321',
+      );
+      await tester.pump();
+      expect(
+        changed,
+        findsNothing,
+        reason: 'the code was typed in this step; nothing has overtaken it',
+      );
+
+      // Now the rollover, with something typed. This is the case the line
+      // exists for.
+      await tester.pump(const Duration(seconds: 4));
+      expect(changed, findsOneWidget);
+
+      // It does not clear the field — the user may still want to send it, and
+      // wiping what they typed would be a second surprise on top of the first.
+      final field = tester.widget<TextField>(
+        find.descendant(
+          of: find.byKey(const Key('tom-2fa-totp-challenge-code')),
+          matching: find.byType(TextField),
+        ),
+      );
+      expect(field.controller!.text, '654321');
+
+      // Retyping withdraws the warning: the code in the field belongs to this
+      // step again.
+      await tester.enterText(
+        find.byKey(const Key('tom-2fa-totp-challenge-code')),
+        '112233',
+      );
+      await tester.pump();
+      expect(changed, findsNothing);
+    });
+
+    testWidgets('a stale code is still submitted, because the server takes it', (
+      tester,
+    ) async {
+      // The line warns; it must not block. `TomTotp2FAService` accepts one step
+      // either side of its own, so a code typed just before a rollover is still
+      // good — a panel that refused to send it would enforce a policy stricter
+      // than the one that judges it, and would cost the user the very attempt
+      // it was trying to save.
+      final controller = _FakeController(
+        challenge: Tom2FAChallenge(
+          type: 'totp',
+          expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+          attemptsAllowed: 3,
+          attempt: 1,
+          clientData: {'periodSeconds': 3},
+        ),
+      );
+      await pump(tester, controller);
+      addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
+
+      await tester.enterText(
+        find.byKey(const Key('tom-2fa-totp-challenge-code')),
+        '654321',
+      );
+      await tester.pump(const Duration(seconds: 4));
+      expect(
+        find.byKey(const Key('tom-2fa-totp-challenge-code-changed')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('tom-2fa-totp-challenge-submit')));
+      await tester.pump();
+
+      expect(controller.answered, ['654321']);
     });
 
     testWidgets('outranks an enrolment owed at the same time', (tester) async {
@@ -685,6 +838,76 @@ void main() {
         TomTotp2FAClientMechanism.digitsOf({'digits': 'six'}),
         TomTotp.defaultDigits,
       );
+    });
+
+    test('periodOf reads an int, a numeric string, or the RFC default', () {
+      // The same defence `digitsOf` applies, to the key beside it. The panel
+      // renders a countdown off this, so a server that omitted it or sent it
+      // as text must not leave the field counting down from nothing.
+      expect(
+        TomTotp2FAClientMechanism.periodOf({'periodSeconds': 60}),
+        const Duration(seconds: 60),
+      );
+      expect(
+        TomTotp2FAClientMechanism.periodOf({'periodSeconds': '45'}),
+        const Duration(seconds: 45),
+      );
+      expect(TomTotp2FAClientMechanism.periodOf({}), TomTotp.defaultPeriod);
+      expect(
+        TomTotp2FAClientMechanism.periodOf({'periodSeconds': 0}),
+        TomTotp.defaultPeriod,
+      );
+      expect(
+        TomTotp2FAClientMechanism.periodOf({'periodSeconds': 'thirty'}),
+        TomTotp.defaultPeriod,
+      );
+    });
+
+    test('secondsRemainingIn counts down to the epoch-aligned boundary', () {
+      // TOTP steps are aligned to the Unix epoch, not to when a challenge was
+      // issued, so the boundary is computable without a server timestamp — and
+      // it is the same division `TomTotp.counterFor` does, which is what makes
+      // the number the panel shows agree with the code the authenticator will
+      // roll over to.
+      const period = Duration(seconds: 30);
+      DateTime at(int epochSeconds) =>
+          DateTime.fromMillisecondsSinceEpoch(epochSeconds * 1000, isUtc: true);
+
+      // On a boundary the whole step is ahead, not zero: the line reads "good
+      // for another N seconds", and a step that has just begun has all of them.
+      expect(
+        TomTotp2FAClientMechanism.secondsRemainingIn(period, at: at(1800)),
+        30,
+      );
+      expect(
+        TomTotp2FAClientMechanism.secondsRemainingIn(period, at: at(1801)),
+        29,
+      );
+      expect(
+        TomTotp2FAClientMechanism.secondsRemainingIn(period, at: at(1829)),
+        1,
+      );
+      // And it agrees with the counter: the second the remainder hits its
+      // period again is the second the step number changes.
+      expect(
+        TomTotp.counterFor(period: period, at: at(1829)),
+        isNot(TomTotp.counterFor(period: period, at: at(1830))),
+      );
+
+      // A local time is converted rather than read as UTC, which is the
+      // mistake that would put the countdown hours out in one direction.
+      expect(
+        TomTotp2FAClientMechanism.secondsRemainingIn(
+          period,
+          at: at(1801).toLocal(),
+        ),
+        29,
+      );
+
+      // A period that cannot divide answers zero rather than throwing: it is
+      // reached only from `periodOf`, which never produces one, and a panel
+      // that crashed on a malformed payload would take the login screen down.
+      expect(TomTotp2FAClientMechanism.secondsRemainingIn(Duration.zero), 0);
     });
   });
 

@@ -89,6 +89,16 @@ class Tom2FATexts {
   /// Label of the challenge panel's submit button.
   static const String totpChallengeSubmit = '$scope.totp.challenge.submit';
 
+  /// How long the code on the user's authenticator is still current;
+  /// `{seconds}` is substituted with the whole seconds left in the time step.
+  static const String totpChallengeExpiresIn =
+      '$scope.totp.challenge.expiresIn';
+
+  /// Shown once a typed code has been overtaken by a rollover, so a refusal
+  /// reads as "too late" rather than as "wrong".
+  static const String totpChallengeCodeChanged =
+      '$scope.totp.challenge.codeChanged';
+
   /// Resolves [key] against the installed provider.
   ///
   /// The single lookup point for this feature, so a deployment that swaps the

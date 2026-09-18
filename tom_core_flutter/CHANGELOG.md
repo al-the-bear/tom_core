@@ -24,6 +24,29 @@
   A failure this module already named passes through untouched: a conflict, an
   undecodable document, an owner mismatch, an uninitialised reflection.
 
+### Added
+
+- **The TOTP challenge panel counts down (tcopen236).** A code lives one step,
+  and a user who typed slowly got a refusal that said only that the code was
+  wrong — nothing separated "you typed it wrong" from "you typed it too late",
+  and the attempt was spent either way. The period was already on the wire and
+  the panel was discarding it.
+
+  It reads it now through `TomTotp2FAClientMechanism.periodOf`, and renders a
+  countdown seeded by `secondsRemainingIn` — which needs no server timestamp,
+  because TOTP steps are aligned to the Unix epoch and the boundary is the one
+  `TomTotp.counterFor` divides by. A second line appears when a rollover
+  overtakes something already typed, and only then; any edit withdraws it.
+
+  **It warns and does not block.** `TomTotp2FAService` accepts one step either
+  side of its own, so a code typed just before a rollover is still good — a
+  panel that refused to send it would enforce a policy stricter than the one
+  that judges it, and cost the user the very attempt it was trying to save.
+
+  Two resource keys are new: `two_factor.totp.challenge.expiresIn` (carrying
+  `{seconds}`) and `two_factor.totp.challenge.codeChanged`. A deployment's
+  bundle needs both.
+
 ### Changed
 
 - **One HTTP client for every native target, recorded as a decision

@@ -262,32 +262,27 @@ panels are pluggable at all: enrolling one means *showing the user a secret* —
 as a QR code to scan and as a string to type when the camera is not an option —
 which looks nothing like enrolling an SMS factor or a WebAuthn one.
 
-The server's TOTP service writes four `clientData` keys. `TomTotp2FAClientMechanism`
-reads three of them:
+The server's TOTP service writes four `clientData` keys, and
+`TomTotp2FAClientMechanism` reads all four:
 
-| `clientData` key | Constant | Written on | Read | Meaning |
-| ---------------- | -------- | ---------- | ---- | ------- |
-| `otpauthUri` | `uriKey` | enrolment | yes | The `otpauth://` URI, rendered as the QR code |
-| `secret` | `secretKey` | enrolment | yes | The base32 secret, shown grouped for manual entry |
-| `digits` | `digitsKey` | both | yes | The code width the field is sized and validated to |
-| `periodSeconds` | — | both | **no** | The length of one time step, in seconds |
+| `clientData` key | Constant | Written on | Meaning |
+| ---------------- | -------- | ---------- | ------- |
+| `otpauthUri` | `uriKey` | enrolment | The `otpauth://` URI, rendered as the QR code |
+| `secret` | `secretKey` | enrolment | The base32 secret, shown grouped for manual entry |
+| `digits` | `digitsKey` | both | The code width the field is sized and validated to |
+| `periodSeconds` | `periodKey` | both | The length of one time step, driving the challenge panel's countdown |
 
-`periodSeconds` arrives on every enrolment and every challenge and is currently
-dropped: the one thing a client needs the period for is a countdown to the next
-rollover, and the shipped panels show none. It is listed here rather than
-omitted so that nobody reads a three-key table and concludes the value would
-have to be added to the wire before a countdown could be built — it is already
-there. There is no constant for it because nothing reads it yet.
+All four are read defensively: the map crossed the wire, and a panel that threw
+on a missing key would turn a server-side omission into a crashed login screen
+rather than a field with a sensible default.
 
-The three that are read are read defensively: the map crossed the wire, and a
-panel that threw on a missing key would turn a server-side omission into a
-crashed login screen rather than a field with a sensible default.
-
-Two helpers are public and static:
+Four helpers are public and static:
 
 | Helper | Purpose |
 | ------ | ------- |
 | `digitsOf(clientData)` | The declared code width, or the RFC's six. Accepts an `int` or a numeric `String`, since servers that JSON-encode numbers as strings are a real thing. |
+| `periodOf(clientData)` | The declared time step as a `Duration`, or the RFC's thirty seconds. Same defence. |
+| `secondsRemainingIn(period)` | Whole seconds left in the step containing now — the countdown's value. |
 | `groupSecret(secret)` | Splits the base32 secret into space-separated groups of four — the difference between manual enrolment being annoying and being abandoned. |
 
 They are public because the flow has no business knowing TOTP's defaults, while
@@ -296,11 +291,42 @@ reading the panel uses, and two readings would be one too many.
 
 The enrolment panel shows the QR code, the account label beneath it when the
 application supplied one, the grouped secret as selectable text, and a
-digits-only confirmation field. The challenge panel is a single autofocused
-digits-only field sized from `digitsOf`. Both carry stable keys
-(`tom-2fa-totp-qr`, `tom-2fa-totp-secret`, `tom-2fa-totp-account`,
-`tom-2fa-totp-enrolment-code`, `tom-2fa-totp-challenge-code`, and the two
-submit buttons).
+digits-only confirmation field. The challenge panel is an autofocused
+digits-only field sized from `digitsOf`, a countdown beneath it, and a submit
+button. Both carry stable keys (`tom-2fa-totp-qr`, `tom-2fa-totp-secret`,
+`tom-2fa-totp-account`, `tom-2fa-totp-enrolment-code`,
+`tom-2fa-totp-challenge-code`, `tom-2fa-totp-challenge-countdown`,
+`tom-2fa-totp-challenge-code-changed`, and the two submit buttons).
+
+### The challenge countdown
+
+A TOTP code lives for one step — thirty seconds by default. A user who reads the
+code, switches back and types slowly submits an expired one, and without a
+countdown the refusal says only that the code was wrong: nothing on screen
+separates "you typed it wrong" from "you typed it too late", and the attempt is
+spent either way.
+
+The challenge panel counts down. The value is seeded from the true boundary —
+TOTP steps are aligned to the Unix epoch, so `secondsRemainingIn` derives it
+from the same UTC seconds `TomTotp.counterFor` divides, without a server
+timestamp — and a one-second timer counts it down from there. Re-reading the
+clock every second would buy accuracy nobody can see: the timer's jitter over
+the five minutes a challenge stays answerable is a fraction of one of the
+seconds displayed, and the number is advice to a person.
+
+**When a rollover overtakes something already typed**, a second line says so.
+Only then — a rollover the user was not typing through is not news, and a panel
+that announced every one of them would say something alarming every thirty
+seconds to a user who is still reading. Any edit withdraws it, because the code
+in the field belongs to the current step again.
+
+**The line warns; it does not block.** It neither clears the field nor disables
+the submit button, and that is the measured part of the decision:
+`TomTotp2FAService` accepts one step either side of its own
+(`globalSettingWindowSteps`), so a code typed just before a rollover is still
+good. A panel that refused to send it would enforce a policy stricter than the
+one that judges it — and would cost the user the very attempt it was trying to
+save.
 
 ## Text Resources
 
@@ -334,6 +360,8 @@ bundle.
 | `totpEnrolSubmit` | `two_factor.totp.enrol.submit` | The enrolment submit button |
 | `totpChallengeCodeLabel` | `two_factor.totp.challenge.codeLabel` | The challenge field |
 | `totpChallengeSubmit` | `two_factor.totp.challenge.submit` | The challenge submit button |
+| `totpChallengeExpiresIn` | `two_factor.totp.challenge.expiresIn` | The countdown line; `{seconds}` is substituted |
+| `totpChallengeCodeChanged` | `two_factor.totp.challenge.codeChanged` | Shown once a rollover has overtaken a typed code |
 
 `Tom2FATexts.text(key)` resolves against the installed provider, and
 `textWith(key, placeholder, value)` additionally substitutes `{placeholder}`.
@@ -413,7 +441,8 @@ the base32 fallback string beside it, not a transcription of the code.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `flutter` | package | `qr_code_view.dart`, `two_factor_client.dart`, `two_factor_flow.dart`, `two_factor_totp_client.dart` | `material` for the flow frame, which styles its title, error line and footnotes from the ambient theme; `widgets` for the mechanism panels, which have no such need; `services` for the digits-only input formatter |
+| `dart:async` | dart | `two_factor_totp_client.dart` | the one-second `Timer` behind the challenge panel's countdown |
+| `flutter` | package | `qr_code_view.dart`, `two_factor_client.dart`, `two_factor_flow.dart`, `two_factor_totp_client.dart` | `material` for the flow frame and the TOTP panels, which style their countdown and footnote lines from the ambient theme; `widgets` for the rest; `services` for the digits-only input formatter |
 | `qr` | package | `qr_code_view.dart` | the pure-Dart QR encoder `TomQrCodeView` paints |
 | `tom_core_kernel` | package | `two_factor_client.dart`, `two_factor_flow.dart`, `two_factor_texts.dart`, `two_factor_totp_client.dart` | the wire types the controller surfaces (`Tom2FAPendingEnrolment`, `Tom2FAChallenge`, `Tom2FAMethodDescriptor` and its resource-key convention), `TomTextResourceProvider` for text lookup, and `TomTotp` for the default code width |
 | `tom_flutter_ui` | package | `two_factor_flow.dart`, `two_factor_totp_client.dart` | `TomText`, `TomListTile`, `TomTextButton`, `TomSelectableText`, `TomTextField` and `TomFilledButton` — plus `TomUIIcons`, which resolves the chooser's icon names to drawable icons |

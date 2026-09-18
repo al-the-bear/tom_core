@@ -259,12 +259,10 @@ The shipped authenticator-app mechanism, registered under `'totp'`. Ships
 registered rather than as a sample to copy, because TOTP is the mechanism every
 deployment has.
 
-Reads three of the four `clientData` keys the server's TOTP service writes —
-`otpauthUri`, `secret` and `digits` — each defensively, because the map crossed
-the wire and a panel that threw on a missing key would turn a server-side
-omission into a crashed login screen. The fourth, `periodSeconds`, arrives on
-every enrolment and every challenge and is ignored; it has no constant below
-because nothing reads it.
+Reads all four `clientData` keys the server's TOTP service writes —
+`otpauthUri`, `secret`, `digits` and `periodSeconds` — each defensively, because
+the map crossed the wire and a panel that threw on a missing key would turn a
+server-side omission into a crashed login screen.
 
 - **Extends:** `Tom2FAClientMechanism`
 
@@ -282,6 +280,7 @@ const TomTotp2FAClientMechanism()
 | `uriKey` | `'otpauthUri'` | `clientData` key holding the `otpauth://` URI the QR code encodes. |
 | `secretKey` | `'secret'` | `clientData` key holding the base32 secret shown for manual entry. |
 | `digitsKey` | `'digits'` | `clientData` key holding the code width. |
+| `periodKey` | `'periodSeconds'` | `clientData` key holding the length of one time step, in seconds. |
 
 #### Static Methods
 
@@ -292,6 +291,8 @@ panel uses.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `digitsOf` | `static int digitsOf(Map<String, Object?> clientData)` | The code width declared in `clientData`, or `TomTotp.defaultDigits`. Accepts an `int` or a numeric `String`, since servers that JSON-encode numbers as strings are a real thing. |
+| `periodOf` | `static Duration periodOf(Map<String, Object?> clientData)` | The time step declared in `clientData`, or `TomTotp.defaultPeriod`. Same defence as `digitsOf`. A `Duration` because that is what `TomTotp` deals in, and the arithmetic this value is for is easier to get wrong in bare seconds. |
+| `secondsRemainingIn` | `static int secondsRemainingIn(Duration period, {DateTime? at})` | Whole seconds left in the step containing `at` (default: now). TOTP steps are aligned to the Unix epoch, so this needs no server timestamp — the boundary is the one `TomTotp.counterFor` divides by. Answers the full period exactly on a boundary rather than zero, because a caller renders it as "valid for another N seconds". A period that cannot divide answers `0` rather than throwing. |
 | `groupSecret` | `static String groupSecret(String secret)` | Splits the secret into space-separated groups of four — what every authenticator app displays, and the difference between manual enrolment being annoying and being abandoned. |
 
 #### Methods
@@ -299,14 +300,15 @@ panel uses.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `buildEnrolmentPanel` | `Widget buildEnrolmentPanel(BuildContext, Tom2FAEnrolmentPanelContext)` | *(override)* The QR code, the optional account label, the grouped secret as selectable text, and a digits-only confirmation field. |
-| `buildChallengePanel` | `Widget buildChallengePanel(BuildContext, Tom2FAChallengePanelContext)` | *(override)* A single autofocused digits-only field sized from `digitsOf`, and a submit button. |
+| `buildChallengePanel` | `Widget buildChallengePanel(BuildContext, Tom2FAChallengePanelContext)` | *(override)* An autofocused digits-only field sized from `digitsOf`, a countdown to the next rollover driven by `periodOf`, a line shown once a rollover has overtaken a typed code, and a submit button. The line warns and does not block: the server accepts one step either side of its own, so a code typed just before a rollover is still good. |
 
 #### Widget Keys
 
 `tom-2fa-totp-enrolment`, `tom-2fa-totp-qr`, `tom-2fa-totp-account`,
 `tom-2fa-totp-secret`, `tom-2fa-totp-enrolment-code`,
 `tom-2fa-totp-enrolment-submit`, `tom-2fa-totp-challenge`,
-`tom-2fa-totp-challenge-code`, `tom-2fa-totp-challenge-submit`.
+`tom-2fa-totp-challenge-code`, `tom-2fa-totp-challenge-countdown`,
+`tom-2fa-totp-challenge-code-changed`, `tom-2fa-totp-challenge-submit`.
 
 ### Tom2FATexts
 
@@ -340,6 +342,8 @@ hits that screen.
 | `totpEnrolSubmit` | `two_factor.totp.enrol.submit` |
 | `totpChallengeCodeLabel` | `two_factor.totp.challenge.codeLabel` |
 | `totpChallengeSubmit` | `two_factor.totp.challenge.submit` |
+| `totpChallengeExpiresIn` | `two_factor.totp.challenge.expiresIn` |
+| `totpChallengeCodeChanged` | `two_factor.totp.challenge.codeChanged` |
 
 #### Static Methods
 
