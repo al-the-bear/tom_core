@@ -26,6 +26,27 @@
 
 ### Changed
 
+- **The isolate name is documented as a label, and the neutral variant says
+  `"neutral"` (tcopen234).** `getIsolateName()` is printed in every log line and
+  nothing said what it could tell apart. It is a label, not an identifier: the
+  native variant answers the isolate's `debugName` (or `"main"` when it reports
+  none), the web variant the constant `"web"`, the neutral variant now
+  `"neutral"` rather than the abbreviation `"ntrl"`, which expanded nowhere and
+  matched neither sibling.
+
+  The limitation's shape was measured rather than assumed. The root isolate's
+  `debugName` really is `"main"`, so the `?? "main"` fallback coincides with it
+  instead of colliding with it; and `Isolate.spawn` defaults `debugName` to the
+  **entry point's function name**, so isolates spawned from one entry point
+  share a name while isolates from different entry points do not. An explicit
+  `debugName` discriminates, and the kernel's `TomWorkerPool` already passes one
+  per worker.
+
+  No unique id is added — it would mean either names that change between runs or
+  a second member on the `tom_basics` contract this package does not own. The
+  suite had asserted only `isNotEmpty`; it now pins the contract that was
+  chosen, so moving to a unique id later is a decision rather than a drift.
+
 - **The three platform variants share a base (tcopen233).** Each declared the
   nine platform predicates byte for byte — about twenty-five lines in
   triplicate. They now extend `TomFlutterPlatformUtilsBase`, a fourth file all

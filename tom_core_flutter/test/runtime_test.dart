@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -334,6 +335,105 @@ void main() {
 
   test('reports a non-empty isolate name', () {
     expect(clientPlatformUtils.getIsolateName(), isNotEmpty);
+  });
+
+  group('the isolate name is a label, not an identifier', () {
+    // The name goes into every log line — `TomConsoleLogOutput` prints it
+    // before the level — so what it can and cannot tell a reader apart is a
+    // property worth stating rather than discovering. It was stated only as
+    // `isNotEmpty`, which every possible value satisfies.
+
+    /// The name a fresh isolate running [entryPoint] reports.
+    Future<String> nameOfSpawned(
+      void Function(SendPort) entryPoint, {
+      String? debugName,
+    }) async {
+      final received = ReceivePort();
+      final isolate = await Isolate.spawn(
+        entryPoint,
+        received.sendPort,
+        debugName: debugName,
+      );
+      final name = await received.first as String;
+      received.close();
+      isolate.kill(priority: Isolate.immediate);
+      return name;
+    }
+
+    test('the root isolate is named, so the fallback is not what names it', () {
+      // `Isolate.current.debugName ?? "main"` reads as though the root were
+      // anonymous and the literal supplied its name. It is not: the root
+      // reports `"main"` itself, and the fallback is there for a runtime that
+      // reports nothing. Worth pinning, because the difference decides whether
+      // an isolate can collide with the root by accident.
+      expect(Isolate.current.debugName, 'main');
+      expect(clientPlatformUtils.getIsolateName(), 'main');
+    });
+
+    test('two isolates from one entry point answer the same name', () async {
+      // The collision, and the measured reason for it: `Isolate.spawn` defaults
+      // `debugName` to the entry point's *function name*, so a pool of workers
+      // spawned from one function shares one name. Not `"main"` — that is what
+      // the fallback would have produced, and it is not the path taken.
+      final first = await nameOfSpawned(_reportIsolateName);
+      final second = await nameOfSpawned(_reportIsolateName);
+
+      expect(first, second);
+      expect(first, isNot('main'));
+      expect(
+        first,
+        '_reportIsolateName',
+        reason:
+            'the default debugName is no longer the entry point function '
+            'name; the documented reason for the collision has changed',
+      );
+    });
+
+    test('two isolates from different entry points do not', () async {
+      // So the name is not useless — it discriminates whenever the isolates
+      // came from different code, which is the case the default covers well.
+      expect(
+        await nameOfSpawned(_reportIsolateName),
+        isNot(await nameOfSpawned(_reportIsolateNameAgain)),
+      );
+    });
+
+    test('an explicit debugName is the remedy, and it works', () async {
+      // What the documents tell a caller to do, asserted rather than asserted
+      // of. It is also what the kernel's own `TomWorkerPool` does — it passes a
+      // numbered name per worker — so framework-spawned concurrency is already
+      // distinguishable.
+      expect(
+        await nameOfSpawned(_reportIsolateName, debugName: 'worker-001'),
+        'worker-001',
+      );
+      expect(
+        await nameOfSpawned(_reportIsolateName, debugName: 'worker-002'),
+        'worker-002',
+      );
+    });
+
+    test('the other two variants answer a constant, and it is a word', () {
+      // Unreachable from this host, so read out of their source — the only
+      // place a test here can see them. A constant cannot discriminate at all,
+      // which is the stronger half of the limitation and the half no runtime
+      // assertion on this host could make.
+      const expected = {'neutral': 'neutral', 'web': 'web'};
+      expected.forEach((variant, name) {
+        final source = File(
+          'lib/src/tomclient/runtime/platform_detection_$variant.dart',
+        ).readAsStringSync();
+        expect(
+          RegExp(
+            r'String getIsolateName\(\) => "([^"]*)"',
+          ).firstMatch(source)?.group(1),
+          name,
+          reason:
+              'the $variant variant no longer answers "$name"; the documents '
+              'name the constant a reader will see in a log line',
+        );
+      });
+    });
   });
 
   test('has no browser location on the native branch', () {
@@ -1418,3 +1518,15 @@ class _RecordingLogOutput extends TomLogOutput {
     }
   }
 }
+
+/// Reports the calling isolate's name back down [port].
+///
+/// A top-level function because `Isolate.spawn` takes one, and *two* of them
+/// because the default `debugName` is the entry point's own name — which is the
+/// property the tests above are about, and it cannot be shown with one.
+void _reportIsolateName(SendPort port) =>
+    port.send(TomFlutterPlatformUtils().getIsolateName());
+
+/// A second entry point with a different name, and the same body.
+void _reportIsolateNameAgain(SendPort port) =>
+    port.send(TomFlutterPlatformUtils().getIsolateName());

@@ -12,6 +12,7 @@ web, or a neutral fallback).
 - [How the Variant Is Selected](#how-the-variant-is-selected)
 - [Core Components](#core-components)
 - [The Certificate Policy](#the-certificate-policy)
+- [The Isolate Name](#the-isolate-name)
 - [Notes](#notes)
 - [Dependencies](#dependencies)
 
@@ -161,6 +162,46 @@ a change obeys it too; hardening an application does not depend on the order its
 clients happened to be created in. It is consulted **only on native targets**:
 the browser performs its own validation and no application code can override it,
 and the neutral variant creates no client at all.
+
+## The Isolate Name
+
+`getIsolateName()` goes into every log line — `TomConsoleLogOutput` prints it
+before the level — so what it can and cannot tell apart is worth stating.
+
+| Variant | Answers |
+| ------- | ------- |
+| native | the isolate's `debugName`, or `"main"` when it reports none |
+| web | the constant `"web"` |
+| neutral | the constant `"neutral"` |
+
+**It is a label, not an identifier.** Nothing makes it unique, and on the two
+constant variants it cannot discriminate at all: every isolate in the browser
+answers `"web"`.
+
+On native it depends on who spawned the isolate and how, and the details are
+worth having exactly right:
+
+- **The root isolate is already called `"main"`.** The `?? "main"` fallback
+  coincides with its real `debugName` rather than standing in for a missing one,
+  so nothing collides with the root by accident. The fallback is there for a
+  runtime that reports none.
+- **`Isolate.spawn` defaults `debugName` to the entry point's function name.**
+  So several isolates spawned from *one* entry point all answer the same
+  thing — the worker-pool shape, and exactly the case where a reader most wants
+  to tell two lines apart. Isolates spawned from different entry points do get
+  different names.
+- **An explicit `debugName` is the remedy.** The kernel's own `TomWorkerPool`
+  passes one — each worker gets a numbered name — so concurrency the framework
+  spawns is already distinguishable. An application that spawns its own
+  isolates and wants to correlate their output does the same.
+
+There is deliberately no unique isolate id here. Adding one would mean either
+names that change between runs, which makes log diffing harder for the far more
+common single-isolate case, or a second member on the `tom_basics`
+`TomPlatformUtils` contract, which this package does not own. Nothing in the
+framework correlates output across concurrent isolates today; if that
+requirement appears, a separate id is the clean answer and this label stays
+what it is.
 
 ## Notes
 

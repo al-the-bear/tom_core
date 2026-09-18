@@ -258,5 +258,5 @@ target is `TargetPlatform.android` regardless of host. See
 | `outError` | `void outError(String s)` | *(inherited from `TomFallbackPlatformUtils`)* Prints `s` to standard output, the same destination as `out` — the two are named apart but not routed apart. |
 | `httpClient` | `Client httpClient()` | *(override)* A platform-appropriate HTTP client (see the variant table). |
 | `getBrowserLocation` | `String? getBrowserLocation()` | *(override)* The browser location URL, or `null` off the web. |
-| `getIsolateName` | `String getIsolateName()` | *(override)* A short name for the current isolate. |
+| `getIsolateName` | `String getIsolateName()` | *(override)* A short **label** for the current isolate, not an identifier — native answers the isolate's `debugName` (or `"main"` when it reports none), web the constant `"web"`, neutral the constant `"neutral"`. `Isolate.spawn` defaults `debugName` to the entry point's function name, so several isolates spawned from one entry point share a name; an explicit `debugName` discriminates, and the kernel's `TomWorkerPool` passes one per worker. See `doc/runtime.md` §The Isolate Name. |
 | `toString` | `String toString()` | *(override)* Identifies the active variant. |

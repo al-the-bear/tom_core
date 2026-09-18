@@ -13,6 +13,10 @@ import 'platform_detection_base.dart';
 ///
 /// The platform predicates are [TomFlutterPlatformUtilsBase]'s — all three
 /// variants answer them identically, from the same two Flutter symbols.
+///
+/// [getIsolateName] answers the constant `"web"`, so it labels *which variant
+/// is running* rather than which isolate: two web workers answer the same
+/// thing.
 class TomFlutterPlatformUtils extends TomFlutterPlatformUtilsBase {
   @override
   Client httpClient() => FetchClient(mode: RequestMode.cors);
@@ -22,6 +26,9 @@ class TomFlutterPlatformUtils extends TomFlutterPlatformUtilsBase {
     return window.location.href;
   }
 
+  // A constant, and unconditionally so: every isolate in the browser answers
+  // `"web"`. The name labels the *variant*, not the isolate — see the class
+  // dartdoc.
   @override
   String getIsolateName() => "web";
 

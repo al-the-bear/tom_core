@@ -40,6 +40,24 @@ class TomFlutterPlatformUtils extends TomFlutterPlatformUtilsBase {
     );
   }
 
+  /// This isolate's `debugName`, or `"main"` when it reports none.
+  ///
+  /// **A label, not an identifier.** Nothing makes it unique, and whether it
+  /// discriminates depends on who spawned the isolate and how:
+  ///
+  /// - The root isolate's `debugName` is already `"main"`, so the fallback
+  ///   coincides with it rather than colliding with it. The `??` is for a
+  ///   runtime that reports none.
+  /// - `Isolate.spawn` defaults `debugName` to the **entry point's function
+  ///   name**, so several isolates spawned from *one* entry point all answer
+  ///   the same thing — which is exactly the worker-pool shape, and exactly
+  ///   when a reader most wants to tell two lines apart.
+  /// - An explicit `debugName` is the remedy, and the framework's own
+  ///   `TomWorkerPool` passes one — every worker it spawns gets a numbered
+  ///   name, so framework concurrency is already distinguishable.
+  ///
+  /// The other two variants answer a constant, so on those targets the name
+  /// never discriminates at all.
   @override
   String getIsolateName() => Isolate.current.debugName ?? "main";
 

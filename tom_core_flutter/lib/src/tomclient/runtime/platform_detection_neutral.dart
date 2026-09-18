@@ -12,6 +12,10 @@ import 'platform_detection_base.dart';
 ///
 /// The platform predicates are [TomFlutterPlatformUtilsBase]'s — all three
 /// variants answer them identically, from the same two Flutter symbols.
+///
+/// [getIsolateName] answers the constant `"neutral"`. There is no isolate API
+/// on such a target, so it is a label for *which variant is running* rather
+/// than for which isolate — every isolate here answers the same thing.
 class TomFlutterPlatformUtils extends TomFlutterPlatformUtilsBase {
   // UnsupportedError, not UnimplementedError: nothing here is waiting to be
   // written. A target that exposes neither `dart:io` nor `dart:js` has no HTTP
@@ -26,8 +30,16 @@ class TomFlutterPlatformUtils extends TomFlutterPlatformUtilsBase {
     );
   }
 
+  // A constant: this variant runs where there is neither `dart:io` nor
+  // `dart:js`, so there is no isolate API to ask and nothing to distinguish one
+  // isolate from another. Every isolate on such a target answers "neutral" —
+  // see the class dartdoc for what that means for a reader of a log line.
+  //
+  // The word rather than an abbreviation. It was `"ntrl"`, which expanded
+  // nowhere in the module and matched neither sibling: the other two variants
+  // answer `"main"` and `"web"`, whole words both.
   @override
-  String getIsolateName() => "ntrl";
+  String getIsolateName() => "neutral";
 
   @override
   String toString() => "TomFlutterPlatformUtils: neutral";

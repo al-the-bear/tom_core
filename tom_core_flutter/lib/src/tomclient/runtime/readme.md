@@ -69,6 +69,19 @@ work happens once**: it copies the whole process environment into the kernel's
 env-var map, which a getter that constructed per read paid for on every read, on
 a call that looks like a property access.
 
+## The isolate name
+
+`getIsolateName()` is printed in every log line, and it is a **label, not an
+identifier**: native answers the isolate's `debugName` (or `"main"` when it
+reports none), web the constant `"web"`, neutral the constant `"neutral"`.
+
+`Isolate.spawn` defaults `debugName` to the entry point's *function name*, so
+several isolates spawned from one entry point share a name — the worker-pool
+shape, and the case where a reader most wants to tell two lines apart. An
+explicit `debugName` discriminates, and the kernel's own `TomWorkerPool` passes
+one per worker. See `doc/runtime.md` for the whole of it, including why no
+unique isolate id is offered.
+
 ## The certificate policy
 
 A client handed a certificate it cannot verify normally refuses the connection.

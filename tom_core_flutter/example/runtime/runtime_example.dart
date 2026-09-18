@@ -47,6 +47,12 @@ void run() {
     'isDesktop=${utils.isDesktop()} '
     'isMobile=${utils.isMobile()}',
   );
+  // A label rather than an identifier: on native this is the isolate's
+  // `debugName`, and `Isolate.spawn` defaults that to the entry point's own
+  // function name — so a pool of workers spawned from one function would all
+  // print the same thing here. Pass an explicit `debugName` when the output has
+  // to be told apart; the web and neutral variants answer a constant and cannot
+  // be told apart at all.
   print('isolate=${utils.getIsolateName()}');
 
   // Example 4: the browser location is web-only; on native it is null. The
