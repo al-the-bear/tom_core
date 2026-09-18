@@ -1820,6 +1820,21 @@ void main() {
         );
       });
 
+      test('clear() issues the delete endpoint at the collection', () async {
+        transport.answer(body: '');
+        await build().clear();
+
+        expect(transport.lastMethod, 'DELETE');
+        expect(
+          transport.lastUrl.toString(),
+          'https://api.example.com/preferences',
+        );
+        // No body and no query: the clear takes nothing from the caller, which
+        // is what lets the server do it in one statement.
+        expect(transport.lastBody, isNull);
+        expect(transport.lastUrl.query, isEmpty);
+      });
+
       test('a key needing escaping never reaches the socket', () async {
         // A key that would have to be escaped to be sent is refused outright,
         // so there is no escaped request to reason about. Escaping it is not a
@@ -1846,11 +1861,13 @@ void main() {
         );
       });
 
-      test('the empty key is refused rather than sent at the list URI', () {
-        // The empty key resolves to `/preferences` — the *list* endpoint — so
-        // an unset TomUserPreferenceKeyRequest would have sent a DELETE at the
-        // whole collection. It is also the default that request produces, which
-        // makes it the bad key most likely to actually happen.
+      test('the empty key is refused rather than sent at the collection', () {
+        // The empty key resolves to the collection, where a `DELETE` is the
+        // *clear* — so an unset TomUserPreferenceKeyRequest asking to delete
+        // one preference would have asked to delete every one. It is also the
+        // default that request produces, which makes it the bad key most likely
+        // to actually happen, and the reason the key check runs before any URI
+        // is built rather than after.
         final client = build();
 
         expect(
@@ -2124,6 +2141,27 @@ void main() {
           );
         },
       );
+
+      test('a refused clear throws rather than reporting a reset', () async {
+        // Including a `404`. The clear is idempotent — an account holding
+        // nothing is cleared with a `200` — so a `404` from it is the
+        // pipeline's refusal, and answering normally would tell the caller an
+        // account was reset that still holds every preference it did.
+        for (final status in <int>[404, 403, 500]) {
+          transport.answer(statusCode: status, body: '');
+          await expectLater(
+            build().clear(),
+            throwsA(
+              isA<TomUserPreferencesClientException>().having(
+                (error) => error.key,
+                'key',
+                'preferences.client.rejected',
+              ),
+            ),
+            reason: '$status',
+          );
+        }
+      });
 
       test('a bare 404 is a refusal, not absence', () async {
         // The endpoint pipeline answers a denied or unauthenticated call with a

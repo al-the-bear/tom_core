@@ -163,6 +163,9 @@ const String tomUserPreferencesWriteEndpointId = 'writePreference';
 /// Endpoint id: delete one preference of the calling principal by key.
 const String tomUserPreferencesDeleteEndpointId = 'deletePreference';
 
+/// Endpoint id: delete every preference of the calling principal.
+const String tomUserPreferencesClearEndpointId = 'clearPreferences';
+
 /// The error key the read endpoint answers with for a preference the caller
 /// has never written — the contract's statement of absence.
 ///
@@ -288,6 +291,24 @@ final TomApi tomUserPreferencesApi = TomApi(
       urlParameterMapping: const {'key': 'key'},
       access: const TomAuthenticatedAccess(),
     ),
+    // The bulk delete, at the collection. It shares its method with the delete
+    // above and is distinguished only by the absence of a path segment, which
+    // is the same collection/item pair the two `get`s already form — but here
+    // the two answers are "one preference gone" and "all of them gone", so the
+    // distinction has teeth. A caller that resolves the by-key URI with an
+    // empty key addresses *this* endpoint, which is why every key-taking
+    // method on both faces validates its key before it builds a URI.
+    TomApiEndpoint<void, Object?>(
+      id: tomUserPreferencesClearEndpointId,
+      uri: '',
+      method: TomHttpMethod.delete,
+      description:
+          'Deletes every preference of the caller in one statement. Idempotent '
+          'and unconditional: a caller holding none is cleared with a 200, and '
+          'there is no filter to narrow what goes.',
+      requestTypes: const [],
+      access: const TomAuthenticatedAccess(),
+    ),
   ],
 );
 
@@ -365,6 +386,27 @@ abstract class TomUserPreferencesApiService {
   /// never answers [tomUserPreferencesNotFoundErrorKey] and a `404` from it is
   /// always a refusal.
   Future<void> deletePreference(TomUserPreferenceKeyRequest request);
+
+  /// [tomUserPreferencesClearEndpointId] — deletes **every** preference of the
+  /// caller.
+  ///
+  /// The operation an account reset performs. It is an endpoint of its own
+  /// rather than a loop over [listPreferences] and [deletePreference] because
+  /// only the server can make it one statement: a loop that fails half way
+  /// leaves an account in a state nobody asked for, and it is the account
+  /// store — the one shared across every device a user owns — that would be
+  /// left in it. The device store draws the same distinction, for the same
+  /// reason, in `TomDevicePreferences.clear`.
+  ///
+  /// Idempotent and unconditional: a caller holding no preferences is cleared
+  /// with a `200`, and there is no filter, because a partial clear is
+  /// [deletePreference] repeated and a caller that wants one already has it.
+  ///
+  /// Answers nothing. How many rows went is the store's business — a count on
+  /// the wire would invite a caller to branch on it, and the only branch it
+  /// could support ("some were already gone") is the case the idempotence
+  /// exists to make uninteresting.
+  Future<void> clearPreferences();
 }
 
 /// Registers [tomUserPreferencesApi] with the global [tomRemoteApis] registry.

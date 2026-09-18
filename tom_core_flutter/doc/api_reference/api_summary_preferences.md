@@ -492,7 +492,7 @@ call for a reason that has nothing to do with the call.
 
 #### Methods — the store face
 
-The six the device store carries, so a call site reads identically whichever
+The seven the device store carries, so a call site reads identically whichever
 store it addresses, plus `close()` — which has no device counterpart because
 there is no connection to release.
 
@@ -504,11 +504,8 @@ there is no connection to release.
 | `getOr<T extends Object>(String key, T fallback)` | `Future<T>` | `get`, with `fallback` for a preference that has never been written. A type mismatch still throws. |
 | `set<T extends Object>(String key, T value)` | `Future<TomUserPreferenceDto>` | Encodes and writes, returning the stored DTO. A value over the codec's `maxValueBytes` (16 KiB) is refused with `preferences.encode.too_large` before a request is made; a new key beyond the account's 256 preferences is refused by the server with a `409`, surfaced as `preferences.client.rejected` carrying `errorKey` `preferences.limit.exceeded`. |
 | `remove(String key)` | `Future<void>` | Deletes. Returns nothing where the device store answers a `bool` — the delete endpoint is idempotent by design, so the server does not report whether a row existed, and a `bool` invented here could only be a second round trip pretending to be an answer. |
+| `clear()` | `Future<void>` | Deletes **every** preference of the calling principal, in one request. The entry that makes the two faces carry one method set: a reset written as a loop over `all()` and `remove` can stop half way, and what it leaves is a set of preferences nobody chose on a store every device the user owns reads. Takes nothing and answers nothing; idempotent, so a `404` from it is a refusal and never "nothing to clear". |
 | `close()` | `void` | Releases the HTTP client, when this client created it. |
-
-There is no `clear()`. The contract declares no bulk delete, and a loop over
-`all()` that failed half way would leave an account in a state no user asked for
-— exactly the failure the device store's atomic `clear` exists to prevent.
 
 #### Methods — the contract face
 
@@ -518,6 +515,7 @@ There is no `clear()`. The contract declares no bulk delete, and a loop over
 | `readPreference(TomUserPreferenceKeyRequest request)` | `Future<TomUserPreferenceDto>` | Throws `preferences.client.not_found` on a miss, because the contract's result type is not nullable. `read` is the same call with the miss expressed as `null`, and is what an application should use. |
 | `writePreference(TomUserPreferenceWriteRequest request)` | `Future<TomUserPreferenceDto>` | The write endpoint; passes no path parameters, because the write URI carries no `{key}` and `request.key` is the whole of what is addressed. |
 | `deletePreference(TomUserPreferenceKeyRequest request)` | `Future<void>` | The delete endpoint. Throws `preferences.client.rejected` for every non-2xx answer, a `404` included: the server's delete answers `200` for a preference that is not there, so a `404` from it is a refusal, never "already gone". |
+| `clearPreferences()` | `Future<void>` | The bulk-delete endpoint — `DELETE /preferences`. Sends no body and no query, which is what lets the server clear in one statement. Same `404` rule as the delete above, for the same reason. |
 
 #### Addressing
 

@@ -19,8 +19,8 @@
 ///
 /// The store is a framework capability, but only a *client* makes it one: a
 /// preference exists to follow a user across devices, and a device reaches it
-/// over HTTP or not at all. Leaving every application to write these four
-/// handlers would mean four chances to forget the scope, and a kernel-side
+/// over HTTP or not at all. Leaving every application to write these five
+/// handlers would mean five chances to forget the scope, and a kernel-side
 /// contract that nothing implements.
 library;
 
@@ -185,6 +185,24 @@ class TomUserPreferencesServer implements TomUserPreferencesApiService {
     // so the absent case is not an error — a client clearing a preference twice
     // is not a client doing anything wrong.
     await _store().remove(request.key);
+  }
+
+  @TomApiEndpointImplementation(
+    apiId: tomUserPreferencesApiId,
+    endpointId: tomUserPreferencesClearEndpointId,
+  )
+  @override
+  Future<void> clearPreferences() async {
+    // One statement, which is the whole reason this endpoint exists: an
+    // account reset written as a loop over the by-key delete can stop half way,
+    // and the state it stops in is shared across every device the user owns.
+    //
+    // No error handler of its own: it takes nothing from the caller, so there
+    // is no malformed input to answer `400` for, and it cannot miss — a
+    // principal holding nothing is cleared. What is left is the framework
+    // default, which is the accurate statement for a route whose only failure
+    // is a fault.
+    await _store().clear();
   }
 
   /// The installed store, or a failure that names the missing wiring.

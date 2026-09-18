@@ -33,7 +33,7 @@ call site changing. That move is a method: see
 | `TomDevicePreferenceCipher` | The two-method cipher seam an encrypting store defers to. The framework names it and holds no key. |
 | `TomDevicePreferenceJson` | The stored JSON document, written once so every persistent backend stores the same text. Bare array without an owner — the interchange shape, the server's own — and `{"owner":…,"preferences":[…]}` with one. |
 | `TomDevicePreferenceException` | Every device-store failure, under a stable dotted code: `.unsupported_platform`, `.store.invalid_content`, `.store.wrong_owner`, `.store.conflict`, `.store.unreadable`, `.store.write_refused`, `.store.undecryptable`, `.store.reflection_not_initialised`. |
-| `TomUserPreferencesClient` | The account store: `all` / `read` / `get` / `getOr` / `set` / `remove` over the server's `/preferences/*` routes. Implements the kernel's `TomUserPreferencesApiService`; every URI is resolved from the contract, none is written. |
+| `TomUserPreferencesClient` | The account store: `all` / `read` / `get` / `getOr` / `set` / `remove` / `clear` over the server's `/preferences/*` routes. Implements the kernel's `TomUserPreferencesApiService`; every URI is resolved from the contract, none is written. |
 | `TomUserPreferencesClientException` | `preferences.client.not_found`, `preferences.client.rejected`, `preferences.client.invalid_response`. A rejection carries the `statusCode` and, when the server sent its error envelope, the server's `errorKey` — `preferences.limit.exceeded` for an account at its ceiling. |
 
 ## Quick start
@@ -328,6 +328,31 @@ preference; it would change the one the user sees.
 
 What the ordering does not promise is that the source copy is gone. A caller for
 whom a leftover matters repeats the call, or reads both stores and compares.
+
+## Resetting
+
+"Reset this account's preferences" is an ordinary requirement, and the operation
+most likely to run when something is already wrong. Both stores answer it with
+one method:
+
+```dart
+await preferences.clear();   // this device
+await account.clear();       // every device, through the server
+```
+
+**Neither is a loop.** A reset written as "list, then delete each" can stop half
+way, and what it leaves is a set of preferences nobody chose — half the old
+account, half the defaults. On the account store that half-reset state is shared
+by every device the user owns. `clear()` on the device writes an empty document;
+`clear()` on the account issues the contract's `DELETE /preferences`, which the
+server answers with a single statement.
+
+The account clear takes nothing and answers nothing. A partial clear is `remove`
+repeated, and how many preferences went is the server's business — the only
+branch a count could support is "some were already gone", which is the case the
+idempotence makes uninteresting. Clearing an account that holds nothing
+succeeds; every non-2xx answer throws, a `404` included, because the clear
+cannot miss and a `404` from it is a refusal.
 
 ---
 

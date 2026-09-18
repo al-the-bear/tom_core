@@ -22,6 +22,7 @@ reached over the kernel's `/preferences/*` contract by a typed client.
 - [Reaching the Account Store](#reaching-the-account-store)
 - [Precedence Against the Server Store](#precedence-against-the-server-store)
 - [Moving a Preference Between the Stores](#moving-a-preference-between-the-stores)
+- [Resetting an Account](#resetting-an-account)
 - [The Stored Document](#the-stored-document)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
@@ -120,7 +121,7 @@ The method set deliberately mirrors `TomUserPreferences` (`tom_core_server`):
 | `getOr<T>(key, fallback)` | `Future<T>` | `get`, with a default for the unwritten case |
 | `set<T>(key, value)` | `Future<TomUserPreferenceDto>` | Encodes and stores; a value over 16 KiB of encoded JSON is refused, in both stores |
 | `remove(key)` | `Future<bool>` | Deletes; answers whether one was removed |
-| `clear()` | `Future<void>` | Deletes everything on this device |
+| `clear()` | `Future<void>` | Deletes everything on this device — and everything in the account, on the other face |
 | `getPreferred<T>(key, fromUserStore)` | `Future<T?>` | Applies the documented precedence |
 
 That symmetry is not incidental. It is what lets a preference **move** between
@@ -135,7 +136,11 @@ for what an application must do to keep it true.
 
 `clear()` is its own method rather than a loop over `all()` because a backend
 can do it atomically and a loop cannot: a loop that fails half way leaves a
-device in a state no user asked for.
+device in a state no user asked for. The account store carries it for the same
+reason and gets it the same way — the contract declares a bulk
+`DELETE /preferences`, so `TomUserPreferencesClient.clear()` is one request and
+the server one statement. See
+[Resetting an Account](#resetting-an-account).
 
 **`all()` is ordered by key, ascending — and so is the account store's.** The
 rule is stated once, on the kernel's `TomUserPreferencesApiService.listPreferences`,
@@ -563,6 +568,12 @@ address a preference by path — the contract mounts them at `/{key}` — while
 key, so it passes no path parameters at all. A URL and a body naming different
 preferences is not something this client can build.
 
+**Two deletes share a method and differ by one path segment.**
+`deletePreference` is a `DELETE` at `/preferences/{key}` and `clearPreferences`
+a `DELETE` at `/preferences` — the same collection/item pair the two reads form,
+except that here the two answers are "one preference gone" and "all of them
+gone".
+
 **A key that could not be a path segment never reaches a request.** `read`,
 `writePreference` and `deletePreference` all validate the key against
 `TomUserPreferenceKeys` before building one, and refuse it with
@@ -571,13 +582,15 @@ store's vocabulary rather than the URL's. Escaping is not a usable alternative:
 `%2F` is not a settled outcome — much HTTP infrastructure rejects it and some
 normalises it back to `/`, at which point the request addresses a two-segment
 path the API never declared. The empty key is worse than ambiguous: it resolves
-to the *list* endpoint's own URI, so "read the preference named `''`" would
-silently become "read them all". The server validates the same key again on
+to the collection, so "read the preference named `''`" would silently become
+"read them all" — and "delete the preference named `''`" would become "delete
+every one of them", because a `DELETE` at the collection is the clear. That is
+why the key is validated before any URI is built rather than after. The server validates the same key again on
 arrival, because a well-behaved client is not the only thing that can send an
 HTTP request.
 
-There is no `clear()`: it is absent from the contract, and a loop over `all()`
-that failed half way would leave an account in a state no user asked for.
+`clear()` deletes every preference of the calling principal in one request — see
+[Resetting an Account](#resetting-an-account).
 `remove` returns `void` where the device store answers a `bool`, because the
 delete endpoint is idempotent by design and the server does not report whether a
 row existed — a `bool` invented here could only be a second round trip
@@ -709,6 +722,39 @@ syncing this setting" the user can see — repeats the call, or reads both store
 and compares. Nothing retries on the caller's behalf, for the reason a
 contended write is not retried either: an unbounded wait inside a framework call
 is a decision that belongs to the application.
+
+## Resetting an Account
+
+"Reset this account's preferences" is an ordinary requirement, and the operation
+most likely to be run when something is already wrong. Both stores answer it
+with one method:
+
+```dart
+await preferences.clear();     // this device
+await account.clear();         // every device, via the server
+```
+
+`TomDevicePreferences.clear()` writes an empty document; `clear()` on the
+account client issues the contract's `DELETE /preferences`, which the server
+answers with a single `DELETE ... WHERE principal_id = ?`.
+
+**Neither is a loop, and that is the whole point.** A reset written as "list,
+then delete each" can stop half way, and what it leaves is a set of preferences
+nobody chose — half the old account, half the defaults. On the account store
+that half-reset state is shared by every device the user owns. One statement
+either happens or does not.
+
+The bulk route takes nothing: no key, no filter. A partial clear is
+`deletePreference` repeated, and a caller that wants one already has it. It
+answers nothing either — how many preferences went is the server's business,
+and the only branch a count could support is "some were already gone", which is
+the case the idempotence exists to make uninteresting. Clearing an account that
+holds nothing succeeds.
+
+Every non-2xx answer throws, a `404` included: the clear is idempotent, so a
+`404` from it is the pipeline's refusal and never "nothing to clear". Reporting
+it as success would tell a caller an account was reset that still holds every
+preference it did.
 
 ## The Stored Document
 

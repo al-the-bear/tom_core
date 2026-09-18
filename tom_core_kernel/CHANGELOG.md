@@ -78,6 +78,25 @@ anyone who was writing them.
   tests.
 
 ### Added
+- **The preferences contract declares a bulk delete (tcopen227).**
+  `DELETE /preferences` — `tomUserPreferencesClearEndpointId`, and
+  `TomUserPreferencesApiService.clearPreferences()` — deletes every preference
+  of the calling principal. It exists because an account reset written as a loop
+  over the list and the by-key delete can stop half way, and what it leaves is a
+  set of preferences nobody chose, on the one store every device a user owns
+  reads. Only the server can make it a single statement.
+
+  The endpoint takes nothing and answers nothing: a partial clear is the by-key
+  delete repeated, and how many preferences went is the store's business.
+  Idempotent — clearing an account that holds nothing succeeds — so a `404` from
+  it is a refusal and never "nothing to clear".
+
+  It shares its method with the by-key delete and differs only in whether a path
+  segment follows the collection, which sharpens a rule the key vocabulary
+  already had: the empty key resolves to the collection, so validating a key
+  before a URI is built is what keeps "delete one preference" from becoming
+  "delete all of them".
+
 - **A field can declare that a bound map must supply it (tcopen115).**
   `@TomRequiredField()` marks a field, and
   `TomReflectionInfo.missingRequiredFields(object, values)` names the marked

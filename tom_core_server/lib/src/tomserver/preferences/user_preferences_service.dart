@@ -261,6 +261,29 @@ class TomUserPreferences {
     return true;
   }
 
+  /// Deletes **every** preference of the calling principal, and answers how
+  /// many rows went.
+  ///
+  /// The operation an account reset performs, and it is one statement rather
+  /// than a loop over [all] and [remove] for the reason the device store gives
+  /// for its own `clear`: a loop that fails half way leaves a state nobody
+  /// asked for, and here that state is shared across every device the user
+  /// owns. A single `DELETE` either happens or does not.
+  ///
+  /// Idempotent and unconditional: a principal holding nothing is cleared, and
+  /// answers `0`. There is no filter, because a partial clear is [remove]
+  /// repeated.
+  ///
+  /// Names the principal in the predicate for the reason [_rowFor] does: under
+  /// [TomDataScope.runUnscoped] the scope filters nothing, and a bulk delete
+  /// that relied on it would be everyone's.
+  Future<int> clear() async {
+    return repository.deleteByQuerySentence(
+      'DELETE BY principal_id = :principalId',
+      {'principalId': _requirePrincipal().id},
+    );
+  }
+
   /// [get], for a [principal] that is not the one in the current zone.
   ///
   /// For the authentication path, which needs a user's stored preference at a

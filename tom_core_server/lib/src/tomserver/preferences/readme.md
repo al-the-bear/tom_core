@@ -4,7 +4,7 @@
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Server-stored per-principal preferences: a `tom_user_preference` table, a typed
-service over it, and the four `/preferences/*` endpoints that let a device reach
+service over it, and the five `/preferences/*` endpoints that let a device reach
 it. The keys, the wire DTOs and the value codec are the kernel's
 (`tom_core_kernel` `preferences` module); this module is the *store*.
 
@@ -21,7 +21,7 @@ principal: there is nothing to address but your own.
 | ---- | -------------- |
 | `TomUserPreference` | The persisted row — `@TomDbTable('tom_user_preference')` with the `owner` row scope on `principal_id`; `toDto()` renders it for the wire in UTC. |
 | `TomUserPreferenceRepository` | The CRUD repository for that entity. |
-| `TomUserPreferences` | The service: typed `get` / `set` / `getOr` / `read` / `all` / `remove` for *the caller*, plus `getFor` for the login path. `all` takes an optional `TomPageRequest` for a server-internal caller; the wire returns the list whole, because the store is bounded. Installed as a bean. |
+| `TomUserPreferences` | The service: typed `get` / `set` / `getOr` / `read` / `all` / `remove` / `clear` for *the caller*, plus `getFor` for the login path. `all` takes an optional `TomPageRequest` for a server-internal caller; the wire returns the list whole, because the store is bounded. Installed as a bean. |
 | `TomUserPreferenceException` | Raised when an operation cannot identify the caller, or when a write would add a preference beyond the principal's ceiling of 256 (`preferences.limit.exceeded`). |
 | `TomUserPreferencesServer` | The `@TomApiImplementation` behind `tomUserPreferencesApi`. |
 | `TomUserPreferencesErrorHandler` | Maps `preferences.not_found` to a `404`, `preferences.key.invalid` and every `preferences.encoded.*` refusal to a `400`, and `preferences.limit.exceeded` to a `409` — and no other key to anything. Everything else stays opaque, so a client can tell "you have no such preference", "you sent a key or value that cannot be stored" and "you hold as many preferences as you may" from "the server is broken", instead of papering an outage over with a default or retrying its own bad request. |

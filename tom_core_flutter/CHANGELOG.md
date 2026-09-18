@@ -26,6 +26,25 @@
 
 ### Added
 
+- **The account store can be cleared (tcopen227).**
+  `TomUserPreferencesClient.clear()` deletes every preference of the calling
+  principal in one request, against the kernel contract's new
+  `DELETE /preferences`. It is the entry that had been missing from the claim
+  the module is built on — that both faces carry the same method set — and the
+  device store's `clear` had it for the reason the account store needed it more:
+  a reset written as a loop over `all()` and `remove` can stop half way, and
+  what it leaves is a set of preferences nobody chose, on the one store every
+  device the user owns reads.
+
+  Sends no body and no query, which is what lets the server do it in one
+  statement, and answers nothing. Idempotent — clearing an account that holds
+  nothing succeeds — so every non-2xx answer throws, a `404` included.
+
+  It sharpens the existing key check rather than adding one: the empty key
+  resolves to the collection, where a `DELETE` is now the clear, so validating a
+  key before a URI is built is what keeps "delete one preference" from becoming
+  "delete all of them".
+
 - **A preference can be moved between the two stores by one call (tcopen226).**
   `TomDevicePreferences.moveToUserStore` and `moveToDeviceStore` carry one key
   across, each reaching the account store through callbacks as `getPreferred`

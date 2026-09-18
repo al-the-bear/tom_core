@@ -160,7 +160,7 @@ does not merely look odd:
 | Key | Resolves to | What that is |
 | --- | ----------- | ------------ |
 | `a/b` | `/preferences/a%2Fb` | a `%2F` much HTTP infrastructure rejects, or normalises back to `/` — addressing a two-segment path the API never declared |
-| `""` | `/preferences/` | the **list** endpoint's URI |
+| `""` | `/preferences/` | the **collection**'s URI — the list under `GET`, and the *clear* under `DELETE` |
 | `.` | `/preferences/` | the same again |
 | `..` | `/` | outside the API's path entirely |
 
@@ -185,7 +185,7 @@ would silently become one row.
 
 A write is bound by the same rule even though its key is not a path segment.
 The rule is the store's vocabulary — one visible key must be one stored row —
-and the store is the same one all four endpoints address, so a key that may not
+and the store is the same one every endpoint addresses, so a key that may not
 be read is a key that may not be written either.
 
 The rule lives in the kernel rather than in either half because both halves
@@ -601,13 +601,34 @@ The API declaration, mounted at `/preferences`.
 | `readPreference` | GET | `/{key}` | `TomUserPreferenceKeyRequest` | `TomUserPreferenceDto` | `404` + envelope, `errorKey` = `tomUserPreferencesNotFoundErrorKey` |
 | `writePreference` | PUT | `` | `TomUserPreferenceWriteRequest` | `TomUserPreferenceDto` | created |
 | `deletePreference` | DELETE | `/{key}` | `TomUserPreferenceKeyRequest` | `void` | `200` — deleting nothing succeeds |
+| `clearPreferences` | DELETE | `` | — | `void` | `200` — clearing nothing succeeds |
 
-The two kinds of nothing in that table are different. `listPreferences` takes
-no request at all — its `requestTypes` is empty, and the `—` says so.
-`deletePreference` does have a request; what it has none of is a *result*: the
-handler returns nothing, the pipeline answers `200` with an empty body, and
-`void` is the declaration that says exactly that. `TomUserPreferencesApiService`
-spells the same thing `Future<void>`.
+The two kinds of nothing in that table are different. `listPreferences` and
+`clearPreferences` take no request at all — their `requestTypes` are empty, and
+the `—` says so. `deletePreference` does have a request; what it has none of is
+a *result*: the handler returns nothing, the pipeline answers `200` with an
+empty body, and `void` is the declaration that says exactly that.
+`TomUserPreferencesApiService` spells the same thing `Future<void>`.
+
+**The two deletes are one path segment apart.** `deletePreference` removes one
+preference and `clearPreferences` removes every one, and they differ only in
+whether a segment follows the collection — the same collection/item pair the
+two `GET`s form, except that here the two answers are very different sizes. A
+caller that resolved the by-key URI with an **empty** key would address the
+clear; that is one of the reasons the key vocabulary refuses the empty key, and
+why both halves validate a key before they build a URI rather than after.
+
+`clearPreferences` takes nothing and answers nothing. It takes nothing because a
+partial clear is `deletePreference` repeated and a caller that wants one already
+has it — and because taking nothing is what lets the server do it in one
+statement. It answers nothing because how many preferences went is the store's
+business: the only branch a count could support is "some were already gone",
+which is the case the idempotence exists to make uninteresting.
+
+An account reset is why the endpoint exists. Written as a loop — list, then
+delete each — it can stop half way, and what it leaves is a set of preferences
+nobody chose. On this store that half-reset state is shared by every device the
+user owns, so the operation is the server's to do atomically or not at all.
 
 #### What "not set" looks like on the wire
 
@@ -643,9 +664,9 @@ The constant is declared here, beside the endpoints, because both halves use it:
 recognises it, answering `null` from `read` and `get` for that answer and
 throwing for every other one.
 
-The delete never answers it. Deleting a preference that is not there has already
-achieved its purpose and answers `200`, so a `404` from the delete endpoint is
-always a refusal.
+Neither delete ever answers it. Deleting a preference that is not there has
+already achieved its purpose and answers `200`, and so does clearing an account
+that holds nothing — so a `404` from either is always a refusal.
 
 #### How big the account store can get
 

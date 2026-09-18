@@ -407,11 +407,11 @@ void main() {
     // reason, or fail for one.
     setUp(TomBean.resetBeanContext);
 
-    // All four endpoints, not a representative one. `_store()` is a private
+    // All five endpoints, not a representative one. `_store()` is a private
     // helper each of them calls separately, so any single endpoint can stop
     // going through it — by holding the store in a field, by resolving the bean
-    // inline — without the other three noticing. An unwired deployment would
-    // then answer three named faults and one `NoSuchMethodError` on null.
+    // inline — without the others noticing. An unwired deployment would then
+    // answer four named faults and one `NoSuchMethodError` on null.
 
     test('list', () async {
       final error = await _missingStoreFailure(
@@ -450,6 +450,14 @@ void main() {
         (server) => server.deletePreference(
           TomUserPreferenceKeyRequest(key: 'tom.theme'),
         ),
+      );
+
+      expect(error.key, 'preferences.not_configured');
+    });
+
+    test('clear', () async {
+      final error = await _missingStoreFailure(
+        (server) => server.clearPreferences(),
       );
 
       expect(error.key, 'preferences.not_configured');
@@ -496,6 +504,17 @@ void main() {
           reason: endpointId,
         );
       }
+    });
+
+    test('the clear endpoint routes to the framework default', () {
+      // It takes nothing from the caller — no key in a path, no body — so
+      // there is no malformed input for a `400` to describe, and it cannot
+      // miss: a principal holding nothing is cleared. Every failure left is a
+      // fault, which is exactly what the default handler is for.
+      expect(
+        _routedEndpointHandlers()[tomUserPreferencesClearEndpointId],
+        isA<TomDefaultErrorHandler>(),
+      );
     });
 
     test('the list endpoint routes to the framework default', () {

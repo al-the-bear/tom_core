@@ -2,6 +2,29 @@
 
 ### Added
 
+- **The preferences store and its API can clear an account (tcopen227).**
+  `TomUserPreferences.clear()` deletes every preference of the calling principal
+  in one `DELETE ... WHERE principal_id = ?` and answers how many rows went;
+  `TomUserPreferencesServer.clearPreferences()` binds it to the kernel's new
+  `DELETE /preferences`.
+
+  An account reset is an ordinary requirement and the operation most likely to
+  run when something is already wrong. Written as a loop over the list and the
+  by-key delete it can stop half way, and what it leaves is a set of preferences
+  nobody chose — on the one store every device a user owns reads. Only the
+  server can make it a single statement, which is why the route is here rather
+  than a helper in a client.
+
+  The predicate names the principal, as every lookup in the service does, and
+  for the reason the service's dartdoc gives: inside `TomDataScope.runUnscoped`
+  the row scope filters nothing, and a bulk delete relying on it would be every
+  account on the server. The DB suite asserts that from inside a bypass against
+  a second principal.
+
+  The handler declares no error handler of its own. It takes nothing from the
+  caller, so there is no malformed input to answer `400` for, and it cannot
+  miss — a principal holding nothing is cleared.
+
 - **A conclusion answers what became of the work, not a boolean (tcopen195).**
   `TomTransactionParticipant.rollback()` returned `Future<void>`, so the
   coordinator never learned that an undo had failed — and the boolean

@@ -236,6 +236,7 @@ annotation because the server-side annotations live in `tom_core_server`.
 | `readPreference(TomUserPreferenceKeyRequest request)` | `Future<TomUserPreferenceDto>` | The caller's preference under `request.key`. A preference never written is a failure keyed `tomUserPreferencesNotFoundErrorKey` — on the wire a `404` carrying the error envelope with that `errorKey`; a bare `404` is a refusal, not absence. |
 | `writePreference(TomUserPreferenceWriteRequest request)` | `Future<TomUserPreferenceDto>` | Writes one preference of the caller, replacing any previous value. The written key is `request.key` and only that — the endpoint is a `PUT` at the collection, so the URL names no key. Refuses a value over `TomUserPreferenceCodec.maxValueBytes` (`preferences.encoded.too_large`, `400`) and a write that would add a key beyond `tomUserPreferencesMaxPerPrincipal` (`preferences.limit.exceeded`, `409`). |
 | `deletePreference(TomUserPreferenceKeyRequest request)` | `Future<void>` | Deletes the caller's preference under `request.key`. Idempotent: deleting a preference that is not there succeeds, so a `404` from it is always a refusal. |
+| `clearPreferences()` | `Future<void>` | Deletes **every** preference of the caller — the operation an account reset performs. One endpoint rather than a loop over the two above, because only the server can make it one statement: a loop that stops half way leaves a state nobody chose, on a store every device the user owns reads. Idempotent, unconditional, and answers nothing. |
 
 ### TomUserPreferenceCodec
 
@@ -339,6 +340,7 @@ raised while *naming* a value, so they belong to both the write and the read.
 | `tomUserPreferencesReadEndpointId` | `String` | `readPreference`. |
 | `tomUserPreferencesWriteEndpointId` | `String` | `writePreference`. |
 | `tomUserPreferencesDeleteEndpointId` | `String` | `deletePreference`. |
+| `tomUserPreferencesClearEndpointId` | `String` | `clearPreferences`. |
 | `tomUserPreferencesMaxPerPrincipal` | `int` | `256` — the most preferences one principal may hold. What makes the unpaged list safe to answer in full: at most this many entries, each at most `TomUserPreferenceCodec.maxValueBytes` of value. The server enforces it on a write that would **add** a key; replacing one is never refused for the count. |
 | `tomUserPreferencesLimitExceededErrorKey` | `String` | `preferences.limit.exceeded` — the error key of a write refused for that ceiling; on the wire a `409` carrying the error envelope. |
 | `tomUserPreferencesNotFoundErrorKey` | `String` | `preferences.not_found` — the error key the read answers a never-written preference with, and the contract's only statement of absence. Declared here because the server raises it and the client recognises it. |
@@ -356,6 +358,20 @@ anonymous preference, because a preference is per principal.
 | `readPreference` | GET | `/{key}` | `TomUserPreferenceKeyRequest` | `TomUserPreferenceDto` | `404` + envelope, `errorKey` = `tomUserPreferencesNotFoundErrorKey` |
 | `writePreference` | PUT | `` | `TomUserPreferenceWriteRequest` | `TomUserPreferenceDto` | created |
 | `deletePreference` | DELETE | `/{key}` | `TomUserPreferenceKeyRequest` | `void` | `200` — deleting nothing succeeds |
+| `clearPreferences` | DELETE | `` | — | `void` | `200` — clearing nothing succeeds |
+
+**The two deletes are one path segment apart.** They share `DELETE` and differ
+only in whether a segment follows the collection — the same collection/item pair
+the two `GET`s form, except that the two answers here are "one preference gone"
+and "all of them gone". A caller resolving the by-key URI with an **empty** key
+addresses the clear, which is one of the reasons the key vocabulary refuses the
+empty key and why both halves validate a key before building a URI.
+
+**The clear takes nothing and answers nothing.** Nothing in, because a partial
+clear is `deletePreference` repeated and because taking nothing is what lets the
+server do it in one statement; nothing out, because how many preferences went is
+the store's business and the only branch a count could support is the one the
+idempotence makes uninteresting.
 
 **The list is unpaged and bounded.** `listPreferences` answers every preference
 the caller holds, because every caller of it wants all of them — and that is
@@ -375,8 +391,9 @@ call with a *bare* `404` — no envelope, so a refusal looks like a missing rout
 — and a caller must not read that as "not set": only the envelope's `errorKey`
 separates the two.
 
-The two kinds of nothing in that table are different. `listPreferences` takes no
-request at all, and the `—` says so; `deletePreference` has a request and no
+The two kinds of nothing in that table are different. `listPreferences` and
+`clearPreferences` take no request at all, and the `—` says so;
+`deletePreference` has a request and no
 *result* — it answers `200` with an empty body, which is what `void` states.
 `TomUserPreferencesApiService` spells the same thing `Future<void>`.
 

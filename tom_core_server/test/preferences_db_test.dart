@@ -351,6 +351,72 @@ void main() async {
       expect(await asSession(7, (p) => p.get<String>('theme')), 'dark');
     });
 
+    test(
+      'clear removes every preference of the caller and no other\'s',
+      () async {
+        await asSession(7, (p) async {
+          await p.set('theme', 'dark');
+          await p.set('zoom', 1.25);
+          await p.set('account.language', 'de');
+        });
+        await asSession(8, (p) => p.set('theme', 'light'));
+
+        expect(await asSession(7, (p) => p.clear()), 3);
+
+        expect(await asSession(7, (p) => p.all()), isEmpty);
+        // The other principal's row is untouched. A bulk delete is the statement
+        // where forgetting the scope costs the most — one predicate away from
+        // every account on the server — so this is asserted against a second
+        // real principal rather than against the caller's own view.
+        expect(await asSession(8, (p) => p.get<String>('theme')), 'light');
+        expect(await rawRows(), hasLength(1));
+      },
+    );
+
+    test('clear is idempotent and answers how many rows went', () async {
+      await asSession(7, (p) => p.set('theme', 'dark'));
+
+      expect(await asSession(7, (p) => p.clear()), 1);
+      // A second clear is not a failure: an account already holding nothing has
+      // already reached the state a reset asks for.
+      expect(await asSession(7, (p) => p.clear()), 0);
+    });
+
+    test('clear inside an unscoped bypass is still only the caller\'s', () async {
+      await asSession(7, (p) async {
+        await p.set('theme', 'dark');
+        await p.set('zoom', 1.25);
+      });
+      await asSession(8, (p) => p.set('theme', 'light'));
+
+      // `TomDataScope.runUnscoped` is an administrative bypass: inside it the
+      // row scope adds no predicate at all. Every read in this service still
+      // names the principal for that reason, and this is the statement where
+      // relying on the scope instead would delete every account's preferences
+      // on the server. Asserted rather than left to the dartdoc that claims it.
+      expect(
+        await TomDataScope.runUnscoped(() => asSession(7, (p) => p.clear())),
+        2,
+      );
+
+      expect(await rawRows(), hasLength(1));
+      expect(await asSession(8, (p) => p.get<String>('theme')), 'light');
+    });
+
+    test('clear without a principal is refused rather than unscoped', () async {
+      final preferences = TomUserPreferences(TomUserPreferenceRepository());
+      await asSession(7, (p) => p.set('theme', 'dark'));
+
+      // The one operation where an unscoped run would delete every principal's
+      // preferences, so "no caller" has to be a refusal and not a wide
+      // predicate.
+      await expectLater(
+        preferences.clear(),
+        throwsA(isA<TomUserPreferenceException>()),
+      );
+      expect(await rawRows(), hasLength(1));
+    });
+
     test('a read without a principal is refused rather than unscoped', () async {
       final preferences = TomUserPreferences(TomUserPreferenceRepository());
       // No zone, so no caller. Answering *something* here would mean answering

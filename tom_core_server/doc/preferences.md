@@ -157,7 +157,10 @@ The scope already confines every statement to the caller, so
 queries still say `principal_id = :principalId` because `TomDataScope.runUnscoped`
 exists: inside an administrative bypass the scope deliberately filters nothing,
 and a lookup that relied on it would then find — and `set` would then overwrite —
-some other principal's row. Naming the principal keeps the *lookup* meaning
+some other principal's row. `clear` is where that matters most: a bulk delete
+without the predicate, run inside a bypass, is every account on the server, and
+the suite asserts it against a second principal from inside `runUnscoped`
+rather than leaving the claim to this paragraph. Naming the principal keeps the *lookup* meaning
 "mine" under every scope state. It is not a second copy of the authorization: the
 scope still decides what may be written, and it is the scope that rejects an
 attempt to write elsewhere.
@@ -304,7 +307,8 @@ pipeline binds each method to the contract's declaration:
 | `listPreferences` | GET | `/preferences` | Every preference of the caller — unpaged, and bounded by [the store's ceilings](#the-store-is-bounded) |
 | `readPreference` | GET | `/preferences/{key}` | One preference; `preferences.not_found` when absent |
 | `writePreference` | PUT | `/preferences` | Validates the encoded pair, then upserts the key named in the body; refuses a value over 16 KiB (`400`) and a new key beyond the principal's 256 (`409`) |
-| `deletePreference` | DELETE | `/preferences/{key}` | Deletes; absent is not an error |
+| `deletePreference` | DELETE | `/preferences/{key}` | Deletes one; absent is not an error |
+| `clearPreferences` | DELETE | `/preferences` | Deletes every preference of the caller in one statement; an account holding none is cleared, not refused |
 
 Access is `TomAuthenticatedAccess`, declared **on the contract** and extracted by
 the pipeline — the handlers carry no inline access annotation.
@@ -318,6 +322,18 @@ Reporting a missing key distinctly is safe precisely because the scope makes
 "not yours" indistinguishable from "not there": the answer leaks nothing about
 another principal. A delete of something absent has already achieved its purpose,
 so a client clearing a preference twice is not a client doing anything wrong.
+
+**The two deletes differ by one path segment**, and that is the whole of the
+difference between removing one preference and removing all of them. The bulk
+route exists because an account reset written as a loop — list, then delete each
+— can stop half way, and what it leaves is a set of preferences nobody chose, on
+the one store every device the user owns reads. `clear()` issues a single
+`DELETE ... WHERE principal_id = ?`, which either happens or does not.
+
+It takes nothing from the caller — no key, no filter — so there is no malformed
+input for a `400` to describe and it is served under the framework's default
+error handler rather than this module's. A partial clear is `deletePreference`
+repeated, and a caller that wants one already has it.
 
 ### A miss is a 404, a bad request a 400, a full account a 409
 
@@ -477,10 +493,12 @@ block every login.
   every `get<String>('theme')` on every other device throws
   `TomUserPreferenceCodecException` from then on. A key's type is a convention
   between the clients that share it.
-- **There is no bulk write and no bulk delete.** `set` and `remove` take one key;
-  `all()` reads them. Deleting a user's preferences — on account closure, say —
-  means one call per key, and there is no transaction around a group of writes,
-  so a partial application is a reachable state.
+- **There is no bulk write.** `set` takes one key, and there is no transaction
+  around a group of writes, so a partial application is a reachable state. The
+  delete side has both shapes — `remove` for one key and `clear` for all of
+  them — because deleting everything is the operation an account reset performs
+  and the one where a half-completed loop does the most damage; there is no
+  equivalent single-statement write.
 - **There are no deployment-wide or role-wide defaults.** `getOr(key, fallback)`
   takes the default at the call site, so two call sites reading one key can
   disagree about what it means when unset, and a deployment cannot ship a

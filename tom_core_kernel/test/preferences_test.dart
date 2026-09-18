@@ -2297,7 +2297,7 @@ void main() {
       expect(tomUserPreferencesApi.uri, '/preferences');
     });
 
-    test('it declares exactly the four endpoints its ids name', () {
+    test('it declares exactly the five endpoints its ids name', () {
       expect(
         tomUserPreferencesApi.endpoints.keys,
         unorderedEquals(<String>[
@@ -2305,6 +2305,7 @@ void main() {
           tomUserPreferencesReadEndpointId,
           tomUserPreferencesWriteEndpointId,
           tomUserPreferencesDeleteEndpointId,
+          tomUserPreferencesClearEndpointId,
         ]),
       );
     });
@@ -2317,6 +2318,7 @@ void main() {
       expect(tomUserPreferencesReadEndpointId, 'readPreference');
       expect(tomUserPreferencesWriteEndpointId, 'writePreference');
       expect(tomUserPreferencesDeleteEndpointId, 'deletePreference');
+      expect(tomUserPreferencesClearEndpointId, 'clearPreferences');
     });
 
     test('each endpoint states its method and its address', () {
@@ -2332,6 +2334,29 @@ void main() {
         TomHttpMethod.delete,
       );
       expect(api[tomUserPreferencesDeleteEndpointId].uri, '/{key}');
+      expect(
+        api[tomUserPreferencesClearEndpointId].method,
+        TomHttpMethod.delete,
+      );
+      expect(api[tomUserPreferencesClearEndpointId].uri, '');
+    });
+
+    test('the two deletes are one method apart by one path segment', () {
+      // They share `DELETE` and differ only in whether a segment follows the
+      // collection — the same collection/item pair the two `get`s form. Here
+      // the two answers are "one preference gone" and "all of them gone", so
+      // the pair is worth asserting rather than assuming: a clear declared at
+      // `/{key}` would collide with the by-key delete, and a by-key delete
+      // declared at the collection would be the clear.
+      final api = tomUserPreferencesApi;
+      final one = api[tomUserPreferencesDeleteEndpointId];
+      final every = api[tomUserPreferencesClearEndpointId];
+
+      expect(one.method, every.method);
+      expect(one.uri, isNot(every.uri));
+      expect(every.uri, isEmpty);
+      expect(every.urlParameterMapping, isEmpty);
+      expect(every.requestTypes, isEmpty);
     });
 
     test('each endpoint states the request type it reads', () {
@@ -2347,6 +2372,9 @@ void main() {
       expect(api[tomUserPreferencesDeleteEndpointId].requestTypes, [
         TomUserPreferenceKeyRequest,
       ]);
+      // The clear takes nothing: there is no key to name and no filter to
+      // narrow it, which is what makes it one statement on the server.
+      expect(api[tomUserPreferencesClearEndpointId].requestTypes, isEmpty);
     });
 
     test('each endpoint states the result type it answers with', () {
@@ -2375,6 +2403,13 @@ void main() {
         api[tomUserPreferencesDeleteEndpointId].responseType,
         _typeOf<void>(),
       );
+      // The clear answers with nothing for a reason of its own: how many rows
+      // went is the server's business, and the only branch a count could
+      // support is the one the idempotence makes uninteresting.
+      expect(
+        api[tomUserPreferencesClearEndpointId].responseType,
+        _typeOf<void>(),
+      );
     });
 
     test('the by-key endpoints bind the capture onto the request field', () {
@@ -2387,6 +2422,31 @@ void main() {
         tomUserPreferencesApi[tomUserPreferencesDeleteEndpointId]
             .urlParameterMapping,
         {'key': 'key'},
+      );
+    });
+
+    test('an empty key addresses the clear path, not a preference', () {
+      // Not a curiosity. The by-key delete's URI is the collection plus one
+      // segment, so an empty key resolves to the collection with nothing after
+      // the separator — a `DELETE /preferences/` where the caller meant one
+      // preference. Whether a router reads that as the collection is the
+      // router's business, and nothing in the contract says it must not; the
+      // request the caller did *not* mean to make is a clear either way.
+      //
+      // So the guard is not the routing: it is that a key is validated before
+      // any URI is built, on both faces, unconditionally. The empty key never
+      // reaches `resolveUri` in the framework's own code.
+      const base = 'https://api.example.com';
+      final byKey = tomUserPreferencesApi[tomUserPreferencesDeleteEndpointId]
+          .resolveUri(Uri.parse(base), parameters: {'key': ''});
+      final clear = tomUserPreferencesApi[tomUserPreferencesClearEndpointId]
+          .resolveUri(Uri.parse(base));
+
+      expect(byKey.path, '${clear.path}/');
+      expect(byKey.pathSegments.where((s) => s.isNotEmpty), ['preferences']);
+      expect(
+        () => TomUserPreferenceKeys.validate(''),
+        throwsA(isA<TomUserPreferenceKeyException>()),
       );
     });
 
@@ -2509,7 +2569,7 @@ void main() {
 ///
 /// Executes the contract, rather than only constructing it.
 ///
-/// The module declares four endpoints and a service interface, and until this
+/// The module declares five endpoints and a service interface, and until this
 /// group nothing sent over any of them: the suite built the DTOs and checked
 /// the declarations. That is the condition under which a wrong transport
 /// survives — an invented API is caught by reading, an executed one by
@@ -2614,6 +2674,30 @@ void _wireTests() {
         );
       },
     );
+
+    test('the clear endpoint deletes at the collection', () async {
+      // The declaration says `DELETE` at `/preferences`; this is the request
+      // that declaration actually produces. A clear that went out as a `DELETE`
+      // at `/preferences/` — or carried a segment from somewhere — would be a
+      // different route on any server, and reading the declaration would not
+      // show it.
+      final clear = tomUserPreferencesApi[tomUserPreferencesClearEndpointId];
+      final (
+        endpoint,
+        client,
+      ) = endpointFor<TomUserPreferenceKeyRequest, TomUserPreferenceDto>(
+        clear,
+        '{}',
+      );
+
+      await endpoint.send(TomUserPreferenceKeyRequest());
+
+      expect(client.lastRequest!.method, equals('DELETE'));
+      expect(
+        client.lastRequest!.url,
+        equals(Uri.parse('https://api.example.com/preferences')),
+      );
+    });
   });
 }
 

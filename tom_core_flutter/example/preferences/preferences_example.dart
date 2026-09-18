@@ -104,7 +104,7 @@ Future<void> run() async {
 
     // Example 5: the server-side store. `TomUserPreferencesClient` speaks the
     // kernel's `/preferences/*` contract, so the account store is reached with
-    // the same six methods the device store carries and no URI is written here.
+    // the same method set the device store carries and no URI is written here.
     await userPreferences.set(TomUserPreferenceKeys.language, 'de');
     print(
       'account language=${await userPreferences.get<String>(TomUserPreferenceKeys.language)}',
@@ -149,6 +149,16 @@ Future<void> run() async {
     print('after clear=${await preferences.all()}');
     assert((await preferences.all()).isEmpty);
     assert(!File(location).existsSync()); // no file left behind
+
+    // Example 8: clearing the account — the same operation on the other face,
+    // and one request rather than a loop over `all()`. The server deletes in a
+    // single statement, so there is no half-completed reset to leave on a store
+    // every device the user owns reads.
+    await userPreferences.clear();
+    print('account after clear=${(await userPreferences.all()).toList()}');
+    assert((await userPreferences.all()).isEmpty);
+    // Idempotent: an account already holding nothing is cleared, not refused.
+    await userPreferences.clear();
   } finally {
     userPreferences.close();
     await server.close();
@@ -159,7 +169,7 @@ Future<void> run() async {
 
 Future<void> main() => run();
 
-/// A loopback HTTP server that answers the four routes `tomUserPreferencesApi`
+/// A loopback HTTP server that answers the five routes `tomUserPreferencesApi`
 /// declares, backed by a map instead of a database.
 ///
 /// It exists so the example can exercise a *real* request/response cycle without
@@ -247,6 +257,12 @@ class _ExamplePreferencesServer {
         // Idempotent: removing what was never there has already achieved its
         // purpose, so this is a 200 and not a 404.
         _stored.remove(k);
+      case ('DELETE', null):
+        // The bulk delete, at the collection. It shares its method with the
+        // one above and is told apart by the absence of a segment — which is
+        // why the client validates a key before it builds a URI: an empty key
+        // would arrive here.
+        _stored.clear();
       default:
         response.statusCode = HttpStatus.methodNotAllowed;
     }

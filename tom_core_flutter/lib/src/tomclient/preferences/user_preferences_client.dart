@@ -249,6 +249,23 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
   Future<void> remove(String key) =>
       deletePreference(TomUserPreferenceKeyRequest(key: key));
 
+  /// Deletes **every** preference stored for the calling principal.
+  ///
+  /// The operation an account reset performs, and one request rather than a
+  /// loop over [all] and [remove]: the server deletes in a single statement,
+  /// so there is no half-completed reset to leave behind on a store every
+  /// device the user owns reads. `TomDevicePreferences.clear` is the same
+  /// method for the same reason on the other face: the two stores carry one
+  /// method set, and this is its entry on this one.
+  ///
+  /// Idempotent and unconditional: a principal holding nothing is cleared, and
+  /// there is no filter to narrow what goes. Returns nothing — see
+  /// [clearPreferences] for why the count stays on the server.
+  ///
+  /// Throws a [TomUserPreferencesClientException] keyed
+  /// `preferences.client.rejected` when the server refuses.
+  Future<void> clear() => clearPreferences();
+
   // ---------------------------------------------------------------------------
   // The contract face — TomUserPreferencesApiService
   // ---------------------------------------------------------------------------
@@ -325,6 +342,25 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
       parameters: {'key': request.key},
     );
     _requireSuccess(response, key: request.key);
+  }
+
+  /// Deletes every preference of the calling principal.
+  ///
+  /// Answers nothing, and asks for nothing. How many preferences went is the
+  /// server's business: a count on the wire would invite a caller to branch on
+  /// it, and the only branch it could support — "some were already gone" — is
+  /// the case the idempotence exists to make uninteresting.
+  ///
+  /// Every non-2xx answer throws, a `404` included. The clear is idempotent, so
+  /// a `404` from it is never "nothing to clear": it is the pipeline's refusal,
+  /// and reporting it as success would tell the caller an account was reset
+  /// that still holds every preference it did.
+  @override
+  Future<void> clearPreferences() async {
+    final response = await _call(
+      tomUserPreferencesApi[tomUserPreferencesClearEndpointId],
+    );
+    _requireSuccess(response);
   }
 
   /// Releases the HTTP client, when this client created it.

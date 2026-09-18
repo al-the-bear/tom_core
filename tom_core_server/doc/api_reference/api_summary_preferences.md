@@ -161,6 +161,7 @@ over `TomUserPreferenceCodec.maxValueBytes` (16 KiB) is refused by the codec —
 `setEncoded` — before a statement is built, well inside `value_json`'s 64 KiB
 `TEXT`.
 | `remove(String key)` | `Future<bool>` | Deletes the caller's preference under `key`; answers whether a row was removed, so a caller can tell "deleted" from "was never there" without a second read. |
+| `clear()` | `Future<int>` | Deletes **every** preference of the caller and answers how many rows went. One `DELETE` rather than a loop over `all` and `remove`, because a loop that stops half way leaves a state nobody chose on a store every device the user owns reads. Idempotent and unconditional; names the principal in the predicate for the reason every lookup here does — under `TomDataScope.runUnscoped` the scope filters nothing, and a bulk delete that relied on it would be everyone's. |
 | `getFor<T extends Object>(TomPrincipal principal, String key)` | `Future<T?>` | `get` for a principal that is not the zone's. Exists for the authentication path, which needs a preference before a request zone carries a principal; it installs one and delegates, so even login reaches the same scoped query. |
 
 `set` and `setEncoded` are `async` for the encoding step, which can throw: every
@@ -244,9 +245,10 @@ carries an inline access annotation: the contract declares
 | `listPreferences()` | `listPreferences` — `GET /preferences` | Every preference of the caller. |
 | `readPreference(TomUserPreferenceKeyRequest request)` | `readPreference` — `GET /preferences/{key}` | One preference; throws a `TomEndpointHandlerException` keyed by the kernel's `tomUserPreferencesNotFoundErrorKey` (`preferences.not_found`) when absent, and is served under `TomUserPreferencesErrorHandler` so that miss reaches the client as a `404` carrying the error envelope — which is what separates it from the pipeline's bare `404` for a denied call. Reporting a miss distinctly is safe because the scope makes "not yours" indistinguishable from "not there". |
 | `writePreference(TomUserPreferenceWriteRequest request)` | `writePreference` — `PUT /preferences` | Validates the encoded pair, then upserts under `request.key`. The URI carries no `{key}`: the request already has one, and a second statement of the key would be one the body could contradict. |
-| `deletePreference(TomUserPreferenceKeyRequest request)` | `deletePreference` — `DELETE /preferences/{key}` | Deletes; the absent case is not an error and answers `200`, so a `404` from this endpoint is always a refusal. |
+| `deletePreference(TomUserPreferenceKeyRequest request)` | `deletePreference` — `DELETE /preferences/{key}` | Deletes one; the absent case is not an error and answers `200`, so a `404` from this endpoint is always a refusal. |
+| `clearPreferences()` | `clearPreferences` — `DELETE /preferences` | Deletes every preference of the caller, through the store's single-statement `clear()`. Takes nothing from the caller, so it declares no error handler of its own: there is no malformed input for a `400` and it cannot miss, which leaves the framework default for the faults that remain. |
 
-All four resolve the store per call and throw
+All five resolve the store per call and throw
 `TomEndpointHandlerException('preferences.not_configured')` when no
 `TomUserPreferences` bean is installed. Resolving per call rather than holding it
 means a deployment that installs its own bean after the pipeline constructed the
