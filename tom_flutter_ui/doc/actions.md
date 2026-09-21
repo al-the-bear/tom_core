@@ -100,6 +100,31 @@ Actions register themselves with the controller in their constructor, so
 `controller.actions` and `controller.findAction(id)` see them without extra
 wiring.
 
+### Action ids are unique per controller
+
+Registering a second action with an id already on the controller throws a
+`StateError`. The id is what distinguishes one action from another *within* a
+controller, and a duplicate does more than shadow a lookup: both actions resolve
+the canonical path `<controllerId>.<actionId>`, so they share **one**
+authorization decision and **one** set of label, tooltip and icon keys — two
+behaviours wearing one caption and one permission, with the second unreachable
+through `findAction` for the controller's lifetime.
+
+The same id on a *different* controller is fine: `orders.delete` and
+`users.delete` are different paths with nothing to collide.
+
+The throw lands at the definition site, because registration happens in the
+`TomAction` constructor. With the `late final` declaration above, that is when
+the **second** of the two colliding fields is first read — later than the
+controller's construction, and still the earliest moment at which a duplicate
+exists. Reading only one of them constructs only one action, which has nothing
+to collide with and is correctly allowed.
+
+`TomForm` implements `TomActionController` rather than extending it, so it keeps
+its own action list; both registrations route through
+`TomActionController.addUniquely`, so the rule cannot hold in one and not the
+other.
+
 ### The frame a path is built in
 
 Both the controller and each action capture a `constructionScope` — the

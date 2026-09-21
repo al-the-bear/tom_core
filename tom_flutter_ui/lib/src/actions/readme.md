@@ -19,7 +19,7 @@ the module's central separation. Nothing on `TomActionController` runs an action
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomAction` / `TomSimpleAction` / `TomCompositeAction` | The action base & primitives |
-| `TomActionController` | Owns and names a group of actions; supplies the `<scopePath>.<controllerId>` canonical-path prefix, and the scope frame *and* authorization group its actions inherit |
+| `TomActionController` | Owns and names a group of actions; supplies the `<scopePath>.<controllerId>` canonical-path prefix, and the scope frame *and* authorization group its actions inherit. Action ids are unique per controller — `TomActionController.addUniquely`, the static both this class and `TomForm` register through, throws on a duplicate, because two would share one authorization decision and one set of resource keys |
 | `TomActionContext` | The per-invocation context an action operates on. Its `scope` is the *invocation* frame — installed around both the gate and the body — as distinct from the construction frame that fixes a canonical path |
 | `TomActionTransaction` / `TomUndoHistory` / `TomUndoRedoContext` | Atomicity & undo/redo. A transaction is either applied or reversed — `undoAll` and `redoAll` each refuse when it is already the way they would leave it |
 | `TomUndoAction` / `TomRedoAction` | Ready-made actions over a `TomUndoHistory`, so undo/redo dispatches through the same trigger protocol as everything else. Redo is opt-in per action (`TomAction.isRedoable` / `redo`), and `canRedo` accounts for it, so the second one's button is disabled when what was undone cannot be put back |

@@ -2,6 +2,24 @@
 
 ### Added
 
+- **A duplicate action id is refused (tcopen248).**
+  `TomActionController.registerAction` was `_actions.add(action)` with no check,
+  so two actions could share an `actionId` on one controller: the second was
+  unreachable through `findAction` for the controller's lifetime, and both
+  resolved the canonical path `<controllerId>.<actionId>` — one authorization
+  decision and one set of label, tooltip and icon keys for two behaviours. It
+  now throws `StateError`, naming the id, the controller and the path they would
+  share. The same id on a different controller is a different path and is still
+  fine.
+
+  `TomActionController.addUniquely` is the single definition of the rule, static
+  because `TomForm` implements the controller interface rather than extending it
+  and keeps its own list; both registrations route through it. Registration
+  happens in the `TomAction` constructor, so with the canonical `late final`
+  fields the throw surfaces when the second of two colliding fields is first
+  read — reading only one constructs only one action, which collides with
+  nothing.
+
 - **Authorization refuses execution, not only display (tcopen247).**
   `TomActionTrigger.trigger()` read neither `authState` nor
   `effectiveAuthState`, so an action resolving to `none` executed when

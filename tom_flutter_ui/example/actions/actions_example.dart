@@ -5,8 +5,9 @@
 /// transaction; the `TomActionTrigger` → `TomUndoHistory` wiring; undo/redo;
 /// `canExecute` gating; a guarded `TomCompositeAction`; the invocation frame a
 /// context carries; the authorization group a controller lends its actions;
-/// the refusal of an action authorization does not permit; and the scope frame
-/// an action's canonical path is built in.
+/// the refusal of an action authorization does not permit; the refusal of a
+/// duplicate action id; and the scope frame an action's canonical path is built
+/// in.
 ///
 /// Because it imports `package:tom_flutter_ui/tom_flutter_ui.dart` (which pulls
 /// in `flutter/material` → `dart:ui`), bare `dart run` cannot execute it. Run
@@ -342,6 +343,24 @@ void run() {
   );
   TomAuthorization.reset();
 
+  // Example 12: an action id is unique within its controller. A duplicate would
+  // share one authorization decision and one set of label/tooltip/icon keys
+  // with the action already registered, so it is refused at construction.
+  var duplicateRefused = false;
+  try {
+    IncrementAction(controller: controller, id: 'increment');
+  } on StateError {
+    duplicateRefused = true;
+  }
+  // The same id under a different controller is a different canonical path,
+  // so there is nothing to collide.
+  final elsewhere = TomActionController(controllerId: 'elsewhere');
+  final sameIdElsewhere = IncrementAction(controller: elsewhere);
+  print(
+    'duplicate refused: $duplicateRefused, '
+    'same id elsewhere: ${sameIdElsewhere.canonicalPath}',
+  );
+
   // -------------------------------------------------------------------------
   // Assertions
   // -------------------------------------------------------------------------
@@ -358,6 +377,11 @@ void run() {
   assert(refusals == 1);
   assert(contextsBuilt == 0);
   assert(refusedByAuth);
+
+  // The duplicate never registered, so the controller still owns three actions
+  // and the id resolves to the original.
+  assert(duplicateRefused);
+  assert(sameIdElsewhere.canonicalPath == 'elsewhere.increment');
 
   // The controller's group covers the action that named none, and only that
   // one — the overriding action never joins it.

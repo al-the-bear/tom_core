@@ -125,14 +125,22 @@ abstract class TomForm<T extends TomClass> extends TomClass
   @override
   TomAuthState get authState => TomAuthorization.resolveAuth(basePath);
 
+  /// Registers an action with this form.
+  ///
+  /// Throws [StateError] on a duplicate [TomAction.actionId], through the same
+  /// [TomActionController.addUniquely] the controller uses — a form's actions
+  /// share `basePath` exactly as a controller's share `canonicalPrefix`, so a
+  /// duplicate collides here in the same way.
   @override
   void registerAction(TomAction action) {
-    _actions.add(action);
+    TomActionController.addUniquely(_actions, action);
   }
 
   @override
   List<TomAction> get actions => List.unmodifiable(_actions);
 
+  /// Finds an action by its [TomAction.actionId], or null when this form has
+  /// none. At most one can match: [registerAction] refuses a duplicate id.
   @override
   TomAction? findAction(String actionId) {
     for (final action in _actions) {

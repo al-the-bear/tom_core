@@ -63,15 +63,50 @@ class TomActionController {
 
   /// Registers an action with this controller.
   ///
-  /// Called automatically by [TomAction] constructor.
+  /// Called automatically by the [TomAction] constructor. Throws [StateError]
+  /// on a duplicate [TomAction.actionId] — see [addUniquely].
   void registerAction(TomAction action) {
-    _actions.add(action);
+    addUniquely(_actions, action);
+  }
+
+  /// Appends [action] to [registered], refusing an id already present.
+  ///
+  /// The single definition of the rule. Called from [registerAction] here and
+  /// from `TomForm`'s, which *implements* this interface rather than extending
+  /// it and so keeps its own list; one definition is what stops the two from
+  /// disagreeing about whether a duplicate is allowed.
+  ///
+  /// A duplicate id is never intentional, and it does more than shadow a
+  /// lookup. [TomAction.canonicalPath] is `<controllerId>.<actionId>`, so two
+  /// actions sharing an id resolve **one** authorization decision and **one**
+  /// set of label, tooltip and icon keys — two different behaviours wearing one
+  /// caption and one permission, with the second unreachable through
+  /// [findAction] for the controller's lifetime.
+  ///
+  /// Registration happens in the [TomAction] constructor, so the throw lands at
+  /// the definition site. For the canonical `late final` action field that is
+  /// the first *read* of the field rather than the controller's construction —
+  /// later than one might expect, and still the earliest point at which the
+  /// duplicate exists.
+  static void addUniquely(List<TomAction> registered, TomAction action) {
+    if (registered.any((each) => each.actionId == action.actionId)) {
+      throw StateError(
+        'Duplicate action id "${action.actionId}" on controller '
+        '"${action.controller.controllerId}". Both actions would resolve the '
+        'authorization and resource keys of "${action.canonicalPath}", and '
+        'findAction would only ever return the first. Give one of them a '
+        'different actionId.',
+      );
+    }
+    registered.add(action);
   }
 
   /// All registered actions.
   List<TomAction> get actions => List.unmodifiable(_actions);
 
-  /// Finds an action by its [actionId].
+  /// Finds an action by its [actionId], or null when this controller has none.
+  ///
+  /// At most one can match: [registerAction] refuses a duplicate id.
   TomAction? findAction(String actionId) {
     for (final action in _actions) {
       if (action.actionId == actionId) return action;

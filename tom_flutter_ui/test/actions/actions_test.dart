@@ -241,6 +241,17 @@ class AppendLabelAction extends TomSimpleAction<LabelContext> {
       context.log.add(text);
 }
 
+/// Declares two actions with the same id, as `late final` fields.
+///
+/// The canonical controller shape, so the duplicate is not constructed until a
+/// field is read — which is where the refusal surfaces.
+class _DuplicateIdController extends TomActionController {
+  _DuplicateIdController() : super(controllerId: 'dupes');
+
+  late final first = IncrementAction(controller: this, id: 'clash');
+  late final second = IncrementAction(controller: this, id: 'clash');
+}
+
 /// Increment action attached to an authorization group, used to exercise the
 /// `effectiveAuthState` group-mode branch.
 class _GroupedIncrement extends TomAction<CounterContext, IncrementUndo> {
@@ -294,10 +305,79 @@ void main() {
     test('actions list is unmodifiable', () {
       final controller = TomActionController(controllerId: 'c');
       IncrementAction(controller: controller);
+      // A distinct id, because the second action is constructed for real and a
+      // duplicate would be refused before `add` was ever reached.
       expect(
-        () => controller.actions.add(IncrementAction(controller: controller)),
+        () => controller.actions.add(
+          IncrementAction(controller: controller, id: 'other'),
+        ),
         throwsUnsupportedError,
       );
+    });
+
+    group('a duplicate action id is refused', () {
+      test('the second registration throws, naming both sides', () {
+        final controller = TomActionController(controllerId: 'c');
+        IncrementAction(controller: controller, id: 'dup');
+        expect(
+          () => IncrementAction(controller: controller, id: 'dup'),
+          throwsA(
+            isA<StateError>()
+                .having((e) => e.message, 'message', contains('"dup"'))
+                .having((e) => e.message, 'message', contains('"c"'))
+                .having((e) => e.message, 'message', contains('c.dup')),
+          ),
+        );
+      });
+
+      test('the first action is left registered and reachable', () {
+        final controller = TomActionController(controllerId: 'c');
+        final first = IncrementAction(controller: controller, id: 'dup');
+        expect(
+          () => IncrementAction(controller: controller, id: 'dup'),
+          throwsStateError,
+        );
+        expect(controller.actions, [
+          first,
+        ], reason: 'the refusal added nothing');
+        expect(controller.findAction('dup'), same(first));
+      });
+
+      test('the same id on a different controller is fine', () {
+        // The id is namespaced by the controller — `a.dup` and `b.dup` are
+        // different canonical paths, so there is nothing to collide.
+        final a = TomActionController(controllerId: 'a');
+        final b = TomActionController(controllerId: 'b');
+        final inA = IncrementAction(controller: a, id: 'dup');
+        final inB = IncrementAction(controller: b, id: 'dup');
+        expect(inA.canonicalPath, 'a.dup');
+        expect(inB.canonicalPath, 'b.dup');
+      });
+
+      test('late final fields surface the throw when the second is read', () {
+        // The canonical declaration builds actions lazily, so the duplicate
+        // does not exist until *both* fields have been read — later than the
+        // controller's construction, and still the earliest moment at which
+        // there is a duplicate to report.
+        final controller = _DuplicateIdController();
+        expect(controller.actions, isEmpty, reason: 'nothing built yet');
+
+        expect(controller.first, isNotNull, reason: 'the first is fine alone');
+        expect(controller.actions.length, 1);
+
+        expect(() => controller.second, throwsStateError);
+      });
+
+      test('an unread colliding field is not a collision', () {
+        // Reading only one of two same-id fields constructs only that one, so
+        // nothing shares its keys and findAction is unambiguous. The check is
+        // exactly as strict as the problem: a declared-but-never-built action
+        // has no canonical path to collide on.
+        final controller = _DuplicateIdController();
+        expect(controller.second, isNotNull);
+        expect(controller.actions.length, 1);
+        expect(controller.findAction('clash'), same(controller.second));
+      });
     });
   });
 

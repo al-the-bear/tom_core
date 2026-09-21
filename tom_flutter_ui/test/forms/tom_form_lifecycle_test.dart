@@ -587,6 +587,26 @@ void main() {
       expect(form.canonicalPrefix, 'checkout.items');
       expect(action.canonicalPath, 'checkout.items.wipe');
     });
+
+    test('a duplicate action id is refused here too', () {
+      // A form keeps its own action list because it *implements*
+      // TomActionController rather than extending it. Both registrations go
+      // through TomActionController.addUniquely, so the rule cannot hold in one
+      // and not the other — and a form's actions share `basePath` exactly as a
+      // controller's share `canonicalPrefix`.
+      final form = OrderItemForm();
+      final first = _NoopFormAction(controller: form);
+
+      expect(
+        () => _NoopFormAction(controller: form),
+        throwsA(
+          isA<StateError>()
+              .having((e) => e.message, 'message', contains('"wipe"'))
+              .having((e) => e.message, 'message', contains('items.wipe')),
+        ),
+      );
+      expect(form.actions, [first]);
+    });
   });
 
   // -------------------------------------------------------------------------
