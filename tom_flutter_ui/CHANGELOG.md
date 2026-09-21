@@ -1,5 +1,23 @@
 ## Unreleased
 
+### Removed
+
+- **`parentIdPath` is gone from `AclContainer`, `AclLayout`, `Acl` and
+  `AclFlowContainer` (tcopen255).** It was declared on four types, bound in four
+  constructors, forwarded four times and read nowhere: every occurrence was a
+  declaration, a `this.`/`super.` binding, or a forward into another
+  constructor's parameter of the same name. `AclBuilder` even held a field for
+  it with no setter, so the fluent API could never set it to anything but null.
+
+  The path builders compose from `TomScope.current`, which is the framework's
+  answer to the same question; an explicit second channel would invite the two
+  to disagree with no rule for which wins. A container that needs a different
+  parent pushes a scope.
+
+  `test/advanced_container_layout/acl_inert_parameter_test.dart` now holds the
+  general property — no public field of the unit is stored without being read —
+  across all 97 of them.
+
 ### Changed
 
 - **A recorded undo state is checked against the action that produced it

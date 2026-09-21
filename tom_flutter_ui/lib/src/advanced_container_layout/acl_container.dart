@@ -604,12 +604,6 @@ class AclContainer extends StatefulWidget {
   /// See "Groups" (§25) in `doc/acl_design_specification.md`.
   final String? aclGroup;
 
-  /// Parent container ID for building the full ID path — the prefix this
-  /// container's own [aclId] is appended to when it is nested.
-  ///
-  /// See "Container IDs" (§24) in `doc/acl_design_specification.md`.
-  final String? parentIdPath;
-
   /// Group visibility controllers keyed by group name. Only groups with an
   /// entry here can be shown, hidden or disabled; membership alone does
   /// nothing.
@@ -659,7 +653,6 @@ class AclContainer extends StatefulWidget {
     this.aclId,
     this.idScope = false,
     this.aclGroup,
-    this.parentIdPath,
     this.groupVisibilityControllers = const {},
     this.variants = const [],
     this.direction,
@@ -3132,7 +3125,6 @@ class AclLayout extends StatelessWidget {
   final String? aclId;
   final bool idScope;
   final String? aclGroup;
-  final String? parentIdPath;
   final Map<String, AclGroupVisibilityController> groupVisibilityControllers;
   final List<AclVariant> variants;
   final AclDirection? direction;
@@ -3153,7 +3145,6 @@ class AclLayout extends StatelessWidget {
     this.aclId,
     this.idScope = false,
     this.aclGroup,
-    this.parentIdPath,
     this.groupVisibilityControllers = const {},
     this.variants = const [],
     this.direction,
@@ -3176,7 +3167,6 @@ class AclLayout extends StatelessWidget {
       aclId: aclId,
       idScope: idScope,
       aclGroup: aclGroup,
-      parentIdPath: parentIdPath,
       groupVisibilityControllers: groupVisibilityControllers,
       variants: variants,
       direction: direction,
@@ -3208,7 +3198,6 @@ class Acl extends AclLayout {
     super.aclId,
     super.idScope = false,
     super.aclGroup,
-    super.parentIdPath,
     super.groupVisibilityControllers = const {},
     super.variants = const [],
     super.direction,
@@ -3340,7 +3329,6 @@ class Acl extends AclLayout {
             maximumContainerSize: maximumContainerSize,
             aclId: aclId,
             aclGroup: aclGroup,
-            parentIdPath: parentIdPath,
             groupVisibilityControllers: groupVisibilityControllers,
             variants: variants,
             direction: direction,

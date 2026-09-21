@@ -234,7 +234,6 @@ class AclFlowContainer extends StatelessWidget {
   final String? aclId;
   final bool idScope;
   final String? aclGroup;
-  final String? parentIdPath;
   final EdgeInsetsGeometry padding;
   final AclBorderStyle borderStyle;
   final Color? backgroundColor;
@@ -253,7 +252,6 @@ class AclFlowContainer extends StatelessWidget {
     this.aclId,
     this.idScope = false,
     this.aclGroup,
-    this.parentIdPath,
     this.padding = EdgeInsets.zero,
     this.borderStyle = const AclBorderStyle.none(),
     this.backgroundColor,
@@ -310,7 +308,6 @@ class AclFlowContainer extends StatelessWidget {
           aclId: aclId,
           idScope: idScope,
           aclGroup: aclGroup,
-          parentIdPath: parentIdPath,
         );
       },
     );

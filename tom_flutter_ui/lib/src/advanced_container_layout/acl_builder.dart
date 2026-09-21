@@ -182,7 +182,6 @@ class AclBuilder {
 
   // IDs
   String? _aclId;
-  String? _parentIdPath;
   bool _idScope = false;
 
   // Groups
@@ -1447,7 +1446,6 @@ class AclBuilder {
       aclId: _aclId,
       idScope: _idScope,
       aclGroup: _aclGroup,
-      parentIdPath: _parentIdPath,
       groupVisibilityControllers: Map.unmodifiable(_groupVisibilityControllers),
       variants: sortedVariants,
       direction: _direction,

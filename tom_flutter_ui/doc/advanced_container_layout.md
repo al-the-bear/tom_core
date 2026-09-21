@@ -554,7 +554,7 @@ addressable as `r<n>`, or `<aclId>.r<n>` when the container sets
 
 What does *not* carry over is the container's own responsive machinery.
 `AclFlowContainer` forwards only a subset of `AclContainer`'s arguments —
-`aclId`, `idScope`, `aclGroup`, `parentIdPath`, `padding`, `borderStyle`,
+`aclId`, `idScope`, `aclGroup`, `padding`, `borderStyle`,
 `backgroundColor`, `scrollableY` — and `variants` is not among them, so an
 `AclVariant` can never replace a flow container's generated rows. Generated
 rows carry no `breakpoints` either. A flow container's responsiveness is
