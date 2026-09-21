@@ -2,6 +2,14 @@
 
 ### Added
 
+- **An API summary for the actions module (tcopen249).**
+  `doc/api/` existed and was empty — the package had no symbol-level mirror for
+  any module, where every other scanned tom_core unit has one.
+  `doc/api/api_summary_actions.md` lists all thirteen public types with their
+  members, signatures and defaults, the file each is exported from, and the
+  class hierarchy. `doc/actions.md` remains the explanation and the two link to
+  each other; `doc/README.md` gained an *API summaries* section.
+
 - **A duplicate action id is refused (tcopen248).**
   `TomActionController.registerAction` was `_actions.add(action)` with no check,
   so two actions could share an `actionId` on one controller: the second was

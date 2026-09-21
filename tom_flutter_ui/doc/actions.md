@@ -10,6 +10,10 @@ The design goal is the same separation Tom applies everywhere: a button does not
 *contain* the logic to save an order, it *triggers* a `SaveOrderAction`. That
 keeps widgets dumb and reusable, and keeps logic testable without a widget tree.
 
+*Symbol-level reference: [api/api_summary_actions.md](api/api_summary_actions.md)
+— every public type with its members and signatures. This document explains how
+they fit together.*
+
 ## Table of Contents
 
 - [Overview](#overview)

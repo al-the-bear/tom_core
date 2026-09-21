@@ -90,6 +90,11 @@ final _staticMember = RegExp(
 
 final _export = RegExp(r"^export\s+'([^']+)'", multiLine: true);
 
+/// A `### TypeName` heading in an API summary, with any generic parameter list
+/// dropped — summaries write those escaped (`### TomAction\<TContext, TUndo\>`)
+/// so the anchor renders, and the type's name is the part before the `<`.
+final _typeHeading = RegExp(r'^###\s+(\w+)', multiLine: true);
+
 /// A fenced code block, stripped before scanning: the samples inside are
 /// compiled by the doc-sample gate, and re-checking them here would duplicate
 /// a stronger check with a weaker one.
@@ -203,6 +208,25 @@ Set<String> _publicNames(List<String> sources, RegExp pattern) => sources
 bool _names(String readme, String symbol) {
   final code = _inlineCode.allMatches(readme).map((m) => m.group(1)!).join(' ');
   return RegExp(r'(?<!\w)' + RegExp.escape(symbol) + r'(?!\w)').hasMatch(code);
+}
+
+/// The modules that ship a symbol-level API summary under `doc/api/`, mapped to
+/// the file that carries it.
+///
+/// Discovered from disk rather than listed, for the reason the `_moduleClaims`
+/// enum exists: a map alone is silent about a summary nobody added it to. The
+/// two assertions below therefore start from `doc/api/` and derive the module
+/// from the file name, so a new summary is covered the moment it lands.
+Map<String, File> _apiSummaries() {
+  final dir = Directory('doc/api');
+  if (!dir.existsSync()) return const {};
+  final out = <String, File>{};
+  for (final file in dir.listSync().whereType<File>()) {
+    final name = file.path.split(Platform.pathSeparator).last;
+    final match = RegExp(r'^api_summary_(\w+)\.md$').firstMatch(name);
+    if (match != null) out[match.group(1)!] = file;
+  }
+  return out;
 }
 
 void main() {
@@ -391,6 +415,78 @@ void main() {
         reason:
             'these documents name a type that is declared neither in '
             'this package nor in tom_core_kernel: $faults',
+      );
+    });
+  });
+
+  group('API summaries mirror the surface they claim to inventory', () {
+    final summaries = _apiSummaries();
+
+    test('a summary names a module that exists and exports something', () {
+      // Starting from the file name rather than a list is what makes the two
+      // cases below unable to miss a summary; this is the case that keeps the
+      // derivation honest.
+      for (final entry in summaries.entries) {
+        expect(
+          Directory('lib/src/${entry.key}').existsSync(),
+          isTrue,
+          reason:
+              '${entry.value.path} claims to summarise lib/src/${entry.key}, '
+              'which does not exist',
+        );
+        expect(_exportedSources(entry.key), isNotEmpty);
+      }
+    });
+
+    test('a summary gives every public type its module exports a section', () {
+      // The claim an inventory makes, and the one that rots: adding a type to
+      // a module is one line away from leaving the summary behind. An API
+      // summary is worth reading only while it is complete — an incomplete one
+      // is worse than none, because absence reads as "does not exist".
+      //
+      // A *section*, not a mention. Merely being named somewhere passes
+      // vacuously for any type that appears inside another one's signature:
+      // `TomCompositeStep` is in `List<TomCompositeStep>` on a neighbouring
+      // table row, so it could lose its own entry entirely and still be found.
+      // Demanding a heading is what makes the assertion mean "documented".
+      final faults = <String>[];
+      for (final entry in summaries.entries) {
+        final headed = _typeHeading
+            .allMatches(entry.value.readAsStringSync())
+            .map((m) => m.group(1)!)
+            .toSet();
+        final missing = _publicNames(
+          _exportedSources(entry.key),
+          _declaration,
+        ).difference(headed).toList()..sort();
+        faults.addAll(missing.map((t) => '${entry.value.path}: $t'));
+      }
+      expect(
+        faults,
+        isEmpty,
+        reason:
+            'these public types are exported by the module and have no section '
+            'in its API summary: $faults',
+      );
+    });
+
+    test('a summary names every public static its module exports', () {
+      final faults = <String>[];
+      for (final entry in summaries.entries) {
+        final text = entry.value.readAsStringSync();
+        final statics = _publicNames(
+          _exportedSources(entry.key),
+          _staticMember,
+        );
+        final missing = statics.where((m) => !_names(text, m)).toList()..sort();
+        faults.addAll(missing.map((m) => '${entry.value.path}: $m'));
+      }
+      expect(
+        faults,
+        isEmpty,
+        reason:
+            'these public statics are exported by the module and never named '
+            'in its API summary: $faults',
       );
     });
   });

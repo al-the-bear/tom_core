@@ -9,7 +9,7 @@
 > read each doc's status line before treating a class or method name as a stable
 > API.
 
-This folder documents `tom_flutter_ui` at two levels:
+This folder documents `tom_flutter_ui` at three levels:
 
 - **Design specifications** — the *why* and the cross-cutting model: identity,
   the four-state authorization model, resource resolution, the forms framework,
@@ -18,6 +18,9 @@ This folder documents `tom_flutter_ui` at two levels:
 - **Module references** — one focused doc per `lib/src/` module, describing the
   public API of that module in isolation. Reach for these when you are working
   inside a single module.
+- **API summaries** — a symbol-level mirror of a module's surface, under
+  `api/`. Reach for one when you know what you are looking for and want the
+  signature, not the explanation.
 
 Every Tom widget builds on the platform-neutral state, security, and resource
 primitives in [`tom_core_kernel`](../../tom_core_kernel/README.md); the package
@@ -60,6 +63,20 @@ One doc per `lib/src/` module — the public API of that module in isolation.
 | [custom.md](custom.md) | `custom/` — extension points for application-specific widgets. |
 | [kernel_types.md](kernel_types.md) | `kernel_types.dart` — the one bridge to `tom_core_kernel`: every kernel type named in a public signature here. |
 | [debug_and_inspection_system.md](debug_and_inspection_system.md) | The runtime debug / inspection overlay. |
+
+## API summaries
+
+Symbol-level mirrors of a module's public surface: every exported type with its
+members, signatures and defaults, for looking something up rather than reading
+about it. The module reference beside each one is the document that explains
+*why*; the summary is the inventory.
+
+| Document | Module |
+| --- | --- |
+| [api/api_summary_actions.md](api/api_summary_actions.md) | `actions/` — thirteen public types. Companion to [actions.md](actions.md). |
+
+Only `actions` has one so far; the other modules are covered by their module
+reference alone.
 
 ## Working notes
 
