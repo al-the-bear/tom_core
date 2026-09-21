@@ -2,6 +2,20 @@
 
 ### Added
 
+- **The barrel's library dartdoc lists every type the module exports
+  (tcopen250).** It enumerated ten of thirteen, omitting `TomSimpleAction`,
+  `TomCompositeStep` and `TomUndoRedoContext` — each the only way to do
+  something the module is for. The module `readme.md`'s key-type table likewise
+  omitted `TomActionUndo`. A partial enumeration misleads more than a missing
+  one: it reads as complete, so absence says the type does not exist.
+
+  Both now list all thirteen, and the dartdoc's groupings say what each group is
+  *for*. `module_readme_inventory_test` gained a `barrel library dartdocs`
+  group that classifies every module's dartdoc — complete index, deliberate
+  orientation, or partial with its gap measured — and holds each to it, so the
+  four modules that are still partial can neither slip further nor quietly
+  improve into passing a weaker check.
+
 - **An API summary for the actions module (tcopen249).**
   `doc/api/` existed and was empty — the package had no symbol-level mirror for
   any module, where every other scanned tom_core unit has one.

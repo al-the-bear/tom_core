@@ -3,20 +3,34 @@
 /// Actions execute business logic with typed context, authorization,
 /// undo support, and clean integration into the widget layer.
 ///
-/// Core classes:
-/// - [TomAction] — base class for all actions
-/// - [TomActionController] — container for related actions
-/// - [TomActionContext] — base context available to all actions
-/// - [TomActionTransaction] — atomic multi-action grouping
-/// - [TomActionTrigger] — connects widgets to actions
+/// Every type this library exports, grouped by what it is for:
 ///
-/// Undo/redo:
-/// - [TomActionUndo] — tag interface for undo state
-/// - [TomUndoHistory] — application-level undo/redo stack
-/// - [TomUndoAction] / [TomRedoAction] — coordinator actions
+/// Writing an action:
+/// - [TomAction] — the base class for all actions
+/// - [TomSimpleAction] — the base for an action that returns no undo state
+/// - [TomActionContext] — the base context an action reads; domain contexts
+///   extend it
+/// - [TomActionUndo] — the marker an undo-state object implements
 ///
-/// Multi-action adapters:
-/// - [TomCompositeAction] — executes multiple actions sequentially
+/// Owning and dispatching one:
+/// - [TomActionController] — owns and names a group of actions, and supplies
+///   the first segment of their canonical paths
+/// - [TomActionTrigger] — the one thing that *runs* an action, binding it to a
+///   widget callback
+///
+/// Undo and redo:
+/// - [TomActionTransaction] — one gesture's worth of undo entries, committed
+///   as an atomic unit
+/// - [TomUndoHistory] — the bounded undo/redo stack of committed transactions
+/// - [TomUndoAction] / [TomRedoAction] — coordinator actions that drive a
+///   history, so undo and redo dispatch like anything else
+/// - [TomUndoRedoContext] — the context those two take: a scope and nothing
+///   else
+///
+/// Composing several:
+/// - [TomCompositeAction] — runs a list of steps in order as one action
+/// - [TomCompositeStep] — one step of a composite: its action, its context
+///   builder and an optional guard
 library;
 
 export 'tom_action.dart';

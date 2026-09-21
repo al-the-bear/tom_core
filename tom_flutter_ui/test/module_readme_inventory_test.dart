@@ -210,6 +210,80 @@ bool _names(String readme, String symbol) {
   return RegExp(r'(?<!\w)' + RegExp.escape(symbol) + r'(?!\w)').hasMatch(code);
 }
 
+/// What a module's **barrel library dartdoc** claims — the `///` block above
+/// `library;`, which is the first thing a reader of the barrel sees and what
+/// `dart doc` publishes as the library page.
+///
+/// Classified per module for the same reason [_Claim] is: a list of the modules
+/// that are checked says nothing about the ones outside it, so a module can sit
+/// uncovered without anyone deciding it should.
+enum _BarrelDoc {
+  /// The dartdoc links every public type the barrel exports.
+  ///
+  /// Not named `index`, which an enum already declares.
+  complete,
+
+  /// The dartdoc orients rather than enumerates, because the module is a
+  /// catalogue where a complete list would be unreadable and is kept somewhere
+  /// that is itself checked. The same two modules [_Claim.rule] covers.
+  orientation,
+
+  /// The dartdoc enumerates, incompletely — it reads as an index and is not
+  /// one, which is the shape that misleads: a reader concludes from a name's
+  /// absence that the type does not exist.
+  ///
+  /// A measurement, not an exemption. Each of these was counted, and the
+  /// assertion below holds them to that count, so a module here cannot quietly
+  /// get worse — only better, which then requires moving it to [index].
+  partial,
+}
+
+/// Every module, and what its barrel dartdoc claims.
+///
+/// The `partial` counts were measured on 2026-09-21 against the barrel's own
+/// exports.
+const _barrelDocs = <String, _BarrelDoc>{
+  'actions': _BarrelDoc.complete,
+  'groups': _BarrelDoc.complete,
+  'theme': _BarrelDoc.complete,
+  'forms': _BarrelDoc.orientation,
+  'widgets': _BarrelDoc.orientation,
+  'advanced_container_layout': _BarrelDoc.partial,
+  'custom': _BarrelDoc.partial,
+  'resource_auth': _BarrelDoc.partial,
+  'widget_base': _BarrelDoc.partial,
+};
+
+/// How many exported types each `partial` barrel dartdoc leaves unlinked.
+///
+/// Held exactly, in both directions: a module that slips further is a
+/// regression, and one that improves has to be re-classified rather than
+/// silently drifting into passing a weaker check than it now deserves.
+const _partialBarrelGaps = <String, int>{
+  'advanced_container_layout': 7,
+  'custom': 6,
+  'resource_auth': 6,
+  'widget_base': 25,
+};
+
+/// The `[Name]` dartdoc references in a barrel's library comment.
+final _dartdocLink = RegExp(r'\[(\w+)\]');
+
+/// The `///` block a barrel carries above its `library;` directive.
+String _libraryDartdoc(String module) {
+  final dir = 'lib/src/$module';
+  final barrel = File(
+    '$dir/${_moduleBarrels[module] ?? '$module.dart'}',
+  ).readAsStringSync();
+  final upToLibrary = barrel
+      .split(RegExp(r'^library\b', multiLine: true))
+      .first;
+  return upToLibrary
+      .split('\n')
+      .where((l) => l.trimLeft().startsWith('///'))
+      .join('\n');
+}
+
 /// The modules that ship a symbol-level API summary under `doc/api/`, mapped to
 /// the file that carries it.
 ///
@@ -488,6 +562,119 @@ void main() {
             'these public statics are exported by the module and never named '
             'in its API summary: $faults',
       );
+    });
+  });
+
+  group('barrel library dartdocs', () {
+    test('every module is classified, and every classification names one', () {
+      final onDisk = Directory('lib/src')
+          .listSync()
+          .whereType<Directory>()
+          .map((d) => d.path.split(Platform.pathSeparator).last)
+          .where(
+            (m) => File(
+              'lib/src/$m/${_moduleBarrels[m] ?? '$m.dart'}',
+            ).existsSync(),
+          )
+          .toSet();
+      expect(
+        onDisk,
+        isNotEmpty,
+        reason: 'found no barrels — the scan is broken',
+      );
+      expect(
+        onDisk.difference(_barrelDocs.keys.toSet()).toList()..sort(),
+        isEmpty,
+        reason:
+            'these modules ship a barrel and _barrelDocs does not say what its '
+            'dartdoc claims — classify them rather than leaving them unchecked',
+      );
+      expect(
+        _barrelDocs.keys.toSet().difference(onDisk).toList()..sort(),
+        isEmpty,
+        reason: '_barrelDocs names modules that no longer ship a barrel',
+      );
+      expect(
+        _partialBarrelGaps.keys.toSet(),
+        _barrelDocs.entries
+            .where((e) => e.value == _BarrelDoc.partial)
+            .map((e) => e.key)
+            .toSet(),
+        reason: 'every partial barrel needs a measured gap, and vice versa',
+      );
+    });
+
+    test('an index dartdoc links every type its barrel exports', () {
+      // The barrel dartdoc is the first inventory a reader meets and the one
+      // nothing was holding: `actions` listed ten of its thirteen types, and
+      // the three it omitted — TomSimpleAction, TomCompositeStep,
+      // TomUndoRedoContext — are each the only way to do something the module
+      // is for.
+      final faults = <String>[];
+      for (final module in _barrelDocs.keys.where(
+        (m) => _barrelDocs[m] == _BarrelDoc.complete,
+      )) {
+        final linked = _dartdocLink
+            .allMatches(_libraryDartdoc(module))
+            .map((m) => m.group(1)!)
+            .toSet();
+        final missing = _publicNames(
+          _exportedSources(module),
+          _declaration,
+        ).difference(linked).toList()..sort();
+        faults.addAll(missing.map((t) => 'lib/src/$module: $t'));
+      }
+      expect(
+        faults,
+        isEmpty,
+        reason:
+            'these public types are exported by the barrel and absent from its '
+            'library dartdoc, which reads as an index: $faults',
+      );
+    });
+
+    test('a partial dartdoc has not slipped further, or quietly improved', () {
+      for (final entry in _partialBarrelGaps.entries) {
+        final linked = _dartdocLink
+            .allMatches(_libraryDartdoc(entry.key))
+            .map((m) => m.group(1)!)
+            .toSet();
+        final gap = _publicNames(
+          _exportedSources(entry.key),
+          _declaration,
+        ).difference(linked).length;
+        expect(
+          gap,
+          entry.value,
+          reason:
+              'lib/src/${entry.key}: its barrel dartdoc leaves $gap exported '
+              'types unlinked, measured at ${entry.value}. Fewer is progress — '
+              'update the count, or move the module to _BarrelDoc.complete once '
+              'it reaches zero.',
+        );
+      }
+    });
+
+    test('an orientation dartdoc does not pretend to enumerate', () {
+      // The catalogues name a handful of types to orient the reader. The risk
+      // is the opposite one: a list long enough to read as complete.
+      for (final module in _barrelDocs.keys.where(
+        (m) => _barrelDocs[m] == _BarrelDoc.orientation,
+      )) {
+        final linked = _dartdocLink
+            .allMatches(_libraryDartdoc(module))
+            .map((m) => m.group(1)!)
+            .toSet();
+        final exported = _publicNames(_exportedSources(module), _declaration);
+        expect(
+          linked.intersection(exported).length,
+          lessThan(exported.length),
+          reason:
+              'lib/src/$module is classified as orienting rather than '
+              'enumerating, but its dartdoc names every exported type — '
+              'reclassify it as an index',
+        );
+      }
     });
   });
 }
