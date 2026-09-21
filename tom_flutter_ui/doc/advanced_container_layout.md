@@ -878,8 +878,10 @@ Dimming is a style; enforcement is not. `opacity: 1.0` removes the `Opacity`
 wrapper and nothing else — the `AbsorbPointer` stays, so a theme cannot turn a
 withheld control back into a usable one.
 `test/advanced_container_layout/acl_disabled_enforcement_test.dart` asserts all
-of this against both axes, dispatching a real tap rather than looking for a
-wrapper.
+of this against both axes and both withheld states, dispatching a real tap
+rather than looking for a wrapper — the ambient `MaterialApp` already puts an
+`AbsorbPointer` above everything, so a finder for the type would pass whether or
+not the container added one.
 
 `apply` wraps `ColorFiltered` → `Opacity` → `AbsorbPointer` outwards, omitting
 the opacity wrapper at `opacity: 1.0` and the `AbsorbPointer` at

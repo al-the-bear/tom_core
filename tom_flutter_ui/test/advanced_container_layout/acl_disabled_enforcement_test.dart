@@ -159,6 +159,27 @@ void main() {
       );
     });
 
+    testWidgets('on a read component, which is the same claim one state over', (
+      tester,
+    ) async {
+      // `read` is the other visible-but-withheld state, and it is enforced by
+      // the same mechanism: `TomStateStyle.absorbPointers` defaults to true, so
+      // `readonlyStyle` blocks pointers exactly as `disabledStyle` does. Only
+      // `read`'s *dimming* was asserted, which is the half that would survive
+      // somebody setting `absorbPointers: false` on the readonly default — the
+      // field's own dartdoc contemplates doing that for a family that handles
+      // the state itself, and nothing said the container may not inherit it.
+      adapter.denials['c0'] = TomAuthState.read;
+      await pump(tester, layout());
+
+      await expectWithheld(
+        tester,
+        reason:
+            'a component the policy resolved to read must be rendered '
+            'inert, not merely dimmed',
+      );
+    });
+
     testWidgets('but a full component stays live', (tester) async {
       // The other direction, without which every assertion above passes for a
       // container that simply dims and deadens everything.
