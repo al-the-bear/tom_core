@@ -428,7 +428,7 @@ void main() {
       final tx = freshTx();
       expect(tx.hasEntries, isFalse);
       final undo = inc.execute(CounterContext(counter), tx);
-      tx.record(inc, undo);
+      inc.recordInto(tx, undo);
       expect(tx.entryCount, 1);
       expect(tx.hasEntries, isTrue);
       tx.commit();
@@ -440,7 +440,7 @@ void main() {
       final inc = IncrementAction(controller: controller);
       final tx = freshTx()..commit();
       expect(
-        () => tx.record(inc, IncrementUndo(Counter(), 0)),
+        () => inc.recordInto(tx, IncrementUndo(Counter(), 0)),
         throwsStateError,
       );
     });
@@ -451,7 +451,7 @@ void main() {
       final counter = Counter();
       final tx = freshTx();
       final undo = inc.execute(CounterContext(counter), tx);
-      tx.record(inc, undo);
+      inc.recordInto(tx, undo);
       expect(counter.value, 1);
       tx.rollback();
       expect(counter.value, 0);
@@ -510,7 +510,7 @@ void main() {
       final tx = freshTx();
       for (var i = 0; i < 3; i++) {
         final undo = inc.execute(CounterContext(counter), tx);
-        tx.record(inc, undo);
+        inc.recordInto(tx, undo);
       }
       expect(counter.value, 3);
       tx.commit();
@@ -729,7 +729,7 @@ void main() {
     TomActionTransaction committedTx(IncrementAction inc, Counter counter) {
       final tx = TomActionTransaction(label: 'inc');
       final undo = inc.execute(CounterContext(counter), tx);
-      tx.record(inc, undo);
+      inc.recordInto(tx, undo);
       tx.commit();
       return tx;
     }

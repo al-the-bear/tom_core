@@ -1,5 +1,24 @@
 ## Unreleased
 
+### Changed
+
+- **A recorded undo state is checked against the action that produced it
+  (tcopen252).** `TomActionTransaction` held `(TomAction, dynamic undoState)`
+  pairs and reversed them with an unchecked dynamic dispatch, so recording one
+  action's state against another compiled, analyzed clean, and threw a
+  `TypeError` from inside the history the first time anyone pressed undo.
+
+  An entry now stores the two *calls* — `undo`, and `redo` or null — closed over
+  both typed values where they are still statically typed. `TomAction.recordInto
+  (tx, undoState)` replaces `TomActionTransaction.record(action, undoState)`.
+
+  It is on the **action** deliberately. Tightening the transaction's signature
+  to `record<TUndo>(TomAction<_, TUndo>, TUndo)` looks equivalent and is not:
+  Dart's class type parameters are covariant, so inference widens `TUndo` to
+  `TomActionUndo` and accepts anything — verified against the analyzer, which
+  reports no error for the inference form and an error for the receiver-pinned
+  one.
+
 ### Added
 
 - **A second, advanced example for the actions module (tcopen251).** The single

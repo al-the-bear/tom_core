@@ -230,8 +230,14 @@ undoHistory.push(tx);
 action contributes an undo entry only when it returned a state **and** declares
 itself `isUndoable`. `TomActionTrigger` and `TomCompositeAction` both dispatch
 through it, so the rule cannot drift between them.
-`record` remains available for the rare case where you hold an undo state that
-did not come from a call you just made.
+For an undo state you hold that did not come from a call you just made,
+`action.recordInto(tx, undoState)` files it. It is a method on the **action**,
+not the transaction, and that is load-bearing: `TUndo` is then the receiver's
+own type argument, so pairing one action's state with another is a compile
+error at that call rather than a `TypeError` from inside the history when
+somebody presses undo. A transaction method taking `(action, undoState)` cannot
+give you that — Dart's class type parameters are covariant, so inference widens
+the undo type and accepts anything.
 
 `TomUndoHistory` enforces the invariants: it refuses to `push` an uncommitted or
 empty transaction, clears the redo stack on every new push, and trims to

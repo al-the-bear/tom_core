@@ -289,12 +289,15 @@ void run() {
   manual.run(deleteRow, rowCtx);
 
   // A third step, recorded by hand: `execute` returns the undo state and
-  // `record` files it, which is what `run` does in one call. `TomAction`
+  // `recordInto` files it, which is what `run` does in one call. It is called
+  // on the *action* rather than handed to the transaction, so the undo state
+  // is checked against the action that produced it — pairing one action's
+  // state with another does not compile. `TomAction`
   // declares `TUndo?` because an action may have nothing to reverse;
   // `DeleteRowAction` narrows that to a non-nullable `RestoreRowUndo`, so
   // there is nothing to check here.
   final undoState = deleteRow.execute(rowCtx, manual);
-  manual.record(deleteRow, undoState);
+  deleteRow.recordInto(manual, undoState);
   final afterThreeSteps = List.of(rows); // ['a']
 
   // Something later in the gesture failed, so abandon the whole thing. Rollback

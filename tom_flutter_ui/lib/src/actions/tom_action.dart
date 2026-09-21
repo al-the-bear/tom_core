@@ -192,6 +192,30 @@ abstract class TomAction<
   /// Only called if [isRedoable] is `true` and the transaction was undone.
   void redo(TUndo undoState) {}
 
+  /// Records this action's [undoState] into [tx], so the transaction can
+  /// reverse it — and re-apply it when [isRedoable].
+  ///
+  /// The counterpart of [TomActionTransaction.run] for an undo state you
+  /// already hold: `run` executes and records in one step, this records
+  /// something that was executed elsewhere.
+  ///
+  /// **Called on the action, not passed to the transaction.** `TUndo` is this
+  /// class's own type parameter, so the receiver's static type fixes it and a
+  /// state belonging to some other action is rejected here, at the call that is
+  /// wrong. A transaction method taking `(action, undoState)` could not do
+  /// that: Dart's class type parameters are covariant, so inference widens the
+  /// undo type to `TomActionUndo`, accepts anything, and leaves the mismatch to
+  /// surface as a `TypeError` from inside the history at undo time.
+  ///
+  /// [isRedoable] is read now, so the entry is a complete record of what can be
+  /// done with it. Actions are stateless, so there is nothing a later reading
+  /// could learn that this one could not.
+  void recordInto(TomActionTransaction tx, TUndo undoState) => tx.record(
+    actionId: actionId,
+    undo: () => undo(undoState),
+    redo: isRedoable ? () => redo(undoState) : null,
+  );
+
   /// Gets the authorization state for this action.
   TomAuthState get authState => TomAuthorization.resolveAuth(canonicalPath);
 

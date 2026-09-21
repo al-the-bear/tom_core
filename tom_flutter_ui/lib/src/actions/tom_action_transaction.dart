@@ -42,17 +42,35 @@ class TomActionTransaction {
 
   TomActionTransaction({required this.label});
 
-  /// Records an undo entry for a sub-action.
+  /// Records the two calls that move one sub-action.
   ///
-  /// Called automatically by the action trigger mechanism.
-  void record<TUndo extends TomActionUndo>(TomAction action, TUndo undoState) {
+  /// Prefer [TomAction.recordInto], which builds both from an action and its
+  /// undo state. Reach for this directly only when the reversal is not a call
+  /// to `TomAction.undo` at all.
+  ///
+  /// Taking the **calls** rather than an `(action, undoState)` pair is what
+  /// makes a mis-pairing impossible here: a closure body is checked against the
+  /// receiver's own signature, so `() => increment.undo(someOtherUndoState)`
+  /// does not compile. Passing the two as arguments cannot achieve that —
+  /// Dart's class type parameters are covariant, so inference is free to widen
+  /// the undo type to `TomActionUndo` and accept any state at all, leaving the
+  /// mismatch to surface as a `TypeError` from inside the history when
+  /// somebody presses undo.
+  ///
+  /// [actionId] appears in the diagnostic [redoAll] raises when an entry has no
+  /// redo; [redo] is null when the action declares none.
+  void record({
+    required String actionId,
+    required void Function() undo,
+    void Function()? redo,
+  }) {
     if (_committed) {
       throw StateError('Cannot record into a committed transaction');
     }
     if (_rolledBack) {
       throw StateError('Cannot record into a rolled-back transaction');
     }
-    _entries.add(_UndoEntry(action: action, undoState: undoState));
+    _entries.add(_UndoEntry(actionId: actionId, undo: undo, redo: redo));
   }
 
   /// Runs [action] against [context] inside this transaction, recording its
@@ -78,7 +96,7 @@ class TomActionTransaction {
   ) {
     final undoState = context.runInScope(() => action.execute(context, this));
     if (undoState != null && action.isUndoable) {
-      record(action, undoState);
+      action.recordInto(this, undoState);
     }
   }
 
@@ -106,7 +124,7 @@ class TomActionTransaction {
     _rolledBack = true;
     _undone = true;
     for (final entry in _entries.reversed) {
-      entry.action.undo(entry.undoState);
+      entry.undo();
     }
   }
 
@@ -134,7 +152,7 @@ class TomActionTransaction {
     }
     _undone = true;
     for (final entry in _entries.reversed) {
-      entry.action.undo(entry.undoState);
+      entry.undo();
     }
   }
 
@@ -162,8 +180,8 @@ class TomActionTransaction {
       );
     }
     final missing = _entries
-        .where((e) => !e.action.isRedoable)
-        .map((e) => e.action.actionId)
+        .where((e) => e.redo == null)
+        .map((e) => e.actionId)
         .toSet();
     if (missing.isNotEmpty) {
       throw StateError(
@@ -176,7 +194,7 @@ class TomActionTransaction {
     }
     _undone = false;
     for (final entry in _entries) {
-      entry.action.redo(entry.undoState);
+      entry.redo!();
     }
   }
 
@@ -195,12 +213,13 @@ class TomActionTransaction {
 
   /// Whether every recorded action can re-apply itself.
   ///
-  /// False for an empty transaction, and false as soon as one entry's action
-  /// leaves [TomAction.isRedoable] at its default. This is what
+  /// False for an empty transaction, and false as soon as one entry was
+  /// recorded from an action that leaves [TomAction.isRedoable] at its default
+  /// — such an entry carries no redo call at all. This is what
   /// [TomUndoHistory.canRedo] consults, so a Redo button is enabled only when
   /// pressing it would do something.
   bool get isRedoable =>
-      _entries.isNotEmpty && _entries.every((e) => e.action.isRedoable);
+      _entries.isNotEmpty && _entries.every((e) => e.redo != null);
 
   /// Number of recorded sub-actions.
   int get entryCount => _entries.length;
@@ -210,9 +229,29 @@ class TomActionTransaction {
       'TomActionTransaction($label, entries: ${_entries.length})';
 }
 
+/// One recorded sub-action, as the two calls that move it rather than the
+/// parts they would be assembled from.
+///
+/// Closures because a list cannot hold `TomAction<TContext, TUndo>` values with
+/// differing type arguments: keeping the action and its state as a pair forces
+/// the state to an untyped field and the reversal to an unchecked dispatch. A
+/// closure built where both values are still statically typed carries the same
+/// behaviour with the types intact and nothing left to re-assemble.
 class _UndoEntry {
-  final TomAction action;
-  final dynamic undoState;
+  /// Reverses the sub-action.
+  final void Function() undo;
 
-  _UndoEntry({required this.action, required this.undoState});
+  /// Re-applies it, or **null** when the action declares no redo.
+  ///
+  /// Null rather than a no-op closure, so "this cannot be redone" is a state
+  /// the transaction can read rather than a call that quietly does nothing —
+  /// see [TomActionTransaction.isRedoable].
+  final void Function()? redo;
+
+  /// The action's id, kept for the diagnostic [TomActionTransaction.redoAll]
+  /// raises when an entry has no redo. It is the only thing either reversal
+  /// path needed the action itself for.
+  final String actionId;
+
+  _UndoEntry({required this.actionId, required this.undo, this.redo});
 }
