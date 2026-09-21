@@ -1092,35 +1092,31 @@ class _AclContainerState extends State<AclContainer> {
     return segments.join('.');
   }
 
-  /// Wraps a component with [AclScope] to provide ID/group metadata.
+  /// Wraps a component with [AclScope], so anything inside it can read the
+  /// identity the container resolved for it.
+  ///
+  /// [groupName] and [fullPath] are **required** and passed in already
+  /// resolved. Defaulting them here would mean a second copy of the caller's
+  /// own `component.group ?? row.group` and of its policy-path call — two
+  /// copies that can only ever agree until one of them changes, at which point
+  /// a component would be told a different identity from the one the container
+  /// asks the policy about. There is one caller; it has both values in hand.
+  ///
+  /// TomNodeScope propagation is handled at the container level (by
+  /// `TomAclBuilder` / `TomContainerBase`) and is not duplicated here.
   Widget _wrapWithScope(
     Widget child,
     AclComponent comp,
     AclRow row, {
-    String? groupName,
-    String? fullPath,
+    required String? groupName,
+    required String? fullPath,
   }) {
-    final containerId = widget.aclId;
-    final resolvedGroup = groupName ?? comp.group ?? row.group;
-    final resolvedPath =
-        fullPath ??
-        (comp.id != null
-            ? _buildComponentPolicyPath(
-                componentId: comp.id!,
-                groupName: resolvedGroup,
-                row: row,
-              )
-            : null);
-
-    // AclScope provides ACL-specific metadata for descendant lookups.
-    // TomNodeScope propagation is handled at the container level
-    // (by TomAclBuilder / TomContainerBase) — no need to duplicate here.
     return AclScope(
-      containerId: containerId,
+      containerId: widget.aclId,
       componentId: comp.id,
       rowId: row.id,
-      groupName: resolvedGroup,
-      fullIdPath: resolvedPath,
+      groupName: groupName,
+      fullIdPath: fullPath,
       child: child,
     );
   }

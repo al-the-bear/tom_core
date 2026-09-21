@@ -730,7 +730,9 @@ widget tree; remember to `dispose()` them with the container. Register one with
 
 [`AclScope`] is an `InheritedWidget` that propagates the container, component,
 row, and group id paths down the tree (`AclScope.of(context)` reads the
-nearest). The builder assigns ids with `setAclId` / `setId` / `setRowId` and
+nearest). Its `fullIdPath` is the same string the container hands
+`TomAuthorization.resolveAuth` for that component, so a component that reads its
+own id and then asks the policy about it is asking about itself. The builder assigns ids with `setAclId` / `setId` / `setRowId` and
 groups with `startGroup` / `endGroup` / `group` / `setAclGroup` / `setRowGroup`;
 `startGroup` rejects nesting and `endGroup` rejects an unmatched call.
 
