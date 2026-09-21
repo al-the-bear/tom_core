@@ -2,6 +2,19 @@
 
 ### Added
 
+- **A second, advanced example for the actions module (tcopen251).** The single
+  example had grown to 432 lines and still reached none of the undo/redo
+  coordinator actions, the authorization surface an action exposes to a widget,
+  resource-resolved captions, or the transaction API's `rollback` / `record` /
+  `undoAll` / `redoAll`.
+
+  It is now a 271-line quick start plus
+  `example/actions/actions_advanced_example.dart`, which reuses the quick
+  start's domain and covers all of the above. Both assert their own results and
+  each has its own test file. The advanced one installs an authorization adapter
+  and a text bundle and puts both back — asserted, not trusted, since a provider
+  is process-wide.
+
 - **The barrel's library dartdoc lists every type the module exports
   (tcopen250).** It enumerated ten of thirteen, omitting `TomSimpleAction`,
   `TomCompositeStep` and `TomUndoRedoContext` — each the only way to do

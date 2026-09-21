@@ -58,6 +58,15 @@ The action extends `TomAction`, not `TomSimpleAction`, because the
 `history.undo()` above needs it to return undo state; `TomSimpleAction` always
 returns `null`, so nothing would reach the history.)
 
+## Examples
+
+Both run under `flutter test` and assert their own results.
+
+| File | Covers |
+| ---- | ------ |
+| `example/actions/actions_example.dart` | The quick start above, end to end: a controller and its actions, a transaction, the trigger → history wiring, undo and redo, `canExecute`, a guarded composite. |
+| `example/actions/actions_advanced_example.dart` | The coordinator actions, the authorization surface, resource-resolved captions, the transaction API including `rollback`, construction and invocation scope frames, controller groups, and the duplicate-id refusal. |
+
 ---
 
 Part of [`tom_flutter_ui`](../../../README.md) — see the package README for

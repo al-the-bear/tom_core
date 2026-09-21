@@ -436,7 +436,11 @@ composite, and that says nothing about what the composite then reaches.
 | [widget_base](widget_base.md) | module | `tom_action.dart`, `tom_action_controller.dart` | `TomCtr` for `label` / `tooltip` / `iconName` resource resolution |
 
 > The action classes themselves are pure logic and need no widget tree. Because
-> the package barrel pulls in `flutter/material` (→ `dart:ui`), run the example
-> under the Flutter toolchain — see
-> [`example/actions/actions_example.dart`](../example/actions/actions_example.dart),
-> exercised by `flutter test`.
+> the package barrel pulls in `flutter/material` (→ `dart:ui`), run the examples
+> under the Flutter toolchain. Both assert their own results, so they fail
+> rather than merely print when a behaviour drifts:
+>
+> | Example | Covers |
+> | ------- | ------ |
+> | [`actions_example.dart`](../example/actions/actions_example.dart) | The quick start — a controller and its actions, a transaction, the trigger → history wiring, undo and redo, `canExecute`, a guarded composite. |
+> | [`actions_advanced_example.dart`](../example/actions/actions_advanced_example.dart) | The coordinator actions, the authorization surface, resource-resolved captions, the transaction API including `rollback`, construction and invocation scope frames, controller groups, and the duplicate-id refusal. |

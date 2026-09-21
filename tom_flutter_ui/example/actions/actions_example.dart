@@ -1,13 +1,13 @@
-/// Executable example for the `actions/` module of `tom_flutter_ui`.
+/// Executable quick start for the `actions/` module of `tom_flutter_ui`.
 ///
-/// Demonstrates the Tom Action system end to end without a widget tree: a
-/// controller owning typed, undoable actions; direct execution inside a
-/// transaction; the `TomActionTrigger` → `TomUndoHistory` wiring; undo/redo;
-/// `canExecute` gating; a guarded `TomCompositeAction`; the invocation frame a
-/// context carries; the authorization group a controller lends its actions;
-/// the refusal of an action authorization does not permit; the refusal of a
-/// duplicate action id; and the scope frame an action's canonical path is built
-/// in.
+/// The shapes you write first, without a widget tree: a controller owning
+/// typed, undoable actions; direct execution inside a transaction; the
+/// `TomActionTrigger` → `TomUndoHistory` wiring; undo and redo; `canExecute`
+/// gating; and a guarded `TomCompositeAction`.
+///
+/// Scope frames, authorization, resource resolution, the undo/redo coordinator
+/// actions and the direct transaction API are in the companion
+/// `actions_advanced_example.dart`, which reuses the domain declared here.
 ///
 /// Because it imports `package:tom_flutter_ui/tom_flutter_ui.dart` (which pulls
 /// in `flutter/material` → `dart:ui`), bare `dart run` cannot execute it. Run
@@ -103,38 +103,6 @@ class UndoOnlyIncrementAction extends TomAction<CounterContext, IncrementUndo> {
   void undo(IncrementUndo undoState) {
     undoState.counter.value = undoState.previous;
   }
-}
-
-/// Reports the scope in force each time it is consulted.
-///
-/// A context's `scope` affects only the *ambient* frame, so no return value can
-/// show it; this reports `TomScope.current` instead, which is what a nested
-/// controller or a resource lookup inside the action would have read.
-class FrameProbeContext extends TomActionContext {
-  final List<String> frames;
-  FrameProbeContext({required this.frames, super.scope});
-}
-
-class FrameProbeAction extends TomSimpleAction<FrameProbeContext> {
-  FrameProbeAction({required super.controller}) : super(actionId: 'frameProbe');
-
-  @override
-  bool canExecute(FrameProbeContext context) {
-    context.frames.add(TomScope.current.id);
-    return true;
-  }
-
-  @override
-  void executeSimple(FrameProbeContext context, TomActionTransaction tx) {
-    context.frames.add(TomScope.current.id);
-  }
-}
-
-/// Resolves `secured.delete` to hidden and everything else to full.
-class _HiddenDeleteAdapter implements TomAuthorizationAdapter {
-  @override
-  TomAuthState resolveAuth(String path) =>
-      path == 'secured.delete' ? TomAuthState.none : TomAuthState.full;
 }
 
 /// A non-undoable action that only runs while the counter is positive.
@@ -265,132 +233,11 @@ void run() {
   composite.execute(ctx(), TomActionTransaction(label: 'composite'));
   print('composite guarded-out=$afterGuardedOut guarded-in=${counter.value}');
 
-  // Example 7: a controller built inside a TomScope namespaces its actions.
-  // The scope is captured once, when the controller and its actions are
-  // constructed, so the path is the same wherever it is later read from — and
-  // an action's authorization group is resolved in that same frame.
-  final scoped = TomScope.withScope('checkout', () => CounterController());
-  final scopedPath = scoped.increment.canonicalPath;
-  print('scoped increment path: $scopedPath');
-
-  // Example 8: the same, with the scope handed over as a value instead of
-  // installed on a zone — the shape a builder callback produces.
-  final detached = CounterController(scope: TomScopeBase(scopeId: 'checkout'));
-  print('detached prefix: ${detached.canonicalPrefix}');
-
-  // Example 9: the *invocation* frame, which is a different scope from the
-  // construction one above. A context's `scope` is installed around both the
-  // gate and the body, so anything they reach that reads TomScope.current sees
-  // where this invocation is happening — while the action's canonical path,
-  // fixed at construction, does not move.
-  final frames = <String>[];
-  final probeController = TomActionController(controllerId: 'probe');
-  final probe = FrameProbeAction(controller: probeController);
-  TomScope.withScope('ambient', () {
-    TomActionTrigger<FrameProbeContext, TomActionUndo>(
-      action: probe,
-      contextBuilder: () => FrameProbeContext(
-        frames: frames,
-        scope: TomScopeBase(scopeId: 'invocation'),
-      ),
-    ).trigger();
-  });
-  final probePath = probe.canonicalPath;
-  print('invocation frames: $frames (action path still $probePath)');
-
-  // Example 10: a group declared once on the controller reaches every action
-  // it owns — membership and ceiling both — without being repeated per action.
-  // An action that names its own group overrides it.
-  final billing = TomAuthorizationGroup('billing');
-  final reporting = TomAuthorizationGroup('reporting');
-  final grouped = TomActionController(controllerId: 'gsec', tomGroup: billing);
-  final inheritsGroup = IncrementAction(controller: grouped, id: 'edit');
-  final ownGroup = IncrementAction(
-    controller: grouped,
-    id: 'report',
-    tomGroup: reporting,
-  );
-  print(
-    'inherited: ${inheritsGroup.tomGroup?.groupId}, '
-    'own: ${ownGroup.tomGroup?.groupId}, '
-    'billing members: ${billing.members.length}',
-  );
-
-  // Example 11: the trigger refuses an action authorization does not permit.
-  // Normally a button bound to `action.authorizer` is already hidden or
-  // disabled, so nothing reaches here; this is for the paths that do not go
-  // through a button — a keyboard shortcut, a test, a callback holding
-  // `trigger` directly.
-  TomAuthorization.adapter = _HiddenDeleteAdapter();
-  final secured = TomActionController(controllerId: 'secured');
-  final hiddenAction = IncrementAction(controller: secured, id: 'delete');
-  final securedCounter = Counter();
-  var contextsBuilt = 0;
-  var refusals = 0;
-  TomActionTrigger<CounterContext, IncrementUndo>(
-    action: hiddenAction,
-    contextBuilder: () {
-      contextsBuilt++;
-      return CounterContext(securedCounter);
-    },
-    onCannotExecute: () => refusals++,
-  ).trigger();
-  final refusedByAuth = !hiddenAction.isAuthorized;
-  print(
-    'hidden action: state ${hiddenAction.effectiveAuthState.name}, '
-    'ran ${securedCounter.value == 1}, refused $refusals, '
-    'contexts built $contextsBuilt',
-  );
-  TomAuthorization.reset();
-
-  // Example 12: an action id is unique within its controller. A duplicate would
-  // share one authorization decision and one set of label/tooltip/icon keys
-  // with the action already registered, so it is refused at construction.
-  var duplicateRefused = false;
-  try {
-    IncrementAction(controller: controller, id: 'increment');
-  } on StateError {
-    duplicateRefused = true;
-  }
-  // The same id under a different controller is a different canonical path,
-  // so there is nothing to collide.
-  final elsewhere = TomActionController(controllerId: 'elsewhere');
-  final sameIdElsewhere = IncrementAction(controller: elsewhere);
-  print(
-    'duplicate refused: $duplicateRefused, '
-    'same id elsewhere: ${sameIdElsewhere.canonicalPath}',
-  );
-
   // -------------------------------------------------------------------------
   // Assertions
   // -------------------------------------------------------------------------
-  // The gate and the body both ran in the context's frame, not the ambient
-  // one — and the action's own path is unaffected by where it was invoked.
-  assert(frames.length == 2);
-  assert(frames.every((frame) => frame == 'invocation'));
-  assert(probePath == 'probe.frameProbe');
-
-  // The hidden action did not run, the refusal was reported once, and the
-  // context builder — application code — was never called. `onCannotExecute`
-  // covers both refusals; `isAuthorized` says which one this was.
-  assert(securedCounter.value == 0);
-  assert(refusals == 1);
-  assert(contextsBuilt == 0);
-  assert(refusedByAuth);
-
-  // The duplicate never registered, so the controller still owns three actions
-  // and the id resolves to the original.
-  assert(duplicateRefused);
-  assert(sameIdElsewhere.canonicalPath == 'elsewhere.increment');
-
-  // The controller's group covers the action that named none, and only that
-  // one — the overriding action never joins it.
-  assert(identical(inheritsGroup.tomGroup, billing));
-  assert(identical(ownGroup.tomGroup, reporting));
-  assert(billing.members.length == 1);
-  assert(billing.members.contains(inheritsGroup));
-
   assert(controller.actions.length == 3); // increment, reset, composite
+  assert(controller.canonicalPrefix == 'counter');
   assert(controller.increment.canonicalPath == 'counter.increment');
   assert(controller.findAction('reset') == controller.reset);
 
@@ -419,14 +266,6 @@ void run() {
   // Guarded-out step left the counter unchanged; guarded-in incremented it.
   assert(afterGuardedOut == 0);
   assert(counter.value == 1);
-
-  // A scope reaches the controller prefix and every action path under it —
-  // read here, outside the scope, and still 'checkout.counter.increment'.
-  assert(scopedPath == 'checkout.counter.increment');
-  assert(scoped.canonicalPrefix == 'checkout.counter');
-  assert(detached.canonicalPrefix == 'checkout.counter');
-  // The unscoped controller above is unchanged: no scope, no prefix.
-  assert(controller.canonicalPrefix == 'counter');
 }
 
 void main() => run();
