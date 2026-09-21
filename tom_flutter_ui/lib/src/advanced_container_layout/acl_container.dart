@@ -441,28 +441,61 @@ class AclRow {
     this.defaultRowCrossAlignment = AclRowCrossAlignment.top,
   });
 
-  /// Returns a copy with [components] and [gapBefore] replaced. Used by the
-  /// hide-unauthorized pass when it rewrites a row that has had some of
-  /// its components dropped or when the row itself inherits a reduced
-  /// gap because the previous row was elided.
-  AclRow copyWith({List<AclComponent>? components, double? gapBefore}) {
+  /// Returns a copy with the named fields replaced and every other field
+  /// carried over.
+  ///
+  /// **The only way the layout passes may rebuild a row.** Three of them do —
+  /// hide-unauthorized, the breakpoint split and the inline-variant filter —
+  /// and each needs to change two or three fields out of sixteen. Writing that
+  /// as a fresh `AclRow(...)` means restating the other thirteen, and a field
+  /// added to this class later is then silently absent from every pass that
+  /// forgot it: the row keeps all its properties at the width the developer
+  /// tested and loses some at the width their user has.
+  ///
+  /// `test/advanced_container_layout/acl_row_rebuild_test.dart` holds both
+  /// halves of that — this method names every field, and no pass constructs an
+  /// `AclRow` directly.
+  ///
+  /// A null argument means *keep what is there*, so this cannot clear a
+  /// nullable field ([separator], [id], [group], [height]). No pass needs to:
+  /// they narrow, split and filter rows, none of which drops an identity.
+  AclRow copyWith({
+    List<AclComponent>? components,
+    RowAlignment? alignment,
+    double? gapBefore,
+    bool? isGapRow,
+    double? gapRowWeight,
+    AclSeparator? separator,
+    double? gapRowMinSize,
+    String? id,
+    String? group,
+    bool? idScope,
+    List<AclRowBreakpoint>? breakpoints,
+    double? height,
+    List<(double, double?)>? heightBpOverrides,
+    double? defaultAppendGap,
+    List<(double, double)>? defaultAppendGapBpOverrides,
+    AclRowCrossAlignment? defaultRowCrossAlignment,
+  }) {
     return AclRow(
       components: components ?? this.components,
-      alignment: alignment,
+      alignment: alignment ?? this.alignment,
       gapBefore: gapBefore ?? this.gapBefore,
-      isGapRow: isGapRow,
-      gapRowWeight: gapRowWeight,
-      separator: separator,
-      gapRowMinSize: gapRowMinSize,
-      id: id,
-      group: group,
-      idScope: idScope,
-      breakpoints: breakpoints,
-      height: height,
-      heightBpOverrides: heightBpOverrides,
-      defaultAppendGap: defaultAppendGap,
-      defaultAppendGapBpOverrides: defaultAppendGapBpOverrides,
-      defaultRowCrossAlignment: defaultRowCrossAlignment,
+      isGapRow: isGapRow ?? this.isGapRow,
+      gapRowWeight: gapRowWeight ?? this.gapRowWeight,
+      separator: separator ?? this.separator,
+      gapRowMinSize: gapRowMinSize ?? this.gapRowMinSize,
+      id: id ?? this.id,
+      group: group ?? this.group,
+      idScope: idScope ?? this.idScope,
+      breakpoints: breakpoints ?? this.breakpoints,
+      height: height ?? this.height,
+      heightBpOverrides: heightBpOverrides ?? this.heightBpOverrides,
+      defaultAppendGap: defaultAppendGap ?? this.defaultAppendGap,
+      defaultAppendGapBpOverrides:
+          defaultAppendGapBpOverrides ?? this.defaultAppendGapBpOverrides,
+      defaultRowCrossAlignment:
+          defaultRowCrossAlignment ?? this.defaultRowCrossAlignment,
     );
   }
 }
@@ -897,43 +930,25 @@ class _AclContainerState extends State<AclContainer> {
                     orElse: () => active.first,
                   )
                   .splitRowDist;
+        // Every fragment keeps everything the row had, including its id: a
+        // split is a visual wrap of one logical row, so all fragments resolve
+        // the same row policy and contribute the same path segment. Only the
+        // components, the leading gap and the now-spent breakpoints differ.
         result.add(
-          AclRow(
+          row.copyWith(
             components: row.components.sublist(start, end),
-            alignment: row.alignment,
             gapBefore: i == 0 ? row.gapBefore : dist,
-            // Every fragment keeps the id: a split is a visual wrap of one
-            // logical row, so all fragments must resolve the same row policy
-            // and contribute the same path segment. Dropping it on the
-            // continuation fragments would make a hidden row leak its
-            // overflow components, and would move descendant policy paths
-            // as the window narrows.
-            id: row.id,
-            idScope: row.idScope,
-            group: row.group,
             breakpoints: const [],
-            height: row.height,
-            heightBpOverrides: row.heightBpOverrides,
-            defaultAppendGap: row.defaultAppendGap,
-            defaultAppendGapBpOverrides: row.defaultAppendGapBpOverrides,
           ),
         );
         start = end;
       }
       if (start < row.components.length) {
         result.add(
-          AclRow(
+          row.copyWith(
             components: row.components.sublist(start),
-            alignment: row.alignment,
             gapBefore: active.last.splitRowDist,
-            id: row.id,
-            idScope: row.idScope,
-            group: row.group,
             breakpoints: const [],
-            height: row.height,
-            heightBpOverrides: row.heightBpOverrides,
-            defaultAppendGap: row.defaultAppendGap,
-            defaultAppendGapBpOverrides: row.defaultAppendGapBpOverrides,
           ),
         );
       }
@@ -1001,23 +1016,8 @@ class _AclContainerState extends State<AclContainer> {
 
       if (filtered.isEmpty) continue;
       result.add(
-        AclRow(
-          components: filtered,
-          alignment: row.alignment,
-          gapBefore: row.gapBefore,
-          isGapRow: row.isGapRow,
-          gapRowWeight: row.gapRowWeight,
-          separator: row.separator,
-          gapRowMinSize: row.gapRowMinSize,
-          id: row.id,
-          idScope: row.idScope,
-          group: row.group,
-          breakpoints: row.breakpoints,
-          height: row.height,
-          heightBpOverrides: row.heightBpOverrides,
-          defaultAppendGap: row.defaultAppendGap,
-          defaultAppendGapBpOverrides: row.defaultAppendGapBpOverrides,
-        ),
+        // Only the component list changes; everything else is the row's.
+        row.copyWith(components: filtered),
       );
     }
     return result;

@@ -1,19 +1,26 @@
-/// Enforces that `AclComponent.copyWith` covers **every** declared field.
+/// Enforces that `AclComponent.copyWith` and `AclRow.copyWith` each cover
+/// **every** field their class declares.
 ///
-/// `AclComponent` is copied by a hand-restated field list, and a field left out
-/// of that list does not fail to compile — it silently falls back to its
-/// default. This already happened once: before `copyWith` existed, the
-/// specialised `copyWithGapBefore` restated the fields inline, so a component
-/// rewritten by the hide-unauthorized pass quietly lost anything the copier had
-/// not been taught about.
+/// Both are copied by a hand-restated field list, and a field left out of that
+/// list does not fail to compile — it silently falls back to its default. It
+/// has happened to each of them. On `AclComponent`, the specialised
+/// `copyWithGapBefore` restated the fields inline, so a component rewritten by
+/// the hide-unauthorized pass quietly lost anything the copier had not been
+/// taught about. On `AclRow`, the two responsive passes built fragments by
+/// naming fields and between them dropped four, so a row kept all its
+/// properties at the width the developer tested and lost some at the width
+/// their user had.
 ///
-/// `copyWith` replaced that copier but not the hazard — it is the same
-/// hand-restated list, one level down. So the coverage is checked here against
-/// the declaration itself rather than trusted: the constructor's parameters,
-/// `copyWith`'s parameters, and `copyWith`'s forwarding expressions must name
-/// exactly the same fields. Adding a 26th field to the class and forgetting
-/// `copyWith` fails this file instead of silently dropping the field at
-/// runtime.
+/// `copyWith` is the answer to both, and it does not remove the hazard — it is
+/// the same hand-restated list, one level down. So the coverage is checked here
+/// against the declaration itself rather than trusted: for each class, the
+/// constructor's parameters, `copyWith`'s parameters, and `copyWith`'s
+/// forwarding expressions must name exactly the same fields. Adding a field and
+/// forgetting `copyWith` fails this file instead of silently dropping the field
+/// at runtime.
+///
+/// The classes are driven from a list rather than written out twice, so a third
+/// copier cannot be added without a line here saying whether it is covered.
 ///
 /// The field count is also a *documented* claim — `copyWith`'s own dartdoc
 /// weighs the no-clearing tradeoff against the size of the class — so the
@@ -72,6 +79,27 @@ String _sliceAfter(String source, String marker, String open) {
   return _balanced(source, openAt);
 }
 
+/// [source] with every balanced `(...)` group removed.
+///
+/// A parameter *name* is the identifier before a comma — but a record type
+/// writes commas of its own, so `List<(double, double?)>? heightBpOverrides`
+/// otherwise contributes a phantom parameter called `double`. `AclComponent`
+/// has no record-typed field and never showed this; `AclRow` has two.
+String _withoutNestedParens(String source) {
+  final out = StringBuffer();
+  var depth = 0;
+  for (final ch in source.split('')) {
+    if (ch == '(') {
+      depth++;
+    } else if (ch == ')') {
+      if (depth > 0) depth--;
+    } else if (depth == 0) {
+      out.write(ch);
+    }
+  }
+  return out.toString();
+}
+
 void main() {
   late String source;
   late Set<String> declaredFields;
@@ -92,52 +120,94 @@ void main() {
     ).allMatches(ctor).map((m) => m.group(1)!).toSet();
   });
 
-  group('copyWith covers every declared field', () {
-    test('the constructor declares the fields this file expects', () {
-      // A guard on the guard: if the parse silently matched nothing, every
-      // set-equality below would pass vacuously.
-      expect(declaredFields, isNotEmpty);
-      expect(declaredFields, contains('child'));
-      expect(declaredFields, contains('hideUnauthorized'));
-    });
+  /// Every class in this unit that carries a hand-restated `copyWith`.
+  ///
+  /// A record per class rather than a second copy of the group below: the
+  /// assertions are identical and only the names differ, and a class added here
+  /// is covered by all three at once.
+  const copiers = <({String type, String ctor, List<String> witnesses})>[
+    (
+      type: 'AclComponent',
+      ctor: 'const AclComponent(',
+      witnesses: ['child', 'hideUnauthorized'],
+    ),
+    (
+      type: 'AclRow',
+      ctor: 'const AclRow(',
+      // The two the responsive passes were dropping, so a parse that stopped
+      // seeing them fails here rather than passing an empty comparison.
+      witnesses: ['defaultRowCrossAlignment', 'gapRowMinSize'],
+    ),
+  ];
 
-    test('copyWith accepts a parameter for each one', () {
-      final params = _sliceAfter(source, 'AclComponent copyWith(', '{');
-      final names = RegExp(
-        r'(\w+)\s*,',
-      ).allMatches(params).map((m) => m.group(1)!).toSet();
+  for (final copier in copiers) {
+    group('${copier.type}.copyWith covers every declared field', () {
+      late Set<String> fields;
 
-      expect(names, declaredFields);
-    });
+      setUp(() {
+        final ctor = _sliceAfter(source, copier.ctor, '{');
+        fields = RegExp(
+          r'this\.(\w+)',
+        ).allMatches(ctor).map((m) => m.group(1)!).toSet();
+        // `this.x` is unambiguous, so the constructor needs no stripping —
+        // but assert the two sides were parsed the same way round.
+        expect(fields, isNotEmpty);
+      });
 
-    test('copyWith forwards each one as `x ?? this.x`', () {
-      // The body is what actually decides whether a field survives a copy: a
-      // parameter can be accepted and then ignored, which reverts the field
-      // just as silently as omitting it.
-      final signature = source.indexOf('AclComponent copyWith(');
-      final bodyOpen = source.indexOf('return AclComponent(', signature);
-      final body = _balanced(source, source.indexOf('(', bodyOpen + 19));
+      test('the constructor declares the fields this file expects', () {
+        // A guard on the guard: if the parse silently matched nothing, every
+        // set-equality below would pass vacuously.
+        expect(fields, isNotEmpty);
+        for (final witness in copier.witnesses) {
+          expect(fields, contains(witness));
+        }
+      });
 
-      final forwarded = <String>{};
-      for (final m in RegExp(
-        r'(\w+):\s*(\w+)\s*\?\?\s*this\.(\w+)',
-      ).allMatches(body)) {
-        final [name, argument, fallback] = [
-          m.group(1)!,
-          m.group(2)!,
-          m.group(3)!,
-        ];
-        expect(
-          [argument, fallback],
-          [name, name],
-          reason: 'field "$name" is forwarded from the wrong source',
+      test('copyWith accepts a parameter for each one', () {
+        final params = _withoutNestedParens(
+          _sliceAfter(source, '${copier.type} copyWith(', '{'),
         );
-        forwarded.add(name);
-      }
+        final names = RegExp(
+          r'(\w+)\s*,',
+        ).allMatches(params).map((m) => m.group(1)!).toSet();
 
-      expect(forwarded, declaredFields);
+        expect(names, fields);
+      });
+
+      test('copyWith forwards each one as `x ?? this.x`', () {
+        // The body is what actually decides whether a field survives a copy: a
+        // parameter can be accepted and then ignored, which reverts the field
+        // just as silently as omitting it.
+        final signature = source.indexOf('${copier.type} copyWith(');
+        final bodyOpen = source.indexOf('return ${copier.type}(', signature);
+        final body = _balanced(
+          source,
+          source.indexOf('(', bodyOpen + copier.type.length + 7),
+        );
+
+        final forwarded = <String>{};
+        for (final m in RegExp(
+          r'(\w+):\s*(\w+)\s*\?\?\s*this\.(\w+)',
+        ).allMatches(body)) {
+          final [name, argument, fallback] = [
+            m.group(1)!,
+            m.group(2)!,
+            m.group(3)!,
+          ];
+          expect(
+            [argument, fallback],
+            [name, name],
+            reason: 'field "$name" is forwarded from the wrong source',
+          );
+          forwarded.add(name);
+        }
+
+        expect(forwarded, fields);
+      });
     });
+  }
 
+  group('AclComponent.copyWith sizes itself honestly', () {
     test('the dartdoc names the real field count', () {
       final match = RegExp(r'(\d+)-field class').firstMatch(source);
       expect(

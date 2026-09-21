@@ -1,5 +1,22 @@
 ## Unreleased
 
+### Fixed
+
+- **A row kept its properties above a breakpoint and lost four below it
+  (tcopen257).** The two responsive passes rebuilt `AclRow` by naming fields:
+  the breakpoint split dropped `defaultRowCrossAlignment`, `gapRowWeight`,
+  `separator` and `gapRowMinSize`, and the inline-variant filter dropped
+  `defaultRowCrossAlignment`. A row aligned to the bottom aligned to the top
+  once it wrapped — correct at the width the developer tests at, wrong at the
+  width their user has.
+
+  `AclRow.copyWith` now covers all sixteen fields and all three rebuild passes
+  go through it, so a field added to `AclRow` reaches every pass without being
+  named again. Two tests keep it that way: `copyWith`'s parameters and
+  forwarding expressions are compared against the constructor's own (for
+  `AclRow` and `AclComponent` from one list), and no pass may construct an
+  `AclRow` directly.
+
 ### Removed
 
 - **`parentIdPath` is gone from `AclContainer`, `AclLayout`, `Acl` and
