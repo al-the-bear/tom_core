@@ -2,6 +2,26 @@
 
 ### Fixed
 
+- **A variant's rows were built against framework defaults, not the
+  container's (tcopen258).** `addVariant` harvests its rows from a second,
+  throwaway `AclBuilder`, and that builder was constructed bare — so all eight
+  `setAclDefault*` values the outer builder carried were absent inside the
+  callback. A container configured for a 40 px append gap and right-aligned
+  rows got 8 px and left below the breakpoint: the layout changed in ways the
+  author never asked for, at precisely the widths they are least likely to be
+  looking at.
+
+  The outer builder now copies its row-level defaults onto the variant builder
+  *before* the callback runs, since `append` and `newRow` read them as they go;
+  the row alignment is additionally restamped onto the first row, which the
+  constructor creates before any default arrives. A `setAclDefault*` call
+  inside the variant still overrides the inherited value.
+
+  Container-level settings — chrome, `aclId`, `idScope`, `aclGroup`,
+  `defaultHideUnauthorized` — are deliberately not copied: they are read from
+  the outer builder at `build()` and land on the container widget, which a
+  variant never replaces.
+
 - **A row kept its properties above a breakpoint and lost four below it
   (tcopen257).** The two responsive passes rebuilt `AclRow` by naming fields:
   the breakpoint split dropped `defaultRowCrossAlignment`, `gapRowWeight`,

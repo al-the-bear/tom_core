@@ -634,11 +634,13 @@ Two complementary mechanisms adapt a layout to width:
 - **Variants** (`addVariant(name, atWidth:, builder:)`) describe an entirely
   separate row set that replaces the base layout below `atWidth`. Variants are
   sorted ascending by `atWidth` so the narrowest (most specific) match wins.
-  The variant builder is a **fresh** `AclBuilder` that inherits none of the
-  outer builder's `setAclDefault*` values — restate the ones the variant needs,
-  or the layout silently changes spacing and alignment below the breakpoint.
-  Container chrome is unaffected either way: it belongs to the container, and a
-  variant supplies only rows.
+  The variant builder **inherits the outer builder's `setAclDefault*` values**
+  — append gap, row gap, row height, both row alignments, flags and both
+  unknown sizes — so a variant that restates only its rows changes only its
+  rows. A `setAclDefault*` call inside the variant overrides the inherited
+  value for that variant alone. Container chrome, `aclId`, `idScope`,
+  `aclGroup` and `defaultHideUnauthorized` need no inheriting: they belong to
+  the container, which a variant never replaces.
 - **Row breakpoints** (`addRowBreakpoint(atWidth:, splitRowDist:)`) split a
   single row into two when the container narrows past `atWidth`, recording the
   split index from the components appended so far. Unlike a variant, a split

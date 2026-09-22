@@ -1246,16 +1246,57 @@ class AclBuilder {
   ///
   /// `test/advanced_container_layout/acl_variant_inheritance_test.dart` pins
   /// both halves of this.
+  /// Copies every builder-wide **row-level** default onto [target].
+  ///
+  /// Used by [addVariant] so a variant's rows are built against the same
+  /// defaults as the container's own. Each field here is one a row or a
+  /// component reads while it is being appended; a field the container reads at
+  /// [build] time is deliberately absent, and
+  /// `test/advanced_container_layout/acl_variant_inheritance_test.dart`
+  /// classifies every `_default*` field one way or the other, so a new one
+  /// cannot quietly be neither.
+  ///
+  /// [target] must be freshly constructed and untouched: the row alignment is
+  /// stamped onto a row when the row is *created*, and the constructor has
+  /// already created the first one, so this restamps it. A target that had
+  /// rows appended would have them silently realigned.
+  void _copyRowDefaultsTo(AclBuilder target) {
+    target._defaultFlags = _defaultFlags;
+    target._defaultAppendGap = _defaultAppendGap;
+    target._defaultAppendGapBpOverrides = _defaultAppendGapBpOverrides;
+    target._defaultRowHeight = _defaultRowHeight;
+    target._defaultRowHeightBpOverrides = _defaultRowHeightBpOverrides;
+    target._defaultRowGap = _defaultRowGap;
+    target._defaultUnknownMinimumSize = _defaultUnknownMinimumSize;
+    target._defaultUnknownPreferredSize = _defaultUnknownPreferredSize;
+    target._defaultRowVerticalAlignment = _defaultRowVerticalAlignment;
+    target._defaultRowHorizontalAlignment = _defaultRowHorizontalAlignment;
+    // The alignment is applied at row *creation*, and the target's first row
+    // was created by its constructor — before these defaults arrived. Later
+    // rows pick it up from `newRow`; this one has to be told.
+    target._currentRow.alignment = _defaultRowHorizontalAlignment;
+  }
+
   AclBuilder addVariant(
     String name, {
     required double atWidth,
     required void Function(AclBuilder) builder,
   }) {
-    // Constructed bare: this builder contributes only its rows, and the
-    // container-level arguments the constructor accepts are never read back
-    // out of it. Passing this builder's chrome here would suggest the variant
-    // inherits something it does not.
+    // The variant restates its rows; it does not restate the defaults those
+    // rows are built against. Copying them across *before* the callback runs
+    // is what makes that true: `append` and `newRow` read these as they go, so
+    // a default set afterwards would not reach the rows already built. An
+    // explicit setting inside the variant still wins — it simply overwrites
+    // the inherited value on the way past.
+    //
+    // Only row-level defaults travel. The container's own settings — chrome,
+    // `aclId`, `idScope`, `aclGroup`, `defaultHideUnauthorized` — are read
+    // from *this* builder when `build()` runs and land on the container
+    // widget, which a variant never replaces: `_selectVariantRows` swaps the
+    // row list and nothing else. They already apply to variant rows, so
+    // copying them here would be a second channel to the same place.
     final variantBuilder = AclBuilder();
+    _copyRowDefaultsTo(variantBuilder);
     builder(variantBuilder);
     // Why: the variant's rows are harvested straight out of the throwaway
     // builder, so nothing else ever calls the finalization `build()` performs.

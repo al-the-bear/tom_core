@@ -81,9 +81,12 @@ void main() {
           'declaration pattern stopped matching rather than the unit shrinking',
     );
 
-    // This file is excluded from its own haystack: naming a field in
-    // [_knownInert] would otherwise count as reading it, and the exception
-    // list would certify the very thing it records.
+    // Comments are stripped, and this file is excluded from its own haystack.
+    // Both for the same reason: a field *named* is not a field *read*. Prose
+    // explaining why the container's `aclGroup` reaches variant rows without
+    // being copied would otherwise certify `aclGroup` as consumed, and naming
+    // a field in [_knownInert] would make the exception list certify the very
+    // thing it records.
     final lines = [
       for (final file in [
         ...dartFilesUnder('lib'),
@@ -91,7 +94,8 @@ void main() {
         ...dartFilesUnder('example'),
       ])
         if (!file.path.endsWith('acl_inert_parameter_test.dart'))
-          ...file.readAsLinesSync(),
+          for (final line in file.readAsLinesSync())
+            if (!line.trimLeft().startsWith('//')) line,
     ];
 
     final inert = <String>[];
