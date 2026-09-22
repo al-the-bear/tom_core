@@ -2,6 +2,23 @@
 
 ### Fixed
 
+- **A grid at unbounded width produced cells about 9e307 wide (tcopen259).**
+  `AclFlowContainer` substituted `double.maxFinite` for an unbounded width
+  constraint — right for `wrap`, where it means "never break", and fatal for
+  `grid`, which divides the width among its columns. The result was not an
+  exception but a nonsense layout, which is harder to diagnose than a throw.
+
+  The width now reaches `buildRows` as `null` and each kind answers it: `wrap`
+  substitutes the largest finite double at the one call that wants that
+  meaning, and `grid` keeps each component's own preferred width, so the grid
+  is as wide as its content. `aclGridRows` guards a non-finite width the same
+  way for callers reaching it directly. `AclFlowContainer.buildRows` now takes
+  `double?`.
+
+  Answered rather than asserted because unbounded width is ordinary — a
+  horizontal `ListView`, an unconstrained `Row` child and Flutter's own
+  intrinsic passes all produce it.
+
 - **A variant's rows were built against framework defaults, not the
   container's (tcopen258).** `addVariant` harvests its rows from a second,
   throwaway `AclBuilder`, and that builder was constructed bare — so all eight

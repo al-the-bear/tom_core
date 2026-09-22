@@ -216,6 +216,128 @@ void main() {
     });
   });
 
+  group('an unbounded width is answered, not divided', () {
+    // A grid divides the available width among its columns, so substituting a
+    // stand-in number for an unbounded constraint gives cells of that number's
+    // order — the largest finite double over two columns is about 9e307. That
+    // is not an exception, just a nonsense layout, which is harder to diagnose
+    // than a throw. So the width travels as null and each kind answers it:
+    // never-break for a wrap, content-sized cells for a grid. Unbounded width
+    // is ordinary — a horizontal `ListView`, an unconstrained `Row` child and
+    // Flutter's own intrinsic passes all produce it.
+
+    /// A host whose width constraint is unbounded.
+    Widget unboundedHost(Widget child) => MaterialApp(
+      home: Scaffold(
+        body: ListView(
+          scrollDirection: Axis.horizontal,
+          children: [SizedBox(height: 400, child: child)],
+        ),
+      ),
+    );
+
+    test('a grid keeps the components own widths when the width is null', () {
+      final container = AclFlowContainer(
+        kind: AclFlowKind.grid,
+        columns: 2,
+        components: List.generate(4, (i) => _item('cell$i', width: 100)),
+      );
+
+      final rows = container.buildRows(null);
+
+      expect(rows, hasLength(2), reason: 'the row assignment still applies');
+      for (final row in rows) {
+        for (final cell in row.components) {
+          expect(
+            cell.preferredSize?.width,
+            100.0,
+            reason:
+                'a cell keeps its declared width when there is none to '
+                'divide, so the grid is as wide as its content',
+          );
+        }
+      }
+    });
+
+    test('a non-finite width is treated the same as none', () {
+      // The public function guards too, so a caller that passes infinity
+      // directly gets the same answer as one that passes null.
+      final container = AclFlowContainer(
+        kind: AclFlowKind.grid,
+        columns: 2,
+        components: List.generate(4, (i) => _item('cell$i', width: 100)),
+      );
+
+      for (final width in [double.infinity, double.negativeInfinity]) {
+        final cells = container
+            .buildRows(width)
+            .expand((r) => r.components)
+            .map((c) => c.preferredSize?.width);
+        expect(cells, everyElement(100.0), reason: 'at width $width');
+      }
+    });
+
+    test('a bounded width still divides, so the guard is not a blanket', () {
+      final container = AclFlowContainer(
+        kind: AclFlowKind.grid,
+        columns: 2,
+        gutterWidth: 10,
+        components: List.generate(4, (i) => _item('cell$i', width: 100)),
+      );
+
+      final cells = container
+          .buildRows(410)
+          .expand((r) => r.components)
+          .map((c) => c.preferredSize?.width);
+      // (410 - 10) / 2
+      expect(cells, everyElement(200.0));
+    });
+
+    testWidgets('a grid inside an unbounded host lays out finitely', (
+      tester,
+    ) async {
+      // The end-to-end claim. `getSize` on a ~9e307-wide cell is the failure
+      // this reproduces; a finite width is the fix.
+      await tester.pumpWidget(
+        unboundedHost(
+          AclFlowContainer(
+            kind: AclFlowKind.grid,
+            columns: 2,
+            components: List.generate(4, (i) => _item('cell$i', width: 100)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final width = tester.getSize(find.text('cell0')).width;
+      expect(width.isFinite, isTrue, reason: 'the cell width must be finite');
+      expect(
+        width,
+        lessThan(1000),
+        reason:
+            'a cell sized from its own 100-wide preference, not from a '
+            'divided stand-in for infinity',
+      );
+    });
+
+    testWidgets('a wrap inside an unbounded host puts everything on one row', (
+      tester,
+    ) async {
+      // The other kind's answer to the same question, and the reason the width
+      // arrives as null rather than as a number: unbounded means "never break"
+      // here, which is the opposite of what the grid needs.
+      final container = AclFlowContainer(
+        kind: AclFlowKind.wrap,
+        components: List.generate(4, (i) => _item('chip$i', width: 100)),
+      );
+
+      await tester.pumpWidget(unboundedHost(container));
+      await tester.pumpAndSettle();
+
+      expect(container.buildRows(null), hasLength(1));
+    });
+  });
+
   group('AclFlowContainer — grid kind renders through the ACL engine', () {
     testWidgets('places `columns` children per row', (tester) async {
       final container = AclFlowContainer(

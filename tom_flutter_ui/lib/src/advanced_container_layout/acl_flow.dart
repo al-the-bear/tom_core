@@ -121,6 +121,15 @@ List<AclRow> aclWrapRows(
 /// preference is left alone (`0` means "natural height" to the engine). When
 /// it is null the components keep their declared sizes and only the row
 /// assignment applies.
+///
+/// A **non-finite** width is treated as null for the same reason: there is no
+/// width to divide. Dividing one produces a cell width of the same order —
+/// about 9e307 for `double.maxFinite` over two columns — which is not an error
+/// the engine can see, just a nonsense layout, and a nonsense layout is harder
+/// to diagnose than a throw would be. Unbounded width is not exotic: a
+/// horizontal `ListView`, an unconstrained `Row` child and Flutter's own
+/// intrinsic passes all produce it, which is why this answers rather than
+/// asserts.
 List<AclRow> aclGridRows(
   List<AclComponent> components, {
   required int columns,
@@ -135,7 +144,7 @@ List<AclRow> aclGridRows(
   }
   if (components.isEmpty) return const [];
 
-  final cellWidth = availableWidth == null
+  final cellWidth = (availableWidth == null || !availableWidth.isFinite)
       ? null
       : ((availableWidth - gutterWidth * (columns - 1)) / columns).clamp(
           0.0,
@@ -262,12 +271,23 @@ class AclFlowContainer extends StatelessWidget {
   ///
   /// Exposed so the row assignment can be asserted without pumping a widget,
   /// and so a caller that already owns the width can pre-compute it.
-  List<AclRow> buildRows(double availableWidth) {
+  ///
+  /// **Null means the width is unbounded**, which the two kinds answer
+  /// differently — which is why it arrives as null rather than as a stand-in
+  /// number. A [AclFlowKind.wrap] breaks when the next child no longer fits, so
+  /// unbounded means *never break*, expressed as the largest finite double.
+  /// A [AclFlowKind.grid] divides the width among its columns, and dividing
+  /// that same stand-in produced cells about 9e307 wide — so it keeps each
+  /// component's own preferred width instead, and the grid is as wide as its
+  /// content. Both are the answer the unit already gives elsewhere when it has
+  /// no better information.
+  List<AclRow> buildRows(double? availableWidth) {
     switch (kind) {
       case AclFlowKind.wrap:
         return aclWrapRows(
           components,
-          availableWidth: availableWidth,
+          // The flow rule needs a line length; unbounded is "everything fits".
+          availableWidth: availableWidth ?? double.maxFinite,
           gutterWidth: gutterWidth,
           runSpacing: runSpacing,
           defaultItemWidth: defaultItemWidth,
@@ -293,12 +313,12 @@ class AclFlowContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // The flow rule needs a finite line length. An unbounded width means
-        // "never break", which the largest finite double expresses without a
-        // special case in the flow functions.
+        // An unbounded width is passed on as null rather than as a stand-in
+        // number: what "no width" means is the flow kind's business, and the
+        // two kinds disagree. See [buildRows].
         final width = constraints.maxWidth.isFinite
             ? constraints.maxWidth - _horizontalPadding(context)
-            : double.maxFinite;
+            : null;
         return AclContainer(
           rows: buildRows(width),
           padding: padding,

@@ -605,11 +605,24 @@ throws `ArgumentError`. Setting `aclId` makes the generated rows addressable as
 rule reaches a row no author ever wrote.
 
 The container measures the line with a `LayoutBuilder` and subtracts its own
-horizontal padding, so the rule breaks against the *content* width; an
-unbounded width means "never break". The row assignment itself is a pure
-function of plain data, exposed both as `buildRows(availableWidth)` on the
-container and as the free functions [`aclWrapRows`] / [`aclGridRows`], so it can
-be asserted with no widget tree at all:
+horizontal padding, so the rule breaks against the *content* width. The row
+assignment itself is a pure function of plain data, exposed both as
+`buildRows(availableWidth)` on the container and as the free functions
+[`aclWrapRows`] / [`aclGridRows`], so it can be asserted with no widget tree at
+all:
+
+**An unbounded width reaches `buildRows` as `null`**, and the two kinds answer
+it differently — which is why it is not substituted for a number on the way in.
+A `wrap` breaks when the next child no longer fits, so unbounded means *never
+break*. A `grid` divides the width among its columns, and dividing a stand-in
+for infinity produced cells about 9e307 wide; with no width to divide it keeps
+each component's own preferred width, and the grid is as wide as its content.
+`aclGridRows` treats a non-finite width the same way, so a caller that passes
+one directly gets the same answer.
+
+Unbounded width is ordinary — a horizontal `ListView`, an unconstrained `Row`
+child, and Flutter's own intrinsic passes all produce it — which is why this is
+answered rather than asserted.
 
 ```dart
 // 3 × 100 wide + 2 × 10 gutter = 320 fits in 340; a 4th would need 430.
