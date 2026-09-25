@@ -113,12 +113,16 @@ with the Examples section's `example.*` keys) at startup — see `lib/main.dart`
 | O — Cupertino search / lookup / file | `demo_o_cupertino_search_lookup_file.dart` | Cupertino `SearchInput<City>`, `LookupSheet<Country>`, `FileUpload`, and four nullable variants pinned to `TomCupertinoFormStyle.cupertino` |
 | P — FormFieldFamily swap by breakpoint | `demo_p_family_swap_breakpoint.dart` | One `Phase5cFamilyForm` resolving Material vs Cupertino concretes via `FormFieldFamily`; `LayoutBuilder` + `styleBpOverrides` flip family + style at 700 px with shared state surviving |
 
-### Phase 6 — Non-form custom widgets (`tom_ui_widgets_forms.md` §23)
+### Phase 6 — Non-form custom widgets (§23)
+
+§23 is the "Custom Tom Widgets (Non-Form)" section of the `tom_flutter_ui`
+widget specification,
+[`tom_ui_widgets_forms.md`](../../tom_flutter_ui/doc/tom_ui_widgets_forms.md#23-custom-tom-widgets-non-form).
 
 | Demo | Source file | `tom_flutter_ui` / kernel feature validated |
 | ---- | ----------- | ------------------------------------------- |
 | Q — Auth / Empty / Overlay | `demo_q_auth_empty_overlay.dart` | `TomAuthGuard`, `TomEmptyState`, `TomLoadingOverlay` (600 ms simulated save scrim) |
-| R — Tree / Radio / Infinite scroll | `demo_r_tree_radio_infinite.dart` | `TomAuthTreeView` (per-node auth + inheritance), `TomRadioGroup` (group-level auth), `TomInfiniteScroll` over 10 000 rows with `TomSkeletonLoader` + `TomErrorBoundary` |
+| R — Tree / Radio / Infinite scroll | `demo_r_tree_radio_infinite.dart` | `TomAuthTreeView` (per-node auth + inheritance), `TomChoiceGroup` (group-level auth), `TomInfiniteScroll` over 10 000 rows with `TomSkeletonLoader` + `TomErrorBoundary` |
 
 ### Supporting reference demos
 

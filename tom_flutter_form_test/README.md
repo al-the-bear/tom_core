@@ -16,20 +16,31 @@ The app opens on a two-tab shell (`RootScreen`):
 
 ### Demos tab
 
-A catalogue of 33 demos, grouped into three sections (each mapped to the
-upstream feature it validates in [`doc/demo_catalogue.md`](doc/demo_catalogue.md)):
+The Demos tab lists 33 demos in ten sections.
+[`doc/demo_catalogue.md`](doc/demo_catalogue.md) uses the same ten headings
+and maps each demo to the `tom_flutter_ui` or kernel feature it validates;
+`test/demo_catalogue_sections_test.dart` holds the two to the same headings and
+the same demos under each.
 
 - **Phase 1 — Spec-aligned demos** (`Demo A`–`Demo D`): form lifecycle
   (bind / save / discard, pristine behaviour) with sync / async / cross-field
   validation and error banners, authorization & events, nested forms & theming,
   and hide-on-authorization.
-- **Phase 2 — Extended field flavours** (`Demo E`–`Demo R`): selection and
-  boolean variants, complex breakpoint and authorization scenarios, the
-  master-detail / expandable-row / editable-table / customer-form patterns
-  (`Demo H-A`–`H-E`), numeric and date/time/duration forms, enum / object /
-  lookup, files & nullable variants, Material-vs-Cupertino fields (basics,
-  numeric & date/time, search / lookup / file), family-swap-on-breakpoint,
-  auth / empty / overlay, and tree / radio / infinite-scroll selection.
+- **Phase 2 — Extended field flavours** (`Demo E`–`Demo H`): selection and
+  boolean variants, complex breakpoint and authorization scenarios.
+- **Phase 2a — Collections & master-detail** (`Demo H-A`–`H-E`): the
+  master-detail, expandable-row, editable-table and customer-form patterns.
+- **Phase 3 — Numeric, date/time & duration fields** (`Demo I`, `Demo J`).
+- **Phase 4 — Enum, object, file & nullable fields** (`Demo K`, `Demo L`):
+  enum / object / lookup, files and nullable variants.
+- **Phase 5a — Cupertino string + bool + selection** (`Demo M`): Material and
+  Cupertino fields side by side.
+- **Phase 5b — Cupertino numeric + date/time** (`Demo N`).
+- **Phase 5c — Cupertino search/lookup/file + family swap** (`Demo O`,
+  `Demo P`): Cupertino search, lookup and file fields, and the
+  family swap on a breakpoint.
+- **Phase 6 — Non-form custom widgets** (`Demo Q`, `Demo R`): auth / empty /
+  overlay, and tree / radio / infinite-scroll selection.
 - **Supporting reference demos** (`Demo 1`–`Demo 10`): basic and nested forms,
   authorization, validation, settings, field-layout options, error placement,
   breakpoints, the preset showcase, and central JSON-driven styling.
@@ -67,7 +78,7 @@ flutter test
 
 <!-- test-inventory:counts-begin -->
 
-`flutter test` runs **65** gating suites, every one of them a `*_test.dart`
+`flutter test` runs **66** gating suites, every one of them a `*_test.dart`
 file under [`test/`](test/):
 
 | Kind | Suites | What they cover |
@@ -79,7 +90,7 @@ file under [`test/`](test/):
 | Behaviour matrices | 2 | One case per cell of a matrix documented elsewhere, so the table and the behaviour cannot drift apart |
 | Widget-family coverage | 1 | The list-form widgets driven directly rather than through a demo screen |
 | Golden screenshots | 3 | Rendered pixels against the committed baselines under `test/goldens/` — the five numbered demos, the Examples section, and the ≥1600 px bordered band. These are why `test/fonts/` is checked in |
-| Source invariants | 3 | That the committed `lib/main.reflection.dart` still covers the sources it mirrors, and that every `formId` / `listId` literal in `lib/` is a usable scope id |
+| Source invariants | 4 | That the committed `lib/main.reflection.dart` still covers the sources it mirrors, that every `formId` / `listId` literal in `lib/` is a usable scope id, and that the demo catalogue and this README group the demos exactly as the Demos tab does |
 | Unit tests | 8 | Arithmetic and mapping, with no widget tree |
 
 <!-- test-inventory:counts-end -->
@@ -87,7 +98,7 @@ file under [`test/`](test/):
 Those figures are gated by `tom_ai/core/tool/check_test_inventories.py`, which
 holds every kind, their sum, and the total against the directory itself — so a
 suite added or deleted without touching this table fails the build. The table
-names no filenames on purpose: sixty-five of them would be the longest section
+names no filenames on purpose: sixty-six of them would be the longest section
 of this README and still a worse list than `test/`, which is exact by
 construction. What the counts buy is the one thing the directory cannot say
 about itself, which is that its population is the one somebody wrote down.
