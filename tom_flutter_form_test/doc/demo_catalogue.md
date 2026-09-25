@@ -113,11 +113,11 @@ with the Examples section's `example.*` keys) at startup — see `lib/main.dart`
 | O — Cupertino search / lookup / file | `demo_o_cupertino_search_lookup_file.dart` | Cupertino `SearchInput<City>`, `LookupSheet<Country>`, `FileUpload`, and four nullable variants pinned to `TomCupertinoFormStyle.cupertino` |
 | P — FormFieldFamily swap by breakpoint | `demo_p_family_swap_breakpoint.dart` | One `Phase5cFamilyForm` resolving Material vs Cupertino concretes via `FormFieldFamily`; `LayoutBuilder` + `styleBpOverrides` flip family + style at 700 px with shared state surviving |
 
-### Phase 6 — Non-form custom widgets (§23)
+### Phase 6 — Non-form custom widgets
 
-§23 is the "Custom Tom Widgets (Non-Form)" section of the `tom_flutter_ui`
-widget specification,
-[`tom_ui_widgets_forms.md`](../../tom_flutter_ui/doc/tom_ui_widgets_forms.md#23-custom-tom-widgets-non-form).
+These demos cover the widgets specified in `tom_ui_widgets_forms.md` §23,
+[Custom Tom Widgets (Non-Form)](../../tom_flutter_ui/doc/tom_ui_widgets_forms.md#23-custom-tom-widgets-non-form),
+of the `tom_flutter_ui` widget specification.
 
 | Demo | Source file | `tom_flutter_ui` / kernel feature validated |
 | ---- | ----------- | ------------------------------------------- |

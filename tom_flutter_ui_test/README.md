@@ -49,6 +49,11 @@ That is **59 demo screens and 60 demo tiles**. A screen is a top-level class
 whose name ends in `Demo`; counting files instead gets the Forms/Actions row
 wrong, because `lib/forms_demos/` packs its five demos into two files.
 
+**There is no `example/` directory.** The package is an application with no
+importable surface, so an `example/` program would have nothing to import; the
+workspace examples guideline exempts such packages. The demos above are what a
+reader runs — see [Running it](#running-it).
+
 ## Running it
 
 ```bash
