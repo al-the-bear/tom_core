@@ -52,9 +52,11 @@ wrong, because `lib/forms_demos/` packs its five demos into two files.
 **There is no `example/` directory and no `doc/api/`.** The package is an
 application with no importable surface: an `example/` program would have nothing
 to import, and an API summary would have no API to describe. The workspace
-examples and API-summary guidelines exempt such packages. The demos above are
-what a reader runs — see [Running it](#running-it) — and
-[`doc/demo_catalogue.md`](doc/demo_catalogue.md) is the map of them.
+examples and API-summary guidelines exempt such packages. The app itself is the
+example set — every screen above is a worked example of one part of
+`tom_flutter_ui`, and an `example/` folder beside them would only be a second,
+weaker gallery. See [Running it](#running-it) to run them;
+[`doc/demo_catalogue.md`](doc/demo_catalogue.md) is the map.
 
 ## Running it
 
