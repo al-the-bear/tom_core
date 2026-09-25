@@ -103,7 +103,7 @@ overflow gate build on. Everything else is a gate, and this is all of it:
 | `resizable_box_test.dart` | 1:1 drag deltas on the right / bottom / corner handles, the 100 px minimum clamps, and first-drag intrinsic-height seeding. |
 | `widget_demos_logic_test.dart` | `DemoAuthorizationAdapter.resolveAuth`'s exact-then-parent-walk resolution, and `createPlaceholderBytes` as a pure PNG generator. |
 | `widget_test.dart` | The app builds and the tab shell renders. |
-| `debug_shrink_test.dart` | Panel 4 of `size_constraints` shrinks cleanly from 800 px down to 300 px, and the only exception on the way is the by-design overflow below the 328 px minimum floor. |
+| `debug_shrink_test.dart` | Panel 4 of `size_constraints` from 800 px down to 300 px: the fixed components sit at their preferred size while there is room, every component shrinks and none grows, none goes below its minimum, all pin to their minimum below the 328 px floor, and the only exception on the way is the by-design overflow there. |
 
 <!-- test-inventory:end -->
 

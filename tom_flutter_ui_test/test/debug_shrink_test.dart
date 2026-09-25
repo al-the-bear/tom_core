@@ -1,6 +1,13 @@
 /// Diagnostic: measure rendered widths in size_constraints panel 4
 /// (mixed + expandX) at a range of viewport widths to understand the
 /// shrink behaviour the user reported.
+///
+/// The measurements are printed, and the properties they show are asserted:
+/// with room to spare the fixed components sit at their preferred size and
+/// the `expandX` one takes the rest; as the viewport narrows every component
+/// shrinks and none grows; none ever goes below its minimum size; and below
+/// the summed minimum (328 px) every component pins to its minimum and the row
+/// overflows by design.
 library;
 
 import 'package:flutter/material.dart';
@@ -53,7 +60,12 @@ void main() {
         .build();
   }
 
-  Future<void> measure(WidgetTester tester, double w) async {
+  /// Minimum and preferred widths as the builder declares them.
+  const minimum = {'cap': 80.0, 'A': 60.0, 'B': 50.0, 'expand': 120.0};
+  const preferred = {'cap': 160.0, 'A': 140.0, 'B': 120.0};
+  const gaps = 3 * 6.0;
+
+  Future<Map<String, double>> measure(WidgetTester tester, double w) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -89,13 +101,58 @@ void main() {
     if (pending != null && !pending.toString().contains('overflowed')) {
       fail('Unexpected exception at width=$w: $pending');
     }
+    return {'cap': cap.width, 'A': a.width, 'B': b.width, 'expand': e.width};
   }
 
   testWidgets('size_constraints panel 4 shrink at multiple widths', (
     tester,
   ) async {
-    for (final w in [800.0, 600.0, 500.0, 448.0, 400.0, 350.0, 300.0]) {
-      await measure(tester, w);
+    const widths = [800.0, 600.0, 500.0, 448.0, 400.0, 350.0, 300.0];
+    final rows = [for (final w in widths) await measure(tester, w)];
+    final floor = minimum.values.reduce((x, y) => x + y) + gaps;
+
+    for (var i = 0; i < widths.length; i++) {
+      final row = rows[i];
+      for (final entry in minimum.entries) {
+        expect(
+          row[entry.key],
+          greaterThanOrEqualTo(entry.value - 0.5),
+          reason: '${entry.key} below its minimum at ${widths[i]} px',
+        );
+      }
+      expect(row['cap'], lessThanOrEqualTo(260.5), reason: 'cap over max');
+      if (i > 0) {
+        for (final key in row.keys) {
+          expect(
+            row[key],
+            lessThanOrEqualTo(rows[i - 1][key]! + 0.5),
+            reason: '$key grew as the viewport narrowed to ${widths[i]} px',
+          );
+        }
+      }
+    }
+
+    // Room to spare: the fixed components take their preferred size, and the
+    // expandX component takes what is left.
+    for (final entry in preferred.entries) {
+      expect(rows.first[entry.key], closeTo(entry.value, 0.5));
+    }
+    expect(rows.first['expand'], greaterThan(240));
+
+    // Between the floor and preferred, the row fills the same share of the
+    // viewport at every width - the components shrink together.
+    final fill =
+        widths.first - (rows.first.values.reduce((x, y) => x + y) + gaps);
+    for (var i = 0; i < widths.length; i++) {
+      if (widths[i] - fill < floor) continue;
+      final total = rows[i].values.reduce((x, y) => x + y) + gaps;
+      expect(total, closeTo(widths[i] - fill, 0.5), reason: '${widths[i]} px');
+    }
+
+    // Below the floor: every component pins to its minimum.
+    expect(widths.last, lessThan(floor));
+    for (final entry in minimum.entries) {
+      expect(rows.last[entry.key], closeTo(entry.value, 0.5));
     }
   });
 }

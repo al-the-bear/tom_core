@@ -3542,11 +3542,11 @@ const _demo28WidgetResources = <String, String>{
 
 /// The single registry of every per-demo resource map.
 ///
-/// Why a list folded in a loop rather than a hand-edited spread block: the
-/// merge in [initializeDemoResources] used to be ~20 inline `...map` entries,
-/// so a forgotten spread silently dropped a demo's resources with no compile
-/// error. Routing every map through this one list means the fold below can't
-/// skip an entry — adding a demo appends its map here in exactly one place.
+/// Why a list folded in a loop rather than a hand-edited spread block: with
+/// one inline `...map` entry per demo, a forgotten spread silently drops that
+/// demo's resources with no compile error. Routing every map through this one
+/// list means the fold in [initializeDemoResources] can't skip an entry —
+/// adding a demo appends its map here in exactly one place.
 ///
 /// The per-demo maps keep their own co-located declarations (each demo's keys
 /// stay reviewable next to that demo's code); this list is the authoring

@@ -696,7 +696,7 @@ itemExtent: resolveDoubleOrNull(context, 'itemExtent') ?? itemExtent,
 // ✅ CORRECT — 3-way pattern preserves Flutter defaults
 itemExtent: itemExtent ?? resolveDoubleOrNull(context, 'itemExtent') ?? 32.0,
 
-// ✅ CORRECT — formerly required value, now nullable with fail-fast
+// ✅ CORRECT — a value the widget cannot do without: nullable, with fail-fast
 itemExtent: itemExtent ?? resolveDoubleOrFail(context, 'itemExtent'),
 ```
 
