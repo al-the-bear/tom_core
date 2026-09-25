@@ -568,6 +568,16 @@ It is sized by the caller rather than by intrinsic content: a QR code has no
 natural size, only a natural aspect, and the panel is the party that knows how
 much room it can spare.
 
+**It generates; the framework does not scan, and that is a decision.** The one
+QR use Tom Core has is showing an enrolment URI for a phone to read, and that is
+served. Reading a code — off another device, or off a printed recovery sheet —
+needs a camera preview and a decoder over its frames, and a camera plugin
+brings a platform-permissions surface (camera entitlements, runtime prompts,
+per-platform manifests) that every Tom application would carry for a use none
+of them has asked for. An application that wants to scan depends on a camera
+plugin and a decoder directly and keeps both in its own layer; there is no Tom
+interface for it to implement.
+
 Encoding is the expensive part of this widget by a wide margin — a typical
 enrolment URI costs on the order of 2.6 ms, some 16 % of a 60 fps frame budget,
 because the encoder trials all eight mask patterns and scores each one. It
