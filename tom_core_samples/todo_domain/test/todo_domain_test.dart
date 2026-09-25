@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:test/test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:todo_domain/todo_domain.dart';
@@ -112,6 +114,61 @@ void main() {
       expect(back.accessFor('viewer', 'todo.item.priority'), TomAuthState.none);
       expect(back.statesFor('owner'), hasLength(2));
     });
+
+    // `dtoToJsonString` goes through `convertToJsonString`, a different kernel
+    // path from the `getValues` behind `dtoToMap`, so the string form is pinned
+    // on its own: it must decode to the same map the map form produces, and
+    // read back to the same DTO. The ISO-8601 `dueDate` and the nested `states`
+    // map are the shapes most likely to serialize differently.
+    test('TDW-DTO-04: TodoItemDto round-trips through its JSON string', () {
+      final dto = TodoItemDto(
+        id: '7',
+        title: 'Wire the endpoint',
+        description: 'GET /todos',
+        done: true,
+        priority: TodoPriority.high.name,
+        label: TodoLabel.bug.name,
+        assigneeId: '2',
+        dueDate: '2026-01-02T00:00:00.000',
+        listId: '3',
+      );
+      final decoded = jsonDecode(dtoToJsonString(dto)) as Map<String, Object?>;
+      expect(decoded, equals(dtoToMap(dto)));
+      expect(decoded['dueDate'], '2026-01-02T00:00:00.000');
+
+      final back = dtoFromJson<TodoItemDto>(decoded);
+      expect(dtoToMap(back), equals(dtoToMap(dto)));
+    });
+
+    test(
+      'TDW-DTO-05: TodoFieldMatrixDto round-trips through its JSON string',
+      () {
+        final dto = TodoFieldMatrixDto({
+          'owner': {'todo.item.title': TomAuthState.full},
+          'viewer': {
+            'todo.item.title': TomAuthState.read,
+            'todo.item.done': TomAuthState.disabled,
+            'todo.item.priority': TomAuthState.none,
+          },
+        });
+        final decoded =
+            jsonDecode(dtoToJsonString(dto)) as Map<String, Object?>;
+        expect(decoded, equals(dtoToMap(dto)));
+        expect(decoded['states'], {
+          'owner': {'todo.item.title': 'full'},
+          'viewer': {
+            'todo.item.title': 'read',
+            'todo.item.done': 'disabled',
+            'todo.item.priority': 'none',
+          },
+        });
+
+        final back = dtoFromJson<TodoFieldMatrixDto>(decoded);
+        for (final role in ['owner', 'viewer']) {
+          expect(back.statesFor(role), equals(dto.statesFor(role)));
+        }
+      },
+    );
   });
 
   // The matrix is an authorization decision that arrives from the network, so
