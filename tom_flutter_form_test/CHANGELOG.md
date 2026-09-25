@@ -1,5 +1,26 @@
 ## Unreleased — cleanup pass
 
+Each pass count below (`+513`, `+491`, `+433 -22`) is the one its change was measured
+at, and stays as the evidence for that change; it is not a description of the
+suite today. The current suite is described in the README's
+[Tests](README.md#tests) section, whose figures a gate holds to `test/`.
+
+- The Demos tab's grouping is stated once and checked. The README said the tab
+  had three sections; it renders ten, the same ten `doc/demo_catalogue.md` uses.
+  The README now names them, and `demo_catalogue_sections_test.dart` reads the
+  section headers and `Demo <id>:` tiles out of `lib/main.dart` and holds the
+  catalogue's headings, the demos under each, and the README's counts to them.
+  The Phase 6 header lost a bare "(§23)" that named no document; the catalogue
+  cites `tom_ui_widgets_forms.md` §23 by name instead.
+- The Phase 2a order items keep `quantity` / `unitPrice` as text, and
+  `lib/state/phase2a_state.dart` now gives the reason that holds: these demos
+  are about invalid rows, and only typed text reaches the validators'
+  non-number branch. `phase2a_h_b_errors_test.dart` pins that case. The
+  numerically typed order item is the Examples tab's.
+- The README says why there is no `example/` directory: the app has no
+  importable surface, and its Examples tab is the package's examples.
+- Suite: `+513`, `flutter analyze` clean.
+
 - **The suite takes a bare `flutter test`; the `-j 1` in the refactoring plan is
   gone.** Serial runs were required on the ground that parallel test isolates
   would corrupt process-global state — the resource bundle, the authorization
