@@ -5,12 +5,22 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // Phase 2a state — Customer master-detail + Order with line items
 // ---------------------------------------------------------------------------
 //
-// All fields are TomString because Phase 1+2 only ship string- and
-// boolean-backed form fields. Numeric fields land in Phase 3, so for now
-// quantity / unit price / total are kept as strings and parsed at display
-// time. The point of these demos is the list / master-detail / table
-// patterns, not numeric input — keeping every field a string also lets
-// the demos compose nicely with the existing TomFormStringInput widget.
+// Every field is a TomString, deliberately — including `quantity` and
+// `unitPrice`, which the demos parse when they compute a line total.
+//
+// These demos are about the list, master-detail and table patterns, and in
+// particular about what those patterns do with an invalid row: Demo H-B
+// refuses to switch away from a row with errors, and Demo H-C puts the same
+// auto-validating fields (`OrderItemForm`) into table cells. Typed text is
+// what makes every validator path reachable: `positiveIntegerValidator` and
+// `decimalValidator` in `form_validators.dart` reject non-numbers
+// (`error.invalidInteger`, `error.invalidDecimal`) as well as out-of-range
+// values, and a numeric field would never deliver the first.
+// `test/phase2a_h_b_errors_test.dart` pins the non-number case.
+//
+// The numerically typed version of the same order item is in the Examples
+// tab: `lib/examples/state/example_state.dart` holds `quantity` / `unitPrice`
+// as TomInt / TomDouble behind int and double inputs.
 
 @tomReflector
 class Customer extends TomClass {

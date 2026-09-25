@@ -7,6 +7,9 @@
 ///     action bar (left ↔ centred);
 ///   - the form-error panel headline falls back to a resource
 ///     (`demoHB.errors.title`) when no constructor title is supplied.
+///
+/// It also pins the reason the Phase 2a state keeps quantities as text: a
+/// quantity that is not a number reaches the validator's non-number branch.
 library;
 
 import 'dart:convert';
@@ -47,9 +50,12 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// Open the first row and force a quantity error (qty = 0) so the
-  /// row-error strip renders.
-  Future<void> openFirstRowAndBreakQty(WidgetTester tester) async {
+  /// Open the first row and force a quantity error — qty = 0 unless [qty]
+  /// says otherwise — so the row-error strip renders.
+  Future<void> openFirstRowAndBreakQty(
+    WidgetTester tester, {
+    String qty = '0',
+  }) async {
     // After the migration to `TomExpandableListForm` rows are no longer
     // built from `ExpansionTile`. Each row's summary contains the
     // product-name text — tap it to expand. Seed item 1 in
@@ -73,9 +79,24 @@ void main() {
       reason: 'Seed qty=12 EditableText should be findable after expand',
     );
     final qtyTf = find.ancestor(of: qtyEd, matching: find.byType(TextField));
-    await tester.enterText(qtyTf.first, '0');
+    await tester.enterText(qtyTf.first, qty);
     await tester.pumpAndSettle();
   }
+
+  // The Phase 2a state holds quantity as a TomString on purpose (see
+  // `lib/state/phase2a_state.dart`): typed text is the only way to reach the
+  // validator's non-number branch. This case is what keeps that reason true.
+  testWidgets('a quantity that is not a number reports error.invalidInteger', (
+    tester,
+  ) async {
+    await openDemoHB(tester);
+    await openFirstRowAndBreakQty(tester, qty: 'twelve');
+    expect(
+      find.textContaining('Enter a whole number'),
+      findsAtLeastNWidgets(1),
+    );
+    expect(find.textContaining('error.invalidInteger'), findsNothing);
+  });
 
   testWidgets('(c) row error strip shows resolved text, not the raw key', (
     tester,
