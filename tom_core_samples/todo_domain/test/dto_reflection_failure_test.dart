@@ -18,14 +18,20 @@ class _Unreflected {}
 
 void main() {
   test('TDW-DTO-06: before the seed is installed, dtoFromJson throws a '
-      'StateError that says so', () {
+      'StateError that names the remedy', () {
+    // The message is the reflection runtime's, not this package's: it is the
+    // only thing a caller who forgot the seed sees, so what matters is that it
+    // names the call that fixes it rather than failing as a bare cast.
     expect(
       () => dtoFromJson<TodoItemDto>(const {'id': '1'}),
       throwsA(
         isA<StateError>().having(
           (e) => e.message,
           'message',
-          contains('Reflection has not been initialized'),
+          allOf(
+            contains('Reflection has not been initialized'),
+            contains('initializeReflection()'),
+          ),
         ),
       ),
     );

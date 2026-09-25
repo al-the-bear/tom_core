@@ -146,9 +146,9 @@ final back = dtoFromJson<TodoItemDto>(map);      // map  → DTO
 The string form is a separate kernel path from the map form, so
 `todo_domain_test.dart` round-trips both DTOs through it too: the decoded string
 must equal the map, and read back to the same DTO. `dtoFromJson` throws a
-`StateError` when the reflection seed has not been installed and a
-`NoSuchCapabilityError` for a type it does not cover;
-`dto_reflection_failure_test.dart` pins both.
+`StateError` whose message names `initializeReflection()` when the reflection
+seed has not been installed, and a `NoSuchCapabilityError` for a type it does
+not cover; `dto_reflection_failure_test.dart` pins both.
 
 Values that cannot cross the wire as their native type travel as a stable token
 with a typed accessor on the near side, and the readers are **closed-safe**:
