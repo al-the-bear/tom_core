@@ -29,9 +29,17 @@ void main() {
       expect(item.labelValue, TodoLabel.bug);
     });
 
+    // The two accessors are the pattern this package teaches, so both halves
+    // are pinned: an unrecognised token and an empty one each read back as the
+    // documented default rather than throwing.
     test('unknown stored value falls back to the default enum', () {
-      final item = TodoItem()..priority.set('bogus');
-      expect(item.priorityValue, TodoPriority.medium);
+      for (final stored in ['bogus', '']) {
+        final item = TodoItem()
+          ..priority.set(stored)
+          ..label.set(stored);
+        expect(item.priorityValue, TodoPriority.medium, reason: '"$stored"');
+        expect(item.labelValue, TodoLabel.feature, reason: '"$stored"');
+      }
     });
 
     test('the hierarchy nests project → list → item', () {

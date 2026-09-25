@@ -26,7 +26,9 @@ dart run example/run_all_examples.dart
 The same set also runs under `dart test` — see
 [`test/examples_test.dart`](../test/examples_test.dart) — so a broken example
 fails the suite rather than waiting to be noticed by hand. A new example must be
-listed in both places.
+listed in both places. That run also holds the output comments to the output:
+every `print(...); // <text>` line must print a line ending in `<text>`, so a
+comment that tells the reader the wrong result fails the suite.
 
 Every example calls `initializeReflection()` once before constructing an
 entity — see the package [`README.md`](../README.md) for why. The form- and

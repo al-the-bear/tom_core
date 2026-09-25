@@ -16,6 +16,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:todo_domain/todo_domain.dart';
@@ -31,15 +32,37 @@ void main() {
 
   group('examples run', () {
     // The examples are documentation: they print their results rather than
-    // asserting them, so "it completed without throwing" is the whole contract.
-    // Their output is captured so a passing suite stays readable; on failure the
-    // exception carries the diagnosis, not the printed lines.
+    // asserting them. Two things are checked. The example completes without
+    // throwing; and every `print(...); // <text>` line keeps its promise — the
+    // trailing comment tells the reader what the line prints, so the captured
+    // output must contain a line ending in that text, in source order. A
+    // comment is the part of an example nothing else reads, and a wrong one
+    // teaches the wrong result with the suite green.
     void expectRuns(String name, void Function() example) {
       test(name, () {
+        final printed = <String>[];
         runZoned(
           example,
-          zoneSpecification: ZoneSpecification(print: (_, __, ___, ____) {}),
+          zoneSpecification: ZoneSpecification(
+            print: (_, __, ___, line) => printed.add(line),
+          ),
         );
+
+        final promised = _promisedOutput(
+          File('example/$name.dart').readAsStringSync(),
+        );
+        var from = 0;
+        for (final expected in promised) {
+          final at = printed.indexWhere((l) => l.endsWith(expected), from);
+          expect(
+            at,
+            isNonNegative,
+            reason:
+                '$name promises a line ending "$expected"; after line $from '
+                'it printed ${printed.skip(from).toList()}',
+          );
+          from = at + 1;
+        }
       });
     }
 
@@ -48,3 +71,13 @@ void main() {
     expectRuns('assign_and_complete_example', assign_and_complete.main);
   });
 }
+
+/// The trailing comments of an example's `print(...);` lines, in source order —
+/// each one the text its line is documented to end with.
+List<String> _promisedOutput(String source) => [
+  for (final m in RegExp(
+    r'^\s*print\(.*\);\s*//\s*(.+?)\s*$',
+    multiLine: true,
+  ).allMatches(source))
+    m.group(1)!,
+];

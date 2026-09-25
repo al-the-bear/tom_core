@@ -52,7 +52,10 @@ void main() {
   final germanText = TomObservableEnum.resolveText(item.priorityValue);
   print('display priority (de): $germanText'); // display priority (de): Hoch
 
-  // An unknown stored value falls back to the default enum.
-  final legacy = TodoItem()..priority.set('urgent');
+  // An unknown stored value falls back to the default enum, for both accessors.
+  final legacy = TodoItem()
+    ..priority.set('urgent')
+    ..label.set('wishlist');
   print('fallback: ${legacy.priorityValue}'); // fallback: TodoPriority.medium
+  print('fallback: ${legacy.labelValue}'); // fallback: TodoLabel.feature
 }
