@@ -269,6 +269,125 @@ dart run example/run_all_examples.dart
 
 ---
 
+## API
+
+Every public declaration the barrel (`lib/todo_domain.dart`) exports, library by
+library, with its signature as the source declares it. The sections above are
+the narrative; this is the index the other samples are read against. Doc
+comments, annotations and bodies are left out.
+
+There is no `doc/` folder and no `doc/api/` summary: no sample carries one, a
+decision taken once for all fifteen in [the samples map](../README.md). This
+section is the reference instead, and `test/readme_api_reference_test.dart`
+holds it to the source in both directions — every line below must occur in its
+library, and every public declaration of an exported library must be listed.
+
+### `lib/src/enums.dart`
+
+Stored by name; the display text is a resource, never a string in Dart.
+
+```dart
+enum TodoPriority { low, medium, high, critical }
+enum TodoLabel { feature, bug, chore, docs, research }
+```
+
+### `lib/src/project.dart`
+
+```dart
+class Project extends TomClass
+  late final id = TomString('')
+  late final name = TomString('')
+  late final description = TomString('')
+  late final ownerId = TomString('')
+  late final lists = TomList<TodoList>()
+```
+
+### `lib/src/todo_item.dart`
+
+```dart
+class TodoItem extends TomClass
+  late final id = TomString('')
+  late final title = TomString('')
+  late final description = TomString('')
+  late final done = TomBool(false)
+  late final priority = TomString(TodoPriority.medium.name)
+  late final label = TomString(TodoLabel.feature.name)
+  late final assigneeId = TomString('')
+  late final dueDate = TomNDateTime(null)
+  TodoPriority get priorityValue
+  set priorityValue(TodoPriority value)
+  TodoLabel get labelValue
+  set labelValue(TodoLabel value)
+```
+
+### `lib/src/todo_list.dart`
+
+```dart
+class TodoList extends TomClass
+  late final id = TomString('')
+  late final name = TomString('')
+  late final projectId = TomString('')
+  late final items = TomList<TodoItem>()
+```
+
+### `lib/src/user.dart`
+
+```dart
+class User extends TomClass
+  late final id = TomString('')
+  late final displayName = TomString('')
+  late final email = TomString('')
+  late final role = TomString('member')
+```
+
+### `lib/src/wire/dto_reflection.dart`
+
+```dart
+T dtoFromJson<T extends Object>(Map<String, Object?> json)
+Map<String, Object?> dtoToMap(Object dto)
+String dtoToJsonString(Object dto)
+```
+
+### `lib/src/wire/todo_field_matrix_dto.dart`
+
+```dart
+class TodoFieldMatrixDto
+  Map<String, Object?> states
+  TodoFieldMatrixDto([Map<String, Map<String, TomAuthState>>? matrix])
+  Iterable<String> get roles
+  Map<String, TomAuthState> statesFor(String role)
+  TomAuthState accessFor(String role, String resourceKey)
+  static TomAuthState parseState(Object? token, {TomAuthState orElse = TomAuthState.none})
+  String toString()
+```
+
+### `lib/src/wire/todo_item_dto.dart`
+
+```dart
+class TodoItemDto
+  String id
+  String title
+  String description
+  bool done
+  String priority
+  String label
+  String assigneeId
+  String dueDate
+  String listId
+  TodoItemDto({this.id = '', this.title = '', this.description = '', this.done = false, this.priority = '', this.label = '', this.assigneeId = '', this.dueDate = '', this.listId = ''})
+  String toString()
+```
+
+### `lib/src/reflection_entry.reflection.dart`
+
+Generated; the barrel re-exports this one function from it.
+
+```dart
+void initializeReflection()
+```
+
+---
+
 ## Where it goes next
 
 | Consumer | Uses `todo_domain` to… |

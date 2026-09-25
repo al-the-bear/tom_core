@@ -1,9 +1,9 @@
 /// Holds the README's `## API` section to the source it indexes.
 ///
-/// **Shared in shape with `advanced_client_core`, `advanced_todo_domain` and
-/// `advanced_ops_server`**, whose `test/readme_api_reference_test.dart` files
-/// hold those packages' READMEs the same way; the copies differ only in
-/// [_barrel].
+/// **Shared in shape with `advanced_client_core`, `advanced_ops_server`,
+/// `advanced_todo_domain` and `todo_domain`**, whose
+/// `test/readme_api_reference_test.dart` files hold those packages' READMEs the
+/// same way; the copies differ only in [_barrel].
 ///
 /// **Why the section exists.** A sample package carries no `doc/api/` mirror —
 /// that is decided once for the whole sample suite in `tom_core_samples/README.md`,
@@ -20,7 +20,9 @@
 ///   parameter, a changed return type or a dropped member fails here.
 /// * **Nothing exported that the section omits.** Every public declaration in
 ///   every library the barrel exports — top-level, and the members of its
-///   public classes — must be named in that library's block.
+///   public classes — must be named in that library's block. An export with a
+///   `show` clause narrows this to the names it shows and their members, the
+///   way a barrel re-exports one function from a generated file.
 ///
 /// The declaration scan leans on `dart format`: a top-level declaration starts
 /// in column 0 and a class member in column 2, while bodies and wrapped
@@ -42,10 +44,10 @@ void main() {
   group('README `## API`', () {
     test('has one block per exported library, and no other', () {
       expect(exported, isNotEmpty);
-      expect(blocks.keys.toSet(), equals(exported.toSet()));
+      expect(blocks.keys.toSet(), equals(exported.keys.toSet()));
     });
 
-    for (final library in exported) {
+    for (final MapEntry(key: library, value: shown) in exported.entries) {
       final source = File(library).readAsStringSync();
 
       test('every line listed for $library occurs in it', () {
@@ -60,7 +62,7 @@ void main() {
       test('every public declaration of $library is listed', () {
         final listed = (blocks[library] ?? const <String>[]).join('\n');
         final missing = [
-          for (final name in _publicDeclarations(source))
+          for (final name in _visibleDeclarations(source, shown))
             if (!RegExp('\\b${RegExp.escape(name)}\\b').hasMatch(listed)) name,
         ];
         expect(missing, isEmpty, reason: 'exported by $library but unlisted');
@@ -70,25 +72,36 @@ void main() {
 }
 
 /// Every library [barrel] exports, following nested barrels, in export order,
-/// keeping only libraries that declare something public themselves - a barrel
-/// that merely re-exports has no block of its own.
-List<String> _exportedLibraries(String barrel) {
-  final result = <String>[];
-  void visit(String path) {
+/// keeping only libraries that expose something public themselves - a barrel
+/// that merely re-exports has no block of its own. Each maps to the names its
+/// `show` clause admits, or null when the export shows everything.
+Map<String, Set<String>?> _exportedLibraries(String barrel) {
+  final result = <String, Set<String>?>{};
+  void visit(String path, Set<String>? shown) {
     final source = File(path).readAsStringSync();
     final directory = path.substring(0, path.lastIndexOf('/'));
-    if (_publicDeclarations(source).isNotEmpty) result.add(path);
+    if (path != barrel && _visibleDeclarations(source, shown).isNotEmpty) {
+      result[path] = shown;
+    }
     for (final m in RegExp(
-      r"^export '([^':]+)'",
+      r"^export '([^':]+)'(?:\s+show\s+([\w\s,]+))?;",
       multiLine: true,
     ).allMatches(source)) {
-      visit('$directory/${m.group(1)}');
+      final names = m.group(2)?.split(',').map((n) => n.trim()).toSet();
+      visit('$directory/${m.group(1)}', names);
     }
   }
 
-  visit(barrel);
-  return result..remove(barrel);
+  visit(barrel, null);
+  return result;
 }
+
+/// The public names of [source] an export admits: all of them when [shown] is
+/// null, otherwise the shown top-level names and the members of shown classes.
+List<String> _visibleDeclarations(String source, Set<String>? shown) => [
+  for (final d in _publicDeclarations(source))
+    if (shown == null || shown.contains(d.owner ?? d.name)) d.name,
+];
 
 /// The lines of each ```dart block under `## API`, keyed by the library path
 /// its `### \`lib/…\`` heading names.
@@ -132,10 +145,11 @@ String _stripComments(String source) => source
     .replaceAll(RegExp(r'(^|\s)//[^\n]*', multiLine: true), '');
 
 /// The public names [source] declares: top-level declarations in column 0, and
-/// the members of public classes in column 2.
-List<String> _publicDeclarations(String source) {
-  final names = <String>[];
+/// the members of public classes in column 2, each with the class that owns it.
+List<({String name, String? owner})> _publicDeclarations(String source) {
+  final names = <({String name, String? owner})>[];
   var inPublicClass = false;
+  String? owner;
   for (final line in _stripComments(source).split('\n')) {
     if (line.trim().isEmpty) continue;
     final column = line.length - line.trimLeft().length;
@@ -155,16 +169,19 @@ List<String> _publicDeclarations(String source) {
       if (type != null) {
         final name = type.group(1)!;
         inPublicClass = !name.startsWith('_');
-        if (inPublicClass) names.add(name);
+        owner = name;
+        if (inPublicClass) names.add((name: name, owner: null));
         continue;
       }
       final name = _declaredName(text);
-      if (name != null && !name.startsWith('_')) names.add(name);
+      if (name != null && !name.startsWith('_')) {
+        names.add((name: name, owner: null));
+      }
     } else if (column == 2 && inPublicClass) {
       if (text.startsWith('@') || text.startsWith('}')) continue;
       final name = _declaredName(text);
       if (name != null && !name.split('.').last.startsWith('_')) {
-        names.add(name.split('.').first);
+        names.add((name: name.split('.').first, owner: owner));
       }
     }
   }

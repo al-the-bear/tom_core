@@ -31,9 +31,10 @@ own suites, while a hand-copied index of a sample's internals would drift from
 the first refactor with nothing to notice.
 
 Where a sample exports a library surface worth indexing, its own README does it
-instead, under a test that holds the index to the source: `core_server_sample`,
-`advanced_client_core`, `advanced_ops_server` and `advanced_todo_domain` carry a
-signature-level `## API` section checked in both directions,
+instead, under a test that holds the index to the source: `todo_domain`,
+`core_server_sample`, `advanced_client_core`, `advanced_ops_server` and
+`advanced_todo_domain` carry a signature-level `## API` section checked in both
+directions,
 `advanced_app_server` and `advanced_auth_server` a library-level `## API` table,
 and `advanced_todo_contracts` an endpoint table generated from its registry.
 
