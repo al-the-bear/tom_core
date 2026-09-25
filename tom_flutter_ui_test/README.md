@@ -49,10 +49,12 @@ That is **59 demo screens and 60 demo tiles**. A screen is a top-level class
 whose name ends in `Demo`; counting files instead gets the Forms/Actions row
 wrong, because `lib/forms_demos/` packs its five demos into two files.
 
-**There is no `example/` directory.** The package is an application with no
-importable surface, so an `example/` program would have nothing to import; the
-workspace examples guideline exempts such packages. The demos above are what a
-reader runs — see [Running it](#running-it).
+**There is no `example/` directory and no `doc/api/`.** The package is an
+application with no importable surface: an `example/` program would have nothing
+to import, and an API summary would have no API to describe. The workspace
+examples and API-summary guidelines exempt such packages. The demos above are
+what a reader runs — see [Running it](#running-it) — and
+[`doc/demo_catalogue.md`](doc/demo_catalogue.md) is the map of them.
 
 ## Running it
 

@@ -52,9 +52,10 @@ Stripped-down, copy-friendly sample code under [`lib/examples/`](lib/examples/)
 reuse (customer forms, master-detail, expandable rows, editable tables,
 read-only variants, plus shared scaffolding/resources/authorization helpers).
 
-**This tab is the package's examples, and there is no `example/` directory.**
-The package is an application with no importable surface, so an `example/`
-program would have nothing to import; the workspace examples guideline exempts
+**This tab is the package's examples; there is no `example/` directory and no
+`doc/api/`.** The package is an application with no importable surface: an
+`example/` program would have nothing to import, and an API summary would have
+no API to describe. The workspace examples and API-summary guidelines exempt
 such packages. The five samples, each in a Material and a Cupertino flavour, are
 documented one by one in [`doc/demo_catalogue.md`](doc/demo_catalogue.md) and
 driven by `example_smoke_test.dart`, `example_interaction_test.dart` and
