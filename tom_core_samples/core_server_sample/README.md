@@ -43,6 +43,7 @@ files on the wire.
 12. [Testing](#12-testing)
 13. [What is built](#13-what-is-built)
 
+- [API](#api)
 - [Where this sits](#where-this-sits)
 
 ---
@@ -308,6 +309,7 @@ core_server_sample/
 │   ├── todo_authorization_test.dart        # DB-free: the four-state resolver
 │   ├── boot_assets_test.dart               # DB-free: required vs optional assets
 │   ├── grant_table_ddl_test.dart           # DB-free: grant DDL == framework's
+│   ├── readme_api_reference_test.dart      # DB-free: README ## API == the source
 │   └── todo_endpoints_integration_test.dart # live endpoints (skips if down)
 ├── tool/
 │   └── run_integration.sh                 # brings the stack up, verifies it
@@ -352,9 +354,10 @@ wrong directory is a first-line error rather than a puzzle several layers later
 (see [§9](#9-the-live-server-boot)).
 
 `run_all_examples.dart` prints the mapping round-trip and the full four-state
-resolution for the three demo roles. `dart test` runs the five database-free
+resolution for the three demo roles. `dart test` runs the six database-free
 suites — mapping, `/health`'s configured title, the four-state authorizer, the
-boot's asset preconditions, and the grant table's DDL — and skips the live one. Both are green and
+boot's asset preconditions, the grant table's DDL, and the [API](#api) index —
+and skips the live one. Both are green and
 `dart analyze` reports no issues.
 
 ---
@@ -730,6 +733,11 @@ first case requires the file to create exactly one table, so a reformatted
 statement the extraction no longer recognises fails naming the count rather than
 comparing the wrong text.
 
+`test/readme_api_reference_test.dart` holds the [API](#api) section below to
+the barrel: every signature listed must occur in its library, and every public
+declaration of an exported library must be listed, so a renamed parameter or a
+new repository fails here until the index is corrected.
+
 The database-free suites that read the configuration or the authorization
 artifacts do so through two shared helpers:
 `test/config_assets.dart` loads the config assets, `test/documented_authorization.dart`
@@ -850,6 +858,112 @@ brings up itself ([§12](#12-testing)). "Verified" here therefore means a comman
 anyone can re-run and CI can gate on — not a `curl` someone typed once. The
 manual path in [§9](#9-the-live-server-boot) still works and is the better way
 to *explore* the API; it is no longer what the claim rests on.
+
+---
+
+## API
+
+Every public declaration the barrel (`lib/core_server_sample.dart`) exports,
+library by library, with its signature as the source declares it. The numbered
+sections above are the narrative; this is the index. Annotations and bodies are
+left out — the column each record field maps to is in
+[§3](#3-persistence-records), and the route each endpoint serves in
+[§9](#9-the-live-server-boot).
+
+There is no `doc/` folder and no `doc/api/` summary: no sample carries one, a
+decision taken once for all fifteen in [the suite map](../README.md). This
+section is the reference instead, and `test/readme_api_reference_test.dart`
+holds it to the source in both directions — every line below must occur in its
+library, and every public declaration of an exported library must be listed.
+
+### `lib/src/auth/todo_authorization.dart`
+
+The four-state field authorizer and the vocabulary of item fields it grades.
+
+```dart
+const List<String> gradableTodoItemKeys
+class TodoFieldAuthorizer
+  TodoFieldAuthorizer(this._graded)
+  factory TodoFieldAuthorizer.fromGrants(Iterable<TomResourceGrant> grants)
+  TomAuthState stateOf(String resourceKey)
+  Map<String, TomAuthState> get fieldStates
+  bool canEdit(String resourceKey)
+  bool canSee(String resourceKey)
+```
+
+### `lib/src/endpoints/todo_endpoints.dart`
+
+The HTTP surface — the reflected service contract, its implementation, and the
+repository over the framework's grant table.
+
+```dart
+class TodoGrantRepository extends TomSqlDatasourceRepository<TomResourceGrant, int>
+final todoGrantRepository = TodoGrantRepository()
+abstract class TodoApiService
+  Future<Map<String, Object>> health()
+  Future<List<TodoItemDto>> listTodos()
+  Future<TodoFieldMatrixDto> fieldStates()
+class TodoApiServer implements TodoApiService
+  Future<Map<String, Object>> health()
+  Future<List<TodoItemDto>> listTodos()
+  Future<TodoFieldMatrixDto> fieldStates()
+```
+
+### `lib/src/persistence/todo_mapping.dart`
+
+The pure boundary between the observable domain entities and the flat records.
+
+```dart
+TodoUserRecord userToRecord(User user)
+User userFromRecord(TodoUserRecord record)
+TodoProjectRecord projectToRecord(Project project)
+Project projectFromRecord(TodoProjectRecord record)
+TodoListRecord listToRecord(TodoList list)
+TodoList listFromRecord(TodoListRecord record)
+TodoItemRecord itemToRecord(TodoItem item, {required int listId})
+TodoItem itemFromRecord(TodoItemRecord record)
+```
+
+### `lib/src/persistence/todo_records.dart`
+
+The four `@TomDbTable` records and a repository for each.
+
+```dart
+class TodoUserRecord
+  int? id
+  String? displayName
+  String? email
+  String? role
+  String? passwordHash
+  String? hashType
+class TodoUserRepository extends TomSqlDatasourceRepository<TodoUserRecord, int>
+final todoUserRepository = TodoUserRepository()
+class TodoProjectRecord
+  int? id
+  String? name
+  String? description
+  int? ownerId
+class TodoProjectRepository extends TomSqlDatasourceRepository<TodoProjectRecord, int>
+final todoProjectRepository = TodoProjectRepository()
+class TodoListRecord
+  int? id
+  String? name
+  int? projectId
+class TodoListRepository extends TomSqlDatasourceRepository<TodoListRecord, int>
+final todoListRepository = TodoListRepository()
+class TodoItemRecord
+  int? id
+  String? title
+  String? description
+  bool? done
+  String? priority
+  String? label
+  int? assigneeId
+  DateTime? dueDate
+  int? listId
+class TodoItemRepository extends TomSqlDatasourceRepository<TodoItemRecord, int>
+final todoItemRepository = TodoItemRepository()
+```
 
 ---
 
