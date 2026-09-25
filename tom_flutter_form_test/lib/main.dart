@@ -436,9 +436,7 @@ class DemoListScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        _DemoSectionHeader(
-          label: 'Phase 6 \u2014 Non-form custom widgets',
-        ),
+        _DemoSectionHeader(label: 'Phase 6 \u2014 Non-form custom widgets'),
         _DemoTile(
           icon: Icons.shield_outlined,
           title: 'Demo Q: Auth / Empty / Overlay (Phase 6)',
