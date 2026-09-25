@@ -236,7 +236,8 @@ generalises that to **four states**, because real applications distinguish
 
 The server stores per-`(role, resourceKey)` grants as `TomResourceGrant` rows
 in the canonical `tom_resource_grant` table (its DDL is reused verbatim from the
-framework, so the sample and `tom_core_server` agree on the storage shape). At
+framework, so the sample and `tom_core_server` agree on the storage shape, and
+`test/grant_table_ddl_test.dart` fails if the copy drifts). At
 request time the server folds the grants for the principal's role into a
 `TomGradedAccessControlInformation` and resolves the effective state per field.
 
@@ -306,6 +307,7 @@ core_server_sample/
 │   ├── todo_health_config_test.dart        # DB-free: /health's configured title
 │   ├── todo_authorization_test.dart        # DB-free: the four-state resolver
 │   ├── boot_assets_test.dart               # DB-free: required vs optional assets
+│   ├── grant_table_ddl_test.dart           # DB-free: grant DDL == framework's
 │   └── todo_endpoints_integration_test.dart # live endpoints (skips if down)
 ├── tool/
 │   └── run_integration.sh                 # brings the stack up, verifies it
@@ -350,9 +352,9 @@ wrong directory is a first-line error rather than a puzzle several layers later
 (see [§9](#9-the-live-server-boot)).
 
 `run_all_examples.dart` prints the mapping round-trip and the full four-state
-resolution for the three demo roles. `dart test` runs the four database-free
-suites — mapping, `/health`'s configured title, the four-state authorizer, and
-the boot's asset preconditions — and skips the live one. Both are green and
+resolution for the three demo roles. `dart test` runs the five database-free
+suites — mapping, `/health`'s configured title, the four-state authorizer, the
+boot's asset preconditions, and the grant table's DDL — and skips the live one. Both are green and
 `dart analyze` reports no issues.
 
 ---
@@ -628,6 +630,21 @@ the boot entrypoint. The annotations are plain const metadata, so the package is
 `analyze`-clean **without** running the generator — you only need it for the
 live boot.
 
+The committed copy is not pinned to a generator version; it is meant to be what
+the generator emits today. That goes stale for more reasons than an edit here:
+the mirror also describes every framework type reached through the
+`tom_core_server` barrel, so a change in tom_core_server or tom_core_kernel, or a
+new generator release, moves it with no change in this package — and nothing in
+`dart analyze` or `dart test` notices, because a stale mirror still compiles.
+Verify it instead of trusting it:
+
+```sh
+./reflection_generation.sh --check   # fails, naming the file, when it is stale
+```
+
+After a framework change, run the check; if it fails, regenerate, run the live
+stack ([§12](#12-testing)) against the result, and commit the two together.
+
 ---
 
 ## 12. Testing
@@ -702,7 +719,19 @@ loader would throw for the wrong reason), and one reads off disk that the root
 environment ships no overlay file — the premise the optional branch rests on, and
 the thing that would quietly change if someone added `config-resources_prod.yaml`.
 
-The four database-free suites read the artifacts through two shared helpers:
+`test/grant_table_ddl_test.dart` keeps a claim of the migration true by
+construction rather than by inspection. `[001]-todo_authz_grants.sql` says its
+`CREATE TABLE` is `TomResourceGrant.createTableSql` reused verbatim, and
+tom_core_server pins its own reference copy of that DDL — but a copy in a
+consuming package is outside that test's reach, and a drift would otherwise
+surface only when a live migration met a real database. The suite extracts the
+statement from the file and requires it to equal the constant byte for byte; a
+first case requires the file to create exactly one table, so a reformatted
+statement the extraction no longer recognises fails naming the count rather than
+comparing the wrong text.
+
+The database-free suites that read the configuration or the authorization
+artifacts do so through two shared helpers:
 `test/config_assets.dart` loads the config assets, `test/documented_authorization.dart`
 parses the seeded grants and the README's matrix. One loader each, because two
 copies would be free to disagree about what the artifacts say — which is the

@@ -1,8 +1,9 @@
 -- Four-state authorization grants. The table DDL is the canonical
 -- `tom_resource_grant` shape published by tom_core_server's graded_authorization
 -- library (TomResourceGrant.createTableSql) — reused verbatim so the sample and
--- the framework agree on the storage shape. access_level is constrained to the
--- four TomAuthState tokens, so the database itself rejects an out-of-range grade.
+-- the framework agree on the storage shape; test/grant_table_ddl_test.dart fails
+-- if the two part. access_level is constrained to the four TomAuthState tokens,
+-- so the database itself rejects an out-of-range grade.
 
 CREATE TABLE IF NOT EXISTS tom_resource_grant (
   id BIGINT NOT NULL AUTO_INCREMENT,
