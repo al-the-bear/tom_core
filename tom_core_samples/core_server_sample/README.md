@@ -634,7 +634,8 @@ the boot entrypoint. The annotations are plain const metadata, so the package is
 live boot.
 
 The committed copy is not pinned to a generator version; it is meant to be what
-the generator emits today. That goes stale for more reasons than an edit here:
+the generator emits today — the rule every sample shares, stated once in
+[the samples map](../README.md#reflection-seeds). That goes stale for more reasons than an edit here:
 the mirror also describes every framework type reached through the
 `tom_core_server` barrel, so a change in tom_core_server or tom_core_kernel, or a
 new generator release, moves it with no change in this package — and nothing in

@@ -205,6 +205,13 @@ cd tom_core_samples/todo_domain
 ./reflection_generation.sh        # runs: dart run tom_reflection_generator
 ```
 
+The seed is committed and must stay what the generator emits today — a rule the
+whole suite shares, stated once in
+[the samples map](../README.md#reflection-seeds). It can go stale without a
+model change here, because it also mirrors the kernel types the entities reach;
+`./reflection_generation.sh --check` reports that, and a stale seed still
+analyzes and still passes the suite.
+
 The script runs the generator **flag-free** — it scans the current project only
 (the framework default is scan `.`, non-recursive) and reads `build.yaml`'s
 `generate_for`. Do not add a `build` positional argument: the generator reads it

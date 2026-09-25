@@ -14,6 +14,29 @@ with the depth. Nothing about a package's API is re-documented here — the samp
 *use* the Tom Core packages and link back to their READMEs
 ([repository map](../README.md)).
 
+**No sample package carries a `doc/` folder, and none carries a `doc/api/`
+summary. That is a decision, not an omission**, and it is the same for all
+fifteen. The framework packages carry API mirrors because they have consumers
+who need the surface without reading the source; a sample has none. Every one
+here is `publish_to: none`, nothing outside this folder imports one, and the
+three libraries among them (`advanced_todo_domain`,
+`advanced_todo_contracts`, `advanced_client_core`) are consumed only by their
+siblings in this same tree.
+
+What a reader of a sample wants is how the pieces fit, which is narrative — the
+article-grade README beside each package, and the twenty-two guide documents in
+this folder — rather than a symbol index. And a mirror here would be one nothing
+holds true: the framework's summaries are derived and gated by their packages'
+own suites, while a hand-copied index of a sample's internals would drift from
+the first refactor with nothing to notice.
+
+Where a sample exports a library surface worth indexing, its own README does it
+instead, under a test that holds the index to the source: `core_server_sample`,
+`advanced_client_core`, `advanced_ops_server` and `advanced_todo_domain` carry a
+signature-level `## API` section checked in both directions,
+`advanced_app_server` and `advanced_auth_server` a library-level `## API` table,
+and `advanced_todo_contracts` an endpoint table generated from its registry.
+
 > **New here?** Start with the shared domain — `todo_domain` — to meet the
 > entities every sample reuses, then follow the [learning path](#learning-path)
 > from the server up through the responsive UI. The samples are designed to be
@@ -103,6 +126,25 @@ linked from its name.
 
 ---
 
+## Examples
+
+Which samples ship an `example/` folder, and why the others do not. A sample is
+itself an example, so the rule is about *what a reader runs*: a package whose
+entry point is an application needs no second one, while a library or a
+server whose most useful seam needs no infrastructure gets a runnable file.
+
+| Project | `example/` | Why, or what to run instead |
+| --- | --- | --- |
+| `todo_domain` | yes — three examples and `run_all_examples.dart` | a library; see [`example/README.md`](todo_domain/example/README.md) |
+| `core_server_sample` | yes — `run_all_examples.dart` | a database-free walkthrough of the server core — the domain ↔ record mapping and the four-state field authorization — that asserts its own results |
+| `core_client_sample` | **no — exempt** | a Flutter GUI app: `lib/main.dart` is the entry point and the serial widget suite is its smoke test; argued in its README, [§13 Tests](core_client_sample/README.md#13-tests) |
+| `core_flutter_ui_showcase`, `core_flutter_form_showcase` | **no — exempt** | Flutter showcase apps: each screen is an example, run with `flutter run` |
+| `core_flutter_acl_sample`, `core_flutter_acl_responsive` | **no — exempt** | Flutter showcase apps, as above |
+| the eight `advanced_*` packages | the three libraries and `advanced_ops_server` — yes; the other four runtimes — **no, exempt** | stated per package in [the advanced family's index](README_advanced_sample.md#the-eight-packages) |
+
+An exempt row is a decision, not a gap: a sweep that finds no `example/` in one
+of those packages has found what this table says.
+
 ## Learning path
 
 Read the samples in this order — each assumes the model and infrastructure the
@@ -140,6 +182,38 @@ bootstrap) — see its `README.md` for the one-command bring-up.
 
 ---
 
+## Reflection seeds
+
+Thirteen of the fifteen packages carry a generated `*.reflection.dart` — the
+reflection seed an entrypoint or a barrel installs with `initializeReflection()`.
+The rule for them is the same in every package, decided once here:
+
+**Seeds are tracked, and kept equal to what the generator emits today.** They
+are not gitignored, because a fresh checkout must analyze, test and run without
+anyone running the generator first: `todo_domain` re-exports its seed through
+its public barrel, and every server entrypoint imports its own. And they are not
+pinned to a generator version, because a pinned seed is one that no run of
+`./reflection_generation.sh` reproduces — a consumer who regenerates then sees a
+diff indistinguishable from a real model change.
+
+What makes the rule hard to keep is that a seed goes stale **without any edit in
+its package**. It mirrors every type reachable from its root, including the
+framework's, so a change in `tom_core_kernel` or `tom_core_server`, or a new
+generator release, moves it. A stale seed still analyzes and still passes the
+suites, so nothing fails; the check that sees it is the generator's own:
+
+```bash
+cd tom_core_samples/<sample>
+./reflection_generation.sh --check   # exits non-zero, naming the file, when stale
+```
+
+Run it after a model change, after a framework change the sample reaches, and
+before committing a regenerated seed. When it fails: regenerate, run the
+package's suite — and its live runner, where it has one — against the result,
+and commit the seed together with the change that moved it.
+
+---
+
 ## Documentation index
 
 | Topic | Document |
@@ -159,14 +233,30 @@ bootstrap) — see its `README.md` for the one-command bring-up.
 ```
 tom_core_samples/
   README.md                      this map
-  todo_domain/                   shared reflected model (User, Project, TodoList, TodoItem)   (built)
-  core_server_sample/            backend: API + persistence + auth + MySQL-in-Docker          (built)
-  core_client_sample/            Flutter client: login + todo CRUD + ACL field states         (built)
-  core_flutter_ui_showcase/      widget gallery: component + instantiation code               (built)
-  core_flutter_form_showcase/    forms framework in depth                                     (built)
-  core_flutter_acl_sample/       Advanced Container Layout engine + four auth states          (built)
-  core_flutter_acl_responsive/   responsive layouts on the ACL engine                         (built)
+  README_advanced_*.md           the advanced sample's guides — start at README_advanced_sample.md
+  README_tom_core_guidelines.md  the normative structure rules every sample is held to
+  assets/                        the guides' figures (documentation only — see assets/README.md)
+  tool/                          suite-level checks
+  todo_domain/                   shared reflected model (User, Project, TodoList, TodoItem)
+  core_server_sample/            backend: API + persistence + auth + MySQL-in-Docker
+  core_client_sample/            Flutter client: login + todo CRUD + ACL field states
+  core_flutter_ui_showcase/      widget gallery: component + instantiation code
+  core_flutter_form_showcase/    forms framework in depth
+  core_flutter_acl_sample/       Advanced Container Layout engine + four auth states
+  core_flutter_acl_responsive/   responsive layouts on the ACL engine
+  advanced_todo_domain/          the advanced sample's reflected domain and grade vocabulary
+  advanced_todo_contracts/       its wire DTOs and endpoint registry
+  advanced_client_core/          its Flutter-free authenticated HTTP client
+  advanced_auth_server/          JWT issuer and /admin/* API          (:8081, auth_db :3307)
+  advanced_app_server/           the secured task API                 (:8080, app_db :3308)
+  advanced_ops_server/           scheduled back-office work over app_db
+  advanced_app_client/           end-user Flutter app
+  advanced_authadmin_client/     administrator Flutter console
 ```
+
+Four of the packages also have an `assets/` folder of their own — the servers'
+runtime configuration, loaded at boot. The suite-level `assets/` is not one of
+those; it holds only figures.
 
 ## License
 
