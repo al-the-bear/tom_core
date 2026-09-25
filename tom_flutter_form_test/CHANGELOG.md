@@ -1,8 +1,8 @@
 ## Unreleased — cleanup pass
 
-Each pass count below (`+513`, `+491`, `+433 -22`) is the one its change was measured
-at, and stays as the evidence for that change; it is not a description of the
-suite today. The current suite is described in the README's
+Each pass count below (`+513`, `+491`, `+433 -22`) is the one its change was
+measured at, and stays as the evidence for that change; it is not a description
+of the suite today. The current suite is described in the README's
 [Tests](README.md#tests) section, whose figures a gate holds to `test/`.
 
 - The Demos tab's grouping is stated once and checked. The README said the tab
