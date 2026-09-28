@@ -262,9 +262,11 @@ class TomResourceKeyProtection {
   /// [TomProtectedField] is graded on every read and write: masked when its
   /// grade shows no content, and write-protected unless it is full. While off,
   /// every column is unrestricted — including those with a per-row resolver.
-  /// Row filtering by data scope is not part of this tier: a scope says which
-  /// rows a query addresses, and switching it off would change what a query
-  /// means rather than what it may reveal. Setting: `tom.protection.database`.
+  /// Row filtering is not part of this tier: it is `tom_core_server`'s data
+  /// scope (`@TomDbScope`, `TomDataScope`, `TomResourceDataScope`), which stays
+  /// in force whatever this switch says. A scope says which rows a query
+  /// addresses, and switching it off would change what a query means rather
+  /// than what it may reveal. Setting: `tom.protection.database`.
   static bool globalSettingUseAutomaticDatabaseProtection = _databaseDefault;
 
   /// Every setting name [applyArguments] accepts.
