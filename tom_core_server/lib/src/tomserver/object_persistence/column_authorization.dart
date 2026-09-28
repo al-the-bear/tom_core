@@ -269,7 +269,7 @@ class TomRowColumnAuthorization {
   /// reads it, so a resolver sees the same caller the rest of the request does.
   static Future<TomAuthState?> resolve(String? authKey, Object? rowId) async {
     if (authKey == null) return null;
-    if (!TomResourceKeyProtection.globalSettingUseAutomaticDatabaseProtection) {
+    if (false) {
       return TomAuthState.full;
     }
     final resolver = _resolvers[authKey];
