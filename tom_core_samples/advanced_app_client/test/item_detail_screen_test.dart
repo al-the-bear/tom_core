@@ -43,6 +43,24 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+/// An [InMemoryAppBackend] whose `deleteItem` always refuses, so the screen's
+/// rejection path can be driven without a socket.
+///
+/// The fake cannot refuse on its own here: it gates delete on the same role the
+/// button is rendered from, so a press that reaches the backend is one the fake
+/// accepts. Against the live stack the refusal is real — the server re-checks,
+/// and a share revoked since the screen opened comes back as a denial — which
+/// is exactly the case the screen must not treat as a removal.
+class _RefusingDeleteBackend extends InMemoryAppBackend {
+  @override
+  Future<void> deleteItem(String id) async {
+    throw const AppBackendException(
+      'You cannot delete this item.',
+      key: 'app.access.forbidden',
+    );
+  }
+}
+
 void main() {
   setUpAll(initializeReflection);
 
@@ -101,10 +119,11 @@ void main() {
     ProjectRole? shareCarolAs,
     Map<String, dynamic>? bundleOverride,
     double viewportHeight = 2400,
+    InMemoryAppBackend? backendOverride,
   }) async {
     useTallViewport(tester, height: viewportHeight);
 
-    final backend = InMemoryAppBackend();
+    final backend = backendOverride ?? InMemoryAppBackend();
     final session = AppSession(backend);
     // `session.login` (below) snapshots the principal's per-resource role grants
     // and installs them as the framework [TomAuthorization] adapter, exactly as
@@ -467,4 +486,106 @@ void main() {
       expect(stored.firstWhere((s) => s.id.get() == 's-2').done.get(), isFalse);
     },
   );
+
+  // ---------------------------------------------------------------------------
+  // Deleting the item — the destructive half of the row's write gate.
+  //
+  // `deleteItem` was implemented on both backends and reachable from no screen,
+  // so the sample showed the role model's non-destructive half only. These four
+  // cases are what makes the gate visible: who sees the affordance, that it
+  // removes the row, that a refusal keeps the screen, and that the rule is the
+  // *row's* write state rather than the save button's "any editable field".
+  // ---------------------------------------------------------------------------
+
+  testWidgets('TC-30-10: an owner deletes the item and the board loses it', (
+    tester,
+  ) async {
+    final backend = await openDetail(tester, 'alice');
+
+    expect(find.byKey(const Key('item-delete-button')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('item-delete-button')));
+    await tester.pumpAndSettle();
+
+    final after = await backend.listItems('l-1');
+    expect(
+      after.where((i) => i.id.get() == 'i-1'),
+      isEmpty,
+      reason: 'the row is gone from the backend, not just from the screen',
+    );
+    // The screen popped with `true`, exactly as a save does, so the board
+    // refreshes rather than re-rendering a card for a row that is no longer
+    // there.
+    expect(find.byKey(const Key('item-delete-button')), findsNothing);
+  });
+
+  testWidgets('TC-30-11: an editor may delete too — the gate is not ownership', (
+    tester,
+  ) async {
+    // bob is an editor, and the server's rule is `editor` and above. A client
+    // that had gated delete on ownership would pass every owner case above and
+    // still be wrong here.
+    final backend = await openDetail(tester, 'bob');
+
+    await tester.tap(find.byKey(const Key('item-delete-button')));
+    await tester.pumpAndSettle();
+
+    final after = await backend.listItems('l-1');
+    expect(after.where((i) => i.id.get() == 'i-1'), isEmpty);
+  });
+
+  testWidgets('TC-30-12: a viewer gets no delete affordance at all', (
+    tester,
+  ) async {
+    await openDetail(tester, 'carol', shareCarolAs: ProjectRole.viewer);
+
+    // Absent rather than disabled, like the checklist composer: a control that
+    // can never succeed is noise. The screen still renders, so this is not a
+    // vacuous pass on an empty tree.
+    expect(find.byKey(const Key('item-delete-button')), findsNothing);
+    expect(find.byKey(const Key('subtask-section')), findsOneWidget);
+  });
+
+  testWidgets('TC-30-14: a refused delete keeps the screen and says why', (
+    tester,
+  ) async {
+    // The branch the fake cannot reach on its own, and the one that matters
+    // live: the server re-checks and may refuse a press the client rendered.
+    // Popping then would report a removal that did not happen.
+    final backend = await openDetail(
+      tester,
+      'alice',
+      backendOverride: _RefusingDeleteBackend(),
+    );
+
+    await tester.tap(find.byKey(const Key('item-delete-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('item-detail-error')),
+      findsOneWidget,
+      reason: "the backend's own message, shown on the screen it failed on",
+    );
+    expect(find.text('You cannot delete this item.'), findsOneWidget);
+    // Still here, and still offering the button: the row was not removed.
+    expect(find.byKey(const Key('item-delete-button')), findsOneWidget);
+    expect(
+      (await backend.listItems('l-1')).where((i) => i.id.get() == 'i-1'),
+      hasLength(1),
+    );
+  });
+
+  testWidgets('TC-30-13: a commenter may save nothing and delete nothing', (
+    tester,
+  ) async {
+    // The case that separates the two gates. A commenter has no editable
+    // field, so there is no Save — and no row write either, so no Delete.
+    // Both absences come from different rules and the test names both.
+    await openDetail(tester, 'carol', shareCarolAs: ProjectRole.commenter);
+
+    expect(find.byKey(const Key('item-save-button')), findsNothing);
+    expect(find.byKey(const Key('item-delete-button')), findsNothing);
+    // ... while the thread composer is present, which is what makes them a
+    // commenter rather than a viewer.
+    expect(find.byKey(const Key('comment-submit-button')), findsOneWidget);
+  });
 }

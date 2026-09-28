@@ -3,6 +3,8 @@
 -- library (TomResourceGrant.createTableSql) — reused verbatim so the sample and
 -- the framework agree on the storage shape. access_level is constrained to the
 -- four TomAuthState tokens, so the database itself rejects an out-of-range grade.
+-- All three tables in this file are pinned against their entity constants by
+-- test/entity_table_ddl_test.dart, which fails if a copy drifts.
 --
 -- This migration is DDL only. The seed `(role, resource_key) -> access_level`
 -- matrix is data owned by auth_db and lives in the separate,

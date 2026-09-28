@@ -18,6 +18,7 @@ Future<void> main() async {
   _demoSimpleAndEnv();
   _demoOptional();
   _demoScopeStack();
+  _demoSharedStack();
   _demoRecursion();
   await _demoExpression();
   _demoFailures();
@@ -74,6 +75,40 @@ void _demoScopeStack() {
   r.stack.pop(); // parent restored
   print('  in parent: ${r.resolveSync(r'${topic}')}');
   assert(r.resolveSync(r'${topic}') == 'whales');
+}
+
+// ---------------------------------------------------------------------------
+// One stack, two resolvers — the shape nested call frames resolve against.
+// ---------------------------------------------------------------------------
+void _demoSharedStack() {
+  print('== shared stack ==');
+
+  // `stack:` is the parameter that lets two resolvers share a namespace. Left
+  // out, each resolver allocates its own, which is why the demos above can use
+  // `r.stack` without disturbing one another.
+  final shared = PlaceholderStack()..bind('topic', 'whales');
+  final prompt = PlaceholderResolver(stack: shared, environment: const {});
+  final config = PlaceholderResolver(
+    stack: shared,
+    environment: const {'ROOT': '/srv'},
+  );
+
+  print('  prompt: ${prompt.resolveSync(r'about ${topic}')}');
+  print('  config: ${config.resolveSync(r'${env:ROOT}/${topic}')}');
+  assert(prompt.resolveSync(r'about ${topic}') == 'about whales');
+  assert(config.resolveSync(r'${env:ROOT}/${topic}') == '/srv/whales');
+
+  // A binding written through one is read by the other, and a pushed frame
+  // moves both — they share the namespace and nothing else, so `config` keeps
+  // its environment and `prompt` still has none.
+  prompt.stack.bind('depth', 'deep');
+  shared.push(<String, Object?>{'topic': 'squid'});
+  print('  after push: ${config.resolveSync(r'${topic} ${depth}')}');
+  assert(config.resolveSync(r'${topic} ${depth}') == 'squid deep');
+  shared.pop();
+  assert(prompt.resolveSync(r'${topic}') == 'whales');
+
+  print('  one namespace, two resolvers; pop restored the parent frame');
 }
 
 // ---------------------------------------------------------------------------

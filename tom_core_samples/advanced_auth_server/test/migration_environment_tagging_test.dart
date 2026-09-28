@@ -79,6 +79,9 @@ void main() {
         // for themselves. Tagging it dev/test would leave production with the
         // offer and nowhere to store the answer.
         'auth_two_factor_enrolments',
+        // A stored language is an account attribute every deployment has; only
+        // which demo user prefers German is demo content.
+        'auth_user_language_columns',
       ]) {
         expect(
           byDesc[desc]!.environments,
@@ -93,6 +96,7 @@ void main() {
       // second factor.
       expect(byDesc['auth_demo_seed']!.environments, ['dev', 'test']);
       expect(byDesc['auth_two_factor_seed']!.environments, ['dev', 'test']);
+      expect(byDesc['auth_user_language_seed']!.environments, ['dev', 'test']);
     });
 
     test('a production apply seeds admin without demo users', () {
@@ -109,6 +113,8 @@ void main() {
       // a deployment can enable a factor, without inheriting a published secret.
       expect(appliesIn('production', 'auth_two_factor_columns'), isTrue);
       expect(appliesIn('production', 'auth_two_factor_seed'), isFalse);
+      expect(appliesIn('production', 'auth_user_language_columns'), isTrue);
+      expect(appliesIn('production', 'auth_user_language_seed'), isFalse);
 
       // Under dev/test: the demo seeds apply too, so the two-pass login path is
       // exercised out of the box rather than merely available.

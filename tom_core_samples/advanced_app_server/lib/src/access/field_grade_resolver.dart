@@ -44,8 +44,6 @@ library;
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
-import '../resources/app_resource_bundles.dart';
-
 /// Repository for the framework's [TomResourceGrant] table (`tom_resource_grant`).
 ///
 /// The grant table is owned by `tom_core_server` (datasource `main`). The app
@@ -69,24 +67,25 @@ abstract class GrantStore {
   Future<List<TomResourceGrant>> grantsForRole(String roleName);
 }
 
+/// The domain's gradable item keys, under a name the constructor's parameter
+/// does not shadow.
+const List<String> _domainGradableItemKeys = gradableItemKeys;
+
 /// Resolves a [ProjectRole] to its per-field [TomAuthState] grades.
 class FieldGradeResolver {
   /// The store the resolver loads grant rows through.
   final GrantStore store;
 
   /// The gradable `todo.item.<field>` keys the resolver reports a [TomAuthState]
-  /// for, in display order. Defaults to the server resource bundle's gradable
-  /// set ([AppResourceBundles.gradableItemKeys]) so the server derives
-  /// the graded set from the texts it serves rather than a hand-maintained list;
-  /// tests may inject an explicit set.
+  /// for, in display order. Defaults to the shared domain's `gradableItemKeys`
+  /// — the one declaration every tier resolves grades over; tests and the
+  /// attachment resolver inject an explicit set.
   final List<String> gradableItemKeys;
 
   /// Builds the resolver over [store] (the live repository at boot, a seeded
-  /// store under test). [gradableItemKeys] defaults to the server resource
-  /// bundle's gradable set.
+  /// store under test). [gradableItemKeys] defaults to the domain's set.
   FieldGradeResolver(this.store, {List<String>? gradableItemKeys})
-    : gradableItemKeys =
-          gradableItemKeys ?? AppResourceBundles.gradableItemKeys();
+    : gradableItemKeys = gradableItemKeys ?? _domainGradableItemKeys;
 
   /// Loads [role]'s grants and folds them into a graded view. Several rows for
   /// the same key widen to the most permissive grade (the framework default).

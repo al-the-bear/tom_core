@@ -1,5 +1,72 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **`TomReportResultSection` takes a row factory, not a stream (tcopen358).**
+  Its dartdoc said "rendering the same result twice needs a section that can
+  produce a fresh stream" — and the type could not: `rows` was a stored
+  `Stream`, with no factory, no `copyWith` and no re-subscription surface. Over
+  a genuinely single-subscription source the first render returned the rows and
+  the second threw `Bad state: Stream has already been listened to`. Over
+  `Stream.fromIterable` it survived, which is why the suite was green.
+
+  The constructor now takes `openRows`, a `Stream<List<Object?>> Function()`,
+  and `rows` is a getter that calls it. The argument for fixing rather than
+  softening is on the definition: `deliveryChannels` is a **list**, and a report
+  declaring `apiResponse` and `fileExport` is one run delivered two ways, so
+  each delivery reads the rows. The factory must return a new stream on every
+  call — open the query inside the closure — which is the one part the type
+  cannot enforce and is therefore stated on the constructor and pinned by a
+  test that shows the failure mode.
+
+  Every case is pinned against a `StreamController` rather than
+  `Stream.fromIterable`, with a control asserting the fixture really is
+  single-subscription; the easy fixture is what hid the defect.
+
+
+- **`reconcileWarnings()` checks the node KIND, not only that the id resolves
+  (tcopen357).** The delta grammar's documentation states which kind each
+  operation addresses — `setContainerProp` and `removeContainer` a container,
+  `setSlotHint` a slot — and the sealed `TomLayoutNode` base exists so the two
+  can be told apart. Nothing checked it: a `setSlotHint` addressed at a
+  container, a `setContainerProp` or `removeContainer` at a slot, and a slot
+  named as a new parent all produced an empty warning list.
+
+  That is the check the two-layer design most needs. An id that vanished is
+  conspicuous and the existence check already caught it; an id a regeneration
+  re-used for a different kind of node still resolves, so the delta went on
+  applying and quietly meant something else — a hint authored for a field
+  landing on the row that now carries that id.
+
+  Two further faults are reported for the same reason: an `insertContainer`
+  whose id the base has since taken (a node id is unique across the tree, so
+  the insert would duplicate one), and an operation that needs a
+  `newParentNodeId` and names none. Nothing is dropped in any case.
+
+### Added
+
+- **`example/` — one runnable example per gap class, plus an aggregator
+  (tcopen355).** The package shipped none, which was a real gap rather than a
+  formality: every gap class is a holder a specification author fills in, and
+  several have shapes that only make sense seen whole. `TomLayoutModel`'s two
+  layers are the hardest idea here, and the example shows the part a class
+  listing cannot — that a delta whose target a regeneration removed is
+  **reported and kept**, never dropped. `TomReportDefinition`'s six refusals
+  are demonstrated by provoking all six. `TomNotificationCatalog`'s resolution
+  order is run rather than described: mandatory channels first, a user
+  selection that **replaces** the defaults rather than adding to them, then a
+  per-channel urgency ceiling — which is why a user-chosen channel can
+  legitimately deliver nothing.
+
+  `test/examples_test.dart` runs all seven and the aggregator under exactly the
+  command their headers document, and requires each to **refuse** a run without
+  `--enable-asserts`, since every check in them is an `assert` and a flagless
+  run would print the same transcript while verifying nothing. It also holds
+  the folder to `gap_class_inventory_test.dart`'s inventory in both directions,
+  so a gap class added without an example fails rather than going unnoticed.
+
 ## 0.12.0
 
 8 files, +1878/-142 since 0.11.2.

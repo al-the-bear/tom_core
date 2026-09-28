@@ -621,12 +621,26 @@ class TomReportDefinition {
 /// module's row type gives: rows are the one thing there are many of, and a
 /// keyed map re-stores every column name for every row.
 class TomReportResultSection {
-  /// Creates a section.
+  /// Creates a section over [openRows], a factory that opens a fresh row
+  /// stream.
+  ///
+  /// A factory rather than a stream because a section is read more than once:
+  /// `deliveryChannels` is a list, and a report declaring `apiResponse` and
+  /// `fileExport` is one run delivered two ways. Handed a stream, the second
+  /// delivery of a *large* result throws — a large result is a
+  /// single-subscription stream, and that is exactly the case the streaming
+  /// shape exists for.
+  ///
+  /// **[openRows] must return a new stream on every call.** The type calls it
+  /// once per read of [rows] and can guarantee no more than that; a factory
+  /// closing over one `StreamController` returns the same already-listened
+  /// stream and reintroduces the defect this shape removes. Open the query, or
+  /// the file, inside the closure.
   TomReportResultSection({
     required this.columns,
-    required this.rows,
+    required Stream<List<Object?>> Function() openRows,
     this.title,
-  }) {
+  }) : _openRows = openRows {
     if (columns.isEmpty) {
       throw ArgumentError.value(
         columns,
@@ -652,12 +666,20 @@ class TomReportResultSection {
   /// The section's columns, in output order.
   final List<TomReportColumn> columns;
 
-  /// The section's rows — single-subscription, pulled once, in order.
+  /// A **fresh** stream of the section's rows — pulled once, in order.
   ///
   /// A stream and not a list because a report exists for results too large to
-  /// hold inline; rendering the same result twice needs a section that can
-  /// produce a fresh stream.
-  final Stream<List<Object?>> rows;
+  /// hold inline. Each read calls the factory the section was built with, so
+  /// two renderings of one result are two independent passes rather than a
+  /// second listen on a spent stream.
+  ///
+  /// Reading this twice therefore *starts* two streams. That is the point, and
+  /// it is worth knowing before writing `section.rows` in a condition and
+  /// again in the loop beneath it.
+  Stream<List<Object?>> get rows => _openRows();
+
+  /// Opens one pass over the rows. See the constructor for its obligation.
+  final Stream<List<Object?>> Function() _openRows;
 
   @override
   String toString() =>

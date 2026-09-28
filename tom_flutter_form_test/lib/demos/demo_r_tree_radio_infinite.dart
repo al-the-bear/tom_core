@@ -8,7 +8,7 @@
 ///     children inherit that constraint (cannot be widened). Two of the
 ///     leaves carry a `none` rule by default so the tree is visibly
 ///     trimmed at first paint.
-///   * `TomRadioGroup` — density picker with **group-level** auth
+///   * `TomChoiceGroup` — density picker with **group-level** auth
 ///     (resource key `demoR.densityRadio`). The right-hand panel flips
 ///     the auth state across `full / read / disabled / none` and the
 ///     whole group reacts.
@@ -245,25 +245,25 @@ class _DemoRTreeRadioInfiniteState extends State<DemoRTreeRadioInfinite> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('TomRadioGroup', style: theme.textTheme.titleSmall),
+            Text('TomChoiceGroup', style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
-            TomRadioGroup<String>(
+            TomChoiceGroup<String>(
               tomId: 'demoR.densityRadio',
               title: 'Row density',
               selected: _controller.radioValue,
               onChanged: _controller.selectRadio,
               items: const [
-                TomRadioGroupItem(
+                TomChoiceGroupItem(
                   value: 'compact',
                   label: 'Compact',
                   description: 'Tightest spacing, max info density.',
                 ),
-                TomRadioGroupItem(
+                TomChoiceGroupItem(
                   value: 'comfortable',
                   label: 'Comfortable',
                   description: 'Default — balances density and breathing room.',
                 ),
-                TomRadioGroupItem(
+                TomChoiceGroupItem(
                   value: 'spacious',
                   label: 'Spacious',
                   description: 'Extra padding, easiest on the eye.',

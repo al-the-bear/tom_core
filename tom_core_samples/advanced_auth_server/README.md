@@ -15,6 +15,20 @@ deliverable — they do not exist elsewhere in the framework yet.
 > **[06 · Authentication (JWT)](../README_advanced_06_authentication.md)** and
 > [10 · Servers & the secured endpoint pipeline](../README_advanced_10_servers_endpoints.md).
 
+**There is no `example/` directory, and that is deliberate: this package is
+itself the runnable example.** It is one of the eight `advanced_*` packages
+that together form the full-stack sample, so
+`dart run bin/auth_server_start.dart` — the JWT issuer and the admin API — is
+the demonstration, and an `example/` beside it would duplicate the entry point.
+[The family's index](../README_advanced_sample.md#the-eight-packages) says which of the eight carry an `example/`, and why.
+
+Read instead, in the order a newcomer wants them: [Running it](#running-it)
+for the boot and its database, the [`curl` tour](#curl-tour) for login,
+`/auth/me`, the admin grant read and write, and the 403 a non-admin gets — and
+[`advanced_client_core/tool/run_cross_tier_integration.sh`](../advanced_client_core/tool/run_cross_tier_integration.sh)
+for the whole stack end to end, which is where an admin grant edited here is
+followed until it changes what the end-user client renders.
+
 ## Architecture
 
 Each surface is split into a pure, database-free logic class and a thin
@@ -52,6 +66,35 @@ writes anything, because these endpoints declare no transaction and a rejection
 further down would leave an orphan group, or a persisted rename, behind a
 request the client was told had failed.
 
+## API
+
+The barrel `lib/advanced_auth_server.dart` is the package's stable entry point
+and exports eight libraries. The column that matters for a reader deciding what
+to touch is the last one: **two of the eight define a seam to implement**, the
+rest are wiring to reuse or records to read.
+
+| Exported library | What it is | For a consumer |
+| --- | --- | --- |
+| `src/endpoints/auth_endpoints.dart` | The `/auth/*` surface — credential login and the token lifecycle: `AuthTokenService`, the `AdvancedAuthApiService` adapter, `SecondFactorRetryException`, `LoginUnauthorizedErrorHandler` | reuse |
+| `src/endpoints/admin_endpoints.dart` | The `/admin/*` surface — account, role and group CRUD, assignments, and the four-state grant matrix: `AdminService` over **`AdminStore`**, its repository and in-memory implementations, the `AdvancedAdminApiService` adapter, `GrantRepository`, `forbiddenOnAccessDenied` | **implement `AdminStore`** |
+| `src/auth/authentication_service.dart` | The credential check the framework's `TomAuthenticationServer` delegates each login to: `AdvancedAuthenticationService` over **`AuthUserStore`**, with a repository and an in-memory implementation | **implement `AuthUserStore`** |
+| `src/auth/password_hashing.dart` | Four functions over the `auth_db` `UserRecord` shape — `hashPassword`, `verifyPassword`, `applyPassword`, `verifyUserPassword` — a thin adapter over the kernel's `TomPasswordHasher` | reuse |
+| `src/auth/two_factor_enrolment_store.dart` | The persistent second-factor enrolment store, with `LegacyBridging2FAEnrolmentStore` over accounts that predate it | reuse |
+| `src/persistence/auth_persistence_model.dart` | The `auth_db` records and their repositories — users, roles, groups, the two membership join tables, and the grant/delegation repositories | read |
+| `src/persistence/auth_mapping.dart` | Pure conversions between those records and the two shapes the server works with: the observable `advanced_todo_domain.User` and the `advanced_todo_contracts` DTOs | reuse |
+| `src/resources/auth_resource_bundles.dart` | `AuthResourceBundles` — the two text sets this server owns, the public login screen's and the authenticated one's | reuse |
+
+A seam is where a consumer substitutes its own storage: `AdminService` and
+`AdvancedAuthenticationService` are written against the abstraction, the
+production wiring binds the repository-backed implementation and the unit tests
+bind the in-memory one. That is why both ship two implementations rather than
+one — the in-memory pair is not a test fixture tucked away in `test/`, it is
+part of what the package offers.
+
+`test/readme_api_section_test.dart` derives both the barrel's exports and this
+table's rows and fails when they disagree, so the list cannot drift from the
+barrel the way a hand-written mirror would.
+
 ## Running it
 
 The boot resolves relative asset/migration paths against the CWD, so run it from
@@ -72,7 +115,7 @@ credentials are (sample only — never ship them):
 | --- | --- | --- | --- |
 | `admin` | `admin-pass` | `admin` | Untagged `[002]` seed — present in **every** environment |
 | `alice` | `alice-pass` | — | `@dev,test` `[003]` demo seed |
-| `bob` | `bob-pass` | — | `@dev,test` `[003]` demo seed |
+| `bob` | `bob-pass` | — | `@dev,test` `[003]` demo seed; reads German (`[009]`), so the ops server's digest mails him in `de` |
 | `carol` | `carol-pass` | — | `@dev,test` `[003]` demo seed |
 | `dave` | `dave-pass` | `two_factor_required` | `@dev,test` `[005]` seed — **enrolled in TOTP**, so the password only gets him through pass 1 |
 | `erin` | `erin-pass` | `two_factor_optional` | `@dev,test` `[005]` seed — holds **no** factor, so her login is *offered* one she may decline or enrol |

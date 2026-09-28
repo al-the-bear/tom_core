@@ -186,7 +186,7 @@ atomic transactions, undo/redo history, composites, and widget triggers.
 | `TomScreenElementsProviderBase`, `TomStyleResolvers`, `TomCtr` | Element provider & resolvers |
 | `TomAuthorizationGroup` | Collective visibility control without an id on every leaf |
 | `TomAuthGuard`, `TomAuthTreeView`, `TomEmptyState`, `TomErrorBoundary` | Non-form composites |
-| `TomInfiniteScroll`, `TomLoadingOverlay`, `TomRadioGroup`, `TomSkeletonLoader` | More composites |
+| `TomInfiniteScroll`, `TomLoadingOverlay`, `TomChoiceGroup`, `TomSkeletonLoader` | More composites |
 
 ## Quick start
 

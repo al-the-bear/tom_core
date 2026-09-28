@@ -12,6 +12,28 @@ assignments, and the `projectRole` × field grant matrix via the auth server's
 > **[09 · Forms & UI](../README_advanced_09_forms_ui.md)** and
 > [11 · The two Flutter clients](../README_advanced_11_clients_app_admin.md).
 
+**There is no `example/` directory and no `doc/` folder, and both absences are
+deliberate: this package is itself the runnable example, and a sample has no
+consumers who need its surface mirrored — see [the suite map](../README.md) for
+that decision, which is the same for all fifteen sample packages.** This README
+is the package's one description of its surface. It is one of the eight `advanced_*` packages that
+together form the full-stack sample, and an `example/` here would either
+duplicate `lib/main.dart` or isolate a fragment the console already shows in
+context. What to run instead:
+
+- **`lib/main.dart`** — the commented bootstrap: reflection, the client platform,
+  the login resource bundle, then the console over the backend the launch flag
+  selects.
+- **`flutter run --dart-define=TEST_MODE=true`** — the whole console offline over
+  the seeded `InMemoryAdminBackend`, with no server or database behind it. With
+  no dart-defines it drives the live auth server instead (see
+  [Layout](#layout)).
+- **The thirteen widget suites** under [Tests](#tests) — they sign in and drive
+  every destination through that same offline backend, so they are the fastest
+  way to watch a screen work.
+
+[The family's index](../README_advanced_sample.md#the-eight-packages) says which of the eight carry an `example/`, and why.
+
 ## Layout
 
 | Folder | Holds |

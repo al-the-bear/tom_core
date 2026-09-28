@@ -11,6 +11,12 @@ The interface an authenticator implements and the failure taxonomy it throws are
 which this module imports and which an HTTP or WebSocket edge reuses without
 taking on anything below.
 
+> **Looking for a signature?** This page is the mirror. `mcp_auth` is under
+> the ten-type threshold in
+> [`doc/api/api_summary_index.md`](api/api_summary_index.md), so it has no
+> separate summary — and the Overview table below is held to every
+> exported type, function and constant by `test/api_summary_test.dart`.
+
 ## Table of Contents
 
 - [Overview](#overview)

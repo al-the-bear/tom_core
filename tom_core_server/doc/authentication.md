@@ -2,7 +2,7 @@
 
 Server-side login orchestration. The module turns an incoming authentication
 request into JWT tokens by delegating credential checking to an
-application-supplied [`TomAuthenticationService`], then encoding the resulting
+application-supplied `TomAuthenticationService`, then encoding the resulting
 principal into an authentication token and an authorization token.
 
 ## Table of Contents

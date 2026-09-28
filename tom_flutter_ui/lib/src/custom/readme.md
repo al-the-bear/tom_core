@@ -20,7 +20,7 @@ resource systems, but only where each one genuinely needs them:
 
 | Consumes | Widgets |
 | -------- | ------- |
-| the kernel's `TomAuthorization` / `TomAuthState` | `TomAuthGuard`, `TomAuthTreeView`, `TomRadioGroup` |
+| the kernel's `TomAuthorization` / `TomAuthState` | `TomAuthGuard`, `TomAuthTreeView`, `TomChoiceGroup` |
 | resources, via `TomCtr` from [`widget_base`](../widget_base/readme.md) — and only when given a `tomId` | `TomEmptyState` |
 | neither — pure presentation | `TomErrorBoundary`, `TomLoadingOverlay`, `TomSkeletonLoader`, `TomInfiniteScroll` |
 
@@ -40,14 +40,23 @@ the models and signatures they take:
 | `TomErrorBoundary` | Catches and renders a child subtree's errors |
 | `TomInfiniteScroll` | Lazy-loading scrollable list |
 | `TomLoadingOverlay` | A scrim + message over a `child` while `isLoading` |
-| `TomRadioGroup` | A single-select radio group |
+| `TomChoiceGroup` | A single-select radio group. Named apart from the forms module's `TomRadioGroupStyle`, which themes the radio-group *field* and does nothing here |
 | `TomSkeletonLoader` | Shimmer placeholder while content loads |
 | `TomAuthTreeNode` | One node of a `TomAuthTreeView` — its own `tomId`, title, children |
-| `TomRadioGroupItem` | One option of a `TomRadioGroup` — value and label |
-| `TomInfiniteScrollState` | `TomInfiniteScroll`'s state, public so a `GlobalKey` can call `refresh()` |
+| `TomChoiceGroupItem` | One option of a `TomChoiceGroup` — value and label |
+| `TomInfiniteScrollState` | `TomInfiniteScroll`'s state, public so a `GlobalKey` can read `loadedCount` / `isPending` / `isExhausted` / `hasError` / `error` and call `refresh()` |
 | `TomPageFetcher` | Signature of `TomInfiniteScroll.fetcher`; **must be idempotent** |
 | `TomInfiniteScrollItemBuilder` | Signature building one row of a `TomInfiniteScroll` |
+| `TomInfiniteScrollErrorBuilder` | Signature of `TomInfiniteScroll.errorBuilder` — the error, a `retry`, and where it is being rendered |
+| `TomInfiniteScrollErrorPlacement` | Whether a page failure takes the surface or is the list's last tile |
 | `TomErrorBoundaryFallbackBuilder` | Signature of `TomErrorBoundary.fallbackBuilder` — the error details plus a `retry` closure |
+
+## Static entry points
+
+| Member | Purpose |
+| ------ | ------- |
+| `TomAuthGuard.resolveAuthState` | The guard's decision without a widget tree — `@visibleForTesting` |
+| `TomErrorBoundary.debugReleaseGlobalHook` | Hands `ErrorWidget.builder` back and forgets every mounted boundary. The count that owns that slot is process-wide, so a boundary whose `dispose` never runs would otherwise hold it for the rest of the process. `@visibleForTesting`; an application never needs it |
 
 ## Quick start
 
@@ -73,14 +82,30 @@ void buildComposites() {
   // constructor, so a missing title fails at the call site rather than
   // becoming an error card inside some enclosing TomErrorBoundary.
   final empty = TomEmptyState(title: 'No items', description: 'Nothing yet.');
-  const currency = TomRadioGroup<String>(
+  const currency = TomChoiceGroup<String>(
     tomId: 'currency',
-    items: [TomRadioGroupItem(value: 'eur', label: 'Euro')],
+    items: [TomChoiceGroupItem(value: 'eur', label: 'Euro')],
     selected: 'eur',
   );
   print([guard, overlay, empty, currency].length); // 4
 }
 ```
+
+---
+
+## Where the rest is written down
+
+| Document | Answers |
+| -------- | ------- |
+| [`doc/custom.md`](../../../doc/custom.md) | What each composite is for, the shared authorization contract, and how the eight differ. |
+| [`doc/api/api_summary_custom.md`](../../../doc/api/api_summary_custom.md) | The symbol-level mirror: every exported type with a section, every public constructor parameter, and every public static. |
+
+Two runnable examples sit under
+[`example/custom/`](../../../example/custom).
+`custom_rendered_example.dart` assembles all eight widgets into one app and
+checks each once it is on screen; `custom_example.dart` covers the parts that
+need no widget tree — the `TomAuthState` lattice, the resource-path lookup, and
+the data models. Each names the suite that runs it.
 
 ---
 

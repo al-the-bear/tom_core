@@ -104,10 +104,23 @@ class AclDeviceContext {
 
   /// Determines input mode from platform.
   ///
-  /// Mobile platforms (iOS, Android) default to [AclInputMode.touch].
-  /// Desktop platforms and web default to [AclInputMode.pointer].
+  /// Mobile platforms (iOS, Android) resolve to [AclInputMode.touch]; desktop
+  /// platforms to [AclInputMode.pointer].
+  ///
+  /// **The web is not a platform here.** This once returned `pointer` for any
+  /// web target before reading [platform] at all, which classified every phone
+  /// browser as a mouse — pointer-sized hit targets and pointer spacing on the
+  /// device class where touch accuracy matters most. Flutter web reports
+  /// `TargetPlatform.iOS` or `.android` there, so the platform already answers
+  /// the question and the short-circuit only discarded it. `isWeb` stays on
+  /// [AclDeviceContext] for a variant that genuinely means "in a browser";
+  /// `input: AclInputMode.pointer` together with `isWeb: true` still names a
+  /// desktop browser, and now excludes the phone one.
+  ///
+  /// What this does not distinguish is a touchscreen laptop, which resolves to
+  /// `pointer`. Doing better needs a pointer-capability media query, and this
+  /// resolver is pure and synchronous by contract.
   static AclInputMode resolveInputMode(TargetPlatform platform) {
-    if (kIsWeb) return AclInputMode.pointer;
     switch (platform) {
       case TargetPlatform.iOS:
       case TargetPlatform.android:

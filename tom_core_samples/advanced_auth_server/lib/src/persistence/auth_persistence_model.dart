@@ -110,6 +110,22 @@ class UserRecord {
   /// `authentication_service.dart`.
   @TomDbColumn(columnName: 'two_factor_secret')
   String? twoFactorSecret;
+
+  /// The account's stored language (ISO 639-1, e.g. `de`), or `null` for no
+  /// preference — the reader then falls back to the deployment default.
+  ///
+  /// Stored as a pair with [country], mirroring `TomPrincipal.language` /
+  /// `.country`, and read through `TomTextLocale.lenient`: this is data a user
+  /// or an administrator entered, so a malformed value must degrade to a bundle
+  /// that exists rather than throw. The ops server's morning digest renders
+  /// each recipient's mail in it.
+  @TomDbColumn(columnName: 'language')
+  String? language;
+
+  /// The country narrowing [language] (ISO 3166-1 alpha-2, e.g. `AT`), or
+  /// `null`.
+  @TomDbColumn(columnName: 'country')
+  String? country;
 }
 
 /// Repository for [UserRecord].

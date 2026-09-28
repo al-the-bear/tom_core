@@ -7,6 +7,16 @@ authorization, group membership, and resource-driven display values — on top o
 the Flutter widget it delegates to, while keeping the familiar Flutter
 constructor shape.
 
+> **Looking for a signature?** There is no `doc/api/` summary for this module
+> and it is not owed one — see
+> [`doc/api/api_summary_index.md`](api/api_summary_index.md) for the rule. A
+> wrapper's constructor is its Flutter original's parameters plus the shared
+> Tom set, and both halves are machine-held rather than written out: the shared
+> set is derived from the base by
+> `test/widget_base/base_parameter_claims_test.dart`, and every one of the 299
+> types is *constructed* by `test/widgets/widget_conformance_registry.dart`, so
+> a constructor that changes shape fails to compile.
+
 The kit spans **20 sub-folders**, one per widget family, behind the
 `widgets.dart` barrel. 273 of the 290 wrappers extend their family base class
 (`TomButtonBase`, `TomLabelBase`, …) from `widget_base/`; the other 17 mix in

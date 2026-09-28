@@ -32,21 +32,20 @@ in this module:
 
 ## Overview
 
-| Symbol | Kind | Purpose |
-| ------ | ---- | ------- |
-| `TomAuthorizable` | abstract interface class | The kernel contract a Tom widget implements for group registration and auth participation. Re-exported from `tom_core_kernel` so existing imports keep working. |
-| `TomWidgetSurface` | abstract interface class | What a Tom wrapper adds over the Flutter widget it wraps: `tomId`, `tomGroup`, `basePath`, `effectiveAuthState`. Extends `TomAuthorizable` with the one member it cannot carry — `basePath`, whose resolution reads the ambient scope. Both routes into the kit implement it, which is what lets the conformance suite enumerate every widget against one type. |
-| `TomNodeBase` | abstract class | Root of every Tom element. Holds `tomId`, `tomGroup`, `scope`, `authorizer`, and the resolved `basePath`. |
-| `TomPolicyNodeBase` | abstract class | Adds the authorization gate: resolves the effective `TomAuthState` and routes to `buildContent` / `buildReadonly` / `buildDisabled` / hidden. |
-| `TomFamilyBase` | abstract class | Adds widget-family reporting (`family`, `families`, `isFamily`). |
-| The 20 family branch bases: `TomAnimatedBase`, `TomBuilderBase`, `TomButtonBase`, `TomChipBase`, `TomContainerBase`, `TomDialogBase`, `TomEffectBase`, `TomImageBase`, `TomInputBase`, `TomInteractionBase`, `TomLabelBase`, `TomListBase`, `TomNavigationBase`, `TomProgressBase`, `TomSelectBase`, `TomSliderBase`, `TomSliverBase`, `TomTableBase`, `TomToggleBase`, `TomTreeBase` | abstract class | One per family, each fixing `family` to its `TomWidgetFamily` value. Named rather than elided: a list a reader takes as complete has to be, and an ellipsis is where a branch base goes missing without contradicting anything. |
-| `TomWidgetFamily` | enum | The 26-value family taxonomy: 20 Flutter-derived values, each fixed by a branch base, plus 6 Tom form values that are reserved and claimed by nothing. |
-| `TomStatelessWidget` / `TomStatefulWidget` / `TomState` | abstract class | Scope-capturing base widgets for non-Tom wrappers that still need scope propagation. |
-| `TomScreenElementsProvider` / `TomScreenElementsProviderBase` | abstract interface class / class | Declarative, reflection-discoverable screen widget trees with chained scopes. |
-| `TomScopePath` | class | The one place a scope path and a widget id are joined into a canonical resource path, through static helpers. Flutter-free, so the base classes can use it in an initialiser list. |
-| `TomCtr` | class | The single entry point for resource resolution, through static helpers — text, colour, icon, numeric, `EdgeInsets`, `TextStyle`, `InputBorder`, `WidgetStateProperty<Color>`, breakpointed values. |
-| `TomAuthLayers` | class | The one resolution of an effective `TomAuthState` from the layers a caller has — element, group, path, parent. Statics only, and Flutter-free for the reason `TomScopePath` is: `TomField` is not a `Widget`, and a rule the form layer cannot call is a rule with a third copy. |
-| `TomStyleResolvers` | class | Static parsing of complex Material objects (`TextStyle`, `ButtonStyle`, `InputDecoration`, `ShapeBorder`, `Decoration`, …) from JSON resource maps. |
+The symbol list has two homes, and each answers a different question:
+
+- [`lib/src/widget_base/readme.md`](../lib/src/widget_base/readme.md) — every
+  public type and static with its **responsibility**, grouped by what a caller
+  is trying to do. Held complete by `test/module_readme_inventory_test.dart`.
+- [`doc/api/api_summary_widget_base.md`](api/api_summary_widget_base.md) — the
+  same surface with its **signatures**, defaults and return nullability, a
+  section per type. Held complete by the same test.
+
+This page is neither. It explains how the chain fits together and why each
+piece is where it is, which is what a third copy of the symbol list would
+crowd out. One name worth placing before the explanation starts:
+`TomAuthorizable` is the kernel's, not this module's — `TomWidgetSurface`
+implements it and adds the fourth member.
 
 ## The node hierarchy
 

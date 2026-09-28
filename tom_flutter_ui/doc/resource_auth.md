@@ -15,6 +15,14 @@ The split is deliberate: **resources are user-facing text** (resolved by
 `TomCtr` in `widget_base`), while **colours, icons, and config are technical
 data** resolved here.
 
+> **Looking for a signature?** This document explains how the layer works and
+> why the indirection is there.
+> [api/api_summary_resource_auth.md](api/api_summary_resource_auth.md) is the
+> symbol-level mirror: all thirteen exported types with a section each, and
+> every public static. The generated colour and icon tables are not in it —
+> they are not exported, and what an application needs from them is their size
+> and the naming convention, both of which the summary states.
+
 ## Table of Contents
 
 - [Overview](#overview)

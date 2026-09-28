@@ -2,6 +2,524 @@
 
 ### Fixed
 
+- **Eighteen broken markdown reference links in
+  `doc/advanced_container_layout.md`.** Type names written as
+  `` [`AclBuilder`] `` — dartdoc's square-bracket syntax in a markdown file,
+  which renders as literal brackets around a code span rather than as a link.
+  The same page already wrote sixty-nine type names as plain code spans, so the
+  bracketed ones were the anomaly; the brackets are gone and no anchor was
+  invented, because none existed to point at.
+
+### Added
+
+- **`widgets` says where its signatures are, and the inventory gate stops
+  losing two of them (tcopen292).** The catalogue module is not owed a
+  `doc/api/` summary — its 299 public types are derived from the sources by
+  `test/widgets/widget_census.dart`, held in both directions by
+  `widget_conformance_test.dart`, and *constructed* by
+  `widget_conformance_registry.dart`, so a wrapper whose constructor changes
+  shape fails to compile. `doc/api/api_summary_index.md` and `doc/widgets.md`
+  now say which suite answers names, which answers signatures and which answers
+  counts, rather than leaving the absence of a summary to be read as an
+  omission.
+
+  The measurement found a defect in `test/module_readme_inventory_test.dart`:
+  its private-declaration stripper assumed a declaration spans lines, so a
+  single-line `enum _FABVariant { … }` put it into skip mode until the next `}`
+  in column 0 — 450 lines later — and `TomFloatingActionButton` and
+  `TomIconButton` fell outside every inventory check in the package. The
+  symptom was two scans disagreeing with nothing comparing them: the census
+  counts 299 public types in `widgets`, the gate counted 297. A new case now
+  asserts the property directly — whatever the stripper removes, no public
+  declaration may be among it.
+
+- **An API summary for the widget_base module (tcopen291).**
+  `doc/api/api_summary_widget_base.md` gives each of the 34 exported types a
+  section and names all 62 public statics with their signatures — parameter
+  nullability, optional-positional defaults, and what each resolver returns
+  when it finds nothing, none of which the prose carried. With it the module's
+  symbol list has two homes instead of three: the module readme lists the same
+  surface by responsibility, the summary by signature, both held complete by
+  `test/module_readme_inventory_test.dart`, and `doc/widget_base.md` now
+  explains the chain rather than tabulating it a third time.
+
+  This is the last module the threshold owed a summary, so the test's backlog
+  set is empty — and still held exactly, so a module that grows past ten
+  exported public types without one fails rather than joining a list nobody
+  reads.
+
+- **`theme` keeps one symbol list instead of three (tcopen290).** At four
+  exported public types the module sits below the threshold at which a module
+  earns a summary under `doc/api/`, so `lib/src/theme/readme.md` is its mirror —
+  named as such, and held to every public type and static by the same test that
+  holds the summaries. `doc/theme.md` carried a fourth copy of that list above
+  its own per-type sections and no longer does; it explains the module and
+  points at the readme. Three hand-maintained tables over twelve members is what
+  produced the earlier disagreement between two documents about
+  `updateShouldNotify`.
+
+- **An API summary for the resource_auth module (tcopen289).**
+  `doc/api/api_summary_resource_auth.md` gives each of the thirteen exported
+  types a section and names all twelve public statics. This is the module where
+  the question was what a summary does with generated data, and the barrel had
+  already answered it: `tom_colors_generated.dart` and `tom_icons_generated.dart`
+  are declared `not-exported`, so they are not public surface and listing their
+  entries would copy a machine-written file into a hand-written one. What the
+  summary states instead is what an application needs — the catalogues resolve
+  against 355 colours and 10,147 icons, and a name is added by registering
+  rather than by editing a table.
+
+- **Which modules get an API summary is a rule, and the rule is enforced
+  (tcopen288).** A module earns one at **ten exported public types**; below
+  that its own `lib/src/<module>/readme.md` is the mirror, and is held to every
+  public type and static by the same test that holds the summaries. Counting
+  types rather than lines is what sorts the package correctly — `resource_auth`
+  declares 13 of them across 11,352 lines and wants a summary, `theme` declares
+  4 across 365 and does not.
+
+  `test/module_readme_inventory_test.dart` derives each module's count from its
+  barrel and fails when one reaches the threshold without a summary;
+  `resource_auth` and `widget_base` are named in a backlog set held exactly, so
+  writing either summary fails the suite until the module comes off it.
+  `doc/api/api_summary_index.md` states the rule and tabulates every module
+  that has none with the reason. Before this, an absent summary read the same
+  for `groups` — two exported types, whose readme is the mirror — as for
+  `widget_base`, which is 34 types nobody has written up.
+
+- **An API summary for the forms module (tcopen286).**
+  `doc/api/api_summary_forms.md` gives every exported type its own section —
+  all 212 of them — and names all 84 public statics, arranged for lookup where
+  `doc/forms.md` and `doc/tom_ui_widgets_forms.md` are arranged for reading.
+  The module readme is a *rule* readme by design — a table of the 103-class
+  catalogue in it would be a second copy of a list already kept — and it now
+  names both complete lists rather than only Appendix C, which covers the field
+  catalogue and not the rest of the barrel.
+
+  `test/module_readme_inventory_test.dart` discovers the summary from
+  `doc/api/` and derives its required set from `tom_forms.dart`, so it cannot
+  fall behind the code. Writing it found two defects in that gate's
+  static-member pattern: a function-typed return made the match land on
+  `Function` rather than on the member's name, and a record return or a generic
+  static was not matched at all — so `TomValidatorRegistry.parseSpec` and
+  `Validators.compose` were exempt from every summary and readme in the
+  package. Both are now required.
+
+- **The shared authorization table is held against all three composites
+  (tcopen269).** `doc/custom.md` and the completion document state one
+  four-outcome table for `TomAuthGuard`, `TomChoiceGroup` and `TomAuthTreeView`,
+  and add that pointer-blocking means an `IgnorePointer` in all three so that
+  arbitrary content inside is genuinely inert. Nothing held that: each widget
+  was tested in its own file, and between them the table had holes —
+  `TomAuthGuard` had no `read` case and its `disabled` case asserted only the
+  fade under a name that promised pointer blocking, while `TomChoiceGroup` had
+  only `none` and `full`.
+
+  `test/custom/auth_composite_table_test.dart` drives every composite through
+  every state against one interactive child and **taps** it, so a barrier that
+  is present but lets a tap through fails. The documented opt-out
+  (`blockPointerOnRead: false`) and the radio group's second mechanism (every
+  `Radio` also `enabled: false`) are asserted beside it.
+
+### Fixed
+
+- **The ten reserved decoration mixins say what they are (tcopen287).**
+  `TomSliderDecorationMixin` and its nine siblings declare no members and no
+  field in the catalogue lists any of them — every family they name ships and
+  takes `TomGenericFieldDecorationMixin` instead. Their library dartdoc
+  described them as placeholders "for field types whose widgets are not yet
+  implemented", which stopped being true as each of those widgets landed, and
+  left ten exported names a reader would take for a decoration layer that runs.
+  The dartdoc and `doc/api/api_summary_forms.md` now both state the position.
+  Whether the ten should exist at all is a separate question.
+
+- **`TomLoadingOverlay.blocksPointerEvents: false` blocked pointers anyway
+  (tcopen284).** The overlay wrapped its scrim in
+  `AbsorbPointer(absorbing: blocksPointerEvents)`, but the scrim is a
+  `ColoredBox` and its hit-test behaviour is opaque — so it swallowed a tap on
+  its own and the parameter changed nothing. A caller who wanted a progress
+  hint over content that stays usable got content exactly as unreachable as
+  the default, and the two look identical on screen.
+
+  The overlay is now taken out of hit testing when it is not blocking. Found
+  by writing the parameter's first test.
+
+### Added
+
+- **The `custom` kit's leaf status is recorded and checked (tcopen285).**
+  Nothing in the package consumes the eight composites, and that is a decision
+  rather than an omission — but it was written down nowhere, and one widget had
+  claimed the opposite.
+
+  Wiring `TomEmptyState` into the list renderers' empty slot was considered and
+  declined: it deletes no duplicate, since those renderers resolve an empty
+  list through `emptyBuilder`, then a bare `Text`, then nothing. What it would
+  add is a default, and an empty slot is the one place a default should not
+  arrive unasked. `doc/custom.md` records that, and
+  `test/custom/module_boundary_test.dart` holds both directions — nothing
+  depends on `custom/`, and `custom/` reaches only for `widget_base`.
+
+- **Per-widget coverage for the `custom` kit (tcopen284).** Five of the eight
+  had only incidental coverage — a smoke case each in the example's test file
+  — so `hiddenBuilder`, `disabledOpacity`, an explicit `scope`, a null group
+  key, per-item descriptions, `blocksPointerEvents`, `scrimColor`, `progress`,
+  `borderRadius`, `initiallyExpanded` and `indentation` were all unexercised.
+
+  `tom_auth_guard_test.dart`, `tom_choice_group_test.dart` and
+  `tom_loading_overlay_test.dart` are new; the skeleton and tree files gained
+  their own presentation parameters. The four-state contract stays in
+  `auth_composite_table_test.dart`, driven across all three auth-gated
+  composites at once, rather than being restated per widget.
+
+  `custom_example_test.dart` is reduced to running the example, which is what
+  it is for. Its per-widget smoke cases have moved to the files that own those
+  widgets — a second, thinner copy of a claim is the one that goes stale
+  unnoticed.
+
+- **A rendered example for `custom` (tcopen283).** The module shipped one
+  example and it never pumped a widget — it printed auth lattice foldings and
+  asserted the fields of context-free constructions. For a kit of composites
+  that is close to no example, and two of the eight, `TomAuthTreeView` and
+  `TomInfiniteScroll`, were rendered nowhere a reader would look.
+
+  `example/custom/custom_rendered_example.dart` assembles all eight into one
+  runnable app, and its `run` renders that same gallery under a `WidgetTester`
+  and checks each: the withheld guard gone and the granted one beside it, the
+  read-only tree section with live entries under it, every radio disabled, the
+  boundary's throw turned into a panel, the overlay's content still painted,
+  both skeleton forms, a page fetched without anyone scrolling, and the empty
+  state's action.
+
+  `doc/custom.md` and the module readme link to it.
+
+- **An API summary for `custom` (tcopen282).**
+  `doc/api/api_summary_custom.md` covers all fifteen declarations the module's
+  barrel exports, with a section each, every public constructor parameter and
+  what it does, and the one public static. Nothing in the unit had said what
+  any of the eight constructors took — `TomAuthGuard`'s `blockPointerOnRead`,
+  `TomInfiniteScroll`'s `prefetchOffset`, `TomSkeletonLoader`'s `period` — so a
+  consumer's only route to any of them was the source.
+
+  `doc/api/api_summary_index.md`, `doc/README.md`, `doc/custom.md` and the
+  module readme link to it; `test/module_readme_inventory_test.dart` already
+  derives each summary's required set from its barrel, so it cannot fall
+  behind.
+
+### Changed
+
+- **`TomEmptyState` resolves its base path and its precedence once each
+  (tcopen281).** The three strings each carried their own copy of "resolve the
+  base path, read the resource, fall back to the parameter" — three
+  `TomCtr.resolvePath` calls for a widget whose job is to render three strings,
+  and three places a change to how the path is qualified had to land.
+
+  The path is resolved once, and the precedence lives in one closure the three
+  call sites share. Only the headline chains past it, because it is the one
+  that may not come out null. Behaviour is unchanged; flipping the precedence
+  now fails three tests instead of one, which is the point.
+
+- **`TomRadioGroup` is renamed `TomChoiceGroup` (tcopen280).** The forms module
+  declares `TomRadioGroupStyle` and `TomRadioGroupDecorationMixin`, which theme
+  the radio-group *field*. The custom composite shared their name and ignored
+  them entirely — it references no style type, no `TomUIColors` and no
+  `TomCtr` — so a consumer who found the style class and set it saw no effect
+  on the widget that shared its name, and nothing in either file said why.
+
+  `TomRadioGroupItem` becomes `TomChoiceGroupItem` and
+  `lib/src/custom/tom_radio_group.dart` becomes `tom_choice_group.dart`. The
+  widget is unchanged: it is not a field, takes no part in the form style tree,
+  and — as the rest of `custom/` does — takes its appearance from the ambient
+  `ThemeData`. What changes is that the name no longer promises an integration
+  that was never there, and its dartdoc now names the two types it is *not*.
+
+### Added
+
+- **Shipped analyzer suppressions are gated (tcopen279).**
+  `test/analyzer_suppressions_test.dart` holds two rules over `lib/`: nothing
+  may suppress `deprecated_member_use`, and every suppression that does ship
+  carries its reason on the line above it.
+
+  A deprecation is a deadline rather than a lint — silencing one converts a
+  warning somebody would act on into a build break nobody expects — and a
+  suppression with no reason cannot be told from an oversight. `TomRadioGroup`
+  had both `// ignore: deprecated_member_use` comments on `Radio.groupValue`
+  and `Radio.onChanged`; the migration to a `RadioGroup<T>` ancestor has since
+  been made, and this is what keeps it made.
+
+### Fixed
+
+- **The default loading skeleton made a consumer's `pumpAndSettle` hang
+  (tcopen278).** `TomSkeletonLoader` repeats its shimmer whenever `enabled` is
+  true, and `TomInfiniteScroll`'s default skeleton builds six of them that the
+  caller never names. A repeating animation schedules frames forever, so the
+  binding never reaches a quiescent one and the usual first line of a
+  downstream widget test hung for its full timeout before failing about
+  something unrelated.
+
+  The loader now honours `MediaQuery`'s disable-animations flag as it does
+  `enabled: false` — the ticker is stopped *and* the mask dropped, since a
+  frozen mask still overpaints and a running ticker still schedules frames. An
+  enclosing `TickerMode(enabled: false)` already worked through
+  `SingleTickerProviderStateMixin` and is now documented beside it. Either lets
+  a test settle with a skeleton on screen, and a user who asked for reduced
+  motion gets the static placeholder.
+
+### Added
+
+- **`TomInfiniteScrollState` exposes the current failure (tcopen277).** The
+  class is public so a `GlobalKey` holder can inspect it, and the failure was
+  the one thing it could not see: `loadedCount`, `isPending` and `isExhausted`
+  read identically for a list showing an error panel and one showing an empty
+  state, and `errorBuilder` receives the error only inside the widget's own
+  build. A caller driving the list from outside could see that it had stopped
+  and not why.
+
+  `error` returns the failure itself and `hasError` reads beside the other
+  predicates. Both are cleared by `refresh()` and by the error slot's Retry.
+
+### Fixed
+
+- **A full first page that fitted the viewport never loaded page 2
+  (tcopen276).** After the initial fetch, the only thing that asked for another
+  page was the scroll listener — and a list that does not overflow cannot be
+  scrolled. Exhaustion did not save it: `_exhausted` means a page came back
+  short, so a *full* page that happens to fit leaves it false. A small
+  `pageSize`, a tall viewport or short rows left the list showing one page with
+  more data available and nothing able to ask for it.
+
+  A page landing now re-checks, once it is laid out, whether the list has any
+  scrollable extent, and fetches again if it has none. Deliberately stricter
+  than the scroll rule, which fires within `prefetchOffset` of the end: using
+  that here would turn every load into an immediate second request. Anything
+  scrollable is left to the gesture.
+
+### Changed
+
+- **A failed page no longer hides the items already loaded (tcopen275).**
+  `TomInfiniteScroll` returned its error slot in place of the whole `ListView`
+  whenever a fetch failed. That is right for an initial-load failure, where
+  there is nothing to preserve, and wrong once the user has scrolled: ten
+  screens of content vanished because page six failed, and came back only on a
+  successful retry.
+
+  The two cases are now separate. With nothing loaded the report takes the
+  surface as before; with items on screen it is the list's last tile and the
+  rows stay where they are, at the boundary the user reached.
+
+  `errorBuilder` is called in both placements and its signature carries which:
+  `TomInfiniteScrollErrorBuilder` takes a `TomInfiniteScrollErrorPlacement`. A
+  builder that assumed it owned the surface would otherwise render a
+  full-height panel inside a tile. The default answers both — the centred panel
+  for the surface, a compact row for the tile.
+
+- **The error boundary's process-wide state is recoverable (tcopen273).** The
+  mounted-boundary count and the builder it saved were two library variables
+  nothing could reset, so a boundary whose `dispose` never ran — a test that
+  tears down its binding — held `ErrorWidget.builder` for the rest of the
+  process and every later test inherited a hook belonging to a widget that was
+  gone. They now live in one private registry, with
+  `TomErrorBoundary.debugReleaseGlobalHook()` (`@visibleForTesting`) to hand
+  the slot back.
+
+  Each share of the count is tagged with the run it was taken out in, so a
+  boundary disposing after a reset is recognised and ignored instead of taking
+  the slot from whoever holds it now. The unreachable `?? ErrorWidget.builder`
+  fallback on the release path — which would have assigned the builder to
+  itself — is gone.
+
+### Fixed
+
+- **A boundary stopped guarding once it had caught something (tcopen272).**
+  The ref count that owns the global hook lived on a helper widget the boundary
+  rendered only while `_captured == null`, so capturing an error unmounted the
+  helper and dropped the count — and for a lone boundary, put the previous
+  builder straight back. A boundary showing its fallback was guarding nothing,
+  including its own `fallbackBuilder`, which is caller code and can throw. In a
+  list of guarded rows the count fell with each row that failed, so the hook
+  survived only while one row was still healthy.
+
+  The install and release moved onto the boundary itself, where they follow it
+  being in the tree — which is what "this subtree is guarded" means. The helper
+  had no other purpose and is gone.
+
+- **A mounted error boundary swallowed every error outside it (tcopen271).**
+  The global `ErrorWidget.builder` hook returned a reporter for *every* error
+  in the process, and the reporter rendered a blank whenever it found no
+  enclosing boundary — so one `TomErrorBoundary` anywhere, on one row of one
+  list, turned every unguarded build error into empty space: no red box in
+  debug, and in release nothing the application had installed, including a
+  crash reporter's hook. The builder that held the slot beforehand was saved
+  and only ever used to restore it on unmount.
+
+  An unguarded error now renders what it would have rendered had no boundary
+  been mounted. The ancestor lookup moved from a post-frame callback into
+  `build`, because whose error it is decides what the failing slot renders and
+  has to be answered while that slot is being built.
+
+- **A withheld tree node could not be collapsed (tcopen270).** Expansion and
+  activation shared one handler, and that handler was null at `read` and
+  `disabled` — so the chevron on a withheld node did nothing, and after the
+  row gained its pointer barrier no tap reached it at all. A `read` tree was
+  stuck at whatever `initiallyExpanded` left it at, with no way round it:
+  expansion state is private and there is no `onExpansionChanged`.
+
+  The expander is now a control of its own, outside the barrier and outside the
+  fade. Collapsing a section is navigation, not activation; the header most
+  likely to be withheld is exactly the one a user wants to fold away. It is
+  deliberately *not* dimmed — a greyed control that still works is the failure
+  the barrier exists to prevent, run backwards. At `full` the whole row remains
+  a target and both toggles and activates, as before.
+
+- **A tree node's key ignored its position in the tree (tcopen268).**
+  `TomAuthTreeView` handed one qualifier down to every descendant, so each node
+  resolved `<parentPath>.<own id>` however deep it sat. A two-level tree under
+  `app` produced `app.reports` and `app.view`, never `app.reports.view` — which
+  both the node's own dartdoc and the module documentation had always
+  described.
+
+  Two things followed. Sibling ids collided across branches: a `view` under
+  `reports` and a `view` under `invoices` were one key and could not be granted
+  apart, which is the distinction a permissions tree exists to draw. And every
+  id had to be globally unique within the tree — a constraint nothing stated
+  and nothing checked.
+
+  Keys now compose along the branch, so an id need only be unique among its
+  siblings. Each node builds its children's qualifier from the path it resolved
+  itself, which keeps the composition in one place.
+
+### Changed
+
+- **`acl_container.dart` is split into a library and eleven parts
+  (tcopen267).** It held 3552 lines: the model, the value types, the widgets,
+  the measurement caches, three row-selection passes, the policy-path builders,
+  the width-fitting engine, the geometry pass and the render pipeline. Three
+  defects found in one review were the same shape — a rule enforced in one half
+  of the file and quietly not enforced in the other, hundreds of lines away.
+
+  Nothing about the exported surface changes: the barrel names one library and
+  the parts come with it. Parts rather than separate libraries because privacy
+  in Dart is per *library*, and the stages share private declarations; separate
+  libraries would have meant making those public. The state's non-lifecycle
+  members moved verbatim into one extension per part, so the split reads as a
+  move. `setState` is `@protected` and an extension may not call it, so the
+  three rebuild sites go through a `_rebuild()` forwarder on the class.
+
+  The largest file in the module is now 559 lines, and
+  `acl_container_parts_test.dart` holds the ceiling, the part declarations, and
+  that no file in the module is orphaned.
+
+### Added
+
+- **A rendered example for `advanced_container_layout` (tcopen264).** The
+  module shipped one example, and it demonstrated four surfaces that need no
+  `BuildContext` — flag composition, the device-context resolvers, the
+  visibility controllers, and a builder chain that returns an `Acl`. For a unit
+  whose proposition is declarative layout, that is close to no example: a
+  fluent chain reads plausibly on the page whatever it does, and the questions
+  a reader arrives with are all answered at layout time.
+
+  `example/advanced_container_layout/advanced_container_layout_rendered_example.dart`
+  renders five of them and reads the result back off the render tree — a
+  responsive variant (one row at 900 px, three at 400), a row breakpoint (four
+  fields across, then two and two), a grid and a wrap, authorization-aware
+  rendering (a withheld component shown inert, then hidden with its width
+  reclaimed by the row), and the composed id a component ends up carrying.
+
+  Its layout-building functions take no tester and no context, so each is
+  ordinary builder code a reader can lift unchanged; a test holds that, since a
+  helper that quietly needed the harness would still pass the run.
+
+- **An API summary for `advanced_container_layout` (tcopen263).**
+  `doc/api/api_summary_advanced_container_layout.md` lists all thirty-five
+  public types the module's barrel exports, with a section each, the six
+  top-level functions and constants, and every public static. The module is the
+  largest in the package and had no single place its surface was listed; the
+  prose reference is organised by task, which is the right shape for writing a
+  layout and the wrong one for looking a symbol up.
+
+  `doc/api/api_summary_index.md` joins it, naming both summaries and the seven
+  modules that have none — an index of two files that says nothing about the
+  rest reads as a package of two modules.
+
+  `test/module_readme_inventory_test.dart` already derived each summary's
+  required set from the barrel; it now also holds the index complete.
+
+### Fixed
+
+- **Every phone browser was classified as a pointer device (tcopen265).**
+  `AclDeviceContext.resolveInputMode` returned `pointer` for any web target
+  before reading the platform at all. Flutter web on a phone reports
+  `TargetPlatform.iOS` or `.android`, so the switch that maps those to `touch`
+  was never reached — pointer-sized hit targets and pointer spacing on the
+  device class where touch accuracy matters most.
+
+  The resolver now reads its argument and nothing else. `isWeb` stays on
+  `AclDeviceContext` as its own fact, so `input: pointer` together with
+  `isWeb: true` still names a desktop browser — and now excludes the phone one.
+  A touchscreen laptop still resolves to `pointer`; telling those apart needs a
+  pointer-capability query, and this resolver is pure and synchronous by
+  contract.
+
+- **`Flexible`, `Expanded` and `Spacer` could not be used at all (tcopen262).**
+  The container has a whole `isFlexNativeChild` path that keeps every sizing
+  and alignment wrapper off them — but the `AclScope` wrap ran before it, and
+  unconditionally. A `ParentDataWidget` separated from the flex it describes
+  cannot apply its parent data, so a single `Expanded` in a row was an
+  assertion at first paint. They now reach the `Row` as its direct child.
+
+### Changed
+
+- **`append`'s duplicate guard covers the flex wrappers (tcopen262).** It
+  compared only widgets that get a component key, so the three that do not —
+  `Flexible`, `Expanded`, `Spacer` — passed through it, and those are exactly
+  the widgets a layout declares once and reuses.
+
+  A flex wrapper is now unwrapped for the comparison, down the whole chain:
+  `append(w)` followed by `append(Expanded(child: w))` is the same duplicate
+  written two ways. The unwrapping stops at `Flexible` and its subclasses. Any
+  other wrapper is a component in its own right, so what it holds is content —
+  a widget may reappear inside a later component without being a second
+  component, and walking the whole subtree would have refused that.
+
+- **Every size and alignment reference must name a component the builder has
+  (tcopen261).** `sameWidthAs` / `sameHeightAs` / `sameSize` accepted any
+  object: an unknown widget was given a freshly minted `GlobalKey` attached to
+  nothing, the cross-dimension flag was set anyway, and the layout built
+  cleanly. Nothing resolved, so the component silently kept its own size — a
+  typo in the captured variable read as "these two do not match" with nothing
+  pointing at the call. `doc/acl_design_specification.md` §15 already stated
+  the rule for all five reference methods; `alignX*` and `alignY*` enforced it
+  and the size references did not.
+
+  All five now go through one guard. A widget appended *later* is refused
+  rather than resolved — it cannot be told from a typo, and accepting it also
+  made a same-row size reference legal that the row rules forbid. `Flexible`,
+  `Expanded` and `Spacer` are refused by name, since the row lays those out
+  itself and they carry no key. The reference parameter is now `Widget`, so a
+  raw `Key` — never resolvable, and already documented as unsupported — is a
+  compile error instead.
+
+  `setComp(reference, otherAttr)` rejects an `otherAttr` carrying neither
+  `AclFlags.otherDimX` nor `otherDimY`: only those bits were ever read, so the
+  masking silently recorded a link nothing resolves.
+
+- **Every per-component builder setter refuses when there is no current
+  component (tcopen260).** Fourteen returned silently and `setHideUnauthorized`
+  threw — inconsistent in the one respect a caller wants consistency in, and
+  the silent majority was the worse half: `append(x).gap().setPSize(200)` sizes
+  nothing, and nothing reports it. The layout merely comes out subtly wrong,
+  which costs far more to find than a throw at the call that is wrong.
+
+  All fifteen now throw a `StateError` naming the setter, through one guard.
+  The three ways to arrive without a component — before the first `append`, and
+  after `gap()`, `newRow()` or `gapRow()` — give the same message.
+
+  This costs the conditional-append pattern (`if (x) b.append(…);
+  b.setPSize(…)`), which now has to put the setter inside the condition. That
+  is where it belonged: outside, it was silently doing nothing on the branch
+  the author was not thinking about.
+
+### Fixed
+
 - **A grid at unbounded width produced cells about 9e307 wide (tcopen259).**
   `AclFlowContainer` substituted `double.maxFinite` for an unbounded width
   constraint — right for `wrap`, where it means "never break", and fatal for

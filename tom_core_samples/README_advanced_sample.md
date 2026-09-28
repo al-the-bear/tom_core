@@ -74,6 +74,46 @@ bottom; each links to the next.
 | 7 | [`advanced_authadmin_client`](advanced_authadmin_client/README.md) | The administrator Flutter console: manages users, roles, groups, role assignments, and the `projectRole` × field grant matrix via the auth server's `/admin/*` API. | Flutter |
 | 8 | [`advanced_ops_server`](advanced_ops_server/README.md) | Back-office scheduled work over the app database — a nightly retention purge, a morning digest rendered from a localised text bundle into the messaging outbox, a weekly export into the blob store, and an audit-anchor publisher on its own timer. No HTTP surface and no database of its own. | timers, `app_db` `:3308` |
 
+**Four of the five runtime packages carry no `example/` directory, and that
+is deliberate.** Each is run directly — `flutter run` for the two clients,
+`dart run bin/…` for the app and auth servers — so an `example/` beside them
+would duplicate the entry point. The ops server is the exception because its
+entry point needs both databases while its most adaptable seam needs none:
+[`advanced_ops_server/example/digest_composition_example.dart`](advanced_ops_server/example/digest_composition_example.dart)
+runs the real digest pass into a memory outbox and prints one German and one
+English mail.
+
+The three libraries are a different case, because a library's surface is what
+a reader calls, and each ships an `example/`. `advanced_client_core` ships
+[`example/authenticated_call_example.dart`](advanced_client_core/example/authenticated_call_example.dart):
+one authenticated call, from the config bean through login to the app API.
+`advanced_todo_contracts` ships two: reading an endpoint's route, method and
+access from the registry, and a DTO's round trip through the reflection path.
+`advanced_todo_domain` ships one that builds the entity chain, reads the typed
+enums, and grades an item's fields for every role — the resource-level ceiling
+narrowed by the field grade, as the item screen computes it.
+
+Each package without one names what to read instead in its README: its own run section, the
+`curl` or screen tour beside it, and — for the whole stack at once —
+[`advanced_client_core/tool/run_cross_tier_integration.sh`](advanced_client_core/tool/run_cross_tier_integration.sh),
+which boots both databases and both servers, runs the live suites against them
+and tears everything down.
+
+That is the one thing a reader cannot infer from an absent folder, so each
+package's README says it too — the three libraries and `advanced_ops_server` in
+this family, and
+`core_server_sample` and `todo_domain` elsewhere in `tom_core_samples`, *do*
+ship `example/`, and a missing folder and a deliberately absent one look
+identical.
+
+**Nor does any of the eight carry a `doc/` folder or a `doc/api/` summary**, and
+that is deliberate and decided once for the whole sample
+suite — see [the suite map](README.md). A sample has no consumers who need its
+surface indexed: these eight are `publish_to: none`, and the three libraries
+among them are imported only by the other five. The `## Current API` content an
+API summary would carry is in each package's own README, in context, and the
+fourteen guide documents beside this one carry the rest.
+
 ---
 
 ## Architecture

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart'
@@ -7,7 +8,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart'
         TomClass,
         TomObservableEnum,
         TomResourceRoleRegistry,
-        TomString;
+        TomString,
+        tomReflector;
 import 'package:test/test.dart';
 
 // The single test-only reflection seed for this package (G-REFL-2).
@@ -352,6 +354,155 @@ void main() {
       );
     });
   });
+
+  group('the reflected view', () {
+    // Every other group constructs an entity and reads its fields back, which
+    // exercises the observable wrappers, not the reflection seed. Persistence
+    // maps these entities by reflected member and the client forms bind by
+    // member name, so the seed is what the runtimes depend on; this group
+    // asserts it against the source.
+
+    /// Each entity, the source file declaring it, and a fresh instance.
+    final entities = <(String, TomClass Function())>[
+      ('user', User.new),
+      ('workspace', Workspace.new),
+      ('project', Project.new),
+      ('todo_list', TodoList.new),
+      ('todo_item', TodoItem.new),
+      ('todo_comment', TodoComment.new),
+      ('subtask', Subtask.new),
+      ('share', Share.new),
+    ];
+
+    for (final (file, create) in entities) {
+      test(
+        '$file: the seed reflects exactly the fields the source declares',
+        () {
+          final entity = create();
+          // Registered: a type the seed does not cover cannot be reflected.
+          expect(
+            () => tomReflector.reflectType(entity.runtimeType),
+            returnsNormally,
+          );
+
+          // Declared: every entity field is written `late final <name> = Tom…`,
+          // so the source is readable without the analyzer. A field added or
+          // renamed without regenerating the seed makes the two lists differ.
+          final declared = RegExp(r'^  late final (\w+) = Tom', multiLine: true)
+              .allMatches(File('lib/src/$file.dart').readAsStringSync())
+              .map((m) => m.group(1)!)
+              .toList();
+          expect(declared, isNotEmpty);
+          expect(
+            entity.getValues().keys.toList(),
+            declared,
+            reason:
+                '$file.dart and the reflection seed disagree - regenerate it '
+                'with ./reflection_generation.sh',
+          );
+        },
+      );
+    }
+
+    test('a populated TodoItem survives the reflected JSON round trip', () {
+      // TodoItem carries every field kind the domain uses: strings, the
+      // string-backed enums, a nullable DateTime and double, and a list.
+      final item = TodoItem()
+        ..id.set('i1')
+        ..title.set('Ship it')
+        ..statusValue = TodoStatus.inReview
+        ..priorityValue = TodoPriority.critical
+        ..dueDate.set(DateTime.utc(2026, 3, 10))
+        ..estimateHours.set(4.5)
+        ..createdAt.set(DateTime.utc(2026, 3, 1));
+      item.tags
+        ..add(TomString('backend'))
+        ..add(TomString('reflection'));
+
+      final wire = jsonEncode(item.toJson());
+      final restored = TodoItem()..fromJson(wire);
+
+      expect(jsonEncode(restored.toJson()), wire);
+      expect(restored.statusValue, TodoStatus.inReview);
+      expect(restored.dueDate.getOrNull(), DateTime.utc(2026, 3, 10));
+      expect(restored.estimateHours.getOrNull(), 4.5);
+      expect(restored.tags.map((t) => t.get()).toList(), [
+        'backend',
+        'reflection',
+      ]);
+    });
+  });
+
+  group('the gradable item vocabulary', () {
+    test('gradableItemKeys names the seven item fields, in display order', () {
+      // The one deliberate literal spelling of the set outside its declaration.
+      // Every other reader - the app server's resolver and write path, the app
+      // client's form test, the auth server's seed guard, the cross-tier run -
+      // reads `gradableItemKeys` itself, so a change to the declaration flows to
+      // all of them silently. This is where such a change has to be made on
+      // purpose: an eighth field, a rename or a reordering fails here first.
+      expect(gradableItemKeys, const [
+        'todo.item.title',
+        'todo.item.status',
+        'todo.item.priority',
+        'todo.item.assigneeId',
+        'todo.item.dueDate',
+        'todo.item.estimate',
+        'todo.item.description',
+      ]);
+    });
+
+    test('every role grades exactly those keys, in the same order', () {
+      // The matrix's columns are the vocabulary: a cell for a key the form does
+      // not have, or a key some role leaves ungraded, is a matrix out of step
+      // with the declaration.
+      for (final MapEntry(key: role, value: grades)
+          in projectRoleFieldGrades.entries) {
+        expect(
+          grades.keys.toList(),
+          gradableItemKeys,
+          reason: '${role.name} grades a different key set',
+        );
+      }
+      expect(projectRoleFieldGrades.keys.toSet(), ProjectRole.values.toSet());
+    });
+
+    test('every grade sits at or below its role\'s resource-level ceiling', () {
+      // The item screen composes the two layers as
+      // `resourceState.narrow(grade)`, with the resource state resolved through
+      // the registry this package registers. The vocabulary's header states
+      // that the narrow is an identity over the matrix - the composition
+      // reproduces `projectRoleFieldGrades` exactly - and that holds only while
+      // no cell exceeds its role's ceiling. A regrade that gave a commenter
+      // `full` on a field would be silently capped at `read` by the screen and
+      // enforced as `full` by nobody; this is where it fails instead.
+      registerProjectRoleVocabulary();
+      for (final role in ProjectRole.values) {
+        final ceiling = TomResourceRoleRegistry.stateFor(role.name)!;
+        final grades = {
+          ...projectRoleFieldGrades[role]!,
+          itemAttachmentGradeKey: projectRoleAttachmentGrades[role]!,
+        };
+        for (final MapEntry(key: key, value: grade) in grades.entries) {
+          expect(
+            ceiling.narrow(grade),
+            grade,
+            reason:
+                '${role.name} is graded ${grade.name} on $key, above its '
+                'resource-level ceiling ${ceiling.name}',
+          );
+        }
+      }
+    });
+
+    test('the attachment column is graded separately, never as a field', () {
+      expect(gradableItemKeys, isNot(contains(itemAttachmentGradeKey)));
+      expect(
+        projectRoleAttachmentGrades.keys.toSet(),
+        ProjectRole.values.toSet(),
+      );
+    });
+  });
 }
 
 /// Asserts that no field of [populated] still holds the value a freshly built
@@ -371,11 +522,10 @@ void main() {
 /// meaningfully be set to a non-default value, exempt it here by name with the
 /// reason — do not drop the call.
 ///
-/// Scope, measured rather than assumed: the member list comes from reflection,
-/// so a field added to an entity is caught on the next `build_runner` run, not
-/// at the moment it is typed. That is not a hole worth closing — until the
-/// reflection is regenerated the field is invisible to persistence and
-/// serialization too, so it fails far more loudly than a missing assertion.
+/// Scope: the member list comes from reflection, so a field typed into an
+/// entity but not yet regenerated into the seed is invisible here. The
+/// `the reflected view` group closes that from the other side - it reads the
+/// declared fields from the source and fails until the seed is regenerated.
 void expectEveryFieldExercised(TomClass populated, TomClass pristine) {
   final defaults = pristine.getValues();
   final actual = populated.getValues();

@@ -32,8 +32,10 @@
 ///    operations, one step stronger than commenting, because a subtask is *part
 ///    of* the item rather than a remark about it; the screen resolves that from
 ///    the same resource state the fields use
-///    ([_ItemDetailScreenState._subtaskState]) so a viewer sees
-///    the steps with disabled checkboxes and no composer.
+///    ([_ItemDetailScreenState._rowWriteState]) so a viewer sees
+///    the steps with disabled checkboxes and no composer. **Deleting the item
+///    reads that same state**, being the other write to the row rather than to
+///    a field.
 ///  * The **thread** ([_ItemDetailScreenState._buildCommentSection]) — the
 ///    comment history, read-gated
 ///    by the *item's* readability alone. Anyone who can open the screen can read
@@ -101,9 +103,14 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   final TextEditingController _commentController = TextEditingController();
   final TextEditingController _subtaskController = TextEditingController();
 
-  /// The item's resource-level state and the subtask sections' state, both
-  /// resolved once in [_resolveForm] (see [_buildSubtaskSection]).
-  TomAuthState _subtaskState = TomAuthState.none;
+  /// The row's **non-field write state** — `editor` and above — resolved once
+  /// in [_resolveForm].
+  ///
+  /// One state for two operations that share a rule: editing the checklist and
+  /// deleting the item. Both are writes to the row rather than to a graded
+  /// field, both are `editor`-and-above on the server, and resolving them
+  /// separately here would be two places for the same rule to drift from.
+  TomAuthState _rowWriteState = TomAuthState.none;
 
   List<TodoComment> _thread = const [];
   List<Subtask> _checklist = const [];
@@ -119,10 +126,13 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
   AppSession get _session => widget.session;
 
-  /// Whether the principal may add and tick checklist steps — the `editor`
-  /// gate, read off the one resolved [_subtaskState] rather than re-derived
-  /// from the role, so the composer and the checkboxes cannot disagree.
-  bool get _canEditSubtasks => _subtaskState == TomAuthState.full;
+  /// Whether the principal may write the row's non-field parts — add and tick
+  /// checklist steps, and delete the item.
+  ///
+  /// Read off the one resolved [_rowWriteState] rather than re-derived from the
+  /// role, so the composer, the checkboxes and the delete button cannot
+  /// disagree about a single rule.
+  bool get _canWriteRow => _rowWriteState == TomAuthState.full;
 
   @override
   void initState() {
@@ -176,13 +186,14 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     }
     _form = form;
     _attachment = _buildAttachmentField(resourceState, role);
-    // The checklist's own grade. Not a member of the field matrix — a subtask
-    // is a row of its own, not a field of the item form — so it is narrowed
-    // here by the server's rule instead: `editor` and above may write
-    // (`full`), everyone who can open the screen may look (`read`). Narrowing
-    // through `resourceState` keeps the registry load-bearing here too: no role
-    // → `none` → the whole section collapses.
-    _subtaskState = resourceState.narrow(
+    // The row's non-field write grade, shared by the checklist and by delete.
+    // Neither is a member of the field matrix — a subtask is a row of its own
+    // and a deletion is not a field at all — so both are narrowed here by the
+    // server's rule instead: `editor` and above may write (`full`), everyone
+    // who can open the screen may look (`read`). Narrowing through
+    // `resourceState` keeps the registry load-bearing here too: no role →
+    // `none` → the section collapses and the delete button is absent.
+    _rowWriteState = resourceState.narrow(
       role == ProjectRole.owner || role == ProjectRole.editor
           ? TomAuthState.full
           : TomAuthState.read,
@@ -230,7 +241,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   ///  * The write paths differ. Bytes travel over the file endpoint; the server
   ///    keeps the file column out of the item's writable bindings precisely so a
   ///    client cannot mint a storage key by editing an item. That is also why
-  ///    [itemAttachmentGradeKey] is absent from [AppResourceBundles.gradableItemKeys]
+  ///    [itemAttachmentGradeKey] is absent from the domain's `gradableItemKeys`
   ///    and so from [TomForm.gradableFields] — the loop above cannot reach it.
   ///
   /// The **authorization**, however, is the same story as every other field, and
@@ -309,6 +320,38 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       Navigator.of(context).pop(true);
       return;
     }
+    setState(() {
+      _error = error;
+      _busy = false;
+    });
+  }
+
+  /// Deletes the item via the [DeleteItemAction] (`todo.item.delete`) and pops
+  /// with `true` so the board refreshes without it.
+  ///
+  /// No confirmation step, and that is deliberate rather than an omission: the
+  /// four other mutations on this screen commit on press, and a sample whose
+  /// destructive path alone asked twice would be teaching its dialog rather
+  /// than its authorization. The gate is the lesson — the button is not there
+  /// at all for a principal who may not delete, so the press that reaches this
+  /// method is one the server will also accept.
+  Future<void> _delete() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final error = await runAppAction(
+      itemActions.delete,
+      DeleteItemContext(_session, _item.id.get()),
+    );
+    if (!mounted) return;
+    if (error == null) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+    // A refused delete leaves the screen where it was, showing the backend's
+    // own message: the row is still there, so popping would report a removal
+    // that did not happen.
     setState(() {
       _error = error;
       _busy = false;
@@ -477,6 +520,19 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                   )
                 : TomText(text: TomCtr.text('board.item.save')),
           ),
+        // The destructive counterpart of the save button above, and gated one
+        // step differently: save needs any editable field, delete needs the
+        // row's write state. A viewer with one `full` field could save and
+        // still may not remove the row.
+        if (_canWriteRow) ...[
+          const SizedBox(height: 12),
+          TomOutlinedButton(
+            key: const Key('item-delete-button'),
+            authorizer: itemActions.delete.authorizer,
+            onPressed: _busy ? null : _delete,
+            child: TomText(text: TomCtr.text('board.item.delete')),
+          ),
+        ],
         TomDivider(height: 32),
         _buildSubtaskSection(),
         TomDivider(height: 32),
@@ -516,7 +572,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   /// `editor`-gated composer.
   ///
   /// The rows render for anyone who can open the screen — a viewer sees what
-  /// the item requires — but their checkboxes carry [_subtaskState], so a
+  /// the item requires — but their checkboxes carry [_rowWriteState], so a
   /// `read` grade renders them ticked-but-inert. The composer is not merely
   /// disabled for a viewer, it is absent: a control that can never succeed is
   /// noise, and the section already shows the state it is in.
@@ -548,7 +604,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                   children: [
                     TomCheckbox(
                       value: subtask.done.get(),
-                      authorizer: TomAuthorizer.fixed(_subtaskState),
+                      authorizer: TomAuthorizer.fixed(_rowWriteState),
                       onChanged: (value) =>
                           _toggleSubtask(subtask, value ?? false),
                     ),
@@ -565,7 +621,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         ],
-        if (_canEditSubtasks) ...[
+        if (_canWriteRow) ...[
           const SizedBox(height: 8),
           TomTextField(
             key: const Key('subtask-input'),

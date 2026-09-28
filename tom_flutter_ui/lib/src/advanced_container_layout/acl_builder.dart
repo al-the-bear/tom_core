@@ -150,6 +150,36 @@ class AclBuilder {
   _RowData _currentRow = _RowData();
   _ComponentData? _currentComponent;
 
+  /// The component every per-component call applies to.
+  ///
+  /// Throws [StateError], naming the caller it was given, when there is none.
+  /// That happens before the first [append], and after [gap], [newRow] or
+  /// [gapRow] — each of which clears the current component, because none of
+  /// them is a target for per-component settings.
+  ///
+  /// Throwing rather than returning is the point. A per-component call with no
+  /// component is always a misordered chain, and the value the caller wrote is
+  /// being dropped: `append(x).gap().setPSize(200)` sizes nothing, and the
+  /// component keeps whatever it had. Nothing reports that, and the layout
+  /// merely comes out subtly wrong — which is far more expensive to find than
+  /// a throw at the call that is wrong.
+  ///
+  /// The cost is the conditional-append pattern — `if (x) b.append(...);
+  /// b.setPSize(...)` — which now has to put the call inside the condition.
+  /// That is where it belonged: outside, it was silently doing nothing on the
+  /// branch the author was not thinking about.
+  _ComponentData _requireComponent(String setter) {
+    final component = _currentComponent;
+    if (component == null) {
+      throw StateError(
+        '$setter must be called on a component: put it directly after '
+        'append(), and before any gap(), newRow() or gapRow(). There is no '
+        'current component here, so the value would be discarded.',
+      );
+    }
+    return component;
+  }
+
   int _defaultFlags = 0;
   double _defaultAppendGap = 8.0;
   List<(double, double)> _defaultAppendGapBpOverrides = const [];
@@ -175,10 +205,19 @@ class AclBuilder {
   Size? _preferredContainerSize;
   Size? _minimumContainerSize;
   Size? _maximumContainerSize;
-  final Map<Object, Key> _referenceKeyByObject = Map<Object, Key>.identity();
-  // Maps each appended widget object (by identity) to the row it was added to.
-  // Used for O(1) row-constraint validation in alignX*/alignY*.
-  final Map<Object, _RowData> _rowByObject = Map<Object, _RowData>.identity();
+
+  /// Every appended widget that can carry a component key, by identity.
+  ///
+  /// One map rather than two — the key and the row are written together and
+  /// every reference check needs both, so an entry that has one and not the
+  /// other is not a state this can reach.
+  final Map<Widget, ({Key key, _RowData row})> _appended =
+      Map<Widget, ({Key key, _RowData row})>.identity();
+
+  /// Appended widgets that carry no component key — `Flexible`, `Expanded`
+  /// and `Spacer`, which the row lays out itself. Kept so a reference to one
+  /// can be told apart from a reference to a widget that was never appended.
+  final Set<Widget> _unkeyedChildren = Set<Widget>.identity();
 
   // IDs
   String? _aclId;
@@ -306,22 +345,28 @@ class AclBuilder {
   /// container's problem, and it has been made incapable of showing one.
   AclBuilder append(Widget child, {double dist = 0}) {
     _finalizeCurrentComponent();
-    final canAttachComponentKey =
-        child is! Flexible && child is! Expanded && child is! Spacer;
-    if (canAttachComponentKey && _rowByObject.containsKey(child)) {
+    // `Expanded` is a `Flexible`; `Spacer` is neither, and is named because it
+    // renders as one.
+    final canAttachComponentKey = child is! Flexible && child is! Spacer;
+    for (final instance in _instancesOf(child)) {
+      if (!_alreadyAppended(instance)) continue;
       throw UnsupportedError(
-        'AclBuilder: the same widget instance was appended more than once. '
-        'Each component must be a distinct object so identity-based lookup '
-        'and key generation stay unambiguous.',
+        identical(instance, child)
+            ? 'AclBuilder: the same widget instance was appended more than '
+                  'once. Each component must be a distinct object so '
+                  'identity-based lookup and key generation stay unambiguous. '
+                  'Build a second instance — or, for elastic space, use gap().'
+            : 'AclBuilder: this ${child.runtimeType} wraps a widget that was '
+                  'already appended. The wrapper is new but its child is not, '
+                  'so the same widget would be built in two places and a '
+                  'reference to it could mean either.',
       );
     }
     // When the caller did not pass an explicit non-zero `dist`, tag the
     // component so the container can resolve the row's breakpoint-aware
     // default gap at render time instead of baking it in now.
     final usesDefaultGap = dist == 0;
-    final componentKey = canAttachComponentKey
-        ? _resolveReferenceKey(child)
-        : null;
+    final componentKey = canAttachComponentKey ? _newComponentKey() : null;
     _currentComponent = _ComponentData(
       child: child,
       flags: _defaultFlags,
@@ -346,8 +391,9 @@ class AclBuilder {
       _currentComponent!.variantDetector = _currentVariantDetector;
     }
     if (componentKey != null) {
-      _referenceKeyByObject[child] = componentKey;
-      _rowByObject[child] = _currentRow;
+      _appended[child] = (key: componentKey, row: _currentRow);
+    } else {
+      _unkeyedChildren.addAll(_instancesOf(child));
     }
     _currentRow.components.add(_currentComponent!);
     return this;
@@ -436,13 +482,12 @@ class AclBuilder {
   /// Pass 0 for [width] or [height] to leave that dimension unchanged
   /// (preserving any previously set value, or defaulting to 0 / 0).
   AclBuilder setPSize(double width, [double height = 0]) {
-    if (_currentComponent != null) {
-      final cur = _currentComponent!.preferredSize;
-      _currentComponent!.preferredSize = Size(
-        width == 0 ? (cur?.width ?? 0) : width,
-        height == 0 ? (cur?.height ?? 0) : height,
-      );
-    }
+    final component = _requireComponent('setPSize');
+    final cur = component.preferredSize;
+    component.preferredSize = Size(
+      width == 0 ? (cur?.width ?? 0) : width,
+      height == 0 ? (cur?.height ?? 0) : height,
+    );
     return this;
   }
 
@@ -451,13 +496,12 @@ class AclBuilder {
   /// Pass 0 for [width] or [height] to leave that dimension unchanged
   /// (preserving any previously set value, or defaulting to 0 / 0).
   AclBuilder setMSize(double width, [double height = 0]) {
-    if (_currentComponent != null) {
-      final cur = _currentComponent!.minimumSize;
-      _currentComponent!.minimumSize = Size(
-        width == 0 ? (cur?.width ?? 0) : width,
-        height == 0 ? (cur?.height ?? 0) : height,
-      );
-    }
+    final component = _requireComponent('setMSize');
+    final cur = component.minimumSize;
+    component.minimumSize = Size(
+      width == 0 ? (cur?.width ?? 0) : width,
+      height == 0 ? (cur?.height ?? 0) : height,
+    );
     return this;
   }
 
@@ -475,13 +519,12 @@ class AclBuilder {
   /// and says nothing about the height, which is what it reads as.
   /// [setXWidthInChars] uses the same fallback for the same reason.
   AclBuilder setXSize(double width, [double height = 0]) {
-    if (_currentComponent != null) {
-      final cur = _currentComponent!.maximumSize;
-      _currentComponent!.maximumSize = Size(
-        width == 0 ? (cur?.width ?? double.infinity) : width,
-        height == 0 ? (cur?.height ?? double.infinity) : height,
-      );
-    }
+    final component = _requireComponent('setXSize');
+    final cur = component.maximumSize;
+    component.maximumSize = Size(
+      width == 0 ? (cur?.width ?? double.infinity) : width,
+      height == 0 ? (cur?.height ?? double.infinity) : height,
+    );
     return this;
   }
 
@@ -493,70 +536,88 @@ class AclBuilder {
     double charWidth = 8,
     double height = 40,
   }) {
-    if (_currentComponent == null) return this;
+    final component = _requireComponent('setPWidthInChars');
     final width = (chars * charWidth).clamp(0.0, double.maxFinite);
-    final currentHeight = _currentComponent!.preferredSize?.height ?? height;
-    _currentComponent!.preferredSize = Size(width, currentHeight);
+    final currentHeight = component.preferredSize?.height ?? height;
+    component.preferredSize = Size(width, currentHeight);
     return this;
   }
 
   /// Sets the **minimum** width of the current component using a character-count.
   /// Preserves the existing minimum height (defaults to 0 if unset).
   AclBuilder setMWidthInChars(int chars, {double charWidth = 8}) {
-    if (_currentComponent == null) return this;
+    final component = _requireComponent('setMWidthInChars');
     final width = (chars * charWidth).clamp(0.0, double.maxFinite);
-    final currentHeight = _currentComponent!.minimumSize?.height ?? 0.0;
-    _currentComponent!.minimumSize = Size(width, currentHeight);
+    final currentHeight = component.minimumSize?.height ?? 0.0;
+    component.minimumSize = Size(width, currentHeight);
     return this;
   }
 
   /// Sets the **maximum** width of the current component using a character-count.
   /// Preserves the existing maximum height (defaults to infinity if unset).
   AclBuilder setXWidthInChars(int chars, {double charWidth = 8}) {
-    if (_currentComponent == null) return this;
+    final component = _requireComponent('setXWidthInChars');
     final width = (chars * charWidth).clamp(0.0, double.maxFinite);
-    final currentHeight =
-        _currentComponent!.maximumSize?.height ?? double.infinity;
-    _currentComponent!.maximumSize = Size(width, currentHeight);
+    final currentHeight = component.maximumSize?.height ?? double.infinity;
+    component.maximumSize = Size(width, currentHeight);
     return this;
   }
 
   // ── Per-component flags ────────────────────────────────────────────────────
 
   AclBuilder setAttr(int attr) {
-    if (_currentComponent != null) _currentComponent!.flags |= attr;
+    _requireComponent('setAttr').flags |= attr;
     return this;
   }
 
   AclBuilder clearAttr(int newAttr) {
-    if (_currentComponent != null) _currentComponent!.flags &= ~newAttr;
+    _requireComponent('clearAttr').flags &= ~newAttr;
     return this;
   }
 
   // ── Per-component size references ──────────────────────────────────────────
 
-  AclBuilder setComp(Object reference, int otherAttr) {
-    if (_currentComponent != null) {
-      if (_rowByObject[reference] == _currentRow) {
-        throw UnsupportedError(
-          'AclBuilder: sameWidthAs / sameHeightAs / sameSize cannot reference a '
-          'component in the same row. Move the reference to a different row, '
-          'or use a cross-row anchor.',
-        );
-      }
-      _currentComponent!.referenceKey = _resolveReferenceKey(reference);
-      _currentComponent!.flags |= (otherAttr & AclFlags.otherDim);
+  /// Links the current component's size to [reference]'s rendered size.
+  ///
+  /// [otherAttr] must carry at least one of [AclFlags.otherDimX] /
+  /// [AclFlags.otherDimY]; only those bits are taken from it. Anything else
+  /// would record a reference the layout never reads — a link that exists in
+  /// the component and does nothing.
+  AclBuilder setComp(Widget reference, int otherAttr) {
+    final component = _requireComponent('setComp');
+    final dimensions = otherAttr & AclFlags.otherDim;
+    if (dimensions == 0) {
+      throw ArgumentError.value(
+        otherAttr,
+        'otherAttr',
+        'setComp needs AclFlags.otherDimX, AclFlags.otherDimY or '
+            'AclFlags.otherDim — without one the reference is recorded and '
+            'never read. Use sameWidthAs / sameHeightAs / sameSize instead.',
+      );
     }
+    final entry = _requireAppended(
+      reference,
+      'sameWidthAs / sameHeightAs / sameSize',
+    );
+    if (entry.row == _currentRow) {
+      throw UnsupportedError(
+        'AclBuilder: sameWidthAs / sameHeightAs / sameSize cannot reference a '
+        'component in the same row. Move the reference to a different row, '
+        'or use a cross-row anchor.',
+      );
+    }
+    component.referenceKey = entry.key;
+    component.flags |= dimensions;
     return this;
   }
 
-  AclBuilder sameWidthAs(Object reference) =>
+  AclBuilder sameWidthAs(Widget reference) =>
       setComp(reference, AclFlags.otherDimX);
 
-  AclBuilder sameHeightAs(Object reference) =>
+  AclBuilder sameHeightAs(Widget reference) =>
       setComp(reference, AclFlags.otherDimY);
 
-  AclBuilder sameSize(Object reference) =>
+  AclBuilder sameSize(Widget reference) =>
       setComp(reference, AclFlags.otherDim);
 
   // ── Per-component vertical alignment ──────────────────────────────────────
@@ -567,23 +628,22 @@ class AclBuilder {
   /// horizontal placement is a whole-row concern — so a single method
   /// with an [AclRowCrossAlignment] argument covers every case.
   AclBuilder setVerticalAlignment(AclRowCrossAlignment align) {
-    if (_currentComponent != null) {
-      if (_currentComponent!.alignYToKey != null) {
-        throw UnsupportedError(
-          'AclBuilder.setVerticalAlignment() cannot be combined with an '
-          'alignY* method on the same component — alignY* overrides the '
-          'row cross-alignment.',
-        );
-      }
-      _currentComponent!.rowCrossAlignment = align;
-      _currentComponent!.rowCrossAlignmentSet = true;
+    final component = _requireComponent('setVerticalAlignment');
+    if (component.alignYToKey != null) {
+      throw UnsupportedError(
+        'AclBuilder.setVerticalAlignment() cannot be combined with an '
+        'alignY* method on the same component — alignY* overrides the '
+        'row cross-alignment.',
+      );
     }
+    component.rowCrossAlignment = align;
+    component.rowCrossAlignmentSet = true;
     return this;
   }
 
   // ── Cross-row horizontal alignment ────────────────────────────────────────
 
-  AclBuilder alignLeftToLeft(Object reference, {double gap = 0}) =>
+  AclBuilder alignLeftToLeft(Widget reference, {double gap = 0}) =>
       _setHorizontalAlignment(
         reference: reference,
         selfPoint: AclAxisPointX.left,
@@ -591,7 +651,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignLeftToCenter(Object reference, {double gap = 0}) =>
+  AclBuilder alignLeftToCenter(Widget reference, {double gap = 0}) =>
       _setHorizontalAlignment(
         reference: reference,
         selfPoint: AclAxisPointX.left,
@@ -599,7 +659,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignLeftToRight(Object reference, {double gap = 0}) =>
+  AclBuilder alignLeftToRight(Widget reference, {double gap = 0}) =>
       _setHorizontalAlignment(
         reference: reference,
         selfPoint: AclAxisPointX.left,
@@ -607,7 +667,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignCenterToLeft(Object reference, {double gap = 0}) =>
+  AclBuilder alignCenterToLeft(Widget reference, {double gap = 0}) =>
       _setHorizontalAlignment(
         reference: reference,
         selfPoint: AclAxisPointX.center,
@@ -615,7 +675,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignCenterToCenter(Object reference, {double gap = 0}) =>
+  AclBuilder alignCenterToCenter(Widget reference, {double gap = 0}) =>
       _setHorizontalAlignment(
         reference: reference,
         selfPoint: AclAxisPointX.center,
@@ -623,7 +683,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignCenterToRight(Object reference, {double gap = 0}) =>
+  AclBuilder alignCenterToRight(Widget reference, {double gap = 0}) =>
       _setHorizontalAlignment(
         reference: reference,
         selfPoint: AclAxisPointX.center,
@@ -631,7 +691,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignRightToLeft(Object reference, {double gap = 0}) =>
+  AclBuilder alignRightToLeft(Widget reference, {double gap = 0}) =>
       _setHorizontalAlignment(
         reference: reference,
         selfPoint: AclAxisPointX.right,
@@ -639,7 +699,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignRightToCenter(Object reference, {double gap = 0}) =>
+  AclBuilder alignRightToCenter(Widget reference, {double gap = 0}) =>
       _setHorizontalAlignment(
         reference: reference,
         selfPoint: AclAxisPointX.right,
@@ -647,7 +707,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignRightToRight(Object reference, {double gap = 0}) =>
+  AclBuilder alignRightToRight(Widget reference, {double gap = 0}) =>
       _setHorizontalAlignment(
         reference: reference,
         selfPoint: AclAxisPointX.right,
@@ -657,7 +717,7 @@ class AclBuilder {
 
   // ── Same-row vertical alignment ───────────────────────────────────────────
 
-  AclBuilder alignTopToTop(Object reference, {double gap = 0}) =>
+  AclBuilder alignTopToTop(Widget reference, {double gap = 0}) =>
       _setVerticalAlignment(
         reference: reference,
         selfPoint: AclAxisPointY.top,
@@ -665,7 +725,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignTopToMiddle(Object reference, {double gap = 0}) =>
+  AclBuilder alignTopToMiddle(Widget reference, {double gap = 0}) =>
       _setVerticalAlignment(
         reference: reference,
         selfPoint: AclAxisPointY.top,
@@ -673,7 +733,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignTopToBottom(Object reference, {double gap = 0}) =>
+  AclBuilder alignTopToBottom(Widget reference, {double gap = 0}) =>
       _setVerticalAlignment(
         reference: reference,
         selfPoint: AclAxisPointY.top,
@@ -681,7 +741,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignMiddleToTop(Object reference, {double gap = 0}) =>
+  AclBuilder alignMiddleToTop(Widget reference, {double gap = 0}) =>
       _setVerticalAlignment(
         reference: reference,
         selfPoint: AclAxisPointY.center,
@@ -689,7 +749,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignMiddleToMiddle(Object reference, {double gap = 0}) =>
+  AclBuilder alignMiddleToMiddle(Widget reference, {double gap = 0}) =>
       _setVerticalAlignment(
         reference: reference,
         selfPoint: AclAxisPointY.center,
@@ -697,7 +757,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignMiddleToBottom(Object reference, {double gap = 0}) =>
+  AclBuilder alignMiddleToBottom(Widget reference, {double gap = 0}) =>
       _setVerticalAlignment(
         reference: reference,
         selfPoint: AclAxisPointY.center,
@@ -705,7 +765,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignBottomToTop(Object reference, {double gap = 0}) =>
+  AclBuilder alignBottomToTop(Widget reference, {double gap = 0}) =>
       _setVerticalAlignment(
         reference: reference,
         selfPoint: AclAxisPointY.bottom,
@@ -713,7 +773,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignBottomToMiddle(Object reference, {double gap = 0}) =>
+  AclBuilder alignBottomToMiddle(Widget reference, {double gap = 0}) =>
       _setVerticalAlignment(
         reference: reference,
         selfPoint: AclAxisPointY.bottom,
@@ -721,7 +781,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignBottomToBottom(Object reference, {double gap = 0}) =>
+  AclBuilder alignBottomToBottom(Widget reference, {double gap = 0}) =>
       _setVerticalAlignment(
         reference: reference,
         selfPoint: AclAxisPointY.bottom,
@@ -920,12 +980,7 @@ class AclBuilder {
   ///
   /// See [setAclDefaultHideUnauthorized] for the full semantics.
   AclBuilder setHideUnauthorized(bool? value) {
-    if (_currentComponent == null) {
-      throw StateError(
-        'setHideUnauthorized must be called immediately after append().',
-      );
-    }
-    _currentComponent!.hideUnauthorized = value;
+    _requireComponent('setHideUnauthorized').hideUnauthorized = value;
     return this;
   }
 
@@ -1160,9 +1215,7 @@ class AclBuilder {
   }
 
   AclBuilder setId(String id) {
-    if (_currentComponent != null) {
-      _currentComponent!.id = id;
-    }
+    _requireComponent('setId').id = id;
     return this;
   }
 
@@ -1190,9 +1243,7 @@ class AclBuilder {
   }
 
   AclBuilder group(String name) {
-    if (_currentComponent != null) {
-      _currentComponent!.group = name;
-    }
+    _requireComponent('group').group = name;
     return this;
   }
 
@@ -1497,72 +1548,105 @@ class AclBuilder {
   // ── Private helpers ────────────────────────────────────────────────────────
 
   AclBuilder _setHorizontalAlignment({
-    required Object reference,
+    required Widget reference,
     required AclAxisPointX selfPoint,
     required AclAxisPointX referencePoint,
     required double gap,
   }) {
-    if (_currentComponent != null) {
-      final refRow = _rowByObject[reference];
-      if (refRow == null) {
-        throw UnsupportedError(
-          'AclBuilder: alignX* forward reference — the reference widget '
-          'must have been appended in a previous row before calling alignX* methods.',
-        );
-      }
-      if (refRow == _currentRow) {
-        throw UnsupportedError(
-          'AclBuilder: alignX* same-row reference — the reference widget '
-          'must be in a different row. Use alignY* for same-row vertical alignment.',
-        );
-      }
-      _currentComponent!.alignXToKey = _resolveReferenceKey(reference);
-      _currentComponent!.alignXFrom = selfPoint;
-      _currentComponent!.alignXTo = referencePoint;
-      _currentComponent!.alignXGap = gap;
+    final component = _requireComponent('alignX*');
+    final entry = _requireAppended(reference, 'alignX*');
+    if (entry.row == _currentRow) {
+      throw UnsupportedError(
+        'AclBuilder: alignX* same-row reference — the reference widget '
+        'must be in a different row. Use alignY* for same-row vertical alignment.',
+      );
     }
+    component.alignXToKey = entry.key;
+    component.alignXFrom = selfPoint;
+    component.alignXTo = referencePoint;
+    component.alignXGap = gap;
     return this;
   }
 
   AclBuilder _setVerticalAlignment({
-    required Object reference,
+    required Widget reference,
     required AclAxisPointY selfPoint,
     required AclAxisPointY referencePoint,
     required double gap,
   }) {
-    if (_currentComponent != null) {
-      if (_currentComponent!.rowCrossAlignmentSet) {
-        throw UnsupportedError(
-          'AclBuilder: alignY* cannot be combined with setVerticalAlignment() '
-          'on the same component — remove the setVerticalAlignment() call.',
-        );
-      }
-      final refRow = _rowByObject[reference];
-      if (refRow == null) {
-        throw UnsupportedError(
-          'AclBuilder: alignY* forward reference — the reference widget '
-          'must have been appended earlier in the same row before calling alignY* methods.',
-        );
-      }
-      if (refRow != _currentRow) {
-        throw UnsupportedError(
-          'AclBuilder: alignY* cross-row reference — the reference widget '
-          'must be in the same row. Use alignX* for cross-row horizontal alignment.',
-        );
-      }
-      _currentComponent!.alignYToKey = _resolveReferenceKey(reference);
-      _currentComponent!.alignYFrom = selfPoint;
-      _currentComponent!.alignYTo = referencePoint;
-      _currentComponent!.alignYGap = gap;
+    final component = _requireComponent('alignY*');
+    if (component.rowCrossAlignmentSet) {
+      throw UnsupportedError(
+        'AclBuilder: alignY* cannot be combined with setVerticalAlignment() '
+        'on the same component — remove the setVerticalAlignment() call.',
+      );
     }
+    final entry = _requireAppended(reference, 'alignY*');
+    if (entry.row != _currentRow) {
+      throw UnsupportedError(
+        'AclBuilder: alignY* cross-row reference — the reference widget '
+        'must be in the same row. Use alignX* for cross-row horizontal alignment.',
+      );
+    }
+    component.alignYToKey = entry.key;
+    component.alignYFrom = selfPoint;
+    component.alignYTo = referencePoint;
+    component.alignYGap = gap;
     return this;
   }
 
-  Key _resolveReferenceKey(Object reference) {
-    if (reference is Key) return reference;
-    return _referenceKeyByObject.putIfAbsent(
-      reference,
-      () => GlobalKey(debugLabel: 'acl-ref-${_referenceKeyByObject.length}'),
+  /// Every widget instance appending [child] makes this builder responsible
+  /// for: [child] itself, and — when it is a flex wrapper — the widget it
+  /// wraps, down the whole chain.
+  ///
+  /// **The chain is `Flexible` and its subclasses, which is what `Expanded`
+  /// is, and nothing else.** A wrapper is unwrapped because the builder gives
+  /// it no key of its own: the widget that ends up in the tree, and that a
+  /// reference would have to mean, is the one inside. Any other wrapper —
+  /// `Padding`, `Center`, one of the caller's own — is a component in its own
+  /// right and is compared as itself. A new wrapper type that the row lays out
+  /// natively has to be added here *and* to [append]'s `canAttachComponentKey`
+  /// test, or it re-opens the hole this closes.
+  ///
+  /// `Spacer` yields only itself: it wraps nothing the caller passed in.
+  Iterable<Widget> _instancesOf(Widget child) sync* {
+    yield child;
+    var inner = child;
+    while (inner is Flexible) {
+      inner = inner.child;
+      yield inner;
+    }
+  }
+
+  bool _alreadyAppended(Widget instance) =>
+      _appended.containsKey(instance) || _unkeyedChildren.contains(instance);
+
+  Key _newComponentKey() =>
+      GlobalKey(debugLabel: 'acl-ref-${_appended.length}');
+
+  /// The row [reference] was appended to, refusing anything this container has
+  /// no component for.
+  ///
+  /// A reference that resolves to nothing is the worst shape this API can
+  /// take: the layout still builds, the component silently keeps its own
+  /// size, and the only symptom is that two things a reader was told would
+  /// match do not. [caller] names the method the author actually wrote.
+  ({Key key, _RowData row}) _requireAppended(Widget reference, String caller) {
+    final entry = _appended[reference];
+    if (entry != null) return entry;
+    if (_unkeyedChildren.contains(reference)) {
+      throw UnsupportedError(
+        'AclBuilder: $caller cannot reference a Flexible, Expanded or Spacer. '
+        'The row lays those out itself, so they carry no component key and '
+        'there is nothing for the reference to resolve against. Append the '
+        'content as a plain widget and reference that.',
+      );
+    }
+    throw UnsupportedError(
+      'AclBuilder: $caller was given a widget this builder has no component '
+      'for. Pass the very widget instance handed to an earlier append() — '
+      'capture it in a variable and reference that — not a Key, a copy, or a '
+      'widget appended later.',
     );
   }
 }

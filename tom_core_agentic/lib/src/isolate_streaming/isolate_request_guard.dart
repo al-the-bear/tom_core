@@ -107,6 +107,12 @@ final class IsolateRequestGuard {
   /// Called by the host from its isolate-exit / error listener.
   /// Idempotent — the first call wins and records [detail]; later
   /// calls are no-ops.
+  ///
+  /// **Terminal.** There is no revive: once a guard has been told its worker
+  /// died it fails every future request for the rest of its life. A host that
+  /// respawns its worker builds a new guard, which is the honest arrangement —
+  /// the requests in flight at the death are gone either way, and a guard that
+  /// could be reset would have to decide what it owed them.
   void markWorkerDead([String? detail]) {
     if (_workerDead) return;
     _workerDead = true;

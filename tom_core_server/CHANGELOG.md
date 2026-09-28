@@ -1,3 +1,12 @@
+## Unreleased
+
+### Fixed
+
+- **A broken markdown reference link in `doc/authentication.md`.** The page
+  links type names to in-document anchors throughout; `TomAuthenticationService`
+  carried the brackets with no target and has no anchor to point at, so the
+  brackets are gone.
+
 ## 1.3.0
 
 ### Added

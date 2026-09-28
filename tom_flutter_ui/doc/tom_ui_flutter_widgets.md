@@ -590,7 +590,7 @@ removed is a proposal that gets made again.
 
 | Widget | Ships | Documented in | What it is |
 |--------|-------|---------------|------------|
-| `TomRadioGroup` / `TomRadioGroupItem` | Yes — `lib/src/custom/tom_radio_group.dart` | [custom.md](custom.md) | Radio selection whose **whole** group is gated by one resource key. It renders `Radio<T>` + `InkWell` rows beneath a `RadioGroup<T>` ancestor; it does not group `TomRadio` widgets, and never did. |
+| `TomChoiceGroup` / `TomChoiceGroupItem` | Yes — `lib/src/custom/tom_choice_group.dart` | [custom.md](custom.md) | Radio selection whose **whole** group is gated by one resource key. It renders `Radio<T>` + `InkWell` rows beneath a `RadioGroup<T>` ancestor; it does not group `TomRadio` widgets, and never did. |
 | `TomTreeView` / `TomTreeNode` | Yes — `lib/src/widgets/trees/tom_trees.dart` | [widgets.md](widgets.md) | Hierarchical tree with expand/collapse state, authorized at the widget level. `TomTreeNode` is its plain data model. This is the pair the Tree Family row in section I already records as `Yes (custom)`. |
 | `TomAuthTreeView` / `TomAuthTreeNode` | Yes — `lib/src/custom/tom_auth_tree.dart` | [custom.md](custom.md) | The **per-node**-auth tree: each node resolves its own `TomAuthState`, and a `disabled` node caps its entire subtree. Reach for it when the grant varies *within* the tree, and for `TomTreeView` when it does not. |
 | `TomAuthGuard` | Yes — `lib/src/custom/tom_auth_guard.dart` | [custom.md](custom.md) | Hides or disables a `child` by the auth state resolved from a `tomId`. |

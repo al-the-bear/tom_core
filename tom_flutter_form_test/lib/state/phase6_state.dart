@@ -1,7 +1,7 @@
 /// Phase 6 backing state — Demos Q + R.
 ///
 /// Demo Q (`TomAuthGuard` + `TomEmptyState` + `TomLoadingOverlay`) and
-/// Demo R (`TomAuthTreeView` + `TomRadioGroup` + `TomInfiniteScroll`)
+/// Demo R (`TomAuthTreeView` + `TomChoiceGroup` + `TomInfiniteScroll`)
 /// each carry small UI-state holders so the demos can stay
 /// `StatelessWidget`-friendly where convenient. The real per-tab state
 /// lives in the [DemoQController] / [DemoRController] classes below.
@@ -69,7 +69,7 @@ class DemoQController extends ChangeNotifier {
 
 /// Selection / fetch controller for Demo R. Holds:
 ///
-///   * `radioValue`: current `TomRadioGroup<String>` selection.
+///   * `radioValue`: current `TomChoiceGroup<String>` selection.
 ///   * `failNext`: when true, the next page fetch throws — exercises
 ///     the error-state slot on `TomInfiniteScroll` (outer error slot).
 ///   * `throwOnTile`: when true, the per-tile builder throws for a

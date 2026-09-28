@@ -46,6 +46,22 @@
 // up to [maxRecursion] levels (default 10) and then errors with
 // `placeholder.recursion.exceeded`.
 //
+// What is re-scanned is the WHOLE text, so a substituted value is scanned
+// again whatever form produced it, and what it can reference is every
+// namespace this resolver has: a binding value may reference the environment,
+// an environment value may reference a binding, and an expression result is
+// text like any other. The only thing not re-scanned is a reserved
+// `${file:…}` / `${state:…}` form, which is never substituted at any level.
+//
+// That is the composition feature and the trust boundary at once. Any text
+// this resolver expands - an environment variable, a config value read from a
+// file, an evaluator's return value - is expanded against the full namespace
+// rather than inserted as data, so a value arriving from outside the program
+// that happens to contain `${…}` is not inert. To resolve untrusted text,
+// give it a resolver with nothing to reach: an empty `environment` over a
+// fresh stack, in strict mode, refuses an unknown reference rather than
+// rendering it away. There is no per-value "insert as data" mode.
+//
 // Strict vs lenient: an unknown `${name}` / `${env:NAME}` either
 // errors (`placeholder.unresolved`, strict) or renders as an empty string
 // (lenient). The default is strict.

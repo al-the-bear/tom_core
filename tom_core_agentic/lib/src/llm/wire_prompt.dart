@@ -27,8 +27,9 @@
 ///
 /// **Two channels.** A `WirePrompt` carries the prompt as two separate parts so
 /// providers can route each to its native channel (a top-level `system` field
-/// on Anthropic, a `system`-role message on OpenAI / Ollama; the Stub and the
-/// Agent SDK concatenate):
+/// on Anthropic, a `system`-role message on OpenAI / Ollama). A backend with no
+/// channel separation — the Agent SDK, whose `query` takes one string — sends
+/// [combined] instead:
 ///   - [system] — the standing framing: the assistant-dedication anchor,
 ///     the role persona / objective, the structured-output declaration.
 ///     This is the part the model treats as instructions.
@@ -104,11 +105,29 @@ final class WirePrompt {
   /// The two channels joined into one string, with a blank line between
   /// them and empty parts dropped.
   ///
-  /// This is what a provider sends when it has no native channel
-  /// separation — the Stub and the Agent SDK permanently, and transitionally
-  /// any provider until its native-channel mapping lands. Because [system]
-  /// leads (and begins with the anchor), `combined` always begins with the
-  /// anchor too.
+  /// Two consumers, and only the first is a provider's choice:
+  ///
+  ///   - **A backend with no channel separation sends this.** The Agent SDK's
+  ///     `query` takes one string, so the provider hands it `combined`
+  ///     unmodified. A backend that *does* have channels routes [system] and
+  ///     [user] to them and never sends `combined`. Which of the two a
+  ///     provider does is the whole of its native-channel mapping; this getter
+  ///     is the answer for backends that have nowhere to map to, not a way
+  ///     station on the road to one.
+  ///   - **Every provider hashes it.** [LlmProvider.complete] and
+  ///     [LlmProvider.completeStream] must stamp the report's `promptHash`
+  ///     with the content hash of `combined` whether or not they send it, so
+  ///     one prompt fingerprints the same across two routes that put its
+  ///     halves in different places.
+  ///
+  /// The join is therefore part of the hash contract, not a formatting
+  /// detail: change the separator, the order, or the rule that drops an empty
+  /// part, and every prompt hashes differently from the way it was already
+  /// recorded. The three branches are fixed rather than incidental, and the
+  /// suite holds them.
+  ///
+  /// Because [system] leads (and begins with the anchor), `combined` always
+  /// begins with the anchor too.
   String get combined {
     if (user.isEmpty) return system;
     if (system.isEmpty) return user;

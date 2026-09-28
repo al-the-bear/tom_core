@@ -202,7 +202,6 @@ class InMemoryAppBackend implements AppBackend {
         'One file per task. It uploads as soon as you pick it.',
     'board.item.attachment.present': 'Has an attachment ({size})',
     'board.item.attachment.downloaded': 'Downloaded {name} ({size})',
-    'board.item.comment.add': 'Add comment',
     'board.item.comment.title': 'Add a comment',
     'board.item.comment.hint': 'Write a comment…',
     'board.item.comment.submit': 'Post comment',

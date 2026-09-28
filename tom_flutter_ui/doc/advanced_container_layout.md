@@ -8,12 +8,12 @@ layout. On top of plain placement it layers **responsive variants**, **row
 breakpoints**, per-group **visibility controllers**, **device-context variant
 detection**, scoped **ids/groups**, and **authorization-aware hiding**.
 
-The public entry point is [`AclBuilder`] — a fluent builder whose `build()`
-returns an [`Acl`] widget. Everything the builder accumulates is plain data, so
+The public entry point is `AclBuilder` — a fluent builder whose `build()`
+returns an `Acl` widget. Everything the builder accumulates is plain data, so
 a layout can be *constructed* (and asserted on) with no widget tree; only
 *rendering* needs `BuildContext`.
 
-Rows do not have to be written by hand. [`AclFlowContainer`] takes a flat child
+Rows do not have to be written by hand. `AclFlowContainer` takes a flat child
 list and *generates* the rows for it under one of two rules — `wrap` or `grid`
 — then hands them to the same engine, so a flowed layout keeps ids, anchors,
 sizing and authorization hiding intact.
@@ -24,7 +24,9 @@ sizing and authorization hiding intact.
 > convergence loop, and the precedence rules between container defaults, rows
 > and components — is in
 > [acl_design_specification.md](acl_design_specification.md), whose §17 is the
-> complete `AclBuilder` surface. Both are registered in
+> complete `AclBuilder` surface. For the symbol-level listing — every public
+> type the barrel exports, with a section each — see
+> [api/api_summary_advanced_container_layout.md](api/api_summary_advanced_container_layout.md). Both are registered in
 > [README.md](README.md), which explains the split.
 
 ## Table of Contents
@@ -143,7 +145,7 @@ final Acl layout = AclBuilder(title: 'Address')
   explicit `dist` on the individual call always wins.
 - Size methods (`setPSize` / `setMSize` / `setXSize` and their char-width
   variants) set preferred/minimum/maximum sizes; `setAttr` / `clearAttr` toggle
-  [`AclFlags`].
+  `AclFlags`.
 - Alignment methods (`alignLeftToLeft` … `alignBottomToBottom`, plus the
   `setRowHorizontalAlignment` / `setRowVerticalAlignment` family) constrain a
   component against an earlier reference.
@@ -151,13 +153,42 @@ final Acl layout = AclBuilder(title: 'Address')
   data into an `Acl` widget and performs no rendering.
 
 `append()` rejects the **same widget instance** twice (identity-based key
-generation must stay unambiguous), and the `alignX*` / `alignY*` methods throw
-`UnsupportedError` on a forward, same-row, or cross-row reference violation —
-so misuse fails loudly at build time, not silently at render time.
+generation must stay unambiguous). A `Flexible`, `Expanded` or `Spacer` is
+unwrapped for that comparison: those three carry no key of their own, so the
+widget that has to be distinct is the one inside — appending `w` and then
+`Expanded(child: w)` is the same duplicate written two ways. The unwrapping
+stops there. Any other wrapper is a component in its own right, so what it
+holds is *content*: a widget may appear inside a later component without being
+a second component itself.
+
+`Flexible`, `Expanded` and `Spacer` are also handed to the row **unwrapped** —
+no scope, no sizing box, nothing between them and the `Row`. They are
+`ParentDataWidget`s, and a `ParentDataWidget` whose parent is not the flex it
+describes cannot apply its parent data. The module's own elastic space is
+`gap()`, which needs no widget instance at all.
+
+Every reference method — `alignX*`,
+`alignY*`, `sameWidthAs`, `sameHeightAs`, `sameSize` — throws
+`UnsupportedError` on a reference this builder has no component for, or one in
+the wrong row for that method. So misuse fails loudly where it was written,
+not silently at render time.
+
+A reference is **the widget instance you appended**, captured in a variable and
+passed back; the parameter type is `Widget`, so a `Key` will not compile. The
+builder will not accept a widget it has not appended *yet*, either: a forward
+reference cannot be told from a typo, and accepting it would also make a
+same-row size reference legal that the row rules forbid. `Flexible`, `Expanded`
+and `Spacer` are refused by name — the row lays those out itself, so they carry
+no key for a reference to resolve against.
+
+Enforcing it here rather than at render time is the point. An unresolvable
+reference has no symptom of its own: the container lays out, the component
+keeps its own size, and what reaches the eye is two widths that were meant to
+match and do not.
 
 ## Layout attribute flags
 
-[`AclFlags`] mirrors the Java AWT constants as composable bits:
+`AclFlags` mirrors the Java AWT constants as composable bits:
 
 | Flag | Bit | Meaning | Set with | Read with |
 | ---- | --- | ------- | -------- | --------- |
@@ -215,7 +246,7 @@ guard against overflow.
 
 ## Row alignment
 
-[`RowAlignment`] (`left` / `center` / `right`) controls a row's horizontal
+`RowAlignment` (`left` / `center` / `right`) controls a row's horizontal
 packing. Set it per row with `setRowHorizontalAlignment`, or via the
 extension shortcuts `setRowAlignLeft` / `setRowAlignCenter` /
 `setRowAlignRight`. Vertical (cross-axis) packing uses `AclRowCrossAlignment`,
@@ -277,12 +308,24 @@ Two consequences follow from that, and both are easier to hit than to diagnose:
 - **`gap()` is not a target for per-component calls.** The builder stops
   tracking a current component when it inserts a slot, so `setPSize`,
   `expandX`, `setVerticalAlignment` and friends chained straight after a
-  `gap()` are silently ignored rather than applied to the slot. Size a gap
-  with its `weight`, not with a size hint.
+  `gap()` **throw a `StateError` naming the setter**. Size a gap with its
+  `weight`, not with a size hint.
 - **Setting `AclFlags.gapElement` by hand discards a widget.** Reaching for
   `.append(w).setAttr(AclFlags.gapElement)` turns `w` into a spacer and drops
   it from the tree. Use `gap()`; it sets the bit, the weight and the
   placeholder together.
+
+Every per-component setter answers the same way, and throwing is deliberate:
+the value the caller wrote is being dropped, and nothing downstream would say
+so — the layout merely comes out subtly wrong, which costs far more to find than
+a throw at the call that is wrong. The three ways to arrive without a current
+component are before the first `append`, and after `gap()`, `newRow()` or
+`gapRow()`.
+
+The pattern this costs is a conditional append — `if (x) b.append(…);
+b.setPSize(…)` — which now has to put the setter inside the condition. That is
+where it belonged: outside, it was silently doing nothing on the branch the
+author was not thinking about.
 
 | Situation | Slot width |
 | --------- | ---------- |
@@ -364,7 +407,7 @@ The rule spans the full container width — it is not affected by
 ## Container borders
 
 A border belongs to the container, not to a row, and is described by an
-[`AclBorderStyle`]. Pass it to the constructor or set it on the chain:
+`AclBorderStyle`. Pass it to the constructor or set it on the chain:
 
 ```dart
 AclBuilder(borderStyle: const AclBorderStyle.solid(rounded: true))
@@ -415,7 +458,7 @@ theme, not to a layout container.
 
 A title turns the container into a labelled group — the classic field-set look,
 where the label interrupts the border line. `Acl` is the widget that draws it;
-[`AclLayout`], which `Acl` extends, is the same layout without one, and an
+`AclLayout`, which `Acl` extends, is the same layout without one, and an
 `Acl` whose `title` is null or empty and which has no `titleWidget` renders
 exactly as an `AclLayout`.
 
@@ -508,7 +551,7 @@ AclDirectionScope(
 ```
 
 A container resolves its direction in this order: its own explicit
-`direction`, then the nearest [`AclDirectionScope`] ancestor, then
+`direction`, then the nearest `AclDirectionScope` ancestor, then
 `AclDirection.ltr`. Set the container's own value only when it must oppose its
 surroundings; otherwise put a scope above the tree so nested containers agree
 without each restating it.
@@ -533,11 +576,11 @@ intent is symmetric.
 
 ## Flow containers — `wrap` and `grid`
 
-[`AclFlowContainer`] is a widget that **generates** its rows from a flat,
+`AclFlowContainer` is a widget that **generates** its rows from a flat,
 ordered child list instead of having them written one `newRow()` at a time. It
 does not extend `AclContainer` — it composes one: `build()` measures the
 available width with a `LayoutBuilder`, computes the row assignment, and renders
-the result through an ordinary `AclContainer`. [`AclFlowKind`] names the two
+the result through an ordinary `AclContainer`. `AclFlowKind` names the two
 rules:
 
 | Kind | Rule |
@@ -608,7 +651,7 @@ The container measures the line with a `LayoutBuilder` and subtracts its own
 horizontal padding, so the rule breaks against the *content* width. The row
 assignment itself is a pure function of plain data, exposed both as
 `buildRows(availableWidth)` on the container and as the free functions
-[`aclWrapRows`] / [`aclGridRows`], so it can be asserted with no widget tree at
+`aclWrapRows` / `aclGridRows`, so it can be asserted with no widget tree at
 all:
 
 **An unbounded width reaches `buildRows` as `null`**, and the two kinds answer
@@ -693,7 +736,7 @@ opposite of `AclVariant.atWidth` / `AclRowBreakpoint.atWidth`, which apply
 
 ## Device context and variant detection
 
-[`AclDeviceContext`] is an immutable snapshot of the render environment
+`AclDeviceContext` is an immutable snapshot of the render environment
 (width/height, input mode, form factor, orientation, platform, web flag,
 density, text direction, accessibility scale). `AclDeviceContext.of(context, …)`
 builds one from a `BuildContext`, but the **classification logic is pure and
@@ -703,9 +746,9 @@ static** — testable with no widget tree:
 | -------- | ---- |
 | `resolveFormFactor(width)` | `< 600` → phone, `< 1024` → tablet, else desktop. |
 | `resolveDensity(visualDensity)` | avg of the two axes: `≤ −1.5` compact, `≤ −0.5` comfortable, else standard. |
-| `resolveInputMode(platform)` | iOS/Android → touch; desktop + web → pointer. |
+| `resolveInputMode(platform)` | iOS/Android → touch; desktop → pointer. The web is not consulted: a browser reports the platform it is running on, and a phone browser is a touch device. |
 
-`buildConvenienceDetector({...})` assembles an [`AclVariantDetector`] from named
+`buildConvenienceDetector({...})` assembles an `AclVariantDetector` from named
 facets with **AND** semantics — every supplied condition must hold. It returns
 `null` when no facet is given (the default variant); otherwise the predicate
 treats `width`/`height` as **exclusive upper bounds** (`>=` → no match),
@@ -723,7 +766,7 @@ height if a height-gated variant is meant to fire. See
 
 ## Group visibility controllers
 
-A named group's visibility is driven by an [`AclGroupVisibilityController`],
+A named group's visibility is driven by an `AclGroupVisibilityController`,
 whose `modeNotifier` (a `ValueNotifier<AclGroupVisibilityMode>`) the container
 listens to. The three modes are `visible`, `hidden` (removed from layout — zero
 size, no paint), and `disabled` (shown but non-interactive, rendered through
@@ -743,7 +786,7 @@ widget tree; remember to `dispose()` them with the container. Register one with
 
 ## Scopes, ids, and groups
 
-[`AclScope`] is an `InheritedWidget` that propagates the container, component,
+`AclScope` is an `InheritedWidget` that propagates the container, component,
 row, and group id paths down the tree (`AclScope.of(context)` reads the
 nearest). Its `fullIdPath` is the same string the container hands
 `TomAuthorization.resolveAuth` for that component, so a component that reads its
@@ -874,7 +917,7 @@ through `TomTheme.disabledStyle`.
 
 The visuals belong to the theme rather than to the container.
 `TomTheme.readonlyStyle` and `TomTheme.disabledStyle` each hold a
-[`TomStateStyle`] — the same fields `TomPolicyNodeBase` and `TomWidgetMixin`
+`TomStateStyle` — the same fields `TomPolicyNodeBase` and `TomWidgetMixin`
 honour, so a restyle reaches the whole framework and not just this container.
 Put a `TomThemeScope` anywhere above the container to change either treatment:
 

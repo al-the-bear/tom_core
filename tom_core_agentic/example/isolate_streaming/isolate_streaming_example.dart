@@ -90,6 +90,18 @@ Future<void> _demoCancellation() async {
     print('  shipping a handle -> ArgumentError: object is unsendable');
   }
 
+  // What the `finally` in `_serveRequest` buys. Both requests above ended —
+  // one cancelled in flight, one cancelled before it began — and the worker's
+  // registry is empty again, because each handle was disposed. Skip that call
+  // and the entry stays for the life of the executor: nothing fails, nothing
+  // is logged, and `inFlightCount` is the number that would have told you.
+  final ledger = Completer<String>();
+  replies[-1] = ledger;
+  toWorker.send(<String, Object?>{'op': 'stats'});
+  final inFlight = int.parse(await ledger.future);
+  print('  registry after both requests: $inFlight in flight');
+  assert(inFlight == 0);
+
   toWorker.send(<String, Object?>{'op': 'stop'});
   fromWorker.close();
 }
@@ -106,6 +118,14 @@ void _cancellationWorker(SendPort toHost) {
     switch (envelope['op'] as String) {
       case 'stop':
         inbox.close();
+      case 'stats':
+        // The registry's own view of what it still holds. Reported rather than
+        // asserted here because the host is the side with the assertions, and
+        // this is the one fact about the worker's state it cannot see.
+        toHost.send(<String, Object?>{
+          'cancellation': -1,
+          'status': '${registry.inFlightCount}',
+        });
       case 'cancel':
         // The executor is what flips the flag — the host only sent a message.
         registry.cancel(

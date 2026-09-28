@@ -31,10 +31,12 @@
 /// a per-field override remains possible by repeating the key under that
 /// field's base path.
 ///
-/// The item's attachment is worded under `board.item.attachment.*`, **not**
-/// under `todo.item.*`: [AppResourceBundles.gradableItemKeys] derives the
-/// graded field set from the `todo.item.*` keys, and the attachment is not a
-/// graded field — it is a file slot, authorized by the item's resource state.
+/// The `todo.item.*` texts label exactly the domain's gradable fields
+/// (`gradableItemKeys`) — `test/resource_key_consistency_test.dart` holds the
+/// two together in both directions. The item's attachment is worded under
+/// `board.item.attachment.*` instead: it is not a graded field but a file slot,
+/// authorized by the item's resource state, and a `todo.item.attachment.*` text
+/// would be a label for a field the item form does not have.
 ///
 /// **`share.grantee.hint` is a live id, and deliberately unlike the client's.**
 /// A hint is an instruction to type something, so it has to name a value *this*
@@ -77,35 +79,6 @@ class AppResourceBundles {
 
   /// The app client's full bundle (board + item-form texts).
   static ResourceBundleDto appBundle() => ResourceBundleDto(texts());
-
-  /// The scope/`tomId` prefix (`todo.item.`) every gradable field key sits under.
-  static const String gradableItemPrefix = 'todo.item.';
-
-  /// The gradable `todo.item.<field>` keys, in the display order the served
-  /// bundle labels them — the app server's **single source** for the gradable
-  /// item set. Derived from the fields labelled under `todo.item.*` in
-  /// [texts] rather than a hand-maintained list, so a field added to or removed
-  /// from the resource tree changes the graded set with it. Both the field-grade
-  /// resolver (which reports a `TomAuthState` per key) and the write path (which
-  /// enforces grades per column) address exactly these keys.
-  ///
-  /// The bundle — not raw entity reflection — is the source because it carries
-  /// the wire tokens the two authorization layers agree on (`estimate`, whose
-  /// reflected member is `estimateHours`). The bundle↔domain linkage is
-  /// held by the `resource_key_consistency` drift guard.
-  static List<String> gradableItemKeys() {
-    final seen = <String>{};
-    final keys = <String>[];
-    for (final key in texts().keys) {
-      if (!key.startsWith(gradableItemPrefix)) continue;
-      // `todo.item.<field>.<suffix>` — the field token sits at index 2.
-      final parts = key.split('.');
-      if (parts.length < 4) continue;
-      final field = parts[2];
-      if (seen.add(field)) keys.add('$gradableItemPrefix$field');
-    }
-    return keys;
-  }
 }
 
 /// Reads a nested JSON resource asset at [path] (working-directory-relative) and

@@ -55,8 +55,15 @@ class TomLoadingOverlay extends StatelessWidget {
     if (!isLoading) return child;
     final theme = Theme.of(context);
     final overlay = Positioned.fill(
-      child: AbsorbPointer(
-        absorbing: blocksPointerEvents,
+      // `IgnorePointer`, not `AbsorbPointer(absorbing: blocksPointerEvents)`.
+      // The scrim is a `ColoredBox`, whose hit-test behaviour is opaque, so it
+      // swallows a tap on its own — an `AbsorbPointer` that had stopped
+      // absorbing changed nothing, and `blocksPointerEvents: false` left the
+      // content exactly as unreachable as the default. Taking the whole
+      // overlay out of hit testing is what actually hands the pointer back;
+      // nothing in it is interactive.
+      child: IgnorePointer(
+        ignoring: !blocksPointerEvents,
         child: ColoredBox(
           color: scrimColor,
           child: Center(

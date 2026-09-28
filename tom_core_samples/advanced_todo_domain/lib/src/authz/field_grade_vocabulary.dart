@@ -112,8 +112,15 @@ const Map<ProjectRole, Map<String, TomAuthState>> projectRoleFieldGrades = {
 };
 
 /// The gradable item resource keys, in display order — the columns of
-/// [projectRoleFieldGrades] (the owner map carries the full set). The item
-/// screen and the backends resolve grades over exactly these keys.
+/// [projectRoleFieldGrades], every role's map carrying exactly these keys.
+///
+/// The one declaration of the set. The app server's field-grade resolver and
+/// its item write path iterate it directly; the app client's item screen
+/// resolves grades over its form's gradable fields, which
+/// `todo_item_form_test.dart` holds equal to it in order; the auth server's
+/// seed guard composes its expectation from it. The only other literal spelling
+/// is the anchor in this package's own test, which is where a change to the set
+/// has to be made on purpose.
 ///
 /// They name the item form's **gradable fields**, addressed by scope + `tomId`
 /// (G-RES-6) — so a key names the *concept*, not the storage member and not the

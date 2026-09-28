@@ -180,9 +180,21 @@ null
 reparent, setContainerProp, setSlotHint, insertContainer, removeContainer
 ```
 
-`reconcileWarnings()` is the method to reach for after a regeneration: it
-reports the overrides whose `targetNodeId` the new base no longer contains, so a
-delta orphaned by a model change surfaces instead of silently doing nothing.
+`reconcileWarnings()` is the method to reach for after a regeneration. It
+reports three things, and the second is the one the two-layer design most needs:
+
+- an override whose addressed id the new base no longer contains, so a delta
+  orphaned by a model change surfaces instead of silently doing nothing;
+- an override whose id still resolves but now names the **wrong kind of node** —
+  `setSlotHint` on a container, `setContainerProp` or `removeContainer` on a
+  slot, or a slot named as a new parent, which cannot own children. A vanished
+  id is conspicuous; an id a regeneration re-used for a different kind of node
+  goes on applying and quietly means something other than what was authored;
+- an `insertContainer` whose id the base has since taken, or an operation that
+  needs a new parent and names none.
+
+Nothing is dropped in any case — the list is advice to whoever regenerated the
+base.
 
 ```dart complete
 import 'package:tom_core_codespecs/tom_core_codespecs.dart';
@@ -453,9 +465,19 @@ region, total
 bar, line, pie, donut, scatter, gauge, heatmap
 ```
 
-`TomReportResultSection.rows` is a **`Stream`**, not a `List`, and deliberately: a
-report exists for results too large to hold inline, so rendering the same result
-twice needs a section that can produce a fresh stream.
+`TomReportResultSection.rows` is a **`Stream`**, not a `List`, and deliberately:
+a report exists for results too large to hold inline.
+
+The section is built from a **factory** rather than from a stream, because it is
+read once per delivery and `deliveryChannels` is a list — a report declaring
+`apiResponse` and `fileExport` is one run delivered two ways. `rows` calls that
+factory on every read, so the second delivery gets its own pass instead of a
+second listen on a spent stream. A large result is single-subscription, which is
+exactly the case the streaming shape exists for, so handed a stream the second
+delivery would throw.
+
+The factory must return a new stream on every call — open the query, or the
+file, *inside* the closure. That is the one part the type cannot enforce.
 
 ## Error Handling
 
@@ -473,6 +495,7 @@ rather than at render.
 | `TomReportResultSection(columns: [])` | `ArgumentError` — a section with no columns renders nothing |
 | Duplicate column names in one definition | `ArgumentError` |
 | `TomLayoutModel` override targeting a missing node | **No throw** — reported by `reconcileWarnings()` |
+| `TomLayoutModel` override targeting the wrong node kind | **No throw** — reported by `reconcileWarnings()` |
 | `TomRouteRegistry` edge to an unregistered route | **No throw** — reported by `danglingRouteReferences()` |
 | `TomMessageKeyRegistry.resolve` for an unknown locale | **No throw** — falls back to the base copy |
 | `TomMessageKeyRegistry.resolve` for an unknown key | `ArgumentError` — the catalogue is closed, so an unknown key is a defect, not a miss |

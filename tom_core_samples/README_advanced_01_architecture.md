@@ -365,7 +365,7 @@ is the shared JWT signing key above.
 
 - [`README_advanced_sample.md`](README_advanced_sample.md) — Architecture section + diagram, the suite map, and the quickstart.
 - The eight package READMEs, for per-node detail.
-- `assets/architecture/` — the nine SVG figures of the suite, seven of them embedded above (`advanced_01_layering`, `advanced_02_jwt_shared_key`, `advanced_03_grant_propagation`, `advanced_04_overall_architecture`, `advanced_05_call_api_service_routing`, `advanced_06_token_refresh`, `advanced_07_request_lifecycle`) and two in sibling chapters (`advanced_08_domain_ownership` in 03, `advanced_09_grade_data_path` in A1). Each SVG opens with an HTML-comment description of what it draws; the mermaid equivalent sits beside the figure in the embedding document, under a `Text / mermaid equivalent` disclosure.
+- `assets/architecture/` — the suite's nine SVG figures. [`assets/README.md`](assets/README.md) is their inventory — which chapter embeds each — and the conventions every figure follows: a description comment inside the SVG, a mermaid equivalent beside the embed, full-sentence alt text.
 
 ---
 

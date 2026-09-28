@@ -41,6 +41,28 @@ Set<String> declaredTypes(String source) => RegExp(
 /// Every `import` / `export` in a source file, as `(keyword, target)`.
 final directive = RegExp(r"^\s*(import|export)\s+'([^']+)'", multiLine: true);
 
+/// Every `part` in a source file, as the target it names.
+///
+/// A library's declarations are not all in the file that carries its name.
+/// `acl_container.dart` is one library across twelve files, so a reader of the
+/// barrel that exports it can reach every type those parts declare — and a
+/// walk that stops at the named file reports otherwise, which reads as a
+/// correct dartdoc link being wrong.
+final partDirective = RegExp(r"^\s*part\s+'([^']+)'", multiLine: true);
+
+/// The types [path] declares, counting the parts it is assembled from.
+Set<String> declaredTypesWithParts(String path) {
+  final source = File(path).readAsStringSync();
+  final types = declaredTypes(source);
+  for (final m in partDirective.allMatches(source)) {
+    final target = directiveTarget(path, m.group(1)!);
+    if (target == null) continue;
+    final file = File(target);
+    if (file.existsSync()) types.addAll(declaredTypes(file.readAsStringSync()));
+  }
+  return types;
+}
+
 /// The repo-relative path a directive in [from] names, or `null` when the
 /// target leaves the package (`dart:…`, or another package's `package:` URI).
 ///
@@ -78,7 +100,7 @@ Map<String, Set<String>> exportSurfaces() {
   final surfaces = <String, Set<String>>{};
   for (final path in sources) {
     final source = File(path).readAsStringSync();
-    surfaces[path] = declaredTypes(source);
+    surfaces[path] = declaredTypesWithParts(path);
     exports[path] = [
       for (final m in directive.allMatches(source))
         if (m.group(1) == 'export') ?directiveTarget(path, m.group(2)!),
@@ -108,7 +130,7 @@ Map<String, Set<String>> exportSurfaces() {
 /// into one set.
 Set<String> reachableTypes(String path, Map<String, Set<String>> surfaces) {
   final source = File(path).readAsStringSync();
-  final reachable = <String>{...declaredTypes(source)};
+  final reachable = <String>{...declaredTypesWithParts(path)};
   for (final m in directive.allMatches(source)) {
     if (m.group(1) != 'import') continue;
     final target = directiveTarget(path, m.group(2)!);

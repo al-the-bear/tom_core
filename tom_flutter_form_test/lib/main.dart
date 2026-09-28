@@ -454,7 +454,7 @@ class DemoListScreen extends StatelessWidget {
           title: 'Demo R: Tree / Radio / Infinite scroll (Phase 6)',
           description:
               'TomAuthTreeView with per-node auth + inheritance; '
-              'TomRadioGroup with group-level auth; TomInfiniteScroll over '
+              'TomChoiceGroup with group-level auth; TomInfiniteScroll over '
               'a 10 000-row source with TomSkeletonLoader + '
               'TomErrorBoundary, including a synthetic page-fetch failure.',
           onTap: () => Navigator.push(

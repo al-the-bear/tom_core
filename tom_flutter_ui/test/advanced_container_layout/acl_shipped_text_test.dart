@@ -25,6 +25,20 @@ import 'package:flutter_test/flutter_test.dart';
 const _sourcePaths = <String>[
   'lib/src/advanced_container_layout/acl_builder.dart',
   'lib/src/advanced_container_layout/acl_container.dart',
+  // The `acl_container` library's parts. Listed rather than globbed: a file
+  // that stops being scanned should be a line somebody deleted, not a name
+  // that stopped matching.
+  'lib/src/advanced_container_layout/acl_container_values.dart',
+  'lib/src/advanced_container_layout/acl_container_model.dart',
+  'lib/src/advanced_container_layout/acl_container_widgets.dart',
+  'lib/src/advanced_container_layout/acl_container_state_lifecycle.dart',
+  'lib/src/advanced_container_layout/acl_container_passes.dart',
+  'lib/src/advanced_container_layout/acl_container_identity.dart',
+  'lib/src/advanced_container_layout/acl_container_fitting.dart',
+  'lib/src/advanced_container_layout/acl_container_geometry.dart',
+  'lib/src/advanced_container_layout/acl_container_chrome.dart',
+  'lib/src/advanced_container_layout/acl_container_content.dart',
+  'lib/src/advanced_container_layout/acl_container_row.dart',
 ];
 
 /// The one document this unit's section numbers may refer to.

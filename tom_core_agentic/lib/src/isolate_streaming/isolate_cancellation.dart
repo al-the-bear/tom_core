@@ -128,6 +128,13 @@ final class IsolateCancellationTokenAllocator {
 /// closed) and is dropped; an id `> _highestSeenId` is a genuine pre-open
 /// cancel and is remembered. This keeps `_pendingCancellations` bounded by
 /// the number of genuinely in-flight-but-unopened requests.
+///
+/// That precondition is **asserted** in [register], because breaking it is
+/// silent: a genuine pre-open cancel for an id below the mark is read as
+/// post-close and dropped, so the request runs to completion having been
+/// cancelled and nothing reports it. The assert fires at the out-of-order
+/// `register` — the first moment the violation is observable from inside the
+/// registry — and names both ways to cause it.
 final class IsolateCancellationRegistry {
   final Map<int, _RegistryEntry> _entries = <int, _RegistryEntry>{};
   final Set<int> _pendingCancellations = <int>{};
@@ -143,6 +150,29 @@ final class IsolateCancellationRegistry {
   /// If the token has a pending cancel (a cancel arrived before
   /// `register`), the returned handle is already cancelled.
   IsolateCancellationHandle register(IsolateCancellationToken token) {
+    // The precondition the discriminator above rests on, checked at the one
+    // moment it becomes observable. Ids arrive strictly increasing when — and
+    // only when — a single host allocator issues them and the transport
+    // delivers open envelopes in order. Break either half and a *genuine*
+    // pre-open cancel for a low id is read as a post-close one and dropped:
+    // the request then runs to completion having been cancelled, and nothing
+    // anywhere reports it. That silence is why this is an assert rather than a
+    // comment.
+    //
+    // An `assert` rather than a throw because the violation is a protocol
+    // error in the adapter, not a condition this module can recover from, and
+    // because the worst case in production is one cancel ignored — which does
+    // not warrant taking a worker isolate down. It fails loudly everywhere a
+    // test or a debug build runs, which is where an adapter is written.
+    assert(
+      token.id > _highestSeenId,
+      'IsolateCancellationRegistry.register(${token.id}) after id '
+      '$_highestSeenId: token ids must arrive strictly increasing. Either two '
+      'allocators are issuing ids into one registry, or the host→executor '
+      'transport reordered the open envelopes. Until that is fixed, a pre-open '
+      'cancel for an id below the high-water mark is dropped as though the '
+      'request had already closed.',
+    );
     if (token.id > _highestSeenId) _highestSeenId = token.id;
     final wasPending = _pendingCancellations.remove(token.id);
     final entry = _RegistryEntry(cancelled: wasPending);

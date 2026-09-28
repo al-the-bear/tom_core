@@ -228,6 +228,75 @@ void main() {
     });
   });
 
+  // Every assertion above rides `_wire`, whose `user` channel is empty — and a
+  // `WirePrompt` with no user text has `combined == system`, so a provider that
+  // put the system channel alone on the wire, or fingerprinted it, would
+  // satisfy all of them. A prompt with both channels filled is the only shape
+  // in which the contract has a discriminator. It is the same contract on both
+  // entry points, which is why the buffered one is driven here rather than
+  // trusted to the streamed one it shares code with.
+  group('AgentSdkLlmProvider — a prompt with both channels', () {
+    const wire = WirePrompt(
+      system: 'ANCHOR\n\nYou answer geography questions.',
+      user: 'What is the capital of France?',
+      anchorHash: 'anchor-hash-A1',
+      roleId: 'assistant_to_user',
+      templateSha: 'template-sha-T1',
+    );
+
+    _FakeAgentSdkTransport newTransport() => _FakeAgentSdkTransport(
+      messages: const <Map<String, dynamic>>[
+        {
+          'type': 'result',
+          'subtype': 'success',
+          'is_error': false,
+          'result': 'Paris.',
+          'duration_ms': 50,
+          'usage': {'input_tokens': 3, 'output_tokens': 7},
+        },
+      ],
+    );
+
+    test('the two channels really do differ from the join', () {
+      // The control. Without it the two tests below could pass by accident on
+      // a fixture that drifted back to a single channel.
+      expect(wire.combined, isNot(wire.system));
+      expect(wire.combined, isNot(wire.user));
+      expect(wire.combined, '${wire.system}\n\n${wire.user}');
+    });
+
+    test('completeStream sends combined and hashes combined', () async {
+      final transport = newTransport();
+      final events = await _provider(
+        transport,
+      ).completeStream(wire, LlmOptions.empty).toList();
+      final report = events.whereType<LlmStreamCompleted>().single.report;
+
+      expect(transport.lastPrompt, wire.combined);
+      expect(transport.lastPrompt, isNot(wire.system));
+      expect(report.promptHash, promptSha256(wire.combined));
+      expect(report.promptHash, isNot(promptSha256(wire.system)));
+    });
+
+    test(
+      'complete stamps the whole provenance triple, not just the anchor',
+      () async {
+        final transport = newTransport();
+        final report = await _provider(
+          transport,
+        ).complete(wire, LlmOptions.empty);
+
+        expect(transport.lastPrompt, wire.combined);
+        expect(report.anchorHash, wire.anchorHash);
+        expect(report.providerId, 'claude:sonnet:none');
+        expect(report.modelId, 'claude-sonnet-4-6');
+        expect(report.promptHash, promptSha256(wire.combined));
+        expect(report.promptHash, isNot(promptSha256(wire.system)));
+        expect(report.templateSha, 'template-sha-T1');
+      },
+    );
+  });
+
   group('AgentSdkLlmProvider — failure paths', () {
     test(
       'an SDK error chunk → LlmStreamFailed (report still anchored)',

@@ -13,17 +13,13 @@
 /// plain object. Date fields travel as the `@!@`-prefixed ISO string and the
 /// string-backed enum fields as their `name` token.
 ///
-/// The `parse*` functions map that JSON to entities **field-by-field** (rather
-/// than the entity's own `setValues`) on purpose: the kernel's `TomList`
-/// deserialization is not currently round-trip-safe — `setValues` on a typed
-/// `TomList<TomString>` (e.g. `TodoItem.tags`) throws even for an empty array,
-/// and `getValues` emits its elements unconverted so the server cannot
-/// `jsonEncode` a non-empty one (both are pre-existing kernel gaps, not this
-/// client's to fix — see "Known kernel gap" in this package's `README.md`,
-/// which also records what it costs: the item *write* path is implemented to
-/// the intended contract but cannot round-trip a tagged item until the kernel
-/// gap is fixed). Hand-mapping keeps the client correct regardless and matches
-/// `LiveTodoReadClient`'s explicit pure-parser discipline.
+/// The `parse*` functions map that JSON to entities **field-by-field**, each a
+/// pure function of one decoded value, so every wire shape the client accepts —
+/// including a partial row, which keeps the entity's field defaults — is pinned
+/// by a socket-free test, matching `LiveTodoReadClient`'s pure-parser
+/// discipline. The write path is the entity's own `toJson()`, and a `TodoItem`
+/// carrying tags round-trips through it and the server's rebuild unchanged
+/// (`test/app_api_client_test.dart`, TC-24-21).
 ///
 /// A denial the server maps to `403`/`404` — an `{"error": key}` body, the
 /// error contract both servers answer with — surfaces as a typed
@@ -123,8 +119,7 @@ TodoItem parseItem(Map<String, dynamic> json) {
     ..createdAt.set(_date(json['createdAt']))
     ..updatedAt.set(_date(json['updatedAt']))
     ..estimateHours.set((json['estimateHours'] as num?)?.toDouble());
-  // tags is a typed TomList<TomString>; append element-by-element (the kernel's
-  // bulk TomList deserialization is not round-trip-safe — see the library doc).
+  // tags is a typed TomList<TomString>: one TomString per wire element.
   for (final tag in (json['tags'] as List<Object?>? ?? const [])) {
     item.tags.add(TomString('$tag'));
   }

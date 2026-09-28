@@ -30,7 +30,6 @@
         "downloaded": "Downloaded {name} ({size})"
       },
       "comment": {
-        "add": "Add comment",
         "title": "Add a comment",
         "hint": "Write a comment…",
         "submit": "Post comment",

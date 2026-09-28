@@ -116,6 +116,85 @@ void main() {
       expect(reg.isCancelled(tok), isFalse);
     });
 
+    // What the discriminator rests on, and what happens when it does not hold.
+    //
+    // The high-water mark can tell a pre-open cancel from a post-close one
+    // only while ids reach `register` strictly increasing — which is true of a
+    // single host allocator over an ordered transport, and of nothing else.
+    // Break it and a genuine pre-open cancel for a low id is read as
+    // post-close and dropped: the request then runs to completion having been
+    // cancelled, with no error anywhere. The two tests above both stay inside
+    // the precondition, so neither would notice.
+    group('the discriminator precondition', () {
+      test('an out-of-order register is refused, not silently mis-read', () {
+        final reg = IsolateCancellationRegistry();
+        reg.register(const IsolateCancellationToken(5));
+
+        expect(
+          () => reg.register(const IsolateCancellationToken(3)),
+          throwsA(isA<AssertionError>()),
+          reason:
+              'id 3 after id 5 means two allocators or a reordering '
+              'transport, and the registry cannot discriminate under either',
+        );
+      });
+
+      test('two allocators into one registry are refused', () {
+        // The shape the module's own header invites: it offers itself as the
+        // generic core for "any isolate adapter", and nothing stops an adapter
+        // from constructing a second allocator. Both hand out 1, 2, 3 …
+        final reg = IsolateCancellationRegistry();
+        final first = IsolateCancellationTokenAllocator();
+        final second = IsolateCancellationTokenAllocator();
+
+        reg.register(first.next()); // id 1
+        reg.register(first.next()); // id 2
+        expect(
+          () => reg.register(second.next()), // id 1 again
+          throwsA(isA<AssertionError>()),
+        );
+      });
+
+      test('the silent mis-read is what the refusal replaces', () {
+        // The failure the assert exists for, demonstrated on the branch that
+        // does *not* go through `register`: a genuine pre-open cancel for an
+        // id below the mark is dropped, because from the registry's side it is
+        // indistinguishable from a cancel for a request that already closed.
+        // Nothing here throws — that is the point.
+        final reg = IsolateCancellationRegistry();
+        reg.register(const IsolateCancellationToken(5));
+
+        reg.cancel(const IsolateCancellationToken(3));
+
+        expect(
+          reg.pendingCancelCount,
+          equals(0),
+          reason:
+              'the cancel was dropped as post-close, so the register that '
+              'follows would hand back an uncancelled handle',
+        );
+      });
+
+      test('the ordinary in-order sequence is unaffected', () {
+        // The control. An assert that also refused the normal path would be
+        // worse than none, and this is the path every adapter takes.
+        final reg = IsolateCancellationRegistry();
+        final allocator = IsolateCancellationTokenAllocator();
+        final tokens = [for (var i = 0; i < 5; i++) allocator.next()];
+
+        for (final token in tokens) {
+          reg.register(token).dispose();
+        }
+        expect(reg.inFlightCount, equals(0));
+
+        // Including the pre-open cancel it is all for: a cancel above the mark
+        // is remembered and consumed by the register that follows it.
+        final next = allocator.next();
+        reg.cancel(next);
+        expect(reg.register(next).isCancelled, isTrue);
+      });
+    });
+
     // The registry's isCancelled is scoped to what it currently holds: the
     // in-flight entries plus the remembered pre-open cancels. It is *not* a
     // durable record of "was this ever cancelled" — keeping one would mean

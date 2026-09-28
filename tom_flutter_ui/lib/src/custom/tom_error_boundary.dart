@@ -7,12 +7,21 @@
 /// belong to a boundary: with several mounted, whichever installed last would
 /// own the hook and would receive every subtree's errors. Instead the builder
 /// is installed once — ref-counted across all mounted boundaries, so the
-/// original is preserved for the lifetime of the outermost one — and it
-/// returns a reporter widget at the failing slot. That reporter is built *in
+/// original is preserved for as long as any boundary is in the tree, whether
+/// or not it is currently showing a fallback — and it returns a reporter
+/// widget at the failing slot. That reporter is built *in
 /// the failing subtree*, so it can walk up the element tree to the nearest
 /// enclosing boundary and hand the error to that one. Mount order stops
 /// mattering, and a list of dozens of boundaries contains each row's failure
 /// to its own row.
+///
+/// A boundary guards its own subtree and nothing else. The global slot has one
+/// occupant, so while any boundary is mounted its hook also sees errors raised
+/// outside every boundary; those are handed to the builder that was in the
+/// slot beforehand — Flutter's red box in debug, the application's own widget
+/// in release — so mounting a boundary changes nothing outside it. Anything
+/// else would turn one guarded row into a process-wide suppression of error
+/// reporting.
 ///
 /// The fallback UI is configurable via
 /// [TomErrorBoundary.fallbackBuilder]; when omitted, a Material-themed
@@ -55,10 +64,58 @@ class TomErrorBoundary extends StatefulWidget {
 
   @override
   State<TomErrorBoundary> createState() => _TomErrorBoundaryState();
+
+  /// Releases the global [ErrorWidget.builder] hook and forgets every mounted
+  /// boundary.
+  ///
+  /// The hook is process-wide, and so is the count that owns it: a boundary
+  /// whose `dispose` never runs leaves the slot held for the rest of the
+  /// process, and everything after it inherits an error widget belonging to a
+  /// widget that is gone. A test that tears down its binding, or that pumps a
+  /// boundary and then abandons the tree, has no other way back.
+  ///
+  /// Nothing in an application should need this: there, boundaries are
+  /// disposed by the framework and the count returns to zero on its own.
+  @visibleForTesting
+  static void debugReleaseGlobalHook() => _GlobalHook.reset();
 }
 
 class _TomErrorBoundaryState extends State<TomErrorBoundary> {
   FlutterErrorDetails? _captured;
+
+  /// The hook is owned by the **boundary**, for its whole lifetime.
+  ///
+  /// The tempting alternative — owning it on a host widget the boundary
+  /// renders only while it has caught nothing — makes a boundary stop
+  /// guarding the moment it captures: the capture unmounts the host, drops
+  /// the count, and, if this is the last boundary, puts the previous builder
+  /// back. What it stops guarding includes its own `fallbackBuilder`, which is
+  /// caller code and can throw. In a list of guarded rows the count would fall
+  /// with each row that failed, and when the last healthy row failed the order
+  /// of the remaining captures would decide whether the final error was caught
+  /// or dropped.
+  ///
+  /// Tying the install and the release to the boundary being in the tree is
+  /// what "this subtree is guarded" means.
+  /// Which run of the global hook this boundary's share belongs to.
+  ///
+  /// A reset starts a new run, so a boundary that acquired before it releases
+  /// nothing: its share was already written off. Without this, a leaked
+  /// boundary disposing later would decrement a count it no longer has a claim
+  /// on, and hand back the slot from under whichever boundary holds it now.
+  late final int _hookRun;
+
+  @override
+  void initState() {
+    super.initState();
+    _hookRun = _GlobalHook.acquire();
+  }
+
+  @override
+  void dispose() {
+    _GlobalHook.release(_hookRun);
+    super.dispose();
+  }
 
   void _retry() => setState(() => _captured = null);
 
@@ -86,87 +143,110 @@ class _TomErrorBoundaryState extends State<TomErrorBoundary> {
       if (builder != null) return builder(context, captured, _retry);
       return _DefaultErrorFallback(details: captured, onRetry: _retry);
     }
-    return _ErrorBoundaryHost(child: widget.child);
+    return widget.child;
   }
 }
 
-/// Wraps the guarded subtree with an [ErrorWidget.builder] that
-/// returns a [_ErrorReporter] in place of the failing widget. The
-/// reporter then walks up the element tree to find the *nearest*
-/// enclosing [_TomErrorBoundaryState] and forwards the error to it.
+/// The process-wide state behind [ErrorWidget.builder], in one place that can
+/// be put back.
 ///
-/// This element-tree routing — rather than the more obvious "current
-/// host's `widget.onError` is called by the global hook" approach —
-/// is what makes nested boundaries correct. The global
-/// [ErrorWidget.builder] is, well, global: when boundary A and B are
-/// both mounted, whichever called `initState` *last* owns the hook.
-/// If A throws while B is the active hook, B's `onError` would fire
-/// — routing A's error to B. Per-row containment in a list (where
-/// dozens of boundaries are mounted simultaneously) becomes
-/// impossible. By having the hook return a placeholder widget that
-/// looks up the boundary via `findAncestorStateOfType`, the error
-/// always reaches the *enclosing* boundary, regardless of mount
-/// order.
+/// It is process-wide because the slot it manages is: there is one
+/// [ErrorWidget.builder] per isolate, and the count is what lets several
+/// boundaries share it without the second one stomping what the first found.
 ///
-/// Boundary ref-counting:
-/// `_ErrorBoundaryHostState` increments [_activeBoundaries] in
-/// `initState` and decrements in `dispose`. The global hook is
-/// installed when the count goes 0→1 and restored when it goes
-/// 1→0 — so the original builder is preserved across the entire
-/// lifetime of the outermost boundary, not stomped each time a new
-/// boundary mounts.
-class _ErrorBoundaryHost extends StatefulWidget {
-  final Widget child;
+/// Holding it as two bare library variables made it unrecoverable. A boundary
+/// whose `dispose` never runs — a test that tears down its binding, say —
+/// pins the count above zero for the rest of the process, so the slot is never
+/// handed back and everything that runs afterwards inherits a hook belonging
+/// to a widget that no longer exists. That is the failure that shows up
+/// somewhere else entirely, and there was no way back from it.
+class _GlobalHook {
+  _GlobalHook._();
 
-  const _ErrorBoundaryHost({required this.child});
+  /// Mounted boundaries. The hook is installed on 0→1 and released on 1→0.
+  static int _active = 0;
 
-  @override
-  State<_ErrorBoundaryHost> createState() => _ErrorBoundaryHostState();
-}
+  /// Which run of the hook [_active] is counting.
+  ///
+  /// Bumped by [reset], so shares taken out before it can be recognised and
+  /// ignored when they are handed back.
+  static int _run = 0;
 
-/// Number of currently mounted [_ErrorBoundaryHost]s. Used to
-/// install the global hook exactly once across all boundaries.
-int _activeBoundaries = 0;
+  /// What held the slot before the first boundary took it.
+  ///
+  /// Non-null exactly while [_active] is above zero — set on the way up,
+  /// cleared on the way down. [_ErrorReporter] reads it for every error raised
+  /// outside all boundaries.
+  static ErrorWidgetBuilder? _saved;
 
-/// The [ErrorWidget.builder] that was active before the first
-/// boundary installed its hook. Restored when the last boundary
-/// unmounts.
-ErrorWidgetBuilder? _previousGlobalBuilder;
+  static ErrorWidgetBuilder? get saved => _saved;
 
-class _ErrorBoundaryHostState extends State<_ErrorBoundaryHost> {
-  @override
-  void initState() {
-    super.initState();
-    if (_activeBoundaries == 0) {
-      _previousGlobalBuilder = ErrorWidget.builder;
+  /// Takes a share of the hook, and returns the run it belongs to.
+  static int acquire() {
+    if (_active == 0) {
+      _saved = ErrorWidget.builder;
       ErrorWidget.builder = (FlutterErrorDetails details) =>
           _ErrorReporter(details: details);
     }
-    _activeBoundaries++;
+    _active++;
+    return _run;
   }
 
-  @override
-  void dispose() {
-    _activeBoundaries--;
-    if (_activeBoundaries == 0) {
-      ErrorWidget.builder = _previousGlobalBuilder ?? ErrorWidget.builder;
-      _previousGlobalBuilder = null;
-    }
-    super.dispose();
+  /// Hands back a share taken out in [run].
+  ///
+  /// A share from an earlier run was written off by the [reset] that ended it,
+  /// so returning it would take the slot away from whoever holds it now.
+  static void release(int run) {
+    if (run != _run) return;
+    _active--;
+    if (_active > 0) return;
+    ErrorWidget.builder = _saved!;
+    _saved = null;
   }
 
-  @override
-  Widget build(BuildContext context) => widget.child;
+  /// Puts the slot back and forgets every mounted boundary.
+  ///
+  /// For a test that cannot rely on `dispose` having run — the count is
+  /// process-wide, so one leak would otherwise be inherited by every test
+  /// after it in the same process.
+  static void reset() {
+    final saved = _saved;
+    if (saved != null) ErrorWidget.builder = saved;
+    _saved = null;
+    _active = 0;
+    _run++;
+  }
 }
 
-/// Replaces the throwing widget at the failing slot. On mount it
-/// finds the nearest [_TomErrorBoundaryState] ancestor and forwards
-/// the captured [FlutterErrorDetails] — the boundary then schedules
-/// a post-frame setState to swap in its fallback UI.
+/// Replaces the throwing widget at the failing slot, and decides whose error
+/// it is.
 ///
-/// Stays as a zero-size placeholder until the boundary rebuilds and
-/// replaces the entire boundary subtree with the fallback widget;
-/// the placeholder never appears in the tree once that happens.
+/// The hook returns a widget rather than calling a boundary directly, and that
+/// indirection is what makes nested boundaries correct. [ErrorWidget.builder]
+/// is global: with boundaries A and B both mounted, one of them owns the slot,
+/// and a hook that called its owner would route A's error to B. Per-row
+/// containment in a list of dozens of boundaries would be impossible. Because
+/// this widget is built *in the failing subtree*, it can walk up to the
+/// nearest enclosing boundary, and mount order stops mattering.
+///
+/// Inside a boundary, it forwards the captured [FlutterErrorDetails] to the
+/// nearest enclosing one — which then schedules a post-frame setState to swap
+/// in its fallback UI — and stays a zero-size placeholder until that happens.
+///
+/// **Outside every boundary, it renders what the error would have rendered had
+/// no boundary been mounted**: the builder [_GlobalHook] saved, which is
+/// Flutter's
+/// red box in debug and whatever the application installed in release. The
+/// global slot has one occupant, so the boundary that took it also receives
+/// errors it has no business handling; returning a blank for those would make
+/// mounting a single boundary anywhere — one row of one list — silently
+/// disable error reporting for the whole process.
+///
+/// That is why the ancestor lookup happens in [build] rather than in a
+/// post-frame callback. Whose error it is has to be answered *while the
+/// failing slot is being built*, because the answer decides what that slot
+/// renders. Only the boundary's `setState` still has to wait for the frame to
+/// finish, and only when there is a boundary to call it on.
 class _ErrorReporter extends StatefulWidget {
   final FlutterErrorDetails details;
   const _ErrorReporter({required this.details});
@@ -177,25 +257,26 @@ class _ErrorReporter extends StatefulWidget {
 
 class _ErrorReporterState extends State<_ErrorReporter> {
   @override
-  void initState() {
-    super.initState();
-    // Defer the lookup to the next frame: during the failing build,
-    // the framework still considers the boundary state "in build" and
-    // calling setState on it (which is what the boundary does in
-    // response) would trip the lifecycle assertion.
+  Widget build(BuildContext context) {
+    // Routing to the *nearest enclosing* boundary is the whole point of this
+    // widget — see the class doc on [_ErrorBoundaryHost] for why the hook
+    // returns a widget instead of calling a boundary directly.
+    final boundary = context.findAncestorStateOfType<_TomErrorBoundaryState>();
+    if (boundary == null) {
+      return _GlobalHook.saved?.call(widget.details) ?? const SizedBox.shrink();
+    }
+
+    // Deferred because the error arrives during the failing subtree's build:
+    // calling setState on the boundary now would trip the lifecycle assertion
+    // in debug and surface as a framework exception under `flutter_test`.
+    // `mounted` is the ordinary guard for a callback that can outlive the
+    // State that registered it.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final boundary = context
-          .findAncestorStateOfType<_TomErrorBoundaryState>();
-      // Routing the error to the nearest enclosing boundary is the
-      // whole point of this widget — see the class doc on
-      // [_ErrorBoundaryHost] for why.
-      boundary?._captureError(widget.details);
+      boundary._captureError(widget.details);
     });
+    return const SizedBox.shrink();
   }
-
-  @override
-  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 class _DefaultErrorFallback extends StatelessWidget {

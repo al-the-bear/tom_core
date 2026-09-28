@@ -13,6 +13,26 @@ parsers are unit-testable headless (no sockets in tests).
 > its client-side usage in
 > [11 · The two Flutter clients](../README_advanced_11_clients_app_admin.md).
 
+**Start with the example.**
+[`example/authenticated_call_example.dart`](example/authenticated_call_example.dart)
+is the path every screen of both clients takes, reduced to its three steps:
+resolve the `AdvancedClientConfig` bean, log in through `AuthClient`, and list
+the caller's workspaces through `AppApiClient`, whose `AuthorizedHttp` attaches
+the bearer. It needs the running stack —
+[`tool/run_cross_tier_integration.sh`](tool/run_cross_tier_integration.sh) boots
+both servers and their databases — and with none running it says so and exits
+with status 2:
+
+```sh
+dart run example/authenticated_call_example.dart
+```
+
+Its work is in `listWorkspacesAs`, which takes the transport as a parameter, so
+`test/examples_test.dart` runs the same sequence over a fake transport, and also
+runs the file under the command above.
+[The family's index](../README_advanced_sample.md#the-eight-packages) says which
+of the eight carry an `example/`, and why.
+
 ## The HTTP seam
 
 Every client talks to the servers through one seam, `JsonTransport`
@@ -146,14 +166,11 @@ await auth.login(const LoginRequest(username: 'alice', password: 'alice-pass'));
 final items = await api.listItems('3'); // bearer attached, parsed to TodoItems
 ```
 
-> **Known kernel gap (out of scope here).** The kernel's `TomList`
-> (de)serialization is not round-trip-safe: `setValues` on a typed
-> `TomList<TomString>` (e.g. `TodoItem.tags`) throws even for an empty array, and
-> `getValues` emits its elements unconverted so the server cannot `jsonEncode` a
-> non-empty one. The parsers therefore map entities field-by-field (not via
-> `setValues`); the item *write* path (`createItem`/`updateItem`) is implemented
-> to the intended contract but cannot round-trip a tagged item until the kernel
-> gap is fixed.
+The parsers map entities field-by-field, each a pure function of one decoded
+value, so every accepted wire shape is pinned by a socket-free test. The write
+path (`createItem`/`updateItem`) sends the entity's own `toJson()`; a tagged
+`TodoItem` survives it, the server's rebuild of the body and `parseItem`
+unchanged (TC-24-21).
 
 ## `AdminApiClient`
 
@@ -246,14 +263,203 @@ locator, not in `String.fromEnvironment` reads scattered through a client's
 once at startup (idempotent — an already-registered config is returned
 unchanged) and `AdvancedClientConfig.resolve()` wherever it needs a URL.
 
+## API
+
+Every public declaration the barrel (`lib/advanced_client_core.dart`) exports,
+library by library, with its signature as the source declares it. The sections
+above are the narrative; this is the index. Initializer lists and bodies are
+left out, and the two API clients' service methods are the `AppApiService` /
+`AdminApiService` contracts from `advanced_todo_contracts`, implemented here.
+
+`test/readme_api_reference_test.dart` holds this section to the source in both
+directions: every line below must occur in its library, and every public
+declaration in an exported library must be listed.
+
+### `lib/src/http/json_transport.dart`
+
+The one HTTP seam: a request reduced to method, URI, headers and a JSON body.
+
+```dart
+class HttpJsonResponse
+  final int statusCode
+  final String body
+  const HttpJsonResponse(this.statusCode, this.body)
+  bool get isSuccess
+  Map<String, Object?> get jsonObject
+  List<Object?> get jsonArray
+abstract class JsonTransport
+  Future<HttpJsonResponse> send({required String method, required Uri uri, Map<String, String> headers, String? body})
+class IoJsonTransport implements JsonTransport
+  IoJsonTransport({HttpClient? client})
+  Future<HttpJsonResponse> send({required String method, required Uri uri, Map<String, String> headers = const {}, String? body})
+  void close()
+```
+
+### `lib/src/auth/auth_client.dart`
+
+The session: login (with the second-factor and enrolment passes), refresh, logout, and the public sign-in bundle.
+
+```dart
+class AuthClientException extends TomException
+  final int statusCode
+  final bool canRetrySecondFactor
+  AuthClientException(super.key, super.defaultUserMessage, {required this.statusCode, this.canRetrySecondFactor = false})
+class AuthClient
+  final Uri baseUri
+  AuthClient(this.baseUri, {JsonTransport? transport, bool decryptTokens = false})
+  Future<LoginResult> login(LoginRequest request)
+  Tom2FAChallenge? get pendingChallenge
+  Future<LoginResult> submitSecondFactor(String code)
+  Tom2FAPendingEnrolment? get pendingEnrolment
+  Future<LoginResult> beginEnrolment(String type)
+  Future<LoginResult> confirmEnrolment(String code)
+  Future<LoginResult> skipEnrolment()
+  Future<ResourceBundleDto> loginResources()
+  Future<LoginResult> refresh()
+  Future<void> logout()
+```
+
+### `lib/src/http/authorized_http.dart`
+
+The decorator every authenticated JSON call goes through: attaches the bearer, recovers one expiry.
+
+```dart
+class AuthClientRefresher implements TomAuthRefresher
+  AuthClientRefresher(this._authClient)
+  Future<bool> refresh()
+class AuthorizedHttp
+  final TomAuthRefresher refresher
+  AuthorizedHttp(this._transport, AuthClient authClient)
+  static Map<String, String> authorizationHeader()
+  Future<HttpJsonResponse> send({required String method, required Uri uri, Map<String, String> headers = const {}, String? body})
+```
+
+### `lib/src/http/file_transfer.dart`
+
+The byte half: the kernel's streaming file client, with the same bearer and the same one-shot recovery.
+
+```dart
+const String fileEndpointBasePath
+TomFileTransferClient ioFileTransferClient(Uri serverBaseUri)
+TomFileTransferClient authenticatedFileTransferClient(Uri serverBaseUri, AuthorizedHttp http)
+class AuthorizedFileTransferClient extends TomFileTransferClient
+  AuthorizedFileTransferClient(this.delegate, this.refresher)
+  final TomFileTransferClient delegate
+  final TomAuthRefresher refresher
+  Future<TomFileMetadata> upload({required String slot, required TomFileSource source, void Function(TomTransferProgress progress)? onProgress, TomTransferCancellation? cancellation})
+  Stream<List<int>> download(String slot, {void Function(TomTransferProgress progress)? onProgress, TomTransferCancellation? cancellation})
+  Future<TomFileMetadata?> describe(String slot)
+  Future<bool> remove(String slot)
+  void close()
+```
+
+### `lib/src/api/app_api_client.dart`
+
+The typed client over `advanced_app_server`; implements `AppApiService`. The `parse*` functions are pure.
+
+```dart
+class AppApiException extends TomException
+  final int statusCode
+  AppApiException(super.key, super.defaultUserMessage, {required this.statusCode})
+Workspace parseWorkspace(Map<String, dynamic> json)
+List<Workspace> parseWorkspaces(List<Object?> body)
+Project parseProject(Map<String, dynamic> json)
+List<Project> parseProjects(List<Object?> body)
+TodoList parseList(Map<String, dynamic> json)
+List<TodoList> parseLists(List<Object?> body)
+TodoItem parseItem(Map<String, dynamic> json)
+List<TodoItem> parseItems(List<Object?> body)
+TodoComment parseComment(Map<String, dynamic> json)
+List<TodoComment> parseComments(List<Object?> body)
+Subtask parseSubtask(Map<String, dynamic> json)
+List<Subtask> parseSubtasks(List<Object?> body)
+class AppApiClient implements AppApiService
+  final Uri baseUri
+  AppApiClient(this.baseUri, AuthorizedHttp http)
+  Future<Map<String, Object>> health()
+  Future<List<Workspace>> listWorkspaces()
+  Future<Workspace> createWorkspace(Workspace workspace)
+  Future<Workspace> updateWorkspace(Workspace workspace)
+  Future<void> deleteWorkspace(EntityIdRequest request)
+  Future<List<Project>> listProjects(String workspaceId)
+  Future<Project> createProject(Project project)
+  Future<List<TodoList>> listLists(String projectId)
+  Future<List<TodoItem>> listItems(String listId)
+  Future<List<FileDescriptorDto>> listAttachments(String listId)
+  Future<TodoItem> createItem(TodoItem item)
+  Future<TodoItem> updateItem(TodoItem item)
+  Future<void> deleteItem(EntityIdRequest request)
+  Future<TodoComment> addComment(TodoComment comment)
+  Future<List<TodoComment>> listComments(EntityIdRequest request)
+  Future<List<Subtask>> listSubtasks(EntityIdRequest request)
+  Future<Subtask> addSubtask(Subtask subtask)
+  Future<Subtask> updateSubtask(Subtask subtask)
+  Future<void> share(ShareRequest request)
+  Future<void> revokeShare(String id)
+  Future<ResourceBundleDto> resources()
+  Future<Map<String, String>> resourceRoles()
+```
+
+### `lib/src/api/admin_api_client.dart`
+
+The typed client over the auth server's `/admin/*` API; implements `AdminApiService`.
+
+```dart
+class AdminApiException extends TomException
+  final int statusCode
+  AdminApiException(super.key, super.defaultUserMessage, {required this.statusCode})
+UserDto parseUser(Map<String, Object?> json)
+List<UserDto> parseUsers(List<Object?> body)
+RoleDto parseRole(Map<String, Object?> json)
+List<RoleDto> parseRoles(List<Object?> body)
+GroupDto parseGroup(Map<String, Object?> json)
+List<GroupDto> parseGroups(List<Object?> body)
+GrantMatrixDto parseGrantMatrix(Map<String, Object?> json)
+class AdminApiClient implements AdminApiService
+  final Uri baseUri
+  AdminApiClient(this.baseUri, AuthorizedHttp http)
+  Future<List<UserDto>> listUsers()
+  Future<UserDto> createUser(CreateUserRequest request)
+  Future<UserDto> updateUser(UserDto user)
+  Future<void> deleteUser(EntityIdRequest request)
+  Future<List<RoleDto>> listRoles()
+  Future<RoleDto> createRole(RoleDto role)
+  Future<RoleDto> updateRole(RoleDto role)
+  Future<void> deleteRole(EntityIdRequest request)
+  Future<List<GroupDto>> listGroups()
+  Future<GroupDto> createGroup(GroupDto group)
+  Future<GroupDto> updateGroup(GroupDto group)
+  Future<void> deleteGroup(EntityIdRequest request)
+  Future<GrantMatrixDto> getGrants()
+  Future<void> putGrants(GrantMatrixDto matrix)
+  Future<void> assign(AssignmentRequest request)
+  Future<ResourceBundleDto> resources()
+```
+
+### `lib/src/config/client_config.dart`
+
+The URL bean both clients resolve.
+
+```dart
+class AdvancedClientConfig
+  const AdvancedClientConfig({this.authServerUrl = 'http://localhost:8081', this.appServerUrl = 'http://localhost:8080', this.adminServerUrl = 'http://localhost:8081'})
+  static const String beanName
+  final String authServerUrl
+  final String appServerUrl
+  final String adminServerUrl
+  static AdvancedClientConfig registerDefault([AdvancedClientConfig config = const AdvancedClientConfig()])
+  static AdvancedClientConfig resolve()
+```
+
 ## Tests
 
-Six socket-free suites always run; five live suites **skip themselves** when a
-server is unreachable, so `dart test` stays green without a stack. All of them
+Eight suites need no server and always run; five live suites **skip
+themselves** when a server is unreachable, so `dart test` stays green without a
+stack. All of them
 install the combined domain+contracts reflection seed
 (`package:advanced_client_core/reflection_seed.dart`) in `setUpAll`.
 
-Socket-free:
+No server needed:
 
 - `test/auth_client_test.dart` — login/refresh/logout sequencing and token
   storage against a fake `JsonTransport`, plus `LoginResult` parsed from a
@@ -282,6 +488,14 @@ Socket-free:
   degrading closed-safe) and the typed methods over a path-routing fake
   transport (method/path/bearer assertions, a `403` raising a typed
   `AdminApiException` carrying the server key).
+- `test/examples_test.dart` — the example's `listWorkspacesAs` over a scripted
+  fake transport (login first against the auth server, then the call against the
+  app server carrying the stored bearer), and the example run under its
+  documented `dart run` command: output with a stack up, otherwise exit 2 and a
+  one-line hint.
+- `test/readme_api_reference_test.dart` — the `## API` section above against
+  the source, both ways: every listed signature occurs in its library, and every
+  public declaration of an exported library is listed.
 
 Live (all guarded by a reachability check):
 

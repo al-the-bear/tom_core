@@ -29,6 +29,13 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 Widget _app(Widget child) => MaterialApp(home: Scaffold(body: child));
 
+/// A fallback that can be named from a `const` constructor.
+Widget _namedFallback(
+  BuildContext context,
+  FlutterErrorDetails details,
+  VoidCallback retry,
+) => const Text('fallback');
+
 /// A widget whose build always throws.
 class _Boom extends StatelessWidget {
   const _Boom({this.message = 'boom'});
@@ -285,6 +292,390 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
+  group('an error outside every boundary is not the boundary\'s to eat', () {
+    /// Runs [body] with a recognisable builder in the global slot, and puts
+    /// the slot back before returning.
+    ///
+    /// The installed builder stands in for the application's own error widget
+    /// — in a real process that is Flutter's red box in debug, or a crash
+    /// reporter's hook in release. What matters is that it is *not* ours, and
+    /// that a mounted boundary must leave it in charge of everything it does
+    /// not guard.
+    ///
+    /// Restoring cannot wait for `addTearDown`: `flutter_test` asserts the
+    /// slot is unchanged when the test *body* ends, which is before teardowns
+    /// run. The tree is emptied first so the boundary's own `dispose` puts
+    /// back what it found — this builder — and only then is the original put
+    /// back over it.
+    Future<void> withAppErrorWidget(
+      WidgetTester tester,
+      Future<void> Function(List<FlutterErrorDetails> seen) body,
+    ) async {
+      final seen = <FlutterErrorDetails>[];
+      final original = ErrorWidget.builder;
+      ErrorWidget.builder = (details) {
+        seen.add(details);
+        return const Text('app-error-widget', textDirection: TextDirection.ltr);
+      };
+      try {
+        await body(seen);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        ErrorWidget.builder = original;
+      }
+    }
+
+    testWidgets('a throwing sibling of a boundary reaches the app\'s own '
+        'error widget', (tester) async {
+      // The defect this group exists for: one mounted boundary anywhere turned
+      // every unguarded build error in the process into a blank space — no red
+      // box in debug, and in release nothing the application installed.
+      await withAppErrorWidget(tester, (seen) async {
+        await tester.pumpWidget(
+          _app(
+            const Column(
+              children: [
+                TomErrorBoundary(child: Text('guarded')),
+                _Boom(message: 'unguarded'),
+              ],
+            ),
+          ),
+        );
+        await _settleError(tester);
+
+        expect(
+          find.text('app-error-widget'),
+          findsOneWidget,
+          reason:
+              'the slot the boundary took belongs to the application for every '
+              'error the boundary does not guard',
+        );
+        expect(seen, hasLength(1));
+        expect(seen.single.exception.toString(), contains('unguarded'));
+        tester.takeException();
+      });
+    });
+
+    testWidgets('the guarded subtree still reaches its own boundary', (
+      tester,
+    ) async {
+      // The control. Without it the case above is satisfied by a boundary that
+      // forwards everything and guards nothing.
+      final caught = <FlutterErrorDetails>[];
+      await withAppErrorWidget(tester, (seen) async {
+        await tester.pumpWidget(
+          _app(
+            TomErrorBoundary(
+              onError: caught.add,
+              fallbackBuilder: (_, _, _) => const Text('fallback'),
+              child: const _Boom(message: 'guarded'),
+            ),
+          ),
+        );
+        await _settleError(tester);
+
+        expect(find.text('fallback'), findsOneWidget);
+        expect(caught, hasLength(1));
+        expect(
+          seen,
+          isEmpty,
+          reason: 'a guarded error must not also reach the application widget',
+        );
+        tester.takeException();
+      });
+    });
+
+    testWidgets('both at once, each to its own handler', (tester) async {
+      // The two paths in one tree, which is the arrangement a real application
+      // is in: some of it guarded, most of it not.
+      final caught = <FlutterErrorDetails>[];
+      await withAppErrorWidget(tester, (seen) async {
+        await tester.pumpWidget(
+          _app(
+            Column(
+              children: [
+                TomErrorBoundary(
+                  onError: caught.add,
+                  fallbackBuilder: (_, _, _) => const Text('fallback'),
+                  child: const _Boom(message: 'guarded'),
+                ),
+                const _Boom(message: 'unguarded'),
+              ],
+            ),
+          ),
+        );
+        await _settleError(tester);
+
+        expect(find.text('fallback'), findsOneWidget);
+        expect(find.text('app-error-widget'), findsOneWidget);
+        expect(caught.single.exception.toString(), contains('guarded'));
+        expect(seen.single.exception.toString(), contains('unguarded'));
+        while (tester.takeException() != null) {}
+      });
+    });
+
+    testWidgets('a boundary reports its error once, not once per rebuild', (
+      tester,
+    ) async {
+      // The lookup moved into `build` to answer whose error it is while the
+      // slot is being built, which raises the question this case settles:
+      // `onError` is documented as firing once per caught error, and `build`
+      // is a place that can run more than once.
+      //
+      // It holds, and deliberately without a guard added to make it hold: an
+      // explicit "already reported" flag was written, found to be unkillable
+      // by mutation, and removed. This case is what says the property is a
+      // fact about the widget rather than about that flag.
+      final caught = <FlutterErrorDetails>[];
+      final rebuild = ValueNotifier<int>(0);
+      addTearDown(rebuild.dispose);
+
+      await withAppErrorWidget(tester, (_) async {
+        await tester.pumpWidget(
+          _app(
+            ValueListenableBuilder<int>(
+              valueListenable: rebuild,
+              builder: (_, _, _) => TomErrorBoundary(
+                onError: caught.add,
+                fallbackBuilder: (_, _, _) => const Text('fallback'),
+                child: const _Boom(),
+              ),
+            ),
+          ),
+        );
+        rebuild.value = 1;
+        await tester.pump();
+        await _settleError(tester);
+
+        expect(caught, hasLength(1));
+        while (tester.takeException() != null) {}
+      });
+    });
+  });
+
+  group('a boundary keeps guarding after it has captured', () {
+    testWidgets('the hook is still installed once a lone boundary has caught', (
+      tester,
+    ) async {
+      // The hook used to belong to a host the boundary rendered only while it
+      // had caught nothing, so catching unmounted the host and — for a lone
+      // boundary — put the previous builder straight back. Guarding is a
+      // property of being in the tree, not of currently looking untroubled.
+      final original = ErrorWidget.builder;
+
+      await tester.pumpWidget(
+        _app(
+          const TomErrorBoundary(
+            fallbackBuilder: _namedFallback,
+            child: _Boom(),
+          ),
+        ),
+      );
+      await _settleError(tester);
+      expect(find.text('fallback'), findsOneWidget, reason: 'it did catch');
+
+      expect(
+        ErrorWidget.builder,
+        isNot(same(original)),
+        reason: 'a boundary showing its fallback is still a boundary',
+      );
+
+      await tester.pumpWidget(_app(const SizedBox.shrink()));
+      expect(
+        ErrorWidget.builder,
+        same(original),
+        reason: 'and it still releases the slot when it leaves',
+      );
+      tester.takeException();
+    });
+
+    testWidgets('a throwing fallbackBuilder is caught by its own boundary', (
+      tester,
+    ) async {
+      // The consequence that bites: `fallbackBuilder` is caller code and can
+      // throw, and a boundary that stopped guarding the moment it caught could
+      // not catch its own fallback — the error would land outside every
+      // boundary and be handed to the application's error widget instead.
+      //
+      // What is asserted is that the boundary *receives* the second error.
+      // Rendering a second fallback for it is a separate property and one the
+      // widget does not currently have: the swap is deferred to a post-frame
+      // callback registered from inside a post-frame callback, and nothing
+      // marks the tree dirty in between, so no frame is produced to run it.
+      // Measured, not assumed — and filed rather than fixed here, because the
+      // right answer to "the fallback itself throws" is a design question
+      // (stop trying, fall back to the default card, or delegate outward) and
+      // not the ownership question this case exists for.
+      final caught = <FlutterErrorDetails>[];
+
+      await tester.pumpWidget(
+        _app(
+          TomErrorBoundary(
+            onError: caught.add,
+            fallbackBuilder: (context, details, retry) =>
+                throw StateError('from-the-fallback'),
+            child: const _Boom(message: 'first'),
+          ),
+        ),
+      );
+      await _settleError(tester);
+      await _settleError(tester);
+
+      expect(caught, hasLength(2));
+      expect(caught.first.exception.toString(), contains('first'));
+      expect(
+        caught.last.exception.toString(),
+        contains('from-the-fallback'),
+        reason:
+            'the boundary is still the nearest enclosing one for its own '
+            'fallback, which is only true while it still owns the hook',
+      );
+      while (tester.takeException() != null) {}
+    });
+
+    testWidgets('the last healthy row failing is still caught', (tester) async {
+      // A list of guarded rows: the count fell with every row that failed, so
+      // the hook survived only while one row was still healthy. Which error
+      // the last one was decided whether it was caught at all.
+      final fallbacks = <int>[];
+
+      await tester.pumpWidget(
+        _app(
+          Column(
+            children: [
+              for (var i = 0; i < 3; i++)
+                TomErrorBoundary(
+                  fallbackBuilder: (_, _, _) {
+                    fallbacks.add(i);
+                    return Text('row-$i-fallback');
+                  },
+                  child: _Boom(message: 'row-$i'),
+                ),
+            ],
+          ),
+        ),
+      );
+      await _settleError(tester);
+
+      for (var i = 0; i < 3; i++) {
+        expect(
+          find.text('row-$i-fallback'),
+          findsOneWidget,
+          reason: 'every row must be contained, including the last to fail',
+        );
+      }
+      while (tester.takeException() != null) {}
+    });
+
+    testWidgets('a retry re-guards without reinstalling anything', (
+      tester,
+    ) async {
+      // The other direction across the same seam: recovering must not install
+      // a second hook or lose the saved builder, since the count never moved.
+      final original = ErrorWidget.builder;
+      final fail = ValueNotifier<bool>(true);
+      addTearDown(fail.dispose);
+
+      await tester.pumpWidget(
+        _app(
+          TomErrorBoundary(
+            fallbackBuilder: (_, _, retry) =>
+                TextButton(onPressed: retry, child: const Text('retry')),
+            child: _Flaky(fail),
+          ),
+        ),
+      );
+      await _settleError(tester);
+
+      final withFallback = ErrorWidget.builder;
+      fail.value = false;
+      await tester.tap(find.text('retry'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('recovered'), findsOneWidget);
+      expect(
+        ErrorWidget.builder,
+        same(withFallback),
+        reason: 'recovering is not a remount; the slot does not change hands',
+      );
+
+      await tester.pumpWidget(_app(const SizedBox.shrink()));
+      expect(ErrorWidget.builder, same(original));
+      tester.takeException();
+    });
+  });
+
+  group('the hook state can be put back', () {
+    // The state behind the slot is process-wide, because the slot is. A
+    // boundary whose `dispose` never runs — a test that tears down its
+    // binding, or one that pumps a boundary and abandons the tree — used to
+    // pin the count above zero for the rest of the process, so every test
+    // after it inherited an error widget belonging to a widget that was gone.
+    // Nothing could reach the two library variables to undo it.
+
+    testWidgets('a leaked boundary no longer pins the slot', (tester) async {
+      final original = ErrorWidget.builder;
+
+      // Mount a boundary and leave without unmounting it — the count is
+      // incremented and, as far as the library is concerned, still is.
+      await tester.pumpWidget(
+        _app(const TomErrorBoundary(key: ValueKey('a'), child: Text('a'))),
+      );
+      expect(ErrorWidget.builder, isNot(same(original)));
+
+      TomErrorBoundary.debugReleaseGlobalHook();
+      expect(
+        ErrorWidget.builder,
+        same(original),
+        reason: 'the slot goes back to whoever held it',
+      );
+
+      // And the count is forgotten: a *fresh* boundary installs again, saving
+      // the builder that is there now rather than believing one is already
+      // saved. The key forces a new element — without it the framework reuses
+      // the one already mounted, `initState` never runs, and this would test
+      // nothing at all.
+      await tester.pumpWidget(
+        _app(const TomErrorBoundary(key: ValueKey('b'), child: Text('b'))),
+      );
+      expect(ErrorWidget.builder, isNot(same(original)));
+      await tester.pumpWidget(_app(const SizedBox.shrink()));
+      expect(ErrorWidget.builder, same(original));
+    });
+
+    testWidgets('the still-mounted boundary\'s own dispose stays harmless', (
+      tester,
+    ) async {
+      // The case the reset creates: it zeroes a count that mounted boundaries
+      // still believe they hold a share of, so their `dispose` arrives with
+      // nothing left to release. It must not put back a builder it no longer
+      // has, and it must not drive the count negative — which the next
+      // boundary would read as "already installed".
+      final original = ErrorWidget.builder;
+
+      await tester.pumpWidget(_app(const TomErrorBoundary(child: Text('a'))));
+      TomErrorBoundary.debugReleaseGlobalHook();
+      await tester.pumpWidget(_app(const SizedBox.shrink()));
+      expect(ErrorWidget.builder, same(original));
+
+      await tester.pumpWidget(_app(const TomErrorBoundary(child: Text('b'))));
+      expect(
+        ErrorWidget.builder,
+        isNot(same(original)),
+        reason: 'a negative count would have skipped the install',
+      );
+      await tester.pumpWidget(_app(const SizedBox.shrink()));
+      expect(ErrorWidget.builder, same(original));
+    });
+
+    test('releasing when nothing is installed changes nothing', () {
+      final original = ErrorWidget.builder;
+      TomErrorBoundary.debugReleaseGlobalHook();
+      TomErrorBoundary.debugReleaseGlobalHook();
+      expect(ErrorWidget.builder, same(original));
+    });
+  });
+
   group('TomErrorBoundary global hook', () {
     testWidgets('installs on mount and restores on unmount', (tester) async {
       final original = ErrorWidget.builder;

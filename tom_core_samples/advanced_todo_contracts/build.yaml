@@ -1,7 +1,9 @@
 # Reflection generator config. The contracts package is a library and ships no
-# runtime reflection seed; reflection is needed only for this package's tests,
-# so the single seed is rooted at test/run_all_tests.dart (G-REFL-2) and emitted
-# next to it as test/run_all_tests.reflection.dart.
+# runtime reflection seed; reflection is needed only for this package's tests
+# and its DTO example, so the single seed is rooted at test/run_all_tests.dart
+# (G-REFL-2) and emitted next to it as test/run_all_tests.reflection.dart.
+# example/dto_round_trip_example.dart imports that file rather than adding a
+# second generator target.
 targets:
   $default:
     builders:

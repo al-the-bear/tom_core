@@ -89,18 +89,24 @@ class TomEmptyState extends StatelessWidget {
     // `resolvePath` is documented as a call-once-per-widget operation, and
     // all three strings share the base path.
     final basePath = TomCtr.resolvePath(tomId, scope);
-    // Resources first, explicit second — the precedence this widget has
-    // always documented at [tomId], and the reverse of the button family's.
-    // `textOrFail` closes the chain: it renders the key when a tomId was
-    // given but its resource is absent, and throws when neither source was.
+
+    /// Resources first, explicit second — the precedence this widget has
+    /// always documented at [tomId], and the reverse of the button family's.
+    ///
+    /// One closure rather than the rule written out three times: the three
+    /// strings differ only in their key and their fallback, and a precedence
+    /// spelled out per string is a precedence that can drift per string.
+    String? resolved(String key, String? explicit) =>
+        TomCtr.textOrNull(basePath, key) ?? explicit;
+
+    // `textOrFail` closes the headline's chain: it renders the key when a
+    // tomId was given but its resource is absent, and throws when neither
+    // source was. That is why the title cannot simply be `resolved(...)` —
+    // it is the one of the three that may not come out null.
     _resolvedTitle =
-        TomCtr.textOrNull(basePath, 'title') ??
-        title ??
-        TomCtr.textOrFail(basePath, 'title');
-    _resolvedDescription =
-        TomCtr.textOrNull(basePath, 'description') ?? description;
-    _resolvedActionLabel =
-        TomCtr.textOrNull(basePath, 'actionLabel') ?? actionLabel;
+        resolved('title', title) ?? TomCtr.textOrFail(basePath, 'title');
+    _resolvedDescription = resolved('description', description);
+    _resolvedActionLabel = resolved('actionLabel', actionLabel);
   }
 
   @override

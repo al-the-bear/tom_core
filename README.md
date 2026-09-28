@@ -218,17 +218,20 @@ reports and never gates.
 | [`tool/check_unimplemented_claims.py`](tool/check_unimplemented_claims.py) | Finds documentation that calls a shipped `Tom*` type unimplemented |
 | [`tool/check_module_readme_shape.py`](tool/check_module_readme_shape.py) | Holds every `lib/src/**/readme.md` to the four structural elements they all share |
 | [`tool/check_doc_overview_types.py`](tool/check_doc_overview_types.py) | Holds a module document's Overview table to every public type its module's barrel exports |
+| [`tool/check_open_ends.py`](tool/check_open_ends.py) | Finds completion documents with no `### What is still open` section, or an empty one |
+| [`tool/check_open_ends_ledger.py`](tool/check_open_ends_ledger.py) | Holds each open-ends section to the quest todos still open on its unit |
 | [`tool/check_readme_status.py`](tool/check_readme_status.py) | Holds a package README's `## Status` version to its `pubspec.yaml`, and forbids a test count |
 | [`tool/check_doc_class_inventories.py`](tool/check_doc_class_inventories.py) | Holds a document's marked class inventory to the directory it inventories, in both directions |
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
 | [`tool/check_resource_key_namespace.py`](tool/check_resource_key_namespace.py) | Finds resource keys written with the field-grade scope glued to the front of the type |
 | [`tool/check_figure_wellformed.py`](tool/check_figure_wellformed.py) | Finds SVG figures that are not well-formed XML, and so render as nothing |
+| [`tool/check_suite_figures.py`](tool/check_suite_figures.py) | Holds the sample suite's figures, their embed sites and the `assets/README.md` inventory to one another and to the figure convention |
 | [`tool/check_barrel_exports.py`](tool/check_barrel_exports.py) | Finds a Dart file beside a barrel that no barrel reaches and no marker declares |
 | [`tool/check_kernel_bridge.py`](tool/check_kernel_bridge.py) | Audits the kernel bridge registrations against the types the bridge declares |
 | [`tool/check_demo_counts.py`](tool/check_demo_counts.py) | Pins the demo screen/tile counts printed in `tom_flutter_ui_test/README.md` to the source |
 | [`tool/check_pubspec_boilerplate.py`](tool/check_pubspec_boilerplate.py) | Finds pubspecs still carrying a `flutter create` / `dart create` placeholder description or its tutorial commentary |
 | [`tool/check_doc_source_paths.py`](tool/check_doc_source_paths.py) | Checks that every `**Source:**` pointer in documentation names a path that exists |
-| [`tool/check_doc_links.py`](tool/check_doc_links.py) | Finds markdown links that open nothing, and links from a package's documentation into `_copilot_guidelines/` |
+| [`tool/check_doc_links.py`](tool/check_doc_links.py) | Finds markdown links that open nothing, references that point at nothing, and links from a package's documentation into `_copilot_guidelines/` |
 | [`tool/check_doc_artifacts.py`](tool/check_doc_artifacts.py) | Finds machine-generated artifacts tracked under a package's `doc/` |
 | [`tool/check_doc_ai_citations.py`](tool/check_doc_ai_citations.py) | Finds shipped documents citing a path under `_ai/`, which no reader of the package can open |
 | [`tool/check_reflection_artifacts.py`](tool/check_reflection_artifacts.py) | Analyzes the checked-in reflection artifacts, which the analysis options exclude, and fails on a name that no longer resolves |
@@ -1585,9 +1588,9 @@ fault, because `doc/` and `README.md` are what a consumer reads and
 
 Anchors are deliberately not checked here — whether a heading exists is
 `check_doc_tocs`'s question, and answering it twice in two dialects of
-heading-slug is how two gates come to disagree. That deferral is load-bearing
-in both directions, so `check_doc_tocs` checks body anchors and not only the
-ones a table of contents uses. Fenced blocks are skipped and
+heading-slug is how two gates come to disagree. `check_doc_tocs` answers it for
+every link *within* a document, body links included, but not for a fragment
+into another document (`other.md#heading`), which neither gate checks today. Fenced blocks are skipped and
 inline code spans blanked, which is correctness rather than tidiness in both
 directions: a naive scan reads `operator [](Object? key)` in every
 `api_summary_*.md` as a link, and *rewrites* the template inside a ` ```markdown `
@@ -1598,6 +1601,39 @@ this gate was being written.
 python3 tool/check_doc_ai_citations.py                 # the whole repository
 python3 tool/check_doc_ai_citations.py tom_flutter_ui  # one subtree
 ```
+
+A fourth rule, `REFERENCE`, catches the shape this gate was blind to by
+construction — a bracketed inline code span with no target and no definition,
+in a file carrying no `[label]: target` line:
+
+```markdown
+An edge binds one [`BearerTokenAuthenticator<P>`], parameterised on its
+principal type.
+```
+
+That is dartdoc's square-bracket syntax carried into a markdown file, where
+markdown renders it as literal brackets around a code span, so the reader meets
+punctuation where the author meant a pointer. (The example sits in a fence
+because fences are skipped — otherwise this paragraph would be a live instance
+of what it describes, which is the same reason `check_source_citations.py`
+keeps this README out of its own scope.)
+
+The blindness is worth stating because it is the argument for putting the rule
+here rather than in a gate of its own. The three rules above scan for `](`, and
+they run *after* inline code has been blanked — but the label of one of these
+**is** the code span, so after blanking the line reads `[      ]` with nothing
+left to match. A reference with no definition also has no target, so nothing in
+a link-resolving checker can ever see one. Thirty-four sat across four packages
+while this gate reported zero, eighteen of them in a single `tom_flutter_ui`
+page and nine in a `tom_core_agentic` page that no scan had read.
+
+Only bracketed **code spans** are matched. A bare `[Some Name]` in prose is
+ordinary English punctuation far more often than a broken link, and a rule that
+could not tell them apart would be the gate crying wolf. The repair is almost
+always to drop the brackets: of the thirty-four, not one had an anchor it could
+have pointed at, so making them links would have meant inventing thirty-four
+targets — and a cross-document `#fragment` is accepted here and validated by
+nothing, which is a worse answer than a plain code span.
 
 Finds shipped documents — `doc/` and package `README.md` files — that cite a
 path under `_ai/`. That layer is a separate repository (`tom_agent_state`)
@@ -1626,6 +1662,94 @@ Documentation is markdown, with diagrams and the occasional released PDF beside
 it; anything else under `doc/` was put there by a tool. And the question is what
 version control carries, so the inventory comes from `git ls-files` — a tool
 writing under `doc/` on one machine costs nobody anything until it is committed.
+
+```bash
+python3 tool/check_open_ends.py          # the report
+python3 tool/check_open_ends.py --quiet  # findings only
+```
+
+Finds completion documents that never say what is still open.
+`completion/README.md` requires every document to close with a
+`### What is still open` subsection, because the section reads as a claim
+either way: present means the unit was assessed and this is the result, absent
+means it was *not* assessed — which is not the same as nothing being open, and
+is the reading a later scan has to assume.
+
+Two faults, and the second is the cheap evasion. `MISSING` is no heading at
+all. `EMPTY` is a heading with nothing under it — a legitimate claim
+("assessed, nothing open") that the contract asks be written as one, with the
+date, because a bare heading and a forgotten heading look identical.
+
+This is the one gate in the suite whose count is *expected* to fall rather than
+sit at zero, and it is held rather than driven there in a sweep: writing every
+missing section in one pass would produce the artifact the requirement exists to
+prevent — a section per document asserting an assessment nobody performed. The
+section is written when the unit is assessed, so each completed assessment
+lowers the number by one and the ratchet then requires the drop be recorded.
+
+```bash
+python3 tool/check_open_ends_ledger.py             # the report
+python3 tool/check_open_ends_ledger.py --self-test # plant each fault, require detection
+```
+
+Holds each `### What is still open` section to the quest todos still open on
+its unit. The gate above asks whether the section is *there*; this one asks
+whether it is still *true*.
+
+A section is written once, when the unit is assessed. Every todo filed against
+that unit afterwards is a fact about it the section does not know, and nothing
+connected the two — so a section goes on saying "nothing is open" while work is
+queued against the same code. The `mcp_auth` section did exactly that one turn
+after it was written, with three todos filed and unworked; two other sections
+said literally "Nothing." while four unclosed todos sat on their units.
+
+The join is an equality, not a heuristic. A completion document is named
+`<project>_<module>_{new,changes}.md` and a todo carries `scope.project` and
+`scope.module`, so nothing here reads prose to decide what a document is about.
+`UNNAMED` is a todo open on the unit that the section never names; `PHANTOM` is
+an id the section names that the corpus does not contain.
+
+A todo whose `scope.files` names the completion document is out of scope for
+it — a todo asking for the section to be written would otherwise report itself
+as an open end forever. That is a rule about what the todo is *about* rather
+than an exemption list, so the next one needs no edit here.
+
+The obvious third question — a struck-through item citing a todo that is not
+completed — is deliberately not asked. A closed item legitimately cites an open
+todo when a finding *moved* rather than ended, which is what `mcp_auth`'s
+reference-link item does: closed on that page, still open on two others, with
+the id named so a reader can follow it. Faulting that would fault the sentence
+worth writing.
+
+
+```bash
+python3 tool/check_suite_figures.py             # the report
+python3 tool/check_suite_figures.py --self-test # plant each fault, require detection
+```
+
+Holds `tom_core_samples/assets/architecture/` and every document that embeds
+from it to one another. A figure store fails silently in three ways — a figure
+nobody embeds, an embed whose file was renamed (a renderer shows a blank), and
+an inventory that misses a figure — and the "adding a figure" checklist in
+`tom_core_samples/assets/README.md` has four manual steps, the last of which,
+registering the figure, is the one that gets skipped.
+
+`ORPHAN`, `DANGLING` and `INVENTORY` are those three; the inventory is compared
+in both directions, and each row's "Embedded by" links must be exactly the
+documents that embed the figure. `SITE`, `ALT` and `SVG` hold the convention:
+the `<!-- Figure: … -->` comment above each embed and the
+`Text / mermaid equivalent` disclosure below it, alt text that is a sentence
+rather than a label, and a `viewBox` and opening description comment on every
+SVG. Fenced blocks and inline code are skipped, so the README's own recipe is
+not read as an embed. Whether an SVG parses is `check_figure_wellformed`'s
+question, and a line number cited inside one is `check_source_citations`'.
+
+Its first run faulted figure 09 as an orphan. A1's alt text contains
+`projectRoleFieldGrades[role]`, balanced brackets CommonMark allows in link
+text, which the embed pattern had not. The pattern now allows one level of
+nesting — the fault was the checker's, and the self-test runs against the real
+files, so a pattern that stops matching shows up as a failure rather than as a
+cleaner repository.
 
 ## License
 

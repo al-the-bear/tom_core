@@ -17,7 +17,10 @@ next to the callers it serves; the resolvers here return data and ids.
 
 This table is a complete inventory of what `widget_base/widget_base.dart`
 exports; `test/module_readme_inventory_test.dart` fails if the module gains a
-public type or static this table does not name.
+public type or static this table does not name. It gives each member its
+**responsibility**; for signatures, defaults and return nullability see
+[`doc/api/api_summary_widget_base.md`](../../../doc/api/api_summary_widget_base.md),
+which the same test holds to the same barrel.
 
 | Type | Responsibility |
 | ---- | -------------- |
@@ -66,6 +69,7 @@ spot one on screen — `…OrNull` answers `null`, and `…OrFail` throws.
 | `textStyle` | A `TextStyle` from a style map |
 | `inputBorder` | An `InputBorder` |
 | `widgetStateColor` | A `WidgetStateProperty<Color>` from per-state entries |
+| `breakpointed<T>` | A base value plus its `(width, value)` overrides, for a property that varies by breakpoint |
 | `exists` | Whether the entry is there at all, without reading it |
 | `resolvePath` / `childTomId` | Path arithmetic: the full path for a `tomId`, and a child's id beneath it |
 

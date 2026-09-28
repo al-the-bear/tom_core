@@ -12,6 +12,23 @@ four-state authorization driven live over the wire, plus cross-user sharing.
 > **[09 · Forms & UI](../README_advanced_09_forms_ui.md)** and
 > [11 · The two Flutter clients](../README_advanced_11_clients_app_admin.md).
 
+**There is no `example/` directory and no `doc/` folder, and both absences are
+deliberate: this package is itself the runnable example, and a sample has no
+consumers who need its surface mirrored — see
+[the suite map](../README.md) for that decision, which is the same for all
+fifteen sample packages.** It is one of the eight `advanced_*` packages
+that together form the full-stack sample, so `flutter run` on the package is
+the demonstration — an `example/` here would either duplicate `lib/main.dart`
+or isolate a fragment the app already shows in context. See
+[Running the full stack](#running-the-full-stack) for the live command and the
+`--dart-define=TEST_MODE=true` offline variant, and
+[the family's index](../README_advanced_sample.md#the-eight-packages) for which of the eight carry an `example/`, and why.
+
+`test/documented_launch_test.dart` holds that command to the code: the define
+the section above names is derived from the README and from `lib/main.dart` and
+compared, so a rename cannot leave the documented offline command silently
+selecting the live stack.
+
 ## AppBackend seam
 
 `lib/backend/backend.dart` is the barrel. Bind every screen against the
@@ -151,6 +168,16 @@ is editable; it runs the form's reflection round-trip (`save()` writes the typed
 fields back into the bound `TodoItem`) and persists through the `SaveItemAction`.
 Because non-`full` fields render non-editable, a write-back carries exactly the
 permitted fields — the server re-checks the same grade.
+
+**Delete** (keyed `item-delete-button`) is the destructive counterpart, and it
+is gated one step differently: Save needs any editable field, Delete needs the
+*row's* write state — `editor` and above, the same rule the checklist is gated
+by and the same one the server enforces. The screen resolves that once, so the
+two cannot drift. Below `editor` the button is **absent** rather than disabled,
+like the checklist composer: a control that can never succeed is noise. A
+refusal that arrives anyway — the server re-checks, and a share can be revoked
+while the screen is open — leaves the screen where it was with the backend's
+message, because popping would report a removal that did not happen.
 
 Below the fields sit the item's two child collections, loaded together on open
 and each authorized differently from the fields above them:
@@ -313,7 +340,7 @@ Twelve socket-free suites, all over the seeded `InMemoryAppBackend`:
 | `login_screen_test.dart` | The bound login screen (TC-28-01..04): starts on sign-in, a valid login proceeds to the board, a rejected one shows an inline error without leaving the page, empty credentials fail validation with no backend call. |
 | `login_two_factor_test.dart` | Both second-factor branches. The challenge (TC-28-05..08): a 2FA account stops at the code phase, a valid code completes the login, a wrong one is retryable with the attempts remaining, a third returns to the password screen. The enrolment (TC-2FA-E1..E6): the chooser, the QR code + typable secret + account label, confirmation, a retryable wrong code, declining a skippable offer, and the round trip — after enrolling, the *next* sign-in is challenged. Codes are derived with `TomTotp`, never hardcoded. |
 | `board_screen_test.dart` | The status-column board (TC-29-01..03): items grouped by `status`, tapping a card opens its detail, the picker shows the seeded workspace and project. |
-| `item_detail_screen_test.dart` | The graded editor and its child sections (TC-30-01..09): `owner` edits everything, `viewer` is read-only with a disabled status control and no `estimate` and no Save, an `editor` save persists only the permitted fields, `commenter` loses priority and estimate, labels are bundle-driven, and the thread + checklist render, accept an added step, persist a toggle, and drop the composer for a viewer. |
+| `item_detail_screen_test.dart` | The graded editor and its child sections (TC-30-01..14): `owner` edits everything, `viewer` is read-only with a disabled status control and no `estimate` and no Save, an `editor` save persists only the permitted fields, `commenter` loses priority and estimate, labels are bundle-driven, and the thread + checklist render, accept an added step, persist a toggle, and drop the composer for a viewer. Delete is covered from TC-30-10: an owner and an editor both remove the row, a viewer and a commenter get no affordance at all, and a refused delete keeps the screen and says why. |
 | `item_attachment_test.dart` | The file half (TC-D12-01..08, TC-D13-01..02), from both ends: the detail field's pick → upload → progress → cancel → download → clear against the kernel's in-memory transfer client, an editor who may replace and a viewer who may only look, the field collapsing when the resource ceiling cannot be resolved, and the board paperclipping exactly the items that carry a file. |
 | `share_dialog_test.dart` | The cross-user share (TC-31-01..03): an owner shares and the grantee then sees the project, a non-owner is refused inline, an empty grantee is blocked before any backend call. |
 | `todo_item_form_test.dart` | That every gradable field's `basePath` equals its wire resource key in display order — including `estimateHours`, whose `tomId` is `estimate` so the key names the concept while `bind`/`save` still round-trips into the entity member. |

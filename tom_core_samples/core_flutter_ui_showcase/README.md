@@ -126,6 +126,21 @@ constructed anywhere in the chrome, because the kit offers nothing to replace it
 above is checked against `lib/` by `showcase_smoke_test.dart`, so it cannot fall
 behind the source.
 
+There is no `example/` folder, deliberately: the package is itself the example —
+a runnable gallery whose every cell pairs a widget's instantiation code with the
+widget it renders — so an `example/` would only repeat the cells. `flutter run`
+is the way in. The suite map's [Examples](../README.md#examples) table records
+the same for every showcase.
+
+There is no `doc/` folder and no API reference mirror, deliberately: this is a
+showcase application, not a library — `publish_to: 'none'`, no package depends
+on it, and its only public surface is the app shell and its group list. The API
+it demonstrates is `tom_flutter_ui`'s, which documents its widget catalogue in
+[`doc/widgets.md`](../../tom_flutter_ui/doc/widgets.md) and indexes its API
+summaries in
+[`doc/api/api_summary_index.md`](../../tom_flutter_ui/doc/api/api_summary_index.md).
+The decision is taken once for all fifteen samples in [the suite map](../README.md).
+
 ## Component groups
 
 Each group below maps to one file in `lib/groups/` and one screen in the app.
@@ -277,7 +292,7 @@ new group that throws at build time fails CI without any extra test wiring.
 | File | Guards |
 | --- | --- |
 | `test/showcase_smoke_test.dart` | Every group screen builds and pumps without throwing; the home screen lists every group; every "### \<title\> — `groups/<file>.dart`" section above names a file that exists and declares that exact title; the chrome paragraph above names every class in `lib/` that extends `TomStatelessWidget`, and no class in `lib/` extends a raw `StatelessWidget`/`StatefulWidget` |
-| `test/showcase_cell_test.dart` | A cell always renders **both** the snippet and the child; no cell has an empty snippet; no snippet names an identifier that exists nowhere in the file that renders it; no snippet quotes a construct and then omits what the child passes to it (arguments, ACL builder calls, or a `TomSizedBox` constraint); no illustration in this README shows a literal, identifier or number its group file does not have |
+| `test/showcase_cell_test.dart` | A cell always renders **both** the snippet and the child; no cell has an empty snippet; no snippet names an identifier that exists nowhere in the file that renders it; each cell's child builds the widget its snippet leads with (following a private demo widget into its `State`); no snippet quotes a construct and then omits what the child passes to it (arguments, ACL builder calls, or a `TomSizedBox` constraint); no illustration in this README shows a literal, identifier or number its group file does not have |
 
 ---
 

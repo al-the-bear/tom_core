@@ -1,3 +1,365 @@
+## Unreleased
+
+### Fixed
+
+- **The README's `dart:io` coupling figures were wrong, and are now derived
+  (tcopen354).** It said "Fourteen files under `lib/` import `dart:io`" where
+  there are 15 — the tenth sidecar store added an importer and only the test's
+  pinned set was updated. Its `src/agent/agent.dart` row was wrong twice over:
+  eleven file-backed stores where nine import `dart:io`, and no mention that
+  the export also reaches `placeholder_resolver.dart` through the editor
+  placeholder bindings.
+
+  The section now states 15 direct importers, 5 of 36 coupled exports, 31
+  clean, and a per-row reach count — and `test/dart_io_coupling_test.dart`
+  reads the section and fails when any figure stops matching the import graph.
+  The sets were already pinned; the prose about them was the half nothing
+  checked, which is exactly how it drifted.
+
+### Added
+
+- **The shared-stack constructor parameter is covered (tcopen353).**
+  `PlaceholderResolver`'s `stack` is what lets two resolvers share a namespace —
+  the shape `placeholder_stack.dart`'s header describes, nested frames resolving
+  against one set of bindings — and every construction in the package took the
+  default, so a regression that dropped the parameter and always allocated a
+  fresh stack would have passed the suite.
+
+  Five cases: the resolver holds the caller's object rather than a copy; a
+  binding made *after* construction reaches it; two resolvers over one stack
+  read each other's bindings while keeping their own environment and mode;
+  `push` and `pop` move both together; and, as the control, two resolvers left
+  to default do **not** share. The control earns its place — without it every
+  other assertion would also pass against one process-wide stack, which is the
+  opposite defect and the worse one.
+
+  `example/placeholders/placeholders_example.dart` gained an act showing the
+  shape, since a parameter nothing demonstrates is a parameter nobody uses.
+
+### Changed
+
+- **The placeholder re-scan is documented as a trust boundary (tcopen352).**
+  Both entry points loop while resolvable placeholders remain, so a substituted
+  value is scanned again whatever form produced it — and what it can reference
+  is every namespace the resolver has. Only the binding-to-binding half of that
+  was ever stated, as the composition feature it is.
+
+  All six source/namespace pairs were probed and behave identically: a binding
+  value may reference the environment, an environment value may reference a
+  binding, an expression result is text like any other, and `${name?}` differs
+  only in the unbound case. A reserved `${file:…}` / `${state:…}` form is the
+  one exemption, and not really an exception — it is never substituted at any
+  level, so a value that looks like one survives verbatim.
+
+  The source header, `doc/placeholders.md` and the API summary now say what is
+  re-scanned, what it means for text arriving from outside the program, and the
+  isolation available today: an empty `environment` over a fresh stack, in
+  strict mode, refuses an unknown reference instead of rendering it away. Nine
+  cases in `test/placeholder_resolver_test.dart` pin it.
+
+  **The behaviour was not changed**, and special-casing the environment was
+  rejected rather than deferred: it would leave binding-to-binding injection
+  untouched while making the rule non-uniform, so it would not close the
+  surface it was aimed at.
+
+### Fixed
+
+- **`api_summary_placeholders.md` stated a constructor signature
+  `PlaceholderResolver` does not have.** It gave the class a
+  `required PlaceholderStack stack` and a non-nullable `environment`. Every
+  parameter is optional: `stack` defaults to a fresh standalone
+  `PlaceholderStack` and `environment` to `Platform.environment`, so
+  `PlaceholderResolver()` is a working strict resolver over its own empty scope.
+  The page now says so, and says that both nullable parameters become
+  non-nullable fields.
+
+### Added
+
+- **`doc/api/api_summary_placeholders.md` (tcopen349).** Six types, one function
+  and three constants with a section each: the four placeholder forms and the
+  two entry points, the lexical scope chain, the expression seam, and the three
+  wire-coded failures.
+
+### Changed
+
+- **The summary threshold counts members, not types.** A unit earns a
+  symbol-level summary at ten exported public *members*. Counting types put
+  `placeholders` on the wrong side of the line — 6 types against
+  `isolate_streaming`'s 12, but 35 members against its 47, which is also where
+  its 647 lines put it. `PlaceholderResolver` and `PlaceholderStack` carry
+  seventeen members between them and a type count sees none of them.
+
+  The member figure partitions the package more decisively too: 0, 5 | 35, 47,
+  107, 344 has nothing near the line, where 3, 6 | 12, 20, 52 is a factor of
+  two. `test/api_summary_test.dart` measures members by brace depth rather than
+  by pattern — a member sits at depth 1 and everything in a method body is
+  deeper — and also holds the index's own table to the measured counts, so the
+  numbers the rule argues from cannot go stale.
+
+  `tom_flutter_ui` keeps the threshold over types, for a reason its own index
+  states: it is a widget catalogue where a type *is* the unit of surface.
+  Whether the two should be unified is `tcextension57_aivw`.
+
+### Fixed
+
+- **Twelve broken markdown reference links in `doc/` (tcopen347).** Three on
+  `bearer_auth.md` and nine on `isolate_streaming.md` were written as
+  `` [`SomeType`] `` — dartdoc's square-bracket syntax in a markdown file,
+  where it renders as literal brackets around a code span rather than as a
+  link. None had an anchor to point at, so the brackets are gone and the code
+  spans remain, which is what the surrounding prose does throughout both pages.
+
+### Added
+
+- **All three `BearerAuthFailureReason` categories now have a producer
+  (tcopen346).** `malformed` had none, and the reason was structural rather
+  than an oversight: every authenticator in the package was a map lookup, and a
+  lookup has no parse step for that category to describe. So the one reason
+  that distinguishes the taxonomy from a boolean accept/reject was the one an
+  implementer had no reference for.
+
+  `example/mcp_auth/mcp_auth_example.dart` now parses a JWT-shaped token —
+  three dot-separated segments with base64url JSON claims in the middle, and no
+  signature verification, which it says loudly — and demonstrates all four
+  outcomes. `test/bearer_auth_test.dart` pins each category and closes on the
+  one comparison the distinction rests on: two tokens naming a subject the
+  authenticator knows, differing only in whether the envelope parses.
+
+  `doc/bearer_auth.md` states the rule the reasons follow — *did the server
+  learn who was claimed?* — and the three cases most easily got backwards: an
+  expired token and a signature that fails verification are `rejected`, while
+  claims that parse but carry no subject are `malformed`.
+
+- **`doc/api/api_summary_index.md` states which units get a summary
+  (tcopen344).** A unit earns one at ten exported public types. The rule
+  partitions the package with no exception: `agent` (52), `llm` (20) and
+  `isolate_streaming` (12) have summaries; `placeholders` (6), `bearer_auth`
+  (3) and `mcp_auth` (0 types, two constants) are mirrored by their prose
+  page's Overview table instead.
+
+  `test/api_summary_test.dart` now holds the whole arrangement rather than only
+  the summaries that happen to exist: it derives every unit from `lib/src/`,
+  fails a unit at or over the threshold with no summary, holds a sub-threshold
+  unit's `## Overview` to every exported type, function **and** constant, and
+  requires the index to account for every unit and link no summary that is not
+  there.
+
+  That last part closes a hole. `tool/check_doc_overview_types.py` compares
+  types and skips a unit that exports none — `mcp_auth` is named in its source
+  as the reason — so the unit whose entire surface is two constants was the one
+  no derived check read.
+
+### Changed
+
+- **The `bearerTokenMetaKey` naming guard is a closed rule, not a list.** It
+  checked the key against four package names, which fails open: minting
+  `tom_forge` and writing `tomForgeBearerToken` would have passed. The
+  capitalised words in the key must now be exactly `Bearer` and `Token`, so a
+  package name anywhere in it fails whether or not the test knows the package.
+
+- **Two pointers to `test/agent_api_summary_test.dart`**, which was renamed to
+  `test/api_summary_test.dart`, in `README.md` and `doc/agent.md`; and
+  `doc/agent.md`'s exported-type count, which stayed at 51 when the tenth
+  sidecar store added a type.
+
+- **`WirePrompt.combined` no longer documents a migration (tcopen343).** Its
+  dartdoc called `combined` the fallback used "transitionally [by] any provider
+  until its native-channel mapping lands". There is no such mapping to wait
+  for: routing `system` and `user` to native channels, or sending `combined`
+  when the backend has none, is the choice itself, made once per provider. The
+  clause is gone, and the getter now states the part it never had — that
+  `promptHash` is the content hash of `combined` for *every* provider, sender
+  or not, which makes the join part of the hash contract rather than of
+  formatting. `LlmProvider`'s no-mutation rule had the same elision, telling
+  implementers to translate `combined` where a channel-aware provider does not,
+  and now names both routes.
+
+- **The `agent` and `llm` module documents state their dependencies as the
+  standard table.** Both had a prose list, which `check_module_dependencies.py`
+  reported as a shape fault and which was also wrong: the `agent` list claimed
+  `tom_basics`, which no file in the module imports, and omitted `dart:async`,
+  `cancellation.dart` and `placeholders`; the `llm` list omitted `dart:async`,
+  `dart:convert` and `prompt_sha256.dart`.
+
+### Added
+
+- **The Agent SDK provider is tested against a two-channel prompt (tcopen343).**
+  Every existing assertion rode a system-only `WirePrompt`, where
+  `combined == system`, so a provider that put the system channel on the wire
+  and fingerprinted it would have passed all of them; the buffered `complete`
+  asserted two fields and never the provenance triple. A new group drives both
+  entry points with both channels filled, with a control on the fixture itself.
+
+- **Tests for the llm unit's value types (tcopen342).**
+  `test/llm_value_types_test.dart` covers the four pieces the provider tests
+  reached only in passing. `LlmOptions.copyWith`'s `_unset` sentinel exists to
+  distinguish omitting a parameter from passing `null`, and both arms are now
+  asserted — including that each of the five nullable fields clears
+  independently, and that `stopSequences` and `toolCatalogue` cannot be cleared
+  because they are non-nullable with defaults.
+
+  `WirePrompt.combined` gets its three branches. It feeds `promptSha256`, which
+  stamps `LlmCallReport.promptHash`, so a change to the join would silently
+  change every prompt hash ever recorded with nothing failing.
+
+  `ToolCatalogue` and `ToolDescriptor` are exercised through `LlmOptions`, and
+  `LlmStreamToolCallProposed` through an exhaustive `switch` — which is how a
+  consumer of a sealed family meets a variant the shipped provider never emits.
+
+- **A runnable example for the `llm` unit (tcopen339).**
+  `example/llm/llm_example.dart` implements `LlmProvider` end to end and drives
+  it through `complete` and `completeStream`. It asserts the three invariants
+  an implementer most easily breaks — the anchor stamp, the unmodified body,
+  and one route announced once — with the route check made under a per-call
+  model override, because under default options a provider that resolved the
+  model twice would look correct.
+
+  It also shows that one failure takes two shapes: a terminal
+  `LlmStreamFailed` carrying a still-attributable report on the streaming
+  path, and an exception on the buffered one.
+
+- **An API mirror for the `llm` unit (tcopen338).**
+  `doc/api/api_summary_llm.md` gives each of the twenty exported types a
+  section, plus `agentSdkLooksLikeSessionError` and both public statics. With
+  it `test/api_summary_test.dart` now holds three mirrors, discovered from
+  `doc/api/` rather than listed.
+
+- **A prose page for the `llm` unit (tcopen337).** `doc/llm.md` documents the
+  provider seam a reader could previously only reconstruct from dartdoc: the
+  `LlmProvider` contract and its anchor, no-mutation and provenance
+  invariants; the stream lifecycle and why a non-streaming backend still
+  implements `completeStream`; the value types, including why `WirePrompt` is
+  `final` and why `combined` preserves the anchor guarantee; and for
+  `AgentSdkLlmProvider`, the control inversion, the dropped thinking blocks
+  whose tokens still count, the tool-call event that is deliberately never
+  emitted, the four conditions on its single retry, and the conservative
+  two-cue session matcher that separates it from the editor's broader one.
+
+  The three session strategies get a table and the rule that matters most:
+  **no method may throw because the session state is damaged**, write included
+  — the provider awaits `record` on the success path, so a throwing store would
+  destroy a call that has already been billed.
+
+- **`markWorkerDead` says that it is terminal (tcopen335).** A guard told its
+  worker died fails every future request for the rest of its life; a host that
+  respawns builds a new guard. That followed from "one-shot" and is now stated
+  on the method, with the reason a resettable guard would be worse — it would
+  have to decide what it owed the requests that were in flight at the death.
+
+- **The cancellation discriminator's precondition is enforced (tcopen334).**
+  `IsolateCancellationRegistry.register` asserts that token ids arrive strictly
+  increasing — the property that lets the high-water mark tell a pre-open
+  cancel from a post-close one, and which holds only for a single host
+  allocator over an ordered transport. Two allocators into one registry, or a
+  reordering transport, previously made a genuine pre-open cancel
+  indistinguishable from a post-close one: it was dropped, and the request ran
+  to completion having been cancelled with no error anywhere.
+
+  Four tests pin it, including a control over the ordinary in-order sequence
+  and one that demonstrates the silent mis-read the assert replaces.
+
+- **Disposal is documented as an obligation, and the example proves it
+  (tcopen333).** `IsolateCancellationHandle.dispose()` removes a request's
+  entry from the registry; skipping it holds one entry per request served for
+  the life of the isolate, with nothing failing and `inFlightCount` the only
+  reading that would show it. `doc/isolate_streaming.md` states that under
+  Concurrency and Lifecycle and `doc/api/api_summary_isolate_streaming.md`
+  states it on the handle.
+
+  `example/isolate_streaming/` now asks its worker for `inFlightCount` after
+  both cancelled requests have ended and asserts it is zero. Removing the
+  `finally` that disposes makes the demo print `2 in flight` and fail — so the
+  example shows what the obligation buys instead of performing it silently.
+
+- **An API mirror for the `isolate_streaming` unit (tcopen332).**
+  `doc/api/api_summary_isolate_streaming.md` gives each of the twelve exported
+  types a section; the unit declares no top-level function, constant or public
+  static, so twelve sections are the whole of it. It leads with the fact the
+  prose had wrong twice — which side of the boundary each type lives on — as a
+  table: only `IsolateCancellationToken` is sendable, the registry and handle
+  hold live completers and never leave the executor's isolate, and the guard
+  and the exception registry are host-side.
+
+  `test/agent_api_summary_test.dart` is now `test/api_summary_test.dart` and
+  holds **every** `doc/api/api_summary_<unit>.md`, deriving each one's required
+  symbols from `lib/src/<unit>/<unit>.dart`. Neither a unit name nor a symbol
+  name is written out in it, so a third mirror is covered the day it lands.
+
+- **`ReminderTemplateStore` (tcopen331).** `ReminderTemplate` was the one
+  persisted-shaped model in the unit with no store — a `fromYaml`/`toYaml` pair
+  like the nine that had one, and nothing that could read or write a set of
+  them. That mattered because two models which *are* persisted hold a
+  `reminderTemplateId`: `QueuedPrompt` and `TimedRequest`. A queue restored on
+  the next launch therefore named a reminder body nothing in the package could
+  load, which is a reference in name only.
+
+  The store is the tenth instance of an already-uniform pattern — `Store(File)`,
+  a `resolveDefault()` honouring `TOM_SPECS_REMINDER_TEMPLATES_FILE` and
+  falling back to `<cwd>/.tom/reminder_templates.yaml`, a `load()` degrading to
+  an empty list, a `save()` writing the `version: 1` envelope — so it inherits
+  the shared degradation rule rather than restating it.
+
+### Fixed
+
+- **Three citations of documents the package does not ship (tcopen341).**
+  `lib/src/llm/llm.dart` explained which providers were deliberately left
+  behind and pointed at `deferred.tom_specs.md`, a file under `_ai/quests/`
+  that a package reader cannot reach — and which said nothing about the
+  providers, so the sentence pointed at a document that neither shipped nor
+  carried the claim. The reason is now stated inline. The README and
+  `doc/placeholders.md` each cited `deferred.tom_core.md` for the deferred
+  `dart:io` removal; both now say the work is deferred without naming a file
+  nobody outside this workspace can open.
+
+- **`doc/api/api_summary_agent.md` described `TimedRequest.scheduleMode` as
+  optional (tcopen331).** It is required, and deliberately so: a caller states
+  whether an entry repeats on an interval or at fixed times instead of
+  discovering which one they got. The summary said the opposite because it
+  followed an older finding's description of the defect rather than the
+  constructor, which is the one source it claims to be written from.
+
+- **A runnable example for the `agent` unit (tcopen329).**
+  `example/agent/agent_example.dart` walks it end to end in four acts: a
+  sidecar round-trip and both degradation rules (parse damage costs the file,
+  shape damage costs one entry — shown with three rows of which two are
+  unusable), bridge discovery with a `localhost` binding matched back against a
+  `127.0.0.1` scan result, the reconnect back-off resolving `sameWorkspace`,
+  `differentWorkspace` and `stillGone`, and a send that refreshes a stale
+  session id and then declines to refresh a second time.
+
+  No network, no VS Code, no API key: the port scanner, the reconnect delay and
+  the Agent SDK transport are injected, which is possible only because the unit
+  already takes each of them as a seam. It runs in under a second and touches
+  only a temporary directory it deletes.
+
+- **An API mirror for the `agent` unit (tcopen328).**
+  `doc/api/api_summary_agent.md` gives each of the unit's 51 exported types, 13
+  top-level functions and 4 constants its own section and names all three
+  public statics — 68 symbols whose only listing was a table in a quest
+  document the package does not ship.
+
+  It is held rather than trusted: `test/agent_api_summary_test.dart` derives the
+  required set from `lib/src/agent/agent.dart` and fails on a symbol with no
+  section, a public static never named, or a section naming something the
+  barrel does not export. No symbol name is written out in the test, so it
+  cannot go stale in the same direction as the document it guards.
+
+- **A prose page for the `agent` unit (tcopen327).** `doc/agent.md` documents
+  what a caller cannot infer from signatures: the ten sidecar paths and their
+  environment overrides, the payload key and identity field each list store
+  uses, and the two halves of the degradation rule — parse damage costs the
+  file, shape damage costs one entry. Then the bridge protocol (the 19900–19909
+  scan range, the workspace-identity handshake, and why a binding matches a
+  scan endpoint-wise rather than by string), the reconnect back-off with its
+  10/30/60-second schedule and three resolutions, and the send engine: the
+  event lifecycle, the four conditions that together permit one retry with a
+  fresh session, and the fact that **cancellation ends the stream with no
+  terminal event at all**, so a consumer waiting for one to re-enable its UI
+  must also watch the token.
+
+  The README gains a table linking all five of the package's doc pages, none of
+  which it referenced before.
+
 ## 1.8.0
 
 ### Changed

@@ -9,20 +9,20 @@
 /// - [TomAuthTreeView] / [TomAuthTreeNode] — a tree with per-node auth, where a
 ///   `disabled` parent caps its whole subtree and every other node resolves on
 ///   its own key.
-/// - [TomRadioGroup] / [TomRadioGroupItem] — a radio group with one resource
+/// - [TomChoiceGroup] / [TomChoiceGroupItem] — a radio group with one resource
 ///   key controlling the whole group.
 /// - [TomEmptyState], [TomLoadingOverlay], [TomSkeletonLoader],
 ///   [TomErrorBoundary], [TomInfiniteScroll] — empty / loading / error idioms.
 ///
 /// Unlike the field widgets, these are render-oriented, so most of their value
-/// only shows up in a widget tree (covered by the `testWidgets` cases in
-/// `test/custom/custom_example_test.dart`). What *is* pure and demonstrated
-/// here is the shared machinery they delegate to: the `TomAuthState` lattice
+/// only shows up in a widget tree. `custom_rendered_example.dart` beside this
+/// one is where that lives: all eight on screen in one runnable app, each
+/// checked once it is there. What *is* pure and demonstrated here is the shared machinery they delegate to: the `TomAuthState` lattice
 /// (`narrow` — the operation [TomAuthTreeView] uses to fold what a node
 /// inherits into the state it resolved for itself), the resource-path auth
 /// lookup every guard performs, [TomEmptyState]'s constructor-time string
 /// resolution (the module's only use of the resource provider), and the plain
-/// data models ([TomRadioGroupItem], [TomAuthTreeNode]).
+/// data models ([TomChoiceGroupItem], [TomAuthTreeNode]).
 ///
 /// Because it imports `flutter/material` (→ `dart:ui`) through the package
 /// barrel, bare `dart run` cannot execute it. Run
@@ -66,7 +66,7 @@ void run() {
   TomAuthorization.reset();
 
   // ---------------------------------------------------------------------------
-  // 1. The auth lookup every guard performs. TomAuthGuard / TomRadioGroup /
+  // 1. The auth lookup every guard performs. TomAuthGuard / TomChoiceGroup /
   //    TomAuthTreeView all qualify a tomId against the active scope and call
   //    TomAuthorization.resolveAuth — the same call exercised directly here.
   // ---------------------------------------------------------------------------
@@ -101,9 +101,9 @@ void run() {
   // ---------------------------------------------------------------------------
   // 3. The plain data models the composites consume.
   // ---------------------------------------------------------------------------
-  const items = <TomRadioGroupItem<String>>[
-    TomRadioGroupItem(value: 'eur', label: 'Euro', description: '€'),
-    TomRadioGroupItem(value: 'usd', label: 'US Dollar'),
+  const items = <TomChoiceGroupItem<String>>[
+    TomChoiceGroupItem(value: 'eur', label: 'Euro', description: '€'),
+    TomChoiceGroupItem(value: 'usd', label: 'US Dollar'),
   ];
   print('radio items: ${items.map((i) => i.value).toList()}');
 
@@ -154,7 +154,7 @@ void run() {
   );
   final empty = TomEmptyState(title: 'No items', description: 'Nothing yet.');
   const skeleton = TomSkeletonLoader(width: 120, height: 16, enabled: false);
-  const group = TomRadioGroup<String>(
+  const group = TomChoiceGroup<String>(
     tomId: 'reports.currency',
     items: items,
     selected: 'eur',

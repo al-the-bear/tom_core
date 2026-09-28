@@ -880,9 +880,10 @@ class _GradableItemField {
 
 /// The read/copy binding for every gradable `todo.item.*` field, keyed by its
 /// full resource key. Only the closures live here; the *set and order* of
-/// graded fields is the server resource bundle's
-/// [AppResourceBundles.gradableItemKeys], so a bundle key without a binding
-/// fails loudly when [_gradableItemFields] is built. The non-gradable columns
+/// graded fields is the shared domain's [gradableItemKeys], so a domain key
+/// without a binding fails loudly when [_gradableItemFields] is built. The
+/// server's text bundle does not decide the set — it is checked against it — so
+/// no label added to `resources_app.json` can widen what this path writes. The non-gradable columns
 /// (`label`, `tags`) are absent by design — `updateItem` preserves them from
 /// the stored row, `createItem` takes them from the creator's payload.
 ///
@@ -923,13 +924,13 @@ final Map<String, _GradableItemBinding> _gradableItemBindings = {
   ),
 };
 
-/// The field-graded [ItemRecord] columns, in the display order the server
-/// resource bundle labels them — the same set the field-grade resolver answers
-/// and the matrix the auth server seeds. The order and membership come
-/// from [AppResourceBundles.gradableItemKeys]; [_gradableItemBindings] supplies
-/// each key's read/copy closures. A gradable key with no binding throws here.
+/// The field-graded [ItemRecord] columns, in the domain's display order — the
+/// same set the field-grade resolver answers and the matrix the auth server
+/// seeds. The order and membership come from [gradableItemKeys];
+/// [_gradableItemBindings] supplies each key's read/copy closures. A gradable
+/// key with no binding throws here.
 final List<_GradableItemField> _gradableItemFields = [
-  for (final key in AppResourceBundles.gradableItemKeys())
+  for (final key in gradableItemKeys)
     _GradableItemField(
       key,
       _gradableItemBindings[key]!.read,

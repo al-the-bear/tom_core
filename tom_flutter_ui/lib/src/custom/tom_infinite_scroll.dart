@@ -19,23 +19,35 @@
 /// wrapper considers the source exhausted and stops issuing further
 /// requests.
 ///
-/// State transitions exposed through the slot builders. Only the
-/// "loading more" indicator is a tile *within* the list. The skeleton,
-/// empty and error slots are returned in place of the `ListView` and take
-/// the whole surface, so while any of them is showing, no loaded item is
-/// painted.
+/// State transitions exposed through the slot builders. The skeleton and empty
+/// slots are returned in place of the `ListView` and take the whole surface;
+/// the "loading more" indicator is a tile *within* the list; and the error
+/// slot is one or the other depending on whether there is anything to
+/// preserve.
+///
+/// Pages are requested on two triggers: scrolling within
+/// [TomInfiniteScroll.prefetchOffset] of the end, and a page landing that
+/// leaves the list with nothing to scroll. The second exists because the first
+/// cannot fire on a list that does not overflow — and a *full* page that
+/// happens to fit leaves the source unexhausted, so without it the list stops
+/// after one page with more data available. It applies only when there is no
+/// scrollable extent at all; anything scrollable is left to the gesture.
 ///
 /// * `pending && items.isEmpty` — initial-load skeleton via
 ///   [TomInfiniteScroll.skeletonBuilder].
 /// * `pending && items.isNotEmpty` — bottom-of-list "loading more"
 ///   indicator (a small `CircularProgressIndicator`), appended as the
 ///   list's last tile.
-/// * `error != null` — [TomInfiniteScroll.errorBuilder] (defaults to a
-///   centred Material panel carrying the message and a Retry action).
-///   This one replaces the entire list rather than reporting the failure
-///   beneath the rows already loaded: those items stay in state and are
-///   painted again on retry, but nothing shows above the panel while the
-///   error is latched.
+/// * `error != null && items.isEmpty` — [TomInfiniteScroll.errorBuilder] with
+///   [TomInfiniteScrollErrorPlacement.surface], defaulting to a centred
+///   Material panel with the message and a Retry action. Nothing is loaded,
+///   so the failure is all there is to show.
+/// * `error != null && items.isNotEmpty` — the same builder with
+///   [TomInfiniteScrollErrorPlacement.tile], defaulting to a compact row with
+///   the message and a Retry action, appended as the list's last tile. **The
+///   loaded items stay on screen.** A user who has scrolled through ten
+///   screens does not lose them because page six failed, and the report is at
+///   the boundary they reached rather than in place of everything behind it.
 /// * `items.isEmpty && !pending && error == null` —
 ///   [TomInfiniteScroll.emptyBuilder].
 library;
@@ -56,6 +68,35 @@ typedef TomPageFetcher<T> = Future<List<T>> Function(int page, int pageSize);
 /// Builds a single list tile from an item.
 typedef TomInfiniteScrollItemBuilder<T> =
     Widget Function(BuildContext context, T item, int index);
+
+/// Where a page failure is being reported.
+///
+/// The two are genuinely different situations and want different shapes, which
+/// is why the builder is told which one it is in rather than left to guess
+/// from a count it does not have.
+enum TomInfiniteScrollErrorPlacement {
+  /// Nothing is loaded, so the report takes the whole surface. There is
+  /// nothing to preserve and the failure is the only thing to say.
+  surface,
+
+  /// Items are on screen and stay there; the report is the list's last tile,
+  /// at the boundary the user scrolled to. Replacing the surface here would
+  /// throw away a screenful of content the user has already reached.
+  tile,
+}
+
+/// Builds the report for a page that failed.
+///
+/// [retry] re-issues the page that failed — the cursor does not advance past
+/// a failure — and [placement] says whether the result is taking the surface
+/// or sitting at the end of the list.
+typedef TomInfiniteScrollErrorBuilder =
+    Widget Function(
+      BuildContext context,
+      Object error,
+      VoidCallback retry,
+      TomInfiniteScrollErrorPlacement placement,
+    );
 
 /// List wrapper with pagination, observable page fetcher, and
 /// empty / error / loading-state hooks.
@@ -88,16 +129,26 @@ class TomInfiniteScroll<T> extends StatefulWidget {
 
   /// Optional builder for the initial-load skeleton. Defaults to a
   /// stack of [TomSkeletonLoader] tiles.
+  ///
+  /// Those shimmer, and a repeating animation schedules frames forever — so
+  /// `WidgetTester.pumpAndSettle` cannot return while the default skeleton is
+  /// on screen, which is the first line of most tests that pump a screen
+  /// containing one of these over a real data source. Reduced motion or an
+  /// enclosing `TickerMode(enabled: false)` stops the shimmer and lets it
+  /// settle; see [TomSkeletonLoader.enabled].
   final WidgetBuilder? skeletonBuilder;
 
   /// Optional builder for the empty-state slot. Defaults to a
   /// [TomEmptyState] with a generic message.
   final WidgetBuilder? emptyBuilder;
 
-  /// Optional builder for the error-state slot. Receives the error
-  /// object plus a `retry` closure.
-  final Widget Function(BuildContext context, Object error, VoidCallback retry)?
-  errorBuilder;
+  /// Optional builder for the error slot. Receives the error object, a
+  /// `retry` closure, and where it is being rendered.
+  ///
+  /// It is called in both placements, so a builder that assumes it owns the
+  /// surface will produce a full-height panel inside a list tile. Read
+  /// [TomInfiniteScrollErrorPlacement] and answer both.
+  final TomInfiniteScrollErrorBuilder? errorBuilder;
 
   /// Optional padding around the inner [ListView].
   final EdgeInsetsGeometry? padding;
@@ -149,6 +200,27 @@ class TomInfiniteScrollState<T> extends State<TomInfiniteScroll<T>> {
   /// than [TomInfiniteScroll.pageSize] items).
   bool get isExhausted => _exhausted;
 
+  /// The failure the list is currently reporting, or `null` when there is
+  /// none.
+  ///
+  /// The other three observables cannot distinguish a list showing an error
+  /// from one showing an empty state: both have nothing loaded, nothing in
+  /// flight and an unexhausted source. Without this, a caller driving the list
+  /// through a `GlobalKey` could see that it had stopped and not why, and had
+  /// no way to report the failure anywhere — [TomInfiniteScroll.errorBuilder]
+  /// receives it, but only inside this widget's own build.
+  ///
+  /// Cleared by [refresh] and by a successful retry. It is the error of the
+  /// *current* sequence: a failure from a request abandoned by [refresh] never
+  /// reaches it.
+  Object? get error => _error;
+
+  /// Whether the list is currently reporting a failure.
+  ///
+  /// `error != null`, named to read beside [isPending] and [isExhausted] —
+  /// which is how a caller asks these questions, one after another.
+  bool get hasError => _error != null;
+
   @override
   void initState() {
     super.initState();
@@ -173,6 +245,41 @@ class TomInfiniteScrollState<T> extends State<TomInfiniteScroll<T>> {
     }
   }
 
+  /// Asks for another page when the loaded content leaves the list
+  /// unscrollable.
+  ///
+  /// Scrolling is the only other trigger, and a list that does not overflow
+  /// cannot be scrolled — so a full page that happens to fit (a small
+  /// [TomInfiniteScroll.pageSize], a tall viewport, short tiles) left the list
+  /// showing one page with more data available and nothing able to ask for it.
+  /// Exhaustion did not cover it: a *full* page leaves `_exhausted` false by
+  /// definition.
+  ///
+  /// **Deliberately stricter than [_maybeFetch]'s rule.** That one fetches
+  /// within [TomInfiniteScroll.prefetchOffset] of the end, which at rest is
+  /// true of any list barely taller than its viewport; using it here would
+  /// turn every load into an immediate second request. This covers only what
+  /// scrolling cannot reach — a list with no scrollable extent at all — and
+  /// leaves everything scrollable to the gesture that was always going to
+  /// trigger it.
+  ///
+  /// **What bounds the loop is the source, not a counter here.** Each round
+  /// either makes the list scrollable — and this returns on the next one — or
+  /// brings a short page, which exhausts the source. A counter of rounds was
+  /// written and removed: it could only stop a round that added no items, and
+  /// a page that adds none has already set `_exhausted`.
+  ///
+  /// The case it does not bound is rows that measure zero. No number of pages
+  /// makes those scrollable, so the list keeps asking; that is an
+  /// `itemBuilder` returning nothing, and no guard here can make such a list
+  /// work.
+  void _autoFillViewport() {
+    if (!mounted || !_controller.hasClients) return;
+    // Anything scrollable is already reachable by the scroll trigger.
+    if (_controller.position.maxScrollExtent > 0) return;
+    _fetchNextPage();
+  }
+
   Future<void> _fetchNextPage() async {
     if (_pending || _exhausted || _error != null) return;
     final generation = _generation;
@@ -186,6 +293,10 @@ class TomInfiniteScrollState<T> extends State<TomInfiniteScroll<T>> {
         _exhausted = batch.length < widget.pageSize;
         _pending = false;
       });
+      // Once the page is laid out, check whether it filled the viewport. It
+      // has to wait for the frame: the extent this reads does not exist until
+      // the rows it measures are on screen.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _autoFillViewport());
     } catch (e) {
       if (!mounted || generation != _generation) return;
       setState(() {
@@ -231,7 +342,15 @@ class TomInfiniteScrollState<T> extends State<TomInfiniteScroll<T>> {
     );
   }
 
-  Widget _defaultError(BuildContext context, Object error, VoidCallback retry) {
+  Widget _defaultError(
+    BuildContext context,
+    Object error,
+    VoidCallback retry,
+    TomInfiniteScrollErrorPlacement placement,
+  ) {
+    if (placement == TomInfiniteScrollErrorPlacement.tile) {
+      return _defaultErrorTile(context, error, retry);
+    }
     final theme = Theme.of(context);
     return Center(
       child: Padding(
@@ -254,6 +373,36 @@ class TomInfiniteScrollState<T> extends State<TomInfiniteScroll<T>> {
     );
   }
 
+  /// The compact form, for a failure reported under rows that are still there.
+  ///
+  /// A row rather than a centred column: it sits in the list's trailing slot
+  /// beside content, and the full-surface panel's proportions read as a broken
+  /// tile there.
+  Widget _defaultErrorTile(
+    BuildContext context,
+    Object error,
+    VoidCallback retry,
+  ) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: theme.colorScheme.error, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Failed to load: $error',
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(onPressed: retry, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
+
   void _resetError() {
     setState(() => _error = null);
     _fetchNextPage();
@@ -261,24 +410,44 @@ class TomInfiniteScrollState<T> extends State<TomInfiniteScroll<T>> {
 
   @override
   Widget build(BuildContext context) {
-    if (_error != null) {
-      final builder = widget.errorBuilder ?? _defaultError;
-      return builder(context, _error!, _resetError);
-    }
+    final errorBuilder = widget.errorBuilder ?? _defaultError;
+    final error = _error;
+
     if (_items.isEmpty) {
+      // Nothing loaded: every slot takes the surface, because there is
+      // nothing behind it to preserve.
+      if (error != null) {
+        return errorBuilder(
+          context,
+          error,
+          _resetError,
+          TomInfiniteScrollErrorPlacement.surface,
+        );
+      }
       if (_pending) {
         return widget.skeletonBuilder?.call(context) ??
             _defaultSkeleton(context);
       }
       return widget.emptyBuilder?.call(context) ?? _defaultEmpty(context);
     }
-    final tileCount = _items.length + (_pending ? 1 : 0);
+
+    // One trailing tile at most: a fetch that failed is no longer pending, so
+    // the spinner and the failure cannot both want the slot.
+    final hasTrailing = _pending || error != null;
     return ListView.builder(
       controller: _controller,
       padding: widget.padding,
-      itemCount: tileCount,
+      itemCount: _items.length + (hasTrailing ? 1 : 0),
       itemBuilder: (context, index) {
         if (index >= _items.length) {
+          if (error != null) {
+            return errorBuilder(
+              context,
+              error,
+              _resetError,
+              TomInfiniteScrollErrorPlacement.tile,
+            );
+          }
           // Trailing "loading more" tile.
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),

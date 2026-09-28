@@ -10,16 +10,21 @@ assistant, and any future agent runtime.
 ## `dart:io` coupling
 
 The package as a whole is **not** `dart:io`-free and does not claim to
-be. Fourteen files under `lib/` import `dart:io`, and five of the
-thirty-six barrel exports reach one of them — directly or transitively:
+be. 15 files under `lib/` import `dart:io`, and 5 of the 36 barrel
+exports reach one of them — directly or transitively:
 
-| Coupled barrel export | Reached through |
-|-----------------------|-----------------|
-| `src/agent/agent.dart` | eleven file-backed stores, `agent_send.dart`, `agent_sidecar.dart`, `bridge_connection.dart` |
-| `src/llm/llm.dart` | `agent_sdk_session.dart` (subprocess transport) |
-| `src/path_scope_io.dart` | itself — it *is* the `dart:io` half of `PathScope`, by design |
-| `src/placeholders/placeholders.dart` | `placeholder_resolver.dart` (`Platform.environment` default) |
-| `src/yaml_config_reader.dart` | `placeholder_resolver.dart`, via `${…}` expansion |
+| Coupled barrel export | Reaches | Through |
+|-----------------------|--------:|---------|
+| `src/agent/agent.dart` | 13 | nine file-backed stores, `agent_send.dart`, `agent_sidecar.dart`, `bridge_connection.dart`, and `placeholder_resolver.dart` through the editor placeholder bindings |
+| `src/llm/llm.dart` | 1 | `agent_sdk_session.dart` (subprocess transport) |
+| `src/path_scope_io.dart` | 1 | itself — it *is* the `dart:io` half of `PathScope`, by design |
+| `src/placeholders/placeholders.dart` | 1 | `placeholder_resolver.dart` (`Platform.environment` default) |
+| `src/yaml_config_reader.dart` | 1 | `placeholder_resolver.dart`, via `${…}` expansion |
+
+Every figure above is derived by `test/dart_io_coupling_test.dart`, which
+reads this section and fails when a number here stops matching the import
+graph. The counts were prose once and went stale the first time a module
+gained an import.
 
 The remaining **31 exports are `dart:io`-free**, and that subset is what
 makes the package usable from `dart:io`-forbidding consumers. The one in
@@ -40,9 +45,10 @@ will not catch a regression here, so a test has to.
 inherent — it needs `dart:io` only to default `environment` to
 `Platform.environment`. Passing an explicit `environment:` map avoids
 touching the stub at runtime, which every config-layer call site and
-every test already does. Removing the import outright is tracked in
-`deferred.tom_core.md`; it would also un-couple `yaml_config_reader.dart`,
-which is coupled solely through it.
+every test already does. Removing the import outright is deferred rather than
+planned — it would also un-couple `yaml_config_reader.dart`, which reaches
+`dart:io` solely through this one import, so the change is worth more than it
+looks and is still not urgent.
 
 ## What lives here
 
@@ -87,13 +93,34 @@ coordinator is a deliberate lightweight-tier alternative to the kernel's
 `YamlConfigReader`/`MapFieldReader`/`YamlConfigWriter`) keep their
 existing unit tests.
 
+## Module documentation
+
+One prose page per module with a surface worth explaining, under
+[`doc/`](doc/):
+
+| Page | Covers |
+| ---- | ------ |
+| [`doc/agent.md`](doc/agent.md) | The editor-facing agent session: the eleven YAML sidecars and how a damaged one degrades, bridge discovery and binding, the reconnect back-off, and the send engine's retry and cancellation rules |
+| [`doc/api/api_summary_agent.md`](doc/api/api_summary_agent.md) | The symbol-level mirror of the same unit: every exported type, top-level function and constant with a section, held complete by `test/api_summary_test.dart` |
+| [`doc/bearer_auth.md`](doc/bearer_auth.md) | The transport-neutral bearer-token contract and its three failure reasons |
+| [`doc/mcp_auth.md`](doc/mcp_auth.md) | The MCP-specific `_meta` slot and JSON-RPC refusal code over that contract |
+| [`doc/llm.md`](doc/llm.md) | The provider seam: the `LlmProvider` contract and its anchor and provenance invariants, the value types that cross it, the Agent SDK provider's control inversion and single retry, and the three session strategies |
+| [`doc/api/api_summary_llm.md`](doc/api/api_summary_llm.md) | The symbol-level mirror of the same unit: twenty types with a section each, the session-error matcher, and both public statics |
+| [`doc/isolate_streaming.md`](doc/isolate_streaming.md) | Streaming results back across an isolate boundary |
+| [`doc/api/api_summary_isolate_streaming.md`](doc/api/api_summary_isolate_streaming.md) | The symbol-level mirror of the same unit: twelve types with a section each, and which side of the boundary each lives on |
+| [`doc/placeholders.md`](doc/placeholders.md) | The placeholder engine: forms, scope stack, recursion and typed failures |
+| [`doc/api/api_summary_placeholders.md`](doc/api/api_summary_placeholders.md) | The symbol-level mirror of the same unit: six types, one function and three constants with a section each, and the wire codes each failure carries |
+| [`doc/api/api_summary_index.md`](doc/api/api_summary_index.md) | Which units get a symbol-level summary and which are mirrored by their prose page instead — the ten-type threshold, and the six units measured against it |
+
 ## Runnable examples
 
-Four programs under [`example/`](example/), one per module that has a surface
+Six programs under [`example/`](example/), one per module that has a surface
 worth driving directly:
 
 | Example | Demonstrates |
 | ------- | ------------ |
+| [`example/llm/`](example/llm/llm_example.dart) | The provider seam from the implementer's side: a complete `EchoProvider`, the event contract and the route stamp asserted under a model override, and the two shapes one failure takes through `complete` and `completeStream` |
+| [`example/agent/`](example/agent/agent_example.dart) | The agent unit end to end without a network: a sidecar round-trip and its two degradation rules, bridge discovery and endpoint matching, the reconnect back-off resolving all three ways, and a send that refreshes a stale session |
 | [`example/placeholders/`](example/placeholders/placeholders_example.dart) | The placeholder forms, both entry points, the lexical scope stack, transitive recursion and the typed failures |
 | [`example/lifecycle_guards/`](example/lifecycle_guards/lifecycle_guards_example.dart) | Cooperative cancellation and the close-guard family |
 | [`example/isolate_streaming/`](example/isolate_streaming/isolate_streaming_example.dart) | Streaming results back across an isolate boundary |

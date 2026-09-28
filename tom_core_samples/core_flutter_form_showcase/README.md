@@ -646,7 +646,24 @@ test/
   showcase_cell_test.dart       # every cell shows both code and child
   widget_convention_test.dart   # G-UI-1 holds in the source AND in the snippets
   list_form_host_test.dart      # the list-bearing groups really bind their items
+  list_interaction_test.dart    # select, move and remove; master-detail selection
+  validation_message_test.dart  # every error key resolves to its sentence
+  chrome_test.dart              # the copy button and the chrome resource keys
 ```
+
+There is no `example/` folder, deliberately: the package is itself the example —
+a runnable app whose every cell pairs a snippet with the live form it produces —
+so an `example/` would only repeat the cells. `flutter run` (§2) is the way in.
+The suite map's [Examples](../README.md#examples) table records the same for
+every showcase.
+
+There is no `doc/` folder and no API reference mirror, deliberately: this is a
+showcase application, not a library — `publish_to: 'none'`, no package depends
+on it, and its only public surface is the app shell and its group list. The API
+it demonstrates is `tom_flutter_ui`'s, which carries its own reference — for the
+forms framework,
+[`api_summary_forms.md`](../../tom_flutter_ui/doc/api/api_summary_forms.md). The
+decision is taken once for all fifteen samples in [the suite map](../README.md).
 
 ---
 
@@ -679,7 +696,7 @@ No concurrency flag: `flutter test` gives each test file its own
 `flutter_tester` process, so the process-global state a file installs is never
 shared with another file.
 
-All five suites call `initializeReflection()` in `setUpAll`:
+All the suites that bind a form call `initializeReflection()` in `setUpAll`:
 
 - **`showcase_smoke_test.dart`** — pumps each group and the home screen at a
   large size, asserting the group title renders and `takeException` is null.
@@ -707,8 +724,18 @@ All five suites call `initializeReflection()` in `setUpAll`:
   rendered form shows a raw resource key, and a source scan of `lib/` catches the
   keys no interaction can paint (§8). Without it the silent key-as-message
   fallback is invisible to the rest of the suite.
+- **`list_interaction_test.dart`** — drives the two interactive cells the way a
+  reader would. In the inline list, *Move up* is disabled until a row is
+  selected; selecting a row and moving it up reorders the list, and *Remove*
+  deletes the selected row and only it. In master-detail, the first item starts
+  selected, and choosing another loads it into the detail form and flips which
+  moves the toolbar allows.
+- **`chrome_test.dart`** — `CodeBlock`'s copy button puts the trimmed snippet on
+  the clipboard, and both chrome keys resolve to their declared strings rather
+  than echoing back (the app bar shows the title). Shared in shape with the two
+  ACL samples' `chrome_test.dart`, which test the same `CodeBlock`.
 
-Current status: `dart analyze` → *No issues found!*; `flutter test` → **24/24
+Current status: `dart analyze` → *No issues found!*; `flutter test` → **30/30
 green**.
 
 ---

@@ -1,3 +1,13 @@
+## Unreleased
+
+### Fixed
+
+- **Three broken markdown reference links in `doc/scope_ids/scope_ids.md`.**
+  `Zone`, `id` and `parent` were written with dartdoc's square-bracket syntax
+  around a code span, which markdown renders as literal brackets rather than as
+  a link. No anchor existed to point at, so the brackets are gone and the code
+  spans remain.
+
 ## 1.1.16
 
 The largest release since 1.0: three new modules (`scheduling/`,

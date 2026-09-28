@@ -7,6 +7,12 @@ module owns four parts: the lexical scope chain (`PlaceholderStack`), the typed
 failures (`placeholder_errors`), the `${{ … }}` expression seam
 (`PlaceholderExpressions`), and the resolver itself (`PlaceholderResolver`).
 
+> **Looking for a signature?** This page explains behaviour.
+> [`doc/api/api_summary_placeholders.md`](api/api_summary_placeholders.md) is
+> the symbol-level mirror: six types, one function and three constants with a
+> section each. `test/api_summary_test.dart` derives the required set from the
+> barrel, so it cannot fall behind the code.
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -15,6 +21,7 @@ failures (`placeholder_errors`), the `${{ … }}` expression seam
 - [The Scope Stack](#the-scope-stack)
 - [The Expression Seam](#the-expression-seam)
 - [Strict vs Lenient, and Recursion](#strict-vs-lenient-and-recursion)
+- [What a Substituted Value Can Reach](#what-a-substituted-value-can-reach)
 - [Failure Types](#failure-types)
 - [Core Components](#core-components)
 - [Dependencies](#dependencies)
@@ -139,6 +146,50 @@ backing — a stray `${{ … }}` in a config value then fails fast (a
   cyclic binding is the typical cause). Reserved prefixes are not resolvable, so
   a template of only reserved placeholders converges immediately.
 
+## What a Substituted Value Can Reach
+
+The re-scan is of the whole text, not only of the parts that were already
+there, so **a substituted value is scanned again whatever form produced it** —
+and what it can reference is every namespace the resolver has. There is no
+per-form rule; the table is one answer repeated:
+
+| A value taken from | can reference | Example |
+| ------------------ | ------------- | ------- |
+| a binding | a binding | `a = '${b}'` renders `b`'s value |
+| a binding | the environment | `x = '${env:TOKEN}'` renders the variable |
+| the environment | a binding | `GREETING='hi ${secret}'` renders the *binding* `secret` |
+| the environment | the environment | `A='${env:B}'` renders `B` |
+| a `${{ … }}` result | either | the evaluator's return value is text like any other |
+| a `${name?}` value | either | optionality changes only the unbound case |
+
+The one thing not re-scanned is a **reserved** `${file:…}` / `${state:…}` form,
+and that is not an exception to the rule: a reserved placeholder is never
+substituted at any level, so a value that looks like one survives the round
+trip verbatim.
+
+**The composition feature and the trust boundary are the same mechanism.** A
+binding whose value is itself a template is why the re-scan exists. The
+consequence is that any text the resolver expands — an environment variable, a
+config value read from a file, an expression result — is expanded against the
+resolver's full namespace rather than inserted as data, so a value arriving
+from outside the program that happens to contain `${…}` is not inert.
+
+Two properties make a bad case quiet rather than loud:
+
+- Under **lenient** mode an injected reference that resolves to nothing renders
+  as the empty string, so the output reads as merely odd rather than wrong.
+- When strict mode does raise, the failure names the *reference* and not where
+  it came from, so the diagnostic points at the injected text rather than at
+  the value that carried it.
+
+**If a template is untrusted, give it a resolver with nothing to reach.**
+`PlaceholderResolver(environment: const {})` over a fresh stack has an empty
+binding namespace and an empty environment, and under the default strict mode
+it refuses an unknown reference instead of rendering it away. That is the
+isolation available today: there is no per-value "insert as data" mode, and
+adding one would have to answer for bindings as well as the environment, since
+both carry the same property.
+
 ## Failure Types
 
 Each failure carries a stable `code` (one of the three module constants) so a
@@ -164,6 +215,6 @@ caller can route on the code without string-matching the message:
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:io` | dart | `placeholder_resolver.dart` | `PlaceholderResolver` imports `dart:io` for the `Platform.environment` default behind the `environment` constructor parameter. It is one of fourteen `dart:io` importers in the package and one of five coupled barrel exports (see the README's `dart:io` coupling section), so it is not an exception to a `dart:io`-free package — no such package-wide property exists. What is specific to this module is that its coupling is **incidental rather than inherent**: unlike `path_scope_io.dart` or the `agent/` stores, which exist to touch the filesystem, this one only supplies a default. Two consequences follow. Passing an explicit `environment:` map avoids the dependency at runtime, which every config-layer call site and every test already does; and removing the import — tracked as deferred work in `deferred.tom_core.md` — would un-couple not just this module but `yaml_config_reader.dart`, whose only path to `dart:io` runs through here |
+| `dart:io` | dart | `placeholder_resolver.dart` | `PlaceholderResolver` imports `dart:io` for the `Platform.environment` default behind the `environment` constructor parameter. It is one of fourteen `dart:io` importers in the package and one of five coupled barrel exports (see the README's `dart:io` coupling section), so it is not an exception to a `dart:io`-free package — no such package-wide property exists. What is specific to this module is that its coupling is **incidental rather than inherent**: unlike `path_scope_io.dart` or the `agent/` stores, which exist to touch the filesystem, this one only supplies a default. Two consequences follow. Passing an explicit `environment:` map avoids the dependency at runtime, which every config-layer call site and every test already does; and removing the import — deferred rather than planned — would un-couple not just this module but `yaml_config_reader.dart`, whose only path to `dart:io` runs through here |
 
 - No other `tom_core_agentic` module.

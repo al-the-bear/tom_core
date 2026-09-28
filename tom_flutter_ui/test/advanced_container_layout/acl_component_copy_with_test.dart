@@ -37,7 +37,12 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Path of the source under inspection, relative to the package root — the
 /// directory `flutter test` runs from.
-const _sourcePath = 'lib/src/advanced_container_layout/acl_container.dart';
+///
+/// The model is a `part` of the `acl_container` library rather than a library
+/// of its own; this names the part that declares the two types, which is where
+/// a constructor and its `copyWith` have to agree.
+const _sourcePath =
+    'lib/src/advanced_container_layout/acl_container_model.dart';
 
 /// Returns the substring delimited by the bracket pair that opens at
 /// [openIndex], excluding the brackets themselves.

@@ -11,15 +11,9 @@
 /// The domain's *own* tests bootstrap through the test-only seed at
 /// `test/run_all_tests.dart`.
 ///
-/// ```dart
-/// import 'package:advanced_todo_domain/advanced_todo_domain.dart';
-///
-/// // A consumer installs its own combined seed first, then:
-/// final item = TodoItem()
-///   ..title.set('Ship the advanced sample')
-///   ..statusValue = TodoStatus.inProgress
-///   ..priorityValue = TodoPriority.high;
-/// ```
+/// `example/advanced_todo_domain_example.dart` is the worked use, compiled and
+/// run by the package's suite: the entity chain by foreign key, the typed enum
+/// accessors and their fallback, a resource key, and the two-level field grade.
 library;
 
 export 'src/authz/field_grade_vocabulary.dart';

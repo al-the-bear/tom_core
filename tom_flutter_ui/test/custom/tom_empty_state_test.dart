@@ -27,6 +27,8 @@
 /// never sees. Raised from the constructor it lands on the caller's own line.
 library;
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -126,6 +128,97 @@ void main() {
         reason:
             'an unresolved resource is a development signal, and every '
             'other Tom widget renders its key',
+      );
+    });
+  });
+
+  group('all three strings come from one resolved base path', () {
+    // The three used to be eight duplicated lines each, which meant three
+    // `TomCtr.resolvePath` calls for a widget whose whole job is to render
+    // three strings — and three places a change to how the path is qualified
+    // had to land. They share one `basePath` now, and these are the two halves
+    // of that: the precedence each string follows, and the call that produces
+    // the path they all read from.
+
+    testWidgets('a resource beats the explicit description', (tester) async {
+      // Only the title's precedence was pinned. The other two follow the same
+      // rule and would diverge silently, because a wrong description is still
+      // a description.
+      _resources({'empty.description': 'from resources'});
+      await tester.pumpWidget(
+        _host(
+          TomEmptyState(
+            tomId: 'empty',
+            title: 'Title',
+            description: 'explicit',
+          ),
+        ),
+      );
+
+      expect(find.text('from resources'), findsOneWidget);
+      expect(find.text('explicit'), findsNothing);
+    });
+
+    testWidgets('a resource beats the explicit action label', (tester) async {
+      _resources({'empty.actionLabel': 'from resources'});
+      await tester.pumpWidget(
+        _host(
+          TomEmptyState(
+            tomId: 'empty',
+            title: 'Title',
+            actionLabel: 'explicit',
+            onActionPressed: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('from resources'), findsOneWidget);
+      expect(find.text('explicit'), findsNothing);
+    });
+
+    testWidgets('the explicit values stand when no resource answers', (
+      tester,
+    ) async {
+      // The control for both. Without it they pass for a widget that renders
+      // the resource and nothing else.
+      _resources({});
+      await tester.pumpWidget(
+        _host(
+          TomEmptyState(
+            tomId: 'empty',
+            title: 'Title',
+            description: 'explicit body',
+            actionLabel: 'explicit action',
+            onActionPressed: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('explicit body'), findsOneWidget);
+      expect(find.text('explicit action'), findsOneWidget);
+    });
+
+    test('the base path is resolved once', () {
+      // No behaviour reveals this: three `resolvePath` calls render exactly
+      // what one does. `TomCtr.resolvePath` is documented as a
+      // call-once-per-widget operation, so the count is the claim, and the
+      // source is the only place it can be read.
+      //
+      // Only the count. *Where* it is called is a behavioural property —
+      // resolving at construction is what makes a missing headline reach the
+      // caller instead of an enclosing `TomErrorBoundary` — and the group
+      // below pins that by building one and watching it throw. Asserting the
+      // line's position as well would pin member order, which is not the
+      // property and which no mutation of behaviour can violate.
+      final source = File(
+        'lib/src/custom/tom_empty_state.dart',
+      ).readAsStringSync();
+      expect(
+        RegExp(r'TomCtr\.resolvePath\(').allMatches(source).length,
+        1,
+        reason:
+            'all three strings share one base path; a second call is a second '
+            'copy of how the path is qualified',
       );
     });
   });

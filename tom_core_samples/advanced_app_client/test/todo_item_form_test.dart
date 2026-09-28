@@ -15,21 +15,10 @@ library;
 import 'package:advanced_app_client/forms/todo_item_form.dart';
 import 'package:advanced_app_client/reflection_seed.dart'
     show initializeReflection;
+import 'package:advanced_todo_domain/advanced_todo_domain.dart'
+    show gradableItemKeys;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
-
-/// The gradable item keys in display order — the wire resource keys the form's
-/// fields self-address as. The running app derives this set from reflection and
-/// the server-delivered resource bundle; here it is the inline expectation.
-const _gradableItemKeys = <String>[
-  'todo.item.title',
-  'todo.item.status',
-  'todo.item.priority',
-  'todo.item.assigneeId',
-  'todo.item.dueDate',
-  'todo.item.estimate',
-  'todo.item.description',
-];
 
 void main() {
   setUpAll(initializeReflection);
@@ -65,11 +54,17 @@ void main() {
       expect(form.fields.containsKey('estimate'), isFalse);
     });
 
-    test('gradableFields basePaths equal the gradable item keys, in order', () {
+    test('gradableFields basePaths equal the domain\'s gradable item keys, '
+        'in order', () {
+      // The item screen resolves grades over the form's gradable fields — they
+      // are declared on the form, so they cannot be read from a constant. This
+      // is what ties them to the domain's `gradableItemKeys`, the declaration
+      // the server resolves over too: a field added to one and not the other
+      // fails here.
       final form = buildForm();
       expect(
         form.gradableFields.map((field) => field.basePath).toList(),
-        _gradableItemKeys,
+        gradableItemKeys,
       );
     });
   });

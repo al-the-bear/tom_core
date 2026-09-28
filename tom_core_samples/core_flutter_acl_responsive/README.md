@@ -404,9 +404,10 @@ AclBuilder()
     .build()
 ```
 
-At 600px the first cell sits near its 160px preferred width and the second fills
-the rest; at 320px the first shrinks toward its 80px floor before the row would
-reflow, and `expandX` still claims the remainder.
+At 600px the first cell sits at its 160px preferred width and the second fills
+the rest. At 320px the row can no longer give it 160px: it gives up a little —
+never below its 80px minimum — and `expandX` absorbs most of the shortfall
+(`test/adaptive_sizing_test.dart` measures both).
 
 ---
 
@@ -449,6 +450,8 @@ anatomy. One chain, two axes, one width.
 
 ```
 core_flutter_acl_responsive/
+├─ README.md · pubspec.yaml · analysis_options.yaml · build.yaml · .gitignore
+├─ reflection_generation.sh         # regenerates the reflection seed (§13)
 ├─ lib/
 │  ├─ main.dart                     # initializeReflection → runApp(ResponsiveApp)
 │  ├─ showcase_app.dart             # MaterialApp shell + group index
@@ -459,15 +462,40 @@ core_flutter_acl_responsive/
 │  │  ├─ showcase_section.dart      # ShowcaseGroup + GroupScreen
 │  │  ├─ code_block.dart            # monospace snippet panel
 │  │  ├─ form_host.dart             # FormHost<F>: create/bind/dispose a form
-│  │  └─ demo_box.dart              # generic coloured box for raw-ACL cells
+│  │  ├─ demo_box.dart              # generic coloured box for raw-ACL cells
+│  │  └─ chrome_texts.dart          # the resource bundles for interactive chrome (G-RES-1)
 │  ├─ domain/
 │  │  └─ responsive_entities.dart   # @tomReflector CompanyProfile / ResponsiveProfile
 │  ├─ forms/
 │  │  ├─ company_form.dart          # @tomReflector flat CompanyForm
 │  │  └─ family_form.dart           # @tomReflector family-swappable FamilyForm
-│  └─ groups/                       # one file per mechanism (§6–§11)
-└─ test/                            # see §14
+│  └─ groups/                       # one file per mechanism
+│     ├─ breakpoint_field_style_group.dart  # §6
+│     ├─ family_swap_group.dart             # §7
+│     ├─ row_breakpoint_group.dart          # §8
+│     ├─ form_factor_group.dart             # §9
+│     ├─ adaptive_sizing_group.dart         # §10
+│     └─ responsive_acl_form_group.dart     # §11, the capstone
+└─ test/                            # §14
+   ├─ responsive_smoke_test.dart · showcase_cell_test.dart · form_host_test.dart
+   ├─ breakpoint_field_style_test.dart · family_swap_test.dart · form_factor_test.dart
+   ├─ validation_message_test.dart · chrome_test.dart
+   ├─ row_breakpoint_test.dart · adaptive_sizing_test.dart · responsive_acl_form_test.dart
+   ├─ group_harness.dart            # shared helper, not a suite
+   └─ overflow_tolerance.dart       # shared helper, not a suite
 ```
+
+**There is no `example/` folder, deliberately: the package is itself the
+example.** It is a runnable Flutter app, and each showcase cell pairs its code
+snippet with the widget that snippet renders, so the snippets are already the
+copy-paste examples — an `example/` inside an example would repeat them.
+`flutter run` (§2) is the way in.
+
+There is no `doc/` folder and no API reference mirror, deliberately: this is a
+showcase application, not a library — `publish_to: 'none'`, no package depends
+on it, and its showcase groups are consumed only by its own `main.dart`, so its
+surface is read as the worked example this README and the code already are. The
+decision is taken once for all fifteen samples in [the suite map](../README.md).
 
 ---
 
@@ -489,7 +517,7 @@ regenerating.
 
 ## 14. Tests
 
-Forty-five widget tests under `test/`, all green:
+Fifty-five tests under `test/`, all green:
 
 ```bash
 flutter test
@@ -509,7 +537,12 @@ over.
 | `form_factor_test.dart` | One badge per tier at 1200 / 900 / 400 px, and — the drift guard — every cell title names the tier that cell's own badge reports (§9). |
 | `showcase_cell_test.dart` | The cell contract — both the snippet and the live child render, no group ships an empty snippet, and no snippet names an API the group's live code never calls (§15). |
 | `validation_message_test.dart` | Every `error.*` key `CompanyForm` can emit resolves to its human sentence, `{min}` is interpolated, and no `Text` in the form renders a raw resource key (§5). |
-| `form_host_test.dart` | The shared form lifecycle (§5): an unbound host renders the field defaults and constructs no entity, a supplied `bind` seeds every field, and teardown disposes the form so a later mutation of the entity no longer reaches it. |
+| `form_host_test.dart` | The shared form lifecycle (§5): an unbound host renders the field defaults and constructs no entity, a supplied `bind` seeds every field, and teardown disposes the form so a later mutation of the entity no longer reaches it. A parent rebuild keeps the same form: `create` and `bind` run once and a user edit survives. |
+| `chrome_test.dart` | The copy button puts the trimmed snippet on the clipboard; `showcase.app.title` and `showcase.codeBlock.copyTooltip` resolve to their declared strings, and the app bar shows the title. |
+| `row_breakpoint_test.dart` | §8 — at 520 px `Industry` and `Tax ID` share a row (same top, side by side); at 320 px `Tax ID` sits below. |
+| `adaptive_sizing_test.dart` | §10 — at 600 px the sized cell is exactly its preferred 160 px and `expandX` is wider; at 320 px the sized cell gives up width but stays ≥ its 80 px minimum, and `expandX` absorbs more of the shortfall. |
+| `responsive_acl_form_test.dart` | §11, both axes of the capstone — at 640 px the row is shared and labels are the `above` tier (outside the decorator, 13 px, not `inline`, which needs 700); at 360 px the row stacks and labels float inside the field. |
+| `group_harness.dart` | Not a test — pumps one group and reads a cell's text rects and box widths for the three suites above. |
 | `overflow_tolerance.dart` | Not a test — the single filter through which the suite tolerates a preview overflow (see below). |
 
 The width-reactive demos are pumped inside a fixed-width `SizedBox` so the

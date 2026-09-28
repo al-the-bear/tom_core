@@ -73,10 +73,14 @@ about it. The module reference beside each one is the document that explains
 
 | Document | Module |
 | --- | --- |
+| [api/api_summary_index.md](api/api_summary_index.md) | The index of the summaries, and the list of modules that have none. |
+| [api/api_summary_advanced_container_layout.md](api/api_summary_advanced_container_layout.md) | `advanced_container_layout/` — thirty-five public types. Companion to [advanced_container_layout.md](advanced_container_layout.md) and [acl_design_specification.md](acl_design_specification.md). |
 | [api/api_summary_actions.md](api/api_summary_actions.md) | `actions/` — thirteen public types. Companion to [actions.md](actions.md). |
+| [api/api_summary_custom.md](api/api_summary_custom.md) | `custom/` — fifteen public declarations. Companion to [custom.md](custom.md). |
 
-Only `actions` has one so far; the other modules are covered by their module
-reference alone.
+The other six modules are covered by their module reference and their
+`lib/src/<module>/readme.md` alone; the index names them, so a reader can tell
+a module without a summary from one that was overlooked.
 
 ## Working notes
 

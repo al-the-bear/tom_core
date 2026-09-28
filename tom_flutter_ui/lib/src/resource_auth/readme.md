@@ -115,6 +115,10 @@ reaches consumers through `../kernel_types.dart`. This module resolves what a
 widget renders once that state is known; it declares no authorization types of
 its own and imports nothing from the kernel.
 
+The symbol-level mirror of this table is
+[`doc/api/api_summary_resource_auth.md`](../../../doc/api/api_summary_resource_auth.md):
+every exported type with a section, and every public static.
+
 ---
 
 Part of [`tom_flutter_ui`](../../../README.md) — see the package README for

@@ -29,7 +29,9 @@ enum _Claim {
   /// is a parallel
   /// Material/Cupertino field catalogue whose exhaustive list is Appendix C of
   /// `doc/tom_ui_widgets_forms.md` (held to `lib/src/forms/fields` by
-  /// `tool/check_doc_class_inventories.py`).
+  /// `tool/check_doc_class_inventories.py`) and, for the whole barrel rather
+  /// than the fields alone, `doc/api/api_summary_forms.md` (held by the
+  /// summary cases below).
   ///
   /// The classification is not an excuse to say nothing. A `rule` readme must
   /// carry [_notAnInventoryMarker], so a reader is told the table is a sample
@@ -84,11 +86,27 @@ final _declaration = RegExp(
 /// a hand-kept list is the same artifact as the table it is guarding, and would
 /// go stale with it.
 final _staticMember = RegExp(
-  r'^\s*static\s+(?:[\w<>,\s?]+\s+)?(?:get\s+|set\s+)?(\w+)\s*[({=;]',
+  // The return type, in the two shapes that are not a bare identifier soup:
+  // a record — `(String, List<String>)`, and one level deeper,
+  // `(T? value, List<(double, T)> overrides)?` — and a function type,
+  // `Stream<List<int>> Function()?`. Both carry parentheses, which the
+  // identifier alternation cannot cross, so without these two alternatives
+  // the match lands on the wrong token — `Function` is captured as if it were
+  // the member's name — or stops at the return type and misses the member.
+  // One level of nesting is where this stops: a regex cannot balance
+  // parentheses, and the deepest return type the package declares is
+  // `TomCtr.breakpointed`'s.
+  r'^\s*static\s+(?:\((?:[^()]|\([^()]*\))*\)\s*\??\s+|[\w<>,\s?]+\s+)?'
+  r'(?:Function\s*\([^)]*\)\s*\??\s+)?'
+  // The name, and its own type parameters when it is a generic static —
+  // `compose<T>(...)`, whose `<` is likewise not a body opener.
+  r'(?:get\s+|set\s+)?(\w+)\s*(?:<[\w<>,\s?]*>\s*)?[({=;]',
   multiLine: true,
 );
 
 final _export = RegExp(r"^export\s+'([^']+)'", multiLine: true);
+
+final _part = RegExp(r"^part\s+'([^']+)'", multiLine: true);
 
 /// A `### TypeName` heading in an API summary, with any generic parameter list
 /// dropped — summaries write those escaped (`### TomAction\<TContext, TUndo\>`)
@@ -174,19 +192,72 @@ List<String> _exportedSources(String module) {
   final dir = 'lib/src/$module';
   final barrelName = _moduleBarrels[module] ?? '$module.dart';
   final barrel = File('$dir/$barrelName').readAsStringSync();
-  return [
-    // The barrel itself, because a module may declare a type in it rather than
-    // in a file beneath it. Omitting it made the barrel a blind spot.
-    barrel,
-    ..._export
-        .allMatches(barrel)
-        .map((m) => File('$dir/${m.group(1)}'))
-        .where((f) => f.existsSync())
-        .map((f) => f.readAsStringSync()),
-  ];
+  // The barrel itself, because a module may declare a type in it rather than
+  // in a file beneath it. Omitting it made the barrel a blind spot.
+  final sources = <String>[barrel];
+  for (final m in _export.allMatches(barrel)) {
+    final library = File('$dir/${m.group(1)}');
+    if (!library.existsSync()) continue;
+    final text = library.readAsStringSync();
+    sources.add(text);
+    // A library's declarations are not all in the file the barrel names.
+    // `acl_container.dart` is one library across twelve files, and reading
+    // only the named one drops most of its exported surface — which reads as
+    // an inventory getting smaller rather than a scan getting narrower.
+    for (final part in _part.allMatches(text)) {
+      final file = File('$dir/${part.group(1)}');
+      if (file.existsSync()) sources.add(file.readAsStringSync());
+    }
+  }
+  return sources;
+}
+
+/// A top-level declaration whose name starts with `_`.
+final _privateDeclaration = RegExp(
+  r'^(?:abstract\s+|base\s+|final\s+|sealed\s+|interface\s+|mixin\s+)*'
+  r'(?:class|mixin|enum|extension)\s+_\w+',
+  multiLine: true,
+);
+
+/// [source] with the body of every private top-level declaration removed.
+///
+/// A `static` member is part of the surface only when the thing declaring it
+/// is. `_GlobalHook.acquire` is on a class no consumer can name, and asking a
+/// module readme to document it is asking it to describe an internal — which
+/// is the opposite of what an inventory is for.
+///
+/// The body is taken to end at the first `}` in column 0, which is how this
+/// package is formatted and what every other source scan here assumes.
+String _withoutPrivateDeclarations(String source) {
+  final lines = source.split('\n');
+  final kept = <String>[];
+  var skipping = false;
+  for (final line in lines) {
+    if (skipping) {
+      if (line == '}') skipping = false;
+      continue;
+    }
+    if (_privateDeclaration.hasMatch(line)) {
+      // A declaration written entirely on one line — `enum _FABVariant {
+      // regular, small, large, extended }` — closes its own body, so there is
+      // nothing to skip past. Treating it like a multi-line one swallowed
+      // everything up to the next `}` in column 0, which in that file was 450
+      // lines and two public types: `TomFloatingActionButton` and
+      // `TomIconButton` were exempt from every inventory in the package.
+      if (line.contains('{') &&
+          '{'.allMatches(line).length == '}'.allMatches(line).length) {
+        continue;
+      }
+      skipping = true;
+      continue;
+    }
+    kept.add(line);
+  }
+  return kept.join('\n');
 }
 
 Set<String> _publicNames(List<String> sources, RegExp pattern) => sources
+    .map(_withoutPrivateDeclarations)
     .expand(pattern.allMatches)
     .map((m) => m.group(1)!)
     .where((n) => !n.startsWith('_'))
@@ -284,6 +355,50 @@ String _libraryDartdoc(String module) {
       .join('\n');
 }
 
+/// The index of the summaries, named by the workspace convention. It is the one
+/// file in `doc/api/` matching the summary pattern that is not a module's
+/// summary, so it is excluded by name and checked separately below — the
+/// alternative, letting it through, asks for a `lib/src/index/` that will never
+/// exist.
+const _apiSummaryIndex = 'api_summary_index.md';
+
+/// The exported public-type count at which a module earns a symbol-level
+/// summary under `doc/api/`.
+///
+/// Counting **types**, not lines or files, because a section per exported type
+/// is what a summary is. The two disagree, and the type count is the one that
+/// sorts the package correctly: `resource_auth` declares 13 of them across
+/// 11,352 lines and wants a summary; `theme` declares 4 across 365 and does
+/// not. A line threshold placing those two on the same side of it would be
+/// measuring the generated tables inside one of them.
+///
+/// Ten is where a readme table stops working. Below it the module's own
+/// `readme.md` **is** the mirror, and not merely by assertion — a
+/// [_Claim.inventory] readme is held to every public type and static by the
+/// group above, so the small modules are checked, they are just checked
+/// somewhere else. `groups` is the case that shows it: two exported types, a
+/// readme that names both plus the two kernel types it bridges, and a summary
+/// would be the fourth document over 297 lines of code.
+///
+/// Measured 2026-09-22, exported public types per module: forms 212, widgets
+/// 299, advanced_container_layout 35, widget_base 34, custom 16, actions 13,
+/// resource_auth 13, theme 4, groups 2.
+const _summaryThreshold = 10;
+
+/// The modules at or above [_summaryThreshold] whose summary is not written.
+///
+/// Held **exactly**, in both directions, for the reason [_partialBarrelGaps]
+/// is: a module that slips out of a summary is a regression, and one that
+/// gains a summary has to be taken off this list rather than quietly passing a
+/// weaker check than it now deserves.
+///
+/// A [_Claim.rule] module is not in scope at all — its complete list is kept
+/// and checked elsewhere by that classification, which is what the
+/// classification is for. That is why `widgets` (299 types) is absent from
+/// this set while `forms` (212) has a summary anyway: a rule module may have
+/// one, it is simply not owed one.
+const _summaryBacklog = <String>{};
+
 /// The modules that ship a symbol-level API summary under `doc/api/`, mapped to
 /// the file that carries it.
 ///
@@ -297,6 +412,7 @@ Map<String, File> _apiSummaries() {
   final out = <String, File>{};
   for (final file in dir.listSync().whereType<File>()) {
     final name = file.path.split(Platform.pathSeparator).last;
+    if (name == _apiSummaryIndex) continue;
     final match = RegExp(r'^api_summary_(\w+)\.md$').firstMatch(name);
     if (match != null) out[match.group(1)!] = file;
   }
@@ -541,6 +657,146 @@ void main() {
         reason:
             'these public types are exported by the module and have no section '
             'in its API summary: $faults',
+      );
+    });
+
+    test('the index names every summary beside it', () {
+      // An index is only worth having while it is complete: a summary missing
+      // from it is a module a reader concludes has none, which is the same
+      // failure as a missing section inside a summary.
+      final index = File('doc/api/$_apiSummaryIndex');
+      expect(
+        index.existsSync(),
+        isTrue,
+        reason:
+            'doc/api/ holds ${summaries.length} summaries and no '
+            '$_apiSummaryIndex — the convention names one',
+      );
+      final text = index.readAsStringSync();
+      final missing =
+          summaries.values
+              .map((f) => f.path.split(Platform.pathSeparator).last)
+              .where((name) => !text.contains(name))
+              .toList()
+            ..sort();
+      expect(
+        missing,
+        isEmpty,
+        reason: 'doc/api/$_apiSummaryIndex never links these: $missing',
+      );
+    });
+
+    test('stripping private declarations never removes a public one', () {
+      // The helper above is a heuristic over text, and its failure mode is
+      // silent: a public type it swallows is not reported missing anywhere,
+      // it simply stops being part of the surface every other case here is
+      // derived from. `widgets/` is where that bit, because it is the one
+      // module with no inventory to compare against — its own
+      // `widget_census.dart` counted 299 public types while this file's scan
+      // counted 297, and nothing put the two numbers side by side.
+      //
+      // So the helper is checked against itself: whatever it removes, the set
+      // of public declarations must survive it.
+      final faults = <String>[];
+      for (final module in _moduleClaims.keys) {
+        for (final source in _exportedSources(module)) {
+          final before = _declaration
+              .allMatches(source)
+              .map((m) => m.group(1)!)
+              .where((n) => !n.startsWith('_'))
+              .toSet();
+          final after = _declaration
+              .allMatches(_withoutPrivateDeclarations(source))
+              .map((m) => m.group(1)!)
+              .where((n) => !n.startsWith('_'))
+              .toSet();
+          faults.addAll(before.difference(after).map((n) => '$module: $n'));
+        }
+      }
+      expect(
+        faults..sort(),
+        isEmpty,
+        reason:
+            'stripping a private declaration also removed these public ones, '
+            'so they are silently outside every check in this file: $faults',
+      );
+    });
+
+    test('every module the threshold reaches has a summary, or is a named '
+        'entry in the backlog', () {
+      // What an absent summary means. Without this, "no summary" reads the
+      // same for `groups` — two exported types, whose readme is the mirror and
+      // is held to be — as for `widget_base`, which is 34 types nobody has
+      // written up. A reader cannot tell "small" from "unfinished", and that
+      // ambiguity is what the threshold removes.
+      final owed = <String>{};
+      for (final entry in _moduleClaims.entries) {
+        if (entry.value != _Claim.inventory) continue;
+        final types = _publicNames(_exportedSources(entry.key), _declaration);
+        if (types.length >= _summaryThreshold) owed.add(entry.key);
+      }
+      expect(
+        owed,
+        isNotEmpty,
+        reason: 'no module reaches the threshold — the count is broken',
+      );
+      expect(
+        owed.difference(summaries.keys.toSet()),
+        _summaryBacklog,
+        reason:
+            'these modules are at or above $_summaryThreshold exported public '
+            'types with no summary in doc/api/. Write one, or record it here '
+            'if it is genuinely outstanding — and take it off this set when '
+            'the summary lands.',
+      );
+    });
+
+    test('the threshold is not vacuous, and the modules under it are '
+        'mirrored by their own readme', () {
+      // The control. A threshold every module clears asserts nothing, and one
+      // that exempts a module whose readme is *not* an inventory would be
+      // exempting it into having no mirror at all.
+      final below = <String>[];
+      for (final entry in _moduleClaims.entries) {
+        final types = _publicNames(_exportedSources(entry.key), _declaration);
+        if (types.length < _summaryThreshold) below.add(entry.key);
+      }
+      expect(
+        below,
+        isNotEmpty,
+        reason:
+            'every module reaches $_summaryThreshold exported public types, so '
+            'the threshold exempts nothing and states nothing',
+      );
+      for (final module in below) {
+        expect(
+          _moduleClaims[module],
+          _Claim.inventory,
+          reason:
+              '$module is under the threshold, so its readme is what stands in '
+              'for a summary — and a ${_moduleClaims[module]} readme does not '
+              'inventory anything',
+        );
+      }
+    });
+
+    test('the index names every module that has no summary', () {
+      // The other half of "the index names every summary beside it": a module
+      // absent from both lists is one the index is silent about, which is the
+      // state this whole file exists to make impossible.
+      final index = File('doc/api/$_apiSummaryIndex').readAsStringSync();
+      final missing =
+          _moduleClaims.keys
+              .where((m) => !summaries.containsKey(m))
+              .where((m) => !index.contains('`$m`'))
+              .toList()
+            ..sort();
+      expect(
+        missing,
+        isEmpty,
+        reason:
+            'doc/api/$_apiSummaryIndex says nothing about these modules, which '
+            'have no summary: $missing',
       );
     });
 

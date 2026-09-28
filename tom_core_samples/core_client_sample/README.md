@@ -60,7 +60,7 @@ The three demo accounts map onto the three roles the matrix grades:
 | ------- | ---- | ---------------- |
 | `alice` | `owner` | Edit every field |
 | `bob` | `member` | Cannot *see* `priority`; cannot change the assignee |
-| `val` | `viewer` | Read-only everywhere; the `done` toggle renders disabled |
+| `val` | `viewer` | Every graded field read-only; the `done` toggle renders disabled |
 
 That matrix is not invented here — it is the **client-side twin of the grants
 `core_server_sample` seeds into `tom_resource_grant`** via its
@@ -310,10 +310,18 @@ The flow is: **role → matrix → per-field authorizer → render**.
 
 The payoff is in `todo_detail_screen.dart`: **the same screen, with no
 conditionals**, shows `owner` a full editor, hides `priority` from `member`
-(because their grant is `none`), and gives `viewer` a read-only form with a
-disabled `done` toggle. A field absent from the matrix degrades to `none` — the
-closed-safe default, matching the server's resolver — so an unconfigured field
-hides rather than leaking an editable control.
+(because their grant is `none`), and gives `viewer` read-only graded fields with
+a disabled `done` toggle. A graded field absent from the matrix degrades to
+`none` — the closed-safe default, matching the server's resolver — so an
+unconfigured grade hides the field rather than leaking an editable control.
+
+**Only fields that ask are graded.** `title`, `done`, `priority` and
+`assigneeId` carry an authorizer that reads the matrix; `description` is
+declared without one, so the matrix never reaches it and it renders editable for
+every role, `viewer` included. That is deliberate — it is the sample's one
+ungraded field, the contrast that makes the graded ones visible — and it is
+pinned both ways: `CCS-CRUD-07` renders it editable for the viewer, and
+`CCS-FORM-05` shows an empty matrix hiding every graded field but not this one.
 
 ---
 
@@ -385,8 +393,12 @@ grade token degrades to `TomAuthState.none` through the DTO's own closed-safe
 `parseState`.
 
 Those functions are unit-tested against captured JSON with no socket in the
-test, which is why the live path is verifiable even though the server must be
-running to exercise it for real. The list screen's cloud-download action calls
+test. The transport is tested too, without `core_server_sample`: the suite
+binds an `HttpServer` on the loopback interface and drives the client through
+an injected `HttpClient` — `isHealthy()` true only for `{"status":"ok"}`, both
+fetches hitting their paths, a non-200 raising an `HttpException` that names the
+path and the status, and `close()` closing the injected client. The base URL
+may be given with or without a trailing slash; the constructor drops it. The list screen's cloud-download action calls
 `fetchTodos()` and swaps the view to live data behind a "showing live server
 data (read-only)" banner — an honest demonstration of a real wire round-trip
 that never pretends the in-memory edits reach the server.
@@ -421,12 +433,18 @@ core_client_sample/
 │       └── todo_detail_screen.dart
 └── test/
     ├── in_memory_api_test.dart         # backend contract: login / CRUD / matrix
-    ├── live_read_client_test.dart      # pure JSON parsers
+    ├── live_read_client_test.dart      # pure JSON parsers + loopback transport
     ├── login_flow_test.dart            # widget: sign in / out, inline error
     ├── todo_crud_test.dart             # widget: CRUD + per-role field states
     ├── todo_item_form_test.dart        # single field identity: basePath = wire key
     └── validator_resolution_test.dart  # resource-declared validators + messages
 ```
+
+There is no `doc/` folder and no API reference mirror, deliberately: this is an
+application, not a library — `publish_to: 'none'`, and no package depends on
+it — so its surface is read as a worked example, which this README and the code
+already are. The decision is taken once for all fifteen samples in
+[the suite map](../README.md).
 
 ---
 
@@ -461,10 +479,10 @@ Thirty-five tests cover the seams:
 | File | Covers |
 | ---- | ------ |
 | `in_memory_api_test.dart` | login validation, CRUD, the four-state matrix per role (CCS-API-01…13) |
-| `live_read_client_test.dart` | the pure `parse*` functions against captured JSON (CCS-LIVE-01…05) |
+| `live_read_client_test.dart` | the pure `parse*` functions against captured JSON (CCS-LIVE-01…05); the client's transport against a loopback `HttpServer` through an injected `HttpClient` — health, both fetches, the non-200 `HttpException`, trailing-slash normalisation, `close()` (CCS-LIVE-06…11) |
 | `login_flow_test.dart` | sign in / out, inline error, screen switching (CCS-LOGIN-01…04) |
-| `todo_crud_test.dart` | per-role field rendering + create/validate (CCS-CRUD-01…04) |
-| `todo_item_form_test.dart` | the single field identity: basePath = wire/authz key (CCS-FORM-01…04) |
+| `todo_crud_test.dart` | per-role field rendering + create/validate/delete (CCS-CRUD-01…13): owner, member and viewer on the same form — the viewer's `done` switch disabled, its read fields not editable, and the ungraded `description` editable for everyone; deleting a todo (offered only for an existing one, both actions disabled while it is in flight); the live refresh through a fake client — the read-only banner, rows that open nothing, *Back to my list*, and the unreachable-server snack that keeps the local list |
+| `todo_item_form_test.dart` | the single field identity: basePath = wire/authz key (CCS-FORM-01…05), and an empty matrix hiding every graded field but not `description` |
 | `validator_resolution_test.dart` | resource-declared validators, code+resource merge, resolved messages (CCS-VAL-01…05) |
 
 The widget tests drive `InMemoryTodoApi`, so they are deterministic and

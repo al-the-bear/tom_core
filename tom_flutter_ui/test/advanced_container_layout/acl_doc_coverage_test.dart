@@ -79,14 +79,31 @@ const _featureSections = <String, List<String>>{
 
 String _doc() => File(_docPath).readAsStringSync();
 
-/// The `export '…';` targets of the module barrel, resolved to real paths.
+/// The `export '…';` targets of the module barrel, resolved to real paths,
+/// each followed into its `part` files.
+///
+/// A library's declarations are not all in the file the barrel names:
+/// `acl_container.dart` is split into nine parts, and reading only the file
+/// named here would find the container and miss the model, the values and the
+/// widgets — which reads as "the overview documents types that do not exist".
 List<File> _exportedFiles() {
   final barrel = File(_barrelPath);
   final dir = barrel.parent.path;
-  return RegExp(r"^export '([^']+)';", multiLine: true)
-      .allMatches(barrel.readAsStringSync())
-      .map((m) => File('$dir/${m.group(1)!}'))
-      .toList();
+  final out = <File>[];
+  for (final m in RegExp(
+    r"^export '([^']+)';",
+    multiLine: true,
+  ).allMatches(barrel.readAsStringSync())) {
+    final library = File('$dir/${m.group(1)!}');
+    out.add(library);
+    for (final part in RegExp(
+      r"^part '([^']+)';",
+      multiLine: true,
+    ).allMatches(library.readAsStringSync())) {
+      out.add(File('$dir/${part.group(1)!}'));
+    }
+  }
+  return out;
 }
 
 /// Every public type the barrel exports: classes, enums, mixins, extensions

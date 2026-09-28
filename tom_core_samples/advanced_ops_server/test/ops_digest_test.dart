@@ -22,6 +22,7 @@
 library;
 
 import 'package:advanced_app_server/advanced_app_server.dart';
+import 'package:advanced_auth_server/advanced_auth_server.dart';
 import 'package:advanced_ops_server/advanced_ops_server.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:test/test.dart';
@@ -365,6 +366,68 @@ void main() {
       expect(summary.openCount, 2);
       expect(summary.overdueCount, 0);
       expect(summary.nextDue, isNull);
+    });
+  });
+
+  group('the repository audience reads each recipient\'s stored language', () {
+    final now = DateTime.utc(2026, 8, 2, 6);
+
+    /// An `auth_users` row as the repository returns it.
+    UserRecord user(int id, {String? language, String? country}) => UserRecord()
+      ..id = id
+      ..username = 'user$id'
+      ..displayName = 'User $id'
+      ..email = 'user$id@example.com'
+      ..language = language
+      ..country = country;
+
+    List<OpsDigestSummary> join(List<UserRecord> users) =>
+        RepositoryDigestAudience.summariesFrom(
+          users: users,
+          itemsByAssignee: {
+            for (final u in users) u.id!: [_item()],
+          },
+          now: now,
+        );
+
+    test('a stored language becomes the summary\'s locale', () {
+      final summaries = join([
+        user(1, language: 'de'),
+        user(2, language: 'de', country: 'AT'),
+        user(3),
+      ]);
+
+      expect(summaries.map((s) => s.locale?.tag), ['de', 'de_AT', null]);
+    });
+
+    test('a record the process does not control is read leniently', () {
+      // A user row is data, not configuration: a country that cannot name one
+      // is dropped rather than thrown inside the 06:00 pass, and a blank
+      // language means "no preference", not a locale with no language.
+      final summaries = join([
+        user(1, language: 'de', country: 'XX'),
+        user(2, language: '  '),
+      ]);
+
+      expect(summaries.map((s) => s.locale?.tag), ['de', null]);
+    });
+
+    test('one pass mails German to one recipient and English to the next', () {
+      // The claim the second bundle ships for, made over the audience's own
+      // join rather than over summaries built by hand.
+      final outbox = TomMessageOutbox(
+        router: TomMessageRouter([TomMemoryMessageTransport()]),
+        store: TomMemoryJobStore(),
+      );
+      addTearDown(outbox.close);
+      final service = _service(_FakeAudience(const []), outbox);
+      final summaries = join([user(1, language: 'de'), user(2)]);
+
+      final german = service.composeFor(summaries[0], now);
+      final english = service.composeFor(summaries[1], now);
+
+      expect(german.subject, contains('offene Vorgänge'));
+      expect(english.subject, contains('open item(s)'));
     });
   });
 

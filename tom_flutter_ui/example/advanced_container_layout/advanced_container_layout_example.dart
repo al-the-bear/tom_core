@@ -7,7 +7,13 @@
 /// widget. The engine layers on responsive *variants*, *row breakpoints*,
 /// per-group *visibility controllers*, and *device-context* variant detection.
 ///
-/// This example demonstrates the pure-logic surfaces (no `BuildContext`):
+/// This example demonstrates the surfaces that need no `BuildContext`. The
+/// rendered behaviour — responsive variants, row breakpoints, flow layouts,
+/// authorization-aware rendering and composed ids — is in
+/// `advanced_container_layout_rendered_example.dart` beside this one, because
+/// none of it can be shown without laying something out.
+///
+/// The four surfaces here:
 ///
 /// 1. [AclFlags] bit composition (the AWT-style attribute constants),
 /// 2. the static [AclDeviceContext] resolvers (`resolveFormFactor`,

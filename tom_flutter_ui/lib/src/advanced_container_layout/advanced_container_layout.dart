@@ -50,7 +50,9 @@
 ///   resolution, variant precedence, authorization) that the reference assumes.
 ///
 /// `lib/src/advanced_container_layout/readme.md` is the short orientation
-/// between the two.
+/// between the two, and `doc/api/api_summary_advanced_container_layout.md` is
+/// the symbol-level mirror: every public type this barrel exports, with a
+/// section each.
 library;
 
 export 'acl_container.dart';

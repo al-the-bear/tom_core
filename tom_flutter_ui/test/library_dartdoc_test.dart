@@ -263,10 +263,28 @@ Map<String, String> _siblingTypes(String path) {
 /// `export` counts as well as `import`. A barrel that re-exports a sibling is
 /// entitled to name it in prose, and the point of this set is to stay silent
 /// wherever the reference is defensible.
-Set<String> _sameDirectoryLinks(String path) => RegExp(
-  r"^(?:import|export)\s+'([^'/:]+\.dart)'",
-  multiLine: true,
-).allMatches(File(path).readAsStringSync()).map((m) => m.group(1)!).toSet();
+Set<String> _sameDirectoryLinks(String path) {
+  final linked = RegExp(
+    r"^(?:import|export)\s+'([^'/:]+\.dart)'",
+    multiLine: true,
+  ).allMatches(File(path).readAsStringSync()).map((m) => m.group(1)!).toSet();
+  // A linked file may be one file of a several-file library, and linking the
+  // library reaches all of it. `acl_container.dart` is twelve files; a barrel
+  // that exports it is entitled to name what its parts declare, and stopping
+  // at the named file reports a correct reference as a dangling one.
+  final directory = File(path).parent;
+  for (final name in linked.toList()) {
+    final file = File('${directory.path}${Platform.pathSeparator}$name');
+    if (!file.existsSync()) continue;
+    for (final m in RegExp(
+      r"^\s*part\s+'([^'/:]+\.dart)'",
+      multiLine: true,
+    ).allMatches(file.readAsStringSync())) {
+      linked.add(m.group(1)!);
+    }
+  }
+  return linked;
+}
 
 /// The names [path] declares, split by what a *library* dartdoc is allowed to
 /// reach: `topLevel` is in scope there, `members` never is.

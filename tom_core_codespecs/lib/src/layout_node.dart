@@ -223,35 +223,118 @@ class TomLayoutModel {
     return root == null ? null : search(root);
   }
 
-  /// Deltas whose addressed node no longer exists in the regenerated [base]
-  /// tree, described one warning per delta.
+  /// Every delta that does not resolve against the current [base] tree.
   ///
-  /// A delta that no longer resolves is **reported, never dropped**
-  /// (`codespecs_mapping.md` §5.22): silently discarding it would destroy
-  /// authored layout work at the exact moment the author most needs to know —
-  /// when the underlying model changed beneath it. The delta stays in
-  /// [overrides] so it can be re-pointed rather than re-invented.
+  /// Three things can be wrong with a delta after the base is regenerated, and
+  /// all three are reported rather than silently applied or silently dropped:
+  ///
+  /// - **an id that resolves to nothing** — the node the delta addressed is
+  ///   gone from the regenerated tree;
+  /// - **an id that resolves to the wrong kind of node** — the id survived but
+  ///   now names a container where the delta needs a slot, or the other way
+  ///   round;
+  /// - **a delta that names no new parent** where its operation requires one.
+  ///
+  /// The second is what the closed delta grammar exists for. An id that
+  /// vanished is conspicuous; an id a regeneration re-used for a different kind
+  /// of node still resolves, so without this check the delta goes on applying
+  /// and quietly means something other than what was authored.
+  ///
+  /// Each operation requires the kind its own documentation states:
+  /// [TomLayoutDeltaOp.setContainerProp] and [TomLayoutDeltaOp.removeContainer]
+  /// address a container, [TomLayoutDeltaOp.setSlotHint] a slot, and
+  /// [TomLayoutDeltaOp.reparent] moves a node of either kind. A **new parent is
+  /// always a container**, because only a container owns children.
+  ///
+  /// [TomLayoutDeltaOp.insertContainer] is the one operation whose target is
+  /// not required to exist — the delta creates it. It is required not to exist
+  /// *already*: a [TomLayoutNode.nodeId] is unique across the tree, so an
+  /// insert whose id the regenerated base has since taken is the same drift
+  /// seen from the other side.
+  ///
+  /// Nothing is dropped. The list is advice to whoever regenerated the base;
+  /// the deltas stay exactly as authored, because the author is the one who can
+  /// decide what a warning means.
   List<String> reconcileWarnings() {
-    final known = nodeIds;
     final warnings = <String>[];
+
     for (final delta in overrides) {
-      // An insert creates its target, so only its parent must already exist;
-      // a reparent needs both ends of the move.
-      final required = <String?>[
-        if (delta.op != TomLayoutDeltaOp.insertContainer) delta.targetNodeId,
-        if (delta.op == TomLayoutDeltaOp.insertContainer ||
-            delta.op == TomLayoutDeltaOp.reparent)
-          delta.newParentNodeId,
-      ];
-      for (final id in required) {
-        if (id != null && !known.contains(id)) {
+      final op = delta.op;
+
+      // The target. An insert creates its own, so for that one operation the
+      // question is inverted: the id must be free rather than taken.
+      if (op == TomLayoutDeltaOp.insertContainer) {
+        if (findNode(delta.targetNodeId) != null) {
           warnings.add(
-            'layout "$layoutId": ${delta.op.name} delta references unknown '
-            'node "$id"',
+            'layout "$layoutId": insertContainer delta would create node '
+            '"${delta.targetNodeId}", which the base already contains',
+          );
+        }
+      } else {
+        final target = findNode(delta.targetNodeId);
+        if (target == null) {
+          warnings.add(_unknownNode(op, delta.targetNodeId));
+        } else {
+          final required = _targetKind(op);
+          if (required != null && _kindOf(target) != required) {
+            warnings.add(
+              'layout "$layoutId": ${op.name} delta addresses '
+              '${_kindOf(target)} "${delta.targetNodeId}", which is not a '
+              '$required',
+            );
+          }
+        }
+      }
+
+      // The new parent, for the two operations that move or add a node.
+      if (op == TomLayoutDeltaOp.reparent ||
+          op == TomLayoutDeltaOp.insertContainer) {
+        final parentId = delta.newParentNodeId;
+        if (parentId == null) {
+          warnings.add(
+            'layout "$layoutId": ${op.name} delta names no new parent',
+          );
+          continue;
+        }
+        final parent = findNode(parentId);
+        if (parent == null) {
+          warnings.add(_unknownNode(op, parentId));
+        } else if (parent is! TomLayoutContainerNode) {
+          warnings.add(
+            'layout "$layoutId": ${op.name} delta names ${_kindOf(parent)} '
+            '"$parentId" as the new parent, which cannot own children',
           );
         }
       }
     }
+
     return warnings;
   }
+
+  /// The wording every unresolvable id is reported with.
+  String _unknownNode(TomLayoutDeltaOp op, String nodeId) =>
+      'layout "$layoutId": ${op.name} delta references unknown node "$nodeId"';
+
+  /// The node kind [op] must address, or `null` when either kind is allowed.
+  ///
+  /// `reparent` is the `null`: a container and a slot can both be moved.
+  static String? _targetKind(TomLayoutDeltaOp op) => switch (op) {
+    TomLayoutDeltaOp.setContainerProp => _container,
+    TomLayoutDeltaOp.removeContainer => _container,
+    TomLayoutDeltaOp.setSlotHint => _slot,
+    TomLayoutDeltaOp.reparent => null,
+    TomLayoutDeltaOp.insertContainer => null,
+  };
+
+  /// What [node] is, in the words the warnings use.
+  ///
+  /// Exhaustive over the sealed [TomLayoutNode] hierarchy, which is what the
+  /// base is sealed for.
+  static String _kindOf(TomLayoutNode node) => switch (node) {
+    TomLayoutContainerNode() => _container,
+    TomLayoutSlotNode() => _slot,
+  };
+
+  static const String _container = 'container';
+  static const String _slot = 'slot';
 }

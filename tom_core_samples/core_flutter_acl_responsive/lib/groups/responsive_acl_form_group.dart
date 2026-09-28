@@ -79,7 +79,7 @@ final ShowcaseGroup responsiveAclFormGroup = ShowcaseGroup(
   icon: Icons.dashboard_customize_outlined,
   cells: (context) => [
     ShowcaseCell(
-      title: 'Wide (640px) — row shared, label inline-ish',
+      title: 'Wide (640px) — row shared, labels above',
       note:
           'Above 480px the industry/taxId fields share one row; above 400px '
           'labels sit above the field with the larger font and gap.',

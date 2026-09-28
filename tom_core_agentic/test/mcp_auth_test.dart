@@ -21,14 +21,25 @@ void main() {
       // `tomBrainBearerToken` while the constant lived in `tom_brain`,
       // which would have had a planning or procedure server presenting
       // its token under a key named for a package it does not depend on.
+      //
+      // Asked as a closed rule rather than against a list of package names.
+      // A list fails open: it has to be told a name somebody already thought
+      // of, so minting `tom_forge` and writing `tomForgeBearerToken` would
+      // pass it silently. What the key may contain instead is stated
+      // positively — the `tom` scope and the two words naming the thing — so
+      // any package name inserted anywhere fails whether or not this file has
+      // heard of it.
       expect(bearerTokenMetaKey, startsWith('tom'));
-      for (final package in const ['Brain', 'Memory', 'Access', 'Agentic']) {
-        expect(
-          bearerTokenMetaKey,
-          isNot(contains(package)),
-          reason: 'the shared wire key must not name one framework package',
-        );
-      }
+      final words = RegExp(
+        r'[A-Z][a-z]+',
+      ).allMatches(bearerTokenMetaKey).map((m) => m.group(0)).toList();
+      expect(
+        words,
+        equals(const ['Bearer', 'Token']),
+        reason:
+            'the shared wire key names what it carries and nothing else; '
+            'any other capitalised word in it is a package name',
+      );
     });
 
     test(

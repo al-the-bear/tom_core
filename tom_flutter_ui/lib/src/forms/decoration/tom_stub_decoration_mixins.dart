@@ -2,14 +2,20 @@ library;
 
 import '../tom_form.dart';
 
-/// Stub decoration mixins for field types whose widgets are not yet
-/// implemented. Each mixin is empty — it exists as an explicit extension
-/// point so future field classes can `with` it without churning their
-/// existing declarations. The concrete anatomy implementation will be
-/// filled in when the matching widget type lands.
+/// Reserved decoration mixins, one per field family that has no decoration of
+/// its own.
 ///
-/// See `TomStringInputDecorationMixin` / `TomDropdownDecorationMixin`
-/// for the implemented pattern.
+/// Each is empty and **nothing in the package mixes any of them in**: the
+/// sliders, checkboxes, switches, segmented buttons, radio groups, date and
+/// time pickers, file pickers and chip fields they name all ship, and all of
+/// them take `TomGenericFieldDecorationMixin` instead. They are an extension
+/// point the catalogue did not need — the names are here so a family that
+/// grows its own anatomy can acquire one without churning the declarations
+/// that already exist.
+///
+/// See `TomStringInputDecorationMixin` / `TomDropdownDecorationMixin` for the
+/// two families that do carry their own, and
+/// `TomGenericFieldDecorationMixin` for what every other field uses.
 
 /// Stub — slider fields.
 mixin TomSliderDecorationMixin<T> on TomField<T> {}

@@ -101,6 +101,34 @@ its declared preferred → minimum width, falling back to
 `kAclDefaultFlowItemWidth`; declare a size on children whose natural width
 matters.
 
+## How the source is laid out
+
+`acl_container.dart` is one library in twelve files. The eleven beside it named
+`acl_container_*.dart` are `part`s of it — values, model, widgets, and one per
+stage of the pipeline: the measurement caches, the row-selection passes,
+identity and authorization, width fitting, geometry, chrome, content, and the
+row builder.
+
+Parts rather than libraries because privacy in Dart is per *library*, and the
+stages share private declarations. Splitting into libraries would have meant
+making those public, which is the opposite of what the split is for.
+
+## Where the rest is written down
+
+| Document | Answers |
+| -------- | ------- |
+| [`doc/advanced_container_layout.md`](../../../doc/advanced_container_layout.md) | The module reference — the API in isolation, which is what you want while writing a layout. |
+| [`doc/acl_design_specification.md`](../../../doc/acl_design_specification.md) | Why the engine is shaped this way, and the cross-cutting rules the reference assumes. |
+| [`doc/api/api_summary_advanced_container_layout.md`](../../../doc/api/api_summary_advanced_container_layout.md) | The symbol-level mirror: every public type the barrel exports, with a section each, and every public static named. |
+
+Two runnable examples sit under
+[`example/advanced_container_layout/`](../../../example/advanced_container_layout).
+`advanced_container_layout_example.dart` covers what needs no `BuildContext`;
+`advanced_container_layout_rendered_example.dart` renders a responsive variant,
+a row breakpoint, a grid and a wrap, authorization-aware hiding and composed
+ids, and reads each result back off the render tree. Each names the suite that
+runs it.
+
 ---
 
 Part of [`tom_flutter_ui`](../../../README.md) — see the package README for

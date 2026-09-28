@@ -245,25 +245,25 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   }
 
   /// Sets a size reference to another component.
-  TomAclBuilder<T> setComp(Object reference, int otherAttr) {
+  TomAclBuilder<T> setComp(Widget reference, int otherAttr) {
     _builder.setComp(reference, otherAttr);
     return this;
   }
 
   /// Constrains the current component to the same width as [reference].
-  TomAclBuilder<T> sameWidthAs(Object reference) {
+  TomAclBuilder<T> sameWidthAs(Widget reference) {
     _builder.sameWidthAs(reference);
     return this;
   }
 
   /// Constrains the current component to the same height as [reference].
-  TomAclBuilder<T> sameHeightAs(Object reference) {
+  TomAclBuilder<T> sameHeightAs(Widget reference) {
     _builder.sameHeightAs(reference);
     return this;
   }
 
   /// Constrains the current component to the same size as [reference].
-  TomAclBuilder<T> sameSize(Object reference) {
+  TomAclBuilder<T> sameSize(Widget reference) {
     _builder.sameSize(reference);
     return this;
   }
@@ -279,94 +279,94 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
   // ── Cross-row horizontal alignment ────────────────────────────────────────
 
-  TomAclBuilder<T> alignLeftToLeft(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignLeftToLeft(Widget reference, {double gap = 0}) {
     _builder.alignLeftToLeft(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignLeftToCenter(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignLeftToCenter(Widget reference, {double gap = 0}) {
     _builder.alignLeftToCenter(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignLeftToRight(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignLeftToRight(Widget reference, {double gap = 0}) {
     _builder.alignLeftToRight(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignCenterToLeft(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignCenterToLeft(Widget reference, {double gap = 0}) {
     _builder.alignCenterToLeft(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignCenterToCenter(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignCenterToCenter(Widget reference, {double gap = 0}) {
     _builder.alignCenterToCenter(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignCenterToRight(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignCenterToRight(Widget reference, {double gap = 0}) {
     _builder.alignCenterToRight(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignRightToLeft(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignRightToLeft(Widget reference, {double gap = 0}) {
     _builder.alignRightToLeft(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignRightToCenter(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignRightToCenter(Widget reference, {double gap = 0}) {
     _builder.alignRightToCenter(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignRightToRight(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignRightToRight(Widget reference, {double gap = 0}) {
     _builder.alignRightToRight(reference, gap: gap);
     return this;
   }
 
   // ── Same-row vertical alignment ───────────────────────────────────────────
 
-  TomAclBuilder<T> alignTopToTop(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignTopToTop(Widget reference, {double gap = 0}) {
     _builder.alignTopToTop(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignTopToMiddle(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignTopToMiddle(Widget reference, {double gap = 0}) {
     _builder.alignTopToMiddle(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignTopToBottom(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignTopToBottom(Widget reference, {double gap = 0}) {
     _builder.alignTopToBottom(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignMiddleToTop(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignMiddleToTop(Widget reference, {double gap = 0}) {
     _builder.alignMiddleToTop(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignMiddleToMiddle(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignMiddleToMiddle(Widget reference, {double gap = 0}) {
     _builder.alignMiddleToMiddle(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignMiddleToBottom(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignMiddleToBottom(Widget reference, {double gap = 0}) {
     _builder.alignMiddleToBottom(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignBottomToTop(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignBottomToTop(Widget reference, {double gap = 0}) {
     _builder.alignBottomToTop(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignBottomToMiddle(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignBottomToMiddle(Widget reference, {double gap = 0}) {
     _builder.alignBottomToMiddle(reference, gap: gap);
     return this;
   }
 
-  TomAclBuilder<T> alignBottomToBottom(Object reference, {double gap = 0}) {
+  TomAclBuilder<T> alignBottomToBottom(Widget reference, {double gap = 0}) {
     _builder.alignBottomToBottom(reference, gap: gap);
     return this;
   }

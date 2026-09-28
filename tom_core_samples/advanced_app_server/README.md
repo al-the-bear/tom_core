@@ -14,6 +14,21 @@ another user so the grant takes effect on the grantee's next request.
 > **[05 · Persistence & the two databases](../README_advanced_05_persistence_database.md)** and
 > [10 · Servers & the secured endpoint pipeline](../README_advanced_10_servers_endpoints.md).
 
+**There is no `example/` directory, and that is deliberate: this package is
+itself the runnable example.** It is one of the eight `advanced_*` packages that
+together form the full-stack sample, so `dart run bin/app_server_start.dart` —
+the secured board API — is the demonstration, and an `example/` beside it would
+duplicate the entry point.
+[The family's index](../README_advanced_sample.md#the-eight-packages) says which of the eight carry an `example/`, and why.
+
+Read instead, in the order a newcomer wants them: [Running it](#running-it)
+for the boot and its two databases, the [`curl` tour](#curl-tour) for the
+endpoints exercised one at a time against a live server, and
+[`advanced_client_core/tool/run_cross_tier_integration.sh`](../advanced_client_core/tool/run_cross_tier_integration.sh)
+for the whole stack end to end — it boots both databases and both servers, runs
+the live suites against them and tears everything down, which is the one path
+that shows this server doing its job with a real client on the other side.
+
 ## Architecture
 
 The `AppApiService` implementation is split into pure, database-free logic
@@ -58,6 +73,31 @@ HTTP contract: denials → **403**, an unreachable resource → **404**
 same mapping to rejections raised *inside* a handler — the pipeline catches
 those in its per-endpoint `try/catch`, where the server-level handler cannot
 reach them.
+
+## API
+
+The barrel `lib/advanced_app_server.dart` is the package's stable entry point
+and exports ten libraries. Each store seam named below is an **extension
+point**: the services are written against it, the production wiring binds a
+repository-backed implementation, and the unit tests bind a seeded in-memory
+one.
+
+| Exported library | What it is | Seam it defines |
+| --- | --- | --- |
+| `src/endpoints/app_endpoints.dart` | The HTTP surface — the board's read, write and share endpoints, split into database-free services plus the `@tomComponent` adapter the router binds | `AppReadStore`, `AppWriteStore` |
+| `src/access/resource_role_resolver.dart` | Ownership-or-share → the principal's effective `ProjectRole` on a resource, kept strongest along the `item → list → project → workspace` chain | `ResourceContainmentStore` |
+| `src/access/field_grade_resolver.dart` | `ProjectRole` → the per-field `TomAuthState` grades a write is enforced against | `GrantStore` |
+| `src/access/column_grade_resolver.dart` | The same two layers for an authorized *column* — the item's `attachment`, which the file endpoint gates on rather than a JSON field | — |
+| `src/access/visible_resource_resolver.dart` | A principal's visible id-set per entity type, the input the async data-scope resolver pushes down to the database | — |
+| `src/access/share_delegation_store.dart` | Cross-user shares as framework C-6 `share`-mode delegations — one principal lending another a named role on a named resource | `ShareDelegationStore` |
+| `src/access/ownership_grant_writer.dart` | Records C-5 ownership when a principal creates a resource, into the grant table shared with `auth_db` | `OwnershipGrantWriter` |
+| `src/persistence/app_persistence_model.dart` | The `app_db` records — the relational view of workspaces, projects, lists, items, comments and subtasks | — |
+| `src/persistence/app_mapping.dart` | The one place the domain entities and the persistence records meet, in pure conversions both ways | — |
+| `src/resources/app_resource_bundles.dart` | The server-delivered text bundle the client's post-login screens render their labels from | — |
+
+`test/readme_api_section_test.dart` derives both sides of that first column —
+the barrel's exports and this table's rows — and fails when they disagree, so
+the list cannot drift from the barrel the way a hand-written mirror would.
 
 ## Running it
 

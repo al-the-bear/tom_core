@@ -234,7 +234,7 @@ bool? _radioEnabled(bool? explicit, TomAuthState auth) =>
 /// argument: the radio is selected when its [value] equals the group's
 /// `groupValue`, and picking it calls the group's `onChanged`. Without such an
 /// ancestor the radio renders unselected and inert — that is [Radio]'s own
-/// behaviour, not a Tom restriction. [TomRadioGroup] supplies the ancestor for
+/// behaviour, not a Tom restriction. [TomChoiceGroup] supplies the ancestor for
 /// the common list-of-options case.
 class TomRadio<T> extends TomToggleBase {
   final T value;

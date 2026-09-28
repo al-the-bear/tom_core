@@ -77,9 +77,8 @@ class ItemAttachmentGradeResolver {
   /// resolver restricted to the attachment key.
   ///
   /// The key list is given explicitly rather than defaulted, because the default
-  /// is the *form field* set derived from the resource bundle
-  /// ([AppResourceBundles.gradableItemKeys]) and the attachment is deliberately
-  /// not in it — it is a column, not a field.
+  /// is the domain's *form field* set (`gradableItemKeys`) and the attachment is
+  /// deliberately not in it — it is a column, not a field.
   factory ItemAttachmentGradeResolver.production() =>
       ItemAttachmentGradeResolver(
         ResourceRoleResolver.production(),

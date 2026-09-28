@@ -3,9 +3,18 @@
 /// carrying its own. Use it when a grant covers the choice as a unit —
 /// a per-field radio is the right tool when the grant varies per option.
 ///
-/// The widget is value-semantic: callers pass [TomRadioGroup.items], the
-/// current [TomRadioGroup.selected] value, and the
-/// [TomRadioGroup.onChanged] handler. Internally each tile is rendered
+/// **Not named for the radios it draws.** `TomRadioGroupStyle` and
+/// `TomRadioGroupDecorationMixin` belong to the *forms* module and theme the
+/// radio-group **field**; they do nothing here, and while this widget shared
+/// their name a consumer who found one and set it had no way to know that.
+/// This is a composite in the custom kit: it is not a field, takes no part in
+/// the form style tree, and — like the rest of `custom/` — takes its
+/// appearance from the ambient `ThemeData` rather than from a Tom style
+/// object. The name says which of the two it is.
+///
+/// The widget is value-semantic: callers pass [TomChoiceGroup.items], the
+/// current [TomChoiceGroup.selected] value, and the
+/// [TomChoiceGroup.onChanged] handler. Internally each tile is rendered
 /// with [Radio<T>] + [InkWell] so the group composes cleanly inside
 /// Cards / Lists, and the whole column sits under a [RadioGroup] of the
 /// same type argument — that ancestor is what carries the selection down
@@ -13,14 +22,14 @@
 /// radio-group semantics with it.
 ///
 /// Authorization is resolved once via [TomAuthorization.resolveAuth]
-/// against [TomRadioGroup.tomId] (qualified by the active [TomScope]).
+/// against [TomChoiceGroup.tomId] (qualified by the active [TomScope]).
 /// The four outcomes:
 ///
 /// * `none` — the entire group is hidden.
 /// * `disabled` — the group is rendered with [IgnorePointer] + faded
-///   opacity; the [TomRadioGroup.onChanged] callback is never invoked.
-/// * `read` — the group is rendered, [TomRadioGroup.onChanged] is
-///   suppressed, but the current [TomRadioGroup.selected] value is
+///   opacity; the [TomChoiceGroup.onChanged] callback is never invoked.
+/// * `read` — the group is rendered, [TomChoiceGroup.onChanged] is
+///   suppressed, but the current [TomChoiceGroup.selected] value is
 ///   still highlighted.
 /// * `full` — the group is fully interactive.
 ///
@@ -35,8 +44,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../widget_base/tom_scope_path.dart';
 
-/// One radio entry in a [TomRadioGroup].
-class TomRadioGroupItem<T> {
+/// One radio entry in a [TomChoiceGroup].
+class TomChoiceGroupItem<T> {
   /// Underlying value.
   final T value;
 
@@ -46,7 +55,7 @@ class TomRadioGroupItem<T> {
   /// Optional supporting copy beneath the label.
   final String? description;
 
-  const TomRadioGroupItem({
+  const TomChoiceGroupItem({
     required this.value,
     required this.label,
     this.description,
@@ -54,7 +63,7 @@ class TomRadioGroupItem<T> {
 }
 
 /// Radio group with group-level authorization.
-class TomRadioGroup<T> extends StatelessWidget {
+class TomChoiceGroup<T> extends StatelessWidget {
   /// Resource key path used to resolve the group's [TomAuthState].
   /// When `null`, the group renders fully interactive (no auth check).
   final String? tomId;
@@ -64,7 +73,7 @@ class TomRadioGroup<T> extends StatelessWidget {
   final TomScope? scope;
 
   /// The list of selectable items.
-  final List<TomRadioGroupItem<T>> items;
+  final List<TomChoiceGroupItem<T>> items;
 
   /// Currently selected value. Compared by `==`.
   final T? selected;
@@ -79,7 +88,7 @@ class TomRadioGroup<T> extends StatelessWidget {
   /// Opacity applied when group auth is `disabled`. Defaults to `0.4`.
   final double disabledOpacity;
 
-  const TomRadioGroup({
+  const TomChoiceGroup({
     super.key,
     this.tomId,
     this.scope,

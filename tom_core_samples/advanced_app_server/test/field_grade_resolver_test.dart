@@ -137,14 +137,10 @@ void main() {
       },
     );
 
-    test('the gradable key set is derived from the server bundle', () {
+    test('the default key set is the domain\'s', () {
       // The resolver carries no inline key list — its default set is the
-      // server resource bundle's gradable keys, so the graded set tracks the
-      // texts the server serves.
-      expect(
-        resolver.gradableItemKeys,
-        orderedEquals(AppResourceBundles.gradableItemKeys()),
-      );
+      // shared domain's, the one every tier resolves grades over.
+      expect(resolver.gradableItemKeys, same(gradableItemKeys));
     });
   });
 }

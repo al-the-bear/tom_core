@@ -56,10 +56,11 @@ final ShowcaseGroup adaptiveSizingGroup = ShowcaseGroup(
       child: _sizingLayout(600),
     ),
     ShowcaseCell(
-      title: 'Narrow (320px) — sized cell shrinks toward min',
+      title: 'Narrow (320px) — sized cell gives way, within its band',
       note:
-          'At 320px the first cell shrinks toward its 80px floor before the '
-          'row would reflow; expandX still claims the remainder.',
+          'At 320px the row can no longer give the first cell its 160px '
+          'preferred width: it gives up a little (never below its 80px '
+          'minimum) and the expandX cell absorbs most of the shortfall.',
       code:
           '// Same chain — only the available width differs.\n'
           'SizedBox(width: 320, child: sizingLayout)',

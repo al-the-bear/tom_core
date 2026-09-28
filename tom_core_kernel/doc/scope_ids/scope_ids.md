@@ -2,7 +2,7 @@
 
 The Scope IDs module provides a hierarchical, zone-propagated identifier system
 used to namespace resource and authorization lookups (for example
-`app.checkout.orderForm`). A scope travels on the current Dart [`Zone`], so any
+`app.checkout.orderForm`). A scope travels on the current Dart `Zone`, so any
 code running inside a scope can discover its position in the hierarchy without
 threading an identifier through every call.
 
@@ -29,7 +29,7 @@ threading an identifier through every call.
 ## Overview
 
 A `TomScope` is a node in a parent chain rooted at `TomScope.defaultScope`. Each
-scope carries a local [`id`] and a reference to its [`parent`]. The **active**
+scope carries a local `id` and a reference to its `parent`. The **active**
 scope is the one installed on the current zone; `TomScope.current` resolves to
 the nearest enclosing scope, falling back to `defaultScope` when none is
 installed.

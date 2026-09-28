@@ -29,9 +29,9 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 ///   field's base path from either its form's `basePath` or the ambient scope
 ///   path — a `String` either way, so it joins with [TomScopePath.join] and
 ///   still has to read the scope path to produce one of the two operands.
-/// - `acl_container.dart` builds *multi-segment* policy paths whose middle
-///   segments are opt-in (`idScope`), which is a different rule, not this one
-///   with extra steps.
+/// - `acl_container_identity.dart`, a part of the `acl_container` library,
+///   builds *multi-segment* policy paths whose middle segments are opt-in
+///   (`idScope`), which is a different rule, not this one with extra steps.
 /// - `tom_screen_elements_provider.dart` forwards its own scope path to the
 ///   scope it passes through to, and to `super` otherwise. It composes
 ///   nothing: both operands of a join would have to exist for that, and here
@@ -39,7 +39,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 const _rawScopePathReaders = <String, int>{
   'lib/src/widget_base/tom_scope_path.dart': 1,
   'lib/src/forms/tom_form.dart': 2,
-  'lib/src/advanced_container_layout/acl_container.dart': 2,
+  'lib/src/advanced_container_layout/acl_container_identity.dart': 2,
   'lib/src/widget_base/tom_screen_elements_provider.dart': 2,
 };
 

@@ -231,17 +231,17 @@ void main() {
     });
   });
 
-  group('tcinc806: TomRadioGroup supplies the ancestor', () {
-    const items = <TomRadioGroupItem<String>>[
-      TomRadioGroupItem(value: 'a', label: 'Alpha'),
-      TomRadioGroupItem(value: 'b', label: 'Beta'),
+  group('tcinc806: TomChoiceGroup supplies the ancestor', () {
+    const items = <TomChoiceGroupItem<String>>[
+      TomChoiceGroupItem(value: 'a', label: 'Alpha'),
+      TomChoiceGroupItem(value: 'b', label: 'Beta'),
     ];
 
     testWidgets('tcinc806-13: the group carries the selected value', (
       tester,
     ) async {
       await tester.pumpWidget(
-        _host(const TomRadioGroup<String>(items: items, selected: 'b')),
+        _host(const TomChoiceGroup<String>(items: items, selected: 'b')),
       );
       expect(
         tester
@@ -257,7 +257,7 @@ void main() {
       String? picked;
       await tester.pumpWidget(
         _host(
-          TomRadioGroup<String>(
+          TomChoiceGroup<String>(
             items: items,
             selected: 'a',
             onChanged: (v) => picked = v,
@@ -280,7 +280,7 @@ void main() {
         });
         await tester.pumpWidget(
           _host(
-            const TomRadioGroup<String>(
+            const TomChoiceGroup<String>(
               tomId: 'choice',
               items: items,
               selected: 'a',
@@ -298,7 +298,7 @@ void main() {
 
     testWidgets('tcinc806-16: full leaves every radio enabled', (tester) async {
       await tester.pumpWidget(
-        _host(const TomRadioGroup<String>(items: items, selected: 'a')),
+        _host(const TomChoiceGroup<String>(items: items, selected: 'a')),
       );
 
       final radios = tester.widgetList<Radio<String>>(

@@ -22,11 +22,17 @@ discard, validation, and authorization.
 > family in scope. Reach for a concrete only when a screen is deliberately
 > single-family.
 >
-> **The complete list** is Appendix C of
+> **The complete list** of *fields* is Appendix C of
 > [`doc/tom_ui_widgets_forms.md`](../../../doc/tom_ui_widgets_forms.md), which
 > is generated from `lib/src/forms/fields` and held to it by
 > `tool/check_doc_class_inventories.py` in both directions — a class missing
 > from the appendix and an appendix entry naming no class are both faults.
+>
+> **The complete list of the whole barrel** — every exported type, with a
+> section each, and every public static — is
+> [`doc/api/api_summary_forms.md`](../../../doc/api/api_summary_forms.md),
+> derived from `tom_forms.dart` and held to it by
+> `test/module_readme_inventory_test.dart`.
 
 | Type | Responsibility |
 | ---- | -------------- |

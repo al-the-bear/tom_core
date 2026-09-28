@@ -24,6 +24,10 @@ CREATE TABLE IF NOT EXISTS auth_users (
   -- and so never reaches a token claim.
   two_factor_type   VARCHAR(64)  NULL,
   two_factor_secret VARCHAR(255) NULL,
+  -- Stored language preference, mirroring TomPrincipal.language / .country.
+  -- NULL language = no preference; the reader falls back to the default.
+  language      VARCHAR(16)  NULL,
+  country       VARCHAR(8)   NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_auth_users_username (username),
   UNIQUE KEY uq_auth_users_email (email)

@@ -4,7 +4,7 @@ import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart'
     show ProjectRole, UserStatus;
 import 'package:tom_core_kernel/tom_core_kernel.dart'
-    show TomAuthState, TomFileMetadata;
+    show Tom2FAMethodDescriptor, TomAuthState, TomFileMetadata;
 import 'package:test/test.dart';
 
 // The single test-only reflection seed for this package (G-REFL-2).
@@ -99,6 +99,141 @@ void main() {
       expect(restored.authzToken, 'authz-token');
       expect(restored.expiresAt.toUtc(), DateTime.utc(2026, 6, 28, 12));
       expect(restored.expiresAt.isUtc, isTrue);
+    });
+
+    // The half-finished shapes. A completed login leaves every two-factor
+    // member at its default, so the case above cannot notice one of them
+    // failing to cross the wire.
+
+    test('round-trips a pending challenge', () {
+      final restored = dtoFromJson<LoginResult>(
+        _wire(
+          LoginResult(
+            user: UserDto(id: 'u4', username: 'dave'),
+            authToken: 'interim-auth',
+            authzToken: 'interim-authz',
+            expiresAt: DateTime.utc(2026, 6, 28, 12, 5),
+            requires2FA: true,
+            twoFactorType: 'totp',
+          ),
+        ),
+      );
+
+      expect(restored.requires2FA, isTrue);
+      expect(restored.twoFactorType, 'totp');
+      expect(restored.requires2FAEnrolment, isFalse);
+      expect(restored.availableTwoFactorMethods, isEmpty);
+      expect(restored.twoFactorEnrolmentSkippable, isFalse);
+      expect(restored.user.username, 'dave');
+      expect(restored.authzToken, 'interim-authz');
+      expect(restored.expiresAt.toUtc(), DateTime.utc(2026, 6, 28, 12, 5));
+    });
+
+    test('round-trips an enrolment offer, each descriptor by value', () {
+      // `availableTwoFactorMethods` is the package's only list of a *kernel*
+      // type: the reflection path has to find `Tom2FAMethodDescriptor` in the
+      // seed and rebuild each element, not hand back maps. Compared field by
+      // field, because a list of blank descriptors would pass a length check.
+      final restored = dtoFromJson<LoginResult>(
+        _wire(
+          LoginResult(
+            user: UserDto(id: 'u5', username: 'erin'),
+            requires2FAEnrolment: true,
+            availableTwoFactorMethods: [
+              Tom2FAMethodDescriptor.scoped('totp'),
+              Tom2FAMethodDescriptor(
+                type: 'sms',
+                displayNameKey: 'two_factor.sms.name',
+                descriptionKey: 'two_factor.sms.description',
+                iconKey: 'two_factor.sms.icon',
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(restored.requires2FAEnrolment, isTrue);
+      expect(restored.twoFactorEnrolmentSkippable, isFalse);
+      expect(restored.requires2FA, isFalse);
+      expect(
+        restored.availableTwoFactorMethods,
+        everyElement(isA<Tom2FAMethodDescriptor>()),
+      );
+      expect(
+        [
+          for (final m in restored.availableTwoFactorMethods)
+            [m.type, m.displayNameKey, m.descriptionKey, m.iconKey],
+        ],
+        [
+          [
+            'totp',
+            'two_factor.totp.name',
+            'two_factor.totp.description',
+            'two_factor.totp.icon',
+          ],
+          [
+            'sms',
+            'two_factor.sms.name',
+            'two_factor.sms.description',
+            'two_factor.sms.icon',
+          ],
+        ],
+      );
+    });
+
+    test('round-trips a skippable enrolment offer', () {
+      final restored = dtoFromJson<LoginResult>(
+        _wire(
+          LoginResult(
+            user: UserDto(id: 'u5', username: 'erin'),
+            requires2FAEnrolment: true,
+            availableTwoFactorMethods: [Tom2FAMethodDescriptor.scoped('totp')],
+            twoFactorEnrolmentSkippable: true,
+          ),
+        ),
+      );
+
+      expect(restored.requires2FAEnrolment, isTrue);
+      expect(restored.twoFactorEnrolmentSkippable, isTrue);
+      expect(restored.availableTwoFactorMethods.single.type, 'totp');
+    });
+  });
+
+  group('two-factor requests', () {
+    test('SecondFactorRequest round-trips the code and the interim token', () {
+      final restored = dtoFromJson<SecondFactorRequest>(
+        _wire(
+          SecondFactorRequest(code: '123456', challengeToken: 'interim-authz'),
+        ),
+      );
+      expect(restored.code, '123456');
+      expect(restored.challengeToken, 'interim-authz');
+    });
+
+    test('TwoFactorEnrolmentRequest round-trips every field', () {
+      final restored = dtoFromJson<TwoFactorEnrolmentRequest>(
+        _wire(
+          TwoFactorEnrolmentRequest(
+            type: 'totp',
+            code: '654321',
+            enrolmentToken: 'enrolment-authz',
+          ),
+        ),
+      );
+      expect(restored.type, 'totp');
+      expect(restored.code, '654321');
+      expect(restored.enrolmentToken, 'enrolment-authz');
+    });
+
+    test('neither prints the code it carries', () {
+      expect(
+        SecondFactorRequest(code: '123456').toString(),
+        isNot(contains('123456')),
+      );
+      expect(
+        TwoFactorEnrolmentRequest(type: 'totp', code: '654321').toString(),
+        allOf(isNot(contains('654321')), contains('totp')),
+      );
     });
   });
 
@@ -355,6 +490,162 @@ void main() {
         );
         expect(back.accessFor('owner', 'todo.item.title'), TomAuthState.full);
       });
+    });
+  });
+
+  group('flattenResourceTree', () {
+    test('joins nested map keys with dots down to each leaf', () {
+      expect(
+        flattenResourceTree({
+          'todo': {
+            'item': {
+              'title': {'label': 'Title', 'hint': 'What needs doing'},
+            },
+          },
+        }),
+        {
+          'todo.item.title.label': 'Title',
+          'todo.item.title.hint': 'What needs doing',
+        },
+      );
+    });
+
+    test('a scalar leaf whose key already holds dots flattens as written', () {
+      // Only map nodes are descended; the key is never split. This is the rule
+      // a reader is most likely to get wrong in the other direction.
+      expect(flattenResourceTree({'board.title': 'My Board'}), {
+        'board.title': 'My Board',
+      });
+      expect(
+        flattenResourceTree({
+          'board': {'header.subtitle': 'Today'},
+        }),
+        {'board.header.subtitle': 'Today'},
+      );
+    });
+
+    test('the first non-map value ends a key, lists included', () {
+      // A list is a value, not a node: it is carried whole, never indexed into
+      // `key.0`, `key.1`.
+      expect(
+        flattenResourceTree({
+          'todo': {
+            'status': {
+              'options': ['backlog', 'done'],
+              'count': 2,
+              'required': true,
+            },
+          },
+        }),
+        {
+          'todo.status.options': ['backlog', 'done'],
+          'todo.status.count': 2,
+          'todo.status.required': true,
+        },
+      );
+    });
+
+    test('an empty map node contributes no key', () {
+      expect(
+        flattenResourceTree({
+          'todo': <String, Object?>{},
+          'a': {'b': 'c'},
+        }),
+        {'a.b': 'c'},
+      );
+    });
+  });
+
+  group('GrantMatrixDto.gradeMapFor', () {
+    test('decodes one role\'s row into the typed grade map', () {
+      // The map the server hands `TomGradedAccessControlInformation(grades:)`
+      // - typed values, one per cell, and exactly the row's keys.
+      final matrix = GrantMatrixDto.fromGrades({
+        'editor': [
+          GradedFieldDto(
+            resourceKey: 'todo.item.title',
+            access: TomAuthState.full,
+          ),
+          GradedFieldDto(
+            resourceKey: 'todo.item.status',
+            access: TomAuthState.read,
+          ),
+          GradedFieldDto(
+            resourceKey: 'todo.item.estimate',
+            access: TomAuthState.disabled,
+          ),
+        ],
+      });
+
+      final grades = matrix.gradeMapFor('editor');
+
+      expect(grades, isA<Map<String, TomAuthState>>());
+      expect(grades, {
+        'todo.item.title': TomAuthState.full,
+        'todo.item.status': TomAuthState.read,
+        'todo.item.estimate': TomAuthState.disabled,
+      });
+      // It is the same answer the cell reader gives, cell by cell.
+      for (final entry in grades.entries) {
+        expect(matrix.accessFor('editor', entry.key), entry.value);
+      }
+    });
+
+    test('survives the wire unchanged', () {
+      final matrix = GrantMatrixDto.fromGrades({
+        'viewer': [
+          GradedFieldDto(
+            resourceKey: 'todo.item.title',
+            access: TomAuthState.read,
+          ),
+        ],
+      });
+      final back = dtoFromJson<GrantMatrixDto>(_wire(matrix));
+      expect(back.gradeMapFor('viewer'), matrix.gradeMapFor('viewer'));
+    });
+  });
+
+  group('dtoToMap', () {
+    test('is the decoded form of dtoToJsonString', () {
+      // The three exported helpers are one serializer seen three ways; the map
+      // form must not drift from the string form a server writes.
+      final dto = LoginResult(
+        user: UserDto(id: 'u1', username: 'alice'),
+        authToken: 'a',
+        authzToken: 'z',
+        expiresAt: DateTime.utc(2026, 6, 28, 12),
+        availableTwoFactorMethods: [Tom2FAMethodDescriptor.scoped('totp')],
+      );
+
+      expect(jsonDecode(jsonEncode(dtoToMap(dto))), _wire(dto));
+    });
+
+    test('feeds dtoFromJson back to an equal DTO', () {
+      final restored = dtoFromJson<UserDto>(
+        dtoToMap(UserDto(id: 'u2', username: 'bob', email: 'bob@example.com')),
+      );
+      expect(restored.id, 'u2');
+      expect(restored.username, 'bob');
+      expect(restored.email, 'bob@example.com');
+    });
+  });
+
+  group('AppFileSlots', () {
+    test('composes <table>/<id>/<column> from the named parts', () {
+      expect(AppFileSlots.itemAttachment('42'), 'app_items/42/attachment');
+      expect(AppFileSlots.userAvatar('7'), 'auth_users/7/avatar_ref');
+    });
+
+    test('slotId reads back the id each composer wrote', () {
+      // Pins the format from both ends: a composer and the reader the file
+      // endpoints use cannot disagree about where the id sits.
+      for (final id in ['42', 'u-7', '2026']) {
+        expect(
+          FileDescriptorDto(slot: AppFileSlots.itemAttachment(id)).slotId,
+          id,
+        );
+        expect(FileDescriptorDto(slot: AppFileSlots.userAvatar(id)).slotId, id);
+      }
     });
   });
 

@@ -88,4 +88,21 @@ void main() {
     expect(form.priority.resolvedLabel, 'Priority');
     expect(form.assigneeId.resolvedLabel, 'Assignee id');
   });
+
+  testWidgets(
+    'CCS-FORM-05: under an empty matrix the graded fields are none and the '
+    'ungraded description is full',
+    (tester) async {
+      // Closed-safe for every field that asks the matrix; `description` never
+      // asks - it is declared without an authorizer - so the empty matrix
+      // cannot hide it. Pinning both halves keeps the distinction a fact of the
+      // code rather than a sentence in a document.
+      final form = buildForm(const {});
+      expect(form.title.effectiveAuthState, TomAuthState.none);
+      expect(form.done.effectiveAuthState, TomAuthState.none);
+      expect(form.priority.effectiveAuthState, TomAuthState.none);
+      expect(form.assigneeId.effectiveAuthState, TomAuthState.none);
+      expect(form.description.effectiveAuthState, TomAuthState.full);
+    },
+  );
 }

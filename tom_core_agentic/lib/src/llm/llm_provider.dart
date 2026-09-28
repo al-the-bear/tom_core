@@ -24,9 +24,10 @@ import 'wire_prompt.dart';
 /// **No prompt mutation.** Providers MUST NOT prepend, append, or reorder the
 /// body of the prompt they receive. The producer has already wrapped the body
 /// with the anchor; any mutation here would corrupt the anchor block or inject
-/// text the audit trail cannot attribute. Providers translate
-/// [WirePrompt.combined] into whatever wire shape the backend expects, but the
-/// body content goes through unchanged.
+/// text the audit trail cannot attribute. Translating the prompt into the
+/// backend's wire shape is fine — routing [WirePrompt.system] and
+/// [WirePrompt.user] to native channels, or sending [WirePrompt.combined] when
+/// the backend has none — but the body content goes through unchanged.
 abstract class LlmProvider {
   /// Stable identifier for this provider instance.
   ///

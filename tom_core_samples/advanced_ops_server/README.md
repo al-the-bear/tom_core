@@ -13,6 +13,23 @@ scheduler — an audit-anchor publisher on its own timer.
 > This package is documented in context by
 > **[14 · Operations: scheduled work over live data](../README_advanced_14_operations.md)**.
 
+**The server is the demonstration; the example is the seam.**
+`dart run bin/ops_server_start.dart` boots the whole back office, and needs both
+databases. [`example/digest_composition_example.dart`](example/digest_composition_example.dart)
+needs nothing: it runs the real `OpsDigestService` over a two-person in-memory
+audience — built through the same `RepositoryDigestAudience.summariesFrom` join
+the server uses, so `bob`'s stored `de` becomes his digest's locale — queues
+into a memory outbox, ticks it once, and prints the German and the English mail
+rendered from the shipped `assets/text_*.yaml`.
+
+```sh
+dart run example/digest_composition_example.dart
+```
+
+`test/examples_test.dart` runs it the same way and checks it.
+[The family's index](../README_advanced_sample.md#the-eight-packages) says which
+of the eight carry an `example/`, and why.
+
 ## Why a third server
 
 Scheduling, auditing, messaging and export each have a module guide and a
@@ -92,7 +109,10 @@ outbox, so there is no way for it to compose a subject even by accident.
 
 The locale is per recipient — `OpsDigestSummary.locale` — because one pass mails
 everybody and there is no moment at which the job could meaningfully "switch to
-German".
+German". It comes from the account: `RepositoryDigestAudience` reads the stored
+`auth_users.language` / `.country` pair, and a user with none gets the deployment
+default. In the seeded data `bob` reads German and `carol` has no preference, so
+one pass renders one mail of each.
 
 The two sentences the digest includes only sometimes (an overdue count, a next
 due date) are **their own resource keys**, resolved separately and passed in as
@@ -180,9 +200,246 @@ surfaces as a missing table at the first tick of whichever deployment was
 provisioned last. `test/ops_migration_chain_test.dart` reads both directories
 and fails if either side leaves its band.
 
+## API
+
+Every public declaration the barrel (`lib/advanced_ops_server.dart`) exports,
+library by library, with its signature as the source declares it. The sections
+above are the narrative; this is the index. Annotations, initializer lists and
+bodies are left out — the schedule each job declares is in
+[The four pieces of recurring work](#the-four-pieces-of-recurring-work).
+
+There is no `doc/` folder and no `doc/api/` summary: no sample carries one, a
+decision taken once for all fifteen in [the suite map](../README.md). This
+section is the reference instead, and `test/readme_api_reference_test.dart`
+holds it to the source in both directions — every line below must occur in its
+library, and every public declaration of an exported library must be listed.
+
+### `lib/src/jobs/retention_service.dart`
+
+The nightly purge: terminal items past the retention window, destroyed one entity at a time so each delete is audited.
+
+```dart
+const Set<TodoStatus> retainableTerminalStatuses
+class OpsRetentionReport
+  const OpsRetentionReport({required this.cutoff, required this.examined, required this.deleted, required this.reassignmentRefused})
+  final DateTime cutoff
+  final int examined
+  final int deleted
+  final bool reassignmentRefused
+  String toString()
+abstract class OpsRetentionStore
+  Future<List<ItemRecord>> expiredItems(DateTime cutoff, {required int limit})
+  Future<void> destroy(ItemRecord item)
+class RepositoryRetentionStore implements OpsRetentionStore
+  const RepositoryRetentionStore()
+  Future<List<ItemRecord>> expiredItems(DateTime cutoff, {required int limit})
+  Future<void> destroy(ItemRecord item)
+class OpsRetentionService
+  OpsRetentionService({required this.store, this.retention = const Duration(days: 90), this.batchLimit = 500})
+  final OpsRetentionStore store
+  final Duration retention
+  final int batchLimit
+  bool get reassignInsteadOfDeleting
+  Future<OpsRetentionReport> purgeExpired(DateTime now)
+```
+
+### `lib/src/jobs/digest_service.dart`
+
+The morning digest: who has open work, in which language, composed from a template key and queued — never sent.
+
+```dart
+final Set<TodoStatus> openStatuses
+class OpsDigestSummary
+  const OpsDigestSummary({required this.userId, required this.displayName, required this.emailAddress, required this.openCount, required this.overdueCount, this.nextDue, this.locale})
+  final int userId
+  final String displayName
+  final String emailAddress
+  final int openCount
+  final int overdueCount
+  final DateTime? nextDue
+  final TomTextLocale? locale
+  String toString()
+class OpsDigestReport
+  const OpsDigestReport({required this.window, required this.considered, required this.queued, required this.skippedWithoutAddress})
+  final DateTime window
+  final int considered
+  final int queued
+  final int skippedWithoutAddress
+  String toString()
+abstract class OpsDigestAudience
+  Future<List<OpsDigestSummary>> summariesFor(DateTime now)
+class RepositoryDigestAudience implements OpsDigestAudience
+  const RepositoryDigestAudience()
+  Future<List<OpsDigestSummary>> summariesFor(DateTime now)
+  static List<OpsDigestSummary> summariesFrom({required Iterable<UserRecord> users, required Map<int, List<ItemRecord>> itemsByAssignee, required DateTime now})
+  static OpsDigestSummary summarise({required int userId, required String displayName, required String emailAddress, required List<ItemRecord> items, required DateTime now, TomTextLocale? locale})
+class OpsDigestService
+  OpsDigestService({required this.audience, required this.email, this.sender, this.productName = 'Advanced Todo'})
+  final OpsDigestAudience audience
+  final TomEmailService email
+  final TomRecipient? sender
+  final String productName
+  static String messageIdFor(int userId, DateTime window)
+  Future<OpsDigestReport> queueDigests(DateTime window)
+  TomEmailRequest requestFor(OpsDigestSummary summary, DateTime window)
+  TomMessage composeFor(OpsDigestSummary summary, DateTime window)
+```
+
+### `lib/src/jobs/report_service.dart`
+
+The weekly export of completed items into the blob store.
+
+```dart
+const Duration opsReportWindow
+const String opsReportFormat
+const String opsExportKeyPrefix
+class OpsReportOutcome
+  const OpsReportOutcome({required this.from, required this.to, required this.rowCount, required this.stored})
+  final DateTime from
+  final DateTime to
+  final int rowCount
+  final TomStoredExport stored
+  String toString()
+abstract class OpsReportSource
+  Future<List<ItemRecord>> completedBetween(DateTime from, DateTime to)
+class RepositoryReportSource implements OpsReportSource
+  const RepositoryReportSource()
+  Future<List<ItemRecord>> completedBetween(DateTime from, DateTime to)
+class OpsReportService
+  OpsReportService({required this.source, required this.exports, this.window = opsReportWindow, this.format = opsReportFormat, this.baseName = 'completed-items'})
+  final OpsReportSource source
+  final TomExportService exports
+  final Duration window
+  final String format
+  final String baseName
+  Future<OpsReportOutcome> publishReport(DateTime now)
+```
+
+### `lib/src/jobs/blob_sweep_service.dart`
+
+The orphan-chunk sweep over the database blob store.
+
+```dart
+class OpsBlobSweepReport
+  const OpsBlobSweepReport({required this.chunksRemoved})
+  final int chunksRemoved
+  String toString()
+class OpsBlobSweepService
+  const OpsBlobSweepService({required this.store})
+  factory OpsBlobSweepService.configured([String? storeName])
+  final TomDatabaseBlobStore store
+  Future<OpsBlobSweepReport> sweep()
+```
+
+### `lib/src/jobs/ops_jobs.dart`
+
+The four `@TomScheduledJob` declarations and the bean and job names that wire them to the services.
+
+```dart
+const String opsRetentionServiceBean
+const String opsDigestServiceBean
+const String opsReportServiceBean
+const String opsBlobSweepServiceBean
+const String opsPurgeJobName
+const String opsReportJobName
+const String opsDigestJobName
+const String opsBlobSweepJobName
+class OpsPurgeJob extends TomJobBase
+  Future<Object?> execute()
+class OpsReportJob extends TomJobBase
+  Future<Object?> execute()
+class OpsBlobSweepJob extends TomJobBase
+  Future<Object?> execute()
+class OpsDigestJob extends TomJobBase
+  Future<Object?> execute()
+```
+
+### `lib/src/ops_anchoring.dart`
+
+The audit-anchor publisher — on its own timer, deliberately not a scheduled job.
+
+```dart
+const String opsAuditWriter
+const Duration opsAnchorInterval
+class OpsAnchoring
+  OpsAnchoring({required this.publisher})
+  factory OpsAnchoring.toDirectory(Directory directory, {required TomAuditSink sink, Duration interval = opsAnchorInterval, bool independentOfServer = false})
+  final TomAuditAnchorPublisher publisher
+  bool get independentOfServer
+  Future<void> start()
+  Future<TomAuditAnchor> publishNow()
+  Future<void> close()
+  void stop()
+  String describe()
+```
+
+### `lib/src/ops_identity.dart`
+
+The two principals (the deployment cap and the service account that acts under it), their entitlements, and the gate every job passes.
+
+```dart
+const String retentionPurgeEntitlement
+const String digestSendEntitlement
+const String exportPublishEntitlement
+const String auditAnchorEntitlement
+const String itemReassignEntitlement
+const List<String> opsDeploymentEntitlements
+const List<String> opsServiceAccountEntitlements
+const String opsServiceUsername
+const int opsServiceUserId
+final TomPrincipal opsServiceAccount
+final TomPrincipal opsDeploymentPrincipal
+class OpsCapabilities
+  static const TomAccessControl purgeExpiredItems
+  static const TomAccessControl sendDigest
+  static const TomAccessControl publishExport
+  static const TomAccessControl publishAuditAnchor
+  static const TomAccessControl reassignItems
+Future<void> requireOpsCapability(TomAccessControl capability, {required String operation, required String entitlement})
+void installOpsDeploymentPrincipal()
+Future<T> runAsOpsService<T>(Future<T> Function() body)
+```
+
+### `lib/src/ops_runtime.dart`
+
+Assembly: the scheduler, the outbox, the anchoring, and their start and close order.
+
+```dart
+const Duration opsTickInterval
+const Duration opsOutboxTickInterval
+class OpsRuntime
+  OpsRuntime({required this.scheduler, required this.outbox, required this.anchoring, required this.auditSink, this.nodes})
+  factory OpsRuntime.production({required TomDataSource datasource, required String nodeId, required TomMessageTransport transport, required Directory anchorDirectory, TomRecipient? digestSender, bool anchorStoreIsIndependent = false})
+  final TomScheduler scheduler
+  final TomMessageOutbox outbox
+  final OpsAnchoring anchoring
+  final TomAuditSink auditSink
+  final TomSqlSchedulerNodes? nodes
+  void registerServices({required OpsRetentionService retention, required OpsDigestService digest, required OpsReportService report, required OpsBlobSweepService blobSweep})
+  Future<List<TomJobDefinition>> start()
+  Future<void> close()
+```
+
+### `lib/src/ops_texts.dart`
+
+The localized bundle set the digest renders from.
+
+```dart
+const String opsDigestTemplateKey
+const String opsDigestOverdueSubKey
+const String opsDigestNextDueSubKey
+class OpsTexts
+  static const String assetDirectory
+  static const List<String> localeTags
+  static const String defaultLocaleTag
+  static TomLocalizedTextResources install({String directory = assetDirectory})
+  static TomLocalizedTextResources resources()
+  static TomLocalizedTextResources load({String directory = assetDirectory})
+```
+
 ## Tests
 
-Nine suites, eight of which need no socket at all.
+Fourteen suites; all but `ops_live_test.dart` need no socket at all.
 
 | Suite | What it settles |
 | --- | --- |
@@ -194,10 +451,15 @@ Nine suites, eight of which need no socket at all.
 | `ops_authorization_meet_test.dart` | `min(user, server)`: the same actor refused under the cap, the refusal recorded, and no retry requested |
 | `ops_framework_schema_test.dart` | `[100]` against the framework's table descriptors |
 | `ops_migration_chain_test.dart` | that this package's file extends the app server's chain rather than forking it, and that neither side numbers outside its band |
+| `ops_blob_sweep_test.dart` | the orphan-chunk sweep's wiring: the service calls `purgeOrphanedChunks` and reports the count, and a store that cannot sweep is refused at wire-up rather than becoming a scheduled no-op |
+| `comments_read_as_is_test.dart` | that no comment under `lib/`, `bin/`, `test/`, `tool/` or `example/` cites a quest work item or narrates what the code used to do, and that every section number carries the document it belongs to |
+| `boot_assets_test.dart` | that the three assets the boot needs throw when absent, naming the absolute path and the working directory; that the per-environment overlay may be absent; and that the root environment ships none, which is the premise the optional branch rests on |
+| `examples_test.dart` | that `example/digest_composition_example.dart` runs under its documented command with no infrastructure: queued before delivered, `bob` in German and `carol` in English, the conditional lines only when true |
+| `readme_api_reference_test.dart` | that the README's `## API` section matches the source both ways: every listed signature occurs in its library, and every public declaration the barrel exports is listed |
 | `ops_live_test.dart` | **the consequences** — that the counted deletes produced audit rows, that the export bytes came back out of the database, that the scheduler's tables are the ones `[100]` built |
 
 ```sh
-dart test                                # the nine suites; the live one skips
+dart test                                # every suite; the live one skips
 ./tool/run_ops_integration.sh            # boots both databases, applies [100], runs everything
 ```
 

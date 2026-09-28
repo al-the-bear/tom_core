@@ -539,7 +539,9 @@ These make one component adopt the **rendered** size of another. They are dynami
 | `sameHeightAs(ref)` | height = ref's rendered height |
 | `sameSize(ref)` | both dimensions |
 
-**Rule:** `ref` must have been declared earlier in the builder — forward references throw.
+`setComp(ref, attr)` is the shared primitive; `attr` must carry at least one of `AclFlags.otherDimX` / `otherDimY`, since only those bits are read and an `attr` without them would record a reference nothing resolves.
+
+**Rule:** `ref` must have been declared earlier in the builder — forward references throw. So does a widget that was never appended, and a `Flexible`, `Expanded` or `Spacer`, which the row lays out itself and which therefore carries no key to point at.
 
 ```
 Row 0: [Label A (rendered: 120px wide)]
@@ -638,11 +640,25 @@ Each triggered rebuild runs the full pre-calculation loop, so the visible result
 
 ---
 
+## 14.5. Distinct-Instance Rule
+
+Every `append()` takes responsibility for a widget instance, and no instance may be appended twice — the builder's maps are identity-keyed and the container attaches a `GlobalKey` per component, so a widget reaching the row twice leaves one key covering two places and a reference naming it meaning either.
+
+A `Flexible`, `Expanded` or `Spacer` is **unwrapped** for the comparison, down the whole chain: those three get no key of their own, so the instance that has to be distinct is the one inside. `append(w)` followed by `append(Expanded(child: w))` is the same duplicate written two ways, and is refused.
+
+The unwrapping covers `Flexible` and its subclasses — which is what `Expanded` is — and nothing else. Any other wrapper is a component in its own right and is compared as itself, so a widget may appear as *content* inside a later component without being a second component. Walking the whole subtree instead would refuse that, and it is harmless.
+
+These three are also the widgets the row lays out natively: they reach the `Row` as its direct child, with no scope, sizing or alignment wrapper between, because a `ParentDataWidget` separated from its flex cannot apply its parent data.
+
+---
+
 ## 15. Back-Reference Rule
 
 Any reference passed to `alignXxx`, `alignYxx`, `sameWidthAs`, `sameHeightAs`, or `sameSize` must refer to a widget that was `append()`-ed **earlier** in the same `AclBuilder` call chain. The builder tracks declarations in order; a forward reference (the referenced widget has not been appended yet) throws an `UnsupportedError` with a descriptive message at build time.
 
-References are passed as the **`Widget` instance directly** — the builder maps each appended widget to an auto-generated `GlobalKey` via an identity map. Passing a raw `Key` object is not supported.
+References are passed as the **`Widget` instance directly** — the builder maps each appended widget to an auto-generated `GlobalKey` via an identity map. The parameter type is `Widget`, so a raw `Key` is a compile error rather than a reference that resolves to nothing.
+
+The rule is enforced where the reference is written, not where the layout runs, because an unresolvable reference has no symptom of its own: the container lays out, the component keeps its own size, and what the reader sees is two widths that were supposed to match and do not.
 
 ---
 
@@ -785,10 +801,10 @@ AclBuilder expand()
 takes a raw `AclFlags.otherDimX` / `otherDimY` / `otherDim` mask.
 
 ```dart
-AclBuilder sameWidthAs(Object reference)
-AclBuilder sameHeightAs(Object reference)
-AclBuilder sameSize(Object reference)
-AclBuilder setComp(Object reference, int otherAttr)
+AclBuilder sameWidthAs(Widget reference)
+AclBuilder sameHeightAs(Widget reference)
+AclBuilder sameSize(Widget reference)
+AclBuilder setComp(Widget reference, int otherAttr)
 ```
 
 ### Vertical alignment within a row
@@ -815,29 +831,29 @@ AclBuilder setAclDefaultRowVerticalAlignment(AclRowCrossAlignment alignment)
 ### Cross-row horizontal alignment (reference must be in a different row)
 
 ```dart
-AclBuilder alignLeftToLeft(Object reference,   {double gap = 0})
-AclBuilder alignLeftToCenter(Object reference, {double gap = 0})
-AclBuilder alignLeftToRight(Object reference,  {double gap = 0})
-AclBuilder alignCenterToLeft(Object reference,   {double gap = 0})
-AclBuilder alignCenterToCenter(Object reference, {double gap = 0})
-AclBuilder alignCenterToRight(Object reference,  {double gap = 0})
-AclBuilder alignRightToLeft(Object reference,   {double gap = 0})
-AclBuilder alignRightToCenter(Object reference, {double gap = 0})
-AclBuilder alignRightToRight(Object reference,  {double gap = 0})
+AclBuilder alignLeftToLeft(Widget reference,   {double gap = 0})
+AclBuilder alignLeftToCenter(Widget reference, {double gap = 0})
+AclBuilder alignLeftToRight(Widget reference,  {double gap = 0})
+AclBuilder alignCenterToLeft(Widget reference,   {double gap = 0})
+AclBuilder alignCenterToCenter(Widget reference, {double gap = 0})
+AclBuilder alignCenterToRight(Widget reference,  {double gap = 0})
+AclBuilder alignRightToLeft(Widget reference,   {double gap = 0})
+AclBuilder alignRightToCenter(Widget reference, {double gap = 0})
+AclBuilder alignRightToRight(Widget reference,  {double gap = 0})
 ```
 
 ### Same-row vertical alignment (reference must be in same row; mutually exclusive with setVerticalAlignment)
 
 ```dart
-AclBuilder alignTopToTop(Object reference,      {double gap = 0})
-AclBuilder alignTopToMiddle(Object reference,   {double gap = 0})
-AclBuilder alignTopToBottom(Object reference,   {double gap = 0})
-AclBuilder alignMiddleToTop(Object reference,   {double gap = 0})
-AclBuilder alignMiddleToMiddle(Object reference,{double gap = 0})
-AclBuilder alignMiddleToBottom(Object reference,{double gap = 0})
-AclBuilder alignBottomToTop(Object reference,   {double gap = 0})
-AclBuilder alignBottomToMiddle(Object reference,{double gap = 0})
-AclBuilder alignBottomToBottom(Object reference,{double gap = 0})
+AclBuilder alignTopToTop(Widget reference,      {double gap = 0})
+AclBuilder alignTopToMiddle(Widget reference,   {double gap = 0})
+AclBuilder alignTopToBottom(Widget reference,   {double gap = 0})
+AclBuilder alignMiddleToTop(Widget reference,   {double gap = 0})
+AclBuilder alignMiddleToMiddle(Widget reference,{double gap = 0})
+AclBuilder alignMiddleToBottom(Widget reference,{double gap = 0})
+AclBuilder alignBottomToTop(Widget reference,   {double gap = 0})
+AclBuilder alignBottomToMiddle(Widget reference,{double gap = 0})
+AclBuilder alignBottomToBottom(Widget reference,{double gap = 0})
 ```
 
 ### Horizontal alignment of a whole row
@@ -1484,7 +1500,7 @@ A snapshot of the current device and layout environment, resolved from Flutter's
 |---|---|---|
 | `width` | `double` | Available container width from `LayoutBuilder` |
 | `height` | `double?` | Available container height (null if unbounded) |
-| `inputMode` | `AclInputMode` | Derived from platform: iOS/Android → touch; macOS/Windows/Linux → pointer; web → pointer |
+| `inputMode` | `AclInputMode` | Derived from platform alone: iOS/Android → touch; macOS/Windows/Linux/Fuchsia → pointer. A web target reports the platform it runs on, so a phone browser resolves to touch |
 | `formFactor` | `AclFormFactor` | Derived from width: < 600 → phone; < 1024 → tablet; ≥ 1024 → desktop |
 | `orientation` | `Orientation` | From `MediaQuery.of(context).orientation` |
 | `platform` | `TargetPlatform` | From `Theme.of(context).platform` |
@@ -1604,7 +1620,7 @@ Any subset of the 10 parameters can be combined. The `detector` parameter, when 
 |---|---|---|
 | Touch mobile | `input: AclInputMode.touch, platforms: {TargetPlatform.iOS, TargetPlatform.android}` | Native touch apps |
 | Desktop pointer | `input: AclInputMode.pointer, isWeb: false` | Native desktop apps |
-| Web pointer | `input: AclInputMode.pointer, isWeb: true` | Web desktop experience |
+| Desktop browser | `input: AclInputMode.pointer, isWeb: true` | A browser on a pointer device. `isWeb` alone no longer implies a pointer, so the pair is what names it |
 
 #### Form Factor + Orientation
 

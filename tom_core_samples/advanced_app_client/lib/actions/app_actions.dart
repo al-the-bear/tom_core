@@ -80,6 +80,15 @@ class SaveItemContext extends AppActionContext {
   final TodoItem item;
 }
 
+/// Context for [DeleteItemAction]: the id of the item to remove.
+class DeleteItemContext extends AppActionContext {
+  /// Creates the context for deleting [itemId] over [session].
+  DeleteItemContext(super.session, this.itemId);
+
+  /// The item to delete.
+  final String itemId;
+}
+
 /// Context for [AddCommentAction]: the target item id and the composed body.
 class AddCommentContext extends AppActionContext {
   /// Creates the context for commenting on [itemId] over [session].
@@ -155,6 +164,30 @@ class SaveItemAction extends TomSimpleAction<SaveItemContext> {
   void executeSimple(SaveItemContext context, TomActionTransaction tx) {
     context.session
         .guard((b) => b.saveItem(context.item))
+        .then((_) => context.completeOk())
+        .catchError(
+          (Object e) =>
+              context.completeError((e as AppBackendException).message),
+          test: (e) => e is AppBackendException,
+        );
+  }
+}
+
+/// Removes the item through the backend seam.
+///
+/// The destructive half of the row's write gate. `editor` and above may delete,
+/// which is the rule the checklist is gated by and the one the server enforces
+/// — so the screen resolves both from one state rather than from two that could
+/// drift apart.
+class DeleteItemAction extends TomSimpleAction<DeleteItemContext> {
+  /// Registers the action under `todo.item.delete`.
+  DeleteItemAction(TomActionController controller)
+    : super(actionId: 'delete', controller: controller);
+
+  @override
+  void executeSimple(DeleteItemContext context, TomActionTransaction tx) {
+    context.session
+        .guard((b) => b.deleteItem(context.itemId))
         .then((_) => context.completeOk())
         .catchError(
           (Object e) =>
@@ -278,6 +311,9 @@ class ItemActionsController extends TomActionController {
 
   /// Persist the bound item (`todo.item.save`).
   late final SaveItemAction save = SaveItemAction(this);
+
+  /// Delete the item (`todo.item.delete`).
+  late final DeleteItemAction delete = DeleteItemAction(this);
 
   /// Post a comment (`todo.item.comment`).
   late final AddCommentAction comment = AddCommentAction(this);

@@ -80,8 +80,14 @@ Map<String, Object?> _asMap(Object? raw) =>
 /// A minimal HTTP client for `core_server_sample`'s read endpoints.
 class LiveTodoReadClient {
   /// Creates a client against [baseUrl] (e.g. `http://localhost:8080`).
-  LiveTodoReadClient(this.baseUrl, {HttpClient? httpClient})
-    : _client = httpClient ?? HttpClient();
+  ///
+  /// Trailing slashes are dropped, so `http://localhost:8080/` addresses the
+  /// same routes as `http://localhost:8080` rather than `//todos`: the URL
+  /// arrives from a `--dart-define` a person typed, and a precondition nobody
+  /// can see is not one a caller can keep.
+  LiveTodoReadClient(String baseUrl, {HttpClient? httpClient})
+    : baseUrl = baseUrl.replaceFirst(RegExp(r'/+$'), ''),
+      _client = httpClient ?? HttpClient();
 
   /// The server's base URL, without a trailing slash.
   final String baseUrl;

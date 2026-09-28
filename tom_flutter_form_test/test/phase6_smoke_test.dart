@@ -170,7 +170,7 @@ void main() {
     );
     // Three card titles.
     expect(find.text('TomAuthTreeView'), findsOneWidget);
-    expect(find.text('TomRadioGroup'), findsOneWidget);
+    expect(find.text('TomChoiceGroup'), findsOneWidget);
     expect(find.text('TomInfiniteScroll + TomErrorBoundary'), findsOneWidget);
     // Tree visible nodes — `admin` is seeded to `none` → hidden.
     expect(find.text('Dashboard'), findsOneWidget);

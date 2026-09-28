@@ -3951,7 +3951,7 @@ it is the one in `tom_ui_flutter_widgets.md`, and it is checked against `lib/` b
 Where to read about them:
 
 - [custom.md](custom.md) — the module document for the eight widgets in
-  `lib/src/custom/`: `TomAuthGuard`, `TomAuthTreeView`, `TomRadioGroup`,
+  `lib/src/custom/`: `TomAuthGuard`, `TomAuthTreeView`, `TomChoiceGroup`,
   `TomEmptyState`, `TomLoadingOverlay`, `TomSkeletonLoader`, `TomErrorBoundary`
   and `TomInfiniteScroll`.
 - [widgets.md](widgets.md) — the Tree family, where `TomTreeView` /
@@ -5002,7 +5002,7 @@ least one demo — is the part still outstanding.
 
 | # | Widget | Description |
 |---|---|---|
-| 1 | `TomRadioGroup` | Radio-group container that applies authorization to the entire selection group — field-level auth works, but a stand-alone "grouped radio" layout with per-group auth does not. |
+| 1 | `TomChoiceGroup` | Radio-group container that applies authorization to the entire selection group — field-level auth works, but a stand-alone "grouped radio" layout with per-group auth does not. |
 | 2 | `TomTreeView` / `TomTreeNode` | Hierarchical tree with per-node auth. Needed for nav / permissions UIs that ride alongside forms. |
 | 3 | `TomAuthGuard` | Inline wrapper that hides or disables its child based on an auth path. Cuts the boilerplate currently hand-rolled per callsite. |
 | 4 | `TomLoadingOverlay` | Full-surface loading indicator with optional message — used during `SlowValidator` / save action roundtrips in the demo app. |
@@ -5025,7 +5025,7 @@ yet; this is the outstanding half of the phase:
 **Demo R — Tree, Radio Group, Infinite Scroll**
 
 - `TomAuthTreeView` with per-node auth (some nodes read-only, some hidden). This is the widget that resolves a `TomAuthState` per node; `TomTreeView` authorizes at the widget level and would not show the behaviour.
-- `TomRadioGroup` with a group-level auth override.
+- `TomChoiceGroup` with a group-level auth override.
 - `TomInfiniteScroll` paging through a synthetic 10k-row source, with `TomSkeletonLoader` for the in-flight page and `TomErrorBoundary` around the tile builder.
 
 **Validation criteria:** Demos Q and R run; every §23 widget is consumed by at least one demo. Closes the documented spec.

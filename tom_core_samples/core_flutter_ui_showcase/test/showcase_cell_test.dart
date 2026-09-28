@@ -281,6 +281,54 @@ void main() {
   //
   // (`showcase_smoke_test.dart` holds the other half of the README's group
   // contract — that each section names a screen that exists.)
+  // The identifier rule above is scoped to the whole group file, so a cell
+  // whose snippet shows one widget while its own child renders another passes
+  // it whenever a sibling cell uses the first widget - a "TomChip" cell
+  // rendering a badge, say. This closes that per cell: the snippet's leading
+  // type must be built by that cell's own child. A child that is a private
+  // demo widget (`_SwitchDemo()`) is followed into its class and its State,
+  // because that is where a stateful demo builds the control.
+  test('each cell renders the widget its snippet leads with', () {
+    var cellsChecked = 0;
+    for (final file in Directory('lib/groups').listSync().whereType<File>()) {
+      if (!file.path.endsWith('.dart')) continue;
+      final source = file.readAsStringSync();
+      for (final cell in source.split('ShowcaseCell(').skip(1)) {
+        final parts = cell.split('child:');
+        if (parts.length < 2) continue;
+        final title =
+            RegExp(r"title:\s*'([^']*)'").firstMatch(parts.first)?[1] ?? '?';
+        final code = _doubleQuoted
+            .allMatches(parts.first)
+            .map((m) => m[1]!)
+            .join()
+            .replaceAll(r'\n', '\n')
+            .replaceAll(_lineComment, '');
+        final lead = RegExp(r'\b([A-Z]\w*)\s*[(.<]').firstMatch(code)?[1];
+        if (lead == null) continue;
+
+        var child = parts
+            .sublist(1)
+            .join('child:')
+            .replaceAll(_singleQuoted, "''")
+            .replaceAll(_doubleQuoted, '""');
+        final demo = RegExp(r'^\s*(_[A-Z]\w*)\s*\(').firstMatch(child)?[1];
+        if (demo != null) child += _classBodies(source, [demo, '${demo}State']);
+
+        cellsChecked++;
+        expect(
+          RegExp('\\b$lead\\b').hasMatch(child),
+          isTrue,
+          reason:
+              '${file.path}: cell "$title" shows `$lead` in its snippet but its '
+              'child never builds one - the preview beside the code is a '
+              'different widget',
+        );
+      }
+    }
+    expect(cellsChecked, greaterThan(20), reason: 'the rule reached the cells');
+  });
+
   test('a README illustration only shows values its group file has', () {
     final readme = File('README.md');
     expect(
@@ -395,4 +443,16 @@ Set<String> _namedArguments(String source, String constructor) {
     names.addAll(_namedArgument.allMatches(args.toString()).map((m) => m[1]!));
   }
   return names;
+}
+
+/// The source text of each class in [names] declared in [source].
+String _classBodies(String source, List<String> names) {
+  final out = StringBuffer();
+  for (final name in names) {
+    final start = RegExp('class $name\\b').firstMatch(source)?.start;
+    if (start == null) continue;
+    final next = source.indexOf(RegExp(r'\nclass '), start + 1);
+    out.write(source.substring(start, next < 0 ? source.length : next));
+  }
+  return out.toString();
 }

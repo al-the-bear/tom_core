@@ -434,6 +434,56 @@ void main() {
         );
       },
     );
+
+    test(
+      'TC-24-21: a tagged item survives createItem -> server -> parseItem',
+      () async {
+        // The write path end to end over the server's own kernel entry points:
+        // the request body is rebuilt with `createInstanceFromJson` — what the
+        // endpoint pipeline does to bind the `TodoItem` parameter — and the
+        // response written with `convertToJsonString`, what it does to the
+        // result. So both halves of the typed-`TomList` round-trip are on the
+        // path: the client's `toJson` must emit the tags as plain strings for
+        // `jsonEncode`, and the server's rebuild must accept them into a
+        // `TomList<TomString>`.
+        storeBearer();
+        final server = _EntityEchoTransport(assignId: '77');
+        final auth = AuthClient(authBaseUri, transport: server);
+        final client = AppApiClient(appBaseUri, AuthorizedHttp(server, auth));
+
+        final item = TodoItem()
+          ..title.set('Tagged task')
+          ..status.set(TodoStatus.inProgress.name);
+        item.tags
+          ..add(TomString('backend'))
+          ..add(TomString('urgent'));
+
+        final created = await client.createItem(item);
+
+        expect(created.id.get(), '77');
+        expect(created.title.get(), 'Tagged task');
+        expect(created.status.get(), TodoStatus.inProgress.name);
+        expect(created.tags.map((t) => t.get()).toList(), [
+          'backend',
+          'urgent',
+        ]);
+        // The server really held a TomList, not a pass-through of the body.
+        expect(server.received!.tags.map((t) => t.get()).toList(), [
+          'backend',
+          'urgent',
+        ]);
+
+        // And the update path, which sends the same body shape, keeps an
+        // edited tag list.
+        created.tags.add(TomString('reviewed'));
+        final updated = await client.updateItem(created);
+        expect(updated.tags.map((t) => t.get()).toList(), [
+          'backend',
+          'urgent',
+          'reviewed',
+        ]);
+      },
+    );
   });
 }
 
@@ -493,4 +543,41 @@ class _RoutingTransport implements JsonTransport {
   /// The recorded calls whose path equals [path], in order.
   List<_Call> callsTo(String path) =>
       calls.where((c) => c.uri.path == path).toList();
+}
+
+/// A [JsonTransport] that plays the app server for `/items` writes using the
+/// same kernel entry points the endpoint pipeline uses: it binds the request
+/// body to a [TodoItem] with `createInstanceFromJson` and answers with
+/// `convertToJsonString` of that entity, after assigning [assignId]. Nothing is
+/// canned, so what comes back is exactly what survived the two conversions.
+class _EntityEchoTransport implements JsonTransport {
+  _EntityEchoTransport({required this.assignId});
+
+  /// The id the "server" stamps on the bound entity, as a store would.
+  final String assignId;
+
+  /// The entity the last request body was bound to.
+  TodoItem? received;
+
+  @override
+  Future<HttpJsonResponse> send({
+    required String method,
+    required Uri uri,
+    Map<String, String> headers = const {},
+    String? body,
+  }) async {
+    if (uri.path != '/items' || body == null) {
+      throw StateError('unexpected $method ${uri.path}');
+    }
+    final bound = tomReflectionInfo.createInstanceFromJson<TodoItem>(
+      tomReflector.reflectType(TodoItem) as ClassMirror,
+      jsonDecode(body) as Map<String, Object?>,
+    );
+    if (bound.id.get().isEmpty) bound.id.set(assignId);
+    received = bound;
+    return HttpJsonResponse(
+      method == 'POST' ? 201 : 200,
+      tomReflectionInfo.convertToJsonString(bound),
+    );
+  }
 }

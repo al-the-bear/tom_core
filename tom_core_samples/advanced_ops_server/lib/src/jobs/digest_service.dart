@@ -115,10 +115,9 @@ class OpsDigestSummary {
   ///
   /// Per recipient rather than per process, because one pass mails everybody:
   /// there is no moment at which the digest job could meaningfully "switch to
-  /// German". [RepositoryDigestAudience] leaves it `null` today — `auth_users`
-  /// has no language column, and adding one is a migration this sample does not
-  /// need to make its point — so a deployment that stores a preference supplies
-  /// it here and the rest of the path already honours it.
+  /// German". [RepositoryDigestAudience] fills it from the account's stored
+  /// `auth_users.language` / `.country`, so a recipient who set no preference
+  /// gets `null` and the deployment's default bundle.
   final TomTextLocale? locale;
 
   @override
@@ -217,11 +216,32 @@ class RepositoryDigestAudience implements OpsDigestAudience {
       ),
     );
 
+    return summariesFrom(users: users, itemsByAssignee: byAssignee, now: now);
+  }
+
+  /// Joins the two halves the queries fetched: one summary per user who has
+  /// open work, carrying the address and the stored language from `auth_users`.
+  ///
+  /// Static and pure for the same reason as [summarise] — it is the part of the
+  /// audience with rules in it (who is included, what the address falls back
+  /// to, how a stored language becomes a locale), so it is asserted over real
+  /// [UserRecord] rows without a database.
+  ///
+  /// The language is read with [TomTextLocale.lenient]: a user row is data
+  /// somebody typed, and a country that cannot name one must cost that person
+  /// their regional variant, not abort the pass for everybody after them. A
+  /// blank language is no preference, which [OpsDigestSummary.locale] spells
+  /// `null`.
+  static List<OpsDigestSummary> summariesFrom({
+    required Iterable<UserRecord> users,
+    required Map<int, List<ItemRecord>> itemsByAssignee,
+    required DateTime now,
+  }) {
     final summaries = <OpsDigestSummary>[];
     for (final user in users) {
       final id = user.id;
       if (id == null) continue;
-      final items = byAssignee[id];
+      final items = itemsByAssignee[id];
       if (items == null) continue;
       summaries.add(
         summarise(
@@ -230,10 +250,17 @@ class RepositoryDigestAudience implements OpsDigestAudience {
           emailAddress: user.email ?? '',
           items: items,
           now: now,
+          locale: _storedLocale(user),
         ),
       );
     }
     return summaries;
+  }
+
+  static TomTextLocale? _storedLocale(UserRecord user) {
+    final language = user.language?.trim() ?? '';
+    if (language.isEmpty) return null;
+    return TomTextLocale.lenient(language, user.country);
   }
 
   /// Reduces one person's items to the three numbers the digest reports.
@@ -247,6 +274,7 @@ class RepositoryDigestAudience implements OpsDigestAudience {
     required String emailAddress,
     required List<ItemRecord> items,
     required DateTime now,
+    TomTextLocale? locale,
   }) {
     var overdue = 0;
     DateTime? nextDue;
@@ -266,6 +294,7 @@ class RepositoryDigestAudience implements OpsDigestAudience {
       openCount: items.length,
       overdueCount: overdue,
       nextDue: nextDue,
+      locale: locale,
     );
   }
 }

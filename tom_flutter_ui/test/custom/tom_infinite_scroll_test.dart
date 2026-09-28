@@ -38,7 +38,11 @@ class _Source {
   final int total;
 
   /// First page index that throws, or `null` for a source that never fails.
-  final int? failFrom;
+  ///
+  /// Mutable so a case can make the source healthy between a failure and the
+  /// retry or refresh that is supposed to clear it — otherwise "the error
+  /// cleared" and "the error was replaced by the same error" look alike.
+  int? failFrom;
 
   /// One entry per call, as `(page, pageSize)`.
   final List<(int, int)> calls = [];
@@ -48,13 +52,26 @@ class _Source {
 
   int get callCount => calls.length;
 
+  /// Call indices that throw, by position in [calls] rather than by page.
+  ///
+  /// Two requests for the same page can be parked on one gate — a refresh over
+  /// an in-flight page 0 produces exactly that — and telling them apart is the
+  /// only way to let the abandoned one fail while the one that replaced it
+  /// succeeds.
+  final Set<int> failCalls = {};
+
   Future<List<int>> fetch(int page, int pageSize) async {
+    final index = calls.length;
     calls.add((page, pageSize));
-    if (failFrom != null && page >= failFrom!) {
-      throw StateError('page $page unavailable');
-    }
+    // The gate comes first, so a failing page can also be held open. A
+    // failure that throws before the caller has a chance to do anything else
+    // is a different case from one that arrives late, and only the late one
+    // can test what happens to a result nobody wants any more.
     final gate = this.gate;
     if (gate != null) await gate.future;
+    if (failCalls.contains(index) || (failFrom != null && page >= failFrom!)) {
+      throw StateError('page $page unavailable');
+    }
     final start = page * pageSize;
     if (start >= total) return const [];
     final end = start + pageSize > total ? total : start + pageSize;
@@ -80,6 +97,17 @@ Widget _app(Widget child) => MaterialApp(
 Future<void> _scrollToBottom(WidgetTester tester) async {
   await tester.drag(find.byType(ListView), const Offset(0, -2000));
   await tester.pumpAndSettle();
+}
+
+/// Scrolls to the bottom, then again, so a tile the first scroll *caused* is
+/// on screen.
+///
+/// A failed page appends a report tile below the rows, which only exists once
+/// the fetch the first scroll triggered has rejected. One drag leaves it just
+/// past the viewport.
+Future<void> _scrollToTrailingTile(WidgetTester tester) async {
+  await _scrollToBottom(tester);
+  await _scrollToBottom(tester);
 }
 
 void main() {
@@ -439,7 +467,7 @@ void main() {
             pageSize: 10,
             fetcher: source.fetch,
             itemBuilder: _tile,
-            errorBuilder: (_, error, retry) =>
+            errorBuilder: (_, error, retry, _) =>
                 TextButton(onPressed: retry, child: Text('boom: $error')),
           ),
         ),
@@ -497,18 +525,19 @@ void main() {
       ], reason: 'the failed page is retried, not skipped');
     });
 
-    testWidgets('a mid-list failure hides the loaded items but keeps them', (
+    testWidgets('a mid-list failure keeps the loaded items on screen', (
       tester,
     ) async {
-      // The error slot replaces the whole list, so the retry has to bring the
-      // already-loaded items back rather than start from nothing.
+      // The two placements of the error slot are the substance of this
+      // widget's failure behaviour, and this is the one with something to
+      // lose. A user who has scrolled through screens of content does not
+      // give them up because the next page failed; the report goes at the
+      // boundary they reached.
       //
-      // "Only hidden" used to be asserted by the `loadedCount` check alone,
-      // which proves the items survive in state but says nothing about what
-      // is on screen. Both halves are checked below, because the unchecked
-      // half is the one the documentation got wrong: the dartdoc called this
-      // slot an "error tile", which would mean a row appended under items
-      // that were still visible.
+      // Both halves are checked — what is in state and what is on screen.
+      // `loadedCount` alone proves the items survive and says nothing about
+      // whether anybody can see them, which is exactly how the surface-taking
+      // behaviour went unquestioned.
       final source = _Source(total: 100, failFrom: 1);
       final key = GlobalKey<TomInfiniteScrollState<int>>();
 
@@ -531,19 +560,103 @@ void main() {
             'vacuous — a first-page failure cannot tell a panel from a tile',
       );
 
-      await _scrollToBottom(tester);
+      await _scrollToTrailingTile(tester);
       expect(find.textContaining('Failed to load'), findsOneWidget);
 
       expect(
         find.textContaining('item-'),
-        findsNothing,
-        reason: 'the error slot took the surface; no row survives beside it',
+        findsWidgets,
+        reason: 'the rows the user already reached stay where they are',
       );
       expect(
-        key.currentState!.loadedCount,
-        10,
-        reason: 'the first page is still held, only hidden',
+        find.byType(ListView),
+        findsOneWidget,
+        reason: 'the report is a tile in the list, not a replacement for it',
       );
+      expect(key.currentState!.loadedCount, 10);
+    });
+
+    testWidgets('an initial-load failure still takes the whole surface', (
+      tester,
+    ) async {
+      // The other placement, and the control for the case above: with nothing
+      // loaded there is nothing to preserve, and a report squeezed into a tile
+      // of an otherwise empty list would read as a broken row.
+      final source = _Source(failFrom: 0);
+
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Failed to load'), findsOneWidget);
+      expect(
+        find.byType(ListView),
+        findsNothing,
+        reason: 'no list is mounted, so nothing can be a tile in it',
+      );
+    });
+
+    testWidgets('the builder is told which placement it is in', (tester) async {
+      // It is called in both, so a builder that assumes it owns the surface
+      // would render a full-height panel inside a list tile. The parameter is
+      // what lets it answer both, and this is what says it is real.
+      final seen = <TomInfiniteScrollErrorPlacement>[];
+      final source = _Source(total: 100, failFrom: 1);
+
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+            errorBuilder: (_, error, retry, placement) {
+              seen.add(placement);
+              return Text('failed at $placement');
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _scrollToTrailingTile(tester);
+
+      expect(seen, isNotEmpty);
+      expect(
+        seen.toSet(),
+        {TomInfiniteScrollErrorPlacement.tile},
+        reason: 'items are loaded, so the report belongs in the list',
+      );
+    });
+
+    testWidgets('the builder is told when it owns the surface', (tester) async {
+      // The other half, in its own test rather than a second pump: without a
+      // key the framework reuses the state, so the items and the latched error
+      // survive and the placement never changes — which is how this would have
+      // passed while testing nothing.
+      final seen = <TomInfiniteScrollErrorPlacement>[];
+
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: _Source(failFrom: 0).fetch,
+            itemBuilder: _tile,
+            errorBuilder: (_, error, retry, placement) {
+              seen.add(placement);
+              return Text('failed at $placement');
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(seen.toSet(), {TomInfiniteScrollErrorPlacement.surface});
     });
   });
 
@@ -695,6 +808,368 @@ void main() {
       expect(find.text('item-10'), findsNothing);
     });
 
+    testWidgets('a refresh during the very first fetch discards its result', (
+      tester,
+    ) async {
+      // The sibling case above refreshes over an in-flight *page 1*, so the
+      // stale result is a page the new sequence has not reached. Here both
+      // requests are for page 0, which is the arrangement a pull-to-refresh on
+      // a slow connection actually produces: the stale result is an exact
+      // duplicate of the wanted one, and without the fence the list holds each
+      // item twice.
+      //
+      // It also enters `_fetchNextPage` from a different caller — the
+      // post-frame callback in `initState` rather than a scroll — which is the
+      // path every first load takes.
+      final source = _Source(total: 100)..gate = Completer<void>();
+      final key = GlobalKey<TomInfiniteScrollState<int>>();
+
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(source.calls, [(0, 10)], reason: 'the first page is in flight');
+      expect(key.currentState!.loadedCount, 0);
+
+      final refreshed = key.currentState!.refresh();
+      await tester.pump();
+      expect(source.calls, [(0, 10), (0, 10)]);
+
+      source.gate!.complete();
+      await refreshed;
+      await tester.pumpAndSettle();
+
+      expect(
+        key.currentState!.loadedCount,
+        10,
+        reason: 'one page, not the same page twice',
+      );
+      expect(find.text('item-0'), findsOneWidget);
+    });
+
+    testWidgets('a failure that arrives after a refresh does not latch', (
+      tester,
+    ) async {
+      // The other arm of the fence. `refresh` clears `_error` as well as the
+      // items, so a stale *failure* landing afterwards would put the list back
+      // into an error state that belongs to a sequence nobody is watching —
+      // and the error panel replaces the whole surface, so the user would see
+      // a refresh that appeared to fail.
+      // Only the FIRST call fails, so the abandoned request throws while the
+      // one that replaced it succeeds. Failing by page could not separate
+      // them — both are page 0, parked on the same gate.
+      final source = _Source(total: 100)
+        ..gate = Completer<void>()
+        ..failCalls.add(0);
+      final key = GlobalKey<TomInfiniteScrollState<int>>();
+
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final refreshed = key.currentState!.refresh();
+      await tester.pump();
+      source.gate!.complete();
+      await refreshed;
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('item-0'),
+        findsOneWidget,
+        reason: 'the refreshed page is on screen',
+      );
+      expect(key.currentState!.loadedCount, 10);
+    });
+
+    testWidgets('a page that fits the viewport still asks for the next', (
+      tester,
+    ) async {
+      // Scrolling is the other trigger, and a list that does not overflow
+      // cannot be scrolled — so a *full* page that happens to fit left the
+      // list showing one page with more data behind it and nothing able to
+      // ask. Exhaustion does not cover it: a full page leaves `isExhausted`
+      // false by definition.
+      //
+      // No gesture anywhere in this case. That is the point.
+      final source = _Source(total: 1000);
+      final key = GlobalKey<TomInfiniteScrollState<int>>();
+
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            // Two 50-pixel rows against a 200-pixel viewport: a full page
+            // that cannot fill it.
+            pageSize: 2,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        source.calls.length,
+        greaterThan(1),
+        reason: 'page 0 fitted, so the list must ask for page 1 itself',
+      );
+      expect(
+        key.currentState!.isExhausted,
+        isFalse,
+        reason: 'the source has plenty left — this is not an exhausted list',
+      );
+      expect(
+        key.currentState!.loadedCount * _tileHeight,
+        greaterThan(_viewportHeight),
+        reason: 'it keeps asking until the viewport is covered, and stops',
+      );
+    });
+
+    testWidgets('the fill stops when the source runs out', (tester) async {
+      // The bound. A source shorter than the viewport can never fill it, so
+      // the loop has to end on exhaustion rather than on success.
+      final source = _Source(total: 3);
+      final key = GlobalKey<TomInfiniteScrollState<int>>();
+
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 2,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(key.currentState!.loadedCount, 3);
+      expect(key.currentState!.isExhausted, isTrue);
+      expect(
+        source.calls,
+        [(0, 2), (1, 2)],
+        reason:
+            'the short second page ends it — no request is made after the '
+            'source has said it is done',
+      );
+    });
+
+    testWidgets('a page that overflows the viewport is left to the gesture', (
+      tester,
+    ) async {
+      // The control, and the line the fill is drawn at. A list that *can* be
+      // scrolled is already reachable by the scroll trigger, so filling it
+      // here would turn every load into an immediate second request — which
+      // is a different behaviour from the one this fixes.
+      final source = _Source(total: 1000);
+
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            // Ten 50-pixel rows against a 200-pixel viewport: scrollable.
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        source.calls,
+        [(0, 10)],
+        reason: 'nothing scrolled, and the list did not need to fill itself',
+      );
+    });
+
+    testWidgets('a refresh fills a short viewport again', (tester) async {
+      // The counter is per sequence: a refreshed list starts short, and must
+      // fill from nothing exactly as the first load did.
+      final source = _Source(total: 1000);
+      final key = GlobalKey<TomInfiniteScrollState<int>>();
+
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 2,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final afterFirstFill = key.currentState!.loadedCount;
+
+      await key.currentState!.refresh();
+      await tester.pumpAndSettle();
+
+      expect(
+        key.currentState!.loadedCount,
+        afterFirstFill,
+        reason: 'the refreshed list fills to the same depth, not to one page',
+      );
+    });
+
+    testWidgets('the error is observable from outside, and clears', (
+      tester,
+    ) async {
+      // The state class is public so a `GlobalKey` holder can inspect it, and
+      // the failure was the one thing it could not see: `loadedCount`,
+      // `isPending` and `isExhausted` read identically for a list showing an
+      // error panel and one showing an empty state.
+      final source = _Source(failFrom: 0);
+      final key = GlobalKey<TomInfiniteScrollState<int>>();
+
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(key.currentState!.hasError, isTrue);
+      expect(key.currentState!.error, isA<StateError>());
+      expect(
+        key.currentState!.error.toString(),
+        contains('page 0 unavailable'),
+        reason: 'the caller gets the failure itself, not a flag about it',
+      );
+      // The three that were already public cannot tell this apart from an
+      // empty source, which is why the fourth is needed.
+      expect(key.currentState!.loadedCount, 0);
+      expect(key.currentState!.isPending, isFalse);
+      expect(key.currentState!.isExhausted, isFalse);
+
+      source.failFrom = null;
+      await key.currentState!.refresh();
+      await tester.pumpAndSettle();
+
+      expect(key.currentState!.hasError, isFalse);
+      expect(key.currentState!.error, isNull);
+      expect(key.currentState!.loadedCount, 10);
+    });
+
+    testWidgets('a retry clears it as well as a refresh', (tester) async {
+      // `refresh` is not the only way out. The error slot's own Retry runs
+      // `_resetError`, and a caller watching `hasError` has to see that too.
+      final source = _Source(failFrom: 0);
+      final key = GlobalKey<TomInfiniteScrollState<int>>();
+
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(key.currentState!.hasError, isTrue);
+
+      source.failFrom = null;
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+
+      expect(key.currentState!.hasError, isFalse);
+      expect(key.currentState!.error, isNull);
+    });
+
+    testWidgets('a healthy list reports no error', (tester) async {
+      // The control. Without it both cases above are satisfied by a getter
+      // that returns null whatever happened.
+      final key = GlobalKey<TomInfiniteScrollState<int>>();
+
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            key: key,
+            pageSize: 10,
+            fetcher: _Source(total: 25).fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(key.currentState!.hasError, isFalse);
+      expect(key.currentState!.error, isNull);
+    });
+
+    testWidgets('a consumer can pumpAndSettle with the skeleton on screen', (
+      tester,
+    ) async {
+      // The default skeleton is six animating `TomSkeletonLoader`s the caller
+      // never names, and a repeating animation schedules frames forever — so
+      // the first line of every downstream widget test, `await
+      // tester.pumpAndSettle()`, used to hang for the full timeout and then
+      // fail with a message about nothing in particular.
+      //
+      // Reduced motion is the way out, and it is the same switch a user who
+      // asked for less motion already sets.
+      final source = _Source()..gate = Completer<void>();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(disableAnimations: true),
+                child: TomInfiniteScroll<int>(
+                  pageSize: 10,
+                  fetcher: source.fetch,
+                  itemBuilder: _tile,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(
+        find.byType(TomSkeletonLoader),
+        findsWidgets,
+        reason: 'the skeleton has to be up, or this settles for no reason',
+      );
+
+      await tester.pumpAndSettle(
+        const Duration(milliseconds: 100),
+        EnginePhase.sendSemanticsUpdate,
+        const Duration(seconds: 2),
+      );
+
+      expect(
+        find.byType(TomSkeletonLoader),
+        findsWidgets,
+        reason: 'and it is still up afterwards — nothing settled it away',
+      );
+
+      source.gate!.complete();
+      await tester.pumpAndSettle();
+    });
+
     testWidgets('padding reaches the inner list', (tester) async {
       final source = _Source(total: 25);
       const padding = EdgeInsets.all(9);
@@ -838,9 +1313,35 @@ void main() {
       expectOnly('empty');
     });
 
-    testWidgets('the error slot is alone on the surface, items and all', (
+    testWidgets('the error slot is alone on the surface when nothing loaded', (
       tester,
     ) async {
+      final source = _Source(failFrom: 0);
+
+      await tester.pumpWidget(
+        _app(
+          TomInfiniteScroll<int>(
+            pageSize: 10,
+            fetcher: source.fetch,
+            itemBuilder: _tile,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expectOnly('error');
+      expect(
+        find.byType(ListView),
+        findsNothing,
+        reason: 'no list is mounted at all, so nothing can be a tile in it',
+      );
+    });
+
+    testWidgets('a failure under loaded items shares the surface with them', (
+      tester,
+    ) async {
+      // The exception to the exclusivity rule, and the only one: every other
+      // slot replaces the list, and this one joins it.
       final source = _Source(total: 100, failFrom: 1);
 
       await tester.pumpWidget(
@@ -853,14 +1354,12 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await _scrollToBottom(tester);
+      await _scrollToTrailingTile(tester);
 
-      expectOnly('error');
-      expect(
-        find.byType(ListView),
-        findsNothing,
-        reason: 'no list is mounted at all, so nothing can be a tile in it',
-      );
+      expect(find.textContaining('Failed to load'), findsOneWidget);
+      expect(find.textContaining('item-'), findsWidgets);
+      expect(find.byType(TomEmptyState), findsNothing);
+      expect(find.byType(TomSkeletonLoader), findsNothing);
     });
 
     testWidgets('the loaded list is alone on the surface', (tester) async {

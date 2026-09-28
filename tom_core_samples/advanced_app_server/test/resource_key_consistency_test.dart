@@ -10,11 +10,10 @@
 /// label, and no stray label for a field the domain does not grade.
 ///
 /// (G-RES-6: addressing is by scope + `tomId`, so there is no catalogue class.
-/// The *server's* gradable set is derived from the resource bundle
-/// ([AppResourceBundles.gradableItemKeys], asserted below); the *client's* set
-/// is derived from the form. The anchor both derivations are checked
-/// against is the shared domain's own [gradableItemKeys], not a list re-typed
-/// here — the same anchor the auth server's grant-matrix guard uses.)
+/// The server's resolver and write path both iterate the shared domain's
+/// [gradableItemKeys] directly; the bundle does not decide the set, it is
+/// checked against it here — the same anchor the auth server's grant-matrix
+/// guard and the app client's form test use.)
 ///
 /// The existing `resource_bundle_endpoint_test.dart` already asserts the *first*
 /// direction (every gradable field has a label key). This test adds the *reverse*
@@ -50,17 +49,18 @@ final Set<String> _gradableItemFields = {
   for (final key in gradableItemKeys) key.split('.').last,
 };
 
-/// Extracts the distinct `<field>` segment of every `todo.item.<field>.<suffix>`
-/// key in the flattened resource bundle (e.g. `todo.item.title.label` → `title`).
-Set<String> _gradedFieldsLabelledIn(Map<String, Object?> texts) {
+/// The distinct `<field>` segment of every `todo.item.<field>.<suffix>` key in
+/// the flattened resource bundle (e.g. `todo.item.title.label` → `title`), in
+/// the order the bundle first labels each.
+List<String> _gradedFieldsLabelledIn(Map<String, Object?> texts) {
   const prefix = 'todo.item.';
-  final fields = <String>{};
+  final fields = <String>[];
   for (final key in texts.keys) {
     if (!key.startsWith(prefix)) continue;
     // `todo.item.<field>.<suffix>` — at least four dot-segments.
     final parts = key.split('.');
     if (parts.length < 4) continue;
-    fields.add(parts[2]);
+    if (!fields.contains(parts[2])) fields.add(parts[2]);
   }
   return fields;
 }
@@ -70,7 +70,7 @@ void main() {
     test('resources_app.json labels exactly the gradable item fields '
         '(no missing, no stray)', () {
       final texts = AppResourceBundles.appBundle().texts;
-      final labelled = _gradedFieldsLabelledIn(texts);
+      final labelled = _gradedFieldsLabelledIn(texts).toSet();
 
       expect(
         labelled,
@@ -96,24 +96,21 @@ void main() {
       }
     });
 
-    test('the bundle derives the gradable key set in display order', () {
-      // The server holds no hand-maintained gradable-key list — the resolver
-      // and the write path both address
-      // AppResourceBundles.gradableItemKeys(). Pin that derivation (set + order)
-      // to the shared domain vocabulary, so a reordered or renamed label is
-      // caught, and so is a regrade applied to `gradableItemKeys` alone. The
-      // two orders are independent: the bundle's comes from the JSON tree, the
-      // domain's from its own declaration.
+    test('the bundle labels the fields in the domain\'s display order', () {
+      // The item form renders in the domain's order and the bundle is read in
+      // its own; a reordered JSON tree would still label every field, so the
+      // order is pinned separately. The two orders are independent: the
+      // bundle's comes from the JSON tree, the domain's from its declaration.
       expect(
-        AppResourceBundles.gradableItemKeys(),
-        orderedEquals(gradableItemKeys),
+        _gradedFieldsLabelledIn(AppResourceBundles.appBundle().texts),
+        orderedEquals(_gradableItemFields),
       );
     });
 
-    test('the write path enforces exactly the bundle-derived keys', () {
-      // The write path's field-binding table is built from the same bundle keys,
-      // so a bundle field without a read/copy binding (or a stray binding) would
-      // surface here as a mismatch.
+    test('the write path enforces exactly the domain keys', () {
+      // The write path's field-binding table is built by iterating the domain's
+      // keys, so a domain key without a read/copy binding throws when it is
+      // built and a stray binding is never reached; this pins the result.
       expect(gradableItemFieldKeys, orderedEquals(gradableItemKeys));
     });
 
@@ -127,20 +124,21 @@ void main() {
       //    explicitly. `attachment` holds a *blob key* minted server-side by
       //    `saveFile`; a caller able to write it would repoint their row at
       //    somebody else's bytes.
-      //  * the set is bundle-derived, and the write path looks every derived key
-      //    up in its binding table with `!`. A `todo.item.attachment.label` text
-      //    added to `resources_app.json` would therefore not merely widen the
-      //    set — it would crash the write path at boot-time binding.
+      //  * the set is the domain's, and a text cannot widen it: a
+      //    `todo.item.attachment.label` added to `resources_app.json` would be a
+      //    label for a field the form does not have, and the first test above
+      //    would reject it as a stray.
       //
       // The column is graded on the file endpoint instead, where the only thing
       // a caller supplies is bytes (`registerAppColumnGrades`).
+      expect(gradableItemKeys, isNot(contains(itemAttachmentGradeKey)));
       expect(
-        AppResourceBundles.gradableItemKeys(),
-        isNot(contains(itemAttachmentGradeKey)),
+        _gradedFieldsLabelledIn(AppResourceBundles.appBundle().texts),
+        isNot(contains('attachment')),
         reason:
-            'a todo.item.attachment.* text in resources_app.json would pull '
-            'the file column into the item write path — grade it on the file '
-            'endpoint instead',
+            'a todo.item.attachment.* text in resources_app.json labels a '
+            'field the item form does not have — word the file slot under '
+            'board.item.attachment.* instead',
       );
       expect(gradableItemFieldKeys, isNot(contains(itemAttachmentGradeKey)));
     });

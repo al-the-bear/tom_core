@@ -8,8 +8,9 @@
 -- Reproduced **verbatim** from `TomUserTwoFactorEnrolment.createTableSql` — the
 -- entity's annotations are the authority for the column names and this file is
 -- the authority for the database, so the two are kept identical rather than
--- merely compatible. `secret_data` holds the RSA-OAEP ciphertext of the
--- mechanism's secret; a readable copy would be a complete 2FA bypass.
+-- merely compatible — test/entity_table_ddl_test.dart fails if they part.
+-- `secret_data` holds the RSA-OAEP ciphertext of the mechanism's secret; a
+-- readable copy would be a complete 2FA bypass.
 --
 -- The legacy `auth_users.two_factor_*` columns ([004]) stay: the framework
 -- consults this store first and falls back to them, so the seeded demo account

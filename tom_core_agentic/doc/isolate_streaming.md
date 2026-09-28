@@ -7,6 +7,13 @@ per-request guard (worker-death + deadline), and a typed exception registry that
 survives the isolate boundary. Nothing here spawns an isolate or assumes a
 transport; each primitive is a building block a host/worker pair assembles.
 
+> **Looking for a signature?** This page explains how the pieces fit a
+> streaming protocol together.
+> [`doc/api/api_summary_isolate_streaming.md`](api/api_summary_isolate_streaming.md)
+> is the symbol-level mirror: all twelve exported types with a section each,
+> and a table of which side of the boundary each one lives on.
+> `test/api_summary_test.dart` derives the required set from the barrel.
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -40,7 +47,7 @@ transport; each primitive is a building block a host/worker pair assembles.
 
 **Every class here is `final`, and that is uniform on purpose.** None of these
 types is varied by subclassing: each is adjusted by what you pass it — a
-`defaultTimeout`, a registered [`IsolateExceptionFactory`], a credit limit — so
+`defaultTimeout`, a registered `IsolateExceptionFactory`, a credit limit — so
 a subclass would have nothing to override that is not already a parameter.
 Closing them says so, and leaves opening one later as a deliberate act rather
 than an accident of whichever modifier the file happened to be written with.
@@ -79,15 +86,15 @@ final registry = IsolateCancellationRegistry();
 final handle = registry.register(IsolateCancellationToken(tokenId));
 handle.throwIfCancelled();          // throws IsolateCancellationException
 await handle.cancelled;             // or await the cancellation future
-handle.dispose();                   // once the response has been sent
+handle.dispose();                   // required — see below
 
 // When the cancel envelope arrives: flip the flag for that token.
 registry.cancel(IsolateCancellationToken(tokenId));
 ```
 
-`register` returns an [`IsolateCancellationHandle`]; its `cancelled` future
+`register` returns an `IsolateCancellationHandle`; its `cancelled` future
 completes when the executor applies the host's cancel, and `throwIfCancelled`
-raises [`IsolateCancellationException`] for code that prefers a guard call to
+raises `IsolateCancellationException` for code that prefers a guard call to
 awaiting.
 
 **Late-cancel race.** A cancel can arrive before the matching `register` — the
@@ -102,6 +109,15 @@ since been disposed, so that cancel is dropped rather than pending forever
 told apart by a high-water mark over registered ids. `inFlightCount` and
 `pendingCancelCount` expose the two sides of the ledger.
 
+That mark works only while ids reach `register` **strictly increasing**, which
+is true of a single host allocator over an ordered transport and of nothing
+else. Two allocators feeding one registry, or a transport that reorders open
+envelopes, make a genuine pre-open cancel indistinguishable from a post-close
+one — and it is then dropped, so the request runs to completion having been
+cancelled with no error anywhere. `register` asserts the ordering rather than
+leaving that to a comment: the failure is silent, and an assert is what makes
+it loud in the debug builds and test runs where an adapter is written.
+
 **Two `isCancelled`s, two scopes.** The registry's `isCancelled(token)` reports
 on what it currently holds — an in-flight entry or a remembered pre-open cancel
 — so it answers `false` once the request is disposed, even for one that really
@@ -113,7 +129,7 @@ the registry only when all you have is an id.
 
 ## Stream Close Signal
 
-A streaming worker holds one [`IsolateStreamCloseSignal`] per open stream. A
+A streaming worker holds one `IsolateStreamCloseSignal` per open stream. A
 host close request calls `requestClose`, which both raises the `closeRequested`
 flag and fires the `closeSignal` future — so a backpressured producer can poll
 the flag at its yield checkpoints while an unbounded producer awaits the future
@@ -129,7 +145,7 @@ if (signal.closeRequested) return;
 
 ## Backpressure
 
-[`BackpressureTracker`] is a FIFO credit ledger. The consumer `grant`s credits
+`BackpressureTracker` is a FIFO credit ledger. The consumer `grant`s credits
 as it drains; the producer `awaitCredit`/`consume`s before emitting. Waiters are
 released in arrival order, so a slow consumer paces a fast producer without an
 unbounded buffer. Like the close signal, the ledger is held by the producer
@@ -161,9 +177,9 @@ is open or closed, because a nonsensical count is a caller bug in either state.
 
 ## Request Guard
 
-[`IsolateRequestGuard`] wraps each request future so that a request can never
+`IsolateRequestGuard` wraps each request future so that a request can never
 hang past the worker's lifetime or a deadline. Each `guard` call fails with an
-[`IsolateRequestFailure`] when the worker is marked dead or the per-request
+`IsolateRequestFailure` when the worker is marked dead or the per-request
 timeout elapses, whichever comes first.
 
 ```dart
@@ -184,8 +200,8 @@ distinguishes `workerDeath` from `timeout`, and its `message` carries the detail
 ## Exception Registry
 
 Errors thrown on a worker isolate arrive at the host as plain data. The
-[`IsolateExceptionRegistry`] maps a string type-tag to an
-[`IsolateExceptionFactory`] that rebuilds the typed error, so callers see the
+`IsolateExceptionRegistry` maps a string type-tag to an
+`IsolateExceptionFactory` that rebuilds the typed error, so callers see the
 real exception type rather than a generic envelope.
 
 ```dart
@@ -208,9 +224,21 @@ generic error); `isRegistered` and `registeredTypes` expose the taxonomy.
   a live `SendPort` to check what may cross. `example/isolate_streaming/` goes
   further: its cancellation demo spawns a real isolate, because which side owns
   what is the thing it demonstrates.
+- **A request is not finished until its handle is disposed.**
+  `IsolateCancellationHandle.dispose()` is what removes the entry from the
+  registry, so an executor that skips it keeps that entry for its whole life —
+  one per request served. Nothing fails and nothing is logged; `inFlightCount`
+  is the number that would have said so, and it is the only one that would.
+  Two further consequences follow for an undisposed id: the registry's
+  `isCancelled` keeps answering for a request that ended, and a cancel arriving
+  after the response is applied to a live entry rather than dropped, so the
+  post-close rule below silently stops applying to it. Put the call in a
+  `finally`, as `example/isolate_streaming/` does — every path out of a request
+  has to reach it, including the cancelled ones, which are the paths that make
+  a `finally` the only reliable place.
 - **Idempotent close/cancel.** `IsolateStreamCloseSignal.requestClose`,
-  `BackpressureTracker.close`, and registry cancellation are all safe to call
-  more than once.
+  `BackpressureTracker.close`, registry cancellation and `dispose` itself are
+  all safe to call more than once.
 - **Late signals are remembered — the pre-open ones.** The cancellation registry
   keeps a cancel that races ahead of its `register`, and drops one that arrives
   after the request closed; see [Cancellation](#cancellation) for the

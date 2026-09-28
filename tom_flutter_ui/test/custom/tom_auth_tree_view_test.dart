@@ -75,8 +75,141 @@ Future<void> _tapButton(WidgetTester tester, String label) async {
   await tester.pump();
 }
 
+/// Records every path it is asked about, and answers from [states].
+///
+/// The recording is the point: "this node is hidden" can be produced by a
+/// composed path resolving `none` *or* by a flat path missing the map and
+/// falling through to a default, and only the set of paths asked for tells
+/// the two apart.
+class _RecordingAdapter implements TomAuthorizationAdapter {
+  _RecordingAdapter(this.states);
+  final Map<String, TomAuthState> states;
+  final List<String> asked = <String>[];
+
+  @override
+  TomAuthState resolveAuth(String resourceKeyPath) {
+    asked.add(resourceKeyPath);
+    return states[resourceKeyPath] ?? TomAuthState.full;
+  }
+}
+
+/// Two branches carrying the same child id, which is the case a flat namespace
+/// cannot express.
+List<TomAuthTreeNode> _twoBranches() => [
+  TomAuthTreeNode(
+    tomId: 'reports',
+    title: const Text('reports'),
+    children: [
+      TomAuthTreeNode(tomId: 'view', title: const Text('reports view')),
+    ],
+  ),
+  TomAuthTreeNode(
+    tomId: 'invoices',
+    title: const Text('invoices'),
+    children: [
+      TomAuthTreeNode(tomId: 'view', title: const Text('invoices view')),
+    ],
+  ),
+];
+
 void main() {
   tearDown(TomAuthorization.reset);
+
+  group('a node is keyed by its whole branch', () {
+    testWidgets('the tree resolves the composed paths and nothing else', (
+      tester,
+    ) async {
+      final adapter = _RecordingAdapter(const {});
+      TomAuthorization.adapter = adapter;
+
+      await tester.pumpWidget(
+        _host(TomAuthTreeView(parentPath: 'app', nodes: _twoBranches())),
+      );
+
+      expect(
+        adapter.asked.toSet(),
+        {
+          'app.reports',
+          'app.reports.view',
+          'app.invoices',
+          'app.invoices.view',
+        },
+        reason:
+            'a flat namespace asks for app.view twice and can never grant the '
+            'two branches apart',
+      );
+    });
+
+    testWidgets('same-named children in different branches are separate '
+        'grants', (tester) async {
+      TomAuthorization.adapter = _MapAuthAdapter({
+        'app.reports.view': TomAuthState.full,
+        'app.invoices.view': TomAuthState.none,
+      });
+
+      await tester.pumpWidget(
+        _host(TomAuthTreeView(parentPath: 'app', nodes: _twoBranches())),
+      );
+
+      expect(find.text('reports view'), findsOneWidget);
+      expect(
+        find.text('invoices view'),
+        findsNothing,
+        reason: 'granting one `view` must not grant the other',
+      );
+    });
+
+    testWidgets('composition continues past the second level', (tester) async {
+      // Two levels could be produced by a parent that prefixes its children
+      // and stops; three cannot.
+      final adapter = _RecordingAdapter(const {});
+      TomAuthorization.adapter = adapter;
+
+      await tester.pumpWidget(
+        _host(
+          TomAuthTreeView(
+            parentPath: 'app',
+            nodes: [
+              TomAuthTreeNode(
+                tomId: 'a',
+                title: const Text('a'),
+                children: [
+                  TomAuthTreeNode(
+                    tomId: 'b',
+                    title: const Text('b'),
+                    children: [
+                      TomAuthTreeNode(tomId: 'c', title: const Text('c')),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(adapter.asked, contains('app.a.b.c'));
+    });
+
+    testWidgets('with no parentPath the branch composes under the bare ids', (
+      tester,
+    ) async {
+      // The ambient-scope arm. At the root scope the qualifier contributes
+      // nothing, so what is left is the branch itself — which is the half of
+      // the rule the `parentPath` cases cannot show.
+      final adapter = _RecordingAdapter(const {});
+      TomAuthorization.adapter = adapter;
+
+      await tester.pumpWidget(_host(TomAuthTreeView(nodes: _twoBranches())));
+
+      expect(adapter.asked.toSet(), {
+        'reports',
+        'reports.view',
+        'invoices',
+        'invoices.view',
+      });
+    });
+  });
 
   group('TomAuthTreeView per-node auth propagation', () {
     testWidgets(
@@ -84,7 +217,7 @@ void main() {
       (tester) async {
         TomAuthorization.adapter = _MapAuthAdapter({
           'root.parent': TomAuthState.read,
-          'root.child': TomAuthState.full,
+          'root.parent.child': TomAuthState.full,
         });
 
         await tester.pumpWidget(
@@ -119,7 +252,7 @@ void main() {
       (tester) async {
         TomAuthorization.adapter = _MapAuthAdapter({
           'root.parent': TomAuthState.disabled,
-          'root.child': TomAuthState.full,
+          'root.parent.child': TomAuthState.full,
         });
 
         await tester.pumpWidget(
@@ -148,7 +281,7 @@ void main() {
     testWidgets('none child is hidden along with its subtree', (tester) async {
       TomAuthorization.adapter = _MapAuthAdapter({
         'root.parent': TomAuthState.full,
-        'root.child': TomAuthState.none,
+        'root.parent.child': TomAuthState.none,
       });
 
       await tester.pumpWidget(
@@ -175,7 +308,7 @@ void main() {
     testWidgets('full parent leaves a full child interactive', (tester) async {
       TomAuthorization.adapter = _MapAuthAdapter({
         'root.parent': TomAuthState.full,
-        'root.child': TomAuthState.full,
+        'root.parent.child': TomAuthState.full,
       });
 
       await tester.pumpWidget(
@@ -203,6 +336,215 @@ void main() {
   // `doc/custom.md` states one "pointer-blocked" treatment at `read` and
   // `disabled` across all three auth-gated composites; these are the cases
   // that hold the tree to it.
+  group('expanding is independent of the node\'s auth state', () {
+    /// A parent with one child, and a counter for the parent's `onTap`.
+    Widget parentWithChild(VoidCallback onParentTap) => _host(
+      TomAuthTreeView(
+        parentPath: 'root',
+        initiallyExpanded: true,
+        nodes: [
+          TomAuthTreeNode(
+            tomId: 'parent',
+            title: const Text('parent'),
+            onTap: onParentTap,
+            children: [
+              TomAuthTreeNode(tomId: 'child', title: const Text('child')),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    /// Taps the expander — the chevron, not the row.
+    Future<void> tapExpander(WidgetTester tester) async {
+      await tester.tap(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Icon &&
+              (w.icon == Icons.expand_more || w.icon == Icons.chevron_right),
+        ),
+        warnIfMissed: false,
+      );
+      await tester.pumpAndSettle();
+    }
+
+    for (final state in [TomAuthState.read, TomAuthState.disabled]) {
+      testWidgets('a $state node can still be collapsed and re-expanded', (
+        tester,
+      ) async {
+        // The interaction a read-only tree cannot do without: a section the
+        // user may see but not activate still has to fold away, and the header
+        // is exactly the row most likely to be withheld.
+        TomAuthorization.adapter = _MapAuthAdapter({
+          'root.parent': state,
+          'root.parent.child': TomAuthState.full,
+        });
+        var parentTaps = 0;
+        await tester.pumpWidget(parentWithChild(() => parentTaps++));
+
+        expect(find.text('child'), findsOneWidget, reason: 'starts expanded');
+        await tapExpander(tester);
+        expect(find.text('child'), findsNothing, reason: 'collapsed');
+        await tapExpander(tester);
+        expect(find.text('child'), findsOneWidget, reason: 're-expanded');
+
+        expect(
+          parentTaps,
+          0,
+          reason:
+              'the expander toggles and nothing else — activation stays '
+              'suppressed, which is what the state means',
+        );
+      });
+
+      testWidgets('a $state node still suppresses its own row tap', (
+        tester,
+      ) async {
+        // The other half. Without it the fix above is satisfied by a node that
+        // simply became interactive again.
+        TomAuthorization.adapter = _MapAuthAdapter({'root.parent': state});
+        var parentTaps = 0;
+        await tester.pumpWidget(parentWithChild(() => parentTaps++));
+
+        await tester.tap(find.text('parent'), warnIfMissed: false);
+        await tester.pump();
+        expect(parentTaps, 0);
+      });
+    }
+
+    testWidgets('a full node toggles from the row as well as the chevron', (
+      tester,
+    ) async {
+      // The control, and the behaviour that existed before: at `full` the
+      // whole row is the target and it both toggles and activates.
+      TomAuthorization.adapter = _MapAuthAdapter({
+        'root.parent': TomAuthState.full,
+      });
+      var parentTaps = 0;
+      await tester.pumpWidget(parentWithChild(() => parentTaps++));
+
+      await tester.tap(find.text('parent'));
+      await tester.pumpAndSettle();
+      expect(find.text('child'), findsNothing, reason: 'the row toggles too');
+      expect(parentTaps, 1, reason: 'and activates');
+    });
+
+    testWidgets('the expander is not faded on a disabled node', (tester) async {
+      // Dimming says "unavailable" and this control is available. A faded
+      // chevron that still works says the opposite of what it does, which is
+      // the same defect as a live-looking control that does nothing.
+      TomAuthorization.adapter = _MapAuthAdapter({
+        'root.parent': TomAuthState.disabled,
+      });
+      await tester.pumpWidget(parentWithChild(() {}));
+
+      final chevron = find.byWidgetPredicate(
+        (w) => w is Icon && w.icon == Icons.expand_more,
+      );
+      expect(chevron, findsOneWidget);
+      expect(
+        find.ancestor(
+          of: chevron,
+          matching: find.byWidgetPredicate(
+            (w) => w is Opacity && w.opacity < 1.0,
+          ),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.ancestor(
+          of: find.text('parent'),
+          matching: find.byWidgetPredicate(
+            (w) => w is Opacity && w.opacity < 1.0,
+          ),
+        ),
+        findsOneWidget,
+        reason: 'the row beside it *is* faded — otherwise this proves nothing',
+      );
+    });
+
+    testWidgets('a leaf node shows no expander', (tester) async {
+      TomAuthorization.adapter = _MapAuthAdapter(const {});
+      await tester.pumpWidget(
+        _host(
+          TomAuthTreeView(
+            nodes: [TomAuthTreeNode(tomId: 'leaf', title: const Text('leaf'))],
+          ),
+        ),
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Icon &&
+              (w.icon == Icons.expand_more || w.icon == Icons.chevron_right),
+        ),
+        findsNothing,
+      );
+    });
+  });
+
+  group('the tree\'s own presentation parameters', () {
+    List<TomAuthTreeNode> nested() => [
+      TomAuthTreeNode(
+        tomId: 'parent',
+        title: const Text('parent'),
+        children: [TomAuthTreeNode(tomId: 'child', title: const Text('child'))],
+      ),
+    ];
+
+    testWidgets('initiallyExpanded false hides the subtree until asked', (
+      tester,
+    ) async {
+      TomAuthorization.adapter = _MapAuthAdapter(const {});
+      await tester.pumpWidget(
+        _host(TomAuthTreeView(initiallyExpanded: false, nodes: nested())),
+      );
+
+      expect(find.text('parent'), findsOneWidget);
+      expect(find.text('child'), findsNothing);
+    });
+
+    testWidgets('a node overrides the tree default', (tester) async {
+      // The control, and the reason the per-node flag exists: a tree that
+      // starts collapsed usually wants one branch open.
+      TomAuthorization.adapter = _MapAuthAdapter(const {});
+      await tester.pumpWidget(
+        _host(
+          TomAuthTreeView(
+            initiallyExpanded: false,
+            nodes: [
+              TomAuthTreeNode(
+                tomId: 'parent',
+                title: const Text('parent'),
+                initiallyExpanded: true,
+                children: [
+                  TomAuthTreeNode(tomId: 'child', title: const Text('child')),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(find.text('child'), findsOneWidget);
+    });
+
+    testWidgets('indentation is the step per level', (tester) async {
+      TomAuthorization.adapter = _MapAuthAdapter(const {});
+      await tester.pumpWidget(
+        _host(TomAuthTreeView(indentation: 40, nodes: nested())),
+      );
+
+      final parentX = tester.getTopLeft(find.text('parent')).dx;
+      final childX = tester.getTopLeft(find.text('child')).dx;
+      expect(
+        childX - parentX,
+        40,
+        reason: 'one level down is one indentation across',
+      );
+    });
+  });
+
   group('TomAuthTreeView blocks the whole row, not just its own tap', () {
     /// A tree of one node carrying a counting button in [slot].
     Widget treeWithButton(String slot, VoidCallback onPressed) {
@@ -273,7 +615,7 @@ void main() {
       // to every assertion in it.
       TomAuthorization.adapter = _MapAuthAdapter({
         'root.parent': TomAuthState.read,
-        'root.child': TomAuthState.full,
+        'root.parent.child': TomAuthState.full,
       });
       var parentTaps = 0;
       var childTaps = 0;

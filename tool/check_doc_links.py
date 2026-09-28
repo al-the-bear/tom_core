@@ -17,7 +17,7 @@ links to the shared guidelines, and not one of those links working anywhere.
 They had been copied from a template in ``dart/new_project_setup.md`` that
 carried the defect, so the count grew by one table with every new project.
 
-**Three rules, and why each is a rule rather than a warning.**
+**Four rules, and why each is a rule rather than a warning.**
 
 ``ABSOLUTE``
     A target beginning with ``/``. It reads like "from the workspace root" and
@@ -44,10 +44,36 @@ carried the defect, so the count grew by one table with every new project.
     sit in. Naming the folder in prose is fine and is not matched; pointing at
     it is what this catches.
 
+``REFERENCE``
+    A bracketed inline code span with no target and no definition, where the
+    file carries no ``[label]: target`` line. It is
+    dartdoc's square-bracket syntax carried into a markdown file, where it
+    means something else entirely: markdown renders it as literal brackets
+    around a code span, so the reader sees punctuation where the author meant
+    a pointer.
+
+    This gate was blind to the shape **by construction**, which is the reason
+    the rule is here rather than in a gate of its own. The three rules above
+    scan for ``](``, and the scan runs after inline code has been blanked --
+    but the label of one of these IS the code span, so after blanking the line
+    reads ``[      ]`` and there is nothing left to match. A reference with no
+    definition also has no target, so nothing in a link-resolving checker can
+    ever see it. Thirty-four of them sat across four packages while this file
+    reported zero faults, nine in a single document that no scan had read.
+
+    Only bracketed **code spans** are matched. A bare ``[Some Name]`` in prose
+    is ordinary English punctuation far more often than it is a broken link,
+    and a rule that could not tell them apart would be the gate crying wolf.
+    The repair is almost always to drop the brackets: of the thirty-four, not
+    one had an anchor it could have pointed at, so turning them into links
+    would have meant inventing thirty-four targets.
+
 **What is not checked, and why.** Anchors. ``doc/foo.md#some-heading`` is
-accepted whenever ``doc/foo.md`` exists, because whether a heading exists is
-[check_doc_tocs]'s question and answering it twice, in two dialects of
-heading-slug, is how two gates come to disagree. Likewise external URLs: a
+accepted whenever ``doc/foo.md`` exists. [check_doc_tocs] owns the heading-slug
+rule, but it applies it only to links *within* a document, so a fragment into
+another document is checked by neither gate. Adding it here would mean a second
+dialect of heading-slug, which is how two gates come to disagree; the check
+belongs in [check_doc_tocs], reusing its ``anchor``. Likewise external URLs: a
 checker that reaches the network is a checker that fails when the network does.
 
 **Code is not prose.** Fenced blocks are skipped entirely and inline code spans
@@ -96,6 +122,23 @@ LINK = re.compile(r"\[[^\]]*\]\(\s*(?:<([^>]*)>|([^)\s]+))(?:\s+\"[^\"]*\")?\s*\
 #: protocol-relative, which is a URL with the scheme left to the page.
 EXTERNAL = re.compile(r"^(?:[a-z][a-z0-9+.-]*:|//)", re.I)
 
+#: ``[`Name`]`` with nothing after it -- a reference link whose label is an
+#: inline code span. Matched on the raw line, before [CODE_SPAN] blanking,
+#: because the label is exactly what that blanking removes.
+REFERENCE = re.compile(r"\[(`[^`\]]+`)\](?!\()")
+
+#: ``[label]: target`` at the start of a line, which is what makes a reference
+#: link resolve. Up to three leading spaces, per CommonMark.
+DEFINITION = re.compile(r"^\s{0,3}\[([^\]]+)\]:\s*\S", re.M)
+
+#: A double-backtick span, blanked before [REFERENCE] is applied. It exists to
+#: *contain* backticks, which is markdown's way of quoting the very shape that
+#: rule forbids -- so a document explaining the defect would otherwise be an
+#: instance of it. This is reading markdown correctly rather than an exemption:
+#: inside ``` `` `` ```, the brackets are literal text and render as literal
+#: text, which is what makes them harmless there and a defect outside.
+QUOTED = re.compile(r"``.+?``")
+
 GUIDELINES = "_copilot_guidelines"
 
 
@@ -130,6 +173,28 @@ def links(path: Path):
         prose = CODE_SPAN.sub(lambda m: " " * len(m.group(0)), line)
         for match in LINK.finditer(prose):
             yield number, match.group(1) or match.group(2)
+
+
+def dangling_references(path: Path):
+    """Yield ``(line_number, label)`` for every definition-less reference link.
+
+    Fenced blocks are skipped for the same reason the link scan skips them: a
+    ``[Name]`` inside a ```` ```dart ```` block is dartdoc, and dartdoc is
+    where this syntax is correct.
+    """
+    text = path.read_text(encoding="utf-8", errors="replace")
+    defined = {label.strip().lower() for label in DEFINITION.findall(text)}
+    inside = False
+    for number, line in enumerate(text.splitlines(), 1):
+        if FENCE.match(line):
+            inside = not inside
+            continue
+        if inside:
+            continue
+        prose = QUOTED.sub(lambda m: " " * len(m.group(0)), line)
+        for match in REFERENCE.finditer(prose):
+            if match.group(1).strip().lower() not in defined:
+                yield number, match.group(1)
 
 
 def classify(source: Path, target: str) -> str | None:
@@ -168,6 +233,10 @@ def main(argv: list[str]) -> int:
             if kind is not None:
                 name = path.relative_to(REPO_ROOT)
                 faults.append(f"{kind:9} {name}:{number}  {target}")
+        for number, label in dangling_references(path):
+            checked += 1
+            name = path.relative_to(REPO_ROOT)
+            faults.append(f"{'REFERENCE':9} {name}:{number}  [{label}]")
 
     for fault in faults:
         print(fault)
@@ -175,7 +244,7 @@ def main(argv: list[str]) -> int:
     print()
     print(f"markdown files scanned   : {scanned}")
     print(f"links checked            : {checked}")
-    for kind in ("ABSOLUTE", "DEAD", "GUIDELINE"):
+    for kind in ("ABSOLUTE", "DEAD", "GUIDELINE", "REFERENCE"):
         print(f"{kind.lower():25}: {sum(f.startswith(kind) for f in faults)}")
     return report_faults(len(faults))
 

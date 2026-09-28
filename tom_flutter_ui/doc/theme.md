@@ -26,12 +26,18 @@ concept of:
 
 ## Overview
 
-| Symbol | Kind | Purpose |
-| ------ | ---- | ------- |
-| `TomStateStyle` | class | Describes the treatment of one withheld state (opacity, pointer absorption, optional colour overlay, optional custom builder) and `apply`s it to a widget. |
-| `TomTheme` | class | The Tom-specific theme — a `name` plus one `TomStateStyle` per withheld state (`readonlyStyle`, `disabledStyle`). Immutable, with `copyWith`. `applyAuthState` maps a `TomAuthState` to its appearance. |
-| `TomThemeScope` | class | Delivers a `TomTheme` to a subtree; `of` / `readonlyStyleOf` / `disabledStyleOf` / `applyAuthState` accessors fall back to defaults when no scope is present. |
-| `TomButtonVariants` | class | Produces standard `ButtonStyle` objects (`primary`, `secondary`, `auxiliary`, `destructive`) from a `ColorScheme`. |
+Four types, and each has its own section below: `TomStateStyle` describes the
+treatment of one withheld state, `TomTheme` carries one style per withheld
+state, `TomThemeScope` delivers a theme to a subtree, and `TomButtonVariants`
+derives semantic `ButtonStyle`s from a `ColorScheme`.
+
+The symbol table for the module is
+[`lib/src/theme/readme.md`](../lib/src/theme/readme.md), which names every
+public type and every public static and is held to that by
+`test/module_readme_inventory_test.dart`. At four types the module is below the
+threshold at which a module earns a summary under `doc/api/` — see
+[`doc/api/api_summary_index.md`](api/api_summary_index.md) — so the readme is
+the mirror, and this page is the explanation rather than a second copy of it.
 
 ## `TomStateStyle` — withheld-state treatment
 

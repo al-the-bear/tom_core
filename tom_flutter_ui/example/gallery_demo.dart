@@ -10,7 +10,7 @@
 ///    [TomCircularProgressIndicator]). Renders without any reflection or
 ///    resource setup beyond the app-level provider installed in [main].
 /// 2. **Custom** — the non-form composites ([TomAuthGuard], [TomEmptyState],
-///    [TomLoadingOverlay], [TomSkeletonLoader], [TomRadioGroup],
+///    [TomLoadingOverlay], [TomSkeletonLoader], [TomChoiceGroup],
 ///    [TomErrorBoundary]).
 /// 3. **Forms** — the declarative form system exercised through
 ///    [TomFormStringInput] + [TomFormStringDropdown]: bind/save/discard
@@ -220,15 +220,15 @@ class _CustomGallery extends StatelessWidget {
         ),
         const Divider(height: 32),
 
-        Text('TomRadioGroup', style: titleStyle),
+        Text('TomChoiceGroup', style: titleStyle),
         const SizedBox(height: 8),
-        const TomRadioGroup<String>(
+        const TomChoiceGroup<String>(
           tomId: 'demo.choice',
           selected: 'a',
           items: [
-            TomRadioGroupItem(value: 'a', label: 'Alpha'),
-            TomRadioGroupItem(value: 'b', label: 'Beta'),
-            TomRadioGroupItem(value: 'c', label: 'Gamma'),
+            TomChoiceGroupItem(value: 'a', label: 'Alpha'),
+            TomChoiceGroupItem(value: 'b', label: 'Beta'),
+            TomChoiceGroupItem(value: 'c', label: 'Gamma'),
           ],
         ),
         const Divider(height: 32),

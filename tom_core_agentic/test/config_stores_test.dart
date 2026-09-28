@@ -94,6 +94,69 @@ void main() {
     });
   });
 
+  group('ReminderTemplateStore', () {
+    test('round-trips reminder templates preserving the default flag', () {
+      final store = ReminderTemplateStore(f('reminder_templates.yaml'));
+      store.save([
+        const ReminderTemplate(
+          id: 'r1',
+          name: 'Gentle',
+          prompt: 'Still there? {{waitingMinutes}} minutes so far.',
+        ),
+        const ReminderTemplate(
+          id: 'r2',
+          name: 'Fallback',
+          prompt: 'Any update?',
+          isDefault: true,
+        ),
+      ]);
+
+      final loaded = store.load();
+      expect(loaded.map((r) => r.id), ['r1', 'r2']);
+      expect(loaded.first.prompt, contains('{{waitingMinutes}}'));
+      expect(loaded.first.isDefault, isFalse);
+      expect(loaded.last.isDefault, isTrue);
+    });
+
+    test('returns an empty list for a missing file', () {
+      expect(ReminderTemplateStore(f('missing.yaml')).load(), isEmpty);
+    });
+
+    test('resolves an id a persisted queue item or timed request names', () {
+      // The reason this store exists. Both models hold a
+      // `reminderTemplateId`, and both are themselves persisted, so a queue
+      // restored on the next launch has to be able to find the body it names.
+      // Without a store the id resolved to nothing and the reference was one
+      // in name only.
+      final store = ReminderTemplateStore(f('reminder_templates.yaml'))
+        ..save([
+          const ReminderTemplate(
+            id: 'r1',
+            name: 'Gentle',
+            prompt: 'Still there?',
+          ),
+        ]);
+
+      const queued = QueuedPrompt(
+        id: 'p1',
+        originalText: 'go',
+        expandedText: 'go',
+        createdAt: '2026-01-02T03:04:05.000Z',
+        reminderTemplateId: 'r1',
+      );
+      const timed = TimedRequest(
+        id: 't1',
+        originalText: 'nudge',
+        scheduleMode: ScheduleMode.interval,
+        reminderTemplateId: 'r1',
+      );
+
+      final byId = {for (final r in store.load()) r.id: r};
+      expect(byId[queued.reminderTemplateId]?.name, 'Gentle');
+      expect(byId[timed.reminderTemplateId]?.name, 'Gentle');
+    });
+  });
+
   group('TimedRequestStore', () {
     test('round-trips timed requests preserving schedule fields', () {
       final store = TimedRequestStore(f('timed.yaml'));

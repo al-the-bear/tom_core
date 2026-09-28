@@ -163,4 +163,41 @@ void main() {
           'of the entity must not reach a disposed field',
     );
   });
+
+  testWidgets(
+    'a parent rebuild keeps the same form - create and bind run once',
+    (tester) async {
+      // The host builds its form in `initState` and holds it for its lifetime,
+      // so a rebuild from above must neither re-create it (a leak - the first
+      // form is never disposed) nor re-bind it (a reset - the user's edit is
+      // overwritten by the entity). Both would be invisible until later.
+      var creates = 0;
+      var binds = 0;
+      final forms = <CompanyForm>[];
+      final profile = CompanyProfile();
+      Future<void> pump() => pumpHost(
+        tester,
+        scopeId: 'formHostRebuild',
+        bind: (f) {
+          binds++;
+          f.bind(profile);
+        },
+        capture: (f) {
+          creates++;
+          forms.add(f);
+        },
+      );
+
+      await pump();
+      forms.single.name.set('Edited by the user');
+      await pump(); // same tree shape: the host's State is kept, not replaced
+      await pump();
+
+      expect(creates, 1);
+      expect(binds, 1);
+      expect(forms, hasLength(1));
+      expect(forms.single.name.get(), 'Edited by the user');
+      expect(find.text('Edited by the user'), findsOneWidget);
+    },
+  );
 }

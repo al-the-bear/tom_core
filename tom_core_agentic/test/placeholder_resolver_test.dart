@@ -420,4 +420,195 @@ void main() {
       expect(r.resolveSync(r'cost ${{ 1 + 1 here'), r'cost ${{ 1 + 1 here');
     });
   });
+
+  group('PlaceholderResolver — what a substituted value can reach', () {
+    // The loop re-scans `current` — the whole output of a pass — so a
+    // substituted value is scanned again whatever form produced it. Only the
+    // transitive-binding half of that was documented or tested, and the rest
+    // is the half that decides whether feeding untrusted text to a resolver is
+    // safe: an environment variable, a config value or an expression result
+    // that happens to contain `${…}` reaches every namespace the resolver can
+    // reach, not just its own.
+    //
+    // Each case below is one (source of the value → namespace it reaches)
+    // pair. They are written out rather than parameterised because the point
+    // is that the answer is the same for all of them, and a table would hide
+    // the one that stopped being true.
+
+    test('a binding value reaches the binding namespace', () {
+      final stack = PlaceholderStack()
+        ..bind('a', r'${b}')
+        ..bind('b', 'B');
+      final r = PlaceholderResolver(stack: stack, environment: const {});
+      expect(r.resolveSync(r'${a}'), 'B');
+    });
+
+    test('an environment value reaches the binding namespace', () {
+      // The case that makes this a boundary rather than a convenience: the
+      // environment is outside the program, and a value taken from it is
+      // expanded against bindings the template author chose.
+      final stack = PlaceholderStack()..bind('secret', 'CLASSIFIED');
+      final r = PlaceholderResolver(
+        stack: stack,
+        environment: const {'GREETING': r'hi ${secret}'},
+      );
+      expect(r.resolveSync(r'${env:GREETING}'), 'hi CLASSIFIED');
+    });
+
+    test('an environment value reaches the environment namespace', () {
+      final r = PlaceholderResolver(
+        environment: const {'A': r'${env:B}', 'B': 'bee'},
+      );
+      expect(r.resolveSync(r'${env:A}'), 'bee');
+    });
+
+    test('a binding value reaches the environment namespace', () {
+      final stack = PlaceholderStack()..bind('x', r'${env:TOKEN}');
+      final r = PlaceholderResolver(
+        stack: stack,
+        environment: const {'TOKEN': 'tok-value'},
+      );
+      expect(r.resolveSync(r'${x}'), 'tok-value');
+    });
+
+    test('the optional form is re-scanned like the plain one', () {
+      // `${name?}` differs from `${name}` only in how an *unbound* name is
+      // handled; a bound one renders identically, re-scan included.
+      final stack = PlaceholderStack()
+        ..bind('o', r'${b}')
+        ..bind('b', 'B');
+      final r = PlaceholderResolver(stack: stack, environment: const {});
+      expect(r.resolveSync(r'${o?}'), 'B');
+    });
+
+    test('an expression result is re-scanned too', () async {
+      final stack = PlaceholderStack()
+        ..bind('e', r'${b}')
+        ..bind('b', 'B');
+      final r = PlaceholderResolver(
+        stack: stack,
+        expressions: _FakeExpressions(),
+        environment: const {},
+      );
+      expect(await r.resolve(r'${{ e }}'), 'B');
+    });
+
+    test('a reserved form in a value stays verbatim', () {
+      // The one exception, and it is not an exception to the rule: a reserved
+      // placeholder is never substituted at any level, so there is nothing to
+      // re-scan. A value that looks like one survives the round trip.
+      final stack = PlaceholderStack()..bind('r', r'${file:secret.txt}');
+      final r = PlaceholderResolver(stack: stack, environment: const {});
+      expect(r.resolveSync(r'${r}'), r'${file:secret.txt}');
+    });
+
+    test('an unresolvable injected reference is silent under lenient', () {
+      // The half that makes a malformed injection hard to notice: the
+      // reference renders as nothing rather than failing, so the output looks
+      // merely odd instead of wrong.
+      final r = PlaceholderResolver(
+        strict: false,
+        environment: const {'G': r'hi ${nope}'},
+      );
+      expect(r.resolveSync(r'${env:G}'), 'hi ');
+    });
+
+    test('an empty stack and an empty environment isolate a template', () {
+      // The mitigation, pinned so it stays available: a resolver with nothing
+      // in either namespace has nothing an injected reference can reach, and
+      // under strict it refuses rather than rendering empty.
+      final r = PlaceholderResolver(environment: const {});
+      expect(
+        () => r.resolveSync(r'hi ${secret}'),
+        throwsA(
+          isA<PlaceholderUnresolvedException>().having(
+            (e) => e.reference,
+            'reference',
+            'secret',
+          ),
+        ),
+      );
+    });
+  });
+
+  group('PlaceholderResolver — an explicitly supplied stack', () {
+    // `stack` is the one constructor parameter that lets two resolvers share a
+    // namespace, which is the shape `placeholder_stack.dart`'s own header
+    // describes: nested procedure frames resolving against one set of
+    // bindings. Every construction in this package took the default, so a
+    // regression that dropped the parameter and always allocated a fresh stack
+    // would have passed the whole suite.
+
+    test('the resolver holds the supplied stack, not a copy of it', () {
+      final mine = PlaceholderStack();
+      final r = PlaceholderResolver(stack: mine, environment: const {});
+      expect(identical(r.stack, mine), isTrue);
+    });
+
+    test('a binding made after construction is visible to the resolver', () {
+      // Liveness rather than seeding: binding before construction would pass
+      // even against an implementation that copied the frames.
+      final mine = PlaceholderStack();
+      final r = PlaceholderResolver(stack: mine, environment: const {});
+      mine.bind('who', 'world');
+      expect(r.resolveSync(r'hello ${who}'), 'hello world');
+    });
+
+    test('two resolvers over one stack see the same bindings', () {
+      final shared = PlaceholderStack()..bind('topic', 'whales');
+      final first = PlaceholderResolver(stack: shared, environment: const {});
+      final second = PlaceholderResolver(
+        stack: shared,
+        strict: false,
+        environment: const {'ROOT': '/srv'},
+      );
+
+      expect(first.resolveSync(r'${topic}'), 'whales');
+      expect(second.resolveSync(r'${topic}'), 'whales');
+
+      // ... and a binding written through one resolver's view of the stack is
+      // read by the other. The two resolvers differ in mode and environment,
+      // so what they share is the namespace and nothing else.
+      first.stack.bind('depth', 'deep');
+      expect(second.resolveSync(r'${depth}'), 'deep');
+      // The environment is NOT shared: `second` was built with one and
+      // `first` was not, so the same template resolves for one and is a
+      // strict failure for the other. What the stack parameter shares is the
+      // binding namespace and nothing else.
+      expect(second.resolveSync(r'${env:ROOT}'), '/srv');
+      expect(
+        () => first.resolveSync(r'${env:ROOT}'),
+        throwsA(isA<PlaceholderUnresolvedException>()),
+      );
+    });
+
+    test('two resolvers left to default do NOT share a stack', () {
+      // The control. Without it every assertion above would also pass against
+      // an implementation that handed every resolver one process-wide stack,
+      // which is the opposite defect and a worse one.
+      final first = PlaceholderResolver(strict: false, environment: const {});
+      final second = PlaceholderResolver(strict: false, environment: const {});
+      first.stack.bind('leak', 'visible');
+
+      expect(identical(first.stack, second.stack), isFalse);
+      expect(first.resolveSync(r'${leak}'), 'visible');
+      expect(second.resolveSync(r'${leak}'), '');
+    });
+
+    test('push and pop on a shared stack move both resolvers together', () {
+      // The frame shape the module exists for: a child frame shadows the
+      // parent for every reader of the stack, and pop restores it for both.
+      final shared = PlaceholderStack()..bind('scope', 'outer');
+      final a = PlaceholderResolver(stack: shared, environment: const {});
+      final b = PlaceholderResolver(stack: shared, environment: const {});
+
+      shared.push(<String, Object?>{'scope': 'inner'});
+      expect(a.resolveSync(r'${scope}'), 'inner');
+      expect(b.resolveSync(r'${scope}'), 'inner');
+
+      shared.pop();
+      expect(a.resolveSync(r'${scope}'), 'outer');
+      expect(b.resolveSync(r'${scope}'), 'outer');
+    });
+  });
 }

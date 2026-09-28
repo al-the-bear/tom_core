@@ -180,6 +180,153 @@ void main() {
     });
   });
 
+  group('the childless form is shaped by its own parameters', () {
+    // The `child` form is the caller's silhouette and carries none of these.
+    // The rectangle the widget draws itself is the only place they land, and
+    // they are invisible while the mask is on — it paints over the box's
+    // colours and ignores nothing else about it.
+
+    testWidgets('width, height and borderRadius reach the rectangle', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _host(
+          const TomSkeletonLoader(
+            enabled: false,
+            width: 77,
+            height: 33,
+            borderRadius: BorderRadius.all(Radius.circular(9)),
+            baseColor: Colors.green,
+          ),
+        ),
+      );
+
+      final box = tester.widget<Container>(find.byType(Container));
+      final decoration = box.decoration! as BoxDecoration;
+      expect(decoration.borderRadius, BorderRadius.circular(9));
+      expect(decoration.color, Colors.green);
+      expect(tester.getSize(find.byType(Container)), const Size(77, 33));
+    });
+
+    testWidgets('the defaults are the documented ones', (tester) async {
+      // The control: without it the case above passes for a widget that
+      // ignores its parameters and happens to be built with them.
+      await tester.pumpWidget(_host(const TomSkeletonLoader(enabled: false)));
+
+      final decoration =
+          tester.widget<Container>(find.byType(Container)).decoration!
+              as BoxDecoration;
+      expect(decoration.borderRadius, BorderRadius.circular(4));
+      expect(tester.getSize(find.byType(Container)), const Size(120, 16));
+    });
+
+    testWidgets('a child replaces the rectangle rather than sizing it', (
+      tester,
+    ) async {
+      // `width` and `height` are documented as ignored when a child is given,
+      // and a caller who does not know that sizes a skeleton that never
+      // changes size.
+      await tester.pumpWidget(
+        _host(
+          const TomSkeletonLoader(
+            enabled: false,
+            width: 77,
+            height: 33,
+            child: SizedBox(width: 10, height: 10),
+          ),
+        ),
+      );
+
+      expect(find.byType(Container), findsNothing);
+      expect(tester.getSize(find.byType(SizedBox).last), const Size(10, 10));
+    });
+  });
+
+  group('the environment can stop the shimmer without the flag', () {
+    // The flag is often out of reach: `TomInfiniteScroll`'s default skeleton
+    // builds six of these and the caller never names them. Both switches below
+    // reach the same state from outside, and each is the thing that lets a
+    // `pumpAndSettle` return with a skeleton on screen — a repeating animation
+    // schedules frames forever, so the binding never reaches a quiescent one.
+
+    /// Pumps [child] and reports whether the binding can reach quiescence.
+    ///
+    /// Bounded deliberately: the default `pumpAndSettle` timeout is ten
+    /// minutes, and "did not settle" is an answer this wants in seconds.
+    Future<bool> settles(WidgetTester tester, Widget child) async {
+      await tester.pumpWidget(_host(child));
+      try {
+        await tester.pumpAndSettle(
+          const Duration(milliseconds: 100),
+          EnginePhase.sendSemanticsUpdate,
+          const Duration(seconds: 2),
+        );
+        return true;
+      } on FlutterError {
+        return false;
+      }
+    }
+
+    testWidgets('by default it animates, and nothing settles', (tester) async {
+      // The control for both cases below, and the behaviour they are the way
+      // out of. Flutter's own indeterminate `CircularProgressIndicator` does
+      // the same; what is fixed here is that there was no way out.
+      expect(await settles(tester, const TomSkeletonLoader()), isFalse);
+    });
+
+    testWidgets('reduced motion stops it', (tester) async {
+      final settled = await settles(
+        tester,
+        Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: const TomSkeletonLoader(),
+          ),
+        ),
+      );
+      expect(settled, isTrue);
+    });
+
+    testWidgets('reduced motion leaves the static placeholder', (tester) async {
+      // Stopping the ticker is not enough on its own: a frozen mask would
+      // still overpaint the placeholder, and the point of the static form is
+      // that the rectangle it draws itself is what remains.
+      await tester.pumpWidget(
+        _host(
+          Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: true),
+              child: const TomSkeletonLoader(
+                width: 40,
+                height: 40,
+                baseColor: Colors.green,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        await _centrePixel(tester),
+        _sameColourAs(Colors.green),
+        reason:
+            'the rectangle the widget draws itself is what remains, exactly '
+            'as for enabled: false — reduced motion is the same state by '
+            'another door',
+      );
+      expect(find.byType(ShaderMask), findsNothing);
+    });
+
+    testWidgets('TickerMode stops it', (tester) async {
+      final settled = await settles(
+        tester,
+        const TickerMode(enabled: false, child: TomSkeletonLoader()),
+      );
+      expect(settled, isTrue);
+    });
+  });
+
   group('TomSkeletonLoader toggling', () {
     testWidgets('disabling removes the mask rather than freezing it', (
       tester,

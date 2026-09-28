@@ -1,4 +1,6 @@
 import 'package:tom_core_codespecs/tom_core_codespecs.dart';
+import 'dart:async';
+
 import 'package:test/test.dart';
 
 void main() {
@@ -153,6 +155,195 @@ void main() {
       );
       expect(model.reconcileWarnings(), isEmpty);
     });
+
+    // The kind check. Existence alone is the weaker half of the reconcile: an
+    // id that vanished is conspicuous, while an id a regeneration re-used for a
+    // different KIND of node still resolves, so the delta goes on applying and
+    // quietly means something else. The sealed `TomLayoutNode` base exists so
+    // the two can be told apart; these cases are what tells them apart.
+    group('a delta addressed at the wrong kind of node', () {
+      TomLayoutModel modelWith(List<TomLayoutOverrideDelta> deltas) =>
+          TomLayoutModel(
+            layoutId: 'payment_form',
+            base: TomLayoutContainerNode(
+              nodeId: 'root',
+              kind: TomLayoutContainerKind.column,
+              children: [
+                TomLayoutSlotNode(nodeId: 'amount', referencedId: 'amount'),
+              ],
+            ),
+            overrides: deltas,
+          );
+
+      test('setSlotHint on a container is reported', () {
+        final warnings = modelWith([
+          TomLayoutOverrideDelta(
+            op: TomLayoutDeltaOp.setSlotHint,
+            targetNodeId: 'root',
+          ),
+        ]).reconcileWarnings();
+
+        expect(warnings, hasLength(1));
+        expect(warnings.single, contains('setSlotHint'));
+        expect(warnings.single, contains('container "root"'));
+        expect(warnings.single, contains('not a slot'));
+      });
+
+      test('setContainerProp on a slot is reported', () {
+        final warnings = modelWith([
+          TomLayoutOverrideDelta(
+            op: TomLayoutDeltaOp.setContainerProp,
+            targetNodeId: 'amount',
+          ),
+        ]).reconcileWarnings();
+
+        expect(warnings, hasLength(1));
+        expect(warnings.single, contains('slot "amount"'));
+        expect(warnings.single, contains('not a container'));
+      });
+
+      test('removeContainer on a slot is reported', () {
+        final warnings = modelWith([
+          TomLayoutOverrideDelta(
+            op: TomLayoutDeltaOp.removeContainer,
+            targetNodeId: 'amount',
+          ),
+        ]).reconcileWarnings();
+
+        expect(warnings, hasLength(1));
+        expect(warnings.single, contains('not a container'));
+      });
+
+      test('a slot named as a new parent is reported', () {
+        // Only a container owns children, so a slot can never be a parent —
+        // for either of the two operations that name one.
+        for (final op in [
+          TomLayoutDeltaOp.reparent,
+          TomLayoutDeltaOp.insertContainer,
+        ]) {
+          final warnings = modelWith([
+            TomLayoutOverrideDelta(
+              op: op,
+              targetNodeId: op == TomLayoutDeltaOp.reparent ? 'root' : 'fresh',
+              newParentNodeId: 'amount',
+            ),
+          ]).reconcileWarnings();
+
+          expect(warnings, hasLength(1), reason: op.name);
+          expect(warnings.single, contains('slot "amount"'));
+          expect(warnings.single, contains('cannot own children'));
+        }
+      });
+
+      test('reparent accepts a target of either kind', () {
+        // The control for the three cases above: `reparent` is the one
+        // operation with no kind constraint on its target, so a rule that
+        // simply demanded containers everywhere would fail here.
+        expect(
+          modelWith([
+            TomLayoutOverrideDelta(
+              op: TomLayoutDeltaOp.reparent,
+              targetNodeId: 'amount',
+              newParentNodeId: 'root',
+            ),
+          ]).reconcileWarnings(),
+          isEmpty,
+          reason: 'a slot may be moved',
+        );
+        expect(
+          modelWith([
+            TomLayoutOverrideDelta(
+              op: TomLayoutDeltaOp.reparent,
+              targetNodeId: 'root',
+              newParentNodeId: 'root',
+            ),
+          ]).reconcileWarnings(),
+          isEmpty,
+          reason: 'a container may be moved',
+        );
+      });
+
+      test('a well-formed delta of each kind stays silent', () {
+        // The other control. Without it, a check that warned unconditionally
+        // would pass every case above.
+        expect(
+          modelWith([
+            TomLayoutOverrideDelta(
+              op: TomLayoutDeltaOp.setSlotHint,
+              targetNodeId: 'amount',
+              properties: {'flex': 2},
+            ),
+            TomLayoutOverrideDelta(
+              op: TomLayoutDeltaOp.setContainerProp,
+              targetNodeId: 'root',
+              properties: {'spacing': 8},
+            ),
+            TomLayoutOverrideDelta(
+              op: TomLayoutDeltaOp.removeContainer,
+              targetNodeId: 'root',
+            ),
+            TomLayoutOverrideDelta(
+              op: TomLayoutDeltaOp.insertContainer,
+              targetNodeId: 'fresh',
+              newParentNodeId: 'root',
+            ),
+          ]).reconcileWarnings(),
+          isEmpty,
+        );
+      });
+    });
+
+    test('an insert whose id the base already holds is reported', () {
+      // The same drift from the other side. A node id is unique across the
+      // tree, so an insert that was free to create its id when it was authored
+      // and is not any more would otherwise duplicate one.
+      final warnings = TomLayoutModel(
+        layoutId: 'l',
+        base: TomLayoutContainerNode(
+          nodeId: 'root',
+          children: [TomLayoutSlotNode(nodeId: 'new_row')],
+        ),
+        overrides: [
+          TomLayoutOverrideDelta(
+            op: TomLayoutDeltaOp.insertContainer,
+            targetNodeId: 'new_row',
+            newParentNodeId: 'root',
+          ),
+        ],
+      ).reconcileWarnings();
+
+      expect(warnings, hasLength(1));
+      expect(warnings.single, contains('already contains'));
+    });
+
+    test(
+      'an operation that requires a new parent and names none is reported',
+      () {
+        for (final op in [
+          TomLayoutDeltaOp.reparent,
+          TomLayoutDeltaOp.insertContainer,
+        ]) {
+          final warnings = TomLayoutModel(
+            layoutId: 'l',
+            base: TomLayoutContainerNode(nodeId: 'root'),
+            // A free target id for the insert, so the only thing wrong with
+            // the delta is the missing parent: `insertContainer` at an id the
+            // base already holds is a second, separate fault.
+            overrides: [
+              TomLayoutOverrideDelta(
+                op: op,
+                targetNodeId: op == TomLayoutDeltaOp.reparent
+                    ? 'root'
+                    : 'fresh',
+              ),
+            ],
+          ).reconcileWarnings();
+
+          expect(warnings, hasLength(1), reason: op.name);
+          expect(warnings.single, contains('names no new parent'));
+        }
+      },
+    );
 
     test('an empty model reports every delta as unresolved', () {
       final model = TomLayoutModel(
@@ -1278,7 +1469,7 @@ void main() {
           valueKind: TomReportValueKind.string,
         ),
       ],
-      rows: Stream.fromIterable([
+      openRows: () => Stream.fromIterable([
         ['north'],
         ['south'],
       ]),
@@ -1291,11 +1482,108 @@ void main() {
       ]);
     });
 
+    // The property the factory exists for, pinned against a source that can
+    // only be listened to once. `Stream.fromIterable` tolerates re-listening,
+    // so a test written the easy way passes whatever the type does — which is
+    // why the defect this replaced was invisible to the suite for as long as
+    // it existed.
+    group('a section is read once per delivery', () {
+      TomReportColumn column() => TomReportColumn(
+        name: 'n',
+        sourceKey: 'n',
+        valueKind: TomReportValueKind.integer,
+      );
+
+      /// One pass over a genuinely single-subscription source.
+      ///
+      /// A `StreamController` is what a large result actually is: a query or a
+      /// file read, listenable once. Opening it *inside* the closure is the
+      /// obligation the constructor states, and it is what makes each read a
+      /// fresh pass.
+      Stream<List<Object?>> openRows() {
+        final controller = StreamController<List<Object?>>();
+        controller.add([1]);
+        controller.close();
+        return controller.stream;
+      }
+
+      test('two deliveries each read the rows in full', () async {
+        final section = TomReportResultSection(
+          columns: [column()],
+          openRows: openRows,
+        );
+
+        expect(await section.rows.toList(), [
+          [1],
+        ]);
+        expect(
+          await section.rows.toList(),
+          [
+            [1],
+          ],
+          reason:
+              'the second delivery must get its own pass, not a second '
+              'listen on the first one',
+        );
+      });
+
+      test('the source really is single-subscription', () {
+        // The control. Without it the case above would also pass against a
+        // broadcast or re-listenable source, which is the fixture mistake that
+        // hid the original defect.
+        final stream = openRows();
+        expect(stream.isBroadcast, isFalse);
+        stream.listen(null);
+        expect(() => stream.listen(null), throwsStateError);
+      });
+
+      test('each read calls the factory again', () async {
+        var opened = 0;
+        final section = TomReportResultSection(
+          columns: [column()],
+          openRows: () {
+            opened++;
+            return openRows();
+          },
+        );
+
+        expect(opened, 0, reason: 'construction opens nothing');
+        await section.rows.drain<void>();
+        await section.rows.drain<void>();
+        expect(opened, 2);
+      });
+
+      test(
+        'a factory that hands out one stream still fails, as documented',
+        () async {
+          // The obligation the type cannot enforce, stated as a test so the
+          // failure mode is on record rather than only in a doc comment: a
+          // closure over one controller returns the same spent stream.
+          final controller = StreamController<List<Object?>>();
+          controller.add([1]);
+          // Not awaited: `close()` on a controller nobody has listened to yet
+          // does not complete until someone does.
+          unawaited(controller.close());
+          final section = TomReportResultSection(
+            columns: [column()],
+            openRows: () => controller.stream,
+          );
+
+          await section.rows.drain<void>();
+          expect(
+            () => section.rows.listen(null),
+            throwsStateError,
+            reason: 'open the source inside the closure, not outside it',
+          );
+        },
+      );
+    });
+
     test('a section must declare at least one column', () {
       expect(
         () => TomReportResultSection(
           columns: const [],
-          rows: const Stream.empty(),
+          openRows: Stream<List<Object?>>.empty,
         ),
         throwsArgumentError,
       );
@@ -1310,7 +1598,7 @@ void main() {
       expect(
         () => TomReportResultSection(
           columns: [column, column],
-          rows: const Stream.empty(),
+          openRows: Stream<List<Object?>>.empty,
         ),
         throwsArgumentError,
       );

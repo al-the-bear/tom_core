@@ -38,6 +38,7 @@ const expectedDirectImporters = <String>{
   'src/agent/prompt_template_store.dart',
   'src/agent/prompt_trail_store.dart',
   'src/agent/queue_template_store.dart',
+  'src/agent/reminder_template_store.dart',
   'src/agent/timed_request_store.dart',
   'src/llm/agent_sdk_session.dart',
   'src/path_scope_io.dart',
@@ -159,6 +160,71 @@ void main() {
       );
       // The README states both halves of the split, so pin both.
       expect(exports.length - coupled.length, equals(31));
+    });
+
+    test('the README states the measured figures', () {
+      // The prose counts were the half nothing checked, and they went stale
+      // exactly the way the sets did not: `expectedDirectImporters` gained
+      // an entry when a tenth sidecar store landed, the README went on
+      // saying "Fourteen files", and no gate reads a package README's
+      // arithmetic. Derived here so the sentence cannot drift from the graph
+      // it describes.
+      final readme = File('README.md').readAsStringSync();
+      final section = RegExp(
+        r'## `dart:io` coupling\n(.*?)\n## ',
+        dotAll: true,
+      ).firstMatch(readme);
+      expect(section, isNotNull, reason: 'README has no coupling section');
+      final prose = section!.group(1)!;
+
+      final barrel = File('lib/tom_core_agentic.dart').readAsLinesSync();
+      final exports = <String>[];
+      for (final line in barrel) {
+        final match = RegExp(r"^export '([^']+)';").firstMatch(line);
+        if (match != null) exports.add(match.group(1)!);
+      }
+      final coupled = exports.where((e) => reachesIo(e).isNotEmpty).toList();
+
+      expect(
+        prose,
+        contains('${direct.length} files under `lib/` import `dart:io`'),
+        reason:
+            'the direct-importer count in README.md is not ${direct.length}',
+      );
+      expect(
+        prose,
+        contains('${coupled.length} of the ${exports.length} barrel'),
+        reason:
+            'the coupled/total export counts in README.md are not '
+            '${coupled.length} of ${exports.length}',
+      );
+      expect(
+        prose,
+        contains(
+          '**${exports.length - coupled.length} exports are '
+          '`dart:io`-free**',
+        ),
+        reason:
+            'the clean-export count in README.md is not '
+            '${exports.length - coupled.length}',
+      );
+
+      // Each table row states how many importers that export reaches. A row
+      // naming the wrong number sends a reader auditing the wrong subtree.
+      for (final export in coupled) {
+        final row = RegExp(
+          '^\\| `${RegExp.escape(export)}` \\| (\\d+) \\|',
+          multiLine: true,
+        ).firstMatch(prose);
+        expect(row, isNotNull, reason: 'README has no row for $export');
+        expect(
+          int.parse(row!.group(1)!),
+          equals(reachesIo(export).length),
+          reason:
+              '$export reaches ${reachesIo(export).length} importers; '
+              'the README row says ${row.group(1)}',
+        );
+      }
     });
 
     test('yaml_config_reader is coupled only through placeholders', () {

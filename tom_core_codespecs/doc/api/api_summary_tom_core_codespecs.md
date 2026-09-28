@@ -241,7 +241,7 @@ TomLayoutModel({
 | Method | Return Type | Description |
 |--------|-------------|-------------|
 | `findNode(String nodeId)` | `TomLayoutNode?` | The node with [nodeId] in the generated [base] tree, or `null`. |
-| `reconcileWarnings()` | `List<String>` | Deltas whose addressed node no longer exists in the regenerated [base] tree, described one warning per delta. |
+| `reconcileWarnings()` | `List<String>` | Deltas that no longer resolve against the regenerated [base] tree — an addressed node that is gone, one that now has the wrong kind for the operation, an `insertContainer` whose id the base has taken, or a missing new parent. One warning per fault; nothing is dropped. |
 
 ### CE-TX — message-key registry
 
@@ -753,7 +753,7 @@ One titled block of a [TomReportResult]: columns over a stream of rows.
 ```dart
 TomReportResultSection({
   required this.columns,
-  required this.rows,
+  required Stream<List<Object?>> Function() openRows,
   this.title,
 ```
 
@@ -763,7 +763,7 @@ TomReportResultSection({
 |----------|------|-------------|
 | `title` | `String?` | An optional caption for the block. |
 | `columns` | `List<TomReportColumn>` | The section's columns, in output order. |
-| `rows` | `Stream<List<Object?>>` | The section's rows — single-subscription, pulled once, in order. |
+| `rows` | `Stream<List<Object?>>` | A **fresh** stream of the section's rows, pulled once, in order. Each read calls the `openRows` factory the section was built with, so two deliveries of one result are two independent passes. |
 
 ##### Methods
 

@@ -30,5 +30,6 @@ export 'queue_template.dart';
 export 'queue_template_store.dart';
 export 'reconnect.dart';
 export 'reminder_template.dart';
+export 'reminder_template_store.dart';
 export 'timed_request.dart';
 export 'timed_request_store.dart';

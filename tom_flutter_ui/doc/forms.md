@@ -12,6 +12,12 @@ authorization — none of which needs a widget tree. Each `TomField` exposes a
 `widget` getter that renders that state; swapping the Material concrete for its
 Cupertino sibling changes the rendering without touching the model.
 
+> **Looking for a signature?** This document explains what the module is for
+> and how its parts fit together.
+> [api/api_summary_forms.md](api/api_summary_forms.md) is the symbol-level
+> mirror: one section per exported type — all 212 of them — and every public
+> static.
+
 ## Table of Contents
 
 - [Overview](#overview)

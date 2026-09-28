@@ -75,6 +75,10 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 | Demo box | `lib/common/demo_box.dart` | The generic coloured box arranged by every layout |
 | Capability groups | `lib/groups/*.dart` | One file per ACL capability |
 
+There is no `example/` folder, deliberately: the package *is* the example — a
+runnable app whose every cell pairs the `AclBuilder` chain with the layout it
+produces — and `test/` is its headless check. `flutter run` is the way in.
+
 The one idea this sample adds over the `acl_demos/` harness is `ShowcaseCell`: it
 pairs a **hand-curated instantiation snippet** with the rendered layout, so the
 chain and the arrangement it produces are read together.
@@ -141,6 +145,14 @@ stays a review obligation.
 > installs (the widget tests install it in their `setUp`). The only string kept
 > hardcoded outside the bundle is `MaterialApp.title` — OS-level app identity, not
 > on-screen copy. See `lib/common/chrome_texts.dart`.
+
+There is no `doc/` folder and no API reference mirror, deliberately: this is a
+showcase application, not a library — `publish_to: 'none'`, no package depends
+on it, and its only public surface is the app shell and its group list. The API
+it demonstrates is `tom_flutter_ui`'s, which carries its own reference — for
+the ACL engine,
+[`api_summary_advanced_container_layout.md`](../../tom_flutter_ui/doc/api/api_summary_advanced_container_layout.md). The decision is taken
+once for all fifteen samples in [the suite map](../README.md).
 
 ---
 
@@ -423,6 +435,8 @@ screen. *Source: `widget_demos/demo_28_authorization` +
 | `test/acl_smoke_test.dart` | Every capability group builds and pumps without throwing; the home index lists every group |
 | `test/showcase_cell_test.dart` | A `ShowcaseCell` shows both the code text and the rendered child; no cell has an empty snippet; no snippet names an API its group's live code never calls |
 | `test/authorization_states_test.dart` | The four state cells render; `none` collapses the gated button while `full`/`read`/`disabled` keep it |
+| `test/visibility_test.dart` | The one interactive cell: flipping the switch hides *Detail A* and *Detail B* and flipping it back restores them, while the ungrouped summary row stays |
+| `test/chrome_test.dart` | The copy button puts the trimmed snippet on the clipboard; all three `chromeTexts` keys resolve to their declared strings, and the home app bar shows the title |
 
 All green: `flutter test`.
 

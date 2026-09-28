@@ -152,7 +152,7 @@ value is a storage key the server stamps. Keeping it out of that list is what
 stops a client from minting a storage key by editing an item — the server's
 writable bindings simply do not contain the column — and it is why
 `ItemAttachmentGradeResolver.production()` passes the key list explicitly instead
-of accepting the resource-bundle-derived default.
+of accepting the default — the domain's `gradableItemKeys`, the form fields.
 
 It is still graded by the same matrix, in the same table, with the same four
 states. Only the delivery mechanism differs.

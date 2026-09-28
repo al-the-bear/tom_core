@@ -180,7 +180,8 @@ final _allowedSectionRefs = <RegExp>[
 /// `bin/` is here because the boot is the first file anyone opens in a server
 /// sample, and `tool/` for its shell scripts: an unresolvable citation in
 /// `run_ops_integration.sh` is exactly as unresolvable as one in a library.
-const _scannedDirectories = ['lib', 'bin', 'test', 'tool'];
+/// `example/` because it is the file a reader copies from.
+const _scannedDirectories = ['lib', 'bin', 'test', 'tool', 'example'];
 
 /// The package root, scanned **non-recursively** for the documents beside
 /// `pubspec.yaml` — `README.md` above all, which is where a reader starts.

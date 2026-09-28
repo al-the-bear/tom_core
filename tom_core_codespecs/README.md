@@ -102,7 +102,7 @@ was written:
 
 | Class | Part | Purpose | Why the substrate does not cover it |
 |-------|------|---------|-------------------------------------|
-| `TomLayoutModel` (+ `TomLayoutNode` and its two subtypes `TomLayoutContainerNode` and `TomLayoutSlotNode`, `TomLayoutOverrideDelta`, `TomLayoutContainerKind`, `TomLayoutDeltaOp`) | CE-LO Layout (`codespecs_mapping.md` §5.2/§5.12/§5.22) | Two-layer layout: a generated `base` tree plus an authored `overrides` layer of id-addressed deltas. `reconcileWarnings()` reports a delta whose target vanished, never drops it. | `tom_flutter_ui`'s `AclComponent` is a rendering leaf holding a live `Widget` — no base/override layering, no delta grammar, no id-addressed placement. |
+| `TomLayoutModel` (+ `TomLayoutNode` and its two subtypes `TomLayoutContainerNode` and `TomLayoutSlotNode`, `TomLayoutOverrideDelta`, `TomLayoutContainerKind`, `TomLayoutDeltaOp`) | CE-LO Layout (`codespecs_mapping.md` §5.2/§5.12/§5.22) | Two-layer layout: a generated `base` tree plus an authored `overrides` layer of id-addressed deltas. `reconcileWarnings()` reports a delta whose target vanished **or now names the wrong kind of node**, never drops it. | `tom_flutter_ui`'s `AclComponent` is a rendering leaf holding a live `Widget` — no base/override layering, no delta grammar, no id-addressed placement. |
 | `TomMessageKeyRegistry` (+ `TomMessageKey`, `TomMessageRole`, `TomMessageCategory`) | CE-TX Text (`codespecs_mapping.md` §5.8/§5.21) | The closed message-key catalogue. Locale fallback goes to base copy, never the raw key; an uncatalogued key is a spec error; error copy is keyed by its CE-ER code. | `tom_core_kernel`'s `TomTextResourceProvider` is an untyped runtime `Map<String, dynamic>` — it answers "what text is behind this key", not "which keys may exist". |
 | `TomRouteRegistry` (+ `TomRouteDefinition`, `TomFormScreenAssignment`, `TomScreenFlowEdge`, `TomScreenPresentation`, `TomFlowOutcome`) | CE-NV Navigation (`codespecs_mapping.md` §5.11) | Route-id registry (uniqueness + dangling-reference checks) and the screen-flow model: form→screen as replace/popup, action targets conditional on outcome. | `tom_flutter_ui`'s `TomPageRoute` is a bare `MaterialPageRoute` subclass with no route id and no registry — the framework assumes uniqueness with nowhere to check it. |
 | `TomJobDeclaration` | CE-JB Job (`codespecs_mapping.md` §5.29) | The deployment/ownership envelope around a job: `enabled`, `environments`, `serviceUnitId`, and its CE-DB entity targets as `Type` literals (`readEntities` / `writtenEntities`, with `targetEntities` the union). Its CE-RP report targets ride `@CsJob(targetReports:)` in `tom_code_specs` instead — `codespecs_mapping.md` §5.23 makes the `Cs*Ref` family the annotation *parameter* vocabulary, which is also what keeps this package dependency-free. | `tom_core_kernel`'s scheduling module supplies the entire *runtime* half (`TomJobBase`, `TomJobDefinition`, `TomSchedule`, `TomScheduler`, `TomJobStore`, `TomLeaseLock`, `TomJobDispatcher`) and is reused as-is; what it has no home for is the spec-side decision to deploy the job at all. |
@@ -263,7 +263,9 @@ server-side. The persistence markers themselves remain **server-side** parts.
 **not** extend `TomTabularResult`: a shared type cannot depend on a server type,
 so the server adapts one way onto the tabular shape when exporting. The
 adaptation is honoured in one inherited constraint — rows stay a `Stream`,
-because a report exists for results too large to hold inline.
+because a report exists for results too large to hold inline. A section is built
+from a `Stream Function()` rather than a stream, since `deliveryChannels` is a
+list and one run delivered twice must read its rows twice.
 
 **Typed edges ride the annotation, not the class.** A report's authorization is
 not held here; it rides a `@CsAuthorize` beside the `@CsReport` marker, per
@@ -363,6 +365,21 @@ an essential type.
 | [doc/index.md](doc/index.md) | The catalogue of this package's documentation |
 | [doc/gap_classes.md](doc/gap_classes.md) | The seven modules, the dependency-free invariant, and where each kind of error surfaces |
 | [doc/api/api_summary_tom_core_codespecs.md](doc/api/api_summary_tom_core_codespecs.md) | Every class and enum, its constructor, properties and methods |
+
+**Runnable examples** — one per gap class, under [example/](example):
+
+```bash
+dart run --enable-asserts example/run_all_samples.dart
+```
+
+The flag is not cosmetic. Every example states its expected outcome with
+`assert` and nothing else, and `dart run` strips asserts — so a flagless run
+prints the same transcript, exits 0 and verifies nothing. Each example refuses
+that run rather than letting it look like a pass, and
+`test/examples_test.dart` runs all seven plus the aggregator under exactly the
+command their headers document. It also holds the folder to the gap-class
+inventory in both directions, so a gap class without an example is a failure
+rather than an omission.
 
 **Siblings** — packages you will reach for next:
 
