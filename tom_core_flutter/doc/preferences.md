@@ -13,6 +13,7 @@ reached over the kernel's `/preferences/*` contract by a typed client.
 - [The Same Shape as the Server Store](#the-same-shape-as-the-server-store)
 - [Choosing a Backend](#choosing-a-backend)
 - [How Big the Device Store Can Get](#how-big-the-device-store-can-get)
+  - [There is no on-device database, by decision](#there-is-no-on-device-database-by-decision)
 - [Two Writers Over One Location](#two-writers-over-one-location)
 - [When the Platform Refuses](#when-the-platform-refuses)
 - [What the Store Does Not Protect](#what-the-store-does-not-protect)
@@ -276,6 +277,22 @@ every read of any preference decode all of them.
 For that data: a table in the application's own database on the server, or a
 file the application manages itself on the device. Not this store, and not the
 account store either — the same two ceilings apply there, for the same reasons.
+
+### There is no on-device database, by decision
+
+Tom Core ships no relational or document store for the device, and does not
+wrap one. The boundary is that **the server owns persistence**: entities live in
+the server's datasources, reached through its endpoints, and the client holds a
+settings bag here and nothing more.
+
+A client that has to work offline against more than settings — cached entity
+tables, local queries, a schema that migrates as the app version moves — picks a
+database package itself and keeps it in its own layer. That choice is an
+architectural commitment with a platform matrix behind it (which platforms, web
+or not, encrypted or not, how migrations run), and the framework has no consumer
+whose answer it could generalise. Owning one would make every Tom application
+carry that commitment to spare the few that need it a dependency they can add
+themselves.
 
 ## Two Writers Over One Location
 
