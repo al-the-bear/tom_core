@@ -75,7 +75,8 @@
   },
   "check_doc_kinds": {
    "faults": 0,
-   "measured": "2026-09-03"
+   "measured": "2026-09-03",
+   "note": "Zero since 2964a5ec (2026-09-03), which rewrote all 132 Kind cells across 23 documents to name the declaration verbatim -- 'exception', 'annotation', 'entity', 'widget' and the like became 'class', and 'interface'/'abstract' became the 'abstract class' or 'abstract interface class' the source declares. No information was dropped: the 32 cells that also carried a fact (@tomReflector, an annotation's argument, 'statics only', 'const', a getter's type) had it moved into the Purpose column. 957 kind claims checked as of 2026-09-29."
   },
   "check_doc_links": {
    "faults": 0,
