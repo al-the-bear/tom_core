@@ -41,6 +41,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../endpoints/endpoint_annotation.dart';
 import 'delivery_report.dart';
+import 'message.dart';
 
 /// The handler behind [TomDeliveryReportService], as static state and one
 /// entry point.
@@ -103,7 +104,7 @@ class TomDeliveryReportEndpoint {
     required String secret,
   }) {
     if (secret.isEmpty) {
-      throw TomException(
+      throw TomMessagingException(
         'messaging.delivery_report.empty_secret',
         'The delivery-report endpoint needs a non-empty shared secret; an '
             'empty one gates nothing.',

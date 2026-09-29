@@ -883,6 +883,17 @@ listening.
 > `error.result_processing.not_an_int` for an `int` one — so the failure names
 > the column and the value, which the driver's own conversion error does not.
 >
+> **Dates and times are refused the same way.** A stored `DATETIME`, `DATE` or
+> `TIME` is read through `parseSqlInstant`, `parseSqlDate` or
+> `parseSqlTimeOfDay`, which are public parse functions and throw a
+> `FormatException` as Dart's own parsers do. A stored row is data from outside
+> the process, so the driver converts: text none of them can read raises
+> `error.result_processing.not_an_instant`, `error.result_processing.not_a_date`
+> (a `DATE` column holding a timestamp) or `error.result_processing.not_a_time`
+> (a `TIME` column holding an interval), naming the column and the value, with
+> the parser's exception as the root. Every row shape goes through the one
+> helper that does this, `_readTemporal`.
+>
 > **An `int`-declared field over a `DECIMAL` column is decided here, not by the
 > driver.** `DECIMAL(n,0)` is a legitimate exact-integer mapping, so refusing
 > every `DECIMAL`→`int` read would break real models; but reading `DECIMAL(10,2)`

@@ -437,6 +437,8 @@ class TomCache {
   /// produced it.
   static void _requirePositive(int? value, String name, String remedy) {
     if (value != null && value <= 0) {
+      // throws-outside-family: programmer error — the cache's numbers are
+      // constructor arguments, not configuration.
       throw ArgumentError.value(value, name, 'must be positive; $remedy');
     }
   }

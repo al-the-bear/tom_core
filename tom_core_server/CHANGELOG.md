@@ -2,6 +2,21 @@
 
 ### Fixed
 
+- **A stored date or time the driver cannot read is refused by column.** A
+  `DATE` column holding a timestamp, a `TIME` holding an interval or an
+  unreadable `DATETIME` escaped row mapping as a bare `FormatException` — no key,
+  no `clientThrow`, no column. Every row shape now reads them through
+  `_readTemporal`, which raises `error.result_processing.not_a_date`,
+  `.not_a_time` or `.not_an_instant` naming the column and the value.
+- **`TomDeliveryReportEndpoint.install` raises a `TomMessagingException`** for an
+  empty secret, not the kernel's `TomException`, so it is in the server family
+  like every other server raise.
+- **A raise site throws the family, or says why not.** `doc/little_things.md`
+  states the rule and its three exempt categories (`programmer error`,
+  `parse contract`, `kernel protocol`); the thirteen exempt sites carry a
+  `// throws-outside-family:` marker, and `server_exception_family_test.dart`
+  enforces it package-wide. `little_things.md` also counted the direct
+  `TomServerException` raises as five; there are six.
 - **`MariaDbXADatasource` desynchronised its own connection on every prepare.**
   `prepare` sent `XA END` and `XA PREPARE` as one command, and `mysql_client`
   completes a call on the first reply it reads without checking whether more

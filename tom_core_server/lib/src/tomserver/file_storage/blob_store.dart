@@ -262,6 +262,8 @@ class TomBlobDigest {
   /// same borrowed buffer here that it is about to write.
   void add(List<int> chunk) {
     if (_hex != null) {
+      // throws-outside-family: programmer error — a digest used after close,
+      // the StreamSink rule.
       throw StateError('TomBlobDigest.add after close');
     }
     _input.add(chunk);

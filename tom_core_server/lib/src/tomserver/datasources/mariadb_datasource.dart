@@ -599,7 +599,7 @@ class MariaDbDatasource implements TomDataSource {
       case bool:
         member.set(row.typedColByName<bool>(field));
       case DateTime:
-        member.set(parseOptionalSqlInstant(row.typedColByName<String>(field)));
+        member.set(_readInstant(row, field));
       default:
         throw MariadbDatasourceException(
           errorCode,
@@ -611,6 +611,52 @@ class MariaDbDatasource implements TomDataSource {
             "attribute": memberName,
           },
         );
+    }
+  }
+
+  /// Reads [field] as a UTC instant through [parseOptionalSqlInstant].
+  ///
+  /// The row-mapping face of [_readTemporal] for the paths that set a plain
+  /// `DateTime` rather than a [TomDbDateTime] box.
+  static DateTime? _readInstant(ResultSetRow row, String field) =>
+      _readTemporal(row, field, TomDbDateTime.of).get();
+
+  /// Reads [field]'s text through [read] — one of the `TomDbDateTime`,
+  /// `TomDbDate` and `TomDbTime` `of` factories — and refuses what it cannot.
+  ///
+  /// Those factories parse with the public `parseSql…` functions, which keep
+  /// Dart's parse contract and throw a [FormatException]. That is the right
+  /// answer for a caller parsing text it chose; a stored row is not that. It is
+  /// data from outside the process, so an unreadable value is a failure of the
+  /// read, and it is reported the way the numeric readers report theirs —
+  /// keyed, naming the column and the value, with the parser's exception as the
+  /// root. Unconverted, the `FormatException` crossed the endpoints pipeline
+  /// unclassified: no key, no `clientThrow`, no column.
+  ///
+  /// The key names what the column failed to be: `not_a_date` for a `DATE`
+  /// holding a timestamp, `not_a_time` for a `TIME` holding an interval,
+  /// `not_an_instant` for a `DATETIME` holding neither.
+  static B _readTemporal<B extends TomDbType>(
+    ResultSetRow row,
+    String field,
+    B Function(String?) read,
+  ) {
+    final text = row.typedColByName<String>(field);
+    try {
+      return read(text);
+    } on FormatException catch (error, stack) {
+      final (key, kind) = switch (B) {
+        const (TomDbDate) => ('not_a_date', 'a date'),
+        const (TomDbTime) => ('not_a_time', 'a time of day'),
+        _ => ('not_an_instant', 'an instant'),
+      };
+      throw MariadbDatasourceException(
+        "error.result_processing.$key",
+        "Column '$field' holds '$text', which is not readable as $kind",
+        parameters: {"attribute": field, "value": text},
+        rootException: error,
+        stack: stack,
+      );
     }
   }
 
@@ -717,9 +763,7 @@ class MariaDbDatasource implements TomDataSource {
         case bool:
           values[alias] = row.typedColByName<bool>(alias);
         case DateTime:
-          values[alias] = parseOptionalSqlInstant(
-            row.typedColByName<String>(alias),
-          );
+          values[alias] = _readInstant(row, alias);
         default:
           throw MariadbDatasourceException(
             "error.result_processing_grouped.unknown_type",
@@ -939,10 +983,7 @@ class MariaDbDatasource implements TomDataSource {
             // and skipping the assignment on `NULL` would leave the field
             // holding its initialiser value, presented as if it had been read.
             case DateTime:
-              im.invokeSetter(
-                dm.simpleName,
-                parseOptionalSqlInstant(row.typedColByName<String>(fieldName)),
-              );
+              im.invokeSetter(dm.simpleName, _readInstant(row, fieldName));
             default:
               throw MariadbDatasourceException(
                 "error.result_processing_field.unknown_type",
@@ -1019,10 +1060,7 @@ class MariaDbDatasource implements TomDataSource {
             // unconditional set so a `NULL` column clears the field rather than
             // leaving its initialiser value in place.
             case DateTime:
-              im.invokeSetter(
-                dm.simpleName,
-                parseOptionalSqlInstant(row.typedColByName<String>(col.field)),
-              );
+              im.invokeSetter(dm.simpleName, _readInstant(row, col.field));
             // The two halves a timestamp splits into. Both are `DateTime`
             // subclasses, so neither reaches the case above — a switch on
             // `reflectedType` matches the declared type exactly — and without
@@ -1035,12 +1073,12 @@ class MariaDbDatasource implements TomDataSource {
             case TomZonedDate:
               im.invokeSetter(
                 dm.simpleName,
-                TomDbDate.of(row.typedColByName<String>(col.field)).get(),
+                _readTemporal(row, col.field, TomDbDate.of).get(),
               );
             case TomZonedTime:
               im.invokeSetter(
                 dm.simpleName,
-                TomDbTime.of(row.typedColByName<String>(col.field)).get(),
+                _readTemporal(row, col.field, TomDbTime.of).get(),
               );
             default:
               if (col.column != null) {
@@ -1134,11 +1172,11 @@ class MariaDbDatasource implements TomDataSource {
     } else if (colType == TomDbBool) {
       return TomDbBool(row.typedColByName<bool>(field));
     } else if (colType == TomDbDateTime) {
-      return TomDbDateTime.of(row.typedColByName<String>(field));
+      return _readTemporal(row, field, TomDbDateTime.of);
     } else if (colType == TomDbDate) {
-      return TomDbDate.of(row.typedColByName<String>(field));
+      return _readTemporal(row, field, TomDbDate.of);
     } else if (colType == TomDbTime) {
-      return TomDbTime.of(row.typedColByName<String>(field));
+      return _readTemporal(row, field, TomDbTime.of);
     }
     throw MariadbDatasourceException(
       "error.result_processing.unknown_type_dbtype_conversion",

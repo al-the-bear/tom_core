@@ -607,4 +607,318 @@ void main() {
       expect(readers, contains('little_things/server_exception.dart'));
     });
   });
+
+  group('a raise site throws the family, or says why not', () {
+    // The companion to the subtype rule: that rule says what a *type* must be,
+    // this one what a *raise site* may throw. A site throwing a type from
+    // outside the family is as invisible to `on TomServerException` as a class
+    // declared outside it — so every `throw` of a new value must raise a family
+    // member, directly or through a helper whose declared return type is one,
+    // unless a marker above it says which of three legitimate reasons applies.
+    // The rule is stated in doc/little_things.md; the reasons live at the raise
+    // sites, not in a list here.
+    final family = {
+      'TomServerException',
+      for (final d in declarations)
+        if (ancestry(d.name).contains('TomServerException')) d.name,
+    };
+    final audit = _RaiseAudit(_readSources(), family);
+    final sites = audit.sites();
+
+    test('every raise site throws the family, or carries a marker', () {
+      expect(
+        [
+          for (final site in sites)
+            if (site.verdict == _Verdict.offender) site.describe(),
+        ],
+        isEmpty,
+        reason:
+            'these throw a type outside the TomServerException family with no '
+            '`// $_raiseMarker <category> — <why>` above them. Raise a keyed '
+            'server exception, or — for a programmer error, a public parse '
+            "function keeping Dart's parse contract, or a kernel protocol "
+            'signal — mark the site. See doc/little_things.md.',
+      );
+    });
+
+    test('every marker names one of the three categories', () {
+      expect(
+        [
+          for (final site in sites)
+            if (site.marker != null && site.category == null) site.describe(),
+        ],
+        isEmpty,
+        reason:
+            'a marker must begin with one of: ${_raiseCategories.join(', ')}',
+      );
+    });
+
+    test('every marker still stands above a raise outside the family', () {
+      // A marker left behind after its site was converted reads as a standing
+      // permission, and the next non-family raise put beside it inherits one.
+      expect(audit.strayMarkers(sites), isEmpty);
+    });
+
+    test('the scan sees the package and resolves its helpers', () {
+      // Every rule above is a "for all"; a scan that matched nothing passes it.
+      expect(sites.length, greaterThan(300));
+      expect(sites.where((s) => s.verdict == _Verdict.exempt), isNotEmpty);
+      final helper = sites.firstWhere((s) => s.callee == '_asStorageException');
+      expect(helper.thrownType, 'TomStorageException');
+      final staticHelper = sites.firstWhere(
+        (s) => s.callee == 'TomBlobStore.notFound',
+      );
+      expect(family, contains(staticHelper.thrownType));
+    });
+
+    group('the scan itself', () {
+      _RaiseAudit auditOf(String source) => _RaiseAudit(
+        {'lib/x.dart': source},
+        {'TomServerException', 'TomXException'},
+      );
+
+      test('a family constructor passes', () {
+        final site = auditOf(
+          "f() { throw TomXException('k', 'm'); }",
+        ).sites().single;
+        expect(site.verdict, _Verdict.family);
+      });
+
+      test('a core error without a marker is an offender', () {
+        final site = auditOf(
+          "f() { throw FormatException('bad'); }",
+        ).sites().single;
+        expect(site.verdict, _Verdict.offender);
+      });
+
+      test('a marked core error is exempt, and its category is read', () {
+        final site = auditOf(
+          'f() {\n'
+          '  // throws-outside-family: parse contract — mirrors int.parse.\n'
+          "  throw FormatException('bad');\n"
+          '}\n',
+        ).sites().single;
+        expect(site.verdict, _Verdict.exempt);
+        expect(site.category, 'parse contract');
+      });
+
+      test('a helper is judged by its declared return type', () {
+        final sites = auditOf(
+          "TomXException _good() => TomXException('k', 'm');\n"
+          "StateError _bad() => StateError('no');\n"
+          'f() { throw _good(); }\n'
+          'g() { throw _bad(); }\n',
+        ).sites();
+        expect(sites.map((s) => s.verdict), [
+          _Verdict.family,
+          _Verdict.offender,
+        ]);
+      });
+
+      test('rethrowing a held value is propagation, not a raise', () {
+        expect(auditOf('f(Object e) { throw e; }').sites(), isEmpty);
+      });
+
+      test('a raise named in a comment is not a raise', () {
+        expect(
+          auditOf("// throw FormatException('x') would be wrong\n").sites(),
+          isEmpty,
+        );
+      });
+
+      test('a marker with no raise outside the family below it is stray', () {
+        final audit = auditOf(
+          'f() {\n'
+          '  // throws-outside-family: programmer error — no longer true.\n'
+          "  throw TomXException('k', 'm');\n"
+          '}\n',
+        );
+        expect(audit.strayMarkers(audit.sites()), hasLength(1));
+      });
+    });
+  });
+}
+
+/// The marker a raise site outside the family carries on a line above it.
+const _raiseMarker = 'throws-outside-family:';
+
+/// The only reasons a server raise site may throw outside the family. The rule
+/// and its reasoning are in doc/little_things.md.
+const _raiseCategories = [
+  'programmer error',
+  'parse contract',
+  'kernel protocol',
+];
+
+/// Every package source file, keyed by path, generated output excluded.
+Map<String, String> _readSources() => {
+  for (final file
+      in Directory(_sourceRoot)
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))
+          .where((f) => !f.path.endsWith('.reflection.dart')))
+    file.path: file.readAsStringSync(),
+};
+
+/// How a raise site was judged.
+enum _Verdict { family, exempt, offender }
+
+/// One `throw` of a call, and what it raises.
+class _RaiseSite {
+  _RaiseSite(
+    this.file,
+    this.line,
+    this.callee,
+    this.thrownType,
+    this.marker,
+    this.verdict,
+  );
+
+  final String file;
+
+  /// 1-based.
+  final int line;
+
+  /// What is called: `ArgumentError.value`, `_failure`, `TomBlobStore.notFound`.
+  final String callee;
+
+  /// The type the call produces, as far as the declarations say.
+  final String thrownType;
+
+  /// The marker text after [_raiseMarker], when the site carries one.
+  final String? marker;
+
+  final _Verdict verdict;
+
+  /// The marker's category, or null when it names none of [_raiseCategories].
+  String? get category {
+    final text = marker?.trim();
+    if (text == null) return null;
+    for (final c in _raiseCategories) {
+      if (text.startsWith(c)) return c;
+    }
+    return null;
+  }
+
+  String describe() => '$file:$line throw $callee(…) → $thrownType';
+}
+
+/// Finds every raise site in a set of sources and judges it.
+///
+/// A raise site is `throw` followed by a call: a constructor
+/// (`FormatException(`), a named constructor or static helper
+/// (`TomDeliveryException.permanent(`, `TomBlobStore.notFound(`), or a function
+/// (`_failure(`). `throw e` of a value already held is propagation and is not a
+/// site. A helper is resolved to the return type its declaration states, which
+/// is what lets the scan follow `_asStorageException` rather than guess.
+class _RaiseAudit {
+  _RaiseAudit(this.sources, this.family);
+
+  final Map<String, String> sources;
+  final Set<String> family;
+
+  static final _throwCall = RegExp(
+    r'\bthrow\s+(?:const\s+)?([A-Za-z_]\w*)(?:\.([A-Za-z_]\w*))?\s*\(',
+  );
+
+  /// How far above a raise its marker may sit: a marker usually heads a short
+  /// comment explaining the raise.
+  static const _reach = 4;
+
+  List<_RaiseSite> sites() {
+    final found = <_RaiseSite>[];
+    for (final entry in sources.entries) {
+      final lines = entry.value.split('\n');
+      for (var i = 0; i < lines.length; i++) {
+        for (final match in _throwCall.allMatches(_code(lines[i]))) {
+          final head = match.group(1)!;
+          final member = match.group(2);
+          final thrown = _resolve(entry.key, head, member);
+          final marker = _markerAbove(lines, i);
+          found.add(
+            _RaiseSite(
+              entry.key,
+              i + 1,
+              member == null ? head : '$head.$member',
+              thrown,
+              marker,
+              family.contains(thrown)
+                  ? _Verdict.family
+                  : marker != null
+                  ? _Verdict.exempt
+                  : _Verdict.offender,
+            ),
+          );
+        }
+      }
+    }
+    return found;
+  }
+
+  /// Markers anywhere in the sources that no raise outside the family follows.
+  List<String> strayMarkers(List<_RaiseSite> sites) {
+    final served = {
+      for (final s in sites)
+        if (s.verdict == _Verdict.exempt) '${s.file}:${s.line}',
+    };
+    final stray = <String>[];
+    for (final entry in sources.entries) {
+      final lines = entry.value.split('\n');
+      for (var i = 0; i < lines.length; i++) {
+        if (!lines[i].contains('// $_raiseMarker')) continue;
+        final serves = [
+          for (var j = i; j <= i + _reach && j < lines.length; j++)
+            '${entry.key}:${j + 1}',
+        ].any(served.contains);
+        if (!serves) stray.add('${entry.key}:${i + 1}');
+      }
+    }
+    return stray;
+  }
+
+  /// The code on [line]: nothing, for a line that is wholly a comment.
+  static String _code(String line) {
+    final trimmed = line.trimLeft();
+    return trimmed.startsWith('//') || trimmed.startsWith('*') ? '' : line;
+  }
+
+  static String? _markerAbove(List<String> lines, int index) {
+    for (var j = index; j >= 0 && j >= index - _reach; j--) {
+      final at = lines[j].indexOf('// $_raiseMarker');
+      if (at >= 0) return lines[j].substring(at + 3 + _raiseMarker.length);
+    }
+    return null;
+  }
+
+  /// The type `throw head.member(…)` or `throw head(…)` raises.
+  ///
+  /// `Type.member(…)` is looked up only in the file declaring `Type`: a type
+  /// the package does not declare (`ArgumentError.value`) raises itself, and a
+  /// method of the same name on an unrelated class must not answer for it.
+  /// With no static method of that name, `member` is a named constructor or
+  /// factory of `Type`. A bare function is looked up in its own file first.
+  String _resolve(String file, String head, String? member) {
+    final isType = head.startsWith(RegExp('[A-Z]'));
+    if (isType) {
+      if (member == null) return head;
+      final owner = sources.values.where(
+        (s) => RegExp('\\bclass\\s+${RegExp.escape(head)}\\b').hasMatch(s),
+      );
+      return owner.map((s) => _returnTypeOf(s, member)).nonNulls.firstOrNull ??
+          head;
+    }
+    return _returnTypeOf(sources[file]!, head) ??
+        sources.values
+            .map((s) => _returnTypeOf(s, head))
+            .nonNulls
+            .firstOrNull ??
+        '<unresolved $head>';
+  }
+
+  static String? _returnTypeOf(String source, String name) => RegExp(
+    r'(?:^|\n)\s*(?:static\s+)?([A-Z]\w*)(?:<[^>]*>)?\??\s+' +
+        RegExp.escape(name) +
+        r'\s*\(',
+  ).firstMatch(source)?.group(1);
 }

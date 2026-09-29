@@ -803,7 +803,7 @@ everything through is worse than no gate — it reads like one.
 | `messaging.delivery_report.unreadable` | `400` | The body is not JSON |
 | `messaging.delivery_report.no_report` | `400` | The body parsed and the protocol found no report in it |
 | `messaging.delivery_report.unknown_message` | `404` | Nothing was remembered under any id the callback named |
-| `messaging.delivery_report.empty_secret` | — | `install` was called with an empty secret; a `TomException` at installation, not a callback answer |
+| `messaging.delivery_report.empty_secret` | — | `install` was called with an empty secret; a `TomMessagingException` at installation, not a callback answer |
 | `messaging.delivery_report.unknown_datasource` | — | `TomSqlDeliveryReportStore.named` was given a data source that is not registered; a `TomServerException` at construction |
 
 ## Configuration and Secrets

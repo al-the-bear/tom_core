@@ -170,6 +170,8 @@ class TomFrameworkTable {
     // element" — a message about the renderer, arriving at the first
     // `CREATE TABLE`, about a table that could not have been valid SQL anyway.
     if (columns.isEmpty) {
+      // throws-outside-family: programmer error — a framework table descriptor
+      // is code, built once at start-up.
       throw ArgumentError.value(
         name,
         'columns',
@@ -182,6 +184,8 @@ class TomFrameworkTable {
       for (final key in keys) ...key.columns,
     ]) {
       if (_byName.containsKey(column.toLowerCase())) continue;
+      // throws-outside-family: programmer error — as above: the descriptor
+      // names a key column it lacks.
       throw ArgumentError.value(
         column,
         'column',
@@ -230,6 +234,8 @@ class TomFrameworkTable {
         if (!has(n)) n,
     ];
     if (unknown.isNotEmpty) {
+      // throws-outside-family: programmer error — the caller's code names a
+      // column the descriptor lacks.
       throw ArgumentError.value(
         unknown.join(', '),
         'names',
@@ -258,6 +264,7 @@ class TomFrameworkTable {
         if (!has(n)) n,
     ];
     if (unknown.isNotEmpty) {
+      // throws-outside-family: programmer error — as columnsOf.
       throw ArgumentError.value(
         unknown.join(', '),
         'values',

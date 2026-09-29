@@ -802,6 +802,8 @@ class TomS3BlobStore extends TomBlobStore {
     final match = RegExp(
       r'^\w{3}, (\d{2}) (\w{3}) (\d{4}) (\d{2}):(\d{2}):(\d{2}) GMT$',
     ).firstMatch(value.trim());
+    // throws-outside-family: parse contract — a public parse function; its one
+    // caller, _lastModified, catches it.
     if (match == null) throw FormatException('Not an HTTP date', value);
     return DateTime.utc(
       int.parse(match.group(3)!),

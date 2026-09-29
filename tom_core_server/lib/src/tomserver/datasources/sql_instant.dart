@@ -177,6 +177,9 @@ TomZonedDate parseSqlDate(String value) {
   }
   final match = _sqlDatePattern.firstMatch(text);
   if (match == null) {
+    // throws-outside-family: parse contract — a public parse function, like
+    // DateTime.parse; the driver converts to a keyed error when the text is a
+    // stored row.
     throw FormatException('Not a DATE column value or a @D@ date', text);
   }
   return TomZonedDate(
@@ -214,10 +217,12 @@ TomZonedTime parseSqlTimeOfDay(String value) {
   }
   final match = _sqlTimePattern.firstMatch(text);
   if (match == null) {
+    // throws-outside-family: parse contract — as parseSqlDate above.
     throw FormatException('Not a TIME column value or a @T@ time', text);
   }
   final hour = int.parse(match.group(1)!);
   if (hour > 23) {
+    // throws-outside-family: parse contract — as parseSqlDate above.
     throw FormatException(
       'TIME value $text is an interval, not a time of day: an hour past 23 '
       'has no clock reading, and TomZonedTime holds a reading',

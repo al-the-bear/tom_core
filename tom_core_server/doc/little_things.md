@@ -13,6 +13,7 @@ the exception constructor recovers from the zone — plus one function,
 - [Overview](#overview)
 - [TomRequestId](#tomrequestid)
 - [TomServerException](#tomserverexception)
+  - [What a raise site may throw](#what-a-raise-site-may-throw)
   - [The Whole Kernel Parameter List](#the-whole-kernel-parameter-list)
 - [Isolate Attribution](#isolate-attribution)
 - [Request Correlation](#request-correlation)
@@ -97,12 +98,12 @@ both are checked.
 and a caller that wants to handle a declined payment differently from a failed
 query needs the type to say which it has. Throwing `TomServerException` itself
 leaves it with the key string and nothing else. The package raises the base
-class directly at exactly five sites, all `.named(...)` constructors refusing an
+class directly at exactly six sites, all `.named(...)` constructors refusing an
 unregistered data source, and the exemption is narrow on purpose: they fail at
 construction, before any request is served, so no `catch` clause is running to
 discriminate and a subtype would add nothing but a declaration.
-`test/server_exception_family_test.dart` pins those five by file and key, so a
-sixth has to make the same argument rather than inherit it.
+`test/server_exception_family_test.dart` pins those six by file and key, so a
+seventh has to make the same argument rather than inherit it.
 
 **The key reads `<area>.<operation>.<condition>`**, dotted-lowercase — the shape
 `TomException`'s own dartdoc fixes. The first segment names the module, so keys
@@ -139,6 +140,47 @@ claim: the endpoints pipeline classifies a failure by catching
 cannot say whether its message may be shown; and the isolate and request
 attribution below is added by the base constructor, so a non-member arrives
 naming neither the worker that raised it nor the request that caused it.
+
+### What a raise site may throw
+
+The family rule says what a *type* must be. A raise site has the same
+obligation for the same three reasons: a `FormatException` thrown from inside a
+request is as invisible to `on TomServerException` as a class declared outside
+the family. So a server raise site throws a `TomServerException` subtype —
+directly, or through a helper whose declared return type is one — with exactly
+three exceptions, each a reason a keyed server exception would be the *wrong*
+answer:
+
+| Category | When | Examples |
+| -------- | ---- | -------- |
+| `programmer error` | The caller's code is wrong, and no running system reaches the site: an argument or a lifecycle state checked at a public entry point. A key would tell a caller to branch on a mistake that is fixed by editing code. `ArgumentError` / `StateError`. | a framework table descriptor with no columns; a cache constructed with a negative size; a digest fed after close |
+| `parse contract` | A public parse function keeping Dart's own convention — `int.parse`, `DateTime.parse` — and throwing `FormatException`. The obligation moves to the caller: code that parses *data from outside the process* with one converts the `FormatException` into a keyed exception. | `parseSqlDate`, `parseSqlTimeOfDay`, `TomS3BlobStore.parseHttpDate` |
+| `kernel protocol` | A kernel type the kernel dispatches on, raised to speak that protocol. | `TomPermanentJobFailure`, the scheduler's "do not retry" |
+
+The parse-contract row is the one with teeth. The MariaDB driver reads stored
+`DATE`, `TIME` and `DATETIME` text through those parse functions, and a stored
+row is data from outside, so the driver converts: an unreadable value raises
+`error.result_processing.not_a_date`, `.not_a_time` or `.not_an_instant`, naming
+the column and the value, the same way the numeric readers refuse theirs. Before
+it did, a `DATE` column holding a timestamp crossed the endpoints pipeline as a
+bare `FormatException`, with no key and no column.
+
+An exempt site says so where it stands, on the line above the `throw`:
+
+```dart
+// throws-outside-family: programmer error — the deadline is an install-time
+// argument.
+throw ArgumentError.value(timeout, 'timeout', 'the health deadline must be positive');
+```
+
+`test/server_exception_family_test.dart` scans every `throw` of a call under
+`lib/src/tomserver/`, resolves a helper (`_asStorageException`,
+`TomBlobStore.notFound`) to the return type its declaration states, and fails on
+a raise outside the family with no marker, on a marker naming no category, and
+on a marker no longer standing above such a raise. `throw e` of a value already
+held is propagation, not a raise site, and is not judged. The reasons live at
+the thirteen marked sites rather than in a list in the test, so an exemption is
+read where it is used and cannot outlive the code it excuses.
 
 ### The Whole Kernel Parameter List
 

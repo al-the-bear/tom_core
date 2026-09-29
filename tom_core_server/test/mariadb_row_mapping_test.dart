@@ -38,6 +38,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 import 'fixtures/reflection_fixture.dart'
     show
         FixtureAmountSummary,
+        FixtureExportRecord,
         FixtureNullableObservable,
         FixtureNullableRecord,
         FixtureTaskRecord;
@@ -473,6 +474,66 @@ void main() {
       final row = await read(_decimal(null), _int(null));
       expect(row.total, isNull);
       expect(row.entries, isNull);
+    });
+  });
+
+  // A stored value the date/time readers cannot read is refused by column
+  // name, exactly as the numeric readers refuse one. The readers underneath —
+  // `parseSqlInstant`, `parseSqlDate`, `parseSqlTimeOfDay` — are public parse
+  // functions and keep Dart's parse contract, a `FormatException`; what they
+  // are handed here is a stored row, which is data from outside the process,
+  // so the driver converts. Unconverted, the `FormatException` crossed the
+  // endpoints pipeline unclassified: no key, no `clientThrow`, no column.
+  group('a date or time the row cannot hold is refused by column name', () {
+    Future<List<FixtureExportRecord>> read(Map<String, _Cell> cells) =>
+        ds.mapResultSet<FixtureExportRecord>(_oneRow(cells));
+
+    Matcher refusal(String key, String column, String value) => throwsA(
+      isA<MariadbDatasourceException>()
+          .having((e) => e.key, 'key', key)
+          .having((e) => e.parameters?['attribute'], 'attribute', column)
+          .having((e) => e.parameters?['value'], 'value', value)
+          .having((e) => e.rootException, 'rootException', isFormatException),
+    );
+
+    test('a DATE column holding a timestamp is not a date', () {
+      expect(
+        read({'tag_day': _text('2026-07-15 12:30:00')}),
+        refusal(
+          'error.result_processing.not_a_date',
+          'tag_day',
+          '2026-07-15 12:30:00',
+        ),
+      );
+    });
+
+    test('a TIME column holding an interval is not a time of day', () {
+      expect(
+        read({'remind_at': _text('25:00:00')}),
+        refusal('error.result_processing.not_a_time', 'remind_at', '25:00:00'),
+      );
+    });
+
+    test('a DATETIME column holding no instant is not an instant', () {
+      expect(
+        read({'created_at': _text('not a timestamp')}),
+        refusal(
+          'error.result_processing.not_an_instant',
+          'created_at',
+          'not a timestamp',
+        ),
+      );
+    });
+
+    test('readable values still map', () async {
+      final rows = await read({
+        'tag_day': _text('2026-07-15'),
+        'remind_at': _text('14:30:00'),
+        'created_at': _instant('2026-07-15 12:30:00.000000'),
+      });
+      expect(rows.single.tagDay?.day, 15);
+      expect(rows.single.remindAt?.hour, 14);
+      expect(rows.single.createdAt, DateTime.utc(2026, 7, 15, 12, 30));
     });
   });
 }

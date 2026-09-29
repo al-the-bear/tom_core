@@ -443,7 +443,16 @@ void main() {
           protocol: _protocol,
           secret: '',
         ),
-        throwsA(isA<TomException>()),
+        // A messaging exception, not the kernel's base type: a server raise
+        // site throws the family, so `on TomServerException` reaches it and it
+        // carries the isolate and the request like every other.
+        throwsA(
+          isA<TomMessagingException>().having(
+            (e) => e.key,
+            'key',
+            'messaging.delivery_report.empty_secret',
+          ),
+        ),
       );
     });
 

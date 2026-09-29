@@ -311,6 +311,8 @@ class TomHealthServer implements TomHealthService {
   /// [installLivenessAnalyzer].
   static void installHealthTimeout(Duration timeout) {
     if (timeout <= Duration.zero) {
+      // throws-outside-family: programmer error — the deadline is an install-
+      // time argument.
       throw ArgumentError.value(
         timeout,
         'timeout',

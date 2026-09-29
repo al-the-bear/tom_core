@@ -355,6 +355,8 @@ class _TomDeliveryCommand extends TomCommand {
       // Unreadable payloads are permanent by definition: no number of retries
       // will make a malformed run parse, and retrying it holds a slot that a
       // deliverable message could use.
+      // throws-outside-family: kernel protocol — the scheduler's signal for a
+      // run that must not be retried.
       throw TomPermanentJobFailure(
         'Outbox run ${_run.id} has no readable message payload '
         '(${payload.runtimeType}).',

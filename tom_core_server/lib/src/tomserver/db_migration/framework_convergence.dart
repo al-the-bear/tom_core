@@ -122,6 +122,9 @@ class TomFrameworkSchemaCheck {
     // rendering, not in anything it was asked to check — so it is thrown rather
     // than reported as a divergence of the subject under test.
     if (replay.errors.isNotEmpty) {
+      // throws-outside-family: programmer error — the framework's own
+      // descriptors rendering DDL that does not replay is a defect in this
+      // package, never a divergence of the subject.
       throw StateError(
         'A framework table descriptor produced DDL that could not be replayed: '
         '${replay.errors.map((e) => '${e.artifact}: ${e.message}').join('; ')}',
