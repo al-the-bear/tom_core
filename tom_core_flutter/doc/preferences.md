@@ -112,7 +112,8 @@ one line in the whole application knows which storage is behind it.
 
 ## The Same Shape as the Server Store
 
-The method set deliberately mirrors `TomUserPreferences` (`tom_core_server`):
+`TomDevicePreferences`' method set deliberately mirrors `TomUserPreferences`
+(`tom_core_server`), plus the device-only `getPreferred`:
 
 | Method | Returns | Description |
 |--------|---------|-------------|

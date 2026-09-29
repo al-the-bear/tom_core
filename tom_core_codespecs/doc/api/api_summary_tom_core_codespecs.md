@@ -773,15 +773,26 @@ TomReportResultSection({
 
 #### TomReportResult
 
-The shared result envelope a CE-RP report operation returns.
+The shared result envelope a CE-RP report operation returns. The client renders
+it; the server adapts it onto `tom_core_server`'s `TomTabularResult` to export
+it.
+
+##### Constructors
+
+| Constructor | Description |
+|-------------|-------------|
+| `TomReportResult({required String reportId, required String title, required List<TomReportResultSection> sections, List<TomReportChart> charts = const [], Map<String, String> metadata = const {}})` | Creates a result. Throws `ArgumentError` when `sections` is empty. `metadata` is stored unmodifiable. |
+| `TomReportResult.single({required String reportId, required String title, required TomReportResultSection section, List<TomReportChart> charts = const [], Map<String, String> metadata = const {}})` | A single-section result — the common case. |
 
 ##### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `title` | `String?` | An optional caption for the block. |
-| `columns` | `List<TomReportColumn>` | The section's columns, in output order. |
-| `rows` | `Stream<List<Object?>>` | The section's rows — single-subscription, pulled once, in order. |
+| `reportId` | `String` | The `TomReportDefinition.reportId` this result came from. |
+| `title` | `String` | The rendered document title. |
+| `sections` | `List<TomReportResultSection>` | The result's sections, in output order; never empty. Each carries its own `columns` and `rows`. |
+| `charts` | `List<TomReportChart>` | The charts declared for this result. |
+| `metadata` | `Map<String, String>` | How the result was produced — parameter values, who ran it, the as-of timestamp. Unmodifiable. |
 
 ##### Methods
 

@@ -207,7 +207,7 @@ reports and never gates.
 | [`tool/check_dartdoc_build.py`](tool/check_dartdoc_build.py) | Builds each gated package's API documentation and requires `dart doc` to report nothing |
 | [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
 | [`tool/check_doc_attributions.py`](tool/check_doc_attributions.py) | Finds prose that names a source file and then names a type that file has not got |
-| [`tool/check_member_attributions.py`](tool/check_member_attributions.py) | Finds documentation that writes `Type.member` for a member the type does not declare |
+| [`tool/check_member_attributions.py`](tool/check_member_attributions.py) | Finds documentation — the package docs and the completion corpus — that names a member its type does not declare, written `Type.member` or listed in a member table |
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, quote its signature with the wrong parameter kind, or `const` one that is not |
 | [`tool/check_doc_dart_blocks.py`](tool/check_doc_dart_blocks.py) | Runs every ` ```dart ` block in a package's documents through the analyzer: it must parse, every framework name in it must resolve, and a fence marked ` ```dart complete ` must analyze clean outright |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code and prose that name no resolvable document |
@@ -1161,20 +1161,32 @@ per-method citation counts tracked the real call-site counts, one of them
 exactly. It was a systematic rename away from the truth rather than fiction,
 which is harder to see by reading and trivial to see by checking.
 
-**Writing a name qualified is what puts it in scope.** The checker reads
-`` `Type.member` `` and nothing else, so a document that names its methods bare
-under a heading is invisible to it — which is precisely how that table survived.
-Repairing it meant qualifying all 1,181 references, and that, not the renaming,
-is what moved the document from unverifiable to verified.
+**It reads two shapes, and two roots.** A qualified `` `Type.member` `` anywhere,
+and a **member table** — a table whose first header is `Member`, `Method`,
+`Field`, `Property` or `Constructor` — whose bare first-column names are judged
+against the types its lead-in paragraph and its nearest type heading name. A row
+passes if *any* of those types declares the name, takes it as a constructor
+parameter, or its package declares it at top level: picking one type would be a
+guess, and a lead-in routinely names a related type the table is not about. The
+member tables are what a rename survives in — `convertToTimezone` became
+`convertToTzSameInstant`, and three method tables in the timezoned completion
+document kept the old name while every gate was green. The second root is that
+corpus — the quest's completion documents, kept beside this repository rather
+than in it — whose part 3 (`What changed` / `What this adds`) is history by
+contract and is not read, except its `What is still open`. A document that opens with `<!-- record: <why> -->` — a design
+record, an executed migration plan — is skipped the way `CHANGELOG.md` is.
 
 Four restrictions keep it from inventing faults. The reference must be
-backticked and qualified; the type must start `Tom` and be declared in this
-repository, which puts SDK types out of scope by construction; the member must
-start lowercase, so `Type.NestedType` is not read as a member; and — the
-load-bearing one — **it abstains entirely when the inheritance closure leaves the
-repository**. A class extending `StatelessWidget` has a member list this repo
-cannot see, and reporting half a list as complete would fail open on what it has
-while accusing documents of naming members that genuinely exist. Members Dart
+backticked; the owner must be declared in this repository (a qualified reference
+must also start `Tom`); the member must start lowercase, so `Type.NestedType` is
+not read as a member; and — the load-bearing one — **it abstains when the
+inheritance closure leaves what it can see**. It can see this repository and
+the Dart SDK's public libraries, indexed from the `dart` on `PATH`, so a type
+extending `DateTime` is judged and `toUtc` resolves on `DateTime`; a class
+extending `StatelessWidget` still has a member list it cannot see, and reporting
+half a list as complete would accuse documents of naming members that genuinely
+exist. Without the SDK every closure through a `dart:` type abstains, and the
+summary line says so. Members Dart
 supplies without declaring them are added back: `Object`'s four, and `index` /
 `name` / `values` on an enum, which implements `Enum` implicitly and so offers
 `closure` no supertype to abstain on.

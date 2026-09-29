@@ -76,8 +76,85 @@ remedy is to qualify it rather than to loosen this gate: an unqualified name
 gives the checker no type to check it against, and guessing one from the nearest
 heading is how a plausible-looking table stays wrong.
 
+**Member tables read the type from their heading.** The rule above has one
+place where it would leave the most common shape of claim unread: a table of a
+type's API, written under a heading that names the type, whose first column
+lists the members bare -- ``| `convertToTzSameInstant(TomTimezone t)` | ... |``
+under ``### `TomZonedDate```. That is where a rename was observed to survive:
+`convertToTimezone` became `convertToTzSameInstant`, the package's own documents
+followed, and the completion write-up kept three method tables and a worked
+example naming the old method while every gate reported clean. So a table is
+also read, under these conditions:
+
+5. Its header's first cell is ``Member``, ``Method``, ``Methods``, ``Getter``,
+   ``Field``, ``Property``, ``Constructor`` or ``Static method`` -- a column that
+   says, in the document's own words, that it lists members. A ``Key`` or
+   ``Type`` table under the same heading is not read.
+6. The candidate owners are every repo-declared type named by the **nearest
+   enclosing heading that names one** (``#### Static methods`` names none, so
+   the ``### `TomTimezone``` above it decides) together with every one named by
+   the **paragraph that introduces the table** -- "`TomAuthenticationData`
+   carries the attempt. All nine fields ..." under a heading about
+   `TomAuthenticationService` is a table of the former. A row is accepted if
+   **any** candidate declares its name. A fenced code block directly above
+   the table -- a constructor shown whole, then its parameters tabulated --
+   counts as the lead-in. Choosing one candidate would be a
+   guess -- a lead-in routinely names a related type the table is not about --
+   and a guess this gate makes wrongly is an accusation. The union can only
+   err quiet, and it still catches what it exists for: a renamed member exists
+   on no candidate at all. An annotation (`@TomDbTable`) is not a subject and
+   is not counted; a table nothing names is not read.
+7. The first cell's backticked name is judged -- keywords (``static``, ``get``,
+   ``factory``, ...) and the parameter list stripped. A name ending in ``:``
+   (or ``name: value``) is a named argument or a configuration key and is not
+   judged. A name the repository declares at **top level** -- an annotation
+   constant such as `tomService`, a function such as `tomConsumesForm` -- is
+   accepted when it is declared under the ``lib/`` of the owner's own package
+   -- the API a table documents, not a test's helper: tables that document
+   an API list those beside the members. A name starting uppercase
+   is a constructor or a type, not a member, and is left alone unless it is
+   ``Owner.named``, which is judged as a named constructor. ``operator`` rows
+   are not judged.
+
+A member table may list the owner's **constructor parameters** as well as its
+members -- a "Resource fallbacks" table of the arguments `TomAclBuilder` stores
+privately is naming real API -- so a name is accepted if the owner declares it
+as either.
+
+**The Dart SDK completes a closure.** Restriction 4 on its own abstains on
+exactly the type the rename above happened on: `TomZonedDate` extends
+`TomTimezoned`, which extends `DateTime`, so its member list could not be
+enumerated and a table naming the gone `convertToTimezone` was not read. The
+SDK's library sources ship beside the `dart` executable every gate already
+needs, so the public ``dart:`` libraries are indexed the same way and a closure
+that reaches `DateTime`, `Comparable` or `Iterable` continues through them --
+`toUtc` then resolves on `DateTime`, and `convertToTimezone` resolves nowhere.
+They complete closures only: a table or a qualified reference is judged only
+when its *owner* is declared in this repository. A closure that reaches a
+non-SDK foreign type (`StatelessWidget`, `ChangeNotifier`) is still abstained
+on, and so is every closure when the SDK cannot be found -- the summary line
+says which.
+
+**Two roots.** The package documents under this repository are one set; the
+completion corpus in ``_ai/quests/tom_core/completion/`` is the other, and it
+is where the rename above survived. The quest folder is a separate clone, so a
+missing root is skipped rather than fatal, but a present one is always read.
+
 ``CHANGELOG.md`` is excluded: an entry records what was true when it was
 written, and correcting it would falsify a record rather than repair a claim.
+In a completion document, **part 3** -- ``## What changed`` or ``## What this
+adds`` -- is not read, except its ``### What is still open`` subsection. The
+corpus contract (``completion/README.md``) makes part 3 "the only historical
+part of the document" and requires removed and renamed members to be named
+there explicitly, so a name the source no longer declares is what that section
+is for. "What is still open" is a claim about now, and is read.
+
+A document that opens (within its first ten lines) with a
+``<!-- record: <why> -->`` comment is excluded for the same reason -- a design
+record or an executed migration plan that names the members of the state it
+replaced. The comment has to say why, and the document should say so to its
+reader too; a record is not a place to put a document this gate would
+otherwise catch.
 """
 
 from __future__ import annotations
@@ -92,6 +169,51 @@ from gate_report import report_faults
 
 TOOL_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TOOL_DIR.parent
+WORKSPACE_ROOT = REPO_ROOT.parent.parent
+
+#: The public ``dart:`` libraries indexed to complete a closure (see "The Dart
+#: SDK completes a closure").
+SDK_LIBRARIES = ("core", "async", "collection", "convert", "io", "math", "typed_data", "isolate")
+
+#: Types the Dart SDK declares, consulted only when a closure leaves the repo.
+SDK_TYPES: dict[str, list["TypeInfo"]] = {}
+
+
+def sdk_library_root() -> Path | None:
+    """The Dart SDK's ``lib/`` directory, found from ``DART_SDK`` or ``dart``."""
+    import os
+    import shutil
+
+    candidates = []
+    if os.environ.get("DART_SDK"):
+        candidates.append(Path(os.environ["DART_SDK"]) / "lib")
+    dart = shutil.which("dart")
+    if dart:
+        bin_dir = Path(dart).resolve().parent
+        candidates += [bin_dir / "cache" / "dart-sdk" / "lib", bin_dir.parent / "lib"]
+    return next((c for c in candidates if (c / "core").is_dir()), None)
+
+
+#: The completion corpus: the second document root (see "Two roots").
+COMPLETION = WORKSPACE_ROOT / "_ai" / "quests" / "tom_core" / "completion"
+
+#: First header cells that declare a table to be a list of members (rule 5).
+MEMBER_TABLE_HEADERS = frozenset(
+    {
+        "member", "members", "method", "methods", "getter", "getters",
+        "field", "fields", "property", "properties", "constructor",
+        "constructors", "static method", "static methods",
+    }
+)
+
+#: A markdown heading.
+HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
+
+#: Words that may lead a member cell before its name.
+CELL_KEYWORDS = frozenset(
+    {"static", "get", "set", "factory", "const", "final", "late", "abstract",
+     "external", "covariant", "async", "void"}
+)
 
 #: A backticked ``Type.member``. The member may itself be followed by a call's
 #: empty parentheses, which readers write and which say nothing extra.
@@ -193,6 +315,34 @@ ENUM_CONSTANT = re.compile(r"^\s*([a-z_]\w*)\s*(?:<[^>]*>)?\s*(?:\([^)]*\))?\s*(
 #: is followed by a dot.
 NAMED_CONSTRUCTOR = re.compile(r"^\s{2,}(?:const\s+|factory\s+)*(\w+)\.(\w+)\s*\(", re.MULTILINE)
 
+#: A top-level declaration: a function, getter, variable or constant at column
+#: zero. Read from the same masked text as members, so a comment or a string
+#: cannot contribute one.
+TOP_LEVEL = re.compile(
+    # `(?=\S)`: at column zero. The type group admits spaces, so without it an
+    # indented field -- a class member -- would read as top-level.
+    r"^(?=\S)(?:external\s+)?(?:final\s+|const\s+|late\s+|var\s+)*"
+    r"(?:(?:[\w<>,\[\]?.$ ]|" + _BALANCED + r")+\s+)?"
+    r"(?:get\s+|set\s+)?"
+    r"(?!(?:async|sync|class|enum|mixin|extension|typedef|import|export|part|library)\b)"
+    r"([a-z_]\w*)\s*(?:[(<=;]|=>|\{)",
+    re.MULTILINE,
+)
+
+#: Every top-level name [index_types] saw, by package, for rule 7. Scoped to
+#: the package because common words -- `rows`, `columns` -- are declared at top
+#: level somewhere in a tree this size, and accepting them repo-wide would pass
+#: a member table that names them on the wrong type.
+TOP_LEVEL_NAMES: dict[str, set[str]] = defaultdict(set)
+
+
+def package_of(path: Path) -> str:
+    """The package directory a source file belongs to (first path segment)."""
+    try:
+        return path.resolve().relative_to(REPO_ROOT.resolve()).parts[0]
+    except (ValueError, IndexError):
+        return ""
+
 #: Words that appear in a member position but declare nothing.
 #:
 #: Dart's **reserved** words only — the ones that cannot be an identifier, so
@@ -229,6 +379,7 @@ class TypeInfo:
     kind: str
     supertypes: set[str] = field(default_factory=set)
     own_members: set[str] = field(default_factory=set)
+    parameters: set[str] = field(default_factory=set)
 
 
 def mask_literals(source: str) -> str:
@@ -388,8 +539,18 @@ def index_types(root: Path) -> dict[str, list[TypeInfo]]:
         except (OSError, UnicodeDecodeError):
             continue
         if "class " not in text and "mixin " not in text and "enum " not in text:
+            if "lib" in path.parts:
+                TOP_LEVEL_NAMES[package_of(path)].update(
+                    n
+                    for n in TOP_LEVEL.findall(mask_literals(text))
+                    if n not in NOT_MEMBERS
+                )
             continue
         text = mask_literals(text)
+        if "lib" in path.parts:
+            TOP_LEVEL_NAMES[package_of(path)].update(
+                n for n in TOP_LEVEL.findall(text) if n not in NOT_MEMBERS
+            )
         for match in DECLARATION.finditer(text):
             kind, name, clauses = match.group(1), match.group(2), match.group(3)
             info = TypeInfo(name=name, source=path, kind=kind)
@@ -405,6 +566,7 @@ def index_types(root: Path) -> dict[str, list[TypeInfo]]:
             }
             if kind == "enum":
                 info.own_members |= enum_constants(body)
+            info.parameters = constructor_parameter_names(body, name)
             if kind == "extension":
                 # An extension's members read as members of the type it
                 # extends, which is the only way a document can name them.
@@ -420,6 +582,32 @@ def index_types(root: Path) -> dict[str, list[TypeInfo]]:
                 continue
             types[name].append(info)
     return types
+
+
+def constructor_parameter_names(body: str, name: str) -> set[str]:
+    """The parameter names of ``name``'s constructors declared in ``body``.
+
+    Over-collects rather than under: a type or a default value caught as a
+    "name" can only make a member table quieter, never accuse it.
+    """
+    names: set[str] = set()
+    for start in re.finditer(rf"(?m)^\s+(?:const\s+|factory\s+)*{re.escape(name)}(?:\.\w+)?\s*\(", body):
+        depth, index = 0, start.end() - 1
+        for index in range(start.end() - 1, len(body)):
+            if body[index] == "(":
+                depth += 1
+            elif body[index] == ")":
+                depth -= 1
+                if depth == 0:
+                    break
+        params = body[start.end() : index]
+        names |= set(re.findall(r"(?:this\.|super\.)?\b([a-z_]\w*)\s*(?=[,)}\]=:]|$)", params))
+    return names
+
+
+def constructor_parameters(name: str, types: dict[str, list[TypeInfo]]) -> set[str]:
+    """Every constructor parameter any declaration of ``name`` takes."""
+    return {p for info in types.get(name, []) for p in info.parameters}
 
 
 #: What every Dart type carries from `Object` without declaring it. A document
@@ -455,7 +643,7 @@ def closure(name: str, types: dict[str, list[TypeInfo]]) -> set[str] | None:
         if current in seen:
             continue
         seen.add(current)
-        entries = types.get(current)
+        entries = types.get(current) or SDK_TYPES.get(current)
         if not entries:
             return None
         for info in entries:
@@ -472,7 +660,7 @@ class Report:
 
     document: Path
     claims: int = 0
-    faults: list[tuple[int, str, str, Path]] = field(default_factory=list)
+    faults: list[tuple[int, str, str, Path, str]] = field(default_factory=list)
 
     @property
     def clean(self) -> bool:
@@ -480,9 +668,9 @@ class Report:
 
     def render(self) -> str:
         lines = [f"\n{self.document}"]
-        for number, type_name, member, source in self.faults:
+        for number, type_name, member, source, how in self.faults:
             lines.append(
-                f"  line {number}: `{type_name}.{member}` — {type_name} is "
+                f"  line {number}: `{type_name}.{member}`{how} — {type_name} is "
                 f"declared in {source} and has no member named {member}"
             )
         return "\n".join(lines)
@@ -495,8 +683,14 @@ def audit(path: Path, types: dict[str, list[TypeInfo]]) -> Report | None:
     except (OSError, UnicodeDecodeError):
         return None
 
-    report = Report(document=path.relative_to(REPO_ROOT))
-    for number, line in enumerate(text.splitlines(), start=1):
+    report = Report(document=display(path))
+    lines = text.splitlines()
+    if any("<!-- record:" in line for line in lines[:10]):
+        # A declared record of a past state (see the module docstring).
+        return None
+    if COMPLETION in path.parents:
+        lines = blank_historical_part(lines)
+    for number, line in enumerate(lines, start=1):
         for type_name, member in REFERENCE.findall(line):
             entries = types.get(type_name)
             if not entries:
@@ -509,19 +703,191 @@ def audit(path: Path, types: dict[str, list[TypeInfo]]) -> Report | None:
             report.claims += 1
             if member not in members:
                 report.faults.append(
-                    (number, type_name, member, entries[0].source.relative_to(REPO_ROOT))
+                    (number, type_name, member, display(entries[0].source), "")
                 )
+    audit_member_tables(lines, types, report)
     return report if report.claims else None
 
 
+def blank_historical_part(lines: list[str]) -> list[str]:
+    """``lines`` with a completion document's part 3 blanked, line numbers kept.
+
+    Part 3 runs from ``## What changed`` / ``## What this adds`` to the next
+    level-2 heading; its ``### What is still open`` subsection is kept.
+    """
+    out: list[str] = []
+    in_part3 = in_open = False
+    for line in lines:
+        if line.startswith("## "):
+            title = line[3:].strip().lower()
+            in_part3 = title.startswith("what changed") or title.startswith("what this adds")
+            in_open = False
+        elif in_part3 and line.startswith("### "):
+            in_open = line[4:].strip().lower().startswith("what is still open")
+        out.append("" if in_part3 and not in_open and not line.startswith("#") else line)
+    return out
+
+
+def display(path: Path) -> Path:
+    """``path`` relative to whichever root holds it."""
+    for root in (REPO_ROOT, WORKSPACE_ROOT):
+        try:
+            return path.relative_to(root)
+        except ValueError:
+            continue
+    return path
+
+
+def heading_owner(text: str, types: dict[str, list[TypeInfo]]) -> list[str]:
+    """The repo-declared types a heading or lead-in names (rule 6).
+
+    An annotation -- ``@TomDbTable`` -- is not the subject of a sentence about
+    a type, so it is not counted.
+    """
+    names = re.findall(r"(?<!@)`([A-Z]\w*)\b[^`]*`", text)
+    names += re.findall(r"(?<![@\w])(Tom[A-Z]\w*)\b", text)
+    seen: list[str] = []
+    for name in names:
+        if name in types and name not in seen:
+            seen.append(name)
+    return seen
+
+
+def cell_member(cell: str, owner: str) -> str | None:
+    """The member a member table's first cell names, or ``None`` (rule 7)."""
+    match = re.search(r"`([^`]+)`", cell)
+    if not match:
+        return None
+    code = match.group(1).strip()
+    if re.match(r"^[A-Za-z_]\w*\s*:(\s|$)", code):
+        # `cron:` / `event: true` is a named argument or a map key.
+        return None
+    if code.split()[:1] == ["operator"] or " operator " in f" {code} ":
+        return None
+    # The name is the last identifier before a parameter list, an initialiser
+    # or a type annotation's colon: `bool isJson`, `static Future<void> run(x)`
+    # and `int? statusCode` all end in it, while a leading type does not.
+    signature = re.split(r"[(=:]", code, maxsplit=1)[0]
+    signature = re.sub(r"<[^<>]*(?:<[^<>]*>[^<>]*)*>", " ", signature)
+    words = [w for w in signature.replace("?", " ").split() if w not in CELL_KEYWORDS]
+    if not words:
+        return None
+    head = re.fullmatch(r"([A-Za-z_]\w*)(?:\.([A-Za-z_]\w*))?", words[-1])
+    if not head:
+        return None
+    first, second = head.group(1), head.group(2)
+    if second is not None:
+        # `Owner.named(...)` is a named constructor or a static of the owner;
+        # `Other.x` belongs to another type and is REFERENCE's to judge.
+        return second if first == owner else None
+    if first[0].isupper():
+        return None
+    return first
+
+
+def audit_member_tables(
+    lines: list[str], types: dict[str, list[TypeInfo]], report: Report
+) -> None:
+    """Judge member tables against the type their heading names (rules 5-7)."""
+    headings: list[tuple[int, list[str]]] = []  # (level, types it names)
+    paragraph: list[str] = []  # the last complete prose block, for rule 6
+    current: list[str] = []  # the prose block being read
+    in_fence = False
+    table_owner: list[str] | None = None
+    in_table = False
+    for number, line in enumerate(lines, start=1):
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            if in_fence:
+                current = []
+            continue
+        if in_fence:
+            # A code block directly above a table -- a constructor shown in
+            # full, then its parameters tabulated -- is that table's lead-in.
+            current.append(stripped)
+            continue
+        heading = HEADING.match(line)
+        if heading:
+            level = len(heading.group(1))
+            while headings and headings[-1][0] >= level:
+                headings.pop()
+            headings.append((level, heading_owner(heading.group(2), types)))
+            in_table = False
+            paragraph, current = [], []
+            continue
+        if not stripped.startswith("|"):
+            if in_table:
+                paragraph = []
+            if not stripped:
+                # A blank line ends the block; the block it ended is still the
+                # lead-in of a table that follows it.
+                if current:
+                    paragraph, current = current, []
+            else:
+                current.append(stripped)
+            in_table = False
+            continue
+        cells = [c.strip() for c in stripped.strip("|").split("|")]
+        if not in_table:
+            # A table's first row is its header.
+            in_table = True
+            table_owner = None
+            if cells and cells[0].strip("*").lower() in MEMBER_TABLE_HEADERS:
+                candidates = heading_owner(" ".join(current or paragraph), types)
+                for _, named in reversed(headings):
+                    if named:
+                        candidates += [n for n in named if n not in candidates]
+                        break
+                table_owner = candidates or None
+            paragraph, current = [], []
+            continue
+        if table_owner is None or set(stripped) <= set("|-: "):
+            continue
+        judged = [(o, cell_member(cells[0], o)) for o in table_owner]
+        names = {m for _, m in judged if m is not None}
+        if not names:
+            continue
+        visible = [closure(o, types) for o in table_owner]
+        if any(members is None for members in visible):
+            # A candidate's inheritance leaves the repository, so it may declare
+            # anything; abstain, per restriction 4.
+            continue
+        report.claims += 1
+        if any(
+            m in members
+            or m in constructor_parameters(o, types)
+            or m in TOP_LEVEL_NAMES[package_of(types[o][0].source)]
+            for (o, m), members in zip(judged, visible)
+            if m is not None
+        ):
+            continue
+        owner, member = next((o, m) for o, m in judged if m is not None)
+        report.faults.append(
+            (
+                number,
+                owner,
+                member,
+                display(types[owner][0].source),
+                " (member table"
+                + (f"; also checked {', '.join(o for o in table_owner if o != owner)}" if len(table_owner) > 1 else "")
+                + ")",
+            )
+        )
+
+
 def documents(prefix: str) -> list[Path]:
-    return sorted(
+    """The package documents, then the completion corpus (see "Two roots")."""
+    found = [
         path
         for path in REPO_ROOT.rglob("*.md")
         if path.name != "CHANGELOG.md"
         and not any(part.startswith(".") for part in path.parts)
         and str(path.relative_to(REPO_ROOT)).startswith(prefix)
-    )
+    ]
+    if COMPLETION.is_dir() and (not prefix or prefix.startswith("completion")):
+        found += COMPLETION.glob("*.md")
+    return sorted(found)
 
 
 def self_test(types: dict[str, list[TypeInfo]]) -> int:
@@ -583,7 +949,99 @@ def self_test(types: dict[str, list[TypeInfo]]) -> int:
     finally:
         subject.write_text(original, encoding="utf-8")
 
-    print("self-test: invented and misattributed members both fire")
+    if not SDK_TYPES:
+        print(
+            "self-test: the Dart SDK was not found (put `dart` on PATH or set "
+            "DART_SDK), so the case this gate exists for -- a rename on a type "
+            "that extends DateTime -- cannot be checked",
+            file=sys.stderr,
+        )
+        return 2
+
+    # Member tables (rules 5-7), on fixtures run through the same audit, so
+    # nothing on disk is touched. Both directions: a renamed member is caught,
+    # and a foreign member -- or a table that is not a member table -- is not.
+    def table_faults(*lines: str) -> int:
+        report = Report(document=Path("self-test"))
+        audit_member_tables(list(lines), types, report)
+        return len(report.faults)
+
+    table = ("| Method | Returns |", "| --- | --- |")
+    cases = [
+        # (description, lines, expected fault count)
+        (
+            "a member the type declares",
+            ("### `TomTimezone`", "", *table, "| `fromName(String name)` | `TomTimezone?` |"),
+            0,
+        ),
+        (
+            "a renamed member -- the shape convertToTimezone survived in",
+            ("### `TomTimezone`", "", *table, "| `fromNameOrNull(String name)` | `TomTimezone?` |"),
+            1,
+        ),
+        (
+            "the owner decided by a heading two levels up",
+            ("### `TomTimezone`", "#### Static methods", "", *table, "| `fromNameOrNull(String name)` | `TomTimezone?` |"),
+            1,
+        ),
+        (
+            "an SDK member reached through the closure (TomZonedDate -> DateTime)",
+            ("### `TomZonedDate`", "", *table, "| `toUtc()` | `DateTime` |"),
+            0,
+        ),
+        (
+            "the observed rename, on a type whose closure runs through the SDK",
+            ("### `TomZonedDate`", "", *table, "| `convertToTimezone(TomTimezone t)` | `TomZonedDate` |"),
+            1,
+        ),
+        (
+            "a foreign member on a type whose closure leaves the repo and the SDK",
+            ("### `TomNodeBase`", "", *table, "| `createElement()` | `StatelessElement` |"),
+            0,
+        ),
+        (
+            "a table that is not a member table",
+            ("### `TomTimezone`", "", "| Key | Raised when |", "| --- | --- |", "| `fromNameOrNull` | never |"),
+            0,
+        ),
+        (
+            "a named argument, not a member",
+            ("### `TomTimezone`", "", "| Field | Builds |", "| --- | --- |", "| `cron:` | a schedule |"),
+            0,
+        ),
+    ]
+    for description, lines, expected in cases:
+        got = table_faults(*lines)
+        if got != expected:
+            print(
+                f"self-test: member table, {description}: expected {expected} "
+                f"fault(s), got {got}",
+                file=sys.stderr,
+            )
+            return 1
+
+    # Part 3 of a completion document is history by contract and is not read,
+    # except "What is still open", which is a claim about now.
+    blanked = blank_historical_part(
+        [
+            "## Current API", "`kept`",
+            "## What changed", "`dropped`",
+            "### What is still open", "`kept again`",
+        ]
+    )
+    if blanked != [
+        "## Current API", "`kept`",
+        "## What changed", "",
+        "### What is still open", "`kept again`",
+    ]:
+        print(f"self-test: part 3 blanking is wrong: {blanked}", file=sys.stderr)
+        return 1
+
+    print(
+        "self-test: invented and misattributed members both fire; member "
+        "tables catch a rename and leave foreign members, non-member tables "
+        "and part 3 alone"
+    )
     return 0
 
 
@@ -598,6 +1056,13 @@ def main(argv: list[str]) -> int:
     if not types:
         print(f"no type declarations found under {REPO_ROOT}", file=sys.stderr)
         return 2
+
+    sdk = sdk_library_root()
+    if sdk is not None:
+        for library in SDK_LIBRARIES:
+            if (sdk / library).is_dir():
+                for name, entries in index_types(sdk / library).items():
+                    SDK_TYPES.setdefault(name, []).extend(entries)
 
     if testing:
         return self_test(types)
@@ -617,6 +1082,8 @@ def main(argv: list[str]) -> int:
         f"\ndocuments with attributions: {len(reports)}\n"
         f"attributions read          : {sum(r.claims for r in reports)}\n"
         f"types indexed              : {len(types)}\n"
+        f"SDK types (closures only)  : {len(SDK_TYPES)}"
+        f"{'' if SDK_TYPES else '  -- SDK not found; closures through dart: types abstain'}\n"
         f"documents defective        : {len(defective)}\n"
         f"members the source denies  : {faults}"
     )

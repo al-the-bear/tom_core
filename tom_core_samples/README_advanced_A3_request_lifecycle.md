@@ -319,7 +319,7 @@ the widget:
 | --- | --- | --- |
 | `title`, `description`, `priority`, `assigneeId`, `dueDate` | `read` | visible, read-only |
 | `status` | `disabled` | visible, greyed, non-interactive |
-| `estimate` | `none` | absent — the field collapses |
+| `estimateHours` (grade key `estimate`) | `none` | absent — the field collapses |
 
 No Save button (a viewer is below `editor`), and every label resolved from the
 server bundle keyed by the *same* `basePath`

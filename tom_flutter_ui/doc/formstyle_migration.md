@@ -1,6 +1,16 @@
+<!-- record: executed migration plan; Part 1 describes the flat TomFormStyle this migration replaced -->
 # FormStyle Migration
 
-This document has two parts.
+> **This is the record of a completed migration, not a description of the
+> current API.** The replacement it plans has shipped: `TomFormStyle` now holds a
+> `TomFieldStyle` of `defaults` plus one partial style per field family, and the
+> flat properties Part 1 lists as "current" live on `TomFieldStyle` and its
+> partial overrides. The document is kept for the reasoning behind that design.
+> For the form-style API as it is, read
+> [Form Theming — TomFormStyle](tom_ui_widgets_forms.md#10a-form-theming--tomformstyle)
+> and the source.
+
+This document has three parts.
 
 **Part 1** describes the current `TomFormStyle` system exactly as it exists
 today — every option, how styles are provided to the widget tree, and how
