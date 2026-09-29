@@ -1,10 +1,14 @@
 # Default test configuration for tom_core_server.
 #
-# Run suites sequentially. The DB-backed suites share one MariaDB
-# schema — they register the same `tom_core_server_test` data source in the
-# process-wide `TomDataSourceInfo` registry and truncate the same
-# `fixture_task` table between tests. Running suites in parallel would let two
-# isolates race that shared schema and registry, so serialize them.
+# Run suite files one at a time. `configuration_test.dart` and
+# `runtime_environment_test.dart` set `Directory.current` to a scratch
+# directory, because the configuration and runtime-environment code reads
+# `.env` and its siblings relative to the working directory — and the working
+# directory belongs to the whole process, while `dart test` runs concurrent suite
+# files as isolates of one process. A suite running beside them then resolves
+# every relative path (`lib/…`, `test/fixtures/…`) against the scratch directory
+# and fails on a file that exists. The DB-backed suites are not the reason: each
+# provisions a database of its own (test/fixtures/test_database.dart).
 concurrency: 1
 
 tags:

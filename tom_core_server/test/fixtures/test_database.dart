@@ -18,15 +18,16 @@
 /// It is deliberately reusable: nothing here is specific to a single test
 /// file, so any suite that needs a live schema can share it.
 ///
-/// **Every suite file gets a database of its own.** `dart test` runs several
-/// suite files at once, and many of them create, truncate and drop the same
-/// fixture tables — `fixture_task` alone is used by six. Sharing one schema
-/// meant one suite's `setUp` truncate landing in the middle of another's
-/// assertions, so the parallel run failed intermittently and in a different
-/// suite each time. [databaseName] is therefore unique to the suite's isolate
-/// (and to the run, so two concurrent runs against one server cannot meet
-/// either); [register] creates it and drops it again when the group that
-/// registered it ends. The data source *name* is unchanged — only the schema
+/// **Every suite file gets a database of its own.** Many suites create,
+/// truncate and drop the same fixture tables — `fixture_task` alone is used by
+/// six — and two runs against one server (two sessions, or a run and a
+/// developer's single file) interleave them. A shared schema lets one suite's
+/// `setUp` truncate land in the middle of another's assertions, and the failure
+/// lands in a different suite each time. [databaseName] is therefore unique to
+/// the suite's isolate and to the run; [register] creates it and drops it again
+/// when the group that registered it ends. (The package still runs its suite
+/// files one at a time, for an unrelated reason `dart_test.yaml` states: two
+/// suites change the process-wide working directory.) The data source *name* is unchanged — only the schema
 /// behind it moves — so no suite had to change to be isolated.
 library;
 

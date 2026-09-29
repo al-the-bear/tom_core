@@ -52,10 +52,10 @@ cd "$PROJECT_DIR"
 # testkit drives `dart test`; `--tags db` selects only the DB-backed suites,
 # which now find a reachable server and run instead of skipping.
 #
-# No concurrency limit, deliberately. Each suite file provisions a database of
-# its own (test/fixtures/test_database.dart), so suites running side by side
-# cannot truncate or drop each other's tables. A DB-backed failure that appears
-# only in the parallel run is therefore a real finding — two suites meeting on
-# something outside their schemas, or a connection-level defect — and `-j 1`
-# would hide it rather than fix it.
+# Concurrency is the package's own setting, not this script's: dart_test.yaml
+# runs suite files one at a time, because two suites change the process-wide
+# working directory. The database is not part of that reason — each suite file
+# provisions a database of its own (test/fixtures/test_database.dart), so no
+# suite, and no second run against the same server, can truncate or drop
+# another's tables.
 testkit :test --test-args="--tags db"

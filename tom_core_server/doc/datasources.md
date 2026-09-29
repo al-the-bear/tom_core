@@ -1204,17 +1204,17 @@ against a server you already have, export `TOM_CORE_SERVER_TEST_DB_HOST`,
 `_PORT`, `_USER`, `_PASSWORD` and `_NAME` instead and run
 `dart test --tags db` — or name one file after it.
 
-**Every DB-backed suite file runs in a database of its own**, so the tagged set
-runs in parallel like the rest of the suite. The shared fixture
+**Every DB-backed suite file runs in a database of its own**, so no suite can
+truncate or drop another's tables — neither the next suite file nor a second run
+against the same server. The shared fixture
 (`test/fixtures/test_database.dart`) names the database
 `<_NAME>_<minutes since epoch>_<6 hex digits>` per suite isolate, creates it
 when the suite registers its data source, and drops it when that group ends; a
 database left by a killed run is swept by a later one after twelve hours.
 `_NAME` is therefore a prefix, and the credential needs `CREATE` and `DROP` on
-databases. Before this, all of them shared one schema and many of them
-truncate, seed and drop the same fixture tables, so one suite's `setUp` landed
-in the middle of another's assertions and the parallel run failed
-intermittently — in a different suite each time.
+databases. The package's suite files still run one at a time, and the reason
+is not the database: `dart_test.yaml` explains it — two suites change the
+process-wide working directory.
 
 `example/datasources/datasources_example.dart` is the readable entry point to
 the same connection-free surface the first suite covers, in ten numbered

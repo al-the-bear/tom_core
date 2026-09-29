@@ -43,8 +43,12 @@
   `MariaDbXADatasource.maxBranchIdBytes` names the limit.
 - **The DB-backed suites no longer share one schema.** The test fixture gives
   every suite file a database of its own, created when it registers its data
-  source and dropped when the group ends, so `dart test --tags db` is safe in
-  parallel; `tool/run_db_tests.sh` runs it that way.
+  source and dropped when the group ends, so no suite — and no second run
+  against the same server — can truncate or drop another's tables.
+- **`dart_test.yaml` states the real reason the suite runs serially.** It said
+  the DB suites shared one schema; the reason that remains is that
+  `configuration_test` and `runtime_environment_test` change the process-wide
+  working directory, which every concurrently running suite file would inherit.
 
 - **A broken markdown reference link in `doc/authentication.md`.** The page
   links type names to in-document anchors throughout; `TomAuthenticationService`
