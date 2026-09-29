@@ -16,18 +16,21 @@ out of.
 - [Overview](#overview)
 - [Why Not Just Call a Mailer](#why-not-just-call-a-mailer)
 - [The Message Shape](#the-message-shape)
+  - [Message failure keys](#message-failure-keys)
 - [Channels Are Open, Not an Enum](#channels-are-open-not-an-enum)
 - [The One Distinction a Transport Must Get Right](#the-one-distinction-a-transport-must-get-right)
 - [The Transport Contract](#the-transport-contract)
 - [Routing](#routing)
 - [Stand-In Transports](#stand-in-transports)
 - [SMTP](#smtp)
+  - [SMTP failure keys](#smtp-failure-keys)
 - [SMS: One Gateway Shape, No Vendor Names](#sms-one-gateway-shape-no-vendor-names)
   - [Composing one](#composing-one)
   - [Segments, not characters](#segments-not-characters)
   - [Two layers of classification](#two-layers-of-classification)
   - [Describing a gateway](#describing-a-gateway)
   - [The list almost every answer is wrapped in](#the-list-almost-every-answer-is-wrapped-in)
+  - [SMS failure keys](#sms-failure-keys)
 - [Webhook: The Message Is the Payload](#webhook-the-message-is-the-payload)
   - [One endpoint per message](#one-endpoint-per-message)
   - [Headers, and who wins](#headers-and-who-wins)
@@ -56,10 +59,12 @@ out of.
   - [Lists a mail renders a variable number of](#lists-a-mail-renders-a-variable-number-of)
   - [A missing key fails before anything is queued](#a-missing-key-fails-before-anything-is-queued)
   - [Always through the outbox](#always-through-the-outbox)
+  - [Email request failure keys](#email-request-failure-keys)
 - [Application SMS: The Same Rule, Plus a Length](#application-sms-the-same-rule-plus-a-length)
   - [The shared base](#the-shared-base)
   - [Two caps, deliberately](#two-caps-deliberately)
   - [Addressing a principal](#addressing-a-principal)
+  - [SMS request failure keys](#sms-request-failure-keys)
 - [Verification](#verification)
 - [Core Components](#core-components)
 - [Not in This Framework](#not-in-this-framework)
@@ -169,6 +174,18 @@ Notes on the shape, each of which is a decision rather than an accident:
   returns every addressee including blind copies, because that is what a
   transport delivers to. `TomMimeEncoder` writes no `Bcc:` header at all —
   naming blind copies in the document is what makes a blind copy not blind.
+
+### Message failure keys
+
+Each is a `TomMessagingException` thrown by the constructor, so the caller that
+composed the value is the one on the stack. None of them is a delivery failure,
+and none ever reaches the outbox.
+
+| Key | Raised when |
+| --- | ----------- |
+| `messaging.message.unaddressed` | A `TomMessage` is built with an empty `recipients` list. Carries `messageId` |
+| `messaging.recipient.empty` | A `TomRecipient` address is empty or only whitespace |
+| `messaging.attachment.unnamed` | A `TomAttachment` file name is empty or only whitespace |
 
 ## Channels Are Open, Not an Enum
 
@@ -347,6 +364,28 @@ asserts the branches that matter most — a relay that does not offer STARTTLS, 
 rejected credential, one dead address, a `4xx` deferral — which are precisely
 the ones a real relay will not produce on demand.
 
+### SMTP failure keys
+
+The two settings keys are `TomMessagingException`s thrown when
+`TomSmtpSettings` is constructed, so a misconfigured deployment fails at
+startup. Every other key is a `TomDeliveryException` from `send`, classified
+as the outbox reads it: a permanent one is discarded, a transient one is
+retried.
+
+| Key | Classification | Raised when |
+| --- | -------------- | ----------- |
+| `messaging.smtp.no_host` | — | `TomSmtpSettings` is built with an empty host |
+| `messaging.smtp.no_password` | — | A `username` is configured without a password, or with an empty one |
+| `messaging.smtp.no_sender` | permanent | The message has no `from` and the settings have no `defaultFrom` (`smtpFromAddress`) |
+| `messaging.smtp.unreachable` | transient | Opening the connection failed — refused, DNS, timeout, or the handshake of an implicit-TLS (`tls`) connection. A failed `STARTTLS` upgrade is not wrapped and surfaces as the socket's own error |
+| `messaging.smtp.connection_closed` | transient | The server closed the connection in the middle of a reply |
+| `messaging.smtp.no_starttls` | permanent | `security` is `startTls` and the server's `EHLO` does not offer `STARTTLS` |
+| `messaging.smtp.no_supported_auth` | permanent | Credentials are configured and the server offers `AUTH`, but neither `PLAIN` nor `LOGIN` |
+| `messaging.smtp.auth_failed` | permanent | The server did not accept the credential with a `2xx`. The message names `smtpPassword`, and `statusCode` carries the reply code |
+| `messaging.smtp.all_recipients_rejected` | permanent | Every envelope address, `Bcc` included, got a `5xx` to `RCPT TO`. Some but not all refused is a partial receipt instead, with `rejectedRecipients` |
+| `messaging.smtp.rejected` | permanent | Any other stage — greeting, `HELO`, `STARTTLS`, an `AUTH LOGIN` step, `MAIL FROM`, `DATA`, the body — got an unexpected `5xx`. Parameters carry the `stage` and `code` |
+| `messaging.smtp.deferred` | transient | The same stages, or a `RCPT TO`, got an unexpected reply below `500` — a `4xx` in practice |
+
 ## SMS: One Gateway Shape, No Vendor Names
 
 `TomSmsTransport` is the second implementation of `TomMessageTransport`, and
@@ -519,6 +558,24 @@ provides with `connect`. That is how `test/sms_transport_test.dart` asserts a
 `429`, a `401`, a provider failure code on a `200`, a socket failure, a gateway
 that never answers, and one dead number among three — none of which a real
 gateway produces on demand.
+
+### SMS failure keys
+
+The first two are `TomMessagingException`s thrown while the gateway settings are
+built — by the `TomSmsGatewaySettings` constructor, or by `fromConfiguration`
+when `smsEndpoint` does not parse — so they fail at startup. The rest are
+`TomDeliveryException`s from `send`.
+
+| Key | Classification | Raised when |
+| --- | -------------- | ----------- |
+| `messaging.sms.bad_endpoint` | — | The endpoint is not an `http` or `https` URL, or `smsEndpoint` is not a URL at all |
+| `messaging.sms.incomplete_credential` | — | `authScheme` is `basic` and either `apiKey` or `apiSecret` is missing |
+| `messaging.sms.no_text` | permanent | The message has no text body, or an empty one |
+| `messaging.sms.no_sender` | permanent | The protocol requires a sender and neither the message's sender-id metadata nor `smsSenderId` provides one |
+| `messaging.sms.too_long` | permanent | The text needs more segments than `smsMaxSegments` allows. Never sent to the gateway; carries `segments`, `maxSegments` and `encoding`. The template service raises the same key earlier, against its own cap — see [SMS request failure keys](#sms-request-failure-keys) |
+| `messaging.sms.gateway_deferred` | transient | The gateway refused a recipient in a way that may pass on a retry: the provider code classifies it as transient, or it is unclassified and the HTTP status is `408`, `425`, `429` or `5xx`. Stops the pass |
+| `messaging.sms.unreachable` | transient | The HTTP call failed or did not answer within `timeout` |
+| `messaging.sms.all_recipients_rejected` | permanent | Every recipient was refused permanently. Some but not all refused is a partial receipt instead |
 
 ## Webhook: The Message Is the Payload
 
@@ -964,6 +1021,10 @@ scheduler's leases are released and the receipt stream is closed. It leaves the
 router open: a router shared with the rest of the application must not be torn
 down because the outbox stopped.
 
+A `send` after `close()` throws `messaging.outbox.closed`, a
+`TomMessagingException`: the message is not queued, and nothing is written to
+the store.
+
 ## Application Email: A Template Key, Not a Body
 
 Everything above answers "send these bytes to this address". `TomEmailService`
@@ -1149,6 +1210,17 @@ request carrying the same id are one queued message. Supply one for anything a
 caller might retry without knowing whether the first attempt landed — a reset
 keyed by its token, an invoice keyed by its number.
 
+### Email request failure keys
+
+`TomMessagingException`s thrown while the request is composed, before
+anything is rendered or queued.
+
+| Key | Raised when |
+| --- | ----------- |
+| `messaging.email.template.empty` | `TomEmailRequest` is built with an empty template key |
+| `messaging.email.recipients.empty` | `TomEmailRequest` is built with an empty `to` list. Carries `templateKey` |
+| `messaging.email.principal.no_address` | `TomEmailRequest.toPrincipal` is given a principal whose `TomUser.email` is null or blank. Carries `templateKey` and `username` |
+
 ## Application SMS: The Same Rule, Plus a Length
 
 `TomSmsService` is to SMS what `TomEmailService` is to mail, and deliberately so:
@@ -1233,6 +1305,18 @@ diagnose.
 A principal reachable by neither raises at composition, where the caller still
 knows *which user* it was reaching. A transport discovering it later can only
 report that a number was empty.
+
+### SMS request failure keys
+
+`TomMessagingException`s thrown while the request is composed or rendered, so
+none of them becomes a queued message somebody pays for.
+
+| Key | Raised when |
+| --- | ----------- |
+| `messaging.sms.template.empty` | `TomSmsRequest` is built with an empty template key |
+| `messaging.sms.recipients.empty` | `TomSmsRequest` is built with an empty `to` list. Carries `templateKey` |
+| `messaging.sms.principal.no_number` | `TomSmsRequest.toPrincipal` is given a principal with neither a mobile nor a phone number. Carries `templateKey` and `username` |
+| `messaging.sms.too_long` | `render` (and so `send`) produces a text that needs more segments than `TomSmsService.maxSegments`. Carries `templateKey`, `segments` and `maxSegments`. Not raised when the service cap is `null`; the transport's own cap still applies later, under the same key |
 
 ## Verification
 
