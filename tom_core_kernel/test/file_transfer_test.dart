@@ -192,7 +192,9 @@ class _TestClientFactory implements TomHttpClientAbstractFactory {
 String _makeJwt(Map<String, dynamic> payload) {
   String seg(Map<String, dynamic> m) =>
       base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
-  return '${seg({'alg': 'HS256', 'typ': 'JWT'})}.${seg(payload)}.sig';
+  // A live `exp`: a token without one yields no principal.
+  final claims = {'exp': 4102444800, ...payload};
+  return '${seg({'alg': 'HS256', 'typ': 'JWT'})}.${seg(claims)}.sig';
 }
 
 /// The authentication half of a stored token pair (`TomBearerAuthentication

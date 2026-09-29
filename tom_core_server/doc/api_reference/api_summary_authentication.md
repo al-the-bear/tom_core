@@ -1670,7 +1670,7 @@ caller because it is the one fact renewal is scheduled against.
 ```dart
 const TomServerSession({
   required TomPrincipal principal,
-  required DateTime? expiresAt,
+  required DateTime expiresAt,
 })
 ```
 
@@ -1679,7 +1679,7 @@ const TomServerSession({
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `principal` | `TomPrincipal` | The deployment, as a principal (final). |
-| `expiresAt` | `DateTime?` | The **earlier** of the two tokens' expiries — the session is only as good as its shorter half, and a still-valid authentication token beside an expired authorization token is a principal whose grants have lapsed. `null` is a real answer rather than a missing one: an auth server may issue tokens with no `exp`, and a deployment on one has nothing to schedule a renewal against (final). |
+| `expiresAt` | `DateTime` | The **earlier** of the two tokens' expiries — the session is only as good as its shorter half, and a still-valid authentication token beside an expired authorization token is a principal whose grants have lapsed. Never absent: a session is built only from live tokens, and a token without `exp` is refused (`server.selflogin.bad_token`), so every installed session has a deadline to renew against. |
 
 ### TomServerSelfLogin
 
@@ -1696,7 +1696,7 @@ Statics only — the constructor is private.
 | `loginAndInstall` | `static Future<bool> loginAndInstall(TomBaseServerConfiguration config, {TomServiceLoginTransport transport = const TomHttpServiceLoginTransport(), bool decryptTokens = true, bool renew = true})` | Logs in from `config` and installs the principal into `TomServerPrincipal`; returns whether one was installed. Returns `false` silently when self-login is not configured, so a deployment that configures none is unaffected. `TomServer.start()` calls this itself before binding the socket; call it directly only from a process that has no `TomServer`. Schedules the renewal below unless `renew: false`. |
 | `renewNow` | `static Future<bool> renewNow()` | Logs in again with the credential `loginAndInstall` used and installs the result; returns whether it succeeded. **A failure keeps the principal it has** — the old cap may be stale, and a stale cap is still a cap, where dropping it would widen every user's access at the moment the auth server became unreachable. The failure is logged and another attempt is scheduled. |
 | `stopRenewal` | `static void stopRenewal()` | Cancels any scheduled renewal, leaving the installed principal in place. Not a way to drop the principal, and there is deliberately no such call: clearing it widens access. |
-| `renewalDelayFor` | `static Duration? renewalDelayFor(DateTime? expiresAt, {DateTime? now, Duration? lead})` | How long to wait before renewing a session expiring at `expiresAt` — one lead before it, clamped to `minimumRenewalDelay` so a session shorter than the lead, or one already past, schedules a prompt attempt rather than a negative delay. `null` when there is no expiry to aim at. Public and pure because the arithmetic has three edges and a timer is a poor place to discover which was taken. |
+| `renewalDelayFor` | `static Duration renewalDelayFor(DateTime expiresAt, {DateTime? now, Duration? lead})` | How long to wait before renewing a session expiring at `expiresAt` — one lead before it, clamped to `minimumRenewalDelay` so a session shorter than the lead, or one already past, schedules a prompt attempt rather than a negative delay. Public and pure because the arithmetic has three edges and a timer is a poor place to discover which was taken. |
 
 #### Static Members
 

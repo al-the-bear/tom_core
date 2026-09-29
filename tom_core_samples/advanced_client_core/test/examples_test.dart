@@ -109,5 +109,5 @@ class _ScriptedTransport implements JsonTransport {
 String _makeJwt(Map<String, dynamic> payload) {
   String seg(Map<String, dynamic> m) =>
       base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
-  return '${seg({'alg': 'HS256', 'typ': 'JWT'})}.${seg(payload)}.sig';
+  return '${seg({'alg': 'HS256', 'typ': 'JWT'})}.${seg({'exp': 4102444800, ...payload})}.sig';
 }

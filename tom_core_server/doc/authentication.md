@@ -1507,9 +1507,9 @@ The next attempt lands one `globalSettingRenewalLead` (two minutes) before
 expiry, clamped to `minimumRenewalDelay` so a session shorter than the lead —
 legitimate, if the auth server issues short service tokens — schedules a prompt
 attempt rather than a negative delay, and logs that it is doing so. A token
-carrying no `exp` is installed and *not* renewed, with a warning: there is
-nothing to schedule against, and a timer with no deadline would be pretending.
-Pass `renew: false` to decline the loop, and read `installedUntil` to build your
+carrying no `exp` is refused (`server.selflogin.bad_token`): no principal is
+built from a token that is not live, so every installed session has a deadline
+to renew against. Pass `renew: false` to decline the loop, and read `installedUntil` to build your
 own.
 
 **A failed renewal keeps the principal it has.** The old cap may be stale, and a
@@ -1532,7 +1532,7 @@ signal, never surfaced to a client.
 | `server.selflogin.rejected` | The auth server refused the credential. Only the HTTP status is reported — the body may echo the credential back. |
 | `server.selflogin.bad_response` | The response was not JSON, or was JSON that is not an object. |
 | `server.selflogin.no_token` | The response carried no token under any accepted name. |
-| `server.selflogin.bad_token` | A token field was present but could not be turned into a principal: it was not a decodable JWT, its payload was not an object, or its encrypted section would not unwrap under this deployment's key. One key for all three, because the operator's move is the same in each — look at what the auth server put in that field. |
+| `server.selflogin.bad_token` | A token field was present but could not be turned into a principal: it was not a decodable JWT, its payload was not an object, its encrypted section would not unwrap under this deployment's key, or it is not live — expired, without an `exp`, or with a `validUntil` that disagrees with its `exp`. One key for all of them, because the operator's move is the same in each — look at what the auth server put in that field. |
 
 The response is read for `authenticationToken`/`authToken` and
 `authorizationToken`/`authzToken` — both spellings, because both are in the

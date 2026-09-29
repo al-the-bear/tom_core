@@ -83,7 +83,7 @@ String _serviceToken({
   expiresIn: expiresIn,
 ).getJWT('tom');
 
-/// A token whose payload carries no `exp`, as a foreign auth server may issue.
+/// A token whose payload carries no `exp` — which a Tom server refuses.
 ///
 /// Hand-built: `TomServerJwtToken` always stamps an expiry, and the reader
 /// decodes rather than verifies, so the unsigned shape is enough to carry the
@@ -555,17 +555,6 @@ void main() {
           TomServerSelfLogin.minimumRenewalDelay,
         );
       });
-
-      test('a token with no expiry cannot be scheduled against', () {
-        expect(
-          TomServerSelfLogin.renewalDelayFor(
-            null,
-            now: now,
-            lead: Duration.zero,
-          ),
-          isNull,
-        );
-      });
     });
 
     test('the login reports when the session expires', () async {
@@ -579,9 +568,8 @@ void main() {
       );
 
       expect(session.principal.user.username, 'svc-app');
-      expect(session.expiresAt, isNotNull);
       expect(
-        session.expiresAt!.difference(DateTime.now().toUtc()).inMinutes,
+        session.expiresAt.difference(DateTime.now().toUtc()).inMinutes,
         closeTo(30, 1),
       );
     });
@@ -675,19 +663,25 @@ void main() {
       expect(TomServerPrincipal.isConfigured, isTrue);
     });
 
-    test('a token with no expiry is installed but not renewed', () async {
-      // Nothing to schedule against. Installing anyway is right — the cap is
-      // real — but pretending to renew it would be a timer with no deadline.
+    test('a token with no expiry is refused, not installed', () async {
+      // A token without `exp` is not live — it would be a server principal that
+      // never lapses — so no principal is built from it and nothing is
+      // installed or scheduled. The refusal is the login's own key, so a
+      // deployment on such an auth server learns why at start-up.
       final transport = _FakeTransport(_kernelSpelling(_tokenWithoutExpiry()));
 
-      await TomServerSelfLogin.loginAndInstall(
-        _configured(),
-        transport: transport,
+      await expectLater(
+        TomServerSelfLogin.loginAndInstall(_configured(), transport: transport),
+        throwsA(
+          isA<TomServerSelfLoginException>().having(
+            (e) => e.key,
+            'key',
+            'server.selflogin.bad_token',
+          ),
+        ),
       );
-
-      expect(TomServerPrincipal.isConfigured, isTrue);
+      expect(TomServerPrincipal.isConfigured, isFalse);
       expect(TomServerSelfLogin.isRenewing, isFalse);
-      expect(TomServerSelfLogin.installedUntil, isNull);
     });
 
     test('stopping disarms the loop', () async {

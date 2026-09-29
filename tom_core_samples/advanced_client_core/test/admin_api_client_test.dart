@@ -338,11 +338,13 @@ Map<String, Object?> _userBody(String id) => {
 
 /// Builds an unsigned, undecrypted JWT whose middle segment carries [payload].
 /// Suitable for `setTokens(..., decrypt: false)`.
+/// An unsigned JWT carrying [payload] and a live `exp` (2100-01-01): a token
+/// without `exp` yields no principal.
 String _makeJwt(Map<String, dynamic> payload) {
   String seg(Map<String, dynamic> m) =>
       base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
   final header = {'alg': 'HS256', 'typ': 'JWT'};
-  return '${seg(header)}.${seg(payload)}.sig';
+  return '${seg(header)}.${seg({'exp': 4102444800, ...payload})}.sig';
 }
 
 /// One captured transport call, so a test can assert what the client sent.

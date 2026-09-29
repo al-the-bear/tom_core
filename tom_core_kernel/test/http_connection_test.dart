@@ -4608,5 +4608,7 @@ class _ScriptedRefresher implements TomAuthRefresher {
 String _bearerJwt(Map<String, dynamic> payload) {
   String segment(Map<String, dynamic> claims) =>
       base64Url.encode(utf8.encode(jsonEncode(claims))).replaceAll('=', '');
-  return '${segment({'alg': 'HS256', 'typ': 'JWT'})}.${segment(payload)}.sig';
+  // A live `exp`: a token without one yields no principal.
+  final claims = {'exp': 4102444800, ...payload};
+  return '${segment({'alg': 'HS256', 'typ': 'JWT'})}.${segment(claims)}.sig';
 }

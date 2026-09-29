@@ -207,10 +207,11 @@ void main() {
       // Deliberate, and the opposite of what a signature check might be
       // expected to do. An expired token is still *ours*, and it is the only
       // thing left identifying who is asking — a refresh or re-login endpoint
-      // is reached with exactly it. Expiry is answered one layer up, where
-      // `tomDefaultAuthenticationMiddleware` resolves the session to no
-      // principal while the credentials survive; see the middleware group
-      // below, which asserts both halves.
+      // is reached with exactly it. Expiry is answered by the principal
+      // reader, `TomBearerAuthentication.convertTokenPayloadToPrincipal`, which
+      // builds no principal from a dead token; the token itself survives. See
+      // the middleware groups below, which assert both halves with a warm
+      // cache and a cold one.
       final expired = TomServerJwtToken({
         'userId': 'u',
       }, expiresIn: const Duration(hours: -1)).getJWT('issuer');
@@ -651,12 +652,8 @@ void main() {
         });
         await handler(_get(await expiredCredentials()));
         // The expired session resolves to *no* principal — the same answer a
-        // request bearing no credentials gets. Falling back to the principal
-        // `extractAuthentication` derived would serve the dead session as
-        // `alice`, authenticated: that reader performs no expiry check, so the
-        // fallback would turn a wrong-response bug into an authentication
-        // bypass. A protected endpoint now refuses this request through the
-        // ordinary access-denied path instead.
+        // request bearing no credentials gets. A protected endpoint refuses
+        // this request through the ordinary access-denied path.
         expect(zonePrincipal, isNull);
       });
 
@@ -671,6 +668,60 @@ void main() {
         // re-login endpoint is reached with exactly this token, and it is the
         // only thing left identifying who is asking.
         expect(zoneToken, isNotNull);
+      });
+    });
+
+    // The same expired token with nothing cached under it. Which answer a dead
+    // token gets must not depend on cache occupancy — an entry evicted by the
+    // sweep, or a process that never cached the token, is the common case, and
+    // here the token-derived principal is the only one on offer. The lifetime
+    // is therefore enforced where every principal is built, not by the cache.
+    group('when nothing is cached for an expired token', () {
+      Map<String, String> expiredCredentials() => {
+        'authorization':
+            'Bearer ${TomServerJwtToken({'userId': 'u', 'username': 'alice'}, expiresIn: const Duration(hours: -1)).getJWT('tom')}',
+      };
+
+      test('the credential reader establishes no principal', () {
+        final (principal, token, outcome) = extractAuthentication(
+          _get(expiredCredentials()),
+        );
+        expect(principal, isNull);
+        expect(token, isNotNull);
+        expect(outcome, TomCredentialOutcome.noPrincipal);
+      });
+
+      test('the request is served with no principal and its token', () async {
+        TomPrincipal? zonePrincipal;
+        TomClientJwtToken? zoneToken;
+        var handlerRan = false;
+        final handler = tomDefaultAuthenticationMiddleware('auth')((req) {
+          handlerRan = true;
+          zonePrincipal = getFromCurrentZone<TomPrincipal>();
+          zoneToken = getFromCurrentZone<TomClientJwtToken>();
+          return Response.ok('ok');
+        });
+        final response = await handler(_get(expiredCredentials()));
+        expect(handlerRan, isTrue);
+        expect(response.statusCode, 200);
+        expect(zonePrincipal, isNull);
+        expect(zoneToken, isNotNull);
+      });
+
+      test('a live token still establishes its principal', () async {
+        TomPrincipal? zonePrincipal;
+        final handler = tomDefaultAuthenticationMiddleware('auth')((req) {
+          zonePrincipal = getFromCurrentZone<TomPrincipal>();
+          return Response.ok('ok');
+        });
+        await handler(
+          _get({
+            'authorization':
+                'Bearer ${TomServerJwtToken({'userId': 'u', 'username': 'alice'}).getJWT('tom')}',
+          }),
+        );
+        expect(zonePrincipal?.username, 'alice');
+        expect(zonePrincipal?.authenticated, isTrue);
       });
     });
   });

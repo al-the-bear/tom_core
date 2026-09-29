@@ -48,6 +48,7 @@ library;
 
 import 'package:tom_crypto/tom_crypto.dart';
 
+import '../little_things/exception_base.dart';
 import 'access_controls.dart';
 import 'two_factor.dart';
 import 'user_principal_aci.dart';
@@ -263,6 +264,81 @@ class TomBearerAuthentication {
               bearerAuthentication._clientJwtToken)
           ?.payload;
 
+  /// How far `validUntil` may stray from `exp` before the token is refused.
+  ///
+  /// The framework's own issuer derives both from one clock read, so they
+  /// agree to the second; the margin is for issuers that compute them
+  /// separately, and is small enough that a disagreement past it means the
+  /// two claims describe different tokens.
+  static const Duration tokenExpiryAgreement = Duration(minutes: 2);
+
+  /// Throws [TomTokenLifetimeException] unless [token] is live at [now]
+  /// (the current time when omitted).
+  ///
+  /// **`exp` decides.** It is the registered JWT claim, in epoch seconds, and
+  /// the one any JWT library or gateway in front of the server enforces, so a
+  /// token from another issuer is judged by the same rule. A token is dead
+  /// from its `exp` instant on — the claim is exclusive, as RFC 7519 defines
+  /// it. There is no default lifetime: a token without a readable `exp` is
+  /// refused (`security.token.missing_expiry`), because accepting it would
+  /// mean accepting a token that never expires.
+  ///
+  /// **`validUntil` must agree.** Tom's issuer writes it beside `exp` as an ISO
+  /// 8601 instant. It is optional, but when present it has to parse as an
+  /// instant within [tokenExpiryAgreement] of `exp`; otherwise the token
+  /// contradicts itself and is refused (`security.token.expiry_mismatch`). A
+  /// value without an offset is read in this process's zone, which is the zone
+  /// an issuer writing it that way meant — `tom_crypto` before 1.2.2 wrote
+  /// local time, and a Tom server mints its own tokens.
+  ///
+  /// Keys: `security.token.missing_expiry` (absent or not an integer),
+  /// `security.token.invalid_expiry` (an integer no instant can be built
+  /// from), `security.token.expired`, `security.token.expiry_mismatch`.
+  static void checkTokenLifetime(TomClientJwtToken token, {DateTime? now}) {
+    final payload = token.payload;
+    final Object? exp = payload?['exp'];
+    if (exp is! int) {
+      throw TomTokenLifetimeException(
+        'security.token.missing_expiry',
+        'The token carries no readable exp claim',
+        parameters: {'value': exp},
+      );
+    }
+    final DateTime expiry;
+    try {
+      expiry = DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true);
+    } on Object {
+      throw TomTokenLifetimeException(
+        'security.token.invalid_expiry',
+        'The token carries an exp claim that is not a representable instant',
+        parameters: {'value': exp},
+      );
+    }
+
+    final Object? validUntil = payload?['validUntil'];
+    if (validUntil != null) {
+      final stated = validUntil is String
+          ? DateTime.tryParse(validUntil)
+          : null;
+      if (stated == null ||
+          stated.difference(expiry).abs() > tokenExpiryAgreement) {
+        throw TomTokenLifetimeException(
+          'security.token.expiry_mismatch',
+          'The token\'s validUntil does not agree with its exp',
+          parameters: {'exp': exp, 'validUntil': validUntil},
+        );
+      }
+    }
+
+    if (!(now ?? DateTime.now()).toUtc().isBefore(expiry)) {
+      throw TomTokenLifetimeException(
+        'security.token.expired',
+        'The token has expired',
+        parameters: {'expiredAt': expiry.toIso8601String()},
+      );
+    }
+  }
+
   /// Converts JWT token payloads to a [TomPrincipal] object.
   ///
   /// Extracts user information, context, and access control data from
@@ -273,6 +349,10 @@ class TomBearerAuthentication {
   ///   (uses authentication token if not provided)
   ///
   /// Returns a [TomPrincipal] with all extracted information.
+  ///
+  /// Throws [TomTokenLifetimeException] when either token is not live — see
+  /// [checkTokenLifetime]. An expired token therefore never becomes a
+  /// principal object at all, so no caller can serve one by forgetting to ask.
   static TomPrincipal convertTokenPayloadToPrincipal(
     TomClientJwtToken authenticationToken, [
     TomClientJwtToken? authorizationToken,
@@ -288,6 +368,12 @@ class TomBearerAuthentication {
       );
     }
     final secret = t.secretData;
+
+    // Only a live token yields a principal. Checked for both tokens: the
+    // principal is read from the authorization token, but a session whose
+    // authentication has lapsed is over whatever the other one says.
+    checkTokenLifetime(authenticationToken);
+    if (authorizationToken != null) checkTokenLifetime(authorizationToken);
 
     // Defensive readers: tokens come from outside this process, so individual
     // claims may be missing or the wrong shape. Each reader falls back rather
@@ -737,4 +823,24 @@ class TomBearerAuthentication {
 
     return (publicInfo, privateInfo);
   }
+}
+
+/// A token refused because it is not live: expired, carrying no usable `exp`,
+/// or contradicting itself about when it expires.
+///
+/// Raised by [TomBearerAuthentication.checkTokenLifetime], and so by
+/// [TomBearerAuthentication.convertTokenPayloadToPrincipal] before any
+/// principal is built. It is a refusal, not a fault: the answer for a request
+/// is "unauthenticated", and the remedy is to renew or log in again.
+class TomTokenLifetimeException extends TomException {
+  TomTokenLifetimeException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+    super.uuid,
+    super.serverCallError,
+  });
 }

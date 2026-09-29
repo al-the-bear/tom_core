@@ -118,7 +118,7 @@ void main() {
 /// with `decrypt: false` so no key material is needed.
 final String _token = _encode(
   '{"alg":"none","typ":"JWT"}',
-  '{"userId":42,"username":"Ada"}',
+  '{"userId":42,"username":"Ada","exp":4102444800}',
 );
 
 String _encode(String header, String payload) {

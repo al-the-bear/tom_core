@@ -53,23 +53,24 @@ class TomServerSession {
   /// The deployment, as a principal.
   final TomPrincipal principal;
 
-  /// When the session stops being good, or `null` when no token carried an
-  /// `exp`.
+  /// When the session stops being good.
   ///
   /// The **earlier** of the two tokens' expiries, because the session is only
   /// as good as its shorter half — a still-valid authentication token beside an
   /// expired authorization token is a principal whose grants have lapsed, which
   /// is the half that does the capping.
   ///
-  /// `null` is a real answer, not a missing one: an auth server is free to
-  /// issue tokens with no expiry, and a deployment on one has nothing to
-  /// schedule a renewal against. See [TomServerSelfLogin.loginAndInstall].
-  final DateTime? expiresAt;
+  /// Never absent: a session is built only from live tokens, and a token with
+  /// no `exp` is not live — [TomBearerAuthentication.checkTokenLifetime]
+  /// refuses it, and [TomServerSelfLogin.logIn] reports that as
+  /// `server.selflogin.bad_token`. So every installed session has a deadline to
+  /// schedule its renewal against.
+  final DateTime expiresAt;
 
   @override
   String toString() =>
       'TomServerSession(${principal.user.username}, until '
-      '${expiresAt?.toIso8601String() ?? 'no expiry'})';
+      '${expiresAt.toIso8601String()})';
 }
 
 // =============================================================================
@@ -433,7 +434,7 @@ class TomServerSelfLogin {
     tomLog.info(
       'Server self-login succeeded for ${credential.username}; deployment '
       'grants now cap user grants'
-      '${session.expiresAt == null ? '' : ' until ${session.expiresAt!.toIso8601String()}'}.',
+      ' until ${session.expiresAt.toIso8601String()}.',
     );
 
     stopRenewal();
@@ -521,7 +522,7 @@ class TomServerSelfLogin {
       _install(session);
       tomLog.info(
         'Server principal renewed for ${credential.username}'
-        '${session.expiresAt == null ? '' : ', now good until ${session.expiresAt!.toIso8601String()}'}.',
+        ', now good until ${session.expiresAt.toIso8601String()}.',
       );
       _scheduleRenewal(session.expiresAt);
       return true;
@@ -542,18 +543,16 @@ class TomServerSelfLogin {
   ///
   /// One [lead] before expiry, clamped to [minimumRenewalDelay] so a session
   /// shorter than the lead — or one already past — schedules a prompt attempt
-  /// rather than a negative delay. `null` when there is no expiry to aim at,
-  /// which is the caller's signal not to schedule anything.
+  /// rather than a negative delay.
   ///
   /// Public and pure because it is the part worth checking: the arithmetic has
   /// three edges (comfortable, too short, already past) and a timer is a poor
   /// place to discover which one was taken.
-  static Duration? renewalDelayFor(
-    DateTime? expiresAt, {
+  static Duration renewalDelayFor(
+    DateTime expiresAt, {
     DateTime? now,
     Duration? lead,
   }) {
-    if (expiresAt == null) return null;
     final delay =
         expiresAt.difference(now ?? DateTime.now().toUtc()) -
         (lead ?? globalSettingRenewalLead);
@@ -565,17 +564,8 @@ class TomServerSelfLogin {
     _installedUntil = session.expiresAt;
   }
 
-  static void _scheduleRenewal(DateTime? expiresAt) {
+  static void _scheduleRenewal(DateTime expiresAt) {
     final delay = renewalDelayFor(expiresAt);
-    if (delay == null) {
-      tomLog.warn(
-        'The service token carries no expiry, so the server principal cannot '
-        'be renewed on a schedule. It will cap user grants at whatever it '
-        'holds until the process restarts or TomServerSelfLogin.renewNow() is '
-        'called.',
-      );
-      return;
-    }
     if (delay == minimumRenewalDelay) {
       tomLog.warn(
         'The service token expires sooner than the renewal lead of '
@@ -598,30 +588,26 @@ class TomServerSelfLogin {
     });
   }
 
-  /// The sooner of the two tokens' `exp` claims, or `null` when neither has one.
-  static DateTime? _earlierExpiry(
+  /// The sooner of the two tokens' `exp` claims.
+  ///
+  /// Both tokens have already been through
+  /// [TomBearerAuthentication.checkTokenLifetime] — building the principal
+  /// checks them — so each carries a representable integer `exp`.
+  static DateTime _earlierExpiry(
     TomClientJwtToken authentication,
     TomClientJwtToken authorization,
   ) {
-    final expiries = [
-      for (final token in [authentication, authorization])
-        if (_expiryOf(token) case final DateTime expiry) expiry,
-    ];
-    if (expiries.isEmpty) return null;
-    return expiries.reduce((a, b) => a.isBefore(b) ? a : b);
+    final a = _expiryOf(authentication);
+    final b = _expiryOf(authorization);
+    return a.isBefore(b) ? a : b;
   }
 
-  /// A token's `exp` as an instant, or `null` when it carries none.
-  ///
-  /// `exp` is seconds since the epoch by the JWT specification, and this token
-  /// came off the wire, so a value of another shape is read as *absent* rather
-  /// than coerced: a renewal scheduled against a number that was never a
-  /// timestamp is worse than one that never runs.
-  static DateTime? _expiryOf(TomClientJwtToken token) {
-    final exp = token.payload?['exp'];
-    if (exp is! int) return null;
-    return DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true);
-  }
+  /// A checked token's `exp` as an instant.
+  static DateTime _expiryOf(TomClientJwtToken token) =>
+      DateTime.fromMillisecondsSinceEpoch(
+        (token.payload!['exp'] as int) * 1000,
+        isUtc: true,
+      );
 
   /// Extracts the `(authentication, authorization)` token pair from a login
   /// response body.

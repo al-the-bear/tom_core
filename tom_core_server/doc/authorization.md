@@ -93,10 +93,10 @@ request bearing no credentials gets.
 
 It does **not** fall back to `callPrincipal`, even though one is sitting right
 there. An entry's expiry *is* the token's `exp`, so an expired entry
-means this token has expired; `TomBearerAuthentication.convertTokenPayloadToPrincipal`
-performs no expiry check and would rebuild the dead session as authenticated.
-Falling back would make the cache's presence decide whether an expired token is
-honoured, in the dangerous direction.
+means this token has expired, and `callPrincipal` is `null` for it already:
+`TomBearerAuthentication.convertTokenPayloadToPrincipal` builds no principal from
+a token that is not live, so the answer for an expired token is the same whether
+or not the cache holds it.
 
 Nor does the middleware answer 401 itself. An unauthenticated request is a
 legitimate thing for this pipeline to carry: a protected endpoint refuses it

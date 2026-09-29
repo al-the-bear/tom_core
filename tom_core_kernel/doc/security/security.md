@@ -1314,6 +1314,19 @@ TomBearerAuthentication.replacePrincipalAci(
 );
 ```
 
+**Only a live token yields a principal.** `convertTokenPayloadToPrincipal` —
+and so `setTokens`, and the server's request pipeline — refuses a token that is
+not live with a `TomTokenLifetimeException`, before building anything. The
+token's standard `exp` claim decides, and a token without one is refused rather
+than treated as never expiring. When a token also carries Tom's `validUntil`, the
+two must agree to within two minutes (`TomBearerAuthentication.tokenExpiryAgreement`)
+or the token is refused as contradicting itself. The keys: `security.token.missing_expiry`
+(no integer `exp`), `security.token.invalid_expiry` (an `exp` no clock can
+represent), `security.token.expired`, and `security.token.expiry_mismatch`.
+The server verifies a bearer
+token's signature but not its lifetime, so an expired token still reaches a
+renewal endpoint — it just authenticates nobody.
+
 `replacePrincipalAci` **replaces** the ACI rather than merging into it, so pass
 the full set the principal should end up with, not a delta. All five are
 required and named, so the two ways to get this wrong silently are both

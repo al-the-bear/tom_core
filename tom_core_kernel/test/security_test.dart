@@ -92,6 +92,148 @@ TomPrincipal createTestPrincipalWithGroups({
 // =============================================================================
 
 void main() {
+  group('a token\'s lifetime decides whether it yields a principal', () {
+    // The server verifies a bearer token's signature and deliberately not its
+    // lifetime, so a renewal endpoint still receives an expired token. The
+    // lifetime is enforced here instead, where every principal is built, so an
+    // expired token yields none whether or not a cache happens to hold it.
+    final now = DateTime.utc(2026, 9, 29, 12);
+
+    TomClientJwtToken issued(Duration expiresIn) => TomClientJwtToken(
+      TomServerJwtToken({
+        'username': 'ada',
+        'userId': 7,
+      }, expiresIn: expiresIn).getJWT('tom'),
+      decrypt: false,
+    );
+
+    Matcher refusedWith(String key) => throwsA(
+      isA<TomTokenLifetimeException>().having((e) => e.key, 'key', key),
+    );
+
+    test('a live token yields an authenticated principal', () {
+      final principal = TomBearerAuthentication.convertTokenPayloadToPrincipal(
+        issued(const Duration(hours: 1)),
+      );
+      expect(principal.authenticated, isTrue);
+      expect(principal.username, 'ada');
+    });
+
+    test('an expired token yields no principal at all', () {
+      expect(
+        () => TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          issued(const Duration(minutes: -1)),
+        ),
+        refusedWith('security.token.expired'),
+      );
+    });
+
+    test('an expired authentication token is refused beside a live '
+        'authorization token', () {
+      expect(
+        () => TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          issued(const Duration(minutes: -1)),
+          issued(const Duration(hours: 1)),
+        ),
+        refusedWith('security.token.expired'),
+      );
+    });
+
+    test('exp is exclusive: a token is dead at its expiry instant', () {
+      final exp = _epochSeconds(now);
+      expect(
+        () => TomBearerAuthentication.checkTokenLifetime(
+          _rawToken({'username': 'ada', 'exp': exp}),
+          now: now,
+        ),
+        refusedWith('security.token.expired'),
+      );
+      TomBearerAuthentication.checkTokenLifetime(
+        _rawToken({'username': 'ada', 'exp': exp + 1}),
+        now: now,
+      );
+    });
+
+    test('a token with no exp is refused', () {
+      expect(
+        () => TomBearerAuthentication.convertTokenPayloadToPrincipal(
+          _rawToken({'username': 'ada', 'validUntil': '2099-01-01T00:00:00Z'}),
+        ),
+        refusedWith('security.token.missing_expiry'),
+      );
+    });
+
+    test('an exp that is not an integer is refused', () {
+      expect(
+        () => TomBearerAuthentication.checkTokenLifetime(
+          _rawToken({'username': 'ada', 'exp': '4102444800'}),
+          now: now,
+        ),
+        refusedWith('security.token.missing_expiry'),
+      );
+    });
+
+    test('an exp no clock can represent is refused', () {
+      expect(
+        () => TomBearerAuthentication.checkTokenLifetime(
+          _rawToken({'username': 'ada', 'exp': 1 << 60}),
+          now: now,
+        ),
+        refusedWith('security.token.invalid_expiry'),
+      );
+    });
+
+    test('exp decides: validUntil may be absent', () {
+      TomBearerAuthentication.checkTokenLifetime(
+        _rawToken({'username': 'ada', 'exp': _epochSeconds(now) + 60}),
+        now: now,
+      );
+    });
+
+    test('validUntil within two minutes of exp is accepted', () {
+      final exp = now.add(const Duration(hours: 1));
+      TomBearerAuthentication.checkTokenLifetime(
+        _rawToken({
+          'username': 'ada',
+          'exp': _epochSeconds(exp),
+          'validUntil': exp.add(const Duration(minutes: 2)).toIso8601String(),
+        }),
+        now: now,
+      );
+    });
+
+    test('validUntil more than two minutes from exp is refused', () {
+      final exp = now.add(const Duration(hours: 1));
+      expect(
+        () => TomBearerAuthentication.checkTokenLifetime(
+          _rawToken({
+            'username': 'ada',
+            'exp': _epochSeconds(exp),
+            'validUntil': exp
+                .subtract(const Duration(minutes: 2, seconds: 1))
+                .toIso8601String(),
+          }),
+          now: now,
+        ),
+        refusedWith('security.token.expiry_mismatch'),
+      );
+    });
+
+    test('a validUntil that is not an instant is refused', () {
+      expect(
+        () => TomBearerAuthentication.checkTokenLifetime(
+          _rawToken({
+            'username': 'ada',
+            'exp': _epochSeconds(now) + 60,
+            'validUntil': 'tomorrow',
+          }),
+          now: now,
+        ),
+        refusedWith('security.token.expiry_mismatch'),
+      );
+    });
+  });
+
   group('TomUser', () {
     group('constructor', () {
       test('should create user with default values', () {
@@ -4810,11 +4952,20 @@ class _MutableAuthorizable implements TomAuthorizable {
 /// decode; `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.sig` is `{"alg":...}.{}.sig`.
 /// Decryption is disabled, so the real payload/secretData are never read — the
 /// overrides below supply the values the tests care about.
+/// An `exp` far enough ahead that a fixture token never lapses mid-suite.
+///
+/// A token without `exp` yields no principal, and these fixtures are about
+/// the claims, not the lifetime; a test that is about the lifetime sets `exp`
+/// itself, which the fake then leaves alone.
+const int _liveExp = 4102444800; // 2100-01-01T00:00:00Z
+
 class _FakeClientJwtToken extends TomClientJwtToken {
   _FakeClientJwtToken({
     Map<String, dynamic>? payload,
     Map<String, dynamic>? secretData,
-  }) : _payload = payload,
+  }) : _payload = payload == null || payload.containsKey('exp')
+           ? payload
+           : {...payload, 'exp': _liveExp},
        super('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.sig', decrypt: false) {
     this.secretData = secretData;
   }
@@ -4866,7 +5017,8 @@ String _makeJwt(Map<String, dynamic> payload) {
   String seg(Map<String, dynamic> m) =>
       base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
   final header = {'alg': 'HS256', 'typ': 'JWT'};
-  return '${seg(header)}.${seg(payload)}.sig';
+  // A live `exp`: a token without one yields no principal.
+  return '${seg(header)}.${seg({'exp': _liveExp, ...payload})}.sig';
 }
 
 /// The five switches, master first, in [TomResourceKeyProtection.settingNames]
@@ -4895,3 +5047,21 @@ class _FixedLimitsProvider extends TomClientLimitsProvider {
     return limits;
   }
 }
+
+/// A token string carrying exactly [payload], unsigned.
+///
+/// [TomServerJwtToken] always writes `exp` and `validUntil` from one clock
+/// read, so it cannot mint a token that lacks the claim or disagrees with
+/// itself - the two shapes a client can still present. The lifetime check reads
+/// the payload only; the signature belongs to the server's `verifyBearerToken`.
+TomClientJwtToken _rawToken(Map<String, Object?> payload) {
+  String part(Object value) =>
+      base64Url.encode(utf8.encode(jsonEncode(value))).replaceAll('=', '');
+  return TomClientJwtToken(
+    '${part({'alg': 'HS256', 'typ': 'JWT'})}.${part(payload)}.c2ln',
+    decrypt: false,
+  );
+}
+
+/// Seconds since the epoch, as `exp` carries them.
+int _epochSeconds(DateTime t) => t.millisecondsSinceEpoch ~/ 1000;

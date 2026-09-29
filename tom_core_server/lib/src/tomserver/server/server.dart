@@ -72,22 +72,17 @@ enum TomCredentialOutcome {
   /// client of that issuer.
   unreadableToken,
 
-  /// The token verified, but no [TomPrincipal] could be built from its claims.
+  /// The token verified, but no [TomPrincipal] could be built from it.
   ///
   /// The token is this deployment's own — it carries a signature this server
-  /// can check — so the claim set is malformed rather than forged, and the
-  /// token is handed back with the outcome: a refresh endpoint is reached with
-  /// exactly it.
+  /// can check — and it is handed back with the outcome: a refresh endpoint is
+  /// reached with exactly it.
   ///
-  /// **No request can currently produce this.** `TomClientJwtToken` refuses
-  /// every payload shape that would defeat
-  /// [TomBearerAuthentication.convertTokenPayloadToPrincipal] — a payload that
-  /// is not a map, or absent — before the converter is reached, and the
-  /// converter itself reads every claim defensively. The guard is kept because
-  /// the alternative to catching is a 500 for a token this deployment signed,
-  /// and this value is what the guard answers with. `test/server_test.dart`
-  /// pins the guard by the shape of the function rather than by a request,
-  /// which is the only way an unreachable branch can be pinned at all.
+  /// The ordinary cause is a token that is **not live**: expired, without a
+  /// readable `exp`, or with a `validUntil` that disagrees with its `exp`.
+  /// [TomBearerAuthentication.convertTokenPayloadToPrincipal] refuses to build
+  /// a principal from such a token (`TomTokenLifetimeException`), because
+  /// signature verification deliberately does not check the lifetime.
   noPrincipal,
 
   /// The token verified and yielded a principal.
@@ -210,12 +205,12 @@ String _forTheLog(String value) =>
 ///   makes of an unrecognised exception (an HTTP 500, by default) instead of an
 ///   answer it can act on.
 /// - It must not fall back to [tokenPrincipal]. The cache entry's lifetime *is*
-///   the token's — `TomAuthorizationCache` reads it from the token's
-///   `validUntil` claim — so an expired entry means *this token* has expired,
-///   while [TomBearerAuthentication.convertTokenPayloadToPrincipal] performs no
-///   expiry check and would happily rebuild the session as authenticated. The
-///   fallback would therefore serve a dead session, turning a wrong-response
-///   bug into an authentication bypass.
+///   the token's — `TomAuthorizationCache` reads it from the token's `exp`
+///   claim — so an expired entry means *this token* has expired, and
+///   [extractAuthentication] has already declined to build a principal from
+///   it: [TomBearerAuthentication.convertTokenPayloadToPrincipal] enforces the
+///   token's lifetime whether or not anything was cached. Serving an expired
+///   entry's principal would be the one path around that check.
 ///
 /// Resolving to no principal keeps the cache from changing the answer in the
 /// dangerous direction: a protected endpoint refuses the request through the

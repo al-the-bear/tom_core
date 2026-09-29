@@ -2848,14 +2848,16 @@ void main() {
   });
 }
 
-/// A syntactically valid, unsigned JWT carrying [payload].
+/// A syntactically valid, unsigned JWT carrying [payload] and a live `exp`.
 ///
 /// Signed tokens are the security suite's business; here the token only has to
-/// be *parseable*, because what is under test is which header carries it.
+/// be *parseable* and live, because what is under test is which header carries
+/// it — and a token without `exp` yields no principal.
 String _bearerJwt(Map<String, dynamic> payload) {
   String segment(Map<String, dynamic> claims) =>
       base64Url.encode(utf8.encode(jsonEncode(claims))).replaceAll('=', '');
-  return '${segment({'alg': 'HS256', 'typ': 'JWT'})}.${segment(payload)}.sig';
+  final claims = {'exp': 4102444800, ...payload};
+  return '${segment({'alg': 'HS256', 'typ': 'JWT'})}.${segment(claims)}.sig';
 }
 
 /// The wire body the server would answer for [key] holding [value].
