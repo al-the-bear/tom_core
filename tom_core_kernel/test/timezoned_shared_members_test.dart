@@ -98,6 +98,73 @@ void main() {
   });
 
   // ===========================================================================
+  // The roster parse itself
+  // ===========================================================================
+  group('the roster parse reads member entries, not prose', () {
+    test('every line of the real roster is a member entry', () {
+      expect(
+        _parseRoster(_leadIn(_sharedHeading)).notEntries,
+        isEmpty,
+        reason:
+            'A line in the shared block is neither a list of members nor a '
+            '// remark. Put prose in a remark or outside the fence; the '
+            'roster is read as a list of members.',
+      );
+    });
+
+    test('remarks contribute no names', () {
+      final roster = _parseRoster(const [
+        '```text',
+        '// Common accessors (return UTC values)',
+        '  year, month',
+        '  timezone          // The associated TomTimezone',
+        '  toString()        // Serialize to string',
+        '```',
+      ]);
+      expect(roster.names, {'year', 'month', 'timezone', 'toString'});
+      expect(roster.notEntries, isEmpty);
+    });
+
+    test('a prose line is reported, not read as names', () {
+      final roster = _parseRoster(const [
+        '```text',
+        '  year',
+        '  Conversion lives on the subclasses, with local values.',
+        '```',
+      ]);
+      expect(roster.names, {'year'});
+      expect(roster.notEntries, hasLength(1));
+    });
+
+    test('a stale entry is read as a name, so the comparison catches it', () {
+      final roster = _parseRoster(const [
+        '```text',
+        '  year, month',
+        '  convertToTzSameInstant(zone)   // not on the base class',
+        '```',
+      ]);
+      expect(roster.names, contains('convertToTzSameInstant'));
+      expect(roster.names.difference(_sharedMembers.keys.toSet()), {
+        'convertToTzSameInstant',
+      });
+    });
+
+    test('only the first fence is the roster', () {
+      final roster = _parseRoster(const [
+        '```text',
+        '  year',
+        '```',
+        'Prose between the fences.',
+        '```dart',
+        'final moved = value.convertToTzSameInstant(zone);',
+        '```',
+      ]);
+      expect(roster.names, {'year'});
+      expect(roster.notEntries, isEmpty);
+    });
+  });
+
+  // ===========================================================================
   // What belongs to the subclasses instead
   // ===========================================================================
   group('per-subclass members are documented per subclass', () {
@@ -355,16 +422,32 @@ Map<String, List<String>> _documentedConversions() {
 /// Anything fenced after it is illustration, and illustration names locals and
 /// calls per-subclass members, so reading it too would make the roster look
 /// like whatever the examples happen to mention.
+Set<String> _sharedBlockNames() => _parseRoster(_leadIn(_sharedHeading)).names;
+
+/// What [_parseRoster] found: the member names, and the roster lines that were
+/// not member entries at all.
+typedef _Roster = ({Set<String> names, List<String> notEntries});
+
+/// Parses the first fenced block in [lines] as a member roster.
 ///
-/// Inside the roster the lines are prose-shaped — bare identifiers, call syntax
-/// and `//` remarks mixed together — so the parse drops comments and parameter
-/// lists, then takes what identifiers remain. Dropping the parameters matters:
-/// a signature names its argument too, and an argument is not a member.
-Set<String> _sharedBlockNames() {
+/// A roster line is a comma-separated list of member entries — a bare name or
+/// a call such as `toString()` — optionally followed by a `//` remark. The
+/// parse drops the remark and the parameter lists (a signature names its
+/// argument too, and an argument is not a member) and then requires what is
+/// left to be exactly that list.
+///
+/// A line that is not is reported in `notEntries` rather than mined for
+/// identifiers. Mining it is what turns a sentence into a dozen "members" —
+/// `the`, `with`, `values` — each of which the comparison against the base
+/// class then reports as a stale entry, so a real stale member becomes
+/// indistinguishable from the document's grammar.
+_Roster _parseRoster(List<String> lines) {
   final names = <String>{};
+  final notEntries = <String>[];
+  final entryList = RegExp(r'^[a-z]\w*(\s*,\s*[a-z]\w*)*\s*,?$');
   var inFence = false;
 
-  for (final line in _leadIn(_sharedHeading)) {
+  for (final line in lines) {
     if (line.startsWith('```')) {
       if (inFence) break;
       inFence = true;
@@ -372,14 +455,22 @@ Set<String> _sharedBlockNames() {
     }
     if (!inFence) continue;
 
-    final code = line.split('//').first.replaceAll(RegExp(r'\([^)]*\)'), '');
-
-    for (final match in RegExp(r'\b[a-z]\w*\b').allMatches(code)) {
-      names.add(match.group(0)!);
+    final code = line
+        .split('//')
+        .first
+        .replaceAll(RegExp(r'\([^)]*\)'), '')
+        .trim();
+    if (code.isEmpty) continue;
+    if (!entryList.hasMatch(code)) {
+      notEntries.add(line);
+      continue;
+    }
+    for (final name in code.split(',')) {
+      if (name.trim().isNotEmpty) names.add(name.trim());
     }
   }
 
-  return names;
+  return (names: names, notEntries: notEntries);
 }
 
 List<String> _lines() => File(_document).readAsLinesSync();
