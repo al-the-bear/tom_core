@@ -221,8 +221,14 @@ abstract class TomExecutor {
   /// what returning it from [execute] means, and [notHandled] is what carries
   /// the other half.
   ///
-  /// It carries no value equality, so recognising it relies on the `const`
-  /// instance staying canonical when a response crosses an isolate boundary.
+  /// It carries no value equality and is recognised by identity — including
+  /// on the far side of a worker's port. That holds because [TomWorker.spawn]
+  /// starts its isolate with `Isolate.spawn`, which places it in the creator's
+  /// isolate group, and an isolate group shares its canonical constants: a
+  /// `const` instance sent across the port arrives as the same instance, not a
+  /// copy. An isolate started with `Isolate.spawnUri` is a group of its own and
+  /// would not share it. `isolate_pooling_test.dart` asserts `same(...)` on
+  /// both sentinels after a real round trip in each direction.
   static const Object noResult = _TomNoResult();
 
   /// Sentinel value a dispatch answers with when **nothing claimed a command**.
@@ -250,7 +256,9 @@ abstract class TomExecutor {
   /// }
   /// ```
   ///
-  /// Like [noResult] it carries no value equality, for the same reason.
+  /// Like [noResult] it carries no value equality, for the same reason, and is
+  /// recognised by identity across the port for the same reason — see
+  /// [noResult].
   static const Object notHandled = _TomNotHandled();
 
   /// Executes a command and returns the result.
