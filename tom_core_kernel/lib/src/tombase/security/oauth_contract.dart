@@ -234,7 +234,8 @@ const String tomOAuthProvidersEndpointId = 'listOAuthProviders';
 /// Endpoint id: start an authorization-code flow for one provider.
 const String tomOAuthBeginEndpointId = 'beginOAuthAuthorization';
 
-/// Endpoint id: the provider's redirect target — completes the login.
+/// Endpoint id: completes the login — called by the application's own
+/// redirect page with what the provider's redirect carried.
 const String tomOAuthCompleteEndpointId = 'completeOAuthAuthorization';
 
 /// External-identity login (`/oauth/*`).

@@ -52,7 +52,7 @@ class CrashCommand extends TomCommand {
 Future<void> run() async {
   print('=== 04: Worker Pool Supervision Example ===\n');
 
-  final context = TomWorkerContext(
+  final context = SampleWorkerContext(
     defaultTomEnvironment,
     platformLinux,
     [],

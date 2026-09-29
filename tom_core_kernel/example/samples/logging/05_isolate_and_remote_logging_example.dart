@@ -260,7 +260,7 @@ void run() {
 /// the compiler checks it — in particular that it forwards the four positional
 /// arguments of [TomLoggingWorkerContext], which has no zero-argument
 /// constructor for a subclass to inherit.
-class CustomLoggingContext extends TomLoggingWorkerContext {
+class CustomLoggingContext extends SampleLoggingWorkerContext {
   /// Creates the context, forwarding the superclass's four arguments.
   CustomLoggingContext(
     super.tomEnvironment,

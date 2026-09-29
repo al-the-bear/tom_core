@@ -121,7 +121,7 @@ class CreatorSideExecutor extends TomExecutor {
 // ============================================================================
 
 /// A context that customizes startup on both sides of the boundary.
-class WorkerSetupContext extends TomWorkerContext {
+class WorkerSetupContext extends SampleWorkerContext {
   final Map<String, String> workerConfig;
 
   /// Set by [initializeWorker]. Readable from the creator because that hook
@@ -137,6 +137,7 @@ class WorkerSetupContext extends TomWorkerContext {
     // Runs inside the new isolate, before its message loop starts. Opening
     // resources or registering services belongs here; a throw aborts the spawn
     // rather than handing back a half-configured worker.
+    await super.initializeIsolate(); // the isolate's platform, first
     isolateConfig = Map.of(workerConfig);
   }
 
@@ -290,7 +291,7 @@ class WorkerSetupAndGuardsExample {
 
     final worker = await TomWorker.spawn(
       TomWorker.startRemoteIsolate,
-      TomWorkerContext(defaultTomEnvironment, platformLinux, [], 'ExecW'),
+      SampleWorkerContext(defaultTomEnvironment, platformLinux, [], 'ExecW'),
     );
 
     // `worker.name`, not `worker.isolate.debugName`: the latter is only
@@ -301,8 +302,8 @@ class WorkerSetupAndGuardsExample {
 
     // A plain map is not a TomCommand, so it cannot execute itself and the
     // worker offers it to its executor chain instead. Nothing is registered
-    // there yet, so the chain declines — and the worker answers with the
-    // sentinel rather than leaving this await pending forever.
+    // there yet, so the chain declines — and the worker answers with
+    // `TomExecutor.notHandled` rather than leaving this await pending forever.
     beforeSeeding = await worker.executeCommand(message);
 
     worker.sendExecutorToIsolate(WorkerSideExecutor());
@@ -312,8 +313,8 @@ class WorkerSetupAndGuardsExample {
     // processes them in the order they were sent.
     afterSeeding = await worker.executeCommand(message);
 
-    final beforeLabel = identical(beforeSeeding, TomExecutor.noResult)
-        ? 'TomExecutor.noResult'
+    final beforeLabel = identical(beforeSeeding, TomExecutor.notHandled)
+        ? 'TomExecutor.notHandled'
         : '$beforeSeeding';
     print('   - before sendExecutorToIsolate: $beforeLabel');
     print('   - after  sendExecutorToIsolate: $afterSeeding');
@@ -321,7 +322,7 @@ class WorkerSetupAndGuardsExample {
     worker.close();
 
     assert(
-      identical(beforeSeeding, TomExecutor.noResult),
+      identical(beforeSeeding, TomExecutor.notHandled),
       'An unclaimed message is answered with the sentinel, not with silence',
     );
     assert(
@@ -378,7 +379,7 @@ class WorkerSetupAndGuardsExample {
 
     final worker = await TomWorker.spawn(
       TomWorker.startRemoteIsolate,
-      TomWorkerContext(defaultTomEnvironment, platformLinux, [], 'LifeW'),
+      SampleWorkerContext(defaultTomEnvironment, platformLinux, [], 'LifeW'),
     );
 
     print('   - isReady:  ${worker.isReady}');

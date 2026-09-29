@@ -48,7 +48,8 @@ library;
 import 'run_all_samples.reflection.dart';
 import 'sample_preamble.dart';
 
-export 'sample_preamble.dart' show prepareSampleProcess;
+export 'sample_preamble.dart'
+    show prepareSampleProcess, SampleLoggingWorkerContext, SampleWorkerContext;
 
 /// Prepares a sample to run: [prepareSampleProcess], then registers the
 /// generated reflection data.

@@ -126,6 +126,11 @@ class DatabaseContext extends TomWorkerContext {
 }
 ```
 
+`initializeIsolate` is also where a worker installs its **platform**: statics
+are per isolate, so a worker starts on `TomFallbackPlatformUtils` and its log
+lines carry no isolate name until the application's context calls
+`TomPlatformUtils.setCurrentPlatform` there. See the module guide.
+
 Identify a worker in messages with `worker.name`, not
 `worker.isolate.debugName` — the latter is only populated inside the isolate and
 reads `null` on the creator side.

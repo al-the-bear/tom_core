@@ -101,7 +101,7 @@ class WorkerSpawningExample {
   static bool workerSpawnedSuccessfully = false;
 
   static Future<TomWorker> example1SpawningWorker() async {
-    final context = TomWorkerContext(
+    final context = SampleWorkerContext(
       defaultTomEnvironment,
       platformLinux,
       [],
@@ -236,9 +236,11 @@ class UnhandledMessageExample {
     // shapes it knows; a plain String walks the whole chain unclaimed.
     unclaimedResult = await worker.executeCommand('no executor claims this');
 
-    // The command is still answered — with the sentinel — so the caller learns
+    // The command is still answered — with `notHandled` — so the caller learns
     // that nothing handled it instead of waiting on a reply that never comes.
-    wasReportedAsUnhandled = identical(unclaimedResult, TomExecutor.noResult);
+    // Not `noResult`: that one is an executor's answer to the dispatch
+    // ("try the next executor"), never an answer to the caller.
+    wasReportedAsUnhandled = identical(unclaimedResult, TomExecutor.notHandled);
 
     // And the worker carries on normally afterwards.
     followUpResult = await worker.executeCommand(FactorialCommand(4)) as int?;
@@ -246,7 +248,7 @@ class UnhandledMessageExample {
 
     assert(
       wasReportedAsUnhandled,
-      'An unclaimed message must answer with TomExecutor.noResult',
+      'An unclaimed message must answer with TomExecutor.notHandled',
     );
     assert(workerStillUsable, 'The worker must stay usable afterwards');
   }
@@ -342,7 +344,7 @@ Future<void> run() async {
   await UnhandledMessageExample.example6UnhandledMessage(worker);
   print('6. A message that no executor claims:');
   print(
-    '   answered with TomExecutor.noResult : '
+    '   answered with TomExecutor.notHandled : '
     '${UnhandledMessageExample.wasReportedAsUnhandled}',
   );
   print(

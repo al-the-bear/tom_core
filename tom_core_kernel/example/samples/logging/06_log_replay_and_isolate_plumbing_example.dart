@@ -83,7 +83,7 @@ class _CapturingOutput extends TomLogOutput {
 /// Uses literal environment / platform values so the example does not depend on
 /// the global [TomRuntime] singleton being initialised.
 TomLoggingWorkerContext _emptyLoggingContext() {
-  return TomLoggingWorkerContext(
+  return SampleLoggingWorkerContext(
     const TomEnvironment('example', isTest: true),
     platformWeb,
     const <String>[],

@@ -67,6 +67,39 @@ and are the framework's vocabulary for the whole workspace, not this module's
 list of supported targets. `platformWeb` is accepted and stored faithfully; it
 simply names a platform on which no worker can be spawned.
 
+**A worker establishes its own platform.** Statics are per isolate, and
+`TomPlatformUtils.current` is one, so the platform an application installs at
+start-up is not there in a worker: the isolate begins on
+`TomFallbackPlatformUtils`, whose `getIsolateName()` is empty. The framework's
+log header is built from that name, so every line a worker logs reads `- INFO`
+where its main-isolate lines read `main-main INFO` — and a worker's own name,
+`PoolWorker001`, is exactly what a reader tracing pooled work needs. The
+framework does not carry the platform across (a `TomPlatformUtils` instance is
+generally not sendable, and the kernel cannot name a concrete implementation).
+Installing it is the application's start-up work, as it is in `main`, and the
+place is `initializeIsolate`, the one hook that runs inside the new isolate
+before its message loop:
+
+```dart
+abstract class AppWorkerContext extends TomWorkerContext {
+  AppWorkerContext(super.env, super.platform, super.args, super.namePrefix);
+
+  /// The application's platform, built inside the worker: on a console or
+  /// server `TomStandalonePlatformUtils()` from `tom_basics_console`, on
+  /// Flutter the Flutter binding's.
+  TomPlatformUtils createPlatform();
+
+  @override
+  Future<void> initializeIsolate() async {
+    TomPlatformUtils.setCurrentPlatform(createPlatform());
+  }
+}
+```
+
+A context that extends another — `TomLoggingWorkerContext`, which registers
+the logging executor — installs the platform and then calls
+`super.initializeIsolate()`.
+
 ## Quick Start
 
 ### 1. Create a Worker Context

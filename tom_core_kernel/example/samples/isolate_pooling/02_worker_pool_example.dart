@@ -90,7 +90,7 @@ class WorkerPoolCreationExample {
   static bool emptyPoolRejected = false;
 
   static Future<TomWorkerPool> example1CreatePool() async {
-    final context = TomWorkerContext(
+    final context = SampleWorkerContext(
       defaultTomEnvironment,
       platformLinux,
       [],

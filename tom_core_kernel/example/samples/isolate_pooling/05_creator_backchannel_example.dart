@@ -14,8 +14,8 @@
 /// - Customizing startup via TomWorkerContext.initializeWorker
 /// - Error propagation: a command that throws rethrows on the caller's side,
 ///   as the same exception type, in both directions
-/// - Recognizing TomExecutor.noResult, the answer a creator gives when nothing
-///   on its side claimed the message
+/// - Recognizing TomExecutor.notHandled, the answer a creator gives when
+///   nothing on its side claimed the message
 ///
 /// To run this file on its own:
 /// ```bash
@@ -38,7 +38,7 @@ import '../../sample_preamble.dart';
 /// runs *inside* the new isolate and could not report back the same way; what
 /// it can do, and how to prove it did it, is shown in
 /// `03_worker_setup_and_guards_example.dart`.
-class BackchannelWorkerContext extends TomWorkerContext {
+class BackchannelWorkerContext extends SampleWorkerContext {
   bool workerInitialized = false;
 
   BackchannelWorkerContext()
@@ -46,6 +46,7 @@ class BackchannelWorkerContext extends TomWorkerContext {
 
   @override
   Future<void> initializeIsolate() async {
+    await super.initializeIsolate(); // the isolate's platform, first
     // Isolate-local setup would go here (open resources, register services).
   }
 
@@ -117,7 +118,7 @@ class NotifyCreatorCommand extends TomCommand {
 /// The payload is a plain `String` rather than a [TomCommand], so the creator
 /// offers it to its executor chain — and the only executor registered here
 /// answers `notify` maps, so it declines. The creator still replies, with
-/// [TomExecutor.noResult]: an unanswered message would leave this `await`
+/// [TomExecutor.notHandled]: an unanswered message would leave this `await`
 /// pending forever, and liveness supervision could not see the hang, since the
 /// isolate is healthy and still answers pings.
 class DelegateUnclaimedToCreator extends TomCommand {
@@ -297,9 +298,9 @@ Future<void> run() async {
   // canonical across the isolate hop — which is exactly why casting the result
   // instead would throw a TypeError naming a private type, far from the
   // addExecutor that was forgotten.
-  final wasUnclaimed = identical(unclaimed, TomExecutor.noResult);
+  final wasUnclaimed = identical(unclaimed, TomExecutor.notHandled);
 
-  print('   result is TomExecutor.noResult: $wasUnclaimed');
+  print('   result is TomExecutor.notHandled: $wasUnclaimed');
   print('   (the creator also logged a warning naming the command)\n');
 
   // -------------------------------------------------------------------------

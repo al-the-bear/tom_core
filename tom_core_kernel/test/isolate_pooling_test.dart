@@ -612,7 +612,78 @@ class FailingInitContext extends TomWorkerContext {
 // Tests
 // =============================================================================
 
+/// What the worker isolate's installed platform reports as its isolate name.
+///
+/// The framework's log header is built from exactly this, so it is what a log
+/// line written inside the worker is labelled with.
+class PlatformIsolateNameCommand extends TomCommand {
+  @override
+  Future<Object?> execute() async => TomPlatformUtils.current.getIsolateName();
+}
+
+/// A platform that names the isolate the way a real one does, installed by
+/// [PlatformInstallingContext] inside the worker.
+class _NamingPlatformUtils extends TomFallbackPlatformUtils {
+  @override
+  String getIsolateName() => Isolate.current.debugName ?? '';
+}
+
+/// A context that establishes the worker's platform, as an application's own
+/// context does: a spawned isolate starts with fresh statics, so the platform
+/// the creator installed is not there until `initializeIsolate` puts it there.
+class PlatformInstallingContext extends TomWorkerContext {
+  PlatformInstallingContext()
+    : super(
+        const TomEnvironment('test', isTest: true),
+        platformLinux,
+        const [],
+        'PlatW',
+      );
+
+  @override
+  Future<void> initializeIsolate() async {
+    TomPlatformUtils.setCurrentPlatform(_NamingPlatformUtils());
+  }
+}
+
 void main() {
+  group('a worker isolate\'s platform', () {
+    // Statics are per isolate, so the platform the creator installed does not
+    // travel. The framework leaves establishing it to the application's
+    // context, in `initializeIsolate`; these two cases pin both halves.
+    test('is the one its context installs in initializeIsolate', () async {
+      final worker = await TomWorker.spawn(
+        TomWorker.startRemoteIsolate,
+        PlatformInstallingContext(),
+      );
+      addTearDown(worker.close);
+      expect(
+        await worker.executeCommand(PlatformIsolateNameCommand()),
+        'PlatW000',
+      );
+    });
+
+    test('is the fallback when the context installs none', () async {
+      TomPlatformUtils.setCurrentPlatform(_NamingPlatformUtils());
+      addTearDown(
+        () => TomPlatformUtils.setCurrentPlatform(TomFallbackPlatformUtils()),
+      );
+      final worker = await TomWorker.spawn(
+        TomWorker.startRemoteIsolate,
+        TomWorkerContext(
+          const TomEnvironment('test', isTest: true),
+          platformLinux,
+          const [],
+          'BareW',
+        ),
+      );
+      addTearDown(worker.close);
+      // The creator's platform names isolates; the worker's copy of the
+      // static never saw it, so it answers with the fallback's empty name.
+      expect(await worker.executeCommand(PlatformIsolateNameCommand()), '');
+    });
+  });
+
   // Reset static state between tests
   setUp(() {
     TomWorker.clearExecutors();

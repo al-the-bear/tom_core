@@ -48,6 +48,17 @@
 /// owner of process-wide state, and the accident proved it by breaking the
 /// moment that sample's imports were tidied.
 ///
+/// ## A worker isolate establishes its own
+///
+/// Statics are per isolate, so the platform installed here does not reach an
+/// isolate `TomWorker.spawn` starts: it begins on the fallback, and its log
+/// lines read `- INFO` again — exactly where a worker's name, `PoolWorker001`,
+/// is what a reader needs. The framework leaves establishing it to the
+/// application, in the one hook that runs inside the new isolate before its
+/// message loop, `TomWorkerContext.initializeIsolate`. The samples do that
+/// once, in [SampleWorkerContext], and every sample that spawns a worker uses
+/// it — or extends it and calls `super.initializeIsolate()`.
+///
 /// [TomStandalonePlatformUtils] comes from `tom_basics_console`, named as a
 /// direct dev-dependency. The kernel itself is platform-neutral by design and
 /// never reaches for `dart:io`; only the samples, which are console programs,
@@ -84,6 +95,8 @@ import 'dart:io';
 // one import: `tom_basics_console` re-exports the platform-neutral contract
 // alongside the standalone implementation of it.
 import 'package:tom_basics_console/tom_basics_console.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart'
+    show TomEnvironment, TomLoggingWorkerContext, TomPlatform, TomWorkerContext;
 
 /// Prepares the process a sample is about to run in.
 ///
@@ -112,6 +125,42 @@ void prepareSampleProcess() {
     exit(2);
   }
   TomPlatformUtils.setCurrentPlatform(TomStandalonePlatformUtils());
+}
+
+/// A worker context that gives the spawned isolate the same platform the
+/// sample process has, so the worker's log lines carry its name.
+///
+/// See "A worker isolate establishes its own" above. A subclass that needs
+/// isolate setup of its own overrides [initializeIsolate] and calls `super`.
+class SampleWorkerContext extends TomWorkerContext {
+  SampleWorkerContext(
+    TomEnvironment tomEnvironment,
+    TomPlatform tomPlatform,
+    List<String> args,
+    String namePrefix,
+  ) : super(tomEnvironment, tomPlatform, args, namePrefix);
+
+  @override
+  Future<void> initializeIsolate() async {
+    TomPlatformUtils.setCurrentPlatform(TomStandalonePlatformUtils());
+  }
+}
+
+/// [SampleWorkerContext]'s counterpart for the framework's logging pool:
+/// establishes the isolate's platform, then runs the framework's own setup.
+class SampleLoggingWorkerContext extends TomLoggingWorkerContext {
+  SampleLoggingWorkerContext(
+    super.tomEnvironment,
+    super.tomPlatform,
+    super.args,
+    super.namePrefix,
+  );
+
+  @override
+  Future<void> initializeIsolate() async {
+    TomPlatformUtils.setCurrentPlatform(TomStandalonePlatformUtils());
+    await super.initializeIsolate();
+  }
 }
 
 /// Whether the VM was started with `--enable-asserts`.

@@ -8,7 +8,7 @@
 /// carries back. All of that is inspectable without a server, which is what this
 /// sample does.
 ///
-/// The one thing worth arriving at is the last: `/oauth/callback` answers with a
+/// The one thing worth arriving at is the last: `POST /oauth/complete` answers with a
 /// [TomAuthenticationResult], the *same* type `/login` answers with — same token
 /// pair, same `requires2FA` handshake, same enrolment offer. An external
 /// identity resolves a principal; everything after the principal is resolved is
@@ -25,9 +25,10 @@
 /// - [tomOAuthApi] and the four id constants ([tomOAuthApiId] and the three
 ///   endpoint ids) as the strings the server restates in its
 ///   `@TomApiEndpointImplementation` annotations
-/// - [TomApiEndpoint.urlParameterMapping] binding the provider's snake_case
-///   `error_description` onto the DTO's `errorDescription`, so the provider's
-///   spelling never reaches the Dart shape
+/// - [TomOAuthCallbackRequest] as what the application's own redirect page
+///   posts to `/oauth/complete`: the provider's snake_case `error_description`
+///   stops at that page and arrives as `errorDescription`, and the token pair
+///   answers a POST rather than landing in a browser's address bar
 /// - [TomPublicAccess] on all three endpoints, and why public is not unguarded
 /// - [registerTomOAuthApi] as the explicit, idempotent registration both halves
 ///   call, and [TomOAuthApiService] as the contract's Dart face
@@ -48,6 +49,25 @@ import '../../sample_preamble.dart';
 
 /// Where this imaginary deployment is reachable.
 final Uri _baseUri = Uri.parse('https://api.example.com');
+
+/// The application's own page the provider redirects the browser to.
+///
+/// Not an API URL: the provider hands its result to a page of the
+/// application, which then calls `/oauth/complete`. See [callbackFrom].
+final Uri _redirectPage = Uri.parse('https://app.example.com/signin/callback');
+
+/// What the application's redirect page does with the URL it was opened at:
+/// read the provider's parameters off its own query string, in the provider's
+/// spelling, and hand them to `/oauth/complete` in the DTO's.
+TomOAuthCallbackRequest callbackFrom(Uri redirect) {
+  final q = redirect.queryParameters;
+  return TomOAuthCallbackRequest(
+    code: q['code'] ?? '',
+    state: q['state'] ?? '',
+    error: q['error'] ?? '',
+    errorDescription: q['error_description'] ?? '',
+  );
+}
 
 Future<void> run() async {
   print('=== 10: The External-Identity Contract ===\n');
@@ -158,27 +178,30 @@ Future<void> run() async {
   print('     back is a plain browser navigation carrying none of it\n');
 
   // ---------------------------------------------------------------------------
-  // Example 5: the redirect, and the one seam where spelling matters.
-  //   The provider redirects a browser, so everything arrives in the query
-  //   string. urlParameterMapping declares the provider's snake_case names once,
-  //   on the left; the DTO keeps Dart's camelCase on the right.
+  // Example 5: the redirect lands on the application, not on the API.
+  //   The provider redirects a browser to a page of the application, which
+  //   reads the provider's parameters off its own query string and posts them
+  //   to /oauth/complete. The provider's snake_case stops at that page.
   // ---------------------------------------------------------------------------
-  print('5. The callback binds the provider\'s spelling:');
+  print('5. The redirect is read by the application\'s page:');
 
-  final mapping = complete.urlParameterMapping;
-  final declinedRedirect = complete.resolveUri(
-    _baseUri,
-    parameters: {
+  final declinedRedirect = _redirectPage.replace(
+    queryParameters: {
       'state': authorization.state,
       'error': 'access_denied',
-      'errorDescription': 'The user declined',
+      'error_description': 'The user declined',
     },
   );
+  final declinedRequest = callbackFrom(declinedRedirect);
+  final completeUri = complete.resolveUri(_baseUri);
 
-  print('   - mapping        : $mapping');
-  print('   - a refusal URL  : $declinedRedirect');
-  print('   → error_description on the wire, errorDescription in Dart,');
-  print('     declared in exactly one place\n');
+  print('   - redirect       : $declinedRedirect');
+  print('   - posted body    : $declinedRequest');
+  print(
+    '   - posted to      : ${complete.method.name.toUpperCase()} $completeUri',
+  );
+  print('   → error_description in the URL, errorDescription in Dart, and');
+  print('     no token pair ever answers a browser navigation\n');
 
   // ---------------------------------------------------------------------------
   // Example 6: a refusal is not an exception.
@@ -187,13 +210,7 @@ Future<void> run() async {
   // ---------------------------------------------------------------------------
   print('6. The user declined:');
 
-  final declined = await service.completeOAuthAuthorization(
-    TomOAuthCallbackRequest(
-      state: authorization.state,
-      error: 'access_denied',
-      errorDescription: 'The user declined',
-    ),
-  );
+  final declined = await service.completeOAuthAuthorization(declinedRequest);
 
   print('   - result.error              : ${declined.error}');
   print('   - result.authenticationToken: "${declined.authenticationToken}"');
@@ -252,7 +269,7 @@ Future<void> run() async {
   assert(tomOAuthApi.endpoints.length == 3);
   assert(providers.method == TomHttpMethod.get);
   assert(begin.method == TomHttpMethod.post);
-  assert(complete.method == TomHttpMethod.get);
+  assert(complete.method == TomHttpMethod.post);
   assert(
     providers.resolveUri(_baseUri).toString() ==
         'https://api.example.com/oauth/providers',
@@ -276,16 +293,12 @@ Future<void> run() async {
   // Not a credential: it correlates, it does not authenticate.
   assert(TomOAuthAuthorizationDto().state.isEmpty);
 
-  // Example 5: the mapping is the single place the provider's spelling lives.
-  assert(mapping['error_description'] == 'errorDescription');
-  assert(mapping['code'] == 'code');
-  assert(mapping.length == 4);
-  assert(
-    declinedRedirect.toString() ==
-        'https://api.example.com/oauth/callback'
-            '?state=${authorization.state}'
-            '&error=access_denied&error_description=The+user+declined',
-  );
+  // Example 5: the page translates the spelling; the API takes a body.
+  assert(declinedRequest.state == authorization.state);
+  assert(declinedRequest.error == 'access_denied');
+  assert(declinedRequest.errorDescription == 'The user declined');
+  assert(completeUri.toString() == 'https://api.example.com/oauth/complete');
+  assert(complete.urlParameterMapping.isEmpty);
 
   // Example 6: a refusal is an ordinary result.
   assert(declined.error.isNotEmpty);
@@ -326,7 +339,7 @@ class _DemoOAuthService implements TomOAuthApiService {
   ) async => TomOAuthAuthorizationDto(
     authorizationUri:
         'https://accounts.${request.providerId}.example/authorize'
-        '?client_id=srv&redirect_uri=${Uri.encodeQueryComponent('$_baseUri/oauth/callback')}&state=pending-1&code_challenge=…',
+        '?client_id=srv&redirect_uri=${Uri.encodeQueryComponent('$_redirectPage')}&state=pending-1&code_challenge=…',
     state: 'pending-1',
   );
 
