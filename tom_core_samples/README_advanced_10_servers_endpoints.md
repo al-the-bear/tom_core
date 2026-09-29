@@ -1,5 +1,7 @@
 # Servers & the secured endpoint pipeline
 
+<!-- doc-samples: packages tom_core_server, tom_core_samples/advanced_auth_server, tom_core_samples/advanced_app_server, tom_core_samples/advanced_client_core -->
+
 *Part 10 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
 [Part 06](README_advanced_06_authentication.md) showed how a login mints a signed

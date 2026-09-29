@@ -1,5 +1,7 @@
 # Authentication (JWT)
 
+<!-- doc-samples: packages tom_core_kernel, tom_core_samples/advanced_todo_contracts, tom_core_samples/advanced_auth_server, tom_core_samples/advanced_client_core -->
+
 *Part 06 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
 Authentication is where the two servers meet a single principal: the **auth

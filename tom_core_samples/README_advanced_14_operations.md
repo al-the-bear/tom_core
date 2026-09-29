@@ -1,5 +1,7 @@
 # Operations: scheduled work over live data
 
+<!-- doc-samples: packages tom_core_server, tom_core_samples/advanced_ops_server -->
+
 *Part 14 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
 Every part before this one describes a system that acts **because somebody asked

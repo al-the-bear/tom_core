@@ -1,5 +1,7 @@
 # Authorization
 
+<!-- doc-samples: packages tom_core_kernel, tom_core_samples/advanced_todo_domain, tom_core_samples/advanced_app_server -->
+
 *Part 07 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
 Authorization is the sample's **headline framework rule**: UI authorization is

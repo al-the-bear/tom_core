@@ -1,5 +1,7 @@
 # Tom Core — Application Structure Guidelines
 
+<!-- doc-samples: packages tom_core_kernel, tom_core_server, tom_flutter_ui -->
+
 **Status:** Normative. These are *opinionated* guidelines: they leave you
 freedom in **what** an application does, but not in **how** it is structured
 technically. Two Tom applications built by two different teams should look the

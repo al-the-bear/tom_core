@@ -1,5 +1,7 @@
 # Resources & text externalization
 
+<!-- doc-samples: packages tom_core_kernel, tom_core_samples/advanced_app_server, tom_core_samples/advanced_app_client -->
+
 *Part 08 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
 This part covers the second headline rule of the sample: **no UI text is

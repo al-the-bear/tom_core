@@ -1,5 +1,7 @@
 # Forms & UI
 
+<!-- doc-samples: packages tom_core_kernel, tom_flutter_ui, tom_core_samples/advanced_app_client -->
+
 *Part 09 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
 Parts [07](README_advanced_07_authorization.md) and

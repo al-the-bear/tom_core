@@ -1,5 +1,7 @@
 # Tom Core — the foundation layer of the Tom Framework
 
+<!-- doc-samples: packages tom_core_samples/advanced_client_core -->
+
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
@@ -572,7 +574,7 @@ under discussion, and none of that is wrong, but `{` against a positional
 declaration is wrong however much of the list is shown.
 
 This check reads text and never invokes a compiler, which is what lets it run
-over all 3432 fences in both git roots rather than the packages a heavier gate
+over all 3758 fences in both git roots rather than the packages a heavier gate
 has been triaged for. It is a narrow slice of "does the sample compile", but it
 is the slice that catches the copy-paste failure: a reader pastes the shortest
 snippet in the document, and the shortest snippet is the one nobody re-checked
@@ -597,6 +599,15 @@ named for what it documents, so `tom_core_server_export_new.md` resolves against
 makes a naming convention load-bearing, so the run prints how many documents it
 could not place and names them, every time including a clean run: a rename that
 drops a document out of coverage appears in that list rather than as silence.
+
+A document about **several** packages — the `tom_core_samples/README_advanced_*`
+narratives, the repository map, the corpus contract — names them in a marker
+under its title, `<!-- doc-samples: packages tom_core_server,
+tom_core_samples/advanced_app_server -->`, and its names resolve against the
+union of those packages. A name two of them declare differently is skipped, so
+the union costs coverage on a collision rather than inventing a fault, and a
+marker entry that is not a package is itself a fault. With every such document
+marked, the unplaced list reads 0.
 
 ```bash
 python3 tool/check_doc_dart_blocks.py                  # the gated packages

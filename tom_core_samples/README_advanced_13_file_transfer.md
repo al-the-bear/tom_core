@@ -1,5 +1,7 @@
 # File transfer under the authorization matrix
 
+<!-- doc-samples: packages tom_core_kernel, tom_core_server, tom_flutter_ui, tom_core_samples/advanced_app_server, tom_core_samples/advanced_client_core, tom_core_samples/advanced_app_client -->
+
 *Part 13 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
 The previous twelve parts build a secured system and then prove it. This part

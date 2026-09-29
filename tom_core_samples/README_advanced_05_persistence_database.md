@@ -1,5 +1,7 @@
 # Persistence & the two databases
 
+<!-- doc-samples: packages tom_core_server, tom_core_samples/advanced_app_server, tom_core_samples/advanced_auth_server -->
+
 *Part 05 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
 The two servers each own a **separate MariaDB database** and persist through the

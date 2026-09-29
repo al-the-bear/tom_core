@@ -136,6 +136,26 @@ for what it documents, so ``tom_core_server_export_new.md`` resolves against
 what keeps ``tom_flutter_ui_test_app_changes.md`` with ``tom_flutter_ui_test``
 rather than handing it to ``tom_flutter_ui``.
 
+**A document about several packages says so.** Some are genuinely about more
+than one -- the ``tom_core_samples/README_advanced_*`` narratives walk the auth
+server, the app server and the client in turn, and ``tom_core_samples/`` holds
+no pubspec -- so neither path nor name can place them, and naming any single
+package would resolve most of their samples against the wrong one. Such a
+document carries a marker under its title::
+
+    <!-- doc-samples: packages tom_core_server, tom_core_samples/advanced_app_server -->
+
+and its names resolve against the **union** of those packages' indexes. The
+union is taken per name over the same sets the per-package index holds, so a
+name two listed packages declare differently -- ``TodoItem`` in ``todo_domain``
+and ``advanced_todo_domain`` -- becomes undecidable and is skipped, as a name
+declared two ways within one package already is. A collision therefore costs
+coverage and never produces a false fault. A marker entry that is not a package
+is itself a fault (``PACKAGE``), because a misspelt entry would otherwise
+shrink the document's coverage in silence. The marker wins over path and name,
+and the ``documents unplaced`` line should read 0: a document it lists is one
+nobody has placed yet.
+
 That makes a naming convention load-bearing, so it is not allowed to fail
 quietly: ``main`` prints how many documents it could not place and names them,
 at every run including a clean one. A rename that drops a document out of
@@ -424,6 +444,33 @@ def documented_package(path: Path, names: dict[str, Path]) -> Path | None:
     return names[best] if best is not None else None
 
 
+#: A document's declaration of the packages its samples are about, for a
+#: document no path and no filename can place -- ``<!-- doc-samples: packages
+#: tom_core_kernel, tom_core_samples/advanced_app_server -->``. Paths are
+#: relative to the repository root and separated by commas.
+PACKAGES_MARKER = re.compile(
+    r"<!--\s*doc-samples:\s*packages\s+(?P<list>[^>]*?)\s*-->"
+)
+
+
+def declared_packages(text: str) -> list[str] | None:
+    """The package paths a document's marker lists, or ``None`` without one.
+
+    A document can be genuinely about several packages at once -- a narrative
+    that walks the auth server, the app server and the client in turn -- and
+    naming any single one would resolve most of its samples against the wrong
+    package. The marker lets it name all of them. Their indexes are merged
+    for the lookup, and a name two of them declare differently becomes
+    undecidable and is skipped, exactly as a name declared two ways within one
+    package already is; see ``merged``.
+    """
+    match = PACKAGES_MARKER.search(text)
+    if match is None:
+        return None
+    return [entry.strip() for entry in match.group("list").split(",")
+            if entry.strip()]
+
+
 Index = dict[Path, dict[tuple[str, str], set[str]]]
 # ``package -> (class, constructor name) -> {is it declared const}``. A set,
 # not a bool, for the same reason ``Index`` holds a set of styles: two files
@@ -595,17 +642,35 @@ def fenced_dart(text: str):
         index += 1
 
 
-def audit(path: Path, package: Path, index: Index, consts: ConstIndex,
+def merged(per_package: dict, packages: list[Path]) -> dict:
+    """The union of ``packages``' entries in ``per_package``.
+
+    Each value is a *set*, and the union is taken per key, so a name two
+    packages declare the same way stays decidable while one they declare
+    differently -- `TodoItem` in `todo_domain` against `advanced_todo_domain` --
+    gets a set of two and is skipped by every rule, the same as a name declared
+    two ways within one package. That is what makes a multi-package document
+    safe to check: a collision costs coverage, never a false fault.
+    """
+    union: dict = {}
+    for package in packages:
+        for key, values in per_package.get(package, {}).items():
+            union.setdefault(key, set()).update(values)
+    return union
+
+
+def audit(path: Path, packages: list[Path], index: Index, consts: ConstIndex,
           arities: ArityIndex) -> list[tuple[int, str, str]]:
     """``(line, fault, detail)`` for every miscalled constructor in ``path``.
 
-    ``package`` is the one the document's names resolve against, decided by the
-    caller -- by the document's location when it sits inside a package, by its
-    filename when it does not.
+    ``packages`` are the ones the document's names resolve against, decided by
+    the caller -- its marker when it carries one, else its location when it
+    sits inside a package, else its filename. Usually one; several only for a
+    document that declares them.
     """
-    constructors = index.get(package, {})
-    constness = consts.get(package, {})
-    required = arities.get(package, {})
+    constructors = merged(index, packages)
+    constness = merged(consts, packages)
+    required = merged(arities, packages)
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
@@ -742,20 +807,37 @@ def main(argv: list[str]) -> int:
         if SKIP_DIRS & set(path.parts):
             continue
         try:
-            blocks = list(fenced_dart(path.read_text(encoding="utf-8")))
+            text = path.read_text(encoding="utf-8")
         except OSError:
             continue
+        blocks = list(fenced_dart(text))
         if not blocks:
             continue
-        package = package_of(path) or documented_package(path, names)
-        if package is None:
-            unplaced.append(path)
+        declared = declared_packages(text)
+        if declared is not None:
+            placed = []
+            for entry in declared:
+                candidate = REPO_ROOT / entry
+                if (candidate / "pubspec.yaml").is_file():
+                    placed.append(candidate)
+                else:
+                    # A misspelt entry would silently shrink the document's
+                    # coverage, so it is a fault rather than a skip.
+                    faults.append((path, 1, "PACKAGE",
+                                   f"the doc-samples marker names {entry!r}, "
+                                   "which is not a package in this repository"))
+        else:
+            package = package_of(path) or documented_package(path, names)
+            placed = [package] if package is not None else []
+        if not placed:
+            if declared is None:
+                unplaced.append(path)
             continue  # counted below, under its own heading, never silently
-        if package != root and root not in package.parents:
-            continue  # a document for a package outside the requested subtree
+        if not any(p == root or root in p.parents for p in placed):
+            continue  # a document for packages outside the requested subtree
         documents += 1
         samples += len(blocks)
-        for line, fault, detail in audit(path, package, index, consts, arities):
+        for line, fault, detail in audit(path, placed, index, consts, arities):
             faults.append((path, line, fault, detail))
 
     for path, line, fault, detail in faults:

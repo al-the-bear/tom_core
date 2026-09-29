@@ -1,5 +1,7 @@
 # Domain model & reflection
 
+<!-- doc-samples: packages tom_core_kernel, tom_core_samples/advanced_todo_domain -->
+
 *Part 03 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
 The domain is the **one source of truth the whole stack agrees on**: the app

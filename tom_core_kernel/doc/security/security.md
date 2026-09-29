@@ -1615,7 +1615,7 @@ disappears a few seconds after login, with nothing in the logs.
 | `meta` | package | `access_controls.dart` | `@nonVirtual` only; no runtime behaviour |
 | `tom_crypto` | package | `bearer_authentication.dart` | `TomClientJwtToken`, the parsed form of both bearer tokens |
 | [http_connection](../http_connection/http_connection.md) | module | `oauth_contract.dart` | `TomApi` / `TomApiEndpoint` and `TomHttpMethod`, for the external-identity contract |
-| [little_things](../little_things/little_things.md) | module | `access_controls.dart`, `two_factor.dart` | `getFromCurrentZone<TomPrincipal>()` — how resource protection finds the ambient principal without being passed one |
+| [little_things](../little_things/little_things.md) | module | `access_controls.dart`, `bearer_authentication.dart`, `two_factor.dart` | `getFromCurrentZone<TomPrincipal>()` — how resource protection finds the ambient principal without being passed one; and `TomException`, which `TomTokenLifetimeException` and `TomProtectionSettingException` extend |
 | [reflection](../reflection/reflection.md) | module | `authentication_authorization.dart`, `oauth_contract.dart`, `two_factor.dart` | `@tomReflector` — the annotation on every DTO in this module, and hence the JSON round trip that carries them over the wire |
 | [scope_ids](../scope_ids/scope_ids.md) | module | `tom_authorization.dart` | `TomScope` path resolution for `TomAuthorizationGroup` |
 

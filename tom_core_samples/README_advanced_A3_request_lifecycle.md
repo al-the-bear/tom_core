@@ -1,5 +1,7 @@
 # Appendix A3 · A secured request, end to end
 
+<!-- doc-samples: packages tom_core_kernel, tom_core_server, tom_core_samples/advanced_app_server -->
+
 *Appendix A3 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
 The spine parts each describe one tier in isolation:
