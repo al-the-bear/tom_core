@@ -29,7 +29,7 @@ import 'demo_widgets.dart';
 ///     and watch the left side re-layout live.
 ///
 /// Exercises:
-///   * [AclBuilder.setAclDefaultHideUnauthorized] / [setHideUnauthorized]
+///   * [AclBuilder.setAclDefaultHideUnauthorized] / [AclBuilder.setHideUnauthorized]
 ///   * Row elision when every component is hidden
 ///   * `read` (readonly style) and `disabled` (dimmed) treatments on both
 ///     form fields and regular Tom widgets
