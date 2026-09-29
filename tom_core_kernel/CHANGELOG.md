@@ -2,6 +2,16 @@
 
 ### Fixed
 
+- **A `TomList<TomString>` now binds to a multi-select field.** `getValues()`
+  serializes an observable list as a plain `List<dynamic>`, and a member that
+  holds a whole list as one value — `TomObject<List<String>>`, which is what
+  every multi-select form field is — rejected it in `set`, so `bind()` failed
+  and took the whole form's bind with it. `TomClass.setValues` now re-types a
+  list for a `TomObject<List<E>>` member for each primitive `E` the framework
+  serializes (`String`, `int`, `double`, `bool`, nullable or not), widening
+  integral elements into `List<double>` as the scalar rule already did. An
+  element of the wrong type is still refused. See the observable guide,
+  "Lists: A Serialized List Re-Types Into a List-Holding Scalar".
 - **Three broken markdown reference links in `doc/scope_ids/scope_ids.md`.**
   `Zone`, `id` and `parent` were written with dartdoc's square-bracket syntax
   around a code span, which markdown renders as literal brackets rather than as

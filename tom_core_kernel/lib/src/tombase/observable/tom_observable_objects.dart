@@ -1237,7 +1237,39 @@ class TomClass extends TomObject<Map<String, TomObject>>
       member.set(value.toDouble());
       return;
     }
+    if (value is List) {
+      final typed = _primitiveListFor(member, value);
+      if (typed != null) {
+        member.set(typed);
+        return;
+      }
+    }
     member.set(value);
+  }
+
+  /// [value] re-typed for a scalar member holding a whole list of primitives,
+  /// or `null` when [member] is not one.
+  ///
+  /// `getValues()` serializes a `TomList<TomString>` as a plain
+  /// `List<dynamic>`, and a member typed `TomObject<List<String>>` — a
+  /// multi-select form field is exactly that — rejects the dynamic list in
+  /// `set`, so a state's own serialization could not be bound back. The same
+  /// asymmetry holds for every primitive the framework serializes, so each is
+  /// re-typed here, next to the int-into-double widening that answers the same
+  /// round-trip problem for a single number; a `List<double>` member widens its
+  /// integral elements too. Re-typing is not coercion: an element of the wrong
+  /// type throws, and the assignment fails as a scalar's would.
+  ///
+  /// Each test is written against the nullable list type, so a member holding
+  /// `List<String>` and one holding `List<String>?` both match by covariance.
+  static List<Object?>? _primitiveListFor(TomObject member, List value) {
+    if (member is TomObject<List<String>?>) return List<String>.from(value);
+    if (member is TomObject<List<double>?>) {
+      return <double>[for (final element in value) (element as num).toDouble()];
+    }
+    if (member is TomObject<List<int>?>) return List<int>.from(value);
+    if (member is TomObject<List<bool>?>) return List<bool>.from(value);
+    return null;
   }
 
   void _setMapMember(

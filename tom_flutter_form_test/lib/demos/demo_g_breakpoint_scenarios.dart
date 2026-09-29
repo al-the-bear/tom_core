@@ -1,7 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../common/demo_scaffold.dart';
@@ -148,11 +147,7 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
           alignment: AlignmentDirectional.centerStart,
           child: SizedBox(
             width: paneWidth,
-            child: buildComplexFormPane(
-              context: context,
-              form: _form,
-              state: phase2ProjectBriefState,
-            ),
+            child: buildComplexFormPane(context: context, form: _form),
           ),
         ),
       ],
@@ -468,7 +463,6 @@ final _themeBpOverrides = <(double, ThemeData)>[
 Widget buildComplexFormPane({
   required BuildContext context,
   required ProjectBriefForm form,
-  required ProjectBrief state,
 }) {
   // Only the three shipped TomFormStyle presets — bordered / material /
   // compact — are used:
@@ -484,67 +478,13 @@ Widget buildComplexFormPane({
     styleBpOverrides: _styleBpOverrides,
     theme: _orangeMonoXs,
     themeBpOverrides: _themeBpOverrides,
-    child: _ComplexFormBody(form: form, state: state),
+    child: _ComplexFormBody(form: form),
   );
 }
 
-class _ComplexFormBody extends StatefulWidget {
+class _ComplexFormBody extends StatelessWidget {
   final ProjectBriefForm form;
-  final ProjectBrief state;
-  const _ComplexFormBody({required this.form, required this.state});
-
-  @override
-  State<_ComplexFormBody> createState() => _ComplexFormBodyState();
-}
-
-class _ComplexFormBodyState extends State<_ComplexFormBody> {
-  /// The brief's tag multi-select — a real [TomFormStringFilterChips], but
-  /// owned by this body rather than by [ProjectBriefForm].
-  ///
-  /// Why not a form member: a multi-select field is `TomField<List<String>>`
-  /// while `ProjectBrief.tags` is a `TomList<TomString>`, which `getValues()`
-  /// serializes to a `List<dynamic>`. `bind()` would hand that straight to
-  /// `set()` and fail the runtime type check, taking the whole form's bind
-  /// down with it. `Phase5DemoState` sidesteps the same gap the same way.
-  /// Held here, the field never meets `setValues`, so it is seeded from and
-  /// written back to `state.tags` explicitly by [_seedTags] / [_writeTagsBack].
-  late final TomFormStringFilterChips _tags;
-
-  /// Retained so the write-back observer can be removed on dispose —
-  /// observers are held weakly, so this is also what keeps it alive.
-  late final TomFunctionObserver<TomObservable> _tagsObserver;
-
-  @override
-  void initState() {
-    super.initState();
-    _tags = TomFormStringFilterChips(
-      'tags',
-      _seedTags(),
-      source: projectBriefTagSource,
-      labelTextOverride: 'Tags',
-      descriptionTextOverride:
-          'Free-form labels used by the portfolio filters.',
-    );
-    _tagsObserver = _tags >> (_) => _writeTagsBack();
-  }
-
-  @override
-  void dispose() {
-    _tags.removeObserver(_tagsObserver);
-    _tags.dispose();
-    super.dispose();
-  }
-
-  /// The brief's current tags as the plain `List<String>` the field holds.
-  List<String> _seedTags() => [for (final tag in widget.state.tags) tag.get()];
-
-  /// Mirrors an edit back onto `state.tags`, which is what the rest of the
-  /// demo (and Demo H's field-state panel) reads.
-  void _writeTagsBack() {
-    widget.state.tags.resetWith([
-      for (final value in _tags.get()) TomString(value),
-    ]);
-  }
+  const _ComplexFormBody({required this.form});
 
   @override
   Widget build(BuildContext context) {
@@ -555,24 +495,23 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
         final prioritySegmented = width >= 1000;
 
         // ---- Identity row (code, title, budget) --------------------
-        final identity =
-            TomAclBuilder(id: 'identity', elementProvider: widget.form)
-                .setAclExpandXDefault(true)
-                .setAclDefaultAppendGap(16, const [
-                  (400, 4),
-                  (800, 8),
-                  (1200, 16),
-                  (1600, 24),
-                ])
-                .append((p) => p.code.widget)
-                .append((p) => p.title.widget, dist: 16)
-                .addRowBreakpoint(atWidth: 900)
-                .append((p) => p.budget.widget, dist: 16)
-                .addRowBreakpoint(atWidth: 500);
+        final identity = TomAclBuilder(id: 'identity', elementProvider: form)
+            .setAclExpandXDefault(true)
+            .setAclDefaultAppendGap(16, const [
+              (400, 4),
+              (800, 8),
+              (1200, 16),
+              (1600, 24),
+            ])
+            .append((p) => p.code.widget)
+            .append((p) => p.title.widget, dist: 16)
+            .addRowBreakpoint(atWidth: 900)
+            .append((p) => p.budget.widget, dist: 16)
+            .addRowBreakpoint(atWidth: 500);
 
         // ---- Classification row with width-dependent splits ---------
         final classification =
-            TomAclBuilder(id: 'classification', elementProvider: widget.form)
+            TomAclBuilder(id: 'classification', elementProvider: form)
                 .setAclExpandXDefault(true)
                 .setAclDefaultAppendGap(12, const [
                   (400, 4),
@@ -589,7 +528,7 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
                 .addRowBreakpoint(atWidth: 500);
 
         // ---- Scope row (hours, deadline, location) ------------------
-        final scope = TomAclBuilder(id: 'scope', elementProvider: widget.form)
+        final scope = TomAclBuilder(id: 'scope', elementProvider: form)
             .setAclExpandXDefault(true)
             .setAclDefaultAppendGap(12, const [
               (400, 4),
@@ -609,35 +548,30 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
             .addRowBreakpoint(atWidth: 500);
 
         // ---- Classic field row (still Phase-1 API) -------------------
-        final classic =
-            TomAclBuilder(id: 'classic', elementProvider: widget.form)
-                .setAclExpandXDefault(true)
-                .setAclDefaultAppendGap(12)
-                .append((p) => p.internalRef.widget)
-                .append((p) => p.contactEmail.widget, dist: 16)
-                .addRowBreakpoint(atWidth: 900);
+        final classic = TomAclBuilder(id: 'classic', elementProvider: form)
+            .setAclExpandXDefault(true)
+            .setAclDefaultAppendGap(12)
+            .append((p) => p.internalRef.widget)
+            .append((p) => p.contactEmail.widget, dist: 16)
+            .addRowBreakpoint(atWidth: 900);
 
         // ---- Summary / description / risk (full-width multi-line) ---
         final summary = TomAclBuilder(
           id: 'summary',
-          elementProvider: widget.form,
+          elementProvider: form,
         ).setAclExpandXDefault(true).append((p) => p.summary.widget);
         final description = TomAclBuilder(
           id: 'description',
-          elementProvider: widget.form,
+          elementProvider: form,
         ).setAclExpandXDefault(true).append((p) => p.description.widget);
         final riskNotes = TomAclBuilder(
           id: 'riskNotes',
-          elementProvider: widget.form,
+          elementProvider: form,
         ).setAclExpandXDefault(true).append((p) => p.riskNotes.widget);
 
         // ---- Nested Person subforms — side-by-side or stacked -------
-        final lead = _personSubform(context, 'Lead', widget.form.lead);
-        final reviewer = _personSubform(
-          context,
-          'Reviewer',
-          widget.form.reviewer,
-        );
+        final lead = _personSubform(context, 'Lead', form.lead);
+        final reviewer = _personSubform(context, 'Reviewer', form.reviewer);
         final people = stackSubforms
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -720,11 +654,11 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
     // same field observable. When narrow → fall back to the
     // TomFormStringDropdown's own widget. Same observable in both cases
     // so swapping doesn't drop state.
-    if (!segmented) return widget.form.priority.widget;
+    if (!segmented) return form.priority.widget;
     return TomMultiObservableBuilder(
-      observables: [widget.form.priority],
+      observables: [form.priority],
       builder: (context) {
-        final value = widget.form.priority.get();
+        final value = form.priority.get();
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: SegmentedButton<String>(
@@ -735,7 +669,7 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
               ButtonSegment(value: 'critical', label: Text('critical')),
             ],
             selected: {value.isEmpty ? 'medium' : value},
-            onSelectionChanged: (s) => widget.form.priority.setValue(s.first),
+            onSelectionChanged: (s) => form.priority.setValue(s.first),
             showSelectedIcon: false,
           ),
         );
@@ -771,8 +705,8 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
     );
   }
 
-  /// Flags + tags row: the three boolean fields (form members, bound to
-  /// the brief's `TomBool`s) followed by the tag multi-select.
+  /// Flags + tags row: the three boolean fields and the tag multi-select,
+  /// all form members bound to the brief by name.
   ///
   /// Laid out through [TomAclBuilder] like every other section, so the
   /// flags cross the same breakpoints as the rest of the pane instead of
@@ -780,7 +714,7 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
   /// splits at 900 (booleans above, tags below) and again at 500 (one
   /// element per row).
   Widget _flagsAndTags(BuildContext context) {
-    return TomAclBuilder(id: 'flags', elementProvider: widget.form)
+    return TomAclBuilder(id: 'flags', elementProvider: form)
         .setAclExpandXDefault(true)
         .setAclDefaultAppendGap(12, const [
           (400, 4),
@@ -792,7 +726,7 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
         .append((p) => p.needsReview.widget)
         .append((p) => p.notifySubscribers.widget)
         .addRowBreakpoint(atWidth: 900)
-        .append((_) => _tags.widget)
+        .append((p) => p.tags.widget)
         .addRowBreakpoint(atWidth: 500)
         .build(context);
   }

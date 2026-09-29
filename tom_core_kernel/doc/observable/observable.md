@@ -37,6 +37,7 @@ and complex objects with automatic change notification and propagation.
   - [Accessors never hand out a writable collection](#accessors-never-hand-out-a-writable-collection)
   - [Bulk Updates with setValues](#bulk-updates-with-setvalues)
   - [Numbers: Integers Widen Into Double Destinations](#numbers-integers-widen-into-double-destinations)
+  - [Lists: A Serialized List Re-Types Into a List-Holding Scalar](#lists-a-serialized-list-re-types-into-a-list-holding-scalar)
   - [JSON Serialization](#json-serialization)
 - [The Collection Notification Contract](#the-collection-notification-contract)
 - [TomList (Observable Lists)](#tomlist-observable-lists)
@@ -1134,6 +1135,31 @@ item.setValues({'quantity': 2.5});
 // TomObservableException: Failed to set TomClass member 'quantity' from a
 // double: type 'double' is not a subtype of type 'int' of 'value'
 ```
+
+### Lists: A Serialized List Re-Types Into a List-Holding Scalar
+
+A `TomList<TomString>` serializes as a plain `List<dynamic>`. A member that
+holds a whole list as one value — `TomObject<List<String>>`, which is exactly
+what a multi-select form field is — would reject that dynamic list in `set`,
+so a state's own `getValues()` could not be bound back into a form. It is
+therefore re-typed on the way in, for every primitive the framework
+serializes: a list reaching a `TomObject<List<String>>`, `<List<int>>`,
+`<List<double>>` or `<List<bool>>` member (each also nullable) arrives as that
+exact list type, and a `List<double>` member widens integral elements as the
+scalar rule above does:
+
+```dart
+final state = Brief()..tags.add(TomString('red'));   // tags: TomList<TomString>
+final form = BriefForm();        // tags: a TomFormStringFilterChips — List<String>
+
+form.bind(state);                // setValues(state.getValues()) — no longer throws
+print(form.tags.get());          // [red] — a List<String>
+```
+
+Re-typing is not coercion: an element of the wrong type still fails the
+assignment with `observable.class_set_values.member_assignment_failed`, as it
+would for a scalar member. The other direction needs no rule — a `List<String>`
+fills a `TomList<TomString>` through the ordinary list path.
 
 ### JSON Serialization
 

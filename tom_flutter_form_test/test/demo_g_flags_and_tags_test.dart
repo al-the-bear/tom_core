@@ -13,11 +13,13 @@ import 'dart:convert';
 
 // `services.dart` re-exports `dart:ui`, so it carries both `rootBundle` and
 // the `Size` used to widen the test viewport.
+import 'package:flutter/material.dart' show FilledButton;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import 'package:tom_flutter_form_test/forms/project_brief_form.dart';
 import 'package:tom_flutter_form_test/main.dart';
 import 'package:tom_flutter_form_test/main.reflection.dart';
 import 'package:tom_flutter_form_test/state/project_brief_state.dart';
@@ -107,7 +109,7 @@ void main() {
     expect(tags.get(), isNotEmpty, reason: 'The brief seeds three tags.');
   });
 
-  testWidgets('Editing the tag field writes back onto the brief', (
+  testWidgets('The tag field is a form member saved like any other', (
     tester,
   ) async {
     await _openDemoG(tester);
@@ -115,15 +117,32 @@ void main() {
         _renderedFields(tester)[TomFormStringFilterChips]!.single
             as TomFormStringFilterChips;
 
-    // The field is not a form member — `TomList<TomString>` cannot bind to a
-    // `TomField<List<String>>` — so the demo mirrors edits back by hand. That
-    // hand-written path is what this asserts.
-    addTearDown(() => tags.toggleItem('incident', false));
+    // Bound from the brief's `TomList<TomString>` by name, like the three
+    // booleans: the field belongs to the form, so an edit is pending until the
+    // form is saved and reaches the brief through `setValues` when it is.
+    expect(tags.form, isA<ProjectBriefForm>());
+    List<String> briefTags() => [
+      for (final tag in phase2ProjectBriefState.tags) tag.get(),
+    ];
+    addTearDown(
+      () => phase2ProjectBriefState.tags.resetWith([
+        for (final tag in briefTags())
+          if (tag != 'incident') TomString(tag),
+      ]),
+    );
+
     tags.toggleItem('incident', true);
     await tester.pumpAndSettle();
+    expect(briefTags(), isNot(contains('incident')));
 
-    expect([
-      for (final tag in phase2ProjectBriefState.tags) tag.get(),
-    ], contains('incident'));
+    final save = find.ancestor(
+      of: find.text('Save'),
+      matching: find.byWidgetPredicate((w) => w is FilledButton),
+    );
+    await tester.ensureVisible(save.first);
+    await tester.tap(save.first);
+    await tester.pumpAndSettle();
+
+    expect(briefTags(), contains('incident'));
   });
 }

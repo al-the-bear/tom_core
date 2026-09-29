@@ -111,9 +111,16 @@ def documents() -> list[Path]:
     )
 
 
-def audit() -> tuple[list[str], int]:
+def audit(extra: list[dict] | None = None) -> tuple[list[str], int]:
+    """Faults across every documented section, and how many sections were read.
+
+    [extra] joins the corpus for this one call -- the self-test's way of
+    planting an open todo without depending on one staying open in the real
+    corpus, which is what broke the check the first time the todo it borrowed
+    was completed.
+    """
     faults: list[str] = []
-    every = todos()
+    every = todos() + (extra or [])
     known = {STEM.match(t["id"]).group(1) for t in every if STEM.match(t["id"])}
     audited = 0
     for document in documents():
@@ -152,15 +159,27 @@ def self_test() -> int:
     """Plant each fault in a real section and require it to be reported."""
     subject = DOCS_ROOT / "tom_core_agentic_mcp_auth_changes.md"
     original = subject.read_text(encoding="utf8")
+    # An open todo on the subject's unit that its section does not name. Planted
+    # rather than borrowed from the corpus, so the check keeps meaning something
+    # after every real todo on the unit has been completed.
+    planted = {
+        "id": "tcopen9998_zzzz_planted-by-the-self-test",
+        "status": "not-started",
+        "scope": {"project": "tom_core_agentic", "module": "mcp_auth"},
+    }
     checks = [
-        ("PHANTOM", lambda t: t.replace("tcopen346_ahku", "tcopen9999_zzzz", 1)),
-        ("UNNAMED", lambda t: t.replace("tcopen346_ahku", "the tracking todo", 1)),
+        (
+            "PHANTOM",
+            lambda t: t.replace("tcopen346_ahku", "tcopen9999_zzzz", 1),
+            None,
+        ),
+        ("UNNAMED", lambda t: t, [planted]),
     ]
     failures = 0
     try:
-        for label, mutate in checks:
+        for label, mutate, extra in checks:
             subject.write_text(mutate(original), encoding="utf8")
-            faults, _ = audit()
+            faults, _ = audit(extra)
             hit = any(f.startswith(label) for f in faults)
             print(f"{'ok  ' if hit else 'FAIL'} {label} reported when planted")
             failures += 0 if hit else 1

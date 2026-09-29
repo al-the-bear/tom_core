@@ -20,6 +20,13 @@ of the suite today. The current suite is described in the README's
 - The README says why there is no `example/` directory: the app has no
   importable surface, and its Examples tab is the package's examples.
 - Suite: `+513`, `flutter analyze` clean.
+- Multi-selects bind like every other field. With the kernel re-typing a
+  serialized list for a `List<String>` field, `ProjectBriefForm` carries
+  `tags` as a member bound to `ProjectBrief.tags`, and Demo G drops the field
+  it owned, its seed and its hand-written write-back; the tag edit now reaches
+  the brief on Save, inside dirty tracking and `discard()`.
+  `Phase5DemoState` gains the `tags` member it had to omit, and Demo M's
+  panels open on its seed.
 
 - **The suite takes a bare `flutter test`; the `-j 1` in the refactoring plan is
   gone.** Serial runs were required on the ground that parallel test isolates

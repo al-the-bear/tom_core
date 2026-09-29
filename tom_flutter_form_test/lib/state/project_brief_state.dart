@@ -45,11 +45,8 @@ class ProjectBrief extends TomClass {
   late final notifySubscribers = TomBool(false);
 
   // --- Observable lists ----------------------------------------------------
-  // `tags` is rendered by a `TomFormStringFilterChips` the demo owns rather
-  // than by a `ProjectBriefForm` member: a `TomList<TomString>` serializes to
-  // a `List<dynamic>` that `bind()` cannot re-type into the `List<String>` a
-  // multi-select field holds. `Phase5DemoState` documents the same gap.
-  // `watchers` has no field at all — not every state member needs one.
+  // `tags` is bound by `ProjectBriefForm`'s multi-select; `watchers` has no
+  // field at all — not every state member needs one.
   late final tags = TomList<TomString>();
   late final watchers = TomList<TomString>();
 

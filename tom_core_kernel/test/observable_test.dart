@@ -108,6 +108,24 @@ class TestNullableElements extends TomClass {
   final zoned = TomList<TomNOZonedDateTime>();
 }
 
+/// Scalar members holding a whole list of primitives, the shape a multi-select
+/// form field is: `TomObject<List<String>>` rather than `TomList<TomString>`.
+@tomReflector
+class TestPrimitiveListScalars extends TomClass {
+  final tags = TomObject<List<String>>(const []);
+  final counts = TomObject<List<int>>(const []);
+  final rates = TomObject<List<double>>(const []);
+  final flags = TomObject<List<bool>>(const []);
+  final maybeTags = TomObject<List<String>?>(null);
+}
+
+/// The observable-list shape that backs a multi-select in application state.
+@tomReflector
+class TestPrimitiveListState extends TomClass {
+  final tags = TomList<TomString>();
+  final counts = TomList<TomInt>();
+}
+
 @tomReflector
 class TestUntypedContainers extends TomClass {
   final anyList = TomList<TomObject>();
@@ -4288,6 +4306,76 @@ void main() {
         expect(restored.price.get(), isA<double>());
         expect(restored.price.get(), equals(20.0));
       });
+    });
+  });
+
+  group('a list of primitives into a scalar list member', () {
+    // `getValues()` turns a TomList<TomString> into a plain `List<dynamic>`,
+    // and a multi-select field is a `TomObject<List<String>>`. Without a
+    // re-typing step `set` rejects the dynamic list, and because setValues is
+    // all-or-nothing the whole form's bind fails with it.
+    test('a TomList<TomString> round-trips into a List<String> member', () {
+      final state = TestPrimitiveListState();
+      state.tags
+        ..add(TomString('red'))
+        ..add(TomString('blue'));
+      final scalars = TestPrimitiveListScalars();
+
+      scalars.setValues(state.getValues());
+
+      expect(scalars.tags.get(), isA<List<String>>());
+      expect(scalars.tags.get(), ['red', 'blue']);
+    });
+
+    test('and back: a List<String> member fills a TomList<TomString>', () {
+      final scalars = TestPrimitiveListScalars()..tags.set(['x', 'y']);
+      final state = TestPrimitiveListState();
+
+      state.setValues({'tags': scalars.getValues()['tags']});
+
+      expect(state.tags.map((t) => t.get()).toList(), ['x', 'y']);
+    });
+
+    test('every primitive element type is re-typed', () {
+      final scalars = TestPrimitiveListScalars();
+
+      scalars.setValues(<String, dynamic>{
+        'counts': <dynamic>[1, 2],
+        'flags': <dynamic>[true, false],
+        'maybeTags': <dynamic>['a'],
+      });
+
+      expect(scalars.counts.get(), isA<List<int>>());
+      expect(scalars.flags.get(), isA<List<bool>>());
+      expect(scalars.maybeTags.get(), ['a']);
+    });
+
+    test('integral numbers widen into a List<double> member', () {
+      final scalars = TestPrimitiveListScalars();
+
+      scalars.setValues(<String, dynamic>{
+        'rates': <dynamic>[1, 2.5],
+      });
+
+      expect(scalars.rates.get(), isA<List<double>>());
+      expect(scalars.rates.get(), [1.0, 2.5]);
+    });
+
+    test('an element of the wrong type still fails the assignment', () {
+      // Re-typing is not coercion: a number where a string belongs is
+      // refused, as it would be for a scalar member.
+      expect(
+        () => TestPrimitiveListScalars().setValues(<String, dynamic>{
+          'tags': <dynamic>['ok', 3],
+        }),
+        throwsA(
+          isA<TomObservableException>().having(
+            (e) => e.key,
+            'key',
+            'observable.class_set_values.member_assignment_failed',
+          ),
+        ),
+      );
     });
   });
 

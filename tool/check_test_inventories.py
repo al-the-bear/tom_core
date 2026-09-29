@@ -318,11 +318,25 @@ def self_test() -> int:
         for path in (claim.doc, source.doc)
     }
 
+    # The totals move every time a suite is added, so they are read rather than
+    # restated -- a self-test pinned to one day's count breaks on the next
+    # suite, which is the moment it is least likely to be noticed.
+    def total_line(path: Path) -> str:
+        found = TOTAL.search(papers[path])
+        return found.group(0) if found else "**?** gating suites"
+
+    def shifted(line: str, by: int) -> str:
+        return TOTAL.sub(
+            lambda m: f"**{int(m.group(1)) + by}** gating suites", line
+        )
+
+    claim_total = total_line(claim.doc)
+    source_total = total_line(source.doc)
     perturbations = [
         (claim.doc, "| Unit tests | 8 |", "| Unit tests | 7 |", "WRONG"),
-        (claim.doc, "**65** gating suites", "**61** gating suites", "TOTAL"),
+        (claim.doc, claim_total, shifted(claim_total, -4), "TOTAL"),
         (claim.doc, "| Smoke tests | 10 |", "| Smoke tesst | 10 |", "UNKNOWN"),
-        (source.doc, "**65** gating suites", "**62** gating suites", "TOTAL"),
+        (source.doc, source_total, shifted(source_total, -3), "TOTAL"),
         (source.doc, "| Unit tests (8) |", "| Unit tests (9) |", "MISCOUNTED"),
     ]
     try:

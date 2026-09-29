@@ -102,6 +102,18 @@ class ProjectBriefForm extends TomForm<TomClass> {
     offLabelOverride: 'Silent',
   );
 
+  // The brief's tags bind the same way: `ProjectBrief.tags` is a
+  // `TomList<TomString>`, which `getValues()` serializes as a plain list, and
+  // `setValues` re-types it into the `List<String>` a multi-select holds.
+  late final tags = TomFormStringFilterChips(
+    'tags',
+    const [],
+    source: _tagSource,
+    form: this,
+    labelTextOverride: 'Tags',
+    descriptionTextOverride: 'Free-form labels used by the portfolio filters.',
+  );
+
   // --- Scope --------------------------------------------------------------
 
   late final budget = TomFormStringInput(
@@ -251,12 +263,7 @@ final _phaseSource = StaticSelectableSource<String>([
 ]);
 
 /// Item set behind the brief's `tags` multi-select.
-///
-/// Public because the field it feeds is built by the demo rather than by
-/// [ProjectBriefForm] — see `_ComplexFormBodyState._tags` for why. The item
-/// set is still part of the brief's domain, so it stays here with the other
-/// sources.
-final projectBriefTagSource = StaticSelectableSource<String>([
+final _tagSource = StaticSelectableSource<String>([
   const SelectableItem(value: 'dashboard', label: 'dashboard'),
   const SelectableItem(value: 'metrics', label: 'metrics'),
   const SelectableItem(value: 'sla', label: 'sla'),

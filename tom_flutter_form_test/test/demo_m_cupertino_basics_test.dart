@@ -224,10 +224,9 @@ void main() {
   testWidgets('pair-wise sync — selecting a Material tag chip propagates '
       'to the Cupertino tags field', (tester) async {
     // `tags` is the only pair routed through `_pairList`, and the only
-    // binding the shared `TomClass` deliberately does not carry (see
-    // phase5_state.dart) — so the pair-wise observer is the *whole*
-    // mechanism keeping the two panels in agreement here. Nothing else
-    // in this suite exercises it.
+    // multi-select the shared `TomClass` carries: a `TomList<TomString>`
+    // bound into both panels' `List<String>` fields, so the seed below
+    // proves the bind and the tap proves the pair-wise sync.
     await openDemoM(tester);
 
     List<String> tagsOf(String panel) {
@@ -240,8 +239,10 @@ void main() {
       return (adapter.field.get() as List).cast<String>();
     }
 
-    expect(tagsOf('Material concretes'), isEmpty, reason: 'seed is const []');
-    expect(tagsOf('Cupertino concretes'), isEmpty);
+    expect(tagsOf('Material concretes'), [
+      'alpha',
+    ], reason: 'bound from Phase5DemoState.tags');
+    expect(tagsOf('Cupertino concretes'), ['alpha']);
 
     final betaChip = find.descendant(
       of: panelByTitle('Material concretes'),
@@ -256,13 +257,13 @@ void main() {
     await tester.tap(betaChip);
     await tester.pumpAndSettle();
 
-    expect(tagsOf('Material concretes'), ['beta']);
+    expect(tagsOf('Material concretes'), ['alpha', 'beta']);
     expect(
       tagsOf('Cupertino concretes'),
-      ['beta'],
+      ['alpha', 'beta'],
       reason: '_pairList must propagate the list edit across the panels',
     );
-    expect(sharedStateValue(tester, 'tags'), 'beta');
+    expect(sharedStateValue(tester, 'tags'), 'alpha, beta');
   });
 
   // ---------------------------------------------------------------------

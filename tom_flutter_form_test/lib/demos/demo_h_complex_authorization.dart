@@ -168,11 +168,7 @@ class _DemoHComplexAuthorizationState extends State<DemoHComplexAuthorization> {
           alignment: AlignmentDirectional.centerStart,
           child: SizedBox(
             width: paneWidth,
-            child: buildComplexFormPane(
-              context: context,
-              form: _form,
-              state: phase2ProjectBriefState,
-            ),
+            child: buildComplexFormPane(context: context, form: _form),
           ),
         ),
       ],

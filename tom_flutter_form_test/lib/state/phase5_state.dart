@@ -19,12 +19,10 @@ class Phase5DemoState extends TomClass {
   /// Closed-set string with a small enum — drives the segmented row.
   late final size = TomString('M');
 
-  // Note: the multi-select `tags` field is intentionally NOT part of
-  // the shared `TomClass` state. `TomList<TomString>` produces a
-  // `List<TomString>` value that the bind() / setValues() path cannot
-  // re-type into the `List<String>` expected by the form field. The
-  // demo keeps tags state form-local on each side and relies on the
-  // pair-wise observer sync (`_pairList`) to propagate edits.
+  /// Multi-select — drives the filter-chips row. An observable list binds
+  /// to a `List<String>` field like any scalar: `setValues` re-types the
+  /// serialized list on the way in.
+  late final tags = TomList<TomString>()..add(TomString('alpha'));
 
   /// Free-form text — drives the search row.
   late final search = TomString('');
