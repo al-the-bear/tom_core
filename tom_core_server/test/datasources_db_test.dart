@@ -179,7 +179,7 @@ void main() async {
       // driver that had merely fallen over. The module's own type says the
       // start was refused *by the guard*, and the key says why.
       await expectLater(
-        ds.startTransaction,
+        () => ds.startTransaction(_aTransaction()),
         throwsA(
           isA<MariadbDatasourceException>().having(
             (e) => e.key,

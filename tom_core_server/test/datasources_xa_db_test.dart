@@ -89,11 +89,13 @@ void main() async {
         "VALUES ('xa-committed', 1, 0)",
       );
 
+      final result = await txn.commitTransaction();
       expect(
-        await txn.commitTransaction(),
-        isTrue,
+        result.outcome,
+        TomTransactionOutcome.committed,
         reason: 'the coordinator must report success, not veto its own commit',
       );
+      expect(result.isClean, isTrue, reason: 'the branch must be released');
       expect(await visibleTitles(), ['xa-committed']);
     });
 
@@ -105,7 +107,9 @@ void main() async {
         "VALUES ('xa-rolled-back', 1, 0)",
       );
 
-      expect(await txn.rollbackTransaction(), isTrue);
+      final result = await txn.rollbackTransaction();
+      expect(result.outcome, TomTransactionOutcome.rolledBack);
+      expect(result.isClean, isTrue, reason: 'the branch must be released');
       expect(await visibleTitles(), isEmpty);
     });
 
@@ -123,7 +127,9 @@ void main() async {
           "INSERT INTO fixture_task (title, priority, done) "
           "VALUES ('$title', 1, 0)",
         );
-        expect(await txn.commitTransaction(), isTrue);
+        final result = await txn.commitTransaction();
+        expect(result.outcome, TomTransactionOutcome.committed);
+        expect(result.isClean, isTrue, reason: 'the branch must be released');
       }
       expect(await visibleTitles(), ['xa-first', 'xa-second']);
     });
