@@ -192,9 +192,33 @@ it fails as unbaselined until it is recorded. To be run, a gate must be named
 [`tool/gate_report.py`](tool/gate_report.py); `report_*.py` names a tool that
 reports and never gates.
 
+**The gates are not the package suites.** A green gate run says the
+documentation still describes the code; it says nothing about whether the
+packages' own tests pass, and a change that reaches several packages is exactly
+the change most likely to leave a *sibling's* suite red while the package it was
+about, and the gates, are green. `tool/run_suites.py` runs what "green" means
+for this repository — every package suite and the gate suite — with one verdict:
+
+```bash
+python3 tool/run_suites.py                   # all eight package suites, then the gates
+python3 tool/run_suites.py kernel server     # a subset, by name or unique part of one
+python3 tool/run_suites.py --no-gates flutter_ui
+python3 tool/run_suites.py --list            # what would run, and with which runner
+```
+
+It runs Flutter packages under `flutter test` and the rest under `dart test`,
+each with its own configuration — a package's `dart_test.yaml` decides its
+concurrency; nothing is forced. It reports progress every 30 seconds (the
+longest suites take a quarter of an hour), prints a table of per-suite verdicts
+and durations, keeps each run's output under `tool/ztmp/suites/`, and exits
+non-zero if any suite failed. Run it before calling a cross-package change
+finished. It is deliberately not a `check_*.py`: the gate runner would discover
+it and start eight test suites.
+
 | Tool | What it does |
 | ---- | ------------ |
 | [`tool/check_gates.py`](tool/check_gates.py) | Runs every gate below and holds each to its recorded fault count |
+| [`tool/run_suites.py`](tool/run_suites.py) | Runs every package suite and the gate suite, with a per-suite verdict and one exit status |
 | [`tool/gate_report.py`](tool/gate_report.py) | The contract a gate implements: prints the machine-readable fault total and derives the exit status from it |
 | [`tool/check_tooling_table.py`](tool/check_tooling_table.py) | Pins this table, and the prose sections below it, to the contents of `tool/` |
 | [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits a document's own navigation: its `## Table of Contents` and every anchor it links to itself |

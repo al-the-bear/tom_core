@@ -45,10 +45,11 @@ bool _isNotAVariable(String line) =>
       r'abstract|sealed|base|interface|@|//|/\*|\*)',
     ).hasMatch(line);
 
-/// Every `(file, line, source)` in `lib/` that binds a reassignable global.
-List<(String, int, String)> mutableGlobals() {
+/// Every `(file, line, source)` under [root] -- `lib/` by default -- that binds
+/// a reassignable global.
+List<(String, int, String)> mutableGlobals([String root = 'lib']) {
   final found = <(String, int, String)>[];
-  final files = Directory('lib')
+  final files = Directory(root)
       .listSync(recursive: true)
       .whereType<File>()
       .where((f) => f.path.endsWith('.dart'))
@@ -93,8 +94,15 @@ void main() {
       // proving nothing, which is the failure mode a zero-result test has.
       // So: the scanner must find a deliberately planted global, and must
       // still pass over the shapes that merely look like one.
-      final planted = File('lib/src/zz_mutable_global_probe.dart')
-        ..writeAsStringSync('''
+      // Planted in a scratch directory the scanner is pointed at, never in
+      // lib/: the test runner runs test files concurrently, and a probe file in
+      // the real source tree is read -- and then found deleted -- by every
+      // other test that scans lib/ while this one holds it.
+      final scratch = Directory(
+        '.dart_tool',
+      ).createTempSync('mutable_global_probe_');
+      addTearDown(() => scratch.deleteSync(recursive: true));
+      File('${scratch.path}/zz_mutable_global_probe.dart').writeAsStringSync('''
 var plantedMutableGlobal = 1;
 final plantedFinal = 2;
 const plantedConst = 3;
@@ -102,9 +110,8 @@ typedef PlantedAlias = void Function();
 int get plantedGetter => 4;
 int plantedFunction(int a) => a;
 ''');
-      addTearDown(() => planted.deleteSync());
 
-      final names = mutableGlobals()
+      final names = mutableGlobals(scratch.path)
           .where((f) => f.$1.contains('zz_mutable_global_probe'))
           .map((f) => f.$3)
           .toList();
