@@ -1,4 +1,6 @@
 // ignore_for_file: type_literal_in_constant_pattern
+import 'dart:math';
+
 import 'package:mysql_client/mysql_client.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -7,6 +9,7 @@ import '../object_persistence/grouped_query.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../object_persistence/query_sentence_compiler.dart';
 import '../object_persistence/annotation_analyzer.dart';
+import 'sql_lexer.dart';
 import '../transactions/transaction_manager.dart';
 
 import 'mariadb_sql_dialect.dart';
@@ -435,6 +438,37 @@ class MariaDbDatasource implements TomDataSource {
   /// exception's parameters alongside the `state` that refused it, so a log
   /// identifies both which call ran too early and which of the two faults it
   /// met.
+  /// Refuses [command] when it holds more than one statement.
+  ///
+  /// `mysql_client` completes a call on the first reply it reads and never
+  /// checks whether more follow, so every reply after the first stays on the
+  /// wire and is read by the *next* call on this connection — which is then
+  /// answered by its predecessor's reply, and so on for the connection's life.
+  /// Nothing reports it: a query comes back empty, an `XA COMMIT` returns
+  /// before the server has committed, and an error in any statement after the
+  /// first is never raised. So one call carries one statement, and the check
+  /// runs before the connection is touched. A script is split first, with
+  /// [TomSqlLexer.splitStatements] — which is what the migration adaptor does.
+  ///
+  /// A terminating `;`, and a `;` inside a literal, quoted identifier or
+  /// comment, are not separators; the lexer is quote- and comment-aware.
+  static void _refuseMultipleStatements(String command, String operation) {
+    final statements = TomSqlLexer.splitStatements(command);
+    if (statements.length <= 1) return;
+    throw MariadbDatasourceException(
+      "error.datasource.multiple_statements",
+      "MariadbDatasource: $operation was given ${statements.length} "
+          "statements in one call. The driver reads only the first reply, "
+          "which would leave the rest to answer later calls on this "
+          "connection; issue one statement per call.",
+      parameters: {
+        "operation": operation,
+        "statements": statements.length,
+        "command": command,
+      },
+    );
+  }
+
   Future<MySQLConnection> _openConnection(String operation) async {
     if (connection == null) {
       throw MariadbDatasourceException(
@@ -705,6 +739,7 @@ class MariaDbDatasource implements TomDataSource {
     Type? resultType,
   ]) async {
     tomLog.trace("MariaDbDatasourceExecuting SQL: $T $resultType $command");
+    _refuseMultipleStatements(command, "executeQuery");
     final link = await _openConnection("executeQuery");
     IResultSet qResult = await runChecked<IResultSet>(
       () async {
@@ -1387,6 +1422,7 @@ class MariaDbDatasource implements TomDataSource {
     String command, [
     Map<String, dynamic>? params,
   ]) async {
+    _refuseMultipleStatements(command, "executeCommand");
     final link = await _openConnection("executeCommand");
     var qResult = await runChecked<IResultSet>(
       () async => await link.execute(command, _toBindParams(params)),
@@ -1630,17 +1666,53 @@ class MariaDbDatasource implements TomDataSource {
 class MariaDbXADatasource extends MariaDbDatasource {
   String? _txId;
 
-  /// Whether the branch has been `XA END`ed and `XA PREPARE`d.
+  /// The most bytes an XA `gtrid` may hold; `XA START` refuses a longer one.
+  static const int maxBranchIdBytes = 64;
+
+  /// Distinguishes this process's branches from another's on the same server.
+  static final String _processTag = Random.secure()
+      .nextInt(1 << 32)
+      .toRadixString(16)
+      .padLeft(8, '0');
+
+  /// Distinguishes this process's branches from each other within a clock tick.
+  static int _branchCounter = 0;
+
+  /// A new branch id: `<database>@<host>:<port>_<process>_<time>_<counter>`.
   ///
-  /// `XA END` is legal exactly once, on an ACTIVE branch, and both of the
-  /// statements that finish a branch require a state this decides:
-  /// `XA ROLLBACK` is refused on an ACTIVE branch — `XAER_RMFAIL: The command
-  /// cannot be executed when global transaction is in the ACTIVE state` — and
-  /// `XA END` is refused on a prepared one. A rollback can arrive in either
-  /// state, before [commit] has run or after its prepare succeeded and its
-  /// commit did not, so it has to know which it is looking at rather than
-  /// issuing a statement and ignoring the failure.
-  bool _prepared = false;
+  /// Bounded and unique, in that order of necessity. MariaDB refuses a `gtrid`
+  /// over [maxBranchIdBytes] as a syntax error, so a branch id built from the
+  /// coordinates as written makes every XA transaction fail to start the
+  /// moment a real hostname or database name is long enough. The unique tail
+  /// is always kept whole and the readable head is what gets truncated: a
+  /// shortened name still tells an operator reading `XA RECOVER` whose branch
+  /// it is, while a shortened tail could name two branches alike. The tail is
+  /// unique across processes (a random tag) as well as within one (the time
+  /// plus a counter). Characters outside `[A-Za-z0-9_.@:-]` become `_`, which
+  /// keeps the id single-byte and safe to quote.
+  String _newBranchId() {
+    final time = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+    final count = (_branchCounter++).toRadixString(36);
+    final tail = '_${_processTag}_${time}_$count';
+    final head = '$databaseName@$host:$port'.replaceAll(
+      RegExp(r'[^A-Za-z0-9_.@:-]'),
+      '_',
+    );
+    final room = maxBranchIdBytes - tail.length;
+    return (head.length > room ? head.substring(0, room) : head) + tail;
+  }
+
+  /// Whether the branch has been `XA END`ed — it is IDLE or PREPARED rather
+  /// than ACTIVE.
+  ///
+  /// `XA END` is legal exactly once, on an ACTIVE branch, and a rollback has to
+  /// know which side of it the branch is on: `XA ROLLBACK` is refused on an
+  /// ACTIVE branch — `XAER_RMFAIL: The command cannot be executed when global
+  /// transaction is in the ACTIVE state` — and `XA END` is refused on an IDLE
+  /// or PREPARED one. A rollback can arrive in any of the three states: before
+  /// [prepare] ran, after its `XA END` succeeded and its `XA PREPARE` did not,
+  /// or after a prepare succeeded and the commit did not.
+  bool _ended = false;
 
   /// Opens an XA branch. A read-only [transaction] cannot be honoured here.
   ///
@@ -1658,8 +1730,8 @@ class MariaDbXADatasource extends MariaDbDatasource {
         "read-only branch: writes on this connection are not prevented.",
       );
     }
-    _txId = "'${databaseName}_${host}_${port}_${DateTime.now()}'";
-    _prepared = false;
+    _txId = "'${_newBranchId()}'";
+    _ended = false;
     try {
       await executeCommand("XA START $_txId;");
       return true;
@@ -1691,7 +1763,12 @@ class MariaDbXADatasource extends MariaDbDatasource {
   @override
   Future<bool> endTransaction() async => true;
 
-  /// Phase one: `XA END` then `XA PREPARE` against this branch.
+  /// Phase one: `XA END` then `XA PREPARE` against this branch, as two calls.
+  ///
+  /// Two calls, not one command: the driver reads only the first reply of a
+  /// multi-statement command (see `_refuseMultipleStatements`), and a
+  /// PREPARE's reply left on the wire is what a later `XA COMMIT` would then
+  /// return on — before the server had committed.
   ///
   /// This is the statement XA exists for. A prepared branch is one the server
   /// has undertaken to be able to commit — it survives a restart, and nothing
@@ -1708,8 +1785,9 @@ class MariaDbXADatasource extends MariaDbDatasource {
   Future<bool> prepare() async {
     final branch = _txId;
     try {
-      await executeCommand("XA END $branch; XA PREPARE $branch;");
-      _prepared = true;
+      await executeCommand("XA END $branch;");
+      _ended = true;
+      await executeCommand("XA PREPARE $branch;");
       return true;
     } catch (error) {
       tomLog.error(
@@ -1734,7 +1812,7 @@ class MariaDbXADatasource extends MariaDbDatasource {
     try {
       await executeCommand("XA COMMIT $branch;");
       _txId = null;
-      _prepared = false;
+      _ended = false;
       return true;
     } catch (error) {
       tomLog.error(
@@ -1756,15 +1834,14 @@ class MariaDbXADatasource extends MariaDbDatasource {
     if (_txId == null) return true;
     var undone = true;
     try {
-      // An ACTIVE branch has to be ended before it can be rolled back; a
-      // prepared one has already been ended and would refuse a second `XA END`.
-      // Sending `XA ROLLBACK` alone leaves an active branch exactly where it
-      // was — holding its locks, with nothing issuing `XA RECOVER` to find it.
-      await executeCommand(
-        _prepared
-            ? "XA ROLLBACK $_txId;"
-            : "XA END $_txId; XA ROLLBACK $_txId;",
-      );
+      // An ACTIVE branch has to be ended before it can be rolled back; an IDLE
+      // or prepared one has already been ended and would refuse a second
+      // `XA END`. Sending `XA ROLLBACK` alone leaves an active branch exactly
+      // where it was — holding its locks, with nothing issuing `XA RECOVER` to
+      // find it. A refused `XA END` ends the attempt: the branch is still
+      // ACTIVE, and `XA ROLLBACK` would be refused for the same reason.
+      if (!_ended) await executeCommand("XA END $_txId;");
+      await executeCommand("XA ROLLBACK $_txId;");
     } catch (error) {
       tomLog.error(
         "Rolling back XA database transaction of ${getParticipantId()} failed $error",
@@ -1777,7 +1854,7 @@ class MariaDbXADatasource extends MariaDbDatasource {
       // startTransaction is allowed. Leaving it set wedges the data source after
       // its first rolled-back transaction.
       _txId = null;
-      _prepared = false;
+      _ended = false;
     }
     return undone;
   }

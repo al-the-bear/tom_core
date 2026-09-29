@@ -7,7 +7,7 @@ import '../little_things/server_exception.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../datasources/datasource_initialization.dart';
 import 'db_migration.dart';
-import 'sql_lexer.dart';
+import '../datasources/sql_lexer.dart';
 
 /// Thrown for MariaDB migration failures (versioning-table creation, version
 /// query, a changed description/checksum for an already-applied version, or a

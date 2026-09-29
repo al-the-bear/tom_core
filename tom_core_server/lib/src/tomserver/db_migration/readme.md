@@ -63,7 +63,6 @@ disagreement rather than two spellings of the same thing.
 | `TomSchemaColumn` | One column of a `TomSchemaTable`. |
 | `TomSchemaBuilder` | The mutable accumulator both sides build their `TomSchemaModel` through, so the two halves cannot drift apart in shape. |
 | `TomSqlTypeFamilyCompatibility` | How tolerantly the two sides compare their `TomSqlTypeFamily` classifications. The families are the dialect's vocabulary; the tolerance is the check's policy. |
-| `TomSqlLexer` | The lexing primitives every consumer of raw SQL text in this module shares — quoted runs, comments, and the module's one `splitStatements`. |
 
 ## Quick start
 

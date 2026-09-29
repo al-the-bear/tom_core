@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -46,6 +47,12 @@ mixin _ScriptedCommands on MariaDbDatasource {
     Map<String, dynamic>? params,
   ]) async {
     commands.add(command);
+    // As strict as the real driver, which refuses a multi-statement command
+    // (see the 'one statement per call' group): a fake that accepted one would
+    // let a lifecycle regress to the shape that desynchronised the connection.
+    if (TomSqlLexer.splitStatements(command).length > 1) {
+      throw StateError('more than one statement in one call: $command');
+    }
     if (failing.any(command.startsWith)) {
       throw StateError('scripted failure for: $command');
     }
@@ -1683,6 +1690,67 @@ void main() {
     });
   });
 
+  // `mysql_client` completes a call on the first OK packet it reads and never
+  // looks at the more-results flag, so a two-statement command leaves the
+  // second reply on the wire for the *next* call to read. From then on every
+  // call on that connection is answered by its predecessor's reply: a query
+  // comes back empty, a `XA COMMIT` returns before the server has committed,
+  // and an error in any statement after the first is never raised at all.
+  // Nothing about that is visible where it goes wrong, so the driver refuses
+  // the shape at the boundary instead — before it can reach the connection.
+  group('MariaDbDatasource: one statement per call', () {
+    Future<MariadbDatasourceException> refusal(
+      Future<Object?> Function(MariaDbDatasource) call,
+    ) async {
+      final ds = _NeverOpenedDatasource();
+      try {
+        await call(ds);
+      } on MariadbDatasourceException catch (e) {
+        expect(ds.connectCalls, 0, reason: 'refused before dialling out');
+        return e;
+      }
+      fail('the call did not refuse');
+    }
+
+    test('executeCommand refuses two statements', () async {
+      final e = await refusal(
+        (ds) => ds.executeCommand('XA END x; XA PREPARE x;'),
+      );
+      expect(e.key, 'error.datasource.multiple_statements');
+      expect(e.parameters?['operation'], 'executeCommand');
+    });
+
+    test('executeQuery refuses two statements', () async {
+      final e = await refusal(
+        (ds) => ds.executeQuery<Object>('SELECT 1; SELECT 2'),
+      );
+      expect(e.key, 'error.datasource.multiple_statements');
+      expect(e.parameters?['operation'], 'executeQuery');
+    });
+
+    test('a terminating semicolon is still one statement', () async {
+      // The refusal is about statements, not characters: `COMMIT;` is the
+      // shape the transaction lifecycle issues, and it reaches the connection
+      // check rather than being refused.
+      final e = await refusal((ds) => ds.executeCommand('COMMIT;'));
+      expect(e.key, 'error.datasource.not_opened');
+    });
+
+    test(
+      'a semicolon inside a literal or a comment is not a separator',
+      () async {
+        for (final command in const [
+          "INSERT INTO t (title) VALUES ('a; b')",
+          'SELECT 1 -- ; SELECT 2',
+          'SELECT `odd;name` FROM t',
+        ]) {
+          final e = await refusal((ds) => ds.executeCommand(command));
+          expect(e.key, 'error.datasource.not_opened', reason: command);
+        }
+      },
+    );
+  });
+
   // The other half of the rule, and the half that must not be lost while
   // enforcing the first: a link that *was* opened and has since dropped is
   // re-opened, because the settings are known and reconnecting is what the
@@ -2155,7 +2223,8 @@ void main() {
         expect(branch, isNot(contains('null')));
         expect(ds.commands, [
           'XA START $branch;',
-          'XA END $branch; XA PREPARE $branch;',
+          'XA END $branch;',
+          'XA PREPARE $branch;',
           'XA COMMIT $branch;',
         ]);
       },
@@ -2188,7 +2257,8 @@ void main() {
       final branch = _branchOf(ds);
       expect(ds.commands, [
         'XA START $branch;',
-        'XA END $branch; XA ROLLBACK $branch;',
+        'XA END $branch;',
+        'XA ROLLBACK $branch;',
       ]);
       expect(
         ds.commands.any((c) => c.startsWith('XA PREPARE')),
@@ -2219,7 +2289,8 @@ void main() {
         final branch = _branchOf(ds);
         expect(ds.commands, [
           'XA START $branch;',
-          'XA END $branch; XA PREPARE $branch;',
+          'XA END $branch;',
+          'XA PREPARE $branch;',
           'XA COMMIT $branch;',
         ]);
         expect(
@@ -2263,9 +2334,40 @@ void main() {
       // branch id would still end in a statement mentioning `XA ROLLBACK`, and
       // that statement would name `null` — the real branch left behind with
       // nothing to reclaim it. The branch is still ACTIVE here, the prepare
-      // having failed, so it is ended on the way out.
-      expect(ds.commands.last, 'XA END $branch; XA ROLLBACK $branch;');
+      // having failed at its `XA END`, so the rollback tries to end it first —
+      // and this driver refuses that too, which is where the rollback stops.
+      expect(ds.commands.last, 'XA END $branch;');
+      expect(
+        ds.commands.where((c) => c == 'XA END $branch;'),
+        hasLength(2),
+        reason: 'one from the prepare, one from the rollback',
+      );
     });
+
+    test(
+      'a prepare refused after XA END rolls back without a second END',
+      () async {
+        // The case splitting the two statements creates. `XA END` succeeded, so
+        // the branch is IDLE rather than ACTIVE; a second `XA END` is refused on
+        // an IDLE branch, which would turn a clean veto into a rollback failure
+        // and leave the branch behind. `XA ROLLBACK` alone is what IDLE takes.
+        final ds = _ScriptedXADatasource(failing: {'XA PREPARE'});
+        final (txn, _) = TomTransactionManager.startTransaction();
+        await txn.registerParticipant(ds);
+
+        final result = await txn.commitTransaction();
+        expect(result.outcome, TomTransactionOutcome.rolledBack);
+        expect(result.isClean, isTrue);
+
+        final branch = _branchOf(ds);
+        expect(ds.commands, [
+          'XA START $branch;',
+          'XA END $branch;',
+          'XA PREPARE $branch;',
+          'XA ROLLBACK $branch;',
+        ]);
+      },
+    );
 
     test('the plain sibling is unaffected by the same drive', () async {
       // The control. The one-phase driver has no prepare and must not grow one:
@@ -2276,6 +2378,55 @@ void main() {
 
       expect((await txn.commitTransaction()).isClean, isTrue);
       expect(ds.commands, ['START TRANSACTION;', 'COMMIT;']);
+    });
+  });
+
+  // The branch id is the `gtrid` of an XA xid, which MariaDB caps at 64 bytes:
+  // `XA START` with a longer one is refused as a syntax error. Built naively
+  // from the coordinates — database, host, port and a timestamp — it fitted
+  // only by luck (62 bytes for the test database on `127.0.0.1`), so any real
+  // hostname or a longer database name made every XA transaction fail to
+  // start. The id also has to differ between processes that talk to the same
+  // database, which a timestamp alone does not guarantee.
+  group('MariaDb XA branch id', () {
+    String branchOf(MariaDbXADatasource ds) {
+      final start = (ds as _ScriptedXADatasource).commands.last;
+      expect(start, startsWith("XA START '"));
+      return start.substring("XA START '".length, start.length - 2);
+    }
+
+    test('fits the 64-byte gtrid whatever the coordinates', () async {
+      final ds = _ScriptedXADatasource()
+        ..databaseName =
+            'a_rather_long_production_database_name_for_the_tenant_ledgers'
+        ..host = 'db-primary.eu-central-1.internal.example.com';
+      expect(await ds.startTransaction(_aTransaction()), isTrue);
+      expect(utf8.encode(branchOf(ds)).length, lessThanOrEqualTo(64));
+    });
+
+    test('still names the database it belongs to', () async {
+      // An operator reading `XA RECOVER` has to be able to tell whose branch
+      // it is; the uniqueness suffix must not crowd the name out entirely.
+      final ds = _ScriptedXADatasource();
+      expect(await ds.startTransaction(_aTransaction()), isTrue);
+      expect(branchOf(ds), startsWith('app@db:3306_'));
+    });
+
+    test('is quote-safe and single-byte', () async {
+      final ds = _ScriptedXADatasource()..databaseName = "o'brien_dätä";
+      expect(await ds.startTransaction(_aTransaction()), isTrue);
+      expect(branchOf(ds), matches(RegExp(r'^[A-Za-z0-9_.@:-]+$')));
+    });
+
+    test('differs for every branch, even back to back', () async {
+      final ds = _ScriptedXADatasource();
+      final ids = <String>{};
+      for (var i = 0; i < 50; i++) {
+        expect(await ds.startTransaction(_aTransaction()), isTrue);
+        ids.add(branchOf(ds));
+        expect(await ds.rollback(), isTrue);
+      }
+      expect(ids, hasLength(50));
     });
   });
 
@@ -2298,7 +2449,10 @@ void main() {
       final branch = _branchOf(ds);
       await ds.rollback();
       expect(await ds.startTransaction(_aTransaction()), isTrue);
-      expect(ds.commands[1], 'XA END $branch; XA ROLLBACK $branch;');
+      expect(ds.commands.sublist(1, 3), [
+        'XA END $branch;',
+        'XA ROLLBACK $branch;',
+      ]);
     });
 
     test('a failed prepare keeps the branch id for the rollback', () async {
@@ -2311,11 +2465,12 @@ void main() {
       expect(await ds.startTransaction(_aTransaction()), isTrue);
       final branch = _branchOf(ds);
       expect(await ds.prepare(), isFalse);
-      expect(ds.commands.last, 'XA END $branch; XA PREPARE $branch;');
+      expect(ds.commands.last, 'XA END $branch;');
       await ds.rollback();
-      // The prepare failed, so the branch is still ACTIVE and has to be ended
-      // before it can be rolled back.
-      expect(ds.commands.last, 'XA END $branch; XA ROLLBACK $branch;');
+      // The prepare failed at its `XA END`, so the branch is still ACTIVE and
+      // the rollback has to end it first — naming the branch, not `null`.
+      expect(ds.commands.last, 'XA END $branch;');
+      expect(ds.commands.where((c) => c.contains('null')), isEmpty);
       expect(await ds.startTransaction(_aTransaction()), isTrue);
     });
 
@@ -2349,7 +2504,8 @@ void main() {
       expect(await ds.prepare(), isTrue);
       expect(ds.commands, [
         'XA START $branch;',
-        'XA END $branch; XA PREPARE $branch;',
+        'XA END $branch;',
+        'XA PREPARE $branch;',
       ]);
       expect(await ds.commit(), isTrue);
       expect(ds.commands.last, 'XA COMMIT $branch;');

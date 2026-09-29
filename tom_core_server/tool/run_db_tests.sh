@@ -12,8 +12,8 @@
 #   tom_core_server/tool/run_db_tests.sh
 #
 # Requirements: docker (+ compose v2) and the Dart SDK on PATH. Host port 3309
-# must be free. The database starts from a fresh volume each run, so the schema
-# helpers in `test/fixtures/test_database.dart` provision a known-empty state.
+# must be free. The database starts from a fresh volume each run, and every
+# suite file creates (and afterwards drops) a database of its own inside it.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -51,4 +51,11 @@ log "Running DB-tagged tests"
 cd "$PROJECT_DIR"
 # testkit drives `dart test`; `--tags db` selects only the DB-backed suites,
 # which now find a reachable server and run instead of skipping.
+#
+# No concurrency limit, deliberately. Each suite file provisions a database of
+# its own (test/fixtures/test_database.dart), so suites running side by side
+# cannot truncate or drop each other's tables. A DB-backed failure that appears
+# only in the parallel run is therefore a real finding — two suites meeting on
+# something outside their schemas, or a connection-level defect — and `-j 1`
+# would hide it rather than fix it.
 testkit :test --test-args="--tags db"

@@ -51,6 +51,8 @@ module builds its query DSL and repositories on top of this layer.
     - [MariadbPreparedStatement&lt;T&gt;](#mariadbpreparedstatementt)
   - [Placeholder Scanning](#placeholder-scanning)
     - [SqlPlaceholderScan](#sqlplaceholderscan)
+  - [SQL Lexing](#sql-lexing)
+    - [TomSqlLexer](#tomsqllexer)
   - [Framework-Owned Tables](#framework-owned-tables)
     - [TomFrameworkColumn](#tomframeworkcolumn)
     - [TomFrameworkKey](#tomframeworkkey)
@@ -75,6 +77,7 @@ Source: `lib/src/tomserver/datasources/datasource_initialization.dart`,
 `lib/src/tomserver/datasources/sql_dialects.dart`,
 `lib/src/tomserver/datasources/sql_failure_mode.dart`,
 `lib/src/tomserver/datasources/sql_instant.dart`,
+`lib/src/tomserver/datasources/sql_lexer.dart`,
 `lib/src/tomserver/datasources/sql_placeholder_scan.dart`,
 `lib/src/tomserver/datasources/types_operator.dart`.
 
@@ -150,6 +153,7 @@ TomTransactionParticipant  (transactions)
 
 TomDataSourceInfo
 SqlPlaceholderScan
+TomSqlLexer
 TomFrameworkTable
 TomFrameworkColumn
 TomFrameworkKey
@@ -900,6 +904,13 @@ could not work: `connect()` binds `host`, `port` and the credentials, so before
 they are configured it would dial `:-1`, reporting an unreachable database where
 the truth is an unconfigured one.
 
+`executeQuery` and `executeCommand` take one statement each and refuse more with
+`error.datasource.multiple_statements` (parameters `operation`, `statements`,
+`command`) before touching the connection: `mysql_client` reads only the first
+reply of a multi-statement command and leaves the rest to answer the next calls
+on the same connection. The check is quote- and comment-aware, so a terminating
+`;` or one inside a literal is not a separator.
+
 `close()` releases the link **and lets go of it**, so a closed data source is
 not-open and refuses statements (`state: "closed"`) exactly as one that was
 never opened does (`state: "never_opened"`) — re-opening it by itself would
@@ -994,22 +1005,29 @@ MariaDbXADatasource()
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `startTransaction` | `Future<bool> startTransaction()` | *(override)* Issues `XA START` against a fresh branch id, throwing the same `error.transaction.already_active` as the base class — with the open branch in the `transactionId` parameter — if one is already open. Clears the id again when the command fails, since the database never opened that branch. |
-| `endTransaction` | `Future<bool> endTransaction()` | *(override)* A no-op that always succeeds, exactly as the one-phase sibling's is. Every XA statement belongs to `commit` and `rollback`. |
-| `commit` | `Future<bool> commit()` | *(override)* Issues `XA END` + `XA PREPARE`, then — as a second round trip, so a refused prepare stops short of it — `XA COMMIT`. Clears the branch id on success and **keeps** it on either failure, because a `false` is a veto and the rollback that follows needs the branch to name. |
-| `rollback` | `Future<void> rollback()` | *(override)* Issues `XA END` + `XA ROLLBACK` for a branch still active and `XA ROLLBACK` alone for a prepared one — the server refuses each statement in the other's state — and clears the branch id either way. Issues nothing when there is no branch, which is the state a participant is in when it committed before someone else vetoed. |
+| `prepare` | `Future<bool> prepare()` | *(override)* Issues `XA END` and then `XA PREPARE`, as two calls. Keeps the branch id on failure, because a `false` is a veto and the rollback that follows needs the branch to name. |
+| `commit` | `Future<bool> commit()` | *(override)* Issues `XA COMMIT` against the prepared branch and clears the id. On failure the branch is in doubt, and the id is kept so it has a name. |
+| `endTransaction` | `Future<bool> endTransaction()` | *(override)* A no-op that always succeeds, exactly as the one-phase sibling's is. Every XA statement belongs to `prepare`, `commit` and `rollback`. |
+| `rollback` | `Future<bool> rollback()` | *(override)* Issues `XA END` then `XA ROLLBACK` for a branch still active, and `XA ROLLBACK` alone for one already ended — idle after a refused `XA PREPARE`, or prepared — because the server refuses each statement in the other's state. Clears the branch id either way and reports whether the branch was undone. Issues nothing when there is no branch, which is the state a participant is in when it committed before someone else vetoed. |
 
-Every exit puts the branch id back except a failing `commit`, which hands it on
-to `rollback`. The rule is what keeps the data source usable: the id is also the
-guard `startTransaction` refuses a second transaction on, so an exit that forgets
-to clear locks out every later transaction permanently — and a caller cannot
+##### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `maxBranchIdBytes` | `int` | `const`, `64`: the most bytes an XA `gtrid` may hold. The branch id, `<database>@<host>:<port>_<process>_<time>_<counter>`, is bounded to it by truncating the readable head and keeping the unique tail whole; characters outside `[A-Za-z0-9_.@:-]` become `_`. |
+
+Every exit puts the branch id back except a failing `prepare` or `commit`. The
+rule is what keeps the data source usable: the id is also the guard
+`startTransaction` refuses a second transaction on, so an exit that forgets to
+clear locks out every later transaction permanently — and a caller cannot
 recover by rolling back, because the branch it would name never began.
 
-That both prepare and commit live in `commit` is a fact about the coordinator
-rather than about XA. `TomTransaction.commitTransaction` drains its `commit()`
-loop before it calls `endTransaction()` on anyone, so a prepare in
-`endTransaction` would run after the commit it is a precondition of — the server
-would refuse that commit, the `false` would read as a veto, and the transaction
-would become a rollback with the branch left ACTIVE holding its locks.
+The statements follow the coordinator's two phases, and cannot be arranged any
+other way: `TomTransaction.commitTransaction` drains its `commit()` loop before
+it calls `endTransaction()` on anyone, so a prepare in `endTransaction` would
+run after the commit it is a precondition of — the server would refuse that
+commit, the `false` would read as a veto, and the transaction would become a
+rollback with the branch left ACTIVE holding its locks.
 
 #### MariadbPreparedStatement&lt;T&gt;
 
@@ -1075,6 +1093,43 @@ implementation both the MariaDB datasource and the CRUD repository use.
 | ------ | --------- | ----------- |
 | `toPositional` | `static (String, List<String>) toPositional(String namedSql)` | Rewrites every outside-of-literal `:name` placeholder to `?`, returning the rewritten SQL and placeholder names in order (repeats included). |
 | `extractNames` | `static List<String> extractNames(String namedSql)` | The placeholder names in textual order (repeats included), skipping any inside a string literal. |
+
+### SQL Lexing
+
+#### TomSqlLexer
+
+The shared SQL lexing primitives — the one place this package decides where a
+quoted run ends and where one statement ends and the next begins. The MariaDB
+driver's one-statement check, `db_migration`'s applier
+(`MariadbMigrationAdaptor.applyMigration`) and its reader
+(`TomSchemaDdlReader`) are all written on it, because a scan that disagrees with the
+server does not fail loudly: it cuts a statement in half inside a string literal,
+or swallows a closing quote and welds two statements into one.
+
+Escaping is not uniform across the three quote characters, and the lexer
+implements what MariaDB actually does under the default `sql_mode`
+(`NO_BACKSLASH_ESCAPES` off):
+
+| Quote | `''` doubling | `\'` backslash |
+| ----- | ------------- | -------------- |
+| `'` string literal | yes | yes |
+| `"` string literal | yes | yes |
+| `` ` `` identifier | yes | **no** |
+
+##### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `quoteCharacters` | `String` | The three characters that open a quoted run: `'`, `"` and `` ` ``. |
+
+##### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `endOfQuotedRun` | `static int endOfQuotedRun(String sql, int openIndex)` | The index of the closing quote of the run opened at `openIndex`, or `sql.length - 1` when the run is never closed (reported, not thrown — this is a lexer, not a validator). |
+| `endOfComment` | `static int endOfComment(String sql, int startIndex)` | The index of the last character of the comment starting at `startIndex`; a line comment ends before its newline, a block comment at its `*/`. |
+| `commentOpensAt` | `static bool commentOpensAt(String sql, int index)` | Whether a comment opens at `index` — `--`, `#` or `/*`. Only meaningful outside a quoted run. |
+| `splitStatements` | `static List<String> splitStatements(String sql)` | Splits `sql` into its statements on unquoted, uncommented semicolons, trimmed, dropping whitespace-only fragments. **Comments are preserved** — `/*!40101 … */` is executable, version-gated SQL, so dropping it would silently remove a statement. |
 
 ### Framework-Owned Tables
 

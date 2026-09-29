@@ -39,6 +39,7 @@ declared.
   - [Deciding whether to retry](#deciding-whether-to-retry)
 - [The MariaDB Driver](#the-mariadb-driver)
   - [The connection lifecycle](#the-connection-lifecycle)
+  - [One statement per call](#one-statement-per-call)
 - [Framework-Owned Tables](#framework-owned-tables)
 - [Verification](#verification)
 - [Core Components](#core-components)
@@ -68,6 +69,7 @@ declared.
 | `TomTypePersistenceInfo` | class | Per-type persistence metadata (table + columns) |
 | `TomTypedPersistenceBase` | abstract class | Base for anything scoped to a set of entity types; analyses their annotations once and exposes the flattened column information |
 | `SqlPlaceholderScan` | class | Finds `:name` placeholders in generated SQL without mistaking one inside a quoted literal for a bind |
+| `TomSqlLexer` | class | The package's one quote/comment scanner and statement splitter — shared by this driver's one-statement check and by `db_migration`'s applier and DDL reader |
 | `TomDataSource` | abstract class | A connection to one data source (lifecycle + execution) |
 | `TomPreparedStatement<T>` | abstract class | A reusable compiled statement |
 | `TomDatasourceDriver` | class | Marks a `TomDataSource` as the driver for a named type |
@@ -775,6 +777,24 @@ Every execution entry point then observes the same rule:
 Both refusals also name the calling entry point in the exception's `operation`
 parameter, so a log says which call ran too early.
 
+### One statement per call
+
+`executeQuery` and `executeCommand` take **one SQL statement** and refuse more
+with `error.datasource.multiple_statements`, carrying the `operation`, the
+`statements` count and the `command`. The check runs before the connection is
+touched, and it is quote- and comment-aware (`TomSqlLexer.splitStatements`): a
+terminating `;`, and a `;` inside a literal, a quoted identifier or a comment,
+do not count.
+
+The reason is the client library. `mysql_client` completes a call on the first
+reply it reads and never checks whether more follow, so every reply after the
+first stays on the wire and is read by the *next* call on the same connection —
+which is then answered by its predecessor's reply, for the rest of the
+connection's life. Nothing reports it: a query comes back empty, an `XA COMMIT`
+returns before the server has committed, and an error in any statement after
+the first is never raised at all. A script is split first; the migration
+adaptor does exactly that.
+
 Opening on demand is not offered because it could not work. `connect()` binds
 `host`, `port` and the credentials, and those arrive only from `initialize` or a
 direct assignment; before either, `host` is `""` and `port` is `-1`. An implicit
@@ -909,34 +929,48 @@ two-phase commit across multiple resources.
 
 Each transaction runs against a branch id the data source mints in
 `startTransaction`, and that id doubles as the guard: a second start while one
-is set throws rather than opening a nested branch. So **every exit clears the
-id except a failing `commit`**, which hands it on to `rollback`. An exit that
-forgets locks the data source out of all later transactions permanently, and
-the caller cannot recover by rolling back — the branch it would have to name
-never began.
+is set throws rather than opening a nested branch. **Every exit clears the id
+except a failing `prepare` and a failing `commit`.** A failing prepare hands it
+on to `rollback`, which the coordinator issues in answer to the veto and which
+has to name the branch; a failing commit leaves a prepared branch in doubt, and
+the id is kept so it has a name. An exit that forgets locks the data source out
+of all later transactions permanently, and the caller cannot recover by rolling
+back — the branch it would have to name never began.
 
-**All four statements belong to `commit` and `rollback`, and that is a fact
-about the coordinator rather than about XA.** `TomTransaction.commitTransaction`
-drains its `commit()` loop before it calls `endTransaction()` on anyone, so a
-prepare placed in `endTransaction` would run *after* the commit it is a
-precondition of. `commit` therefore issues `XA END` + `XA PREPARE` and then, as
-a second round trip so a refused prepare stops short of it, `XA COMMIT`;
-`endTransaction` is the same no-op that reports success as its one-phase
-sibling's. An implementation that splits them the other way cannot commit at
-all: the server refuses `XA COMMIT` on a branch that was never ended, the
-`false` reads as a veto, and the transaction becomes a rollback with the branch
-left ACTIVE holding its locks.
+The branch id is `<database>@<host>:<port>_<process>_<time>_<counter>`, and it
+is **bounded to 64 bytes**, the most an XA `gtrid` may hold — MariaDB refuses a
+longer one as a syntax error, so an id built from the coordinates as written
+would make every XA transaction fail to start as soon as the hostname or the
+database name was long enough. The unique tail — a random per-process tag, the
+time in microseconds and a per-process counter — is always kept whole, and the
+readable head is what is truncated: a shortened name still tells an operator
+reading `XA RECOVER` whose branch it is, while a shortened tail could name two
+branches alike. Characters outside `[A-Za-z0-9_.@:-]` become `_`, which keeps
+the id single-byte and safe to quote.
+
+**The statements map onto the coordinator's two phases.** `prepare` issues
+`XA END` and then `XA PREPARE`, as two calls (see
+[One statement per call](#one-statement-per-call)); `commit` issues
+`XA COMMIT`; `endTransaction` is the same no-op that reports success as its
+one-phase sibling's. It has to be this way round because
+`TomTransaction.commitTransaction` drains its `commit()` loop before it calls
+`endTransaction()` on anyone, so a prepare placed in `endTransaction` would run
+*after* the commit it is a precondition of: the server refuses `XA COMMIT` on a
+branch that was never ended, the `false` reads as a veto, and the transaction
+becomes a rollback with the branch left ACTIVE holding its locks.
 
 `rollback` ends the branch too, when it is still active. `XA END` is legal
-exactly once and on an ACTIVE branch only, and the two statements that finish a
-branch each require the opposite state — `XA ROLLBACK` is refused on an ACTIVE
-branch (`XAER_RMFAIL: The command cannot be executed when global transaction is
-in the ACTIVE state`) and `XA END` is refused on a prepared one. A rollback can
-arrive in either state: before `commit` has run at all, or after its prepare
-succeeded and its commit did not. So the driver tracks which, and issues
-`XA END` + `XA ROLLBACK` for an active branch and `XA ROLLBACK` alone for a
-prepared one, rather than sending a statement and ignoring the failure — a
-rollback the server refuses leaves the branch exactly where it was.
+exactly once and on an ACTIVE branch only, and it decides what the rollback may
+issue: `XA ROLLBACK` is refused on an ACTIVE branch (`XAER_RMFAIL: The command
+cannot be executed when global transaction is in the ACTIVE state`) and `XA END`
+is refused on an IDLE or prepared one. A rollback can arrive in any of the three
+states — before `prepare` ran, after its `XA END` succeeded and its
+`XA PREPARE` did not, or after a prepare succeeded and the commit did not. So
+the driver tracks whether the branch has been ended, and issues `XA END` then
+`XA ROLLBACK` for an active branch and `XA ROLLBACK` alone otherwise, rather
+than sending a statement and ignoring the failure — a rollback the server
+refuses leaves the branch exactly where it was, and is reported as a failed
+rollback.
 
 Both lifecycles refuse a nested start the same way, through one shared helper:
 a **`MariadbDatasourceException` keyed `error.transaction.already_active`**,
@@ -1157,7 +1191,19 @@ tool/run_db_tests.sh     # boots a throwaway MariaDB on 3309, runs, tears down
 The script needs Docker with Compose v2 and a free host port 3309. To run
 against a server you already have, export `TOM_CORE_SERVER_TEST_DB_HOST`,
 `_PORT`, `_USER`, `_PASSWORD` and `_NAME` instead and run
-`dart test --tags db test/datasources_db_test.dart`.
+`dart test --tags db` — or name one file after it.
+
+**Every DB-backed suite file runs in a database of its own**, so the tagged set
+runs in parallel like the rest of the suite. The shared fixture
+(`test/fixtures/test_database.dart`) names the database
+`<_NAME>_<minutes since epoch>_<6 hex digits>` per suite isolate, creates it
+when the suite registers its data source, and drops it when that group ends; a
+database left by a killed run is swept by a later one after twelve hours.
+`_NAME` is therefore a prefix, and the credential needs `CREATE` and `DROP` on
+databases. Before this, all of them shared one schema and many of them
+truncate, seed and drop the same fixture tables, so one suite's `setUp` landed
+in the middle of another's assertions and the parallel run failed
+intermittently — in a different suite each time.
 
 `example/datasources/datasources_example.dart` is the readable entry point to
 the same connection-free surface the first suite covers, in ten numbered
@@ -1233,6 +1279,11 @@ test here requires this file in particular to keep using it.
   and the CRUD repository share, so neither mistakes a colon inside a literal
   for a bind. See
   [Finding Placeholders in Quoted SQL](#finding-placeholders-in-quoted-sql).
+- **`TomSqlLexer`** — the package's one quote- and comment-aware SQL scanner:
+  `endOfQuotedRun`, `commentOpensAt`, `endOfComment` and `splitStatements`. The
+  driver uses it to refuse a multi-statement command
+  ([One statement per call](#one-statement-per-call)); `db_migration`'s applier
+  and DDL reader are written on it.
 - **`TomDataSource`** (+ `TomPreparedStatement`, `TomDatasourceDriver`,
   `TomDataSourceInfo`) — the data-source/driver abstraction and registry.
 - **`MariaDbDatasource` / `MariaDbXADatasource` / `MariadbSqlDialect`** — the
@@ -1300,8 +1351,8 @@ test here requires this file in particular to keep using it.
   Every member of the contract is abstract, and `datasources_test.dart` holds it
   there: a member that grows a body is one a driver can leave unanswered while
   the layers above read the default as its answer.
-- **XA has no recovery.** `MariaDbXADatasource` derives its branch id from a
-  timestamp and keeps it only in memory, and nothing ever issues `XA RECOVER`,
+- **XA has no recovery.** `MariaDbXADatasource` mints its branch id in
+  memory and keeps it only there, and nothing ever issues `XA RECOVER`,
   so a process that dies between `XA PREPARE` and `XA COMMIT` leaves a prepared
   branch holding its locks with no id left in the system to resolve it by. An
   operator lists and resolves such a branch by hand at the server until the
@@ -1312,6 +1363,7 @@ test here requires this file in particular to keep using it.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
+| `dart:math` | dart | `mariadb_datasource.dart` | `Random`, the per-process tag in an XA branch id |
 | `mysql_client` | package | `mariadb_datasource.dart`, `sql_failure_mode.dart` | the MariaDB / MySQL driver used by `MariaDbDatasource` |
 | `tom_basics` | package | `sql_failure_mode.dart` | `TomBaseException`, walked to find the driver exception at the root of a failure chain |
 | `tom_core_kernel` | package | `datasource_initialization.dart`, `mariadb_datasource.dart`, `sql_dialects.dart`, `sql_instant.dart`, `types_operator.dart` | `TomObject`, `tomReflector` / `ClassMirror` / `InstanceMirror`, `TomException`, `TomZonedDate` / `TomZonedTime`, `TomExecutionContext`, `runChecked` / `runCheckedSync`, `tomLog` |

@@ -101,7 +101,6 @@ real disagreement rather than two spellings of the same thing.
 | `TomSchemaColumn` | class | One column: its type family, declared type and origin |
 | `TomSchemaBuilder` | class | The mutable accumulator both sides build their model through |
 | `TomSqlTypeFamilyCompatibility` | extension | How much difference between two type families still counts as agreement |
-| `TomSqlLexer` | class | The module's one quote/comment scanner and statement splitter |
 
 ## The Directory Layout
 
@@ -864,9 +863,12 @@ sends a syntactically broken fragment to the server, or it swallows a closing
 quote and welds two statements into one.
 
 `TomSqlLexer` is the single place that answers it. `endOfQuotedRun` finds where
-a quoted run closes; `splitStatements` is built on it and is the module's one
+a quoted run closes; `splitStatements` is built on it and is the package's one
 statement splitter, used by the applier directly and by the reader through
-`TomSchemaDdlReader.splitStatements`.
+`TomSchemaDdlReader.splitStatements`. It lives one layer down, in
+[datasources](datasources.md) (`sql_lexer.dart`), because the MariaDB driver
+needs the same answer — it refuses a multi-statement command — and a module
+below this one cannot import from it.
 
 The escaping rules it implements are the ones MariaDB actually has, which are
 not uniform across the three quote characters:
@@ -989,8 +991,6 @@ here it cannot drift silently.
 
 ## Core Components
 
-- **`TomSqlLexer`** — the shared SQL lexing primitives: `endOfQuotedRun`,
-  `commentOpensAt`, `endOfComment`, and the module's one `splitStatements`.
 - **`TomDbMigrations`** — the orchestrator and reflection-based adaptor
   discovery; `migrateDatabases`.
 - **`TomDbMigrator`** (+ the `TomDbMigrationAdaptor` annotation) — the migrator
@@ -1058,7 +1058,7 @@ here it cannot drift silently.
 | `tom_core_kernel` | package | `db_migration.dart`, `framework_convergence.dart`, `mariadb_migration_adapter.dart`, `schema_convergence.dart` | `tomReflector` (adaptor discovery, row mapping), `tomLog` |
 | [audit](audit.md) | module | `framework_convergence.dart` | `auditTrailTable`, `defaultAuditTrailTable` |
 | [authentication](authentication.md) | module | `framework_convergence.dart` | `defaultOAuthStateTable`, `oauthStateTable` |
-| [datasources](datasources.md) | module | `db_migration.dart`, `framework_convergence.dart`, `mariadb_migration_adapter.dart`, `schema_convergence.dart`, `schema_ddl_reader.dart`, `schema_model.dart` | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery` |
+| [datasources](datasources.md) | module | `db_migration.dart`, `framework_convergence.dart`, `mariadb_migration_adapter.dart`, `schema_convergence.dart`, `schema_ddl_reader.dart`, `schema_model.dart` | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery`; `TomSqlLexer`, the statement splitter and quote scanner |
 | [file_storage](file_storage.md) | module | `framework_convergence.dart` | `blobChunkTable`, `blobManifestTable`, `defaultBlobChunkTable`, `defaultBlobManifestTable` |
 | [little_things](little_things.md) | module | `db_migration.dart`, `mariadb_migration_adapter.dart` | `TomServerException` |
 | [messaging](messaging.md) | module | `framework_convergence.dart` | `defaultDeliveryReportTable`, `deliveryReportTable` |

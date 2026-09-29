@@ -1,6 +1,6 @@
 import '../datasources/sql_dialects.dart';
 import 'schema_model.dart';
-import 'sql_lexer.dart';
+import '../datasources/sql_lexer.dart';
 
 /// One migration artifact as the reader consumes it: the basename the chain
 /// orders it by, and the SQL it contains.

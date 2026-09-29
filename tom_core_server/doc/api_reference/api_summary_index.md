@@ -253,6 +253,7 @@ surface documented here.
 | `MariaDbXADatasource` | class | XA-capable MariaDB datasource. |
 | `MariadbPreparedStatement<T>` | class | MariaDB prepared statement. |
 | `SqlPlaceholderScan` | class | SQL placeholder scanner. |
+| `TomSqlLexer` | class | The package's one quote/comment scanner and statement splitter. |
 | `TomFrameworkTable` | class | The single declaration of a table the framework itself owns. |
 | `TomFrameworkColumn` | class | One column of a framework-owned table. |
 | `TomFrameworkKey` | class | One index or unique constraint of a framework-owned table. |
@@ -285,7 +286,6 @@ surface documented here.
 | `MariadbMigrationAdaptor` | class | MariaDB migration adaptor. |
 | `TomMigrationFileName` | class | Parses/validates migration file names. |
 | `TomDbVersion` | class | A schema version. |
-| `TomSqlLexer` | class | The module's one quote/comment scanner and statement splitter. |
 | `TomSchemaColumn` | class | One column, in the vocabulary the convergence check compares in. |
 | `TomSchemaTable` | class | One table: its columns, primary key and origin. |
 | `TomSchemaModel` | class | A whole schema — the tables of one datasource/schema pair. |
@@ -1073,7 +1073,7 @@ surface documented here.
 | `TomSqlFailureMode` | Datasources |
 | `TomSqlJobStore` | Scheduling |
 | `TomSqlLeaseLock` | Scheduling |
-| `TomSqlLexer` | Database Migration |
+| `TomSqlLexer` | Datasources |
 | `TomSqlOAuthStateStore` | Authentication |
 | `TomSqlSchedulerNodes` | Scheduling |
 | `TomSqlTypeFamily` | Datasources |

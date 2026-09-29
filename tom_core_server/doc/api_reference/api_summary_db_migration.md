@@ -17,7 +17,6 @@ edits to past migrations are detected. A MariaDB implementation
   - [TomDbMigrationAdaptor](#tomdbmigrationadaptor)
   - [TomMigrationFileName](#tommigrationfilename)
   - [MariadbMigrationAdaptor](#mariadbmigrationadaptor)
-  - [TomSqlLexer](#tomsqllexer)
   - [TomDbVersion](#tomdbversion)
   - [TomSchemaColumn](#tomschemacolumn)
   - [TomSchemaTable](#tomschematable)
@@ -49,8 +48,9 @@ Sources: `lib/src/tomserver/db_migration/db_migration.dart`,
 `lib/src/tomserver/db_migration/mariadb_migration_adapter.dart`,
 `lib/src/tomserver/db_migration/schema_convergence.dart`,
 `lib/src/tomserver/db_migration/schema_ddl_reader.dart`,
-`lib/src/tomserver/db_migration/schema_model.dart`,
-`lib/src/tomserver/db_migration/sql_lexer.dart`.
+`lib/src/tomserver/db_migration/schema_model.dart`. The SQL lexer both the
+applier and the reader are written on, `TomSqlLexer`, is documented with the
+[datasources](api_summary_datasources.md#tomsqllexer) module, where it lives.
 
 `TomDbMigrations` is the orchestrator: `migrateDatabases(directory)` walks
 `<directory>/<datasourceName>/<schemaName>/` and applies every
@@ -106,7 +106,6 @@ TomDbMigrator  (abstract)
 TomDbMigrations
 TomDbMigrationAdaptor  (annotation)
 TomMigrationFileName
-TomSqlLexer
 TomDbVersion
 
 schema vocabulary
@@ -256,40 +255,6 @@ MariadbMigrationAdaptor()
 | `reset` | `void reset()` | *(override)* Drops the `(data source, schema)` binding and the applied-versions list. |
 | `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Throws `mariadb_migration.apply_migration.not_initialized_for_schema` unless bound to this exact pair; then skips (after verifying) an applied version, otherwise runs the script and records the outcome. Verification of an applied version fails with `description_mismatch`, `checksum_unreadable` (the stored value is not a digest this adaptor could have written) or `checksum_mismatch` (it is a digest, but a different one) — each message naming the data source, schema and version, since one instance walks them all. |
 | `initializeMigration` | `Future<void> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | *(override)* Rebinds to `(dsi, schemaName)`, creating the versioning table if absent and **replacing** `versions` with that schema's history, read `ORDER BY installedRank`. `versions` is its whole output. |
-
-### TomSqlLexer
-
-The shared SQL lexing primitives — the one place this module decides where a
-quoted run ends and where one statement ends and the next begins. Both the
-applier (`MariadbMigrationAdaptor.applyMigration`) and the reader
-(`TomSchemaDdlReader`) are written on it, because a scan that disagrees with the
-server does not fail loudly: it cuts a statement in half inside a string literal,
-or swallows a closing quote and welds two statements into one.
-
-Escaping is not uniform across the three quote characters, and the lexer
-implements what MariaDB actually does under the default `sql_mode`
-(`NO_BACKSLASH_ESCAPES` off):
-
-| Quote | `''` doubling | `\'` backslash |
-| ----- | ------------- | -------------- |
-| `'` string literal | yes | yes |
-| `"` string literal | yes | yes |
-| `` ` `` identifier | yes | **no** |
-
-#### Static Properties
-
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `quoteCharacters` | `String` | The three characters that open a quoted run: `'`, `"` and `` ` ``. |
-
-#### Static Methods
-
-| Method | Signature | Description |
-| ------ | --------- | ----------- |
-| `endOfQuotedRun` | `static int endOfQuotedRun(String sql, int openIndex)` | The index of the closing quote of the run opened at `openIndex`, or `sql.length - 1` when the run is never closed (reported, not thrown — this is a lexer, not a validator). |
-| `endOfComment` | `static int endOfComment(String sql, int startIndex)` | The index of the last character of the comment starting at `startIndex`; a line comment ends before its newline, a block comment at its `*/`. |
-| `commentOpensAt` | `static bool commentOpensAt(String sql, int index)` | Whether a comment opens at `index` — `--`, `#` or `/*`. Only meaningful outside a quoted run. |
-| `splitStatements` | `static List<String> splitStatements(String sql)` | Splits `sql` into its statements on unquoted, uncommented semicolons, trimmed, dropping whitespace-only fragments. **Comments are preserved** — `/*!40101 … */` is executable, version-gated SQL, so dropping it would silently remove a statement. |
 
 ### TomDbVersion
 

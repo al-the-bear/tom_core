@@ -292,7 +292,13 @@ void main() async {
       await Future<void>.delayed(const Duration(milliseconds: 10));
       final second = await asSession(7, (p) => p.set('theme', 'light'));
 
-      expect(second.updatedAt!.isAfter(first.updatedAt!), isTrue);
+      expect(
+        second.updatedAt!.isAfter(first.updatedAt!),
+        isTrue,
+        reason:
+            'first ${first.updatedAt} (${first.value}), '
+            'second ${second.updatedAt} (${second.value})',
+      );
       expect(await asSession(7, (p) => p.get<String>('theme')), 'light');
     });
 

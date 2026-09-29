@@ -17,10 +17,23 @@
 ///
 /// It is deliberately reusable: nothing here is specific to a single test
 /// file, so any suite that needs a live schema can share it.
+///
+/// **Every suite file gets a database of its own.** `dart test` runs several
+/// suite files at once, and many of them create, truncate and drop the same
+/// fixture tables — `fixture_task` alone is used by six. Sharing one schema
+/// meant one suite's `setUp` truncate landing in the middle of another's
+/// assertions, so the parallel run failed intermittently and in a different
+/// suite each time. [databaseName] is therefore unique to the suite's isolate
+/// (and to the run, so two concurrent runs against one server cannot meet
+/// either); [register] creates it and drops it again when the group that
+/// registered it ends. The data source *name* is unchanged — only the schema
+/// behind it moves — so no suite had to change to be isolated.
 library;
 
 import 'dart:io';
+import 'dart:math';
 
+import 'package:test/test.dart' show addTearDown;
 import 'package:tom_core_server/tom_core_server.dart';
 
 /// Connection coordinates and schema helpers for the shared test database.
@@ -59,10 +72,29 @@ class TestDatabase {
   static String get password =>
       _env('TOM_CORE_SERVER_TEST_DB_PASSWORD', 'password');
 
-  /// Schema / database name (`TOM_CORE_SERVER_TEST_DB_NAME`, default
-  /// `tom_core_server_test`).
-  static String get databaseName =>
+  /// The prefix every suite database is named from
+  /// (`TOM_CORE_SERVER_TEST_DB_NAME`, default `tom_core_server_test`).
+  ///
+  /// No suite writes to a database of this name; it need not exist.
+  static String get baseDatabaseName =>
       _env('TOM_CORE_SERVER_TEST_DB_NAME', 'tom_core_server_test');
+
+  /// This suite's own database: `<base>_<minutes since epoch>_<6 hex digits>`.
+  ///
+  /// A static field is per isolate, and `dart test` gives every suite file an
+  /// isolate, so each file sees one stable name for its whole run and no two
+  /// files — nor two runs — share one. The timestamp is what lets a later run
+  /// recognise, and sweep, a database a killed run never dropped
+  /// ([staleAfter]).
+  static final String databaseName =
+      '${baseDatabaseName}_${DateTime.now().millisecondsSinceEpoch ~/ 60000}_'
+      '${Random().nextInt(1 << 24).toRadixString(16).padLeft(6, '0')}';
+
+  /// How old a suite database has to be before provisioning drops it as the
+  /// leftover of a run that was killed before its teardown ran.
+  ///
+  /// Far longer than any run, so a sweep never reaches a live suite's database.
+  static const Duration staleAfter = Duration(hours: 12);
 
   /// The datasource configuration map for [datasourceName], in the shape
   /// [TomDataSourceInfo.initializeDatasourceInfo] consumes.
@@ -103,12 +135,76 @@ class TestDatabase {
 
   /// Registers [datasourceName] and opens its connection.
   ///
-  /// Requires reflection to be initialised first (the driver is discovered by
-  /// scanning `@TomDatasourceDriver` metadata), so call `initializeReflection()`
-  /// before this. Returns the live [TomDataSourceInfo].
+  /// Provisions this suite's database first ([provision]), so call it from a
+  /// `setUpAll`: the database is dropped when that group ends. Requires
+  /// reflection to be initialised first (the driver is discovered by scanning
+  /// `@TomDatasourceDriver` metadata), so call `initializeReflection()` before
+  /// this. Returns the live [TomDataSourceInfo].
   static Future<TomDataSourceInfo> register() async {
+    await provision();
     await TomDataSourceInfo.initializeDatasourceInfo(datasourceConfig);
     return TomDataSourceInfo.getDataSourceInfo(datasourceName)!;
+  }
+
+  /// Creates this suite's database, and drops it when the enclosing group
+  /// ends.
+  ///
+  /// Call from a `setUpAll` — [register] does — so the `addTearDown` it makes
+  /// is scoped to the group. A suite that builds its own data source config
+  /// from [databaseName] instead of calling [register] calls this directly.
+  /// Also sweeps suite databases older than [staleAfter], once per isolate.
+  static Future<void> provision() async {
+    await _withServerConnection((connection) async {
+      _swept ??= _sweepStaleDatabases(connection);
+      await _swept;
+      await connection.execute('CREATE DATABASE IF NOT EXISTS `$databaseName`');
+    });
+    addTearDown(
+      () => _withServerConnection((connection) async {
+        await connection.execute('DROP DATABASE IF EXISTS `$databaseName`');
+      }),
+    );
+  }
+
+  static Future<void>? _swept;
+
+  /// Drops every suite database named from [baseDatabaseName] whose timestamp
+  /// is older than [staleAfter]. Names that do not have the suite shape — the
+  /// base database itself, or anything else sharing its prefix — are left
+  /// alone.
+  static Future<void> _sweepStaleDatabases(MySQLConnection connection) async {
+    final shape = RegExp(
+      '^${RegExp.escape(baseDatabaseName)}_(\\d+)_[0-9a-f]{6}\$',
+    );
+    final cutoff =
+        DateTime.now().subtract(staleAfter).millisecondsSinceEpoch ~/ 60000;
+    final result = await connection.execute('SHOW DATABASES');
+    for (final row in result.rows) {
+      final name = row.colAt(0);
+      final match = name == null ? null : shape.firstMatch(name);
+      if (match == null || int.parse(match.group(1)!) >= cutoff) continue;
+      await connection.execute('DROP DATABASE IF EXISTS `$name`');
+    }
+  }
+
+  /// Runs [action] on a short-lived connection bound to no database —
+  /// creating and dropping a suite database needs a connection that is not
+  /// inside it.
+  static Future<void> _withServerConnection(
+    Future<void> Function(MySQLConnection connection) action,
+  ) async {
+    final connection = await MySQLConnection.createConnection(
+      host: host,
+      port: port,
+      userName: username,
+      password: password,
+    );
+    await connection.connect();
+    try {
+      await action(connection);
+    } finally {
+      await connection.close();
+    }
   }
 
   /// The fixture entity's table DDL, matching [FixtureTaskRecord]'s

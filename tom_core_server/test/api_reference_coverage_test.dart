@@ -4351,7 +4351,10 @@ void main() {
       );
       // The union really does span the groups: a name from the last table is
       // reached, which reading only the first would miss.
-      expect(_overviewTableTypes('db_migration'), contains('TomSqlLexer'));
+      expect(
+        _overviewTableTypes('db_migration'),
+        contains('TomSqlTypeFamilyCompatibility'),
+      );
       expect(_overviewTableTypes('db_migration'), contains('TomDbMigrations'));
     });
 
@@ -5956,9 +5959,7 @@ class After {}
       // be phrased around the blanker to stay visible.
       expect(_declarations['TomSqlLexer']?.members, contains('commentOpensAt'));
       expect(
-        File(
-          'lib/src/tomserver/db_migration/sql_lexer.dart',
-        ).readAsStringSync(),
+        File('lib/src/tomserver/datasources/sql_lexer.dart').readAsStringSync(),
         contains('`--`, `#` or `/*`'),
         reason:
             'the dartdoc is written the natural way; if it was rephrased '

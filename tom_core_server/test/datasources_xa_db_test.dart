@@ -43,6 +43,9 @@ void main() async {
 
     setUpAll(() async {
       initializeReflection();
+      // This suite builds its own XA config rather than calling
+      // `TestDatabase.register`, so it provisions its database itself.
+      await TestDatabase.provision();
       await TomDataSourceInfo.initializeDatasourceInfo(<String, dynamic>{
         ...TestDatabase.datasourceConfig,
         _xaName: <String, dynamic>{
@@ -132,6 +135,57 @@ void main() async {
         expect(result.isClean, isTrue, reason: 'the branch must be released');
       }
       expect(await visibleTitles(), ['xa-first', 'xa-second']);
+    });
+
+    test('the XA connection stays in step after a commit', () async {
+      // The defect this pins was intermittent through the reader and certain
+      // through the writer. `prepare` once sent `XA END` and `XA PREPARE` as
+      // one command; the driver returns on the first reply, so the PREPARE's
+      // reply was left for the next call — `XA COMMIT` returned on it before
+      // the server had committed, which the reader saw only when it won the
+      // race. A query on the XA connection itself has no race to win: it is
+      // handed the COMMIT's reply, an empty one, every time.
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(xa);
+      await xa.executeCommand(
+        "INSERT INTO fixture_task (title, priority, done) "
+        "VALUES ('xa-in-step', 1, 0)",
+      );
+      expect((await txn.commitTransaction()).isClean, isTrue);
+
+      final rows = await xa.executeQuery<FixtureTaskRecord>(
+        "SELECT id, title, priority, done FROM fixture_task "
+        "WHERE title LIKE 'xa-%' ORDER BY id",
+      );
+      expect(rows.map((r) => r.title), ['xa-in-step']);
+    });
+
+    test('the XA connection stays in step after a rollback', () async {
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await txn.registerParticipant(xa);
+      await xa.executeCommand(
+        "INSERT INTO fixture_task (title, priority, done) "
+        "VALUES ('xa-abandoned', 1, 0)",
+      );
+      expect((await txn.rollbackTransaction()).isClean, isTrue);
+
+      final rows = await xa.executeQuery<FixtureTaskRecord>(
+        "SELECT id, title, priority, done FROM fixture_task "
+        "WHERE title LIKE 'xa-%' ORDER BY id",
+      );
+      expect(rows, isEmpty);
+      // The emptiness above is also what a desynchronised connection returns,
+      // so the connection is then asked something it can only answer in step:
+      // a row committed elsewhere, which an out-of-step reply cannot contain.
+      await reader.executeCommand(
+        "INSERT INTO fixture_task (title, priority, done) "
+        "VALUES ('xa-probe', 1, 0)",
+      );
+      final probe = await xa.executeQuery<FixtureTaskRecord>(
+        "SELECT id, title, priority, done FROM fixture_task "
+        "WHERE title LIKE 'xa-%' ORDER BY id",
+      );
+      expect(probe.map((r) => r.title), ['xa-probe']);
     });
   }, skip: skipReason);
 }

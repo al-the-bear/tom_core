@@ -2,6 +2,35 @@
 
 ### Fixed
 
+- **`MariaDbXADatasource` desynchronised its own connection on every prepare.**
+  `prepare` sent `XA END` and `XA PREPARE` as one command, and `mysql_client`
+  completes a call on the first reply it reads without checking whether more
+  follow — so the PREPARE's reply stayed on the wire, and every later call on
+  that connection was answered by its predecessor's reply. `XA COMMIT` returned
+  before the server had committed (a reader on another connection saw the
+  commit only when it lost the race, which is why the DB-backed run failed
+  about one time in four), a failed `XA PREPARE` was never reported, and a
+  query on the XA connection came back empty. `prepare` and `rollback` now
+  issue one statement per call; `rollback` tracks whether the branch has been
+  ended, so a prepare refused after its `XA END` rolls back without a second,
+  refused `XA END`.
+- **`executeQuery` and `executeCommand` refuse a multi-statement command** with
+  `error.datasource.multiple_statements`, before the connection is touched, so
+  the shape above cannot recur elsewhere. The check is quote- and
+  comment-aware (`TomSqlLexer.splitStatements`).
+- **The XA branch id is bounded to the 64-byte `gtrid` limit.** It was built
+  from the database name, host, port and a timestamp, and fitted only for short
+  coordinates — the test database on `127.0.0.1` came to 62 bytes — so a real
+  hostname or a longer database name made every XA transaction fail to start.
+  It is now `<database>@<host>:<port>_<process>_<time>_<counter>`, with the
+  unique tail kept whole and the readable head truncated, and a random
+  per-process tag so two processes on one database cannot mint the same id.
+  `MariaDbXADatasource.maxBranchIdBytes` names the limit.
+- **The DB-backed suites no longer share one schema.** The test fixture gives
+  every suite file a database of its own, created when it registers its data
+  source and dropped when the group ends, so `dart test --tags db` is safe in
+  parallel; `tool/run_db_tests.sh` runs it that way.
+
 - **A broken markdown reference link in `doc/authentication.md`.** The page
   links type names to in-document anchors throughout; `TomAuthenticationService`
   carried the brackets with no target and has no anchor to point at, so the

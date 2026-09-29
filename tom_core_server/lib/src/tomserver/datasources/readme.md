@@ -25,6 +25,7 @@ MariaDB/MySQL driver, a typed SQL-dialect renderer, and typed query objects.
 | `TomFrameworkTable` · `TomFrameworkColumn` · `TomFrameworkKey` | The single declaration of a table the framework itself owns, from which its DDL, its reflected row type and the convergence check are all derived. `frameworkOwnedTables()` lists them; `unknownFrameworkColumns` audits a hand-written statement against one. |
 | `TomSqlFailureMode` · `classifySqlFailure` | Whether a failed write is known not to have happened (`definite`) or may have (`ambiguous`) — the difference between a safe retry and a duplicate. `isLostConnectionFailure` is the narrower question the driver's own retry asks. |
 | `SqlPlaceholderScan` | Rewrites the generated `:name` placeholders into the positional `?` form the MySQL binary protocol binds, leaving quoted text alone. |
+| `TomSqlLexer` | The package's one quote- and comment-aware SQL scanner: where a quoted run ends, where a comment ends, and `splitStatements`. The driver uses it to refuse a multi-statement command; `db_migration`'s applier and DDL reader are written on it. |
 
 ## Instants are UTC, everywhere
 
