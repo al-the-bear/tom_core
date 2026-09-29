@@ -59,11 +59,16 @@ const List<String> _landmarkDirectories = ['lib', 'example', 'test'];
 /// A generator that emits unformatted code is the generator's defect, and
 /// failing this suite for it would point the reader at the wrong package.
 ///
-/// `version.versioner.dart` is generated too but is *not* excluded, matching
-/// the sibling guard: its generator emits formatted output, so holding it to
-/// the same rule costs nothing and would report a real regression if that
-/// changed.
-bool _isGenerated(String path) => path.endsWith('.reflection.dart');
+/// The suffixes of machine-written files. The same list as the repo-wide
+/// `tool/check_dart_format.py`, so the two guards agree on what is generated.
+const List<String> _generatedSuffixes = [
+  '.reflection.dart',
+  '.versioner.dart',
+  '.g.dart',
+  '.freezed.dart',
+];
+
+bool _isGenerated(String path) => _generatedSuffixes.any(path.endsWith);
 
 /// Every Dart file in the package, generated ones included, as paths relative
 /// to the package root.

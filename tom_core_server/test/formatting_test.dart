@@ -52,7 +52,16 @@ const List<String> _landmarkDirectories = ['lib', 'example', 'test'];
 /// failing this suite for it would point the reader at the wrong package — the
 /// same reasoning that keeps `.reflection.dart` out of the example sweep in
 /// `api_reference_coverage_test.dart`.
-bool _isGenerated(String path) => path.endsWith('.reflection.dart');
+/// The suffixes of machine-written files. The same list as the repo-wide
+/// `tool/check_dart_format.py`, so the two guards agree on what is generated.
+const List<String> _generatedSuffixes = [
+  '.reflection.dart',
+  '.versioner.dart',
+  '.g.dart',
+  '.freezed.dart',
+];
+
+bool _isGenerated(String path) => _generatedSuffixes.any(path.endsWith);
 
 /// Every Dart file in the package, generated ones included, as paths relative
 /// to the package root.
