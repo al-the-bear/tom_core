@@ -106,6 +106,13 @@ class TomUserPreference {
   /// preference's identity: writing a key twice must replace the value, and a
   /// duplicate would make which value a user gets depend on row order.
   ///
+  /// `preference_key` and `value_type` are `COLLATE utf8mb4_bin`, so that
+  /// identity and the key order are case-sensitive whatever the server's
+  /// default collation is: under a case-insensitive default, `device.Theme`
+  /// and `device.theme` would be one row, and `ORDER BY preference_key` would
+  /// not be the code-unit order the contract promises. Schema convergence
+  /// does not compare collations, so the DDL is the only place this is stated.
+  ///
   /// `updated_at` is `DATETIME(6)`, the width the instant convention writes
   /// (`../datasources/sql_instant.dart`); a plain `DATETIME` rounds off the
   /// microseconds it always renders.
@@ -113,8 +120,8 @@ class TomUserPreference {
 CREATE TABLE IF NOT EXISTS tom_user_preference (
   id BIGINT NOT NULL AUTO_INCREMENT,
   principal_id BIGINT NOT NULL,
-  preference_key VARCHAR(191) NOT NULL,
-  value_type VARCHAR(191) NOT NULL,
+  preference_key VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
+  value_type VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   value_json TEXT NULL,
   updated_at DATETIME(6) NULL,
   PRIMARY KEY (id),

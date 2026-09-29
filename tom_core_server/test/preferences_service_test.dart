@@ -34,6 +34,27 @@ import 'fixtures/unreachable_repository.dart';
 void main() {
   setUpAll(initializeReflection);
 
+  group('the table\'s key columns are case-sensitive', () {
+    // A preference is identified by (principal_id, preference_key), and the
+    // unique key is what enforces that. Under a server's default collation -
+    // commonly a case-insensitive one - `device.Theme` and `device.theme`
+    // would be one row, and the server would order keys differently from the
+    // kernel's code-unit rule. The DDL therefore names a binary collation
+    // itself rather than inheriting whatever the deployment chose.
+    String columnOf(String name) => TomUserPreference.createTableSql
+        .split('\n')
+        .singleWhere((line) => line.trimLeft().startsWith('$name '));
+
+    test('preference_key is utf8mb4_bin', () {
+      expect(columnOf('preference_key'), contains('COLLATE utf8mb4_bin'));
+    });
+
+    test('value_type is utf8mb4_bin', () {
+      // A Dart type name, compared on read: `String` and `string` differ.
+      expect(columnOf('value_type'), contains('COLLATE utf8mb4_bin'));
+    });
+  });
+
   group('resolve answers the installed store, or nothing', () {
     // The bean context is process-global, so each test leaves it as it found it
     // rather than letting the next one inherit a registration. Without this the

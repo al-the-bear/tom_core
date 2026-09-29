@@ -171,8 +171,8 @@ attempt to write elsewhere.
 CREATE TABLE IF NOT EXISTS tom_user_preference (
   id BIGINT NOT NULL AUTO_INCREMENT,
   principal_id BIGINT NOT NULL,
-  preference_key VARCHAR(191) NOT NULL,
-  value_type VARCHAR(191) NOT NULL,
+  preference_key VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
+  value_type VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   value_json TEXT NULL,
   updated_at DATETIME(6) NULL,
   PRIMARY KEY (id),
@@ -187,6 +187,18 @@ duplicate would make which value a user gets depend on row order. `set` reuses
 the row it finds rather than inserting a second — the repository takes its
 `UPDATE` path exactly when the surrogate key is set, so carrying the id over is
 what makes the write an upsert.
+
+**`preference_key` and `value_type` name their collation, `utf8mb4_bin`.** Left
+to the server default — on MariaDB and MySQL commonly a case-insensitive one —
+the unique key would treat `device.Theme` and `device.theme` as one preference:
+the second write would silently replace the first, while the device store keeps
+both, so a preference moving in from the device could lose a sibling with
+nothing reported. The binary collation also makes `ORDER BY preference_key` the
+code-unit order the contract promises, uppercase before lowercase, which is the
+order the device store answers too. `value_type` holds a Dart type name, which is
+equally case-significant. Schema convergence does not compare collations, so
+this is guaranteed by the DDL alone: a table created some other way has to state
+it as well.
 
 The DDL ships as the framework migration
 `migrations/main/tomcore/[1]-create_tom_user_preference.sql`, reproduced verbatim

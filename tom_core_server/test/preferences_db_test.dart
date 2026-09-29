@@ -206,6 +206,33 @@ void main() async {
       ]);
     });
 
+    test('keys differing only in case are two preferences', () async {
+      // The unique key is the preference's identity. Under a case-insensitive
+      // collation the second write would overwrite the first and still
+      // succeed, so a preference moving in from the device store - which
+      // keeps both - would lose its sibling with nothing reported.
+      await asSession(7, (p) async {
+        await p.set('device.Theme', 'upper');
+        await p.set('device.theme', 'lower');
+      });
+
+      expect(await asSession(7, (p) => p.get<String>('device.Theme')), 'upper');
+      expect(await asSession(7, (p) => p.get<String>('device.theme')), 'lower');
+      expect(await asSession(7, (p) => p.all()), hasLength(2));
+    });
+
+    test('keys differing only in case list by code unit', () async {
+      // The contract is code-unit order, which puts every uppercase letter
+      // before every lowercase one; the device store answers the same.
+      await asSession(7, (p) async {
+        await p.set('theme', 'b');
+        await p.set('Theme', 'a');
+      });
+
+      final all = await asSession(7, (p) => p.all());
+      expect(all.map((dto) => dto.key).toList(), <String>['Theme', 'theme']);
+    });
+
     test('all() lists in the same order across sessions', () async {
       await asSession(7, (p) async {
         await p.set('theme', 'dark');

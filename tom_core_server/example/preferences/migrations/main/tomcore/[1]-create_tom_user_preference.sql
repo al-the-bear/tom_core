@@ -13,6 +13,11 @@
 -- the written type lets TomUserPreferenceCodec rebuild a reflected value and
 -- refuse a mismatched read instead of coercing it.
 --
+-- `preference_key` and `value_type` name their collation, utf8mb4_bin, rather
+-- than inheriting the server's: under a case-insensitive default the unique key
+-- would make `device.Theme` and `device.theme` one row, and ORDER BY would not
+-- be the code-unit order the contract promises.
+--
 -- `principal_id` is BIGINT, matching TomPrincipal.id, because the entity's
 -- `@TomDbScope(field: 'principal_id', scope: 'owner')` binds that id straight
 -- into every statement. A VARCHAR column would compare a stringified id against
@@ -29,8 +34,8 @@
 CREATE TABLE IF NOT EXISTS tom_user_preference (
   id BIGINT NOT NULL AUTO_INCREMENT,
   principal_id BIGINT NOT NULL,
-  preference_key VARCHAR(191) NOT NULL,
-  value_type VARCHAR(191) NOT NULL,
+  preference_key VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
+  value_type VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   value_json TEXT NULL,
   updated_at DATETIME(6) NULL,
   PRIMARY KEY (id),
