@@ -7,7 +7,9 @@
 /// endpoint id, `tomRemoteApis['auth'].endpoints['authLogin']`, and
 /// `resolveUri` builds the URL from the same declaration, joining the API's
 /// base path to the endpoint's, instead of spelling `'/auth/login'` and
-/// `'POST'` a second time.
+/// `'POST'` a second time. That is how `advanced_client_core` addresses every
+/// call, so all three tiers — both servers and the client core — take a route
+/// from this one declaration.
 ///
 /// This prints a few of those facts, including the two access decisions a
 /// reader most often gets wrong: `authSecondFactor` is public although its

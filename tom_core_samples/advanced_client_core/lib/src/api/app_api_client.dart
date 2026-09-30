@@ -41,6 +41,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../http/authorized_http.dart';
 import '../http/json_transport.dart';
+import '../http/registry_route.dart';
 
 /// Raised when an app-API call returns a non-success status the wrapper did not
 /// already handle (a 401 becomes an `TomAuthExpiredException` upstream).
@@ -195,8 +196,8 @@ DateTime? _date(Object? raw) {
 /// tests. All authenticated transport flows through the supplied
 /// [AuthorizedHttp].
 class AppApiClient implements AppApiService {
-  /// Base URL of the app server, e.g. `http://localhost:8080` (no path suffix —
-  /// each endpoint adds its own absolute path).
+  /// Base URL of the app server, e.g. `http://localhost:8080`. Each call adds
+  /// the route its `appApi` endpoint declares.
   final Uri baseUri;
 
   final AuthorizedHttp _http;
@@ -206,9 +207,9 @@ class AppApiClient implements AppApiService {
 
   @override
   Future<Map<String, Object>> health() async {
-    // `/status`, not `/health`: `/health` is the framework's plain-text liveness
-    // probe (auto-mounted); the app's typed JSON status lives at `/status`.
-    final response = await _get('/status');
+    // Not the framework's plain-text `GET /health` liveness probe: the app's
+    // typed JSON status is its own endpoint (see `appHealth` in the registry).
+    final response = await _call('appHealth');
     return {
       for (final entry in response.jsonObject.entries)
         if (entry.value != null) entry.key: entry.value!,
@@ -217,14 +218,13 @@ class AppApiClient implements AppApiService {
 
   @override
   Future<List<Workspace>> listWorkspaces() async =>
-      parseWorkspaces((await _get('/workspaces')).jsonArray);
+      parseWorkspaces((await _call('appListWorkspaces')).jsonArray);
 
   @override
   Future<Workspace> createWorkspace(Workspace workspace) async =>
       parseWorkspace(
-        (await _send(
-          'POST',
-          '/workspaces',
+        (await _call(
+          'appCreateWorkspace',
           body: jsonEncode(workspace.toJson()),
         )).jsonObject,
       );
@@ -232,42 +232,51 @@ class AppApiClient implements AppApiService {
   @override
   Future<Workspace> updateWorkspace(Workspace workspace) async =>
       parseWorkspace(
-        (await _send(
-          'PUT',
-          '/workspaces',
+        (await _call(
+          'appUpdateWorkspace',
           body: jsonEncode(workspace.toJson()),
         )).jsonObject,
       );
 
   @override
   Future<void> deleteWorkspace(EntityIdRequest request) async =>
-      _send('DELETE', '/workspaces/${request.id}');
+      _call('appDeleteWorkspace', parameters: {'id': request.id});
 
   @override
   Future<List<Project>> listProjects(String workspaceId) async => parseProjects(
-    (await _get('/projects', {'workspaceId': workspaceId})).jsonArray,
+    (await _call(
+      'appListProjects',
+      parameters: {'workspaceId': workspaceId},
+    )).jsonArray,
   );
 
   @override
   Future<Project> createProject(Project project) async => parseProject(
-    (await _send(
-      'POST',
-      '/projects',
+    (await _call(
+      'appCreateProject',
       body: jsonEncode(project.toJson()),
     )).jsonObject,
   );
 
   @override
-  Future<List<TodoList>> listLists(String projectId) async =>
-      parseLists((await _get('/lists', {'projectId': projectId})).jsonArray);
+  Future<List<TodoList>> listLists(String projectId) async => parseLists(
+    (await _call(
+      'appListLists',
+      parameters: {'projectId': projectId},
+    )).jsonArray,
+  );
 
   @override
-  Future<List<TodoItem>> listItems(String listId) async =>
-      parseItems((await _get('/items', {'listId': listId})).jsonArray);
+  Future<List<TodoItem>> listItems(String listId) async => parseItems(
+    (await _call('appListItems', parameters: {'listId': listId})).jsonArray,
+  );
 
   @override
   Future<List<FileDescriptorDto>> listAttachments(String listId) async {
-    final body = (await _get('/attachments', {'listId': listId})).jsonArray;
+    final body = (await _call(
+      'appListAttachments',
+      parameters: {'listId': listId},
+    )).jsonArray;
     return [
       for (final entry in body) dtoFromJson<FileDescriptorDto>(_asMap(entry)),
     ];
@@ -275,112 +284,114 @@ class AppApiClient implements AppApiService {
 
   @override
   Future<TodoItem> createItem(TodoItem item) async => parseItem(
-    (await _send('POST', '/items', body: jsonEncode(item.toJson()))).jsonObject,
+    (await _call('appCreateItem', body: jsonEncode(item.toJson()))).jsonObject,
   );
 
   @override
   Future<TodoItem> updateItem(TodoItem item) async => parseItem(
-    (await _send('PUT', '/items', body: jsonEncode(item.toJson()))).jsonObject,
+    (await _call('appUpdateItem', body: jsonEncode(item.toJson()))).jsonObject,
   );
 
   @override
   Future<void> deleteItem(EntityIdRequest request) async =>
-      _send('DELETE', '/items/${request.id}');
+      _call('appDeleteItem', parameters: {'id': request.id});
 
   @override
   Future<TodoComment> addComment(TodoComment comment) async => parseComment(
-    (await _send(
-      'POST',
-      '/items/${comment.itemId.get()}/comments',
+    (await _call(
+      'appAddComment',
+      parameters: {'itemId': comment.itemId.get()},
       body: jsonEncode(comment.toJson()),
     )).jsonObject,
   );
 
   // The two ordered child reads. Both are body-less GETs whose only input is
-  // the path capture, so the typed `EntityIdRequest` is interpolated straight
-  // into the URL here — the DTO round-trip happens server-side, where the
-  // pipeline folds `{id}` back onto the request object.
+  // the path capture, so the typed `EntityIdRequest`'s id is bound into the
+  // URL here — the DTO round-trip happens server-side, where the pipeline
+  // folds `{id}` back onto the request object.
   @override
   Future<List<TodoComment>> listComments(EntityIdRequest request) async =>
-      parseComments((await _get('/items/${request.id}/comments')).jsonArray);
+      parseComments(
+        (await _call(
+          'appListComments',
+          parameters: {'id': request.id},
+        )).jsonArray,
+      );
 
   @override
   Future<List<Subtask>> listSubtasks(EntityIdRequest request) async =>
-      parseSubtasks((await _get('/items/${request.id}/subtasks')).jsonArray);
+      parseSubtasks(
+        (await _call(
+          'appListSubtasks',
+          parameters: {'id': request.id},
+        )).jsonArray,
+      );
 
   @override
   Future<Subtask> addSubtask(Subtask subtask) async => parseSubtask(
-    (await _send(
-      'POST',
-      '/items/${subtask.itemId.get()}/subtasks',
+    (await _call(
+      'appAddSubtask',
+      parameters: {'itemId': subtask.itemId.get()},
       body: jsonEncode(subtask.toJson()),
     )).jsonObject,
   );
 
   @override
   Future<Subtask> updateSubtask(Subtask subtask) async => parseSubtask(
-    (await _send(
-      'PUT',
-      '/subtasks',
+    (await _call(
+      'appUpdateSubtask',
       body: jsonEncode(subtask.toJson()),
     )).jsonObject,
   );
 
   @override
   Future<void> share(ShareRequest request) async =>
-      _send('POST', '/share', body: dtoToJsonString(request));
+      _call('appShare', body: dtoToJsonString(request));
 
   @override
-  Future<void> revokeShare(String id) async => _send('DELETE', '/share/$id');
+  Future<void> revokeShare(String id) async =>
+      _call('appRevokeShare', parameters: {'id': id});
 
   @override
   Future<ResourceBundleDto> resources() async =>
-      dtoFromJson<ResourceBundleDto>((await _get('/resources')).jsonObject);
+      dtoFromJson<ResourceBundleDto>((await _call('appResources')).jsonObject);
 
   @override
   Future<Map<String, String>> resourceRoles() async {
-    final body = (await _get('/resource-roles')).jsonObject;
+    final body = (await _call('appResourceRoles')).jsonObject;
     return {for (final entry in body.entries) entry.key: '${entry.value}'};
   }
 
-  Future<HttpJsonResponse> _get(
-    String path, [
-    Map<String, String> query = const {},
-  ]) => _send('GET', path, query: query);
-
-  /// Sends [method] to [path] (with optional [query]/[body]) through the
-  /// authorized transport and returns the response, throwing [AppApiException]
-  /// on any non-success status (reading the server's stable error key).
-  Future<HttpJsonResponse> _send(
-    String method,
-    String path, {
-    Map<String, String> query = const {},
+  /// Sends [endpointId]'s declared method to its declared route (binding
+  /// [parameters] by request-DTO field name) with an optional [body] through
+  /// the authorized transport, and returns the response, throwing
+  /// [AppApiException] on any non-success status (reading the server's stable
+  /// error key).
+  Future<HttpJsonResponse> _call(
+    String endpointId, {
+    Map<String, Object?> parameters = const {},
     String? body,
   }) async {
+    final route = registryRoute(
+      appApi,
+      endpointId,
+      baseUri,
+      parameters: parameters,
+    );
     final response = await _http.send(
-      method: method,
-      uri: _uri(path, query),
+      method: route.method,
+      uri: route.uri,
       body: body,
     );
     if (!response.isSuccess) {
       throw AppApiException(
         _errorKey(response) ?? 'app.request.failed',
-        'App API $method $path failed (HTTP ${response.statusCode}).',
+        'App API $endpointId (${route.method} ${route.uri.path}) failed '
+        '(HTTP ${response.statusCode}).',
         statusCode: response.statusCode,
       );
     }
     return response;
-  }
-
-  /// Resolves the absolute [path] (and optional [query]) against [baseUri].
-  Uri _uri(String path, [Map<String, String> query = const {}]) {
-    final base = baseUri.path.endsWith('/')
-        ? baseUri.path.substring(0, baseUri.path.length - 1)
-        : baseUri.path;
-    return baseUri.replace(
-      path: '$base$path',
-      queryParameters: query.isEmpty ? null : query,
-    );
   }
 
   /// The server's stable error key from a `{"error": "..."}` body, or null.

@@ -38,6 +38,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../http/authorized_http.dart';
 import '../http/json_transport.dart';
+import '../http/registry_route.dart';
 
 /// Raised when an admin-API call returns a non-success status the wrapper did not
 /// already handle (a 401 becomes an `TomAuthExpiredException` upstream).
@@ -106,8 +107,8 @@ Map<String, Object?> _asMap(Object? element) =>
 /// widget tests. All transport flows through the supplied [AuthorizedHttp],
 /// which carries the `admin` principal's bearer.
 class AdminApiClient implements AdminApiService {
-  /// Base URL of the auth server, e.g. `http://localhost:8081` (no path suffix —
-  /// each endpoint adds its own absolute `/admin/...` path).
+  /// Base URL of the auth server, e.g. `http://localhost:8081`. Each call adds
+  /// the route its `adminApi` endpoint declares.
   final Uri baseUri;
 
   final AuthorizedHttp _http;
@@ -119,143 +120,111 @@ class AdminApiClient implements AdminApiService {
 
   @override
   Future<List<UserDto>> listUsers() async =>
-      parseUsers((await _get('/admin/users')).jsonArray);
+      parseUsers((await _call('adminListUsers')).jsonArray);
 
   @override
   Future<UserDto> createUser(CreateUserRequest request) async => parseUser(
-    (await _send(
-      'POST',
-      '/admin/users',
-      body: dtoToJsonString(request),
-    )).jsonObject,
+    (await _call('adminCreateUser', body: dtoToJsonString(request))).jsonObject,
   );
 
   @override
   Future<UserDto> updateUser(UserDto user) async => parseUser(
-    (await _send(
-      'PUT',
-      '/admin/users',
-      body: dtoToJsonString(user),
-    )).jsonObject,
+    (await _call('adminUpdateUser', body: dtoToJsonString(user))).jsonObject,
   );
 
   @override
   Future<void> deleteUser(EntityIdRequest request) async =>
-      _send('DELETE', '/admin/users/${request.id}');
+      _call('adminDeleteUser', parameters: {'id': request.id});
 
   // ----- Roles -------------------------------------------------------------
 
   @override
   Future<List<RoleDto>> listRoles() async =>
-      parseRoles((await _get('/admin/roles')).jsonArray);
+      parseRoles((await _call('adminListRoles')).jsonArray);
 
   @override
   Future<RoleDto> createRole(RoleDto role) async => parseRole(
-    (await _send(
-      'POST',
-      '/admin/roles',
-      body: dtoToJsonString(role),
-    )).jsonObject,
+    (await _call('adminCreateRole', body: dtoToJsonString(role))).jsonObject,
   );
 
   @override
   Future<RoleDto> updateRole(RoleDto role) async => parseRole(
-    (await _send(
-      'PUT',
-      '/admin/roles',
-      body: dtoToJsonString(role),
-    )).jsonObject,
+    (await _call('adminUpdateRole', body: dtoToJsonString(role))).jsonObject,
   );
 
   @override
   Future<void> deleteRole(EntityIdRequest request) async =>
-      _send('DELETE', '/admin/roles/${request.id}');
+      _call('adminDeleteRole', parameters: {'id': request.id});
 
   // ----- Groups ------------------------------------------------------------
 
   @override
   Future<List<GroupDto>> listGroups() async =>
-      parseGroups((await _get('/admin/groups')).jsonArray);
+      parseGroups((await _call('adminListGroups')).jsonArray);
 
   @override
   Future<GroupDto> createGroup(GroupDto group) async => parseGroup(
-    (await _send(
-      'POST',
-      '/admin/groups',
-      body: dtoToJsonString(group),
-    )).jsonObject,
+    (await _call('adminCreateGroup', body: dtoToJsonString(group))).jsonObject,
   );
 
   @override
   Future<GroupDto> updateGroup(GroupDto group) async => parseGroup(
-    (await _send(
-      'PUT',
-      '/admin/groups',
-      body: dtoToJsonString(group),
-    )).jsonObject,
+    (await _call('adminUpdateGroup', body: dtoToJsonString(group))).jsonObject,
   );
 
   @override
   Future<void> deleteGroup(EntityIdRequest request) async =>
-      _send('DELETE', '/admin/groups/${request.id}');
+      _call('adminDeleteGroup', parameters: {'id': request.id});
 
   // ----- Grants + assignments ----------------------------------------------
 
   @override
   Future<GrantMatrixDto> getGrants() async =>
-      parseGrantMatrix((await _get('/admin/grants')).jsonObject);
+      parseGrantMatrix((await _call('adminGetGrants')).jsonObject);
 
   @override
   Future<void> putGrants(GrantMatrixDto matrix) async =>
-      _send('PUT', '/admin/grants', body: dtoToJsonString(matrix));
+      _call('adminPutGrants', body: dtoToJsonString(matrix));
 
   @override
   Future<void> assign(AssignmentRequest request) async =>
-      _send('POST', '/admin/assignments', body: dtoToJsonString(request));
+      _call('adminAssign', body: dtoToJsonString(request));
 
   @override
   Future<ResourceBundleDto> resources() async => dtoFromJson<ResourceBundleDto>(
-    (await _get('/admin/resources')).jsonObject,
+    (await _call('adminResources')).jsonObject,
   );
 
-  Future<HttpJsonResponse> _get(
-    String path, [
-    Map<String, String> query = const {},
-  ]) => _send('GET', path, query: query);
-
-  /// Sends [method] to [path] (with optional [query]/[body]) through the
-  /// authorized transport and returns the response, throwing [AdminApiException]
-  /// on any non-success status (reading the server's stable error key).
-  Future<HttpJsonResponse> _send(
-    String method,
-    String path, {
-    Map<String, String> query = const {},
+  /// Sends [endpointId]'s declared method to its declared route (binding
+  /// [parameters] by request-DTO field name) with an optional [body] through
+  /// the authorized transport, and returns the response, throwing
+  /// [AdminApiException] on any non-success status (reading the server's
+  /// stable error key).
+  Future<HttpJsonResponse> _call(
+    String endpointId, {
+    Map<String, Object?> parameters = const {},
     String? body,
   }) async {
+    final route = registryRoute(
+      adminApi,
+      endpointId,
+      baseUri,
+      parameters: parameters,
+    );
     final response = await _http.send(
-      method: method,
-      uri: _uri(path, query),
+      method: route.method,
+      uri: route.uri,
       body: body,
     );
     if (!response.isSuccess) {
       throw AdminApiException(
         _errorKey(response) ?? 'admin.request.failed',
-        'Admin API $method $path failed (HTTP ${response.statusCode}).',
+        'Admin API $endpointId (${route.method} ${route.uri.path}) failed '
+        '(HTTP ${response.statusCode}).',
         statusCode: response.statusCode,
       );
     }
     return response;
-  }
-
-  /// Resolves the absolute [path] (and optional [query]) against [baseUri].
-  Uri _uri(String path, [Map<String, String> query = const {}]) {
-    final base = baseUri.path.endsWith('/')
-        ? baseUri.path.substring(0, baseUri.path.length - 1)
-        : baseUri.path;
-    return baseUri.replace(
-      path: '$base$path',
-      queryParameters: query.isEmpty ? null : query,
-    );
   }
 
   /// The server's stable error key from a `{"error": "..."}` body, or null.

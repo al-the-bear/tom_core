@@ -343,6 +343,11 @@ final TomApi appApi = TomApi(
       id: 'appListProjects',
       uri: '/projects',
       method: TomHttpMethod.get,
+      // `?workspaceId=` names the workspace whose projects are listed. The
+      // handler takes it as a bare parameter, which binds from the query by its
+      // own name; declaring it here makes that binding part of the contract, so
+      // a client builds the query from the declaration rather than spelling it.
+      urlParameterMapping: const {'workspaceId': 'workspaceId'},
       requestTypes: const [],
       access: TomAuthenticatedAccess(),
     ),
@@ -356,6 +361,8 @@ final TomApi appApi = TomApi(
       id: 'appListLists',
       uri: '/lists',
       method: TomHttpMethod.get,
+      // `?projectId=`: the project whose lists are read (see `appListProjects`).
+      urlParameterMapping: const {'projectId': 'projectId'},
       requestTypes: const [],
       access: TomAuthenticatedAccess(),
     ),
@@ -363,6 +370,8 @@ final TomApi appApi = TomApi(
       id: 'appListItems',
       uri: '/items',
       method: TomHttpMethod.get,
+      // `?listId=`: the list whose items are read (see `appListProjects`).
+      urlParameterMapping: const {'listId': 'listId'},
       requestTypes: const [],
       access: TomAuthenticatedAccess(),
     ),
@@ -375,6 +384,8 @@ final TomApi appApi = TomApi(
       id: 'appListAttachments',
       uri: '/attachments',
       method: TomHttpMethod.get,
+      // `?listId=`: the list whose attachments are described.
+      urlParameterMapping: const {'listId': 'listId'},
       requestTypes: const [],
       access: TomAuthenticatedAccess(),
     ),

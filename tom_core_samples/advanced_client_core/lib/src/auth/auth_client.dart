@@ -13,6 +13,7 @@ import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../http/json_transport.dart';
+import '../http/registry_route.dart';
 
 /// Raised when an auth request fails: rejected credentials (the server's 401) or
 /// any other non-success status.
@@ -82,11 +83,7 @@ class AuthClient {
   /// authenticates nothing, and [pendingChallenge] then describes what to ask
   /// the user for. Complete the login with [submitSecondFactor].
   Future<LoginResult> login(LoginRequest request) async {
-    final response = await _transport.send(
-      method: 'POST',
-      uri: _uri('/auth/login'),
-      body: dtoToJsonString(request),
-    );
+    final response = await _send('authLogin', body: dtoToJsonString(request));
     final result = _requireLogin(response, 'auth.login.failed');
     _store(result);
     return result;
@@ -118,9 +115,8 @@ class AuthClient {
         statusCode: 0,
       );
     }
-    final response = await _transport.send(
-      method: 'POST',
-      uri: _uri('/auth/second-factor'),
+    final response = await _send(
+      'authSecondFactor',
       body: dtoToJsonString(
         SecondFactorRequest(code: code, challengeToken: challengeToken),
       ),
@@ -177,7 +173,7 @@ class AuthClient {
   /// carries what the user must be shown. Throws [AuthClientException] when the
   /// mechanism was not offered on this token or the offer has lapsed.
   Future<LoginResult> beginEnrolment(String type) =>
-      _enrolmentPass('/auth/enrol/begin', type: type);
+      _enrolmentPass('authBeginEnrolment', type: type);
 
   /// Confirms the offer with [code] and completes the login.
   ///
@@ -187,14 +183,14 @@ class AuthClient {
   /// code throws with [AuthClientException.canRetrySecondFactor] set and the
   /// re-issued interim token already stored, so retrying is one more call here.
   Future<LoginResult> confirmEnrolment(String code) =>
-      _enrolmentPass('/auth/enrol/confirm', code: code);
+      _enrolmentPass('authConfirmEnrolment', code: code);
 
   /// Declines a skippable offer and completes the login with no factor.
   ///
   /// Only meaningful when `LoginResult.twoFactorEnrolmentSkippable` (equivalently
   /// [Tom2FAPendingEnrolment.skippable]) was set; the server refuses otherwise,
   /// so a client that offers the affordance regardless achieves nothing.
-  Future<LoginResult> skipEnrolment() => _enrolmentPass('/auth/enrol/skip');
+  Future<LoginResult> skipEnrolment() => _enrolmentPass('authSkipEnrolment');
 
   /// The shape all three enrolment passes share: require a stored interim token,
   /// post it with the pass's one payload, store whatever comes back.
@@ -204,7 +200,7 @@ class AuthClient {
   /// login produced. It is the same reason [_secondFactorFailure] stores the
   /// re-issued token on the failure path.
   Future<LoginResult> _enrolmentPass(
-    String path, {
+    String endpointId, {
     String type = '',
     String code = '',
   }) async {
@@ -216,9 +212,8 @@ class AuthClient {
         statusCode: 0,
       );
     }
-    final response = await _transport.send(
-      method: 'POST',
-      uri: _uri(path),
+    final response = await _send(
+      endpointId,
       body: dtoToJsonString(
         TwoFactorEnrolmentRequest(
           type: type,
@@ -239,10 +234,7 @@ class AuthClient {
   /// Public endpoint — no bearer is attached and no prior [login] is needed.
   /// Throws [AuthClientException] on any non-success status.
   Future<ResourceBundleDto> loginResources() async {
-    final response = await _transport.send(
-      method: 'GET',
-      uri: _uri('/auth/resources/login'),
-    );
+    final response = await _send('authLoginResources');
     if (!response.isSuccess) {
       throw AuthClientException(
         _errorKey(response) ?? 'auth.resources.failed',
@@ -257,11 +249,7 @@ class AuthClient {
   /// it. Requires a prior [login] (an authorization token must be present), else
   /// throws `auth.no_token`.
   Future<LoginResult> refresh() async {
-    final response = await _transport.send(
-      method: 'POST',
-      uri: _uri('/auth/refresh'),
-      headers: _bearerHeader(),
-    );
+    final response = await _send('authRefresh', headers: _bearerHeader());
     final result = _requireLogin(response, 'auth.refresh.failed');
     _store(result);
     return result;
@@ -273,11 +261,7 @@ class AuthClient {
   Future<void> logout() async {
     try {
       if (TomBearerAuthentication.authorizationToken != null) {
-        await _transport.send(
-          method: 'POST',
-          uri: _uri('/auth/logout'),
-          headers: _bearerHeader(),
-        );
+        await _send('authLogout', headers: _bearerHeader());
       }
     } finally {
       // Drops the token pair *and* the cached principal — including a
@@ -336,11 +320,20 @@ class AuthClient {
     }
   }
 
-  /// Resolves [path] (a leading-slash absolute path) against [baseUri].
-  Uri _uri(String path) {
-    final base = baseUri.path.endsWith('/')
-        ? baseUri.path.substring(0, baseUri.path.length - 1)
-        : baseUri.path;
-    return baseUri.replace(path: '$base$path');
+  /// Sends [endpointId]'s declared method to its declared route in `authApi`
+  /// — the route the auth server answers on, never one spelled here — with
+  /// optional [headers] and [body].
+  Future<HttpJsonResponse> _send(
+    String endpointId, {
+    Map<String, String> headers = const {},
+    String? body,
+  }) {
+    final route = registryRoute(authApi, endpointId, baseUri);
+    return _transport.send(
+      method: route.method,
+      uri: route.uri,
+      headers: headers,
+      body: body,
+    );
   }
 }

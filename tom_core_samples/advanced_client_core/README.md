@@ -41,6 +41,24 @@ headers, JSON body* → `HttpJsonResponse(statusCode, body)`. The live
 `IoJsonTransport` backs it with `dart:io`; tests pass a fake, so the whole client
 core unit-tests with no sockets.
 
+## Addressing a call: by registry endpoint
+
+No client spells a route or a method. Every endpoint's route, method and URL
+parameters are declared once, in `advanced_todo_contracts`' `authApi` /
+`adminApi` / `appApi`, and the servers bind to that declaration by API id. Each
+client names the endpoint instead — `_call('appListItems', parameters:
+{'listId': listId})` — and `registryRoute` (`lib/src/http/registry_route.dart`)
+resolves it with the kernel's `TomApiEndpoint.resolveUri`: path captures bind
+through the endpoint's `urlParameterMapping` (or their own name), mapped query
+parameters are appended, and the method is the declared one.
+
+That is what keeps the three tiers in agreement by construction rather than by
+inspection. Renaming a route in the registry moves both servers and all three
+clients; had the clients spelled their paths, they would have kept addressing
+the old route, and a fake transport asserting the same literals would have
+stayed green. `test/registry_routes_test.dart` is the proof: it moves each
+route and requires the client to follow.
+
 ## `AuthClient`
 
 `AuthClient` (`lib/src/auth/auth_client.dart`) sequences the auth server's
@@ -453,7 +471,7 @@ class AdvancedClientConfig
 
 ## Tests
 
-Eight suites need no server and always run; five live suites **skip
+Nine suites need no server and always run; five live suites **skip
 themselves** when a server is unreachable, so `dart test` stays green without a
 stack. All of them
 install the combined domain+contracts reflection seed
@@ -496,6 +514,11 @@ No server needed:
 - `test/readme_api_reference_test.dart` — the `## API` section above against
   the source, both ways: every listed signature occurs in its library, and every
   public declaration of an exported library is listed.
+- `test/registry_routes_test.dart` — for every registry endpoint, the
+  declaration is swapped for one at a moved route and the client method that
+  uses it is called: the request must arrive at the moved route with the
+  declared method. A second test requires every endpoint of the three APIs to be
+  either exercised or excused by name (`authMe`, which no client calls).
 
 Live (all guarded by a reachability check):
 

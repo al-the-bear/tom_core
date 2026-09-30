@@ -22,6 +22,10 @@ library;
 // public barrel would put a second `initializeReflection` in their namespace and
 // silently decide which of the two they get. The client core's own tests and
 // its standalone example import it by path, which is where it is wanted.
+// not-exported: src/http/registry_route.dart — how the three clients turn a
+// registry endpoint id into a method and URL. It is their shared internal step,
+// not a surface: an application addresses the servers through the clients, and
+// one that wants a route reads the contracts registry itself.
 
 export 'src/api/admin_api_client.dart';
 export 'src/api/app_api_client.dart';
