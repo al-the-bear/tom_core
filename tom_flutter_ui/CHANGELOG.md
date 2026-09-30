@@ -2,6 +2,14 @@
 
 ### Fixed
 
+- **A `TomErrorBoundary` whose own `fallbackBuilder` throws no longer goes
+  blank.** It caught the fallback's error and rendered nothing: the swap was
+  deferred to a post-frame callback registered inside another, and with the
+  tree idle no frame ran it. The boundary now falls back in stages — the
+  default card with the child's original error, then the builder installed
+  before any boundary — applies each at once, and settles; `onError` fires once
+  per stage. `TomErrorBoundary.debugDefaultFallback` (`@visibleForTesting`) lets
+  a test make the default card fail.
 - **`setAclGroup` groups the container.** `AclContainer.aclGroup` was stored,
   forwarded and read by nothing, so a container grouped with
   `AclBuilder.setAclGroup` got no error and no effect. A component's group now

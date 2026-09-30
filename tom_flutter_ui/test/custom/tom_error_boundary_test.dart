@@ -496,16 +496,6 @@ void main() {
       // throw, and a boundary that stopped guarding the moment it caught could
       // not catch its own fallback — the error would land outside every
       // boundary and be handed to the application's error widget instead.
-      //
-      // What is asserted is that the boundary *receives* the second error.
-      // Rendering a second fallback for it is a separate property and one the
-      // widget does not currently have: the swap is deferred to a post-frame
-      // callback registered from inside a post-frame callback, and nothing
-      // marks the tree dirty in between, so no frame is produced to run it.
-      // Measured, not assumed — and filed rather than fixed here, because the
-      // right answer to "the fallback itself throws" is a design question
-      // (stop trying, fall back to the default card, or delegate outward) and
-      // not the ownership question this case exists for.
       final caught = <FlutterErrorDetails>[];
 
       await tester.pumpWidget(
@@ -519,7 +509,6 @@ void main() {
         ),
       );
       await _settleError(tester);
-      await _settleError(tester);
 
       expect(caught, hasLength(2));
       expect(caught.first.exception.toString(), contains('first'));
@@ -530,6 +519,102 @@ void main() {
             'the boundary is still the nearest enclosing one for its own '
             'fallback, which is only true while it still owns the hook',
       );
+      while (tester.takeException() != null) {}
+    });
+
+    testWidgets('a throwing fallbackBuilder falls back to the default card, '
+        'with the original error, and settles', (tester) async {
+      // The boundary caught its fallback's error and used to render nothing:
+      // the swap was deferred to a post-frame callback registered from inside
+      // a post-frame callback, and with the tree otherwise idle no frame ever
+      // ran it. Scheduling frames would not have fixed it — a fallback that
+      // always throws would rebuild forever. The boundary falls back to its
+      // own card instead, which cannot throw for a caller's reason, so it
+      // settles.
+      final caught = <FlutterErrorDetails>[];
+
+      await tester.pumpWidget(
+        _app(
+          TomErrorBoundary(
+            onError: caught.add,
+            fallbackBuilder: (context, details, retry) =>
+                throw StateError('from-the-fallback'),
+            child: const _Boom(message: 'first'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Something went wrong'), findsOneWidget);
+      expect(
+        find.textContaining('first'),
+        findsOneWidget,
+        reason:
+            'the card reports the error the user ran into, not the '
+            "fallback's",
+      );
+      expect(caught, hasLength(2), reason: 'once for each failure, no more');
+      expect(tester.binding.hasScheduledFrame, isFalse);
+      while (tester.takeException() != null) {}
+    });
+
+    testWidgets('retry from the default card gives the fallbackBuilder a new '
+        'chance, and settles again', (tester) async {
+      final caught = <FlutterErrorDetails>[];
+
+      await tester.pumpWidget(
+        _app(
+          TomErrorBoundary(
+            onError: caught.add,
+            fallbackBuilder: (context, details, retry) =>
+                throw StateError('from-the-fallback'),
+            child: const _Boom(message: 'first'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Something went wrong'), findsOneWidget);
+      expect(caught, hasLength(4));
+      while (tester.takeException() != null) {}
+    });
+
+    testWidgets('when the default card fails too, the error goes to the '
+        'builder installed before any boundary', (tester) async {
+      // The last step: nothing is left to fall back to, so the boundary steps
+      // aside and the error widget the app would have had without it renders
+      // the card's failure. The real card cannot fail for a caller's reason,
+      // so the test replaces it with one that does.
+      TomErrorBoundary.debugDefaultFallback = (context, details, retry) =>
+          throw StateError('from-the-default');
+      addTearDown(() => TomErrorBoundary.debugDefaultFallback = null);
+      final caught = <FlutterErrorDetails>[];
+
+      await tester.pumpWidget(
+        _app(
+          TomErrorBoundary(
+            onError: caught.add,
+            fallbackBuilder: (context, details, retry) =>
+                throw StateError('from-the-fallback'),
+            child: const _Boom(message: 'first'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ErrorWidget), findsOneWidget);
+      expect(
+        caught.map((c) => c.exception.toString()),
+        [
+          contains('first'),
+          contains('from-the-fallback'),
+          contains('from-the-default'),
+        ],
+        reason: 'once per stage, then it stops',
+      );
+      expect(tester.binding.hasScheduledFrame, isFalse);
       while (tester.takeException() != null) {}
     });
 

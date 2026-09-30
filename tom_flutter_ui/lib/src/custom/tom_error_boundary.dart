@@ -29,6 +29,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 /// Builder signature for the fallback UI rendered when an error is
 /// caught. Receives the captured [FlutterErrorDetails] plus a
@@ -48,6 +49,12 @@ class TomErrorBoundary extends StatefulWidget {
 
   /// Optional fallback builder. When `null`, the boundary renders a
   /// Material-themed error card.
+  ///
+  /// It is caller code and can throw. If it does, the boundary shows the
+  /// default card instead, still reporting the child's original error; if the
+  /// default card fails as well, the error goes to the `ErrorWidget.builder`
+  /// that was installed before any boundary. Each step is taken once per
+  /// failure, so the boundary settles, and [onError] fires once for each.
   final TomErrorBoundaryFallbackBuilder? fallbackBuilder;
 
   /// Optional callback invoked once whenever a new error is caught.
@@ -78,11 +85,19 @@ class TomErrorBoundary extends StatefulWidget {
   /// disposed by the framework and the count returns to zero on its own.
   @visibleForTesting
   static void debugReleaseGlobalHook() => _GlobalHook.reset();
+
+  /// Replaces the default card, so a test can make it fail.
+  ///
+  /// The card cannot fail for a caller's reason — it reads the theme and
+  /// prints the error — so the path a boundary takes when it does (handing the
+  /// error to the builder installed before any boundary) is unreachable from
+  /// outside without this. `null`, the only value an application ever sees,
+  /// means the real card.
+  @visibleForTesting
+  static TomErrorBoundaryFallbackBuilder? debugDefaultFallback;
 }
 
 class _TomErrorBoundaryState extends State<TomErrorBoundary> {
-  FlutterErrorDetails? _captured;
-
   /// The hook is owned by the **boundary**, for its whole lifetime.
   ///
   /// The tempting alternative — owning it on a host widget the boundary
@@ -117,34 +132,107 @@ class _TomErrorBoundaryState extends State<TomErrorBoundary> {
     super.dispose();
   }
 
-  void _retry() => setState(() => _captured = null);
+  /// How far this boundary has had to fall back for the error it holds.
+  ///
+  /// It only moves forward until [_retry], and each step is taken on an error
+  /// raised by the step before it, so a failure can advance it at most three
+  /// times and the boundary settles in bounded time whatever the caller's code
+  /// does.
+  _Stage _stage = _Stage.child;
 
+  /// The error the child raised — what every fallback reports, even when the
+  /// fallback itself failed later, because it is the one the user's action
+  /// ran into.
+  FlutterErrorDetails? _captured;
+
+  /// The error that took the boundary to [_Stage.outward]: the default card's
+  /// own failure, handed to the builder the boundary found installed.
+  FlutterErrorDetails? _outward;
+
+  void _retry() => setState(() {
+    _stage = _Stage.child;
+    _captured = null;
+    _outward = null;
+  });
+
+  /// Takes an error raised under this boundary and moves to the next stage.
+  ///
+  /// The stage the error came from decides where it goes:
+  ///
+  /// * from the child — show the caller's `fallbackBuilder`, or the default
+  ///   card when there is none;
+  /// * from the caller's `fallbackBuilder` — show the default card, with the
+  ///   child's *original* error. A fallback that throws is a bug in caller
+  ///   code, but the user still needs to be told the first thing went wrong;
+  /// * from the default card — hand the card's error to the builder that was
+  ///   installed before any boundary, as though this one were not there. There
+  ///   is no default left to fall back to.
   void _captureError(FlutterErrorDetails details) {
     widget.onError?.call(details);
     if (!mounted) return;
-    // The error arrives via `ErrorWidget.builder`, which fires *during*
-    // the build phase of the failing subtree. Calling `setState`
-    // synchronously from there trips the "setState() called during
-    // build" assertion in debug and surfaces as an unexpected framework
-    // exception in `flutter_test`. Defer the repaint to the next frame
-    // so the current build completes cleanly before we swap in the
-    // fallback UI.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      setState(() => _captured = details);
+    final next = switch (_stage) {
+      _Stage.child =>
+        widget.fallbackBuilder != null ? _Stage.custom : _Stage.fallback,
+      _Stage.custom => _Stage.fallback,
+      _Stage.fallback || _Stage.outward => _Stage.outward,
+    };
+    void apply() => setState(() {
+      if (_stage == _Stage.child) _captured = details;
+      if (next == _Stage.outward) _outward ??= details;
+      _stage = next;
     });
+    // The reporter calls this from a post-frame callback, when a `setState`
+    // schedules the frame that shows the fallback. Deferring it once more, to
+    // the *next* post-frame phase, was fine while something else kept frames
+    // coming and stranded the fallback when nothing did — which is exactly the
+    // case of a fallback that throws, whose error arrives with the tree
+    // otherwise idle. So the state moves now, and only a call made during a
+    // build (where `setState` is an error) waits for the build to end.
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) apply();
+      });
+    } else {
+      apply();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final captured = _captured;
-    if (captured != null) {
-      final builder = widget.fallbackBuilder;
-      if (builder != null) return builder(context, captured, _retry);
-      return _DefaultErrorFallback(details: captured, onRetry: _retry);
+    switch (_stage) {
+      case _Stage.child:
+        return widget.child;
+      case _Stage.custom:
+        return widget.fallbackBuilder!(context, captured!, _retry);
+      case _Stage.fallback:
+        final replaced = TomErrorBoundary.debugDefaultFallback;
+        if (replaced != null) return replaced(context, captured!, _retry);
+        return _DefaultErrorFallback(details: captured!, onRetry: _retry);
+      case _Stage.outward:
+        final outward = _outward!;
+        return _GlobalHook.saved?.call(outward) ??
+            ErrorWidget(outward.exception);
     }
-    return widget.child;
   }
+}
+
+/// Where a [TomErrorBoundary] is in handling the error it caught.
+enum _Stage {
+  /// Nothing caught; the child is shown.
+  child,
+
+  /// The child failed; the caller's `fallbackBuilder` is shown.
+  custom,
+
+  /// The child failed and either there is no `fallbackBuilder` or it failed
+  /// too; the default card is shown.
+  fallback,
+
+  /// The default card failed as well; the error goes to the builder installed
+  /// before any boundary.
+  outward,
 }
 
 /// The process-wide state behind [ErrorWidget.builder], in one place that can

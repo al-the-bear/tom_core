@@ -216,6 +216,15 @@ The remaining five are presentation idioms with no auth gate:
   own errors regardless of mount order. Renders `fallbackBuilder` (or a
   Material error card) and offers a `retry`.
 
+  **A fallback that throws is caught and stepped past, in bounded time.** A
+  boundary falls back in stages, each taken once per failure: the caller's
+  `fallbackBuilder`; then, if that throws, the default card — still reporting
+  the child's *original* error, the one the user ran into; then, if the card
+  fails too, the builder installed before any boundary. So a guarded row stays
+  guarded when its fallback is broken, the boundary settles instead of
+  rebuilding a failing fallback every frame, and `onError` fires once per
+  stage. A `retry` starts again from the child.
+
   The count and the saved builder live in one private registry rather than as
   two library variables, and `TomErrorBoundary.debugReleaseGlobalHook()`
   (`@visibleForTesting`) hands the slot back and forgets every mounted
