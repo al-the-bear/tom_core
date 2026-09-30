@@ -5,6 +5,7 @@ Run from anywhere::
 
     python3 tool/check_doc_dart_blocks.py                  # the gated packages
     python3 tool/check_doc_dart_blocks.py tom_core_server  # one package, ad hoc
+    python3 tool/check_doc_dart_blocks.py --self-test      # the gate's own test
 
 Exits non-zero when a block fails, so it can gate a build.
 
@@ -91,7 +92,19 @@ never fire. A green light there would be coverage in appearance only. Checking
 a quoted signature against the framework's own is a genuinely different check
 -- comparing text to the element model -- and belongs in its own gate.
 
-A block that imports another package is skipped and counted, not failed. The
+**Which barrels a sample sees.** Every sample is analyzed with its own
+package's barrel imported and, when the package depends on `tom_core_kernel`,
+the kernel barrel as well. That is the context the package's own code is
+written in: `tom_flutter_ui` re-exports only a curated part of the kernel, so
+its documents reach `@tomReflector` or `TomObservable` through the kernel
+import every shipping file carries too. Judging them against the one barrel
+reported each such name as missing -- a fault in the harness, not the page. A
+block importing the kernel in such a package is therefore analyzed rather than
+skipped. `--self-test` holds this: in `tom_flutter_ui`'s scratch package a
+kernel-only name resolves in that context, fails against the package barrel
+alone, and a name nobody declares is still reported.
+
+A block that imports any other package is skipped and counted, not failed. The
 scheduling document legitimately points at `tom_core_server` for the relational
 job store. Adding that dependency here would invert the layering and blind the
 gate to a kernel document reaching for a server type by accident, so the block
@@ -122,8 +135,9 @@ SCRATCH_ROOT = TOOL_DIR / "ztmp" / "doc_dart_blocks"
 #: zero. A package with a backlog is not listed: adding one here without
 #: repairing it first would pin the backlog in place rather than fix it. Pass a
 #: package name on the command line to survey one ad hoc; `tom_core_server`,
-#: `tom_flutter_ui` and `tom_flutter_ui_test` still answer with faults, and the
-#: last two need a `package:flutter` preamble this checker does not yet write.
+#: `tom_flutter_ui` and `tom_flutter_ui_test` still answer with faults. Each is
+#: analyzed against its own barrel and the kernel's ([context_packages]); what
+#: remains is in the pages, not the harness.
 #: `tom_core_flutter` needs no preamble -- its documents are about the binding
 #: layer, not about widgets -- but gating it does mean the scratch package
 #: resolves against the Flutter SDK, so this gate now needs one on PATH.
@@ -401,8 +415,45 @@ def is_declaration(chunk: str) -> bool:
     return is_top_function(stripped)
 
 
-def build(body: str, wrapper: str, package: str) -> str:
-    """Render one block as a library, in the named context."""
+#: The package whose barrel a sample may use beside its own package's.
+KERNEL = "tom_core_kernel"
+
+
+def context_packages(package: Path) -> list[str]:
+    """The barrels a sample of ``package`` is analyzed against, own first.
+
+    A package that depends on `tom_core_kernel` gets the kernel barrel too. Its
+    own barrel is not required to re-export the kernel, and `tom_flutter_ui`
+    deliberately does not: `lib/src/kernel_types.dart` re-exports only the
+    kernel names its own public signatures use, and says a consumer who needs
+    another should import the kernel. So shipping code imports both
+    (`tom_flutter_form_test`'s forms do), and a sample written the same way --
+    `@tomReflector` on a domain class -- would otherwise be analyzed against
+    half of what it imports and report kernel names as missing. Importing the
+    two together cannot be ambiguous: `tom_flutter_ui`'s
+    `kernel_types_coexist_test.dart` holds that.
+    """
+    names = [package.name]
+    if package.name != KERNEL and depends_on(package, KERNEL):
+        names.append(KERNEL)
+    return names
+
+
+def depends_on(package: Path, dependency: str) -> bool:
+    """Whether ``package``'s pubspec lists ``dependency`` under ``dependencies``."""
+    pubspec = (package / "pubspec.yaml").read_text(encoding="utf-8")
+    section = re.search(r"^dependencies:\n((?:[ \t].*\n|\n)*)", pubspec, re.M)
+    return bool(section) and re.search(
+        rf"^[ \t]+{re.escape(dependency)}\s*:", section.group(1), re.M
+    ) is not None
+
+
+def build(body: str, wrapper: str, packages: list[str]) -> str:
+    """Render one block as a library, in the named context.
+
+    ``packages`` are the barrels imported -- the documented package's own, and
+    the kernel's when it depends on it (see [context_packages]).
+    """
     header, rest = hoist_imports(body)
     if wrapper == "top":
         core = rest
@@ -426,8 +477,8 @@ def build(body: str, wrapper: str, package: str) -> str:
             (declarations if is_declaration(chunk) else statements).append(chunk)
         core = ("".join(declarations) + "\nFuture<void> _sample() async {"
                 + "".join(statements) + "\n}")
-    import_package = f"import 'package:{package}/{package}.dart';\n"
-    return PREAMBLE + import_package + header + "\n" + core + "\n"
+    imports = "".join(f"import 'package:{p}/{p}.dart';\n" for p in packages)
+    return PREAMBLE + imports + header + "\n" + core + "\n"
 
 
 # =============================================================================
@@ -548,8 +599,12 @@ class Fault:
 
 def check(package: Path) -> tuple[list[Fault], int, int]:
     """`(faults, blocks checked, blocks skipped, blocks marked complete)`."""
-    foreign_import = re.compile(
-        rf"^\s*import\s+'package:(?!{re.escape(package.name)}/)", re.M)
+    context = context_packages(package)
+    # A block importing a package outside that context is left out; one that
+    # imports the kernel beside its own barrel is written as shipping code
+    # writes it and is analyzed.
+    own = "|".join(re.escape(p) for p in context)
+    foreign_import = re.compile(rf"^\s*import\s+'package:(?!(?:{own})/)", re.M)
 
     origin: dict[str, tuple[str, str]] = {}
     complete: set[str] = set()
@@ -588,7 +643,7 @@ def check(package: Path) -> tuple[list[Fault], int, int]:
         if not pending:
             break
         write_scratch(package, [
-            (name, build(body, wrapper, package.name))
+            (name, build(body, wrapper, context))
             for name, (_, body) in pending.items()
         ])
         found = analyze(scratch)
@@ -625,18 +680,80 @@ def check(package: Path) -> tuple[list[Fault], int, int]:
     # for the next tree-walking gate to find.
     write_scratch(package, [
         (fault.name, build(origin[fault.name][1],
-                           fault.wrapper or WRAPPERS[0], package.name))
+                           fault.wrapper or WRAPPERS[0], context))
         for fault in faults
     ])
     return faults, len(origin), skipped, len(complete)
 
 
+def self_test() -> int:
+    """Analyze three probes in `tom_flutter_ui`'s context, for real.
+
+    `tom_flutter_ui` is the package the kernel context exists for: its barrel
+    re-exports only a curated part of the kernel, and `tomReflector` is not in
+    it. So, in the scratch package this gate uses for it:
+
+    1. a sample annotated `@tomReflector` analyzes clean in the context the
+       harness builds -- the fix;
+    2. the same sample reports `undefined_annotation` against the package's own
+       barrel alone -- so (1) is the kernel import doing the work, not a sample
+       that would have passed anyway;
+    3. a name the kernel does not have is still reported in the full context --
+       the second barrel widens what resolves, not what is forgiven.
+    """
+    package = REPO_ROOT / "tom_flutter_ui"
+    context = context_packages(package)
+    if context != ["tom_flutter_ui", KERNEL]:
+        print(f"self-test: tom_flutter_ui's context is {context}; the kernel "
+              "barrel is missing", file=sys.stderr)
+        return 1
+    scratch = scratch_for(package)
+    write_scratch(package, [])
+    if run_dart(scratch, "pub", "get").returncode != 0:
+        print("self-test: could not resolve the scratch package (is the "
+              "Flutter SDK on PATH?)", file=sys.stderr)
+        return 2
+    probe = "@tomReflector\nclass SelfTestProbe {}\n"
+    missing = "@tomReflectorThatDoesNotExist\nclass SelfTestProbe {}\n"
+    write_scratch(package, [
+        ("self_test_kernel_context", build(probe, "top", context)),
+        ("self_test_own_barrel_only", build(probe, "top", [package.name])),
+        ("self_test_missing_name", build(missing, "top", context)),
+    ])
+    found = analyze(scratch)
+    codes = {name: {d["code"] for d in found.get(name, [])} for name in (
+        "self_test_kernel_context", "self_test_own_barrel_only",
+        "self_test_missing_name")}
+    write_scratch(package, [])
+    expectations = [
+        ("self_test_kernel_context", not codes["self_test_kernel_context"],
+         "a kernel-only name is not resolved in the harness context"),
+        ("self_test_own_barrel_only",
+         "undefined_annotation" in codes["self_test_own_barrel_only"],
+         "the probe resolves against tom_flutter_ui's barrel alone, so it "
+         "does not show the kernel import doing anything"),
+        ("self_test_missing_name", bool(codes["self_test_missing_name"]),
+         "a name the kernel does not have is no longer reported"),
+    ]
+    for name, ok, message in expectations:
+        if not ok:
+            print(f"self-test: {name}: {message} ({sorted(codes[name])})",
+                  file=sys.stderr)
+            return 1
+    print("self-test: a kernel-only name resolves in the kernel context, "
+          "is missing from the package barrel alone, and a genuinely missing "
+          "name is still reported")
+    return 0
+
+
 def main(argv: list[str]) -> int:
-    wanted = argv[1:] or PACKAGES
     if subprocess.run(["which", "dart"], capture_output=True).returncode != 0:
         print("dart is not on PATH, so no block can be analyzed",
               file=sys.stderr)
         return 2
+    if "--self-test" in argv[1:]:
+        return self_test()
+    wanted = argv[1:] or PACKAGES
 
     total_faults: list[Fault] = []
     checked = skipped = opted_in = 0

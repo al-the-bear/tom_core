@@ -636,6 +636,7 @@ marked, the unplaced list reads 0.
 ```bash
 python3 tool/check_doc_dart_blocks.py                  # the gated packages
 python3 tool/check_doc_dart_blocks.py tom_core_server  # one package, ad hoc
+python3 tool/check_doc_dart_blocks.py --self-test      # check the checker
 ```
 
 The sibling that does invoke the compiler. Every ` ```dart ` block in a
@@ -706,8 +707,13 @@ fire. A green light there would be coverage in appearance only.
 one to `PACKAGES` before repairing it would pin that backlog in place rather
 than fix it — run them with the argument in the meantime. Gating
 `tom_core_flutter` means the scratch package resolves against the Flutter SDK,
-so this gate needs one on PATH; the two `tom_flutter_*` packages need more than
-that, a `package:flutter` preamble the checker does not yet write.
+so this gate needs one on PATH.
+
+A sample is analyzed with its own package's barrel imported and, when the
+package depends on `tom_core_kernel`, the kernel barrel too — the context the
+package's own code is written in. `tom_flutter_ui` re-exports only part of the
+kernel, so without the second import every `@tomReflector` in its pages read as
+missing. `--self-test` holds this against real probes in that package.
 
 ```bash
 python3 tool/check_section_refs.py                  # the whole repository
