@@ -119,6 +119,17 @@ for both ways this server writes SQL:
   `TomDbDateTime.of` reads a column back through `parseOptionalSqlInstant`, and
   `dateTimeOp` inlines the same text as a literal. An entity therefore stores
   UTC and reads UTC without saying so.
+
+  A repository reads through a prepared statement, so its rows arrive over
+  MySQL's binary protocol — and there the driver renders the microsecond field
+  of a `DATETIME` as a bare integer: 91 371 µs becomes `.91371`, which any
+  parser reads as 0.91371 s. The data source marks every row a prepared
+  statement returns and restores the six-digit fraction before the reader sees
+  it. Over the text protocol (`executeQuery`) the server formats the value
+  itself, with the column's own precision, so those rows are left alone: the
+  same `.5` is 5 µs from one protocol and 500 ms from a `DATETIME(1)` over the
+  other, which is why the repair is decided per result set and never from the
+  text. `test/temporal_columns_db_test.dart` holds both halves.
 - **Aggregate results** — `TomGroupedRow.dateTimeValue` (and `typed<DateTime>`
   through it) reads the same way, whether the driver filled the row or a caller
   built one by hand. A value that is already a `DateTime` is relabelled with

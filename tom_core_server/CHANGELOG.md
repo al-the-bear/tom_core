@@ -31,6 +31,17 @@
 
 ### Fixed
 
+- **A repository read an instant up to 0.9 s late whenever its fraction was
+  under a tenth of a second.** Rows from a prepared statement — every
+  repository read, and `save`'s re-read — arrive over MySQL's binary protocol,
+  where `mysql_client` renders a `DATETIME`'s microseconds as a bare integer:
+  91 371 µs came back as `.91371`, read as 0.91371 s. One stored instant in ten
+  was affected, silently; it surfaced as an intermittent failure of the
+  preferences "a replace moves the timestamp forward" test. The data source now
+  marks binary-protocol rows and restores the six-digit fraction before the
+  temporal readers parse them; text-protocol rows, whose fraction the server
+  formats at the column's own precision, are left alone.
+
 - **A `@TomTransactional` endpoint's transaction now holds its writes.**
   Nothing in the framework ever called `registerParticipant`, so the
   transaction the pipeline opened, committed and rolled back was empty: every

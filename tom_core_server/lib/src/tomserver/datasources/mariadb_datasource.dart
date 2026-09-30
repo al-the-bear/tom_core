@@ -647,7 +647,10 @@ class MariaDbDatasource implements TomDataSource {
     String field,
     B Function(String?) read,
   ) {
-    final text = row.typedColByName<String>(field);
+    final raw = row.typedColByName<String>(field);
+    final text = _binaryRows[row] == true
+        ? _repairBinaryTemporalText(raw)
+        : raw;
     try {
       return read(text);
     } on FormatException catch (error, stack) {
@@ -665,6 +668,54 @@ class MariaDbDatasource implements TomDataSource {
       );
     }
   }
+
+  /// The rows [_rowsOf] handed out from a prepared statement's result, which
+  /// arrived over MySQL's binary protocol. Keyed by the row object itself, so
+  /// the mark lives exactly as long as the row and costs nothing to clear.
+  static final Expando<bool> _binaryRows = Expando<bool>('binary protocol row');
+
+  /// The rows of [result], each marked when [result] came over the binary
+  /// protocol, so the temporal readers can repair what the driver renders
+  /// there (see [_repairBinaryTemporalText]).
+  ///
+  /// Every loop that maps a row goes through this rather than `result.rows`:
+  /// a row read without the mark is read as text-protocol text, and for a
+  /// binary row that is the defect this exists to prevent.
+  static Iterable<ResultSetRow> _rowsOf(IResultSet result) sync* {
+    final binary =
+        result is PreparedStmtResultSet ||
+        result is IterablePreparedStmtResultSet;
+    for (final row in result.rows) {
+      if (binary) _binaryRows[row] = true;
+      yield row;
+    }
+  }
+
+  /// Restores the six-digit fraction of a temporal value the driver rendered
+  /// from the binary protocol.
+  ///
+  /// Over the binary protocol `mysql_client` builds a `DATETIME`'s text itself,
+  /// and writes the microsecond field as a bare integer: 91 371 µs becomes
+  /// `.91371`, which every parser reads as 0.91371 s. So every instant whose
+  /// fraction is under a tenth of a second came back up to 0.9 s late — one
+  /// value in ten, with nothing failing. Over the text protocol the *server*
+  /// formats the value, with exactly the column's precision, so the same
+  /// digits there mean what they say; that is why the repair applies only to
+  /// rows [_rowsOf] marked, and why it cannot be done from the text alone: a
+  /// binary `.5` is 5 µs and a text `.5` from a `DATETIME(1)` is 500 000 µs.
+  ///
+  /// Anything that is not `<date> <time>.<digits>` is returned unchanged,
+  /// `null` included.
+  static String? _repairBinaryTemporalText(String? text) {
+    if (text == null) return null;
+    final match = _binaryFraction.firstMatch(text);
+    if (match == null) return text;
+    return '${match.group(1)}.${match.group(2)!.padLeft(6, '0')}';
+  }
+
+  static final RegExp _binaryFraction = RegExp(
+    r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\.(\d{1,6})$',
+  );
 
   /// Reads [field] from [row] as a Dart `double`.
   ///
@@ -843,7 +894,7 @@ class MariaDbDatasource implements TomDataSource {
     // types the statement carries.
     if (groupedProjection != null) {
       return [
-        for (final row in qResult.rows)
+        for (final row in _rowsOf(qResult))
           mapGroupedRow(row, groupedProjection) as T,
       ];
     }
@@ -881,7 +932,7 @@ class MariaDbDatasource implements TomDataSource {
     if (testObject is TomClass &&
         TomAnnotationAnalyzer.findTable(rType) == null) {
       // if this not an annotated TomClass
-      for (var row in qResult.rows) {
+      for (var row in _rowsOf(qResult)) {
         TomClass rowResult;
         try {
           rowResult = classMirror.newInstance("", []) as TomClass;
@@ -908,7 +959,7 @@ class MariaDbDatasource implements TomDataSource {
         result.add(rowResult as T);
       }
     } else if (testObject is TomClass) {
-      for (var row in qResult.rows) {
+      for (var row in _rowsOf(qResult)) {
         TomClass rowResult;
         try {
           rowResult = classMirror.newInstance("", []) as TomClass;
@@ -947,7 +998,7 @@ class MariaDbDatasource implements TomDataSource {
       // the by-member-name path taken above for a table-less TomClass. Each
       // reflected instance field whose declared name matches a result column is
       // populated through its reflection setter.
-      for (var row in qResult.rows) {
+      for (var row in _rowsOf(qResult)) {
         Object rowResult;
         try {
           rowResult = classMirror.newInstance("", []);
@@ -1013,7 +1064,7 @@ class MariaDbDatasource implements TomDataSource {
       final persistentColumns = TomAnnotationAnalyzer.analysePersistentType(
         rType,
       ).columnInfo;
-      for (var row in qResult.rows) {
+      for (var row in _rowsOf(qResult)) {
         // Per row: the stack is drained at the end of this iteration, so a
         // stack that outlived it would re-resolve every earlier row's
         // references once more for each row that follows.

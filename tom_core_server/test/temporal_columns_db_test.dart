@@ -169,4 +169,74 @@ void main() async {
       expect(read.remindAt!.second, 59);
     });
   }, skip: skipReason);
+
+  group(
+    'a DATETIME(6) column round-trips the instant, fraction included',
+    () {
+      late TomDataSourceInfo dsi;
+      late FixtureTemporalRepository repo;
+
+      setUpAll(() async {
+        initializeReflection();
+        dsi = await TestDatabase.register();
+        await TestDatabase.ensureFixtureTemporalTable(dsi);
+      });
+
+      setUp(() async {
+        await TestDatabase.truncateFixtureTemporal(dsi);
+        repo = FixtureTemporalRepository();
+      });
+
+      tearDownAll(TestDatabase.reset);
+
+      // A repository reads through a prepared statement, so the row comes back
+      // over MySQL's binary protocol, where the driver renders the microsecond
+      // field as a bare integer: 91 371 µs arrived as `.91371`, which any parser
+      // reads as 0.91371 s. Every instant whose fraction is under a tenth of a
+      // second was read back up to 0.9 s late — one value in ten, silently. The
+      // leading-zero cases are the ones that tell; the rest are controls.
+      for (final micros in [91371, 5, 99999, 1, 100000, 913710, 0, 999999]) {
+        test('a fraction of $micros µs survives', () async {
+          final written = DateTime.utc(2026, 9, 30, 5, 42, 27, 0, micros);
+          final saved = await repo.save(
+            FixtureTemporalRecord()
+              ..label = 'instant'
+              ..occurredAt = written,
+          );
+          final read = await repo.findById(saved.id!);
+          expect(read?.occurredAt, written);
+          // The instant as the repository hands back from `save` goes through
+          // the same reader, and `save`'s re-read is what the preferences
+          // store's `updatedAt` came from when this was first seen.
+          expect(saved.occurredAt, written);
+        });
+      }
+
+      test(
+        'the repair is for binary rows only: a text-protocol DATETIME(3) keeps '
+        'its milliseconds',
+        () async {
+          // The same digits mean different things per protocol. Over the text
+          // protocol the server formats the value with the column's precision, so
+          // `.091` from a DATETIME(3) is 91 ms; a repair applied to every row
+          // would pad it to 91 µs. `executeQuery` reads over the text protocol,
+          // and the cast gives the column a precision below six.
+          await repo.save(
+            FixtureTemporalRecord()
+              ..label = 'text'
+              ..occurredAt = DateTime.utc(2026, 9, 30, 5, 42, 27, 91, 371),
+          );
+          final rows = await dsi.datasource.executeQuery<FixtureTemporalRecord>(
+            'SELECT id, label, CAST(occurred_at AS DATETIME(3)) AS occurred_at '
+            'FROM fixture_temporal',
+          );
+          expect(
+            rows.single.occurredAt,
+            DateTime.utc(2026, 9, 30, 5, 42, 27, 91),
+          );
+        },
+      );
+    },
+    skip: skipReason,
+  );
 }

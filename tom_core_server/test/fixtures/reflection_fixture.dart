@@ -2436,6 +2436,12 @@ class FixtureTemporalRecord {
   /// The clock half: a `TIME` column.
   @TomDbColumn(columnName: 'remind_at')
   TomZonedTime? remindAt;
+
+  /// A whole instant, over `DATETIME(6)` — the column type every framework
+  /// table stores an instant in. Microsecond precision is what makes its
+  /// fractional second worth a round trip of its own.
+  @TomDbColumn(columnName: 'occurred_at')
+  DateTime? occurredAt;
 }
 
 /// The MariaDB-backed repository for [FixtureTemporalRecord].

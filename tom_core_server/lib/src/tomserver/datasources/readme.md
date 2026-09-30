@@ -43,7 +43,11 @@ rows off by the difference in their offsets.
   it on their behalf: the MariaDB bind boundary renders every bound `DateTime`
   through `sqlInstant`, `TomDbDateTime.of` reads a column back through
   `parseOptionalSqlInstant`, and `dateTimeOp` inlines the same text as a
-  literal. An entity stores UTC and reads UTC without saying so.
+  literal. An entity stores UTC and reads UTC without saying so. Rows from a
+  prepared statement (every repository read) arrive over the binary protocol,
+  where the driver writes a `DATETIME`'s microseconds unpadded (`.91371` for
+  91 371 µs); the data source restores the six-digit fraction for exactly those
+  rows.
 
 The corollary for DDL: a column holding an instant is `DATETIME(6)`. A plain
 `DATETIME` rounds the microseconds this convention always writes, which moves

@@ -419,6 +419,7 @@ CREATE TABLE IF NOT EXISTS fixture_temporal (
   label     VARCHAR(255) NULL,
   due_on    DATE         NULL,
   remind_at TIME         NULL,
+  occurred_at DATETIME(6) NULL,
   PRIMARY KEY (id)
 )
 ''';
