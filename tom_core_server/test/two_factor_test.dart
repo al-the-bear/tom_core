@@ -3743,15 +3743,21 @@ void main() {
 
     /// The confirmation window, exercised at the boundary it exists to draw.
     ///
-    /// The expiry claim is editable from outside — the bearer path decodes the
-    /// token rather than verifying it — so these three tests are the same
-    /// tamper with three different values: a deadline in the past, no deadline
-    /// at all, and a deadline that is not an instant. All three must refuse,
+    /// The expiry claim is a public claim, so a client holding the interim
+    /// token can rewrite it in the string it sends. The enrolment passes take
+    /// an already-decoded token, so these three tests hand them one whose
+    /// claim was rewritten on the wire: a deadline in the past, no deadline at
+    /// all, and a deadline that is not an instant. All three must refuse,
     /// because the alternative to refusing is a generated secret that stays
     /// confirmable for as long as somebody keeps the token.
     group('the confirmation window is not the client\'s to move', () {
       /// A begun enrolment whose public expiry claim has been rewritten to
       /// [value], as a client holding the interim token could rewrite it.
+      ///
+      /// The rewrite is done to the token *string* -- the payload segment
+      /// decoded, edited, re-encoded, the signature left as it was -- because
+      /// that is the edit a client can make. A decoded token's `payload` is
+      /// read-only, so there is no editing the object in hand.
       Future<TomClientJwtToken> tamperedOffer(Object? value) async {
         policy(Tom2FARequirement.required);
         final (_, token) = await login();
@@ -3760,13 +3766,19 @@ void main() {
           enrolmentToken: token,
         );
 
-        final tampered = TomClientJwtToken(begun.authorizationToken);
+        final [header, body, signature] = begun.authorizationToken.split('.');
+        final claims =
+            jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(body))))
+                as Map<String, dynamic>;
         if (value == null) {
-          tampered.payload!.remove(Tom2FAEnrolmentClaims.expiresAt);
+          claims.remove(Tom2FAEnrolmentClaims.expiresAt);
         } else {
-          tampered.payload![Tom2FAEnrolmentClaims.expiresAt] = value;
+          claims[Tom2FAEnrolmentClaims.expiresAt] = value;
         }
-        return tampered;
+        final rewritten = base64Url
+            .encode(utf8.encode(jsonEncode(claims)))
+            .replaceAll('=', '');
+        return TomClientJwtToken('$header.$rewritten.$signature');
       }
 
       test('a lapsed offer cannot be confirmed', () async {
