@@ -175,8 +175,16 @@ dart run                       # or: dart run example/run_all_examples.dart
 # Flutter samples (UI showcases, client)
 cd tom_core_samples/<sample>
 ./reflection_generation.sh     # regenerate reflection if the model changed
+flutter create --empty --platforms=macos .   # once per machine; or linux, windows, web
 flutter run                    # pick a device when prompted
 ```
+
+No Flutter sample ships platform folders, so each needs one generated before its
+first run. `--empty` keeps `flutter create` from writing a counter-app test the
+package cannot compile, and every sample's `.gitignore` covers what it writes.
+Each sample's README names the platforms it supports — the two that talk to a
+server over `dart:io` cannot target web — and
+`tool/check_flutter_platform_step.py` holds every README to naming the step.
 
 `core_server_sample` additionally brings up MySQL in Docker (compose file +
 bootstrap) — see its `README.md` for the one-command bring-up.

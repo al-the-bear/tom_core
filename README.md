@@ -280,6 +280,7 @@ it and start eight test suites.
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
 | [`tool/check_resource_key_namespace.py`](tool/check_resource_key_namespace.py) | Finds resource keys written with the field-grade scope glued to the front of the type |
 | [`tool/check_figure_wellformed.py`](tool/check_figure_wellformed.py) | Finds SVG figures that are not well-formed XML, and so render as nothing |
+| [`tool/check_flutter_platform_step.py`](tool/check_flutter_platform_step.py) | Holds every runnable Flutter sample's README to naming the platform step its first `flutter run` needs |
 | [`tool/check_suite_figures.py`](tool/check_suite_figures.py) | Holds the sample suite's figures, their embed sites and the `assets/README.md` inventory to one another and to the figure convention |
 | [`tool/check_barrel_exports.py`](tool/check_barrel_exports.py) | Finds a Dart file beside a barrel that no barrel reaches and no marker declares |
 | [`tool/check_kernel_bridge.py`](tool/check_kernel_bridge.py) | Audits the kernel bridge registrations against the types the bridge declares |
@@ -1415,6 +1416,29 @@ stale checkout, not like a file that is present, visually correct, and rejected
 over two characters in a comment nobody reads. Well-formedness is decidable, so
 the check is total for the fault it names — and it fires zero times on the nine
 figures today.
+
+```bash
+python3 tool/check_flutter_platform_step.py
+```
+
+Holds every runnable Flutter sample to the step its first run needs. None of
+the seven Flutter samples tracks a platform folder — a sample carries its own
+source, not generated scaffolding — and every README said `flutter run`, which
+Flutter refuses on a platform the project has no folder for. So the documented
+command failed before the first frame, for every sample. The repair is
+`flutter create --empty --platforms=<p> .`, once per machine, and `--empty` is
+part of it: without it the command also writes a counter-app
+`test/widget_test.dart` pumping a `MyApp` none of these packages has, and the
+package's own suite stops compiling.
+
+A package is in scope when its pubspec depends on Flutter, it has a
+`lib/main.dart`, its README says `flutter run`, and git tracks nothing under its
+platform folders. That last condition leaves out the two harnesses, which commit
+theirs. Three faults: `STEP` (the README never names the step, or names it
+without `--empty`), `ORDER` (a fenced `flutter run` comes before the step, so a
+reader going top to bottom meets the failing command first), and `IGNORE` (the
+package's `.gitignore` misses one of the six platform folders or `.metadata`,
+which the step writes).
 
 ```bash
 python3 tool/check_barrel_exports.py                 # the whole repository

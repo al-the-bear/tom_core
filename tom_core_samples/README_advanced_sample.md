@@ -210,11 +210,17 @@ dart run bin/app_server_start.dart       # HTTP :8080  (GET /health → 200)
 
 ### 3 — Run both clients
 
+Neither client ships platform folders, so generate one per client before its
+first run — see each client README's *Before the first run*, which also names
+the macOS network entitlement the live stack needs:
+
 ```sh
 # End-user app — from advanced_app_client/
+flutter create --empty --platforms=macos .   # once; or linux, windows
 flutter run
 
 # Admin console — from advanced_authadmin_client/
+flutter create --empty --platforms=macos .   # once; or linux, windows
 flutter run
 ```
 

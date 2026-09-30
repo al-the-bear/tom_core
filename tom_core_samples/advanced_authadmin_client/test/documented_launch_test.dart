@@ -117,5 +117,44 @@ void main() {
         reason: 'README.md must say why there is no doc/ directory',
       );
     });
+    test('the README names the one-time platform step, and the tree ignores '
+        'what it writes', () {
+      // The package ships no platform folders, and Flutter will not run a
+      // project on a platform it has no folder for, so every `flutter run`
+      // above fails on a clean checkout unless the README names the step that
+      // generates one. `--empty` is part of the step, not decoration: without
+      // it `flutter create` also writes a counter-app `test/widget_test.dart`
+      // pumping a `MyApp` this package does not have, and the suite stops
+      // compiling.
+      expect(
+        RegExp(r'flutter create --empty --platforms=\w+ \.').hasMatch(readme),
+        isTrue,
+        reason:
+            'README.md must name `flutter create --empty --platforms=<p> .`, '
+            'the one-time step without which `flutter run` cannot start',
+      );
+
+      // What the step generates stays out of version control, or following
+      // the README once leaves a tree full of scaffolding to commit by
+      // accident.
+      final ignored = File(
+        '.gitignore',
+      ).readAsLinesSync().map((line) => line.trim()).toSet();
+      for (final generated in const [
+        '.metadata',
+        'android/',
+        'ios/',
+        'linux/',
+        'macos/',
+        'web/',
+        'windows/',
+      ]) {
+        expect(
+          ignored,
+          contains(generated),
+          reason: '.gitignore must ignore $generated, which the step writes',
+        );
+      }
+    });
   });
 }

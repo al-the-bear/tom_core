@@ -70,8 +70,16 @@ reads and writes the reflected entity it was bound to.
 ```bash
 cd tom_core_samples/core_flutter_form_showcase
 flutter pub get
+flutter create --empty --platforms=macos .   # once per machine; or linux, windows, web
 flutter run            # any device / chrome / macos / linux
 ```
+
+The sample ships no platform folders, and Flutter will not run a project on a
+platform it has no folder for — so the first run on a machine starts with the
+`flutter create` line, once. `--empty` matters: without it the command also
+writes a counter-app `test/widget_test.dart` pumping a `MyApp` this package does
+not have, and the suite stops compiling. It leaves `lib/`, `pubspec.yaml` and
+this README alone, and what it adds is gitignored.
 
 There is nothing to configure. The **teaching** text is supplied inline: form
 labels via `labelTextOverride`, and any unresolved error key falls through to its

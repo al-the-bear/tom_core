@@ -221,11 +221,16 @@ The end-to-end run is four moves (full commands in the hub's
 
    ```sh
    # end-user app — from advanced_app_client/
+   flutter create --empty --platforms=macos .   # once; or linux, windows
    flutter run
 
    # admin console — from advanced_authadmin_client/
+   flutter create --empty --platforms=macos .   # once; or linux, windows
    flutter run
    ```
+
+   Neither client ships platform folders; each README's *Before the first run*
+   explains the step and the macOS network entitlement the live stack needs.
 
 Launched with `--dart-define=TEST_MODE=true`, either client boots on a **seeded
 in-memory backend** instead — the opt-in offline mode, and exactly the fake the

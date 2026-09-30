@@ -14,9 +14,17 @@ reflected entities, so you instantiate `AclBuilder` directly.
 ```bash
 cd tom_core_samples/core_flutter_acl_sample
 flutter pub get
+flutter create --empty --platforms=macos .   # once per machine; or linux, windows, web
 flutter run        # the app: a home index → one screen per ACL capability
 flutter test       # smoke + cell-contract + authorization states
 ```
+
+The sample ships no platform folders, and Flutter will not run a project on a
+platform it has no folder for — so the first run on a machine starts with the
+`flutter create` line, once. `--empty` matters: without it the command also
+writes a counter-app `test/widget_test.dart` pumping a `MyApp` this package does
+not have, and the suite stops compiling. It leaves `lib/`, `pubspec.yaml` and
+this README alone, and what it adds is gitignored.
 
 > **No concurrency flag.** `flutter test` runs several suites at once, and these
 > suites are safe that way: each test file gets its own `flutter_tester`

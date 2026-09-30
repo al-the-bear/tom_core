@@ -24,7 +24,8 @@ context. What to run instead:
 - **`lib/main.dart`** — the commented bootstrap: reflection, the client platform,
   the login resource bundle, then the console over the backend the launch flag
   selects.
-- **`flutter run --dart-define=TEST_MODE=true`** — the whole console offline over
+- **`flutter run --dart-define=TEST_MODE=true`**, once a platform folder exists
+  ([Before the first run](#before-the-first-run)) — the whole console offline over
   the seeded `InMemoryAdminBackend`, with no server or database behind it. With
   no dart-defines it drives the live auth server instead (see
   [Layout](#layout)).
@@ -33,6 +34,29 @@ context. What to run instead:
   way to watch a screen work.
 
 [The family's index](../README_advanced_sample.md#the-eight-packages) says which of the eight carry an `example/`, and why.
+
+## Before the first run
+
+The package ships no platform folders: they are generated scaffolding, and the
+sample carries only its own source. Flutter will not run a project on a
+platform it has no folder for, so generate the one you run on, once, from this
+directory:
+
+```sh
+flutter create --empty --platforms=macos .   # or linux, or windows
+```
+
+`--empty` matters. Without it `flutter create` also writes a counter-app
+`test/widget_test.dart` that pumps a `MyApp` this package does not have, and the
+suite stops compiling. The command leaves `lib/`, `pubspec.yaml` and this README
+alone, and what it adds — the platform folder, `.metadata`, IDE files — is
+gitignored. Web is not a target: the HTTP client in `advanced_client_core` is
+built on `dart:io`.
+
+On macOS the app is sandboxed, and the generated
+`macos/Runner/DebugProfile.entitlements` allows incoming connections only. The
+offline mode needs nothing more; to reach the live servers, add
+`<key>com.apple.security.network.client</key><true/>` to that file first.
 
 ## Layout
 

@@ -65,9 +65,17 @@ window to see the before/after (though the running app reacts live if you do).
 
 ```bash
 flutter pub get
+flutter create --empty --platforms=macos .   # once per machine; or linux, windows, web
 flutter run            # any device; desktop/web make resizing easiest
 flutter test       # widget tests, all green (§14)
 ```
+
+The sample ships no platform folders, and Flutter will not run a project on a
+platform it has no folder for — so the first run on a machine starts with the
+`flutter create` line, once. `--empty` matters: without it the command also
+writes a counter-app `test/widget_test.dart` pumping a `MyApp` this package does
+not have, and the suite stops compiling. It leaves `lib/`, `pubspec.yaml` and
+this README alone, and what it adds is gitignored.
 
 The home screen is a list of the six mechanisms. Tap one to open its
 `GroupScreen`, a scroll of `code | rendered` cells. On a wide window each cell

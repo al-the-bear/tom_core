@@ -115,6 +115,11 @@
    "faults": 0,
    "measured": "2026-09-03"
   },
+  "check_flutter_platform_step": {
+   "faults": 0,
+   "measured": "2026-09-30",
+   "note": "Lands at zero because all seven faults it was written for were repaired in the same pass: every Flutter sample under tom_core_samples/ said `flutter run` and tracked no platform folder, so the documented command could not start. Each README now names `flutter create --empty --platforms=<p> .` before its first fenced `flutter run`, and each .gitignore lists the six platform folders and .metadata. Verified, not assumed: for all seven, the step was run in place and `flutter run -d macos --machine` reached app.started, and the step wrote no file git would track. The two harnesses commit their platform folders and are out of scope by that test, not by name."
+  },
   "check_kernel_bridge": {
    "faults": 0,
    "measured": "2026-09-03"

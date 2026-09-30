@@ -73,8 +73,22 @@ to the server.
 ## 2. Running the sample
 
 ```bash
+flutter create --empty --platforms=macos .   # once per machine; or linux, windows
 flutter run
 ```
+
+The sample ships no platform folders, and Flutter will not run a project on a
+platform it has no folder for — so the first run on a machine starts with the
+`flutter create` line, once. `--empty` matters: without it the command also
+writes a counter-app `test/widget_test.dart` pumping a `MyApp` this package does
+not have, and the suite stops compiling. It leaves `lib/`, `pubspec.yaml` and
+this README alone, and what it adds is gitignored. Web is not a target: the live
+client is built on `dart:io`'s `HttpClient`.
+
+On macOS the app is sandboxed and the generated
+`macos/Runner/DebugProfile.entitlements` allows incoming connections only;
+the offline default needs nothing more, but to reach a live server add
+`<key>com.apple.security.network.client</key><true/>` to that file first.
 
 The app starts on the login screen against the in-memory backend (no server
 required). To exercise the live read path against a running `core_server_sample`:

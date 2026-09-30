@@ -19,8 +19,8 @@ consumers who need its surface mirrored — see
 fifteen sample packages.** It is one of the eight `advanced_*` packages
 that together form the full-stack sample, so `flutter run` on the package is
 the demonstration — an `example/` here would either duplicate `lib/main.dart`
-or isolate a fragment the app already shows in context. See
-[Running the full stack](#running-the-full-stack) for the live command and the
+or isolate a fragment the app already shows in context. Generate a platform folder first ([Before the first run](#before-the-first-run)),
+then see [Running the full stack](#running-the-full-stack) for the live command and the
 `--dart-define=TEST_MODE=true` offline variant, and
 [the family's index](../README_advanced_sample.md#the-eight-packages) for which of the eight carry an `example/`, and why.
 
@@ -287,6 +287,29 @@ backend call. Offline the demo ids are `u-alice`, `u-bob`, `u-carol`, `u-dave`
 and `u-erin`; against the live servers the grantee is the numeric auth user id
 (alice `2`, bob `3`, carol `4`, dave `5`, erin `6`) — `share` parses it with
 `int.tryParse` and rejects anything else.
+
+## Before the first run
+
+The package ships no platform folders: they are generated scaffolding, and the
+sample carries only its own source. Flutter will not run a project on a
+platform it has no folder for, so generate the one you run on, once, from this
+directory:
+
+```sh
+flutter create --empty --platforms=macos .   # or linux, or windows
+```
+
+`--empty` matters. Without it `flutter create` also writes a counter-app
+`test/widget_test.dart` that pumps a `MyApp` this package does not have, and the
+suite stops compiling. The command leaves `lib/`, `pubspec.yaml` and this README
+alone, and what it adds — the platform folder, `.metadata`, IDE files — is
+gitignored. Web is not a target: the HTTP client in `advanced_client_core` is
+built on `dart:io`.
+
+On macOS the app is sandboxed, and the generated
+`macos/Runner/DebugProfile.entitlements` allows incoming connections only. The
+offline mode needs nothing more; to reach the live servers, add
+`<key>com.apple.security.network.client</key><true/>` to that file first.
 
 ## Running the full stack
 
