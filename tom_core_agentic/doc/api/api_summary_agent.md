@@ -80,6 +80,7 @@ symbol belongs to.
   - [AgentSendCompleted](#agentsendcompleted)
   - [AgentSendFailed](#agentsendfailed)
   - [specSessionLooksLikeError](#specsessionlookslikeerror)
+  - [permissionModeForApproval](#permissionmodeforapproval)
 - [Placeholders](#placeholders)
   - [EditorPlaceholderBindings](#editorplaceholderbindings)
   - [PlaceholderExpressionsUnsupportedError](#placeholderexpressionsunsupportederror)
@@ -129,7 +130,11 @@ profile is copied into the editor.
 
 `final class`. The global settings a profile overlays: the bridge target
 (`bridgeHost`, `portScanStart`, `portScanEnd`), the profile selected on launch,
-and the `Options` defaults that apply where a profile leaves a field unset.
+and defaults that apply where a profile leaves a field unset.
+`AgentSendConfig.fromProfile` applies that overlay to `maxRounds` (the turn cap)
+and `toolApprovalMode` (the permission mode). `maxTokens`, `thinkingEnabled` and
+`promptCachingEnabled` are stored and edited but not sent: the Agent SDK's
+`Options` has no field for them.
 
 ### ChatRole
 
@@ -494,6 +499,9 @@ It retries once with a fresh session under four conditions together, and ends
 The editor-assembled inputs to one `query` `Options`, minus the session id the
 engine supplies: model, system prompt (sent additively, never as an override),
 permission mode, turn cap, working directory, and the MCP servers.
+`fromProfile(profile, settings: ...)` overlays the profile on `AgentSettings`:
+for the turn cap and the permission mode, an explicit argument wins, then the
+profile's field, then the settings'.
 
 ### AgentSendEvent
 
@@ -533,6 +541,17 @@ The editor's session-error rule: the text contains `session`, `message` or
 `msg`, case-insensitively. Deliberately broader than the brain's matcher — the
 editor would rather refresh a per-spec session id once too often than leave a
 stale one wedged in place.
+
+### permissionModeForApproval
+
+```dart
+PermissionMode permissionModeForApproval(ToolApprovalMode mode)
+```
+
+The SDK permission mode a tool-approval setting asks for: `always` is the SDK's
+default mode, which prompts for dangerous operations; `never` is `acceptEdits`,
+which auto-accepts file edits — not `bypassPermissions`, which would turn every
+check off.
 
 ## Placeholders
 

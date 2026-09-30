@@ -30,7 +30,8 @@ import 'package:path/path.dart' as p;
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
 
 import '../cancellation.dart';
-import 'agent_profile.dart' show AgentProfile;
+import 'agent_profile.dart' show AgentProfile, ToolApprovalMode;
+import 'agent_settings.dart' show AgentSettings;
 import 'agent_sidecar.dart';
 
 /// True when [message] should be treated as an SDK **session error** under the
@@ -100,6 +101,22 @@ class SpecSessionStore {
   }
 }
 
+/// The SDK permission mode a [ToolApprovalMode] asks for.
+///
+/// The approval gate is about *write* tool calls, and the SDK expresses it as a
+/// permission mode:
+///
+/// * [ToolApprovalMode.always] — ask before a write: the SDK's default mode,
+///   which prompts for dangerous operations;
+/// * [ToolApprovalMode.never] — do not ask for writes: `acceptEdits`, which
+///   auto-accepts file edits. Not `bypassPermissions`, which turns every check
+///   off — more than an approval setting for writes asks for.
+PermissionMode permissionModeForApproval(ToolApprovalMode mode) =>
+    switch (mode) {
+      ToolApprovalMode.always => PermissionMode.default_,
+      ToolApprovalMode.never => PermissionMode.acceptEdits,
+    };
+
 /// The editor-assembled inputs to one `query` `Options`, minus the
 /// session id (which the engine supplies from [SpecSessionStore]).
 ///
@@ -137,13 +154,24 @@ class AgentSendConfig {
   /// The navigation/mutation MCP servers, or `null` when none are wired.
   final Map<String, McpServerConfig>? mcpServers;
 
-  /// Assembles a send config from the active [profile] plus global settings.
+  /// Assembles a send config from the active [profile] overlaid on the global
+  /// [settings].
   ///
-  /// The profile contributes the system prompt (and, absent an explicit
-  /// [maxTurns], its `maxRounds`); the remaining knobs come from the global
-  /// agent settings the caller passes through.
+  /// For each knob the send carries, the first of these that is set wins: the
+  /// explicit argument, the profile's field, the settings' field.
+  ///
+  /// * the turn cap — [maxTurns], else `maxRounds` of the profile, else of the
+  ///   settings;
+  /// * the permission mode — [permissionMode], else the profile's
+  ///   `toolApprovalMode`, else the settings', mapped by
+  ///   [permissionModeForApproval].
+  ///
+  /// The profile alone supplies the system prompt. `maxTokens`,
+  /// `thinkingEnabled` and `promptCachingEnabled` are not read: the Agent
+  /// SDK's `Options` has no field for any of them.
   factory AgentSendConfig.fromProfile(
     AgentProfile? profile, {
+    AgentSettings? settings,
     String? model,
     PermissionMode? permissionMode,
     int? maxTurns,
@@ -151,11 +179,14 @@ class AgentSendConfig {
     Map<String, McpServerConfig>? mcpServers,
   }) {
     final prompt = profile?.systemPrompt;
+    final approval = profile?.toolApprovalMode ?? settings?.toolApprovalMode;
     return AgentSendConfig(
       model: model,
       systemPrompt: (prompt != null && prompt.isNotEmpty) ? prompt : null,
-      permissionMode: permissionMode,
-      maxTurns: maxTurns ?? profile?.maxRounds,
+      permissionMode:
+          permissionMode ??
+          (approval == null ? null : permissionModeForApproval(approval)),
+      maxTurns: maxTurns ?? profile?.maxRounds ?? settings?.maxRounds,
       cwd: cwd,
       mcpServers: mcpServers,
     );

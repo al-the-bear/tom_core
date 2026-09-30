@@ -1,5 +1,18 @@
 ## Unreleased
 
+### Changed
+
+- **A profile's tool-approval mode reaches the Agent SDK**, as a permission
+  mode: `always` is the SDK default (prompt for dangerous operations), `never`
+  is `acceptEdits` (`permissionModeForApproval`).
+- **`AgentSendConfig.fromProfile` takes `settings:` and applies the overlay
+  `AgentSettings` documented**: for the turn cap and the permission mode an
+  explicit argument wins, then the profile's field, then the settings'.
+- **`maxTokens`, `thinkingEnabled` and `promptCachingEnabled` say what they do
+  not do.** The Agent SDK's `Options` has no field for any of them, so they
+  are stored and edited but not sent; `AgentSettings.maxTokens` no longer names
+  an `Options.maxTokens` that does not exist.
+
 ### Fixed
 
 - **The README's `dart:io` coupling figures were wrong, and are now derived

@@ -10,11 +10,15 @@ import 'agent_profile.dart';
 import 'agent_yaml.dart';
 import 'bridge_connection.dart';
 
-/// Global agent settings: bridge target + the `Options` defaults.
+/// Global agent settings: bridge target + the defaults a profile overlays.
 ///
-/// These defaults overlay the active [AgentProfile] — a profile field, when
-/// set, wins; otherwise the value here applies. [defaultProfileId] names the
-/// profile selected on launch.
+/// `AgentSendConfig.fromProfile` applies the overlay for what a send carries:
+/// for [maxRounds] and [toolApprovalMode], a field the active [AgentProfile]
+/// sets wins, and otherwise the value here applies. [maxTokens],
+/// [thinkingEnabled] and [promptCachingEnabled] are stored and edited but not
+/// sent — the Agent SDK's `Options` has no field for them — and are kept for
+/// the providers that will take them. [defaultProfileId] names the profile
+/// selected on launch.
 final class AgentSettings {
   const AgentSettings({
     this.bridgeHost = defaultBridgeHost,
@@ -40,19 +44,24 @@ final class AgentSettings {
   /// Profile selected on launch; null = first available.
   final String? defaultProfileId;
 
-  /// Global default for `Options.maxTokens` (overlaid by a profile when set).
+  /// Global default for the response token cap. Not sent: the Agent SDK's
+  /// `Options` has no token cap.
   final int? maxTokens;
 
-  /// Global default for the agent's max tool rounds.
+  /// Global default for the agent's max tool rounds, sent as the turn cap
+  /// when the profile sets none.
   final int? maxRounds;
 
-  /// Global default for extended thinking.
+  /// Global default for extended thinking. Not sent: the Agent SDK's
+  /// `Options` has no thinking flag.
   final bool? thinkingEnabled;
 
-  /// Global default for prompt caching.
+  /// Global default for prompt caching. Not sent: the Agent SDK's `Options` has
+  /// no caching flag.
   final bool? promptCachingEnabled;
 
-  /// Global default tool-approval mode.
+  /// Global default tool-approval mode, sent as the SDK permission mode when
+  /// the profile sets none (see `permissionModeForApproval`).
   final ToolApprovalMode? toolApprovalMode;
 
   factory AgentSettings.fromYaml(Map<String, dynamic> yaml) => AgentSettings(

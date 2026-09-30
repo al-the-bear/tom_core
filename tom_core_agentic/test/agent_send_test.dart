@@ -184,6 +184,94 @@ void main() {
       expect((options.systemPrompt as SystemPromptText).text, 'Be precise.');
     });
 
+    test('the tool-approval mode reaches the SDK as a permission mode', () {
+      expect(
+        permissionModeForApproval(ToolApprovalMode.always),
+        PermissionMode.default_,
+      );
+      expect(
+        permissionModeForApproval(ToolApprovalMode.never),
+        PermissionMode.acceptEdits,
+        reason: 'no approval for writes is acceptEdits, not bypassPermissions',
+      );
+      final options = AgentSendConfig.fromProfile(
+        const AgentProfile(
+          id: 'p',
+          name: 'P',
+          toolApprovalMode: ToolApprovalMode.never,
+        ),
+      ).buildOptions();
+      expect(options.toJson()['permissionMode'], 'acceptEdits');
+    });
+
+    test('settings fill what the profile leaves unset; the profile wins', () {
+      const settings = AgentSettings(
+        maxRounds: 7,
+        toolApprovalMode: ToolApprovalMode.never,
+      );
+      final fromSettings = AgentSendConfig.fromProfile(
+        const AgentProfile(id: 'p', name: 'P'),
+        settings: settings,
+      );
+      expect(fromSettings.maxTurns, 7);
+      expect(fromSettings.permissionMode, PermissionMode.acceptEdits);
+
+      final fromProfile = AgentSendConfig.fromProfile(
+        const AgentProfile(
+          id: 'p',
+          name: 'P',
+          maxRounds: 3,
+          toolApprovalMode: ToolApprovalMode.always,
+        ),
+        settings: settings,
+      );
+      expect(fromProfile.maxTurns, 3);
+      expect(fromProfile.permissionMode, PermissionMode.default_);
+    });
+
+    test('an explicit argument wins over profile and settings', () {
+      final config = AgentSendConfig.fromProfile(
+        const AgentProfile(
+          id: 'p',
+          name: 'P',
+          maxRounds: 3,
+          toolApprovalMode: ToolApprovalMode.always,
+        ),
+        settings: const AgentSettings(maxRounds: 7),
+        maxTurns: 11,
+        permissionMode: PermissionMode.plan,
+      );
+      expect(config.maxTurns, 11);
+      expect(config.permissionMode, PermissionMode.plan);
+    });
+
+    test('with no approval mode anywhere, the SDK default applies', () {
+      final options = AgentSendConfig.fromProfile(
+        const AgentProfile(id: 'p', name: 'P'),
+        settings: const AgentSettings(),
+      ).buildOptions();
+      expect(options.toJson().containsKey('permissionMode'), isFalse);
+    });
+
+    test('the three fields the SDK has no destination for are not sent', () {
+      // Kept for the providers that will take them. What is asserted is that
+      // nothing pretends to send them: the wire carries no key for any.
+      final wire = AgentSendConfig.fromProfile(
+        const AgentProfile(
+          id: 'p',
+          name: 'P',
+          maxTokens: 1000,
+          thinkingEnabled: true,
+          promptCachingEnabled: true,
+        ),
+      ).buildOptions().toJson();
+      for (final key in wire.keys) {
+        expect(key.toLowerCase(), isNot(contains('token')));
+        expect(key.toLowerCase(), isNot(contains('think')));
+        expect(key.toLowerCase(), isNot(contains('cach')));
+      }
+    });
+
     test('omits resume from the wire when no session id is supplied', () {
       final options = const AgentSendConfig().buildOptions();
       expect(options.toJson().containsKey('resume'), isFalse);
