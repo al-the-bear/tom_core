@@ -237,11 +237,22 @@ void main() {
         );
         expect(await strategy.resumeIdFor(LlmOptions.empty), 'claude-quest-1');
 
-        // record / evict are no-ops: the file is never mutated.
+        // record / evict never mutate the file.
         final before = file.readAsStringSync();
         await strategy.record(LlmOptions.empty, 'claude-new');
         await strategy.evict(LlmOptions.empty);
         expect(file.readAsStringSync(), before);
+
+        // But an evicted id is remembered: the same file no longer resumes,
+        // so a stale quest session costs one failed resume, not one per call.
+        expect(await strategy.resumeIdFor(LlmOptions.empty), isNull);
+
+        // A file rewritten with a new id (the editor started a new session)
+        // is resumed again.
+        file.writeAsStringSync(
+          jsonEncode(<String, Object?>{'sessionId': 'claude-quest-2'}),
+        );
+        expect(await strategy.resumeIdFor(LlmOptions.empty), 'claude-quest-2');
 
         // A missing session file degrades to a fresh session.
         final missing = QuestSessionStrategy(
@@ -466,6 +477,53 @@ void main() {
       expect(events.last, isA<LlmStreamCompleted>());
       expect(transport.resumesSeen, <Object?>['claude-quest-1']);
       // Quest history is read-only: a successful call never rewrites the file.
+      expect(file.readAsStringSync(), before);
+    });
+
+    test('a stale quest session is paid for once, not on every call', () async {
+      final root = Directory('${tmp.path}/quests')..createSync();
+      final histDir = Directory('${root.path}/tom_brain/history')
+        ..createSync(recursive: true);
+      final file = File('${histDir.path}/default.session.json')
+        ..writeAsStringSync(
+          jsonEncode(<String, Object?>{'sessionId': 'claude-stale'}),
+        );
+      final before = file.readAsStringSync();
+
+      final transport = _ScriptedAgentSdkTransport(<_Attempt>[
+        _Attempt(error: 'Session claude-stale not found'),
+        _Attempt(
+          messages: <Map<String, dynamic>>[
+            _successResult('claude-fresh-1', text: 'one'),
+          ],
+        ),
+        _Attempt(
+          messages: <Map<String, dynamic>>[
+            _successResult('claude-fresh-2', text: 'two'),
+          ],
+        ),
+      ]);
+      final provider = _provider(
+        transport,
+        QuestSessionStrategy(
+          questHistoryRoot: root.path,
+          questId: 'tom_brain',
+          sessionKey: 'default',
+        ),
+      );
+
+      final first = await provider
+          .completeStream(_wire, LlmOptions.empty)
+          .toList();
+      final second = await provider
+          .completeStream(_wire, LlmOptions.empty)
+          .toList();
+
+      expect(first.last, isA<LlmStreamCompleted>());
+      expect(second.last, isA<LlmStreamCompleted>());
+      // One failed resume, its fresh retry, then the second call starts fresh
+      // without trying the rejected id again.
+      expect(transport.resumesSeen, <Object?>['claude-stale', null, null]);
       expect(file.readAsStringSync(), before);
     });
   });

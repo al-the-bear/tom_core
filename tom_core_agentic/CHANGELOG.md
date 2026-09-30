@@ -2,6 +2,11 @@
 
 ### Changed
 
+- **Quest mode pays for a stale session once.** `QuestSessionStrategy.evict`
+  remembers the rejected id in memory, and `resumeIdFor` no longer offers it
+  while the editor's file still names it, so every later call starts fresh
+  instead of failing a resume first. The file is still never written; a new id
+  in it is resumed. The constructor is no longer `const`.
 - **A guarded request that times out can cancel the work it abandons.**
   `IsolateRequestGuard.guard` takes an optional `cancellation` token and
   `cancel` callback (both or neither); on a deadline it fails the caller, then

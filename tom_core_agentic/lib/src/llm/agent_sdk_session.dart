@@ -205,7 +205,16 @@ final class BrainSessionStrategy implements AgentSdkSessionStrategy {
 /// sessions to reuse — typically `default` (the quest's default session) or
 /// `chat` (the chat session). A missing / empty file degrades to a fresh
 /// session, exactly like mode `none`. The caller never writes back into the
-/// quest's history, so [record] and [evict] are no-ops.
+/// quest's history: [record] is a no-op, and [evict] writes nothing either.
+///
+/// **A rejected id is remembered, not re-tried.** The file belongs to the VS
+/// Code window and may hold an id Claude Code no longer knows. The file is
+/// re-read on every call — so an id the editor writes mid-run is picked up —
+/// and without a memory the same stale id would cost one failed attempt on
+/// *every* call until the editor next rewrote it. So [evict] records the id
+/// this strategy last answered as rejected, and [resumeIdFor] answers `null`
+/// for a rejected id: a stale id costs one wasted attempt per strategy
+/// instance, and a new id in the file is resumed as soon as it appears.
 final class QuestSessionStrategy implements AgentSdkSessionStrategy {
   /// Root folder holding the per-quest history subfolders.
   final String questHistoryRoot;
@@ -216,11 +225,17 @@ final class QuestSessionStrategy implements AgentSdkSessionStrategy {
   /// Which session file to read (e.g. `default`, `chat`).
   final String sessionKey;
 
-  const QuestSessionStrategy({
+  QuestSessionStrategy({
     required this.questHistoryRoot,
     required this.questId,
     required this.sessionKey,
   });
+
+  /// The id [resumeIdFor] last answered — the one a failed resume rejected.
+  String? _lastAnswered;
+
+  /// Ids a resume has rejected, for the life of this strategy.
+  final Set<String> _rejected = <String>{};
 
   File get _sessionFile =>
       File('$questHistoryRoot/$questId/history/$sessionKey.session.json');
@@ -233,8 +248,9 @@ final class QuestSessionStrategy implements AgentSdkSessionStrategy {
       final decoded = jsonDecode(await file.readAsString());
       if (decoded is! Map) return null;
       final sessionId = decoded['sessionId'];
-      if (sessionId is String && sessionId.isNotEmpty) return sessionId;
-      return null;
+      if (sessionId is! String || sessionId.isEmpty) return null;
+      if (_rejected.contains(sessionId)) return null;
+      return _lastAnswered = sessionId;
     } on FormatException {
       return null;
     } on FileSystemException {
@@ -246,8 +262,12 @@ final class QuestSessionStrategy implements AgentSdkSessionStrategy {
   @override
   Future<void> record(LlmOptions options, String claudeSessionId) async {}
 
+  /// Remembers the id last answered as rejected. The file is left alone.
   @override
-  Future<void> evict(LlmOptions options) async {}
+  Future<void> evict(LlmOptions options) async {
+    final rejected = _lastAnswered;
+    if (rejected != null) _rejected.add(rejected);
+  }
 }
 
 /// True when [message] looks like a Claude-Code rejection of a stale / unknown

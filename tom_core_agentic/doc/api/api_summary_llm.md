@@ -236,5 +236,9 @@ cached after first read.
 
 `final class`. Mode `quest`: **read-only**. Resolves the session id from the VS
 Code window's quest history file, located from `questHistoryRoot`, `questId`
-and `sessionKey`. `record` and `evict` are no-ops, because the file belongs to
-the editor rather than to this provider.
+and `sessionKey`. The file belongs to the editor, so nothing is ever written
+to it: `record` does nothing, and `evict` remembers the id last answered as
+rejected, in memory, for the strategy's lifetime. While the file still names a
+rejected id `resumeIdFor` answers `null`, so a stale quest session costs one
+failed resume rather than one per call; a file rewritten with a new id is
+resumed again.

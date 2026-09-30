@@ -297,6 +297,11 @@ terminal event, so a strategy that threw there would not merely fail to persist
 a session id: it would destroy the result of a call that has already been
 billed. A degraded store costs at most one fresh call.
 
+The quest strategy cannot fix a stale file, because the file is the editor's.
+It remembers the id instead: once `evict` has seen the id it answered rejected,
+that id is never offered again by the same strategy, and the next call starts
+fresh at once. When the editor writes a new session id, that one is resumed.
+
 ## Core Components
 
 - **`llm_provider.dart`** — the contract and its three invariants.
