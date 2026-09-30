@@ -120,6 +120,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from gate_cache import GateCache, package_key
 from gate_report import report_faults
 
 TOOL_DIR = Path(__file__).resolve().parent
@@ -753,8 +754,15 @@ def main(argv: list[str]) -> int:
         return 2
     if "--self-test" in argv[1:]:
         return self_test()
-    wanted = argv[1:] or PACKAGES
+    wanted = [a for a in argv[1:] if not a.startswith("--")] or PACKAGES
 
+    # A package whose documents and sources match its last clean run is not
+    # rebuilt and re-analyzed (gate_cache.py says what the key covers). Only
+    # clean runs are stored, so a failing block always leaves its scratch
+    # source behind, as the module docstring promises.
+    cache = GateCache("check_doc_dart_blocks",
+                      enabled="--no-cache" not in argv)
+    gate_source = Path(__file__).read_text(encoding="utf-8")
     total_faults: list[Fault] = []
     checked = skipped = opted_in = 0
     for name in wanted:
@@ -763,7 +771,16 @@ def main(argv: list[str]) -> int:
             print(f"{name} is not a package under {REPO_ROOT}",
                   file=sys.stderr)
             return 2
-        faults, blocks, left_out, marked = check(package)
+        key = package_key(package, gate_source)
+        remembered = cache.get(name, key)
+        if remembered is not None:
+            faults, (blocks, left_out, marked) = [], remembered
+        else:
+            faults, blocks, left_out, marked = check(package)
+            if faults:
+                cache.forget(name)
+            else:
+                cache.put_clean(name, key, [blocks, left_out, marked])
         if blocks == 0:
             print(f"no ```dart blocks found under {name}", file=sys.stderr)
             return 2
@@ -795,6 +812,7 @@ def main(argv: list[str]) -> int:
         for code, count in codes.most_common(10):
             print(f"  {count:3d}  {code}")
 
+    cache.save()
     faults = sum(fault.weight for fault in total_faults)
     print(
         f"\npackages checked        : {', '.join(wanted)}\n"
@@ -803,7 +821,8 @@ def main(argv: list[str]) -> int:
         f"blocks marked `complete`: {opted_in}\n"
         f"blocks that do not parse: {len(parse)}\n"
         f"framework names missing : {sum(f.weight for f in framework)}\n"
-        f"complete blocks unclean : {sum(f.weight for f in incomplete)}"
+        f"complete blocks unclean : {sum(f.weight for f in incomplete)}\n"
+        f"packages from the cache : {cache.hits}"
     )
     return report_faults(faults)
 

@@ -382,8 +382,25 @@ class TypeInfo:
     parameters: set[str] = field(default_factory=set)
 
 
+#: What a string literal's contents are blanked to: neither a word character
+#: nor whitespace.
+#:
+#: Not a space, which is what comments are blanked to. A multi-line string
+#: blanked to spaces leaves lines that are nothing but whitespace inside a class
+#: body, and [MEMBER] -- whose leading indentation and whose type group both
+#: accept spaces -- tries every way of dividing such a line between the two
+#: before it fails. `base_server_configuration.dart`, whose development TLS pair
+#: is two such literals, took 212 of this gate's 267 seconds that way. A
+#: character neither part of the pattern accepts fails each of those lines at
+#: once. Comments stay blanked to spaces: code may need whitespace to span a
+#: comment between two tokens, and a string's contents are never that.
+STRING_FILL = "#"
+
+
 def mask_literals(source: str) -> str:
-    """``source`` with comment and string-literal *contents* blanked to spaces.
+    """``source`` with comment and string-literal *contents* blanked out.
+
+    Comments become spaces and string contents [STRING_FILL].
 
     Length and line breaks are preserved, so offsets and line numbers taken from
     the result address the original file, and code outside literals is returned
@@ -450,7 +467,7 @@ def mask_literals(source: str) -> str:
             body = chunk[len(quote) : len(chunk) - len(quote)] if len(chunk) >= 2 * len(quote) else ""
             out.append(
                 quote
-                + "".join(c if c == "\n" else " " for c in body)
+                + "".join(c if c == "\n" else STRING_FILL for c in body)
                 + (quote if len(chunk) >= 2 * len(quote) else "")
             )
             index = cursor

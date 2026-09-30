@@ -174,6 +174,7 @@ for somebody to run it by hand.
 ```bash
 python3 tool/check_gates.py            # run them all, report, gate
 python3 tool/check_gates.py --update   # re-record the baselines to today
+python3 tool/check_gates.py --timings  # ... and list what each gate took
 ```
 
 Each gate is pinned to a fault count in
@@ -191,6 +192,16 @@ it fails as unbaselined until it is recorded. To be run, a gate must be named
 `check_*.py` in `tool/` and end its `main()` with `report_faults(n)` from
 [`tool/gate_report.py`](tool/gate_report.py); `report_*.py` names a tool that
 reports and never gates.
+
+Each gate gets `GATE_TIMEOUT_SECONDS` (fifteen minutes), set from a measured
+run with room for a loaded machine. A gate stopped at the budget is reported as
+`timed-out` — its content not judged — rather than as a gate that forgot its
+count, which is the opposite remedy. The analyzer-backed gates keep their
+clean verdicts in [`tool/gate_cache.py`](tool/gate_cache.py), keyed on every
+input the verdict depends on — the package, its path dependencies' sources, its
+resolved package config, the SDK and the gate itself — so a run after an
+unrelated edit re-analyzes only what moved. A faulty verdict is never cached;
+`--no-cache` forces a full run.
 
 **The gates are not the package suites.** A green gate run says the
 documentation still describes the code; it says nothing about whether the
@@ -220,6 +231,7 @@ it and start eight test suites.
 | [`tool/check_gates.py`](tool/check_gates.py) | Runs every gate below and holds each to its recorded fault count |
 | [`tool/run_suites.py`](tool/run_suites.py) | Runs every package suite and the gate suite, with a per-suite verdict and one exit status |
 | [`tool/gate_report.py`](tool/gate_report.py) | The contract a gate implements: prints the machine-readable fault total and derives the exit status from it |
+| [`tool/gate_cache.py`](tool/gate_cache.py) | Remembers a clean analyzer verdict per package until one of its inputs changes; used by `check_reflection_artifacts.py` and `check_doc_dart_blocks.py` |
 | [`tool/check_tooling_table.py`](tool/check_tooling_table.py) | Pins this table, and the prose sections below it, to the contents of `tool/` |
 | [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits a document's own navigation: its `## Table of Contents` and every anchor it links to itself |
 | [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
@@ -285,8 +297,8 @@ touch, so there is no diff in which to see it.
 
 Three counts are kept apart: a script with no row, a row naming no script (the
 reverse drift, left behind by a rename), and a `check_*.py` with no invocation
-block. `gate_report.py` legitimately has no block — it is the contract a gate
-implements rather than a gate to run, and its row says so. Accuracy is not
+block. `gate_report.py` and `gate_cache.py` legitimately have no block — they
+are helpers a gate imports rather than gates to run, and their rows say so. Accuracy is not
 checked, only presence: whether a summary is *true* needs judgement, whether a
 row exists does not. That is the same line `check_doc_inventories.py` and
 `check_test_inventories.py` draw.

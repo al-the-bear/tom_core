@@ -49,6 +49,7 @@ import datetime
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from gate_report import FAULT_LINE
@@ -60,6 +61,18 @@ BASELINES = TOOL_DIR / "gate_baselines.json"
 
 #: Statuses a run may end in. The first two pass; the rest fail.
 PASSING = {"clean", "at-baseline"}
+
+#: How long one gate may run before it is stopped and reported `timed-out`.
+#:
+#: Derived from a measured run rather than guessed. Timed one by one on
+#: 2026-09-30 (mbp), the slowest gate took 43 s cold -- the analyzer-backed
+#: ones cache their clean verdicts (gate_cache.py), so a warm run is a few
+#: seconds -- and the whole suite about four minutes. Twenty times the slowest
+#: gate leaves room for a loaded machine and a cold pub cache, and is still
+#: short enough that a gate which genuinely hangs is noticed within a run.
+#: `--timings` prints what each gate took, which is the number to revisit this
+#: against.
+GATE_TIMEOUT_SECONDS = 900
 
 
 def gate_scripts() -> list[Path]:
@@ -90,21 +103,26 @@ def fault_count(output: str) -> int | None:
 
 def run_gate(script: Path) -> dict:
     """Run one gate and describe what happened, without judging it yet."""
+    started = time.monotonic()
     try:
         done = subprocess.run(
             [sys.executable, str(script)],
             cwd=REPO_ROOT,
             capture_output=True,
             text=True,
-            timeout=600,
+            timeout=GATE_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:
         return {"name": script.stem, "faults": None, "exit": None,
-                "output": "timed out after 600s"}
+                "timed_out": True,
+                "seconds": round(time.monotonic() - started, 1),
+                "output": f"timed out after {GATE_TIMEOUT_SECONDS}s"}
     return {
         "name": script.stem,
         "faults": fault_count(done.stdout),
         "exit": done.returncode,
+        "timed_out": False,
+        "seconds": round(time.monotonic() - started, 1),
         "output": (done.stdout + done.stderr).strip(),
     }
 
@@ -114,9 +132,22 @@ def judge(run: dict, baselines: dict) -> dict:
     name, faults = run["name"], run["faults"]
     entry = baselines.get(name)
     result = {"name": name, "faults": faults,
+              "seconds": run.get("seconds"),
               "baseline": entry["faults"] if entry else None,
               "measured": entry.get("measured") if entry else None,
               "note": entry.get("note") if entry else None}
+
+    if run.get("timed_out"):
+        # Told apart from a gate that finished without its count line: the
+        # remedy is the opposite one. This gate was stopped, not silent, and
+        # the old message sent readers to add a `report_faults` it already had.
+        result["status"] = "timed-out"
+        result["message"] = (
+            f"{name} was stopped after {GATE_TIMEOUT_SECONDS}s before it "
+            f"reported a count. Its content has not been judged. Run it alone "
+            f"to see whether it is slow or stuck, and see GATE_TIMEOUT_SECONDS "
+            f"in check_gates.py.")
+        return result
 
     if faults is None:
         result["status"] = "no-count"
@@ -205,6 +236,8 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--json", action="store_true",
                         help="emit the results as JSON for a test to read")
+    parser.add_argument("--timings", action="store_true",
+                        help="list what each gate took, slowest first")
     parser.add_argument("--update", action="store_true",
                         help="rewrite the baselines to the counts measured now")
     args = parser.parse_args(argv)
@@ -236,6 +269,10 @@ def main(argv: list[str]) -> int:
             {"ok": ok, "gates": results, "problems": problems}, indent=2))
         return 0 if ok else 1
 
+    if args.timings:
+        for result in sorted(results, key=lambda r: -(r.get("seconds") or 0)):
+            print(f"{result.get('seconds') or 0:7.1f}s  {result['name']}")
+        print()
     width = max(len(r["name"]) for r in results)
     for result in results:
         mark = "ok  " if result["status"] in PASSING else "FAIL"

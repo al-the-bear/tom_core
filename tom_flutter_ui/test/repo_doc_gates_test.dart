@@ -147,12 +147,17 @@ void main() {
     };
   });
 
-  // The gates walk every Dart file and every document in the repository.
-  // Together they take about fifteen seconds — once, in setUpAll,
-  // whose cost the test that triggers it is charged for. So every test here
-  // carries the longer timeout rather than the group, which in `flutter_test`
-  // cannot take one.
-  const slow = Timeout(Duration(minutes: 5));
+  // The gates walk every Dart file and every document in the repository, and
+  // some of them run the analyzer. Cold, the whole run takes about four minutes
+  // (measured 2026-09-30; `python3 tool/check_gates.py --timings` lists each
+  // gate) and a warm one far less, because the analyzer-backed gates cache
+  // their clean verdicts. It runs once, in setUpAll, whose cost the test that
+  // triggers it is charged for — so every test here carries the longer timeout
+  // rather than the group, which in `flutter_test` cannot take one. The budget
+  // sits well above a cold run on a loaded machine: a gate that runs out of
+  // time reports as failing without its content having been judged, which is
+  // the one failure a ratchet cannot afford to teach people to read past.
+  const slow = Timeout(Duration(minutes: 30));
 
   group('the tom_ai/core documentation gates', () {
     test('there are gates to run', timeout: slow, () {

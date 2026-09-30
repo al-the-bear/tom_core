@@ -5,6 +5,7 @@ Run from anywhere::
 
     python3 tool/check_reflection_artifacts.py
     python3 tool/check_reflection_artifacts.py --self-test
+    python3 tool/check_reflection_artifacts.py --no-cache   # analyze everything
 
 **The hole this closes.** `analysis_options.yaml` excludes
 `**/*.reflection.dart` from analysis, for a good reason: a mirror reflects
@@ -47,6 +48,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+from gate_cache import GateCache, _root_digest, package_key
 from gate_report import report_faults
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -141,6 +143,22 @@ def self_test() -> int:
             )
             return 2
 
+        # The cache must not outlive a change in a dependency: an artifact
+        # that did not move can still be broken by a member removed in another
+        # package, which is the failure this gate exists for.
+        dependent = REPO_ROOT / "tom_core_server"
+        before = package_key(dependent, "self-test")
+        (Path(scratch) / "probe.dart").write_text("// changed\n")
+        _root_digest.cache_clear()
+        after = package_key(dependent, "self-test")
+        if before is None or before == after:
+            print(
+                "self-test: a change in tom_core_kernel left "
+                "tom_core_server's cache key unchanged",
+                file=sys.stderr,
+            )
+            return 2
+
     print("self-test: passed")
     return 0
 
@@ -175,15 +193,32 @@ def main(argv: list[str]) -> int:
         f"{artifact.relative_to(REPO_ROOT)}: outside any package"
         for artifact in orphans
     ]
+    # A package whose inputs match its last clean run is not re-analyzed
+    # (gate_cache.py says what the key covers). Only clean verdicts are stored,
+    # so every reported error comes from a fresh analysis.
+    cache = GateCache("check_reflection_artifacts",
+                      enabled="--no-cache" not in argv)
+    gate_source = Path(__file__).read_text(encoding="utf-8")
     for package in sorted(packages):
-        for line in errors_in(package, packages[package]):
-            faults.append(f"{package.relative_to(REPO_ROOT)}  {line}")
+        name = str(package.relative_to(REPO_ROOT))
+        key = package_key(package, gate_source)
+        if cache.get(name, key) is not None:
+            continue
+        lines = errors_in(package, packages[package])
+        if lines:
+            cache.forget(name)
+        else:
+            cache.put_clean(name, key, [])
+        for line in lines:
+            faults.append(f"{name}  {line}")
+    cache.save()
 
     for fault in faults:
         print(fault)
 
     print(f"\nartifacts analyzed       : {len(found)}")
     print(f"packages covered         : {len(packages)}")
+    print(f"packages from the cache  : {cache.hits}")
     print(f"artifacts with an error  : {len(faults)}")
     if faults:
         print(
