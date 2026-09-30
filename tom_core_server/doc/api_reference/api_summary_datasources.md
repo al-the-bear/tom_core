@@ -980,8 +980,8 @@ is not — never silently truncated.
 | `close` | `Future<void> close()` | *(override)* Closes the connection if it was still live, and clears `connection` either way — including when closing it throws, since the caller is done with the link regardless. A data source that was never opened has nothing to release and stays "never opened". |
 | `toString` | `String toString()` | *(override)* Debug description of the datasource: the link's own state (`connected: true` / `false`) while it holds one, and otherwise which of the two ways it came to hold none — `closed` or `never opened`. |
 | `getParticipantId` | `String getParticipantId()` | *(override)* The transaction-participant id. |
-| `startTransaction` | `Future<bool> startTransaction()` | *(override)* Issues `START TRANSACTION`. Returns `false` when the database refuses it, but **throws** `MariadbDatasourceException` (`error.transaction.already_active`, naming the `participant`) when this data source is already in a transaction — a caller mistake no retry fixes, and so not the same answer as a failed statement. |
-| `endTransaction` | `Future<bool> endTransaction()` | *(override)* A no-op that always succeeds: a one-phase transaction has no prepare step to issue and no state left to release, since `commit` / `rollback` clear the in-transaction flag and the coordinator calls one of them first. |
+| `startTransaction` | `Future<bool> startTransaction(TomTransaction transaction)` | *(override)* Takes the connection for `transaction` — waiting while another transaction holds it — then issues `START TRANSACTION` (`READ ONLY` for a read-only transaction). Returns `false`, and releases the connection, when the database refuses it; **throws** `MariadbDatasourceException` (`error.transaction.already_active`, naming the `participant`) when the same transaction starts it twice — a caller mistake no retry fixes, and so not the same answer as a failed statement. Normally reached through the data source's own enlistment at the point of use rather than called directly. |
+| `endTransaction` | `Future<bool> endTransaction()` | *(override)* Issues nothing and always succeeds: it releases the connection to the statements waiting for it. The coordinator calls it on every participant after either conclusion; `commit` / `rollback` have already cleared the in-transaction flag. |
 | `commit` | `Future<bool> commit()` | *(override)* Issues `COMMIT`. |
 | `rollback` | `Future<void> rollback()` | *(override)* Issues `ROLLBACK`. |
 
@@ -1004,10 +1004,10 @@ MariaDbXADatasource()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `startTransaction` | `Future<bool> startTransaction()` | *(override)* Issues `XA START` against a fresh branch id, throwing the same `error.transaction.already_active` as the base class — with the open branch in the `transactionId` parameter — if one is already open. Clears the id again when the command fails, since the database never opened that branch. |
+| `startTransaction` | `Future<bool> startTransaction(TomTransaction transaction)` | *(override)* Takes the connection as the base class does, then issues `XA START` against a fresh branch id, throwing the same `error.transaction.already_active` as the base class — with the open branch in the `transactionId` parameter — if the same transaction starts it twice. Clears the id and releases the connection when the command fails, since the database never opened that branch. |
 | `prepare` | `Future<bool> prepare()` | *(override)* Issues `XA END` and then `XA PREPARE`, as two calls. Keeps the branch id on failure, because a `false` is a veto and the rollback that follows needs the branch to name. |
 | `commit` | `Future<bool> commit()` | *(override)* Issues `XA COMMIT` against the prepared branch and clears the id. On failure the branch is in doubt, and the id is kept so it has a name. |
-| `endTransaction` | `Future<bool> endTransaction()` | *(override)* A no-op that always succeeds, exactly as the one-phase sibling's is. Every XA statement belongs to `prepare`, `commit` and `rollback`. |
+| `endTransaction` | `Future<bool> endTransaction()` | *(override)* Issues nothing and releases the connection, exactly as the one-phase sibling's does. Every XA statement belongs to `prepare`, `commit` and `rollback`. |
 | `rollback` | `Future<bool> rollback()` | *(override)* Issues `XA END` then `XA ROLLBACK` for a branch still active, and `XA ROLLBACK` alone for one already ended — idle after a refused `XA PREPARE`, or prepared — because the server refuses each statement in the other's state. Clears the branch id either way and reports whether the branch was undone. Issues nothing when there is no branch, which is the state a participant is in when it committed before someone else vetoed. |
 
 ##### Static Properties
@@ -1018,7 +1018,7 @@ MariaDbXADatasource()
 
 Every exit puts the branch id back except a failing `prepare` or `commit`. The
 rule is what keeps the data source usable: the id is also the guard
-`startTransaction` refuses a second transaction on, so an exit that forgets to
+`startTransaction` refuses a nested start on, so an exit that forgets to
 clear locks out every later transaction permanently — and a caller cannot
 recover by rolling back, because the branch it would name never began.
 

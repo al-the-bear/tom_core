@@ -564,7 +564,18 @@ also held.
 
 When a method carries `@TomTransactional`, the handler starts a transaction
 through `TomTransactionManager` before invoking it, commits on success, and
-rolls back if the method throws.
+rolls back if the method throws. The handler does not enlist anything: every
+data source the method uses enlists itself on its first statement (see
+[transactions](transactions.md)), which is the only way the pipeline could know
+what the method touched.
+
+A commit that does not commit fails the request, whatever the method returned.
+When a participant vetoes, or commits only in part, the handler raises
+`TomTransactionException` with the key
+`endpoint_pipeline.handle_method_call.commit_failed`, carrying the `outcome`
+and the `failed` participants as parameters. It goes to the endpoint's error
+handler like any other failure; the coordinator has already concluded the
+transaction, so nothing is rolled back a second time.
 
 ## What a Handler May Return
 

@@ -1063,7 +1063,25 @@ class TomEndpointHandler {
       }
       if (transaction != null) {
         tomLog.trace("$reqId-${req.url}: Committing transaction...");
-        await transaction.commitTransaction();
+        final concluded = await transaction.commitTransaction();
+        // A commit that did not commit is a failed request, whatever the
+        // handler returned: its writes were vetoed and rolled back, or only
+        // partly made durable. Answering with the handler's result would tell
+        // the caller something happened that did not. The coordinator has
+        // already concluded the transaction either way, so the handler below
+        // does not roll it back a second time.
+        if (!concluded.isCommitted) {
+          throw TomTransactionException(
+            "endpoint_pipeline.handle_method_call.commit_failed",
+            "The transaction of $callName did not commit: "
+                "${concluded.outcome.name}"
+                "${concluded.failed.isEmpty ? '' : ' (${concluded.failed.join(', ')})'}.",
+            parameters: {
+              'outcome': concluded.outcome.name,
+              'failed': concluded.failed,
+            },
+          );
+        }
       }
     } catch (error, stacktrace) {
       // Always record the *cause* of an endpoint failure server-side. Without
@@ -1074,7 +1092,7 @@ class TomEndpointHandler {
       tomLog.warn(
         "$reqId-${req.url}: $callName on ${instance.type.simpleName} threw $error\n$stacktrace",
       );
-      if (transaction != null) {
+      if (transaction != null && transaction.isRunning) {
         tomLog.warn(
           "$reqId-${req.url}: Rolling back transaction after exception $error",
         );

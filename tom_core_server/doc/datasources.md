@@ -607,7 +607,9 @@ because the walk already exists.
 `sqlDialect`, lifecycle (`initialize` / `close` / `isOperational`), and
 execution surface (`prepareStatement`, `executeCommand` for writes returning an
 affected-row count, `executeQuery` for reads). It is a
-`TomTransactionParticipant`, so it can enlist in a transaction.
+`TomTransactionParticipant`, and `MariaDbDatasource` enlists itself in the
+running transaction on the first statement it issues inside one (see
+[transactions](transactions.md)).
 
 A driver registers by annotating its class with `@TomDatasourceDriver("<type>")`
 and `@tomReflector`. `TomDataSource.createDatasourceOf(type)` discovers drivers
@@ -1332,11 +1334,18 @@ test here requires this file in particular to keep using it.
   wrapping would turn a modelling mistake into a plausible wrong answer. Store a
   duration as an integer count of its unit.
 - **One connection per data source, and no pool.** `MariaDbDatasource` holds a
-  single `MySQLConnection`, so concurrent work on one data source serialises on
-  it, and `delegateTo` gives two logical names the same physical link — which
-  means they share transaction state, and a rollback on one rolls the other one
-  back too. Configure a separate data source for each unit of work that has to
-  commit independently, rather than two names over one connection.
+  single `MySQLConnection`, and a transaction belongs to the connection, so a
+  transaction *holds* the data source from its first statement until the
+  coordinator ends it: a statement from anywhere else — another request's
+  transaction, or a request with none — waits for the release rather than
+  running inside a transaction that is not its own. Concurrent transactions on
+  one data source therefore take turns, and a long transaction stalls every
+  other user of that data source. `delegateTo` gives two logical names the same
+  physical link, so they share this too. Configure a separate data source for
+  each unit of work that has to commit independently, rather than two names over
+  one connection. Work the owning transaction waits on must run in its zone: a
+  statement issued from a `runInTransactionScope` nested inside it waits on its
+  own transaction for good.
 - **`lastGeneratedId` is yours to answer, and only you can.**
   `TomPreparedStatement.lastGeneratedId` is abstract. The key belongs to the
   connection the insert ran on, and the driver is the only layer that knows
@@ -1374,6 +1383,7 @@ test here requires this file in particular to keep using it.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `mariadb_datasource.dart` | `Completer` and `Zone`: a transaction's hold on the connection, and the zone marking its own statements |
 | `dart:math` | dart | `mariadb_datasource.dart` | `Random`, the per-process tag in an XA branch id |
 | `mysql_client` | package | `mariadb_datasource.dart`, `sql_failure_mode.dart` | the MariaDB / MySQL driver used by `MariaDbDatasource` |
 | `tom_basics` | package | `sql_failure_mode.dart` | `TomBaseException`, walked to find the driver exception at the root of a failure chain |

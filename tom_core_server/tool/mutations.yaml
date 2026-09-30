@@ -298,6 +298,24 @@ datasources:
     find: "      if (escapeWithBackslash && c == _backslash && i + 1 < length) {"
     replace: "      if (false) {"
     tests: test/datasources_test.dart test/sql_text_test.dart test/scheduling_cluster_test.dart
+  - behaviour: a data source used inside a running transaction enlists in it
+    file: lib/src/tomserver/datasources/mariadb_datasource.dart
+    find: "    if (_owner != null || current == null || !current.isRunning) return;\n    await current.registerParticipant(this);"
+    replace: "    if (_owner != null || current == null || !current.isRunning) return;"
+    requires: db
+    tests: test/transactional_endpoint_db_test.dart
+  - behaviour: a statement from outside the owning transaction waits for its release
+    file: lib/src/tomserver/datasources/mariadb_datasource.dart
+    find: "    while (_owner != null && !identical(_owner, current)) {\n      await _released!.future;\n    }\n    if (_owner != null || current == null"
+    replace: "    if (_owner != null || current == null"
+    requires: db
+    tests: test/transactional_endpoint_db_test.dart
+  - behaviour: ending the transaction releases the connection
+    file: lib/src/tomserver/datasources/mariadb_datasource.dart
+    find: "  Future<bool> endTransaction() async {\n    _releaseConnection();"
+    replace: "  Future<bool> endTransaction() async {"
+    requires: db
+    tests: test/transactional_endpoint_db_test.dart
 
 db_migration:
   - behaviour: a table of another datasource is not this datasource's to converge
@@ -488,6 +506,11 @@ endpoints:
     find: "      if (builder.length > limit) {"
     replace: "      if (false) {"
     tests: test/endpoints_transport_test.dart test/file_endpoint_test.dart
+  - behaviour: a transaction that did not commit fails the request
+    file: lib/src/tomserver/endpoints/endpoint_pipeline.dart
+    find: "        if (!concluded.isCommitted) {"
+    replace: "        if (false) {"
+    tests: test/endpoints_pipeline_test.dart
 
 server:
   - behaviour: the access line opens with the application id

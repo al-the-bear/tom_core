@@ -52,8 +52,19 @@ abstract class TomTransactionParticipant {
 }
 ```
 
-`TomDataSource` implements this contract, so any data source touched during a
-transaction enlists in it.
+`TomDataSource` implements this contract, and `MariaDbDatasource` enlists
+itself **at the point of use**: the first statement it runs while a transaction
+is running — `executeCommand`, `executeQuery`, a prepared statement's
+`execute` — calls `registerParticipant` first. No call site asks for it, and
+none can be forgotten. That is what gives `@TomTransactional` its meaning: the
+endpoint pipeline opens and concludes the transaction, but it cannot know which
+data sources the endpoint will touch, and the data source is the one place that
+does. A data source whose `startTransaction` fails fails the statement that
+triggered the enlistment — a statement run outside the transaction it was meant
+to join is exactly the defect enlistment exists to prevent.
+
+A driver of your own honours the same contract: enlist before issuing a
+statement inside a running transaction.
 
 **This is two-phase commit.** `prepare()` runs on every participant before
 `commit()` runs on any of them, so a veto arrives while nothing is durable and

@@ -25,9 +25,31 @@
 - **`tool/mutation_sweep.py` reports a mutant that does not compile as
   INVALID**, not as killed. Such a mutant fails every test that imports it and
   so proves nothing; it counts toward the exit code like a survivor, since its
-  entry has to be rewritten before its behaviour counts as pinned.
+  entry has to be rewritten before its behaviour counts as pinned. A run that
+  hangs is stopped after ten minutes, with the test VMs it spawned, and counted
+  as killed.
 
 ### Fixed
+
+- **A `@TomTransactional` endpoint's transaction now holds its writes.**
+  Nothing in the framework ever called `registerParticipant`, so the
+  transaction the pipeline opened, committed and rolled back was empty: every
+  statement autocommitted, and an endpoint that threw half way had its rollback
+  called with nothing to undo. `MariaDbDatasource` now enlists itself at the
+  point of use — the first statement it runs inside a running transaction
+  joins it — and a data source that cannot start its transaction fails that
+  statement. Because a transaction belongs to the one connection, the
+  transaction holds the data source until the coordinator ends it: a statement
+  from elsewhere waits for the release instead of running inside it, so two
+  concurrent transactions on one data source take turns rather than the second
+  being refused. The transaction's own verbs bypass that admission.
+  `test/transactional_endpoint_db_test.dart` drives it through the router, a
+  repository and MariaDB.
+- **A commit that does not commit fails the request.** The pipeline ignored
+  `commitTransaction()`'s result, so a vetoed or partial commit answered 200
+  with the method's result. It now raises `TomTransactionException`
+  (`endpoint_pipeline.handle_method_call.commit_failed`), and the error path
+  rolls back only a transaction that is still running.
 
 - **A stored date or time the driver cannot read is refused by column.** A
   `DATE` column holding a timestamp, a `TIME` holding an interval or an

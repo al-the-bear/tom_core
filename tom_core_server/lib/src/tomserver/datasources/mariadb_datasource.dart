@@ -1,4 +1,5 @@
 // ignore_for_file: type_literal_in_constant_pattern
+import 'dart:async';
 import 'dart:math';
 
 import 'package:mysql_client/mysql_client.dart';
@@ -159,6 +160,10 @@ class MariadbPreparedStatement<T extends Object>
       parameterList,
       params,
     );
+    // Admitted per execution, not only at prepare time: the statement may run
+    // later, inside a transaction the prepare was not, or while another
+    // transaction holds the connection.
+    await datasource._admit();
     try {
       IResultSet result = await _execute(parameters, params);
       _captureExecuteResult(result);
@@ -470,6 +475,7 @@ class MariaDbDatasource implements TomDataSource {
   }
 
   Future<MySQLConnection> _openConnection(String operation) async {
+    await _admit();
     if (connection == null) {
       throw MariadbDatasourceException(
         "error.datasource.not_opened",
@@ -1547,6 +1553,97 @@ class MariaDbDatasource implements TomDataSource {
   @override
   String getParticipantId() => "MariaDb-$databaseName@$host:@$port";
 
+  /// The transaction this data source's connection is enlisted in, or `null`.
+  ///
+  /// There is one connection and no pool, and a transaction is a property of
+  /// the *connection*: every statement on it between `START TRANSACTION` and
+  /// `COMMIT` belongs to that transaction, whoever issued it. So while a
+  /// transaction holds the connection, a statement from anywhere else — another
+  /// request's transaction, or a request with none — waits for it to be
+  /// released rather than running inside a transaction that is not its own.
+  TomTransaction? _owner;
+
+  /// Completes when [_owner] lets go of the connection.
+  Completer<void>? _released;
+
+  /// Marks a zone in which this data source issues one of its transaction's
+  /// own statements.
+  static final Object _lifecycleZone = Object();
+
+  /// Issues one of the transaction's own statements — `START TRANSACTION`,
+  /// `COMMIT`, `ROLLBACK`, the `XA` verbs — without passing admission.
+  ///
+  /// They belong to the connection's owner by definition, and admission would
+  /// either enlist them in the very transaction they are starting or make them
+  /// wait for a release only they can bring about. Routed through
+  /// [executeCommand] rather than around it, so there stays one way a command
+  /// reaches the connection.
+  Future<BigInt> _lifecycle(String command) => runZoned(
+    () => executeCommand(command),
+    zoneValues: {_lifecycleZone: this},
+  );
+
+  /// Enlists this data source in the current transaction, at the point of use.
+  ///
+  /// Called before every statement — [_openConnection] and a prepared
+  /// statement's execute both route through here — so a data source used
+  /// inside a running transaction joins it without any call site asking.
+  /// That is what makes `@TomTransactional` mean anything: the pipeline opens
+  /// and concludes the transaction, and it cannot know which data sources the
+  /// endpoint will touch.
+  ///
+  /// Three cases, in order:
+  ///
+  /// * the connection already belongs to the current transaction — admitted;
+  /// * it belongs to another — wait for [_released], then look again;
+  /// * it is free, and a transaction is running — take it and enlist. A
+  ///   participant that cannot start its transaction fails the statement that
+  ///   triggered the enlistment (`registerParticipant` raises): a statement
+  ///   that ran outside the transaction it was meant to join is the defect
+  ///   this exists to remove.
+  ///
+  /// Enlisting runs [startTransaction], which claims the connection
+  /// (`_claimConnection`) and issues its statement without coming back here.
+  ///
+  /// The waiting has a cost worth naming: work that the owning transaction
+  /// itself waits on, issued from a zone that does not carry it (a
+  /// `TomTransactionManager.runInTransactionScope` nested inside it), waits on
+  /// its own transaction for good. Nothing in the framework does that.
+  Future<void> _admit() async {
+    if (identical(Zone.current[_lifecycleZone], this)) return;
+    final current = TomTransactionManager.getCurrentTransaction();
+    while (_owner != null && !identical(_owner, current)) {
+      await _released!.future;
+    }
+    if (_owner != null || current == null || !current.isRunning) return;
+    await current.registerParticipant(this);
+  }
+
+  /// Takes the connection for [transaction], waiting while another holds it.
+  ///
+  /// Called by [startTransaction] — whoever enlisted this data source, the
+  /// point of use or an explicit `registerParticipant` — so the connection
+  /// has exactly one owner from its `START TRANSACTION` to its release. A
+  /// second transaction reaching a busy data source therefore waits its turn
+  /// rather than being refused: two requests that each open a transaction are
+  /// ordinary traffic, not a programming error.
+  Future<void> _claimConnection(TomTransaction transaction) async {
+    while (_owner != null && !identical(_owner, transaction)) {
+      await _released!.future;
+    }
+    if (_owner != null) return;
+    _owner = transaction;
+    _released = Completer<void>();
+  }
+
+  /// Hands the connection back, waking every statement waiting in [_admit].
+  void _releaseConnection() {
+    final released = _released;
+    _owner = null;
+    _released = null;
+    released?.complete();
+  }
+
   bool _transactional = false;
 
   /// Refuses a transaction that would nest inside one already running.
@@ -1589,9 +1686,10 @@ class MariaDbDatasource implements TomDataSource {
   /// guarantee.
   @override
   Future<bool> startTransaction(TomTransaction transaction) async {
+    await _claimConnection(transaction);
     if (_transactional) _refuseNestedTransaction();
     try {
-      await executeCommand(
+      await _lifecycle(
         transaction.isReadOnly
             ? "START TRANSACTION READ ONLY;"
             : "START TRANSACTION;",
@@ -1602,25 +1700,31 @@ class MariaDbDatasource implements TomDataSource {
       tomLog.error(
         "Starting database transaction of ${getParticipantId()} failed $error",
       );
+      // Not enlisted, so no conclusion will ever release it.
+      _releaseConnection();
       return false;
     }
   }
 
-  /// Ends this participant's part of a plain transaction: a no-op that always
-  /// succeeds.
+  /// Ends this participant's part of a transaction by releasing the
+  /// connection to whatever is waiting for it; always succeeds.
   ///
   /// A one-phase `START TRANSACTION` / `COMMIT` has no prepare step, so there
   /// is no statement to issue — the XA lifecycle's `XA END` + `XA PREPARE` has
-  /// no plain equivalent (see [MariaDbXADatasource.endTransaction]). Nor is
-  /// there per-transaction state left to release: [commit] and [rollback]
-  /// clear the in-transaction flag themselves, and the coordinator always
-  /// calls one of them before this.
+  /// no plain equivalent (see [MariaDbXADatasource.endTransaction]). [commit]
+  /// and [rollback] clear the in-transaction flag themselves; what is left is
+  /// the connection's ownership (see `_admit`), and this is where it ends,
+  /// because the coordinator calls this on every participant after either
+  /// conclusion.
   ///
   /// Reporting `true` is not a formality. The coordinator ands every
   /// participant's result into the outcome, so a `false` here would fail a
   /// transaction that had in fact completed.
   @override
-  Future<bool> endTransaction() async => true;
+  Future<bool> endTransaction() async {
+    _releaseConnection();
+    return true;
+  }
 
   /// Phase one for a resource that has no phase one: always `true`.
   ///
@@ -1640,7 +1744,7 @@ class MariaDbDatasource implements TomDataSource {
   @override
   Future<bool> commit() async {
     try {
-      await executeCommand("COMMIT;");
+      await _lifecycle("COMMIT;");
       _transactional = false;
       return true;
     } catch (error) {
@@ -1663,7 +1767,7 @@ class MariaDbDatasource implements TomDataSource {
   @override
   Future<bool> rollback() async {
     try {
-      await executeCommand("ROLLBACK;");
+      await _lifecycle("ROLLBACK;");
       _transactional = false;
       return true;
     } catch (error) {
@@ -1761,6 +1865,7 @@ class MariaDbXADatasource extends MariaDbDatasource {
   /// otherwise believe the branch was protected.
   @override
   Future<bool> startTransaction(TomTransaction transaction) async {
+    await _claimConnection(transaction);
     if (_txId != null) _refuseNestedTransaction(_txId);
     if (transaction.isReadOnly) {
       tomLog.warn(
@@ -1771,7 +1876,7 @@ class MariaDbXADatasource extends MariaDbDatasource {
     _txId = "'${_newBranchId()}'";
     _ended = false;
     try {
-      await executeCommand("XA START $_txId;");
+      await _lifecycle("XA START $_txId;");
       return true;
     } catch (error) {
       tomLog.error(
@@ -1783,12 +1888,13 @@ class MariaDbXADatasource extends MariaDbDatasource {
       // every later transaction, and the caller cannot clear it by rolling
       // back, because it was just told the transaction did not begin.
       _txId = null;
+      _releaseConnection();
       return false;
     }
   }
 
-  /// Ends this participant's part of the transaction: a no-op that always
-  /// succeeds, exactly as its one-phase sibling's does.
+  /// Ends this participant's part of the transaction: it issues no statement
+  /// and releases the connection, exactly as its one-phase sibling's does.
   ///
   /// Every XA statement belongs to a phase the coordinator decides something
   /// with, and this method is called after the decision — so a statement placed
@@ -1799,7 +1905,7 @@ class MariaDbXADatasource extends MariaDbDatasource {
   /// participant's result into the outcome, so a `false` here would fail a
   /// transaction that had in fact completed.
   @override
-  Future<bool> endTransaction() async => true;
+  Future<bool> endTransaction() => super.endTransaction();
 
   /// Phase one: `XA END` then `XA PREPARE` against this branch, as two calls.
   ///
@@ -1823,9 +1929,9 @@ class MariaDbXADatasource extends MariaDbDatasource {
   Future<bool> prepare() async {
     final branch = _txId;
     try {
-      await executeCommand("XA END $branch;");
+      await _lifecycle("XA END $branch;");
       _ended = true;
-      await executeCommand("XA PREPARE $branch;");
+      await _lifecycle("XA PREPARE $branch;");
       return true;
     } catch (error) {
       tomLog.error(
@@ -1848,7 +1954,7 @@ class MariaDbXADatasource extends MariaDbDatasource {
   Future<bool> commit() async {
     final branch = _txId;
     try {
-      await executeCommand("XA COMMIT $branch;");
+      await _lifecycle("XA COMMIT $branch;");
       _txId = null;
       _ended = false;
       return true;
@@ -1878,8 +1984,8 @@ class MariaDbXADatasource extends MariaDbDatasource {
       // where it was — holding its locks, with nothing issuing `XA RECOVER` to
       // find it. A refused `XA END` ends the attempt: the branch is still
       // ACTIVE, and `XA ROLLBACK` would be refused for the same reason.
-      if (!_ended) await executeCommand("XA END $_txId;");
-      await executeCommand("XA ROLLBACK $_txId;");
+      if (!_ended) await _lifecycle("XA END $_txId;");
+      await _lifecycle("XA ROLLBACK $_txId;");
     } catch (error) {
       tomLog.error(
         "Rolling back XA database transaction of ${getParticipantId()} failed $error",

@@ -35,7 +35,9 @@ means every recorded behaviour is pinned.
 """
 
 import argparse
+import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -82,11 +84,37 @@ def run_tests(tests):
     return _run(tests).returncode == 0
 
 
+#: The longest one run of an entry's tests may take before it is stopped.
+#:
+#: A mutation can make the suite hang rather than fail: remove the release of a
+#: shared connection and every later statement waits for it forever. Unbounded,
+#: that stalls the whole sweep on one entry. Bounded, it is what it is -- the
+#: suite noticed the mutation -- and it is reported as killed, with the reason.
+RUN_TIMEOUT_SECONDS = 600
+
+
 def _run(tests):
-    return subprocess.run(
+    """`dart test` over [tests], stopped after [RUN_TIMEOUT_SECONDS].
+
+    Run in its own process group so a timeout can stop the test VMs `dart
+    test` spawns, not only `dart` itself: killing the parent alone leaves the
+    hung isolate holding its database connection. A timed-out run answers
+    returncode `None` and says so in its output.
+    """
+    process = subprocess.Popen(
         ['dart', 'test', '-j', '1', *tests],
-        cwd=ROOT, capture_output=True, text=True,
+        cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        start_new_session=True,
     )
+    try:
+        stdout, stderr = process.communicate(timeout=RUN_TIMEOUT_SECONDS)
+        return subprocess.CompletedProcess(process.args, process.returncode, stdout, stderr)
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGKILL)
+        stdout, stderr = process.communicate()
+        return subprocess.CompletedProcess(
+            process.args, None, stdout,
+            (stderr or '') + f'\n[timed out after {RUN_TIMEOUT_SECONDS}s]')
 
 
 #: How a test file that no longer compiles reports itself.
@@ -124,8 +152,9 @@ def database_reachable():
 def sweep(entry):
     """Apply one mutation, run its tests, restore the file whatever happens.
 
-    Returns `(verdict, seconds)`, the verdict one of `killed`, `survived` or
-    `invalid` -- a mutant that does not compile, which proves nothing. Restoring in a `finally` is not politeness:
+    Returns `(verdict, seconds)`, the verdict one of `killed`, `survived`,
+    `invalid` -- a mutant that does not compile, which proves nothing -- or
+    `hung`, a run stopped at [RUN_TIMEOUT_SECONDS], which counts as killed. Restoring in a `finally` is not politeness:
     an interrupted sweep that leaves a mutation in `lib/` is a library defect
     introduced by the tool meant to find them.
     """
@@ -143,7 +172,9 @@ def sweep(entry):
         result = _run(entry['tests'])
     finally:
         path.write_text(original)
-    if result.returncode == 0:
+    if result.returncode is None:
+        verdict = 'hung'
+    elif result.returncode == 0:
         verdict = 'survived'
     elif does_not_compile(result.stdout + result.stderr):
         verdict = 'invalid'
@@ -218,7 +249,9 @@ def main():
                 continue
             total += 1
             verdict, seconds = sweep(entry)
-            mark = {'survived': 'SURVIVED', 'invalid': 'INVALID ', 'killed': 'killed  '}[verdict]
+            # A hang is the suite noticing, so it counts as a kill.
+            mark = {'survived': 'SURVIVED', 'invalid': 'INVALID ',
+                    'killed': 'killed  ', 'hung': 'killed (hung)'}[verdict]
             print(f'    {mark} {seconds:5.1f}s  {entry["behaviour"]}')
             if verdict == 'survived':
                 survivors.append((module, entry))

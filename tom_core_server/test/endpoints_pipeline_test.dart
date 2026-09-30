@@ -2742,8 +2742,38 @@ void main() {
 
     tearDown(() {
       FixtureApiServer.transactionalRelease = null;
+      FixtureApiServer.transactionalParticipant = null;
       FixtureApiServer.transactionalArrivals.clear();
       TomBean.resetBeanContext();
+    });
+
+    test(
+      'a vetoed commit fails the request, whatever the method returned',
+      () async {
+        // The method completes; its transaction then does not commit. Answering
+        // 200 with the method's result would report work that was rolled back.
+        final vetoing = _VetoingParticipant();
+        FixtureApiServer.transactionalParticipant = vetoing;
+
+        final response = await router.call(_get('/fixture/transactional'));
+
+        expect(response.statusCode, isNot(200));
+        expect(
+          vetoing.calls,
+          ['start', 'prepare', 'rollback', 'end'],
+          reason: 'rolled back once by the coordinator, never a second time',
+        );
+      },
+    );
+
+    test('a committed participant leaves the request at 200', () async {
+      final committing = _VetoingParticipant(veto: false);
+      FixtureApiServer.transactionalParticipant = committing;
+
+      final response = await router.call(_get('/fixture/transactional'));
+
+      expect(response.statusCode, 200);
+      expect(committing.calls, ['start', 'prepare', 'commit', 'end']);
     });
 
     test('two concurrent calls run in independent transactions', () async {
@@ -2827,4 +2857,46 @@ class _BrokenAnalyzer extends TomHealthAnalyzer {
   @override
   Future<TomHealthStatus> analyzeHealth() async =>
       throw StateError('the pool is closed');
+}
+
+/// A participant that records its lifecycle and, unless told otherwise, vetoes
+/// at prepare.
+class _VetoingParticipant implements TomTransactionParticipant {
+  _VetoingParticipant({this.veto = true});
+
+  final bool veto;
+  final List<String> calls = [];
+
+  @override
+  String getParticipantId() => 'vetoing-participant';
+
+  @override
+  Future<bool> startTransaction(TomTransaction transaction) async {
+    calls.add('start');
+    return true;
+  }
+
+  @override
+  Future<bool> prepare() async {
+    calls.add('prepare');
+    return !veto;
+  }
+
+  @override
+  Future<bool> commit() async {
+    calls.add('commit');
+    return true;
+  }
+
+  @override
+  Future<bool> rollback() async {
+    calls.add('rollback');
+    return true;
+  }
+
+  @override
+  Future<bool> endTransaction() async {
+    calls.add('end');
+    return true;
+  }
 }

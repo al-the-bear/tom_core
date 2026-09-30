@@ -36,8 +36,9 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 Future<void> main() async {
   final committed = await TomTransactionManager.runInTransaction((tx) async {
-    // Datasources and other resources enlist as participants:
-    // await tx.registerParticipant(myDatasource);
+    // A data source enlists itself on its first statement in here; any other
+    // resource enlists explicitly:
+    // await tx.registerParticipant(myResource);
     return true;
   });
   print(committed); // true  (the body returned, so the transaction committed)

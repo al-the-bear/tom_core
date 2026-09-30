@@ -434,6 +434,23 @@ abstract class FixtureApiService {
   )
   Future<Map<String, Object>> transactionalWork();
 
+  /// A `@TomTransactional` endpoint that writes a row through a repository and
+  /// then, when [fail] is `true`, throws.
+  ///
+  /// The pair that shows whether the transaction the pipeline opens is real:
+  /// the data source has to enlist itself at the point of use, since nothing
+  /// else in the call knows which data sources it touches. A write that
+  /// survives the throw ran outside the transaction the endpoint declared.
+  @TomPublicAccess()
+  @TomTransactional()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/transactional_write',
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<Map<String, Object>> transactionalWrite(String title, String fail);
+
   /// One endpoint answering **three** HTTP methods on a single route.
   ///
   /// Every other fixture endpoint declares exactly one method, so the routing
@@ -712,10 +729,46 @@ class FixtureApiServer implements FixtureApiService {
   /// test that happens to hit it is unaffected.
   static Completer<void>? transactionalRelease;
 
+  /// A participant [transactionalWork] enlists when set, so a test can make
+  /// the endpoint's commit veto and see what the caller is answered.
+  static TomTransactionParticipant? transactionalParticipant;
+
+  /// When set, [transactionalWrite] parks on it after writing and before it
+  /// throws or returns, so a test can hold the transaction open -- owning the
+  /// data source's connection -- while a second request arrives.
+  static Completer<void>? transactionalWriteRelease;
+
+  /// Completed by [transactionalWrite] once it has written and is parked on
+  /// [transactionalWriteRelease] -- the moment its transaction holds the
+  /// connection.
+  static Completer<void>? transactionalWriteParked;
+
+  @override
+  Future<Map<String, Object>> transactionalWrite(
+    String title,
+    String fail,
+  ) async {
+    await FixtureTaskRepository().save(
+      FixtureTaskRecord()
+        ..title = title
+        ..priority = 1
+        ..done = false,
+    );
+    transactionalWriteParked?.complete();
+    await transactionalWriteRelease?.future;
+    if (fail == 'true') {
+      throw StateError('the endpoint failed after writing $title');
+    }
+    return <String, Object>{'saved': title};
+  }
+
   @override
   Future<Map<String, Object>> transactionalWork() async {
     final transaction = TomTransactionManager.getCurrentTransaction();
     transactionalArrivals.add(transaction);
+    final participant = transactionalParticipant;
+    if (participant != null)
+      await transaction!.registerParticipant(participant);
     // The await that makes this interesting: while parked here a second request
     // runs the same block, which is precisely the interleaving a process-wide
     // current transaction cannot survive.

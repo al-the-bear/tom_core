@@ -405,6 +405,7 @@ apps get the full kernel API through one dependency. See the
   `tool/mutations.yaml` and is the committed half: a module absent from it has
   not been swept. A mutant that does not compile is reported as INVALID rather
   than killed, because it turns every test red without asking anything of
-  them. Not part of a normal test run — it edits `lib/`, restores in a
+  them; one that makes the suite hang is stopped after ten minutes and counted
+  as killed, since the suite did notice. Not part of a normal test run — it edits `lib/`, restores in a
   `finally`, and takes minutes.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).
