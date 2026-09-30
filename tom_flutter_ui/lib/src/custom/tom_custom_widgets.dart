@@ -17,6 +17,16 @@
 /// * [TomChoiceGroup] — radio selection with group-level authorization.
 /// * [TomSkeletonLoader] — shimmer placeholder for a loading surface.
 ///
+/// Their companion types:
+///
+/// * [TomAuthTreeNode] — one node of a [TomAuthTreeView].
+/// * [TomChoiceGroupItem] — one entry of a [TomChoiceGroup].
+/// * [TomErrorBoundaryFallbackBuilder] — what a [TomErrorBoundary] renders in
+///   place of the subtree that failed.
+/// * [TomPageFetcher] — the source a [TomInfiniteScroll] pulls pages from,
+///   [TomInfiniteScrollItemBuilder] the tile it draws per item, and
+///   [TomInfiniteScrollState] its public state.
+///
 /// [TomInfiniteScroll]'s failure slot has two shapes, so its builder is told
 /// which one it is in: see [TomInfiniteScrollErrorBuilder] and
 /// [TomInfiniteScrollErrorPlacement].

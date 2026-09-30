@@ -2,6 +2,14 @@
 
 ### Fixed
 
+- **Four module barrel dartdocs read as an index and were not one.**
+  `advanced_container_layout`, `custom` and `resource_auth` now link every type
+  their barrel exports (7, 6 and 6 were missing); `AclComponent`, `AclRow` and
+  `AclBuilderExtensions` gained the dartdocs they lacked. `widget_base` orients
+  instead of indexing, and says so: it names the base chain and points at its
+  readme and API summary, which hold all of its types.
+  `module_readme_inventory_test.dart` classifies the three as `complete` and
+  `widget_base` as `orientation`, and no barrel is `partial` any more.
 - **Eighteen broken markdown reference links in
   `doc/advanced_container_layout.md`.** Type names written as
   `` [`AclBuilder`] `` — dartdoc's square-bracket syntax in a markdown file,

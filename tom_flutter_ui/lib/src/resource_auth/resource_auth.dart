@@ -14,7 +14,11 @@
 ///   including the current [TomConfigEnvironment] and [TomConfigPlatform].
 ///
 /// Applications extend the two catalogues by registering a
-/// [TomUIColorAdapter] or [TomUIIconAdapter] rather than by editing them.
+/// [TomUIColorAdapter] or [TomUIIconAdapter] rather than by editing them. The
+/// ready-made adapters are [AllColorsAdapter] / [AllIconsAdapter] (Material and
+/// Cupertino, the defaults), [MaterialOnlyColorAdapter] /
+/// [MaterialOnlyIconAdapter], and [CupertinoOnlyColorAdapter] /
+/// [CupertinoOnlyIconAdapter].
 ///
 /// Prose: `doc/resource_auth.md`.
 library;

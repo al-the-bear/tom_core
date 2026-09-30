@@ -21,6 +21,12 @@
 /// entry point for resource resolution; and [TomScreenElementsProvider], by
 /// which a screen declares its widgets as typed fields.
 ///
+/// This orients rather than indexes: the unit exports more than thirty types,
+/// most of them the branch bases, and a list of all of them here would be
+/// scrolled past on the way to the prose above. The complete list, one entry
+/// per exported type, is `lib/src/widget_base/readme.md`, and
+/// `doc/api/api_summary_widget_base.md` gives each a section.
+///
 /// Prose: `doc/widget_base.md`.
 library;
 

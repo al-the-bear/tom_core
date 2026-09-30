@@ -1651,6 +1651,9 @@ class AclBuilder {
   }
 }
 
+/// Shorthands for the growth flags: `expandX`, `expandY` and `expand` set
+/// [AclFlags.expandX], [AclFlags.expandY] and [AclFlags.expand] on the
+/// component just appended.
 extension AclBuilderExtensions on AclBuilder {
   AclBuilder expandX() => setAttr(AclFlags.expandX);
   AclBuilder expandY() => setAttr(AclFlags.expandY);

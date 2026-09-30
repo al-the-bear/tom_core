@@ -7,6 +7,8 @@
 /// See `acl_container.dart` for why these are parts rather than libraries.
 part of 'acl_container.dart';
 
+/// One appended widget of a layout: the child with its flags, gaps and sizes,
+/// as the builder recorded them.
 class AclComponent {
   final Widget child;
   final int flags;
@@ -210,6 +212,7 @@ class AclComponent {
 
 // ── AclRow ───────────────────────────────────────────────────────────────────
 
+/// One row of a layout: its components in order, and the row's alignment.
 class AclRow {
   final List<AclComponent> components;
   final RowAlignment alignment;

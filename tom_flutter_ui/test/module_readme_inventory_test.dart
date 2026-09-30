@@ -294,9 +294,10 @@ enum _BarrelDoc {
   /// Not named `index`, which an enum already declares.
   complete,
 
-  /// The dartdoc orients rather than enumerates, because the module is a
-  /// catalogue where a complete list would be unreadable and is kept somewhere
-  /// that is itself checked. The same two modules [_Claim.rule] covers.
+  /// The dartdoc orients rather than enumerates, because a complete list would
+  /// be unreadable there and is kept somewhere that is itself checked: the two
+  /// catalogues [_Claim.rule] covers, and `widget_base`, whose readme is an
+  /// [_Claim.inventory] and whose API summary the summary cases hold.
   orientation,
 
   /// The dartdoc enumerates, incompletely — it reads as an index and is not
@@ -311,31 +312,30 @@ enum _BarrelDoc {
 
 /// Every module, and what its barrel dartdoc claims.
 ///
-/// The `partial` counts were measured on 2026-09-21 against the barrel's own
-/// exports.
+/// No module is `partial`: the four that were (measured 2026-09-21) were either
+/// completed or, for `widget_base`, made to say that they orient.
 const _barrelDocs = <String, _BarrelDoc>{
   'actions': _BarrelDoc.complete,
   'groups': _BarrelDoc.complete,
   'theme': _BarrelDoc.complete,
   'forms': _BarrelDoc.orientation,
   'widgets': _BarrelDoc.orientation,
-  'advanced_container_layout': _BarrelDoc.partial,
-  'custom': _BarrelDoc.partial,
-  'resource_auth': _BarrelDoc.partial,
-  'widget_base': _BarrelDoc.partial,
+  'advanced_container_layout': _BarrelDoc.complete,
+  'custom': _BarrelDoc.complete,
+  'resource_auth': _BarrelDoc.complete,
+  'widget_base': _BarrelDoc.orientation,
 };
 
 /// How many exported types each `partial` barrel dartdoc leaves unlinked.
 ///
+/// Empty, which is the intended state. The mechanism stays so that a barrel
+/// found enumerating incompletely can be recorded at its measured gap rather
+/// than hidden.
+///
 /// Held exactly, in both directions: a module that slips further is a
 /// regression, and one that improves has to be re-classified rather than
 /// silently drifting into passing a weaker check than it now deserves.
-const _partialBarrelGaps = <String, int>{
-  'advanced_container_layout': 7,
-  'custom': 6,
-  'resource_auth': 6,
-  'widget_base': 25,
-};
+const _partialBarrelGaps = <String, int>{};
 
 /// The `[Name]` dartdoc references in a barrel's library comment.
 final _dartdocLink = RegExp(r'\[(\w+)\]');
