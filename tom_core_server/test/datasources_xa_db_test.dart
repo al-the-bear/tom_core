@@ -122,7 +122,18 @@ void main() async {
       // and nothing issues `XA RECOVER`. Two transactions back to back is the
       // cheapest assertion that nothing was stranded — the second `XA START`
       // is refused outright if the first branch is still open on the driver,
-      // and blocks on the row lock if it is still open on the server.
+      // and blocks on the row lock if it is still open on the server. A refused
+      // start is not silent either: `registerParticipant` throws
+      // `start_failed`, so the second insert cannot land in a branch nobody
+      // commits.
+      //
+      // This test failed about one time in two across full `--tags db` runs,
+      // always as `['xa-first']`: both commits reported success and the second
+      // row was missing. The cause was the connection falling out of step
+      // described on the next test -- `XA COMMIT` answered before the server
+      // had committed, and the read here sometimes got in first. The next test
+      // pins that defect deterministically; this one stays for what it says
+      // about the lifecycle.
       for (final title in const ['xa-first', 'xa-second']) {
         final (txn, _) = TomTransactionManager.startTransaction();
         await txn.registerParticipant(xa);
