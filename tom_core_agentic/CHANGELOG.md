@@ -2,6 +2,12 @@
 
 ### Changed
 
+- **`EditorPlaceholderBindings` states its limits as decisions.** The
+  library comment deferred file injection and workspace wiring to "later
+  steps" and named capability tiers that exist nowhere. It now says what the
+  binder does: one capability level, no I/O, with reserved `${file:…}` /
+  `${state:…}` forms passing through verbatim and file or workspace values
+  supplied by the caller as bindings. A test holds the pass-through.
 - **Quest mode pays for a stale session once.** `QuestSessionStrategy.evict`
   remembers the rejected id in memory, and `resumeIdFor` no longer offers it
   while the editor's file still names it, so every later call starts fresh

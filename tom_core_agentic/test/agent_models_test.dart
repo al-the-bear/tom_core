@@ -398,5 +398,17 @@ void main() {
         throwsA(isA<PlaceholderExpressionsUnsupportedError>()),
       );
     });
+
+    test('reserved file and state forms pass through verbatim: the binder '
+        'does no I/O', () {
+      final binder = EditorPlaceholderBindings(
+        bindings: <String, String>{'file:a.md': 'bound', 'x': 'y'},
+        strict: true,
+      );
+      expect(
+        binder.resolve(r'${file:a.md} ${state:k} {{x}}'),
+        r'${file:a.md} ${state:k} y',
+      );
+    });
   });
 }

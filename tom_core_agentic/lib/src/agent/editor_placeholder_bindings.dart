@@ -8,10 +8,19 @@
 // "expressions unsupported" error rather than executing any code (the editor
 // has no d4rt evaluator and must never run untrusted expressions).
 //
-// Single capability level for now: no full / path / reminder
-// tiers. The resolution-context wiring (workspace `_ai/` folder,
-// file-injection placeholders) is layered on by later steps; this binder
-// only owns the binding namespace and the alias / expression-rejection rules.
+// What it owns is the binding namespace and two rules: the mustache alias and
+// the refusal of expressions. Everything else is a deliberate limit, not a
+// gap:
+//
+// * **One capability level.** Every template gets the same forms; there is no
+//   per-caller or per-template tiering of what may be resolved.
+// * **No I/O.** The binder resolves only what it is handed — [bindings] and
+//   the environment. It does not read files or locate a workspace folder, so
+//   the reserved `${file:…}` / `${state:…}` forms pass through verbatim, as
+//   they do in the resolver. A caller that wants a file's contents or a
+//   workspace path in a template reads it and passes the value in as a
+//   binding. That keeps resolution synchronous and side-effect free, which is
+//   what a preview rendered on every keystroke needs.
 library;
 
 import '../placeholders/placeholder_resolver.dart';

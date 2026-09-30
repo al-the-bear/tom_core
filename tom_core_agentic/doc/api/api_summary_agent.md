@@ -559,7 +559,9 @@ check off.
 
 Resolves the editor's supported placeholder forms — `${name}`, `{{name}}`,
 `${env:NAME}` — against a fixed set of bindings, through the package's own
-placeholder engine.
+placeholder engine. It does no I/O: the reserved `${file:…}` and `${state:…}`
+forms pass through verbatim, and a caller that wants a file's contents or a
+workspace path in a template passes the value in as a binding.
 
 ### PlaceholderExpressionsUnsupportedError
 

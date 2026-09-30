@@ -93,7 +93,7 @@ protocol are the parts worth testing, and neither needs a widget tree to run.
 | `AgentSendCompleted` | class | Closes a send successfully |
 | `AgentSendFailed` | class | Closes a send on failure |
 | `AgentSdkClientFactory` | typedef | How the engine obtains its SDK client, injectable for tests |
-| `EditorPlaceholderBindings` | final class | The editor's binding namespace over the shared resolver, sync and lenient |
+| `EditorPlaceholderBindings` | final class | The editor's binding namespace over the shared resolver: sync, lenient, no I/O |
 | `PlaceholderExpressionsUnsupportedError` | final class | Thrown for a `${{ … }}` form, which the editor refuses to evaluate |
 
 ## The sidecar stores
