@@ -233,6 +233,7 @@ it and start eight test suites.
 | [`tool/check_doc_attributions.py`](tool/check_doc_attributions.py) | Finds prose that names a source file and then names a type that file has not got |
 | [`tool/check_member_attributions.py`](tool/check_member_attributions.py) | Finds documentation — the package docs and the completion corpus — that names a member its type does not declare, written `Type.member` or listed in a member table |
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, quote its signature with the wrong parameter kind, or `const` one that is not |
+| [`tool/check_downstream_consumers.py`](tool/check_downstream_consumers.py) | Holds `tom_uam`, the application-sized consumer kept on tom_core's current level, to the framework as it stands: each package is resolved with `pub get`, analyzed, and has its generated `*.reflection.dart` analyzed by name for errors, since its own options exclude them |
 | [`tool/check_doc_dart_blocks.py`](tool/check_doc_dart_blocks.py) | Runs every ` ```dart ` block in a package's documents through the analyzer: it must parse, every framework name in it must resolve, and a fence marked ` ```dart complete ` must analyze clean outright |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code and prose that name no resolvable document |
 | [`tool/check_section_numbers.py`](tool/check_section_numbers.py) | Finds `§` references that resolve to a document but cite a section it does not have |
@@ -714,6 +715,25 @@ package depends on `tom_core_kernel`, the kernel barrel too — the context the
 package's own code is written in. `tom_flutter_ui` re-exports only part of the
 kernel, so without the second import every `@tomReflector` in its pages read as
 missing. `--self-test` holds this against real probes in that package.
+
+```bash
+python3 tool/check_downstream_consumers.py   # every package under tom_uam/
+```
+
+`tom_uam` is kept on the current level of tom_core on purpose: it is the one
+application-sized consumer of the whole framework, and so the place a change
+that looks local turns out not to be. No other gate looks past `tom_ai/core`,
+which is how `TomLoginException` gaining a required `reason` left
+`tom_uam_server` uncompiled for weeks, with its generated reflection stale
+against a removed annotation.
+
+Each consumer package is resolved first — its package config is gitignored,
+per-machine state, and analyzing a stale one reports a damaged cache as a
+framework defect — then analyzed. Its generated `*.reflection.dart` files are
+analyzed separately and by name, counting errors only: the package's own
+options exclude them, so the directory run cannot see a generated file that
+names a member the framework no longer has. A consumer tree that is not checked
+out is a fault, not a skip.
 
 ```bash
 python3 tool/check_section_refs.py                  # the whole repository
