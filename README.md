@@ -203,6 +203,14 @@ resolved package config, the SDK and the gate itself — so a run after an
 unrelated edit re-analyzes only what moved. A faulty verdict is never cached;
 `--no-cache` forces a full run.
 
+Several gates shell out to `dart`, and each refuses to run without one rather
+than guess. The runner does not leave that to the shell: when `dart` is not on
+PATH it looks for an SDK ([`tool/dart_sdk.py`](tool/dart_sdk.py)) and puts it on
+every gate's PATH, saying so above the results. A gate that still cannot run
+exits 2 with its reason, and is reported `cannot-run` with that reason — not as
+a gate that forgot to print its count, which is a different failure with a
+different remedy.
+
 **The gates are not the package suites.** A green gate run says the
 documentation still describes the code; it says nothing about whether the
 packages' own tests pass, and a change that reaches several packages is exactly
@@ -231,6 +239,7 @@ it and start eight test suites.
 | [`tool/check_gates.py`](tool/check_gates.py) | Runs every gate below and holds each to its recorded fault count |
 | [`tool/run_suites.py`](tool/run_suites.py) | Runs every package suite and the gate suite, with a per-suite verdict and one exit status |
 | [`tool/gate_report.py`](tool/gate_report.py) | The contract a gate implements: prints the machine-readable fault total and derives the exit status from it |
+| [`tool/dart_sdk.py`](tool/dart_sdk.py) | Finds the `dart` the gates need when the shell's PATH has none — PATH, the SDKs' own environment variables, `flutter` on PATH, then conventional install locations — so the gate runner can put it on every gate's PATH |
 | [`tool/gate_cache.py`](tool/gate_cache.py) | Remembers a clean analyzer verdict per package until one of its inputs changes; used by `check_reflection_artifacts.py` and `check_doc_dart_blocks.py` |
 | [`tool/check_tooling_table.py`](tool/check_tooling_table.py) | Pins this table, and the prose sections below it, to the contents of `tool/` |
 | [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits a document's own navigation: its `## Table of Contents` and every anchor it links to itself |
@@ -297,8 +306,9 @@ touch, so there is no diff in which to see it.
 
 Three counts are kept apart: a script with no row, a row naming no script (the
 reverse drift, left behind by a rename), and a `check_*.py` with no invocation
-block. `gate_report.py` and `gate_cache.py` legitimately have no block — they
-are helpers a gate imports rather than gates to run, and their rows say so. Accuracy is not
+block. `gate_report.py`, `gate_cache.py` and `dart_sdk.py` legitimately have no
+block — they are helpers a gate or the runner imports rather than gates to run,
+and their rows say so. Accuracy is not
 checked, only presence: whether a summary is *true* needs judgement, whether a
 row exists does not. That is the same line `check_doc_inventories.py` and
 `check_test_inventories.py` draw.

@@ -52,6 +52,7 @@ import sys
 import time
 from pathlib import Path
 
+from dart_sdk import environment_with_dart
 from gate_report import FAULT_LINE
 
 SELF = Path(__file__).name
@@ -61,6 +62,11 @@ BASELINES = TOOL_DIR / "gate_baselines.json"
 
 #: Statuses a run may end in. The first two pass; the rest fail.
 PASSING = {"clean", "at-baseline"}
+
+#: The exit status a gate uses to say it could not run at all -- `dart` absent,
+#: a walk that found nothing -- as distinct from `0` (clean) and `1` (faults).
+#: Reported as `cannot-run` with the gate's own reason.
+CANNOT_RUN_EXIT = 2
 
 #: How long one gate may run before it is stopped and reported `timed-out`.
 #:
@@ -101,6 +107,13 @@ def fault_count(output: str) -> int | None:
     return None
 
 
+#: The environment every gate runs in: this one, with the Dart SDK's `bin/` on
+#: PATH when the shell did not put it there (see dart_sdk.py). Several gates
+#: refuse to run without `dart`; finding it once here is what makes the
+#: documented command measure them from a plain shell.
+GATE_ENV, ADDED_DART = environment_with_dart()
+
+
 def run_gate(script: Path) -> dict:
     """Run one gate and describe what happened, without judging it yet."""
     started = time.monotonic()
@@ -111,6 +124,7 @@ def run_gate(script: Path) -> dict:
             capture_output=True,
             text=True,
             timeout=GATE_TIMEOUT_SECONDS,
+            env=GATE_ENV,
         )
     except subprocess.TimeoutExpired:
         return {"name": script.stem, "faults": None, "exit": None,
@@ -124,6 +138,7 @@ def run_gate(script: Path) -> dict:
         "timed_out": False,
         "seconds": round(time.monotonic() - started, 1),
         "output": (done.stdout + done.stderr).strip(),
+        "stderr": done.stderr.strip(),
     }
 
 
@@ -147,6 +162,17 @@ def judge(run: dict, baselines: dict) -> dict:
             f"reported a count. Its content has not been judged. Run it alone "
             f"to see whether it is slow or stuck, and see GATE_TIMEOUT_SECONDS "
             f"in check_gates.py.")
+        return result
+
+    if faults is None and run["exit"] == CANNOT_RUN_EXIT:
+        # The gate's own refusal -- it could not measure, and said why. That is
+        # a different failure from a gate that ran and forgot to count, and the
+        # remedy is in the reason, so the reason is what is reported.
+        said = (run.get("stderr") or run["output"]).strip().splitlines()
+        result["status"] = "cannot-run"
+        result["message"] = (
+            f"{name} reported that it could not run, so nothing was measured: "
+            f"{said[-1] if said else '(no reason given)'}")
         return result
 
     if faults is None:
@@ -273,6 +299,8 @@ def main(argv: list[str]) -> int:
         for result in sorted(results, key=lambda r: -(r.get("seconds") or 0)):
             print(f"{result.get('seconds') or 0:7.1f}s  {result['name']}")
         print()
+    if ADDED_DART is not None:
+        print(f"dart was not on PATH; gates ran with {ADDED_DART}\n")
     width = max(len(r["name"]) for r in results)
     for result in results:
         mark = "ok  " if result["status"] in PASSING else "FAIL"
