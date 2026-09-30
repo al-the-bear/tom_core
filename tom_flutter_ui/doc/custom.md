@@ -124,10 +124,9 @@ const TomAuthGuard(tomId: 'reports.export', child: ExportButton());
 entire selection (the per-item `Radio` auth in the widgets kit is per-field).
 A `null` `tomId` means "no auth check — always full".
 
-**The name is deliberately not `TomRadioGroup`.** `TomRadioGroupStyle` and
-`TomRadioGroupDecorationMixin` belong to the forms module and theme the radio-
-group *field*; they do nothing to this widget, which is a composite and takes
-no part in the form style tree. While the two shared a name, a consumer who
+**The name is deliberately not `TomRadioGroup`.** `TomRadioGroupStyle` belongs
+to the forms module and themes the radio-group *field*; it does nothing to this
+widget, which is a composite and takes no part in the form style tree. While the two shared a name, a consumer who
 found the style class and set it had no way to know it would have no effect —
 and neither file said so. Like the rest of `custom/`, this one takes its
 appearance from the ambient `ThemeData`.

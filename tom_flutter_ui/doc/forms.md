@@ -15,7 +15,7 @@ Cupertino sibling changes the rendering without touching the model.
 > **Looking for a signature?** This document explains what the module is for
 > and how its parts fit together.
 > [api/api_summary_forms.md](api/api_summary_forms.md) is the symbol-level
-> mirror: one section per exported type — all 212 of them — and every public
+> mirror: one section per exported type — all 202 of them — and every public
 > static.
 
 ## Table of Contents
@@ -469,14 +469,14 @@ not solve.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | 18 of 75 files | `Future`, `FutureOr`, `Stream`, `StreamController`, `StreamSubscription`, `Timer` |
+| `dart:async` | dart | 18 of 74 files | `Future`, `FutureOr`, `Stream`, `StreamController`, `StreamSubscription`, `Timer` |
 | `dart:io` | dart | `files/file_opener_io.dart` | `File`, `FileSystemException` |
 | `dart:typed_data` | dart | `fields/tom_form_file_field.dart`, `files/tom_file_transfer_controller.dart`, `form_field_family.dart` | `Uint8List` |
-| `flutter` | package | 52 of 75 files | `widgets.dart`, `material.dart`, `cupertino.dart`, `services.dart` and `foundation.dart` — both design languages, plus the input formatters |
-| `tom_core_kernel` | package | 40 of 75 files | `TomClass`/reflection, `TomScope`, `TomObject`/observables, and the authorization types (`TomAuthState`, `TomAuthorizer`, `TomUIStateController`, …) |
+| `flutter` | package | 52 of 74 files | `widgets.dart`, `material.dart`, `cupertino.dart`, `services.dart` and `foundation.dart` — both design languages, plus the input formatters |
+| `tom_core_kernel` | package | 40 of 74 files | `TomClass`/reflection, `TomScope`, `TomObject`/observables, and the authorization types (`TomAuthState`, `TomAuthorizer`, `TomUIStateController`, …) |
 | [actions](actions.md) | module | `tom_form.dart` | `TomAction`, `TomActionController` |
 | [resource_auth](resource_auth.md) | module | `style/tom_form_style_scope.dart` | `TomUIColors` |
-| [widget_base](widget_base.md) | module | 36 of 75 files | `TomAuthLayers`, `TomContainerBase`, `TomCtr`, `TomImageBase`, `TomListBase`, `TomScopePath` |
+| [widget_base](widget_base.md) | module | 36 of 74 files | `TomAuthLayers`, `TomContainerBase`, `TomCtr`, `TomImageBase`, `TomListBase`, `TomScopePath` |
 | [widgets](widgets.md) | module | `fields/tom_form_file_field.dart` | `TomMessenger` |
 
 > The model, validation, selectable-source, event, and style-value surfaces are

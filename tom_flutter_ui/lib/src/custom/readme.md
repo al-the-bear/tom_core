@@ -57,6 +57,7 @@ the models and signatures they take:
 | ------ | ------- |
 | `TomAuthGuard.resolveAuthState` | The guard's decision without a widget tree — `@visibleForTesting` |
 | `TomErrorBoundary.debugReleaseGlobalHook` | Hands `ErrorWidget.builder` back and forgets every mounted boundary. The count that owns that slot is process-wide, so a boundary whose `dispose` never runs would otherwise hold it for the rest of the process. `@visibleForTesting`; an application never needs it |
+| `TomErrorBoundary.debugDefaultFallback` | Replaces the boundary's default error card, so a test can make it fail and reach the last fallback stage — the builder installed before any boundary. `@visibleForTesting`; `null` in an application |
 
 ## Quick start
 

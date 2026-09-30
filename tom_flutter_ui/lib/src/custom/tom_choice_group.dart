@@ -3,10 +3,10 @@
 /// carrying its own. Use it when a grant covers the choice as a unit —
 /// a per-field radio is the right tool when the grant varies per option.
 ///
-/// **Not named for the radios it draws.** `TomRadioGroupStyle` and
-/// `TomRadioGroupDecorationMixin` belong to the *forms* module and theme the
-/// radio-group **field**; they do nothing here, and while this widget shared
-/// their name a consumer who found one and set it had no way to know that.
+/// **Not named for the radios it draws.** `TomRadioGroupStyle` belongs to the
+/// *forms* module and themes the radio-group **field**; it does nothing here,
+/// and while this widget shared its name a consumer who found it and set it had
+/// no way to know that.
 /// This is a composite in the custom kit: it is not a field, takes no part in
 /// the form style tree, and — like the rest of `custom/` — takes its
 /// appearance from the ambient `ThemeData` rather than from a Tom style

@@ -380,7 +380,7 @@ const _apiSummaryIndex = 'api_summary_index.md';
 /// readme that names both plus the two kernel types it bridges, and a summary
 /// would be the fourth document over 297 lines of code.
 ///
-/// Measured 2026-09-22, exported public types per module: forms 212, widgets
+/// Measured 2026-09-22, exported public types per module: forms 202, widgets
 /// 299, advanced_container_layout 35, widget_base 34, custom 16, actions 13,
 /// resource_auth 13, theme 4, groups 2.
 const _summaryThreshold = 10;
@@ -395,7 +395,7 @@ const _summaryThreshold = 10;
 /// A [_Claim.rule] module is not in scope at all — its complete list is kept
 /// and checked elsewhere by that classification, which is what the
 /// classification is for. That is why `widgets` (299 types) is absent from
-/// this set while `forms` (212) has a summary anyway: a rule module may have
+/// this set while `forms` (202) has a summary anyway: a rule module may have
 /// one, it is simply not owed one.
 const _summaryBacklog = <String>{};
 

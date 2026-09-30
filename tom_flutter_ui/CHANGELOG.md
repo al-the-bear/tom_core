@@ -2,6 +2,17 @@
 
 ### Fixed
 
+- **Ten empty decoration mixins are gone.** `TomSliderDecorationMixin`,
+  `TomCheckboxDecorationMixin`, `TomSwitchDecorationMixin`,
+  `TomSegmentedDecorationMixin`, `TomRadioGroupDecorationMixin`,
+  `TomDatePickerDecorationMixin`, `TomTimePickerDecorationMixin`,
+  `TomFilePickerDecorationMixin`, `TomChipsDecorationMixin` and
+  `TomMultilineInputDecorationMixin` declared no members and nothing mixed them
+  in: every family they were reserved for shipped with
+  `TomGenericFieldDecorationMixin`. The `forms` barrel exports 202 types. A
+  family that needs its own anatomy declares its own mixin then.
+- **`custom/readme.md` names `TomErrorBoundary.debugDefaultFallback`**, which
+  the module-readme inventory test requires of every public static.
 - **A `TomErrorBoundary` whose own `fallbackBuilder` throws no longer goes
   blank.** It caught the fallback's error and rendered nothing: the swap was
   deferred to a post-frame callback registered inside another, and with the

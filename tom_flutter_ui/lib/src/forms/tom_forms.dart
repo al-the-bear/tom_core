@@ -51,7 +51,6 @@ export 'decoration/tom_field_anatomy.dart';
 export 'decoration/tom_string_input_decoration_mixin.dart';
 export 'decoration/tom_dropdown_decoration_mixin.dart';
 export 'decoration/tom_generic_field_decoration_mixin.dart';
-export 'decoration/tom_stub_decoration_mixins.dart';
 export 'widgets/tom_form_error_banner.dart';
 export 'widgets/tom_multi_observable_builder.dart';
 // Wraps every concrete field's rendered widget so TomAuthorizable-aware

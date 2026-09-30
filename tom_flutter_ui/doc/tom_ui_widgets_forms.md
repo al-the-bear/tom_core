@@ -4504,7 +4504,7 @@ tom_flutter_ui/lib/src/forms/
 
 | Deliverable | Description |
 |-------------|-------------|
-| Per-widget decoration mixins | One mixin per concrete field type (`TomStringInputDecorationMixin`, `TomDropdownDecorationMixin`, plus stubs for slider/checkbox/switch/segmented/radio/date/time/file/chips/multiline). Each wraps its inner widget with the standard anatomy (label row, field row, error row, description row), reads its per-width resolved `TomFieldStyle` by merging `TomFormStyle.defaults` with its own `<widget>Style` override via `resolveFieldStyle` + `pickPair`, and renders the required indicator, disabled/readonly visuals, and pending-validation spinner. Style is changeable per-section via nested `TomFormStyleScope`. |
+| Per-widget decoration mixins | Three mixins by field anatomy: `TomStringInputDecorationMixin` and `TomDropdownDecorationMixin` for fields drawn through an `InputDecoration`, and `TomGenericFieldDecorationMixin` for every other field — sliders, checkboxes, switches, segmented buttons, radio groups, pickers, chips. Each wraps its inner widget with the standard anatomy (label row, field row, error row, description row), reads its per-width resolved `TomFieldStyle` by merging `TomFormStyle.defaults` with its own `<widget>Style` override via `resolveFieldStyle` + `pickPair`, and renders the required indicator, disabled/readonly visuals, and pending-validation spinner. Style is changeable per-section via nested `TomFormStyleScope`. |
 
 **Step 0.8 — Error display widgets** (`tom_flutter_ui/lib/src/forms/widgets/`)
 
