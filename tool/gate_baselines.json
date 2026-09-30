@@ -103,9 +103,9 @@
    "note": "Zero is the steady state. The gate now covers every in-document anchor, not only the ones a table of contents uses: check_doc_links accepts any #fragment and names this gate as the one that decides whether the heading exists, so a [\u00a710](#stale-anchor) in running prose is this gate's fault to report. 253 documents are scanned for that; 117 of them carry a table of contents and are additionally held to listing every ## section, in document order. The four faults are exercised by planting each in a real document and requiring it to fire."
   },
   "check_downstream_consumers": {
-   "faults": 10,
+   "faults": 0,
    "measured": "2026-09-30",
-   "note": "Lands at 10: every one is in tom_uam_client's regenerated lib/00_main.reflection.dart, five constructor closures for bounded generics (NumRange, TomObservableEnum, TomCupertinoFormEnumSegmented, HitTestEntry, DateTimeRange) that tom_reflection_generator emits with untyped parameters, two diagnostics each. That is a generator defect, tracked as tcfinalb2_ai\u00dfi, whose DONE lowers this to 0. The server's seven missing TomLoginException reasons and its eight stale-reflection errors, the failure this gate exists for, were repaired in the same pass (tcfinal25_aipe); restoring them reads 25."
+   "note": "Zero. It landed at 10, every one in tom_uam_client's regenerated lib/00_main.reflection.dart: five constructor closures for bounded generics (NumRange, TomObservableEnum, TomCupertinoFormEnumSegmented, HitTestEntry, DateTimeRange), two diagnostics each. The cause was the consumer's language version, not the closures alone: tom_uam_client declares sdk >=3.0.0, and below Dart 3.7 inference picks dynamic for a bounded type parameter fed dynamic arguments. tom_reflection_generator 1.8.0 instantiates such classes at their bounds (NumRange<num>(low, high)), and tom_uam_client's constraint was raised to >=1.8.0 and its mirror regenerated (tcfinalb2_ai\u00dfi). The server's seven missing TomLoginException reasons and its eight stale-reflection errors, the failure this gate exists for, were repaired earlier (tcfinal25_aipe); restoring them reads 15."
   },
   "check_field_grade_matrix": {
    "faults": 0,
