@@ -2,6 +2,11 @@
 
 ### Fixed
 
+- **The `FormFieldFamily` both-sided rule is held.** The factory's dartdoc
+  promises a method exists exactly when a field kind has a concrete on both
+  sides, and nothing derived that set. `form_field_family_completeness_test.dart`
+  derives it from `lib/src/forms/fields` (20 kinds today) and requires the
+  factory's return types to equal it, in both directions.
 - **Ten empty decoration mixins are gone.** `TomSliderDecorationMixin`,
   `TomCheckboxDecorationMixin`, `TomSwitchDecorationMixin`,
   `TomSegmentedDecorationMixin`, `TomRadioGroupDecorationMixin`,

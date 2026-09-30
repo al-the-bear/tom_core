@@ -31,6 +31,8 @@
 /// The rule therefore reads in both directions — no method means the control
 /// is genuinely Material-only or Cupertino-only, not that the factory has a
 /// gap. Construct those from the catalogue directly.
+/// `test/forms/form_field_family_completeness_test.dart` derives the
+/// both-sided kinds from the catalogue and holds this rule in both directions.
 ///
 /// Each factory method exposes a sensible subset of constructor parameters
 /// shared by both Material and Cupertino concretes; where the two sides take
