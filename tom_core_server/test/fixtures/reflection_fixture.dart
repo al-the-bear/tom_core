@@ -122,6 +122,21 @@ abstract class FixtureApiService {
   )
   Future<Map<String, Object>> auditedAction();
 
+  /// The same declaration switched off: `@TomAudited(enabled: false)`.
+  ///
+  /// The annotation's `enabled` flag is how an endpoint that inherits the
+  /// convention of being audited opts out explicitly, so its presence alone
+  /// must not be read as "audit this".
+  @TomAudited(enabled: false)
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/audit_disabled',
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<Map<String, Object>> auditDisabledAction();
+
   /// A `multipart/form-data` endpoint that takes both halves of a form: the
   /// text parts as a typed request DTO, and a file part as a parameter.
   ///
@@ -743,6 +758,11 @@ class FixtureApiServer implements FixtureApiService {
   @override
   Future<Map<String, Object>> auditedAction() async => <String, Object>{
     'audited': true,
+  };
+
+  @override
+  Future<Map<String, Object>> auditDisabledAction() async => <String, Object>{
+    'audited': false,
   };
 
   @override

@@ -218,6 +218,22 @@ void main() {
   // GAP 1 — the claim whose answer was lost
   // =========================================================================
 
+  group('a claim the database awards to a peer', () {
+    test('zero rows updated is a lost race: no ticket, no error', () async {
+      final datasource = _ScriptedDataSource();
+      final store = TomSqlJobStore(datasource, createSchema: false);
+      // The scan offers the run; the conditional UPDATE then matches nothing,
+      // because a peer's claim moved the row out of `pending` in between.
+      datasource.queryAnswers.add([_row(scheduledFor: at)]);
+      datasource.commandAnswers.add(BigInt.zero);
+
+      // The database decided, not this node. Treating the zero as a win would
+      // hand two nodes a ticket for one run.
+      expect(await store.claimDue(at, 'node-a'), isEmpty);
+      expect(datasource.commands, hasLength(1));
+    });
+  });
+
   group('a claim whose answer is lost', () {
     late _ScriptedDataSource datasource;
     late TomSqlJobStore store;

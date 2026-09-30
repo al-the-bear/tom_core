@@ -161,6 +161,44 @@ void main() {
       expect(text, contains('limit: 5'));
       expect(text, contains('a DESC'));
     });
+
+    group('stableUnder', () {
+      test(
+        'a window gets the key appended as its last, ascending sort term',
+        () {
+          final page = TomPageRequest(
+            limit: 5,
+            sort: const [TomSortField.desc('priority')],
+          ).stableUnder('id');
+          expect(page.sort, const [
+            TomSortField.desc('priority'),
+            TomSortField.asc('id'),
+          ]);
+          expect(page.limit, 5);
+        },
+      );
+
+      test('an unsorted window is ordered by the key alone', () {
+        expect(TomPageRequest.page(2, 10).stableUnder('id').sort, const [
+          TomSortField.asc('id'),
+        ]);
+      });
+
+      test('a sort that already names the key is left as it is', () {
+        // Including its direction: appending `id ASC` after `id DESC` would
+        // be a second term that can never decide anything.
+        final page = TomPageRequest(
+          limit: 5,
+          sort: const [TomSortField.desc('id'), TomSortField.asc('title')],
+        );
+        expect(page.stableUnder('id').sort, page.sort);
+      });
+
+      test('an ordering with no window is returned unchanged', () {
+        final page = TomPageRequest.sorted(const [TomSortField.asc('title')]);
+        expect(page.stableUnder('id').sort, page.sort);
+      });
+    });
   });
 
   group('query sentence: row window', () {

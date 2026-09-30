@@ -24,100 +24,6 @@
 #    surviving on a machine with no database, which is a false alarm about the
 #    one thing this tool exists to report truthfully.
 
-healthcheck:
-  - behaviour: the default analyzer answers OK
-    file: lib/src/tomserver/healthcheck/health_check.dart
-    find: "  Future<String> analyzeHealth() async {\n    return \"OK\";"
-    replace: "  Future<String> analyzeHealth() async {\n    return \"FINE\";"
-    tests: test/healthcheck_test.dart
-  - behaviour: health() delegates to the installed analyzer rather than answering itself
-    file: lib/src/tomserver/healthcheck/health_check.dart
-    find: "    return healthAnalyzer.analyzeHealth();"
-    replace: "    return \"OK\";"
-    tests: test/healthcheck_test.dart
-  - behaviour: probe traffic is kept out of the request log
-    file: lib/src/tomserver/healthcheck/health_check.dart
-    find: "    logRequests: false,"
-    replace: "    logRequests: true,"
-    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
-  - behaviour: the endpoint is mounted at /health
-    file: lib/src/tomserver/healthcheck/health_check.dart
-    find: "    uri: \"/health\","
-    replace: "    uri: \"/healthz\","
-    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
-  - behaviour: the endpoint is public, so an unauthenticated probe reaches it
-    file: lib/src/tomserver/healthcheck/health_check.dart
-    find: "  @TomPublicAccess()\n  @TomEndpoint("
-    replace: "  @TomEndpoint("
-    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
-  - behaviour: the response is plain text, not JSON
-    file: lib/src/tomserver/healthcheck/health_check.dart
-    find: "    produces: TomMimeType.plainText,"
-    replace: "    produces: TomMimeType.json,"
-    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
-
-transactions:
-  - behaviour: a vetoing participant rolls the whole transaction back
-    file: lib/src/tomserver/transactions/transaction_manager.dart
-    find: "      if (!ok) {\n        return rollbackTransaction();\n      }"
-    replace: "      if (!ok) {\n        continue;\n      }"
-    tests: test/transactions_test.dart
-  - behaviour: a concluded transaction accepts no further participants
-    file: lib/src/tomserver/transactions/transaction_manager.dart
-    find: "    if (!_isRunning) {\n      throw TomTransactionException("
-    replace: "    if (false) {\n      throw TomTransactionException("
-    tests: test/transactions_test.dart
-  - behaviour: registering an already-enlisted participant is a no-op
-    file: lib/src/tomserver/transactions/transaction_manager.dart
-    find: "    if (_participants[id] != null) return;"
-    replace: ""
-    tests: test/transactions_test.dart
-  - behaviour: a participant whose start refuses is not enlisted
-    file: lib/src/tomserver/transactions/transaction_manager.dart
-    find: "    if (!started) {"
-    replace: "    if (false) {"
-    tests: test/transactions_test.dart
-  - behaviour: a participant whose start throws is not enlisted
-    file: lib/src/tomserver/transactions/transaction_manager.dart
-    find: "    } catch (error, stack) {"
-    replace: "    } on FormatException catch (error, stack) {"
-    tests: test/transactions_test.dart
-  - behaviour: the participant is recorded only after a successful start
-    file: lib/src/tomserver/transactions/transaction_manager.dart
-    find: "    final bool started;\n    try {"
-    replace: "    _participants[id] = ttp;\n    final bool started;\n    try {"
-    tests: test/transactions_test.dart
-  - behaviour: the throw carries the participant's own failure as its cause
-    file: lib/src/tomserver/transactions/transaction_manager.dart
-    find: "        rootException: error,\n        stack: stack,"
-    replace: "        stack: stack,"
-    tests: test/transactions_test.dart
-  - behaviour: commit ends every participant even after one reports failure
-    file: lib/src/tomserver/transactions/transaction_manager.dart
-    find: "      final ended = await p.endTransaction();\n      ok = ok && ended;\n    }\n    _scope._clear(this);\n    return ok;\n  }\n\n  /// Rolls back every participant"
-    replace: "      ok = ok && await p.endTransaction();\n    }\n    _scope._clear(this);\n    return ok;\n  }\n\n  /// Rolls back every participant"
-    tests: test/transactions_test.dart
-  - behaviour: rollback ends every participant even after one reports failure
-    file: lib/src/tomserver/transactions/transaction_manager.dart
-    find: "      final ended = await p.endTransaction();\n      ok = ok && ended;\n    }\n    _scope._clear(this);\n    return ok;\n  }\n}"
-    replace: "      ok = ok && await p.endTransaction();\n    }\n    _scope._clear(this);\n    return ok;\n  }\n}"
-    tests: test/transactions_test.dart
-  - behaviour: a concluded transaction clears itself from its scope
-    file: lib/src/tomserver/transactions/transaction_manager.dart
-    find: "    if (identical(current, transaction)) current = null;"
-    replace: "    if (false) current = null;"
-    tests: test/transactions_test.dart
-  - behaviour: a concluded transaction cannot wipe a successor in the same scope
-    file: lib/src/tomserver/transactions/transaction_manager.dart
-    find: "    if (identical(current, transaction)) current = null;"
-    replace: "    current = null;"
-    tests: test/transactions_test.dart
-  - behaviour: commit marks the transaction not-running before it runs
-    file: lib/src/tomserver/transactions/transaction_manager.dart
-    find: "    bool ok = true;\n    _isRunning = false;"
-    replace: "    bool ok = true;"
-    tests: test/transactions_test.dart
-
 cache:
   - behaviour: a read promotes the entry to most-recently-used
     file: lib/src/tomserver/cache/server_cache.dart
@@ -168,8 +74,8 @@ cmdline:
     tests: test/cmdline_test.dart
   - behaviour: an unquoted value drops an inline comment
     file: lib/src/tomserver/cmdline/env_file.dart
-    find: "      if (commentIndex != -1) {\n        value = value.substring(0, commentIndex).trim();\n      }"
-    replace: "      if (false) {\n        value = value.substring(0, commentIndex).trim();\n      }"
+    find: "      if (commentIndex != -1) {\n        value = rawValue.substring(0, commentIndex).trim();"
+    replace: "      if (false) {\n        value = rawValue.substring(0, commentIndex).trim();"
     tests: test/cmdline_test.dart
   - behaviour: an argument whose key is empty is dropped
     file: lib/src/tomserver/cmdline/args.dart
@@ -315,8 +221,8 @@ datasources:
     tests: test/datasources_test.dart
   - behaviour: the date literal takes its components as labelled
     file: lib/src/tomserver/datasources/sql_instant.dart
-    find: "String sqlDate(DateTime value) {\n  String pad(int v, int width) => v.toString().padLeft(width, '0');\n  return '${pad(value.year, 4)}-${pad(value.month, 2)}-${pad(value.day, 2)}';"
-    replace: "String sqlDate(DateTime value) {\n  String pad(int v, int width) => v.toString().padLeft(width, '0');\n  final utc = value.toUtc();\n  return '${pad(utc.year, 4)}-${pad(utc.month, 2)}-${pad(utc.day, 2)}';"
+    find: "String sqlDate(DateTime value) {\n  final labelled = _labelled(value);"
+    replace: "String sqlDate(DateTime value) {\n  final labelled = value.toUtc();"
     tests: test/datasources_test.dart test/object_persistence_test.dart
   - behaviour: the date box unwraps before the renderer is chosen
     file: lib/src/tomserver/datasources/mariadb_datasource.dart
@@ -342,6 +248,56 @@ datasources:
     replace: "            for (var r in <Object>[]) {\n              value.add(r);\n            }"
     requires: db
     tests: test/reference_association_db_test.dart
+  - behaviour: a bool binds as 1 or 0, not as its text
+    file: lib/src/tomserver/datasources/mariadb_datasource.dart
+    find: "  if (unwrapped is bool) return unwrapped ? 1 : 0;"
+    replace: ""
+    tests: test/datasources_test.dart
+  - behaviour: a DateTime binds as an instant literal
+    file: lib/src/tomserver/datasources/mariadb_datasource.dart
+    find: "  if (unwrapped is DateTime) return sqlInstant(unwrapped);"
+    replace: ""
+    tests: test/datasources_test.dart
+  - behaviour: an instant is bound in UTC, whatever the local zone
+    file: lib/src/tomserver/datasources/sql_instant.dart
+    find: "String sqlInstant(DateTime value) {\n  final utc = value.toUtc();"
+    replace: "String sqlInstant(DateTime value) {\n  final utc = value;"
+    tests: test/datasources_test.dart test/object_persistence_test.dart
+  - behaviour: an instant keeps its microseconds
+    file: lib/src/tomserver/datasources/sql_instant.dart
+    find: "      '${pad(utc.millisecond, 3)}${pad(utc.microsecond, 3)}';"
+    replace: "      '${pad(utc.millisecond, 3)}000';"
+    tests: test/datasources_test.dart test/object_persistence_test.dart
+  - behaviour: a server-reported SQL error is a definite failure
+    file: lib/src/tomserver/datasources/sql_failure_mode.dart
+    find: "    if (cause is MySQLServerException) return TomSqlFailureMode.definite;"
+    replace: ""
+    tests: test/datasources_test.dart test/sql_text_test.dart test/scheduling_cluster_test.dart
+  - behaviour: a failure wrapped in a Tom exception is classified by its root cause
+    file: lib/src/tomserver/datasources/sql_failure_mode.dart
+    find: "    current = current is TomBaseException ? current.rootException : null;"
+    replace: "    current = null;"
+    tests: test/datasources_test.dart test/sql_text_test.dart test/scheduling_cluster_test.dart
+  - behaviour: a connection lost mid-call counts only while disconnected
+    file: lib/src/tomserver/datasources/sql_failure_mode.dart
+    find: "    !connected && classifySqlFailure(error) == TomSqlFailureMode.ambiguous;"
+    replace: "    classifySqlFailure(error) == TomSqlFailureMode.ambiguous;"
+    tests: test/datasources_test.dart test/sql_text_test.dart test/scheduling_cluster_test.dart
+  - behaviour: a colon inside a quoted literal is not a placeholder
+    file: lib/src/tomserver/datasources/sql_placeholder_scan.dart
+    find: "      if (c == _singleQuote || c == _doubleQuote) {\n        i = _copyQuoted(namedSql, i, c, out, escapeWithBackslash: true);\n        continue;\n      }"
+    replace: ""
+    tests: test/datasources_test.dart test/sql_text_test.dart test/scheduling_cluster_test.dart
+  - behaviour: a colon inside a backticked identifier is not a placeholder
+    file: lib/src/tomserver/datasources/sql_placeholder_scan.dart
+    find: "      if (c == _backtick) {"
+    replace: "      if (false) {"
+    tests: test/datasources_test.dart test/sql_text_test.dart test/scheduling_cluster_test.dart
+  - behaviour: a backslash-escaped quote does not close the literal
+    file: lib/src/tomserver/datasources/sql_placeholder_scan.dart
+    find: "      if (escapeWithBackslash && c == _backslash && i + 1 < length) {"
+    replace: "      if (false) {"
+    tests: test/datasources_test.dart test/sql_text_test.dart test/scheduling_cluster_test.dart
 
 db_migration:
   - behaviour: a table of another datasource is not this datasource's to converge
@@ -420,8 +376,8 @@ file_storage:
 
   - behaviour: the write time is bound as an instant, not formatted by the store
     file: lib/src/tomserver/file_storage/database_blob_store.dart
-    find: "        'storedAt': storedAt,"
-    replace: "        'storedAt': storedAt.toIso8601String().substring(0, 19).replaceFirst('T', ' '),"
+    find: "        // back as though it were UTC and was wrong by the host's offset.\n        'storedAt': storedAt,"
+    replace: "        // back as though it were UTC and was wrong by the host's offset.\n        'storedAt': storedAt.toIso8601String().substring(0, 19).replaceFirst('T', ' '),"
     tests: test/file_storage_test.dart
   - behaviour: the descriptor labels the write time UTC
     file: lib/src/tomserver/file_storage/blob_store.dart
@@ -430,8 +386,8 @@ file_storage:
     tests: test/file_storage_test.dart
   - behaviour: the store reads its clock seam rather than the wall clock
     file: lib/src/tomserver/file_storage/database_blob_store.dart
-    find: "    final storedAt = clock();"
-    replace: "    final storedAt = DateTime.now();"
+    find: "    final storedAt = clock();\n    // The commit point"
+    replace: "    final storedAt = DateTime.now();\n    // The commit point"
     tests: test/file_storage_test.dart
 
 scheduling:
@@ -439,8 +395,7 @@ scheduling:
     file: lib/src/tomserver/scheduling/sql_job_store.dart
     find: "    if (affected != BigInt.one) return null;"
     replace: "    if (affected > BigInt.one) return null;"
-    requires: db
-    tests: test/scheduling_db_test.dart
+    tests: test/scheduling_cluster_test.dart test/scheduling_db_test.dart
   - behaviour: a definite SQL failure is rethrown rather than resolved as ambiguous
     file: lib/src/tomserver/scheduling/sql_job_store.dart
     find: "      if (classifySqlFailure(error) == TomSqlFailureMode.definite) rethrow;"
@@ -452,22 +407,87 @@ endpoints:
     file: lib/src/tomserver/endpoints/endpoint_pipeline.dart
     find: "      jsonBodyData[mapping[captureName] ?? captureName] = value;"
     replace: "      jsonBodyData[mapping[captureName]!] = value;"
-    tests: test/endpoints_pipeline_test.dart
+    tests: test/endpoints_test.dart test/endpoints_pipeline_test.dart
   - behaviour: a query parameter the endpoint does not declare is not bound
     file: lib/src/tomserver/endpoints/endpoint_pipeline.dart
     find: "    mapping.forEach((queryName, fieldName) {\n      final value = queryParameters[queryName];\n      if (value != null) jsonBodyData[fieldName] = value;"
     replace: "    queryParameters.forEach((queryName, value) {\n      jsonBodyData[mapping[queryName] ?? queryName] = value;"
-    tests: test/endpoints_pipeline_test.dart
+    tests: test/endpoints_test.dart test/endpoints_pipeline_test.dart
   - behaviour: an endpoint declaring no form fields takes all of them
     file: lib/src/tomserver/endpoints/endpoint_pipeline.dart
     find: "    if (declared.isEmpty) {\n      jsonBodyData.addAll(form.fields);\n      return;\n    }"
     replace: "    if (declared.isEmpty) {\n      return;\n    }"
-    tests: test/endpoints_pipeline_test.dart test/file_endpoint_test.dart
+    tests: test/endpoints_transport_test.dart test/endpoints_pipeline_test.dart test/file_endpoint_test.dart
   - behaviour: an endpoint declaring form fields takes only those
     file: lib/src/tomserver/endpoints/endpoint_pipeline.dart
     find: "    for (final field in declared) {\n      final value = form.fields[field];\n      if (value != null) jsonBodyData[field] = value;"
     replace: "    jsonBodyData.addAll(form.fields);\n    for (final field in declared) {\n      final value = form.fields[field];\n      if (value != null) jsonBodyData[field] = value;"
-    tests: test/endpoints_pipeline_test.dart test/file_endpoint_test.dart
+    tests: test/endpoints_transport_test.dart test/endpoints_pipeline_test.dart test/file_endpoint_test.dart
+  - behaviour: a caller without access is refused
+    file: lib/src/tomserver/endpoints/endpoint_pipeline.dart
+    find: "    if (accessCheck) return;"
+    replace: "    return;"
+    tests: test/endpoints_pipeline_test.dart test/endpoints_test.dart
+  - behaviour: a refused call is audited as denied
+    file: lib/src/tomserver/endpoints/endpoint_pipeline.dart
+    find: "    await TomAuditTrail.recordAction(\n      action: TomAuditAction.execute,\n      target: name,\n      outcome: TomAuditOutcome.denied,"
+    replace: "    if (false) await TomAuditTrail.recordAction(\n      action: TomAuditAction.execute,\n      target: name,\n      outcome: TomAuditOutcome.denied,"
+    tests: test/endpoints_pipeline_test.dart test/endpoints_test.dart test/audit_test.dart
+  - behaviour: a denial answers 404, not 403, so it does not disclose the route
+    file: lib/src/tomserver/endpoints/endpoint_pipeline.dart
+    find: "  static Response accessDeniedResponse() => Response.notFound("
+    replace: "  static Response accessDeniedResponse() => Response.forbidden("
+    tests: test/endpoints_pipeline_test.dart test/endpoints_test.dart
+  - behaviour: an endpoint is audited only when it declares @TomAudited
+    file: lib/src/tomserver/endpoints/endpoint_pipeline.dart
+    find: "    if (audited == null || !audited.enabled) return;"
+    replace: "    if (audited == null) return;"
+    tests: test/endpoints_pipeline_test.dart test/endpoints_test.dart test/audit_test.dart
+  - behaviour: a matching If-None-Match answers 304
+    file: lib/src/tomserver/endpoints/file_endpoint.dart
+    find: "    if (_matches(request.headers['if-none-match'], metadata.digest)) {\n      // A 304"
+    replace: "    if (false) {\n      // A 304"
+    tests: test/file_endpoint_test.dart
+  - behaviour: a HEAD answers a matching If-None-Match with 304, as the GET does
+    file: lib/src/tomserver/endpoints/file_endpoint.dart
+    find: "    if (_matches(request.headers['if-none-match'], metadata.digest)) {\n      return Response.notModified(headers: headers);"
+    replace: "    if (false) {\n      return Response.notModified(headers: headers);"
+    tests: test/file_endpoint_test.dart
+  - behaviour: a weak entity tag matches its strong digest
+    file: lib/src/tomserver/endpoints/file_endpoint.dart
+    find: "      final strong = trimmed.startsWith('W/') ? trimmed.substring(2) : trimmed;"
+    replace: "      final strong = trimmed;"
+    tests: test/file_endpoint_test.dart
+  - behaviour: If-None-Match: * matches any stored file
+    file: lib/src/tomserver/endpoints/file_endpoint.dart
+    find: "      if (trimmed == '*') return true;"
+    replace: ""
+    tests: test/file_endpoint_test.dart
+  - behaviour: a suffix range serves the last n bytes
+    file: lib/src/tomserver/endpoints/file_endpoint.dart
+    find: "      return TomBlobRange((byteCount - wanted).clamp(0, byteCount), byteCount);"
+    replace: "      return TomBlobRange(0, wanted);"
+    tests: test/file_endpoint_test.dart
+  - behaviour: a backwards range is ignored rather than answered
+    file: lib/src/tomserver/endpoints/file_endpoint.dart
+    find: "    if (endInclusive < start) return null;"
+    replace: ""
+    tests: test/file_endpoint_test.dart
+  - behaviour: a range past the end answers 416 naming the size
+    file: lib/src/tomserver/endpoints/file_endpoint.dart
+    find: "    final range = asked.clampedTo(metadata.byteCount);"
+    replace: "    final range = asked.clampedTo(metadata.byteCount) ?? asked;"
+    tests: test/file_endpoint_test.dart
+  - behaviour: a partial response carries the slice length and an inclusive Content-Range
+    file: lib/src/tomserver/endpoints/file_endpoint.dart
+    find: "        'content-range': 'bytes ${range.start}-$end/${metadata.byteCount}',"
+    replace: "        'content-range': 'bytes ${range.start}-${range.endExclusive}/${metadata.byteCount}',"
+    tests: test/file_endpoint_test.dart
+  - behaviour: a file part larger than the limit is refused while it streams
+    file: lib/src/tomserver/endpoints/form_binding.dart
+    find: "      if (builder.length > limit) {"
+    replace: "      if (false) {"
+    tests: test/endpoints_transport_test.dart test/file_endpoint_test.dart
 
 server:
   - behaviour: the access line opens with the application id
@@ -490,3 +510,542 @@ server:
     find: "        configuration.authenticationErrorHandler ?? errorHandler;"
     replace: "        configuration.authenticationErrorHandler;"
     tests: test/server_test.dart test/endpoints_pipeline_test.dart
+
+configuration:
+  - behaviour: a dotted key that is no path is found as a literal top-level key
+    file: lib/src/tomserver/configuration/base_server_configuration.dart
+    find: "    return resources.containsKey(s);\n  }"
+    replace: "    return false;\n  }"
+    tests: test/configuration_test.dart
+  - behaviour: a dotted key that is no path reads its literal top-level value
+    file: lib/src/tomserver/configuration/base_server_configuration.dart
+    find: "    return resources.containsKey(s) ? resources[s] : s;"
+    replace: "    return s;"
+    tests: test/configuration_test.dart
+  - behaviour: a provider created with no loader installed is marked a placeholder
+    file: lib/src/tomserver/configuration/base_server_configuration.dart
+    find: "      created._isUnconfiguredPlaceholder = loader == null;"
+    replace: "      created._isUnconfiguredPlaceholder = false;"
+    tests: test/configuration_test.dart
+  - behaviour: the default provider reads the installed loader
+    file: lib/src/tomserver/configuration/base_server_configuration.dart
+    find: "    if (loader != null) {\n      resources = loader!();"
+    replace: "    if (false) {\n      resources = loader!();"
+    tests: test/configuration_test.dart
+  - behaviour: resolving before a provider is installed throws rather than defaulting
+    file: lib/src/tomserver/configuration/tom_config.dart
+    find: "    if (provider.isUnconfiguredPlaceholder) {"
+    replace: "    if (false) {"
+    tests: test/configuration_test.dart
+  - behaviour: an int value widens onto a double property
+    file: lib/src/tomserver/configuration/tom_config.dart
+    find: "        if (raw is int && 0.0 is T) {"
+    replace: "        if (raw is int && 0.0 is T && false) {"
+    tests: test/configuration_test.dart
+  - behaviour: a type mismatch carries key, type and value as parameters
+    file: lib/src/tomserver/configuration/tom_config.dart
+    find: "            parameters: {'key': _propertyKey, 'type': '$T', 'value': raw},"
+    replace: "            parameters: const {},"
+    tests: test/configuration_test.dart
+  - behaviour: a type mismatch chains the TypeError it caught
+    file: lib/src/tomserver/configuration/tom_config.dart
+    find: "            rootException: error,\n"
+    replace: ""
+    tests: test/configuration_test.dart
+  - behaviour: an absent key with a default answers the default
+    file: lib/src/tomserver/configuration/tom_config.dart
+    find: "      _value = _defaultValue;"
+    replace: "      _value = null;"
+    tests: test/configuration_test.dart
+  - behaviour: an absent obligatory key throws naming the key
+    file: lib/src/tomserver/configuration/tom_config.dart
+    find: "        parameters: {'key': _propertyKey, 'type': '$T'},"
+    replace: "        parameters: {'type': '$T'},"
+    tests: test/configuration_test.dart
+  - behaviour: a YAML file has its environment variables substituted
+    file: lib/src/tomserver/configuration/yaml_resources.dart
+    find: "    substituteEnvVars(cleanMap, environment ?? Platform.environment);\n"
+    replace: ""
+    tests: test/configuration_test.dart
+  - behaviour: an overlay file merges into the tree rather than being dropped
+    file: lib/src/tomserver/configuration/yaml_resources.dart
+    find: "    mergeMapsOneSided(result, loadYamlFile(filename, environment: environment));"
+    replace: "    loadYamlFile(filename, environment: environment);"
+    tests: test/configuration_test.dart
+  - behaviour: an absent optional file is a null, not a throw
+    file: lib/src/tomserver/configuration/yaml_resources.dart
+    find: "    } on PathNotFoundException {"
+    replace: "    } on FormatException {"
+    tests: test/configuration_test.dart
+  - behaviour: an absent optional overlay reports that nothing was merged
+    file: lib/src/tomserver/configuration/yaml_resources.dart
+    find: "    if (overlay == null) return false;"
+    replace: "    if (overlay == null) return true;"
+    tests: test/configuration_test.dart
+  - behaviour: command-line arguments are the last and strongest source
+    file: lib/src/tomserver/configuration/base_server_configuration.dart
+    find: "    mergeMapsOneSided(values, TomArgs.parseArgsToMap(args));\n    return values;"
+    replace: "    return values;"
+    tests: test/configuration_test.dart
+  - behaviour: a .env file is a configuration source
+    file: lib/src/tomserver/configuration/base_server_configuration.dart
+    find: "      TomArgs.resolveEnvironmentNames(TomEnvFile.read()),"
+    replace: "      <String, Object?>{},"
+    tests: test/configuration_test.dart
+  - behaviour: a required setting no source supplied fails construction
+    file: lib/src/tomserver/configuration/base_server_configuration.dart
+    find: "    if (missing.isEmpty) return;"
+    replace: "    return;"
+    tests: test/configuration_test.dart
+  - behaviour: the configuration keeps the arguments it was built from
+    file: lib/src/tomserver/configuration/base_server_configuration.dart
+    find: "    this.args = args;\n"
+    replace: ""
+    tests: test/configuration_test.dart
+  - behaviour: the constructed configuration becomes the active one tomAppId reads
+    file: lib/src/tomserver/configuration/base_server_configuration.dart
+    find: "    _activeConfiguration = this;\n"
+    replace: ""
+    tests: test/configuration_test.dart test/server_test.dart
+  - behaviour: either development TLS half alone counts as development material
+    file: lib/src/tomserver/configuration/base_server_configuration.dart
+    find: "      certificateChain == developmentCertificateChain ||"
+    replace: "      certificateChain == developmentCertificateChain &&"
+    tests: test/configuration_test.dart test/server_test.dart
+  - behaviour: a runtime environment named on the command line wins
+    file: lib/src/tomserver/configuration/runtime_environment.dart
+    find: "  if (fromArgs != null) return fromArgs.toString();"
+    replace: ""
+    tests: test/runtime_environment_test.dart
+  - behaviour: a runtime environment named in the .env file beats the process environment
+    file: lib/src/tomserver/configuration/runtime_environment.dart
+    find: "  if (fromEnvFile != null) return fromEnvFile.toString();"
+    replace: ""
+    tests: test/runtime_environment_test.dart
+
+authentication:
+  - behaviour: an inbound bearer token is refused when its signature does not verify
+    file: lib/src/tomserver/authentication/jwt_signing.dart
+    find: "    jwt.JWT.verify(\n      token,\n      configuration.key,"
+    replace: "    jwt.JWT.decode(token);\n    if (false) jwt.JWT.verify(\n      token,\n      configuration.key,"
+    tests: test/jwt_signing_test.dart test/authentication_test.dart test/server_test.dart
+  - behaviour: outside development and test, the bundled sample keys are refused
+    file: lib/src/tomserver/authentication/jwt_signing.dart
+    find: "    if (!_isDevelopmentOrTest()) throw TomSigningKeyException(unconfigured);"
+    replace: ""
+    tests: test/jwt_signing_test.dart test/authentication_test.dart
+  - behaviour: a blank configured key counts as unconfigured
+    file: lib/src/tomserver/authentication/jwt_signing.dart
+    find: "  return trimmed.isEmpty ? null : trimmed;"
+    replace: "  return trimmed;"
+    tests: test/jwt_signing_test.dart test/authentication_test.dart
+  - behaviour: a configured shared secret replaces the sample HMAC key
+    file: lib/src/tomserver/authentication/jwt_signing.dart
+    find: "    secret == null ? TomJwtConfiguration.hmacKey : jwt.SecretKey(secret),"
+    replace: "    TomJwtConfiguration.hmacKey,"
+    tests: test/jwt_signing_test.dart test/authentication_test.dart
+  - behaviour: the installed configuration becomes the default the server signs with
+    file: lib/src/tomserver/authentication/jwt_signing.dart
+    find: "  TomJwtConfiguration.defaultSignConfiguration = installed;\n"
+    replace: ""
+    tests: test/jwt_signing_test.dart test/authentication_test.dart
+  - behaviour: a second-factor token is spent once, so a replay is refused
+    file: lib/src/tomserver/authentication/two_factor_attempts.dart
+    find: "    if (_answered.containsKey(attempt.fingerprint)) return false;"
+    replace: ""
+    tests: test/two_factor_test.dart test/authentication_test.dart
+  - behaviour: a spent attempt is forgotten once its token has lapsed
+    file: lib/src/tomserver/authentication/two_factor_attempts.dart
+    find: "    _answered.removeWhere((_, notAfter) => !now.isBefore(notAfter));"
+    replace: ""
+    tests: test/two_factor_test.dart test/authentication_test.dart
+  - behaviour: of two matching role rules the stricter wins
+    file: lib/src/tomserver/authentication/two_factor_policy.dart
+    find: "      index >= other.index ? this : other;"
+    replace: "      index >= other.index ? other : this;"
+    tests: test/two_factor_test.dart test/authentication_test.dart
+  - behaviour: a role matching no rule takes the default requirement
+    file: lib/src/tomserver/authentication/two_factor_policy.dart
+    find: "    final requirement = matched ?? defaultRequirement;"
+    replace: "    final requirement = matched ?? Tom2FARequirement.disabled;"
+    tests: test/two_factor_test.dart test/authentication_test.dart
+  - behaviour: grace logins remaining are the allowance less those spent
+    file: lib/src/tomserver/authentication/two_factor_policy.dart
+    find: "    final left = graceLogins - spent;"
+    replace: "    final left = graceLogins;"
+    tests: test/two_factor_test.dart test/authentication_test.dart test/two_factor_enrolment_db_test.dart
+  - behaviour: a principal flagged for 2FA is required to answer one
+    file: lib/src/tomserver/authentication/two_factor_policy.dart
+    find: "    if (!principal.requires2FA) {"
+    replace: "    if (true) {"
+    tests: test/two_factor_test.dart test/authentication_test.dart
+  - behaviour: an expired challenge is refused
+    file: lib/src/tomserver/authentication/authentication_server.dart
+    find: "      if (challenge.isExpired()) {"
+    replace: "      if (false) {"
+    tests: test/two_factor_test.dart test/authentication_test.dart
+  - behaviour: a challenge whose attempts are exhausted is refused before the code is checked
+    file: lib/src/tomserver/authentication/authentication_server.dart
+    find: "      if (challenge.isExhausted) {"
+    replace: "      if (false) {"
+    tests: test/two_factor_test.dart test/authentication_test.dart
+  - behaviour: a challenge token already answered is refused
+    file: lib/src/tomserver/authentication/authentication_server.dart
+    find: "      if (!fresh) {\n        throw TomLoginException(\n          'login.error.2fa.challenge-already-answered',"
+    replace: "      if (false) {\n        throw TomLoginException(\n          'login.error.2fa.challenge-already-answered',"
+    tests: test/two_factor_test.dart test/authentication_test.dart
+  - behaviour: a mechanism that was not offered cannot be enrolled
+    file: lib/src/tomserver/authentication/authentication_server.dart
+    find: "      if (!state.offeredTypes.contains(type)) {"
+    replace: "      if (false) {"
+    tests: test/two_factor_test.dart test/authentication_test.dart
+  - behaviour: an enrolment offer past its window cannot be confirmed
+    file: lib/src/tomserver/authentication/authentication_server.dart
+    find: "      if (state.isExpired()) {"
+    replace: "      if (false) {"
+    tests: test/two_factor_test.dart test/authentication_test.dart
+  - behaviour: an enrolment the policy requires cannot be declined
+    file: lib/src/tomserver/authentication/authentication_server.dart
+    find: "      if (!state.skippable) {"
+    replace: "      if (false) {"
+    tests: test/two_factor_test.dart test/authentication_test.dart
+  - behaviour: declining an optional enrolment spends a grace login
+    file: lib/src/tomserver/authentication/authentication_server.dart
+    find: "      if (state.skipSpendsGrace) {"
+    replace: "      if (false) {"
+    tests: test/two_factor_test.dart test/authentication_test.dart test/two_factor_enrolment_db_test.dart
+  - behaviour: an authorization completed with an unknown state handle is refused
+    file: lib/src/tomserver/authentication/oauth_flow.dart
+    find: "    if (pending == null) {\n      throw TomOAuthException(\n        'oauth.flow.unknown_state',"
+    replace: "    if (false) {\n      throw TomOAuthException(\n        'oauth.flow.unknown_state',"
+    tests: test/oauth_test.dart test/oauth_state_store_test.dart
+  - behaviour: a provider redirect with no code is refused
+    file: lib/src/tomserver/authentication/oauth_flow.dart
+    find: "    if (code.isEmpty) {"
+    replace: "    if (false) {"
+    tests: test/oauth_test.dart test/oauth_state_store_test.dart
+  - behaviour: a pending authorization expires after its time to live
+    file: lib/src/tomserver/authentication/oauth_flow.dart
+    find: "      DateTime.now().toUtc().difference(pending.createdAt) > timeToLive;"
+    replace: "      false;"
+    tests: test/oauth_test.dart test/oauth_state_store_test.dart
+  - behaviour: the PKCE verifier is sent with the code exchange
+    file: lib/src/tomserver/authentication/oauth_flow.dart
+    find: "    if (pending.pkce != null) 'code_verifier': pending.pkce!.verifier,\n"
+    replace: ""
+    tests: test/oauth_test.dart test/oauth_state_store_test.dart
+  - behaviour: an id_token from another issuer is refused
+    file: lib/src/tomserver/authentication/oauth_flow.dart
+    find: "    if ('$issuer' != provider.issuer) {"
+    replace: "    if (false) {"
+    tests: test/oauth_test.dart test/oauth_state_store_test.dart
+  - behaviour: an id_token minted for another client is refused
+    file: lib/src/tomserver/authentication/oauth_flow.dart
+    find: "    if (!audiences.contains(provider.clientId)) {"
+    replace: "    if (false) {"
+    tests: test/oauth_test.dart test/oauth_state_store_test.dart
+  - behaviour: an expired id_token is refused, allowing the configured skew
+    file: lib/src/tomserver/authentication/oauth_flow.dart
+    find: "    if (now.isAfter(expiresAt.add(skew))) {"
+    replace: "    if (now.isAfter(expiresAt.add(skew * 1000))) {"
+    tests: test/oauth_test.dart test/oauth_state_store_test.dart
+  - behaviour: a held grant that is not about to expire is returned without a refresh
+    file: lib/src/tomserver/authentication/oauth_flow.dart
+    find: "    if (!held.expiresWithin(minimumValidity)) return held;"
+    replace: ""
+    tests: test/oauth_test.dart test/oauth_state_store_test.dart
+  - behaviour: an expired grant with no refresh token is deleted and reads as absent
+    file: lib/src/tomserver/authentication/oauth_flow.dart
+    find: "      await tokenStore.delete(provider.issuer, subject);\n      return null;"
+    replace: "      return null;"
+    tests: test/oauth_test.dart test/oauth_state_store_test.dart
+
+object_persistence:
+  - behaviour: a negative page offset is refused
+    file: lib/src/tomserver/object_persistence/paging.dart
+    find: "    if (offset < 0) {"
+    replace: "    if (false) {"
+    tests: test/paging_test.dart
+  - behaviour: a negative page limit is refused
+    file: lib/src/tomserver/object_persistence/paging.dart
+    find: "    if (limit < 0) {"
+    replace: "    if (false) {"
+    tests: test/paging_test.dart
+  - behaviour: an offset without a limit is refused, since SQL cannot skip without capping
+    file: lib/src/tomserver/object_persistence/paging.dart
+    find: "    if (offset > 0 && limit <= 0) {"
+    replace: "    if (false) {"
+    tests: test/paging_test.dart
+  - behaviour: page n starts n pages in
+    file: lib/src/tomserver/object_persistence/paging.dart
+    find: "  }) : this(offset: pageNumber * pageSize, limit: pageSize, sort: sort);"
+    replace: "  }) : this(offset: pageNumber, limit: pageSize, sort: sort);"
+    tests: test/paging_test.dart
+  - behaviour: a descending sort renders DESC
+    file: lib/src/tomserver/object_persistence/paging.dart
+    find: "  String get sqlKeyword => this == TomSortDirection.ascending ? 'ASC' : 'DESC';"
+    replace: "  String get sqlKeyword => 'ASC';"
+    tests: test/paging_test.dart
+  - behaviour: a paged read is made stable by appending the primary key to its sort
+    file: lib/src/tomserver/object_persistence/paging.dart
+    find: "    return withSort([...sort, TomSortField.asc(key)]);"
+    replace: "    return this;"
+    tests: test/paging_test.dart
+  - behaviour: a column with no authorization key is always shown in full
+    file: lib/src/tomserver/object_persistence/column_authorization.dart
+    find: "    if (authKey == null || !_tierEnabled) return TomAuthState.full;"
+    replace: "    if (!_tierEnabled) return TomAuthState.full;"
+    tests: test/column_authorization_test.dart
+  - behaviour: with database protection off, every column is shown in full
+    file: lib/src/tomserver/object_persistence/column_authorization.dart
+    find: "    if (authKey == null || !_tierEnabled) return TomAuthState.full;"
+    replace: "    if (authKey == null) return TomAuthState.full;"
+    tests: test/column_authorization_test.dart
+  - behaviour: a column the caller may not see is masked
+    file: lib/src/tomserver/object_persistence/column_authorization.dart
+    find: "      if (!stateForKey(keyOf(column), resolver: resolver).showsContent) column,"
+    replace: "      if (false) column,"
+    tests: test/column_authorization_test.dart
+  - behaviour: a visible but read-only column the caller changed is a violation
+    file: lib/src/tomserver/object_persistence/column_authorization.dart
+    find: "      if (grade.showsContent && changed(column)) {"
+    replace: "      if (false) {"
+    tests: test/column_authorization_test.dart
+  - behaviour: a read-only column is preserved from the baseline, not written
+    file: lib/src/tomserver/object_persistence/column_authorization.dart
+    find: "      if (grade.isInteractive) {\n        writable.add(column);"
+    replace: "      if (true) {\n        writable.add(column);"
+    tests: test/column_authorization_test.dart
+  - behaviour: an empty data-scope value list matches no row rather than all
+    file: lib/src/tomserver/object_persistence/data_scope.dart
+    find: "    if (list.isEmpty) {\n      return TomDataScopePredicate(builder.boolOp(false), const {});"
+    replace: "    if (list.isEmpty) {\n      return TomDataScopePredicate(builder.boolOp(true), const {});"
+    tests: test/data_scope_test.dart test/resource_data_scope_test.dart
+  - behaviour: no data-scope groups at all match no row rather than all
+    file: lib/src/tomserver/object_persistence/data_scope.dart
+    find: "    if (groups.isEmpty) {\n      return TomDataScopePredicate(builder.boolOp(false), const {});"
+    replace: "    if (groups.isEmpty) {\n      return TomDataScopePredicate(builder.boolOp(true), const {});"
+    tests: test/data_scope_test.dart test/resource_data_scope_test.dart
+  - behaviour: several data-scope groups are ORed, not ANDed
+    file: lib/src/tomserver/object_persistence/data_scope.dart
+    find: "        : builder.group(builder.or(predicates));"
+    replace: "        : builder.group(builder.and(predicates));"
+    tests: test/data_scope_test.dart test/resource_data_scope_test.dart
+  - behaviour: a write resolver is preferred over the read resolver for a write
+    file: lib/src/tomserver/object_persistence/data_scope.dart
+    find: "            ? TomDataScopeRegistry.asyncWriteResolverFor(scope.scope)"
+    replace: "            ? null"
+    tests: test/data_scope_test.dart test/resource_data_scope_test.dart test/resource_data_scope_db_test.dart
+  - behaviour: an insert outside the caller's data scope is refused
+    file: lib/src/tomserver/object_persistence/crud_repository.dart
+    find: "    if (!TomDataScope.permits(allowed, col.getVariableValue(entity))) {"
+    replace: "    if (false) {"
+    requires: db
+    tests: test/resource_data_scope_db_test.dart test/object_persistence_db_test.dart
+  - behaviour: an update of a row outside the caller's data scope is refused
+    file: lib/src/tomserver/object_persistence/crud_repository.dart
+    find: "    if (await _selectById(id, forWrite: true) == null) {"
+    replace: "    if (false) {"
+    requires: db
+    tests: test/resource_data_scope_db_test.dart test/object_persistence_db_test.dart
+  - behaviour: a bypass zone reads unscoped
+    file: lib/src/tomserver/object_persistence/crud_repository.dart
+    find: "    if (TomDataScope.isBypassed) return null;"
+    replace: ""
+    requires: db
+    tests: test/resource_data_scope_db_test.dart test/object_persistence_db_test.dart
+  - behaviour: two rows under one primary key are an error, not the first row
+    file: lib/src/tomserver/object_persistence/crud_repository.dart
+    find: "    } else if (result.isEmpty) {\n      return null;\n    } else {\n      throw TomRepositoryException("
+    replace: "    } else if (result.isEmpty) {\n      return null;\n    } else {\n      return result[0];\n      throw TomRepositoryException("
+    tests: test/crud_repository_exceptions_test.dart test/object_persistence_test.dart
+  - behaviour: a replaced file reference cascades its previous file to deletion
+    file: lib/src/tomserver/object_persistence/crud_repository.dart
+    find: "      if (written[column.declaredName] == previous) continue;\n      result.add((column, previous));"
+    replace: "      continue;\n      result.add((column, previous));"
+    requires: db
+    tests: test/file_storage_db_test.dart
+  - behaviour: a sentence with no by is refused by name
+    file: lib/src/tomserver/object_persistence/query_sentence_compiler.dart
+    find: "    if (byIndex == -1) {"
+    replace: "    if (false) {"
+    tests: test/query_sentence_rejection_test.dart test/query_sentence_options_test.dart test/query_sentence_window_option_test.dart test/object_persistence_test.dart
+  - behaviour: a sentence must start with find, count, delete or group
+    file: lib/src/tomserver/object_persistence/query_sentence_compiler.dart
+    find: "    final permitted = _permittedOptions[kind];"
+    replace: "    final permitted = _permittedOptions[kind] ?? _permittedOptions['FIND'];"
+    tests: test/query_sentence_rejection_test.dart test/query_sentence_options_test.dart test/query_sentence_window_option_test.dart test/object_persistence_test.dart
+  - behaviour: an option the sentence kind does not permit is refused, never dropped
+    file: lib/src/tomserver/object_persistence/query_sentence_compiler.dart
+    find: "      if (permitted.contains(option)) continue;"
+    replace: "      continue;"
+    tests: test/query_sentence_rejection_test.dart test/query_sentence_options_test.dart test/query_sentence_window_option_test.dart test/object_persistence_test.dart
+  - behaviour: an unrecognised word before by is refused
+    file: lib/src/tomserver/object_persistence/query_sentence_compiler.dart
+    find: "    if (kind != 'GROUP' && options.projectionStart < queryOptions.length) {"
+    replace: "    if (false) {"
+    tests: test/query_sentence_rejection_test.dart test/query_sentence_options_test.dart test/query_sentence_window_option_test.dart test/object_persistence_test.dart
+  - behaviour: a negative row count on an option is refused
+    file: lib/src/tomserver/object_persistence/query_sentence_compiler.dart
+    find: "    if (count < 0) {"
+    replace: "    if (false) {"
+    tests: test/query_sentence_rejection_test.dart test/query_sentence_options_test.dart test/query_sentence_window_option_test.dart test/object_persistence_test.dart
+
+healthcheck:
+  - behaviour: the default analyzer answers healthy
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "      const TomHealthStatus.healthy();"
+    replace: "      const TomHealthStatus.unhealthy('down');"
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: a healthy status says OK unless told otherwise
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "  const TomHealthStatus.healthy([this.message = 'OK'])"
+    replace: "  const TomHealthStatus.healthy([this.message = 'FINE'])"
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: an unhealthy verdict answers 503
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "  unhealthy(503);"
+    replace: "  unhealthy(500);"
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: /health consults the liveness analyzer
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "      responseFor(await verdictOf(_livenessAnalyzer, 'liveness'));"
+    replace: "      responseFor(await verdictOf(_readinessAnalyzer, 'liveness'));"
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: /ready consults the readiness analyzer
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "      responseFor(await verdictOf(_readinessAnalyzer, 'readiness'));"
+    replace: "      responseFor(await verdictOf(_livenessAnalyzer, 'readiness'));"
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: an analyzer that does not answer in time is unhealthy
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "      return await analyzer.analyzeHealth().timeout(_healthTimeout);"
+    replace: "      return await analyzer.analyzeHealth().timeout(_healthTimeout * 100);"
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: an analyzer that throws is unhealthy, not a server error
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "    } catch (error) {\n      return TomHealthStatus.unhealthy('FAILED"
+    replace: "    } on FormatException catch (error) {\n      return TomHealthStatus.unhealthy('FAILED"
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: a deadline that is not positive is refused
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "    if (timeout <= Duration.zero) {"
+    replace: "    if (false) {"
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: resetting restores the default deadline
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "    installHealthTimeout(defaultHealthTimeout);\n  }"
+    replace: "  }"
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: the liveness endpoint is mounted at /health
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "    uri: \"/health\","
+    replace: "    uri: \"/healthz\","
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: probe traffic is kept out of the request log
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "    uri: \"/health\",\n    produces: TomMimeType.plainText,\n    logRequests: false,"
+    replace: "    uri: \"/health\",\n    produces: TomMimeType.plainText,\n    logRequests: true,"
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: the endpoint is public, so an unauthenticated probe reaches it
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "  @TomPublicAccess()\n  @TomEndpoint(\n    methods: [TomHttpMethod.get],\n    uri: \"/health\","
+    replace: "  @TomEndpoint(\n    methods: [TomHttpMethod.get],\n    uri: \"/health\","
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+  - behaviour: the response is plain text, not JSON
+    file: lib/src/tomserver/healthcheck/health_check.dart
+    find: "    headers: {TomHeader.contentType: TomMimeType.plainText.toHeaderValue()},"
+    replace: "    headers: {TomHeader.contentType: TomMimeType.json.toHeaderValue()},"
+    tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
+
+transactions:
+  - behaviour: a vetoing participant rolls the whole transaction back
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "        if (!prepared) {"
+    replace: "        if (false) {"
+    tests: test/transactions_test.dart
+  - behaviour: a participant that throws while preparing rolls the transaction back
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "          tomLog.debug('$stack');\n          return rollbackTransaction();"
+    replace: "          tomLog.debug('$stack');\n          continue;"
+    tests: test/transactions_test.dart
+  - behaviour: a concluded transaction accepts no further participants
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    if (!_isRunning) {\n      throw TomTransactionException("
+    replace: "    if (false) {\n      throw TomTransactionException("
+    tests: test/transactions_test.dart
+  - behaviour: registering an already-enlisted participant is a no-op
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "      if (identical(enlisted, ttp)) return;"
+    replace: ""
+    tests: test/transactions_test.dart
+  - behaviour: two different participants cannot share one id
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    if (enlisted != null) {"
+    replace: "    if (enlisted != null && identical(enlisted, ttp)) {"
+    tests: test/transactions_test.dart
+  - behaviour: a participant whose start refuses is not enlisted
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    if (!started) {"
+    replace: "    if (false) {"
+    tests: test/transactions_test.dart
+  - behaviour: the start failure carries the participant's own error as its cause
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "        \"Participant '$id' threw while starting its transaction.\",\n        parameters: {'participant': id},\n        rootException: error,"
+    replace: "        \"Participant '$id' threw while starting its transaction.\",\n        parameters: {'participant': id},"
+    tests: test/transactions_test.dart
+  - behaviour: a participant that fails to commit after prepare makes the outcome partial
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "        if (!committed) broken.add(entry.key);"
+    replace: ""
+    tests: test/transactions_test.dart
+  - behaviour: a participant that throws while committing counts as failed, and the rest still commit
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "          committed = false;\n        }\n        if (!committed) broken.add(entry.key);"
+    replace: "          rethrow;\n        }\n        if (!committed) broken.add(entry.key);"
+    tests: test/transactions_test.dart
+  - behaviour: a participant that could not undo its work makes the rollback partial
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "        if (!undone) notUndone.add(entry.key);"
+    replace: ""
+    tests: test/transactions_test.dart
+  - behaviour: every participant is released even after one fails to
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "        ended = false;\n      }\n      if (!ended) notReleased.add(entry.key);"
+    replace: "        rethrow;\n      }\n      if (!ended) notReleased.add(entry.key);"
+    tests: test/transactions_test.dart
+  - behaviour: a participant that does not release is reported
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "      if (!ended) notReleased.add(entry.key);"
+    replace: ""
+    tests: test/transactions_test.dart
+  - behaviour: commit marks the transaction not-running before it runs
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "  Future<TomTransactionResult> commitTransaction() async {\n    _isRunning = false;"
+    replace: "  Future<TomTransactionResult> commitTransaction() async {"
+    tests: test/transactions_test.dart
+  - behaviour: a concluded transaction clears itself from its scope
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    if (identical(current, transaction)) current = null;"
+    replace: ""
+    tests: test/transactions_test.dart
+  - behaviour: a concluded transaction cannot wipe a successor in the same scope
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    if (identical(current, transaction)) current = null;"
+    replace: "    current = null;"
+    tests: test/transactions_test.dart
+  - behaviour: a nested call joins the running transaction instead of starting one
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    if (current != null && current.isRunning) {"
+    replace: "    if (current != null && current.isRunning && false) {"
+    tests: test/transactions_test.dart
+  - behaviour: a body that throws rolls its transaction back
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    } catch (_) {\n      await transaction.rollbackTransaction();\n      rethrow;"
+    replace: "    } catch (_) {\n      rethrow;"
+    tests: test/transactions_test.dart
+  - behaviour: a transaction that did not commit raises
+    file: lib/src/tomserver/transactions/transaction_manager.dart
+    find: "    if (!concluded.isCommitted) {"
+    replace: "    if (false) {"
+    tests: test/transactions_test.dart

@@ -570,9 +570,13 @@ void main() {
       // A probe carries no credential. Losing this annotation on a server that
       // protects by default turns every health check into a 401, and the
       // orchestrator reads that as the process being unhealthy.
+      // Anchored on the route: /ready carries the same pair, so a pattern that
+      // matched any public endpoint still passed with /health's removed.
       expect(
         source,
-        contains(RegExp(r'@TomPublicAccess\(\)\s*\n\s*@TomEndpoint\(')),
+        contains(
+          RegExp(r'@TomPublicAccess\(\)\s*\n\s*@TomEndpoint\([^)]*"/health"'),
+        ),
       );
     });
 

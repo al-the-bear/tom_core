@@ -158,6 +158,29 @@ void main() async {
       },
     );
 
+    test(
+      'a read inside TomDataScope.runUnscoped is not filtered by the scope',
+      () async {
+        await seed('project:alpha', 'Alpha plan');
+        await seed('project:beta', 'Beta plan');
+        install([_grant(1, 'project:alpha', 'owner')]);
+
+        // The administrative bypass, and the recursion guard an async resolver
+        // relies on while it enumerates the ids a principal may see: inside it
+        // the repository adds no scope predicate, whoever the zone names.
+        final scoped = await asPrincipal(1, (r) => r.findAll());
+        final unscoped = await asPrincipal(
+          1,
+          (r) => TomDataScope.runUnscoped(() => r.findAll()),
+        );
+        expect(scoped.map((e) => e.title), ['Alpha plan']);
+        expect(unscoped.map((e) => e.title).toSet(), {
+          'Alpha plan',
+          'Beta plan',
+        });
+      },
+    );
+
     test('a principal with no grants at all reads nothing', () async {
       await seed('project:alpha', 'Alpha plan');
       install(const []);

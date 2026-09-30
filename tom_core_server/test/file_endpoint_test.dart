@@ -978,6 +978,15 @@ void main() {
             headers: {'if-none-match': '"${uploaded.digest}"'},
           );
           expect(response.statusCode, 304, reason: method);
+          // Content-Length describes the representation, so a 304 that carried
+          // the descriptor's would tell a cache the file has that many bytes
+          // in a response with none. The endpoint drops it; what arrives is
+          // at most the zero dart:io writes for an empty body.
+          expect(
+            response.headers['content-length'],
+            anyOf(isNull, equals(['0'])),
+            reason: method,
+          );
           expect(await bodyOf(response), isEmpty, reason: method);
         }
       });

@@ -2228,6 +2228,17 @@ void main() {
       expect(record.target, isNotEmpty);
     });
 
+    test(
+      'an endpoint declaring @TomAudited(enabled: false) is not recorded',
+      () async {
+        // The flag is the annotation's own off switch; reading the annotation's
+        // presence as the decision would audit exactly what it declines.
+        final response = await router.call(_get('/fixture/audit_disabled'));
+        expect(response.statusCode, 200);
+        expect(sink.records, isEmpty);
+      },
+    );
+
     test('an undeclared endpoint invocation is not recorded', () async {
       // Most endpoint calls are reads; auditing them all would produce a trail
       // no auditor can read. Invocation auditing is therefore declared, and

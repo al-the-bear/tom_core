@@ -27,11 +27,15 @@ and a test file that stopped compiling is red in exactly the way that looks like
 success -- which happened while this catalogue was being written and reported
 six of six killed on a suite that never ran.
 
-Exit code is the number of surviving mutations, so a zero exit means every
-recorded behaviour is pinned.
+A mutant that does not compile is reported as INVALID rather than killed: it
+turns every test red without asking anything of them.
+
+Exit code is the number of surviving plus invalid mutations, so a zero exit
+means every recorded behaviour is pinned.
 """
 
 import argparse
+import re
 import subprocess
 import sys
 import time
@@ -75,11 +79,29 @@ def load_catalogue():
 
 def run_tests(tests):
     """Whether `dart test` passes over [tests]."""
-    result = subprocess.run(
+    return _run(tests).returncode == 0
+
+
+def _run(tests):
+    return subprocess.run(
         ['dart', 'test', '-j', '1', *tests],
         cwd=ROOT, capture_output=True, text=True,
     )
-    return result.returncode == 0
+
+
+#: How a test file that no longer compiles reports itself.
+_LOAD_FAILURE = re.compile(r'loading \S+ \[E\]\n\s+\S+\.dart:\d+:\d+: Error:')
+
+
+def does_not_compile(output):
+    """Whether a red run is red because the mutant is not valid Dart.
+
+    A mutant that does not compile fails every test that imports it, which is
+    red in exactly the way a kill is -- and says nothing about the suite. An
+    `if (false)` that loses a type promotion is the usual cause, and it was
+    catalogued once as killed before this check existed.
+    """
+    return _LOAD_FAILURE.search(output) is not None
 
 
 def database_reachable():
@@ -102,7 +124,8 @@ def database_reachable():
 def sweep(entry):
     """Apply one mutation, run its tests, restore the file whatever happens.
 
-    Returns `(survived, seconds)`. Restoring in a `finally` is not politeness:
+    Returns `(verdict, seconds)`, the verdict one of `killed`, `survived` or
+    `invalid` -- a mutant that does not compile, which proves nothing. Restoring in a `finally` is not politeness:
     an interrupted sweep that leaves a mutation in `lib/` is a library defect
     introduced by the tool meant to find them.
     """
@@ -117,10 +140,16 @@ def sweep(entry):
     started = time.time()
     try:
         path.write_text(original.replace(entry['find'], entry['replace'], 1))
-        survived = run_tests(entry['tests'])
+        result = _run(entry['tests'])
     finally:
         path.write_text(original)
-    return survived, time.time() - started
+    if result.returncode == 0:
+        verdict = 'survived'
+    elif does_not_compile(result.stdout + result.stderr):
+        verdict = 'invalid'
+    else:
+        verdict = 'killed'
+    return verdict, time.time() - started
 
 
 def main():
@@ -139,6 +168,20 @@ def main():
     # killed, and a test file that no longer compiles is red in exactly the way
     # that looks like success -- which happened while this catalogue was being
     # written, and reported six of six killed on a suite that never ran.
+    # Every `find` checked before anything runs, and every drifted one named.
+    # Code moves under a catalogue; discovering the drift one entry per
+    # half-hour run is how a sweep stops being run.
+    drifted = []
+    for module in selected:
+        for entry in catalogue[module]:
+            count = (ROOT / entry['file']).read_text().count(entry['find'])
+            if count != 1:
+                drifted.append(f"  {module}: {entry['behaviour']}\n"
+                               f"    {entry['file']}: `find` matches {count} times")
+    if drifted:
+        raise SystemExit('catalogue entries no longer match their file:\n'
+                         + '\n'.join(drifted))
+
     has_database = None if args.list else database_reachable()
     if has_database is False:
         print('no database on 127.0.0.1:3309 — `requires: db` entries are skipped')
@@ -151,13 +194,17 @@ def main():
             t for m in selected for e in catalogue[m] if runnable(e) for t in e['tests']
         })
         print(f'baseline: {len(baseline)} test file(s)')
-        if not run_tests(baseline):
+        result = _run(baseline)
+        if result.returncode != 0:
+            failing = sorted({line.strip() for line in result.stdout.splitlines()
+                              if line.rstrip().endswith('[E]')})
             raise SystemExit(
                 'the suite is red before any mutation, so nothing can be '
-                'concluded from it. Fix it first:\n  dart test -j 1 '
-                + ' '.join(baseline))
+                'concluded from it. Failing:\n  ' + '\n  '.join(failing)
+                + '\nFix it first:\n  dart test -j 1 ' + ' '.join(baseline))
 
     survivors = []
+    invalid = []
     total = 0
     for module in selected:
         entries = catalogue[module]
@@ -170,21 +217,27 @@ def main():
                 print(f'    skipped        needs a database: {entry["behaviour"]}')
                 continue
             total += 1
-            survived, seconds = sweep(entry)
-            mark = 'SURVIVED' if survived else 'killed  '
+            verdict, seconds = sweep(entry)
+            mark = {'survived': 'SURVIVED', 'invalid': 'INVALID ', 'killed': 'killed  '}[verdict]
             print(f'    {mark} {seconds:5.1f}s  {entry["behaviour"]}')
-            if survived:
+            if verdict == 'survived':
                 survivors.append((module, entry))
+            elif verdict == 'invalid':
+                invalid.append((module, entry))
 
     if args.list:
         return 0
 
     print()
-    print(f'{total} mutation(s), {len(survivors)} survived')
-    for module, entry in survivors:
-        print(f'  {module}: {entry["behaviour"]}')
-        print(f'    {entry["file"]}  ->  {entry["replace"]!r}')
-    return len(survivors)
+    print(f'{total} mutation(s), {len(survivors)} survived, '
+          f'{len(invalid)} did not compile')
+    for label, found in (('survived', survivors), ('does not compile', invalid)):
+        for module, entry in found:
+            print(f'  {label} -- {module}: {entry["behaviour"]}')
+            print(f'    {entry["file"]}  ->  {entry["replace"]!r}')
+    # An invalid mutant asks nothing, so it fails the run like a survivor: the
+    # catalogue entry has to be rewritten before its behaviour counts as pinned.
+    return len(survivors) + len(invalid)
 
 
 if __name__ == '__main__':

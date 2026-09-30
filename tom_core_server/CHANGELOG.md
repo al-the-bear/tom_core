@@ -1,5 +1,23 @@
 ## Unreleased
 
+### Added
+
+- **`TomPageRequest.stableUnder(key)`** returns the request with [key] appended
+  as its last ascending sort term when it cuts a window and does not already
+  sort on the key. It is the rule the repository applies to every paged read,
+  moved onto the page request so it can be tested without a database.
+
+### Changed
+
+- **The mutation catalogue covers all twenty modules.** `tool/mutations.yaml`
+  now records `configuration`, `authentication`, `object_persistence` and the
+  rest of `datasources` and `endpoints`. Every entry is killed by the tests it
+  names.
+- **`tool/mutation_sweep.py` reports a mutant that does not compile as
+  INVALID**, not as killed. Such a mutant fails every test that imports it and
+  so proves nothing; it counts toward the exit code like a survivor, since its
+  entry has to be rewritten before its behaviour counts as pinned.
+
 ### Fixed
 
 - **A stored date or time the driver cannot read is refused by column.** A

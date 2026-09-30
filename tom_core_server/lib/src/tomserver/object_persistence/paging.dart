@@ -124,6 +124,22 @@ class TomPageRequest {
   /// total ordering to be reproducible across pages.
   bool get needsStableSort => offset > 0 || limit > 0;
 
+  /// This request with a *total* ordering, made so by [key] — the entity's
+  /// primary key, which no two rows share.
+  ///
+  /// A request that cuts a window gets [key] appended as its final sort term
+  /// unless it already sorts on it. Without that, "page 2" is not the
+  /// complement of "page 1": rows tied under the caller's ordering (or under no
+  /// ordering at all) may appear on both pages or on neither, because nothing
+  /// obliges the database to visit them in the same order twice. A request
+  /// that cuts no window is returned unchanged, since the whole result set
+  /// arrives either way.
+  TomPageRequest stableUnder(String key) {
+    if (!needsStableSort) return this;
+    if (sort.any((term) => term.field == key)) return this;
+    return withSort([...sort, TomSortField.asc(key)]);
+  }
+
   /// This request with [sort] replaced.
   TomPageRequest withSort(List<TomSortField> sort) =>
       TomPageRequest(offset: offset, limit: limit, sort: sort);

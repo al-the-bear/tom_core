@@ -812,6 +812,7 @@ a `limit` — MariaDB's grammar is `LIMIT n [OFFSET m]`, so there is no bare
 | `isUnpaged` | `bool` | *(getter)* Whether this request shapes nothing at all. |
 | `needsStableSort` | `bool` | *(getter)* Whether this request cuts a window, and so needs a total ordering to be reproducible across pages. |
 | `withSort` | `TomPageRequest withSort(List<TomSortField> sort)` | This request with `sort` replaced. |
+| `stableUnder` | `TomPageRequest stableUnder(String key)` | This request with `key` appended as its last ascending sort term when it cuts a window and does not already sort on `key`; otherwise itself. |
 | `assertWindow` | `static void assertWindow({required int limit, required int offset})` | Rejects a row window that is not renderable. |
 
 **The result is the page, not a page object.** A finder given a request returns
@@ -819,8 +820,8 @@ the rows of that window as a plain `List<T>`; the total comes from the matching
 `count` method, which applies the same row scope — so a caller that does not need
 the total does not pay for it, and page metadata never reports rows the principal
 may not see. When a window is requested and the caller's `sort` does not already
-settle the order, the repository appends the entity's primary key ascending, so
-consecutive pages neither repeat nor drop rows.
+settle the order, the repository appends the entity's primary key ascending
+(`stableUnder`), so consecutive pages neither repeat nor drop rows.
 
 ### Operators & Expressions
 

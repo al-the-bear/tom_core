@@ -403,6 +403,8 @@ apps get the full kernel API through one dependency. See the
   test that *names* a behaviour is not the same as one that pins it, and
   reading the test cannot tell them apart. The catalogue is
   `tool/mutations.yaml` and is the committed half: a module absent from it has
-  not been swept. Not part of a normal test run — it edits `lib/`, restores in
-  a `finally`, and takes minutes.
+  not been swept. A mutant that does not compile is reported as INVALID rather
+  than killed, because it turns every test red without asking anything of
+  them. Not part of a normal test run — it edits `lib/`, restores in a
+  `finally`, and takes minutes.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

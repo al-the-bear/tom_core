@@ -520,18 +520,11 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// Normalises [page] into the window actually applied, or `null` when it asks
   /// for nothing.
   ///
-  /// A request that cuts a window gets a *total* ordering: the entity's primary
-  /// key is appended as the final sort term unless the caller already sorts on
-  /// it. Without that, "page 2" is not the complement of "page 1" — rows tied
-  /// under the caller's ordering (or under no ordering at all) may appear on
-  /// both pages or on neither, because nothing obliges the database to visit
-  /// them in the same order twice.
+  /// A request that cuts a window is made stable under the entity's primary
+  /// key — see [TomPageRequest.stableUnder].
   TomPageRequest? _effectivePage(TomPageRequest? page) {
     if (page == null || page.isUnpaged) return null;
-    if (!page.needsStableSort) return page;
-    final key = dbTable.primaryKeyField;
-    if (page.sort.any((term) => term.field == key)) return page;
-    return page.withSort([...page.sort, TomSortField.asc(key)]);
+    return page.stableUnder(dbTable.primaryKeyField);
   }
 
   /// Returns [base] narrowed to [page]'s window and ordering, or [base]
