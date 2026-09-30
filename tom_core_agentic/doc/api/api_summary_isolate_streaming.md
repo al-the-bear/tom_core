@@ -122,6 +122,8 @@ Future<T> guard<T>(
   Future<T> request, {
   Duration? timeout,
   String? operation,
+  IsolateCancellationToken? cancellation,
+  void Function(IsolateCancellationToken token)? cancel,
 })
 ```
 
@@ -130,6 +132,13 @@ through `timeout`. `operation` names the request in the failure message and
 defaults to `'isolate request'`. `markWorkerDead([detail])` fails every pending
 request at once — the guard is *told* the worker died rather than inferring it
 — and `isWorkerDead` / `inFlightCount` report the state.
+
+`cancellation` and `cancel` come together or not at all (`ArgumentError`
+otherwise). When the deadline elapses first, the caller's future fails with
+`timeout` and then `cancel(cancellation)` is called once, so the host can send
+its own protocol's cancel envelope and the worker can stop the work nobody is
+waiting for. A completed request and a worker death never call it. The guard
+owns no port, so sending is the host's.
 
 ### IsolateRequestFailure
 

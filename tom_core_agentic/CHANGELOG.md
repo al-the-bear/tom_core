@@ -2,6 +2,11 @@
 
 ### Changed
 
+- **A guarded request that times out can cancel the work it abandons.**
+  `IsolateRequestGuard.guard` takes an optional `cancellation` token and
+  `cancel` callback (both or neither); on a deadline it fails the caller, then
+  calls `cancel(token)` once so the host can send its cancel envelope. A
+  completed request and a worker death never call it.
 - **A profile's tool-approval mode reaches the Agent SDK**, as a permission
   mode: `always` is the SDK default (prompt for dangerous operations), `never`
   is `acceptEdits` (`permissionModeForApproval`).

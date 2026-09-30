@@ -197,6 +197,27 @@ guard.markWorkerDead('isolate exited with code 70');
 `isWorkerDead` and `inFlightCount` expose guard state; the failure's `reason`
 distinguishes `workerDeath` from `timeout`, and its `message` carries the detail.
 
+A timeout abandons the request; it does not stop the worker by itself. Pass
+the request's cancellation token and a way to send it, and a timeout cancels
+what it abandons:
+
+```dart
+final token = allocator.next();
+final result = await guard.guard(
+  workerReply.future,
+  operation: 'embed',
+  timeout: const Duration(seconds: 5),
+  cancellation: token,
+  cancel: (t) => workerPort.send(CancelRequest(t.id)),
+);
+```
+
+`cancel` is called once, after the caller has been failed, and only for a
+timeout: a request that completes is not cancelled, and a dead worker cannot
+receive the envelope. The guard owns no port and knows no message catalogue —
+`CancelRequest` above is the host's own envelope — so the sending is the
+host's.
+
 ## Exception Registry
 
 Errors thrown on a worker isolate arrive at the host as plain data. The

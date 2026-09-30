@@ -29,6 +29,8 @@
 
 import 'dart:async';
 
+import 'isolate_cancellation.dart' show IsolateCancellationToken;
+
 /// Why a request crossing an isolate boundary could not complete.
 enum IsolateRequestFailureReason {
   /// The worker isolate died (was killed, or crashed fatally) before
@@ -74,6 +76,17 @@ final class IsolateRequestFailure implements Exception {
 /// boundary. It does not (and cannot) unblock the underlying
 /// `Completer` the kernel worker leaks on a dead isolate; it bounds
 /// the *caller's* await so the host stays responsive.
+///
+/// **A timeout can cancel what it abandons.** Without help, a timed-out
+/// request keeps running on the worker and its eventual result is dropped —
+/// the worker does the whole of the work for no one, at the moment it is
+/// already too loaded to answer in time. So [guard] takes an optional
+/// [IsolateCancellationToken] and a `cancel` callback: on a timeout it calls
+/// `cancel(token)`, and the host sends the cancel envelope of its own
+/// protocol. The guard stays transport-agnostic — it owns no port and knows
+/// no message catalogue — and an adapter with no cancellation protocol passes
+/// neither and is unaffected. A worker *death* never calls `cancel`: there is
+/// nobody left to receive it.
 ///
 /// `final` because the guard is varied by *configuration*, not by
 /// subtyping: [defaultTimeout] and [guard]'s per-call `timeout` are the
@@ -140,11 +153,30 @@ final class IsolateRequestGuard {
   /// The request's own errors propagate unchanged — the guard only
   /// injects the two boundary failures, it never rewrites a domain
   /// exception the worker legitimately returned.
+  ///
+  /// [cancellation] and [cancel] come together or not at all. When the
+  /// deadline elapses first, the caller's future fails with the timeout and
+  /// then `cancel(cancellation)` is called, once, so the host can tell the
+  /// worker to stop the work nobody is waiting for any more. It is not
+  /// called when the request completes first or the worker dies. An error
+  /// thrown by `cancel` is not the caller's — it has already been answered —
+  /// and goes to the current zone's error handler.
   Future<T> guard<T>(
     Future<T> request, {
     Duration? timeout,
     String? operation,
+    IsolateCancellationToken? cancellation,
+    void Function(IsolateCancellationToken token)? cancel,
   }) {
+    if ((cancellation == null) != (cancel == null)) {
+      // A programmer error: a token with nothing to
+      // send it, or a callback with nothing to send.
+      throw ArgumentError(
+        'IsolateRequestGuard.guard: cancellation and cancel must be given '
+        'together — a token with no way to send it cancels nothing, and a '
+        'callback with no token has nothing to cancel.',
+      );
+    }
     final label = operation ?? 'isolate request';
     if (_workerDead) {
       return Future<T>.error(
@@ -172,6 +204,7 @@ final class IsolateRequestGuard {
               '$label exceeded its ${effective.inMilliseconds}ms deadline',
             ),
           );
+          if (cancel != null) cancel(cancellation!);
         }
       });
     }

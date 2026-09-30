@@ -17,6 +17,9 @@
 //      `IsolateRequestFailure(timeout)`; an explicit per-call timeout
 //      overrides the guard's default; worker-death pre-empts a pending
 //      deadline (it does not wait for the timer).
+//   6. A timeout calls the caller's `cancel(token)` once, after failing the
+//      caller, so the abandoned work can be stopped; a completed request and
+//      a worker death never call it; a token and a callback come together.
 //
 // No real isolate is spawned here: the guard is a pure host-side
 // race over a `Future` plus a death signal plus a timer, so it is
@@ -229,6 +232,85 @@ void main() {
         expect(sw.elapsed, lessThan(const Duration(seconds: 5)));
       },
     );
+  });
+
+  group('IsolateRequestGuard — cancelling what a timeout abandons', () {
+    const token = IsolateCancellationToken(7);
+
+    test('a timeout calls cancel with the token, once', () async {
+      final guard = IsolateRequestGuard();
+      final source = Completer<int>();
+      final cancelled = <IsolateCancellationToken>[];
+      final guarded = guard.guard(
+        source.future,
+        timeout: const Duration(milliseconds: 10),
+        cancellation: token,
+        cancel: (t) {
+          cancelled.add(t);
+        },
+      );
+      await expectLater(
+        guarded,
+        throwsA(
+          isA<IsolateRequestFailure>().having(
+            (f) => f.reason,
+            'reason',
+            IsolateRequestFailureReason.timeout,
+          ),
+        ),
+      );
+      expect(cancelled, [token]);
+      // A late answer changes nothing: the caller was answered, and cancel is
+      // not called a second time.
+      source.complete(1);
+      await Future<void>.delayed(Duration.zero);
+      expect(cancelled, [token]);
+      expect(guard.inFlightCount, 0);
+    });
+
+    test('a request that completes in time is not cancelled', () async {
+      final guard = IsolateRequestGuard();
+      final cancelled = <IsolateCancellationToken>[];
+      final result = await guard.guard(
+        Future.value(3),
+        timeout: const Duration(milliseconds: 50),
+        cancellation: token,
+        cancel: cancelled.add,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(result, 3);
+      expect(cancelled, isEmpty);
+    });
+
+    test(
+      'a worker death does not cancel: nobody is left to receive it',
+      () async {
+        final guard = IsolateRequestGuard();
+        final cancelled = <IsolateCancellationToken>[];
+        final guarded = guard.guard(
+          Completer<int>().future,
+          timeout: const Duration(milliseconds: 20),
+          cancellation: token,
+          cancel: cancelled.add,
+        );
+        guard.markWorkerDead('killed');
+        await expectLater(guarded, throwsA(isA<IsolateRequestFailure>()));
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+        expect(cancelled, isEmpty);
+      },
+    );
+
+    test('a token without a cancel callback, or the reverse, is refused', () {
+      final guard = IsolateRequestGuard();
+      expect(
+        () => guard.guard(Future.value(1), cancellation: token),
+        throwsArgumentError,
+      );
+      expect(
+        () => guard.guard(Future.value(1), cancel: (_) {}),
+        throwsArgumentError,
+      );
+    });
   });
 
   group('IsolateRequestFailure — value semantics', () {
