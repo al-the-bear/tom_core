@@ -116,6 +116,11 @@ class AclContainer extends StatefulWidget {
   /// Optional group name for the entire container, letting a
   /// [AclGroupVisibilityController] act on everything it holds at once.
   ///
+  /// The outermost default of the group chain: a component belongs to its own
+  /// group, else its row's, else this one. So a row or component that names a
+  /// group keeps it, and everything else joins this one — for its visibility
+  /// mode, its policy path, and the group [AclScope] reports.
+  ///
   /// See "Groups" (§25) in `doc/acl_design_specification.md`.
   final String? aclGroup;
 

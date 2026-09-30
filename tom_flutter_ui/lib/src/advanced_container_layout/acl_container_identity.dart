@@ -10,6 +10,22 @@
 part of 'acl_container.dart';
 
 extension _AclIdentity on _AclContainerState {
+  /// The group [row] belongs to: its own, or else the container's
+  /// [AclContainer.aclGroup].
+  ///
+  /// The container's group is the outermost default, the same way a row's
+  /// group is the default for the components in it: `setAclGroup` groups a
+  /// whole container with one call, and anything named more narrowly keeps its
+  /// own group.
+  String? _rowGroup(AclRow row) => row.group ?? widget.aclGroup;
+
+  /// The group [component] belongs to: its own, else its row's, else the
+  /// container's. Resolved here once, because the answer is used three ways —
+  /// the visibility mode in force, the policy path, and the identity published
+  /// in [AclScope] — and three copies of the fallback chain could disagree.
+  String? _componentGroup(AclComponent component, AclRow row) =>
+      component.group ?? _rowGroup(row);
+
   /// Returns the visibility mode for a given group name, or [visible] if
   /// no controller is registered.
   AclGroupVisibilityMode _groupMode(String? groupName) {
@@ -84,7 +100,7 @@ extension _AclIdentity on _AclContainerState {
   ///
   /// [groupName] and [fullPath] are **required** and passed in already
   /// resolved. Defaulting them here would mean a second copy of the caller's
-  /// own `component.group ?? row.group` and of its policy-path call — two
+  /// own [_componentGroup] and of its policy-path call — two
   /// copies that can only ever agree until one of them changes, at which point
   /// a component would be told a different identity from the one the container
   /// asks the policy about. There is one caller; it has both values in hand.

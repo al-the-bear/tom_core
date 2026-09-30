@@ -118,7 +118,7 @@ extension _AclRowBuild on _AclContainerState {
       Widget child = component.child;
 
       // ── Group visibility ──────────────────────────────────────────────────
-      final compGroup = component.group ?? row.group;
+      final compGroup = _componentGroup(component, row);
       final visMode = _groupMode(compGroup);
       if (visMode == AclGroupVisibilityMode.hidden) {
         // Hidden: zero size, skip the component entirely.

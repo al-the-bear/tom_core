@@ -38,14 +38,10 @@ import 'package:flutter_test/flutter_test.dart';
 /// not on this list, and wiring one of these in fails until it is taken off. So
 /// the set can only shrink, and shrinking it is a deliberate edit.
 ///
-/// `aclGroup` is here because removing it is not obviously right the way
-/// removing `parentIdPath` was. `parentIdPath` duplicated a question `TomScope`
-/// already answers and had no builder setter, so deleting it left no gap.
-/// Nothing else offers a container-level group, and `AclBuilder.setAclGroup` is
-/// public — an application calling it plainly means "group this container", so
-/// the field is unfinished wiring rather than speculative surface. Which way it
-/// goes is a design decision, and it carries its own todo.
-const _knownInert = <String>{'aclGroup'};
+/// Empty. `aclGroup` was the last entry, and it is now the outermost default
+/// of a component's group chain (`_componentGroup` in
+/// `acl_container_identity.dart`).
+const _knownInert = <String>{};
 
 void main() {
   /// `  final <Type> <name>;` — a public instance field, two-space indented.

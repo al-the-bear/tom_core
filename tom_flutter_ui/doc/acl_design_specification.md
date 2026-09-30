@@ -1154,7 +1154,7 @@ Groups partition components, rows, and entire containers into named sets that ca
 |---|---|---|
 | Component range | `startGroup(String name)` / `endGroup()` | All components `append()`-ed between the calls belong to the group |
 | Single component | `group(String name)` | Assigns the current component to the group |
-| Entire container | `setAclGroup(String name)` | The whole `Acl` belongs to the group |
+| Entire container | `setAclGroup(String name)` | Every row and component of the `Acl` that names no group of its own belongs to the group |
 | Entire row | `setRowGroup(String name)` | The current row belongs to the group |
 
 ```dart
@@ -1175,11 +1175,11 @@ AclBuilder()
 3. `endGroup()` without a matching `startGroup()` throws.
 4. Nested `startGroup()`/`startGroup()` without an intermediate `endGroup()` throws.
 5. `setRowGroup()` assigns every component in the current row to the group (unless individually overridden by `group()`).
-6. `setAclGroup()` marks the entire container — used when a nested `Acl` itself should be toggled as a unit.
+6. `setAclGroup()` is the outermost default: a component belongs to its own group, else its row's, else the container's. One call groups a whole container, and anything named more narrowly keeps its own group — for visibility, for the policy path, and for the group `AclScope` reports.
 
-### Group Propagation
+### Groups and Nested Containers
 
-Groups propagate **upward** from nested containers. When a nested `Acl` has `setAclGroup('premium')`, the parent layout knows that the nested container is part of the `premium` group. The parent's visibility controllers affect it accordingly.
+Groups do **not** cross container boundaries. Each `Acl` resolves its groups against its own `groupVisibilityControllers`: a nested `Acl`'s `setAclGroup('premium')` groups the components inside it, and only the nested container's own controllers act on them. To toggle a nested `Acl` as a unit from its parent, append it to the parent with `.group('premium')` and register the controller on the parent — to the parent it is one component like any other.
 
 ### Accessing Groups from Widgets
 

@@ -2,6 +2,16 @@
 
 ### Fixed
 
+- **`setAclGroup` groups the container.** `AclContainer.aclGroup` was stored,
+  forwarded and read by nothing, so a container grouped with
+  `AclBuilder.setAclGroup` got no error and no effect. A component's group now
+  resolves as its own, else its row's, else the container's — for its
+  visibility mode, its policy path and the group `AclScope` reports.
+  `acl_container_group_test.dart` pins it, and `acl_inert_parameter_test.dart`
+  now holds the unit to no inert fields at all. The design specification's §25
+  no longer claims groups propagate from a nested container to its parent's
+  controllers, which nothing implemented; it says how to toggle a nested `Acl`
+  from the parent instead.
 - **Four module barrel dartdocs read as an index and were not one.**
   `advanced_container_layout`, `custom` and `resource_auth` now link every type
   their barrel exports (7, 6 and 6 were missing); `AclComponent`, `AclRow` and

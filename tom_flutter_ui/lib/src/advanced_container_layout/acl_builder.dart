@@ -1247,6 +1247,8 @@ class AclBuilder {
     return this;
   }
 
+  /// Puts the whole container in group [name]: every row and component that
+  /// does not name a group of its own joins it (see [AclContainer.aclGroup]).
   AclBuilder setAclGroup(String name) {
     _aclGroup = name;
     return this;

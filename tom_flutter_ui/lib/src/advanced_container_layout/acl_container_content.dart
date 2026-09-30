@@ -150,7 +150,7 @@ extension _AclContent on _AclContainerState {
           if (row.id != null && row.id!.isNotEmpty) {
             final rowPath = _buildRowPolicyPath(
               rowId: row.id!,
-              groupName: row.group,
+              groupName: _rowGroup(row),
             );
             rowAuthState = TomAuthorization.resolveAuth(rowPath);
             if (!rowAuthState.isVisible) {
