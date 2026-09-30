@@ -173,15 +173,18 @@ separation without a second package to build and reflect.
 
 ---
 
-## Reflection — initialise once
+## Reflection — the program installs its own seed
 
-Reflection metadata is generated, not hand-written. The package ships a
-generated `lib/src/reflection_entry.reflection.dart` exposing a single
-`initializeReflection()` function, re-exported from the public barrel. Call it
-**once** at startup, before constructing any entity or parsing a wire DTO:
+The entities are `@tomReflector` classes, so reflection must be installed before
+one is constructed or a wire DTO is parsed. **This package ships no seed.** A
+program generates one from its own entry point — the generator follows that
+program's imports and reaches these entities along with everything else it
+reflects — and calls that seed's `initializeReflection()` once at startup:
 
 ```dart
 import 'package:todo_domain/todo_domain.dart';
+
+import 'main.reflection.dart'; // this program's seed, from its own root
 
 void main() {
   initializeReflection();               // register the reflected entities
@@ -193,8 +196,17 @@ void main() {
 }
 ```
 
-The server and client samples call `initializeReflection()` from their own
-entrypoints; you never edit the generated file by hand.
+`core_server_sample` installs `bin/server_start.reflection.dart`, rooted at its
+live-boot entry point, and `core_client_sample` its `lib/reflection_seed.dart`,
+which covers the entities and its forms together. A seed exported from this
+package would collide with theirs on `initializeReflection`, and which one a
+consumer got would be decided by import order — so a library carries none
+(G-REFL-1/2 in the suite's guidelines).
+
+This package's own tests and examples need reflection too, so it has **one
+seed, in `test/`**: `test/run_all_tests.dart` is the generator's root and
+`test/run_all_tests.reflection.dart` the generated seed. Tests import it
+directly, and the examples import it as `../test/run_all_tests.reflection.dart`.
 
 ### Regenerating after a model change
 
@@ -218,12 +230,12 @@ The script runs the generator **flag-free** — it scans the current project onl
 as a target filter, matches nothing, and exits with `Target not found: build`
 having written no output.
 
-The generator's entrypoint is `lib/src/reflection_entry.dart` (configured in
+The generator's entrypoint is `test/run_all_tests.dart` (configured in
 `build.yaml`); the generator only processes files that expose a `main()`, so
 that file exists solely to give it one — its `main()` touches each reflected
 type, and the generator follows the import graph from there to discover every
-`@tomReflector` class, rewriting `lib/src/reflection_entry.reflection.dart`. It
-is never called at runtime. The generated file is excluded from analysis by the
+`@tomReflector` class, rewriting `test/run_all_tests.reflection.dart`. It is
+never called at runtime. The generated file is excluded from analysis by the
 shared workspace `analysis_options.yaml`.
 
 ---
@@ -233,15 +245,13 @@ shared workspace `analysis_options.yaml`.
 ```
 todo_domain/
   pubspec.yaml                     pure-Dart package; depends on tom_core_kernel
-  build.yaml                       reflection generator config (target: lib/src/reflection_entry.dart)
+  build.yaml                       reflection generator config (target: test/run_all_tests.dart)
   reflection_generation.sh         one-command reflection rebuild
   analysis_options.yaml            includes the shared workspace options
   lib/
-    todo_domain.dart               public barrel: entities + initializeReflection
+    todo_domain.dart               public barrel: entities + wire DTOs (no reflection seed)
     src/
       entities.dart                entity barrel (exports the entity files)
-      reflection_entry.dart        generator entrypoint (has a main(); build target)
-      reflection_entry.reflection.dart  generated — do not edit
       enums.dart                   TodoPriority, TodoLabel (values only; text is a resource)
       user.dart                    User
       project.dart                 Project
@@ -258,6 +268,9 @@ todo_domain/
     assign_and_complete_example.dart  User ↔ TodoItem link + completion
     run_all_examples.dart          headless smoke test over the examples above
     README.md                      example index
+  test/
+    run_all_tests.dart             reflection generator root (has a main(); build target)
+    run_all_tests.reflection.dart  generated — the seed tests and examples install
   README.md                        this document
 ```
 
@@ -376,14 +389,6 @@ class TodoItemDto
   String listId
   TodoItemDto({this.id = '', this.title = '', this.description = '', this.done = false, this.priority = '', this.label = '', this.assigneeId = '', this.dueDate = '', this.listId = ''})
   String toString()
-```
-
-### `lib/src/reflection_entry.reflection.dart`
-
-Generated; the barrel re-exports this one function from it.
-
-```dart
-void initializeReflection()
 ```
 
 ---

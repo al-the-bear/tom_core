@@ -12,6 +12,10 @@ import 'package:core_server_sample/core_server_sample.dart';
 import 'package:todo_domain/todo_domain.dart';
 import 'package:test/test.dart';
 
+// The program's own seed: rooted at the live-boot entry point, it reaches the
+// domain entities and the persistence records through the server's imports.
+import '../bin/server_start.reflection.dart';
+
 void main() {
   // The domain entities are observable TomClasses: constructing one self-
   // observes through reflection, so the reflection registry must be live before

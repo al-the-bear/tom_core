@@ -4,6 +4,8 @@ import 'package:test/test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:todo_domain/todo_domain.dart';
 
+import 'run_all_tests.reflection.dart';
+
 void main() {
   setUpAll(initializeReflection);
 

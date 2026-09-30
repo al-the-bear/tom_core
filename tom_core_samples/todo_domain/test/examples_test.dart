@@ -19,11 +19,12 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:test/test.dart';
-import 'package:todo_domain/todo_domain.dart';
 
 import '../example/assign_and_complete_example.dart' as assign_and_complete;
 import '../example/build_hierarchy_example.dart' as build_hierarchy;
 import '../example/enum_round_trip_example.dart' as enum_round_trip;
+
+import 'run_all_tests.reflection.dart';
 
 void main() {
   // Idempotent, and each example calls it again anyway — done once here so the

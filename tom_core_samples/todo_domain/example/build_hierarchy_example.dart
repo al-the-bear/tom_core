@@ -7,6 +7,8 @@
 
 import 'package:todo_domain/todo_domain.dart';
 
+import '../test/run_all_tests.reflection.dart';
+
 void main() {
   // Reflection must be initialised once before constructing any entity.
   initializeReflection();

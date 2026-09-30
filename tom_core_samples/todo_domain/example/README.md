@@ -31,6 +31,8 @@ every `print(...); // <text>` line must print a line ending in `<text>`, so a
 comment that tells the reader the wrong result fails the suite.
 
 Every example calls `initializeReflection()` once before constructing an
-entity — see the package [`README.md`](../README.md) for why. The form- and
+entity, from the seed the package generates for its tests,
+`../test/run_all_tests.reflection.dart` — the package ships no seed of its own;
+see the package [`README.md`](../README.md) for why. The form- and
 widget-level samples that *render* this model live in the Flutter showcases
 under [`tom_core_samples`](../../README.md).

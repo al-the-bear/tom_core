@@ -14,7 +14,7 @@ import 'package:core_client_sample/reflection_seed.dart';
 import 'package:core_client_sample/resources/app_texts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:todo_domain/todo_domain.dart' show TodoItem;
+import 'package:todo_domain/todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {

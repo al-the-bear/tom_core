@@ -16,6 +16,8 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:todo_domain/todo_domain.dart';
 
+import '../test/run_all_tests.reflection.dart';
+
 /// Installs [texts] as the application bundle. The keys are exactly the ones
 /// the framework asks for: `global.<enumtype>.<value>`, both segments lowercase.
 void installBundle(Map<String, dynamic> texts) =>

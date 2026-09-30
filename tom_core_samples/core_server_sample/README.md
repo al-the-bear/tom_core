@@ -679,8 +679,10 @@ database:
   parses, so the group cannot pass by rejecting everything
 
 The domain entities are observable `TomClass`es, so the suite calls
-`initializeReflection()` in `setUpAll` before constructing any of them; the
-records themselves are plain DTOs and need no setup.
+`initializeReflection()` in `setUpAll` before constructing any of them — the
+server's own seed, `bin/server_start.reflection.dart`, which reaches the entities
+through the server's imports (`todo_domain` ships none). The records themselves
+are plain DTOs and need no setup.
 
 `test/todo_health_config_test.dart` covers the one *configured* value an
 endpoint serves — `/health`'s `app.title` — with no database and no server: it

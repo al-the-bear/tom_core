@@ -25,6 +25,10 @@ import 'package:core_server_sample/core_server_sample.dart';
 import 'package:todo_domain/todo_domain.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
+// The program's own seed, the one `bin/server_start.dart` installs: the domain
+// ships none, and the server's covers the entities along with everything else.
+import '../bin/server_start.reflection.dart';
+
 void main() {
   // The domain entities are observable TomClasses; constructing one reflects
   // itself, so reflection must be live before any mapping runs.

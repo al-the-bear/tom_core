@@ -194,13 +194,15 @@ bootstrap) — see its `README.md` for the one-command bring-up.
 ## Reflection seeds
 
 Thirteen of the fifteen packages carry a generated `*.reflection.dart` — the
-reflection seed an entrypoint or a barrel installs with `initializeReflection()`.
+reflection seed a program or a test installs with `initializeReflection()`.
 The rule for them is the same in every package, decided once here:
 
 **Seeds are tracked, and kept equal to what the generator emits today.** They
 are not gitignored, because a fresh checkout must analyze, test and run without
-anyone running the generator first: `todo_domain` re-exports its seed through
-its public barrel, and every server entrypoint imports its own. And they are not
+anyone running the generator first: every server and client entrypoint
+imports its own, and each domain package's tests and examples import the one
+rooted at its `test/run_all_tests.dart`. No library barrel exports a seed — a
+consumer installs its own, so two would collide on `initializeReflection`. And they are not
 pinned to a generator version, because a pinned seed is one that no run of
 `./reflection_generation.sh` reproduces — a consumer who regenerates then sees a
 diff indistinguishable from a real model change.

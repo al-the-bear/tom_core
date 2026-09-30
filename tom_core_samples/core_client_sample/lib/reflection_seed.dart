@@ -31,10 +31,10 @@ import 'package:todo_domain/todo_domain.dart';
 export 'domain/login_credentials.dart';
 export 'forms/login_form.dart';
 export 'forms/todo_item_form.dart';
-// todo_domain is imported (above) for generator discovery but intentionally NOT
-// re-exported: its library carries its own `initializeReflection`, which would
-// collide with the one this seed exports below. Callers import todo_domain
-// directly for its entities.
+// todo_domain is imported (above) for generator discovery and not re-exported:
+// callers import todo_domain directly for its entities, and this file stays the
+// one place that says which reflection the program installs. todo_domain ships
+// no seed of its own, so nothing it exports competes with the one below.
 export 'reflection_seed.reflection.dart';
 
 // The reflection generator treats this file as a runnable program and requires

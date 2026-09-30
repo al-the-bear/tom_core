@@ -8,7 +8,7 @@ import 'package:core_client_sample/reflection_seed.dart';
 import 'package:core_client_sample/resources/app_texts.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:todo_domain/todo_domain.dart' hide initializeReflection;
+import 'package:todo_domain/todo_domain.dart';
 
 void main() {
   setUpAll(initializeReflection);

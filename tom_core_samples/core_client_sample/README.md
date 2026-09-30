@@ -270,9 +270,9 @@ exactly one seed's `initializeReflection()` may run per program. This app's seed
 (`lib/reflection_seed.dart`) is that one — and because the forms bind
 **cross-package** `todo_domain` entities (`TodoItem`, `User`) alongside the
 client-local `LoginCredentials`, the seed imports all of them so the generator
-emits one graph covering the lot. (`todo_domain` is imported for discovery but
-deliberately *not* re-exported, to avoid colliding with its own
-`initializeReflection`.)
+emits one graph covering the lot. (`todo_domain` ships no seed of its own —
+a library carries none — so importing its barrel beside this seed is
+unambiguous.)
 
 ---
 
