@@ -52,6 +52,7 @@ environment-variable substitution.
 | `TomYaml` | class | Loads YAML files with `${VAR:default}` substitution |
 | `tomAppId` | getter | Process-wide application id, read from the active configuration's `appId` |
 | `selectedRuntimeEnvironmentName` | function | Which runtime environment this deployment selected, read before any configuration exists: command line, then `.env`, then the OS environment |
+| `isDevelopmentOrTestRuntime` | function | Whether the current runtime environment is development or test; a boot that declared none is neither |
 
 ## The Resource Provider
 
@@ -521,6 +522,14 @@ misspelt setting or a value other than `true`/`false` throws
 `TomProtectionSettingException` and the server does not start: a tier believed
 off while it is on, or the reverse, is worse than a failed start. The kernel's
 security guide describes what each switch governs.
+
+Resource-key enforcement stays off by default on purpose: switching it on
+refuses every endpoint that declares no access and blanks every protected value
+nobody holds a grant for, which an application without configured grants cannot
+survive. A production deployment is expected to switch it on once its grants
+exist — `tom.protection.resourceKeys=true` — and a server that boots with it off
+outside a development or test environment says so in a warning
+(`TomServer.warnOnUnenforcedResourceKeys`), without refusing to start.
 
 ## Deployment Settings
 
@@ -997,7 +1006,7 @@ falsifiable from the suite, as is each limitation it admits to.
 | ---------- | ---- | ----------- | --- |
 | `dart:io` | dart | `base_server_configuration.dart`, `runtime_environment.dart`, `yaml_resources.dart` | `File`, `Platform` |
 | `shelf` | package | `base_server_configuration.dart` | the `Middleware` / `Handler` / `Request` / `Response` types used by the configuration's handler fields |
-| `tom_core_kernel` | package | `base_server_configuration.dart`, `yaml_resources.dart` | `tomReflector`, `getObjectFromTree`, `mergeMapsOneSided`, `makeCleanJsonMap`, `substituteEnvVars` |
+| `tom_core_kernel` | package | `base_server_configuration.dart`, `runtime_environment.dart`, `yaml_resources.dart` | `tomReflector`, `getObjectFromTree`, `mergeMapsOneSided`, `makeCleanJsonMap`, `substituteEnvVars`, `TomRuntime` |
 | `yaml` | package | `yaml_resources.dart` | YAML parsing for `TomYaml` |
 | [cmdline](cmdline.md) | module | `base_server_configuration.dart`, `runtime_environment.dart` | `TomArgs` and `TomEnvFile` (source parsing/merging) |
 | [little_things](little_things.md) | module | `tom_config.dart` | `TomServerException` |

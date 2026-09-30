@@ -871,6 +871,90 @@ void main() {
     });
   });
 
+  // Resource-key enforcement is off by default (see TomResourceKeyProtection),
+  // and the cost of that default is a production server whose grants bind
+  // nothing. The boot names it outside development and test, and only there.
+  group('unenforced resource keys announce themselves', () {
+    late _CapturingLogOutput captured;
+    late TomLogOutput installed;
+
+    setUp(() {
+      TomServerConfigResourceProvider.setServerConfigProvider(
+        TomServerConfigResourceProvider.from({}),
+      );
+      TomResourceKeyProtection.restoreDefaults();
+      TomRuntime.reset();
+      installed = tomLog.logOutput;
+      captured = _CapturingLogOutput();
+      tomLog.logOutput = captured;
+    });
+
+    tearDown(() {
+      tomLog.logOutput = installed;
+      TomResourceKeyProtection.restoreDefaults();
+      TomRuntime.reset();
+    });
+
+    void selectEnvironment({required bool development}) {
+      TomRuntime.addEnvironment(
+        TomEnvironment(
+          development ? 'dev' : 'prod',
+          isDevelopment: development,
+          isTest: development,
+        ),
+      );
+      TomRuntime.setCurrentEnvironment(development ? 'dev' : 'prod', '');
+    }
+
+    String warning() => captured.messages
+        .where((m) => m.contains('tom.protection.resourceKeys'))
+        .join('\n');
+
+    test('a production server with the default is warned about', () {
+      selectEnvironment(development: false);
+      TomServer(_NoopConfig()).warnOnUnenforcedResourceKeys();
+      // What is happening, and the setting that changes it.
+      expect(warning(), contains('not enforced'));
+      expect(warning(), contains('tom.protection.resourceKeys=true'));
+    });
+
+    test('a server that declared no environment is warned about', () {
+      // Silence about the environment is read strictly, as the JWT signing
+      // check reads it: not having said "development" is not development.
+      TomServer(_NoopConfig()).warnOnUnenforcedResourceKeys();
+      expect(warning(), isNotEmpty);
+    });
+
+    test('a development server is silent', () {
+      selectEnvironment(development: true);
+      TomServer(_NoopConfig()).warnOnUnenforcedResourceKeys();
+      expect(captured.messages, isEmpty);
+    });
+
+    test('a server that enforces resource keys is silent', () {
+      selectEnvironment(development: false);
+      TomResourceKeyProtection.globalSettingProtectionDefault = true;
+      TomServer(_NoopConfig()).warnOnUnenforcedResourceKeys();
+      expect(captured.messages, isEmpty);
+    });
+
+    test('start() calls it before the socket is bound', () {
+      final lines = File(
+        'lib/src/tomserver/server/server.dart',
+      ).readAsLinesSync();
+      final call = lines.indexWhere(
+        (l) => l.contains('warnOnUnenforcedResourceKeys();'),
+      );
+      final bind = lines.indexWhere((l) => l.contains('await serve('));
+      expect(
+        call,
+        greaterThanOrEqualTo(0),
+        reason: 'start() no longer announces unenforced resource keys',
+      );
+      expect(bind, greaterThan(call));
+    });
+  });
+
   // Pins the default error-mapping contract documented on TomServer.errorHandler
   // every thrown error becomes an HTTP-500 JSON response carrying
   // `x-tom-error: true` and an `errorType`; a TomException contributes

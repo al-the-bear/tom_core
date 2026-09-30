@@ -11,6 +11,7 @@ import '../authentication/server_self_login.dart';
 import '../little_things/request_id.dart';
 import '../little_things/server_exception.dart';
 import '../configuration/base_server_configuration.dart';
+import '../configuration/runtime_environment.dart';
 import '../endpoints/endpoint_pipeline.dart';
 import '../authorization/authorization_cache.dart';
 import '../transactions/transaction_manager.dart';
@@ -529,6 +530,7 @@ class TomServer {
   /// is that ignoring it is now a choice rather than the only option.
   Future<HttpServer> start() async {
     await _installServerPrincipal();
+    warnOnUnenforcedResourceKeys();
 
     if (!configuration.noSsl) {
       warnOnDevelopmentTlsMaterial();
@@ -680,6 +682,38 @@ class TomServer {
       'published, so this server authenticates itself with a key anyone can '
       'read. Set certificateChain and privateKey for any deployment that is '
       'not a local development machine.',
+    );
+  }
+
+  /// Warns when this server is about to serve with resource-key grants
+  /// unenforced, outside a development or test environment.
+  ///
+  /// Enforcement ([TomResourceKeyProtection.globalSettingProtectionDefault],
+  /// setting `tom.protection.resourceKeys`) is off by default, deliberately:
+  /// turning it on refuses every endpoint without an access declaration and
+  /// blanks every protected value nobody holds a grant for, which an
+  /// application that has not configured grants yet cannot survive. The cost
+  /// of that default is a production deployment that never switches it on, and
+  /// whose grants are therefore decorative. The boot says so instead of
+  /// refusing: nothing changes, and a deployment that reads its logs has been
+  /// told which setting to change.
+  ///
+  /// Silent in a development or test environment, where the open default is
+  /// the point, and when enforcement is on.
+  ///
+  /// Public and separate from [start] for the reason
+  /// [warnOnDevelopmentTlsMaterial] is: `start()` binds a socket and returns
+  /// nothing observable about its boot.
+  void warnOnUnenforcedResourceKeys() {
+    if (TomResourceKeyProtection.globalSettingProtectionDefault) return;
+    if (isDevelopmentOrTestRuntime()) return;
+    tomLog.warn(
+      'Resource-key grants are not enforced: '
+      'tom.protection.resourceKeys is off, so every endpoint without an access '
+      'declaration is open and every protected value is shown, whatever the '
+      'caller holds. Set tom.protection.resourceKeys=true (a define or an '
+      'argument) once grants are configured, or run under a development or '
+      'test environment to silence this warning.',
     );
   }
 

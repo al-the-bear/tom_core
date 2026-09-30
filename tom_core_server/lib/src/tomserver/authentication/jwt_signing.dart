@@ -17,6 +17,7 @@ import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart' as jwt;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../configuration/base_server_configuration.dart';
+import '../configuration/runtime_environment.dart';
 import '../little_things/server_exception.dart';
 
 /// A server would have signed tokens with key material it did not configure.
@@ -65,22 +66,6 @@ String? _configured(String? value) {
   if (value == null) return null;
   final trimmed = value.trim();
   return trimmed.isEmpty ? null : trimmed;
-}
-
-/// Whether the active runtime environment is a development or test one.
-///
-/// A boot that never called `TomRuntime.setCurrentEnvironment` has no current
-/// environment, and [TomRuntime.getCurrentEnvironment] throws for it. That is
-/// resolved here to `false` rather than propagated: a deployment that never
-/// said it was a development server has not said so, and the safe reading of
-/// silence is the strict one.
-bool _isDevelopmentOrTest() {
-  try {
-    final environment = TomRuntime.getCurrentEnvironment();
-    return environment.isDevelopment || environment.isTest;
-  } catch (_) {
-    return false;
-  }
 }
 
 /// Builds the JWT signing configuration from [configuration]'s key material,
@@ -141,7 +126,8 @@ TomJwtConfiguration installJwtSigning(
   if (pubPem == null) unconfigured.add('jwtRsaPubKey');
 
   if (unconfigured.isNotEmpty) {
-    if (!_isDevelopmentOrTest()) throw TomSigningKeyException(unconfigured);
+    if (!isDevelopmentOrTestRuntime())
+      throw TomSigningKeyException(unconfigured);
     tomLog.warn(
       'JWT signing falls back to the framework\'s bundled sample keys for '
       '${unconfigured.join(', ')}. Those keys are published in the tom_crypto '

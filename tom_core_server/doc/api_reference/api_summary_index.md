@@ -231,6 +231,7 @@ surface documented here.
 | `TomConfigurationException` | class | A property failed the cast to `T` (extends `TomServerException`). |
 | `tomAppId` | top-level getter | The current application id, read from the active configuration's `appId`. |
 | `selectedRuntimeEnvironmentName` | top-level function | Which runtime environment the deployment selected, read before the configuration exists: command line, then `.env`, then the OS environment. |
+| `isDevelopmentOrTestRuntime` | top-level function | Whether the current runtime environment is a development or test one; a boot that declared none is neither. |
 
 ### Datasources (`lib/src/tomserver/datasources/`)
 
@@ -641,6 +642,7 @@ surface documented here.
 | `installJwtSigning` | Authentication |
 | `IntCol` | Object Persistence |
 | `IntegerLiteral` | Object Persistence |
+| `isDevelopmentOrTestRuntime` | Configuration |
 | `isLostConnectionFailure` | Datasources |
 | `IsNotNull` | Object Persistence |
 | `IsNull` | Object Persistence |

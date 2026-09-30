@@ -587,7 +587,13 @@ if (!tomProtected('user.salary')) {
 
 The master switch is the first thing to get right, because the default is
 fail-*open*: an application that never sets it can call `tomProtect` on every
-sensitive field it has and still serve all of them. Set it once at start-up.
+sensitive field it has and still serve all of them. Set it once at start-up —
+`tom.protection.resourceKeys=true`, as a define or an argument. It stays off by
+default because switching it on refuses every endpoint that declares no access
+and blanks every protected value nobody holds a grant for, which an application
+without configured grants cannot survive. A `tom_core_server` deployment that
+boots with it off outside a development or test environment logs a warning
+saying so.
 
 **What a principal holds.** A principal holds a resource key through either of
 its two resource grants, and the two are one answer:

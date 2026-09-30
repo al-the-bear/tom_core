@@ -6,6 +6,15 @@
   as its last ascending sort term when it cuts a window and does not already
   sort on the key. It is the rule the repository applies to every paged read,
   moved onto the page request so it can be tested without a database.
+- **A server that boots with resource-key grants unenforced says so.**
+  `tom.protection.resourceKeys` stays off by default — enforcing it refuses
+  every endpoint that declares no access in an application without grants —
+  so `start()` now warns through `TomServer.warnOnUnenforcedResourceKeys` when
+  it is off outside a development or test environment, naming the setting.
+  Nothing refuses to start.
+- **`isDevelopmentOrTestRuntime()`**, the check JWT signing already made
+  privately, is now a public function in `configuration/runtime_environment.dart`
+  shared by both.
 
 ### Changed
 

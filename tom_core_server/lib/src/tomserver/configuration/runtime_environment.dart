@@ -10,6 +10,8 @@ library;
 
 import 'dart:io';
 
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
 import '../cmdline/args.dart';
 import '../cmdline/env_file.dart';
 
@@ -51,4 +53,24 @@ String? selectedRuntimeEnvironmentName(
   if (fromEnvFile != null) return fromEnvFile.toString();
 
   return Platform.environment[variable];
+}
+
+/// Whether the active runtime environment is a development or test one.
+///
+/// The question the server asks before it relaxes something for convenience:
+/// signing with the bundled sample keys, or booting with resource-key grants
+/// unenforced without a warning.
+///
+/// A boot that never called `TomRuntime.setCurrentEnvironment` has no current
+/// environment, and [TomRuntime.getCurrentEnvironment] throws for it. That is
+/// resolved here to `false` rather than propagated: a deployment that never
+/// said it was a development server has not said so, and the safe reading of
+/// silence is the strict one.
+bool isDevelopmentOrTestRuntime() {
+  try {
+    final environment = TomRuntime.getCurrentEnvironment();
+    return environment.isDevelopment || environment.isTest;
+  } catch (_) {
+    return false;
+  }
 }
