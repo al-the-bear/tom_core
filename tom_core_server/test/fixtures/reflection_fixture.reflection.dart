@@ -4359,8 +4359,12 @@ final _data = <r.Reflection, r.ReflectorData>{
         {},
         {
           r'': (bool b) =>
-              ([queryTypes, resultType]) =>
-                  b ? prefix90.MariadbRepository(queryTypes, resultType) : null,
+              ([queryTypes, resultType]) => b
+              ? prefix90.MariadbRepository<Object, dynamic>(
+                  queryTypes,
+                  resultType,
+                )
+              : null,
         },
         26,
         86,
@@ -6802,13 +6806,19 @@ final _data = <r.Reflection, r.ReflectorData>{
         {},
         {
           r'': (bool b) =>
-              () => b ? prefix29.TomList() : null,
+              () => b ? prefix29.TomList<prefix29.TomObject<dynamic>>() : null,
           r'from': (bool b) =>
-              (existing) => b ? prefix29.TomList.from(existing) : null,
+              (existing) => b
+              ? prefix29.TomList<prefix29.TomObject<dynamic>>.from(existing)
+              : null,
           r'of': (bool b) =>
-              (existing) => b ? prefix29.TomList.of(existing) : null,
+              (existing) => b
+              ? prefix29.TomList<prefix29.TomObject<dynamic>>.of(existing)
+              : null,
           r'ofList': (bool b) =>
-              (list) => b ? prefix29.TomList.ofList(list) : null,
+              (list) => b
+              ? prefix29.TomList<prefix29.TomObject<dynamic>>.ofList(list)
+              : null,
         },
         40,
         132,
@@ -6919,13 +6929,25 @@ final _data = <r.Reflection, r.ReflectorData>{
         {},
         {
           r'': (bool b) =>
-              () => b ? prefix29.TomMap() : null,
+              () => b
+              ? prefix29.TomMap<dynamic, prefix29.TomObject<dynamic>>()
+              : null,
           r'from': (bool b) =>
-              (existing) => b ? prefix29.TomMap.from(existing) : null,
+              (existing) => b
+              ? prefix29.TomMap<dynamic, prefix29.TomObject<dynamic>>.from(
+                  existing,
+                )
+              : null,
           r'of': (bool b) =>
-              (existing) => b ? prefix29.TomMap.of(existing) : null,
+              (existing) => b
+              ? prefix29.TomMap<dynamic, prefix29.TomObject<dynamic>>.of(
+                  existing,
+                )
+              : null,
           r'ofMap': (bool b) =>
-              (map) => b ? prefix29.TomMap.ofMap(map) : null,
+              (map) => b
+              ? prefix29.TomMap<dynamic, prefix29.TomObject<dynamic>>.ofMap(map)
+              : null,
         },
         40,
         133,
@@ -7011,7 +7033,9 @@ final _data = <r.Reflection, r.ReflectorData>{
         {},
         {
           r'': (bool b) =>
-              (_callback) => b ? prefix27.TomFunctionObserver(_callback) : null,
+              (_callback) => b
+              ? prefix27.TomFunctionObserver<prefix27.TomObservable>(_callback)
+              : null,
         },
         41,
         136,
@@ -7099,7 +7123,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         {
           r'': (bool b) =>
               (initialValue, {values, scope}) => b
-              ? prefix28.TomObservableEnum(
+              ? prefix28.TomObservableEnum<Enum>(
                   initialValue,
                   scope: scope,
                   values: values,
@@ -13080,7 +13104,7 @@ final _data = <r.Reflection, r.ReflectorData>{
                 toDbConverter,
                 columnType,
               }) => b
-              ? prefix93.TomDbColumn(
+              ? prefix93.TomDbColumn<dynamic, prefix68.TomDbType<dynamic>>(
                   authKey: authKey,
                   columnName: columnName,
                   columnType: columnType,

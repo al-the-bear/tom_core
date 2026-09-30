@@ -1030,8 +1030,11 @@ final _data = <r.Reflection, r.ReflectorData>{
         {},
         {
           r'': (bool b) =>
-              (_callback) =>
-                  b ? prefix166.TomFunctionObserver(_callback) : null,
+              (_callback) => b
+              ? prefix166.TomFunctionObserver<prefix166.TomObservable>(
+                  _callback,
+                )
+              : null,
         },
         7,
         11,
@@ -1119,7 +1122,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         {
           r'': (bool b) =>
               (initialValue, {values, scope}) => b
-              ? prefix167.TomObservableEnum(
+              ? prefix167.TomObservableEnum<Enum>(
                   initialValue,
                   scope: scope,
                   values: values,
@@ -2601,13 +2604,20 @@ final _data = <r.Reflection, r.ReflectorData>{
         {},
         {
           r'': (bool b) =>
-              () => b ? prefix168.TomList() : null,
+              () =>
+                  b ? prefix168.TomList<prefix168.TomObject<dynamic>>() : null,
           r'from': (bool b) =>
-              (existing) => b ? prefix168.TomList.from(existing) : null,
+              (existing) => b
+              ? prefix168.TomList<prefix168.TomObject<dynamic>>.from(existing)
+              : null,
           r'of': (bool b) =>
-              (existing) => b ? prefix168.TomList.of(existing) : null,
+              (existing) => b
+              ? prefix168.TomList<prefix168.TomObject<dynamic>>.of(existing)
+              : null,
           r'ofList': (bool b) =>
-              (list) => b ? prefix168.TomList.ofList(list) : null,
+              (list) => b
+              ? prefix168.TomList<prefix168.TomObject<dynamic>>.ofList(list)
+              : null,
         },
         9,
         36,
@@ -2718,13 +2728,27 @@ final _data = <r.Reflection, r.ReflectorData>{
         {},
         {
           r'': (bool b) =>
-              () => b ? prefix168.TomMap() : null,
+              () => b
+              ? prefix168.TomMap<dynamic, prefix168.TomObject<dynamic>>()
+              : null,
           r'from': (bool b) =>
-              (existing) => b ? prefix168.TomMap.from(existing) : null,
+              (existing) => b
+              ? prefix168.TomMap<dynamic, prefix168.TomObject<dynamic>>.from(
+                  existing,
+                )
+              : null,
           r'of': (bool b) =>
-              (existing) => b ? prefix168.TomMap.of(existing) : null,
+              (existing) => b
+              ? prefix168.TomMap<dynamic, prefix168.TomObject<dynamic>>.of(
+                  existing,
+                )
+              : null,
           r'ofMap': (bool b) =>
-              (map) => b ? prefix168.TomMap.ofMap(map) : null,
+              (map) => b
+              ? prefix168.TomMap<dynamic, prefix168.TomObject<dynamic>>.ofMap(
+                  map,
+                )
+              : null,
         },
         9,
         37,
@@ -4653,7 +4677,7 @@ final _data = <r.Reflection, r.ReflectorData>{
                 actionIconTooltip,
                 onActionIconPressed,
               }) => b
-              ? prefix191.TomCupertinoFormEnumSegmented(
+              ? prefix191.TomCupertinoFormEnumSegmented<Object>(
                   tomId,
                   initialValue,
                   actionIcon: actionIcon,
@@ -26283,8 +26307,9 @@ final _data = <r.Reflection, r.ReflectorData>{
         {},
         {
           r'': (bool b) =>
-              ({start, end}) =>
-                  b ? prefix48.DateTimeRange(end: end, start: start) : null,
+              ({start, end}) => b
+              ? prefix48.DateTimeRange<DateTime>(end: end, start: start)
+              : null,
         },
         61,
         272,
@@ -27506,7 +27531,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         {},
         {
           r'': (bool b) =>
-              (low, high) => b ? prefix209.NumRange(low, high) : null,
+              (low, high) => b ? prefix209.NumRange<num>(low, high) : null,
         },
         34,
         285,
@@ -35569,7 +35594,9 @@ final _data = <r.Reflection, r.ReflectorData>{
         {},
         {
           r'': (bool b) =>
-              (target) => b ? prefix28.HitTestEntry(target) : null,
+              (target) => b
+              ? prefix28.HitTestEntry<prefix28.HitTestTarget>(target)
+              : null,
         },
         97,
         394,

@@ -14,8 +14,8 @@
   `TomFilePickerDecorationMixin`, `TomChipsDecorationMixin` and
   `TomMultilineInputDecorationMixin` declared no members and nothing mixed them
   in: every family they were reserved for shipped with
-  `TomGenericFieldDecorationMixin`. The `forms` barrel exports 202 types. A
-  family that needs its own anatomy declares its own mixin then.
+  `TomGenericFieldDecorationMixin`. A family that needs its own anatomy
+  declares its own mixin then.
 - **`custom/readme.md` names `TomErrorBoundary.debugDefaultFallback`**, which
   the module-readme inventory test requires of every public static.
 - **A `TomErrorBoundary` whose own `fallbackBuilder` throws no longer goes
