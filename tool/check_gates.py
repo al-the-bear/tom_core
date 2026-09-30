@@ -47,6 +47,8 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
+import os
+import signal
 import subprocess
 import sys
 import time
@@ -70,15 +72,22 @@ CANNOT_RUN_EXIT = 2
 
 #: How long one gate may run before it is stopped and reported `timed-out`.
 #:
-#: Derived from a measured run rather than guessed. Timed one by one on
-#: 2026-09-30 (mbp), the slowest gate took 43 s cold -- the analyzer-backed
-#: ones cache their clean verdicts (gate_cache.py), so a warm run is a few
-#: seconds -- and the whole suite about four minutes. Twenty times the slowest
-#: gate leaves room for a loaded machine and a cold pub cache, and is still
-#: short enough that a gate which genuinely hangs is noticed within a run.
-#: `--timings` prints what each gate took, which is the number to revisit this
-#: against.
+#: Derived from a measured run rather than guessed: the whole suite in
+#: sequence, as this runner runs it, on 2026-09-30 (mbp) with the verdict cache
+#: (gate_cache.py) emptied first. The slowest gate took 41.3 s
+#: (`check_dartdoc_build`, which is not cached), the analyzer-backed pair 23.5 s
+#: and 22.7 s cold -- a fraction of that warm -- and the suite 3 min 13 s. The
+#: limit is about twenty times the slowest gate: room for a loaded machine and a
+#: cold pub cache, and still short enough that a gate which genuinely hangs is
+#: noticed within a run. Why earlier runs overran the old 600 s limit was never
+#: established; one candidate is gone -- a killed gate no longer leaves its
+#: `dart analyze` running into the next one (see [_stop_tree]). `--timings`
+#: prints what each gate took, which is the number to revisit this against.
 GATE_TIMEOUT_SECONDS = 900
+
+#: How long to wait for a killed gate's remaining output. Its whole process
+#: group is gone by then, so this only matters when something escaped the kill.
+POST_KILL_READ_SECONDS = 10
 
 
 def gate_scripts() -> list[Path]:
@@ -114,31 +123,66 @@ def fault_count(output: str) -> int | None:
 GATE_ENV, ADDED_DART = environment_with_dart()
 
 
-def run_gate(script: Path) -> dict:
+def _stop_tree(process: subprocess.Popen) -> None:
+    """Kill [process] and everything it started.
+
+    A gate is a Python process that shells out -- to `dart analyze`, which may
+    itself start an analysis server. Killing only the gate orphans those, and
+    an orphaned analyzer keeps working through the gates that run after it,
+    which is one way a gate that takes seconds alone can be slow in sequence.
+    So each gate is started as the leader of its own process group, and the
+    group is what is killed.
+    """
+    if sys.platform == "win32":
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(process.pid)],
+                       capture_output=True)
+    else:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
+def run_gate(script: Path, timeout: float = GATE_TIMEOUT_SECONDS) -> dict:
     """Run one gate and describe what happened, without judging it yet."""
     started = time.monotonic()
+    process = subprocess.Popen(
+        [sys.executable, str(script)],
+        cwd=REPO_ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=GATE_ENV,
+        start_new_session=sys.platform != "win32",
+        creationflags=(subprocess.CREATE_NEW_PROCESS_GROUP
+                       if sys.platform == "win32" else 0),
+    )
     try:
-        done = subprocess.run(
-            [sys.executable, str(script)],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=GATE_TIMEOUT_SECONDS,
-            env=GATE_ENV,
-        )
+        stdout, stderr = process.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
+        _stop_tree(process)
+        try:
+            # Bounded as well: a process that escaped the kill still holds the
+            # pipes, and an unbounded read would wait for it -- the runner
+            # hanging past the very limit it just enforced.
+            stdout, stderr = process.communicate(timeout=POST_KILL_READ_SECONDS)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            stdout = stderr = ""
+        printed = (stdout + stderr).strip().splitlines()
         return {"name": script.stem, "faults": None, "exit": None,
-                "timed_out": True,
+                "timed_out": True, "limit": timeout,
                 "seconds": round(time.monotonic() - started, 1),
-                "output": f"timed out after {GATE_TIMEOUT_SECONDS}s"}
+                "output": (stdout + stderr).strip(),
+                "last_line": printed[-1] if printed else None}
     return {
         "name": script.stem,
-        "faults": fault_count(done.stdout),
-        "exit": done.returncode,
+        "faults": fault_count(stdout),
+        "exit": process.returncode,
         "timed_out": False,
         "seconds": round(time.monotonic() - started, 1),
-        "output": (done.stdout + done.stderr).strip(),
-        "stderr": done.stderr.strip(),
+        "output": (stdout + stderr).strip(),
+        "stderr": stderr.strip(),
     }
 
 
@@ -156,12 +200,19 @@ def judge(run: dict, baselines: dict) -> dict:
         # Told apart from a gate that finished without its count line: the
         # remedy is the opposite one. This gate was stopped, not silent, and
         # the old message sent readers to add a `report_faults` it already had.
+        limit = run.get("limit", GATE_TIMEOUT_SECONDS)
+        last = run.get("last_line")
         result["status"] = "timed-out"
+        result["limit"] = limit
         result["message"] = (
-            f"{name} was stopped after {GATE_TIMEOUT_SECONDS}s before it "
-            f"reported a count. Its content has not been judged. Run it alone "
-            f"to see whether it is slow or stuck, and see GATE_TIMEOUT_SECONDS "
-            f"in check_gates.py.")
+            f"{name} was stopped after the {limit:g}s limit, before it "
+            f"reported a count; it and every process it started were killed. "
+            f"Its content has not been judged -- this is not a missing "
+            f"'{FAULT_LINE}:' line. "
+            + (f"The last thing it printed was: {last}. " if last
+               else "It printed nothing before it was stopped. ")
+            + "Run it alone to see whether it is slow or stuck, and see "
+            "GATE_TIMEOUT_SECONDS in check_gates.py.")
         return result
 
     if faults is None and run["exit"] == CANNOT_RUN_EXIT:
@@ -216,6 +267,17 @@ def judge(run: dict, baselines: dict) -> dict:
     return result
 
 
+def row_text(result: dict) -> str:
+    """What a gate's summary row says in place of a count it does not have."""
+    if result["faults"] is not None:
+        return f"{result['faults']} fault(s)"
+    if result["status"] == "timed-out":
+        return f"timed out after {result['limit']:g}s"
+    if result["status"] == "cannot-run":
+        return "not measured"
+    return "no count"
+
+
 def stale_entries(baselines: dict, names: set[str]) -> list[str]:
     """Baselines naming a gate that no longer exists."""
     return sorted(set(baselines) - names)
@@ -258,6 +320,84 @@ ABOUT = (
 )
 
 
+#: Where --self-test writes the throwaway gates it runs. Under the gitignored
+#: tool/ztmp/, and never matched by [gate_scripts], which globs tool/ only.
+SELF_TEST_DIR = TOOL_DIR / "ztmp" / "check_gates_self_test"
+
+_STALLING_GATE = """\
+import subprocess, sys, time
+child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"])
+open(sys.argv[0] + ".child", "w").write(str(child.pid))
+print("stalled on artifact reflection_entry.reflection.dart", flush=True)
+time.sleep(120)
+"""
+
+
+def _alive(pid: int) -> bool:
+    """Whether [pid] is still running. A zombie is not: it has exited."""
+    state = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)],
+                           capture_output=True, text=True).stdout.strip()
+    return bool(state) and not state.startswith("Z")
+
+
+def self_test() -> int:
+    """Run throwaway gates that stall, stay silent and refuse, and check that
+    each is reported as what it is.
+
+    The stalling one starts a child of its own, as a gate running `dart`
+    does, so the test also checks that a timeout leaves nothing running.
+    """
+    SELF_TEST_DIR.mkdir(parents=True, exist_ok=True)
+    failures: list[str] = []
+
+    def gate(name: str, body: str) -> Path:
+        path = SELF_TEST_DIR / f"{name}.py"
+        path.write_text(body, encoding="utf-8")
+        return path
+
+    stalling = gate("check_stalling", _STALLING_GATE)
+    run = run_gate(stalling, timeout=3)
+    result = judge(run, {})
+    if result["status"] != "timed-out":
+        failures.append(f"a stalled gate was judged {result['status']!r}")
+    if "3s" not in (result.get("message") or ""):
+        failures.append("the timeout message does not name the 3s limit")
+    if "reflection_entry.reflection.dart" not in (result.get("message") or ""):
+        failures.append("the timeout message drops the gate's last line")
+    if "report_faults" in (result.get("message") or ""):
+        failures.append("the timeout message sends the reader to report_faults")
+    if row_text(result) != "timed out after 3s":
+        failures.append(f"the timed-out row reads {row_text(result)!r}")
+    if sys.platform != "win32":
+        child = int(Path(f"{stalling}.child").read_text())
+        deadline = time.monotonic() + 5
+        while _alive(child) and time.monotonic() < deadline:
+            time.sleep(0.1)
+        if _alive(child):
+            os.kill(child, signal.SIGKILL)
+            failures.append("a timed-out gate left the process it started "
+                            "running")
+
+    silent = judge(run_gate(gate("check_silent", "print('done')\n")), {})
+    if silent["status"] != "no-count" or "report_faults" not in silent["message"]:
+        failures.append(f"a gate without a count line was judged "
+                        f"{silent['status']!r}")
+    if row_text(silent) != "no count":
+        failures.append(f"the no-count row reads {row_text(silent)!r}")
+
+    refusing = judge(run_gate(gate(
+        "check_refusing",
+        "import sys\nprint('dart is not on PATH', file=sys.stderr)\n"
+        "sys.exit(2)\n")), {})
+    if refusing["status"] != "cannot-run":
+        failures.append(f"a refusing gate was judged {refusing['status']!r}")
+
+    for failure in failures:
+        print(f"self-test: {failure}", file=sys.stderr)
+    print(f"self-test: 3 throwaway gates, {len(failures)} failure(s)")
+    return 1 if failures else 0
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--json", action="store_true",
@@ -266,7 +406,12 @@ def main(argv: list[str]) -> int:
                         help="list what each gate took, slowest first")
     parser.add_argument("--update", action="store_true",
                         help="rewrite the baselines to the counts measured now")
+    parser.add_argument("--self-test", action="store_true",
+                        help="check the runner's own verdicts on throwaway "
+                             "gates that stall, stay silent and refuse")
     args = parser.parse_args(argv)
+    if args.self_test:
+        return self_test()
 
     baselines = read_baselines()
     scripts = gate_scripts()
@@ -307,7 +452,7 @@ def main(argv: list[str]) -> int:
         pinned = ("" if result["baseline"] in (None, 0)
                   else f"  (baseline {result['baseline']})")
         print(f"{mark}  {result['name']:<{width}}  "
-              f"{result['faults']} fault(s){pinned}")
+              f"{row_text(result)}{pinned}")
     for result in failed:
         print(f"\n{result['name']}: {result['status']}\n  {result['message']}")
     for problem in problems:

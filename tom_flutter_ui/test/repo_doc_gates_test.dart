@@ -235,5 +235,21 @@ void main() {
         );
       });
     }
+
+    // The runner is not discovered above -- it is not a gate -- but its own
+    // verdicts are a claim too: that a gate stopped at the time limit is
+    // reported as a timeout, with everything it started killed, and not as a
+    // gate that forgot its count line.
+    test('check_gates (the runner itself)', timeout: slow, () {
+      final result = _runPython(['tool/check_gates.py', '--self-test']);
+      expect(
+        result.exitCode,
+        0,
+        reason:
+            'check_gates.py --self-test failed: the runner no longer tells a '
+            'stalled, silent or refusing gate apart, or a timed-out gate left '
+            'a process running.\n${result.stdout}\n${result.stderr}',
+      );
+    });
   });
 }

@@ -175,6 +175,7 @@ for somebody to run it by hand.
 python3 tool/check_gates.py            # run them all, report, gate
 python3 tool/check_gates.py --update   # re-record the baselines to today
 python3 tool/check_gates.py --timings  # ... and list what each gate took
+python3 tool/check_gates.py --self-test  # check the runner's own verdicts
 ```
 
 Each gate is pinned to a fault count in
@@ -195,8 +196,14 @@ reports and never gates.
 
 Each gate gets `GATE_TIMEOUT_SECONDS` (fifteen minutes), set from a measured
 run with room for a loaded machine. A gate stopped at the budget is reported as
-`timed-out` — its content not judged — rather than as a gate that forgot its
-count, which is the opposite remedy. The analyzer-backed gates keep their
+`timed-out`, naming the limit and the last line the gate printed — its content
+not judged — rather than as a gate that forgot its count, which is the opposite
+remedy. Each gate runs as its own process group and the whole group is killed:
+a gate shells out to `dart analyze`, and an analyzer left running would compete
+with every gate after it, and hold the runner's pipes open past the limit it
+had just enforced. `--self-test` runs throwaway gates that stall (with a child
+process), stay silent and refuse, and checks the verdict on each and that
+nothing is left running. The analyzer-backed gates keep their
 clean verdicts in [`tool/gate_cache.py`](tool/gate_cache.py), keyed on every
 input the verdict depends on — the package, its path dependencies' sources, its
 resolved package config, the SDK and the gate itself — so a run after an
