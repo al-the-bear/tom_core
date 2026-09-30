@@ -27,7 +27,9 @@ void main() {
     final carol = out.substring(out.indexOf('To:      carol@example.com'));
     expect(bob, contains('Subject: Advanced Todo: 2 offene Vorgänge'));
     expect(bob, contains('Guten Morgen Bob Turing'));
-    expect(carol, contains('Subject: Advanced Todo: 1 open item(s)'));
+    // One item, so the singular: the digest picks the form, the bundle says it.
+    expect(carol, contains('Subject: Advanced Todo: 1 open item\n'));
+    expect(carol, contains('You have 1 open item.'));
     expect(carol, contains('Good morning Carol Hopper'));
 
     // The conditional lines are resources too, and only appear when true.

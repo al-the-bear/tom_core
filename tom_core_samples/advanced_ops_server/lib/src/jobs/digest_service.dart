@@ -413,20 +413,33 @@ class OpsDigestService {
         'product': productName,
         'sender': opsServiceUsername,
         'displayName': summary.displayName,
-        'openCount': summary.openCount,
-        // The two conditional sentences are resolved here, fully, and passed in
-        // as finished text. A template cannot say "only when there is an
-        // overdue count", and resolving the fragment *with its own parameters*
-        // matters: substitution is one pass over the map, so a fragment
-        // inserted with `{overdueCount}` still in it would resolve or not
-        // depending on map order.
+        // Every sentence that states a count, and the two conditional ones,
+        // are resolved here, fully, and passed in as finished text. A template
+        // can neither say "only when there is an overdue count" nor pick
+        // "item" or "items" by the number, so the digest picks the key and the
+        // bundle supplies the words. Resolving each fragment *with its own
+        // parameters* matters: substitution is one pass over the map, so a
+        // fragment inserted with `{openCount}` still in it would resolve or
+        // not depending on map order.
+        'openSummary': _counted(
+          opsDigestOpenSummarySubKey,
+          'openCount',
+          summary.openCount,
+          locale,
+        ),
+        'openLine': _counted(
+          opsDigestOpenLineSubKey,
+          'openCount',
+          summary.openCount,
+          locale,
+        ),
         'overdueLine': summary.overdueCount == 0
             ? ''
-            : email.requiredText(
-                opsDigestTemplateKey,
+            : _counted(
                 opsDigestOverdueSubKey,
-                locale: locale,
-                parameters: {'overdueCount': summary.overdueCount},
+                'overdueCount',
+                summary.overdueCount,
+                locale,
               ),
         'nextDueLine': next == null
             ? ''
@@ -439,6 +452,20 @@ class OpsDigestService {
       },
     );
   }
+
+  /// The sentence under [subKey] in the form [count] takes, with [count]
+  /// substituted as [parameter].
+  String _counted(
+    String subKey,
+    String parameter,
+    int count,
+    TomTextLocale? locale,
+  ) => email.requiredText(
+    opsDigestTemplateKey,
+    '$subKey.${opsCountForm(count)}',
+    locale: locale,
+    parameters: {parameter: count},
+  );
 
   /// The rendered message for one person, without queueing it.
   ///

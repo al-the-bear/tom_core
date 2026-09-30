@@ -3,16 +3,30 @@
 # A second locale is here to be *used*, not to look complete: the digest picks
 # a bundle from the recipient's locale, and a suite that shipped one language
 # would demonstrate the selection with nothing to select between.
+#
+# The key layout is the English bundle's; see there for why counted sentences
+# come in `one` / `other` forms. German also shows why the subject's count and
+# the body's are two keys: the subject is nominative ("1 offener Vorgang"), the
+# body's object accusative ("Sie haben 1 offenen Vorgang").
 email:
   ops_digest:
-    subject: "{product}: {openCount} offene Vorgänge"
+    subject: "{product}: {openSummary}"
     text: |
       Guten Morgen {displayName},
 
-      Sie haben {openCount} offene Vorgänge.
+      {openLine}
       {overdueLine}{nextDueLine}
       — {product}, gesendet von {sender}
-    overdue_line: |
-      {overdueCount} davon sind überfällig.
+    open_summary:
+      one: "{openCount} offener Vorgang"
+      other: "{openCount} offene Vorgänge"
+    open_line:
+      one: "Sie haben {openCount} offenen Vorgang."
+      other: "Sie haben {openCount} offene Vorgänge."
+    overdue_line:
+      one: |
+        {overdueCount} davon ist überfällig.
+      other: |
+        {overdueCount} davon sind überfällig.
     next_due_line: |
       Der nächste ist am {nextDue} fällig.

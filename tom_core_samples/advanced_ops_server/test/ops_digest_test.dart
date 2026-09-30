@@ -116,7 +116,7 @@ void main() {
       await pumpEventQueue();
 
       expect(transport.count, 1);
-      expect(transport.last?.subject, contains('3 open item(s)'));
+      expect(transport.last?.subject, contains('3 open items'));
     });
 
     test(
@@ -426,8 +426,10 @@ void main() {
       final german = service.composeFor(summaries[0], now);
       final english = service.composeFor(summaries[1], now);
 
-      expect(german.subject, contains('offene Vorgänge'));
-      expect(english.subject, contains('open item(s)'));
+      // Language only: the counts differ per recipient, and which form each
+      // takes is the singular group's business.
+      expect(german.subject, matches(RegExp('Vorg(ang|änge)')));
+      expect(english.subject, contains('open item'));
     });
   });
 
@@ -516,7 +518,7 @@ void main() {
       // any other, not a sentence the Dart assembled.
       expect(german.textBody?.content, contains('2 davon sind überfällig'));
 
-      expect(english.subject, contains('open item(s)'));
+      expect(english.subject, contains('open items'));
       expect(english.textBody?.content, contains('Good morning'));
     });
 
@@ -545,9 +547,75 @@ void main() {
     );
   });
 
+  group('a count of one is singular, in every shipped language', () {
+    final outbox = TomMessageOutbox(
+      router: TomMessageRouter([TomMemoryMessageTransport()]),
+      store: TomMemoryJobStore(),
+    );
+    final service = _service(_FakeAudience(const []), outbox);
+
+    tearDownAll(outbox.close);
+
+    TomMessage compose(int open, int overdue, [String? tag]) =>
+        service.composeFor(
+          _summary(
+            1,
+            open: open,
+            overdue: overdue,
+            locale: tag == null ? null : TomTextLocale(tag),
+          ),
+          DateTime.utc(2026, 8, 2),
+        );
+
+    test('English: one item and one overdue read in the singular', () {
+      final one = compose(1, 1);
+      expect(one.subject, endsWith(': 1 open item'));
+      expect(one.textBody?.content, contains('You have 1 open item.'));
+      expect(
+        one.textBody?.content,
+        contains('1 of them is past its due date.'),
+      );
+      expect(one.subject, isNot(contains('(s)')));
+      expect(one.textBody?.content, isNot(contains('(s)')));
+    });
+
+    test('English: several read in the plural', () {
+      final many = compose(3, 2);
+      expect(many.subject, endsWith(': 3 open items'));
+      expect(many.textBody?.content, contains('You have 3 open items.'));
+      expect(
+        many.textBody?.content,
+        contains('2 of them are past their due date.'),
+      );
+    });
+
+    test('German: one item and one overdue read in the singular', () {
+      // The subject is nominative and the body accusative, which is why they
+      // are two keys rather than one phrase used twice.
+      final one = compose(1, 1, 'de');
+      expect(one.subject, endsWith(': 1 offener Vorgang'));
+      expect(one.textBody?.content, contains('Sie haben 1 offenen Vorgang.'));
+      expect(one.textBody?.content, contains('1 davon ist überfällig.'));
+    });
+
+    test('German: several read in the plural', () {
+      final many = compose(3, 2, 'de');
+      expect(many.subject, endsWith(': 3 offene Vorgänge'));
+      expect(many.textBody?.content, contains('Sie haben 3 offene Vorgänge.'));
+      expect(many.textBody?.content, contains('2 davon sind überfällig.'));
+    });
+
+    test('the form is chosen by the count alone', () {
+      expect(opsCountForm(1), 'one');
+      for (final count in [0, 2, 11, 21, 101]) {
+        expect(opsCountForm(count), 'other', reason: 'count $count');
+      }
+    });
+  });
+
   group('the shipped text bundles', () {
     test('carry every key the digest resolves, in every locale', () {
-      // The digest reads four keys; a bundle missing one fails a send rather
+      // The digest reads nine keys; a bundle missing one fails a send rather
       // than a build, so this is the test that turns a translation gap into a
       // red suite instead of a blank line in somebody's mail.
       final texts = OpsTexts.load();
@@ -557,8 +625,11 @@ void main() {
         for (final subKey in [
           'subject',
           'text',
-          opsDigestOverdueSubKey,
           opsDigestNextDueSubKey,
+          // A counted sentence is two keys, one per form, and a locale that
+          // carries only one of them renders a count it cannot say.
+          for (final counted in opsDigestCountedSubKeys)
+            for (final form in opsCountForms) '$counted.$form',
         ]) {
           // `isTranslated`, not `exists`: the latter follows the fallback
           // chain and would answer yes for an entirely empty German bundle.

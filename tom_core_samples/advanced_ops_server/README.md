@@ -121,6 +121,18 @@ template cannot express "only when", and the alternative — conditionals in the
 resource format — is the first step of a second template engine beside the one
 the client bundles already use.
 
+Every sentence that states a count is resolved the same way, for the same
+reason: a template substitutes `{count}` into one sentence, and "1 open item(s)"
+is what that produces. The framework's text resources choose no sentence by
+count, so the digest does — each counted key (`open_summary`, `open_line`,
+`overdue_line`) carries a `one` and an `other` form, `opsCountForm` picks one
+from the number by CLDR's rule for English and German, and the bundle supplies
+every word. The subject's count and the body's are separate keys because German
+declines them differently: "1 offener Vorgang" in the subject, "Sie haben 1
+offenen Vorgang" in the body. A third locale with more plural categories would
+extend `opsCountForms`, and the bundle test would then demand the new forms of
+every bundle.
+
 ## Identity: the narrow cap
 
 `lib/src/ops_identity.dart` holds two entitlement sets that differ by exactly
@@ -426,8 +438,13 @@ The localized bundle set the digest renders from.
 
 ```dart
 const String opsDigestTemplateKey
+const String opsDigestOpenSummarySubKey
+const String opsDigestOpenLineSubKey
 const String opsDigestOverdueSubKey
 const String opsDigestNextDueSubKey
+const List<String> opsDigestCountedSubKeys
+const List<String> opsCountForms
+String opsCountForm(int count)
 class OpsTexts
   static const String assetDirectory
   static const List<String> localeTags
@@ -444,7 +461,7 @@ Fourteen suites; all but `ops_live_test.dart` need no socket at all.
 | Suite | What it settles |
 | --- | --- |
 | `ops_retention_test.dart` | one `destroy` per candidate, each carrying an entity; the terminal-status filter; the unscoped pass |
-| `ops_digest_test.dart` | composition from template keys in two languages, that the shipped bundles carry every key the digest resolves, that an unknown template fails before anything is queued, the message id as idempotence key, and a failed send redelivered *without* recomposition |
+| `ops_digest_test.dart` | composition from template keys in two languages, the singular and plural of every counted sentence in both, that the shipped bundles carry every key the digest resolves (both forms of each counted one), that an unknown template fails before anything is queued, the message id as idempotence key, and a failed send redelivered *without* recomposition |
 | `ops_report_test.dart` | the rendered projection, the date-partitioned key, the window derived from `run.scheduledFor` |
 | `ops_anchor_test.dart` | the publisher's schedule — and that no `@TomScheduledJob` declares it |
 | `ops_jobs_test.dart` | every declared schedule, retry policy, timeout and overlap flag |

@@ -35,13 +35,53 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 /// The resource key prefix the digest's subject and body live under.
 ///
-/// A constant rather than a literal at the call site because the same key names
-/// four resources across two bundles; a typo in one of five spellings would
-/// show up as one language quietly missing a sentence.
+/// A constant rather than a literal at the call site because the same key
+/// prefixes every resource in both bundles; a typo in one spelling would show up
+/// as one language quietly missing a sentence.
 const String opsDigestTemplateKey = 'email.ops_digest';
+
+/// Sub-key of the open count as the subject states it: "3 open items".
+const String opsDigestOpenSummarySubKey = 'open_summary';
+
+/// Sub-key of the sentence stating the open count in the body.
+///
+/// Separate from [opsDigestOpenSummarySubKey] rather than one phrase used
+/// twice, because a language may not say the phrase the same way in both
+/// places: German's subject is nominative ("1 offener Vorgang") and the body's
+/// object accusative ("Sie haben 1 offenen Vorgang").
+const String opsDigestOpenLineSubKey = 'open_line';
 
 /// Sub-key of the sentence included only when someone has overdue work.
 const String opsDigestOverdueSubKey = 'overdue_line';
+
+/// The sub-keys whose text depends on a count, each carried in every bundle
+/// once per entry of [opsCountForms].
+const List<String> opsDigestCountedSubKeys = [
+  opsDigestOpenSummarySubKey,
+  opsDigestOpenLineSubKey,
+  opsDigestOverdueSubKey,
+];
+
+/// The forms a counted sentence is written in, as the last segment of its key:
+/// `overdue_line.one`, `overdue_line.other`.
+///
+/// The names are CLDR's plural categories, so a bundle translator meets the
+/// vocabulary every localisation tool uses.
+const List<String> opsCountForms = ['one', 'other'];
+
+/// The form of a counted sentence to use for [count].
+///
+/// The text resources substitute a count into a sentence but do not choose a
+/// sentence by count, so the digest chooses the key itself — as it already does
+/// for the sentences that appear only when their condition holds — and every
+/// word stays in the bundles.
+///
+/// This is CLDR's rule for English and German, the two locales [OpsTexts]
+/// ships: `one` for exactly 1, `other` for everything else, zero included.
+/// A locale with more categories (Polish, Arabic) needs this function to take
+/// the locale and [opsCountForms] to grow, and the bundle test then requires
+/// the new forms of every bundle.
+String opsCountForm(int count) => count == 1 ? 'one' : 'other';
 
 /// Sub-key of the sentence included only when a due date is still ahead.
 const String opsDigestNextDueSubKey = 'next_due_line';
