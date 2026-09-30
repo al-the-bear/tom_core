@@ -326,11 +326,10 @@
 
 - **Three citations of documents the package does not ship (tcopen341).**
   `lib/src/llm/llm.dart` explained which providers were deliberately left
-  behind and pointed at `deferred.tom_specs.md`, a file under `_ai/quests/`
-  that a package reader cannot reach — and which said nothing about the
-  providers, so the sentence pointed at a document that neither shipped nor
-  carried the claim. The reason is now stated inline. The README and
-  `doc/placeholders.md` each cited `deferred.tom_core.md` for the deferred
+  behind and pointed at a workspace-internal deferral note that a package
+  reader cannot reach — and which said nothing about the providers, so the
+  sentence pointed at a document that neither shipped nor carried the claim. The reason is now stated inline. The README and
+  `doc/placeholders.md` each cited another such note for the deferred
   `dart:io` removal; both now say the work is deferred without naming a file
   nobody outside this workspace can open.
 
@@ -692,9 +691,8 @@
   hand-held `Completer`s "rather than a real isolate" — which the sendability
   group (a live `SendPort`) and the real-isolate cancellation demo in
   `example/isolate_streaming/` had both already falsified. All corrected
-  against the declarations and the tests. The completion mirror in
-  `_ai/quests/tom_core/completion/` was accurate throughout and was used as
-  the reference; the drift was one-sided. Two of the three defects were found
+  against the declarations and the tests. The workspace's completion mirror
+  of this package was accurate throughout and was used as the reference; the drift was one-sided. Two of the three defects were found
   by auditing the file rather than from the report, and the reported counts
   were themselves off (8 of 12 rows, not nine).
 - **`isolate_streaming/`**: `BackpressureTracker` let the closed flag decide

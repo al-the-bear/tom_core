@@ -281,7 +281,7 @@ it and start eight test suites.
 | [`tool/check_doc_source_paths.py`](tool/check_doc_source_paths.py) | Checks that every `**Source:**` pointer in documentation names a path that exists |
 | [`tool/check_doc_links.py`](tool/check_doc_links.py) | Finds markdown links that open nothing, references that point at nothing, and links from a package's documentation into `_copilot_guidelines/` |
 | [`tool/check_doc_artifacts.py`](tool/check_doc_artifacts.py) | Finds machine-generated artifacts tracked under a package's `doc/` |
-| [`tool/check_doc_ai_citations.py`](tool/check_doc_ai_citations.py) | Finds shipped documents citing a path under `_ai/`, which no reader of the package can open |
+| [`tool/check_doc_ai_citations.py`](tool/check_doc_ai_citations.py) | Finds shipped files citing a document under `_ai/` — by path or by bare name — which no reader of the package can open |
 | [`tool/check_reflection_artifacts.py`](tool/check_reflection_artifacts.py) | Analyzes the checked-in reflection artifacts, which the analysis options exclude, and fails on a name that no longer resolves |
 | [`tool/report_crosslib_refs.py`](tool/report_crosslib_refs.py) | **Reports** (never gates) dartdoc links naming a repo type the writing library cannot see |
 
@@ -640,9 +640,9 @@ this repository and inside no package. They describe the same constructors the
 package documents do, in the same fences, for the same reader; while a
 document's package was read from its *path* they were not merely unchecked but
 unreachable. A document no path places is placed by its **name** — the corpus is
-named for what it documents, so `tom_core_server_export_new.md` resolves against
-`tom_core_server`, by longest package prefix so that
-`tom_flutter_ui_test_app_changes.md` stays with `tom_flutter_ui_test`. That
+named for what it documents, so `tom_core_server_<module>_new.md` resolves
+against `tom_core_server`, by longest package prefix so that a
+`tom_flutter_ui_test_<unit>.md` stays with `tom_flutter_ui_test`. That
 makes a naming convention load-bearing, so the run prints how many documents it
 could not place and names them, every time including a clean run: a rename that
 drops a document out of coverage appears in that list rather than as silence.
@@ -1658,6 +1658,13 @@ trusts it is misled, and a reader who does not gains nothing. The kernel's
 captured test run being 934 KB was the smaller problem; its being eleven weeks
 out of date was the real one.
 
+The rule keys on what a person authors rather than on a list of known generated
+filenames, which only ever catches the artifact someone already found.
+Documentation is markdown, with diagrams and the occasional released PDF beside
+it; anything else under `doc/` was put there by a tool. And the question is what
+version control carries, so the inventory comes from `git ls-files` — a tool
+writing under `doc/` on one machine costs nobody anything until it is committed.
+
 ```bash
 python3 tool/check_doc_links.py                  # the whole repository
 python3 tool/check_doc_links.py tom_core_kernel  # one subtree
@@ -1692,11 +1699,6 @@ directions: a naive scan reads `operator [](Object? key)` in every
 fence into something true only of the file containing it. Both happened while
 this gate was being written.
 
-```bash
-python3 tool/check_doc_ai_citations.py                 # the whole repository
-python3 tool/check_doc_ai_citations.py tom_flutter_ui  # one subtree
-```
-
 A fourth rule, `REFERENCE`, catches the shape this gate was blind to by
 construction — a bracketed inline code span with no target and no definition,
 in a file carrying no `[label]: target` line:
@@ -1730,33 +1732,45 @@ have pointed at, so making them links would have meant inventing thirty-four
 targets — and a cross-document `#fragment` is accepted here and validated by
 nothing, which is a worse answer than a plain code span.
 
-Finds shipped documents — `doc/` and package `README.md` files — that cite a
-path under `_ai/`. That layer is a separate repository (`tom_agent_state`)
-mounted by symlink, absent from any checkout of `tom_ai/core`, so such a
-citation cannot resolve for the audience `doc/` is written for. Two sites in
-`tom_flutter_ui/doc/` cited a quest planning document, and the section doing so
-called it *the canonical layout contract* — a shipped document deferring its
-authority to a file its reader cannot obtain, which leaves the contract
-effectively unstated.
+```bash
+python3 tool/check_doc_ai_citations.py                 # the whole repository
+python3 tool/check_doc_ai_citations.py tom_flutter_ui  # one subtree
+```
 
-The cited file existed, so this is not a dangling link but an unreachable one,
+Finds shipped files that cite a document in the AI-state layer. That layer is a
+separate repository (`tom_agent_state`) mounted by symlink, absent from any
+checkout of `tom_ai/core`, so such a citation cannot resolve for anyone reading
+a package. Two sites in `tom_flutter_ui/doc/` cited a quest planning document,
+and the section doing so called it *the canonical layout contract* — a shipped
+document deferring its authority to a file its reader cannot obtain, which
+leaves the contract effectively unstated.
+
+Two faults, for the two shapes a citation takes. `AILINK` is a path under
+`_ai/`. `AINAME` is the shape a citation takes once its author knows the
+document well enough to stop saying where it lives: a bare filename — a quest's
+deferral note, or a completion document's name. Three of those in one
+package's library and docs had been written by three different passes, and one
+pointed at a document that did not even carry the claim it was cited for. A name
+is a fault when it belongs to a `.md` or `.yaml` file in the quest folders of `_ai/` —
+each quest's machine-local `history/` excluded — and to no file anywhere in this
+repository, so `README.md` or `pubspec.yaml` never match. When the quest tree is
+absent the gate reports `NOQUESTS` as a fault rather than passing half-measured.
+
+The cited file exists, so this is not a dangling link but an unreachable one,
 and that distinction is why the defect survives a scan: neither `find` nor `git
 ls-files` follows the `_ai` symlink, so a citation of a file that is present
 reads as "file does not exist" to any tool run from the container root. Keying
 on the citation rather than on the target is what makes the answer stable.
 
-`_copilot_guidelines/` and `CHANGELOG.md` are out of scope, both because `_ai/`
-is genuinely reachable for their readers: development documentation is written
-for the agent working in this workspace, where the mount is present, and a
-changelog naming a completion folder is recording how a change was verified
-rather than pointing at a contract.
-
-The rule keys on what a person authors rather than on a list of known generated
-filenames, which only ever catches the artifact someone already found.
-Documentation is markdown, with diagrams and the occasional released PDF beside
-it; anything else under `doc/` was put there by a tool. And the question is what
-version control carries, so the inventory comes from `git ls-files` — a tool
-writing under `doc/` on one machine costs nobody anything until it is committed.
+Every `.dart` and `.md` file is in scope, `CHANGELOG.md` included — it ships,
+and a reader following an entry to a document they cannot open is stranded as
+surely as one following `doc/`. `_copilot_guidelines/`, `test/` and `tool/` are
+out of scope because their readers work inside this workspace, where the mount
+is present; generated Dart is skipped because its comments are copies of
+scanned source. One `_ai/` path is not a citation: `_ai/trail/` is where the Tom
+extension writes its prompt trail in whichever workspace it runs in, and the
+agent models that mirror that layout name it as code names any runtime
+directory.
 
 ```bash
 python3 tool/check_open_ends.py          # the report

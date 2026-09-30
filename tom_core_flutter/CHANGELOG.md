@@ -1301,8 +1301,8 @@
   stating it and to no longer promising the old one.
 
 - **The removal record paraphrased away both halves of a cross-reference the
-  two bookmark readmes made to each other (tcinc1115).** One sentence in
-  `tom_core_flutter_removed_modules_changes.md` summarised the deleted
+  two bookmark readmes made to each other (tcinc1115).** One sentence in the
+  record summarised the deleted
   `qrcode/readme.md` as "three bullets — generate, scan, scan-from-picture".
   The count was right and the shape was wrong: it split bullet 1 ("Generate and
   scan QR codes") into two items and dropped bullet 2, which was "Camera
@@ -1338,8 +1338,7 @@
   line-citations (173) — all three declined here for the same reason.
 
 - **The removal record covered four removed directories; a fifth was invisible
-  to the method that built it (tcinc1114).**
-  `tom_core_flutter_removed_modules_changes.md` scoped itself to "four
+  to the method that built it (tcinc1114).** The record scoped itself to "four
   directories that are no longer part of `tom_core_flutter`" — and for a record
   built by diffing the baseline tree against HEAD, four is *correct*: exactly
   four tracked directories were removed. `lib/src/tomclient/iding/` held no
