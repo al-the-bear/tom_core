@@ -2144,13 +2144,19 @@ final _data = <r.Reflection, r.ReflectorData>{
         {},
         {
           r'': (bool b) =>
-              () => b ? prefix10.TomList() : null,
+              () => b ? prefix10.TomList<prefix10.TomObject<dynamic>>() : null,
           r'from': (bool b) =>
-              (existing) => b ? prefix10.TomList.from(existing) : null,
+              (existing) => b
+              ? prefix10.TomList<prefix10.TomObject<dynamic>>.from(existing)
+              : null,
           r'of': (bool b) =>
-              (existing) => b ? prefix10.TomList.of(existing) : null,
+              (existing) => b
+              ? prefix10.TomList<prefix10.TomObject<dynamic>>.of(existing)
+              : null,
           r'ofList': (bool b) =>
-              (list) => b ? prefix10.TomList.ofList(list) : null,
+              (list) => b
+              ? prefix10.TomList<prefix10.TomObject<dynamic>>.ofList(list)
+              : null,
         },
         8,
         39,
@@ -2261,13 +2267,25 @@ final _data = <r.Reflection, r.ReflectorData>{
         {},
         {
           r'': (bool b) =>
-              () => b ? prefix10.TomMap() : null,
+              () => b
+              ? prefix10.TomMap<dynamic, prefix10.TomObject<dynamic>>()
+              : null,
           r'from': (bool b) =>
-              (existing) => b ? prefix10.TomMap.from(existing) : null,
+              (existing) => b
+              ? prefix10.TomMap<dynamic, prefix10.TomObject<dynamic>>.from(
+                  existing,
+                )
+              : null,
           r'of': (bool b) =>
-              (existing) => b ? prefix10.TomMap.of(existing) : null,
+              (existing) => b
+              ? prefix10.TomMap<dynamic, prefix10.TomObject<dynamic>>.of(
+                  existing,
+                )
+              : null,
           r'ofMap': (bool b) =>
-              (map) => b ? prefix10.TomMap.ofMap(map) : null,
+              (map) => b
+              ? prefix10.TomMap<dynamic, prefix10.TomObject<dynamic>>.ofMap(map)
+              : null,
         },
         8,
         40,
@@ -2353,7 +2371,9 @@ final _data = <r.Reflection, r.ReflectorData>{
         {},
         {
           r'': (bool b) =>
-              (_callback) => b ? prefix8.TomFunctionObserver(_callback) : null,
+              (_callback) => b
+              ? prefix8.TomFunctionObserver<prefix8.TomObservable>(_callback)
+              : null,
         },
         9,
         43,
@@ -2441,7 +2461,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         {
           r'': (bool b) =>
               (initialValue, {values, scope}) => b
-              ? prefix9.TomObservableEnum(
+              ? prefix9.TomObservableEnum<Enum>(
                   initialValue,
                   scope: scope,
                   values: values,
