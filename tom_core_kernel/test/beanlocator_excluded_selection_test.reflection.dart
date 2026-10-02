@@ -42,7 +42,7 @@ import 'package:tom_core_kernel/src/tombase/timezoned/date_timestamp.dart'
     as prefix21;
 import 'package:tom_core_kernel/src/tombase/timezoned/timezones.dart'
     as prefix22;
-import 'support/bean_selection_support.dart' as prefix23;
+import 'test/support/bean_selection_support.dart' as prefix23;
 
 // ignore_for_file: camel_case_types
 // ignore_for_file: implementation_imports
