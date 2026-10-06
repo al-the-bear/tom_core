@@ -476,65 +476,84 @@ void main() {
   });
 
   group('observer registration scales linearly', () {
-    // `addObserver` used to scan the whole observer list looking for an
-    // existing weak reference before appending, so attaching n observers cost
-    // O(n^2) comparisons. That is invisible for the handful of observers a
-    // typical cell carries and very visible for a `TomList`, which registers
-    // itself with every element: a thousand-element `resetWith` paid the cost
-    // in full.
+    // Registration has to cost the same whatever the observable already
+    // holds. A registration path that scans the existing observers before
+    // appending makes attaching n observers O(n^2): invisible for the handful
+    // a typical cell carries, very visible for a `TomList`, which registers
+    // itself with every element of a thousand-element `resetWith`.
     //
-    // An algorithmic class is only observable from outside as a shape, so this
-    // asserts a *ratio* rather than a duration — the machine cancels out.
-    // Quadratic growth multiplies the time by ~16 when the count quadruples;
-    // linear growth multiplies it by ~4. The threshold sits between the two,
-    // well clear of both.
+    // An algorithmic class is only observable from outside as a shape, so the
+    // test compares two readings of *equal work*: registering the first 2,500
+    // of 10,000 observers into an empty observable, and the last 2,500 into
+    // one already holding 7,500. Linear registration makes the two cost the
+    // same (~1x; a larger set's cache behaviour puts it nearer 1.6x in
+    // practice). A scan makes the late batch pay for every observer already
+    // present: (10000^2 - 7500^2) / 2500^2 = 7x. The threshold of 4.0 sits
+    // between the two, clear of both.
+    //
+    // Equal work is what makes the comparison indifferent to machine load.
+    // Two readings of different length -- 2,500 registrations against 10,000
+    // -- are not exposed equally to a busy scheduler: the longer one is
+    // interrupted proportionally more often, and its best case degrades
+    // faster, inflating exactly the ratio under test. Two batches of the same
+    // size, taken back to back in the same run, are interrupted alike.
 
-    /// Microseconds spent registering [count] fresh observers, best of five
-    /// runs so one GC pause cannot decide the result. The observers are built
-    /// before the clock starts: allocation is not what is being measured.
-    int registrationMicros(int count) {
-      var best = -1;
-      for (var run = 0; run < 5; run++) {
-        final observable = TomObservable();
-        final observers = List.generate(
-          count,
-          (_) => TestObserver<TomObservable>(),
-        );
+    /// Microseconds spent registering the first and the last 2,500 of 10,000
+    /// observers on one observable, each the best of five runs so one GC pause
+    /// cannot decide the result. The observers are built before the clock
+    /// starts: allocation is not what is being measured.
+    ({int first, int last}) batchMicros() {
+      const total = 10000;
+      const batch = 2500;
+      var first = -1;
+      var last = -1;
+      int timed(TomObservable observable, Iterable<TomObserver> observers) {
         final stopwatch = Stopwatch()..start();
         for (final observer in observers) {
           observable.addObserver(observer);
         }
         stopwatch.stop();
-        final micros = stopwatch.elapsedMicroseconds;
-        if (best < 0 || micros < best) best = micros;
+        return stopwatch.elapsedMicroseconds;
       }
-      return best;
+
+      for (var run = 0; run < 5; run++) {
+        final observable = TomObservable();
+        final observers = List.generate(
+          total,
+          (_) => TestObserver<TomObservable>(),
+        );
+        final early = timed(observable, observers.take(batch));
+        for (final observer in observers.getRange(batch, total - batch)) {
+          observable.addObserver(observer);
+        }
+        final late = timed(observable, observers.skip(total - batch));
+        if (first < 0 || early < first) first = early;
+        if (last < 0 || late < last) last = late;
+      }
+      return (first: first, last: last);
     }
 
-    test(
-      'registering 10,000 observers costs ~4x registering 2,500, not ~16x',
-      () {
-        registrationMicros(500); // warm the JIT before the readings that count
+    test('the last 2,500 of 10,000 observers register as fast as the first '
+        '2,500, not ~7x slower', () {
+      batchMicros(); // warm the JIT before the readings that count
 
-        final small = registrationMicros(2500);
-        final large = registrationMicros(10000);
+      final (:first, :last) = batchMicros();
 
-        // A zero reading would make the ratio meaningless; one microsecond is
-        // below anything measurable here, so floor the divisor.
-        final ratio = large / (small < 1 ? 1 : small);
+      // A zero reading would make the ratio meaningless; one microsecond is
+      // below anything measurable here, so floor the divisor.
+      final ratio = last / (first < 1 ? 1 : first);
 
-        expect(
-          ratio,
-          lessThan(8.0),
-          reason:
-              'quadrupling the observer count multiplied the registration '
-              'time by ${ratio.toStringAsFixed(1)}x '
-              '(${small}us for 2500 -> ${large}us for 10000). Linear growth is '
-              '~4x; anything approaching 16x means the registration path is '
-              'still scanning the observer list.',
-        );
-      },
-    );
+      expect(
+        ratio,
+        lessThan(4.0),
+        reason:
+            'registering 2,500 observers into an observable already '
+            'holding 7,500 took ${ratio.toStringAsFixed(1)}x as long as '
+            'registering the first 2,500 (${first}us -> ${last}us). Linear '
+            'registration is ~1x; ~7x means the registration path scans the '
+            'observers already registered.',
+      );
+    });
 
     test(
       'every one of 10,000 registered observers is notified exactly once',
