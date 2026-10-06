@@ -255,11 +255,11 @@ writes the entry.
 @tomReflector
 @TomAudited(redact: ['passwordHash'])
 @TomDbTable(datasource: 'main', table: 'users', primaryKeyField: 'id')
-class User { … }
+class User { ... }
 
 @tomReflector
 @TomAudited(enabled: false)          // high-volume machine-written table
-class SessionRow { … }
+class SessionRow { ... }
 
 abstract class AdminApi {
   @TomAudited()                      // this *invocation* is the auditable act

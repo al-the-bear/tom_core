@@ -430,8 +430,8 @@ small enough that a hundred of anything is cheap to hold. A deployment that
 knows its key space says so:
 
 ```dart
-TomCache('sessions', maximumEntries: 10000)   // a bound of your own
-TomCache('routes', maximumEntries: null)      // bounded by its own key space
+TomCache('sessions', maximumEntries: 10000);  // a bound of your own
+TomCache('routes', maximumEntries: null);     // bounded by its own key space
 ```
 
 `null` means exactly what it always meant, and zero is still refused: `null` is

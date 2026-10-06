@@ -34,9 +34,9 @@ tab, and by `ComplexAuthDemo` in `lib/forms_demos/phase2_demos.dart`.
 | `test/` | The gating suites, plus `demo_harness.dart` and the on-demand `screenshots.dart` |
 | `doc/demo_catalogue.md` | Demo → source → exercised `tom_flutter_ui` feature map |
 
-The remaining `doc/*.md` notes (`widget_demo.md`, `widget_resource_parameters.md`,
-`widget_optional_parameters_resource_discovery.md`) are widget-resource design
-notes that feed the catalogue.
+The remaining `doc/*.md` notes (`widget_demo.md` and
+`widget_resource_parameters.md`) are widget-resource design notes that feed the
+catalogue.
 
 Demo counts are deliberately stated as **screens and tiles separately** — see
 the counts table in `README.md`, which `tool/check_demo_counts.py` holds to the

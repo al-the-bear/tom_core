@@ -376,7 +376,7 @@ annotation for it.
 class TaskRepository extends TomSqlDatasourceRepository<Task, int> {
   @override
   Future<Task> save(Task toSave) async {
-    toSave.updatedAt = TomZonedDateTime.now();   // before the statement runs
+    toSave.updatedAt = TomZonedDateTime.fromDateTime(DateTime.now()); // before
     final saved = await super.save(toSave);
     await _searchIndex.reindex(saved);           // after, with the stored row
     return saved;

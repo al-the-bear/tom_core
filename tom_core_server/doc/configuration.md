@@ -311,13 +311,18 @@ A server subclasses `TomBaseServerConfiguration` and declares typed fields
 (`port`, `host`, `noSsl`, `certificateChain`, `privateKey`, `isolateCount`,
 handler/middleware hooks, logging levels, and the three deployment blocks in
 *Deployment Settings* below). The class is `@tomReflector`, and its constructor
-fills those fields from the merged configuration via the generated `setValues`:
+fills those fields from the merged configuration through `setValues`, which a
+subclass implements in one line by handing the merged map to the generated
+reflection:
 
 ```dart
 @tomReflector
 class MyServerConfig extends TomBaseServerConfiguration {
   MyServerConfig(super.args);
-  // setValues is provided by the generated reflection.
+
+  @override
+  void setValues(Map<String, Object?> values) =>
+      tomReflectionInfo.setValues<MyServerConfig>(this, values);
 }
 
 void main(List<String> argv) {
@@ -435,6 +440,10 @@ class BillingConfiguration extends TomBaseServerConfiguration {
   String dbUrl = '';
 
   BillingConfiguration(super.args);
+
+  @override
+  void setValues(Map<String, Object?> values) =>
+      tomReflectionInfo.setValues<BillingConfiguration>(this, values);
 }
 ```
 
@@ -469,10 +478,10 @@ the default exists to serve.
 | the key, with `null` (a `.env` line `DB_URL=`) | **refused** — named, given nothing |
 | the key, with `''` (`dbUrl=` on the command line) | accepted — set to nothing deliberately |
 
-A configuration whose `setValues` is written by hand rather than generated is
-**not** checked: the annotation is read through the mirrors, so such a class has
-none to read. A server whose `setValues` is generated is reflected by
-construction, so the check is in force wherever the framework binds the fields.
+A configuration whose `setValues` assigns its fields by hand rather than through
+the reflection is **not** checked: the annotation is read through the mirrors,
+so such a class has none to read. A server whose `setValues` goes through the
+reflection is reflected by construction, so the check is in force wherever the framework binds the fields.
 `assertRequiredSettings` is public, so a configuration composed some other way
 can ask the same question of its own map.
 
@@ -971,7 +980,7 @@ rather than a transcript — see
 [A green run is a verification](../README.md#a-green-example-run-is-a-verification)
 for why that helper throws instead of asserting. One
 thing is deliberately left out and the header says why — constructing a
-`TomBaseServerConfiguration` subclass needs a generated `setValues`, so it is
+`TomBaseServerConfiguration` subclass needs reflection generated for it, so it is
 described in [The Server Configuration Base](#the-server-configuration-base)
 here instead. Its static `getDefaultValues` needs no subclass and is used.
 

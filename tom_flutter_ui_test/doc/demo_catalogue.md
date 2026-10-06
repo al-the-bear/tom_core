@@ -182,6 +182,5 @@ remain the authoritative references behind this catalogue:
 | -------- | ----- |
 | `widget_demo.md` | Original specification of the widget demo views (architecture + per-demo intent across the ~292 wrapped widgets). |
 | `widget_resource_parameters.md` | Complete inventory of every widget constructor parameter that can be loaded from resources (per-widget ✅/⛔/⬜ status). |
-| `widget_optional_parameters_resource_discovery.md` | Proposal for optional-parameter discovery, list-based resources and auto-assembling components. |
 
-This catalogue is the **navigation map**; those three are the **detail**.
+This catalogue is the **navigation map**; those two are the **detail**.

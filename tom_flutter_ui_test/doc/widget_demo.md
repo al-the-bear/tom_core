@@ -136,7 +136,7 @@ class DemoCard extends StatelessWidget {
             children: [
               TomIcon(tomId: '$id_demoCardIcon', icon: Icons.widgets),
               const SizedBox(width: 12),
-              TomText(tomId: '$id_demoCardTitle', style: TextStyle(...)), // actual text must be in resources, will be retrieved by TomText, place text with right key in resources
+              TomText(tomId: '$id_demoCardTitle', style: TextStyle(/* ... */)), // actual text must be in resources, will be retrieved by TomText, place text with right key in resources
             ],
           ),
           // Description
@@ -2084,10 +2084,10 @@ Each demo file should:
 
 ```dart
 // Sample data for demos
-const sampleProducts = [...];
-const sampleUsers = [...];
-const sampleCountries = [...];
-const sampleColors = [...];
+const sampleProducts = [/* ... */];
+const sampleUsers = [/* ... */];
+const sampleCountries = [/* ... */];
+const sampleColors = [/* ... */];
 ```
 
 ### Accessibility

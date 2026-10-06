@@ -570,11 +570,11 @@ abstract class TomExportStore {
   // beside it, and reports any failure as a TomExportException (see below).
   Future<TomStoredExport> store({required String key,
                                  required Stream<List<int>> bytes,
-                                 required String mediaType}) { /* → doStore */ }
-  Stream<List<int>> open(String key) { /* → doOpen */ }
-  Future<bool> exists(String key) { /* → doExists */ }
-  Future<bool> delete(String key) { /* → doDelete */ }
-  Future<int> deletePrefix(String prefix) { /* → doDeletePrefix */ }
+                                 required String mediaType}) { ... } // → doStore
+  Stream<List<int>> open(String key) { ... } // → doOpen
+  Future<bool> exists(String key) { ... } // → doExists
+  Future<bool> delete(String key) { ... } // → doDelete
+  Future<int> deletePrefix(String prefix) { ... } // → doDeletePrefix
   bool get supportsPrefixDelete => false;
 
   // What a backend implements. Each receives an already-validated key and may
@@ -587,9 +587,9 @@ abstract class TomExportStore {
   Future<bool> doDelete(String key);
   // Concrete, and throws: a backend claiming the capability and forgetting
   // the method must fail rather than report an empty purge.
-  Future<int> doDeletePrefix(String prefix) { /* → prefix_delete_unsupported */ }
+  Future<int> doDeletePrefix(String prefix) { ... } // → prefix_delete_unsupported
 
-  static String validateKey(String key);
+  static String validateKey(String key) { ... }
 }
 ```
 

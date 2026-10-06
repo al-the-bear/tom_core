@@ -204,7 +204,7 @@ alongside the `Content-Type` derived from `produces` and any
 
 ```dart
 @TomEndpoint(uri: '/report', headers: {'x-report-version': '2'})
-Future<Report> report() async => …;
+Future<Report> report() async { ... }
 ```
 
 `TomEndpoint.headers` is **outbound only**. The name is bare `headers` because

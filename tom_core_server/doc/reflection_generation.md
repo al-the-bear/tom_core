@@ -88,8 +88,8 @@ and the shape inside the diff is a uniform shift — a list front loses `838`, t
 back gains `869`, and
 
 ```dart
-const <int>[869, 870, 871, 872, 873]   // before
-const <int>[870, 871, 872, 873, 874]   // after
+const <int>[869, 870, 871, 872, 873];  // before
+const <int>[870, 871, 872, 873, 874];  // after
 ```
 
 Insertions and deletions being within ~1 % of each other is the signature: lines

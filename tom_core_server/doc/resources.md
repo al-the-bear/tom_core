@@ -156,7 +156,7 @@ What makes this worth stating is that the accessors *compose*, and composing
 them looks like the obvious route to a locale:
 
 ```dart
-TomTextLocale(TomExecutionContext.getLanguage(), TomExecutionContext.getCountry());
+TomTextLocale(TomContextProviders.getLanguage(), TomContextProviders.getCountry());
 ```
 
 For a principal that names no locale, that reads `'en'` and `'XX'` — and `en_XX`
@@ -363,7 +363,7 @@ The other consequence of normalising into a map is quieter: two keys can name
 one locale, and the last of them wins with nothing said.
 
 ```dart
-bundles: {'en': {...}, 'en_XX': {...}}  // one bundle; the second wins
+final bundles = {'en': {...}, 'en_XX': {...}};  // one bundle; the second wins
 ```
 
 Usually that is the intent — `de-AT` and `de_AT` *should* be one bundle. It

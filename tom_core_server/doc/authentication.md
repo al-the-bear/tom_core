@@ -477,7 +477,7 @@ per login and does what the answer says.
 ```dart
 abstract class Tom2FAPolicy {
   Future<Tom2FADecision> decideFor(Tom2FAContext context);
-  static Tom2FAPolicy resolve();     // the installed bean, else the default
+  static Tom2FAPolicy resolve() { ... } // the installed bean, else the default
 }
 ```
 
@@ -669,7 +669,7 @@ abstract class Tom2FAEnrolmentStore {
   Future<List<Tom2FAEnrolment>> enrolmentsFor(Tom2FAContext context);
   Future<void> store(Tom2FAContext context, Tom2FAEnrolment enrolment);
   Future<void> remove(Tom2FAContext context, String enrolmentId);
-  static Tom2FAEnrolmentStore? resolve();   // nullable — and deliberately so
+  static Tom2FAEnrolmentStore? resolve() { ... } // nullable — deliberately so
 }
 ```
 
@@ -1754,7 +1754,7 @@ abstract class TomExternalIdentityStore {
   Future<List<TomExternalIdentityLink>> identitiesOf(String localUsername);
   Future<void> unlink(String issuer, String subject);
 
-  static TomExternalIdentityStore? resolve();
+  static TomExternalIdentityStore? resolve() { ... }
 }
 ```
 

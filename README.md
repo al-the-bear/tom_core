@@ -732,13 +732,16 @@ them parse would take a mechanical `;` per block and buy nothing, because a
 declaration never consults the real API and so the second rule could never
 fire. A green light there would be coverage in appearance only.
 
-`tom_core_kernel`, `tom_core_agentic`, `tom_core_codespecs` and
-`tom_core_flutter` are triaged to zero and gated; `tom_core_server`,
-`tom_flutter_ui` and `tom_flutter_ui_test` still answer with faults, and adding
-one to `PACKAGES` before repairing it would pin that backlog in place rather
-than fix it — run them with the argument in the meantime. Gating
-`tom_core_flutter` means the scratch package resolves against the Flutter SDK,
-so this gate needs one on PATH.
+Six packages are triaged to zero and gated: `tom_core_kernel`,
+`tom_core_agentic`, `tom_core_codespecs`, `tom_core_flutter`, `tom_core_server`
+and `tom_flutter_ui_test`. Two are not, for stated reasons: `tom_flutter_ui`
+still answers with a backlog of its own, and adding it to `PACKAGES` before
+repairing it would pin that backlog in place rather than fix it — run it with
+the argument in the meantime; `tom_flutter_form_test` carries no ` ```dart `
+fence, and a gated package with nothing to read exits unmeasured. The sample
+packages under `tom_core_samples/` are not read by this gate. A Flutter
+package's samples are read with `package:flutter/material.dart`, so this gate
+needs the Flutter SDK on PATH.
 
 A sample is analyzed with its own package's barrel imported and, when the
 package depends on `tom_core_kernel`, the kernel barrel too — the context the

@@ -109,6 +109,30 @@ scheduling document legitimately points at `tom_core_server` for the relational
 job store. Adding that dependency here would invert the layering and blind the
 gate to a kernel document reaching for a server type by accident, so the block
 is left unchecked and the limit is printed.
+
+**Which context a sample is read in.** A Flutter package's samples build
+`Text`, `Column` and `Colors` without importing them, as every sample leaves
+out `dart:async`, so a package that depends on Flutter is read with
+`package:flutter/material.dart` as well. An application has no barrel of its
+own -- `tom_flutter_ui_test` is one -- and its documents are about the
+libraries it demonstrates, so it is read against the barrels of the `tom_*`
+packages it depends on. Three more shapes are a sample's, not a fault: a block
+that is only annotations ("put this on your class") gets a declaration to
+annotate; a statement block may `return` a value, as a fragment lifted from a
+method body does; and a `final` variable in a mixed block stays with the
+statements, where a null check promotes it, unless a declaration in the same
+block refers to it.
+
+**Which packages are gated.** Every package under `tom_ai/core` that carries
+```dart fences is in `PACKAGES` except two:
+
+* `tom_flutter_ui` -- its corpus has a backlog of its own, several hundred
+  faults across five large design documents, and several of its documents
+  describe constructs that are intended rather than built. Listing it would pin
+  that backlog; it is gated once triaged to zero.
+* `tom_flutter_form_test` -- its documents carry no ```dart fence at all, and a
+  gated package with nothing to read makes this gate exit unmeasured, which is
+  the guard working rather than a pass.
 """
 
 from __future__ import annotations
@@ -135,18 +159,18 @@ SCRATCH_ROOT = TOOL_DIR / "ztmp" / "doc_dart_blocks"
 #: Packages whose documents are gated -- every one that has been triaged to
 #: zero. A package with a backlog is not listed: adding one here without
 #: repairing it first would pin the backlog in place rather than fix it. Pass a
-#: package name on the command line to survey one ad hoc; `tom_core_server`,
-#: `tom_flutter_ui` and `tom_flutter_ui_test` still answer with faults. Each is
-#: analyzed against its own barrel and the kernel's ([context_packages]); what
-#: remains is in the pages, not the harness.
-#: `tom_core_flutter` needs no preamble -- its documents are about the binding
-#: layer, not about widgets -- but gating it does mean the scratch package
-#: resolves against the Flutter SDK, so this gate now needs one on PATH.
+#: package name on the command line to survey one ad hoc. The packages under
+#: `tom_ai/core` that are not listed, and why, are in the module docstring
+#: (*Which packages are gated*). Gating the Flutter-side packages means the
+#: scratch package resolves against the Flutter SDK, so this gate needs one on
+#: PATH.
 PACKAGES = [
     "tom_core_kernel",
     "tom_core_agentic",
     "tom_core_codespecs",
     "tom_core_flutter",
+    "tom_core_server",
+    "tom_flutter_ui_test",
 ]
 
 #: Document subtrees left out, keyed by the reason (see the module docstring).
@@ -188,7 +212,7 @@ PREAMBLE = "\n".join([
 #: Tried in order; the first that parses is the one the block is judged in.
 #: `mixed` comes first because it is the shape most samples have, so most
 #: blocks are settled by the first pass and the rest cost only their own size.
-WRAPPERS = ["mixed", "top", "fn", "member", "expr"]
+WRAPPERS = ["mixed", "top", "fn", "member", "expr", "annotation"]
 
 #: A ```dart fence, with whatever else its info string carries. The word
 #: `complete` there is the opt-in marker -- see [COMPLETE] and the module
@@ -398,6 +422,21 @@ def is_top_function(chunk: str) -> bool:
     return False
 
 
+def is_variable(chunk: str) -> bool:
+    """Is `chunk` a `final` / `const` variable that could stand at top level?"""
+    stripped = LEADING_COMMENT.sub("", chunk).strip()
+    return (bool(stripped) and not DECLARATION.match(stripped)
+            and not AWAIT.search(stripped)
+            and TOP_VARIABLE.match(stripped) is not None)
+
+
+def variable_name(chunk: str) -> str | None:
+    """The name a variable chunk declares: the word before its `=`."""
+    stripped = LEADING_COMMENT.sub("", chunk).strip()
+    match = re.match(r"^[^=]*?(\w+)\s*=", stripped)
+    return match.group(1) if match else None
+
+
 def is_declaration(chunk: str) -> bool:
     """May `chunk` stand at the top level of a library?"""
     # A chunk carries the comments written above it. They say nothing about
@@ -419,6 +458,9 @@ def is_declaration(chunk: str) -> bool:
 #: The package whose barrel a sample may use beside its own package's.
 KERNEL = "tom_core_kernel"
 
+#: The library a Flutter package's samples are written against.
+FLUTTER_MATERIAL = "package:flutter/material.dart"
+
 
 def context_packages(package: Path) -> list[str]:
     """The barrels a sample of ``package`` is analyzed against, own first.
@@ -434,10 +476,33 @@ def context_packages(package: Path) -> list[str]:
     two together cannot be ambiguous: `tom_flutter_ui`'s
     `kernel_types_coexist_test.dart` holds that.
     """
-    names = [package.name]
+    if (package / "lib" / f"{package.name}.dart").is_file():
+        names = [package.name]
+    else:
+        # An application has no barrel of its own; its documents are about
+        # the libraries it demonstrates, so they are read against those.
+        names = [
+            dependency for dependency in tom_dependencies(package)
+            if dependency != KERNEL
+            and (REPO_ROOT / dependency / "lib" / f"{dependency}.dart").is_file()
+        ]
     if package.name != KERNEL and depends_on(package, KERNEL):
         names.append(KERNEL)
+    if depends_on(package, "flutter"):
+        # A widget sample builds `Text`, `Column`, `Colors` without importing
+        # them, exactly as it leaves out `dart:async`; a Flutter package's
+        # documents are written against the material library.
+        names.append(FLUTTER_MATERIAL)
     return names
+
+
+def tom_dependencies(package: Path) -> list[str]:
+    """The `tom_*` packages ``package``'s pubspec lists under ``dependencies``."""
+    pubspec = (package / "pubspec.yaml").read_text(encoding="utf-8")
+    section = re.search(r"^dependencies:\n((?:[ \t].*\n|\n)*)", pubspec, re.M)
+    if not section:
+        return []
+    return re.findall(r"^[ \t]+(tom_\w+)\s*:", section.group(1), re.M)
 
 
 def depends_on(package: Path, dependency: str) -> bool:
@@ -459,14 +524,20 @@ def build(body: str, wrapper: str, packages: list[str]) -> str:
     if wrapper == "top":
         core = rest
     elif wrapper == "fn":
-        core = f"Future<void> _sample() async {{\n{rest}\n}}"
+        core = f"Future<Object?> _sample() async {{\n{rest}\n}}"
     elif wrapper == "member":
         core = f"abstract class _Sample {{\n{rest}\n}}"
     elif wrapper == "expr":
         # A block that is one expression -- a constructor call shown with its
         # arguments and no statement around it -- is a legitimate
         # documentation form; it needs somewhere to be a value.
-        core = f"Future<void> _sample() async {{\n  final _value = {rest};\n}}"
+        core = f"Future<Object?> _sample() async {{\n  final _value = {rest};\n}}"
+    elif wrapper == "annotation":
+        # A block that is only annotations -- "put this on your class" -- is a
+        # documentation form of its own, and an annotation must annotate
+        # something. The declaration is the harness's; what is judged is that
+        # the annotation itself resolves.
+        core = f"{rest}\nclass _Annotated {{}}"
     else:
         # Declare a type, then show it in use. Neither half is legal where the
         # other is -- a statement cannot sit at top level, a class cannot sit
@@ -474,11 +545,31 @@ def build(body: str, wrapper: str, packages: list[str]) -> str:
         # within each half is preserved; order *between* them does not matter,
         # since top-level declarations are visible to the whole library.
         declarations, statements = [], []
+        variables = []
         for chunk in chunks(rest):
-            (declarations if is_declaration(chunk) else statements).append(chunk)
-        core = ("".join(declarations) + "\nFuture<void> _sample() async {"
+            if is_variable(chunk):
+                variables.append(chunk)
+            else:
+                (declarations if is_declaration(chunk) else statements).append(
+                    chunk)
+        # A variable belongs with the statements, where it was written to be
+        # read: a top-level variable is never promoted by a null check, so
+        # `final s = f(); s == null ? ... : use(s)` fails at top level and is
+        # correct in a body. One a declaration in the block refers to has to
+        # stay at top level, where that declaration can see it.
+        shared = "".join(declarations)
+        for chunk in variables:
+            name = variable_name(chunk)
+            if name and re.search(rf"\b{re.escape(name)}\b", shared):
+                declarations.append(chunk)
+            else:
+                statements.append(chunk)
+        core = ("".join(declarations) + "\nFuture<Object?> _sample() async {"
                 + "".join(statements) + "\n}")
-    imports = "".join(f"import 'package:{p}/{p}.dart';\n" for p in packages)
+    imports = "".join(
+        f"import '{p}';\n" if ":" in p else f"import 'package:{p}/{p}.dart';\n"
+        for p in packages
+    )
     return PREAMBLE + imports + header + "\n" + core + "\n"
 
 
@@ -604,7 +695,10 @@ def check(package: Path) -> tuple[list[Fault], int, int]:
     # A block importing a package outside that context is left out; one that
     # imports the kernel beside its own barrel is written as shipping code
     # writes it and is analyzed.
-    own = "|".join(re.escape(p) for p in context)
+    own = "|".join(
+        re.escape(p.split(":")[1].split("/")[0] if ":" in p else p)
+        for p in context
+    )
     foreign_import = re.compile(rf"^\s*import\s+'package:(?!(?:{own})/)", re.M)
 
     origin: dict[str, tuple[str, str]] = {}
@@ -700,13 +794,15 @@ def self_test() -> int:
        barrel alone -- so (1) is the kernel import doing the work, not a sample
        that would have passed anyway;
     3. a name the kernel does not have is still reported in the full context --
-       the second barrel widens what resolves, not what is forgiven.
+       the second barrel widens what resolves, not what is forgiven;
+    4. a widget sample (`Text`) analyzes clean in that context and fails
+       without the material import -- the Flutter half of the same argument.
     """
     package = REPO_ROOT / "tom_flutter_ui"
     context = context_packages(package)
-    if context != ["tom_flutter_ui", KERNEL]:
+    if context != ["tom_flutter_ui", KERNEL, FLUTTER_MATERIAL]:
         print(f"self-test: tom_flutter_ui's context is {context}; the kernel "
-              "barrel is missing", file=sys.stderr)
+              "barrel or the material library is missing", file=sys.stderr)
         return 1
     scratch = scratch_for(package)
     write_scratch(package, [])
@@ -716,15 +812,20 @@ def self_test() -> int:
         return 2
     probe = "@tomReflector\nclass SelfTestProbe {}\n"
     missing = "@tomReflectorThatDoesNotExist\nclass SelfTestProbe {}\n"
+    widget = "final selfTestWidget = Text('probe');\n"
     write_scratch(package, [
         ("self_test_kernel_context", build(probe, "top", context)),
         ("self_test_own_barrel_only", build(probe, "top", [package.name])),
         ("self_test_missing_name", build(missing, "top", context)),
+        ("self_test_widget_context", build(widget, "top", context)),
+        ("self_test_widget_no_material",
+         build(widget, "top", [p for p in context if p != FLUTTER_MATERIAL])),
     ])
     found = analyze(scratch)
     codes = {name: {d["code"] for d in found.get(name, [])} for name in (
         "self_test_kernel_context", "self_test_own_barrel_only",
-        "self_test_missing_name")}
+        "self_test_missing_name", "self_test_widget_context",
+        "self_test_widget_no_material")}
     write_scratch(package, [])
     expectations = [
         ("self_test_kernel_context", not codes["self_test_kernel_context"],
@@ -735,6 +836,12 @@ def self_test() -> int:
          "does not show the kernel import doing anything"),
         ("self_test_missing_name", bool(codes["self_test_missing_name"]),
          "a name the kernel does not have is no longer reported"),
+        ("self_test_widget_context", not codes["self_test_widget_context"],
+         "a widget sample does not resolve in the harness context"),
+        ("self_test_widget_no_material",
+         bool(codes["self_test_widget_no_material"]),
+         "a widget resolves without the material import, so the test does "
+         "not show that import doing anything"),
     ]
     for name, ok, message in expectations:
         if not ok:
@@ -743,7 +850,7 @@ def self_test() -> int:
             return 1
     print("self-test: a kernel-only name resolves in the kernel context, "
           "is missing from the package barrel alone, and a genuinely missing "
-          "name is still reported")
+          "name is still reported; a widget resolves only with material")
     return 0
 
 

@@ -249,7 +249,7 @@ abstract class TomMessageTransport {
   bool get supportsCopies => false;        // Cc / Bcc
   bool get supportsAttachments => false;
   Future<void> close() async {}
-  void checkSupported(TomMessage message) { … }
+  void checkSupported(TomMessage message) { ... }
 }
 ```
 
@@ -1107,7 +1107,7 @@ email:
 ```
 
 ```dart
-parameters: {
+final parameters = {
   'openCount': summary.openCount,
   'overdueLine': summary.overdueCount == 0
       ? ''
@@ -1116,7 +1116,7 @@ parameters: {
           locale: locale,
           parameters: {'overdueCount': summary.overdueCount},
         ),
-},
+};
 ```
 
 `requiredText` rather than `TomLocalizedTextResources.textOrNull` so a fragment
@@ -1159,12 +1159,12 @@ messaging:
 ```
 
 ```dart
-parameters: {
+final parameters = {
   'overdueTitles': emailService.requiredList(
     overdue.map((task) => task.title),
     locale: locale,
   ),
-},
+};
 ```
 
 Three items render `Alpha, Beta and Gamma`; two render `Alpha and Beta`; one
