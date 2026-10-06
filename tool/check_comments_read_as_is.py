@@ -106,8 +106,11 @@ SKIP_DIRS = {
 #: and configuration files a test run reads. Wider than
 #: ``check_section_refs.py``'s three directories because a work-item id in
 #: ``dart_test.yaml`` or a migration fixture is just as unresolvable, and
-#: unlike a ``§`` it costs nothing to look for everywhere.
-SCANNED_EXTENSIONS = {".dart", ".md", ".sh", ".sql", ".yaml"}
+#: unlike a ``§`` it costs nothing to look for everywhere. The figures are
+#: shipped text too: an SVG's comments and labels reach the same reader as the
+#: README that embeds it, and a figure is the one place a sweep of the Dart and
+#: the Markdown leaves an id standing.
+SCANNED_EXTENSIONS = {".dart", ".md", ".sh", ".sql", ".svg", ".yaml"}
 
 #: Files that are history by definition, and the in-suite guards, which have to
 #: quote ``bug §50`` and ``csexb2`` to say which shapes they reject. Matched by
@@ -271,8 +274,31 @@ DART_TEST_NAME = re.compile(
 )
 
 
+#: In a figure the prose is what is drawn as text and what its comments say;
+#: everything else is markup. A tag's attributes carry marker and gradient ids
+#: (``arrow2``) and a ``<style>`` block carries class selectors (``.db{``), and
+#: both are names the file gives itself, never pointers at a work item.
+SVG_COMMENT = re.compile(r"<!--(.*?)(?:-->|$)|^(.*?)-->")
+SVG_TAG = re.compile(r"<[^>]*>?|^[^<]*>")
+
+
+def svg_prose(line: str) -> list[str]:
+    """The comment text and drawn text on one line of an SVG figure."""
+    found = [part for match in SVG_COMMENT.finditer(line)
+             for part in match.groups() if part]
+    rest = SVG_COMMENT.sub(" ", line)
+    if "{" in rest or "}" in rest or "=" in rest:
+        # A style rule, or a tag's attributes continued from the line above.
+        rest = SVG_TAG.sub(" ", rest) if rest.lstrip().startswith("<") else ""
+    else:
+        rest = SVG_TAG.sub(" ", rest)
+    return found + [rest]
+
+
 def prose_of(path: Path, line: str) -> list[str]:
     """The stretches of ``line`` that are prose rather than code."""
+    if path.suffix == ".svg":
+        return svg_prose(line)
     if path.suffix != ".dart":
         return [line]
     found = []
@@ -341,7 +367,36 @@ def faults_in(path: Path) -> list[tuple[int, str, str]]:
     return faults
 
 
+#: Lines from real figures, each with whether it carries a work-item id. The
+#: markup lines are the ones that broke a line-as-prose reading: a marker id,
+#: a style rule, an attribute continued from the line above.
+SVG_CASES = (
+    ('  <!-- traced from a row to a widget (RCC2). -->', True),
+    ('    traced from a row to a widget (RCC2).', True),
+    ('  <text x="40" y="20" class="lbl">ceiling (RCB5)</text>', True),
+    ('  <marker id="arrow2" viewBox="0 0 10 10">', False),
+    ('    .db{fill:#eef;stroke:#557}', False),
+    ('       marker-end="url(#arrow2)"/>', False),
+    ('  <text x="40" y="20">the field renders at its grade</text>', False),
+)
+
+
+def self_test() -> int:
+    """The figure reader finds ids in prose and none in markup."""
+    figure = Path("figure.svg")
+    wrong = [line for line, has_id in SVG_CASES
+             if bool(work_item_ids(figure, line)) != has_id]
+    for line in wrong:
+        print(f"self-test: misread {line.strip()!r}", file=sys.stderr)
+    if wrong:
+        return 1
+    print(f"self-test: {len(SVG_CASES)} figure lines read as expected")
+    return 0
+
+
 def main(argv: list[str]) -> int:
+    if argv == ["--self-test"]:
+        return self_test()
     root = REPO_ROOT / argv[0] if argv else REPO_ROOT
     if not root.exists():
         print(f"no such path: {root}", file=sys.stderr)

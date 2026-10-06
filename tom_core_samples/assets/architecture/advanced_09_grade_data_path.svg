@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 672" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5">
   <!--
     The grant rows -> resource-role map -> per-field grade -> field data path:
-    the grade a field renders at, traced from a database row to a widget (RCC2).
+    the grade a field renders at, traced from a database row to a widget.
       1. auth_db.tom_resource_grant rows (role_name, resource_key, access_level)
          plus the principal's share delegations
       2. AppReadService.resourceRoles(userId): fold ownership grants + shares and

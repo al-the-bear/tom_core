@@ -893,6 +893,7 @@ retired that exemption, and the populations closed.
 ```bash
 python3 tool/check_comments_read_as_is.py                  # the whole repository
 python3 tool/check_comments_read_as_is.py tom_core_server  # one subtree
+python3 tool/check_comments_read_as_is.py --self-test      # check the figure reader
 ```
 
 The third member of that family, and the one that does not involve a `§` at all.
@@ -916,6 +917,11 @@ exempt there, and only there. `G-API-3`, `TC-14` and a bare `C-5` index the
 framework's published guideline, testkit and concept vocabularies rather than a
 work item. And `step 4` in an example refers to something the reader is holding;
 only `Todo <n>` and `plan step <n>` point outside the artefact.
+
+Figures are shipped text too: an SVG's comments and drawn labels reach the
+reader of the README that embeds it. In a figure only those are read — a tag's
+attributes and a `<style>` block hold names the file gives itself (`arrow2`,
+`.db`), which are shaped like ids and point at nothing.
 
 This is a Python gate rather than a copy of
 `tom_core_kernel/test/comments_read_as_is_test.dart` per package because the
