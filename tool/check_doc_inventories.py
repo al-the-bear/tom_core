@@ -309,17 +309,17 @@ Only the entry's *first* paragraph is read, and within it only the first figure
 of each kind: an entry is prose, and its later paragraphs are as full of
 unrelated numbers as any completion document's.
 
-**What ``INDEX`` does not cover.** An entry linking to a *package* document is
-declined outright. Package figures are about ``lib/`` and ``test/`` trees, and
-the index writes them in prose that shares no grammar with either a module
-census or the package atoms -- ``64 Dart files under `lib/` ... 14 under
-`test/` ... four documents under `doc/```. Nineteen entries are in that class;
-their figures are true as of this writing and are held true by hand. The rule
-for them, until the gate reaches them, is the one this audit exists to enforce
-elsewhere: **a figure restated in an index entry must be the figure its
-document's census states, in the census's own noun.** Widening the gate to read
-them means first normalising those nineteen paragraphs onto one grammar, which
-is a change to the documents rather than to this tool.
+**Package entries.** An entry linking to a *package* document restates that
+package's census, so it is read in the census's own grammar, in digits:
+``303 files, of which 148 are Dart``, ``79 under `lib/```, and the hand-written
+and line figures in the parenthetical after a folder (`package_atom_claims`,
+shared with ``PKGINV`` so the copy is read by the rule that reads the
+original). An entry may state only some of them -- it is prose first -- and
+most state none. A file count written any other way (``eleven test files``,
+``Eight files under `lib/```) is reported: it is a restated figure no rule
+reads, so the entry writes it as the census does or drops it. An entry for
+something that is not a package -- the samples' shared ``assets/`` folder --
+has no tree the atoms describe and is not read.
 
 **A length is stated where a gate holds it, and nowhere else.** A completion
 document states its census once, at the top, where ``HEADER`` or ``PKGINV``
@@ -1057,21 +1057,9 @@ def audit_package_inventory(text: str, report: Report) -> bool:
     def under(folder: str) -> list[str]:
         return [f for f in dart if f.startswith(f"{folder}/")]
 
-    def handwritten(paths: list[str]) -> list[str]:
-        return [p for p in paths if not p.endswith(".reflection.dart")]
-
-    # (claim, measured, what the number counts)
-    claims: list[tuple[re.Match[str], int, str]] = []
-    if file_claim is not None:
-        claims.append((file_claim, len(files), "files"))
-    if dart_claim is not None:
-        claims.append((dart_claim, len(dart), "Dart files"))
-    stated = set()
-    for match in PKG_UNDER.finditer(text, start, end):
-        folder = match.group(2)
-        stated.add(folder)
-        noun = f"Dart files under {folder}/"
-        claims.append((match, len(under(folder)), noun))
+    claims, stated = package_atom_claims(
+        text, start, end, package, files, file_claim, report
+    )
 
     # A census states every part of the package that has one. Checking only the
     # parts it happens to mention makes the audit exactly as complete as the
@@ -1098,6 +1086,53 @@ def audit_package_inventory(text: str, report: Report) -> bool:
                 f"PKGINV   says nothing about the {len(present)} {noun}"
             )
 
+    for match, measured, noun in claims:
+        written = match.group(1)
+        if as_number(written) == measured:
+            continue
+        report.faults.append(
+            f"PKGINV   says {written.strip()} {noun}; is {measured}"
+        )
+        report.edits.append(rewrite_groups(match, {1: like(written, measured)}))
+    return True
+
+
+def package_atom_claims(
+    text: str,
+    start: int,
+    end: int,
+    package: Path,
+    files: list[str],
+    file_claim: re.Match[str] | None,
+    report: Report,
+) -> tuple[list[tuple[re.Match[str], int, str]], set[str]]:
+    """Every package-atom figure in `text[start:end]`, with what it measures.
+
+    Shared by the census audit and the index audit, so a figure restated in an
+    index entry is read by the rule that reads the census it copies. Returns
+    the claims as (match, measured, noun) and the folders an `N under` atom
+    named; deciding what a passage must *also* state is the caller's business.
+    """
+    dart = [f for f in files if f.endswith(".dart")]
+
+    def under(folder: str) -> list[str]:
+        return [f for f in dart if f.startswith(f"{folder}/")]
+
+    def handwritten(paths: list[str]) -> list[str]:
+        return [p for p in paths if not p.endswith(".reflection.dart")]
+
+    claims: list[tuple[re.Match[str], int, str]] = []
+    if file_claim is not None:
+        claims.append((file_claim, len(files), "files"))
+    dart_claim = PKG_DART.search(text, start, end)
+    if dart_claim is not None:
+        claims.append((dart_claim, len(dart), "Dart files"))
+    stated = set()
+    for match in PKG_UNDER.finditer(text, start, end):
+        folder = match.group(2)
+        stated.add(folder)
+        claims.append((match, len(under(folder)), f"Dart files under {folder}/"))
+
     for segment in PKG_SEGMENT.finditer(text, start, end):
         folder = segment.group(1)
         hand = handwritten(under(folder))
@@ -1110,16 +1145,7 @@ def audit_package_inventory(text: str, report: Report) -> bool:
             claims.append(
                 (match, len(hand), f"hand-written files under {folder}/")
             )
-
-    for match, measured, noun in claims:
-        written = match.group(1)
-        if as_number(written) == measured:
-            continue
-        report.faults.append(
-            f"PKGINV   says {written.strip()} {noun}; is {measured}"
-        )
-        report.edits.append(rewrite_groups(match, {1: like(written, measured)}))
-    return True
+    return claims, stated
 
 
 def audit_library_size(text: str, report: Report) -> bool:
@@ -1536,11 +1562,8 @@ def audit_index_sections(text: str, report: Report) -> bool:
     audits agree by construction, and the entry is then wrong only when it is
     actually wrong.
 
-    Only entries linking to a module document are read. A package entry states
-    figures about `lib/` and `test/` trees in the package atoms' vocabulary,
-    which this audit does not speak; declining them is a coverage limit, not a
-    silent pass, and `audit_package_inventory` covers the same figures where
-    they are stated in the package's own document.
+    An entry linking to a package document is read by
+    `audit_index_package`, in the package census's grammar.
     """
     sections = list(INDEX_SECTION.finditer(text))
     if not sections:
@@ -1551,8 +1574,10 @@ def audit_index_sections(text: str, report: Report) -> bool:
         if not linked.is_file():
             report.faults.append(f"INDEX    `{section.group(1)}` is not a document")
             continue
-        module = census_module(linked.read_text(encoding="utf-8", errors="replace"))
+        linked_text = linked.read_text(encoding="utf-8", errors="replace")
+        module = census_module(linked_text)
         if module is None:
+            audit_index_package(text, section, linked_text, report)
             continue
         end = section.end(2)
         claims = index_claims(text, section.start(2), end, report)
@@ -1589,6 +1614,74 @@ def audit_index_sections(text: str, report: Report) -> bool:
                 )
 
     return True
+
+
+#: A package index entry's file count, in the census's own shape: ``302 files,
+#: of which 147 are Dart``. The census anchors its count to the em dash that
+#: opens the inventory; an index entry is a sentence of its own, so the count is
+#: anchored instead to the ``of which`` that splits it, which is the census
+#: grammar's other fixed part.
+INDEX_PKG_FILES = re.compile(r"\b(" + NUMBER + r")\s+files,\s+of\s+which\b")
+
+#: The rest of the paragraph a package entry's file count opens -- where its
+#: folder split lives. The self-test perturbs inside it, so the figure it
+#: raises is one only the package reading can see.
+INDEX_PKG_PARAGRAPH = re.compile(INDEX_PKG_FILES.pattern + r"(?:.|\n(?!\n))*")
+
+
+def audit_index_package(
+    text: str, section: re.Match[str], linked_text: str, report: Report
+) -> None:
+    """Check a package index entry's figures against the package tree.
+
+    A package entry restates its document's census, so it is read with the
+    census's own atoms (`package_atom_claims`) in digits: ``N files, of which
+    N are Dart``, ``N under `lib/```, and the hand-written and line figures in
+    the parenthetical after a folder. An entry is prose first and may state
+    only some of them -- the census's rule that every part of the package be
+    named does not apply here.
+
+    A file count written in any *other* way -- ``eleven test files``, ``Eight
+    files under `lib/``` -- is a restated figure no atom reads, which is what
+    an unchecked copy is, so it is reported: the entry either states it in the
+    census grammar or does not state it. An entry linking to something that is
+    not a package (the samples' shared ``assets/`` folder) has no tree these
+    atoms describe and is left alone.
+    """
+    package_match = PACKAGE_PATH.search(linked_text)
+    if package_match is None:
+        return
+    package = REPO_ROOT / package_match.group(1)
+    if not (package / "pubspec.yaml").is_file():
+        return
+    files = tracked_files(package)
+    if files is None:
+        return
+
+    start, end = section.start(2), section.end(2)
+    file_claim = INDEX_PKG_FILES.search(text, start, end)
+    claims, _ = package_atom_claims(
+        text, start, end, package, files, file_claim, report
+    )
+    read = [match.span() for match, _, _ in claims]
+    for match, measured, noun in claims:
+        written = match.group(1)
+        if as_number(written) == measured:
+            continue
+        report.faults.append(
+            f"INDEX    `{section.group(1)}` says {written.strip()} {noun};"
+            f" is {measured}"
+        )
+        report.edits.append(rewrite_groups(match, {1: like(written, measured)}))
+
+    for match in INDEX_FILES.finditer(text, start, end):
+        if any(a <= match.start() < b for a, b in read):
+            continue
+        report.faults.append(
+            f"INDEX    `{section.group(1)}` states"
+            f" `{' '.join(match.group(0).split())}`, a file count no census"
+            f" atom reads; write it as the census does or drop it"
+        )
 
 
 #: A module heading beneath a project heading.
@@ -1770,6 +1863,9 @@ SELF_TEST_CASES: list[tuple[str, re.Pattern[str], int, str, re.Pattern[str] | No
     ("per-file line label", LAYOUT_LINES, 2, "audit_layout_lines", LAYOUT_FENCE),
     ("submodule tally", OVERVIEW_TALLY, 1, "audit_overview_sections", None),
     ("demo-screen count", SCREEN_COUNT, 1, "audit_screen_counts", None),
+    ("index package file count", INDEX_PKG_FILES, 1, "audit_index_sections", None),
+    ("index package directory split", PKG_UNDER, 1, "audit_index_sections",
+     INDEX_PKG_PARAGRAPH),
 ]
 
 
