@@ -81,12 +81,13 @@
 ///   the store — so a store swapped at sign-in is in force from the next call,
 ///   with no invalidation step that can be forgotten.
 ///
-/// In the four-scope configuration vocabulary (`codespecs_mapping.md` §11) that
-/// makes this one class serve two scopes, decided entirely by the `location`
-/// it is given: at a fixed location it is `(client app, machine)` — CE-CC's
-/// scope, the same one `TomClientConfigurationStore` occupies — and at a
-/// per-account location it is `(user, device)`, CE-DS. The user is bound the
-/// same way the device already is: implicitly, by which store was opened.
+/// In the four-scope configuration vocabulary
+/// (`tom_core_codespecs/doc/codespecs_mapping.md` §11) that makes this one
+/// class serve two scopes, decided entirely by the `location` it is given: at a
+/// fixed location it is `(client app, machine)` — CE-CC's scope, the same one
+/// `TomClientConfigurationStore` occupies — and at a per-account location it is
+/// `(user, device)`, CE-DS. The user is bound the same way the device already
+/// is: implicitly, by which store was opened.
 ///
 /// The API stays principal-free under both, deliberately. It is what keeps the
 /// method set identical to `TomUserPreferences` above, so a preference can move

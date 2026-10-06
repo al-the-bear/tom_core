@@ -546,7 +546,7 @@ Switching accounts costs nothing beyond the new bean:
 from the new document.
 
 The same choice decides which configuration scope the store occupies
-(`codespecs_mapping.md` §11). At a fixed location it is `(client app, machine)`
+(`tom_core_codespecs/doc/codespecs_mapping.md` §11). At a fixed location it is `(client app, machine)`
 — CE-CC's scope; at a per-account location it is `(user, device)`, CE-DS. Same
 class, different address. The API stays principal-free under both, which is what
 keeps it swappable with the server-side `TomUserPreferences`.

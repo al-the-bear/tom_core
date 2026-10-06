@@ -13,12 +13,13 @@
 ///
 /// ## The channels
 ///
-/// `codespecs_mapping.md` §5.28 names three: `apiResponse`, `fileExport` and
-/// `email`. The first two are [respondWith] and [storeAs]. The third is not
-/// here and should not be — an emailed export is a message with an attachment,
-/// which is the `messaging` module's subject; it composes by rendering to the
-/// store or to bytes and attaching the result, and inventing a third path here
-/// would duplicate the outbox's retry and delivery semantics.
+/// `tom_core_codespecs/doc/codespecs_mapping.md` §5.28 names three:
+/// `apiResponse`, `fileExport` and `email`. The first two are [respondWith] and
+/// [storeAs]. The third is not here and should not be — an emailed export is a
+/// message with an attachment, which is the `messaging` module's subject; it
+/// composes by rendering to the store or to bytes and attaching the result, and
+/// inventing a third path here would duplicate the outbox's retry and delivery
+/// semantics.
 library;
 
 import 'dart:async';

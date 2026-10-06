@@ -82,7 +82,8 @@ class TomServerSession {
 /// Built from the CE-CF server configuration by [fromConfiguration]. The
 /// [credential] is secret-bearing: it is supplied out-of-band (OS environment,
 /// `.env`, command line) and must never be written into a spec or a checked-in
-/// configuration tree — see `codespecs_mapping.md` §5.16.
+/// configuration tree — see `tom_core_codespecs/doc/codespecs_mapping.md`
+/// §5.16.
 class TomServiceCredential {
   /// Absolute URI of the auth server's login endpoint, e.g.
   /// `http://auth:8081/auth/login`.

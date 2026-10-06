@@ -1,9 +1,8 @@
 // AgentProfile — the editor's persona / behaviour model.
 //
 // Ported from the VS Code extension's `AnthropicProfile`
-// (`tom_vscode_extension/src/handlers/anthropic-handler.ts`) for the Profiles
-// editor of `tom_specs_editor_specification.md` (§11.4). Persisted as YAML
-// in the spec workspace.
+// (`tom_vscode_extension/src/handlers/anthropic-handler.ts`) for the TomSpecs
+// editor's Profiles editor. Persisted as YAML in the spec workspace.
 //
 // Beyond the VS Code field set this gains one editor-specific field:
 // [interruptRetryPrefix] — the prefix prepended to an

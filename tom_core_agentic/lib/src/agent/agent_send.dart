@@ -1,6 +1,6 @@
 // Agent send pipeline — assemble SDK `Options`, stream a `query`, and keep a
-// per-specification session id under the §7.2 refresh rule of
-// `tom_specs_editor_specification.md`.
+// per-specification session id that is dropped and refreshed whenever a result
+// reports a session error (`specSessionLooksLikeError`).
 //
 // This is the **non-UI** half (no Flutter): the editor's Flutter controller in
 // `tom_forge_agentic` drives [AgentSendEngine] and renders its [AgentSendEvent]

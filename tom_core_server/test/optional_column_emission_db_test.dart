@@ -15,10 +15,11 @@
 /// bind. So only one of the two shapes round-trips, and this file pins which.
 ///
 /// That is the ground under the CodeSpecs `@CsColumn` emission rule
-/// (`codespecs_derivation_contract.md` §3.3.2): an optional CE-DB attribute
-/// emits `T?`, never `TomN*`. The rule is a documentation act, but it is only
-/// worth writing down if the alternative is genuinely unavailable — so both arms
-/// are exercised here rather than one being asserted about.
+/// (`tom_core_codespecs/doc/codespecs_derivation_contract.md` §3.3.2): an
+/// optional CE-DB attribute emits `T?`, never `TomN*`. The rule is a
+/// documentation act, but it is only worth writing down if the alternative is
+/// genuinely unavailable — so both arms are exercised here rather than one
+/// being asserted about.
 ///
 /// Two groups, and both matter:
 ///

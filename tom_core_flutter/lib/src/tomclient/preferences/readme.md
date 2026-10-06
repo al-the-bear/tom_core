@@ -117,7 +117,7 @@ exemptions is the only one a reader can hold. An application adding an owner to
 an install that has none clears the store or re-writes it deliberately.
 
 That is also what decides which configuration scope the store occupies
-(`codespecs_mapping.md` §11): at a fixed location it is `(client app, machine)`
+(`tom_core_codespecs/doc/codespecs_mapping.md` §11): at a fixed location it is `(client app, machine)`
 — CE-CC's scope — and at a per-account location `(user, device)`, CE-DS. Same
 class, different address. The API stays principal-free under both, which is what
 keeps it swappable with the server-side `TomUserPreferences`.

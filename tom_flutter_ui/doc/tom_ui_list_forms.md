@@ -9,7 +9,7 @@
 
 This document describes the **list-form** layer of the Tom Forms Framework: how lists of nested sub-forms are modelled (`TomListForm`), the three reusable widgets that render them (`TomInlineListForm`, `TomExpandableListForm`, `TomMasterDetailListForm`), the two helper widgets they share (`TomListFormToolbar`, `TomReorderHandle`), how list-of-list nesting works, and how dirty / structural-change propagation reaches the outer form's UI.
 
-It is the practical companion to [tom_ui_widgets_forms.md](tom_ui_widgets_forms.md) Phase 2a §13–§16 — read that for the underlying form/field model; read this for the *list* dimension.
+It is the practical companion to [tom_ui_widgets_forms.md](tom_ui_widgets_forms.md) §13–§16 (Phase 2a) — read that for the underlying form/field model; read this for the *list* dimension.
 
 ---
 

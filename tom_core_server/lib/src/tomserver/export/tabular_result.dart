@@ -29,20 +29,21 @@
 ///
 /// ## Why this type and not the CE-RP envelope
 ///
-/// The CodeSpecs report-result envelope (`codespecs_mapping.md` §5.28) is a
+/// The CodeSpecs report-result envelope
+/// (`tom_core_codespecs/doc/codespecs_mapping.md` §5.28) is a
 /// `tom_core_codespecs` gap class: named by the mapping, not written. This type
-/// is deliberately the *minimal* tabular shape those
-/// renderers actually need, so the rendering capability is useful now — any
-/// endpoint returning rows can export — and so that when the envelope lands it
-/// is adapted to this shape rather than the renderers being rewritten.
+/// is deliberately the *minimal* tabular shape those renderers actually need,
+/// so the rendering capability is useful now — any endpoint returning rows can
+/// export — and so that when the envelope lands it is adapted to this shape
+/// rather than the renderers being rewritten.
 ///
-/// The one thing `codespecs_mapping.md` §5.28 names that is **not** here is
-/// **charts** (series and axes). Two of the three output formats cannot
-/// express a chart at all, so a chart model would be a field that only the
-/// PDF renderer ever read. When charts are specified they belong beside this
-/// type, not inside it — and they wait on the same envelope, because a chart is
-/// a projection of a *report* result rather than of a tabular one, so its shape
-/// follows from the envelope's.
+/// The one thing `tom_core_codespecs/doc/codespecs_mapping.md` §5.28 names that
+/// is **not** here is **charts** (series and axes). Two of the three output
+/// formats cannot express a chart at all, so a chart model would be a field
+/// that only the PDF renderer ever read. When charts are specified they belong
+/// beside this type, not inside it — and they wait on the same envelope,
+/// because a chart is a projection of a *report* result rather than of a
+/// tabular one, so its shape follows from the envelope's.
 ///
 /// Nothing here anticipates them, deliberately: no chart field, no capability
 /// flag beside [TomTabularRenderer.streamsRows], no way for a renderer to

@@ -1,12 +1,12 @@
 # tom_core_codespecs — the CodeSpecs gap classes for `tom_core`
 
 > **Cross-references.**
-> [`tom_specs_model/doc/codespecs_mapping.md`](../../ai_build/tom_specs_model/doc/codespecs_mapping.md)
+> [`doc/codespecs_mapping.md`](doc/codespecs_mapping.md)
 > owns the **parts catalogue** (`codespecs_mapping.md` §4.1), the
 > **five-package `tom_core`-family basis** every CodeSpec is built on
 > (`codespecs_mapping.md` §1.1) and the per-part **spec-authorable attribute
 > surfaces** (`codespecs_mapping.md` §5).
-> [`tom_specs_model/doc/codespecs_derivation_contract.md`](../../ai_build/tom_specs_model/doc/codespecs_derivation_contract.md)
+> [`doc/codespecs_derivation_contract.md`](doc/codespecs_derivation_contract.md)
 > owns **what code each marker produces** and which superclass it is built on.
 > This README is the inventory of *what this package ships and why each class
 > exists*; those documents own *which specification section produces it* and
@@ -23,7 +23,7 @@ application. A rule governs that skeleton: every class it instantiates must be a
 `tom_core`-family class — one of the four packages `tom_core_kernel`,
 `tom_core_flutter`, `tom_core_server` and `tom_flutter_ui` (the fourth being
 the basis for the UI parts,
-[`codespecs_mapping.md`](../../ai_build/tom_specs_model/doc/codespecs_mapping.md)
+[`codespecs_mapping.md`](doc/codespecs_mapping.md)
 §1.1 pillar (b)). Generated code therefore runs on the framework a hand-written
 Tom application runs on, rather than on a parallel one invented for generation.
 
@@ -38,7 +38,7 @@ generator has.
 ## Overview
 
 Every part of the
-[`codespecs_mapping.md`](../../ai_build/tom_specs_model/doc/codespecs_mapping.md)
+[`codespecs_mapping.md`](doc/codespecs_mapping.md)
 §4.1 catalogue is surveyed against `tom_core` with one of three verdicts —
 **reuse** (build on a shipped class), **extend**, or **new-in-codespecs**. Only
 the third lands here, as a **concrete** class; never an abstract `Cs*` base,
@@ -96,7 +96,7 @@ application as a first-class, spec-authorable unit.
 ### The catalogued gaps
 
 Four parts the
-[`codespecs_mapping.md`](../../ai_build/tom_specs_model/doc/codespecs_mapping.md)
+[`codespecs_mapping.md`](doc/codespecs_mapping.md)
 §4.1 catalogue marks *gap*, each verified against `tom_core` before the class
 was written:
 
@@ -110,7 +110,7 @@ was written:
 ### The two promoted parts
 
 Both were
-[`codespecs_mapping.md`](../../ai_build/tom_specs_model/doc/codespecs_mapping.md)
+[`codespecs_mapping.md`](doc/codespecs_mapping.md)
 §4.3 deferred candidates. The `codespecs_mapping.md` §8.1 authored-input test
 decides which of those can be built at all — a candidate whose SOM section is
 free text gives a generator nothing to read.
@@ -352,8 +352,8 @@ an essential type.
 | Document | Authority for |
 |----------|---------------|
 | [index.md](../../ai_build/tom_specs_model/doc/index.md) | The catalogue of the whole TomSpecs document set, and the `§` citation convention |
-| [codespecs_mapping.md](../../ai_build/tom_specs_model/doc/codespecs_mapping.md) | The parts catalogue, the five-package `tom_core`-family basis, the attribute surfaces, the three-project trio, the deferred candidates |
-| [codespecs_derivation_contract.md](../../ai_build/tom_specs_model/doc/codespecs_derivation_contract.md) | What code comes out per marker — inputs, emitted Dart, superclass, naming rules, validator checks |
+| [codespecs_mapping.md](doc/codespecs_mapping.md) | The parts catalogue, the five-package `tom_core`-family basis, the attribute surfaces, the three-project trio, the deferred candidates |
+| [codespecs_derivation_contract.md](doc/codespecs_derivation_contract.md) | What code comes out per marker — inputs, emitted Dart, superclass, naming rules, validator checks |
 | [codespecs_prompt.md](../../ai_build/tom_specs_model/doc/codespecs_prompt.md) | When a Phase-4 run may begin at all — the mechanical gate and the per-area judgment |
 | [tom_specs_project_flow.md](../../ai_build/tom_specs_model/doc/tom_specs_project_flow.md) | The phase model Phase 4 sits in, and the quality gate it must pass |
 
@@ -397,7 +397,7 @@ count is given, because a count is a claim nothing checks and every added test
 would be a README edit nobody makes. The version is checked.
 
 Every part the
-[`codespecs_mapping.md`](../../ai_build/tom_specs_model/doc/codespecs_mapping.md)
+[`codespecs_mapping.md`](doc/codespecs_mapping.md)
 §4.1 catalogue marks *gap* has its class here — CE-CL, CE-LO, CE-TX, CE-NV,
 CE-JB, CE-NT and CE-RP. Every other part resolves onto shipped `tom_core`
 classes and needs none. **CE-WF is the sole remaining `codespecs_mapping.md`

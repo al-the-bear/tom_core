@@ -872,6 +872,7 @@ pass a checker that answered everything the same way.
 ```bash
 python3 tool/check_section_numbers.py                  # the whole repository
 python3 tool/check_section_numbers.py tom_core_server  # one subtree
+python3 tool/check_section_numbers.py --self-test      # check the attribution rules
 ```
 
 The sibling of the check above, one step further in. `check_section_refs.py`
@@ -889,6 +890,24 @@ brought 41 previously invisible markdown citations under it; widening again to
 the markdown that ships outside `doc/` — every module `readme.md` under
 `lib/src/`, and the samples package's `README_advanced_*` chapters — brought 72
 more documents under both, and both stayed at zero.
+
+**Which document a number belongs to differs by host.** A Dart comment has no
+sections of its own, so a bare number there inherits the document named earlier
+in the comment. A markdown document does have sections, and a bare number in
+its prose means *its own*: a named document carries only through the run of
+citations written straight after it — `` `codespecs_mapping.md` §5.16, §11 ``,
+`§5.2/§5.12` — or is named after the number (`§9.6 of codespecs_mapping.md`),
+or is the target of a link just before it. `RFC 2045 §5.1` cites a standard and
+is not checked; a document with no numbered headings cannot cite itself.
+`--self-test` holds each of those rules.
+
+**A Dart comment may cite only a document in this repository.** The reader of a
+package's source holds a checkout of `tom_ai/core`, and a design document in a
+sibling repository is a citation that reader cannot follow. That is why the
+CodeSpecs mapping and derivation contract ship in `tom_core_codespecs/doc/`,
+and the fault reads *`<doc>` §N is not in this repository*. Markdown is not held
+to it: the design documents shipped here belong to a document set that spans
+repositories and cite its other members.
 
 They scan **exactly** the same files, with no exception. There was one:
 `check_section_refs.py` skipped `comments_read_as_is_test.dart` by name, so the

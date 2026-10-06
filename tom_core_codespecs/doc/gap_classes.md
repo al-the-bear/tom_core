@@ -5,7 +5,7 @@ CodeSpecs, and nothing else. This guide covers the seven modules, the shape each
 holder has, and — because it is the question that actually comes up — how to
 tell whether a candidate class belongs here at all. Which parts are gaps and
 which are reuse verdicts is
-[`codespecs_mapping.md`](../../../ai_build/tom_specs_model/doc/codespecs_mapping.md)
+[`codespecs_mapping.md`](codespecs_mapping.md)
 §4.1 and §5; this guide states the API and cites that.
 
 ## Table of Contents

@@ -5,9 +5,11 @@ Run from anywhere::
 
     python3 tool/check_section_numbers.py                  # the whole repo
     python3 tool/check_section_numbers.py tom_core_server  # one subtree
+    python3 tool/check_section_numbers.py --self-test      # check the checker
 
 Exits non-zero when a reference names a document that *is* in the workspace
-but cites a section that document does not have.
+but cites a section that document does not have, or when a Dart comment cites
+a document that lives outside this repository.
 
 ``check_section_refs.py`` is the sibling of this check and stops one step
 short: it asks whether a ``§`` reference names its document at all, so
@@ -65,8 +67,9 @@ from gate_report import report_faults
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-#: Documents are cited across repo boundaries -- `codespecs_mapping.md` lives
-#: in `tom_ai/ai_build` -- so the search for a target starts above this repo.
+#: Documents are cited across repo boundaries -- `tom_specs_model_rules.md`
+#: lives in `tom_ai/ai_build` -- so the search for a target starts above this
+#: repo.
 WORKSPACE = REPO_ROOT.parent.parent
 
 #: Directories whose contents are never a document a reader opens, and which
@@ -125,6 +128,20 @@ REFERENCE = re.compile(rf"§\s*({NUMBER})")
 #: workspace-wide fallback looks up.
 DOCUMENT = re.compile(
     r"`?((?:[A-Za-z0-9_./-]*/)?([A-Za-z0-9_.-]+\.md))`?\s*\(?$")
+
+#: A markdown link to a document, nearest to the left of the sign:
+#: ``[`codespecs_mapping.md`](../doc/codespecs_mapping.md) §4.1``. The link's
+#: target is the document the reader opens, so it is what is resolved.
+DOCUMENT_LINK = re.compile(r"\]\(([A-Za-z0-9_./-]*\.md)(?:#[^)]*)?\)\s*$")
+
+#: A document named *after* the number: ``§9.6 of `codespecs_mapping.md```,
+#: ``[§2 in tom_ui_design_architecture.md](...)``.
+DOCUMENT_AFTER = re.compile(
+    r"^\s+(?:of|in)\s+`?((?:[A-Za-z0-9_./-]*/)?[A-Za-z0-9_.-]+\.md)`?")
+
+#: A standard cited by its own numbering, which no markdown file holds:
+#: ``RFC 2045 §5.1``.
+EXTERNAL_STANDARD = re.compile(r"\b(?:RFC|ISO|IEC|ECMA|IEEE)[ -]?[0-9][0-9.:-]*\s*$")
 
 HEADING = re.compile(rf"^#{{1,6}}\s+({NUMBER})\.?\s")
 
@@ -190,30 +207,41 @@ def shipped_files(root: Path):
             yield path
 
 
+#: What may sit between two citations of one run: ``§5.2/§5.12``,
+#: ``§4.1 + §4.4.3``, ``§5.16, §11``, ``§3.1 and §3.2``. Anything else between
+#: them is prose, and ends the run.
+RUN_JOINER = re.compile(
+    r"^[\s,;/+&()\[\]*`'–—-]*(?:(?:and|or|to|through)[\s,;/+&()\[\]*`'–—-]*)?$")
+
+
 def references(path: Path):
     """Yield `(line, document, number)` for every citation in `path`.
 
     `document` is `None` when no filename has been named in the block yet,
     which is `check_section_refs.py`'s business rather than this one's.
 
-    A citation carries to the continuation lines of whatever block it was
-    written in, and no further. In Dart that block is the comment; in markdown
-    it is the paragraph, since a wrapped sentence is where the name and the
-    number most often end up on different lines.
+    In Dart a citation carries to the continuation lines of the comment it
+    was written in, and no further: a comment has no sections of its own, so
+    a bare number can only mean the document named before it.
+
+    Markdown is different, because a document has sections of its own and a
+    bare number in its prose means *its* section. A named document therefore
+    carries only through the run of citations written after it -- ``§5.16,
+    §11`` or ``§5.2/§5.12``, across a line break if the run continues
+    there -- and a bare number after intervening prose is the citing
+    document's own.
     """
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return
-    prose = path.suffix == ".md"
+    if path.suffix == ".md":
+        yield from _markdown_references(path, text)
+        return
     document = None
     in_block = False
     for number, line in enumerate(text.split("\n"), start=1):
-        stripped = line.lstrip()
-        if prose:
-            continues_block = stripped != ""
-        else:
-            continues_block = stripped.startswith("//")
+        continues_block = line.lstrip().startswith("//")
         if not continues_block or not in_block:
             document = None
         in_block = continues_block
@@ -224,7 +252,92 @@ def references(path: Path):
             yield number, document, match.group(1)
 
 
+def _named(text: str) -> str | None:
+    """The document `text` ends by naming, as a link or as a filename."""
+    text = text.rstrip()
+    link = DOCUMENT_LINK.search(text)
+    if link:
+        return link.group(1)
+    named = DOCUMENT.search(text)
+    return named.group(1) if named else None
+
+
+def _markdown_references(path: Path, text: str):
+    # A document with no numbered headings has no sections to cite, so a bare
+    # number in it is not its own: it is an external standard's (`RFC 2045
+    # §5.1`) or another document's, and stays unattributed as in Dart.
+    yield from _markdown_references_with(
+        path, text, has_sections=bool(sections(path)))
+
+
+def _markdown_references_with(path: Path, text: str, *, has_sections: bool):
+    own = path.name if has_sections else None
+    run_document = None  # the document an open run of citations belongs to
+    for number, line in enumerate(text.split("\n"), start=1):
+        if line.strip() == "":
+            run_document = None
+            continue
+        position = 0
+        for match in REFERENCE.finditer(line):
+            between = line[position: match.start()]
+            named = _named(between)
+            after = DOCUMENT_AFTER.match(line[match.end():])
+            if after:
+                yield number, after.group(1), match.group(1)
+                position = match.end()
+                continue
+            if EXTERNAL_STANDARD.search(between):
+                run_document = None
+                position = match.end()
+                continue
+            if named:
+                run_document = named
+            elif run_document is None or not RUN_JOINER.match(between):
+                run_document = own
+            yield number, run_document, match.group(1)
+            position = match.end()
+        tail = line[position:]
+        named = _named(tail)
+        if named:
+            run_document = named
+        elif not RUN_JOINER.match(tail):
+            run_document = None
+
+
+#: Markdown lines and the documents their citations must be attributed to,
+#: read as if written in a document called ``own.md`` that has sections.
+MARKDOWN_CASES = (
+    ("See `other.md` \u00a75.16, \u00a711 for both.", ["other.md", "other.md"]),
+    ("`other.md` \u00a75.2/\u00a75.12 and \u00a75.22", ["other.md"] * 3),
+    ("`other.md` \u00a74.1 + \u00a74.4.3 + \u00a74.4.6", ["other.md"] * 3),
+    ("`other.md` \u00a73 governs it; \u00a72.4 says why.", ["other.md", "own.md"]),
+    ("Per \u00a72.0 here.", ["own.md"]),
+    ("[`other.md`](../x/other.md) \u00a74.1", ["../x/other.md"]),
+    ("the rule of \u00a79.6 of `other.md`, which", ["other.md"]),
+    ("[\u00a713.7 in other.md](other.md#137-x)", ["other.md"]),
+    ("RFC 2045 \u00a75.1 makes it case-insensitive.", []),
+)
+
+
+def self_test() -> int:
+    """Each markdown attribution rule, on a line written to exercise it."""
+    failed = 0
+    for line, expected in MARKDOWN_CASES:
+        got = [document for _, document, _ in
+               _markdown_references_with(Path("own.md"), line, has_sections=True)]
+        if got != expected:
+            failed += 1
+            print(f"self-test: {line!r}: expected {expected}, got {got}",
+                  file=sys.stderr)
+    if failed:
+        return 1
+    print(f"self-test: {len(MARKDOWN_CASES)} markdown attribution rules hold")
+    return 0
+
+
 def main(argv: list[str]) -> int:
+    if argv == ["--self-test"]:
+        return self_test()
     root = REPO_ROOT / argv[0] if argv else REPO_ROOT
     if not root.exists():
         print(f"no such path: {root}", file=sys.stderr)
@@ -270,9 +383,23 @@ def main(argv: list[str]) -> int:
             numbered[path] = sections(path)
         return numbered[path]
 
+    def outside_ok(cited: str, source: Path) -> bool:
+        """Whether a Dart comment's cited document ships in this repository.
+
+        A comment in the source is read by whoever holds the package, and the
+        one document guaranteed to be beside it is one in this repository: a
+        design document that lives in a sibling repository is a citation the
+        reader of a checkout of `tom_ai/core` alone cannot follow. Markdown is
+        not held to this, because the design documents shipped here are part
+        of a document set that spans repositories and cite its other members.
+        """
+        path = locate(cited, source)
+        return path is None or REPO_ROOT in path.resolve().parents
+
     scanned = 0
     checked = 0
     faults: list[tuple[Path, int, str, str]] = []
+    outside: list[tuple[Path, int, str, str]] = []
     unlocatable: Counter[str] = Counter()
 
     for path in shipped_files(root):
@@ -287,10 +414,15 @@ def main(argv: list[str]) -> int:
             checked += 1
             if number not in defined:
                 faults.append((path, line, document, number))
+            elif path.suffix == ".dart" and not outside_ok(document, path):
+                outside.append((path, line, document, number))
 
     for path, line, document, number in faults:
         print(f"{path.relative_to(REPO_ROOT)}:{line}: "
               f"{document} has no §{number}")
+    for path, line, document, number in outside:
+        print(f"{path.relative_to(REPO_ROOT)}:{line}: "
+              f"{document} §{number} is not in this repository")
 
     if unlocatable:
         print()
@@ -303,7 +435,8 @@ def main(argv: list[str]) -> int:
     print(f"files scanned            : {scanned}")
     print(f"section numbers resolved : {checked}")
     print(f"citing a missing section : {len(faults)}")
-    return report_faults(len(faults))
+    print(f"source citing outside    : {len(outside)}")
+    return report_faults(len(faults) + len(outside))
 
 
 if __name__ == "__main__":

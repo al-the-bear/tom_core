@@ -4,6 +4,11 @@
 
 ### Changed
 
+- **The CodeSpecs design ships with the package.** `codespecs_mapping.md`
+  and `codespecs_derivation_contract.md` now live in `doc/`, so every `§`
+  citation in this package's source and documentation resolves for a reader
+  of the package. Both remain members of the TomSpecs document set, which
+  links to them here.
 - **`TomReportResultSection` takes a row factory, not a stream (tcopen358).**
   Its dartdoc said "rendering the same result twice needs a section that can
   produce a fresh stream" — and the type could not: `rows` was a stored

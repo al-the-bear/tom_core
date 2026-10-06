@@ -708,7 +708,7 @@ The following extensions are planned to bring the Tom observable state managemen
 
 > **Implementation status (updated 2026-04-07):** Extensions 8.3 and 8.4 are now largely implemented in `tom_flutter_ui` through `TomNodeBase` (resource resolution via `basePath` + suffixes) and the form system (`TomForm`/`TomField` with resource-aware field anatomy). Extension 8.2 is partially implemented through `TomScreenElementsProvider`. Extension 8.1 remains planned.
 
-> Several planned extensions integrate with the UI architecture's form system (§9), action system (§10), and screen definitions (§11). See [tom_ui_design_architecture.md](tom_ui_design_architecture.md) for the UI-side design.
+> Several planned extensions integrate with the UI architecture: [tom_ui_design_architecture.md](tom_ui_design_architecture.md) §9, §10 and §11 — its form system, action system and screen definitions — carry the UI-side design.
 
 ### 8.1 — ValueNotifier/ChangeNotifier Compatibility Layer
 

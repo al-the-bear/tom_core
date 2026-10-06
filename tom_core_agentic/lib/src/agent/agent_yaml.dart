@@ -4,8 +4,7 @@
 // `Map<String, dynamic>` (its `toYaml()` / `fromYaml()` pair). These two
 // free functions move that map across the YAML text boundary so the
 // TomSpecs editor can persist queues, profiles, templates, timed requests
-// and chat-variable stores as `*.yaml` files in the spec workspace
-// (§11.2 / §11.4 of `tom_specs_editor_specification.md`).
+// and chat-variable stores as `*.yaml` files in the spec workspace.
 //
 // `encodeAgentYaml` emits via `package:yaml_edit` (stable key order, block
 // style); `decodeAgentYaml` parses via `package:yaml` and deep-converts the

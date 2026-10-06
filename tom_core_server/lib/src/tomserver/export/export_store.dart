@@ -1,10 +1,10 @@
 /// Where a rendered export is kept when it is stored rather than streamed.
 ///
-/// `codespecs_mapping.md` §5.28 lets a report name one of three delivery
-/// channels. Two of them — `apiResponse` and `email` — consume the renderer's
-/// byte stream and keep nothing; the third, `fileExport`, has to put the
-/// document *somewhere* and hand back a reference to it. This library is that
-/// somewhere.
+/// `tom_core_codespecs/doc/codespecs_mapping.md` §5.28 lets a report name one
+/// of three delivery channels. Two of them — `apiResponse` and `email` —
+/// consume the renderer's byte stream and keep nothing; the third,
+/// `fileExport`, has to put the document *somewhere* and hand back a reference
+/// to it. This library is that somewhere.
 ///
 /// ## Why a four-method interface and not the persistence layer's blob API
 ///

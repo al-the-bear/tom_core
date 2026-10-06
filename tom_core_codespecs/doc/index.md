@@ -14,6 +14,17 @@ documents here cite it rather than restating it
 |----------|--------|
 | [gap_classes.md](gap_classes.md) | The seven modules and their holders: the dependency-free invariant, the two-layer layout model, the message-key registry, the route registry and screen flow, the notification catalogue, and the report model — plus where each kind of error surfaces |
 
+## Design
+
+The normative CodeSpecs design this package implements. The package's source
+cites these two by section number, and ships them so that every such citation
+resolves for a reader of the package.
+
+| Document | Covers |
+|----------|--------|
+| [codespecs_mapping.md](codespecs_mapping.md) | The parts catalogue, the five-package `tom_core`-family basis, the attribute surfaces, and every reuse-versus-gap verdict |
+| [codespecs_derivation_contract.md](codespecs_derivation_contract.md) | What code comes out per marker, and which `tom_core`-family class it is built on |
+
 ## API reference
 
 | Document | Covers |
@@ -36,8 +47,6 @@ documents here cite it rather than restating it
 
 | Where | What it decides |
 |-------|-----------------|
-| [`codespecs_mapping.md`](../../../ai_build/tom_specs_model/doc/codespecs_mapping.md) | The parts catalogue, the five-package `tom_core`-family basis, the attribute surfaces, and every reuse-versus-gap verdict |
-| [`codespecs_derivation_contract.md`](../../../ai_build/tom_specs_model/doc/codespecs_derivation_contract.md) | What code comes out per marker, and which `tom_core`-family class it is built on |
 | [`tom_specs_model/doc/index.md`](../../../ai_build/tom_specs_model/doc/index.md) | The catalogue of the whole subject-matter tier, and the `§` citation convention |
 
 | Sibling | What it is |

@@ -1,4 +1,4 @@
-// Reconnect protocol (`tom_specs_editor_specification.md` §6.1).
+// Reconnect protocol for the TomSpecs editor's VS Code bridge connection.
 //
 // When the bound VS Code bridge stops responding the transport itself is gone
 // — there is no way to hold the live socket / in-flight exchange open. We

@@ -11,9 +11,10 @@
 /// lets the same renderer feed a `shelf` response body, a file sink, or a blob
 /// upload without any of them waiting for the last row.
 ///
-/// It also makes the two delivery channels `codespecs_mapping.md` §5.28 names
-/// the *same* code path: `apiResponse` pipes the stream to the client,
-/// `fileExport` pipes it to storage. Neither needs a variant renderer.
+/// It also makes the two delivery channels
+/// `tom_core_codespecs/doc/codespecs_mapping.md` §5.28 names the *same* code
+/// path: `apiResponse` pipes the stream to the client, `fileExport` pipes it to
+/// storage. Neither needs a variant renderer.
 ///
 /// ## Why bytes and not text
 ///

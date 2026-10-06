@@ -41,8 +41,8 @@ import 'package:flutter_test/flutter_test.dart';
 /// Citing *another package in the code tree* is fine and stays that way. The
 /// distinction is whether the target ships with a checkout of the code, which
 /// is what a reader actually cares about: `codespecs_mapping.md` lives in
-/// `tom_ai/ai_build/tom_specs_model/doc/` and comes with the monorepo, and
-/// three artefacts here cite it deliberately.
+/// `tom_core_codespecs/doc/` and comes with the code, and three artefacts
+/// here cite it deliberately.
 ///
 /// The rule is about a *citation*, and that is why this guard is a member of
 /// this package's suite rather than a check over `tom_ai/core`. A package whose

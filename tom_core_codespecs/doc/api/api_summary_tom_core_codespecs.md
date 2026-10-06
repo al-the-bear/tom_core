@@ -5,7 +5,7 @@ not already carry. One library, seven source modules, no dependencies.
 
 For task-oriented guidance see [gap_classes.md](../gap_classes.md). For which
 parts are gaps and which are reuse verdicts, see
-[`codespecs_mapping.md`](../../../../ai_build/tom_specs_model/doc/codespecs_mapping.md)
+[`codespecs_mapping.md`](../codespecs_mapping.md)
 §4.1 and §5.
 
 ## Table of Contents

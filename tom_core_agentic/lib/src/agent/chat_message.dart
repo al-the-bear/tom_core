@@ -1,7 +1,7 @@
 // Chat-message & trail models.
 //
-// The chat composer's message stream and the prompt trail's request/answer
-// pairs (§11.1 / §11.3 of `tom_specs_editor_specification.md`). The trail
+// The TomSpecs editor's chat composer message stream and its prompt trail's
+// request/answer pairs. The trail
 // mirrors `_ai/trail/anthropic/{quest}/`: each [TrailPair] carries the
 // request, the answer, a summary-markdown blob and the provenance read off
 // the SDK result. Persisted as YAML in the spec workspace.

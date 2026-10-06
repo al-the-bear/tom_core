@@ -520,8 +520,9 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// `https://auth.example.com/auth/login`.
   ///
   /// Not secret, but deployment-specific: it belongs in the deployed config
-  /// tree / environment, not in a spec (`codespecs_mapping.md` §5.16, CE-CF).
-  /// `null` or blank disables server self-login.
+  /// tree / environment, not in a spec
+  /// (`tom_core_codespecs/doc/codespecs_mapping.md` §5.16, CE-CF). `null` or
+  /// blank disables server self-login.
   String? authServerLoginUri;
 
   /// The login name of this deployment's service account.
@@ -530,7 +531,7 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   String? serviceAccountName;
 
   /// The service account's secret — **secret-bearing** per
-  /// `codespecs_mapping.md` §5.16.
+  /// `tom_core_codespecs/doc/codespecs_mapping.md` §5.16.
   ///
   /// Its *declaration* lives here (so the shape and the source key are known);
   /// its **value is never authored**. It is supplied out-of-band at deploy time
@@ -575,7 +576,7 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// no mail.
   ///
   /// Deployment-specific but not secret, like [authServerLoginUri]
-  /// (`codespecs_mapping.md` §5.16, CE-CF).
+  /// (`tom_core_codespecs/doc/codespecs_mapping.md` §5.16, CE-CF).
   String? smtpHost;
 
   /// The mail server's port. `0` is the "unconfigured" sentinel — the same
@@ -597,7 +598,7 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   String? smtpUsername;
 
   /// The mail server password — **secret-bearing** per
-  /// `codespecs_mapping.md` §5.16.
+  /// `tom_core_codespecs/doc/codespecs_mapping.md` §5.16.
   ///
   /// Its *declaration* lives here (so the shape and the source key are known);
   /// its **value is never authored**. It is supplied out-of-band at deploy time
@@ -657,13 +658,14 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// SMS.
   ///
   /// Deployment-specific but not secret, like [smtpHost]
-  /// (`codespecs_mapping.md` §5.16, CE-CF). Must be `http` or `https`; anything
-  /// else is rejected when the settings are built, so a typo surfaces at
-  /// startup rather than as an unroutable request at 03:00.
+  /// (`tom_core_codespecs/doc/codespecs_mapping.md` §5.16, CE-CF). Must be
+  /// `http` or `https`; anything else is rejected when the settings are built,
+  /// so a typo surfaces at startup rather than as an unroutable request at
+  /// 03:00.
   String? smsEndpoint;
 
   /// The gateway credential — **secret-bearing** per
-  /// `codespecs_mapping.md` §5.16.
+  /// `tom_core_codespecs/doc/codespecs_mapping.md` §5.16.
   ///
   /// Its *declaration* lives here; its **value is never authored**. Supplied
   /// out-of-band at deploy time through the ordinary CE-CF precedence chain,

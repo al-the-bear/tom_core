@@ -11,7 +11,7 @@
 /// ## Two identities, and they are not the same identity
 ///
 /// The framework distinguishes them, and the distinction is the whole of the
-/// meet in `codespecs_mapping.md` §5.26:
+/// meet in `tom_core_codespecs/doc/codespecs_mapping.md` §5.26:
 ///
 /// | | What it answers | How it is installed | Scope |
 /// | - | - | - | - |

@@ -2,8 +2,7 @@
 // (and the `{{name}}` alias) against.
 //
 // Ported from the VS Code extension's chat-variable store for the TomSpecs
-// editor (§11.4 / §11.5 of `tom_specs_editor_specification.md`). Chat
-// variables are the user-facing binding source the §11.5 placeholder
+// editor. Chat variables are the user-facing binding source placeholder
 // resolution reads: each variable contributes one `name → value` entry to the
 // resolver's stack. Built-in variables (`date`, `time`, `quest`, …) are
 // supplied by the composer at resolution time and carry [builtIn] so an editor

@@ -766,8 +766,9 @@ class TomGradedAccess extends TomAccessControl {
   /// A tier counts as granted to the deployment when its child reports itself
   /// fully granted. So a deployment entitled to a feature's view tier but not
   /// its edit tier yields [TomAuthState.read], which caps even an editing user
-  /// down to read — the worked example in `codespecs_mapping.md` §5.26,
-  /// falling straight out of the structure rather than out of a special case.
+  /// down to read — the worked example in
+  /// `tom_core_codespecs/doc/codespecs_mapping.md` §5.26, falling straight out
+  /// of the structure rather than out of a special case.
   ///
   /// Note the asymmetry with [resolvePrincipalAuthState]: children that express
   /// no deployment opinion answer [TomAuthState.full] (the identity element),
@@ -978,10 +979,10 @@ class TomCustomAccess extends TomAccessControl {
 /// sides of the meet. Asked about a *user* they answer "may this person use the
 /// feature"; asked about the *ambient server principal* they answer "is this
 /// deployment licensed for the feature at all". That is why
-/// `codespecs_mapping.md` §5.26 needs no new class for server-level grants —
-/// the same pattern set, matched against the other principal. A deployment
-/// whose entitlements do not match caps the feature to [TomAuthState.none] no
-/// matter what the user holds.
+/// `tom_core_codespecs/doc/codespecs_mapping.md` §5.26 needs no new class for
+/// server-level grants — the same pattern set, matched against the other
+/// principal. A deployment whose entitlements do not match caps the feature to
+/// [TomAuthState.none] no matter what the user holds.
 class TomEntitlementAccess extends TomAccessControl {
   /// List of regex patterns to match against user entitlements.
   final List<String> patterns;
@@ -1008,9 +1009,10 @@ class TomEntitlementAccess extends TomAccessControl {
   /// The deployment operand: the very same pattern match, run against the
   /// server's entitlement set.
   ///
-  /// This is the whole of the "grant carrier" in `codespecs_mapping.md` §5.26
-  /// — a feature is granted to this deployment iff the server principal's
-  /// entitlements match the feature's pattern.
+  /// This is the whole of the "grant carrier" in
+  /// `tom_core_codespecs/doc/codespecs_mapping.md` §5.26 — a feature is granted
+  /// to this deployment iff the server principal's entitlements match the
+  /// feature's pattern.
   @override
   TomAuthState resolveServerAuthState(TomPrincipal serverPrincipal) =>
       checkPrincipalAccess(serverPrincipal)
