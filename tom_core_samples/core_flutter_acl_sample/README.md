@@ -440,7 +440,8 @@ screen. *Source: `widget_demos/demo_28_authorization` +
 
 | File | Asserts |
 | --- | --- |
-| `test/acl_smoke_test.dart` | Every capability group builds and pumps without throwing; the home index lists every group |
+| `test/acl_smoke_test.dart` | Every capability group builds without throwing, and every cell's demo — and every label inside it — occupies area, so a layout that collapses a box fails rather than rendering invisibly (`visible_demos.dart`); the home index lists every group |
+| `test/visible_demos_test.dart` | The visibility audit itself fails on a deliberately collapsed demo and on one squashed box beside a full-height neighbour |
 | `test/showcase_cell_test.dart` | A `ShowcaseCell` shows both the code text and the rendered child; no cell has an empty snippet; no snippet names an API its group's live code never calls |
 | `test/authorization_states_test.dart` | The four state cells render; `none` collapses the gated button while `full`/`read`/`disabled` keep it |
 | `test/visibility_test.dart` | The one interactive cell: flipping the switch hides *Detail A* and *Detail B* and flipping it back restores them, while the ungrouped summary row stays |

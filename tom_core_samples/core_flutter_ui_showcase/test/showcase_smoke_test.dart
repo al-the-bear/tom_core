@@ -1,9 +1,13 @@
-// Smoke tests: every group screen builds and pumps without throwing.
+// Smoke tests: every group screen builds, and every cell's live demo is
+// visible.
 //
 // These guard against the most common showcase breakages — a snippet whose
-// `child` widget throws at build time, or a group that references an API that
-// no longer exists. Each test pumps a real [GroupScreen] inside a MaterialApp
-// at a wide viewport so the responsive side-by-side layout is exercised too.
+// `child` widget throws at build time, a group that references an API that no
+// longer exists, and a demo laid out with no area (see `visible_demos.dart` for
+// why "nothing threw" does not cover that). Each test pumps a real
+// [GroupScreen] inside a MaterialApp at a wide viewport so the responsive
+// side-by-side layout is exercised too, and tall enough that the lazy list
+// builds every cell, so none escapes the measurement.
 //
 // The last test guards the other half of the same promise. The README opens its
 // group list with "Each group below maps to one file in `lib/groups/` and one
@@ -19,6 +23,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'visible_demos.dart';
+
 void main() {
   setUp(() {
     // Mirror main(): install the chrome bundle so TomCtr.text resolves rather
@@ -28,8 +34,11 @@ void main() {
     );
   });
 
+  /// Tall enough for the longest group, so the list builds every cell.
+  const viewportHeight = 20000.0;
+
   Future<void> pumpGroup(WidgetTester tester, ShowcaseGroup group) async {
-    tester.view.physicalSize = const Size(1200, 2400);
+    tester.view.physicalSize = const Size(1200, viewportHeight);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -40,13 +49,28 @@ void main() {
 
   group('every showcase group builds', () {
     for (final group in showcaseGroups) {
-      testWidgets('group "${group.id}" renders its cells', (tester) async {
+      testWidgets('group "${group.id}" renders its cells visibly', (
+        tester,
+      ) async {
         await pumpGroup(tester, group);
 
         // The group's title appears in the AppBar.
         expect(find.text(group.title), findsWidgets);
         // No exception was thrown while building the cells.
         expect(tester.takeException(), isNull);
+        // Every cell was built, so every cell is measured below.
+        final cellCount = group
+            .cells(tester.element(find.byType(GroupScreen)))
+            .length;
+        expect(
+          builtCellCount(),
+          cellCount,
+          reason: 'raise viewportHeight: the list did not build every cell',
+        );
+        // Every demo, and every label in it, occupies area.
+        final audit = auditDemos();
+        expect(audit.faults, isEmpty);
+        expect(audit.demosMeasured, cellCount);
       });
     }
   });

@@ -387,7 +387,9 @@ TomFormStringInput(
 )
 ```
 
-**`TomErrorView` summary** — aggregates every field error on a form:
+**`TomErrorView` summary** — aggregates every field error on a form. It is
+empty until validation runs, so its cell carries the company-name field and a
+**Validate** button that calls `form.validate()`:
 
 ```dart
 TomErrorView(form: form, title: 'Please fix the following')
@@ -522,8 +524,8 @@ is meant to reach the real company form and not these four pinned demo fields.
 Two forms share an id only where their resources should resolve together, which
 is what `OrderItemForm` and `OrderItemListForm` do with `items` (§13).
 
-The `none` cell renders an empty preview surface on purpose: the field collapses
-to nothing.
+The `none` cell puts the field between two labels on purpose: it collapses to
+nothing, so the labels close up around the place it would have taken.
 
 ---
 
@@ -650,7 +652,9 @@ lib/
     theming_group.dart          responsive_group.dart   authorization_group.dart
     lists_group.dart            master_detail_group.dart
 test/
-  showcase_smoke_test.dart      # every group builds without exceptions
+  showcase_smoke_test.dart      # every group builds, every demo is visible
+  error_view_cell_test.dart     # Validate fills the TomErrorView summary
+  visible_demos.dart            # shared helper: does every demo occupy area?
   showcase_cell_test.dart       # every cell shows both code and child
   widget_convention_test.dart   # G-UI-1 holds in the source AND in the snippets
   list_form_host_test.dart      # the list-bearing groups really bind their items
@@ -707,7 +711,12 @@ shared with another file.
 All the suites that bind a form call `initializeReflection()` in `setUpAll`:
 
 - **`showcase_smoke_test.dart`** — pumps each group and the home screen at a
-  large size, asserting the group title renders and `takeException` is null.
+  large size, asserting the group title renders, `takeException` is null, and
+  every cell's demo — and every label inside it — occupies area, so a demo that
+  renders nothing fails rather than passing as an empty preview
+  (`visible_demos.dart`).
+- **`error_view_cell_test.dart`** — the `TomErrorView` cell does what its note
+  says: pressing **Validate** fills the summary.
 - **`showcase_cell_test.dart`** — asserts every cell shows both its code snippet
   and its live child, that no cell's snippet is empty, that no snippet names an
   API the sample never calls, and that a snippet quoting a configurable

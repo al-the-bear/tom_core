@@ -108,7 +108,7 @@ final ShowcaseGroup validationGroup = ShowcaseGroup(
       title: 'TomErrorView summary',
       note:
           'Aggregates every field error on a form. Empty until validation '
-          'runs; call form.validate() or edit a field to populate it.',
+          'runs: press Validate, or edit the name, to populate it.',
       code:
           "TomErrorView(\n"
           "  form: form,\n"
@@ -118,8 +118,16 @@ final ShowcaseGroup validationGroup = ShowcaseGroup(
         scopeId: 'val_errorview',
         create: CompanyForm.new,
         bind: (form) => form.bind(CompanyProfile()),
-        builder: (context, form) =>
+        builder: (context, form) => TomColumn(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            form.name.widget,
+            TomSizedBox(height: 8),
+            TomElevatedButton(label: 'Validate', onPressed: form.validate),
+            TomSizedBox(height: 8),
             TomErrorView(form: form, title: 'Please fix the following'),
+          ],
+        ),
       ),
     ),
   ],

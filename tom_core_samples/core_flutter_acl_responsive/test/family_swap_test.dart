@@ -9,6 +9,7 @@
 // Cupertino form binds — so edits round-trip across the swap. Mirrors the
 // verified `tom_flutter_form_test` `demo_p_family_swap_breakpoint_test`.
 
+import 'package:core_flutter_acl_responsive/common/showcase_section.dart';
 import 'package:core_flutter_acl_responsive/groups/family_swap_group.dart';
 import 'package:core_flutter_acl_responsive/reflection_seed.dart';
 import 'package:core_flutter_acl_responsive/common/chrome_texts.dart';
@@ -236,5 +237,37 @@ void main() {
       'Linus Torvalds',
       reason: 'wide-side edit must survive into the Cupertino form',
     );
+  });
+
+  // The tests above pump the demo alone at an exact width. In the showcase it
+  // sits in a cell beside its snippet, whose long lines claim most of a
+  // side-by-side row; unless the cell grants the demo its 700px, a reader can
+  // never see the swap's wide side, however wide the screen.
+  group('in the showcase screen', () {
+    Future<void> pumpScreen(WidgetTester tester, double width) async {
+      tester.view.physicalSize = Size(width, 6000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      tolerateOverflowErrors();
+      await tester.pumpWidget(
+        MaterialApp(home: GroupScreen(group: familySwapGroup)),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('FS-SCREEN-1: a desktop screen shows the Material side', (
+      tester,
+    ) async {
+      await pumpScreen(tester, 1200);
+      expect(find.text('Active family: material'), findsOneWidget);
+    });
+
+    testWidgets('FS-SCREEN-2: a phone screen shows the Cupertino side', (
+      tester,
+    ) async {
+      await pumpScreen(tester, 400);
+      expect(find.text('Active family: cupertino'), findsOneWidget);
+    });
   });
 }

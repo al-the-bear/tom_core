@@ -149,7 +149,8 @@ Two small types under `lib/common/` carry every page:
 - **`ShowcaseCell`** — one `code | rendered` entry: a `title`, a curated
   `code` snippet, the live `child`, and an optional `note` naming the width
   threshold the mechanism reacts at. What the snippet may abridge — and the one
-  thing it may not — is §15.
+  thing it may not — is §15. A cell whose subject is a width threshold also
+  declares `childMinWidth`, the width its child needs to show both sides of it.
 
 `ShowcaseCell` **dogfoods the engine the sample is about** to lay *itself* out —
 snippet and preview share one row while the cell is at least 720px wide, and
@@ -164,6 +165,16 @@ AclBuilder()
     .append(preview, dist: 16)
     .build()
 ```
+
+Side by side, the two columns share the row in proportion to their preferred
+widths, and a snippet's long lines prefer a wide box: left alone, the preview
+gets about a fifth of the row. That is fine for an elastic preview and fatal for
+one that teaches a threshold — the family-swap demo (§7) needs 700px to show its
+Material side, and a fifth of a 1200px screen is under 240px. So a cell that
+declares `childMinWidth` gives the snippet the readable minimum (280px) as its
+preferred width and the preview the declared width plus its frame, and splits
+only when the row can grant both; below that it stacks, and each half fills the
+row.
 
 **`FormHost<F>`** carries the form lifecycle for the groups that only need to
 render one: it creates the form inside a `TomScope`, runs the caller's optional
@@ -490,6 +501,7 @@ core_flutter_acl_responsive/
    ├─ validation_message_test.dart · chrome_test.dart
    ├─ row_breakpoint_test.dart · adaptive_sizing_test.dart · responsive_acl_form_test.dart
    ├─ group_harness.dart            # shared helper, not a suite
+   ├─ visible_demos.dart            # shared helper: does every demo occupy area?
    └─ overflow_tolerance.dart       # shared helper, not a suite
 ```
 
@@ -539,11 +551,11 @@ over.
 
 | File | Covers |
 | ---- | ------ |
-| `responsive_smoke_test.dart` | Every group builds at phone/tablet/desktop widths; any exception other than a preview overflow fails the pump. Home screen lists every group. |
+| `responsive_smoke_test.dart` | Every group builds at phone/tablet/desktop widths; any exception other than a preview overflow fails the pump; and every cell's demo — and every label inside it — occupies area at each width (`visible_demos.dart`). Home screen lists every group. |
 | `breakpoint_field_style_test.dart` | The badge row reports the exact tier values at 800 / 450 / 360 px (label placement, fonts, gaps, border, icon). |
-| `family_swap_test.dart` | Active family flips at 700px; seeds echo in the shared panel; an edit propagates; **state survives the swap**. |
+| `family_swap_test.dart` | Active family flips at 700px; seeds echo in the shared panel; an edit propagates; **state survives the swap**; and in the real group screen a desktop width shows the Material side and a phone width the Cupertino one. |
 | `form_factor_test.dart` | One badge per tier at 1200 / 900 / 400 px, and — the drift guard — every cell title names the tier that cell's own badge reports (§9). |
-| `showcase_cell_test.dart` | The cell contract — both the snippet and the live child render, no group ships an empty snippet, and no snippet names an API the group's live code never calls (§15). |
+| `showcase_cell_test.dart` | The cell contract — both the snippet and the live child render, no group ships an empty snippet, and no snippet names an API the group's live code never calls (§15); and a declared `childMinWidth` is granted side by side, or the cell stacks. |
 | `validation_message_test.dart` | Every `error.*` key `CompanyForm` can emit resolves to its human sentence, `{min}` is interpolated, and no `Text` in the form renders a raw resource key (§5). |
 | `form_host_test.dart` | The shared form lifecycle (§5): an unbound host renders the field defaults and constructs no entity, a supplied `bind` seeds every field, and teardown disposes the form so a later mutation of the entity no longer reaches it. A parent rebuild keeps the same form: `create` and `bind` run once and a user edit survives. |
 | `chrome_test.dart` | The copy button puts the trimmed snippet on the clipboard; `showcase.app.title` and `showcase.codeBlock.copyTooltip` resolve to their declared strings, and the app bar shows the title. |

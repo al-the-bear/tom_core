@@ -21,6 +21,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../common/form_host.dart';
 import '../common/showcase_cell.dart';
@@ -55,6 +56,17 @@ ShowcaseCell _stateCell({
   );
 }
 
+/// Puts [gated] between two labels, so a state that renders nothing shows as
+/// the labels closing up rather than as an empty preview.
+Widget _betweenLabels(Widget gated) => TomColumn(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    TomText(text: 'Above the field'),
+    gated,
+    TomText(text: 'Below the field'),
+  ],
+);
+
 /// The Authorization component group.
 final ShowcaseGroup authorizationGroup = ShowcaseGroup(
   id: 'authorization',
@@ -88,11 +100,11 @@ final ShowcaseGroup authorizationGroup = ShowcaseGroup(
     _stateCell(
       title: 'TomAuthState.none',
       note:
-          'Hidden entirely — the preview surface renders empty because the '
-          'field collapses to nothing.',
+          'Hidden entirely — the field collapses to nothing, so the labels '
+          'above and below it close up.',
       scopeId: 'auth_none',
       stateName: 'none',
-      field: (form) => form.none.widget,
+      field: (form) => _betweenLabels(form.none.widget),
     ),
   ],
 );

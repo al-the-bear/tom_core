@@ -11,6 +11,8 @@
 /// `core_flutter_form_showcase` / `core_flutter_acl_sample`.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
@@ -33,6 +35,7 @@ class ShowcaseCell extends TomStatelessWidget {
     required this.code,
     required this.child,
     this.note,
+    this.childMinWidth,
   });
 
   /// Human-readable label for the mechanism being shown.
@@ -64,6 +67,34 @@ class ShowcaseCell extends TomStatelessWidget {
   /// Optional caveat shown under the title.
   final String? note;
 
+  /// The narrowest width [child] has to be given to show what it demonstrates,
+  /// when it has one.
+  ///
+  /// Most previews are elastic and leave this null. A cell whose subject is a
+  /// width threshold declares it: side by side, the long lines of the snippet
+  /// claim most of the row, and a preview squeezed below its threshold can
+  /// never show the wide side of what it teaches. Declaring the width makes
+  /// the split grant at least it, and makes the cell stack instead when the
+  /// row is too narrow for both halves.
+  final double? childMinWidth;
+
+  /// What [_PreviewSurface] adds around [child]: its padding and border.
+  static const double _previewFrame = 2 * (16 + 1);
+
+  /// The narrowest code column worth splitting for. Below it the snippet wraps
+  /// so hard that the side-by-side reading the cell exists for is lost.
+  static const double _minCodeWidth = 280;
+
+  /// The gutter between the two columns.
+  static const double _gutter = 16;
+
+  /// The cell width below which the `code | preview` pair stacks: 720, or
+  /// wider when both halves need more — the preview's declared minimum, a
+  /// readable code column and the gutter.
+  double get _splitBelow => childMinWidth == null
+      ? 720
+      : math.max(720, childMinWidth! + _previewFrame + _minCodeWidth + _gutter);
+
   @override
   Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
@@ -92,20 +123,40 @@ class ShowcaseCell extends TomStatelessWidget {
             // Dogfood the engine (G-UI-4): a sample *about* responsiveness lays
             // its own cells out with an AclBuilder row breakpoint instead of a
             // hand-rolled MediaQuery compare — code | preview share one row
-            // while the cell is at least 720px wide and reflow to a stack below
-            // it. The ACL default top cross-alignment and its intrinsic-free
-            // measurement keep previews that build an internal LayoutBuilder —
-            // the ACL engine itself — robust.
-            AclBuilder()
-                .setAclExpandXDefault(true)
-                .append(codeView)
-                .addRowBreakpoint(atWidth: 720, splitRowDist: 12)
-                .append(preview, dist: 16)
-                .build(),
+            // while the cell is wide enough for both and reflow to a stack
+            // below it. The ACL default top cross-alignment and its
+            // intrinsic-free measurement keep previews that build an internal
+            // LayoutBuilder — the ACL engine itself — robust.
+            _split(codeView, preview),
           ],
         ),
       ),
     );
+  }
+
+  /// Lays the two halves out as one ACL row that breaks below [_splitBelow].
+  Widget _split(Widget codeView, Widget preview) {
+    final builder = AclBuilder()
+        .setAclExpandXDefault(true)
+        .append(codeView)
+        .addRowBreakpoint(atWidth: _splitBelow, splitRowDist: 12);
+    final min = childMinWidth;
+    if (min == null) {
+      return builder.append(preview, dist: _gutter).build();
+    }
+    // Both columns expand, and the engine shares a row between expanding
+    // columns in proportion to their preferred widths (a declared minimum
+    // does not hold a column — it lowers its share). So the snippet is given
+    // the readable minimum as its preferred width and the preview its
+    // declared one: side by side the preview's share is
+    // (row - gutter) * preview / (preview + code), which reaches the declared
+    // width exactly when the row is as wide as [_splitBelow] demands. Stacked,
+    // each column is alone in its row and fills it.
+    return builder
+        .setPSize(_minCodeWidth)
+        .append(preview, dist: _gutter)
+        .setPSize(min + _previewFrame)
+        .build();
   }
 }
 

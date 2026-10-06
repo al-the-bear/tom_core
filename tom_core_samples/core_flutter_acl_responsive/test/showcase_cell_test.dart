@@ -69,6 +69,78 @@ void main() {
     expect(find.text('Demo'), findsOneWidget);
   });
 
+  group('childMinWidth: a width-threshold demo is given its width', () {
+    // A snippet with lines long enough to claim most of a side-by-side row,
+    // which is what squeezed the family-swap demo to a fifth of it.
+    final longCode = List.filled(
+      6,
+      'final material = FamilyForm(family: FormFieldFamily.material); // x',
+    ).join('\n');
+    const demo = Key('demo-width-probe');
+
+    Future<double> demoWidthAt(
+      WidgetTester tester,
+      double viewportWidth, {
+      double? childMinWidth,
+    }) async {
+      tester.view.physicalSize = Size(viewportWidth, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: ShowcaseCell(
+                title: 'Threshold',
+                code: longCode,
+                childMinWidth: childMinWidth,
+                // Takes all the width it is offered, so its size is the width
+                // the cell granted.
+                child: LayoutBuilder(
+                  builder: (context, constraints) => SizedBox(
+                    key: demo,
+                    width: constraints.maxWidth,
+                    height: 20,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      return tester.getSize(find.byKey(demo)).width;
+    }
+
+    testWidgets('CMW-1: undeclared, side by side squeezes the demo', (
+      tester,
+    ) async {
+      // The defect the parameter exists for, kept visible: at a desktop width
+      // the snippet takes the row and the demo is left well under 500.
+      expect(await demoWidthAt(tester, 1200), lessThan(500));
+    });
+
+    testWidgets('CMW-2: declared, side by side grants it', (tester) async {
+      expect(
+        await demoWidthAt(tester, 1200, childMinWidth: 500),
+        greaterThanOrEqualTo(500),
+      );
+    });
+
+    testWidgets('CMW-3: declared, too narrow to split, the cell stacks', (
+      tester,
+    ) async {
+      // 700 + frame + readable code + gutter does not fit in this row, so
+      // the preview takes the full width below the snippet instead.
+      expect(
+        await demoWidthAt(tester, 1000, childMinWidth: 700),
+        greaterThan(700),
+      );
+    });
+  });
+
   testWidgets('every responsive cell carries a non-empty snippet', (
     tester,
   ) async {

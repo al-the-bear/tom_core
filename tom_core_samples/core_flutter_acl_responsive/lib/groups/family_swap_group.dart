@@ -57,6 +57,9 @@ final ShowcaseGroup familySwapGroup = ShowcaseGroup(
           '    ]);\n'
           '  }),\n'
           ')',
+      // The demo exists to cross this width; a narrower preview could only
+      // ever show the Cupertino side.
+      childMinWidth: familySwapBreakpoint,
       child: FamilySwapDemo(),
     ),
   ],

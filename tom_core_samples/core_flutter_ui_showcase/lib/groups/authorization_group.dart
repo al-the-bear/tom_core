@@ -19,6 +19,18 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import '../common/showcase_cell.dart';
 import '../common/showcase_section.dart';
 
+/// Puts [gated] between two labels, so a state that renders nothing shows as
+/// the labels closing up rather than as an empty preview. They sit flush
+/// against it: whatever space shows between them is the widget's own.
+Widget _betweenLabels(Widget gated) => TomRow(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    TomText(text: '[Before]'),
+    gated,
+    TomText(text: '[After]'),
+  ],
+);
+
 /// The Authorization component group.
 final ShowcaseGroup authorizationGroup = ShowcaseGroup(
   id: 'authorization',
@@ -78,18 +90,20 @@ final ShowcaseGroup authorizationGroup = ShowcaseGroup(
     ShowcaseCell(
       title: 'TomAuthState.none',
       note:
-          'Hidden entirely — the cell renders an empty preview surface '
-          'because the widget collapses to nothing.',
+          'Hidden entirely — the button collapses to nothing, so the two '
+          'labels either side of it close up.',
       code:
           "TomElevatedButton(\n"
           "  authorizer: TomAuthorizer.fixed(TomAuthState.none),\n"
           "  label: 'Approve',\n"
           "  onPressed: () {},\n"
           ")",
-      child: TomElevatedButton(
-        authorizer: TomAuthorizer.fixed(TomAuthState.none),
-        label: 'Approve',
-        onPressed: () {},
+      child: _betweenLabels(
+        TomElevatedButton(
+          authorizer: TomAuthorizer.fixed(TomAuthState.none),
+          label: 'Approve',
+          onPressed: () {},
+        ),
       ),
     ),
   ],

@@ -1,12 +1,15 @@
-// Smoke tests: every responsive group screen builds and pumps at phone,
-// tablet and desktop widths without throwing.
+// Smoke tests: every responsive group screen builds at phone, tablet and
+// desktop widths, and every cell's live demo is visible at each of them.
 //
 // These guard the most common showcase breakages — a bound form whose field
-// throws at build time, a group referencing an API that no longer exists, or a
-// responsive primitive that crashes at a particular width tier. Each group is
-// pumped at three viewport widths so both the side-by-side and stacked cell
-// regimes (and the per-tier style/layout resolutions) are exercised. Reflection
-// is initialized once in setUpAll because the forms bind reflected entities.
+// throws at build time, a group referencing an API that no longer exists, a
+// responsive primitive that crashes at a particular width tier, and a demo the
+// engine lays out with no area (see `visible_demos.dart` for why "nothing
+// threw" does not cover that). Each group is pumped at three viewport widths so
+// both the side-by-side and stacked cell regimes (and the per-tier style/layout
+// resolutions) are exercised, and tall enough that the lazy list builds every
+// cell, so none escapes the measurement. Reflection is initialized once in
+// setUpAll because the forms bind reflected entities.
 
 import 'package:core_flutter_acl_responsive/common/showcase_section.dart';
 import 'package:core_flutter_acl_responsive/reflection_seed.dart';
@@ -17,6 +20,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'overflow_tolerance.dart';
+import 'visible_demos.dart';
 
 void main() {
   setUpAll(initializeReflection);
@@ -28,6 +32,10 @@ void main() {
       TomTextResourceProvider.from(showcaseTexts),
     );
   });
+
+  /// Tall enough for the longest group at phone width, so the list builds
+  /// every cell.
+  const viewportHeight = 30000.0;
 
   /// Pumps a group screen at [width].
   ///
@@ -43,7 +51,7 @@ void main() {
     ShowcaseGroup group,
     double width,
   ) async {
-    tester.view.physicalSize = Size(width, 2400);
+    tester.view.physicalSize = Size(width, viewportHeight);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -64,7 +72,7 @@ void main() {
   group('every responsive group builds at each width tier', () {
     for (final group in responsiveGroups) {
       for (final (tier, width) in widths) {
-        testWidgets('group "${group.id}" renders at $tier ($width)', (
+        testWidgets('group "${group.id}" renders visibly at $tier ($width)', (
           tester,
         ) async {
           // Any non-overflow error during the pump reaches flutter_test's own
@@ -74,6 +82,19 @@ void main() {
 
           // The group's title appears in the AppBar.
           expect(find.text(group.title), findsWidgets);
+          // Every cell was built, so every cell is measured below.
+          final cellCount = group
+              .cells(tester.element(find.byType(GroupScreen)))
+              .length;
+          expect(
+            builtCellCount(),
+            cellCount,
+            reason: 'raise viewportHeight: the list did not build every cell',
+          );
+          // Every demo, and every label in it, occupies area.
+          final audit = auditDemos();
+          expect(audit.faults, isEmpty);
+          expect(audit.demosMeasured, cellCount);
         });
       }
     }
