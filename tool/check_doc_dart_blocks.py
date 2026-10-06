@@ -90,7 +90,7 @@ Making them parse would take a mechanical `;` per block and would buy nothing:
 a declaration declares, so it never consults the real API, and Rule B could
 never fire. A green light there would be coverage in appearance only. Checking
 a quoted signature against the framework's own is a genuinely different check
--- comparing text to the element model -- and belongs in its own gate.
+-- comparing text to the element model -- and is `check_api_signatures.py`'s.
 
 **Which barrels a sample sees.** Every sample is analyzed with its own
 package's barrel imported and, when the package depends on `tom_core_kernel`,

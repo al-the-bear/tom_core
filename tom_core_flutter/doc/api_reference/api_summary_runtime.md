@@ -231,9 +231,9 @@ behaviour below has something to hang on.
 
 #### Constructors
 
-```dart
-TomFlutterPlatformUtils()
-```
+The native variant declares the one constructor, `TomFlutterPlatformUtils()`.
+No consumer calls it: the type is not exported, and `clientPlatformUtils`
+builds the instance.
 
 #### Methods
 

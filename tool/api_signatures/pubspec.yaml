@@ -1,0 +1,9 @@
+name: api_signatures
+description: >-
+  Holds the signatures quoted in a package's API summaries to the analyzer's
+  element model. Run through tool/check_api_signatures.py.
+publish_to: none
+environment:
+  sdk: ^3.10.0
+dependencies:
+  analyzer: ^10.2.0

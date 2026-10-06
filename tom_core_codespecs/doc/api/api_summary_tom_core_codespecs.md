@@ -134,6 +134,7 @@ TomClientApplication({
   this.entryRoute = '',
   List<String>? screenIds,
   this.serverBaseUrl = '',
+})
 ```
 
 ##### Properties
@@ -162,6 +163,7 @@ TomLayoutContainerNode({
   this.kind = TomLayoutContainerKind.column,
   Map<String, Object?>? properties,
   List<TomLayoutNode>? children,
+})
 ```
 
 ##### Properties
@@ -184,6 +186,7 @@ TomLayoutSlotNode({
   super.nodeId,
   this.referencedId = '',
   Map<String, Object?>? hints,
+})
 ```
 
 ##### Properties
@@ -205,6 +208,7 @@ TomLayoutOverrideDelta({
   this.newParentNodeId,
   this.position,
   Map<String, Object?>? properties,
+})
 ```
 
 ##### Properties
@@ -226,6 +230,7 @@ TomLayoutModel({
   this.layoutId = '',
   this.base,
   List<TomLayoutOverrideDelta>? overrides,
+})
 ```
 
 ##### Properties
@@ -259,6 +264,7 @@ TomMessageKey({
   this.errorCode,
   List<String>? parameters,
   Map<String, String>? localeCopy,
+})
 ```
 
 ##### Properties
@@ -310,6 +316,7 @@ TomRouteDefinition({
   this.path,
   this.title = '',
   List<String>? parameters,
+})
 ```
 
 ##### Properties
@@ -331,6 +338,7 @@ TomFormScreenAssignment({
   this.formId = '',
   this.routeId = '',
   this.presentation = TomScreenPresentation.replace,
+})
 ```
 
 ##### Properties
@@ -353,6 +361,7 @@ TomScreenFlowEdge({
   this.outcome = TomFlowOutcome.success,
   this.targetRouteId = '',
   this.presentation = TomScreenPresentation.replace,
+})
 ```
 
 ##### Properties
@@ -401,6 +410,7 @@ TomJobDeclaration({
   this.serviceUnitId,
   List<Type>? readEntities,
   List<Type>? writtenEntities,
+})
 ```
 
 ##### Properties
@@ -435,6 +445,7 @@ TomNotificationChannelDeclaration({
   this.fallbackChannelId,
   this.honoursQuietHours = false,
   Set<TomNotificationUrgency>? urgencyLevels,
+})
 ```
 
 ##### Properties
@@ -470,6 +481,7 @@ TomNotificationType({
   this.triggerEvent,
   this.contentTemplateKey,
   this.localized = false,
+})
 ```
 
 ##### Properties
@@ -504,6 +516,7 @@ TomNotificationPreferences({
   this.globalOptOut = false,
   Set<String>? mutedTypeIds,
   Map<String, List<String>>? channelsByTypeId,
+})
 ```
 
 ##### Properties
@@ -530,6 +543,7 @@ The declared notification catalogue: every channel and every type the system has
 TomNotificationCatalog({
   List<TomNotificationChannelDeclaration>? channels,
   List<TomNotificationType>? types,
+})
 ```
 
 ##### Properties
@@ -558,6 +572,7 @@ TomReportDimension({
   required this.columnName,
   required this.valueKind,
   this.label,
+})
 ```
 
 ##### Properties
@@ -588,6 +603,7 @@ TomReportMeasure({
   this.distinct = false,
   this.valueKind = TomReportValueKind.decimal,
   this.label,
+})
 ```
 
 ##### Properties
@@ -620,6 +636,7 @@ TomReportColumn({
   this.label,
   this.formatPattern,
   this.drillThroughRouteId,
+})
 ```
 
 ##### Properties
@@ -653,6 +670,7 @@ TomReportParameter({
   this.label,
   this.enumId,
   this.entityId,
+})
 ```
 
 ##### Properties
@@ -686,6 +704,7 @@ TomReportChart({
   required this.valueColumns,
   this.title,
   this.seriesColumn,
+})
 ```
 
 ##### Properties
@@ -722,6 +741,7 @@ TomReportDefinition({
   this.charts = const [],
   this.deliveryChannels = const [TomReportDeliveryChannel.apiResponse],
   this.scheduleExpression,
+})
 ```
 
 ##### Properties
@@ -755,6 +775,7 @@ TomReportResultSection({
   required this.columns,
   required Stream<List<Object?>> Function() openRows,
   this.title,
+})
 ```
 
 ##### Properties

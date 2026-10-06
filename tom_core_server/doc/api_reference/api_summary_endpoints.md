@@ -667,7 +667,7 @@ TomFormBindingException(
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
-  bool autoLog = true,
+  bool autoLog = false,
 })
 ```
 
@@ -788,7 +788,7 @@ TomWebSocketException(
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
-  bool autoLog = true,
+  bool autoLog = false,
 })
 ```
 
@@ -875,7 +875,7 @@ TomFileSlotException(
   Map<String, Object?>? parameters,
   StackTrace? stack,
   Object? rootException,
-  bool autoLog = true,
+  bool autoLog = false,
 })
 ```
 

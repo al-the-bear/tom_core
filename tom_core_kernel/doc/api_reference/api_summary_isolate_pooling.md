@@ -95,7 +95,7 @@ TomWorkerException(
   Object? rootException,
   bool autoLog = false,
   String? uuid,
-  bool? serverCallError,
+  TomServerCallError? serverCallError,
 })
 ```
 
@@ -136,7 +136,7 @@ TomWorkerDiedException(
   Object? rootException,
   bool autoLog = false,
   String? uuid,
-  bool? serverCallError,
+  TomServerCallError? serverCallError,
 })
 ```
 

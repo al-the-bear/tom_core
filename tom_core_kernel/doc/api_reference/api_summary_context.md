@@ -162,7 +162,7 @@ still returns `null`.
 #### Constructors
 
 ```dart
-const TomContextEntry<T>(T? Function() contextFunction)
+const TomContextEntry(T? Function() contextFunction)
 ```
 
 #### Properties

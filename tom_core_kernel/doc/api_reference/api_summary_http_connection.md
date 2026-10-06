@@ -451,7 +451,7 @@ TomEndpointException(
   Object? rootException,
   bool autoLog = false,
   String? uuid,
-  bool? serverCallError,
+  TomServerCallError? serverCallError,
 })
 ```
 
@@ -723,7 +723,7 @@ TomClientRemoteContextException(
   Object? rootException,
   bool autoLog = false,
   String? uuid,
-  bool? serverCallError,
+  TomServerCallError? serverCallError,
 })
 ```
 
@@ -1102,7 +1102,7 @@ TomServerConnectionException(
   bool autoLog = false,
   String? requestUuid,
   String? uuid,
-  bool? serverCallError,
+  TomServerCallError? serverCallError,
 })
 ```
 

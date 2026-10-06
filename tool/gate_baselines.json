@@ -1,6 +1,11 @@
 {
  "about": "Fault counts the gates in tool/ are held to. Read by tool/check_gates.py, which fails when a gate's count moves in either direction: up means a new fault, down means a baseline that should be lowered so the repair sticks. 'measured' is the date the count last changed. Regenerate with `python3 tool/check_gates.py --update`; write 'note' by hand.",
  "gates": {
+  "check_api_signatures": {
+   "faults": 0,
+   "measured": "2026-10-06",
+   "note": "Lands at zero over six packages (598 fences, 658 members compared) after its first run found 27 signatures that disagreed with the code and they were repaired in the same pass: five exceptions quoting `bool? serverCallError` for a `TomServerCallError?` parameter, three `autoLog = true` defaults that are `false`, a preference-key exception quoted with a parameter list it no longer has, a `progress` quoted as `Widget?` that is a `double?`, a missing `const`, a constructor type parameter, three OAuth defaults quoted as `''`, a constructor of a type the package does not export, and all 21 constructor fences of tom_core_codespecs' summary, cut off before their closing `})`. The checker's own false positives were fixed before any page was touched: typedef, raw-generic, record and named-function-type spellings are compared structurally, positional parameters by position, and a qualified or private default is accepted. Zero is the steady state; the gate exists for recurrence."
+  },
   "check_barrel_exports": {
    "faults": 0,
    "measured": "2026-09-04",

@@ -106,7 +106,13 @@ Raised for a key that does not satisfy `TomUserPreferenceKeys`.
 #### Constructors
 
 ```dart
-TomUserPreferenceKeyException(String key, String cause, String message)
+TomUserPreferenceKeyException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  Object? rootException,
+  StackTrace? stack,
+})
 ```
 
 The error key is always `preferences.key.invalid`; `parameters` carries the

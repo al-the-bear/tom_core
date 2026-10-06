@@ -263,6 +263,7 @@ it and start eight test suites.
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, quote its signature with the wrong parameter kind, or `const` one that is not |
 | [`tool/check_downstream_consumers.py`](tool/check_downstream_consumers.py) | Holds `tom_uam`, the application-sized consumer kept on tom_core's current level, to the framework as it stands: each package is resolved with `pub get`, analyzed, and has its generated `*.reflection.dart` analyzed by name for errors, since its own options exclude them |
 | [`tool/check_doc_dart_blocks.py`](tool/check_doc_dart_blocks.py) | Runs every ` ```dart ` block in a package's documents through the analyzer: it must parse, every framework name in it must resolve, and a fence marked ` ```dart complete ` must analyze clean outright |
+| [`tool/check_api_signatures.py`](tool/check_api_signatures.py) | Holds every signature an API summary quotes in a fence to the analyzer's element model: existence, modifiers, return type, and each parameter's kind, type and default. The comparison runs in [`tool/api_signatures/`](tool/api_signatures/) |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code and prose that name no resolvable document |
 | [`tool/check_section_numbers.py`](tool/check_section_numbers.py) | Finds `§` references that resolve to a document but cite a section it does not have |
 | [`tool/check_comments_read_as_is.py`](tool/check_comments_read_as_is.py) | Finds work-item ids and history narration in shipped text |
@@ -730,7 +731,9 @@ packages, `doc/api/` in others, one category under two names. Those fences
 quote *signatures*, and a signature is a declaration rather than a use: making
 them parse would take a mechanical `;` per block and buy nothing, because a
 declaration never consults the real API and so the second rule could never
-fire. A green light there would be coverage in appearance only.
+fire. A green light there would be coverage in appearance only. Whether those
+signatures are *true* is a different question, answered by
+`check_api_signatures.py` below.
 
 Six packages are triaged to zero and gated: `tom_core_kernel`,
 `tom_core_agentic`, `tom_core_codespecs`, `tom_core_flutter`, `tom_core_server`
@@ -748,6 +751,29 @@ package depends on `tom_core_kernel`, the kernel barrel too — the context the
 package's own code is written in. `tom_flutter_ui` re-exports only part of the
 kernel, so without the second import every `@tomReflector` in its pages read as
 missing. `--self-test` holds this against real probes in that package.
+
+```bash
+python3 tool/check_api_signatures.py               # every package with API summaries
+python3 tool/check_api_signatures.py --self-test   # check the checker
+```
+
+The API summaries are what a reader consults instead of the source, and their
+fences quote declarations: `factory TomBean.fromName(String name)`. A quoted
+declaration parses whether it is true or not, so this compares each one with the
+analyzer's element model rather than compiling it. `tool/api_signatures/` is a
+small Dart program on `package:analyzer`: it resolves the package's barrel,
+parses each fence as members of the type it documents (or as top-level
+functions, getters and typedefs), and checks that each member exists, its
+`const` / `factory` / `static`, its return type, and every parameter's kind,
+type and default. Positional parameters are matched by position, because no
+caller writes their names; types are compared structurally, so a typedef, a raw
+generic or a record with its fields reordered is the same type the analyzer
+prints expanded. A fence that is not a list of declarations — a truncated
+parameter list — is a fault; one that parses as statements is a usage sample
+and is left to the gate above. Six packages: `tom_core_kernel`,
+`tom_core_server`, `tom_core_flutter`, `tom_core_agentic`, `tom_core_codespecs`
+and `tom_flutter_ui`. The `Methods` and `Properties` tables quote signatures
+too, as inline code, and are not read.
 
 ```bash
 python3 tool/check_downstream_consumers.py   # every package under tom_uam/

@@ -2008,7 +2008,7 @@ the intermittent clustered failure the SQL store exists to remove.
 The `oauth.stateStore` block as data, read beside `oauth.providers`.
 
 ```dart
-TomOAuthStateStoreSettings({
+const TomOAuthStateStoreSettings({
   TomOAuthStateStoreType type = TomOAuthStateStoreType.memory,
   String datasourceName = '',
   String table = defaultOAuthStateTable,
