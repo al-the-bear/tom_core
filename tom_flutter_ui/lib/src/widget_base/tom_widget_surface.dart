@@ -9,7 +9,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// forwarding parameters, choosing a Flutter concrete, resolving a label — is
 /// delegation. This is the part that is *Tom*.
 ///
-/// It is declared here, once, because it used to be declared twice. The kit
+/// It is declared here, once, so that it cannot be declared twice. The kit
 /// reaches its widgets down two paths — [TomNodeBase], for the 273 wrappers
 /// that extend a family base, and `TomWidgetMixin`, for the 17 whose Flutter
 /// original must be a specific subtype to satisfy the parent that accepts it —

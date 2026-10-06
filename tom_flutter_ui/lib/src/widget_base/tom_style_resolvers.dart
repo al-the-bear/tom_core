@@ -10,9 +10,8 @@ import 'tom_construction_helpers.dart';
 /// borders and shapes, insets, and the small layout values around them.
 ///
 /// The `parse…` members below are the list, and this paragraph deliberately
-/// does not repeat it. A second copy has to be kept in step by hand, and the
-/// copy that used to stand here named twelve types while nineteen parsers sat
-/// underneath it. What the comment states about its own members instead is a
+/// does not repeat it. A second copy has to be kept in step by hand, and a
+/// hand-kept list drifts from the parsers beneath it. What the comment states about its own members instead is a
 /// count — small enough that `style_resolvers_layering_test.dart` can hold it
 /// to them.
 ///

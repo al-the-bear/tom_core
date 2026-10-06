@@ -83,10 +83,10 @@ void main() {
       );
     });
 
-    // The two treatments above are theme *defaults*, not fixed values. The
-    // disabled one used to be a literal in this file's production counterpart
-    // (and a second literal in TomWidgetMixin), so an app could restyle `read`
-    // and find `disabled` unchanged. Both states resolve from the scope now,
+    // The two treatments above are theme *defaults*, not fixed values. A
+    // literal for the disabled one, in this file's production counterpart or
+    // in TomWidgetMixin, would let an app restyle `read` and find `disabled`
+    // unchanged. Both states resolve from the scope,
     // and `tom_widget_mixin_test.dart` asserts the same 0.2 through the other
     // enforcement point — the same number in both places is what pins that the
     // two agree.

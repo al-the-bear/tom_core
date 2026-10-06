@@ -8,9 +8,8 @@
 /// propagates that shape into whatever is built from it.
 ///
 /// So the strings live here, behind [TomFileLabels], resolved through [TomCtr]
-/// with the current wording as the fallback. Nothing an application already does
-/// changes — a field with no resources renders exactly as before — but every
-/// string now *has* a key, which is the difference between "not translated yet"
+/// with the built-in wording as the fallback, so a field with no resources
+/// renders that wording — but every string *has* a key, which is the difference between "not translated yet"
 /// and "not translatable".
 ///
 /// ## Resolution order

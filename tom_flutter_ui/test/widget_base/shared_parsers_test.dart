@@ -5,8 +5,8 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// The two parsers `TomStyleResolvers` exposes for `TomCtr`'s benefit.
 ///
-/// `TomCtr.edgeInsets` and `TomCtr.textStyle` used to carry private copies of
-/// `_parseEdgeInsets` and `_parseFontWeight`. Both are now single
+/// `TomCtr.edgeInsets` and `TomCtr.textStyle` hold no private copies of
+/// `_parseEdgeInsets` and `_parseFontWeight`. Both are single
 /// implementations in `TomStyleResolvers`, reached through the resource read
 /// each accessor already performed.
 ///

@@ -356,7 +356,7 @@ Scenario C — weighted split (left 2/3, right 1/3 of slack):
   ..gap(weight: 2)..append(left_panel)..gap(weight: 1)..append(right_panel)
 ```
 
-When no `gap()` slots are present, `setRowAlignment` / `setRowAlignLeft()` / `setRowAlignCenter()` / `setRowAlignRight()` controls row justification as before.
+When no `gap()` slots are present, `setRowAlignment` / `setRowAlignLeft()` / `setRowAlignCenter()` / `setRowAlignRight()` controls row justification.
 
 ---
 

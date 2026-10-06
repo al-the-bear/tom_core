@@ -252,7 +252,7 @@ class _DuplicateIdController extends TomActionController {
   late final second = IncrementAction(controller: this, id: 'clash');
 }
 
-/// Increment action attached to an authorization group, used to exercise the
+/// Increment action attached to an authorization group; it exercises the
 /// `effectiveAuthState` group-mode branch.
 class _GroupedIncrement extends TomAction<CounterContext, IncrementUndo> {
   _GroupedIncrement({

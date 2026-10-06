@@ -1,8 +1,8 @@
 /// Regression guard: typing multiple characters into a Demo G field
-/// keeps focus. Previously the `_ComplexFormBody` read `Theme.of(context)`
-/// at its root for a decorative background Container. Theme changes from
-/// fresh ThemeData instances handed in at every build cascaded a full
-/// subtree rebuild, which wiped the TextField's FocusNode after the
+/// keeps focus. A `_ComplexFormBody` that read `Theme.of(context)` at its
+/// root for a decorative background Container would lose it: theme changes
+/// from fresh ThemeData instances handed in at every build cascade a full
+/// subtree rebuild, which wipes the TextField's FocusNode after the
 /// first typed character.
 library;
 

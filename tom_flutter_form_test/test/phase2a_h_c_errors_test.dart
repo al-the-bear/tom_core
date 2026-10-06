@@ -101,10 +101,10 @@ void main() {
   testWidgets(
     '(e) TomAclBuilder.setPSize sizes the product cell to ~2x the qty cell',
     (tester) async {
-      // Direct widget test of the round-6 (e) fix: previously the demo
-      // wrapped each ACL cell in `SizedBox(width: …)` but the ACL layout
+      // Direct widget test of sizing through `setPSize`. Wrapping each ACL
+      // cell in `SizedBox(width: …)` instead would not work: the ACL layout
       // engine ignores the inner widget's intrinsic width, so every cell
-      // rendered at an equal share of the row regardless of the value.
+      // would render at an equal share of the row regardless of the value.
       // The fix is to size the ACL component itself via `setPSize` on
       // the builder. This test mirrors the demo's column setup with the
       // same product=720, qty=70, price=110 sizes and asserts the

@@ -15,9 +15,8 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // Neither throws — an unidentified slot is not an error, it simply has nothing
 // to resolve.
 //
-// These used to be `TomCtr.defaultText` / `TomCtr.defaultTextOrEmpty` in
-// `widget_base/`, which made the foundation import the layer built on top of
-// it. Returning a widget is the tell for which layer a helper belongs to; see
+// They live here rather than in `widget_base/`, because there they would make
+// the foundation import the layer built on top of it. Returning a widget is the tell for which layer a helper belongs to; see
 // `test/widget_base/widget_base_layering_test.dart` for what that inversion
 // cost.
 

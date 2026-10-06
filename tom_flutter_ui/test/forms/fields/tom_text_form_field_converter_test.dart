@@ -7,9 +7,9 @@
 /// `T` out of a string. So `valueConverter` is optional in the type signature
 /// but mandatory in fact for every `T` except `String`.
 ///
-/// That gap used to be discovered at the first keystroke: the field
-/// constructed, rendered, and threw `UnimplementedError` the moment the user
-/// typed a character. It is now refused at construction, since whether a
+/// Left to the first keystroke, that gap would surface late: the field would
+/// construct, render, and throw `UnimplementedError` the moment the user
+/// typed a character. It is refused at construction instead, since whether a
 /// converter was supplied is known the instant the field is built.
 ///
 /// The tests below pin both halves — the refusal, and that the supported

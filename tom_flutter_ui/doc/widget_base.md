@@ -94,11 +94,11 @@ from the kernel's `TomAuthorizable`, which `TomWidgetSurface` extends; the
 fourth, `basePath`, cannot, because resolving a path reads the ambient
 `TomScope` and that is a Flutter-side concern.
 
-The interface earns its place by what it *forbids*. `basePath` used to be
-declared twice and required nowhere — a field on `TomNodeBase`, a getter on
-`TomWidgetMixin` — so a wrapper could take a `tomId`, resolve nothing, compile,
-read as gated at the call site and show to everyone. Eight wrappers shipped
-exactly that. With a single supertype naming all four members, the conformance
+The interface earns its place by what it *forbids*. A `basePath` declared on
+each route separately and required by neither — a field on `TomNodeBase`, a
+getter on `TomWidgetMixin` — would let a wrapper take a `tomId`, resolve
+nothing, compile, read as gated at the call site and show to everyone. With a
+single supertype naming all four members, the conformance
 suite can enumerate the kit against it: `test/widgets/widget_conformance_test.dart`
 builds all 290 widgets and asserts each one resolves its own path, reports its
 family (or is one of the seventeen), and answers all four authorization states

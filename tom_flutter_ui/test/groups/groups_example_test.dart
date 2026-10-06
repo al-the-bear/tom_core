@@ -145,7 +145,7 @@ void main() {
 
     test('resolveGroupPath still falls back to the ambient scope', () {
       // The parameter is an override, not a replacement: every existing caller
-      // passes nothing and must keep resolving exactly as before.
+      // passes nothing and must resolve from the ambient scope.
       final g = TomAuthorizationGroup('shipping');
 
       expect(g.resolveGroupPath(), 'shipping');

@@ -1274,8 +1274,8 @@ class TomTextFormFieldBase<T> extends TomField<T> {
 
   // `reset()` is deliberately not overridden: `TomField.reset` resets to the
   // initial value through the virtual `set` below, so the controller write and
-  // the error clearing happen there. The override this class used to carry
-  // wrote the controller a second time, unguarded.
+  // the error clearing happen there. An override here would write the
+  // controller a second time, unguarded.
   @override
   T set(T value) {
     _setControllerText(_valueToTextConverter(value));

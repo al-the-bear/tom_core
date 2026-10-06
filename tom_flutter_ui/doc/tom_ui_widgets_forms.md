@@ -3939,14 +3939,12 @@ class OrderForm extends TomForm<Order> {
 
 Custom widgets that don't wrap Flutter SDK classes. Purpose-built for Tom's authorization, resource, and state binding systems.
 
-**These widgets ship, and this section no longer tables them.** It used to carry
-a nine-row copy of the table in
+**These widgets ship, and this section does not table them.** The one table
+of them is in
 [tom_ui_flutter_widgets.md](tom_ui_flutter_widgets.md#custom-tom-widgets-non-form),
-`Implemented` column and all, and the two copies rotted in step: every one of
-the nine was built, and neither table was revisited. Two documents holding the
-same table is what made a single stale fact into two, so there is now one table,
-it is the one in `tom_ui_flutter_widgets.md`, and it is checked against `lib/` by
-`tool/check_unimplemented_claims.py`.
+and it is checked against `lib/` by `tool/check_unimplemented_claims.py`. A
+second copy here would have to be kept in step by hand, and two documents
+holding the same table turn a single stale fact into two.
 
 Where to read about them:
 

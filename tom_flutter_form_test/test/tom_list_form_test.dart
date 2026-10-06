@@ -336,10 +336,10 @@ void main() {
     // item from order.items), the outer form's `changes` listenable must
     // fire so dirty-driven UI (Save / Discard buttons) can re-evaluate.
     //
-    // Before the fix, `_onBindingExternallyChanged` short-circuited at
-    // `if (isDirty) return;` without firing `_changes`, leaving the outer
-    // discard button permanently disabled even though the form had become
-    // dirty via the sibling's edit.
+    // An `_onBindingExternallyChanged` that short-circuited at
+    // `if (isDirty) return;` without firing `_changes` would leave the
+    // outer discard button permanently disabled even though the form had
+    // become dirty via the sibling's edit.
     test('outer form.changes fires when sibling list-form removes an element '
         'and outer becomes dirty', () {
       final order = makeOrder();

@@ -261,10 +261,9 @@ void main() {
   /// The two classes may call each other, but they may not each hold their own
   /// copy of the same helper.
   ///
-  /// `TomCtr` used to carry private clones of `_parseEdgeInsets`, `_asNum` and
-  /// `_parseFontWeight`. The first two were a comment-acknowledged verbatim
-  /// copy, kept in step by hand — and the invariant had already slipped, since
-  /// the third had drifted into accepting strictly less than its twin.
+  /// Private clones of `_parseEdgeInsets`, `_asNum` and `_parseFontWeight` in
+  /// `TomCtr` would be copies kept in step by hand, and hand-kept copies
+  /// drift: one accepting strictly less than its twin is the typical result.
   ///
   /// A shared name is the signal, not the identical body: two functions in this
   /// module named `_parseX` are two answers to one question, and a maintainer

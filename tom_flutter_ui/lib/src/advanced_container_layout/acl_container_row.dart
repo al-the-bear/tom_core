@@ -194,7 +194,7 @@ extension _AclRowBuild on _AclContainerState {
       // Innermost wrapper, so it sees the component's own content and receives
       // whatever width the sizing wrappers below settle on. Only components
       // whose preferred width the builder invented get it; an author-declared
-      // width is emitted exactly as before.
+      // width is emitted unchanged.
       if (!isFlexNativeChild &&
           component.preferredWidthIsDefault &&
           component.componentKey != null) {

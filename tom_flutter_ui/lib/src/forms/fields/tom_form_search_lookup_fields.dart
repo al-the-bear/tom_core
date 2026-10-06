@@ -535,9 +535,9 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
                   children: [
                     TextField(
                       // Outlined border so the icon sits visibly inside
-                      // the input box (round-4 item o — was previously a
-                      // dense underline that drew the icon on the
-                      // separator between input and result list).
+                      // the input box; a dense underline would draw the
+                      // icon on the separator between input and result
+                      // list.
                       autofocus: true,
                       style: inputStyle,
                       decoration: InputDecoration(
@@ -595,11 +595,10 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
 
     // Mirror the same composition `TomFormStringField` uses so the
     // lookup row's text baseline, font size, label placement and hint
-    // styling are pixel-identical to a regular text input — round-5
-    // (h)/(i): previously the row used a bare InputDecoration without
-    // labelStyle/floatingLabelStyle/hintStyle, which let Flutter's
-    // theme defaults (typically a larger subtitle1) leak in and shift
-    // both the font size and the visible baseline.
+    // styling are pixel-identical to a regular text input. A bare
+    // InputDecoration without labelStyle/floatingLabelStyle/hintStyle
+    // would let Flutter's theme defaults (typically a larger subtitle1)
+    // leak in and shift both the font size and the visible baseline.
     //
     // Use the same bodyLarge fallback as `_openDialog` (round-6 (i)) —
     // mirrors what Material's TextField does internally when no style

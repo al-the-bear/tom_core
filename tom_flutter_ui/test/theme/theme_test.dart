@@ -563,10 +563,10 @@ void main() {
   });
 
   // The theme resolves a treatment from the authorization state and nothing
-  // else; a widget's family does not enter into it. This used to be described
-  // the other way round — `readonlyStyle` was documented in three places as
-  // the treatment applied "when no per-family override exists", a fallback
-  // whose alternative branch was never written. The claim below is the
+  // else; a widget's family does not enter into it. Describing
+  // `readonlyStyle` as the treatment applied "when no per-family override
+  // exists" would be wrong: that is a fallback whose alternative branch does
+  // not exist. The claim below is the
   // corrected one, made executable.
   //
   // It guards the direction that actually matters. A family-sensitive lookup

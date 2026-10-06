@@ -111,8 +111,8 @@ class _CountrySource extends TomSelectableSource<Country> {
 }
 
 /// Synthesises a large list (~5 000) of `City` items by interleaving a
-/// short root list with numbered suffixes. Used to exercise the search
-/// field's in-process substring filter.
+/// short root list with numbered suffixes. It exercises the search field's
+/// in-process substring filter.
 class _BigCitySource extends TomSelectableSource<City> {
   static const _roots = <(String, String)>[
     ('Berlin', 'DE'),

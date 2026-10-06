@@ -133,10 +133,10 @@ void main() {
   });
 
   group('all three strings come from one resolved base path', () {
-    // The three used to be eight duplicated lines each, which meant three
-    // `TomCtr.resolvePath` calls for a widget whose whole job is to render
-    // three strings — and three places a change to how the path is qualified
-    // had to land. They share one `basePath` now, and these are the two halves
+    // Resolving each string separately would mean three `TomCtr.resolvePath`
+    // calls for a widget whose whole job is to render three strings — and
+    // three places a change to how the path is qualified has to land. They
+    // share one `basePath`, and these are the two halves
     // of that: the precedence each string follows, and the call that produces
     // the path they all read from.
 

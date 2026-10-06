@@ -227,14 +227,12 @@ void main() {
 
   testWidgets('Demo R synthetic tile throw is contained to the failing row '
       'and Retry restores it', (tester) async {
-    // Regression for round-4 feedback `t`: the row-level error
-    // boundary used to collapse the *entire* list to the default
-    // 'Something went wrong' card because the synthetic throw lived
-    // in the itemBuilder closure (outside the per-row subtree) and
-    // only a single outer boundary existed. After the fix each row
-    // has its own boundary with a compact fallback, and sibling rows
-    // must keep rendering while row 3 shows a `Row #3 failed to
-    // render` tile.
+    // Each row has its own error boundary with a compact fallback, so
+    // sibling rows must keep rendering while row 3 shows a `Row #3
+    // failed to render` tile. With the throw in the itemBuilder closure
+    // (outside the per-row subtree) and a single outer boundary, the
+    // *entire* list would collapse to the default 'Something went
+    // wrong' card instead.
     await openDemo(tester, 'Demo R: Tree / Radio / Infinite scroll (Phase 6)');
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();

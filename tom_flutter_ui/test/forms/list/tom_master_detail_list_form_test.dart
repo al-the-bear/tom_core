@@ -421,7 +421,8 @@ void main() {
     testWidgets('a removal above the selection leaves the index in range', (
       tester,
     ) async {
-      // The selection is positional, so row 1 now shows what used to be row 2.
+      // The selection is positional, so after the removal row 1 shows what
+      // was row 2 before it.
       final list = _listWith(['A', 'B', 'C']);
       await tester.pumpWidget(_app(scaffold(list)));
       await pick(tester, 1);

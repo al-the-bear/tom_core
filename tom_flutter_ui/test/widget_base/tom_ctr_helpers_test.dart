@@ -371,10 +371,10 @@ void main() {
 
     group('which accessors carry an …OrFail is a stated rule', () {
       // The line between the accessors that have a throwing variant and those
-      // that do not used to be described as "used where a value is
-      // structurally required" — a property of the *call site*, which cannot
-      // be applied when deciding what to give a new accessor, and could not
-      // explain why an icon may never be required. The rule is about the
+      // that do not is not "used where a value is structurally required" —
+      // that is a property of the *call site*, which cannot be applied when
+      // deciding what to give a new accessor, and cannot explain why an icon
+      // may never be required. The rule is about the
       // accessor:
       //
       //   an accessor gets an `…OrFail` when the resource it reads can be a

@@ -8,9 +8,8 @@
 /// English buttons, because the caption never had a key to translate.
 ///
 /// So the strings live here, behind [TomFormLabels], resolved through [TomCtr]
-/// with the current wording as the fallback. Nothing an application already
-/// does changes — a form with no resources renders exactly as before — but
-/// every string now *has* a key, which is the difference between "not
+/// with the built-in wording as the fallback, so a form with no resources
+/// renders that wording — but every string *has* a key, which is the difference between "not
 /// translated yet" and "not translatable".
 ///
 /// This is the same façade `TomFileLabels` is for the file widgets, and the

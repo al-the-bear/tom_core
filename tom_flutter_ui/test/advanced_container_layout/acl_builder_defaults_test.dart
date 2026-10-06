@@ -303,8 +303,8 @@ void main() {
       //
       // Stated as a comparison against the uncapped component, because the
       // claim is not "some height" but "the height a width cap has no business
-      // touching". Before the fix the capped `Text` rendered 0.0 against the
-      // uncapped 20.0.
+      // touching". A defect here shows as the capped `Text` rendering 0.0
+      // against the uncapped 20.0.
       Future<double> heightOf(AclBuilder builder) async {
         await tester.pumpWidget(
           MaterialApp(
