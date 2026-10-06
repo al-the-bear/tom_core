@@ -52,7 +52,7 @@ declared.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomDbType<T>` (+ `TomDbInt`/`TomDbDouble`/`TomDbString`/`TomDbDateTime`/`TomDbDate`/`TomDbTime`/`TomDbBool`) | class | A boxed, SQL-typed value with a parsing `of(String?)` factory |
+| `TomDbType<T>` (+ `TomDbInt`/`TomDbDouble`/`TomDbString`/`TomDbDateTime`/`TomDbDate`/`TomDbTime`/`TomDbBool`) | abstract class / classes | A boxed, SQL-typed value with a parsing `of(String?)` factory |
 | `TomOperator<R>` | abstract class | A node in a SQL expression tree, typed by its SQL return type `R` |
 | `SqlString` | typedef | A `String` that documents "this is a SQL fragment" |
 | `sqlInstant` / `parseSqlInstant` / `parseOptionalSqlInstant` | function | The one encoding of an instant in a `DATETIME(6)` column — always UTC, six fractional digits |

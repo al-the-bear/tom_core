@@ -47,7 +47,7 @@ covers only what changes when the substrate is a database.
 | `schedulerNodeFailedAfter` / `isSchedulerNodeFailed` | function | The failure test, as pure functions |
 | `jobRunTable` / `leaseTable` / `schedulerNodeTable` | function | The three table declarations, from which the DDL, the statements and the convergence guard's schema model all derive |
 | `jobRunTableDdl` / `leaseTableDdl` / `schedulerNodeTableDdl` | function | The shipped DDL, parameterised by table name |
-| `defaultJobRunTable` / `defaultLeaseTable` / `defaultSchedulerNodeTable` | constant | `tom_job_run`, `tom_lease`, `tom_scheduler_node` |
+| `defaultJobRunTable` / `defaultLeaseTable` / `defaultSchedulerNodeTable` | const String | `tom_job_run`, `tom_lease`, `tom_scheduler_node` |
 | `TomJobRunRow` / `TomLeaseRow` / `TomSchedulerNodeRow` | class | The reflected row types the stores' result mappers materialise, one per table |
 | `TomJobRunWindowRow` | class | The single aggregate column `TomSqlJobStore.lastWindow` projects — its own row type because the mapper binds by column name and that select has no other columns |
 

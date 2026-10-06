@@ -91,7 +91,7 @@ out of.
 | `TomMessageChannel` | class | An open named value — `email`, `sms`, `push`, `webhook`, or yours |
 | `TomMessageTransport` | abstract class | One delivery channel: one attempt at one message |
 | `TomDeliveryReceipt` / `TomDeliveryOutcome` | class / enum | What became of an attempt, including partial delivery |
-| `TomDeliveryException` / `TomPermanentDeliveryException` / `TomTransientDeliveryException` | classes | A failure, classified transient or permanent |
+| `TomDeliveryException` / `TomPermanentDeliveryException` / `TomTransientDeliveryException` | abstract class / classes | A failure, classified transient or permanent |
 | `TomMessageRouter` | class | Maps a channel to its transport |
 | `TomMemoryMessageTransport` | class | Captures messages in memory; the test stand-in |
 | `TomNoOpMessageTransport` | class | Accepts and discards; the local-run stand-in |
@@ -106,7 +106,7 @@ out of.
 | `TomDeliveryReport` / `TomDeliveryState` | class / enum | What a carrier says became of a message *after* accepting it |
 | `TomDeliveryCorrelation` / `TomDeliveryReportStore` | class / abstract class | The `remoteId` → message index |
 | `TomMemoryDeliveryReportStore` / `TomSqlDeliveryReportStore` / `TomDeliveryReportRow` | classes | That index in memory and in a table, and the row the driver hands back |
-| `deliveryReportTable` / `deliveryReportTableDdl` / `defaultDeliveryReportTable` | functions / constant | The correlation table, declared once — the DDL, the statements and the convergence guard all derive from it |
+| `deliveryReportTable` / `deliveryReportTableDdl` / `defaultDeliveryReportTable` | functions / const String | The correlation table, declared once — the DDL, the statements and the convergence guard all derive from it |
 | `TomDeliveryReportProtocol` / `TomFieldMappedDeliveryReportProtocol` / `TomDeliveryCallback` | abstract class / class / class | The carrier's callback shape, described rather than coded |
 | `TomDeliveryReportService` / `TomDeliveryReportServer` / `TomDeliveryReportEndpoint` | abstract class / classes | The inbound `POST /messaging/delivery-report` route and what answers it |
 | `TomMimeEncoder` | class | Renders a `TomMessage` as an RFC 5322 / MIME document |

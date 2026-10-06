@@ -43,13 +43,13 @@ Cupertino sibling changes the rendering without touching the model.
 | `Validators` | class | Built-in `required`/`email`/`minLength`/`maxLength`/`pattern`/`min`/`max`/`minItems`/`maxItems`/`compose` rules, each a static factory. |
 | `ValidationResult` | sealed class | `ValidationPristine` / `ValidationSuccess` / `ValidationError` / `ValidationPending`. |
 | `FormValidationError` | class | A cross-field error spanning several `TomField`s. |
-| `SelectableItem<T>` / `TomSelectableSource<T>` | value / interface | Items for selection fields; `StaticSelectableSource` is the fixed-list implementation. |
+| `SelectableItem<T>` / `TomSelectableSource<T>` | class / abstract class | Items for selection fields; `StaticSelectableSource` is the fixed-list implementation. |
 | `TomEnumSelectableSource<E extends Enum>` | class | Enum options whose labels come from the text bundle and re-emit on a locale change. |
-| `TomFormEvent` (+ subtypes) | events | Field/form/list lifecycle events fired on the bus. |
-| `TomFormEventListener` / `TomFormInspector` | mixin / collector | Typed event handling; the inspector buffers and filters events. |
-| `TomFormStyle` / `TomBreakpoint` / `LabelPlacement` … | style | The responsive, themeable decoration system and anatomy placement enums. |
+| `TomFormEvent` (+ subtypes) | class | Field/form/list lifecycle events fired on the bus. |
+| `TomFormEventListener` / `TomFormInspector` | mixin / class | Typed event handling; the inspector buffers and filters events. |
+| `TomFormStyle` / `TomBreakpoint` / `LabelPlacement` … | classes / enum | The responsive, themeable decoration system and anatomy placement enums. |
 | `FormFieldFamily` | class | Builds a Material or Cupertino concrete from one declaration, returning the shared abstract base. |
-| `TomListForm` / `TomMasterDetailListForm` … | model | Collections of sub-forms with add/remove/reorder. |
+| `TomListForm` / `TomMasterDetailListForm` … | classes | Collections of sub-forms with add/remove/reorder. |
 
 ## Data model: `TomForm` and `TomField`
 

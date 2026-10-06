@@ -70,7 +70,7 @@ without the second; the second is built entirely on the first.
 | `TomDatabaseBlobStore` | class | Chunk rows in an existing data source |
 | `blobManifestTable` / `blobChunkTable` | function | The database backend's two table declarations, from which its DDL, its statements and the convergence guard's schema model all derive |
 | `blobManifestTableDdl` / `blobChunkTableDdl` | function | The `CREATE TABLE` text of those two, for a deployment that applies schema by hand |
-| `defaultBlobManifestTable` / `defaultBlobChunkTable` | constant | The default names of those two tables — `tom_blob` and `tom_blob_chunk` |
+| `defaultBlobManifestTable` / `defaultBlobChunkTable` | const String | The default names of those two tables — `tom_blob` and `tom_blob_chunk` |
 | `TomBlobManifestRow` / `TomBlobChunkRow` | class | The reflected row types the database backend's result mapper materialises |
 | `TomS3BlobStore` | class | Any S3-compatible object store, single-PUT or multipart |
 | `TomAwsV4Signer` / `TomAwsCredentials` | class | AWS SigV4 request signing |

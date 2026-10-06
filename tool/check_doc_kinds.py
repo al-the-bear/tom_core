@@ -6,6 +6,7 @@ Run from anywhere::
     python3 tool/check_doc_kinds.py                  # every document root
     python3 tool/check_doc_kinds.py tom_core_agentic # one package subtree
     python3 tool/check_doc_kinds.py _ai              # the completion set
+    python3 tool/check_doc_kinds.py --self-test      # check the checker
 
 Exits non-zero when a claim disagrees with the source, so it can gate a build.
 
@@ -49,12 +50,29 @@ these tables resolves perfectly, and the sentence about it is still wrong.
 Resolution and description are different questions.
 
 **What is checked.** Only tables whose header row has ``Kind`` as its second
-column -- that restriction is what keeps this honest. Module documents carry
-other two-column tables of the same shape (a symbol beside its wire code, a
-placeholder form beside its meaning), and reading those as kind claims produced
-four false positives per real one when this was first measured. A symbol the
-repo does not declare is skipped rather than reported: these documents name
-Flutter and Dart core types freely, and this checker has no index for them.
+column and a declaration -- ``Type``, ``Symbol``, ``Member``, ``Widget``,
+``Declaration`` -- as its first. That restriction is what keeps this honest.
+Module documents carry other two-column tables of the same shape (a symbol
+beside its wire code, a placeholder form beside its meaning), and reading those
+as kind claims produced four false positives per real one when this was first
+measured; the module guides' ``Dependency | Kind`` tables tabulate imports, not
+declarations. A symbol the repo does not declare is skipped rather than
+reported: these documents name Flutter and Dart core types freely, and this
+checker has no index for them. A code span naming a member (``Type.member``)
+is skipped for the same reason.
+
+**A row may name several symbols** -- ``| `A` / `B` / `C` | ... |`` -- and those
+rows are where the defect had moved: when the row pattern could only read one
+backticked symbol, six of the seven multi-symbol rows found by hand carried a
+role word. Such a row makes either one claim every named symbol shares,
+singular or plural (``class`` or ``classes``), or its claims in the same order
+separated by `` / ``, where a plural claim covers a run of symbols of that kind:
+``abstract class / classes`` describes one abstract class and two plain ones.
+
+**A row that names nothing is reported, not skipped.** A first cell with no code
+span and no bare identifier -- prose such as ``20 family branch bases`` --
+holds a kind claim this checker cannot test, and skipping it would read as a
+pass. Name the symbols, or move the prose out of the table.
 
 **Which documents, and why two roots.** The package documents under
 ``<package>/doc/`` are one set; the completion write-ups in
@@ -187,9 +205,49 @@ def constant_kind(match: re.Match[str]) -> str | None:
             return f"{match.group('modifier')} {inferred}"
     return None
 
-KIND_HEADER = re.compile(r"^\|[^|]+\|\s*Kind\s*\|")
+# A table of declarations: a first column naming what is declared, then Kind.
+# The module guides' dependency tables (`Dependency | Kind | Imported by`) have
+# the same second column but tabulate imports -- `dart:io`, a sibling module's
+# document -- and none of their rows is a claim about a declaration.
+KIND_HEADER = re.compile(
+    r"^\|\s*(?:Type|Symbol|Member|Widget|Declaration)\s*\|\s*Kind\s*\|"
+)
 TABLE_RULE = re.compile(r"^\|[\s\-:|]+\|$")
-ROW = re.compile(r"^\|\s*`?([^`|]+?)`?\s*\|\s*([^|]+?)\s*\|")
+ROW = re.compile(r"^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|")
+
+# The code spans of a row's first cell, and the one shape of span that names a
+# top-level declaration: an identifier, optionally with type arguments or a
+# parameter list (`Name<T>`, `name(String)`). A dotted span (`Type.member`)
+# names a member, which the index does not hold.
+CODE_SPAN = re.compile(r"`([^`]+)`")
+TOP_LEVEL_NAME = re.compile(r"^([A-Za-z_]\w*)(?:<.*>)?(?:\(.*\))?$")
+BARE_SYMBOL = re.compile(r"^([A-Za-z_]\w*)(?:<.*>)?$")
+
+# How a kind claim is split when one row names several symbols.
+CLAIM_SEPARATOR = re.compile(r"\s+/\s+")
+
+
+def plural(kind: str) -> str:
+    """The plural a cell writes for several symbols of one kind: `classes`,
+    `final classes`, `enums`, `typedefs`, `functions`."""
+    return kind + "es" if kind.endswith("class") else kind + "s"
+
+
+def symbols_of(cell: str) -> list[str | None] | None:
+    """The symbols a first cell names, in order, or None for a prose cell.
+
+    A code span that names something the index cannot hold (a member) is kept
+    as `None`, so the claims that follow still line up with their symbols.
+    """
+    spans = CODE_SPAN.findall(cell)
+    if spans:
+        names = []
+        for span in spans:
+            match = TOP_LEVEL_NAME.match(span.strip())
+            names.append(match.group(1) if match else None)
+        return names
+    bare = BARE_SYMBOL.match(cell.strip())
+    return [bare.group(1)] if bare else None
 
 
 def index_declarations(root: Path) -> dict[str, str]:
@@ -265,10 +323,11 @@ class Report:
     document: Path
     rows: int = 0
     faults: list[tuple[int, str, str, str]] = field(default_factory=list)
+    unparsed: list[tuple[int, str]] = field(default_factory=list)
 
     @property
     def clean(self) -> bool:
-        return not self.faults
+        return not self.faults and not self.unparsed
 
     def render(self) -> str:
         lines = [display_path(self.document)]
@@ -276,6 +335,8 @@ class Report:
             lines.append(
                 f"  :{line_no:<4} {symbol:<38} says {claimed!r}, is {actual!r}"
             )
+        for line_no, cell in self.unparsed:
+            lines.append(f"  :{line_no:<4} {cell!r} names no symbol")
         return "\n".join(lines)
 
 
@@ -284,7 +345,11 @@ def audit(document: Path, kinds: dict[str, str]) -> Report | None:
         text = document.read_text()
     except (OSError, UnicodeDecodeError):
         return None
+    return audit_text(document, text, kinds)
 
+
+def audit_text(document: Path, text: str, kinds: dict[str, str]) -> Report | None:
+    """Audit one document's Kind tables; None when it has none to audit."""
     report = Report(document)
     in_kind_table = False
     for line_no, line in enumerate(text.split("\n"), 1):
@@ -302,21 +367,135 @@ def audit(document: Path, kinds: dict[str, str]) -> Report | None:
         match = ROW.match(line)
         if not match:
             continue
-        # Strip any type arguments: the table writes the symbol as the reader
-        # will use it, the source declares it bare.
-        symbol = match.group(1).split("<")[0].strip()
+        symbols = symbols_of(match.group(1))
         claimed = match.group(2).strip().strip("`")
-        actual = kinds.get(symbol)
-        if actual is None:
+        if symbols is None:
+            # A row the table holds but no symbol names cannot be audited, and
+            # a skip would read as a pass: it is reported instead.
+            report.unparsed.append((line_no, match.group(1).strip()))
             continue
-        report.rows += 1
-        if claimed != actual:
-            report.faults.append((line_no, symbol, claimed, actual))
+        check_row(report, line_no, symbols, claimed, kinds)
 
-    return report if report.rows else None
+    return report if report.rows or report.unparsed else None
+
+
+def check_row(
+    report: Report,
+    line_no: int,
+    symbols: list[str | None],
+    claimed: str,
+    kinds: dict[str, str],
+) -> None:
+    """Hold one row's Kind cell to the kinds of the symbols it names.
+
+    A row naming several symbols of one kind may make one claim for all of
+    them, singular or plural (`class` or `classes`). Otherwise it writes its
+    claims in the same order, separated by ` / `: a singular claim covers one
+    symbol, a plural claim
+    (`classes`, `final classes`) covers a run of two or more consecutive
+    symbols of that kind, so `classes / enum` describes class, class, enum. A
+    symbol this repo does not declare -- a Flutter or SDK type, a member --
+    is skipped: a row with none the index knows is not audited at all.
+    """
+    actuals = [kinds.get(s) if s is not None else None for s in symbols]
+    if all(a is None for a in actuals):
+        return
+    report.rows += 1
+    shown = " / ".join(s or "?" for s in symbols)
+    claims = [c.strip().strip("`") for c in CLAIM_SEPARATOR.split(claimed)]
+    if covers(claims, actuals):
+        return
+    expected = " / ".join(a or "?" for a in actuals)
+    report.faults.append(
+        (line_no, shown if len(symbols) > 1 else symbols[0] or shown,
+         claimed, expected)
+    )
+
+
+def covers(claims: list[str], actuals: list[str | None]) -> bool:
+    """Whether `claims`, in order, describe the symbols' `actuals`.
+
+    An unknown symbol (`None`) agrees with whatever claim covers it.
+    """
+    known = {a for a in actuals if a is not None}
+    if len(claims) == 1 and len(known) == 1:
+        (kind,) = known
+        return claims[0] in (kind, plural(kind))
+
+    def fits(claim: str, run: list[str | None]) -> bool:
+        known = {a for a in run if a is not None}
+        if len(known) > 1:
+            return False
+        kind = next(iter(known)) if known else None
+        if len(run) == 1:
+            return kind is None or claim == kind or claim == plural(kind)
+        return kind is None or claim == plural(kind)
+
+    def match(ci: int, ai: int) -> bool:
+        if ci == len(claims):
+            return ai == len(actuals)
+        return any(
+            fits(claims[ci], actuals[ai:end]) and match(ci + 1, end)
+            for end in range(ai + 1, len(actuals) + 1)
+        )
+
+    return match(0, 0)
+
+
+def self_test(kinds: dict[str, str]) -> int:
+    """Run synthetic tables over real symbols and require each verdict."""
+    def first(kind: str) -> str:
+        return sorted(name for name, k in kinds.items() if k == kind)[0]
+
+    def second(kind: str) -> str:
+        return sorted(name for name, k in kinds.items() if k == kind)[1]
+
+    try:
+        plain, plain2 = first("class"), second("class")
+        enum, abstract = first("enum"), first("abstract class")
+    except IndexError:
+        print("self-test: the index lacks a class, enum or abstract class",
+              file=sys.stderr)
+        return 2
+
+    header = "| Type | Kind | Purpose |\n| --- | --- | --- |\n"
+    cases = [
+        ("single, right", f"| `{plain}` | class | x |", 0),
+        ("single, role word", f"| `{plain}` | model | x |", 1),
+        ("shared, singular", f"| `{plain}` / `{plain2}` | class | x |", 0),
+        ("shared, plural", f"| `{plain}` / `{plain2}` | classes | x |", 0),
+        ("one per symbol", f"| `{abstract}` / `{plain}` | abstract class / class | x |", 0),
+        ("grouped", f"| `{plain}` / `{plain2}` / `{enum}` | classes / enum | x |", 0),
+        ("grouped, wrong", f"| `{plain}` / `{plain2}` / `{enum}` | classes | x |", 1),
+        ("modifier dropped", f"| `{abstract}` / `{plain}` | class | x |", 1),
+        ("prose cell", "| 20 family branch bases | abstract class | x |", 1),
+        ("member span", f"| `{plain}.member` | factory | x |", 0),
+    ]
+    failed = 0
+    for name, row, expected in cases:
+        report = audit_text(Path("self-test.md"), header + row + "\n", kinds)
+        got = 0 if report is None else len(report.faults) + len(report.unparsed)
+        if got != expected:
+            print(f"self-test: {name}: {got} fault(s), expected {expected}\n"
+                  f"  {row}", file=sys.stderr)
+            failed += 1
+
+    dependency = ("| Dependency | Kind | Imported by |\n| --- | --- | --- |\n"
+                  "| `dart:io` | SDK | x |\n")
+    if audit_text(Path("self-test.md"), dependency, kinds) is not None:
+        print("self-test: a dependency table was audited", file=sys.stderr)
+        failed += 1
+
+    if failed:
+        return 2
+    print(f"self-test: {len(cases) + 1} cases behave")
+    return 0
 
 
 def main(argv: list[str]) -> int:
+    if argv[1:] == ["--self-test"]:
+        kinds = index_declarations(REPO_ROOT)
+        return self_test(kinds) if kinds else 2
     prefix = argv[1] if len(argv) > 1 else ""
 
     # The index is always built from the whole repo even when a subtree is being
@@ -342,7 +521,7 @@ def main(argv: list[str]) -> int:
     for report in defective:
         print(report.render())
 
-    faults = sum(len(r.faults) for r in defective)
+    faults = sum(len(r.faults) + len(r.unparsed) for r in defective)
     if defective:
         print("\n-- most common substitutions --")
         pairs = Counter(

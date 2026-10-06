@@ -48,11 +48,11 @@ method, and converts the result (or any error) into a `Response`.
 | `TomEndpoint` | class | Declares an HTTP endpoint inline on a method (route, methods, mime types, CORS, …) |
 | `TomApiEndpointImplementation` | class | Binds a method to an endpoint defined in the remote-API registry |
 | `TomEndpointBase` | abstract class | What the two annotations above share: each can produce the concrete `TomEndpoint` the pipeline routes |
-| `TomService` / `tomService` | annotation | Marks a class as an interface-based service to scan |
+| `TomService` / `tomService` | class / const TomService | Marks a class as an interface-based service to scan |
 | `TomApiImplementation` | class | Marks a class as the implementation of a registry-defined API |
 | `TomComponentReference` | class | Points a service at its implementation bean (by name or type) |
 | `TomTransactional` | class | Requests transaction wrapping for an endpoint method |
-| `TomErrorHandler` / `TomStatusMappingErrorHandler` / `TomDefaultErrorHandler` | class | Turns an error into a `Response`: the framework envelope, at the status the error key is declared to mean (default: `500` for every key) |
+| `TomErrorHandler` / `TomStatusMappingErrorHandler` / `TomDefaultErrorHandler` | abstract classes / class | Turns an error into a `Response`: the framework envelope, at the status the error key is declared to mean (default: `500` for every key) |
 | `TomEndpointRouting` | class | Scans the annotated classes and builds the `Router` |
 | `TomEndpointHandler` | class | Serves one endpoint (the per-request pipeline) |
 | `TomMethodMetadata` / `TomClassScanResult` | class | Collected metadata / scan partitions |
@@ -69,9 +69,9 @@ buffered:
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomFileSlots` / `TomFileSlot` | class | The reflection-derived `<table>/<column>` slot registry, and one registered slot; the interface is where the entity's `<T, K>` generics stop |
+| `TomFileSlots` / `TomFileSlot` | class / abstract class | The reflection-derived `<table>/<column>` slot registry, and one registered slot; the interface is where the entity's `<T, K>` generics stop |
 | `TomFileEndpoint` | class | The HTTP handler: POST / GET / HEAD / DELETE over a slot. Stateless — everything it needs is in the request and the registry |
-| `TomFileService` / `TomFileServer` | service / component | Mounts that handler at `/files/{entity}/{id}/{column}`; one method for all four verbs, because the wire contract addresses one resource and varies only the method |
+| `TomFileService` / `TomFileServer` | abstract class / class | Mounts that handler at `/files/{entity}/{id}/{column}`; one method for all four verbs, because the wire contract addresses one resource and varies only the method |
 | `TomFileSlotException` | class | Slot registration and resolution errors. Registration failures are *scan-time*, which is the point of deriving slots from reflection |
 
 **Uploads over a form** — for the request that carries a file *and* the fields
