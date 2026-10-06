@@ -1555,9 +1555,8 @@ anyone who was writing them.
   every other importer would immediately see the replacement. Nothing said it
   was meant to be swapped: its dartdoc documents only reading it, and a sweep
   of the workspace found **no assignment at all** — every use reads
-  `.contextMap` or calls `runInContext`, and the two downstream re-exports
-  already publish it read-only (`tom_build_cli`'s `D4rtGlobals` as a getter,
-  the d4rt bridge as `TomExecutionContext get tomExecutionContext`).
+  `.contextMap` or calls `runInContext`, and the downstream re-export
+  already publishes it read-only (`tom_build_cli`'s `D4rtGlobals` as a getter).
 
   It was the last reassignable top-level in the package, and the class has now
   been swept by hand twice — once across `json`, once here. So the third sweep
@@ -4098,7 +4097,7 @@ anyone who was writing them.
 - Tests for direct `TomScopeMixin` usage (custom mixin class + `initScope`,
   `runInScope`, `InScopeBuilder` integration) and the write-once identity
   setters. The `set id`/`set parent` setters are kept (not removed): they are
-  registered by the tom_core_d4rt bridges for `TomScopeBase`.
+  part of the public `TomScopeBase` surface.
 
 ## 1.1.12
 
@@ -4125,7 +4124,7 @@ anyone who was writing them.
   (`00_run_all_examples.dart`) is now async and awaits it.
 - Tests for `TomException.newField` (default-null and set/get), closing the last
   untested public member. `newField` is kept (not removed): it is referenced by
-  generated reflection and the tom_core_server D4rt bridges (`LoginException`).
+  generated reflection (`LoginException`).
 
 ## 1.1.11
 
@@ -4497,9 +4496,9 @@ anyone who was writing them.
   (overview with source paths, class hierarchy, per-class constructors and
   static/instance members, enums, top-level functions/constants; public members
   only). Verified against the actual public declarations and the package barrel.
-  This restores documentation symmetry with `tom_core_server`,
-  `tom_core_flutter`, and `tom_core_d4rt`, which already carry `doc/api_reference/`
-  sets, and linked the reference from the README. No source or behaviour change.
+  This restores documentation symmetry with `tom_core_server` and
+  `tom_core_flutter`, which already carry `doc/api_reference/` sets, and linked
+  the reference from the README. No source or behaviour change.
 
 ## 1.1.0
 

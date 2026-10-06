@@ -40,8 +40,8 @@ import 'package:tom_core_kernel/src/tombase/timezoned/date_timestamp.dart'
 import 'package:tom_core_kernel/src/tombase/timezoned/timezones.dart'
     as prefix20;
 import 'reflection_test.dart' as prefix21;
-import 'test/support/reflection_clash_first.dart' as prefix22;
-import 'test/support/reflection_clash_second.dart' as prefix23;
+import 'support/reflection_clash_first.dart' as prefix22;
+import 'support/reflection_clash_second.dart' as prefix23;
 
 // ignore_for_file: camel_case_types
 // ignore_for_file: implementation_imports

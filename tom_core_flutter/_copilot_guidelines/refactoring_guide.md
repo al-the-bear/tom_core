@@ -91,9 +91,9 @@ Iterate in order. Each step states its **done** condition.
 > **RCE3** (the kernel reference has no `api.dart`/`doc/api` either).
 >
 > ✅ **RCE3 done (2026-07-15) — api-summary parity settled + verified.** The
-> api-summary question is closed in favour of **symmetry**: all four core
-> packages (`tom_core_kernel` per RCE2, `tom_core_server`, `tom_core_d4rt`, and
-> this package via OT6) now carry a hand-written `doc/api_reference/` summary set
+> api-summary question is closed in favour of **symmetry**: the core packages
+> (`tom_core_kernel` per RCE2, `tom_core_server`, and this package via OT6) now
+> carry a hand-written `doc/api_reference/` summary set
 > (`doc/api/` is gitignored for generated HTML, so summaries live in
 > `doc/api_reference/`). This package's six per-module summaries
 > (`forms`, `little_things`, `observing`, `resources`, `runtime`, `security`)

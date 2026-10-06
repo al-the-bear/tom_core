@@ -66,9 +66,9 @@ Iterate in order. Each step states its **done** condition.
 > quest todo **RCE4** (the kernel reference has no `api.dart`/`doc/api` either).
 >
 > ✅ **RCE4 done (2026-07-15) — api-summary parity settled + verified.** The
-> api-summary question is closed in favour of **symmetry**: all four core
-> packages (`tom_core_kernel` per RCE2, this package via OT7, `tom_core_flutter`
-> per OT6, `tom_core_d4rt` per OT8) carry a hand-written `doc/api_reference/`
+> api-summary question is closed in favour of **symmetry**: the core packages
+> (`tom_core_kernel` per RCE2, this package via OT7, `tom_core_flutter` per OT6)
+> carry a hand-written `doc/api_reference/`
 > summary set (`doc/api/` is gitignored for generated HTML, so summaries live in
 > `doc/api_reference/`). This package's 13 per-module summaries plus
 > `api_summary_index.md` were verified present and accurate against source

@@ -20,9 +20,9 @@ mandatory for a general tom_core project.
 **TomSpecs** builds software from structured specification documents in phases;
 **Phase 4 — CodeSpecs** turns those documents into a skeletal, compilable Dart
 application. A rule governs that skeleton: every class it instantiates must be a
-`tom_core`-family class — one of the five packages `tom_core_kernel`,
-`tom_core_flutter`, `tom_core_server`, `tom_core_d4rt` and `tom_flutter_ui`
-(the fifth being the basis for the UI parts,
+`tom_core`-family class — one of the four packages `tom_core_kernel`,
+`tom_core_flutter`, `tom_core_server` and `tom_flutter_ui` (the fourth being
+the basis for the UI parts,
 [`codespecs_mapping.md`](../../ai_build/tom_specs_model/doc/codespecs_mapping.md)
 §1.1 pillar (b)). Generated code therefore runs on the framework a hand-written
 Tom application runs on, rather than on a parallel one invented for generation.
@@ -328,8 +328,8 @@ an essential type.
 
 ```
   tom_core family                  the substrate a CodeSpec is built on
-  kernel / flutter / server /      (tom_core_d4rt is a bridge aggregator —
-  d4rt + tom_flutter_ui            no part maps to it)
+  kernel / flutter / server /
+  tom_flutter_ui
         │
         │ what it lacks
         ▼

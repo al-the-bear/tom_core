@@ -27,7 +27,7 @@ which are reuse verdicts is
 
 The core principle is that every class a CodeSpec instantiates is a
 `tom_core`-family class — one of `tom_core_kernel`, `tom_core_flutter`,
-`tom_core_server`, `tom_core_d4rt` and `tom_flutter_ui`. Reuse an existing
+`tom_core_server` and `tom_flutter_ui`. Reuse an existing
 `tom_core` class wherever one fits; only the concrete gaps land here, which is
 what keeps `tom_core` free of CodeSpecs-only concerns.
 

@@ -327,9 +327,9 @@ Iterate through these steps in order. Each step states its **done** condition.
 > `assert`-guarded under `--enable-asserts`. Sub-step 3: added a `newField`
 > test group (default-null + set/get), closing the last untested public member;
 > kernel suite 1695 → 1697. **Decision: `newField` is KEPT, not removed** — grep
-> shows it is referenced by generated reflection (`uam_generated.r.dart`) and the
-> tom_core_server D4rt bridges (`LoginException.newField`), so it is live
-> reflected/bridged surface, not dead code; removing it would cascade
+> shows it is referenced by generated reflection (`uam_generated.r.dart`,
+> `LoginException.newField`), so it is live reflected surface, not dead code;
+> removing it would cascade
 > disproportionately for a light pass. Sub-step 4: the `little_things` examples
 > use no reflection and the new example implements no reflected types, so no
 > `build.yaml`/reflection change and no regen (the legacy
@@ -357,10 +357,9 @@ Iterate through these steps in order. Each step states its **done** condition.
 > test group (custom mixin class + `initScope`, `runInScope`, `InScopeBuilder`
 > integration, and the write-once setters); kernel suite 1697 → 1701.
 > **Decision: the `set id`/`set parent` setters are KEPT, not removed** — although
-> no Dart consumer uses them (all use `initScope`), they are registered by the
-> tom_core_d4rt bridges for `TomScopeBase` (bridge setters at
-> `tom_core_kernel_bridges.b.dart`), so removal would cascade into a bridge regen,
-> disproportionate for a light pass (same reasoning as RCK7's `newField`).
+> no Dart consumer uses them (all use `initScope`), they are part of the public
+> `TomScopeBase` surface, and removing them was disproportionate for a light
+> pass (same reasoning as RCK7's `newField`).
 > Sub-step 4: `scope_ids` is not in `build.yaml` and the new example implements no
 > reflected types, so no `build.yaml`/reflection change and no regen. `dart
 > analyze` clean; examples self-assert under `--enable-asserts`; `testkit :test`
@@ -381,9 +380,9 @@ Iterate through these steps in order. Each step states its **done** condition.
 > `globalSettingReplayQueueMaxSize` gate/bound is unchanged. **Decision: record
 > serialization (`_encodeReplayRecord`/`_decodeReplayRecord`) lives as private
 > top-level functions in the file-store library, NOT on `TomRemoteLogMessage`** —
-> that type is `@tomReflector` + tom_core_d4rt-bridged, so putting JSON helpers
-> on it would force a reflection/bridge regen; the 8 fields are all JSON-native,
-> so an external encoder keeps the reflected/bridged surface untouched (no regen).
+> that type is `@tomReflector`, so putting JSON helpers on it would force a
+> reflection regen; the 8 fields are all JSON-native, so an external encoder
+> keeps the reflected surface untouched (no regen).
 > **Decision: file-store tests use `Directory.systemTemp.createTempSync(...)`
 > with a guaranteed `tearDown` delete** (idiomatic ephemeral test fixtures; the
 > ztmp rule targets durable agent scratch, not cleaned-up test tempdirs). Added
