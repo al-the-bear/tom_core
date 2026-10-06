@@ -43,17 +43,17 @@ protocol are the parts worth testing, and neither needs a widget tree to run.
 | ------ | ---- | ------- |
 | `readAgentYamlFile` | function | Reads and parses one sidecar, answering `null` for missing, empty, unreadable and malformed alike |
 | `decodeAgentYamlList` / `decodeAgentYamlValue` | function | Builds models from a parsed sidecar — skipping a bad entry, or falling back for a bad singleton |
-| `AgentProfileStore` | class | Sidecar of named agent configurations |
-| `AgentSettingsStore` | class | Sidecar of the single settings mapping |
-| `ChatVariableStore` | class | Sidecar of chat variables, identified by `name` |
-| `PromptQueueStore` | class | Sidecar of queued prompts |
-| `PromptTemplateStore` | class | Sidecar of prompt templates |
-| `QueueTemplateStore` | class | Sidecar of queue templates |
-| `ReminderTemplateStore` | class | Sidecar of reminder templates |
-| `TimedRequestStore` | class | Sidecar of timed requests |
-| `PromptTrailStore` | class | Sidecar of sent-prompt / received-answer pairs |
-| `BridgeChoiceStore` | class | Sidecar of the persisted bridge binding |
-| `SpecSessionStore` | class | The per-specification SDK session id — a bare scalar, the one sidecar with no model behind it |
+| `AgentProfileStore` | final class | Sidecar of named agent configurations |
+| `AgentSettingsStore` | final class | Sidecar of the single settings mapping |
+| `ChatVariableStore` | final class | Sidecar of chat variables, identified by `name` |
+| `PromptQueueStore` | final class | Sidecar of queued prompts |
+| `PromptTemplateStore` | final class | Sidecar of prompt templates |
+| `QueueTemplateStore` | final class | Sidecar of queue templates |
+| `ReminderTemplateStore` | final class | Sidecar of reminder templates |
+| `TimedRequestStore` | final class | Sidecar of timed requests |
+| `PromptTrailStore` | final class | Sidecar of sent-prompt / received-answer pairs |
+| `BridgeChoiceStore` | final class | Sidecar of the persisted bridge binding |
+| `SpecSessionStore` | final class | The per-specification SDK session id — a bare scalar, the one sidecar with no model behind it |
 | `AgentSettings` | final class | Bridge target plus the global `Options` defaults a profile overlays |
 | `AgentProfile` | final class | One named agent configuration, including `interruptRetryPrefix` |
 | `ToolApprovalMode` | enum | How a profile answers the SDK's tool-approval prompt |
@@ -75,23 +75,23 @@ protocol are the parts worth testing, and neither needs a widget tree to run.
 | `QueuedPrePrompt` | final class | A prompt sent before the main one, awaiting its own answer |
 | `QueuedPrePromptStatus` | enum | Where a `QueuedPrePrompt` stands |
 | `QueuedFollowUpPrompt` | final class | A prompt sent after the main one, in insertion order |
-| `BridgeConnectionService` | class | Scans the bridge port range and reports the responsive servers |
-| `BridgeServer` | class | One discovered bridge: its port and what answered |
+| `BridgeConnectionService` | final class | Scans the bridge port range and reports the responsive servers |
+| `BridgeServer` | final class | One discovered bridge: its port and what answered |
 | `BridgeServerStatus` | enum | Whether a scanned port answered, refused or timed out |
 | `BridgePortScanner` | typedef | The probe the service scans with, injectable for tests |
-| `BridgeChoice` | class | The bridge the editor is bound to, matched endpoint-wise |
-| `ReconnectCoordinator` | class | The reconnect back-off loop and its three resolutions |
-| `ReconnectResult` | class | What one reconnect attempt settled on |
+| `BridgeChoice` | final class | The bridge the editor is bound to, matched endpoint-wise |
+| `ReconnectCoordinator` | final class | The reconnect back-off loop and its three resolutions |
+| `ReconnectResult` | final class | What one reconnect attempt settled on |
 | `ReconnectResolution` | enum | Reconnected, gave up, or was superseded |
 | `ReconnectDelay` | typedef | The back-off schedule, injectable so a test need not wait |
-| `AgentSendEngine` | class | Streams one prompt, refreshes the session id, honours cancellation |
-| `AgentSendConfig` | class | The per-send inputs the engine assembles `Options` from |
+| `AgentSendEngine` | final class | Streams one prompt, refreshes the session id, honours cancellation |
+| `AgentSendConfig` | final class | The per-send inputs the engine assembles `Options` from |
 | `AgentSendEvent` | sealed class | One step of a send |
-| `AgentSendStarted` | class | Opens a send, exactly once |
-| `AgentSendChunk` | class | One piece of answer text — `TextBlock` content only |
-| `AgentSendSessionRefreshed` | class | The stale session id was dropped and the query re-issued |
-| `AgentSendCompleted` | class | Closes a send successfully |
-| `AgentSendFailed` | class | Closes a send on failure |
+| `AgentSendStarted` | final class | Opens a send, exactly once |
+| `AgentSendChunk` | final class | One piece of answer text — `TextBlock` content only |
+| `AgentSendSessionRefreshed` | final class | The stale session id was dropped and the query re-issued |
+| `AgentSendCompleted` | final class | Closes a send successfully |
+| `AgentSendFailed` | final class | Closes a send on failure |
 | `AgentSdkClientFactory` | typedef | How the engine obtains its SDK client, injectable for tests |
 | `EditorPlaceholderBindings` | final class | The editor's binding namespace over the shared resolver: sync, lenient, no I/O |
 | `PlaceholderExpressionsUnsupportedError` | final class | Thrown for a `${{ … }}` form, which the editor refuses to evaluate |

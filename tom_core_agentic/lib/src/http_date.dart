@@ -15,7 +15,7 @@
 ///
 /// Always returns a UTC [DateTime]. Throws [FormatException] on any
 /// unparseable input.
-class HttpDate {
+final class HttpDate {
   static const _months = <String, int>{
     'jan': 1,
     'feb': 2,

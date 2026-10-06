@@ -35,7 +35,7 @@ matters: MCP depends on the taxonomy, the taxonomy does not depend on MCP.
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
 | `BearerTokenAuthenticator<P>` | abstract interface class | Validates a token and resolves it to a principal of type `P` |
-| `BearerAuthFailure` | class | Raised when a token is rejected; carries a stable `reason` + a server-only `message` |
+| `BearerAuthFailure` | final class | Raised when a token is rejected; carries a stable `reason` + a server-only `message` |
 | `BearerAuthFailureReason` | enum | Closed set: `missing`, `malformed`, `rejected` |
 
 ## Why It Is Its Own Module

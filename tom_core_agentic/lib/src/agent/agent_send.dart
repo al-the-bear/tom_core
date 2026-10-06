@@ -57,7 +57,7 @@ bool specSessionLooksLikeError(String message) {
 /// Mirrors the editor's other sidecars (e.g. `BridgeChoiceStore`): a small YAML
 /// file written synchronously on every change, degrading to "no session" on any
 /// read/parse error rather than throwing.
-class SpecSessionStore {
+final class SpecSessionStore {
   SpecSessionStore(this.file);
 
   /// The backing YAML file.
@@ -125,7 +125,7 @@ PermissionMode permissionModeForApproval(ToolApprovalMode mode) =>
 /// knobs the send itself needs; the [mcpServers] seam is a field rather than a
 /// constructor requirement so a tool server can be supplied without reshaping
 /// the config.
-class AgentSendConfig {
+final class AgentSendConfig {
   const AgentSendConfig({
     this.model,
     this.systemPrompt,
@@ -214,12 +214,12 @@ sealed class AgentSendEvent {
 }
 
 /// Emitted once, first, when a send begins.
-class AgentSendStarted extends AgentSendEvent {
+final class AgentSendStarted extends AgentSendEvent {
   const AgentSendStarted();
 }
 
 /// A streamed chunk of assistant answer text (in order).
-class AgentSendChunk extends AgentSendEvent {
+final class AgentSendChunk extends AgentSendEvent {
   const AgentSendChunk(this.text);
 
   /// The assistant text fragment.
@@ -228,12 +228,12 @@ class AgentSendChunk extends AgentSendEvent {
 
 /// Emitted when a session error caused the stored session id to be
 /// dropped and the prompt to be retried with a fresh session.
-class AgentSendSessionRefreshed extends AgentSendEvent {
+final class AgentSendSessionRefreshed extends AgentSendEvent {
   const AgentSendSessionRefreshed();
 }
 
 /// Terminal success: the query produced a result message.
-class AgentSendCompleted extends AgentSendEvent {
+final class AgentSendCompleted extends AgentSendEvent {
   const AgentSendCompleted(this.sessionId);
 
   /// The Claude-Code session id of the completed turn, persisted for resume, or
@@ -242,7 +242,7 @@ class AgentSendCompleted extends AgentSendEvent {
 }
 
 /// Terminal failure: a non-session error, or a stream with no result message.
-class AgentSendFailed extends AgentSendEvent {
+final class AgentSendFailed extends AgentSendEvent {
   const AgentSendFailed(this.message);
 
   /// The error text surfaced to the user.
@@ -282,7 +282,7 @@ Future<AgentSdkClient> connectAgentSdkClient({
 /// stream: each listen runs one `query`, transparently retrying once with a
 /// fresh session if the first attempt fails with a session error **before** any
 /// answer text has streamed.
-class AgentSendEngine {
+final class AgentSendEngine {
   AgentSendEngine({
     required this.client,
     required this.sessionStore,

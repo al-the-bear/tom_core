@@ -78,7 +78,7 @@ enum BridgeServerStatus {
 /// One responsive VS Code bridge: its port, the workspace its window has open,
 /// and how it relates to the editor (`available` / `bound`). Shown in the
 /// picker as *port · workspace · status*.
-class BridgeServer {
+final class BridgeServer {
   const BridgeServer({
     required this.port,
     required this.workspace,
@@ -143,7 +143,7 @@ Future<Map<int, String>> _defaultScanner({
 ///
 /// Wraps the port scan so the UI controller depends only on `tom_core_agentic`
 /// and never touches the transport package directly.
-class BridgeConnectionService {
+final class BridgeConnectionService {
   BridgeConnectionService({
     this.host = defaultBridgeHost,
     this.minPort = bridgeScanMinPort,
@@ -180,7 +180,7 @@ class BridgeConnectionService {
 }
 
 /// The persisted choice: which host+port the editor last bound to.
-class BridgeChoice {
+final class BridgeChoice {
   const BridgeChoice({required this.host, required this.port});
 
   /// Bound host.
@@ -241,7 +241,7 @@ class BridgeChoice {
 /// Mirrors the editor's other sidecars: a small YAML file written
 /// synchronously on every change. The file lives outside the document so it is
 /// never part of a `*.docspecs.yaml` save.
-class BridgeChoiceStore {
+final class BridgeChoiceStore {
   BridgeChoiceStore(this.file);
 
   /// The backing YAML file.

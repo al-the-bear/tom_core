@@ -15,7 +15,7 @@ import 'agent_yaml.dart';
 import 'timed_request.dart';
 
 /// Loads/saves the timed-request set (`List<TimedRequest>`) as YAML.
-class TimedRequestStore {
+final class TimedRequestStore {
   TimedRequestStore(this.file);
 
   /// The backing YAML file.

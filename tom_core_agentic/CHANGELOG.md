@@ -2,6 +2,16 @@
 
 ### Changed
 
+- **No public class in the package is left without a modifier.** The 29 that
+  carried none — the eleven `*Store` classes, the bridge and reconnect services,
+  `AgentSendEngine` and `AgentSendConfig`, the value types, the two
+  exceptions, `AsyncShutdownCoordinator` and `CancellationTokenSource` — are
+  closed, as the rest of the package already was. Nothing in the workspace
+  extends, implements or mixes in any of them. The five `AgentSendEvent`
+  leaves are now `final class`, so the package's two sealed event hierarchies
+  agree with `LlmStreamEvent`'s. `BridgeConnectionService` is varied through
+  its injected `BridgePortScanner`, which is its documented seam; the
+  reconnect tests use it instead of subclassing the service.
 - **`EditorPlaceholderBindings` states its limits as decisions.** The
   library comment deferred file injection and workspace wiring to "later
   steps" and named capability tiers that exist nowhere. It now says what the

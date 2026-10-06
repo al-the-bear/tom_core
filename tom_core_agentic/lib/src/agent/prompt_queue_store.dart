@@ -20,7 +20,7 @@ import 'agent_yaml.dart';
 import 'prompt_queue.dart';
 
 /// Loads/saves the editor prompt queue (`List<QueuedPrompt>`) as YAML.
-class PromptQueueStore {
+final class PromptQueueStore {
   PromptQueueStore(this.file);
 
   /// The backing YAML file.

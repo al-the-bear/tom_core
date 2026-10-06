@@ -18,7 +18,7 @@ import 'agent_sidecar.dart';
 import 'agent_yaml.dart';
 
 /// Loads/saves the agent-profile set (`List<AgentProfile>`) as YAML.
-class AgentProfileStore {
+final class AgentProfileStore {
   AgentProfileStore(this.file);
 
   /// The backing YAML file.

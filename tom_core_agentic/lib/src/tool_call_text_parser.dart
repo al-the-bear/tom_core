@@ -31,7 +31,7 @@ import 'dart:convert';
 /// [name] is the tool identifier exactly as the model wrote it (e.g.
 /// `web.search`); [arguments] is the decoded argument object with `String`
 /// keys, empty when the call carried no arguments.
-class ParsedToolCall {
+final class ParsedToolCall {
   const ParsedToolCall(this.name, this.arguments);
 
   /// The tool identifier as written by the model.

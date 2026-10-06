@@ -15,7 +15,7 @@ import 'agent_yaml.dart';
 import 'queue_template.dart';
 
 /// Loads/saves the queue-template set (`List<QueueTemplate>`) as YAML.
-class QueueTemplateStore {
+final class QueueTemplateStore {
   QueueTemplateStore(this.file);
 
   /// The backing YAML file.

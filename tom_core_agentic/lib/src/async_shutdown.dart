@@ -46,7 +46,7 @@ const int shutdownExitError = 70;
 /// is in flight is logged and ignored. [completed] resolves with the chosen
 /// exit code once the teardown has run, so a test can await the whole
 /// sequence without a real terminate.
-class AsyncShutdownCoordinator<S> {
+final class AsyncShutdownCoordinator<S> {
   final String _label;
   final ShutdownAction _onShutdown;
   final ProcessTerminator _terminate;

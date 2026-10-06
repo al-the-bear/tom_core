@@ -15,7 +15,7 @@ import 'agent_yaml.dart';
 import 'prompt_template.dart';
 
 /// Loads/saves the prompt-template set (`List<PromptTemplate>`) as YAML.
-class PromptTemplateStore {
+final class PromptTemplateStore {
   PromptTemplateStore(this.file);
 
   /// The backing YAML file.

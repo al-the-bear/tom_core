@@ -16,7 +16,7 @@ import 'agent_yaml.dart';
 import 'chat_message.dart';
 
 /// Loads/saves the editor prompt trail (`List<TrailPair>`) as YAML.
-class PromptTrailStore {
+final class PromptTrailStore {
   PromptTrailStore(this.file);
 
   /// The backing YAML file.

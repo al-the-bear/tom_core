@@ -14,7 +14,7 @@ import 'agent_sidecar.dart';
 import 'agent_yaml.dart';
 
 /// Loads/saves the singleton [AgentSettings] as YAML.
-class AgentSettingsStore {
+final class AgentSettingsStore {
   AgentSettingsStore(this.file);
 
   /// The backing YAML file.

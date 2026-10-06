@@ -22,7 +22,7 @@ import 'agent_yaml.dart';
 import 'reminder_template.dart';
 
 /// Loads/saves the reminder-template set (`List<ReminderTemplate>`) as YAML.
-class ReminderTemplateStore {
+final class ReminderTemplateStore {
   ReminderTemplateStore(this.file);
 
   /// The backing YAML file.

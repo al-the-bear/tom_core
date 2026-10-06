@@ -27,8 +27,8 @@ source; they write it because it is the more *informative* word, and Dart has no
 keyword for it. So the cell reads fluently, describes the symbol's role
 correctly, and answers the question the column is actually asked -- may I
 subclass this? -- with a word that cannot answer it. ``BearerAuthFailure`` was
-listed as ``exception``: true as a description, and it happens to be a plain
-``class``, so a reader who wanted to extend it was left to guess. Its neighbour
+listed as ``exception``: true as a description, and silent on the one thing its
+declaration decides, whether a reader may extend it. Its neighbour
 ``BearerTokenAuthenticator`` was listed as ``interface`` while being an
 ``abstract interface class`` -- the one kind whose whole point is a restriction
 the word "interface" does not convey.

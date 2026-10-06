@@ -46,7 +46,7 @@ enum ReconnectResolution {
 }
 
 /// The outcome of [ReconnectCoordinator.reconnect].
-class ReconnectResult {
+final class ReconnectResult {
   const ReconnectResult(this.resolution, {this.server, required this.attempts});
 
   /// How the reconnect resolved.
@@ -78,7 +78,7 @@ typedef ReconnectDelay = Future<void> Function(Duration duration);
 /// rescan) and [ReconnectDelay] (the back-off). The UI side — the informational
 /// popup, the still-gone modal, the different-workspace confirmation, and the
 /// auto-resend — is the Flutter controller's concern.
-class ReconnectCoordinator {
+final class ReconnectCoordinator {
   ReconnectCoordinator({
     required this.service,
     this.backoff = defaultReconnectBackoff,

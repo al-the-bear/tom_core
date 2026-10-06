@@ -60,7 +60,7 @@ abstract interface class BearerTokenAuthenticator<P extends Object> {
 /// transport does the translating, because token-introspection error
 /// details can be a side channel for token-guessing attacks. Only the
 /// [reason] tag belongs on the wire.
-class BearerAuthFailure implements Exception {
+final class BearerAuthFailure implements Exception {
   /// Stable enum-like tag for the failure category.
   final BearerAuthFailureReason reason;
 

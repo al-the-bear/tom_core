@@ -19,7 +19,7 @@ import 'agent_yaml.dart';
 import 'chat_variable.dart';
 
 /// Loads/saves the custom chat-variable set (`List<ChatVariable>`) as YAML.
-class ChatVariableStore {
+final class ChatVariableStore {
   ChatVariableStore(this.file);
 
   /// The backing YAML file.

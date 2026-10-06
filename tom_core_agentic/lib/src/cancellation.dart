@@ -51,7 +51,7 @@ abstract class CancellationToken {
 /// Owners of a [CancellationTokenSource] hand the [token] to a
 /// downstream call and call [cancel] when they want the downstream
 /// work to stop. Calling [cancel] a second time is a no-op.
-class CancellationTokenSource {
+final class CancellationTokenSource {
   final Completer<void> _completer = Completer<void>();
   late final _Token _token = _Token(_completer);
 
@@ -89,7 +89,7 @@ class _Token implements CancellationToken {
 /// input stop issuing / awaiting work on the others cleanly rather
 /// than running every remaining call to completion and discarding the
 /// results.
-class OperationCancelled implements Exception {
+final class OperationCancelled implements Exception {
   /// Optional human-readable label of the cancelled operation.
   final String? operation;
 
