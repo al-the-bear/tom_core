@@ -6,9 +6,10 @@
 ///   * `TomAuthGuard` — wraps a "profile" panel; the right-hand
 ///     control swaps the `demoQ.profile` resource auth state between
 ///     full / read / disabled / none and the panel reacts live.
-///   * `TomEmptyState` — rendered in the items pane when the bound
-///     `OrderItemsListForm` is empty. Clear / Seed / +1 row map to
-///     `items.removeAt` / `items.add` on the list form.
+///   * `TomEmptyState` — what the items pane's `TomInlineListForm`
+///     builds through `emptyBuilder` when the bound `OrderItemsListForm`
+///     has no rows; the list renderer decides, not the page. Clear / Seed
+///     / +1 row map to `items.removeAt` / `items.add` on the list form.
 ///   * `TomLoadingOverlay` — overlays the items pane while the
 ///     [ValidationForm.save] awaits its async `SlowValidator` (800 ms
 ///     synthetic latency on the `username` field).
@@ -19,6 +20,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../common/demo_scaffold.dart';
 import '../forms/order_form.dart';
+import '../forms/order_item_form.dart';
 import '../forms/validation_form.dart';
 import '../panels/info_panel.dart';
 import '../state/phase2a_state.dart';
@@ -300,50 +302,42 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
               message: 'Saving — SlowValidator pending…',
               child: SizedBox(
                 height: 260,
-                child: items.length == 0
-                    ? TomEmptyState(
-                        title: 'No items',
-                        description:
-                            'Use Seed to insert sample rows, or +1 to '
-                            'append a single row.',
-                      )
-                    : ListView.separated(
-                        itemCount: items.length,
-                        separatorBuilder: (_, _) => const Divider(height: 1),
-                        itemBuilder: (_, i) {
-                          final row = items[i];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 6,
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.label_outline, size: 16),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  flex: 3,
-                                  child: row.productName.widget,
-                                ),
-                                const SizedBox(width: 8),
-                                SizedBox(width: 72, child: row.quantity.widget),
-                                IconButton(
-                                  tooltip: 'Remove',
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    size: 18,
-                                  ),
-                                  onPressed: () {
-                                    _orderForm.items.removeAt(i);
-                                    setState(() {});
-                                  },
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                // The list renderer decides when "no rows" shows:
+                // TomEmptyState has no bindings of its own and is simply
+                // what the list form's emptyBuilder returns.
+                child: SingleChildScrollView(
+                  child: TomInlineListForm<OrderItem, OrderItemForm>(
+                    listForm: _orderForm.items,
+                    rowSeparatorBuilder: (_, _) => const Divider(height: 1),
+                    emptyBuilder: (_) => TomEmptyState(
+                      title: 'No items',
+                      description:
+                          'Use Seed to insert sample rows, or +1 to '
+                          'append a single row.',
+                    ),
+                    rowBuilder: (_, i, row) => Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
                       ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.label_outline, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(flex: 3, child: row.productName.widget),
+                          const SizedBox(width: 8),
+                          SizedBox(width: 72, child: row.quantity.widget),
+                          IconButton(
+                            tooltip: 'Remove',
+                            icon: const Icon(Icons.delete_outline, size: 18),
+                            onPressed: () => _orderForm.items.removeAt(i),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ],

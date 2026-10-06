@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import 'package:tom_flutter_form_test/main.dart';
 import 'package:tom_flutter_form_test/main.reflection.dart';
@@ -105,6 +106,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Alpha'), findsNothing);
     expect(find.text('No items'), findsOneWidget);
+    // The list renderer builds the empty state, not the page: it arrives
+    // through the TomInlineListForm's emptyBuilder.
+    expect(
+      find.descendant(
+        of: find.byWidgetPredicate((w) => w is TomInlineListForm),
+        matching: find.byType(TomEmptyState),
+      ),
+      findsOneWidget,
+    );
     expect(
       find.text(
         'Use Seed to insert sample rows, or +1 to '

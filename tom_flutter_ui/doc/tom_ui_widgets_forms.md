@@ -4986,15 +4986,18 @@ Mirrors Phase 4 on the Cupertino side. Closes the complete spec.
 
 **Goal:** Ship the custom Tom widgets referenced in §23. None are fields, so they sit outside the Phase 1–5 field rollout, but they are documented as first-class framework pieces and several of the form demos (and downstream apps) want them — especially `TomLoadingOverlay`, `TomEmptyState`, and `TomAuthGuard`.
 
-**Status: the widgets are delivered; the demos are not.** All eight deliverables
-below ship — the seven in `lib/src/custom/` plus the `TomTreeView` /
-`TomTreeNode` pair in `lib/src/widgets/trees/` — with a module document
-([custom.md](custom.md)), an example under `example/custom/`, and five
-`testWidgets` suites under `test/custom/`. `lib/src/custom/` additionally
-carries `TomAuthTreeView` / `TomAuthTreeNode`, the per-node-auth tree that was
-not part of the original eight. **Demos Q and R below were never built**, so the
-validation criterion at the end of this phase — every widget consumed by at
-least one demo — is the part still outstanding.
+**Status: delivered.** All eight deliverables below ship — the seven in
+`lib/src/custom/` plus the `TomTreeView` / `TomTreeNode` pair in
+`lib/src/widgets/trees/` — with a module document ([custom.md](custom.md)), an
+example under `example/custom/`, and five `testWidgets` suites under
+`test/custom/`. `lib/src/custom/` additionally carries `TomAuthTreeView` /
+`TomAuthTreeNode`, the per-node-auth tree that was not part of the original
+eight. Demos Q and R below are in `tom_flutter_form_test`
+(`lib/demos/demo_q_auth_empty_overlay.dart`,
+`lib/demos/demo_r_tree_radio_infinite.dart`), held by
+`test/phase6_smoke_test.dart`, and between them and `tom_flutter_ui_test`'s
+`widget_demos/demo_16_trees.dart` — which builds `TomTreeView` — every
+deliverable is consumed by a demo.
 
 **Scope note:** These widgets consume the same authorization, resource, and state-binding systems used by fields. No new upstream changes are expected.
 
@@ -5011,8 +5014,7 @@ least one demo — is the part still outstanding.
 | 7 | `TomSkeletonLoader` | Shimmer / skeleton placeholder for async-loading surfaces. |
 | 8 | `TomInfiniteScroll` | List / grid wrapper with pagination, observable page fetcher, and empty / error / loading-state hooks that reuse the widgets above. |
 
-**Demo application for Phase 6** — one page per cluster. Neither page exists
-yet; this is the outstanding half of the phase:
+**Demo application for Phase 6** — one page per cluster:
 
 **Demo Q — Auth / Empty / Overlay**
 

@@ -121,7 +121,7 @@ of the `tom_flutter_ui` widget specification.
 
 | Demo | Source file | `tom_flutter_ui` / kernel feature validated |
 | ---- | ----------- | ------------------------------------------- |
-| Q — Auth / Empty / Overlay | `demo_q_auth_empty_overlay.dart` | `TomAuthGuard`, `TomEmptyState`, `TomLoadingOverlay` (600 ms simulated save scrim) |
+| Q — Auth / Empty / Overlay | `demo_q_auth_empty_overlay.dart` | `TomAuthGuard`, `TomEmptyState` (built by a `TomInlineListForm`'s `emptyBuilder` when its list has no rows), `TomLoadingOverlay` (over a `ValidationForm.save()` awaiting an 800 ms `SlowValidator`) |
 | R — Tree / Radio / Infinite scroll | `demo_r_tree_radio_infinite.dart` | `TomAuthTreeView` (per-node auth + inheritance), `TomChoiceGroup` (group-level auth), `TomInfiniteScroll` over 10 000 rows with `TomSkeletonLoader` + `TomErrorBoundary` |
 
 ### Supporting reference demos
