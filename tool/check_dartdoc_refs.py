@@ -205,6 +205,10 @@ from pathlib import Path
 
 from gate_report import report_faults
 
+#: The gate reads this repository, ``tom_ai/core``, and nothing beside it. The
+#: rest of ``tom_ai`` belongs to other quests and is left to them; the forks
+#: under ``tom_ai/xternal`` are upstream code that is not ours to edit, so no
+#: widening of this root would ever include them.
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SKIP_DIRS = {".dart_tool", "build", ".git", "node_modules", "__pycache__"}

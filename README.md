@@ -510,6 +510,11 @@ such ambiguity — a private name can only ever resolve inside its own library, 
 whether it exists is answerable from that library alone. That is also exactly
 the shape a rename leaves behind.
 
+Its scope is this repository and no wider. The sibling repositories under
+`tom_ai` carry doc comments no gate here reads; they belong to other quests,
+which own their documentation. The forks under `tom_ai/xternal` are upstream
+code and are never in scope: their comments are not ours to correct.
+
 ```bash
 python3 tool/check_dartdoc_build.py                  # the gated packages
 python3 tool/check_dartdoc_build.py tom_core_server  # one package, ad hoc
