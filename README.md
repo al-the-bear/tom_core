@@ -194,6 +194,17 @@ it fails as unbaselined until it is recorded. To be run, a gate must be named
 [`tool/gate_report.py`](tool/gate_report.py); `report_*.py` names a tool that
 reports and never gates.
 
+A count cannot tell a gate that found nothing from one that stopped reading, so
+a gate may implement `--self-test`: plant a fault in a real document in memory,
+require the objection, restore it, and require the restored state to be clean.
+The runner runs every gate's self-test as well as its measuring run — a gate
+implements one when its source carries `"--self-test"` as a string literal — and
+a self-test that fails fails the gate: `self-test-failed` when the count itself
+held, never a zero. Each row says `self-test ok`, `self-test FAILED` or `no
+self-test`, and the closing line counts the gates without one, so the share of
+the suite that only a count vouches for stays visible. `--update` skips the
+self-tests, since it records counts and a self-test changes none.
+
 Each gate gets `GATE_TIMEOUT_SECONDS` (fifteen minutes), set from a measured
 run with room for a loaded machine. A gate stopped at the budget is reported as
 `timed-out`, naming the limit and the last line the gate printed — its content
@@ -202,8 +213,8 @@ remedy. Each gate runs as its own process group and the whole group is killed:
 a gate shells out to `dart analyze`, and an analyzer left running would compete
 with every gate after it, and hold the runner's pipes open past the limit it
 had just enforced. `--self-test` runs throwaway gates that stall (with a child
-process), stay silent, crash and refuse, and checks the verdict on each and that
-nothing is left running. The analyzer-backed gates keep their
+process), stay silent, crash, refuse, fail their own self-test and have none,
+and checks the verdict on each and that nothing is left running. The analyzer-backed gates keep their
 clean verdicts in [`tool/gate_cache.py`](tool/gate_cache.py), keyed on every
 input the verdict depends on — the package, its path dependencies' sources, its
 resolved package config, the SDK and the gate itself — so a run after an
@@ -249,7 +260,7 @@ it and start eight test suites.
 
 | Tool | What it does |
 | ---- | ------------ |
-| [`tool/check_gates.py`](tool/check_gates.py) | Runs every gate below and holds each to its recorded fault count |
+| [`tool/check_gates.py`](tool/check_gates.py) | Runs every gate below, and every gate's `--self-test`, and holds each to its recorded fault count |
 | [`tool/run_suites.py`](tool/run_suites.py) | Runs every package suite and the gate suite, with a per-suite verdict and one exit status |
 | [`tool/gate_report.py`](tool/gate_report.py) | The contract a gate implements: prints the machine-readable fault total and derives the exit status from it |
 | [`tool/dart_sdk.py`](tool/dart_sdk.py) | Finds the `dart` the gates need when the shell's PATH has none — PATH, the SDKs' own environment variables, `flutter` on PATH, then conventional install locations — so the gate runner can put it on every gate's PATH |

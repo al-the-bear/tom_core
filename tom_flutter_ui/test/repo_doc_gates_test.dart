@@ -69,22 +69,6 @@ List<String> _discoverGates() =>
         .toList()
       ..sort();
 
-/// The gates that carry a `--self-test`, found by reading them.
-///
-/// Discovered rather than listed for the same reason the gate list is: a
-/// checker that grows a self-test tomorrow should be exercised tomorrow. The
-/// probe is the literal flag string in the source, which is what a checker
-/// dispatches on. A gate that only names the flag in a comment is picked up
-/// too and then runs its ordinary check instead — reported as a failure, which
-/// is the safe way round.
-List<String> _selfTestingGates() => _discoverGates()
-    .where(
-      (n) => File(
-        '${_repoRoot.path}/tool/$n.py',
-      ).readAsStringSync().contains('--self-test'),
-    )
-    .toList();
-
 /// Runs `tool/check_gates.py --json` and returns its parsed report.
 Map<String, dynamic> _runGates() {
   final result = runPython(['tool/check_gates.py', '--json']);
@@ -173,33 +157,44 @@ void main() {
   // `--self-test` asks the question the baseline cannot: perturb a figure the
   // gate calls correct, and require it to object.
   group('the gates still detect what they claim to read', () {
-    final selfTesting = _selfTestingGates();
-
-    test('there are self-tests to run', timeout: slow, () {
-      expect(
-        selfTesting,
-        isNotEmpty,
-        reason:
-            'no checker in tool/ implements --self-test. At least one did; '
-            'losing the last one means nothing now distinguishes a gate that '
-            'passes because the documents are right from one that passes '
-            'because it stopped looking.',
-      );
-    });
-
-    for (final gate in selfTesting) {
-      test(gate, timeout: slow, () {
-        final result = runPython(['tool/$gate.py', '--self-test']);
+    // check_gates.py runs every gate's --self-test alongside its measuring
+    // run and fails the gate when the self-test fails, so a failing self-test
+    // already fails that gate's test above. What is asserted here is the
+    // population: that self-tests exist at all, and that the report names
+    // which gates have none rather than counting them as fine.
+    test(
+      'there are self-tests, and every one the runner ran passed',
+      timeout: slow,
+      () {
+        final gatesReported = (report['gates'] as List)
+            .cast<Map<String, dynamic>>();
+        final tested = gatesReported
+            .where((g) => g['self_test'] != 'none')
+            .toList();
         expect(
-          result.exitCode,
-          0,
+          tested,
+          isNotEmpty,
           reason:
-              '$gate --self-test failed: a claim it is supposed to measure '
-              'survived being perturbed, so that claim is no longer gated.\n'
-              '${result.stdout}\n${result.stderr}',
+              'no checker in tool/ implements --self-test. Losing the last one '
+              'means nothing distinguishes a gate that passes because the '
+              'documents are right from one that passes because it stopped '
+              'looking.',
         );
-      });
-    }
+        expect(
+          [
+            for (final g in tested)
+              if (g['self_test'] != 'passed') g['name'],
+          ],
+          isEmpty,
+          reason: 'these gates failed their --self-test',
+        );
+        expect(
+          gatesReported.map((g) => g['self_test']).toSet(),
+          everyElement(anyOf('passed', 'failed', 'none')),
+          reason: 'the runner reported a gate without a self-test verdict',
+        );
+      },
+    );
 
     // The runner is not discovered above -- it is not a gate -- but its own
     // verdicts are a claim too: that a gate stopped at the time limit is

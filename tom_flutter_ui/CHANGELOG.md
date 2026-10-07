@@ -2,6 +2,11 @@
 
 ### Tests
 
+- **`test/repo_doc_gates_test.dart` reads the gates' self-test verdicts from
+  the runner** instead of running each `--self-test` a second time.
+  `tool/check_gates.py` now runs every gate's self-test and fails the gate
+  when it fails; the suite asserts that self-tests exist and that every one
+  the runner ran passed.
 - **`test/ai_citation_test.dart`** fails the suite when an artefact of the
   package cites a document in the AI-state mount. It runs
   `tom_ai/core/tool/check_doc_ai_citations.py` over the package through

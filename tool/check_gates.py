@@ -7,7 +7,8 @@ Run from anywhere::
     python3 tool/check_gates.py --json     # the same, machine-readable
     python3 tool/check_gates.py --update   # rewrite the baselines to today
 
-Exits non-zero when any gate disagrees with its baseline, in either direction.
+Exits non-zero when any gate disagrees with its baseline, in either direction,
+or when a gate's own ``--self-test`` fails.
 
 **What this is for.** Every checker beside this file was written to hold a
 documentation invariant, and until this runner existed *nothing ran any of
@@ -36,6 +37,18 @@ checker is enforced from the day it lands, not from the day someone remembers
 to register it -- and makes a missing [gate_report.FAULT_LINE] a failure rather
 than a count of zero.
 
+**Every self-test runs too.** A gate that holds at zero passes just as well when
+it has stopped reading anything, and a count cannot tell the two apart. So a
+gate may implement ``--self-test``: damage a real document in memory, require
+the matching objection, restore it and require the restored state to be clean.
+This runner runs that as well as the measuring run, for every gate whose source
+carries the flag as a string literal, and a self-test that fails makes the gate
+fail -- ``self-test-failed`` when the count itself held -- rather than read as a
+zero. A gate without one is reported as such in its row and counted in the
+closing line, so the population a count alone vouches for stays visible.
+``--update`` skips the self-tests: it records counts, and a broken self-test
+does not change one.
+
 **What a gate must do to be run.** Be named ``check_*.py`` in this folder, and
 end its ``main`` with [gate_report.report_faults]. Discovery is by glob, so
 there is no list of gates to forget to update. ``report_*.py`` is excluded by
@@ -48,6 +61,7 @@ import argparse
 import datetime
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -100,6 +114,17 @@ def gate_scripts() -> list[Path]:
     return sorted(p for p in TOOL_DIR.glob("check_*.py") if p.name != SELF)
 
 
+#: How a gate declares that it implements `--self-test`: the flag as a string
+#: literal, which is what its argv handling compares against. A gate that only
+#: names the flag in prose is not matched.
+SELF_TEST_FLAG = re.compile(r"""["']--self-test["']""")
+
+
+def has_self_test(script: Path) -> bool:
+    """Whether [script] implements `--self-test`."""
+    return bool(SELF_TEST_FLAG.search(script.read_text(encoding="utf-8")))
+
+
 def read_baselines() -> dict:
     if not BASELINES.exists():
         return {}
@@ -129,6 +154,11 @@ GATE_ENV, ADDED_DART = environment_with_dart()
 #: shared cause is not read as that many regressions.
 DART_FOUND = shutil.which("dart", path=GATE_ENV.get("PATH")) is not None
 
+#: The self-test column of a gate's row.
+SELF_TEST_MARK = {"passed": "self-test ok    ",
+                  "failed": "self-test FAILED",
+                  "none": "no self-test    "}
+
 #: The statuses in which a gate measured nothing: it refused, crashed or was
 #: stopped. Its count is absent from the total, which is not the same as zero.
 UNMEASURED = {"cannot-run", "crashed", "timed-out"}
@@ -154,11 +184,12 @@ def _stop_tree(process: subprocess.Popen) -> None:
             pass
 
 
-def run_gate(script: Path, timeout: float = GATE_TIMEOUT_SECONDS) -> dict:
+def run_gate(script: Path, timeout: float = GATE_TIMEOUT_SECONDS,
+             arguments: tuple[str, ...] = ()) -> dict:
     """Run one gate and describe what happened, without judging it yet."""
     started = time.monotonic()
     process = subprocess.Popen(
-        [sys.executable, str(script)],
+        [sys.executable, str(script), *arguments],
         cwd=REPO_ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -294,6 +325,40 @@ def judge(run: dict, baselines: dict) -> dict:
     else:
         result["status"] = "at-baseline"
         result["message"] = None
+    return result
+
+
+def judge_self_test(result: dict, run: dict | None) -> dict:
+    """Record a gate's self-test on its judged [result].
+
+    `run` is the `--self-test` run, or None for a gate without one. A self-test
+    passes on exit 0 and fails on anything else, a timeout included. A failure
+    turns a passing measurement into `self-test-failed`: the count held, but
+    nothing now shows the gate can still see the fault it counts. On a
+    measurement that already failed, it is added to that message instead, so
+    the first diagnosis stays first.
+    """
+    if run is None:
+        result["self_test"] = "none"
+        return result
+    if not run.get("timed_out") and run["exit"] == 0:
+        result["self_test"] = "passed"
+        return result
+    result["self_test"] = "failed"
+    said = [line for line in (run.get("output") or "").splitlines()
+            if line.strip()]
+    why = ("it was stopped at the time limit" if run.get("timed_out")
+           else f"it exited {run['exit']}"
+           + (f" saying: {said[-1].strip()}" if said else ""))
+    sentence = (
+        f"{result['name']} --self-test failed -- {why}. A fault it is meant "
+        f"to detect survived being planted, so its count no longer shows that "
+        f"it is reading. Run `python3 tool/{result['name']}.py --self-test`.")
+    if result["status"] in PASSING:
+        result["status"] = "self-test-failed"
+        result["message"] = sentence
+    else:
+        result["message"] = f"{result['message']} Separately: {sentence}"
     return result
 
 
@@ -438,9 +503,40 @@ def self_test() -> int:
     if refusing["status"] != "cannot-run":
         failures.append(f"a refusing gate was judged {refusing['status']!r}")
 
+    zero = {"faults": 0}
+    escaping = gate(
+        "check_escaping",
+        "import sys\n"
+        "if '--self-test' in sys.argv:\n"
+        "    print('self-test: a planted fault escaped')\n"
+        "    sys.exit(2)\n"
+        "print('GATE-FAULTS: 0')\n")
+    if not has_self_test(escaping):
+        failures.append("a gate handling '--self-test' was not recognised")
+    escaped = judge_self_test(
+        judge(run_gate(escaping), {"check_escaping": zero}),
+        run_gate(escaping, arguments=("--self-test",)))
+    if escaped["status"] != "self-test-failed":
+        failures.append(f"a gate whose self-test fails was judged "
+                        f"{escaped['status']!r}")
+    if "a planted fault escaped" not in (escaped.get("message") or ""):
+        failures.append("the self-test failure drops what the self-test said")
+
+    plain = gate("check_plain",
+                 "# Mentions --self-test only in prose.\n"
+                 "print('GATE-FAULTS: 0')\n")
+    if has_self_test(plain):
+        failures.append("a gate naming --self-test only in prose was taken "
+                        "for one that implements it")
+    unvouched = judge_self_test(
+        judge(run_gate(plain), {"check_plain": zero}), None)
+    if unvouched["status"] != "clean" or unvouched["self_test"] != "none":
+        failures.append(f"a gate without a self-test was judged "
+                        f"{unvouched['status']!r} / {unvouched['self_test']!r}")
+
     for failure in failures:
         print(f"self-test: {failure}", file=sys.stderr)
-    print(f"self-test: 4 throwaway gates, {len(failures)} failure(s)")
+    print(f"self-test: 6 throwaway gates, {len(failures)} failure(s)")
     return 1 if failures else 0
 
 
@@ -454,7 +550,8 @@ def main(argv: list[str]) -> int:
                         help="rewrite the baselines to the counts measured now")
     parser.add_argument("--self-test", action="store_true",
                         help="check the runner's own verdicts on throwaway "
-                             "gates that stall, stay silent, crash and refuse")
+                             "gates that stall, stay silent, crash, refuse, "
+                             "fail their own self-test and have none")
     args = parser.parse_args(argv)
     if args.self_test:
         return self_test()
@@ -462,6 +559,12 @@ def main(argv: list[str]) -> int:
     baselines = read_baselines()
     scripts = gate_scripts()
     results = [judge(run_gate(s), baselines) for s in scripts]
+    if not args.update:
+        for script, result in zip(scripts, results):
+            judge_self_test(
+                result,
+                run_gate(script, arguments=("--self-test",))
+                if has_self_test(script) else None)
     stale = stale_entries(baselines, {s.stem for s in scripts})
 
     if args.update:
@@ -504,6 +607,7 @@ def main(argv: list[str]) -> int:
         pinned = ("" if result["baseline"] in (None, 0)
                   else f"  (baseline {result['baseline']})")
         print(f"{mark}  {result['name']:<{width}}  "
+              f"{SELF_TEST_MARK[result.get('self_test', 'none')]}  "
               f"{row_text(result)}{pinned}")
     for result in failed:
         print(f"\n{result['name']}: {result['status']}\n  {result['message']}")
@@ -512,7 +616,9 @@ def main(argv: list[str]) -> int:
 
     total = sum(r["faults"] or 0 for r in results)
     unmeasured = sum(1 for r in results if r["status"] in UNMEASURED)
-    print(f"\n{len(results)} gates, {len(failed)} failing"
+    tested = sum(1 for r in results if r.get("self_test") != "none")
+    print(f"\n{len(results)} gates ({tested} self-tested, "
+          f"{len(results) - tested} without a self-test), {len(failed)} failing"
           + (f" ({unmeasured} not measured, so their faults are not in the "
              f"total)" if unmeasured else "")
           + f", {total} fault(s) outstanding")
