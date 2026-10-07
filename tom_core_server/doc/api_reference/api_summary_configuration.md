@@ -144,7 +144,7 @@ last so a merged key spelled `args` cannot displace the invocation.
 | `autoCompress` | `bool` | Whether the bound socket compresses compressible responses (default `true`). Only ever turned *on*: `false` leaves the socket at Dart's own default rather than disabling compression. |
 | `poweredByHeader` | `String` | The `X-Powered-By` header value (default `"tom"`), fixed when the socket is bound. Empty sends no header. |
 | `noSsl` | `bool` | Binds plain HTTP instead of TLS (default `false`). When set, no `SecurityContext` is built and `certificateChain` / `privateKey` are never read — the supported way to run behind a TLS-terminating proxy. |
-| `listenToAnyIP` | `bool` | Overrides `host` with `anyIPv4` (default `false`). Read *after* `host`, so it does not add an address — it discards whichever one was configured, which is what a container wants when its inherited host names an address that does not exist inside it. |
+| `listenToAnyIp` | `bool` | Overrides `host` with `anyIPv4` (default `false`). Read *after* `host`, so it does not add an address — it discards whichever one was configured, which is what a container wants when its inherited host names an address that does not exist inside it. |
 | `port` | `int` | HTTP bind port; `0` is the "unconfigured" sentinel (default `0`). |
 | `developmentCertificateChain` | `String` | The PEM chain `certificateChain` defaults to (static, const). Named rather than written inline so `usesDevelopmentTlsMaterial` compares against the very text the field defaults to. |
 | `developmentPrivateKey` | `String` | The PEM key `privateKey` defaults to (static, const). Published, which is what `usesDevelopmentTlsMaterial` exists to detect. |

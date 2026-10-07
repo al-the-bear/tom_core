@@ -18,6 +18,12 @@
 
 ### Changed
 
+- **`TomBaseServerConfiguration.listenToAnyIP` is renamed `listenToAnyIp`.**
+  It was the one field whose name did not round-trip through the
+  `SCREAMING_SNAKE_CASE` environment convention, so `LISTEN_TO_ANY_IP` bound
+  nothing. A configuration file that sets the key `listenToAnyIP` verbatim must
+  write `listenToAnyIp`; the old key is now unknown and is traced, not applied.
+
 - **The mutation catalogue covers all twenty modules.** `tool/mutations.yaml`
   now records `configuration`, `authentication`, `object_persistence` and the
   rest of `datasources` and `endpoints`. Every entry is killed by the tests it

@@ -102,7 +102,7 @@ class ServerConfiguration extends TomBaseServerConfiguration {
     if (port == 0) port = _defaultPort;
     noSsl = true;
     isolateLogging = false;
-    listenToAnyIP = true;
+    listenToAnyIp = true;
   }
 
   /// Binds the merged configuration onto this instance.

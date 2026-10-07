@@ -5683,7 +5683,7 @@ One: `TomKind`, documented beside the type that carries it.
   // knob somebody has to set correctly without being able to read the code that
   // consumes it, and several are not self-describing from the name:
   // `logLevelExceptions` is a per-logger override list rather than a level for
-  // exceptions, `listenToAnyIP` discards a configured host rather than adding
+  // exceptions, `listenToAnyIp` discards a configured host rather than adding
   // an address, and `isolateCount`, `preExecutionHandler` and
   // `postExecutionHandler` each carry a behaviour only `server.dart` reveals.
   //

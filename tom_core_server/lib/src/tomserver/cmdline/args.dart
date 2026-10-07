@@ -213,10 +213,11 @@ class TomArgs {
   ///
   /// Each segment after the first contributes one capital and then lower case,
   /// which is the same rule the configuration fields are written under
-  /// (`jwtRsaPubKey`, `smsApiKey`, `authServerLoginUri` — an acronym is a word,
-  /// not a run of capitals). A field spelled with a capitalised acronym is
-  /// therefore not reachable by this convention, and is a naming inconsistency
-  /// in that field rather than a gap here.
+  /// (`jwtRsaPubKey`, `smsApiKey`, `listenToAnyIp` — an acronym is a word,
+  /// not a run of capitals). So the mapping is total: every configuration
+  /// field's environment variable is its name in `SCREAMING_SNAKE_CASE`, and
+  /// `configuration_test.dart` holds every field of the base configuration to
+  /// that.
   static String? fieldNameOf(String name) {
     if (!environmentNamePattern.hasMatch(name)) return null;
 

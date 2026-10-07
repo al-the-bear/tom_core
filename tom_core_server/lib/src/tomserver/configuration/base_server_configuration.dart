@@ -294,7 +294,7 @@ abstract class TomBaseServerConfiguration {
   /// setting a container image wants when the host it inherited from a
   /// configuration file names an address that does not exist inside the
   /// container.
-  bool listenToAnyIP = false;
+  bool listenToAnyIp = false;
 
   /// HTTP bind port. `0` is the "unconfigured" sentinel: [setValues] (config /
   /// env / `port=`) overwrites it when a port is supplied, otherwise a

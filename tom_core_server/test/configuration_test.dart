@@ -789,6 +789,41 @@ void main() {
   // of it -- the other half is that it lands in the merged map without
   // disturbing the precedence the four sources already have.
   group('an environment variable resolves onto the field it spells', () {
+    setUpAll(initializeReflection);
+
+    test(
+      'every base configuration field round-trips through the convention',
+      () {
+        // The convention is only worth having if it is total: a reader derives
+        // the environment variable from the field name with no list of
+        // exceptions. So every settable field of the base configuration, read
+        // by reflection exactly as binding reads it, must come back from its
+        // SCREAMING_SNAKE spelling unchanged.
+        final mirror =
+            tomReflector.reflectType(FixtureRequiredConfig) as ClassMirror;
+        final fields = {
+          for (final member in mirror.instanceMembers.keys)
+            // A setter, not `operator ==`.
+            if (RegExp(r'^[a-z]\w*=$').hasMatch(member))
+              member.substring(0, member.length - 1),
+        };
+        // Anti-vacuity: a reflection that stopped seeing the base class would
+        // pass with nothing to check.
+        expect(fields, containsAll(['listenToAnyIp', 'jwtRsaPubKey', 'port']));
+
+        String screamingSnake(String field) => field
+            .replaceAllMapped(RegExp('[A-Z]'), (m) => '_${m[0]}')
+            .toUpperCase();
+        final broken = [
+          for (final field in fields)
+            if (TomArgs.fieldNameOf(screamingSnake(field)) != field)
+              '$field -> ${screamingSnake(field)} -> '
+                  '${TomArgs.fieldNameOf(screamingSnake(field))}',
+        ];
+        expect(broken, isEmpty);
+      },
+    );
+
     test('a SCREAMING_SNAKE variable reaches the lowerCamel field', () async {
       await _withEnvFile('JWT_SHARED_SECRET_KEY=from-env-file\n', () {
         _install({});

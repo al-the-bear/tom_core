@@ -716,11 +716,11 @@ Four rules bound it:
   would be a guess, and a guess that happened to match a declared field would
   bind a value nobody aimed at it.
 
-The convention is total in one direction only: a field spelled with a
-capitalised acronym (`listenToAnyIP`) is not reachable by it, because the
-convention's inverse produces `listenToAnyIp`. That is an inconsistency in the
-field's own spelling rather than a gap in the mapping — the fields are otherwise
-written with an acronym as a word (`jwtRsaPubKey`, `smsApiKey`).
+The convention is total. Every configuration field writes an acronym as a word
+(`jwtRsaPubKey`, `smsApiKey`, `listenToAnyIp`), so a field's environment
+variable is its name in `SCREAMING_SNAKE_CASE` — `LISTEN_TO_ANY_IP` for
+`listenToAnyIp` — with no list of exceptions to know. A test holds every field
+of the base configuration to that round trip.
 
 A key an alias creates that matches no field is dropped exactly as any other
 unknown key is: `setValues` traces it and moves on. So the aliasing cannot fail

@@ -506,7 +506,7 @@ class TomServer {
   /// no credential skips the login and is unaffected.
   ///
   /// The rest builds the TLS [SecurityContext] (unless `noSsl`), resolves the
-  /// listen address (`host`, or any-IPv4 when empty or `listenToAnyIP`),
+  /// listen address (`host`, or any-IPv4 when empty or `listenToAnyIp`),
   /// optionally wraps the router in a [Cascade] with the configuration's
   /// pre/post handlers, then serves the assembled pipeline on the configured
   /// port (with `shared` sockets when running multiple isolates).
@@ -543,7 +543,7 @@ class TomServer {
         ? InternetAddress.anyIPv4
         : configuration.host;
 
-    if (configuration.listenToAnyIP == true) {
+    if (configuration.listenToAnyIp == true) {
       ip = InternetAddress.anyIPv4;
     }
 

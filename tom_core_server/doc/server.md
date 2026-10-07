@@ -50,7 +50,7 @@ final socket = await server.start();       // completes when it is listening
 `TomServer` reads everything it needs from the configuration: the service
 credential (below), TLS material (`certificateChain` / `privateKey`, unless
 `noSsl`), the listen address (`host`, or any-IPv4 when empty or
-`listenToAnyIP`), the `port`, `isolateCount` (sockets are `shared` when more
+`listenToAnyIp`), the `port`, `isolateCount` (sockets are `shared` when more
 than one), `autoCompress`, and the `serverHeader` / `poweredByHeader`.
 `start()` completes **when the socket is listening**, with the bound
 `HttpServer`. So a bind failure — a port already in use, an unreadable
