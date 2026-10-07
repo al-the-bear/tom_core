@@ -24,6 +24,7 @@ method, and converts the result (or any error) into a `Response`.
 - [Transactions](#transactions)
 - [What a Handler May Return](#what-a-handler-may-return)
   - [An endpoint declaring `Future<void>` answers with no body](#an-endpoint-declaring-futurevoid-answers-with-no-body)
+  - ["No such thing" is an error key, not a `null`](#no-such-thing-is-an-error-key-not-a-null)
 - [Taking Over the Request and the Response](#taking-over-the-request-and-the-response)
 - [Multipart Forms](#multipart-forms)
 - [Redirects](#redirects)
@@ -646,6 +647,45 @@ allows.
 This is a rule about *declared* absence only. An endpoint that declares a result
 and returns something the converter cannot render still fails, loudly, because
 there the failure is the whole story.
+
+### "No such thing" is an error key, not a `null`
+
+An endpoint whose honest answer is sometimes "there is none" — a record never
+written, an id that names nothing — does **not** declare a nullable result and
+return `null`. The pipeline answers a `null` result with a `200` and an empty
+body, the same as a `void` one, so on the wire it is indistinguishable from a
+success that carries nothing, and a client generated from the endpoint's types
+would read it as one. No endpoint in the framework declares a nullable result.
+
+The rule instead, for every API with such an answer:
+
+1. **Declare the result non-nullable**, and raise a keyed exception for the
+   absence. The key belongs to the API's contract — a public constant beside the
+   endpoint declarations, because the client has to recognise it — and is part
+   of the API's error vocabulary like any other.
+2. **Map that key to a status** with a `TomStatusMappingErrorHandler` on the
+   endpoints, normally `404`. The base class renders the framework envelope, so
+   the body carries the key under `errorKey`.
+3. **Recognise absence on the client by the key, never by the status alone.**
+   The pipeline answers a denied call with a *bare* `404`
+   ([A Denial Answers 404, and Says Nothing Else](#a-denial-answers-404-and-says-nothing-else)),
+   so "there is none" and "you may not ask" share a status and differ only in
+   the envelope. A client that reads every `404` as absence turns a refusal into
+   a convincing "not set".
+
+The preferences API is the worked example: `readPreference` raises
+`tomUserPreferencesNotFoundErrorKey` (`preferences.not_found`, declared in the
+kernel contract), `TomUserPreferencesErrorHandler` maps it to `404`, and
+`TomUserPreferencesClient` answers `null` only for a `404` whose envelope
+carries that key.
+
+This is a convention rather than pipeline machinery on purpose. A nullable
+result type with a pipeline-level answer would need a status of its own — `404`
+collides with the deliberate bare refusal, and `204 No Content` is treated
+specially by some intermediaries — plus nullability exposed through
+`TomApiEndpoint` for every client. A per-API key costs one constant and one row
+in a status map, keeps the absence named in the API's own vocabulary, and asks
+nothing of the pipeline.
 
 ## Taking Over the Request and the Response
 
