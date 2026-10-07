@@ -15,6 +15,7 @@
 /// handed.
 library;
 
+import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
@@ -114,6 +115,11 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
     final twoFactorType = record.twoFactorType ?? '';
     final requires2FA = twoFactorType.isNotEmpty;
 
+    // The row is read through the same rule the admin API writes it with, so
+    // a value entered by SQL rather than the console — `' DE '`, or a country
+    // with no language — means what the console would have stored.
+    final storedLocale = normaliseStoredLocale(record.language, record.country);
+
     final principal = TomPrincipal(
       // Passing the password check is not yet being authenticated: an account
       // that owes a second factor is authenticated only once pass 2 clears it.
@@ -127,8 +133,15 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
       organization: authData.organization,
       application: authData.application,
       process: authData.process,
-      language: authData.language,
-      country: authData.country,
+      // Two locale pairs, and they mean different things. `language` /
+      // `country` are the account's *stored* preference, read from its row;
+      // `clientLanguage` / `clientCountry` are what this device sent. Text the
+      // server renders for the user (`TomTextLocale.fromPrincipal`) prefers
+      // the stored pair and falls back to the device's, so an account with no
+      // preference leaves the stored pair null rather than copying the
+      // device's into it — a copy would turn "no preference" into one.
+      language: storedLocale.language.isEmpty ? null : storedLocale.language,
+      country: storedLocale.country.isEmpty ? null : storedLocale.country,
       timezone: authData.timezone,
       clientLanguage: authData.language,
       clientCountry: authData.country,

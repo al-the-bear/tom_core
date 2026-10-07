@@ -192,4 +192,72 @@ void main() {
       },
     );
   });
+
+  group('the principal\'s two locale pairs', () {
+    // `language`/`country` are the account's stored preference and
+    // `clientLanguage`/`clientCountry` what the device sent. The login request
+    // supplies only the second; the first comes from `auth_users`. The request
+    // in [_login] says en/US throughout, so a value other than that can only
+    // have come from the row.
+    UserRecord withLocale(String? language, String? country) => applyPassword(
+      UserRecord()
+        ..id = 2
+        ..username = 'grace'
+        ..status = UserStatus.active.name
+        ..language = language
+        ..country = country,
+      'pw',
+    );
+
+    Future<TomPrincipal> loginAs(UserRecord record) async {
+      final service = AdvancedAuthenticationService(
+        _storeWith(extraUsers: [record]),
+      );
+      final info = await service.authenticateUser(_login('grace', 'pw'));
+      return info.principal;
+    }
+
+    test('the stored pair comes from the account, the client pair from the '
+        'request', () async {
+      final principal = await loginAs(withLocale('de', 'AT'));
+
+      expect(principal.language, 'de');
+      expect(principal.country, 'AT');
+      expect(principal.clientLanguage, 'en');
+      expect(principal.clientCountry, 'US');
+    });
+
+    test('a request-time text renders in the account\'s language, not the '
+        'device\'s', () async {
+      final principal = await loginAs(withLocale('de', 'AT'));
+
+      expect(TomTextLocale.fromPrincipal(principal)?.tag, 'de_AT');
+    });
+
+    test('an account with no preference leaves the stored pair empty, so the '
+        'device\'s language answers', () async {
+      for (final blank in [null, '', '  ']) {
+        final principal = await loginAs(withLocale(blank, 'AT'));
+
+        expect(
+          principal.language,
+          isNull,
+          reason: 'language ${blank == null ? 'null' : "'$blank'"}',
+        );
+        // A country with no language is no preference either: it would narrow
+        // a language the account never named.
+        expect(principal.country, isNull);
+        expect(principal.clientLanguage, 'en');
+        expect(TomTextLocale.fromPrincipal(principal)?.tag, 'en_US');
+      }
+    });
+
+    test('a stored language without a country carries no country', () async {
+      final principal = await loginAs(withLocale('de', null));
+
+      expect(principal.language, 'de');
+      expect(principal.country, isNull);
+      expect(TomTextLocale.fromPrincipal(principal)?.tag, 'de');
+    });
+  });
 }

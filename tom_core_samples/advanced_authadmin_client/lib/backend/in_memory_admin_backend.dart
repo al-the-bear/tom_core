@@ -167,6 +167,8 @@ class InMemoryAdminBackend implements AdminBackend {
     'user.status.label': 'Status',
     'user.status.active': 'Active',
     'user.status.suspended': 'Suspended',
+    'user.language.label': 'Language',
+    'user.country.label': 'Country',
     'role.key.label': 'Key',
     'role.name.label': 'Name',
     'group.name.label': 'Name',
@@ -230,6 +232,11 @@ class InMemoryAdminBackend implements AdminBackend {
     'file.rejectedDismiss': 'OK',
     'error.fileExtension': 'Avatars must be a PNG or a JPEG.',
     'error.fileTooLarge': 'That image is too large.',
+    // The user editor's stored-locale fields, raised by their pattern
+    // validators.
+    'error.language': 'Use a language code such as de, or leave it empty.',
+    'error.country':
+        'Use a two-letter country code such as AT, or leave it empty.',
     'file_transfer.not_found': 'That file is no longer on the server.',
     'file_transfer.rejected': 'The server refused that file.',
     'file_transfer.cancelled': 'Transfer cancelled.',
@@ -549,14 +556,18 @@ class InMemoryAdminBackend implements AdminBackend {
         key: 'admin.user.not_found',
       );
     }
-    // Update the mutable profile/status; id and username are stable keys.
+    // Update the mutable profile/status/language; id and username are stable
+    // keys. The language is stored the way the auth server stores it.
     final existing = _users[index];
+    final locale = user.normalisedLocale;
     final updated = UserDto(
       id: existing.id,
       username: existing.username,
       displayName: user.displayName,
       email: user.email,
       status: user.status,
+      language: locale.language,
+      country: locale.country,
     );
     _users[index] = updated;
     return _copyUser(updated);
@@ -755,6 +766,8 @@ class InMemoryAdminBackend implements AdminBackend {
     displayName: s.displayName,
     email: s.email,
     status: s.status,
+    language: s.language,
+    country: s.country,
   );
 
   GroupDto _copyGroup(GroupDto s) =>

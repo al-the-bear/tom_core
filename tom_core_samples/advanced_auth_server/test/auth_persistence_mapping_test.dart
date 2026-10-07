@@ -98,6 +98,42 @@ void main() {
       expect(dto.toString(), isNot(contains('secret-hash')));
     });
 
+    test('projects the stored language, and none as empty', () {
+      final dto = userRecordToDto(
+        UserRecord()
+          ..id = 7
+          ..language = 'de'
+          ..country = 'AT',
+      );
+      expect(dto.language, 'de');
+      expect(dto.country, 'AT');
+
+      final none = userRecordToDto(UserRecord()..id = 8);
+      expect(none.language, '');
+      expect(none.country, '');
+    });
+
+    test('applyUserDto stores the language normalised, and a blank one as no '
+        'preference', () {
+      UserRecord apply(String language, String country) => applyUserDto(
+        UserRecord()..id = 7,
+        UserDto(id: '7', language: language, country: country),
+      );
+
+      final set = apply(' DE ', 'at');
+      expect(set.language, 'de');
+      expect(set.country, 'AT');
+
+      final cleared = apply('  ', 'AT');
+      expect(cleared.language, isNull);
+      // A country narrows a language; without one it is no preference.
+      expect(cleared.country, isNull);
+
+      final languageOnly = apply('fr', '');
+      expect(languageOnly.language, 'fr');
+      expect(languageOnly.country, isNull);
+    });
+
     test('applyUserDto updates the profile without clearing the hash', () {
       final record = UserRecord()
         ..id = 7

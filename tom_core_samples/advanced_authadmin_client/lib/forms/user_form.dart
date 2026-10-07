@@ -4,7 +4,8 @@
 /// On **create** the admin enters username + password + profile (the fields
 /// `CreateUserRequest` carries). On **edit** the username is a stable key
 /// (rendered read-only) and there is no password (the seam exposes no
-/// password-change), so the form shows username (read-only) + profile + status.
+/// password-change), so the form shows username (read-only) + profile + status
+/// + the stored language and country.
 /// [UserForm.editableFields] returns the ordered subset the screen lays out, so
 /// a single
 /// bound form drives both flows.
@@ -44,6 +45,19 @@ class UserForm extends TomForm<UserDraft> {
   /// Account status — a dropdown over the wire tokens; edit only.
   late final TomFormStringDropdown status;
 
+  /// The account's stored language — a code such as `de`, empty for none.
+  /// Edit only, like [status]: `CreateUserRequest` carries no language, so an
+  /// account starts with no preference.
+  ///
+  /// A text field rather than a dropdown of the languages some server ships:
+  /// which bundles exist is each server's business (the ops digest has two),
+  /// and the reader degrades a language it has no text for to its default, so
+  /// the console checks only that the value has the shape of a code.
+  late final TomFormStringInput language;
+
+  /// The country narrowing [language] — a code such as `AT`, empty for none.
+  late final TomFormStringInput country;
+
   /// The fields the screen renders, in order, for the current mode.
   List<TomField<dynamic>> get editableFields => [
     username,
@@ -51,6 +65,8 @@ class UserForm extends TomForm<UserDraft> {
     displayName,
     email,
     if (!isCreate) status,
+    if (!isCreate) language,
+    if (!isCreate) country,
   ];
 
   /// Creates the fields (implementation half of the three-part split, G-UI-5).
@@ -92,6 +108,30 @@ class UserForm extends TomForm<UserDraft> {
       'active',
       form: this,
       source: _statusSource(),
+    );
+    // Both optional: empty is "no preference" and must pass. Either case is
+    // accepted because the server normalises it (`normaliseStoredLocale`).
+    language = TomFormStringInput(
+      'language',
+      '',
+      form: this,
+      validators: [
+        Validators.pattern(
+          RegExp(r'^\s*([A-Za-z]{2,3})?\s*$'),
+          errorKey: 'error.language',
+        ),
+      ],
+    );
+    country = TomFormStringInput(
+      'country',
+      '',
+      form: this,
+      validators: [
+        Validators.pattern(
+          RegExp(r'^\s*([A-Za-z]{2})?\s*$'),
+          errorKey: 'error.country',
+        ),
+      ],
     );
   }
 }

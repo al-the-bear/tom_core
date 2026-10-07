@@ -56,6 +56,34 @@ void main() {
       expect(UserDto().statusValue, UserStatus.active);
     });
 
+    test('carries no language preference by default', () {
+      expect(UserDto().language, '');
+      expect(UserDto().country, '');
+    });
+
+    test('normalises the stored language, and blank as no preference', () {
+      expect(normaliseStoredLocale(' DE ', 'at'), (
+        language: 'de',
+        country: 'AT',
+      ));
+      expect(normaliseStoredLocale('fr', null), (language: 'fr', country: ''));
+      // A country only narrows a language; alone it is no preference.
+      expect(normaliseStoredLocale('  ', 'AT'), (language: '', country: ''));
+      expect(normaliseStoredLocale(null, null), (language: '', country: ''));
+      expect(UserDto(language: 'De', country: 'at').normalisedLocale, (
+        language: 'de',
+        country: 'AT',
+      ));
+    });
+
+    test('round-trips the stored language through reflection JSON', () {
+      final restored = dtoFromJson<UserDto>(
+        _wire(UserDto(id: 'u1', language: 'de', country: 'AT')),
+      );
+      expect(restored.language, 'de');
+      expect(restored.country, 'AT');
+    });
+
     test('resolves the typed status, falling back to active', () {
       expect(user().statusValue, UserStatus.suspended);
       expect(UserDto(status: 'bogus').statusValue, UserStatus.active);

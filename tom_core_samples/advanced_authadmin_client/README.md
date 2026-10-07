@@ -215,6 +215,14 @@ not have. The console stays domain-agnostic — it
 reads the raw `status` wire token (`'active'`/`'suspended'`), never the
 `UserStatus` enum.
 
+The user editor also carries the account's stored **language** and **country**
+— the locale the servers write to that user in, as opposed to the one their
+device sends. Both are edit-only (`CreateUserRequest` carries none, so an
+account starts with no preference) and plain text inputs validated only for the
+shape of a code: which languages have text is each server's business, and the
+reader degrades a language it has none for to its default. Emptying the
+language clears the pair.
+
 Stable keys are read-only on edit: a user's `username` and a role's `key` are
 the identifiers other tables key on, so the form renders them but disables the
 field (the `password` field exists only on create — and its required validator
@@ -305,10 +313,11 @@ No concurrency flag is needed: `flutter test` gives each suite file its own
 - `test/full_resources_bootstrap_test.dart` (TC-9-02) — an admin sign-in installs
   the admin-gated console bundle merged over the login bundle, and logout
   restores exactly what was there before.
-- `test/form_label_resolution_test.dart` (TC-10-U/R/G) — the three CRUD forms
-  resolve their field labels from the installed bundle rather than from
-  overrides, asserted against a sentinel bundle so a resolved label cannot be
-  confused with a hardcoded one.
+- `test/form_label_resolution_test.dart` (TC-10-U/UE/R/G) — the three CRUD
+  forms resolve their field labels from the installed bundle rather than from
+  overrides, including the user editor's edit-only language and country,
+  asserted against a sentinel bundle so a resolved label cannot be confused
+  with a hardcoded one.
 - `test/user_avatar_test.dart` (TC-D12-09..15) — the avatar field: rendered from
   the bundle, edit-only, uploading without waiting for Save, a stored avatar
   found by the `HEAD` on open, progress and cancel on a transfer in flight, and
@@ -328,9 +337,10 @@ No concurrency flag is needed: `flutter test` gives each suite file its own
   attempts remaining, the third returns to the password screen, and an enrolled
   non-admin is still refused — one pass later, by the probe that now runs after
   the second factor.
-- `test/users_screen_test.dart` — the Users destination (TC-34-U01..05): lists
+- `test/users_screen_test.dart` — the Users destination (TC-34-U01..07): lists
   the seeded accounts, creates one, blocks an empty username, edits a profile
-  (username stays the read-only key), and deletes a row.
+  (username stays the read-only key), deletes a row, sets and clears an
+  account's stored language, and refuses a language that is not a code.
 - `test/roles_screen_test.dart` — the Roles destination (TC-34-R01..05): lists
   the seeded roles, creates one, refuses a duplicate key inline, renames a role
   (its key is read-only), and deletes a row.

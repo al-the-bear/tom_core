@@ -5,7 +5,7 @@
 /// and folds the reflected [UserDraft] the form edits into the wire types the
 /// seam takes — a [CreateUserRequest] on create (the one place a password
 /// crosses), a [UserDto] on edit (username is the stable key, so it stays
-/// read-only and only the profile + status change).
+/// read-only and only the profile, status and stored language change).
 ///
 /// ## The avatar
 ///
@@ -102,7 +102,8 @@ class UsersScreen extends StatelessWidget {
     }
   }
 
-  /// Opens the edit editor for [user] and updates the profile + status on save.
+  /// Opens the edit editor for [user] and updates the profile, status and
+  /// stored language on save.
   ///
   /// The account's avatar descriptor is read first, with one `HEAD` on the slot,
   /// because [TomFormFileUpload] takes its initial value synchronously: a field
@@ -116,7 +117,9 @@ class UsersScreen extends StatelessWidget {
       ..username.set(user.username)
       ..displayName.set(user.displayName)
       ..email.set(user.email)
-      ..status.set(user.status);
+      ..status.set(user.status)
+      ..language.set(user.language)
+      ..country.set(user.country);
     form.bind(draft);
     final avatar = _buildAvatarField(context, user, stored);
     try {
@@ -135,6 +138,8 @@ class UsersScreen extends StatelessWidget {
             displayName: draft.displayName.get(),
             email: draft.email.get(),
             status: draft.status.get(),
+            language: draft.language.get(),
+            country: draft.country.get(),
           );
           return runAdminAction(
             adminActions.updateUser,

@@ -11,9 +11,11 @@ library;
 
 import 'package:advanced_authadmin_client/backend/backend.dart';
 import 'package:advanced_authadmin_client/reflection_seed.dart';
+import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import 'support/admin_console_harness.dart';
 
@@ -114,4 +116,72 @@ void main() {
     expect(find.byKey(const Key('users-tile-u-carol')), findsNothing);
     expect((await backend.listUsers()).any((u) => u.id == 'u-carol'), isFalse);
   });
+
+  testWidgets(
+    'TC-34-U06: editing sets the account\'s stored language, then clears it',
+    (tester) async {
+      final backend = InMemoryAdminBackend();
+      await pumpSignedInConsole(tester, backend);
+      Future<UserDto> bob() async =>
+          (await backend.listUsers()).firstWhere((u) => u.id == 'u-bob');
+      expect((await bob()).language, '', reason: 'seeded with no preference');
+
+      // The edit form ends with language and country, the last two inputs.
+      await tester.tap(find.byKey(const Key('users-tile-u-bob')));
+      await tester.pumpAndSettle();
+      var fields = find.byType(TextField);
+      final count = fields.evaluate().length;
+      await tester.enterText(fields.at(count - 2), ' DE ');
+      await tester.enterText(fields.at(count - 1), 'at');
+      await saveEditor(tester);
+
+      expect(find.byKey(const Key('admin-editor-dialog')), findsNothing);
+      expect((await bob()).language, 'de');
+      expect((await bob()).country, 'AT');
+
+      // Re-opening shows what is stored; emptying the language clears both,
+      // because a country alone is no preference.
+      await tester.tap(find.byKey(const Key('users-tile-u-bob')));
+      await tester.pumpAndSettle();
+      fields = find.byType(TextField);
+      expect(
+        tester.widget<TextField>(fields.at(count - 2)).controller?.text,
+        'de',
+      );
+      await tester.enterText(fields.at(count - 2), '');
+      await saveEditor(tester);
+
+      expect((await bob()).language, '');
+      expect((await bob()).country, '');
+    },
+  );
+
+  testWidgets(
+    'TC-34-U07: a language or country that is not a code fails validation '
+    'with the bundle\'s wording, and nothing is saved',
+    (tester) async {
+      final backend = InMemoryAdminBackend();
+      await pumpSignedInConsole(tester, backend);
+
+      await tester.tap(find.byKey(const Key('users-tile-u-bob')));
+      await tester.pumpAndSettle();
+      final fields = find.byType(TextField);
+      final count = fields.evaluate().length;
+      await tester.enterText(fields.at(count - 2), 'Deutsch');
+      await tester.enterText(fields.at(count - 1), 'Austria');
+      await saveEditor(tester);
+
+      expect(find.byKey(const Key('admin-editor-dialog')), findsOneWidget);
+      // Each validator raises its own key, and the field renders the
+      // installed bundle's sentence for it rather than the key.
+      expect(find.text(TomCtr.text('error.language')), findsOneWidget);
+      expect(find.text(TomCtr.text('error.country')), findsOneWidget);
+      expect(TomCtr.text('error.language'), isNot('error.language'));
+      final bob = (await backend.listUsers()).firstWhere(
+        (u) => u.id == 'u-bob',
+      );
+      expect(bob.language, '');
+      expect(bob.country, '');
+    },
+  );
 }

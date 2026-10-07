@@ -8,7 +8,8 @@
 /// exactly the `LoginCredentials` pattern the app client uses. The screens fold a
 /// draft into the matching wire DTO on save and hydrate it from a DTO on edit.
 ///
-/// Drafts carry only the fields an admin edits: a user's profile + status (its
+/// Drafts carry only the fields an admin edits: a user's profile, status and
+/// stored language (its
 /// id is server-assigned and its password is set only at creation); a role's
 /// key + name; a group's name (membership is edited as a checklist, not a scalar
 /// field, so it is not a draft field). Like every reflected type they are
@@ -37,6 +38,14 @@ class UserDraft extends TomClass {
   /// Account lifecycle as a wire status token (`active`/`suspended`); edited via
   /// a dropdown so the console stays domain-agnostic (no `UserStatus` import).
   late final status = TomString('active');
+
+  /// The account's stored language (ISO 639-1), empty for no preference — the
+  /// language the server writes to this user in, as opposed to the one their
+  /// device sends.
+  late final language = TomString('');
+
+  /// The country narrowing [language] (ISO 3166-1 alpha-2), empty for none.
+  late final country = TomString('');
 }
 
 /// A role draft: a stable key plus a human-facing name.

@@ -134,6 +134,47 @@ void main() {
     );
   });
 
+  group('AuthTokenService — the stored language travels in the token', () {
+    tearDown(TomBearerAuthentication.clearTokens);
+
+    test('the token carries the account\'s stored pair beside the device\'s, '
+        'and the login and /auth/me users report it', () async {
+      final grace = applyPassword(
+        UserRecord()
+          ..id = 2
+          ..username = 'grace'
+          ..status = UserStatus.active.name
+          ..language = 'de'
+          ..country = 'AT',
+        'pw',
+      );
+      final service = _service(extraUsers: [grace]);
+
+      final result = await service.login(_login('grace', 'pw'));
+      expect(result.user.language, 'de');
+      expect(result.user.country, 'AT');
+
+      TomBearerAuthentication.setTokens(result.authToken, result.authzToken);
+      final principal = TomBearerAuthentication.getPrincipal();
+      expect(principal.language, 'de');
+      expect(principal.country, 'AT');
+      // The request named no device locale, so the client pair is whatever
+      // the login message defaults to — never the stored one.
+      expect(principal.clientLanguage, isNot('de'));
+      expect(TomTextLocale.fromPrincipal(principal)?.tag, 'de_AT');
+
+      final echoed = service.userDtoOf(principal);
+      expect(echoed.language, 'de');
+      expect(echoed.country, 'AT');
+    });
+
+    test('an account with no preference reports none', () async {
+      final result = await _service().login(_login('ada', 's3cret'));
+      expect(result.user.language, '');
+      expect(result.user.country, '');
+    });
+  });
+
   group('AuthTokenService.refresh', () {
     test(
       're-issues a fresh token pair for an authenticated principal',

@@ -81,6 +81,30 @@ void main() {
   );
 
   testWidgets(
+    'TC-10-UE: the edit-only language and country labels resolve from the '
+    'bundle',
+    (tester) async {
+      installBundle(const {
+        'user.language.label': 'Language [srv]',
+        'user.country.label': 'Country [srv]',
+      });
+      final form = UserForm(isCreate: false);
+      expect(form.language.basePath, 'user.language');
+      expect(form.country.basePath, 'user.country');
+      final create = UserForm();
+      expect(create.editableFields, isNot(contains(create.language)));
+      expect(create.editableFields, isNot(contains(create.country)));
+      create.dispose();
+
+      await pumpFields(tester, form.editableFields);
+
+      expect(find.textContaining('Language [srv]'), findsWidgets);
+      expect(find.textContaining('Country [srv]'), findsWidgets);
+      form.dispose();
+    },
+  );
+
+  testWidgets(
     'TC-10-R: RoleForm labels resolve from the role.* bundle, not overrides',
     (tester) async {
       installBundle(const {

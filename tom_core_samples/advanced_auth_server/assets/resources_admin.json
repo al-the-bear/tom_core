@@ -74,7 +74,9 @@
   },
   "error": {
     "fileExtension": "Avatars must be a PNG or a JPEG.",
-    "fileTooLarge": "That image is too large."
+    "fileTooLarge": "That image is too large.",
+    "language": "Use a language code such as de, or leave it empty.",
+    "country": "Use a two-letter country code such as AT, or leave it empty."
   },
   "file_transfer": {
     "not_found": "That file is no longer on the server.",
@@ -100,7 +102,9 @@
       "label": "Status",
       "active": "Active",
       "suspended": "Suspended"
-    }
+    },
+    "language": { "label": "Language" },
+    "country": { "label": "Country" }
   },
   "role": {
     "key": { "label": "Key" },

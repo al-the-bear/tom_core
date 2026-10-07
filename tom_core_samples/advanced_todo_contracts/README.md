@@ -78,7 +78,11 @@ themselves.
 - **Auth/login** (`login_dtos.dart`): `LoginRequest`
   (`{username, password, app, org}`), `SecondFactorRequest`,
   `TwoFactorEnrolmentRequest`, `UserDto` (the password-free user projection,
-  with a typed `statusValue`), and `LoginResult`
+  with a typed `statusValue` and the account's stored `language` / `country`,
+  empty for no preference), `normaliseStoredLocale` (the one rule the auth
+  server and the console's in-memory backend store that pair by: trimmed,
+  cased, and a country without a language is no preference), and
+  `LoginResult`
   (`{user, authToken, authzToken, expiresAt}` plus the two-factor challenge and
   enrolment flags).
 - **Authorization** (`graded_field_dto.dart`, `grant_matrix_dto.dart`):

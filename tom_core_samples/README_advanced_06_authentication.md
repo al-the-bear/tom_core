@@ -96,6 +96,18 @@ A successful login mints **two** JWTs, mirroring what
   access-control data (the roles/groups definition). The auth server reads the
   login DTO's display name and email back from this token, decrypted.
 
+The principal carries **two locale pairs**, and the login fills them from
+different places. `language` / `country` are the account's *stored* preference,
+read from `auth_users` (and set by an administrator through the console's user
+editor); `clientLanguage` / `clientCountry` are what this device sent with the
+login. `TomTextLocale.fromPrincipal` prefers the stored pair and falls back to
+the device's, so a text the server renders for this user during a request —
+a second-factor or share mail — is in the language they chose, not the one their
+browser happens to report. An account with no preference leaves the stored pair
+empty rather than copying the device's into it, because a copy would turn "no
+preference" into one. Both pairs travel in the public token payload, and
+`LoginResult.user` / `GET /auth/me` report the stored pair.
+
 The login deliberately does **not** bake the principal's effective per-resource
 role map into the token. The bearer token is opaque to the
 client and is never read for enforcement, so a `resourceRoles` claim would have

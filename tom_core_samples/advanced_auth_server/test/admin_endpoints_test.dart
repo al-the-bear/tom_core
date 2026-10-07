@@ -154,6 +154,35 @@ void main() {
       },
     );
 
+    test('updateUser sets and clears the account\'s language', () async {
+      final store = InMemoryAdminStore(
+        users: [
+          UserRecord()
+            ..id = 1
+            ..username = 'ada'
+            ..status = UserStatus.active.name,
+        ],
+      );
+      final admin = AdminService(store);
+
+      final set = await admin.updateUser(
+        '1',
+        UserDto(id: '1', username: 'ada', language: 'de', country: 'AT'),
+      );
+      expect(set.language, 'de');
+      expect(set.country, 'AT');
+      expect((await store.findUser(1))!.language, 'de');
+      expect((await admin.listUsers()).single.language, 'de');
+
+      final cleared = await admin.updateUser(
+        '1',
+        UserDto(id: '1', username: 'ada'),
+      );
+      expect(cleared.language, '');
+      expect((await store.findUser(1))!.language, isNull);
+      expect((await store.findUser(1))!.country, isNull);
+    });
+
     test('updateUser rejects an unknown id', () {
       final admin = AdminService(InMemoryAdminStore());
       expect(

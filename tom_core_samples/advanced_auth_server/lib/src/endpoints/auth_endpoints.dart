@@ -202,12 +202,16 @@ class AuthTokenService {
   ///
   /// Only an `active` account can hold an authenticated principal (login rejects
   /// suspended accounts), so the projected status is always [UserStatus.active].
+  /// The language is the principal's *stored* pair — the account's preference,
+  /// carried in the token from its row — never the device's.
   UserDto userDtoOf(TomPrincipal principal) => UserDto(
     id: principal.user.id.toString(),
     username: principal.username,
     displayName: principal.user.firstname ?? '',
     email: principal.user.email ?? '',
     status: UserStatus.active.name,
+    language: principal.language ?? '',
+    country: principal.country ?? '',
   );
 
   /// Encodes [principal] (+ optional [acd]) into the authentication and

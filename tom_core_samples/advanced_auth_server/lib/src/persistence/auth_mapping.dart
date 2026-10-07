@@ -100,6 +100,8 @@ UserDto userRecordToDto(UserRecord record) => UserDto(
   displayName: record.displayName ?? '',
   email: record.email ?? '',
   status: record.status,
+  language: record.language ?? '',
+  country: record.country ?? '',
 );
 
 /// Applies the mutable profile fields of a [UserDto] onto a [UserRecord] (the
@@ -119,7 +121,13 @@ UserRecord applyUserDto(UserRecord record, UserDto dto) => record
   ..username = dto.username
   ..displayName = dto.displayName
   ..email = dto.email
-  ..status = dto.status;
+  ..status = dto.status
+  ..language = _nullIfEmpty(dto.normalisedLocale.language)
+  ..country = _nullIfEmpty(dto.normalisedLocale.country);
+
+/// `null` — an absent column value — for the empty string the wire uses for
+/// "none".
+String? _nullIfEmpty(String value) => value.isEmpty ? null : value;
 
 /// Builds a fresh [UserRecord] from a [CreateUserRequest] (the
 /// `POST /admin/users` create path). The password is hashed and written

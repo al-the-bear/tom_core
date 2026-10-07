@@ -121,6 +121,25 @@ class TwoFactorEnrolmentRequest {
   String toString() => 'TwoFactorEnrolmentRequest(type: $type, code: ***)';
 }
 
+/// The stored-language pair as it is kept: [language] trimmed and lower-cased,
+/// [country] trimmed and upper-cased, and both empty for no preference.
+///
+/// A country only narrows a language, so a country with no language is no
+/// preference and comes back empty. Normalised rather than validated: the
+/// reader (`TomTextLocale.lenient`) already degrades a language no bundle
+/// covers to the deployment default, so what is worth undoing is only the
+/// spelling an editor introduces — `' DE '` would otherwise miss a bundle that
+/// exists. The auth server stores and reads `auth_users` through it, and the
+/// console's in-memory backend applies it, so all three agree.
+({String language, String country}) normaliseStoredLocale(
+  String? language,
+  String? country,
+) {
+  final lang = language?.trim().toLowerCase() ?? '';
+  if (lang.isEmpty) return (language: '', country: '');
+  return (language: lang, country: country?.trim().toUpperCase() ?? '');
+}
+
 /// A user account projected onto the wire — the safe, password-free view the
 /// auth server returns from login and the admin API returns from
 /// `GET /admin/users`.
@@ -149,14 +168,35 @@ class UserDto {
   /// Account lifecycle state as a `UserStatus.name` token; use [statusValue].
   String status;
 
-  /// Creates a user projection. [status] defaults to `active`.
+  /// The account's stored language (ISO 639-1, e.g. `de`), or empty for no
+  /// preference.
+  ///
+  /// This is the *stored* half of the principal's locale, distinct from the
+  /// language a device sends at login: text the server renders for this user
+  /// outside a request of theirs — a digest, a notification — honours it. An
+  /// administrator sets it; empty means the device's language answers.
+  String language;
+
+  /// The country narrowing [language] (ISO 3166-1 alpha-2, e.g. `AT`), or
+  /// empty. Meaningless without a [language], and stored as no preference then.
+  String country;
+
+  /// Creates a user projection. [status] defaults to `active`; [language] and
+  /// [country] default to no preference.
   UserDto({
     this.id = '',
     this.username = '',
     this.displayName = '',
     this.email = '',
     String? status,
+    this.language = '',
+    this.country = '',
   }) : status = status ?? UserStatus.active.name;
+
+  /// This account's [language]/[country] as they are stored — see
+  /// [normaliseStoredLocale].
+  ({String language, String country}) get normalisedLocale =>
+      normaliseStoredLocale(language, country);
 
   /// Typed view of [status]; falls back to [UserStatus.active] for an unknown
   /// stored value.
