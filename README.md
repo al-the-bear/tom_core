@@ -1734,10 +1734,12 @@ for an answer. Rows may still group what is used as a set (`` `TomSelect` /
 appear somewhere in the table.
 
 A document declares itself in scope by the shape it already has: an Overview
-holding a table with a `Type` (or `Symbol`) column beside a `Kind` column. All
-twenty `tom_core_server` module documents write that, and eleven others across
-`tom_flutter_ui` and `tom_core_agentic`; `tom_core_kernel`'s Overviews are prose
-and are out of scope until they are not.
+holding a table with a `Type` (or `Symbol`) column beside a `Kind` column. The
+module documents of `tom_core_server`, `tom_core_kernel`, `tom_core_flutter`,
+`tom_flutter_ui` and `tom_core_agentic` all write one — the kernel's open their Overview with the
+table and keep the orienting prose beneath it. Names from the packages a module
+builds on, such as `tom_basics`' `TomRuntime`, are not phantoms: the index the
+gate checks them against spans every package under `tom_ai/`.
 
 ```bash
 python3 tool/check_readme_status.py                  # every package

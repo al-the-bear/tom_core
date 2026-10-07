@@ -32,6 +32,11 @@ The Settings module provides client-server communication for retrieving applicat
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomGetSettingsMessage` | class | Reflected request for client settings. |
+| `TomGetSettingsResult` | class | Reflected settings response (texts, roles, …). |
+
 This module enables clients to:
 - Request configuration and text resources from the server
 - Receive user authorization context (groups, roles, entitlements)

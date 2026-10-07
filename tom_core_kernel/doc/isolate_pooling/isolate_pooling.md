@@ -42,6 +42,16 @@ The isolate pooling module provides a robust framework for managing Dart isolate
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomWorker` | class | An isolate worker. |
+| `TomWorkerPool` | class | A pool of workers dispatching commands. |
+| `TomWorkerContext` | class | Per-worker isolate context/bootstrap. |
+| `TomExecutor` | abstract class | Executes a command inside a worker. |
+| `TomCommand` | abstract class | A unit of work sent to a worker. |
+| `TomWorkerException` | class | Worker failure (extends `TomException`). |
+| `TomWorkerDiedException` | class | Exception used to fail a command whose worker isolate died mid-flight. |
+
 Dart isolates are independent execution contexts with their own memory space. While this provides true parallelism, managing isolate lifecycle and communication can be complex. This module abstracts away the complexity while providing:
 
 - **Worker Isolates**: Spawn and manage isolated execution contexts

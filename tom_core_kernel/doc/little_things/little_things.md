@@ -30,6 +30,12 @@ Core utility functions for exception handling, zone management, stack trace proc
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomException` | class | The kernel base exception (implements `TomLoggable`). |
+| `TomFormattingException` | class | Raised when a formatting function is given a value it cannot render. |
+| `TomStackTraceNoise` | class | Classifies a stack frame as noise for the formatting functions in this library. |
+
 The `little_things` module provides a collection of small but essential utilities used throughout the tom_core framework. It includes:
 
 | File | Purpose |

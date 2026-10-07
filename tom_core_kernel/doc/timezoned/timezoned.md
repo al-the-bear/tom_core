@@ -43,6 +43,15 @@ automatic handling of daylight saving time (DST) transitions.
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomTimezoned` | class | Timezone-aware datetime (extends `DateTime`, stored UTC). |
+| `TomZonedDate` | class | Date-only timezone-aware value (`@D@`). |
+| `TomZonedTime` | class | Time-only timezone-aware value (`@T@`). |
+| `TomZonedDateTime` | class | Full timezone-aware datetime (`@X@`). |
+| `TomTimezone` | class | IANA timezone wrapper (name/offset lookup, DST-aware conversion). |
+| `TomTimezoneException` | class | Timezone failure (extends `TomException`). |
+
 The timezoned system consists of two main components:
 
 1. **`TomTimezone`**: A wrapper around the `timezone` package's `Location` class that provides

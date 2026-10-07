@@ -58,6 +58,61 @@ The security module provides a comprehensive authentication and authorization sy
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomPrincipal` | class | An authenticated principal. |
+| `TomUser` | class | A user principal (const `guestUsername`). |
+| `TomGroup` | class | Represents a group in the authorization model. |
+| `TomRole` | class | Represents a role in the authorization model. |
+| `TomEntitlement` | class | Represents an entitlement in the authorization model. |
+| `TomAccessControlInformation` | class | Resolved access-control info for a principal. |
+| `TomClientLimitsInformation` | class | Client-side limits info. |
+| `TomAccessControlDefinition` | class | Definition of an access-control policy. |
+| `TomAuthState` | enum | `none`, `disabled`, `read`, `full` (with `narrow`/`widen`, visibility getters). |
+| `AuthGroupMode` | enum | `controlsAll`, `controlsWidest`, `controlsNarrowest`. |
+| `TomAuthorizerStrategy` | enum | `authorizerDecides`, `authorizerNarrowsOnly`. |
+| `TomAuthorizable` | abstract class | Contract for elements carrying an auth group. |
+| `TomAuthorizationGroup` | class | Collective authorization control over members. |
+| `TomAuthorization` | class | Global authorization resolver. |
+| `TomAuthorizationAdapter` | abstract class | Adapter resolving auth state per resource. |
+| `TomAuthorizer` | class | Per-element authorizer applying a strategy. |
+| `TomUIStateController` | class | Build-time UI-state narrowing controller. |
+| `TomResourceRoleRegistry` | class | Maps role names to a `TomAuthState`. |
+| `TomResourceRoleAdapter` | abstract class | Adapter supplying resource-role mappings. |
+| `TomAccessControl` | abstract class | Base access-control policy; computes the `min(user, deployment)` meet. |
+| `TomGradedAccess` | class | Access control that resolves to **all four** `TomAuthState` values by composing three binary controls — one each named after the state it grants: `full`, `read`, and `disabled`. |
+| `TomNoAccess` | class | Denies access to all users. |
+| `TomPublicAccess` | class | Allows access to all users, including unauthenticated ones. |
+| `TomAuthenticatedAccess` | class | Requires a fully authenticated user (not a guest). |
+| `TomGuestAccess` | class | Allows authenticated users and guest users. |
+| `TomCustomAccess` | class | Delegates access control to a registered custom handler. |
+| `TomEntitlementAccess` | class | Grants access based on entitlement patterns. |
+| `TomRoleAccess` | class | Grants access based on user roles. |
+| `TomGroupAccess` | class | Grants access based on group membership. |
+| `TomResourceKeyAccess` | class | Grants access based on resource key protection. |
+| `TomServerPrincipal` | class | The ambient server principal — the deployment's own identity, which caps every user's grants. |
+| `TomResourceKeyProtection` | class | Protects a value behind a resource key. |
+| `TomAuthenticationMessage` | class | Authentication request message. |
+| `TomAuthenticationResult` | class | Authentication response. |
+| `TomBearerAuthentication` | class | Bearer-token authentication helper. |
+| `Tom2FAChallenge` | class | A pending second factor, carried in an interim token's public claims. |
+| `Tom2FAClaims` | class | The claim names a pending 2FA challenge travels under. |
+| `Tom2FAPendingEnrolment` | class | A second factor being *set up*, carried in an interim token's public claims; `hasOffer` tells a chooser apart from a half-built mechanism. |
+| `Tom2FAEnrolmentClaims` | class | The claim names a pending 2FA enrolment travels under. |
+| `Tom2FAMethodDescriptor` | class | How a mechanism names itself to a user choosing one — an identifier plus three resource keys, never literal text. |
+| `TomTotp` | class | RFC 4226/6238 code derivation and the base32 codec. |
+| `TomAccessControlHandler` | typedef | Function signature for custom access control handlers. |
+| `TomClientContext` | class | The language, country and timezone a principal carries when nothing better is known. |
+| `TomClientLimitsProvider` | abstract class | The source of a client's limits: what its subscription currently grants. |
+| `TomOAuthApiService` | abstract class | The typed service interface behind `tomOAuthApi`. |
+| `TomOAuthAuthorizationDto` | class | Where to send the user, and the handle the flow is remembered under. |
+| `TomOAuthAuthorizationRequest` | class | The request that starts an authorization-code flow. |
+| `TomOAuthCallbackRequest` | class | What the provider's redirect carried back, forwarded by the application. |
+| `TomOAuthProviderDto` | class | One configured external-identity provider, as a client sees it. |
+| `TomProtectedField` | class | Marks a reflected field as protected by `resourceKey`. |
+| `TomProtectionSettingException` | class | Raised when a protection setting cannot be applied: a name in the `tom.protection` namespace that is not a switch, or a value that is not `true` or `false`. |
+| `TomTokenLifetimeException` | class | A token refused because it is not live: expired, carrying no usable `exp`, or contradicting itself about when it expires. |
+
 The security module consists of these main files:
 
 | File | Purpose |

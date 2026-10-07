@@ -28,17 +28,18 @@ they are observable, writable, persistent, and addressable as a set.
 
 ## Overview
 
-| Type | Role |
-| ---- | ---- |
-| `TomBaseClientConfiguration` | Base class for a client app's settings holder |
-| `TomSetting<T>` | One observable setting — a `TomObject<T>` plus its key and baseline |
-| `TomClientConfigurationStore` | Where overrides are persisted (two methods) |
-| `TomMemoryClientConfigurationStore` | Process-lifetime store — tests, examples, deliberately stateless clients |
-| `TomFileClientConfigurationStore` | JSON file on the local filesystem (native targets) |
-| `TomOverridableBy` | Which narrower client scope, if any, may shadow a setting |
-| `TomEffectiveSettings` | Resolves a setting against the scopes it opens itself to |
-| `TomPreferenceLookup` | The one-key read both preference stores already carry |
-| `TomClientConfigurationException` | Failures of this module, with stable dotted keys |
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomBaseClientConfiguration` | abstract class | Abstract holder of one install's machine-scoped settings. |
+| `TomSetting` | class | One observable, addressable setting (`TomObject<T>` + key + baseline). |
+| `TomClientEnvironment` | abstract class | Where a setting's `envAlias` is looked up; the reader is replaceable. Statics only. |
+| `TomOverridableBy` | enum | Which narrower client scope, if any, may shadow a setting — `none` / `user` / `device`. |
+| `TomEffectiveSettings` | class | Reads a setting together with the preference scopes it opens itself to. |
+| `TomPreferenceLookup` | typedef | `Future<T?> Function<T extends Object>(String key)` — the one-key read both preference stores carry. |
+| `TomClientConfigurationStore` | abstract class | Two-method (`read`/`write`) interface for persisting overrides. |
+| `TomMemoryClientConfigurationStore` | class | Process-lifetime override store. |
+| `TomFileClientConfigurationStore` | class | JSON file store (io variant; neutral variant throws). |
+| `TomClientConfigurationException` | class | Module failures, keyed by stable dotted codes. |
 
 ## Scope
 

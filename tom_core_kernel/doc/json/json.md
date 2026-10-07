@@ -31,6 +31,13 @@ This module provides utilities for working with JSON data structures in Dart, in
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomJsonSerializable` | abstract class | `toJson()` contract for reflectable objects. |
+| `TomJsonCycleException` | class | Raised when a tree walk meets a value that refers back to one of its own ancestors. |
+| `TomJsonDirectiveException` | class | Raised when a profile directive cannot be resolved by `processTree`. |
+| `TomJsonPathException` | class | Raised when a dot-separated path cannot be resolved against a tree. |
+
 The JSON utilities module consists of three files:
 
 | File | Purpose |

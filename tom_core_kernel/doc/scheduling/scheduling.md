@@ -43,25 +43,50 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomSchedule` | abstract class | The "when" contract — `nextFireAfter` and nothing about jobs. |
+| `TomCronSchedule` | class | A standard five-field POSIX cron expression. |
+| `TomCalendarSchedule` | class | Recurrences that cron cannot express. |
+| `TomIntervalSchedule` | class | A fixed period measured from an anchor instant. |
+| `TomOnceSchedule` | class | A single absolute instant: fire once at `at`, then never again. |
+| `TomEventSchedule` | class | A trigger fed by a source rather than a clock. |
+| `TomCalendarRule` | enum | `dayOfMonth`, `weekdayOfMonth`. |
+| `TomJobDefinition` | class | A named schedule bound to a `TomCommand` factory, plus retry/timeout/overlap/catch-up policy. |
+| `TomRetryPolicy` | class | Exponential backoff with jitter (`none` for no retry). |
+| `TomMissedWindowPolicy` | enum | `skip`, `runOnce`, `runAll`. |
+| `TomJobDispatcher` | abstract class | How a job's command is executed. |
+| `TomWorkerPoolJobDispatcher` | class | Runs job bodies on an existing `TomWorkerPool`. |
+| `TomInlineJobDispatcher` | class | Runs job bodies in the calling isolate. |
+| `TomJobAlert` | class | Everything the scheduler wants an operator to know. |
+| `TomJobAlertKind` | enum | Attempt/run failures, timeouts, missed windows, never-fires, and the four lease outcomes. |
+| `TomJobAlertSink` | typedef | `void Function(TomJobAlert alert)`. |
+| `TomPermanentFailure` | mixin | Marker meaning "do not retry". |
+| `TomPermanentJobFailure` | class | The ready-made permanent failure. |
+| `TomJobBase` | abstract class | Base for an annotation-declared job; carries the injected `TomJobRun`. |
+| `TomScheduledJob` | class | The `@TomScheduledJob` annotation — exactly one of `cron`/`interval`/`calendar`/`event`. |
+| `TomScheduledJobs` | class | Reflection-driven `discover` / `registerAll`. |
+| `TomJobRun` | class | One row per schedule *window* — the idempotence key across restarts and cluster nodes. |
+| `TomJobRunState` | enum | `pending`, `running`, `succeeded`, `failed`. |
+| `TomJobStore` | abstract class | The persistence contract the tick loop is written in. |
+| `TomMemoryJobStore` | class | A `TomJobStore` that keeps everything in memory and nothing across restarts. |
+| `TomFileJobStore` | class | A `TomJobStore` that mirrors the queue to a JSON file on every mutation. |
+| `TomLease` | class | A time-limited claim carrying a monotonic fencing `token`. |
+| `TomLeaseInfo` | class | A resource's lock state, including "the holder vanished". |
+| `TomLeaseLock` | abstract class | The mutual-exclusion contract. |
+| `TomMemoryLeaseLock` | class | A `TomLeaseLock` confined to one process. |
+| `TomFileLeaseLock` | class | A `TomLeaseLock` that coordinates **separate processes** through a shared directory. |
+| `TomScheduler` | class | The tick loop: recover, plan, claim, lease, dispatch, retry (implements `TomClosable`). |
+| `TomScheduleException` | class | Thrown when a schedule expression cannot be parsed or is self-contradictory. |
+| `TomScheduledJobException` | class | Raised when an annotated job cannot be turned into a `TomJobDefinition`. |
+| `TomJobClaim` | class | A ticket proving that one particular claim of `run` was won. |
+| `TomOneShotResource` | extension type | A lease resource name that will never be acquired again once its work is done — the only kind `TomLeaseLock.forget` accepts. |
+
 A **job** pairs a [schedule](#schedules) with a body. The **scheduler** turns the
 schedule into a stream of **windows** — the instants the job was supposed to fire
 — and records each one in a **store** as a `TomJobRun`. A run is claimed,
 dispatched, and completed or retried; the store is what makes all of that survive
 a restart.
-
-| Type | Role |
-| ---- | ---- |
-| `TomSchedule` | When a job should fire. Cron, calendar, interval, once or event |
-| `TomScheduledJob` | The annotation that makes a class its own registration |
-| `TomJobBase` | What a declared job extends; gives the body its `TomJobRun` |
-| `TomScheduledJobs` | Scans the annotated classes and registers what it finds |
-| `TomJobDefinition` | A schedule plus a body, retry policy, timeout and overlap rule |
-| `TomJobRun` | One attempt-carrying occurrence: window, next attempt, state, claim |
-| `TomJobStore` | Durable queue of runs. Memory and file implementations ship here |
-| `TomJobDispatcher` | Where a body executes: inline, or on an isolate pool |
-| `TomScheduler` | The engine: recover, plan, claim, dispatch, record |
-| `TomLeaseLock` | Cluster arbitration, so one window runs on one node |
-| `TomJobAlert` | Everything worth telling an operator about |
 
 ## Quick Start
 

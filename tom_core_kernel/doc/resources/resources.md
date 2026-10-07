@@ -41,6 +41,12 @@ The Resources module provides singleton-based resource management for applicatio
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomTextResourceProvider` | class | Provides localized text over a JSON tree with key fallback; `appResourcesRevision` announces bundle changes. |
+| `TomConfigResourceProvider` | class | Provides config values over a JSON tree. |
+| `TomResourceException` | class | Thrown when the resource providers are used outside their contract. |
+
 The module consists of two main providers:
 
 | Provider | Holds | Accessors | Observable |

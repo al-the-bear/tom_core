@@ -18,10 +18,10 @@ provides two **exception types** layered on the kernel's exception model.
 
 ## Overview
 
-| Type | Extends | Meaning |
-| ---- | ------- | ------- |
-| `TomClientException` | `TomException` (kernel) | A failure raised on the client side |
-| `TomClientUIException` | `TomClientException` | A client failure whose message is safe to show the user |
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomClientException` | class | Client-side subtype of the kernel `TomException`. |
+| `TomClientUIException` | class | A `TomClientException` whose message is safe to show in the UI. |
 
 Both are thin subtypes — they carry the kernel
 [`TomException`](../../tom_core_kernel/doc/little_things/little_things.md)'s

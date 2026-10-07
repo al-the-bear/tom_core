@@ -82,6 +82,14 @@ Flutter web, where `dart:mirrors` is unavailable.
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomReflector` | class | Kernel reflector (extends `Reflection`); JSON (de)serialization via mirrors. |
+| `TomReflectionInfo` | class | Reflection metadata helper over a reflector. |
+| `TomReflectorException` | class | Reflection failure (extends `TomException`). |
+| `TomRequiredField` | class | Field annotation: a bound map must supply a value for it. |
+| `TomRecommendedField` | class | Marks a field a bound map *should* supply a value for, where its absence is worth saying but not worth refusing. |
+
 The reflection system consists of three main components:
 
 1. **`TomReflector`**: A configured `Reflection` subclass that provides the capabilities

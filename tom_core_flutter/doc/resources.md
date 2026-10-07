@@ -20,14 +20,14 @@ a service or view-model.
 
 ## Overview
 
-| Type | Holds | Notes |
-| ---- | ----- | ----- |
-| `TomProperty<T>` | `T` | Generic base; prefer a typed subclass, except when `T` is nullable |
-| `TomStringProperty` | `String` | |
-| `TomIntProperty` | `int` | |
-| `TomDoubleProperty` | `double` | A configured whole number widens — see [Resolution Rules](#resolution-rules) |
-| `TomBoolProperty` | `bool` | |
-| `TomPropertyException` | — | Raised when resolution fails; one type, two `key` codes |
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomProperty` | class | Typed config value resolved and cached at construction. Prefer a typed subclass, except when `T` is nullable. |
+| `TomStringProperty` | class | `String` config property. |
+| `TomIntProperty` | class | `int` config property. |
+| `TomDoubleProperty` | class | `double` config property; a configured whole number widens — see [Resolution Rules](#resolution-rules). |
+| `TomBoolProperty` | class | `bool` config property. |
+| `TomPropertyException` | class | Both failures of a typed property, told apart by `key`. |
 
 Each reads from the application
 [`TomConfigResourceProvider`](../../tom_core_kernel/doc/resources/resources.md)

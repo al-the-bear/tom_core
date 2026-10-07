@@ -29,6 +29,13 @@ The Tom Execution Context System provides zone-based context propagation for pas
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomExecutionContext` | class | Typed, zone-scoped context of named `TomContextEntry` values. |
+| `TomContextEntry` | class | A lazily-evaluated named context value. |
+| `TomZoneValues` | class | `Map`-like view over a zone's values used when running in context. |
+| `TomContextProviders` | class | Static accessors for the ambient providers (organization, application, …). |
+
 The context system consists of four public types:
 
 1. **`TomExecutionContext`**: Container for context entries that runs code in a Dart Zone with those values available.

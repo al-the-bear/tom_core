@@ -17,10 +17,11 @@ plumbing.
 
 ## Overview
 
-| Type | Implements | Purpose |
-| ---- | ---------- | ------- |
-| `TomObservingWidget<T>` | `StatefulWidget` | Rebuilds a subtree whenever the bound `TomObservable` notifies |
-| `ValueListenableObserver<T>` | `TomObserver<T>`, `ValueListenable<T>` | Adapts a `TomObservable` to Flutter's `ValueListenable` contract |
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomObservingWidget` | class | A `StatefulWidget` that rebuilds its subtree whenever the bound `TomObservable` notifies. |
+| `TomObservingWidgetState` | class | `State` managing the observer lifecycle. |
+| `ValueListenableObserver` | class | Adapts a `TomObservable` to Flutter's `ValueListenable`; implements `TomObserver<T>` and `ValueListenable<T>`. |
 
 Both adapt the kernel observation primitives:
 

@@ -35,9 +35,10 @@ table, in a code span, whatever row it shares.
 whose header names a `Type` (or `Symbol`) column and a `Kind` column. That is
 not a heuristic about tables in general: the header is the document saying "this
 region enumerates the module's types by kind", and a document that says
-something else is out. `tom_core_server` writes all twenty that way and
-`tom_core_kernel` writes none — its Overviews are prose, and bringing them to
-this shape is a separate exercise from keeping the ones that have it true.
+something else is out. Every module document of `tom_core_server`,
+`tom_core_kernel` and `tom_core_flutter` writes one, as do those of
+`tom_flutter_ui` and `tom_core_agentic`; a kernel guide opens its Overview with
+the table and keeps its orienting prose beneath it.
 
 Two faults are reported.
 
@@ -49,10 +50,13 @@ Two faults are reported.
     a type renamed out from under the row, or one the table was written ahead of
     and that never arrived.
 
-    Checked against the whole repository rather than the module, because an
-    overview legitimately names its neighbours — `TomPrincipal` to say who the
-    caller is, `TomDataSource` to say where the boundary runs — and a gate that
-    called those phantoms would be unusable.
+    Checked against every package under `tom_ai/` rather than the module,
+    because an overview legitimately names its neighbours — `TomPrincipal` to
+    say who the caller is, `TomDataSource` to say where the boundary runs — and
+    the types of the packages it builds on: the kernel's describe themselves
+    against `tom_basics`' `TomRuntime` and `TomPlatform`. A gate that called
+    those phantoms would be unusable. It is the same scope
+    `check_doc_phantom_names.py` indexes.
 
     Restricted to the framework's own prefix for the reason a backtick is not a
     type: these tables spell SQL in code spans (`SELECT`, `GROUP BY`,
@@ -240,7 +244,7 @@ def audit(subtree: str | None) -> tuple[list[str], dict[str, int]]:
     """The faults, and how many types each document in scope was compared to."""
     faults: list[str] = []
     counted: dict[str, int] = {}
-    repository = index_types(REPO_ROOT)
+    repository = index_types(REPO_ROOT.parent)
     for package in packages(subtree):
         exported = exported_files(package)
         if not exported:

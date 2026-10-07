@@ -46,6 +46,17 @@ client and a server both bind to.
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomUserPreferenceKeys` | class | Namespace of the preference keys the framework itself reads (`tom.timezone`, `tom.language`, `tom.country`, `tom.theme`). |
+| `TomUserPreferenceDto` | class | One stored preference on the wire: key, stored type name, JSON text, UTC write timestamp. |
+| `TomUserPreferenceWriteRequest` | class | Write request — the DTO's value fields without the timestamp. |
+| `TomUserPreferenceKeyRequest` | class | Read/delete request addressing one preference by key. |
+| `TomUserPreferencesApiService` | abstract class | The contract's Dart face, implemented by the server and by client callers. |
+| `TomUserPreferenceCodec` | class | Encodes/decodes preference values; refuses a type mismatch rather than coercing. |
+| `TomUserPreferenceCodecException` | class | Encode/decode failure (extends `TomException`). |
+| `TomUserPreferenceKeyException` | class | Raised when a preference key does not satisfy `TomUserPreferenceKeys`. |
+
 A preference is a typed value belonging to one user. The *store* is not here —
 server-stored preferences live in `tom_core_server`
 (`TomUserPreference` + `TomUserPreferences`), and device-stored ones live on the

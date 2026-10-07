@@ -28,6 +28,14 @@ threading an identifier through every call.
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomScope` | abstract class | Scope identity contract with zone-current access and path building. |
+| `TomScopeBase` | class | Concrete `TomScope` using `TomScopeMixin`. |
+| `TomScopeMixin` | mixin | Adds scope identity/parenting to any `Object`. |
+| `ScopeCapture` | class | Captures a scope and wraps callbacks so they run in it when invoked later. |
+| `TomScopeException` | class | Raised when a scope cannot be built or used as one. |
+
 A `TomScope` is a node in a parent chain rooted at `TomScope.defaultScope`. Each
 scope carries a local `id` and a reference to its `parent`. The **active**
 scope is the one installed on the current zone; `TomScope.current` resolves to
@@ -37,13 +45,6 @@ installed.
 The primary purpose is to build a dot-separated **scope path**
 (`app.checkout.orderForm`) that downstream systems — resource resolution and
 authorization — use as a lookup prefix.
-
-| Type | Role |
-| ---- | ---- |
-| `TomScope` | Abstract contract: `id`, `parent`, path building, zone install |
-| `TomScopeBase` | Concrete scope built from a scope id and optional parent |
-| `TomScopeMixin` | Reusable implementation backing `TomScopeBase` |
-| `ScopeCapture` | Wraps callbacks so they run in a captured scope when invoked later |
 
 ## Quick Start
 

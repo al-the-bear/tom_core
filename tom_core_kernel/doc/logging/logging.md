@@ -38,6 +38,23 @@ A flexible, configurable logging framework for Dart applications with support fo
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomIsolateLogging` | class | Cross-isolate logging coordinator. |
+| `TomIsolateLogOutput` | class | Log output forwarding across isolates. |
+| `TomCreatorLogOutput` | class | Output that forwards to the creator isolate. |
+| `TomInterIsolateLogMessage` | class | Message carrying a log record between isolates. |
+| `TomLoggingExecutor` | class | Executor for isolate logging commands. |
+| `TomLoggingWorkerContext` | class | Worker context wiring isolate logging. |
+| `TomRemoteLogOutput` | class | Log output sending records to a remote server. |
+| `TomRemoteLogServer` | class | Receives remote log messages. |
+| `TomRemoteLogMessage` | class | Remote log request message. |
+| `TomRemoteLogResult` | class | Remote log response. |
+| `TomLoggingContext` | class | Context for remote logging. |
+| `TomFileLogReplayStore` | class | A `TomLogReplayStore` that persists buffered records to a JSON file. |
+| `TomInMemoryLogReplayStore` | class | In-memory `TomLogReplayStore` — the zero-config default. |
+| `TomLogReplayStore` | abstract class | Pluggable backend for `TomRemoteLogOutput`'s replay queue. |
+
 The TomBase logging system provides:
 
 - **Multiple Log Levels**: From trace (most verbose) to fatal (most severe)

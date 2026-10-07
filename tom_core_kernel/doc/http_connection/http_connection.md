@@ -45,6 +45,44 @@ The HTTP Connection module provides a comprehensive infrastructure for making HT
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomServerCall` | class | A single server call (request/response envelope). |
+| `TomServerCallSpecs` | class | Static specification of a server call. |
+| `TomServerCallLoad` | class | Request payload of a server call. |
+| `TomServerCallError` | class | Error payload of a server call. |
+| `TomServerChannel` | class | Channel abstraction over a server connection. |
+| `TomServerEndpoint` | class | Typed server-side endpoint. |
+| `TomServerConnectionException` | class | Connection failure (extends `TomException`). |
+| `TomRequestAbortedException` | class | Aborted-request failure (extends `TomException`). |
+| `TomHttpClientFactory` | class | Resolves a client through a per-instance override or the global registration. |
+| `TomHttpClientAbstractFactory` | abstract interface class | The client-factory contract a custom factory implements. |
+| `TomDefaultHttpClientFactory` | class | The shipped factory, over the platform's client. |
+| `TomRemoteApis` | class | Registry of remote API groups. |
+| `TomApi` | class | A remote API group. |
+| `TomApiEndpoint` | class | A typed remote API endpoint. |
+| `TomEndpointException` | class | Endpoint failure (extends `TomException`). |
+| `TomContentDisposition` | class | Content-Disposition parsing/model. |
+| `TomHeader` | class | HTTP header name constants/model. |
+| `TomHttpMethod` | class | HTTP method constants/model. |
+| `TomMimeType` | class | MIME-type model. |
+| `TomMimeTypeException` | class | MIME-type failure (extends `TomException`). |
+| `StaticFileMimetypeMapping` | class | Extension→MIME-type map for static files. |
+| `TomAuthRefresher` | abstract class | Contract for refreshing an expired auth token. |
+| `TomAuthRetryPolicy` | class | Policy for retrying on auth expiry. |
+| `TomAuthExpiredException` | class | Auth-expired failure (extends `TomException`). |
+| `TomClientRemoteContext` | class | Client-side remote context. |
+| `TomClientRemoteContextException` | class | Remote-context failure (extends `TomException`). |
+| `TomFileMetadata` | class | What the server knows about a stored file. |
+| `TomFileSource` | class | The bytes to upload, together with what the server needs to know about them. |
+| `TomFileTransferClient` | abstract class | Moves file bytes between an application and a file store. |
+| `TomFileTransferException` | class | Exception thrown when a file transfer fails. |
+| `TomHttpFileTransferClient` | class | A `TomFileTransferClient` over HTTP. |
+| `TomMemoryFileTransferClient` | class | A `TomFileTransferClient` that keeps everything in a map. |
+| `TomRequestTimeoutException` | class | Exception thrown when a request outlives its `TomServerCallSpecs.timeout`. |
+| `TomTransferCancellation` | class | A cancel signal shared with an in-flight transfer. |
+| `TomTransferProgress` | class | How far a transfer has got. |
+
 The module is made up of nine files:
 
 | File | Description |

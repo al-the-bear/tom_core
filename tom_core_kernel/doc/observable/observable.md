@@ -85,6 +85,41 @@ and complex objects with automatic change notification and propagation.
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomObservable` | class | Base observable with observer notification. |
+| `TomObserver` | abstract class | Observer contract over a `TomObservable`. |
+| `TomFunctionObserver` | class | Function-backed observer. |
+| `TomObservableException` | class | Observable failure (extends `TomException`). |
+| `TomObject` | class | Boxed observable value of type `T`. |
+| `TomString` | class | An observable wrapper for `String` values. |
+| `TomInt` | class | An observable wrapper for `int` values. |
+| `TomDouble` | class | An observable wrapper for `double` values. |
+| `TomBool` | class | An observable wrapper for `bool` values. |
+| `TomDateTime` | class | An observable wrapper for `DateTime` values. |
+| `TomNString` | class | An observable wrapper for nullable `String` values. |
+| `TomNInt` | class | An observable wrapper for nullable `int` values. |
+| `TomNDouble` | class | An observable wrapper for nullable `double` values. |
+| `TomNBool` | class | An observable wrapper for nullable `bool` values. |
+| `TomNDateTime` | class | An observable wrapper for nullable `DateTime` values. |
+| `TomOTimezoned` | abstract class | An observable wrapper for `TomTimezoned` values (timezone-aware date/time). |
+| `TomOZonedTime` | class | An observable wrapper for `TomZonedTime` values (time with timezone). |
+| `TomOZonedDate` | class | An observable wrapper for `TomZonedDate` values (date with timezone). |
+| `TomOZonedDateTime` | class | An observable wrapper for `TomZonedDateTime` values (datetime with timezone). |
+| `TomNOTimezoned` | abstract class | An observable wrapper for nullable `TomTimezoned` values. |
+| `TomNOZonedTime` | class | An observable wrapper for nullable `TomZonedTime` values. |
+| `TomNOZonedDate` | class | An observable wrapper for nullable `TomZonedDate` values. |
+| `TomNOZonedDateTime` | class | An observable wrapper for nullable `TomZonedDateTime` values. |
+| `TomDateRange` | class | An observable date range with start and end dates. |
+| `TomTimeRange` | class | An observable time range with start and end times. |
+| `TomDateTimeRange` | class | An observable datetime range with start and end datetimes. |
+| `TomClass` | class | Boxed map of named `TomObject`s (composite). |
+| `TomList` | class | Observable list of `TomObject`s. |
+| `TomMap` | class | Observable map of `TomObject` values. |
+| `TomListLifecycleListener` | abstract class | Lifecycle callbacks for `TomList` elements. |
+| `TomObservableEnum` | class | Boxed enum whose display text resolves from the text bundle under `<scope>.<enumName>.<value>`. |
+| `TomEnumResourceSegment` | abstract interface class | Implemented by an enum that overrides `toString()`, to declare its key segment explicitly. |
+
 The observable system consists of two main components:
 
 1. **`tom_observable.dart`**: Base classes for the Observer pattern (`TomObservable`, 

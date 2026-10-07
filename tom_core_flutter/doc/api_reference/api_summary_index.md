@@ -25,13 +25,13 @@ the kernel API) and adds the Flutter-specific surface documented here.
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
-| `TomBaseClientConfiguration` | class | Abstract holder of one install's machine-scoped settings. |
+| `TomBaseClientConfiguration` | abstract class | Abstract holder of one install's machine-scoped settings. |
 | `TomSetting<T>` | class | One observable, addressable setting (`TomObject<T>` + key + baseline). |
 | `TomClientEnvironment` | abstract class | Where a setting's `envAlias` is looked up; the reader is replaceable. Statics only. |
 | `TomOverridableBy` | enum | Which narrower client scope, if any, may shadow a setting — `none` / `user` / `device`. |
 | `TomEffectiveSettings` | class | Reads a setting together with the preference scopes it opens itself to. |
 | `TomPreferenceLookup` | typedef | `Future<T?> Function<T extends Object>(String key)` — the one-key read both preference stores carry. |
-| `TomClientConfigurationStore` | class | Two-method (`read`/`write`) interface for persisting overrides. |
+| `TomClientConfigurationStore` | abstract class | Two-method (`read`/`write`) interface for persisting overrides. |
 | `TomMemoryClientConfigurationStore` | class | Process-lifetime override store. |
 | `TomFileClientConfigurationStore` | class | JSON file store (io variant; neutral variant throws). |
 | `TomClientConfigurationException` | class | Module failures, keyed by stable dotted codes. |

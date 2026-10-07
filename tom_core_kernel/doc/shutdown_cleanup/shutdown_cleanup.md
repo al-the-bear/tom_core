@@ -39,6 +39,16 @@ The shutdown cleanup module provides a comprehensive system for managing gracefu
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomShutdownCleanup` | class | Coordinates ordered shutdown on process signals. |
+| `TomDisposable` | abstract class | `dispose()` contract. |
+| `TomClosable` | abstract class | `close()` contract. |
+| `TomCloseAdaptor` | class | Adapts a `@tomReflector` class's close-style method to `TomClosable`. |
+| `TomSignalHandler` | typedef | `void Function(ProcessSignal)`. |
+| `TomCloseAdaptorException` | class | Raised by the `TomCloseAdaptor` constructor when the target has no method the adaptor can call. |
+| `TomShutdownUnregister` | typedef | Takes back one registration made on a `TomShutdownCleanup`. |
+
 When a process receives termination signals (like SIGHUP or SIGINT from Ctrl+C), the shutdown cleanup system:
 
 1. Intercepts the signal

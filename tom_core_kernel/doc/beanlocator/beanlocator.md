@@ -46,6 +46,13 @@ The Tom Bean Locator System provides a lightweight dependency injection containe
 
 ## Overview
 
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomBean` | class | Typed handle that resolves a registered bean by type or name. |
+| `TomComponent` | class | Annotation marking a class as a locatable component. |
+| `TomNoInterface` | abstract class | Sentinel interface for an unspecified component interface. |
+| `TomBeanLocatorException` | class | Bean-lookup failure (extends `TomException`). |
+
 The bean locator system consists of several key components:
 
 1. **`TomBean<T>`**: A generic handle for accessing dependency-injected beans with lazy resolution by type or name.
