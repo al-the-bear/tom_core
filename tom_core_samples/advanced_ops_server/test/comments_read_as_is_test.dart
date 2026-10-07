@@ -145,21 +145,28 @@ final _narrationPatterns = <RegExp>[
 
 /// The `§` uses that are *not* work-item pointers and must not be flagged.
 ///
-/// A section number is allowed exactly when the line says what it is a section
-/// *of*, because that is the whole difference between a citation and a dangling
-/// number. The named thing has to be something the reader can reach:
+/// A section number is allowed exactly when the reader can see what it is a
+/// section *of*, because that is the whole difference between a citation and a
+/// dangling number. The named thing has to be something the reader can reach:
 ///
 /// - a published standard — `RFC 4226 §5.3`, `CWE-117`;
 /// - a specification this package implements — `codespecs_mapping.md §5.26`;
 /// - a sibling document — `audit.md § "Why the publisher is not a scheduled
 ///   job"`.
 ///
-/// The naming is required on the same line, not merely somewhere in the file.
-/// Dartdoc is read one member at a time — in the generated API docs a member's
-/// paragraph appears with nothing around it — so a document named forty lines up
-/// is not available to the person reading the citation. The practical
-/// consequence is that a citation may not be broken across a wrap: reflow the
-/// paragraph so the document and its section number stay on one line.
+/// The name has to be **in view**: on the citation's own line, or on a
+/// neighbouring line of the same comment block (in markdown, the same
+/// paragraph). A wrapped sentence is one sentence, and the writer did not choose
+/// where it broke — dartdoc renders the paragraph whole, so a citation wrapped
+/// as `(§N) in` / `` `doc/acl_design_specification.md` `` reads as one line to
+/// every reader of the generated page. What the window excludes is the case
+/// that really does strand a reader: a document named forty lines up, outside
+/// the paragraph that cites it. This is the rule `tool/check_section_refs.py`
+/// applies across `tom_ai/core` (its `in_view`), stated once for both.
+///
+/// A list named in front of the sign — `bug §N`, `tests §N` — is refused
+/// whatever is in view: it names a work item, not a document, and no document
+/// nearby makes it resolvable.
 ///
 /// There is deliberately no exemption for the *shape* of the number. Allowing
 /// `§<digits>.<digits>` on the grounds that quest bug lists are flat tests where
@@ -168,7 +175,7 @@ final _narrationPatterns = <RegExp>[
 final _allowedSectionRefs = <RegExp>[
   RegExp(r'RFC ?\d+'),
   RegExp(r'CWE-\d+'),
-  RegExp(r'\.md" *§|\.md` *§|\.md *§'),
+  RegExp(r'[\w./-]+\.md\b'),
 ];
 
 // -----------------------------------------------------------------------------
@@ -242,7 +249,8 @@ final _testkitIdPosition = RegExp('[\'"]\\s*[a-z]+\\d+(-(\\d+|\\\$\\w+))?:\\s');
 /// — so folding the id check into it would let one valid citation excuse
 /// everything else on its line, which is the failure the exemption is supposed
 /// to prevent rather than cause.
-bool _citesAWorkItem(File file, String line) {
+bool _citesAWorkItem(File file, List<String> lines, int index) {
+  final line = lines[index];
   for (final chunk in _proseOf(file, line)) {
     for (final (shape, known) in _shapes) {
       for (final match in shape.allMatches(chunk)) {
@@ -250,16 +258,49 @@ bool _citesAWorkItem(File file, String line) {
       }
     }
   }
-  return line.contains('§') &&
-      !_allowedSectionRefs.any((p) => p.hasMatch(line));
+  if (!line.contains('§')) return false;
+  if (_workItemMarker.hasMatch(line)) return true;
+  final view = _inView(file, lines, index);
+  return !_allowedSectionRefs.any((p) => p.hasMatch(view));
+}
+
+/// A list named in front of the sign, which names a work item rather than a
+/// document — see [_allowedSectionRefs].
+final _workItemMarker = RegExp(
+  r'\b(bugs?|tests?|gaps?|phases?|steps?|items?|plans?|todos?)\s*§',
+  caseSensitive: false,
+);
+
+/// A line that is part of a Dart comment block.
+final _commentLine = RegExp(r'^\s*///?');
+
+/// [lines] at [index] plus each neighbour in the same block — the same comment
+/// in Dart, the same paragraph elsewhere. See [_allowedSectionRefs].
+String _inView(File file, List<String> lines, int index) {
+  final prose = !file.path.endsWith('.dart');
+  bool joins(String text) =>
+      prose ? text.trim().isNotEmpty : _commentLine.hasMatch(text);
+  final span = [lines[index]];
+  if (joins(lines[index])) {
+    for (final neighbour in [index - 1, index + 1]) {
+      if (neighbour >= 0 &&
+          neighbour < lines.length &&
+          joins(lines[neighbour])) {
+        span.add(lines[neighbour]);
+      }
+    }
+  }
+  return span.join(' ');
 }
 
 /// True when [line] describes a previous state of the code.
-bool _narratesHistory(File _, String line) =>
-    _narrationPatterns.any((p) => p.hasMatch(line));
+bool _narratesHistory(File _, List<String> lines, int index) =>
+    _narrationPatterns.any((p) => p.hasMatch(lines[index]));
 
 /// Returns `'<path>:<line>: <text>'` for every line [offends] rejects.
-List<String> _scan(bool Function(File file, String line) offends) {
+List<String> _scan(
+  bool Function(File file, List<String> lines, int index) offends,
+) {
   final offenders = <String>[];
 
   for (final entity in _filesToScan()) {
@@ -271,7 +312,7 @@ List<String> _scan(bool Function(File file, String line) offends) {
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i];
       if (_testkitIdPosition.hasMatch(line)) continue;
-      if (!offends(entity, line)) continue;
+      if (!offends(entity, lines, i)) continue;
       offenders.add('$path:${i + 1}: ${line.trim()}');
     }
   }
