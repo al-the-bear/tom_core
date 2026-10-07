@@ -66,23 +66,23 @@
 ///
 /// ## What the framework ships, and what it does not
 ///
-/// **TOTP is the only mechanism in the box.** `TomTotp2FAClientMechanism` is the
-/// single implementation of [Tom2FAClientMechanism] this package provides, and
-/// the flow installs it for you.
+/// **TOTP is the only client mechanism in the box.** `TomTotp2FAClientMechanism`
+/// is the single implementation of [Tom2FAClientMechanism] this package
+/// provides, and the flow installs it for you.
 ///
-/// SMS and WebAuthn are named throughout this file and its neighbours — an
-/// `if (type == 'sms')` above, a `SmsClientMechanism()` in the example below, a
-/// masked phone number as the `hint` field's illustration. They are there to
-/// show *what the extension point is for*, because a design argued only against
-/// the one mechanism it ships is an argument that proves nothing. **None of them
-/// exists.** A deployment that needs SMS or WebAuthn writes the mechanism, and
-/// its server adaptor with it.
+/// The server ships more: `tom_core_server` registers `totp` and the
+/// delivered-code `email` and `sms` adaptors, each offered once its delivery
+/// service is installed. For those two the missing half is this one — a code
+/// field, a confirm step at enrolment, and the masked destination the server
+/// sends as `hint`. A deployment that offers them writes the mechanism and
+/// registers it; until then the enrolment chooser leaves the key out. The
+/// `if (type == 'sms')` above and the `SmsClientMechanism()` below are that
+/// mechanism. WebAuthn exists on neither side.
 ///
-/// That is a deliberate boundary rather than an unfinished list. The client half
-/// of an SMS factor is a phone-number field and a code field — an afternoon; the
-/// half that matters is a server adaptor that can actually deliver a message,
-/// which means a provider, a rate limit and a cost model. Shipping the easy half
-/// would advertise a factor the framework cannot complete.
+/// The SMS panel is not shipped on purpose. SMS is the weakest of the common
+/// factors and the dearest to run, so registering its client mechanism is the
+/// explicit step by which a deployment chooses to offer it, and the framework
+/// does not take that step for it.
 ///
 /// ## Registration
 ///
@@ -173,12 +173,13 @@ class Tom2FAChallengePanelContext {
   /// A short, displayable hint the mechanism supplied (a masked phone number,
   /// say). Empty when the mechanism has nothing useful to show.
   ///
-  /// **No shipped mechanism renders this.** TOTP is the only one in the box and
-  /// it has nothing to hint: the user reads the code off the device already in
-  /// their hand, so naming where it came from tells them nothing. The field
-  /// earns its place with the mechanisms that are not shipped — SMS and email
-  /// deliver the code *somewhere*, and "we sent it to ••••4417" is the
-  /// difference between waiting and giving up on the wrong phone.
+  /// **No shipped client mechanism renders this.** TOTP is the only one in the
+  /// box and it has nothing to hint: the user reads the code off the device
+  /// already in their hand, so naming where it came from tells them nothing.
+  /// The field earns its place with the delivered-code factors — the server's
+  /// `email` and `sms` adaptors fill it with the masked destination, and "we
+  /// sent it to ••••4417" is the difference between waiting and giving up on
+  /// the wrong phone.
   ///
   /// So the framework's half of the contract is delivery, not display: the flow
   /// hands on whatever the server sent, and it arrives as an empty string

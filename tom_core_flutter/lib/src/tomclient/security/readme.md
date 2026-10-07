@@ -49,15 +49,14 @@ the first build:
 Tom2FAClientRegistry.register(SmsClientMechanism());
 ```
 
-**TOTP is the only mechanism this package ships.** SMS and WebAuthn are named
-throughout the module — in the argument for having a registry at all, in every
-registration example, as the `hint` field's illustration — to show what the
-extension point is *for*; a pluggable design argued only against its one
-built-in proves nothing. Neither exists. A deployment that needs one writes the
-mechanism **and its server adaptor**: the client half of SMS is two fields,
-while the half that matters is a server that can deliver a message — a provider,
-a rate limit, a cost model — and shipping the easy half would advertise a factor
-the framework cannot complete.
+**TOTP is the only client mechanism this package ships.** `tom_core_server`
+ships three adaptors — `totp`, and the delivered-code `email` and `sms`, each
+offered once its delivery service is installed — so a deployment that offers SMS
+or email codes writes only the client mechanism: a code field, a confirm step at
+enrolment, and the server's masked destination as `hint`. Until it registers
+one, the enrolment chooser leaves that key out. The SMS panel is not shipped on
+purpose: SMS is the weakest common factor and the dearest to run, so offering it
+is a step the deployment takes. WebAuthn exists on neither side.
 
 `MyFlowController` is the one piece an application writes.
 [`example/security/security_example.dart`](../../../../example/security/security_example.dart)

@@ -2389,6 +2389,21 @@ resolves the pending record for its context and calls
   open by design, and adding one needs no change here (see
   [Writing your own mechanism](#writing-your-own-mechanism)).
   <!-- unpinned: absence — further mechanisms are application-supplied; the set is open -->
+- **The delivered-code factors have no shipped client panel.** `tom_core_flutter`
+  ships the TOTP client mechanism only. A deployment that offers `email` or `sms`
+  codes writes and registers the client mechanism — a code field and an
+  enrolment confirm step — and until it does, the client's enrolment chooser
+  leaves the key out. For SMS that is deliberate: it is the weakest common
+  factor and the dearest to run, so registering its panel is the deployment's
+  explicit step, on top of installing an SMS service.
+  <!-- unpinned: decision — no SMS or email client panel ships; the deployment registers one -->
+- **Nothing limits how often a code is sent.** Guesses are bounded per
+  challenge (see [the attempt counter](#the-attempt-counter-and-what-makes-it-a-bound)),
+  but every login that passes the first factor issues a fresh challenge, and so
+  a fresh mail or a fresh paid SMS, with no cap per principal, per destination or
+  per time window. A deployment offering SMS codes bounds sends at its gateway or
+  in its own login front until a send limit exists here.
+  <!-- unpinned: absence — no per-principal or per-destination send limit -->
 - **Two policies ship, and neither is a component.** `TomPrincipalFlag2FAPolicy`
   is the default and `TomRole2FAPolicy` is installed by hand. Neither carries
   `@TomComponent`, so a deployment that adds a dependency does not silently

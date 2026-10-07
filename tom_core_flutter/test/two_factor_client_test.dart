@@ -1161,18 +1161,18 @@ void main() {
 
     test('and is the only one the framework ships', () {
       // `contains` above would go on passing beside a second built-in. The
-      // documents say TOTP is the only mechanism in the box — SMS and WebAuthn
-      // appear throughout the dartdoc as illustrations of the extension point
-      // and neither exists — so the exclusivity is the claim, and this is what
-      // holds the sentence to the code.
+      // documents say TOTP is the only *client* mechanism in the box — the
+      // server's `email` and `sms` adaptors have no shipped panel, by decision —
+      // so the exclusivity is the claim, and this is what holds the sentence to
+      // the code.
       Tom2FAFlowPanel.registerBuiltInMechanisms();
 
       expect(
         Tom2FAClientRegistry.types,
         ['totp'],
         reason:
-            'the framework now installs a second mechanism; four documents '
-            'say TOTP is the only one it ships',
+            'the framework now installs a second client mechanism; four '
+            'documents say TOTP is the only one this package ships',
       );
     });
 
@@ -1201,8 +1201,8 @@ void main() {
         ['TomTotp2FAClientMechanism'],
         reason:
             'lib/ declares a mechanism beside the TOTP one; the documented '
-            'boundary — TOTP is the only factor the framework provides — has '
-            'to be revisited with it',
+            'boundary — TOTP is the only client mechanism this package '
+            'provides — has to be revisited with it',
       );
     });
 

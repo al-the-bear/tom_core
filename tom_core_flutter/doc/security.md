@@ -34,10 +34,11 @@ registry of pluggable per-mechanism panels, and the shipped TOTP mechanism.
 | `Tom2FATexts` | class | Every resource key this feature resolves, and the one helper that resolves them — all static |
 | `TomQrCodeView` | class | A QR code painted from the pure-Dart `qr` encoder, re-encoded only when its payload changes |
 
-**TOTP is the only mechanism the framework ships.** SMS and WebAuthn appear
-throughout this document and the module's dartdoc — the registration example is
-`SmsClientMechanism()`, the `hint` field's illustration is a masked phone number
-— to show what the extension point is *for*. Neither exists. See
+**TOTP is the only client mechanism this package ships.** The server ships
+three — `totp`, and the delivered-code `email` and `sms` — so for those two the
+missing half is this one: the registration example is `SmsClientMechanism()`,
+and the `hint` field's illustration is the masked phone number the server's SMS
+adaptor already sends. WebAuthn exists on neither side. See
 [What the Framework Ships](#what-the-framework-ships).
 
 The division of labour is the point of the module. Everything about a
@@ -231,11 +232,12 @@ already in the list. Supply nothing and the caption is **omitted rather than
 blanked** — an empty caption is a gap that reads as a missing value instead of
 an absent one.
 
-`hint` takes the same path and **no shipped mechanism renders it**. TOTP has
-nothing to hint: the user reads the code off the device already in their hand.
-The field earns its place with the mechanisms that are not in the box — SMS and
-email deliver the code *somewhere*, and "we sent it to ••••4417" is the
-difference between waiting and giving up on the wrong phone. So the framework's
+`hint` takes the same path and **no shipped client mechanism renders it**.
+TOTP has nothing to hint: the user reads the code off the device already in
+their hand. The field earns its place with the delivered-code factors — the
+server's `email` and `sms` adaptors fill it with the masked destination, and
+"we sent it to ••••4417" is the difference between waiting and giving up on the
+wrong phone. So the framework's
 half of the contract here is **delivery, not display**: the flow hands on
 whatever the server sent, as an empty string rather than null so a panel can
 render it without a null check. `test/two_factor_client_test.dart` holds it to
@@ -396,25 +398,33 @@ refusal arriving with no explanation, after the user has done the work.
 
 ## What the Framework Ships
 
-One mechanism: `TomTotp2FAClientMechanism`, installed by the flow so an
+One client mechanism: `TomTotp2FAClientMechanism`, installed by the flow so an
 application gets it without wiring.
 
-SMS and WebAuthn are named in at least four places across this module — an
-`if (type == 'sms')` in the library dartdoc's argument for a registry, a
-`SmsClientMechanism()` in every registration example, a masked phone number as
-the `hint` field's illustration, and "which looks nothing like enrolling an SMS
-factor … or a WebAuthn one" in the TOTP mechanism's own preamble. **None of them
-exists.** They are there because a pluggable design argued only against the one
-mechanism it ships is an argument that proves nothing: the reason the panels are
-pluggable at all is that enrolling TOTP (show a secret), SMS (type a phone
-number, wait) and WebAuthn (touch a key, no visible payload) look nothing alike.
+The server ships more. `tom_core_server` registers three adaptors — `totp`, and
+`email` and `sms`, which generate a code, deliver it through the deployment's
+`TomEmailService` or `TomSmsService`, and are offered only once that service is
+installed. For those two the half that is not here is the client's: a code
+field, a confirm step at enrolment, and the server's masked destination shown
+as `hint`. A deployment that offers SMS or email codes writes that mechanism and
+registers it; until it does, the enrolment chooser leaves the key out, because
+it lists only what this build can render. WebAuthn exists on neither side.
 
-A deployment that needs one writes the mechanism, and its **server adaptor**
-with it. That is the boundary, and it is deliberate rather than an unfinished
-list: the client half of an SMS factor is a phone-number field and a code
-field — an afternoon — while the half that matters is a server adaptor that can
-deliver a message, which means a provider, a rate limit and a cost model.
-Shipping the easy half would advertise a factor the framework cannot complete.
+The SMS panel is not shipped on purpose. SMS is the weakest of the common
+factors — a SIM swap or an intercepted text defeats it — and the dearest to
+run, since every challenge is a paid message. The server adaptor is inert until
+a deployment installs an SMS service; registering the client mechanism is the
+second, explicit step by which a deployment chooses to offer the factor, and
+the framework does not take it on the deployment's behalf.
+
+SMS and WebAuthn are also named elsewhere in this module — an
+`if (type == 'sms')` in the library dartdoc's argument for a registry, a
+`SmsClientMechanism()` in every registration example, and "which looks nothing
+like enrolling an SMS factor … or a WebAuthn one" in the TOTP mechanism's own
+preamble — because a pluggable design argued only against the one mechanism it
+ships proves nothing: the panels are pluggable because enrolling TOTP (show a
+secret), SMS (type a number, wait) and WebAuthn (touch a key, no visible
+payload) look nothing alike.
 
 The exclusivity is held by the suite, not only by this paragraph: it asserts
 that the registry holds exactly `totp` after the built-ins install, and that
