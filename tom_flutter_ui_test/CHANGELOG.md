@@ -1,5 +1,13 @@
 ## Unreleased — cleanup pass
 
+### Tests
+
+- **`test/formatting_test.dart`** fails the suite when a Dart file the
+  package authors is not `dart format`-clean. It states the package's file
+  floor, landmark directories and generated output, and delegates the
+  sweep to `tom_ai/core/tool/package_format_guard.dart`, which every
+  package under `tom_ai/core` shares.
+
 - **The gate is a bare `flutter test` again; `--concurrency=1` is gone from the
   README.** The flag was carried on the stated ground that parallel test
   isolates would corrupt the process-global state the widget tests install —

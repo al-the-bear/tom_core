@@ -1,5 +1,13 @@
 ## Unreleased
 
+### Tests
+
+- **`test/formatting_test.dart` delegates to the shared guard.** The walk,
+  the generated-file exclusion, the coverage floor and the choice of
+  formatter moved to `tom_ai/core/tool/package_format_guard.dart`, which
+  every package under `tom_ai/core` shares; the file keeps only this
+  package's floor, landmarks and generated-output flag.
+
 ### Added
 
 - **`@TomRecommendedField()` and `TomReflectionInfo.missingRecommendedFields`.**

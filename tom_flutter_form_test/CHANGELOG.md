@@ -1,5 +1,13 @@
 ## Unreleased — cleanup pass
 
+### Tests
+
+- **`test/formatting_test.dart`** fails the suite when a Dart file the
+  package authors is not `dart format`-clean. It states the package's file
+  floor, landmark directories and generated output, and delegates the
+  sweep to `tom_ai/core/tool/package_format_guard.dart`, which every
+  package under `tom_ai/core` shares.
+
 Each pass count below (`+513`, `+491`, `+433 -22`) is the one its change was
 measured at, and stays as the evidence for that change; it is not a description
 of the suite today. The current suite is described in the README's

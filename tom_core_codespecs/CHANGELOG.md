@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Tests
+
+- **`test/formatting_test.dart`** fails the suite when a Dart file the
+  package authors is not `dart format`-clean. It states the package's file
+  floor, landmark directories and generated output, and delegates the
+  sweep to `tom_ai/core/tool/package_format_guard.dart`, which every
+  package under `tom_ai/core` shares.
+
 ### Changed
 
 - **The CodeSpecs design ships with the package.** `codespecs_mapping.md`

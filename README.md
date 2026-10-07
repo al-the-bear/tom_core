@@ -261,6 +261,7 @@ it and start eight test suites.
 | [`tool/check_doc_dependencies.py`](tool/check_doc_dependencies.py) | Audits each package document's Dependencies section against the names its `pubspec.yaml` declares |
 | [`tool/check_module_dependencies.py`](tool/check_module_dependencies.py) | Audits each *module* document's Dependencies table against the imports its module actually has |
 | [`tool/check_dart_format.py`](tool/check_dart_format.py) | Holds every Dart file in the repository to `dart format`, across all 23 packages |
+| [`tool/package_format_guard.dart`](tool/package_format_guard.dart) | The in-suite formatting guard every framework package's `test/formatting_test.dart` delegates to |
 | [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the error vocabulary a document states — the completion documents' "Error keys" sections, and the hand-written module guides — against the keys the code raises |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
 | [`tool/check_dartdoc_build.py`](tool/check_dartdoc_build.py) | Builds each gated package's API documentation, requires `dart doc` to report nothing, and fails a doc-comment link into a package the writer does not depend on |
@@ -461,9 +462,16 @@ The scope is every `.dart` file under `tom_ai/core`, found by walking it rather
 than from a list of directories to keep up to date. Left out: dot-directories,
 `tool/ztmp` (the scratch tree `check_doc_dart_blocks.py` writes documentation
 snippets into — their wrapping is not a package's defect), and generated output.
-`tom_core_kernel` and `tom_core_server` keep their own in-suite
-`formatting_test.dart`, which is where a developer working in those packages
-gets the signal; this covers the other 21, which had nothing.
+Each of the eight framework packages also keeps an in-suite
+`test/formatting_test.dart`, which is where a developer working in that package
+gets the signal; this gate is what covers the fifteen sample packages besides.
+The eight are one guard rather than eight: the walk, the generated-file
+exclusion, the coverage floor and the choice of formatter live once in
+`tool/package_format_guard.dart`, imported by relative path, and each package's
+file states only its floor, its landmark directories and whether it commits
+generated output. The formatter is the `dart` running the suite under `dart
+test`, and the SDK's `dart` found through `FLUTTER_ROOT` under `flutter test`,
+whose own executable is the test engine and hangs when handed `format`.
 
 ```bash
 python3 tool/check_doc_error_keys.py                 # every section and guide
