@@ -617,6 +617,11 @@ decision: a deployment with a database can attach files without also
 provisioning a bucket, a volume or a credential, and a backup of the database is
 a backup of the files.
 
+`TomDatabaseBlobStore.named(datasourceName)` — the constructor configuration
+uses — looks the data source up when the store is built and refuses a name
+nobody registered with `storage.database.unknown_datasource`, so a misspelt
+`datasource:` fails at start-up rather than on the first upload.
+
 Three design points, each forced rather than chosen:
 
 - **Chunks, not one `LONGBLOB`.** A single column would have to be read whole to
@@ -698,6 +703,14 @@ An upload smaller than `partSize` (8 MiB by default) is a single signed `PUT`.
 A larger one becomes a multipart upload: initiate, one part per `partSize`
 window, complete. A part failure aborts the upload, so a half-uploaded object is
 not left to be billed for. `x-amz-meta-filename` carries the original name.
+
+S3 refuses a multipart part below 5 MiB (`minimumPartSize`), and such a store
+could not upload anything larger than one part, so a smaller `partSize` is
+refused at construction with `storage.s3.part_size_too_small`. Two answers from
+the object store break the protocol rather than failing a request, and each has
+its own key: an initiation that returns no upload id
+(`storage.s3.no_upload_id`), and a part acknowledged without an `ETag`, which
+the completing request must name (`storage.s3.part_without_etag`).
 
 **`delete`'s boolean is best-effort here, and exact everywhere else.** The
 contract says `delete` answers whether anything was there. A filesystem, a map
@@ -890,7 +903,10 @@ final store = TomBlobStoreInfo.defaultStore;          // or .storeNamed('archive
 
 One entry may carry `default: true`; when the configuration names exactly one
 store it becomes the default without saying so, because a server with one place
-to put files has no ambiguity to resolve.
+to put files has no ambiguity to resolve. Asking for a default nothing supplied
+raises `storage.registry.no_default_store`, and `storeNamed` with a name no
+entry has raises `storage.registry.unknown_store`; both list the stores that are
+configured.
 
 That count is over the entries the call registered, not over every store the
 process happens to hold. An application that builds a store in code first — a
@@ -938,7 +954,10 @@ fails like any other unknown type.
 
 `TomBlobStoreInfo(name, settings)` constructs an entry; `open()` builds its
 store. Every configured entry passes through the interval between the two, and
-an `open()` that throws — an unregistered backend, a missing setting — leaves an
+an `open()` that throws — an unregistered backend
+(`storage.registry.unknown_backend`), a missing required setting such as a
+directory store's `root` or a database store's `datasource`
+(`storage.registry.missing_setting`) — leaves an
 entry sitting in it. Reading `store` there raises
 `storage.registry.store_not_opened`, naming the store and its configured type,
 and `isOpen` answers the same question without throwing.

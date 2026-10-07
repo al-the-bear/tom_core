@@ -505,6 +505,18 @@ to reflect a type it may not know. A mislabelled row is therefore the one way
 a defaulted instance still comes back, and it is a data fault rather than a
 caller's mistake.
 
+Construction itself can still fail, and does so as a codec exception rather
+than as whatever reflection raised: a class with no usable no-argument or
+`fromJson` constructor, or a `fromJson` that throws, is refused with
+`preferences.decode.failed`, the original error on `rootException`. Two other
+read failures come before any construction is attempted:
+
+| Cause | Error key |
+|-------|-----------|
+| The stored text is not JSON at all | `preferences.decode.invalid_json` |
+| A scalar's JSON value cannot be narrowed to the requested scalar type | `preferences.decode.failed` |
+| A reflected class cannot be instantiated from the payload | `preferences.decode.failed` |
+
 The scalar case is the opposite, which is worth stating because it explains why
 the guard has to exist at all: a decoded scalar carries its own runtime type, so
 narrowing has something to test — but only *after* the `valueType` check has
@@ -884,6 +896,14 @@ checked exactly; a **collection** is checked exactly *and* element by element,
 because the element type is in the name; a reflected class is only required to
 be a JSON object, since which class the name denotes is deliberately not
 resolved — a preference type may be one only the client knows.
+
+The refusals, in the order they are checked:
+
+| Cause | Error key |
+|-------|-----------|
+| The text is longer than `maxValueBytes` | `preferences.encoded.too_large` |
+| The text is not valid JSON | `preferences.encoded.invalid_json` |
+| The JSON is not the shape `valueType` declares — a wrong scalar, a non-object for a class, a collection element of the wrong type | `preferences.encoded.type_mismatch` |
 
 ## Best Practices
 

@@ -528,7 +528,13 @@ intended lifetime, which is only discovered at some later read.
 
 If neither a local cache nor forwarding is available, the helper throws
 `TomCacheException`. The three static helpers (`from…`, `to…`, `removeFrom…`)
-share the same forward-or-throw rule.
+share the same forward-or-throw rule, each with its own key:
+
+| Helper | Key when no cache of that name is reachable |
+| --- | --- |
+| `from…` (read) | `error.cache_retrieve.not_found` |
+| `to…` (store) | `error.cache_store.not_found` |
+| `removeFrom…` (remove) | `error.cache_remove.cache_not_found` |
 
 A failure raised on the main isolate comes back as a **throw**, so a forwarded
 operation fails the way it would have failed locally: a store into a cache that

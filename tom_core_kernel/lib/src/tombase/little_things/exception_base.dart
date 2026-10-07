@@ -54,7 +54,7 @@ import 'little_things.dart';
 ///
 /// ```dart
 /// // Basic exception
-/// throw TomException('order.submit.rejected', 'Something went wrong');
+/// throw TomException('payment.transfer.rejected', 'Transfer rejected');
 ///
 /// // Exception with parameters for context
 /// throw TomException(

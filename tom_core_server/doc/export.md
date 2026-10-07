@@ -59,7 +59,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 | `TomDirectoryExportStore` / `TomMemoryExportStore` | classes | Filesystem and in-memory backends |
 | `TomBlobExportStore` | class | The same interface over the `file_storage` blob API — every configured backend at once |
 | `TomStoredExport` | class | What was stored, where, and how big it turned out |
-| `TomExportStoreOperation` | enum | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete` / `deletePrefix`, each carrying a stable `export.store.*` error key (`export.store.write_failed`, `read_failed`, `probe_failed`, `delete_failed`, `export.store.prefix_delete_failed`), so the same failure reads the same whichever backend is configured |
+| `TomExportStoreOperation` | enum | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete` / `deletePrefix`, each carrying a stable `export.store.*` error key (`export.store.write_failed`, `export.store.read_failed`, `export.store.probe_failed`, `export.store.delete_failed`, `export.store.prefix_delete_failed`), so the same failure reads the same whichever backend is configured |
 | `TomExportService` | class | The seam an endpoint calls: respond with, or store, an export |
 | `tomFormatCellAsText` | function | The one answer to "how does a value look as text" |
 | `TomExportException` | class | The module's base error |
@@ -114,9 +114,16 @@ Decisions in that shape worth knowing:
   `DateTime` is exactly what the query layer's `TomGroupedRow` produces, so an
   aggregate result adapts without a lossy conversion and no renderer meets a
   value it has no rule for.
-- **Validation is at construction**: no sections, no columns, a duplicate
-  column name or an empty column name all throw `TomExportException` while the
-  caller who built it wrong is still on the stack.
+- **Validation is at construction**: each mistake throws `TomExportException`
+  while the caller who built it wrong is still on the stack —
+
+  | Mistake | Error key |
+  | ------- | --------- |
+  | A result with no sections | `export.result.no_sections` |
+  | A section with no columns | `export.section.no_columns` |
+  | A section naming one column twice | `export.section.duplicate_column` |
+  | A column with an empty name | `export.column.name_empty` |
+  | A column whose stated `width` is below one | `export.column.invalid_width` |
 
 `metadata` is the context that makes a downloaded file interpretable months
 later — the filter that produced it, who ran it, as of when. Each format puts it
@@ -225,8 +232,10 @@ the headings, and only then are the two files identical.
 not `created_at`. That is how the audit trail keys its own image, for the same
 reason — the column name is a mapping detail a spec author should not have to
 know — and `include`, `exclude` and `titles` all use the same key. A name none of
-them matches **throws**: a typo that silently drops a column is the drift this
-constructor exists to remove.
+them matches **throws** `export.entities.unknown_column`: a typo that silently
+drops a column is the drift this constructor exists to remove. An entity that
+declares no columns, or is not registered with the reflector, has nothing to
+derive from and is refused with `export.entities.not_reflected`.
 
 ### Two Kinds of Column That Are Not Exported
 
@@ -236,9 +245,12 @@ constructor exists to remove.
 | A `@TomFileReference` column | **Excluded**; `includeFileReferences: true` exports the keys | The column holds an internal *storage key*, not content. A spreadsheet of them is a small information leak and is useless to the reader either way |
 
 `include` narrows the exportable set and never widens it, so naming a redacted
-field or — without the flag — a file column is an error rather than a quiet
+field (`export.entities.redacted_column`) or — without the flag — a file column
+(`export.entities.file_reference_column`) is an error rather than a quiet
 override. Which of the two rules applied would otherwise depend on which was
-written last.
+written last. A projection left with nothing once exclusions, redactions and
+file columns are taken out is refused too, with `export.entities.no_columns`:
+an export with no columns is a mistake, not a report.
 
 The alternative for file columns worth naming is exporting a **URL** rather than
 a key. That is not derived here, and deliberately: the public URL of a file is
@@ -357,7 +369,8 @@ An application adds a format — a fixed-width extract a partner insists on, an
 internal JSON-lines dump — without the export service knowing about it.
 Registering an existing id **replaces**, on purpose: a semicolon CSV for a
 European locale is still `csv`, and should not need a new id. An unknown format
-throws rather than returning `null`, naming what *is* available.
+throws `export.format.unknown` rather than returning `null`, naming what *is*
+available.
 
 `TomExportFormats.standard()` is a factory, not a shared constant: a registry is
 mutable, and a process-wide mutable default is a race between whichever modules
@@ -516,7 +529,8 @@ than discovering them:
 | `compress` | `true` | `false` makes the text readable in a hex dump |
 
 `rowLimit` fails rather than truncating. A silently shortened report is a wrong
-report that looks right; the error names the limit and points at CSV, which has
+report that looks right; the error, `export.pdf.row_limit_exceeded`, names the
+limit and points at CSV, which has
 no ceiling at all, and at XLSX, whose ceilings are two orders of magnitude
 higher (below).
 

@@ -418,7 +418,13 @@ projection columns an operator searches by — actor, action, target, outcome,
 verifies against its own hash without the reader reproducing the encoding. The
 projection columns are a lossy index, truncated to fit rather than allowed to
 fail an insert, because the trail is fail-closed and a rejected row would take
-the audited action down with it.
+the audited action down with it. Reading the rows back runs the other way: a row
+whose record text will not parse is a finding, not a gap to paper over, and is
+raised as `audit.sql.malformed_record` naming the table, the writer and the
+row's hash.
+
+`TomSqlAuditSink.named` looks its data source up when the sink is built and
+refuses a name nobody registered with `audit.sink.unknown_datasource`.
 
 Four design points are worth stating outright:
 
@@ -515,7 +521,9 @@ drops the trigger, prunes, and recreates it.
 The restricted serving credential has no `DELETE`, which is the point — and it
 means **retention cannot be run by the server that writes the trail**. Calling
 `purgeToMaxEntries` on a correctly restricted sink fails, loudly, which is the
-right outcome and a surprising one to meet for the first time in production.
+right outcome and a surprising one to meet for the first time in production. A
+negative `maxEntries` is refused before any statement is issued, with
+`audit.retention.negative_limit`.
 Pruning is an operator task performed with a separate, privileged credential.
 
 ### What the sink checks, and what it does about it
@@ -531,7 +539,8 @@ observations, because neither alone is conclusive:
   trigger-protected table looks perfectly mutable to the privilege probe alone.
 
 `open()` runs the check and, when the table can be rewritten in place, either
-**warns** or — with `requireWriteOnce: true` — **refuses to start**. The default
+**warns** or — with `requireWriteOnce: true` — **refuses to start**, with
+`audit.sql.not_write_once`. The default
 is the warning: a sink that refused to start on a developer machine would push
 people towards installing no sink at all, and an unprotected trail is still
 better than no trail. A deployment that has made the arrangement should set the
@@ -587,7 +596,9 @@ Both are closed by anchoring.
 The three findings above are accusations, and a reader that fills in a field it
 could not find manufactures one. So `TomAuditEntry.fromJson` defaults nothing —
 an absent, mistyped or empty `index`, `hash`, `previousHash` or `record` raises
-`TomAuditException` and the line is refused:
+`TomAuditException` and the line is refused, each field with its own key —
+`audit.entry.missing_index`, `audit.entry.missing_hash`,
+`audit.entry.missing_previous_hash` and `audit.entry.missing_record`:
 
 - a defaulted `hash` reads back as an entry whose hash does not match its
   contents, reported as **content changed** — the trail says a record was
@@ -885,6 +896,13 @@ chain, the read that throws, and the routing — including that an inconclusive
 check reaches neither the findings nor the callback, and that a throwing
 callback propagates only after every chain has been checked.
 
+An anchor is held to the same rule as an entry. `TomAuditAnchor.fromJson`
+refuses one that lacks its writer, entry count, head hash or creation time with
+`audit.anchor.malformed`, and `TomFileAuditAnchorStore` reports an anchor-file
+line that does not read as an anchor as `audit.anchor.malformed_line`, naming
+the file and the line — the archive is the thing that is supposed to be
+unedited, so a damaged line in it is a finding rather than something to skip.
+
 ### Shutting the publisher down
 
 The final anchor of a graceful shutdown is the one that pins the chain's last
@@ -894,6 +912,9 @@ completes once that anchor is in the store. A store failure is thrown — the
 caller asked for a publication and is entitled to learn it did not happen — and
 the publisher is closed either way. Every call is handed the same close, so a
 shutdown that reaches the publisher twice publishes one final anchor, not two.
+After that, `publishNow` throws `audit.anchor.publisher_closed`: an anchor
+claims that the process was watching the chain at that moment, which a closed
+publisher no longer is.
 
 Because `close()` is `TomClosable`'s method, a publisher registered with the
 shutdown cleanup is awaited like any other closable, within the phase's budget.

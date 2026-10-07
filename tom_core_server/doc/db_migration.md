@@ -135,7 +135,8 @@ name. The description is letters and underscores (`[a-zA-Z_]+`) — no digits �
 and the `@<env>` tag is **optional**: `[3]-demo_seed@dev.sql` applies only under
 the `dev` environment, `[3]-demo_seed@dev,test.sql` under either, and an
 untagged name applies everywhere. A name that does not match aborts the run with
-a `TomDbMigrationException`; see [Environment Tags](#environment-tags) for what
+a `TomDbMigrationException` keyed
+`db_migration.migration.illegal_filename_in_migrations_directory`; see [Environment Tags](#environment-tags) for what
 the tag does.
 
 Within a schema, files are applied in **ascending numeric version order** — so
@@ -162,6 +163,8 @@ A migration is identified by its filename without extension, so
 …/[3]-add_index.ddl and …/[3]-add_index.sql cannot be told apart.
 Remove or rename one.
 ```
+
+The key is `db_migration.migration.duplicate_migration_basename`.
 
 The alternative is not a tie-break but a coin toss. Collecting the directory
 into a map keyed by basename means the second file the listing yields
@@ -275,7 +278,8 @@ while it is happening:
    touched.
 
 So the collision is refused while it is still a pair of filenames, by
-`TomDbMigrations.orderMigrationNames`. Two details of *how* it is refused are
+`TomDbMigrations.orderMigrationNames`, as
+`db_migration.migration.duplicate_migration_version` naming both files. Two details of *how* it is refused are
 deliberate:
 
 - **The comparison is on the parsed integer**, not the bracketed text, so `[1]`
@@ -420,8 +424,10 @@ await TomDbMigrations.migrateDatabases('migrations');
 
 For each `<datasourceName>` the orchestrator:
 
-1. resolves the `TomDataSourceInfo` by name (missing → exception);
-2. resolves the migrator for the data source's `type` (missing → exception);
+1. resolves the `TomDataSourceInfo` by name (missing →
+   `db_migration.migration.no_datasource_info_found`);
+2. resolves the migrator for the data source's `type` (missing →
+   `db_migration.migration.no_migrator_found_for_datasource_type`);
 3. hands both to `TomDbMigrations.migrateDataSource`, which walks the schemas.
 
 Then, **for each `<schemaName>` under that data source**, `migrateDataSource`:
@@ -448,11 +454,15 @@ A migrator registers by annotating its class with
 `@TomDbMigrationAdaptor("<type>")` and `@tomReflector`.
 `TomDbMigrations` scans `tomReflector.annotatedClasses` on first use, builds one
 migrator per type, and rejects duplicate or non-conforming registrations with a
-`TomDbMigrationException`. The `<type>` must match the data source's
+`TomDbMigrationException`: a second adaptor for a type already claimed is
+`db_migration.initialization.found_more_than_one_migration_adapter`, and an
+annotated class that does not implement `TomDbMigrator` is
+`db_migration.initialization.migrator_does_not_implement_tom_db_migrator`. The `<type>` must match the data source's
 `TomDataSourceInfo.type`.
 
 Building a candidate is the one step here that can fail for a reason outside
-the module, so `instantiateMigrator` reports it in full: the constructor's
+the module, so `instantiateMigrator` reports it in full, as
+`db_migration.initialization.failed_to_instantiate_migrator`: the constructor's
 error is named in the message **and** forwarded as the raised exception's root
 cause, together with the trace from where it was thrown. The name of the class
 that could not be built says nothing about why — a missing zero-argument
@@ -482,7 +492,9 @@ table by hand.
 
 `initializeMigration` binds the instance to one `(data source, schema)` pair,
 creates that pair's table if absent and loads its applied versions (mapped onto
-`TomDbVersion`). Because one instance serves every `"mariadb"` schema in turn,
+`TomDbVersion`); a failure to create the table is
+`mariadb_migration_adapter.initialize.schema_creation_failed`, and a failure to
+read the history `mariadb_migration_adapter.initialize.version_query_failed`. Because one instance serves every `"mariadb"` schema in turn,
 binding is a **rebind**: the loaded version list is *replaced*, never extended,
 so it always describes the schema currently in hand. `applyMigration` refuses —
 with `mariadb_migration.apply_migration.not_initialized_for_schema` — to run
@@ -500,11 +512,16 @@ history `3, 1, 2`. Sort a copy by `version` if version order is what you need.
 
 `applyMigration` then, per script:
 
-- if the `version` is already recorded, verifies the **description matches**, the
-  recorded **checksum is readable**, and the **checksum matches** (a mismatch
-  means a past migration was edited → failure) and skips;
+- if the `version` is already recorded, verifies the **description matches**
+  (`mariadb_migration.apply_migration.description_mismatch`), the
+  recorded **checksum is readable**, and the **checksum matches**
+  (`mariadb_migration.apply_migration.checksum_mismatch` — a mismatch
+  means a past migration was edited) and skips;
 - otherwise runs the script, records the outcome — including a failed script
-  with `success = 0` — and rethrows on failure.
+  with `success = 0` — and on failure throws
+  `mariadb_migration.apply_migration.failed`, carrying the script's error as its
+  root cause. A failure to write that outcome row is reported instead as
+  `mariadb_migration.apply_migration.update_version_table_failed`.
 
 ### The outcome row is written with bound parameters
 

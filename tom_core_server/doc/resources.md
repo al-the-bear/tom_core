@@ -78,8 +78,9 @@ gave `zh_HANS`, a key naming no locale, and because the chain still reached bare
 `zh` the deployment saw Chinese text and never learnt that its `zh_CN` bundle was
 unreachable.
 
-That shape is enforced rather than assumed. A country that is not two letters
-raises `TomResourceLocaleException` instead of becoming an unmatchable bundle
+That shape is enforced rather than assumed. A country that is not an assigned
+ISO 3166-1 alpha-2 code raises `TomResourceLocaleException` with
+`resources.locale.invalid_country` instead of becoming an unmatchable bundle
 key:
 
 ```dart

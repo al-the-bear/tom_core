@@ -231,7 +231,12 @@ response carries what was declared *for the response*, and nothing else.
 
 For each scanned service class, `initializeRouter` finds the instance to invoke:
 
-1. a `@TomComponentReference` on the class (resolve the named/typed bean);
+1. a `@TomComponentReference` on the class (resolve the named/typed bean). It
+   names its bean by `componentName` or by `referencedType`, exactly one of
+   them: neither is `endpoint_pipeline.initialize_router.component_reference_invalid`,
+   both is `endpoint_pipeline.initialize_router.component_reference_invalid_both_set`,
+   and a second reference on one class is
+   `endpoint_pipeline.initialize_router.multiple_component_references`;
 2. for API implementations, the bean for the class's own type;
 3. for interface services, a component class that extends/implements the
    interface (its bean);
@@ -309,11 +314,25 @@ The body strategy is why a request DTO is **reflection-first**: it is filled by
 `tomReflectionInfo.setValues`, so the type needs `@tomReflectable` and **plain
 non-`final` members** — nothing else. A `final` member cannot be assigned after
 construction, so a payload key naming one does not quietly land elsewhere, it
-fails the request with
-`reflection.set.unexpected_condition_final_static_private`. `final` members in
+fails the request — as
+`endpoint_pipeline.handle_method_call.parameter_instantiation_failed`, with the
+reflection module's `reflection.set.unexpected_condition_final_static_private`
+as its root cause. `final` members in
 request and response classes are discouraged throughout Tom Core for that
 reason; the pipeline inherits the rule rather than restating it, because
 binding is the reflection module's contract and not a policy of its own.
+
+Every way the body and context routes can fail has a key of its own, so the
+reflection error behind a failure travels as its root cause rather than being
+the only name for it:
+
+| Key | Raised when |
+| --- | ----------- |
+| `endpoint_pipeline.handle_method_call.request_body_not_json` | the body is not JSON, or decodes to something other than an object |
+| `endpoint_pipeline.handle_method_call.parameter_instantiation_failed` | the body decoded, and building the parameter from it threw |
+| `endpoint_pipeline.handle_method_call.parameter_instantiation_invalid_type_in_context` | the request context holds an entry under the parameter's name that is neither of its type nor a map |
+| `endpoint_pipeline.handle_method_call.parameter_instantiation_from_context_failed` | building the parameter from that context map threw |
+| `endpoint_pipeline.handle_method_call.parameter_instantiation_general_failure` | any other failure while binding the parameter |
 
 ### Binding a Query Parameter
 
@@ -367,12 +386,12 @@ Exactly one shortening is legitimate — dropping **trailing optional**
 parameters, which is how Dart applies their defaults. Everything else fails the
 request with a `TomEndpointHandlerException` naming the parameter at fault:
 
-| Key (under `endpoint_pipeline.bind_parameters.`) | Raised when |
-| ------------------------------------------------ | ----------- |
-| `unparsable_url_value` | A **path variable or query value** whose parameter is a primitive the value will not parse as — `/items/abc` or `?count=abc` on an `int`. Names the parameter, the type, the source and the offending value. |
-| `unbindable_parameter` | A **required** parameter that no strategy could supply. |
-| `unbindable_optional_parameter` | An **optional** parameter was not bound, but one *after* it was — omitting it would slide the later value into its slot. |
-| `named_parameter_not_supported` | A **named** parameter was bound. Endpoint methods are invoked with positional arguments only, so declare it positionally instead. |
+| Key | Raised when |
+| --- | ----------- |
+| `endpoint_pipeline.bind_parameters.unparsable_url_value` | A **path variable or query value** whose parameter is a primitive the value will not parse as — `/items/abc` or `?count=abc` on an `int`. Names the parameter, the type, the source and the offending value. |
+| `endpoint_pipeline.bind_parameters.unbindable_parameter` | A **required** parameter that no strategy could supply. |
+| `endpoint_pipeline.bind_parameters.unbindable_optional_parameter` | An **optional** parameter was not bound, but one *after* it was — omitting it would slide the later value into its slot. |
+| `endpoint_pipeline.bind_parameters.named_parameter_not_supported` | A **named** parameter was bound. Endpoint methods are invoked with positional arguments only, so declare it positionally instead. |
 
 A named parameter that is *not* bound is simply absent and its default applies;
 it holds no positional slot, so it can shift nothing.
@@ -702,12 +721,25 @@ route from bytes to storage, and multipart takes it:
 final stored = await attachment.storeIn('document', 'attachment', saved.id);
 ```
 
+A table and column pair that names no registered slot is refused before any
+byte moves, with `file_endpoint.unknown_slot`.
+
 A multipart part must be **materialised** to be read (part N+1 is unreachable
 until part N is drained), so each file part is buffered, and
 `TomMultipartForm.globalSettingMaxFilePartBytes` (8 MiB) states the ceiling out
 loud rather than letting a large upload discover it as an out-of-memory crash.
 Bulk transfer belongs on the raw-body file endpoint, which streams and needs no
 ceiling at all.
+
+Decoding fails the request as a `TomFormBindingException`, each cause with its
+key:
+
+| Key | Raised when |
+| --- | ----------- |
+| `form_binding.malformed_multipart_body` | the multipart body cannot be decoded |
+| `form_binding.malformed_url_encoded_body` | the URL-encoded body cannot be decoded |
+| `form_binding.file_part_too_large` | a file part exceeds the ceiling; names the field and the limit |
+| `endpoint_pipeline.bind_parameters.missing_file_part` | a `TomFormFile` parameter has no part of its name |
 
 **The one-file form does not get a streaming path either**, and that is a
 decision rather than an omission. A form with a single file part could in
@@ -797,8 +829,18 @@ What differs:
   is finished and the zone carrying the `TomPrincipal`, the execution context
   and the request id would otherwise be gone — the same fix the streamed file
   download needed (bug D22);
-- `@TomTransactional` is refused at mount time: a transaction cannot span a
-  connection.
+- `@TomTransactional` is refused at mount time, with
+  `endpoint_pipeline.create_routes_for_endpoint.transactional_web_socket`: a
+  transaction cannot span a connection.
+
+A `TomWebSocketConnection` is attached to its channel by the pipeline at upgrade
+time, exactly once: attaching a second channel is
+`web_socket_endpoint.already_attached`, and sending or reading on a connection
+nothing has attached is `web_socket_endpoint.not_attached`. A handler always
+receives an attached connection, so either one means the connection was built
+or reused outside the pipeline. The pipeline's own socket entry point refuses an
+endpoint that declares no WebSocket transport with
+`endpoint_pipeline.handle_web_socket_call.not_a_socket_endpoint`.
 
 `protocols`, `allowedOrigins` and `pingInterval` are passed through to the
 handshake. `allowedOrigins` is the handshake-time counterpart of CORS — the
@@ -898,7 +940,11 @@ Each endpoint has a `TomErrorHandler`. The pipeline calls
 `handleInvocationError` when the method throws and `handleConversionError` when
 serialising the result fails; both default to `handleErrorDefault`. If a handler
 itself throws, the pipeline raises a `TomEndpointHandlerException` wrapping both
-errors.
+errors — `endpoint_pipeline.handle_method_call.error_handler_failed` for the
+invocation hook, `endpoint_pipeline.handle_method_call.conversion_error_handler_failed`
+for the conversion hook, the handler's error as the root and the original under
+`original_error`. An endpoint with no error handler at all whose result fails to
+serialise raises `endpoint_pipeline.handle_method_call.result_conversion_failed_no_error_handler`.
 
 The default handler, `TomDefaultErrorHandler`, answers **the framework
 envelope** at a `500` — `tomErrorEnvelope(error)` under `x-tom-error: true` and
@@ -952,11 +998,22 @@ by the pipeline today; that case leaves as a conversion error.
 `TomEndpointRouting().initializeRouter()` (called by `TomServer`) scans the
 reflected classes, mounts every endpoint method, and returns the shelf
 `Router`. The mounted handlers and a `TomEndpointRouteKey`→`TomEndpointRoutingInfo`
-map are kept statically for diagnostics. Conflicting annotations (a class with
-both `@tomService` and `@TomApiImplementation`, duplicate tags, a missing
-`@TomApiImplementation` for a registry endpoint, or an
-[undeclarable HTTP method](#which-methods-may-be-declared)) abort the build with
-`TomEndpointPipelineException`.
+map are kept statically for diagnostics. Conflicting annotations abort the build
+with `TomEndpointPipelineException`:
+
+| Key | Raised when |
+| --- | ----------- |
+| `endpoint_pipeline.initialize_router.api_implementation_and_service_on_same_class` | a class carries both `@tomService` and `@TomApiImplementation` |
+| `endpoint_pipeline.get_class_method_metadata.multiple_endpoint_base_tags` | a method carries two endpoint annotations |
+| `endpoint_pipeline.get_class_method_metadata.multiple_transactional_tags` | a method carries two `@TomTransactional` |
+| `endpoint_pipeline.get_class_method_metadata.multiple_audited_tags` | a method carries two `@TomAudited` |
+| `endpoint_pipeline.get_class_method_metadata.multiple_api_endpoint_implementation_tags` | a method carries two `TomApiEndpointImplementation` tags |
+| `endpoint_pipeline.get_class_method_metadata.multiple_tom_api_implementation_tags` | a class carries two `@TomApiImplementation` |
+| `endpoint_pipeline.get_class_method_metadata.no_tom_api_implementation_found` | a registry endpoint's class has no `@TomApiImplementation` |
+
+An [undeclarable HTTP method](#which-methods-may-be-declared) and two access
+controls on one method are refused the same way, under the keys their sections
+give.
 
 "Scans the reflected classes" is a precondition, not a description: the scan
 resolves annotations through class mirrors, so your package's generated
@@ -1136,6 +1193,24 @@ and `test/examples_test.dart` runs it.
   `file_endpoint.range_not_satisfiable` and `Content-Range: bytes */<size>` when
   the range starts at or past the end — and both `GET` and `HEAD` advertise
   `Accept-Ranges: bytes`, without which a browser never asks for one.
+  Every other refusal is a `{"key", "message"}` body as well:
+
+  | Status | Key | When |
+  | ------ | --- | ---- |
+  | `404` | `file_endpoint.unknown_slot` | the path names no registered table and column |
+  | `405` | `file_endpoint.method_not_allowed` | a method other than `POST`, `PUT`, `GET`, `HEAD` or `DELETE` |
+  | `400` | `file_endpoint.invalid_id` | the record id does not parse as the entity's key type |
+  | `404` | `file_endpoint.no_file` | `GET` or `HEAD` on a slot holding no file |
+  | `404` | `storage.file_reference.row_not_found`, `storage.file_reference.no_file`, `storage.file_reference.unknown_column` | the repository's own answers, passed through under their keys — a row the caller cannot see answers exactly as a row that is not there |
+
+  An upload whose row then cannot describe the file it took is
+  `file_endpoint.stored_file_not_readable`: the row and the store disagree, and
+  that is a fault, not an answer. Registering a slot is refused at bootstrap
+  when the entity declares no `@TomDbTable` (`file_endpoint.entity_not_mapped`),
+  marks no file column `exposed: true` (`file_endpoint.no_exposed_column`), was
+  registered already (`file_endpoint.duplicate_slot`), or has two file columns
+  answering to one name, which would let an exposed slot address a closed one
+  (`file_endpoint.ambiguous_slot`).
 - **Form binding** (`form_binding.dart`) — `TomMultipartForm`, `TomFormFile`,
   `TomFormBindingException`, and the `tomConsumesForm` /
   `tomConsumesMultipartForm` predicates.

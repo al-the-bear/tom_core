@@ -1492,6 +1492,12 @@ Three things this buys over branching on `result.twoFactorType` by hand:
   [TomBearerAuthentication.convertTokenPayloadToPrincipal] build a principal
   with `authenticated == false`, so holding it never passes an authentication
   guard. It is a challenge carrier and nothing more.
+- **An unreadable 2FA claim is refused, not ignored.** The boolean claims
+  that decide whether a login is finished are read as `true`/`false` or their
+  string spellings; anything else throws `TomException` with
+  `security.two_factor.unreadable_claim`, naming the value and its type. A
+  value nobody can interpret is never taken to mean "nothing owed" — that
+  would let an issuer's unexpected encoding authenticate in full.
 
 **When the user has no factor yet.** A deployment whose policy demands a second
 factor from someone who has never set one up does not reject the login — it

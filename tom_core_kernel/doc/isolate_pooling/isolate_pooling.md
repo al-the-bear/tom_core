@@ -172,8 +172,8 @@ class. For the complete surface with full signatures see
 
 | Method | Description |
 |--------|-------------|
-| `sendToCreator()` | Send a message to the creator (fire-and-forget); throws in the creator |
-| `executeInCreator()` | Execute a command in the creator and await result, or `TomExecutor.notHandled` if nothing there claimed it; rethrows a creator-side failure; throws in the creator |
+| `sendToCreator()` | Send a message to the creator (fire-and-forget); throws in the creator, with `isolate.state_error.attempt_to_send_to_creator_in_creator` |
+| `executeInCreator()` | Execute a command in the creator and await result, or `TomExecutor.notHandled` if nothing there claimed it; rethrows a creator-side failure; throws in the creator, with `isolate.state_error.attempt_to_execute_in_creator_in_creator` |
 | `canSendToCreator()` | Whether a backchannel is available — answers on either side rather than throwing |
 
 #### Static Properties
@@ -223,6 +223,12 @@ isolate down, so a worker whose setup did not complete never joins a pool and
 never takes work. An isolate-side refusal reaches the caller as a
 `TomWorkerException` with key `isolate.initialize_isolate_failed.spawn`, carrying
 the isolate's error and stack in its parameters.
+
+The isolate's own entry point, `TomWorker.startRemoteIsolate`, refuses a
+context that carries no send port with
+`isolate.state_error.attempt_to_start_isolate_but_sendport_is_null`. `spawn`
+sets the port before the isolate starts, so this fires only when the entry
+point is called some other way.
 
 A hook that fails *silently* is bounded too — see
 [Bounding the startup](#bounding-the-startup) below.
@@ -428,7 +434,8 @@ and their isolates would otherwise stay in their message loops for the life of
 the process.
 
 A pool needs at least one worker, so `withSize` rejects a size below 1 with a
-`TomWorkerException` naming the value:
+`TomWorkerException` keyed `isolate.invalid_pool_size.with_size`, naming the
+value:
 
 ```dart
 try {
@@ -472,7 +479,9 @@ print(pool.isSupervised); // true
 print(pool.workerCount);  // 4
 ```
 
-Both durations must be positive, and both are checked only when supervision is
+Both durations must be positive — `isolate.invalid_health_check_interval.with_size`
+and `isolate.invalid_health_check_timeout.with_size` refuse the interval and the
+timeout — and both are checked only when supervision is
 switched on — `healthCheckTimeout` has a default, so an unsupervised caller
 never chose it. A zero interval would run a health pass on every event-loop
 turn; a zero timeout would expire before any healthy worker could answer,
@@ -489,7 +498,8 @@ moment it is recorded, so the budget never fills and respawn is unbounded again.
 
 Two mechanisms then run. **Exit detection** watches every worker: if an isolate
 dies for any reason — an uncaught error, `Isolate.kill`, an out-of-memory kill —
-each in-flight command on it is failed with a `TomWorkerDiedException` instead
+each in-flight command on it is failed with a `TomWorkerDiedException`, keyed
+`isolate.worker_died.in_flight_request`, instead
 of hanging its caller forever, and the pool respawns a replacement.
 **Periodic pings** probe *idle* workers only, catching hangs that never emit an
 exit signal; a worker that misses `healthCheckTimeout` is force-killed and
@@ -804,7 +814,8 @@ types plain data if their type has to survive the trip.
 - **Keep messages serializable**: Objects must be sendable across isolate boundaries
 - **Clean up resources**: Always call `close()` when done with workers or pools.
   Dispatching afterwards is refused with a `TomWorkerException` at both levels —
-  `TomWorker.executeCommand` and `TomWorkerPool.execute` alike — so a
+  `TomWorker.executeCommand` and `TomWorkerPool.execute` alike, the pool's
+  keyed `isolate.pool_closed.execute_after_close` — so a
   use-after-close surfaces as a catchable error rather than a silent deadlock
 - **Handle worker failures**: any unsupervised worker hangs its caller forever
   when the isolate dies, pool or not. On a pool, enable supervision with

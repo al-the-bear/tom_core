@@ -210,6 +210,24 @@ implementations ship, one of them with two constructors:
 | `TomOnceSchedule(DateTime.utc(2026, 8, 1, 9))` | Exactly once, at one absolute instant, then never again |
 | `TomEventSchedule(stream)` | Not clock-driven at all — a stream enqueues the runs |
 
+Each constructor checks its arguments and throws a `TomScheduleException` for a
+schedule that could never fire as written:
+
+| Key | Raised when |
+| --- | ----------- |
+| `schedule.cron.empty` | the cron expression is empty |
+| `schedule.cron.field_count` | it does not have exactly five fields (after macro expansion) |
+| `schedule.cron.invalid_field` | a field does not parse — a bad number, range or step, or a value out of the field's range |
+| `schedule.cron.empty_field` | a field parses but matches no value at all |
+| `schedule.calendar.day_of_month` | `dayOfMonth` is not `1..31` or `-1..-31` |
+| `schedule.calendar.weekday` | `weekday` is not `DateTime.monday..DateTime.sunday` |
+| `schedule.calendar.ordinal` | `ordinal` is not `1..5`, or `-1` for the last occurrence |
+| `schedule.calendar.month_interval` | `monthInterval` is not `1..12` |
+| `schedule.calendar.anchor_month` | `anchorMonth` is not `1..12` |
+| `schedule.calendar.hour` | `hour` is not `0..23` |
+| `schedule.calendar.minute` | `minute` is not `0..59` |
+| `schedule.interval.period` | the interval's period is not positive |
+
 Three behaviours worth knowing:
 
 - **Cron day fields are OR-ed**, per POSIX: with both day-of-month and
@@ -400,6 +418,7 @@ reported **at start-up**, naming the offending class:
 
 | Key | Raised when |
 | --- | ----------- |
+| `scheduled_job.unnamed` | the job's name, declared or taken from the class, is blank |
 | `scheduled_job.no_schedule` | none of `cron:`/`interval:`/`calendar:`/`event:` is set |
 | `scheduled_job.multiple_schedules` | more than one of them is set |
 | `scheduled_job.invalid_cron` | the cron expression does not parse |
@@ -447,6 +466,12 @@ TomJobDefinition(
   requestsRecovery: false,        // may a partial execution be re-run?
 )
 ```
+
+The constructor refuses a definition that could not be stored or run: a blank
+`name` is `schedule.job.unnamed`, a `catchUpLimit` below 1 is
+`schedule.job.catch_up_limit`, and a `timeout` that is not positive is
+`schedule.job.timeout`. It also validates the retry policy it adopts — see
+[Retries, Backoff and Timeouts](#retries-backoff-and-timeouts).
 
 `body` is a **factory**, not the work itself: it is called once per attempt and
 returns a `TomCommand`. That is what lets the same job run on an isolate pool —
@@ -845,9 +870,18 @@ capping the jittered value is what keeps the spread alive once every job has
 saturated, which is the state a long outage leaves a fleet in and precisely the
 pile-up jitter exists to prevent.
 
-The fields have ranges — `maxAttempts >= 1`, `multiplier >= 1`, `jitter` in
-`0..1`, a non-negative `initialBackoff` and a positive `maxBackoff` — and a
-value outside them throws a `schedule.retry.*` `TomScheduleException`. The check
+The fields have ranges, and a value outside them throws a `TomScheduleException`
+naming the job:
+
+| Field | Range | Key |
+| ----- | ----- | --- |
+| `maxAttempts` | at least 1 | `schedule.retry.max_attempts` |
+| `multiplier` | at least 1 | `schedule.retry.multiplier` |
+| `jitter` | `0..1` | `schedule.retry.jitter` |
+| `initialBackoff` | not negative | `schedule.retry.initial_backoff` |
+| `maxBackoff` | positive | `schedule.retry.max_backoff` |
+
+The check
 runs when a `TomJobDefinition` adopts the policy, not in the policy's own
 constructor: that constructor must stay `const` so a policy can appear in a
 `@TomScheduledJob(retry: …)` annotation, and a `const` constructor has no body to
@@ -1000,7 +1034,8 @@ each acquisition creates a file named after its own fencing token, so taking ove
 a lapsed lease at token 3 means creating `4.lease` exclusively: every contender
 computes the same next token and the kernel picks the one winner. Nothing is ever
 briefly absent, so no late arrival can mistake a takeover in progress for a free
-resource.
+resource. A resource has to have a name for its directory to have one, so an
+empty resource name is refused with `schedule.lease.unnamed_resource`.
 
 It assumes exclusive-create is atomic between the processes sharing the
 filesystem. That holds locally and on a well-behaved network filesystem, but

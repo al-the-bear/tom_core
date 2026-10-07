@@ -198,8 +198,17 @@ A malformed expression is an authoring error and raises
 a typo is reported as a typo rather than as a missing context value. A
 well-formed expression that the running zone cannot supply raises
 `TomAnnotationAnalyzerException`. A reference declaring no columns at all is
-rejected outright: it constrains nothing, so it would load every join row for
-every owner row.
+rejected outright, with `annotation_analyzer.reference_query.no_terms`: it
+constrains nothing, so it would load every join row for every owner row.
+
+| Refused | Key |
+| ------- | --- |
+| a left-side term with the owner's field on the left of `=` | `annotation_analyzer.reference_query.left_side_owner_on_left` |
+| a left-side term whose right side names no field of the owner | `annotation_analyzer.reference_query.left_side_owner_missing` |
+| a context term with the `:name` on the left of `=` | `annotation_analyzer.reference_query.context_value_on_left` |
+| a context term whose right side is not a `:name` | `annotation_analyzer.reference_query.context_value_missing` |
+| a context term read with no `TomExecutionContext` in the zone | `annotation_analyzer.reference_query.no_execution_context` |
+| a context term whose entry the running context does not carry | `annotation_analyzer.reference_query.context_entry_not_found` |
 
 The field must be **non-null and modifiable** — `List<Role> roles = []`, not
 `List<Role>? roles`. The mapper fills the list the entity already holds instead
@@ -362,7 +371,9 @@ likewise the scoped total — a principal never learns the size of a row set it
 may not read.
 
 A `TomPageRequest` that SQL cannot express is rejected where it is built: a
-negative bound, or an offset with no limit (MariaDB's grammar is
+negative offset (`paging.window.negative_offset`), a negative limit
+(`paging.window.negative_limit`), or an offset with no limit
+(`paging.window.offset_without_limit` — MariaDB's grammar is
 `LIMIT n [OFFSET m]`, so there is no bare `OFFSET` and the skip would be
 silently dropped).
 
@@ -441,7 +452,13 @@ group count ( * ) as total over status by age >= :min
   `order by <field> [asc|desc] [, <field> [asc|desc]]…`. A direction keyword
   applies to every field back to the previous direction keyword, so
   `order by a b desc` sorts both descending while `order by a desc b asc` mixes
-  them; a field with no direction of its own sorts ascending.
+  them; a field with no direction of its own sorts ascending. An `order by`
+  with no field after it is
+  `query_sentence_compiler.analyse_order_by.order_clause_missing_fields`, a
+  direction keyword with no field before it is
+  `query_sentence_compiler.analyse_order_by.direction_without_field`, and any
+  other failure to read the clause is reported as
+  `query_sentence_compiler.analyse_order_by.failed` with the cause as its root.
 
 ### Which kind takes which option
 
@@ -467,11 +484,15 @@ Each *no* is a refusal with a key of its own:
 | a skip on a `delete` | `query_sentence_compiler.compile.skip_unsupported_for_kind` | MariaDB's `DELETE` has no `OFFSET` |
 | `distinct` on a `delete` or a `group` | `query_sentence_compiler.compile.distinct_unsupported_for_kind` | a single-table `DELETE` has no projection to deduplicate; a `group` deduplicates *inside* an aggregate — `count ( distinct amount )` — not over the sentence |
 
-Two more rejections belong to the same step, because both are ways of writing an
-option that is not one:
+More rejections belong to the same step, because each is a way of writing a
+sentence or an option that is not one:
 
 | Refused | Key | Why |
 | ------- | --- | --- |
+| a first word other than `find`, `count`, `delete` or `group` | `query_sentence_compiler.compile.invalid_query_sentence_start` | the verb decides what the compiler builds, so there is nothing to build without one |
+| both `first` and `top` | `query_sentence_compiler.compile.conflicting_top_first` | two caps would leave the compiler to pick one |
+| both `skip` and `offset` | `query_sentence_compiler.compile.conflicting_skip_offset` | likewise for two skips |
+| a skip with no cap | `query_sentence_compiler.compile.skip_without_top` | SQL skips with `LIMIT n OFFSET m` and has no form that skips without capping |
 | a word before `by` that names no option | `query_sentence_compiler.compile.unknown_option` | the scan reports where it stopped rather than skipping the token. A skipped word takes its argument with it, so `find frist 5 by …` would return the whole set while reading as though it had capped |
 | a sentence with no `by` at all | `query_sentence_compiler.compile.missing_by` | `by` is what separates the options from the predicate, so without it there is neither. Raised here rather than reaching the caller as a `RangeError` — a sentence can come from a request parameter |
 
@@ -510,10 +531,15 @@ delete by id IS NOT IN ( 1 , 2 , 3 )
 ```
 
 The brackets are required and the list may not be empty — SQL has no `IN ()`,
-so an empty list is refused at compile time rather than handed to the database.
-A list that is never closed (`by id is in ( 1 , 2`) is a syntax error like any
-other. A boolean column is refused outright: `IN` over the two values a boolean
-can take is a predicate written the long way round.
+so an empty list is refused at compile time rather than handed to the database,
+with `query_sentence_compiler.get_in_options.empty_list`. A list that is never
+closed (`by id is in ( 1 , 2`) is
+`query_sentence_compiler.get_in_options.unterminated_list`. A boolean column is
+refused outright, with
+`query_sentence_compiler.get_in_options.boolean_column_in_not_allowed`: `IN`
+over the two values a boolean can take is a predicate written the long way
+round. A column whose type has no `IN` form at all is
+`query_sentence_compiler.create_is_in.failed`.
 
 ### Column types a predicate can address
 
@@ -523,7 +549,9 @@ three cover the same seven families: `String`, `int`, `double`, `bool`,
 `DateTime`, `TomZonedDate` and `TomZonedTime`, each with its `Tom…` and nullable
 `TomN…` spellings, plus the `TomDb…` names when an entity gives `columnType:`
 explicitly. A column outside them raises
-`query_sentence_compiler.create_column.failed`.
+`query_sentence_compiler.create_column.failed`, and a name that matches no
+`@TomDbColumn` field of the entity at all raises
+`annotation_analyzer.determine_column.no_column_match`.
 
 The last three are distinct families rather than one, because a `DATETIME`, a
 `DATE` and a `TIME` hold different things: a moment, a day with no time, and a
@@ -580,6 +608,48 @@ binds to the single predicate or bracketed group that follows it, so
 `not a = 1 and b = 2` negates only the first conjunct; write
 `not ( a = 1 and b = 2 )` for the other reading.
 
+Every test word needs a column on its left, and each says so under its own key
+when it has none. A test is a predicate, so one written where the compiler needs
+a value of another type — an operand position — is refused too; the `LIKE`
+family also refuses a column that is not text:
+
+| Test | No column before it | Written where a value is needed | Over a column that is not text |
+| ---- | ------------------- | ------------------------------- | ------------------------------ |
+| `=` | `query_sentence_compiler.build_expression.eq_without_column` | `query_sentence_compiler.build_expression.eq_invalid_type_expected` | — |
+| `<>` | `query_sentence_compiler.build_expression.neq_without_column` | — | — |
+| `<` | `query_sentence_compiler.build_expression.lt_without_column` | — | — |
+| `<=` | `query_sentence_compiler.build_expression.lte_without_column` | — | — |
+| `>` | `query_sentence_compiler.build_expression.gt_without_column` | — | — |
+| `>=` | `query_sentence_compiler.build_expression.gte_without_column` | — | — |
+| `IS NULL` | `query_sentence_compiler.build_expression.is_null_test_without_column` | `query_sentence_compiler.build_expression.is_null_invalid_type_expected` | — |
+| `IS NOT NULL` | `query_sentence_compiler.build_expression.is_not_null_test_without_column` | `query_sentence_compiler.build_expression.is_not_null_invalid_type_expected` | — |
+| `IS IN` | `query_sentence_compiler.build_expression.is_in_test_without_column` | `query_sentence_compiler.build_expression.is_in_invalid_type_expected` | — |
+| `IS NOT IN` | `query_sentence_compiler.build_expression.is_not_in_test_without_column` | `query_sentence_compiler.build_expression.is_not_in_invalid_type_expected` | — |
+| `LIKE` | `query_sentence_compiler.build_expression.like_test_without_column` | `query_sentence_compiler.build_expression.like_invalid_type_expected` | `query_sentence_compiler.build_expression.like_invalid_column_type` |
+| `NOT LIKE` | `query_sentence_compiler.build_expression.not_like_test_without_column` | `query_sentence_compiler.build_expression.not_like_invalid_type_expected` | `query_sentence_compiler.build_expression.not_like_invalid_column_type` |
+| `REGEXP` | `query_sentence_compiler.build_expression.regexp_test_without_column` | `query_sentence_compiler.build_expression.regexp_invalid_type_expected` | `query_sentence_compiler.build_expression.regexp_invalid_column_type` |
+
+A bind parameter reached before any column is
+`query_sentence_compiler.build_expression.parameter_without_column`, since the
+column is what types it. A column compared against another column of a
+different type is
+`query_sentence_compiler.build_expression.column-type-mismatch_after_creation_second_column`,
+and a column opening a predicate where a value of another type is required is
+`query_sentence_compiler.build_expression.column-type-mismatch_after_creation_new_column`.
+
+The combinators fail on structure:
+
+| Refused | Key |
+| ------- | --- |
+| `and` with no predicate before it | `query_sentence_compiler.build_query.and_without_current_operation` |
+| `or` with no predicate before it | `query_sentence_compiler.build_query.or_without_current_operation` |
+| a `)` with no group open to close | `query_sentence_compiler.build_query.unenclosing_closing_bracket` |
+| `not not` — between predicates, or inside one | `query_sentence_compiler.build_query.double_not_usage`, `query_sentence_compiler.build_expression.double_not_usage` |
+| `not` where a value of another type is needed | `query_sentence_compiler.build_expression.not_invalid_type_expected` |
+| `not` applied to something that is not a predicate | `query_sentence_compiler.build_expression.negation_of_non_bool` |
+| a sentence that ends inside a predicate, or straight after `not` | `query_sentence_compiler.build_expression.sentence_ended_early` |
+| a predicate from which nothing was built | `query_sentence_compiler.build_query.empty_invalid_query_nothing_built` |
+
 ### Writing a value inline
 
 A value in a predicate is normally *bound* (`find by amount > :floor`), but it
@@ -597,7 +667,11 @@ can also be written out. Seven literal forms are recognised, by shape:
 
 A literal stands for exactly one type, so comparing one against a column of
 another raises `…build_expression.<kind>_literal_invalid_type_expected`, and
-negating one raises `…_literal_negation_attempt`.
+negating one raises `…_literal_negation_attempt`. Text is
+`query_sentence_compiler.build_expression.string_literal_invalid_type_expected`;
+the two boolean literals each have their own key,
+`query_sentence_compiler.build_expression.bool_literal_invalid_type_expected_true`
+and `query_sentence_compiler.build_expression.bool_literal_invalid_type_expected_false`.
 
 `true` and `false` are therefore **reserved in operand position**: a field whose
 sentence name is one of them is read as the literal and never resolves as a
@@ -741,6 +815,9 @@ Use `p<T>('name')` for bound parameters (`:name`) — the driver binds the value
 avoiding SQL injection. Literal factories (`text`, `intOp`, `dateOp`, …)
 interpolate directly and should be reserved for trusted values.
 
+`Between` takes exactly two bounds, and a node built with any other number is
+refused with `between_expression.must_have_two_values`.
+
 ## Row Scopes
 
 A **row scope** (C-3) narrows every query on an entity to the rows the current
@@ -774,7 +851,10 @@ Three kinds are registered out of the box:
 
 An application adds its own (`'tenant'`, `'organization'`, …) with
 `TomDataScopeRegistry.register` or `registerAsync`; `reset()` restores just the
-built-ins.
+built-ins. A scope naming a kind nothing registered fails the query rather than
+leaving it unscoped: `data_scope.build.unknown_scope` when no resolver is
+registered for it, `data_scope.build.unknown_async_scope` when the asynchronous
+path finds no asynchronous one.
 
 ### Automatic scoping, and opting out
 
@@ -859,17 +939,19 @@ names a specific row, so filtering it away would be a silent no-op; the
 repository *rejects* instead, with `TomDataScopeAuthorizationException`:
 
 - **update / delete by id** — `_assertRowWritable` re-runs the exact scoped read
-  predicate; if the row is not found it is refused. Modelling the check as a
+  predicate; if the row is not found it is refused, with
+  `data_scope.write.out_of_scope`. Modelling the check as a
   scoped visibility read (rather than an atomic `UPDATE … AND <scope>` plus a
   zero-rows-affected test) sidesteps the MariaDB quirk that an `UPDATE` changing
   no value reports zero affected rows, which would otherwise reject a legitimate
   in-scope no-op write. A missing row and an out-of-scope row are reported
   identically, so existence is not leaked across the scope boundary.
 - **bulk delete** — `_assertIdsWritable` requires the scoped existence check to
-  see *all* the named ids.
+  see *all* the named ids, and refuses with the same `data_scope.write.out_of_scope`.
 - **insert** — `_assertInsertWritable` checks the new row's scope-field value
   against the allowed set, which is what stops a principal creating a row scoped
-  to a value it could not itself read. A scope **on the primary key** is a no-op
+  to a value it could not itself read; the refusal is
+  `data_scope.write.insert_out_of_scope`. A scope **on the primary key** is a no-op
   here: a fresh insert has no id yet, so there is no value to check, and insert
   authorization for such entities belongs to the service layer.
 
@@ -1206,9 +1288,12 @@ sides.
 
 Every aggregate carries an **alias**. Unlike an entity projection there is no
 column metadata to map results back by, so the alias is the name the value comes
-back under. It is validated at construction against `^[A-Za-z_][A-Za-z0-9_]*$`:
+back under. It is validated at construction against `^[A-Za-z_][A-Za-z0-9_]*$`,
+and refused with `grouped_query.aggregate.invalid_alias`:
 an alias is written into the statement text rather than bound, so it is the one
-injection surface a grouped query adds, and it is closed where it opens.
+injection surface a grouped query adds, and it is closed where it opens. An
+aggregate whose value type the result mapper cannot materialise is refused at
+construction too, with `grouped_query.aggregate.unmappable_value_type`.
 
 ### Building one
 
@@ -1245,8 +1330,29 @@ aggregate the whole filtered set into exactly one row**. `top N` / `first N` and
 
 The sort names *projection aliases* — a group column's declared field name or an
 aggregate's alias — not arbitrary entity fields. Ordering a grouped result by an
-ungrouped column has no meaning, and the constructor rejects it rather than
-letting the database pick a behaviour.
+ungrouped column has no meaning, and the constructor rejects it with
+`grouped_query.select.order_by_not_projected` rather than letting the database
+pick a behaviour. The constructor refuses three other shapes as well:
+
+| Refused | Key |
+| ------- | --- |
+| no aggregate at all — that is a `DISTINCT` select, which `TomSelect` already expresses | `grouped_query.select.no_aggregates` |
+| one result-column name projected twice, by a group column or an alias | `grouped_query.select.duplicate_alias` |
+| a group column of a type the result mapper cannot materialise | `grouped_query.select.unmappable_group_column` |
+
+The sentence form adds the projection's own grammar:
+
+| Refused | Key |
+| ------- | --- |
+| a word in the projection that is not an aggregate function | `query_sentence_compiler.parse_aggregates.unknown_function` |
+| a function with no argument inside its brackets | `query_sentence_compiler.parse_aggregates.missing_argument` |
+| `as` with no alias after it | `query_sentence_compiler.parse_aggregates.missing_alias` |
+| any other token where the projection expects a bracket, `as` or a comma | `query_sentence_compiler.parse_aggregates.unexpected_token` |
+| `*` as the argument of anything but a plain `count` | `query_sentence_compiler.parse_aggregates.star_only_for_count` |
+| `distinct` inside `min` or `max`, where the extreme of a set is the extreme of its distinct values | `query_sentence_compiler.parse_aggregates.distinct_not_supported` |
+| `min` or `max` over a column type with no typed extremum | `query_sentence_compiler.parse_aggregates.unsupported_min_max_column` |
+| `over` with no field after it | `query_sentence_compiler.compile_grouped.empty_over_clause` |
+| `having` with no predicate after it | `query_sentence_compiler.compile_grouped.empty_having` |
 
 ### Reading the result
 
@@ -1268,7 +1374,10 @@ for (final row in groups) {
 - An aggregate node reads its own value: `total.read(row)` returns a `double?`
   without naming the type twice.
 - Reading an alias the query did not project **throws**
-  `TomQuerySyntaxException`. Returning `null` would be indistinguishable from
+  `TomQuerySyntaxException` with `grouped_query.row.unknown_alias`. An accessor
+  asked for a type outside the mappable set is
+  `grouped_query.row.unsupported_value_type`, and a value that does not convert
+  to the type asked for is `grouped_query.row.value_conversion_failed`. Returning `null` would be indistinguishable from
   "this group had no value", which is a real and different answer — an aggregate
   over an all-null column is `null`, and a typo must not look like one.
 
@@ -1306,7 +1415,8 @@ here than on the row-returning paths:
   been collapsed into a key or folded into an aggregate. Nulling the result would
   not undo the leak — a `COUNT(*)` per masked group still discloses the masked
   values' distribution. A grouped query naming a masked column therefore raises
-  `TomColumnAuthorizationException` before it reaches the database.
+  `TomColumnAuthorizationException` with `crud_repository.grouped.masked_column`
+  before it reaches the database.
 
 ### Value types across drivers
 
@@ -1338,9 +1448,19 @@ for a raw `as int`.
 translates its annotations into a `TomTypePersistenceInfo` and a list of
 `TomColumnInformation` (one per annotated field). A `TomColumnInformation` also
 provides reflection-backed `getVariableValue` / `setVariableValue` accessors
-that the repository uses to read and write entity fields. A type that is not
-registered with `tomReflector`, or lacks a `@TomDbTable`, raises
-`TomAnnotationAnalyzerException`.
+that the repository uses to read and write entity fields. A type the analyzer
+cannot resolve raises `TomAnnotationAnalyzerException`, or its syntax subclass
+for an annotation written wrongly:
+
+| Refused | Key |
+| ------- | --- |
+| a type that is not registered with `tomReflector` | `annotation_analyzer.analyse_persistent_type.mirror_not_found` |
+| reflecting the type threw | `annotation_analyzer.find_mirror.reflection_failed` |
+| a registered type that is not a class, so carries no persistence annotations | `annotation_analyzer.find_mirror.not_a_class` |
+| a type without `@TomDbTable` | `annotation_analyzer.analyse_persistent_type.table_not_found`, or `annotation_analyzer.get_persistent_columns.no_table_info` when reached through the column list |
+| a type whose persistent columns cannot be resolved | `annotation_analyzer.analyse_persistent_type.columns_not_found` |
+| `@TomDbColumn` on a declaration that is not a field | `annotation_analyzer.get_persistent_columns.invalid_declaration_not_variable` |
+| `@TomReference` on a declaration that is not a field | `annotation_analyzer.get_persistent_columns.invalid_declaration_not_variable_for_reference` |
 
 Every resolution is memoised per entity type, and the memo is *shared*: two
 callers asking for the same entity receive the same list of the same objects,

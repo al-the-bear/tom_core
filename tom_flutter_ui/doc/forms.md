@@ -181,10 +181,28 @@ start"); it carries the involved `TomField`s and exposes their ids via `tomIds`.
 
 ### From key to sentence
 
-A validator never carries a message, only a key: the built-ins emit
-`error.required`, `error.minLength` (with `params: {'min': n}`), `error.email`,
-and `Validators.pattern` emits its `errorKey:` argument, defaulting to
-`error.format`. The field resolves that key against `<basePath>.<key>` first — so
+A validator never carries a message, only a key. The built-ins emit these, with
+the bound value in `params` where there is one:
+
+| Rule | Error key | `params` |
+| ---- | --------- | -------- |
+| `Validators.required()` | `error.required` | — |
+| `Validators.minLength(n)` | `error.minLength` | `min` |
+| `Validators.maxLength(n)` | `error.maxLength` | `max` |
+| `Validators.email()` | `error.email` | — |
+| `Validators.pattern(re)` | its `errorKey:` argument, default `error.format` | — |
+| `Validators.min(n)` | `error.min` | `min` |
+| `Validators.max(n)` | `error.max` | `max` |
+| `Validators.minItems(n)` | `error.minItems` | `min` |
+| `Validators.maxItems(n)` | `error.maxItems` | `max` |
+| a file field's `allowedExtensions` | `error.fileExtension` | — |
+| a file field's `maxSizeBytes` | `error.fileTooLarge` | — |
+
+The two file rules are prepended by the file field itself, so a value set in
+code is held to the same allow-list and size limit as one the picker returned;
+`TomFileLabels` carries their default sentences.
+
+The field resolves that key against `<basePath>.<key>` first — so
 one field can override a message every other field shares — then the field's
 scope, then the bare `<key>`, and finally **returns the key itself** as a
 development indicator. Whatever level answers, the error's `params` are

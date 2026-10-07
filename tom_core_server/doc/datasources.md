@@ -625,6 +625,17 @@ running transaction on the first statement it issues inside one (see
 A driver registers by annotating its class with `@TomDatasourceDriver("<type>")`
 and `@tomReflector`. `TomDataSource.createDatasourceOf(type)` discovers drivers
 by scanning reflection metadata on first use and returns a fresh instance.
+Both steps refuse a registry they cannot trust, with a
+`TomDatasourceInitException`:
+
+| Key | Raised when |
+| --- | ----------- |
+| `tom_datasource.initialize_datasource_types.duplicate_driver` | two driver classes claim the same `<type>` |
+| `tom_datasource.initialize_datasource_types.driver_instantiation_failed` | the scan cannot construct an annotated driver class |
+| `tom_datasource.initialize_datasource_types.invalid_driver_not_implementing_datasource` | an annotated class is not a `TomDataSource` |
+| `tom_datasource.create_datasource_of.no_driver_found` | `createDatasourceOf` is asked for a type no driver registered |
+| `tom_datasource.create_datasource_of.driver_instantiation_failed` | the registered driver class fails to construct |
+| `tom_datasource.create_datasource_of.invalid_driver_not_implementing_datasource` | what it constructed is not a `TomDataSource` |
 
 `TomDataSourceInfo` is the process-wide registry of *named, configured* data
 sources. `initializeDatasourceInfo(config)` builds an entry per map-valued
@@ -639,6 +650,16 @@ await TomDataSourceInfo.initializeDatasourceInfo({
 });
 final ds = TomDataSourceInfo.getDataSourceInfo('main')!.datasource;
 ```
+
+A block names either a `type` or a `delegateTo`; one with neither is
+`tom_datasource_info.initialize.no_type_specified`. A delegate is resolved
+against the entries already registered, so it must come after the block it
+names — otherwise it is `tom_datasource_info.initialize.delegate_not_found`. A
+`type` whose driver yields no data source is
+`tom_datasource_info.initialize.no_datasource_obtained_for_type`. Reading
+`datasource` from an entry that was never initialised throws
+`tom_datasource_info.get_datasource.datasource_is_null` rather than answering
+`null`.
 
 ### Every settings key has to bind
 
@@ -724,7 +745,9 @@ the classifier exists to prevent.
 ### Walking the chain
 
 `classifySqlFailure` does not inspect the exception it is handed — it walks the
-`rootException` chain, because the data source wraps driver failures and the
+`rootException` chain, because the data source wraps driver failures — a failed
+`executeQuery` as `error.failed-to-execute.exception`, a failed
+`executeCommand` as `error.result_processing.executecommand_failed` — and the
 `MySQLServerException` is typically a link or two down inside a
 `MariadbDatasourceException`. The walk is bounded (8 links) so a cyclic or
 pathologically nested chain cannot spin; wrapping is two links deep in practice.
@@ -757,7 +780,10 @@ a third-party `toString` makes the driver's behaviour change on a dependency
 bump, silently and with no compile error.
 
 Because the type returned *is* the signal — `execute` catches
-`MariadbPreparedStatementException` and nothing else — both branches of the
+`MariadbPreparedStatementException` (keyed
+`error.failed-to-execute.connection_closed`) and nothing else, while every other
+failure is a `MariadbDatasourceException` keyed
+`error.failed-to-execute.exception` — both branches of the
 mapper attach the driver exception as `rootException`. Without it the chain ends
 at this layer and `classifySqlFailure` can never reach the server's own verdict.
 
@@ -766,7 +792,12 @@ at this layer and `classifySqlFailure` can never reach the server's own verdict.
 `MariaDbDatasource` (`@TomDatasourceDriver("mariadb")`) connects to MariaDB /
 MySQL. Connection settings (`username`, `password`, `host`, `port`,
 `databaseName`, `timeOut`) are filled from the configuration map by reflection
-in `initialize`, which then opens the connection. `executeQuery` maps result
+in `initialize`, which then opens the connection. A `port` that is neither an
+integer nor a string holding one is refused by `parsePort` with
+`error.initialize.invalid_port`. A connection the client library hands back
+unconnected is `error.failed-to-connect.remained_unconnected`;
+`error.failed-to-connect.connect_failed` is the guard for the client returning
+no connection object at all, which should not happen. `executeQuery` maps result
 rows back onto annotated `@tomReflector` entity classes (including JSON columns,
 custom converters, and reference-field dereferencing). Transactions use plain
 `START TRANSACTION` / `COMMIT` / `ROLLBACK`.
@@ -857,13 +888,20 @@ mirror is taken; an alias whose declared type is outside
 largest decision, and which of five shapes a result takes is settled entirely by
 what the result type declares:
 
-| Result type | Bound by |
-| ----------- | -------- |
-| any, with a grouped projection | the query's alias → type projection, into a `TomGroupedRow` |
-| a `TomClass` with no `@TomDbTable` | the observable member's own name |
-| a `TomClass` with `@TomDbTable` | the `@TomDbColumn` name |
-| a reflected holder with no `@TomDbTable` | the declared field name |
-| a reflected entity with `@TomDbTable` | its persistent column list |
+| Result type | Bound by | A row that cannot be built | A member type it cannot read |
+| ----------- | -------- | -------------------------- | ---------------------------- |
+| any, with a grouped projection | the query's alias → type projection, into a `TomGroupedRow` | — | `error.result_processing_grouped.unknown_type` |
+| a `TomClass` with no `@TomDbTable` | the observable member's own name | `error.result_processing_tcp.failed_to_instantiate_row` | `error.result_processing_tcp.unknown_type` |
+| a `TomClass` with `@TomDbTable` | the `@TomDbColumn` name | `error.result_processing_tc.failed_to_instantiate_row` | `error.result_processing_tc.unknown_type` |
+| a reflected holder with no `@TomDbTable` | the declared field name | `error.result_processing_field.failed_to_instantiate_row` | `error.result_processing_field.unknown_type` |
+| a reflected entity with `@TomDbTable` | its persistent column list | `error.result_processing.failed_to_instantiate_row` | `error.result_processing.unknown_type` |
+
+On the entity path a column can also be read through its declaration rather
+than by type: a `fromDbConverter` that throws is
+`error.result_processing.failed_custom_conversion`, and a JSON column whose text
+does not decode into its declared type is
+`error.result_processing.failed_json_conversion`; both carry the converter's
+or decoder's exception as the root.
 
 A column the result does not carry is skipped on **every** shape, so a
 projection that selects a subset of an entity's columns maps rather than fails.
@@ -874,6 +912,17 @@ this driver cannot map, and the only outcome besides the five.
 It is public, and takes the driver's result set rather than a connection,
 because nothing in it needs a server: the protocol has already decoded every
 column to text, and only a `@TomReference` column reaches back to the database.
+That column's own query is compiled, rendered to SQL, run, and its rows added to
+the list the field already holds, and each step that fails has its key:
+`error.result_processing.ref_qsc_creation_failed` (no compiler for the target
+and join entities), `error.result_processing.ref_query_compilation_failed`,
+`error.result_processing.ref_query_generation_failed`,
+`error.result_processing.ref_query_execution_failed`,
+`error.result_processing.ref_failed_adding_result_to_value` and
+`error.result_processing.ref_failed_invoke_setter`. A reference field holding
+`null` has no list to fill and is
+`error.result_processing.ref_reference_field_must_have_non-null_value`; anything
+else that escapes the resolution is `error.result_processing.ref_failed_unexpected`.
 That is what lets the whole decision be tested in the ordinary run
 (`mariadb_row_mapping_test.dart`) instead of only where a MariaDB happens to be
 listening.
@@ -928,7 +977,8 @@ listening.
 > the element type is therefore **normalised to its non-nullable counterpart
 > before dispatch** — `int`, `double`, `String`, `bool` and `DateTime` are
 > supported whether the member is the plain or the `TomN…` observable, and
-> anything else raises `error.result_processing_tc[p].unknown_type` naming the
+> anything else raises `error.result_processing_tc.unknown_type` (with
+> `@TomDbTable`) or `error.result_processing_tcp.unknown_type` (without) naming the
 > type it refused. Normalising once is what keeps the two variants a single
 > decision rather than two switches drifting apart.
 >

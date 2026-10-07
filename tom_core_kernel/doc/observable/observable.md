@@ -22,6 +22,7 @@ and complex objects with automatic change notification and propagation.
   - [Operator Examples](#operator-examples)
 - [Observable Primitives](#observable-primitives)
   - [TomObject&lt;T&gt; (Base Class)](#tomobjectt-base-class)
+  - [`tomNull` — the shared unknown-value sentinel](#tomnull--the-shared-unknown-value-sentinel)
   - [Non-Nullable Types](#non-nullable-types)
   - [Nullable Types](#nullable-types)
 - [DateTime and Timezone Types](#datetime-and-timezone-types)
@@ -576,6 +577,16 @@ and the incoming ones unobserved — so the swap is done by `<<` (and, on a list
 which exchange the observers as part of the operation. `get` on `TomList` and
 `TomMap` returns a **copy**, so mutating the result changes nothing. For
 individual entries use the collection's own API (`add`, `[]=`, `setValues`, …).
+
+### `tomNull` — the shared unknown-value sentinel
+
+`tomNull` is the `TomObject` handed back when a value's type cannot be
+determined. It is one instance for the whole program, so callers test for it by
+identity — `identical(x, tomNull)` — and it is read-only: `set`, and with it `|`
+and `<<`, throws `TomObservableException` with
+`observable.null_sentinel.set_not_allowed`. A write would otherwise be observed
+by every later reader of the sentinel, in unrelated objects, anywhere in the
+process. To hold a changeable value, create your own `TomObject`.
 
 ### Non-Nullable Types
 

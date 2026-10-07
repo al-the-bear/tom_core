@@ -16,7 +16,7 @@
 /// // Run with error transformation
 /// final result = await runChecked(
 ///   () => fetchData(),
-///   (error, stack) => TomException('catalog.fetch.failed', 'Fetch failed',
+///   (error, stack) => TomException('catalog.find.failed', 'Lookup failed',
 ///       rootException: error, stack: stack),
 /// );
 ///
