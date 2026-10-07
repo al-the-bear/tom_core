@@ -334,15 +334,10 @@ class TomCronSchedule extends TomSchedule {
     Map<String, int>? names,
   ]) {
     final values = <int>{};
+    // Never empty: every item either throws its own key or adds at least the
+    // low end of its range, so a field that parses matches something.
     for (final item in field.split(',')) {
       _parseItem(item.trim(), min, max, expression, fieldName, names, values);
-    }
-    if (values.isEmpty) {
-      throw TomScheduleException(
-        'schedule.cron.empty_field',
-        'The $fieldName field of "$expression" matches nothing.',
-        parameters: {'expression': expression, 'field': fieldName},
-      );
     }
     return values;
   }

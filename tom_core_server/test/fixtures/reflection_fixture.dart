@@ -1275,6 +1275,87 @@ class FixtureConflictingAccessService {
   };
 }
 
+// =============================================================================
+// Malformed endpoint declarations — one per tag-collection guard.
+//
+// Every class below is annotated `@tomReflector` and nothing that
+// `scanClasses` partitions on, for the reason [FixtureConflictingAccessService]
+// gives: each guard throws while metadata is collected, so a router-visible
+// fixture would fail every suite that boots a router instead of the one test
+// that asks for the throw. `endpoints_error_keys_test.dart` reflects them by
+// name and hands them to the guard directly.
+// =============================================================================
+
+/// An endpoint method declaring `@TomAudited` twice — two audit policies, and
+/// no rule for which one an invocation is recorded under.
+@tomReflector
+class FixtureDoubleAuditedService {
+  /// The doubly-audited endpoint.
+  @TomAudited()
+  @TomAudited(enabled: false)
+  @TomEndpoint(methods: [TomHttpMethod.get], uri: '/fixture-malformed/audited')
+  Future<Map<String, Object>> audited() async => <String, Object>{};
+}
+
+/// An endpoint method declaring `@TomTransactional` twice — one read-only and
+/// one read-write, so the transaction it would open is undefined.
+@tomReflector
+class FixtureDoubleTransactionalService {
+  /// The doubly-transactional endpoint.
+  @TomTransactional(isReadOnly: true)
+  @TomTransactional()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture-malformed/transactional',
+  )
+  Future<Map<String, Object>> transactional() async => <String, Object>{};
+}
+
+/// A method declaring two endpoint annotations — two routes for one method,
+/// with no rule for which of them the method's metadata describes.
+@tomReflector
+class FixtureDoubleEndpointService {
+  /// The method mounted twice.
+  @TomEndpoint(methods: [TomHttpMethod.get], uri: '/fixture-malformed/first')
+  @TomEndpoint(methods: [TomHttpMethod.get], uri: '/fixture-malformed/second')
+  Future<Map<String, Object>> twice() async => <String, Object>{};
+}
+
+/// A registry endpoint on a class that does **not** carry
+/// `@TomApiImplementation` — a contract endpoint whose class never says which
+/// API it implements.
+@tomReflector
+class FixtureUnimplementedApiService {
+  /// The method bound to a contract endpoint.
+  @TomApiEndpointImplementation(
+    apiId: fixtureAccessApiId,
+    endpointId: 'contractGated',
+  )
+  Future<Map<String, Object>> bound() async => <String, Object>{};
+}
+
+/// A `@TomComponentReference` that names neither a component nor a type, so
+/// there is nothing to resolve.
+@tomReflector
+@TomComponentReference()
+class FixtureEmptyComponentReference {}
+
+/// A `@TomComponentReference` that names both a component and a type, so the
+/// two could resolve to different beans.
+@tomReflector
+@TomComponentReference(
+  componentName: 'fixtureApiServer',
+  referencedType: FixtureApiServer,
+)
+class FixtureOverspecifiedComponentReference {}
+
+/// Two `@TomComponentReference` annotations on one class — each well-formed,
+/// together ambiguous.
+@tomReflector
+@TomComponentReference(referencedType: FixtureApiServer)
+@TomComponentReference(referencedType: FixtureApiServer)
+class FixtureDoubleComponentReference {}
+
 /// A reflected server configuration that requires one setting, for exercising
 /// [TomBaseServerConfiguration.assertRequiredSettings] as a server meets it.
 ///
@@ -1426,10 +1507,10 @@ class FixtureTagLinkRepository
 /// The owner of the fixture association: a record carrying a list of tags
 /// resolved through [FixtureTagLink].
 ///
-/// This is the only `@TomReference` in the framework's own fixtures, and it
-/// exists because the annotation's *execution* half — compile the sentence, run
-/// it, write the rows back through the field's mirror — is reachable only
-/// behind a live connection. `reference_query_test.dart` covers the sentence
+/// This is the only `@TomReference` in the framework's own fixtures that
+/// resolves to rows, and it exists because the annotation's *execution* half —
+/// compile the sentence, run it, write the rows back through the field's
+/// mirror — is reachable only behind a live connection. `reference_query_test.dart` covers the sentence
 /// this produces; `reference_association_db_test.dart` covers what happens to
 /// the rows it returns.
 ///
@@ -2471,4 +2552,54 @@ class FixtureBlobStoreBackend extends TomBlobStoreBackend {
     lastLabel = label;
     return TomMemoryBlobStore();
   }
+}
+
+/// A reflected class that puts `@TomDbColumn` on a **getter**.
+///
+/// A column is a stored field: the analyzer reads and writes it through a
+/// variable mirror, and a getter has no storage to write back to. The analyzer
+/// refuses the declaration by name rather than mapping something it cannot
+/// round-trip, and this is the smallest class that reaches that refusal. It
+/// carries no `@TomDbTable` because the refusal comes first and needs none.
+@tomReflector
+class FixtureColumnGetterRecord {
+  /// The misplaced column annotation.
+  @TomDbColumn(columnName: 'label')
+  String get label => '';
+}
+
+/// A reflected class that puts `@TomReference` on a **method**.
+///
+/// The reference counterpart of [FixtureColumnGetterRecord]: the data source
+/// fills a reference by writing the loaded rows into the field's list, so the
+/// annotation needs a variable, and a method is refused under its own key.
+@tomReflector
+class FixtureReferenceMethodRecord {
+  /// The misplaced reference annotation.
+  @TomReference(
+    targetEntity: FixtureTag,
+    keyType: int,
+    repositoryType: FixtureTagRepository,
+    joinEntity: FixtureTagLink,
+    leftSideColumns: [
+      'FixtureTagLink.taggedId=FixtureReferenceMethodRecord.id',
+    ],
+    rightSideColumns: ['FixtureTagLink.tagId=FixtureTag.id'],
+  )
+  List<FixtureTag> tags() => const [];
+}
+
+/// A reflected class with a well-formed `@TomDbColumn` field and **no**
+/// `@TomDbTable`.
+///
+/// Every column's metadata records the table it belongs to, so a column on a
+/// class that names no table cannot be described, and the analyzer says so
+/// when asked for the columns directly — the path a caller takes when it asks
+/// for the columns without first going through `analysePersistentType`, which
+/// would have refused the missing table one step earlier.
+@tomReflector
+class FixtureTablelessColumnRecord {
+  /// A column with nowhere to live.
+  @TomDbColumn(columnName: 'name')
+  String? name;
 }

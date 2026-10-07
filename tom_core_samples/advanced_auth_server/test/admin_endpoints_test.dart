@@ -158,7 +158,13 @@ void main() {
       final admin = AdminService(InMemoryAdminStore());
       expect(
         admin.updateUser('99', UserDto(id: '99', username: 'ghost')),
-        throwsA(isA<TomEndpointHandlerException>()),
+        throwsA(
+          isA<TomEndpointHandlerException>().having(
+            (e) => e.key,
+            'key',
+            'admin.user.not_found',
+          ),
+        ),
       );
     });
 
@@ -187,6 +193,20 @@ void main() {
 
       await admin.deleteRole('editor');
       expect(await admin.listRoles(), isEmpty);
+    });
+
+    test('updateRole rejects an unknown key as admin.role.not_found', () {
+      final admin = AdminService(InMemoryAdminStore());
+      expect(
+        admin.updateRole('ghost', RoleDto(key: 'ghost', name: 'Ghost')),
+        throwsA(
+          isA<TomEndpointHandlerException>().having(
+            (e) => e.key,
+            'key',
+            'admin.role.not_found',
+          ),
+        ),
+      );
     });
   });
 

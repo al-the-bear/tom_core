@@ -7520,10 +7520,11 @@ class After {}
         ['names no test suite'],
       );
       // And the name-matched clause is the one that applies to every real
-      // module, so it is read off one: `db_migration` has two suites and both
+      // module, so it is read off one: `db_migration` has three suites and all
       // have to be named.
       expect(_moduleSuites('db_migration'), [
         'db_migration_db_test.dart',
+        'db_migration_error_keys_test.dart',
         'db_migration_test.dart',
       ]);
     });

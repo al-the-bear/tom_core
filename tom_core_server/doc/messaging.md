@@ -1320,8 +1320,11 @@ none of them becomes a queued message somebody pays for.
 
 ## Verification
 
-Four suites cover the module, split along the same seam this document is: the
-substrate below the services, and the templated layer above it.
+Five suites cover the module: four split along the same seam this document
+is — the substrate below the services, and the templated layer above it — and
+one pinning the error vocabulary.
+
+`test/messaging_error_keys_test.dart` pins the module's error vocabulary: each case reaches a raise with a real input and asserts the exact key, so a key the module stops raising, or raises for a different condition, fails by name. None needs a database.
 
 `test/messaging_test.dart` covers the substrate — the message shape and its
 JSON round-trip, the MIME document, the router, the three stand-in transports,

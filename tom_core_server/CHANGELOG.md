@@ -2,6 +2,10 @@
 
 ### Tests
 
+- **Every error key the package raises is named by a test.** New
+  `*_error_keys_test.dart` files for object persistence, data sources, database
+  migration, audit, endpoints, export and messaging pin over 150 keys, each
+  asserting the exact key; none needs a database.
 - **`test/ai_citation_test.dart`** fails the suite when an artefact of the
   package cites a document in the AI-state mount. It runs
   `tom_ai/core/tool/check_doc_ai_citations.py` over the package through
@@ -39,6 +43,19 @@
 
 ### Changed
 
+- **Unreachable raises removed, with their documented entries:**
+  `annotation_analyzer.analyse_persistent_type.columns_not_found`,
+  `query_sentence_compiler.analyse_order_by.failed`,
+  `query_sentence_compiler.build_expression.negation_of_non_bool`,
+  `query_sentence_compiler.create_is_in.failed` (now a `StateError` naming the
+  broken invariant), `endpoint_pipeline.get_class_method_metadata.multiple_api_endpoint_implementation_tags`,
+  `error.failed-to-connect.connect_failed`,
+  `error.failed-to-connect.remained_unconnected` and
+  `tom_datasource_info.initialize.no_datasource_obtained_for_type`.
+  `TomDataSource.createDatasourceOf` returns a non-nullable `TomDataSource`.
+- **`TomEndpointRouting.scanClasses` takes an optional class set**, defaulting
+  to every annotated class, so the partition can be checked against classes no
+  reflection root could carry.
 - **Registrations use `TomBean.withType<X>(bean)`**, following the kernel's
   move of the key into a type argument. The endpoint pipeline's default
   component, whose type is read off a mirror, registers through
@@ -62,6 +79,11 @@
 
 ### Fixed
 
+- **Reading `TomDataSourceInfo.datasource` before `initialize` raises its
+  key.** The field was `late` as well as nullable, so the read threw a
+  `LateInitializationError` before the null check and `isOperational` threw
+  too; it now raises `tom_datasource_info.get_datasource.datasource_is_null`
+  and `isOperational` answers `false`.
 - **A repository read an instant up to 0.9 s late whenever its fraction was
   under a tenth of a second.** Rows from a prepared statement — every
   repository read, and `save`'s re-read — arrive over MySQL's binary protocol,

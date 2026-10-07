@@ -376,42 +376,20 @@ class MariaDbDatasource implements TomDataSource {
 
   /// Opens a connection using the configured settings.
   ///
-  /// Throws a [MariadbDatasourceException] if the connection cannot be created
-  /// or remains unconnected after the attempt.
+  /// A server that cannot be reached or refuses the session fails the call
+  /// with the driver's own error; a call that returns has a connected session.
   Future<void> connect() async {
-    connection = await MySQLConnection.createConnection(
+    final opened = await MySQLConnection.createConnection(
       host: host,
       port: port,
       userName: username,
       password: password,
       databaseName: (databaseName).isEmpty ? null : databaseName,
     );
-    if (connection != null) {
-      await connection!.connect(timeoutMs: timeOut);
-    } else {
-      throw MariadbDatasourceException(
-        "error.failed-to-connect.connect_failed",
-        "MariadbDatasource: Failed to connect: createConnection() returned null result. This should be impossible.",
-        parameters: {
-          "host": host,
-          "port": port,
-          "userName": username,
-          "databaseName": (databaseName).isEmpty ? null : databaseName,
-        },
-      );
-    }
-    if (!connection!.connected) {
-      throw MariadbDatasourceException(
-        "error.failed-to-connect.remained_unconnected",
-        "MariadbDatasource: Failed to connect: connection remained unconnected.",
-        parameters: {
-          "host": host,
-          "port": port,
-          "userName": username,
-          "databaseName": (databaseName).isEmpty ? null : databaseName,
-        },
-      );
-    }
+    connection = opened;
+    // `connect` completes only once the server has accepted the session, and
+    // fails otherwise, so a connection it returns from is connected.
+    await opened.connect(timeoutMs: timeOut);
   }
 
   /// Whether the underlying connection is currently established.

@@ -233,6 +233,26 @@ class TestZonedElements extends TomClass {
   final plain = TomList<TomString>();
 }
 
+/// Base class whose observable member is a `late` field its subclass assigns
+/// in a constructor body.
+///
+/// Self-observation runs from the [TomClass] constructor, before any subclass
+/// constructor body, so reading the member while registering the superclass's
+/// members fails. `observable_error_keys_test.dart` pins the key that failure
+/// is reported under.
+@tomReflector
+class TestLateBase extends TomClass {
+  late final TomString title;
+}
+
+/// The subclass that assigns [TestLateBase.title] too late to be observed.
+@tomReflector
+class TestLateChild extends TestLateBase {
+  TestLateChild() {
+    title = TomString('assigned after self-observation');
+  }
+}
+
 /// Test class whose observable lives in a private field and is published
 /// through a public getter.
 ///

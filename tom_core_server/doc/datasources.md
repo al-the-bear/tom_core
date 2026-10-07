@@ -654,12 +654,10 @@ final ds = TomDataSourceInfo.getDataSourceInfo('main')!.datasource;
 A block names either a `type` or a `delegateTo`; one with neither is
 `tom_datasource_info.initialize.no_type_specified`. A delegate is resolved
 against the entries already registered, so it must come after the block it
-names — otherwise it is `tom_datasource_info.initialize.delegate_not_found`. A
-`type` whose driver yields no data source is
-`tom_datasource_info.initialize.no_datasource_obtained_for_type`. Reading
-`datasource` from an entry that was never initialised throws
+names — otherwise it is `tom_datasource_info.initialize.delegate_not_found`.
+Reading `datasource` from an entry that was never initialised throws
 `tom_datasource_info.get_datasource.datasource_is_null` rather than answering
-`null`.
+`null`, and `isOperational` answers `false`.
 
 ### Every settings key has to bind
 
@@ -794,10 +792,9 @@ MySQL. Connection settings (`username`, `password`, `host`, `port`,
 `databaseName`, `timeOut`) are filled from the configuration map by reflection
 in `initialize`, which then opens the connection. A `port` that is neither an
 integer nor a string holding one is refused by `parsePort` with
-`error.initialize.invalid_port`. A connection the client library hands back
-unconnected is `error.failed-to-connect.remained_unconnected`;
-`error.failed-to-connect.connect_failed` is the guard for the client returning
-no connection object at all, which should not happen. `executeQuery` maps result
+`error.initialize.invalid_port`. A server that cannot be reached or refuses the
+session fails `connect` with the client library's own error; a `connect` that
+returns has a connected session. `executeQuery` maps result
 rows back onto annotated `@tomReflector` entity classes (including JSON columns,
 custom converters, and reference-field dereferencing). Transactions use plain
 `START TRANSACTION` / `COMMIT` / `ROLLBACK`.
@@ -1148,7 +1145,9 @@ column reference is the production failure the whole file exists to prevent.
 
 Three suites cover the driver, split by what needs a server rather than by what
 is interesting. Two more cover the framework-table declarations, split the same
-way.
+way, and three pin the module's error vocabulary.
+
+`test/datasources_error_keys_test.dart`, `test/datasources_driver_scan_error_keys_test.dart`, `test/datasources_row_mapping_error_keys_test.dart` pin the module's error vocabulary: each case reaches a raise with a real input and asserts the exact key, so a key the module stops raising, or raises for a different condition, fails by name. None needs a database.
 
 `test/datasources_test.dart` always runs, and reaches further into the driver
 than "no connection" suggests. Beyond the dialect's SQL generation and the

@@ -456,9 +456,7 @@ group count ( * ) as total over status by age >= :min
   with no field after it is
   `query_sentence_compiler.analyse_order_by.order_clause_missing_fields`, a
   direction keyword with no field before it is
-  `query_sentence_compiler.analyse_order_by.direction_without_field`, and any
-  other failure to read the clause is reported as
-  `query_sentence_compiler.analyse_order_by.failed` with the cause as its root.
+  `query_sentence_compiler.analyse_order_by.direction_without_field`.
 
 ### Which kind takes which option
 
@@ -538,8 +536,7 @@ closed (`by id is in ( 1 , 2`) is
 refused outright, with
 `query_sentence_compiler.get_in_options.boolean_column_in_not_allowed`: `IN`
 over the two values a boolean can take is a predicate written the long way
-round. A column whose type has no `IN` form at all is
-`query_sentence_compiler.create_is_in.failed`.
+round.
 
 ### Column types a predicate can address
 
@@ -646,7 +643,6 @@ The combinators fail on structure:
 | a `)` with no group open to close | `query_sentence_compiler.build_query.unenclosing_closing_bracket` |
 | `not not` — between predicates, or inside one | `query_sentence_compiler.build_query.double_not_usage`, `query_sentence_compiler.build_expression.double_not_usage` |
 | `not` where a value of another type is needed | `query_sentence_compiler.build_expression.not_invalid_type_expected` |
-| `not` applied to something that is not a predicate | `query_sentence_compiler.build_expression.negation_of_non_bool` |
 | a sentence that ends inside a predicate, or straight after `not` | `query_sentence_compiler.build_expression.sentence_ended_early` |
 | a predicate from which nothing was built | `query_sentence_compiler.build_query.empty_invalid_query_nothing_built` |
 
@@ -1458,7 +1454,6 @@ for an annotation written wrongly:
 | reflecting the type threw | `annotation_analyzer.find_mirror.reflection_failed` |
 | a registered type that is not a class, so carries no persistence annotations | `annotation_analyzer.find_mirror.not_a_class` |
 | a type without `@TomDbTable` | `annotation_analyzer.analyse_persistent_type.table_not_found`, or `annotation_analyzer.get_persistent_columns.no_table_info` when reached through the column list |
-| a type whose persistent columns cannot be resolved | `annotation_analyzer.analyse_persistent_type.columns_not_found` |
 | `@TomDbColumn` on a declaration that is not a field | `annotation_analyzer.get_persistent_columns.invalid_declaration_not_variable` |
 | `@TomReference` on a declaration that is not a field | `annotation_analyzer.get_persistent_columns.invalid_declaration_not_variable_for_reference` |
 
@@ -1550,7 +1545,10 @@ a repository the repository *for an entity*, and a string cannot supply them.
 
 ## Verification
 
-Two suites carry the module's name, split by whether a server is needed.
+Three suites carry the module's name: two split by whether a server is needed,
+and one pinning the error vocabulary.
+
+`test/object_persistence_error_keys_test.dart` pins the module's error vocabulary: each case reaches a raise with a real input and asserts the exact key, so a key the module stops raising, or raises for a different condition, fails by name. None needs a database.
 
 `test/object_persistence_test.dart` always runs, and reaches most of the module:
 the operator tree's literals, comparisons, parameters, typed column references

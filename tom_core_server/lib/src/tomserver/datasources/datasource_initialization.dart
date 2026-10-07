@@ -185,7 +185,7 @@ abstract class TomDataSource implements TomTransactionParticipant {
   ///
   /// Throws a [TomDatasourceInitException] if no driver is registered for
   /// [type], or if the registered driver fails to instantiate.
-  static TomDataSource? createDatasourceOf(String type) {
+  static TomDataSource createDatasourceOf(String type) {
     if (_datasourceTypes.isEmpty) {
       _initializeDatasourceTypes();
     }
@@ -278,7 +278,7 @@ class TomDataSourceInfo {
 
   /// The raw configuration for this data source.
   Map<String, dynamic> settings;
-  late TomDataSource? _datasource;
+  TomDataSource? _datasource;
 
   /// Whether the underlying data source exists and reports operational.
   bool get isOperational => _datasource != null && _datasource!.isOperational();
@@ -334,22 +334,14 @@ class TomDataSourceInfo {
     datasources[name] = this;
     type = settings["type"] ?? "";
     if (type.isNotEmpty) {
-      var datasourceCandidate = TomDataSource.createDatasourceOf(type);
-      if (datasourceCandidate != null) {
-        final driverSettings = <String, dynamic>{
-          for (final e in settings.entries)
-            if (!registryKeys.contains(e.key)) e.key: e.value,
-        };
-        _rejectUnknownSettings(datasourceCandidate, driverSettings);
-        await datasourceCandidate.initialize(driverSettings);
-        _datasource = datasourceCandidate;
-      } else {
-        throw TomDatasourceInitException(
-          "tom_datasource_info.initialize.no_datasource_obtained_for_type",
-          "Failed to obtain datasource object for datasource type $type",
-          autoLog: true,
-        );
-      }
+      final datasourceCandidate = TomDataSource.createDatasourceOf(type);
+      final driverSettings = <String, dynamic>{
+        for (final e in settings.entries)
+          if (!registryKeys.contains(e.key)) e.key: e.value,
+      };
+      _rejectUnknownSettings(datasourceCandidate, driverSettings);
+      await datasourceCandidate.initialize(driverSettings);
+      _datasource = datasourceCandidate;
     } else {
       throw TomDatasourceInitException(
         "tom_datasource_info.initialize.no_type_specified",

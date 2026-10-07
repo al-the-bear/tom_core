@@ -144,16 +144,16 @@ void main() {
       // getPersistentColumns already let the syntax exception through, so a
       // catch here would also make the module disagree with itself.
       //
-      // The three lookups each answer `null` for their own ordinary reason,
-      // which this method turns into a diagnosis; nothing else they can do is
-      // this method's to relabel.
+      // The mirror and table lookups each answer `null` for their own
+      // ordinary reason, which this method turns into a diagnosis; nothing
+      // else they can do is this method's to relabel.
       final body = _bodyOf('analysePersistentType');
       // Read the body back before judging it: a reader that found nothing
       // would report every future `catch` as absent, and the guard would pass
       // for the rest of its life without ever looking at anything.
       expect(body, contains('mirror_not_found'));
       expect(body, contains('table_not_found'));
-      expect(body, contains('columns_not_found'));
+      expect(body, contains('getPersistentColumns'));
       expect(body, isNot(contains('catch')));
     });
   });

@@ -1007,7 +1007,6 @@ with `TomEndpointPipelineException`:
 | `endpoint_pipeline.get_class_method_metadata.multiple_endpoint_base_tags` | a method carries two endpoint annotations |
 | `endpoint_pipeline.get_class_method_metadata.multiple_transactional_tags` | a method carries two `@TomTransactional` |
 | `endpoint_pipeline.get_class_method_metadata.multiple_audited_tags` | a method carries two `@TomAudited` |
-| `endpoint_pipeline.get_class_method_metadata.multiple_api_endpoint_implementation_tags` | a method carries two `TomApiEndpointImplementation` tags |
 | `endpoint_pipeline.get_class_method_metadata.multiple_tom_api_implementation_tags` | a class carries two `@TomApiImplementation` |
 | `endpoint_pipeline.get_class_method_metadata.no_tom_api_implementation_found` | a registry endpoint's class has no `@TomApiImplementation` |
 
@@ -1142,7 +1141,9 @@ it means "nothing a caller can see", not "nothing at all".
 
 ## Verification
 
-Four suites cover this module, split by what each needs.
+Five suites cover this module, split by what each needs.
+
+`test/endpoints_error_keys_test.dart` pins the module's error vocabulary: each case reaches a raise with a real input and asserts the exact key, so a key the module stops raising, or raises for a different condition, fails by name. None needs a database.
 
 `test/endpoints_test.dart` covers the annotations and the pure functions:
 `TomEndpoint`, `TomApiEndpointImplementation` and its merge, the class-level

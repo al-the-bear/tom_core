@@ -243,7 +243,6 @@ schedule that could never fire as written:
 | `schedule.cron.empty` | the cron expression is empty |
 | `schedule.cron.field_count` | it does not have exactly five fields (after macro expansion) |
 | `schedule.cron.invalid_field` | a field does not parse — a bad number, range or step, or a value out of the field's range |
-| `schedule.cron.empty_field` | a field parses but matches no value at all |
 | `schedule.calendar.day_of_month` | `dayOfMonth` is not `1..31` or `-1..-31` |
 | `schedule.calendar.weekday` | `weekday` is not `DateTime.monday..DateTime.sunday` |
 | `schedule.calendar.ordinal` | `ordinal` is not `1..5`, or `-1` for the last occurrence |

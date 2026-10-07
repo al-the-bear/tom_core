@@ -593,6 +593,21 @@ void main() {
       expect(store.items, hasLength(1));
     });
 
+    test('an item with no listId is rejected as app.item.invalid', () async {
+      // Without a list there is no resource to gate the create on, so the
+      // payload is refused before any role check or write.
+      final store = seededWriteStore();
+      await expectLater(
+        () => writeServiceOver(
+          store,
+        ).createItem(alice, TodoItem()..title.set('Orphan')),
+        throwsA(
+          isA<TomException>().having((e) => e.key, 'key', 'app.item.invalid'),
+        ),
+      );
+      expect(store.items, hasLength(1));
+    });
+
     test('a viewer may not create an item', () async {
       final store = seededWriteStore();
       await expectLater(
@@ -639,6 +654,28 @@ void main() {
       expect(grant.resourceKey, ResourceRoleKeys.project(created.id.get()));
       expect(grant.role, ProjectRole.owner.name);
     });
+
+    test(
+      'a project with no workspaceId is rejected as app.project.invalid',
+      () async {
+        // Ownership flows from the workspace, so a project without one has
+        // nothing to gate on and is refused before any write.
+        final store = seededWriteStore();
+        await expectLater(
+          () => writeServiceOver(
+            store,
+          ).createProject(alice, Project()..name.set('Homeless')),
+          throwsA(
+            isA<TomException>().having(
+              (e) => e.key,
+              'key',
+              'app.project.invalid',
+            ),
+          ),
+        );
+        expect(store.projects, isEmpty);
+      },
+    );
 
     test(
       'a project-only editor may not create a sibling workspace project',

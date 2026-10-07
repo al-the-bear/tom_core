@@ -2,6 +2,10 @@
 
 ### Changed
 
+- **`schedule.cron.empty_field` is gone.** No cron field that parses can
+  match nothing — every item either raises its own key or adds at least the
+  low end of its range — so the raise was unreachable and is removed with its
+  documented entry.
 - **Discovered components may take their dependencies through the
   constructor.** Discovery plans every key first and then builds each
   component through its unnamed constructor, supplying every required
@@ -29,6 +33,12 @@
 
 ### Tests
 
+- **Every error key the package raises is named by a test.** New
+  `*_error_keys_test.dart` files pin 43 keys across scheduling, HTTP
+  connection, isolate pooling, observables and scope ids, each asserting the
+  exact key. The beanlocator coverage test no longer carries its own
+  "named by a test" check; `tool/check_doc_error_keys.py` asks it for every
+  package.
 - **`test/ai_citation_test.dart`** fails the suite when an artefact of the
   package cites a document in the AI-state mount. It runs
   `tom_ai/core/tool/check_doc_ai_citations.py` over the package through

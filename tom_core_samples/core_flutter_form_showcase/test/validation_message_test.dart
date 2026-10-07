@@ -25,6 +25,7 @@ import 'package:core_flutter_form_showcase/reflection_seed.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void main() {
   setUpAll(initializeReflection);
@@ -251,5 +252,45 @@ void main() {
           'a validator names a key with no sentence behind it; it would '
           'render as its own name — add it to showcaseValidationTexts',
     );
+  });
+
+  // The keys themselves, pinned by running each field's real validator chain.
+  // The widget cases above prove a key resolves to prose; these prove the rule
+  // emits the key at all — including the ones no quick interaction paints.
+  group('field validators emit their exact error keys', () {
+    Future<ValidationResult> validateItemField(
+      TomFormStringInput Function(OrderItemForm form) field,
+      String text,
+    ) async {
+      final form = TomScope.withScope('itemKeys', OrderItemForm.new);
+      addTearDown(form.dispose);
+      field(form).set(text);
+      return field(form).validate();
+    }
+
+    test('a zero quantity emits error.mustBePositive', () async {
+      final r = await validateItemField((f) => f.quantity, '0');
+      expect((r as ValidationError).errorKey, 'error.mustBePositive');
+    });
+
+    test('a non-numeric unit price emits error.invalidDecimal', () async {
+      final r = await validateItemField((f) => f.unitPrice, 'free');
+      expect((r as ValidationError).errorKey, 'error.invalidDecimal');
+    });
+
+    test('a negative unit price emits error.mustBeNonNegative', () async {
+      final r = await validateItemField((f) => f.unitPrice, '-0.50');
+      expect((r as ValidationError).errorKey, 'error.mustBeNonNegative');
+    });
+
+    test('a well-formed tax ID starting with X emits error.taxIdTaken from '
+        'the async uniqueness check', () async {
+      final form = TomScope.withScope('companyKeys', CompanyForm.new);
+      addTearDown(form.dispose);
+      // Matches the `[A-Z0-9-]+` pattern, so only the slow validator rejects.
+      form.taxId.set('X-1234');
+      final r = await form.taxId.validate();
+      expect((r as ValidationError).errorKey, 'error.taxIdTaken');
+    });
   });
 }

@@ -882,7 +882,9 @@ differ, how the name is spelled once it gets there.
 ## Verification
 
 Two suites, split by which of the module's two routes into a column set they
-cover, and one example that runs both.
+cover, a third that pins the error vocabulary, and one example that runs both.
+
+`test/export_error_keys_test.dart` pins the module's error vocabulary: each case reaches a raise with a real input and asserts the exact key, so a key the module stops raising, or raises for a different condition, fails by name. None needs a database.
 
 `test/export_test.dart` covers the explicit route and everything downstream of
 it: the tabular shape's construction guards, the single meaning of a width, the

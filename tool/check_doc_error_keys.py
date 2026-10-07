@@ -21,7 +21,7 @@ glosses describing the wrong condition and, later, thirteen keys missing
 outright -- including an entire family, every failure an external login can
 report.
 
-Two faults are reported:
+Three faults are reported:
 
 ``ABSENT``
     A key the module raises that the section does not name. The common defect:
@@ -32,6 +32,24 @@ Two faults are reported:
     sake: the todo that prompted this checker asserted a
     ``login.error.oauth.unknown-issuer`` that has never existed, so even a
     careful hand census invents keys.
+
+``UNTESTED``
+    A key a package's code raises that no test in that package names. The
+    first two faults keep the *documents* honest; this one keeps the *suites*
+    honest. A key no test names is a failure mode nobody is checking: the code
+    can raise it, the documents promise it, and no run would notice if it
+    stopped. A test that only asserts ``throwsA(isA<TomException>())`` does not
+    count, deliberately -- a key the test does not name is a key it does not
+    pin. The fix is a test that names the key, or, when the raise cannot be
+    reached at all, deleting it and its documented entries, which is what a
+    phantom failure mode deserves.
+
+    The census for this fault reads *code* only: comment lines are dropped
+    before the raises are read, because a dartdoc example that throws
+    ``TomException('payment.transfer.rejected', ...)`` documents the API rather
+    than raising anything. It covers every package under this repository --
+    the framework packages and each sample -- and reads ``lib/`` and ``bin/``,
+    not ``example/``; an example is checked by running it, not by a suite.
 
 **What counts as an error key.** The census does not trust the shape of a string
 literal -- plenty of dotted lowercase literals are configuration keys, claim
@@ -510,6 +528,82 @@ def audit_prose(guide: Path, module: Path, project: Path) -> Report | None:
     return report
 
 
+#: The folders whose raises a package's suite is answerable for. `example/` is
+#: not among them: an example asserts its own results when it runs.
+TESTED_SOURCE_FOLDERS = ("lib", "bin")
+
+
+def code_of(text: str) -> str:
+    """`text` with every comment line blanked, so a dartdoc example raises nothing.
+
+    Line numbers are kept, so a fault still points at the raise.
+    """
+    return "\n".join(
+        "" if line.lstrip().startswith("//") else line for line in text.split("\n")
+    )
+
+
+def packages() -> list[Path]:
+    """Every package in the repository: the framework packages and each sample."""
+    found = [p.parent for p in REPO_ROOT.glob("*/pubspec.yaml")]
+    found += [p.parent for p in REPO_ROOT.glob("tom_core_samples/*/pubspec.yaml")]
+    return sorted(found)
+
+
+def raises_in(package: Path) -> dict[str, str]:
+    """Every key `package`'s code raises, mapped to its first raise site."""
+    sites: dict[str, str] = {}
+    for folder in TESTED_SOURCE_FOLDERS:
+        root = package / folder
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*.dart")):
+            if path.name.endswith(".reflection.dart"):
+                continue
+            text = code_of(path.read_text(encoding="utf-8", errors="replace"))
+            for match in RAISED_KEY.finditer(text):
+                line = text.count("\n", 0, match.start()) + 1
+                sites.setdefault(
+                    match.group(1), f"{path.relative_to(package)}:{line}"
+                )
+    return sites
+
+
+def named_by_tests(package: Path) -> set[str]:
+    """Every key-shaped token some test of `package` names."""
+    tests = package / "test"
+    if not tests.is_dir():
+        return set()
+    return {
+        key
+        for path in tests.rglob("*_test.dart")
+        for key in named_in(path.read_text(encoding="utf-8", errors="replace"))
+    }
+
+
+def audit_tests(package: Path) -> Report | None:
+    """Report every key `package` raises that none of its tests names.
+
+    An interpolated raise is covered by a test naming any key it can produce.
+    Returns None when the package raises nothing.
+    """
+    sites = raises_in(package)
+    if not sites:
+        return None
+    named = named_by_tests(package)
+    report = Report(package)
+    report.keys = set(sites)
+    for key in sorted(sites):
+        covered = (
+            any(matches(key, name) for name in named)
+            if is_pattern(key)
+            else key in named
+        )
+        if not covered:
+            report.faults.append(f"UNTESTED {key}  ({sites[key]})")
+    return report
+
+
 def main(argv: list[str]) -> int:
     arguments = argv[1:]
     show = "--list" in arguments
@@ -537,16 +631,38 @@ def main(argv: list[str]) -> int:
             guides.append(report)
     reports += guides
 
+    suites: list[Report] = []
+    for package in packages():
+        if not str(package.relative_to(REPO_ROOT)).startswith(prefix):
+            continue
+        report = audit_tests(package)
+        if report is not None:
+            suites.append(report)
+    reports += suites
+
     # A checker that quietly stops finding sections reports a clean tree, which
     # is the one way this kind of audit fails without anyone noticing. Both
     # genres are required, and separately: the completion documents are found by
     # a glob and the guides by a path map, so one can stop resolving while the
     # other still does and a single combined count would hide it.
-    if not completion:
-        print(f'no "Error keys" sections found under {DOCS_ROOT}', file=sys.stderr)
-        return 2
-    if not guides:
-        print("no module guides with an error vocabulary found", file=sys.stderr)
+    #
+    # Only an unscoped run can demand all three: a prefix such as
+    # `tom_core_samples` selects package suites and legitimately no completion
+    # document or guide, and refusing there would hide the one census it asked
+    # for.
+    if not prefix:
+        if not completion:
+            print(f'no "Error keys" sections found under {DOCS_ROOT}', file=sys.stderr)
+            return 2
+        if not guides:
+            print("no module guides with an error vocabulary found", file=sys.stderr)
+            return 2
+        if not suites:
+            print("no package raises an error key", file=sys.stderr)
+            return 2
+    elif not reports:
+        print(f"nothing under {prefix!r} states or raises an error key",
+              file=sys.stderr)
         return 2
 
     if show:
@@ -561,8 +677,9 @@ def main(argv: list[str]) -> int:
 
     total = sum(len(r.faults) for r in defective)
     print(
-        f"\n{completion} error-key sections and {len(guides)} module guides "
-        f"audited, {len(defective)} defective, {total} faults"
+        f"\n{completion} error-key sections, {len(guides)} module guides and "
+        f"{len(suites)} package suites audited, {len(defective)} defective, "
+        f"{total} faults"
     )
     return report_faults(total)
 

@@ -839,56 +839,45 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
       );
     }
     int partIndex = orderIndex + 1;
-    try {
-      if (wc[partIndex].toUpperCase() == "BY") {
-        partIndex++;
-      }
-      if (wc.length < partIndex + 1) {
-        throw TomQuerySyntaxException(
-          "query_sentence_compiler.analyse_order_by.order_clause_missing_fields",
-          "The QuerySentence $qs cannot be compiled. If you specify Order-By you must include the fields for ordering.",
-        );
-      }
-      // Fields since the last direction keyword: the ones it will apply to.
-      int undirected = 0;
-      for (; partIndex < wc.length; partIndex++) {
-        final token = wc[partIndex];
-        if (token == ",") continue;
-        final direction = _sortDirection(token);
-        if (direction != null) {
-          if (undirected == 0) {
-            throw TomQuerySyntaxException(
-              "query_sentence_compiler.analyse_order_by.direction_without_field",
-              "The QuerySentence $qs cannot be compiled. '$token' must follow "
-                  "the field(s) it orders.",
-            );
-          }
-          for (var i = terms.length - undirected; i < terms.length; i++) {
-            terms[i] = terms[i].withDirection(direction);
-          }
-          undirected = 0;
-          continue;
-        }
-        terms.add(TomSortField.asc(token));
-        undirected++;
-      }
-      if (terms.isEmpty) {
-        throw TomQuerySyntaxException(
-          "query_sentence_compiler.analyse_order_by.order_clause_missing_fields",
-          "The QuerySentence $qs cannot be compiled. If you specify Order-By you must include the fields for ordering.",
-        );
-      }
-      wc.removeRange(orderIndex, wc.length);
-    } on TomQuerySyntaxException {
-      rethrow;
-    } catch (error, s) {
+    if (wc[partIndex].toUpperCase() == "BY") {
+      partIndex++;
+    }
+    if (wc.length < partIndex + 1) {
       throw TomQuerySyntaxException(
-        "query_sentence_compiler.analyse_order_by.failed",
-        "The QuerySentence $qs cannot be compiled. Failed to analyse order-by clause. $error",
-        rootException: error,
-        stack: s,
+        "query_sentence_compiler.analyse_order_by.order_clause_missing_fields",
+        "The QuerySentence $qs cannot be compiled. If you specify Order-By you must include the fields for ordering.",
       );
     }
+    // Fields since the last direction keyword: the ones it will apply to.
+    int undirected = 0;
+    for (; partIndex < wc.length; partIndex++) {
+      final token = wc[partIndex];
+      if (token == ",") continue;
+      final direction = _sortDirection(token);
+      if (direction != null) {
+        if (undirected == 0) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.analyse_order_by.direction_without_field",
+            "The QuerySentence $qs cannot be compiled. '$token' must follow "
+                "the field(s) it orders.",
+          );
+        }
+        for (var i = terms.length - undirected; i < terms.length; i++) {
+          terms[i] = terms[i].withDirection(direction);
+        }
+        undirected = 0;
+        continue;
+      }
+      terms.add(TomSortField.asc(token));
+      undirected++;
+    }
+    if (terms.isEmpty) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.analyse_order_by.order_clause_missing_fields",
+        "The QuerySentence $qs cannot be compiled. If you specify Order-By you must include the fields for ordering.",
+      );
+    }
+    wc.removeRange(orderIndex, wc.length);
     return terms;
   }
 
@@ -1141,14 +1130,17 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     // build. This one can, and once did: it said `>=`, copied from the builder
     // beside it, sending a reader to the wrong six methods.
     //
-    // It has no test because it has no reachable input. `current.returnType` is
-    // whatever [_createColumn] or [_createParameter] produced, and both of those
-    // narrow to exactly the six cases above before this method is ever entered —
-    // an unmapped type is refused there, with their own message. The arm is kept
-    // because the switch is over a `Type` and so cannot be proven exhaustive.
-    throw TomQuerySyntaxException(
-      "query_sentence_compiler.create_is_in.failed",
-      "Attempt to _create IS IN operation for unknown type ${current.returnType}",
+    // No input reaches this. `current.returnType` is whatever [_createColumn]
+    // or [_createParameter] produced, and both narrow to exactly the cases
+    // above before this method is entered — an unmapped type is refused there,
+    // with their own key. The arm exists only because a switch over a `Type`
+    // cannot be proven exhaustive, so it states the broken invariant rather
+    // than claiming a key of the public vocabulary.
+    // throws-outside-family: programmer error — an operand type the column and
+    // parameter builders never produce.
+    throw StateError(
+      "IS IN reached with an operand type the column and parameter builders "
+      "never produce: ${current.returnType}",
     );
   }
 
@@ -1825,16 +1817,12 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
       );
     }
     if (inNegationMode) {
-      if (QT == TomDbBool) {
-        currentOperation =
-            not(currentOperation as TomOperator<TomDbBool>) as TomOperator<QT>;
-        inNegationMode = false;
-      } else {
-        throw TomQuerySyntaxException(
-          "query_sentence_compiler.build_expression.negation_of_non_bool",
-          "Attempt to negate a non-bool expression $currentOperation",
-        );
-      }
+      // Always a bool expression: negation mode is entered only through the
+      // `negate` argument, which the one caller passes for a TomDbBool build,
+      // or through NOT, which refuses any other type first.
+      currentOperation =
+          not(currentOperation as TomOperator<TomDbBool>) as TomOperator<QT>;
+      inNegationMode = false;
     }
     return (currentOperation, index);
   }

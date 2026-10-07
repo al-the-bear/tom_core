@@ -785,7 +785,7 @@ exposes its `sqlDialect`, lifecycle, and execution surface, and is a
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `createDatasourceOf` | `static TomDataSource? createDatasourceOf(String type)` | Returns a fresh data source for `type`, discovering drivers on first call; throws `TomDatasourceInitException` when none is registered or instantiation fails. |
+| `createDatasourceOf` | `static TomDataSource createDatasourceOf(String type)` | Returns a fresh data source for `type`, discovering drivers on first call; throws `TomDatasourceInitException` when none is registered or instantiation fails. |
 
 ##### Properties
 
@@ -1309,7 +1309,6 @@ tells the two apart.
 | `tom_datasource.create_datasource_of.no_driver_found` | No driver is registered for the requested type |
 | `tom_datasource_info.get_datasource.datasource_is_null` | The named registry entry has not been initialised |
 | `tom_datasource_info.initialize.delegate_not_found` | A `delegateTo` setting names an unregistered data source |
-| `tom_datasource_info.initialize.no_datasource_obtained_for_type` | `createDatasourceOf` returned nothing for the configured type |
 | `tom_datasource_info.initialize.no_type_specified` | The configuration entry carries no `type` |
 | `tom_datasource_info.initialize.unknown_setting` | A settings key names no field of the configured driver |
 

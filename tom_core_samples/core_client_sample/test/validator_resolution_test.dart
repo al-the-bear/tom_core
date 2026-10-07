@@ -9,6 +9,7 @@ import 'package:core_client_sample/reflection_seed.dart';
 import 'package:core_client_sample/resources/app_texts.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Builds the todo form the way production does — inside the enclosing
 /// [todoScopeId] scope, so its fields resolve their `<basePath>.validators`
@@ -61,7 +62,10 @@ void main() {
     (tester) async {
       final form = buildForm();
       form.title.set(' padded ');
-      await form.title.validate();
+      final result = await form.title.validate();
+      // The key is pinned as well as its text: the message only resolves if
+      // the rule reports exactly the key the bundle declares.
+      expect((result as ValidationError).errorKey, 'error.titleWhitespace');
       expect(
         form.title.resolvedErrorMessage,
         'Title cannot have leading or trailing spaces.',

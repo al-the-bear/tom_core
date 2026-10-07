@@ -174,11 +174,11 @@ mixin TomAnnotationAnalyzer {
     }
     final columns = getPersistentColumns(T);
     if (columns == null) {
-      throw TomAnnotationAnalyzerException(
-        "annotation_analyzer.analyse_persistent_type.columns_not_found",
-        "Failed to resolve the persistent columns of $T",
-        parameters: {"type": "$T"},
-      );
+      // throws-outside-family: programmer error — getPersistentColumns answers
+      // null only when findMirror does, and the mirror was found above; the two
+      // caches are filled and cleared together, so this is a broken invariant
+      // rather than a condition any caller can produce.
+      throw StateError("$T has a mirror but no persistent column list");
     }
     return TomTypePersistenceInfo(mirror, table, columns);
   }

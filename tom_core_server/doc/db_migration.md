@@ -950,7 +950,10 @@ So the reader derives structure two ways only, and never a third:
 
 ## Verification
 
-Three suites always run, one per half of the module plus the orchestrator.
+Four suites always run: one per half of the module, the orchestrator, and the
+module's error vocabulary.
+
+`test/db_migration_error_keys_test.dart` pins the module's error vocabulary: each case reaches a raise with a real input and asserts the exact key, so a key the module stops raising, or raises for a different condition, fails by name. None needs a database.
 
 `test/db_migration_test.dart` covers the connection-free surface: file-name
 parsing and its refusals, ascending-version ordering on the parsed integer,

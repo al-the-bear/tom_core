@@ -168,6 +168,24 @@ class UnsourcedEventJob extends TomJobBase {
   Future<Object?> execute() async => null;
 }
 
+// The next two are scanned by `scheduling_error_keys_test.dart`, which pins the
+// key each one is refused under. They live here because a scan reads this
+// suite's reflection build, and a class outside it is invisible to discovery.
+
+@tomReflector
+@TomScheduledJob(name: '   ', cron: '@daily')
+class BlankNameJob extends TomJobBase {
+  @override
+  Future<Object?> execute() async => null;
+}
+
+@tomReflector
+@TomScheduledJob(interval: Duration.zero)
+class ZeroIntervalJob extends TomJobBase {
+  @override
+  Future<Object?> execute() async => null;
+}
+
 @tomReflector
 @TomScheduledJob(name: 'collides', cron: '@daily')
 class FirstColliding extends TomJobBase {

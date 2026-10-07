@@ -9,6 +9,9 @@
 ///     quantity × unit-price product, parse-fail-tolerant (non-numeric → 0).
 ///   * `OrderHDForm.totalAmount` — the per-row sum across the bound items list,
 ///     including a row whose price/qty can't be parsed.
+///   * The error keys the forms' validators produce — the shared decimal
+///     validator behind `unitPrice`, and `ValidationForm`'s username pattern,
+///     async username-taken check and website URL pattern.
 ///
 /// Like `tom_list_form_test.dart`, these construct real `TomForm` subclasses,
 /// so reflection must be initialised through the app's generated
@@ -21,9 +24,11 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import 'package:tom_flutter_form_test/forms/customer_hd_form.dart';
 import 'package:tom_flutter_form_test/forms/order_item_form.dart';
+import 'package:tom_flutter_form_test/forms/validation_form.dart';
 import 'package:tom_flutter_form_test/main.reflection.dart';
 import 'package:tom_flutter_form_test/state/phase2a_state.dart';
 import 'package:tom_flutter_form_test/state/phase_hd_state.dart';
@@ -191,6 +196,65 @@ void main() {
       form.bind(makeOrder([]));
       expect(form.totalAmount, 0.0);
       form.dispose();
+    });
+  });
+
+  // The error keys these forms produce are their contract with the resource
+  // file: a key that drifts silently falls back to raw text. Each case below
+  // runs the real field's validator chain and asserts the exact key.
+  group('OrderItemForm.unitPrice — decimal validator error keys', () {
+    Future<ValidationResult> validatePrice(String text) async {
+      final form = TomScope.withScope('priceKeyTest', () => OrderItemForm());
+      addTearDown(form.dispose);
+      form.unitPrice.set(text);
+      return form.unitPrice.validate();
+    }
+
+    test('non-numeric text reports error.invalidDecimal', () async {
+      final r = await validatePrice('abc');
+      expect((r as ValidationError).errorKey, 'error.invalidDecimal');
+    });
+
+    test('a negative price reports error.mustBeNonNegative', () async {
+      final r = await validatePrice('-1.50');
+      expect((r as ValidationError).errorKey, 'error.mustBeNonNegative');
+    });
+
+    test('a non-negative decimal validates clean', () async {
+      expect(await validatePrice('4.20'), isA<ValidationSuccess>());
+    });
+  });
+
+  group('ValidationForm — field error keys', () {
+    ValidationForm makeForm() {
+      final form = TomScope.withScope('validationKeyTest', ValidationForm.new);
+      addTearDown(form.dispose);
+      return form;
+    }
+
+    test('username with a disallowed character reports '
+        'error.usernamePattern', () async {
+      final form = makeForm();
+      // Long enough for minLength(3), so the pattern is the first failure.
+      form.username.set('jane!');
+      final r = await form.username.validate();
+      expect((r as ValidationError).errorKey, 'error.usernamePattern');
+    });
+
+    test('username starting with "admin" reports error.usernameTaken from '
+        'the slow validator', () async {
+      final form = makeForm();
+      // Passes every fast validator, so only the async check can reject it.
+      form.username.set('admin_jane');
+      final r = await form.username.validate();
+      expect((r as ValidationError).errorKey, 'error.usernameTaken');
+    });
+
+    test('a malformed website reports error.invalidUrl', () async {
+      final form = makeForm();
+      form.website.set('not a url');
+      final r = await form.website.validate();
+      expect((r as ValidationError).errorKey, 'error.invalidUrl');
     });
   });
 }

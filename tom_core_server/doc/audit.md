@@ -1041,7 +1041,9 @@ and therefore auditable in its own right.
 
 ## Verification
 
-Seven suites carry the module's name, three of which need a server.
+Eight suites carry the module's name, three of which need a server.
+
+`test/audit_error_keys_test.dart` pins the module's error vocabulary: each case reaches a raise with a real input and asserts the exact key, so a key the module stops raising, or raises for a different condition, fails by name. None needs a database.
 
 `test/audit_test.dart` is the largest and always runs: `TomAuditActor`
 attribution, `TomAuditRecord` and the normalisation of before/after values to

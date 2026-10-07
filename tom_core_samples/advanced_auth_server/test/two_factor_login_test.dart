@@ -229,8 +229,29 @@ void main() {
     test('a missing challenge token is refused outright', () {
       expect(
         _service().submitSecondFactor(SecondFactorRequest(code: '000000')),
-        throwsA(isA<TomLoginException>()),
+        throwsA(
+          isA<TomLoginException>().having(
+            (e) => e.key,
+            'key',
+            'login.error.2fa.no-challenge',
+          ),
+        ),
       );
+    });
+
+    // Every enrolment pass shares one token guard, so each is driven here: a
+    // pass that skipped the guard would hand an empty token to the framework.
+    test('an enrolment pass without its interim token is refused outright', () {
+      final service = _service();
+      final noEnrolment = isA<TomLoginException>().having(
+        (e) => e.key,
+        'key',
+        'login.error.2fa.no-enrolment',
+      );
+      final request = TwoFactorEnrolmentRequest(type: 'totp', code: '000000');
+      expect(service.beginEnrolment(request), throwsA(noEnrolment));
+      expect(service.confirmEnrolment(request), throwsA(noEnrolment));
+      expect(service.skipEnrolment(request), throwsA(noEnrolment));
     });
   });
 

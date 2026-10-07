@@ -256,7 +256,7 @@ void main() async {
         ).readAsStringSync();
         final scan = source.substring(
           source.indexOf('static void _initializeDatasourceTypes()'),
-          source.indexOf('static TomDataSource? createDatasourceOf('),
+          source.indexOf('static TomDataSource createDatasourceOf('),
         );
         // The collision is detected before the map is written, so the first
         // registration stands and the second raises.

@@ -273,7 +273,7 @@ it and start eight test suites.
 | [`tool/check_module_dependencies.py`](tool/check_module_dependencies.py) | Audits each *module* document's Dependencies table against the imports its module actually has |
 | [`tool/check_dart_format.py`](tool/check_dart_format.py) | Holds every Dart file in the repository to `dart format`, across all 23 packages |
 | [`tool/package_format_guard.dart`](tool/package_format_guard.dart) | The in-suite formatting guard every framework package's `test/formatting_test.dart` delegates to |
-| [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the error vocabulary a document states — the completion documents' "Error keys" sections, and the hand-written module guides — against the keys the code raises |
+| [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the error vocabulary a document states — the completion documents' "Error keys" sections, and the hand-written module guides — against the keys the code raises, and every raised key against the tests that name it |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
 | [`tool/check_dartdoc_build.py`](tool/check_dartdoc_build.py) | Builds each gated package's API documentation, requires `dart doc` to report nothing, and fails a doc-comment link into a package the writer does not depend on |
 | [`tool/dartdoc_links.py`](tool/dartdoc_links.py) | Reads the doc-comment prose `dart doc` rendered and reports links into packages the writing package does not depend on; imported by `check_dartdoc_build.py` |
@@ -529,6 +529,18 @@ the other twenty-odd as missing. And prose about an API is full of dotted tokens
 that are not keys: `preferences.getOr` is a method reference, and no shape tells
 it from a key of the `preferences` family. Over the whole corpus `UNKNOWN`
 produced six findings on the guides and four were exactly that.
+
+**A fourth set: the keys some test names.** The two faults above keep the
+documents honest; `UNTESTED` keeps the suites honest. For every package — the
+framework packages and each sample — it reports a key the package's `lib/` or
+`bin/` raises that no `*_test.dart` of that package names as a literal. A key no
+test names is a failure mode nobody is checking: the code can raise it, the
+documents promise it, and no run would notice if it stopped. A test asserting
+only `throwsA(isA<TomException>())` does not count, deliberately — a key the
+test does not name is a key it does not pin. The census for this fault reads
+code only, with comment lines dropped first, so a dartdoc example that throws a
+made-up key raises nothing. The fix is a test naming the key, or, when the raise
+cannot be reached at all, deleting it and its documented entries.
 
 Adding the guides is what the 330 in this gate's baseline are. The gate had
 audited only sections headed exactly `Error keys`, in one repository; the guides

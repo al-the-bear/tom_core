@@ -1679,12 +1679,18 @@ class TomEndpointRouting {
   /// Reflects over the annotated classes and partitions them into service
   /// interfaces, API implementations, and components. Throws if a class carries
   /// both `@TomApiImplementation` and `@tomService`.
-  TomClassScanResult scanClasses() {
+  ///
+  /// [classes] defaults to every class the reflector annotates, which is what
+  /// [initializeRouter] scans. Passing them is what lets the partition be
+  /// checked against a class set that no reflection root could carry without
+  /// breaking every router built from it — a class annotated both ways is the
+  /// case in point.
+  TomClassScanResult scanClasses([Iterable<ClassMirror>? classes]) {
     List<ClassMirror> serviceInterfaces = [];
     List<ClassMirror> apiImplementations = [];
     List<ClassMirror> componentClasses = [];
 
-    for (var type in tomReflector.annotatedClasses) {
+    for (var type in classes ?? tomReflector.annotatedClasses) {
       TomApiImplementation? apiImplAnno;
       TomService? serviceAnno;
       TomComponent? componentAnno;
@@ -2005,12 +2011,8 @@ class TomEndpointRouting {
                 tepTag = tag;
               }
               if (tag is TomApiEndpointImplementation) {
-                if (aei != null) {
-                  throw TomEndpointPipelineException(
-                    "endpoint_pipeline.get_class_method_metadata.multiple_api_endpoint_implementation_tags",
-                    "More than one tag of type TomApiEndpointImplementation specified for $decl",
-                  );
-                }
+                // A second one cannot reach here: it is a TomEndpointBase, and
+                // the check above has already refused it.
                 aei = tag;
                 ae = tomRemoteApis[aei.apiId][aei.endpointId];
                 a = tomRemoteApis[aei.apiId];
