@@ -46,6 +46,7 @@ declarations are omitted.
 | `TomBeanLocatorException` | class | Bean-lookup failure (extends `TomException`). |
 | `tomComponent` | const | Default `TomComponent` annotation instance. |
 | `initializeBeanContext` | function | Initializes the bean registry. |
+| `validateBeanReferences` | function | Resolves every pending handle so that wiring errors surface at startup. |
 
 ### Context (`lib/src/tombase/context/`)
 
@@ -90,6 +91,19 @@ declarations are omitted.
 | `tomRemoteApis` | getter | The current `TomRemoteApis` registry. |
 | `tomRunWithAuthRetry` | function | Runs a call under an auth-retry policy. |
 | `tomDefaultAuthRetryPolicy` | const | Default `TomAuthRetryPolicy`. |
+| `TomFileMetadata` | class | What the server knows about a stored file. |
+| `TomFileSource` | class | The bytes to upload, together with what the server needs to know about them. |
+| `TomFileTransferClient` | abstract class | Moves file bytes between an application and a file store. |
+| `TomFileTransferException` | class | Exception thrown when a file transfer fails. |
+| `TomHttpFileTransferClient` | class | A `TomFileTransferClient` over HTTP. |
+| `TomMemoryFileTransferClient` | class | A `TomFileTransferClient` that keeps everything in a map. |
+| `TomRequestTimeoutException` | class | Exception thrown when a request outlives its `TomServerCallSpecs.timeout`. |
+| `TomTransferCancellation` | class | A cancel signal shared with an in-flight transfer. |
+| `TomTransferProgress` | class | How far a transfer has got. |
+| `decodeFileDescriptor` | function | Decodes the JSON descriptor body shared by the upload and describe responses. |
+| `tomEscapeFileNameForDisposition` | function | Escapes a file name for a quoted `Content-Disposition` parameter. |
+| `tomFileDescriptorHeaders` | function | Writes the descriptor header a `HEAD` response needs so `TomFileTransferClient.describe` can answer without a body. |
+| `tomFileNameFromDisposition` | function | Extracts `filename="…"` from a `Content-Disposition` header, or `null` when the header is absent or names no file. |
 
 ### Isolate Pooling (`lib/src/tombase/isolate_pooling/`)
 
@@ -101,6 +115,7 @@ declarations are omitted.
 | `TomExecutor` | abstract class | Executes a command inside a worker. |
 | `TomCommand` | abstract class | A unit of work sent to a worker. |
 | `TomWorkerException` | class | Worker failure (extends `TomException`). |
+| `TomWorkerDiedException` | class | Exception used to fail a command whose worker isolate died mid-flight. |
 
 ### JSON (`lib/src/tombase/json/`)
 
@@ -119,6 +134,9 @@ declarations are omitted.
 | `prettyJson` | function | Indent-formats a JSON string. |
 | `prettyJsonLine` | function | Single-line pretty JSON. |
 | `indentEncoder` | final | Shared two-space `JsonEncoder`. |
+| `TomJsonCycleException` | class | Raised when a tree walk meets a value that refers back to one of its own ancestors. |
+| `TomJsonDirectiveException` | class | Raised when a profile directive cannot be resolved by `processTree`. |
+| `TomJsonPathException` | class | Raised when a dot-separated path cannot be resolved against a tree. |
 
 ### Little Things (`lib/src/tombase/little_things/`)
 
@@ -135,6 +153,7 @@ declarations are omitted.
 | `tomGetStackTraceAsList` | function | Returns a stack trace as a list of frames. |
 | `tomGetStackTraceAsTuple` | function | Returns a stack trace as structured tuples. |
 | `convertMinutesToUtcOffset` | function | Formats a minute offset as a UTC offset string; throws outside ±14:00. |
+| `TomStackTraceNoise` | class | Classifies a stack frame as noise for the formatting functions in this library. |
 
 ### Logging (`lib/src/tombase/logging/`)
 
@@ -151,6 +170,9 @@ declarations are omitted.
 | `TomRemoteLogMessage` | class | Remote log request message. |
 | `TomRemoteLogResult` | class | Remote log response. |
 | `TomLoggingContext` | class | Context for remote logging. |
+| `TomFileLogReplayStore` | class | A `TomLogReplayStore` that persists buffered records to a JSON file. |
+| `TomInMemoryLogReplayStore` | class | In-memory `TomLogReplayStore` — the zero-config default. |
+| `TomLogReplayStore` | abstract class | Pluggable backend for `TomRemoteLogOutput`'s replay queue. |
 
 ### Observable (`lib/src/tombase/observable/`)
 
@@ -173,6 +195,7 @@ declarations are omitted.
 | `TomObservableEnum<E extends Enum>` | class | Boxed enum whose display text resolves from the text bundle under `<scope>.<enumName>.<value>`. |
 | `TomEnumResourceSegment` | abstract interface class | Implemented by an enum that overrides `toString()`, to declare its key segment explicitly. |
 | `tomNull` | final | The shared, read-only null-object `TomObject<String>`; writing to it throws. |
+| `TomObservableObservation` | extension | Adds the observation operator `>>` to every `TomObservable`. |
 
 ### Preferences (`lib/src/tombase/preferences/`)
 
@@ -189,6 +212,8 @@ declarations are omitted.
 | `tomUserPreferencesApiId` | const | The API id (`tomUserPreferences`) the server implementation binds to. |
 | `tomUserPreferencesListEndpointId`, `…ReadEndpointId`, `…WriteEndpointId`, `…DeleteEndpointId` | const | The four endpoint ids. |
 | `registerTomUserPreferencesApi()` | function | Registers the API with `tomRemoteApis`; idempotent. |
+| `TomUserPreferenceKeyException` | class | Raised when a preference key does not satisfy `TomUserPreferenceKeys`. |
+| `registerTomUserPreferencesApi` | function | Registers `tomUserPreferencesApi` with the global `tomRemoteApis` registry. |
 
 ### Reflection (`lib/src/tombase/reflection/`)
 
@@ -200,6 +225,7 @@ declarations are omitted.
 | `TomRequiredField` | class | Field annotation: a bound map must supply a value for it. |
 | `tomReflector` | const | Shared `TomReflector` instance. |
 | `tomReflectionInfo` | final | Shared `TomReflectionInfo` instance. |
+| `TomRecommendedField` | class | Marks a field a bound map *should* supply a value for, where its absence is worth saying but not worth refusing. |
 
 ### Resources (`lib/src/tombase/resources/`)
 
@@ -207,6 +233,7 @@ declarations are omitted.
 | ---- | ---- | ----------- |
 | `TomTextResourceProvider` | class | Provides localized text over a JSON tree with key fallback; `appResourcesRevision` announces bundle changes. |
 | `TomConfigResourceProvider` | class | Provides config values over a JSON tree. |
+| `TomResourceException` | class | Thrown when the resource providers are used outside their contract. |
 
 ### Scheduling (`lib/src/tombase/scheduling/`)
 
@@ -238,6 +265,8 @@ declarations are omitted.
 | `TomMemoryLeaseLock`, `TomFileLeaseLock` | class | In-isolate lock, and a cross-process lock over a shared directory. |
 | `TomScheduler` | class | The tick loop: recover, plan, claim, lease, dispatch, retry (implements `TomClosable`). |
 | `TomScheduleException`, `TomScheduledJobException` | class | Misconfiguration, raised eagerly at construction / scan time. |
+| `TomJobClaim` | class | A ticket proving that one particular claim of `run` was won. |
+| `TomOneShotResource` | extension type | A lease resource name that will never be acquired again once its work is done — the only kind `TomLeaseLock.forget` accepts. |
 
 ### Scope IDs (`lib/src/tombase/scope_ids/`)
 
@@ -247,6 +276,7 @@ declarations are omitted.
 | `TomScopeBase` | class | Concrete `TomScope` using `TomScopeMixin`. |
 | `TomScopeMixin` | mixin | Adds scope identity/parenting to any `Object`. |
 | `ScopeCapture` | class | Captures a scope and wraps callbacks so they run in it when invoked later. |
+| `TomScopeException` | class | Raised when a scope cannot be built or used as one. |
 
 ### Security (`lib/src/tombase/security/`)
 
@@ -283,6 +313,19 @@ declarations are omitted.
 | `Tom2FAMethodDescriptor` | class | How a mechanism names itself to a user choosing one — an identifier plus three resource keys, never literal text. |
 | `TomTotp` | class | RFC 4226/6238 code derivation and the base32 codec. |
 | `tomProtect<T>`, `tomProtected` | function | Wrap/read a resource-key-protected value. |
+| `TomAccessControlHandler` | typedef | Function signature for custom access control handlers. |
+| `TomClientContext` | class | The language, country and timezone a principal carries when nothing better is known. |
+| `TomClientLimitsProvider` | abstract class | The source of a client's limits: what its subscription currently grants. |
+| `TomOAuthApiService` | abstract class | The typed service interface behind `tomOAuthApi`. |
+| `TomOAuthAuthorizationDto` | class | Where to send the user, and the handle the flow is remembered under. |
+| `TomOAuthAuthorizationRequest` | class | The request that starts an authorization-code flow. |
+| `TomOAuthCallbackRequest` | class | What the provider's redirect carried back, forwarded by the application. |
+| `TomOAuthProviderDto` | class | One configured external-identity provider, as a client sees it. |
+| `TomProtectedField` | class | Marks a reflected field as protected by `resourceKey`. |
+| `TomProtectionSettingException` | class | Raised when a protection setting cannot be applied: a name in the `tom.protection` namespace that is not a switch, or a value that is not `true` or `false`. |
+| `TomTokenLifetimeException` | class | A token refused because it is not live: expired, carrying no usable `exp`, or contradicting itself about when it expires. |
+| `registerTomOAuthApi` | function | Registers `tomOAuthApi` with the global `tomRemoteApis` registry. |
+| `tomResourceState` | function | Convenience function for the `TomAuthState` the current user holds on `resourceKey` — a shorthand for `TomResourceKeyProtection.resourceState`. |
 
 ### Settings (`lib/src/tombase/settings/`)
 
@@ -301,6 +344,8 @@ declarations are omitted.
 | `TomCloseAdaptor` | class | Adapts a `@tomReflector` class's close-style method to `TomClosable`. |
 | `TomSignalHandler` | typedef | `void Function(ProcessSignal)`. |
 | `tomShutdownCleanup` | final | Shared shutdown coordinator. |
+| `TomCloseAdaptorException` | class | Raised by the `TomCloseAdaptor` constructor when the target has no method the adaptor can call. |
+| `TomShutdownUnregister` | typedef | Takes back one registration made on a `TomShutdownCleanup`. |
 
 ### Timezoned (`lib/src/tombase/timezoned/`)
 

@@ -36,6 +36,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomFileClientConfigurationStore` | class | JSON file store (io variant; neutral variant throws). |
 | `TomClientConfigurationException` | class | Module failures, keyed by stable dotted codes. |
 | `coerceSettingValue` | function | Reads a loosely-typed external value as the declared type. |
+| `readPlatformEnvironment` | function | The default environment reader — the process environment under `dart:io`, nothing elsewhere. |
 
 ### Little Things (`lib/src/tomclient/little_things/`)
 
@@ -61,6 +62,9 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomDevicePreferenceStore` | class | Two-method (`read`/`write`) backend interface; the only platform-specific part. |
 | `TomMemoryDevicePreferenceStore` | class | Process-lifetime device store. |
 | `TomPlatformDevicePreferenceStore` | class | Compile-time selected backend (file / `localStorage` / loud failure). |
+| `TomDevicePreferenceStoreConflictDetection` | mixin | Detects a write over a document other than the one the store last saw; used by the three shipped backends. |
+| `TomEncryptedDevicePreferenceStore` | class | Encrypts preference values through a `TomDevicePreferenceCipher` and delegates storage to another store. |
+| `TomDevicePreferenceCipher` | abstract class | The encrypt/decrypt pair an application supplies to the encrypted store. |
 | `TomDevicePreferenceJson` | class | The stored JSON document, written once for every persistent backend. |
 | `TomDevicePreferenceException` | class | Module failures, keyed by stable dotted codes. |
 | `TomUserPreferencesClient` | class | The account store: the same method set over the server's `/preferences/*` contract, addressed from the endpoint declarations. |
@@ -75,6 +79,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomIntProperty` | class | `int` config property. |
 | `TomDoubleProperty` | class | `double` config property. |
 | `TomBoolProperty` | class | `bool` config property. |
+| `TomPropertyException` | class | Both failures of a typed property, told apart by `key`. |
 
 ### Runtime (`lib/src/tomclient/runtime/`)
 
@@ -105,6 +110,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | ---- | ------ |
 | `clientPlatformUtils` | Runtime |
 | `coerceSettingValue` | Configuration |
+| `readPlatformEnvironment` | Configuration |
 | `resetClientPlatformUtils` | Runtime |
 | `Tom2FAChallengePanelContext` | Security |
 | `Tom2FAClientMechanism` | Security |
@@ -124,9 +130,12 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomDevicePreferenceException` | Preferences |
 | `TomDevicePreferenceJson` | Preferences |
 | `TomDevicePreferences` | Preferences |
+| `TomDevicePreferenceCipher` | Preferences |
 | `TomDevicePreferenceStore` | Preferences |
+| `TomDevicePreferenceStoreConflictDetection` | Preferences |
 | `TomDoubleProperty` | Resources |
 | `TomEffectiveSettings` | Configuration |
+| `TomEncryptedDevicePreferenceStore` | Preferences |
 | `TomFileClientConfigurationStore` | Configuration |
 | `TomFlutterPlatformUtils` | Runtime (internal — not exported) |
 | `TomIntProperty` | Resources |
@@ -138,6 +147,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomPlatformDevicePreferenceStore` | Preferences |
 | `TomPreferenceLookup` | Configuration |
 | `TomProperty<T>` | Resources |
+| `TomPropertyException` | Resources |
 | `TomQrCodeView` | Security |
 | `TomSetting<T>` | Configuration |
 | `TomStoredDevicePreferences` | Preferences |

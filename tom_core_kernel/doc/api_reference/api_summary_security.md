@@ -18,6 +18,7 @@ per-principal-per-resource role resolution.
   - [TomRole](#tomrole)
   - [TomEntitlement](#tomentitlement)
   - [TomUser](#tomuser)
+  - [TomClientContext](#tomclientcontext)
   - [TomPrincipal](#tomprincipal)
   - [TomAuthorizable](#tomauthorizable)
   - [TomAuthorizationGroup](#tomauthorizationgroup)
@@ -69,10 +70,10 @@ per-principal-per-resource role resolution.
 ## Overview
 
 Sources: `lib/src/tombase/security/user_principal_aci.dart`,
-`tom_authorization.dart`, `access_controls.dart`,
-`resource_role_authorization.dart`, `authentication_authorization.dart`,
-`bearer_authentication.dart`, `two_factor.dart`, `server_principal.dart`,
-`oauth_contract.dart`.
+`lib/src/tombase/security/tom_authorization.dart`, `lib/src/tombase/security/access_controls.dart`,
+`lib/src/tombase/security/resource_role_authorization.dart`, `lib/src/tombase/security/authentication_authorization.dart`,
+`lib/src/tombase/security/bearer_authentication.dart`, `lib/src/tombase/security/two_factor.dart`, `lib/src/tombase/security/server_principal.dart`,
+`lib/src/tombase/security/oauth_contract.dart`.
 
 `user_principal_aci.dart` holds the identity/authorization data model:
 `TomUser` (identity), `TomPrincipal` (authenticated session + context),
@@ -474,6 +475,23 @@ TomUser({
 | ------ | ----------- | ----------- |
 | `toString()` | `String` | *(override)* Username, id, name, and email summary. |
 
+### TomClientContext
+
+The language, country and timezone a principal carries when nothing better is
+known. Named rather than written out because they are compared as often as they
+are assigned: every login message, every OAuth request and every
+`TomContextProviders` fallback reads them from here, so a consumer recognising
+"no country" compares against the same constant that produced it. Not
+instantiable; statics only.
+
+#### Static Constants
+
+| Constant | Type | Description |
+| -------- | ---- | ----------- |
+| `defaultLanguage` | `static const String` | `en`, the language used when the client names none. A default, not a sentinel: it names a real language, so a bundle resolves rather than raw keys rendering. |
+| `noCountry` | `static const String` | `XX`, the country used when the client names none. A deliberate non-locale sentinel from the range ISO 3166-1 withholds from assignment; it reaches `TomPrincipal.clientCountry` unchanged, and `TomTextLocale` drops it when building a locale key. |
+| `defaultTimezone` | `static const String` | `utc`, the timezone used when the client names none — resolvable, unlike an empty string. |
+
 ### TomPrincipal
 
 Represents an authenticated user session with full context — combines user
@@ -777,6 +795,7 @@ default; [applyArguments] sets them at run time.
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
+| `protectFor<T>(TomPrincipal? principal, T data, T fallback, String resourceKey)` | `T` | Returns [data] if [principal] has access to [resourceKey], else [fallback]; a `null` principal gets [fallback]. [protect] over an explicit principal, and the form for minting a token: the principal being authenticated is not on the zone yet, so the zone-reading form would blank every protected field. Inherits the master switch — while [globalSettingProtectionDefault] is `false` it returns [data]. |
 | `protect<T>(T data, T fallback, String resourceKey)` | `T` | Returns [data] if the current user has access to [resourceKey], else [fallback]. Decided by [isProtected], so it inherits the master switch: while [globalSettingProtectionDefault] is `false` this returns [data] for every key and every principal. |
 | `resourceStateFor(TomPrincipal? principal, String resourceKey)` | `TomAuthState` | The rule itself, over an explicit principal. `full` whenever [globalSettingProtectionDefault] is `false`, before any grant is consulted; otherwise `full` for a flat grant covering the key (`TomAccessControlInformation.holdsResourceKey`), else the principal's resource role for it mapped through `TomResourceRoleRegistry` (an unknown role, or none, is `none`). A `null` principal is `none`. |
 | `resourceState(String resourceKey)` | `TomAuthState` | [resourceStateFor] applied to the principal on the ambient zone. Outside a request zone, with protection on, `none` for everything — fail-closed. |

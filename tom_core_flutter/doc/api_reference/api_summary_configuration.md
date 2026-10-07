@@ -24,7 +24,17 @@ install's overrides.
 ## Overview
 
 Sources: `lib/src/tomclient/configuration/client_configuration.dart`,
-`client_configuration_store.dart`, `file_configuration_store.dart`.
+`lib/src/tomclient/configuration/client_configuration_store.dart`,
+`lib/src/tomclient/configuration/effective_settings.dart`,
+`lib/src/tomclient/configuration/environment_reader.dart` with its variants
+`lib/src/tomclient/configuration/environment_reader_io.dart` and
+`lib/src/tomclient/configuration/environment_reader_neutral.dart`,
+`lib/src/tomclient/configuration/file_configuration_store.dart` with its
+variants `lib/src/tomclient/configuration/file_configuration_store_io.dart` and
+`lib/src/tomclient/configuration/file_configuration_store_neutral.dart`.
+
+`environment_reader.dart` and `file_configuration_store.dart` each export one of
+their two variants by conditional export, chosen by whether `dart:io` exists.
 
 A `TomBaseClientConfiguration` subclass declares its settings in
 `declareSettings()` (called from the base constructor). Each setting resolves
@@ -312,4 +322,5 @@ would create a second spelling that could disagree with the first.
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
+| `readPlatformEnvironment` | `String? readPlatformEnvironment(String name)` | The default reader behind `TomClientEnvironment`: the process environment variable `name` where `dart:io` exists, and always `null` where it does not, so an `envAlias` is simply never set on the web. Chosen by conditional export. |
 | `coerceSettingValue` | `T coerceSettingValue<T>(String key, Object? raw)` | Reads a loosely-typed external value as `T` (exact type, `int`→`double`, parseable `String`), else throws `client_configuration.value.type_mismatch`. |

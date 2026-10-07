@@ -53,8 +53,8 @@ run, and a tick loop that plans, claims, dispatches and retries.
 ## Overview
 
 Sources: `lib/src/tombase/scheduling/schedule.dart`,
-`job_definition.dart`, `scheduled_job.dart`, `job_store.dart`,
-`lease_lock.dart`, `scheduler.dart`.
+`lib/src/tombase/scheduling/job_definition.dart`, `lib/src/tombase/scheduling/scheduled_job.dart`, `lib/src/tombase/scheduling/job_store.dart`,
+`lib/src/tombase/scheduling/lease_lock.dart`, `lib/src/tombase/scheduling/scheduler.dart`.
 
 The module separates four concerns that are usually tangled together:
 

@@ -28,10 +28,14 @@ holds.
 ## Overview
 
 Sources: `lib/src/tomclient/preferences/device_preferences.dart`,
-`stored_device_preferences.dart`, `device_preference_store.dart`,
-`device_preference_json.dart`,
-`platform_device_preference_store{,_io,_web,_neutral}.dart`,
-`user_preferences_client.dart`.
+`lib/src/tomclient/preferences/stored_device_preferences.dart`, `lib/src/tomclient/preferences/device_preference_store.dart`,
+`lib/src/tomclient/preferences/device_preference_json.dart`,
+`lib/src/tomclient/preferences/encrypted_device_preference_store.dart`,
+`lib/src/tomclient/preferences/platform_device_preference_store.dart` with its
+variants `lib/src/tomclient/preferences/platform_device_preference_store_io.dart`,
+`lib/src/tomclient/preferences/platform_device_preference_store_web.dart` and
+`lib/src/tomclient/preferences/platform_device_preference_store_neutral.dart`,
+`lib/src/tomclient/preferences/user_preferences_client.dart`.
 
 Preferences that must **not** follow the user — the last account used on this
 device, whether biometric unlock is on here, a per-device layout — are stored

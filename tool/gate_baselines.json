@@ -1,6 +1,11 @@
 {
  "about": "Fault counts the gates in tool/ are held to. Read by tool/check_gates.py, which fails when a gate's count moves in either direction: up means a new fault, down means a baseline that should be lowered so the repair sticks. 'measured' is the date the count last changed. Regenerate with `python3 tool/check_gates.py --update`; write 'note' by hand.",
  "gates": {
+  "check_api_reference": {
+   "faults": 2,
+   "measured": "2026-10-07",
+   "note": "Two, and both are the absence of a reference rather than a defect in one: tom_flutter_ui (152 source files) and tom_core_agentic (79) ship no doc/api_reference/ at all, and the gate counts that as one fault each so the absence is recorded as debt rather than passed over -- writing either reference is a project of its own. Every package that has a reference is at zero. tom_core_server was zero from the first run, which is how the port is known to read as the server's own suite does. The kernel opened at 103 and tom_core_flutter at 32, and both were repaired rather than baselined: 49 index rows, a Source list per summary written as full paths (23 bare names), the conditional-export variants listed as the API they are, sections for TomClientContext, TomExecutor.notHandled and TomResourceKeyProtection.protectFor, and a stale isolate_pooling summary that still described the null substitution. Several first-run faults were the reader's, not the documents', and were fixed in the gate: re-exports inside an exported file (conditional ones included), `extension type` read as a type named `type`, a Source list written as a bullet list or a table, functions given `###` subsections, and `Constants` as a member heading."
+  },
   "check_api_signatures": {
    "faults": 0,
    "measured": "2026-10-06",

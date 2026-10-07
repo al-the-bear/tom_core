@@ -17,7 +17,7 @@ and device-side preference stores.
   - [TomUserPreferenceCodec](#tomuserpreferencecodec)
   - [TomUserPreferenceCodecException](#tomuserpreferencecodecexception)
 - [Global Functions and Constants](#global-functions-and-constants)
-  - [tomUserPreferencesApi](#tomuserpreferencesapi)
+- [The tomUserPreferencesApi Endpoints](#the-tomuserpreferencesapi-endpoints)
 
 ## Overview
 
@@ -353,7 +353,7 @@ raised while *naming* a value, so they belong to both the write and the read.
 | `tomUserPreferencesApi` | `TomApi` | The `/preferences` API — see below. |
 | `registerTomUserPreferencesApi()` | `void` | Registers `tomUserPreferencesApi` with the global `tomRemoteApis` registry. Idempotent, and called by both halves. Explicit rather than implicit so a deployment that stores no preferences does not carry the API. |
 
-### tomUserPreferencesApi
+## The tomUserPreferencesApi Endpoints
 
 Base URI `/preferences`. Every endpoint is `TomAuthenticatedAccess`: there is no
 anonymous preference, because a preference is per principal.

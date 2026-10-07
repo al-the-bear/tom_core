@@ -44,7 +44,7 @@ JSON-serializable data models.
   - [TomMap](#tommap)
   - [TomObservableEnum](#tomobservableenum)
   - [TomEnumResourceSegment](#tomenumresourcesegment)
-- [Global Values and Functions](#global-values-and-functions)
+- [Global Functions and Constants](#global-functions-and-constants)
   - [Values](#values)
   - [Functions](#functions)
 
@@ -1141,7 +1141,7 @@ enum ShippingState implements TomEnumResourceSegment {
 | -------- | ---- | ----------- |
 | `resourceSegment` | `String` | The enum's key segment, e.g. `todostatus` in `global.todostatus.inreview`. Lower-cased before use; must be a compile-time-stable literal, since deriving it from `runtimeType` would reintroduce the instability the interface exists to avoid. |
 
-## Global Values and Functions
+## Global Functions and Constants
 
 ### Values
 

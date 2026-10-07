@@ -26,7 +26,9 @@ Sources:
 - `lib/src/tombase/timezoned/timezones.dart`
 - `lib/src/tombase/timezoned/init_tz_embedded.dart`
 - `lib/src/tombase/timezoned/init_tz_web.dart`
-- `lib/src/tombase/timezoned/sync_load_refusal.dart`
+
+`init_tz_web.dart` imports `sync_load_refusal.dart`, which holds the error the
+web variant raises for a synchronous load; it is not exported.
 
 `TomTimezoned` extends `DateTime` and always stores its value in UTC, adding
 `local*` accessors that render the moment in an associated `TomTimezone`. Three

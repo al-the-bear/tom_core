@@ -20,10 +20,14 @@ fallback.
 
 ## Overview
 
-Source: `lib/src/tomclient/runtime/platform_detection_client.dart` (the exported
-surface) plus the three compile-time variants
-`platform_detection_flutter_io.dart`, `platform_detection_web.dart`, and
-`platform_detection_neutral.dart`.
+Sources: `lib/src/tomclient/runtime/platform_detection_client.dart`,
+`lib/src/tomclient/runtime/bad_certificate_policy.dart`.
+
+The client file selects one of three compile-time variants —
+`platform_detection_flutter_io.dart`, `platform_detection_web.dart` and
+`platform_detection_neutral.dart`, over the shared
+`platform_detection_base.dart` — by a conditional import. None of the four is
+exported; see [Internal Symbols](#internal-symbols-not-exported).
 
 The exported entry point is the top-level getter `clientPlatformUtils`, which
 answers **one** `TomPlatformUtils` per process — built on first read — whose
@@ -138,7 +142,7 @@ so on those two the policy is present and never consulted.
 Not instantiable — the policy is process-wide, and a second instance would
 suggest two policies could be in force.
 
-#### Static members
+#### Static Members
 
 | Member | Signature | Description |
 | ------ | --------- | ----------- |

@@ -281,6 +281,7 @@ it and start eight test suites.
 | [`tool/check_readme_status.py`](tool/check_readme_status.py) | Holds a package README's `## Status` version to its `pubspec.yaml`, and forbids a test count |
 | [`tool/check_doc_class_inventories.py`](tool/check_doc_class_inventories.py) | Holds a document's marked class inventory to the directory it inventories, in both directions |
 | [`tool/check_doc_phantom_names.py`](tool/check_doc_phantom_names.py) | Counts the `Tom*` type names shipped documentation writes that no code under `tom_ai/` declares |
+| [`tool/check_api_reference.py`](tool/check_api_reference.py) | Holds every package's `doc/api_reference/` to its barrel and sources — Source lists, index, names, functions, enums and class members |
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
 | [`tool/check_resource_key_namespace.py`](tool/check_resource_key_namespace.py) | Finds resource keys written with the field-grade scope glued to the front of the type |
 | [`tool/check_figure_wellformed.py`](tool/check_figure_wellformed.py) | Finds SVG figures that are not well-formed XML, and so render as nothing |
@@ -1475,6 +1476,30 @@ count is frozen: a new phantom moves it and fails the run, and repairing one is
 recorded by lowering the baseline. `--names` groups the population for that
 work. It refuses to run on a declaration index under 500 names, because a walk
 that missed the code would report every name as a phantom.
+
+```bash
+python3 tool/check_api_reference.py                   # every package
+python3 tool/check_api_reference.py tom_core_kernel   # one package
+python3 tool/check_api_reference.py --self-test       # check the checker
+```
+
+An API reference claims, by existing, that it documents its package, and
+nothing about writing code sends its author back to it. `tom_core_server`'s
+reference is held to that claim by its own conformance suite; this gate carries
+the generic half of it to every package. Per module directory it checks that
+the summary exists and the index links it; that the summary's `Source:` list
+names every file the barrel exports for the module — following re-exports,
+conditional ones included — and nothing else, written as full paths; that the
+index and the summary name every exported type and function; that the
+`## Global Functions and Constants` section lists every free function and
+names nothing undeclared; that every exported enum has a section; and that
+every class section names each public member its class declares, or an
+ancestor's section does.
+
+The parsers are ports of the suite's, including its fixes, which is why the
+gate reads `tom_core_server` at zero. A package with no `doc/api_reference/` at
+all counts as one fault, so the absence is recorded rather than passed over:
+`tom_flutter_ui` and `tom_core_agentic` are that baseline.
 
 ```bash
 python3 tool/check_field_grade_matrix.py                  # the whole repository
