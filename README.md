@@ -251,6 +251,7 @@ it and start eight test suites.
 | [`tool/check_tooling_table.py`](tool/check_tooling_table.py) | Pins this table, and the prose sections below it, to the contents of `tool/` |
 | [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits a document's own navigation: its `## Table of Contents` and every anchor it links to itself |
 | [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
+| [`tool/check_baseline_claims.py`](tool/check_baseline_claims.py) | Fails a completion document's `What changed` claim about what a `Tom*` symbol did at the baseline when the baseline had no such symbol |
 | [`tool/check_doc_dependencies.py`](tool/check_doc_dependencies.py) | Audits each package document's Dependencies section against the names its `pubspec.yaml` declares |
 | [`tool/check_module_dependencies.py`](tool/check_module_dependencies.py) | Audits each *module* document's Dependencies table against the imports its module actually has |
 | [`tool/check_dart_format.py`](tool/check_dart_format.py) | Holds every Dart file in the repository to `dart format`, across all 23 packages |
@@ -346,6 +347,28 @@ same fault confined to the contents block.
 Documents drift from their contents whenever a section is added without the
 list being touched, so the check is worth running after editing any document
 that has one.
+
+```bash
+python3 tool/check_baseline_claims.py               # every *_changes.md
+python3 tool/check_baseline_claims.py --self-test   # check the checker
+```
+
+Every other gate checks a document against the code as it *is*. Part 3 of a
+completion `*_changes.md` describes the baseline, commit `3bdb9f0`, and the
+contract forbids comparing against anything else — so a claim there is about a
+tree no other gate reads. One shape of it is decidable: a sentence whose subject
+is a backticked `Tom*` symbol and whose verb is past tense (`` `TomFoo` returned
+a growable list ``) asserts the symbol was there to do it. If the baseline has no
+such symbol, the sentence describes an intermediate state of the code, which is
+the defect. The baseline's identifiers come from one `git grep` against the
+commit, well under a second, so nothing is cached.
+
+Four look-alikes are excluded by rule: the symbol as the object of what precedes
+it (``looking for `TomFoo` opened``), a passive participle (``a `TomFoo` shared
+by``), a negation (``` `TomFoo` did not exist ```, which is exactly how a missing
+symbol should be described) and a bare pro-verb (``not that the `TomFoo` did;``).
+`--self-test` holds each of them and the claims they must not hide. The first run
+found eight claims, all real; they were restated against the baseline.
 
 ```bash
 python3 tool/check_doc_inventories.py         # every completion document

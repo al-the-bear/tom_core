@@ -11,6 +11,11 @@
    "measured": "2026-09-04",
    "note": "Lands at zero because all four faults it found were legitimate omissions, and each was declared with a marker in its barrel in the same pass: reflection_seed.dart in advanced_client_core, reflection_entry.dart in todo_domain, and the two generated colour/icon tables behind tom_colors.dart and tom_icons.dart in tom_flutter_ui. Zero is the expected steady state -- the gate exists for recurrence, not backlog, and the one defect of this class (session_two_factor_controller.dart, absent from advanced_app_client's app.dart) was already repaired by tcinc947. 39 barrels across 23 packages are in scope. A directory with no barrel is deliberately not covered: the six Flutter sample applications correctly re-export nothing from screens/ and groups/, and demanding it would produce some ninety faults, all wrong."
   },
+  "check_baseline_claims": {
+   "faults": 0,
+   "measured": "2026-10-07",
+   "note": "Zero. The first run judged 86 past-tense claims whose subject is a backticked Tom* symbol, inside the What changed sections of 49 *_changes.md documents, against the 864 Tom* identifiers present at 3bdb9f0. It found 8 naming a symbol the baseline did not have -- descriptions of intermediate states, which the completion contract forbids in part 3: the preferences document's all() and clear narratives, two replay-store rows of the logging table (moved into part 1 as current guarantees), TomLoginException 'moved' (it is new), and two endpoints sentences. All were restated; the next one is a failure. The rule decides only claims about symbols that did not exist at all; prose narrating an intermediate state of a symbol that did exist is out of its reach."
+  },
   "check_comments_read_as_is": {
    "faults": 0,
    "measured": "2026-10-07",
