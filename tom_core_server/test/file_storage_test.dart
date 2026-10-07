@@ -3948,15 +3948,163 @@ fileStores:
     });
 
     test('an application backend is registered with one line', () async {
-      TomBlobStoreInfo.registerBackend(
-        'fixture',
-        (name, settings) => TomMemoryBlobStore(),
-      );
+      TomBlobStoreInfo.registerBackend('fixture', FixtureBlobStoreBackend.new);
       expect(TomBlobStoreInfo.backendTypes, contains('fixture'));
       await TomBlobStoreInfo.initializeBlobStores({
-        'custom': {'type': 'fixture'},
+        'custom': {'type': 'fixture', 'label': 'archive'},
       });
       expect(TomBlobStoreInfo.storeNamed('custom'), isA<TomMemoryBlobStore>());
+      expect(FixtureBlobStoreBackend.lastLabel, 'archive');
+    });
+
+    group('a settings key no backend field reads is refused', () {
+      // A key that binds nothing is a mistake in a file the operator wrote.
+      // Absorbed, it leaves the default it meant to change standing with
+      // nothing to say so: `createSchma: false` creates the tables anyway.
+      Matcher unknownSetting(String store, List<String> keys) => throwsA(
+        isA<TomStorageException>()
+            .having((e) => e.key, 'key', 'storage.registry.unknown_setting')
+            .having((e) => e.parameters?['store'], 'store', store)
+            .having((e) => e.parameters?['keys'], 'keys', keys),
+      );
+
+      test('on the memory backend', () async {
+        await expectLater(
+          TomBlobStoreInfo.initializeBlobStores({
+            'scratch': {'type': 'memory', 'rooot': '/tmp'},
+          }),
+          unknownSetting('scratch', ['rooot']),
+        );
+      });
+
+      test('on the directory backend', () async {
+        await expectLater(
+          TomBlobStoreInfo.initializeBlobStores({
+            'files': {'type': 'directory', 'root': '/tmp', 'Root': '/srv'},
+          }),
+          unknownSetting('files', ['Root']),
+        );
+      });
+
+      test('on the database backend, naming every offending key', () async {
+        // Refused before the data source is looked up, so no database is
+        // needed: `main` is registered nowhere in this suite.
+        await expectLater(
+          TomBlobStoreInfo.initializeBlobStores({
+            'attachments': {
+              'type': 'database',
+              'datasource': 'main',
+              'createSchma': false,
+              'chunk_size': 4096,
+            },
+          }),
+          unknownSetting('attachments', ['createSchma', 'chunk_size']),
+        );
+      });
+
+      test('on the s3 backend', () async {
+        await expectLater(
+          TomBlobStoreInfo.initializeBlobStores({
+            'archive': {
+              'type': 's3',
+              'endpoint': 'https://s3.example.com',
+              'bucket': 'archive',
+              'region': 'eu-central-1',
+              'accessKeyId': 'id',
+              'secretAccessKey': 'secret',
+              'keyPrefx': 'tenant-7',
+            },
+          }),
+          unknownSetting('archive', ['keyPrefx']),
+        );
+      });
+
+      test('on a backend a deployment registered', () async {
+        TomBlobStoreInfo.registerBackend(
+          'fixture',
+          FixtureBlobStoreBackend.new,
+        );
+        await expectLater(
+          TomBlobStoreInfo.initializeBlobStores({
+            'custom': {'type': 'fixture', 'lable': 'archive'},
+          }),
+          unknownSetting('custom', ['lable']),
+        );
+      });
+
+      test('the registry\'s own keys are not passed to the backend', () async {
+        // `type` and `default` are the registry's; neither is a field of any
+        // backend, and both must pass the check on every backend.
+        TomBlobStoreInfo.registerBackend(
+          'fixture',
+          FixtureBlobStoreBackend.new,
+        );
+        await TomBlobStoreInfo.initializeBlobStores({
+          'scratch': {'type': 'memory', 'default': false},
+          'custom': {'type': 'fixture', 'default': true},
+        });
+        expect(TomBlobStoreInfo.defaultStoreName, 'custom');
+        expect(TomBlobStoreInfo.registryKeys, {'type', 'default'});
+      });
+    });
+
+    test('a value its field cannot take names the setting', () async {
+      await expectLater(
+        TomBlobStoreInfo.initializeBlobStores({
+          'attachments': {
+            'type': 'database',
+            'datasource': 'main',
+            'chunkSize': 'large',
+          },
+        }),
+        throwsA(
+          isA<TomStorageException>()
+              .having((e) => e.key, 'key', 'storage.registry.invalid_setting')
+              .having((e) => e.parameters?['setting'], 'setting', 'chunkSize'),
+        ),
+      );
+    });
+
+    test('a number given as text is read as the number', () async {
+      // An environment substitution always yields a string, so a part size
+      // written `\${PART_SIZE:5242880}` arrives as text.
+      await TomBlobStoreInfo.initializeBlobStores({
+        'archive': {
+          'type': 's3',
+          'endpoint': 'https://s3.example.com',
+          'bucket': 'archive',
+          'region': 'eu-central-1',
+          'accessKeyId': 'id',
+          'secretAccessKey': 'secret',
+          'partSize': '5242880',
+        },
+      });
+      final store = TomBlobStoreInfo.storeNamed('archive') as TomS3BlobStore;
+      expect(store.partSize, TomS3BlobStore.minimumPartSize);
+    });
+
+    test('a backend outside the reflection is refused by name', () async {
+      // Its settings could be neither checked nor bound; building it with every
+      // field at its default would be the silent drop over again.
+      TomBlobStoreInfo.registerBackend('unreflected', _UnreflectedBackend.new);
+      await expectLater(
+        TomBlobStoreInfo.initializeBlobStores({
+          'files': {'type': 'unreflected'},
+        }),
+        throwsA(
+          isA<TomStorageException>()
+              .having(
+                (e) => e.key,
+                'key',
+                'storage.registry.backend_not_reflected',
+              )
+              .having(
+                (e) => e.parameters?['backend'],
+                'backend',
+                '_UnreflectedBackend',
+              ),
+        ),
+      );
     });
 
     test('an entry with no type reports an empty one, not the word null', () {
@@ -3973,23 +4121,26 @@ fileStores:
       expect(TomBlobStoreInfo('bare', const {}).type, isEmpty);
     });
 
-    test('an entry with its own builder does not defer to a backend', () async {
-      // Precedence between the two ways an entry can know how to build itself.
-      // `open` prefers the entry's own factory and falls back to the backend
-      // registered for its `type`; reversed, an entry that carries a builder
-      // *and* names a type would be built by the backend instead, which is a
-      // different store from the one the caller handed over.
+    test('a provided entry does not defer to a backend of its type', () async {
+      // Precedence between the two ways an entry can get its store. `open`
+      // hands back a provided store before it consults the backend table;
+      // reversed, a backend registered under the provided type's name would
+      // build a different store from the one the caller handed over.
       //
-      // Reached through `open` rather than through `register`, which assigns
-      // `_store` directly and so never consults either -- the first version of
-      // this test went that way and the mutation survived it.
+      // Reached through `open` after `closeAll` rather than straight after
+      // `register`, which assigns the store directly and so never consults
+      // either.
       final own = TomMemoryBlobStore();
-      final backend = TomMemoryBlobStore();
-      TomBlobStoreInfo.registerBackend('fixture', (name, settings) => backend);
+      TomBlobStoreInfo.registerBackend(
+        TomBlobStoreInfo.providedType,
+        FixtureBlobStoreBackend.new,
+      );
+      addTearDown(
+        () => TomBlobStoreInfo.unregisterBackend(TomBlobStoreInfo.providedType),
+      );
 
-      final entry = TomBlobStoreInfo('either', <String, dynamic>{
-        'type': 'fixture',
-      }, factory: (name, settings) => own);
+      final entry = TomBlobStoreInfo.register('either', own);
+      await TomBlobStoreInfo.closeAll();
       await entry.open();
 
       expect(entry.store, same(own));
@@ -4227,4 +4378,11 @@ fileStores:
       );
     });
   });
+}
+
+/// A backend whose class carries no `@tomReflector`, as a deployment's own
+/// backend does until its reflection is regenerated.
+class _UnreflectedBackend extends TomBlobStoreBackend {
+  @override
+  TomBlobStore build(String name) => TomMemoryBlobStore();
 }

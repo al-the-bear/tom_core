@@ -2451,3 +2451,24 @@ class FixtureTemporalRecord {
 /// The MariaDB-backed repository for [FixtureTemporalRecord].
 class FixtureTemporalRepository
     extends TomSqlDatasourceRepository<FixtureTemporalRecord, int> {}
+
+/// A blob-store backend registered by a deployment rather than shipped with
+/// the framework: the registry must hold its block to its fields exactly as it
+/// holds a built-in's.
+///
+/// [label] is its one setting; the store it builds records the bound value in
+/// [lastLabel], so a test can see the setting reach the backend.
+@tomReflector
+class FixtureBlobStoreBackend extends TomBlobStoreBackend {
+  /// The backend's one setting.
+  String label = 'unset';
+
+  /// The [label] the most recent [build] was configured with.
+  static String? lastLabel;
+
+  @override
+  TomBlobStore build(String name) {
+    lastLabel = label;
+    return TomMemoryBlobStore();
+  }
+}

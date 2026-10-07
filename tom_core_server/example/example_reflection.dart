@@ -1,6 +1,6 @@
 /// The example suite's single reflection root.
 ///
-/// Five of the examples need a live reflector and none can borrow the test
+/// Six of the examples need a live reflector and none can borrow the test
 /// fixture's, because an example is not a test and cannot import from `test/`:
 ///
 ///  * the two-node cluster demonstration, whose SQL scheduler stores read every
@@ -15,7 +15,9 @@
 ///  * the object-persistence example, whose query sentences, grouped select and
 ///    column grades are all resolved from one entity's annotations;
 ///  * the preferences example, whose object preference is encoded and rebuilt
-///    through the registry rather than through the type's own name.
+///    through the registry rather than through the type's own name;
+///  * the file-storage example, whose configured stores are built by backends
+///    whose settings are bound — and checked — through the reflector.
 ///
 /// **One root, not one per example.** The generator follows this file's import
 /// graph and emits `example_reflection.reflection.dart` beside it, and because
@@ -30,6 +32,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 import 'endpoints/endpoints_entities.dart';
 import 'export/export_entities.dart';
+import 'file_storage/file_storage_backend.dart';
 import 'object_persistence/object_persistence_entities.dart';
 import 'preferences/preferences_entities.dart';
 import 'scheduling/cluster/cluster_reflection.dart';
@@ -49,6 +52,7 @@ const List<Type> exampleReflectedTypes = <Type>[
   ExampleDashboardPreference,
   ExampleDocumentRecord,
   ExampleSaleRecord,
+  ExampleShelfBlobStoreBackend,
   // A framework row holder, named to keep the package barrel in the graph. The
   // SQL scheduler stores map their rows into types like this one, so the
   // cluster demo needs the framework's reflected surface as much as its own.

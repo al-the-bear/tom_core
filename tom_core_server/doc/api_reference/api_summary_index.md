@@ -384,7 +384,9 @@ surface documented here.
 | `TomDatabaseBlobStore` | class | Blob store over a manifest and chunk table pair. |
 | `TomS3BlobStore` | class | Blob store over an S3-compatible object store. |
 | `TomBlobStoreInfo` | class | The process-wide registry of named, configured stores. |
-| `TomBlobStoreFactory` | typedef | Builds a store of one backend type from its settings. |
+| `TomBlobStoreBackend` | abstract class | One backend: its settings as fields, and the store they build. |
+| `TomMemoryBlobStoreBackend` / `TomDirectoryBlobStoreBackend` / `TomDatabaseBlobStoreBackend` / `TomS3BlobStoreBackend` | class | The four built-in backends, registered as `memory`, `directory`, `database` and `s3`. |
+| `TomBlobStoreBackendFactory` | typedef | Creates a fresh backend of one type. |
 | `TomAwsV4Signer` | class | Signs HTTP requests with AWS Signature Version 4. |
 | `TomAwsCredentials` | class | The key pair, optionally with a session token. |
 | `TomBlobManifestRow` | class | One row of the blob manifest table. |
@@ -792,7 +794,8 @@ surface documented here.
 | `TomBlobMigrationReport` | Object Persistence |
 | `TomBlobRange` | File Storage |
 | `TomBlobStore` | File Storage |
-| `TomBlobStoreFactory` | File Storage |
+| `TomBlobStoreBackend` | File Storage |
+| `TomBlobStoreBackendFactory` | File Storage |
 | `TomBlobStoreInfo` | File Storage |
 | `TomBlobStoreOperation` | File Storage |
 | `TomBoolConfig` | Configuration |
@@ -821,6 +824,7 @@ surface documented here.
 | `TomCsvRenderer` | Export |
 | `TomDartType` | Object Persistence |
 | `TomDatabaseBlobStore` | File Storage |
+| `TomDatabaseBlobStoreBackend` | File Storage |
 | `TomDataScope` | Object Persistence |
 | `TomDataScopeAuthorizationException` | Object Persistence |
 | `TomDataScopeBypass` | Object Persistence |
@@ -871,6 +875,7 @@ surface documented here.
 | `TomDeliveryReportStore` | Messaging |
 | `TomDeliveryState` | Messaging |
 | `TomDirectoryBlobStore` | File Storage |
+| `TomDirectoryBlobStoreBackend` | File Storage |
 | `TomDirectoryExportStore` | Export |
 | `TomDoubleConfig` | Configuration |
 | `TomDummyAuthenticationService` | Authentication |
@@ -950,6 +955,7 @@ surface documented here.
 | `TomMemoryAuditAnchorStore` | Audit |
 | `TomMemoryAuditSink` | Audit |
 | `TomMemoryBlobStore` | File Storage |
+| `TomMemoryBlobStoreBackend` | File Storage |
 | `TomMemoryDeliveryReportStore` | Messaging |
 | `TomMemoryExportStore` | Export |
 | `TomMemoryExternalIdentityStore` | Authentication |
@@ -1024,6 +1030,7 @@ surface documented here.
 | `TomRsaAuditAnchorSigner` | Audit |
 | `TomRsaAuditAnchorVerifier` | Audit |
 | `TomS3BlobStore` | File Storage |
+| `TomS3BlobStoreBackend` | File Storage |
 | `TomSchedulerNode` | Scheduling |
 | `TomSchedulerNodeRow` | Scheduling |
 | `TomSchemaBuilder` | Database Migration |

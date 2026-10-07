@@ -21,7 +21,9 @@ named registry that selects one from configuration.
   - [TomAwsCredentials](#tomawscredentials)
   - [TomAwsV4Signer](#tomawsv4signer)
   - [TomS3BlobStore](#toms3blobstore)
-  - [TomBlobStoreFactory](#tomblobstorefactory)
+  - [TomBlobStoreBackend](#tomblobstorebackend)
+  - [The four built-in backends](#the-four-built-in-backends)
+  - [TomBlobStoreBackendFactory](#tomblobstorebackendfactory)
   - [TomBlobStoreInfo](#tomblobstoreinfo)
 - [Global Functions and Constants](#global-functions-and-constants)
 
@@ -33,6 +35,7 @@ Source: `lib/src/tomserver/file_storage/blob_store.dart`,
 `lib/src/tomserver/file_storage/database_blob_sql.dart`,
 `lib/src/tomserver/file_storage/s3_blob_store.dart`,
 `lib/src/tomserver/file_storage/aws_v4_signer.dart`,
+`lib/src/tomserver/file_storage/blob_store_backends.dart`,
 `lib/src/tomserver/file_storage/blob_store_registry.dart`.
 
 `TomBlobStore` is the contract: five operations — `put`, `get`, `describe`,
@@ -83,10 +86,12 @@ Requests to an object store are signed by `TomAwsV4Signer` using a
 `TomAwsCredentials` pair; signing is a pure function of a request and a key, so
 it lives apart from the store and is verified against AWS's published test
 vectors. Finally, `TomBlobStoreInfo` is the process-wide registry of named,
-configured stores — the same shape as `TomDataSourceInfo` — and
-`TomBlobStoreFactory` is the seam an application registers its own backend
-through, so a deployment spells a custom backend in configuration exactly like a
-built-in one.
+configured stores — the same shape as `TomDataSourceInfo` — and a
+`TomBlobStoreBackend` is what a configured store's `type` names: a class whose
+fields are that backend's settings, so a key in a store's block that names no
+field is refused at start-up. An application registers its own backend through a
+`TomBlobStoreBackendFactory`, and a deployment then spells it in configuration
+exactly like a built-in one.
 
 This module is the storage half only, and stops at the key. Nothing here is
 reachable over HTTP: the endpoint that serves a stored file —
@@ -122,7 +127,13 @@ TomBlobChunkRow
 TomAwsCredentials
 TomAwsV4Signer
 
-TomBlobStoreFactory  (typedef)
+TomBlobStoreBackend  (abstract)
+    ├── TomMemoryBlobStoreBackend
+    ├── TomDirectoryBlobStoreBackend
+    ├── TomDatabaseBlobStoreBackend
+    └── TomS3BlobStoreBackend
+
+TomBlobStoreBackendFactory  (typedef)
 TomBlobStoreInfo
 ```
 
@@ -756,18 +767,62 @@ render it unawares.
 | `close` | `Future<void> close()` | *(override)* Closes the HTTP client, but only the one this store created. |
 | `toString` | `String toString()` | *(override)* Renders `TomS3BlobStore(<bucket> at <endpoint>)`. |
 
-### TomBlobStoreFactory
+### TomBlobStoreBackend
 
-Builds a store of one backend type from its configured settings. A closure
-rather than an annotation-discovered driver, so a backend can capture whatever
-it needs — a configured HTTP client, an existing credential provider — and can
-be added with a one-line registration instead of a reflection rebuild.
+One blob-store backend: the settings a configured store of its `type` accepts,
+declared as fields, and the store they build. The registry creates a fresh
+instance per configured store, rejects any settings key the instance declares no
+field for, binds the rest onto its fields through reflection, and calls `build`.
+A subclass therefore carries `@tomReflector` and declares each setting as a
+plain, non-`final`, public field whose initialiser is its default; anything that
+is not a setting — an HTTP client, a credential provider — is a constructor
+argument, captured by the factory it is registered with.
+
+#### Constructors
 
 ```dart
-typedef TomBlobStoreFactory = FutureOr<TomBlobStore> Function(
-  String name,
-  Map<String, dynamic> settings,
-);
+TomBlobStoreBackend()
+```
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `missingSetting` | `static TomStorageException missingSetting(String store, String setting)` | The `storage.registry.missing_setting` error a `build` raises for a required setting the configuration of `store` left unset. |
+| `parseInts` | `static Map<String, dynamic> parseInts(Map<String, dynamic> settings, Iterable<String> keys)` | `settings` with the value under each of `keys` parsed to an `int` when it arrived as a string holding one; a string that does not parse is left for binding to refuse. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `build` | `FutureOr<TomBlobStore> build(String name)` | *(abstract)* Builds the store configured as `name` from the bound fields, raising `missingSetting` for a required one left unset. |
+| `normalize` | `Map<String, dynamic> normalize(Map<String, dynamic> settings)` | Returns `settings` with each value in the shape its field takes, before binding. The default changes nothing; a backend with an `int` setting overrides it to accept the string an environment substitution produces. |
+
+### The four built-in backends
+
+Registered under the types a configuration names. Each field is a setting; an
+empty `String` default marks a required one, which `build` refuses as
+`storage.registry.missing_setting`.
+
+| Class | `type` | Settings (fields) |
+| ----- | ------ | ----------------- |
+| `TomMemoryBlobStoreBackend` | `memory` | none |
+| `TomDirectoryBlobStoreBackend` | `directory` | `root` (required) |
+| `TomDatabaseBlobStoreBackend` | `database` | `datasource` (required), `manifestTable`, `chunkTable`, `chunkSize`, `createSchema` |
+| `TomS3BlobStoreBackend` | `s3` | `endpoint`, `bucket`, `region`, `accessKeyId`, `secretAccessKey` (all required), `sessionToken`, `pathStyle`, `partSize`, `keyPrefix` |
+
+`chunkSize` and `partSize` also accept a string holding a number, through
+`normalize`.
+
+### TomBlobStoreBackendFactory
+
+Creates a fresh, unconfigured backend of one type. Called once per configured
+store, because the store's settings are bound onto the instance it returns; a
+constructor tear-off for a backend with no arguments, a closure for one that
+captures something.
+
+```dart
+typedef TomBlobStoreBackendFactory = TomBlobStoreBackend Function();
 ```
 
 ### TomBlobStoreInfo
@@ -782,19 +837,18 @@ naming one of them needs no code at all.
 #### Constructors
 
 ```dart
-TomBlobStoreInfo(String name, Map<String, dynamic> settings, {TomBlobStoreFactory? factory})
+TomBlobStoreInfo(String name, Map<String, dynamic> settings)
 ```
 
-`factory` builds the store when `open` is called; when it is null — the
-configured case — the backend named by `settings['type']` is looked up among the
-registered backends instead. Passing one is how a store that no settings map
-could describe still gets an entry that can build itself.
+`open` builds the store with the backend `settings['type']` names. A store
+already in hand gets its entry through `register` instead.
 
 #### Static Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `providedType` | `static const String` | The `type` recorded for a store handed over as an instance (`'provided'`). Deliberately not a registered backend: it names how the store arrived rather than a way to build one, so a configuration naming it fails like any other unknown type and `backendTypes` does not list it. |
+| `registryKeys` | `static const Set<String>` | The settings keys the registry reads itself — `type` and `default` — and so removes before the rest reach the backend. |
 | `stores` | `static final Map<String, TomBlobStoreInfo>` | All registered stores, keyed by name. |
 | `defaultStoreName` | `static String?` | The name `defaultStore` resolves to, or `null` when none is nominated. |
 | `backendTypes` | `static Iterable<String>` | *(getter)* The backend type names currently registered. |
@@ -805,11 +859,12 @@ could describe still gets an entry that can build itself.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `registerBackend` | `static void registerBackend(String type, TomBlobStoreFactory factory)` | Registers `factory` as the builder for backend `type`, replacing any previous registration of the same name. Call before `initializeBlobStores`: an unknown type is a start-up failure, not a lazy one. |
+| `registerBackend` | `static void registerBackend(String type, TomBlobStoreBackendFactory factory)` | Registers `factory` as the creator of backend `type`, replacing any previous registration of the same name. It must return a fresh backend each call, of a class in the application's generated reflection. Call before `initializeBlobStores`: an unknown type is a start-up failure, not a lazy one. |
+| `unregisterBackend` | `static bool unregisterBackend(String type)` | Removes backend `type`, answering whether one was registered. A configuration naming it then fails as `storage.registry.unknown_backend`. |
 | `getBlobStoreInfo` | `static TomBlobStoreInfo? getBlobStoreInfo(String name)` | The registered info for `name`, or `null` if none. |
 | `storeNamed` | `static TomBlobStore storeNamed(String name)` | The store registered as `name`; throws `storage.registry.unknown_store` when there is none, so a typo or an unconfigured deployment is reported rather than silently written somewhere else. |
 | `initializeBlobStores` | `static Future<int> initializeBlobStores(Map<String, dynamic> configuration)` | Builds and registers a store for every map-valued entry of `configuration`, returning the number registered. Keys are read defensively because YAML arrives as a `Map<dynamic, dynamic>`. One entry may carry `default: true`; when the configuration names exactly one store it becomes the default without saying so — counted over the entries this call registered, not over every store the process holds, so an application that registered one in code first still gets it. Only ever fills a default that is still unset, so an `asDefault` nominated in code survives; a `default: true` in the configuration displaces it. |
-| `register` | `static TomBlobStoreInfo register(String name, TomBlobStore store, {bool asDefault = false})` | Registers a ready-made `store` under `name` — the seam a test, or an application that builds its store in code, uses instead of configuration. The entry records `providedType` and carries a factory closing over `store`, so it is buildable like any other: `open` on it, after a `closeAll` say, hands back the store it was given. |
+| `register` | `static TomBlobStoreInfo register(String name, TomBlobStore store, {bool asDefault = false})` | Registers a ready-made `store` under `name` — the seam a test, or an application that builds its store in code, uses instead of configuration. The entry records `providedType` and keeps `store`, so `open` on it, after a `closeAll` say, hands back the store it was given. |
 | `closeAll` | `static Future<void> closeAll()` | Closes every registered store, empties the registry and clears the default name. |
 
 #### Properties
@@ -826,7 +881,7 @@ could describe still gets an entry that can build itself.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `open` | `Future<void> open()` | Builds this entry's store and registers it — from the entry's own factory when it has one, otherwise from the backend its `type` names. An entry always has one or the other, so `storage.registry.unknown_backend` reports a configuration naming a backend nobody registered and never an entry that cannot describe itself; `storage.registry.missing_setting` reports a built-in backend's required setting being absent. |
+| `open` | `Future<void> open()` | Builds this entry's store and registers it. An entry made by `register` hands back its store. A configured entry creates the backend its `type` names (`storage.registry.unknown_backend` when none is registered, `storage.registry.backend_not_reflected` when its class is not in the application's reflection), removes `registryKeys`, refuses every remaining key the backend declares no field for (`storage.registry.unknown_setting`, naming the store and every offending key), binds the rest (`storage.registry.invalid_setting` for a value its field cannot take), and builds the store (`storage.registry.missing_setting` for a required setting left unset). |
 | `toString` | `String toString()` | *(override)* Renders `TomBlobStoreInfo <name> <type> <store>`, with `<unopened>` in the store's place while the entry has none. Three segments either way: an unopened entry is most often seen in a debugger or inside the error report about the `open` that failed, so it renders rather than throws. |
 
 ## Global Functions and Constants

@@ -90,6 +90,7 @@ export 'src/tomserver/export/tabular_result.dart';
 export 'src/tomserver/export/xlsx_renderer.dart';
 export 'src/tomserver/file_storage/aws_v4_signer.dart';
 export 'src/tomserver/file_storage/blob_store.dart';
+export 'src/tomserver/file_storage/blob_store_backends.dart';
 export 'src/tomserver/file_storage/blob_store_registry.dart';
 export 'src/tomserver/file_storage/database_blob_sql.dart';
 export 'src/tomserver/file_storage/database_blob_store.dart';

@@ -42,7 +42,7 @@ backend on every method, because one key must not be able to reach another.
 | Type | What it is |
 | ---- | ---------- |
 | `TomBlobStoreInfo` | The process-wide registry of named, configured stores — the same shape `TomDataSourceInfo` has, so an application that can configure a data source can configure a file store. |
-| `TomBlobStoreFactory` | How a backend is built from its settings. A closure rather than an annotation, so a deployment's own backend can capture a configured HTTP client or an existing credential provider, and needs no reflection regeneration to be visible. |
+| `TomBlobStoreBackend` | A backend: its settings declared as fields, and the store they build. A settings key that names no field of the backend is refused at start-up (`storage.registry.unknown_setting`), naming the store and the key. The four built-ins are `TomMemoryBlobStoreBackend`, `TomDirectoryBlobStoreBackend`, `TomDatabaseBlobStoreBackend` and `TomS3BlobStoreBackend`; a deployment's own registers a `TomBlobStoreBackendFactory`, which can capture what is not a setting — a configured HTTP client — and pass it to the constructor. |
 
 ## Quick start
 

@@ -29,6 +29,8 @@ import 'package:tom_core_server/tom_core_server.dart';
 import 'package:yaml/yaml.dart';
 
 import '../_support/check.dart';
+import '../example_reflection.reflection.dart';
+import 'file_storage_backend.dart';
 
 // ignore_for_file: avoid_print
 
@@ -120,12 +122,34 @@ archive:
     ' (default "${TomBlobStoreInfo.defaultStoreName}")',
   );
 
-  // 6. An application with a backend of its own registers a factory under a
-  //    name; from then on it is spelled in configuration like any built-in.
-  TomBlobStoreInfo.registerBackend('memory-plus', (name, settings) => memory);
+  // 6. An application with a backend of its own registers it under a name;
+  //    from then on it is spelled in configuration like any built-in, and its
+  //    settings are its fields — so a key it does not declare is refused,
+  //    naming the key and the store, instead of being read by nobody.
+  TomBlobStoreInfo.registerBackend('shelf', ExampleShelfBlobStoreBackend.new);
+  await TomBlobStoreInfo.initializeBlobStores({
+    'returns': {'type': 'shelf', 'shelf': 'returns-desk'},
+  });
   print(
-    '6.  known backends          : ${TomBlobStoreInfo.backendTypes.toList()}',
+    '6.  known backends          : ${TomBlobStoreInfo.backendTypes.toList()}'
+    ' (shelf "${ExampleShelfBlobStoreBackend.lastShelf}")',
   );
+  check(
+    ExampleShelfBlobStoreBackend.lastShelf == 'returns-desk',
+    'a configured setting reaches the backend\'s field',
+  );
+  try {
+    await TomBlobStoreInfo.initializeBlobStores({
+      'misspelt': {'type': 'shelf', 'shelv': 'returns-desk'},
+    });
+    check(false, 'a misspelt setting must not be read by nobody');
+  } on TomStorageException catch (e) {
+    print('    misspelt setting        : ${e.key} ${e.parameters?['keys']}');
+    check(
+      e.key == 'storage.registry.unknown_setting',
+      'a setting no backend field reads is refused',
+    );
+  }
 
   // 7. A misconfigured store name is a named error at the point of use, not a
   //    write to the wrong place.
@@ -205,6 +229,9 @@ archive:
 }
 
 Future<void> main() async {
+  // The configured stores bind their settings onto backend fields through the
+  // reflector, so it has to be installed before the registry is read.
+  initializeReflection();
   // A directory the run cleans up: an example must not leave files behind.
   final workDir = await Directory.systemTemp.createTemp('tom_file_storage_');
   try {

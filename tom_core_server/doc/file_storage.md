@@ -34,6 +34,7 @@ without the second; the second is built entirely on the first.
 - [A Failure Is a Storage Error, Not the Backend's](#a-failure-is-a-storage-error-not-the-backends)
   - [`key` Is the Caller's Key, on Every Error](#key-is-the-callers-key-on-every-error)
 - [Configuration Selects the Backend](#configuration-selects-the-backend)
+  - [Every Setting Has to Bind](#every-setting-has-to-bind)
   - [An Entry Exists Before Its Store Does](#an-entry-exists-before-its-store-does)
 - [File-Reference Columns](#file-reference-columns)
 - [Where the Key Comes From](#where-the-key-comes-from)
@@ -75,7 +76,9 @@ without the second; the second is built entirely on the first.
 | `TomS3BlobStore` | class | Any S3-compatible object store, single-PUT or multipart |
 | `TomAwsV4Signer` / `TomAwsCredentials` | class | AWS SigV4 request signing |
 | `TomBlobStoreInfo` | class | The configured stores, by name, with a default |
-| `TomBlobStoreFactory` | typedef | A backend: settings in, a store out |
+| `TomBlobStoreBackend` | abstract class | A backend: its settings as fields, and the store they build |
+| `TomMemoryBlobStoreBackend` / `TomDirectoryBlobStoreBackend` / `TomDatabaseBlobStoreBackend` / `TomS3BlobStoreBackend` | class | The four built-in backends — `memory`, `directory`, `database`, `s3` |
+| `TomBlobStoreBackendFactory` | typedef | Creates a fresh backend of one type, for `registerBackend` |
 
 This module is the bottom of a stack, and the rest of the file story is not in
 it. Everything above the blob contract lives where its *other* concern lives —
@@ -919,31 +922,79 @@ true` in the configuration does displace it, being a statement of its own and a
 later one.
 
 Every setting a backend does not require is optional, and each omitted one falls
-back to the declaration that owns it — `defaultBlobManifestTable` and
+back to its field's initialiser, which reads the declaration that owns it — `defaultBlobManifestTable` and
 `defaultBlobChunkTable` for the database backend's two tables,
 `TomDatabaseBlobStore.defaultChunkSize` and `TomS3BlobStore.defaultPartSize` for
-the two sizes. Configuration reads those constants rather than restating their
+the two sizes. The fields read those constants rather than restating their
 values, so a rename or a retune reaches the configured path along with every
 other one. That matters more here than it looks: the tables are also the ones
 the migration module's convergence check compares against, and a configured
 store that had drifted to an old name would be checked against a schema it no
 longer used.
 
-An application with a backend of its own registers a factory under a name, and
-from then on spells it in configuration like any built-in:
+### Every Setting Has to Bind
+
+A backend is a `TomBlobStoreBackend` class, and its settings are its fields.
+`open()` creates a fresh backend for the store, removes the registry's own keys
+(`TomBlobStoreInfo.registryKeys`: `type` and `default`), and then holds every
+remaining key to the backend's field set: a key that names no field fails the
+start-up with `storage.registry.unknown_setting`, whose `parameters` give the
+store under `store` and every offending key under `keys`:
+
+```text
+File store 'attachments' (type 'database') is configured with settings
+'createSchma', 'chunk_size' that name no field of TomDatabaseBlobStoreBackend.
+Check the spelling in the file-store configuration for 'attachments'.
+```
+
+Absorbed, a misspelt key is read by nobody, and the default it meant to change
+stands with nothing to say so — `createSchma: false` creates the tables anyway,
+in a schema a migration was supposed to own. It is the rule
+[datasources](datasources.md#every-settings-key-has-to-bind) applies to a driver,
+derived the same way: the field set is read off the backend through reflection,
+so a backend the framework never saw is checked against its own settings.
+
+The keys that bind are then written onto the fields. A value its field cannot
+take — `chunkSize: large` — is `storage.registry.invalid_setting`, naming the
+setting. The `int` settings, `chunkSize` and `partSize`, also accept a string
+holding a number, which is what an environment substitution produces; a backend
+of an application's own gets the same through `normalize`.
+
+An application with a backend of its own declares it as such a class and
+registers a factory for it, after which a configuration spells it like any
+built-in:
 
 ```dart
-TomBlobStoreInfo.registerBackend('gcs', (name, settings) => GcsBlobStore(settings));
+@tomReflector
+class GcsBlobStoreBackend extends TomBlobStoreBackend {
+  GcsBlobStoreBackend(this._client);
+  final http.Client _client;
+
+  String bucket = '';          // a setting: required
+  String location = 'EU';      // a setting: optional
+
+  @override
+  TomBlobStore build(String name) {
+    if (bucket.isEmpty) throw TomBlobStoreBackend.missingSetting(name, 'bucket');
+    return GcsBlobStore(_client, bucket: bucket, location: location);
+  }
+}
+
+TomBlobStoreInfo.registerBackend('gcs', () => GcsBlobStoreBackend(httpClient));
 ```
+
+What is not a setting — the HTTP client here — is a constructor argument the
+factory captures. The class has to be in the application's generated
+reflection, because that is where its fields are read from; a backend that is
+not is refused as `storage.registry.backend_not_reflected` rather than built
+with every field at its default, which would be the silent drop over again.
 
 `TomBlobStoreInfo.register(name, store, asDefault: true)` is the seam for a test
 or for an application that builds its store in code. Such an entry records
-`TomBlobStoreInfo.providedType` and carries a factory closing over the instance
-it was handed — the same trick the backend table relies on, a factory being a
-closure that can capture what no settings map could carry. So the entry is
-buildable like any configured one, and reopening it after a `closeAll` hands
-back the store it was given: the registry cannot rebuild an instance it did not
-build, and `close()` is idempotent by contract.
+`TomBlobStoreInfo.providedType` and keeps the instance it was handed, so
+reopening it after a `closeAll` hands back the store it was given: the registry
+cannot rebuild an instance it did not build, and `close()` is idempotent by
+contract.
 
 The provided type is not itself a registered backend, and `backendTypes` does
 not list it. It names how the store arrived rather than a way to build one, and
@@ -957,7 +1008,8 @@ store. Every configured entry passes through the interval between the two, and
 an `open()` that throws — an unregistered backend
 (`storage.registry.unknown_backend`), a missing required setting such as a
 directory store's `root` or a database store's `datasource`
-(`storage.registry.missing_setting`) — leaves an
+(`storage.registry.missing_setting`), a key no field of the backend reads
+(`storage.registry.unknown_setting`) — leaves an
 entry sitting in it. Reading `store` there raises
 `storage.registry.store_not_opened`, naming the store and its configured type,
 and `isOpen` answers the same question without throwing.
@@ -1366,8 +1418,9 @@ and the count of them is the assertion. Every step checks its own result, and
 - **`TomMemoryBlobStore` / `TomDirectoryBlobStore` / `TomDatabaseBlobStore` /
   `TomS3BlobStore`** — the four shipped backends.
 - **`TomAwsV4Signer` / `TomAwsCredentials`** — SigV4 signing for the S3 backend.
-- **`TomBlobStoreInfo` / `TomBlobStoreFactory`** — the configured registry and
-  the seam for an application's own backend.
+- **`TomBlobStoreInfo` / `TomBlobStoreBackend`** — the configured registry, and
+  the backend classes whose fields are a store's settings; the four built-ins
+  and an application's own, registered through a `TomBlobStoreBackendFactory`.
 - **`blobManifestTable` / `blobChunkTable`** — the database backend's two table
   descriptors, from which its DDL and its statements are derived.
 - **`TomFileReference` / `TomFileReferenceKeys`** — the column annotation, its
@@ -1410,14 +1463,14 @@ and the count of them is the assertion. Every step checks its own result, and
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `blob_store.dart`, `blob_store_registry.dart`, `database_blob_store.dart`, `directory_blob_store.dart`, `s3_blob_store.dart` | `Future`, `FutureOr`, `Stream` |
+| `dart:async` | dart | `blob_store.dart`, `blob_store_backends.dart`, `database_blob_store.dart`, `directory_blob_store.dart`, `s3_blob_store.dart` | `Future`, `FutureOr`, `Stream` |
 | `dart:convert` | dart | `aws_v4_signer.dart`, `blob_store.dart`, `database_blob_store.dart`, `directory_blob_store.dart`, `s3_blob_store.dart` | `base64`, `jsonDecode`, `jsonEncode`, `utf8` |
-| `dart:io` | dart | `blob_store_registry.dart`, `directory_blob_store.dart` | `File` / `Directory` for the directory backend |
+| `dart:io` | dart | `blob_store_backends.dart`, `directory_blob_store.dart` | `File` / `Directory` for the directory backend |
 | `dart:typed_data` | dart | `blob_store.dart` | `Uint8List` |
 | `crypto` | package | `aws_v4_signer.dart`, `blob_store.dart`, `s3_blob_store.dart` | HMAC-SHA256 and SHA-256 for SigV4; the chunked SHA-256 behind `TomBlobDigest`; the MD5 S3 requires on a `DeleteObjects` body |
 | `http` | package | `s3_blob_store.dart` | the S3 backend's transport (injectable, so it is mockable) |
 | `path` | package | `directory_blob_store.dart` | key-to-path joining in the directory backend |
-| `tom_core_kernel` | package | `database_blob_store.dart` | `TomServerException` by way of `TomStorageException`, `tomLog`, and the `TomAuthState` grades the C-4 gate reads |
+| `tom_core_kernel` | package | `blob_store_backends.dart`, `blob_store_registry.dart`, `database_blob_store.dart` | `TomServerException` by way of `TomStorageException`, `tomLog`, and the `TomAuthState` grades the C-4 gate reads; `@tomReflector` and `tomReflectionInfo`, through which a backend's settings are checked against its fields and bound onto them |
 | `uuid` | package | `database_blob_store.dart` | key generation and the database backend's upload ids |
 | [datasources](datasources.md) | module | `database_blob_sql.dart`, `database_blob_store.dart` | `TomDataSource` for the database backend |
 | [little_things](little_things.md) | module | `blob_store.dart` | `TomServerException` |
