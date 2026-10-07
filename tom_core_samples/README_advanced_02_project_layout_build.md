@@ -239,7 +239,7 @@ socket-free widget tests inject (part
 own accounts, and the two sets are not the same:
 
 - **End-user app** (`in_memory_app_backend.dart`) — five, signed into as
-  `alice`, `bob`, `carol`, `dave`, `erin`, keyed `u-alice` … `u-erin`. There is
+  <!-- account-roster: app-offline -->`alice`, `bob`, `carol`, `dave`, `erin`, keyed `u-alice` … `u-erin`<!-- /account-roster -->. There is
   no `admin` here. `dave` and `erin` are what make the offline second-factor
   demo reachable: `dave` is enrolled at seed time, holding the same TOTP secret
   the auth server's `[005]-auth_two_factor_seed` migration writes, so a code
@@ -247,14 +247,14 @@ own accounts, and the two sets are not the same:
   factor and holds none, so her login is *offered* enrolment rather than
   challenged for it.
 - **Admin console** (`in_memory_admin_backend.dart`) — four, signed into as
-  `admin`, `alice`, `bob`, `carol`, keyed `u-admin` … `u-carol`. `admin` is the
+  <!-- account-roster: admin-offline -->`admin`, `alice`, `bob`, `carol`, keyed `u-admin` … `u-carol`<!-- /account-roster -->. `admin` is the
   one the console cannot do without: its endpoints are gated on
   `TomRoleAccess(['admin'])`.
 
 Those are the fakes' own ids, and they exist only inside the client process.
 The hub's **Seeded live accounts** table, under [Run the whole
 thing](README_advanced_sample.md#run-the-whole-thing), is a different id space —
-the `auth_db` rows `[002]-auth_admin_seed` and `[003]-auth_demo_seed` write,
+the `auth_db` rows the `[002]`, `[003]` and `[005]` seed migrations write,
 which is what the servers authenticate against.
 
 ## Primary sources

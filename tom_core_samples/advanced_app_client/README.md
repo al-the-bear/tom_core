@@ -283,8 +283,8 @@ wire. A role drop-down (keyed `share-role-picker`, default `viewer`) and a
 `AppSession.guard`. Only the project owner may share: a denied share surfaces its
 `AppBackendException` message inline (keyed `share-error`) and keeps the dialog
 open rather than closing it; an empty grantee is blocked client-side before any
-backend call. Offline the demo ids are `u-alice`, `u-bob`, `u-carol`, `u-dave`
-and `u-erin`; against the live servers the grantee is the numeric auth user id
+backend call. Offline the demo ids are <!-- account-roster: app-offline -->`u-alice`, `u-bob`, `u-carol`, `u-dave`
+and `u-erin`<!-- /account-roster -->; against the live servers the grantee is the numeric auth user id
 (alice `2`, bob `3`, carol `4`, dave `5`, erin `6`) — `share` parses it with
 `int.tryParse` and rejects anything else.
 
@@ -334,9 +334,9 @@ flutter run
 
 Sign in with a seeded account — `alice` / `alice-pass`, `bob` / `bob-pass`,
 `carol` / `carol-pass`, `dave` / `dave-pass`, `erin` / `erin-pass`. `alice` owns
-the seeded project and can share it; `bob` is a seeded editor; `carol` starts
-with no access until `alice` shares the project; `dave` is challenged for a
-second factor and `erin` is offered one.
+the seeded project and can share it; `bob` is a seeded editor and `carol` a
+seeded viewer on it; `dave` is challenged for a second factor and `erin` is
+offered one.
 
 To explore offline instead, run with `--dart-define=TEST_MODE=true`: the client
 boots on the seeded `InMemoryAppBackend`, whose accounts, board, item-detail

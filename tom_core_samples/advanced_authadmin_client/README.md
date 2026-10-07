@@ -155,8 +155,8 @@ leading id where the contract folds one into the payload, so no screen builds an
 `EntityIdRequest` to delete a row.
 
 - **`InMemoryAdminBackend`** — a seeded, socket-free fake the contract and
-  widget tests bind. It seeds four accounts — a dedicated `admin` plus the app
-  client's three project principals, `alice`/`bob`/`carol` — the five
+  widget tests bind. It seeds four accounts — <!-- account-roster: admin-offline -->a dedicated `admin` plus the app
+  client's three project principals, `alice`/`bob`/`carol`<!-- /account-roster --> — the five
   application roles, an `Engineering` group, and the same four-state grant
   matrix the auth server seeds. Not the app client's whole roster: that fake
   also seeds `dave` and `erin`, who carry the second-factor story, and the

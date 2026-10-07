@@ -287,6 +287,7 @@ it and start eight test suites.
 | [`tool/check_open_ends_ledger.py`](tool/check_open_ends_ledger.py) | Holds each open-ends section to the quest todos still open on its unit |
 | [`tool/check_readme_status.py`](tool/check_readme_status.py) | Holds a package README's `## Status` version to its `pubspec.yaml`, and forbids a test count |
 | [`tool/check_doc_class_inventories.py`](tool/check_doc_class_inventories.py) | Holds a document's marked class inventory to the directory it inventories, in both directions |
+| [`tool/check_sample_account_rosters.py`](tool/check_sample_account_rosters.py) | Holds every marked enumeration of the advanced sample's demo accounts to the seed it describes, and reserves "seeded live accounts" for the `auth_db` rows |
 | [`tool/check_doc_phantom_names.py`](tool/check_doc_phantom_names.py) | Counts the `Tom*` type names shipped documentation writes that no code under `tom_ai/` declares |
 | [`tool/check_api_reference.py`](tool/check_api_reference.py) | Holds every package's `doc/api_reference/` to its barrel and sources — Source lists, index, names, functions, enums and class members |
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
@@ -1399,6 +1400,42 @@ summary line says so. Members Dart
 supplies without declaring them are added back: `Object`'s four, and `index` /
 `name` / `values` on an enum, which implements `Enum` implicitly and so offers
 `closure` no supertype to abstain on.
+
+```bash
+python3 tool/check_sample_account_rosters.py              # the report
+python3 tool/check_sample_account_rosters.py --self-test  # check the checker
+```
+
+The advanced sample has three account rosters and they are different sets: the
+`auth_db` rows the auth server's migrations seed (`admin` to `erin`, six), the
+end-user app's offline fake (five, no `admin`), and the admin console's offline
+fake (four, no `dave` or `erin`). The sample READMEs enumerate them by hand in
+nine places, and a roster offered for one client while describing the other's
+sent a reader to an account that does not exist there.
+
+So an enumeration that lists a roster completely declares which one it is, with
+markers that may sit inline around a phrase or around a whole table:
+
+```markdown
+<!-- account-roster: app-offline -->`alice`, `bob`, ...<!-- /account-roster -->
+```
+
+The roster is read from its seed — every `INSERT INTO auth_users` under the auth
+server's migrations, `InMemoryAppBackend.demoAccounts`, the `user(...)` calls in
+`InMemoryAdminBackend._seed` — and the region from its backticked names, an
+offline id (`u-alice`) read as the account it keys. `MISSING` is a seeded
+account the region does not name; `FOREIGN` an account another roster seeds and
+this one does not. A backticked word in no roster is prose and is ignored, and
+a partial mention ("sign in as `alice`") carries no marker. `SOURCE` holds the
+auth server's `_demoPasswords` to the `auth_db` rows, so no seeded account lacks
+a demo password and no password names an account that is not seeded.
+
+`VOCAB` encodes one phrase: **"seeded live accounts" names the `auth_db` rows and
+nothing else.** It is reported inside an offline region and on any line beside an
+offline `u-*` id — the reuse that once pointed a reader at a table describing a
+different id space. A roster read as empty from its seed is `UNREAD`, a fault
+rather than a pass, and `--self-test` drops a name from, and plants a foreign
+name and the reserved phrase in, every marked region.
 
 ```bash
 python3 tool/check_doc_class_inventories.py                # every document

@@ -125,12 +125,18 @@ applies the `database_migrations/app_db` tree (the app schema and demo seed).
 
 The seeded users come from the auth server (sample only — never ship them):
 
+<!-- account-roster: auth-db -->
+
 | Username | Password | Note |
 | --- | --- | --- |
 | `admin` | `admin-pass` | global `admin` |
 | `alice` | `alice-pass` | owns workspace 1 |
 | `bob` | `bob-pass` | shared `editor` on project 1 |
 | `carol` | `carol-pass` | shared `viewer` on project 1 |
+| `dave` | `dave-pass` | no project access; enrolled in TOTP, so his login is challenged for a second factor |
+| `erin` | `erin-pass` | no project access; holds no factor, so her login is offered enrolment |
+
+<!-- /account-roster -->
 
 ## Endpoints
 

@@ -187,6 +187,11 @@
    "faults": 0,
    "measured": "2026-09-03"
   },
+  "check_sample_account_rosters": {
+   "faults": 0,
+   "measured": "2026-10-07",
+   "note": "Zero is the steady state, reached in the pass that introduced the checker: its first run found advanced_app_server/README.md's account table listing four of the six auth_db accounts (no dave, no erin), repaired then. Nine marked regions across the sample READMEs (5 auth-db, 2 app-offline, 2 admin-offline) against rosters read from the seeds (auth-db 6 accounts, app-offline 5, admin-offline 4). `--self-test` drops a name from, plants a foreign name in, and plants the reserved phrase in every region, so a zero here means the checker is reading."
+  },
   "check_section_numbers": {
    "faults": 0,
    "measured": "2026-09-03"

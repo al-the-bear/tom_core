@@ -111,6 +111,8 @@ framework `tom_resource_grant` table and seeding its grant matrix), then
 hashes a **demo password** onto each seed account that has none. The seeded
 credentials are (sample only — never ship them):
 
+<!-- account-roster: auth-db -->
+
 | Username | Password | Global role | Notes |
 | --- | --- | --- | --- |
 | `admin` | `admin-pass` | `admin` | Untagged `[002]` seed — present in **every** environment |
@@ -119,6 +121,8 @@ credentials are (sample only — never ship them):
 | `carol` | `carol-pass` | — | `@dev,test` `[003]` demo seed |
 | `dave` | `dave-pass` | `two_factor_required` | `@dev,test` `[005]` seed — **enrolled in TOTP**, so the password only gets him through pass 1 |
 | `erin` | `erin-pass` | `two_factor_optional` | `@dev,test` `[005]` seed — holds **no** factor, so her login is *offered* one she may decline or enrol |
+
+<!-- /account-roster -->
 
 ## Endpoints
 
