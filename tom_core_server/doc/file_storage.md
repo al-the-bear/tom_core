@@ -1447,17 +1447,20 @@ and the count of them is the assertion. Every step checks its own result, and
   shares bytes between keys is a store where deleting one can break the other:
   that bookkeeping belongs where the keys are known, which is the deployment's
   own record. See [The Content Digest](#the-content-digest).
+  <!-- unpinned: absence — nothing acts on the digest -->
 - **Finding what the rows do not claim.** `TomBlobMigration` moves every blob a
   row points at; a blob no row names is invisible to it, and always will be —
   finding one means enumerating the source, which is the one thing the contract
   refuses. The report names what it claimed, and a deployment diffs that against
   its old backend with that backend's own tooling. See
   [Migrating Between Backends](#migrating-between-backends).
+  <!-- unpinned: absence — a sweep of unclaimed blobs is not built -->
 - **A quota that refuses a write, and a schedule.** The reclaim primitive is
   here; the ceiling and the timer are the deployment's, for the reason
   [Quota and Expiry](#quota-and-expiry) gives. Nothing in this module refuses a
   `put` because an account has stored too much, and nothing runs a purge on a
   timer.
+  <!-- unpinned: absence — the ceiling and the timer are the deployment's -->
 
 ## Dependencies
 

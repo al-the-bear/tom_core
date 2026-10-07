@@ -283,10 +283,12 @@ routes — no manual registration needed. The analyzers are `static` state on
   `readinessAnalyzer` are `static`, so one installation answers every request on
   every isolate; there is no per-instance, per-port or per-request override. A
   deployment that wants two different *liveness* checks needs two processes.
+  <!-- unpinned: absence — no per-instance or per-request override exists -->
 - **A timed-out analyzer is not cancelled.** `Future.timeout` stops the waiting,
   not the work, and Dart has no way to abort a future in flight — so an analyzer
   that hangs on every probe accumulates pending futures at probe frequency. The
   remedy is the analyzer's own deadline, on the operation it started.
+  <!-- unpinned: untestable — the limit is the language's: Dart cannot abort a future in flight -->
 
 ## Verification
 

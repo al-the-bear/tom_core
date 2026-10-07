@@ -142,6 +142,14 @@ private additions allowed):
    verify it matches the code.
 9. Verify documentation covers all public API and describes nothing that does
    not exist.
+10. End every bullet of the guide's `## Not Yet Implemented` section with a
+    marker. A limitation the code exhibits is pinned to the test that asserts
+    it — `<!-- pinned: test/<file>_test.dart › <test name> -->` — so lifting the
+    limitation turns that test red and the bullet is reconsidered in the same
+    change; write the test first if none asserts it. A bullet with no behaviour
+    to assert says why: `<!-- unpinned: absence|decision|pointer|untestable —
+    <reason> -->`. `test/api_reference_coverage_test.dart` holds every guide to
+    this.
 
 ---
 

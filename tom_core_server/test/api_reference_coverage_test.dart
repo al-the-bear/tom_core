@@ -3509,6 +3509,154 @@ List<({int line, String text})> _limitationsBodyOf(String module) {
   return [for (var i = start + 1; i < end; i++) (line: i + 1, text: lines[i])];
 }
 
+/// One bullet of a guide's limitations section: where it starts, and its text
+/// with its continuation lines joined.
+typedef _LimitationBullet = ({int line, String text});
+
+/// The bullets of `doc/[module].md`'s limitations section.
+List<_LimitationBullet> _limitationBullets(String module) =>
+    _limitationBulletsIn(_limitationsBodyOf(module));
+
+/// The bullets among [lines].
+///
+/// A bullet opens on a `- ` at column zero and runs over its indented
+/// continuation lines. It ends at the next bullet, at a heading, or at an
+/// unindented paragraph — a blank line alone does not end it, because a bullet
+/// may carry an indented second paragraph.
+List<_LimitationBullet> _limitationBulletsIn(
+  List<({int line, String text})> lines,
+) {
+  final bullets = <_LimitationBullet>[];
+  int? start;
+  final text = <String>[];
+  void close() {
+    final opened = start;
+    if (opened != null) bullets.add((line: opened, text: text.join('\n')));
+    start = null;
+    text.clear();
+  }
+
+  for (final entry in lines) {
+    final line = entry.text;
+    if (line.startsWith('- ')) {
+      close();
+      start = entry.line;
+      text.add(line);
+    } else if (line.startsWith('#') ||
+        (line.isNotEmpty && !line.startsWith(' '))) {
+      close();
+    } else if (start != null) {
+      text.add(line);
+    }
+  }
+  close();
+  return bullets;
+}
+
+/// A bullet's pin: the test file and the test or group name it cites.
+final RegExp _limitationPin = RegExp(
+  r'<!--\s*pinned:\s*(test/\S+_test\.dart)\s*›\s*([\s\S]+?)\s*-->',
+);
+
+/// A bullet's statement that it has nothing to pin, with a category and a
+/// reason.
+final RegExp _limitationUnpinned = RegExp(
+  r'<!--\s*unpinned:\s*(\w+)\s*—\s*([\s\S]+?)\s*-->',
+);
+
+/// Why a bullet may be unpinned: a capability that is not offered, a closed
+/// decision, a pointer to where something lives, or behaviour no unit test can
+/// exercise deterministically (a race, a crash, the language's own limit).
+const Set<String> _unpinnedCategories = {
+  'absence',
+  'decision',
+  'pointer',
+  'untestable',
+};
+
+/// [bullet]'s pin as `(file, name)`, or `null` when it has none.
+(String, String)? _limitationPinOf(String bullet) {
+  final match = _limitationPin.firstMatch(bullet);
+  if (match == null) return null;
+  return (match.group(1)!, match.group(2)!.replaceAll(RegExp(r'\s+'), ' '));
+}
+
+/// The names of every `test(...)` and `group(...)` in [source], with adjacent
+/// string literals joined and escaped quotes unescaped — the name a reader of
+/// the test output sees.
+Set<String> _declaredTestNames(String source) {
+  final opening = RegExp(r'\b(?:test|group)\(\s*');
+  final literal = RegExp(
+    r"'((?:[^'\\\n]|\\.)*)'"
+    '|'
+    r'"((?:[^"\\\n]|\\.)*)"',
+  );
+  final names = <String>{};
+  for (final match in opening.allMatches(source)) {
+    var index = match.end;
+    final buffer = StringBuffer();
+    while (true) {
+      final next = literal.matchAsPrefix(source, index);
+      if (next == null) break;
+      buffer.write(
+        (next.group(1) ?? next.group(2)!).replaceAllMapped(
+          RegExp(r'\\(.)'),
+          (escape) => escape.group(1)!,
+        ),
+      );
+      index = RegExp(r'\s*').matchAsPrefix(source, next.end)!.end;
+    }
+    if (buffer.isNotEmpty) names.add(buffer.toString());
+  }
+  return names;
+}
+
+/// Every way `doc/[module].md`'s limitation bullets fail to carry a valid
+/// marker.
+List<String> _limitationMarkerFaults(String module) =>
+    _limitationMarkerFaultsIn('doc/$module.md', _limitationsBodyOf(module));
+
+/// [_limitationMarkerFaults] over explicit [lines], reported under [file].
+List<String> _limitationMarkerFaultsIn(
+  String file,
+  List<({int line, String text})> lines,
+) {
+  final faults = <String>[];
+  for (final bullet in _limitationBulletsIn(lines)) {
+    final where = '$file:${bullet.line}';
+    final pin = _limitationPinOf(bullet.text);
+    final unpinned = _limitationUnpinned.firstMatch(bullet.text);
+    if (pin == null && unpinned == null) {
+      faults.add('$where carries no marker');
+      continue;
+    }
+    if (pin != null && unpinned != null) {
+      faults.add('$where carries both a pin and an unpinned marker');
+      continue;
+    }
+    if (unpinned != null) {
+      final category = unpinned.group(1)!;
+      if (!_unpinnedCategories.contains(category)) {
+        faults.add(
+          '$where gives `$category` as a category; use absence, decision, '
+          'pointer or untestable',
+        );
+      }
+      continue;
+    }
+    final (path, name) = pin!;
+    final source = File(path);
+    if (!source.existsSync()) {
+      faults.add('$where pins $path, which does not exist');
+      continue;
+    }
+    if (!_declaredTestNames(source.readAsStringSync()).contains(name)) {
+      faults.add('$where pins "$name", which $path does not declare');
+    }
+  }
+  return faults;
+}
+
 /// A backticked span, and the shape of the one that is a Dart name rather than
 /// some other literal token.
 ///
@@ -7004,6 +7152,105 @@ class After {}
         ),
         isFalse,
         reason: 'the table-of-contents entry points at the section',
+      );
+    });
+  });
+
+  // The question the rename check above cannot ask: is the limitation still
+  // the behaviour? A bullet that names a surviving symbol reads as live after
+  // the work it describes was quietly done — `Eviction is opt-in` stood after
+  // storing a principal had begun starting the sweep. Prose cannot be asked
+  // whether it is still true, so every bullet is paired with what can: a test
+  // that asserts the limiting behaviour, which turns red the day somebody lifts
+  // the limitation and so forces the bullet to be reconsidered in the same
+  // change. A bullet that describes no behaviour — a capability that is simply
+  // not offered, a closed decision, a pointer elsewhere — says so, with its
+  // reason, so the absence of a pin is a statement rather than an omission.
+  group('every stated limitation is pinned by a test, or says why not', () {
+    for (final module in _modules()) {
+      test(module, () {
+        final faults = _limitationMarkerFaults(module);
+        expect(
+          faults,
+          isEmpty,
+          reason:
+              'doc/$module.md\'s limitations: ${faults.join('; ')}. Pin a '
+              'bullet with `<!-- pinned: test/<file>_test.dart › <test name> '
+              '-->` naming a test that asserts the limiting behaviour, or mark '
+              'it `<!-- unpinned: absence|decision|pointer|untestable — '
+              '<reason> -->` when there is no behaviour to assert.',
+        );
+      });
+    }
+
+    test('the census reads the bullets it claims to', () {
+      // A collapse detector, as above: a reader that stops finding bullets
+      // would pass every module by finding nothing to mark.
+      final bullets = [
+        for (final module in _modules()) ..._limitationBullets(module),
+      ];
+      expect(bullets, hasLength(greaterThan(70)));
+      final pinned = bullets.where((b) => _limitationPinOf(b.text) != null);
+      expect(pinned, hasLength(greaterThan(25)));
+    });
+
+    test(
+      'a bullet runs to the next bullet, heading or unindented paragraph',
+      () {
+        final bullets = _limitationBulletsIn([
+          (line: 1, text: 'Intro prose.'),
+          (line: 2, text: ''),
+          (line: 3, text: '- **One.** First line'),
+          (line: 4, text: '  continues here.'),
+          (line: 5, text: '  <!-- unpinned: absence — nothing ships -->'),
+          (line: 6, text: '- **Two.** Second.'),
+          (line: 7, text: ''),
+          (line: 8, text: 'A paragraph after the list.'),
+          (line: 9, text: '### A sub-heading'),
+          (line: 10, text: '- **Three.**'),
+        ]);
+        expect(bullets.map((b) => b.line), [3, 6, 10]);
+        expect(bullets.first.text, contains('unpinned'));
+        expect(bullets[1].text, isNot(contains('paragraph after')));
+      },
+    );
+
+    test('a pin resolves only to a test or group the file declares', () {
+      expect(
+        _declaredTestNames(
+          "  test('a plain name', () {});\n"
+          r"  group('an association\'s columns', () {});"
+          "\n  test(\n    'split '\n        'across literals',\n    () {});\n",
+        ),
+        containsAll(<String>[
+          'a plain name',
+          "an association's columns",
+          'split across literals',
+        ]),
+      );
+      expect(
+        _limitationMarkerFaultsIn('synthetic', [
+          (
+            line: 1,
+            text: '- **A.** <!-- pinned: test/no_such_test.dart › anything -->',
+          ),
+          (line: 2, text: '- **B.** No marker at all.'),
+          (line: 3, text: '- **C.** <!-- unpinned: someday — later -->'),
+          (
+            line: 4,
+            text:
+                '- **D.** <!-- pinned: test/cache_test.dart › '
+                'no test is called this -->',
+          ),
+        ]),
+        [
+          'synthetic:1 pins test/no_such_test.dart, which does not exist',
+          'synthetic:2 carries no marker',
+          'synthetic:3 gives `someday` as a category; use absence, decision, '
+              'pointer or untestable',
+          'synthetic:4 pins "no test is called this", which '
+              'test/cache_test.dart does not declare',
+        ],
       );
     });
   });

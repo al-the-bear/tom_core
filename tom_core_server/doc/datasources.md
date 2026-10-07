@@ -1379,6 +1379,7 @@ test here requires this file in particular to keep using it.
   `TomPreparedStatement` and dialect and registers them with
   `@TomDatasourceDriver`, as described in
   [Data Sources and Drivers](#data-sources-and-drivers).
+  <!-- unpinned: absence — one engine ships; a second is a deployment's driver -->
 - **A `DATE` or `TIME` column does not carry a zone, so a value read back from
   one has none.** Both are stored as the components the value labels — the 5th
   is written as the 5th, 14:30 as 14:30 — which is what makes the column
@@ -1388,12 +1389,14 @@ test here requires this file in particular to keep using it.
   deployment that needs the zone stores `TomZonedDate.toString()` /
   `TomZonedTime.toString()` — the `@D@…` / `@T@…` form, which carries it — in a
   text column; both readers accept that form as well as the native one.
+  <!-- pinned: test/documented_limitations_test.dart › a DATE read back keeps its components and is anchored in UTC -->
 - **A `TIME` column may hold an interval, and this module will not read one.**
   MariaDB's `TIME` spans -838:59:59 to 838:59:59 because it doubles as a
   duration type. `TomZonedTime` holds a clock reading, so a column value past 23
   hours raises a `FormatException` rather than wrapping into the next day —
   wrapping would turn a modelling mistake into a plausible wrong answer. Store a
   duration as an integer count of its unit.
+  <!-- pinned: test/mariadb_row_mapping_test.dart › a TIME column holding an interval is not a time of day -->
 - **One connection per data source, and no pool.** `MariaDbDatasource` holds a
   single `MySQLConnection`, and a transaction belongs to the connection, so a
   transaction *holds* the data source from its first statement until the
@@ -1407,6 +1410,7 @@ test here requires this file in particular to keep using it.
   one connection. Work the owning transaction waits on must run in its zone: a
   statement issued from a `runInTransactionScope` nested inside it waits on its
   own transaction for good.
+  <!-- unpinned: absence — no pool ships -->
 - **`lastGeneratedId` is yours to answer, and only you can.**
   `TomPreparedStatement.lastGeneratedId` is abstract. The key belongs to the
   connection the insert ran on, and the driver is the only layer that knows
@@ -1418,6 +1422,7 @@ test here requires this file in particular to keep using it.
   from it and refuses the insert by name
   (`crud_repository.save.no_generated_key`) when there is none, rather than
   storing a row under a key that is not its own.
+  <!-- unpinned: decision — abstract by design: only the driver knows the connection -->
 - **`lastAffectedRows` is per-execution.** `TomPreparedStatement.lastAffectedRows`
   is abstract and non-nullable for the same reason — a driver that ran a write
   knows how many rows it touched, and callers (the CRUD repository's delete
@@ -1432,6 +1437,7 @@ test here requires this file in particular to keep using it.
   Every member of the contract is abstract, and `datasources_test.dart` holds it
   there: a member that grows a body is one a driver can leave unanswered while
   the layers above read the default as its answer.
+  <!-- unpinned: decision — abstract by design, like lastGeneratedId -->
 - **XA has no recovery.** `MariaDbXADatasource` mints its branch id in
   memory and keeps it only there, and nothing ever issues `XA RECOVER`,
   so a process that dies between `XA PREPARE` and `XA COMMIT` leaves a prepared
@@ -1439,6 +1445,7 @@ test here requires this file in particular to keep using it.
   operator lists and resolves such a branch by hand at the server until the
   driver reconciles them on start-up; the sequence it does issue is under
   [The MariaDB Driver](#the-mariadb-driver).
+  <!-- unpinned: absence — nothing issues XA RECOVER -->
 
 ## Dependencies
 

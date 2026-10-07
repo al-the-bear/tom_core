@@ -314,15 +314,12 @@ somewhere other than the call site.
   handler's job, and `TomUserPreferencesErrorHandler` is the worked example — an
   `errorKey`-to-status map, the same `tomErrorEnvelope` body, and only the
   *status* contributed. See [Error Mapping](#error-mapping).
-It is pinned by a test in `test/api_reference_coverage_test.dart`, in the group
-"the server guide's Not Yet Implemented section matches the module", so closing
-it turns a test red rather than leaving this section quietly wrong.
-There were four: `extractAuthentication` could not report a bad token. It
-reports every way one can fail now — by a named `TomCredentialOutcome` and, for
-each refusal, by a warning naming the reason without the credential in it. See
-[The Pipeline](#the-pipeline).
+  <!-- pinned: test/api_reference_coverage_test.dart › the server guide's Not Yet Implemented section matches the module -->
 
-What it still does not do is distinguish them to the *HTTP client*, and that is
+`extractAuthentication` reports every way a credential can fail — by a named
+`TomCredentialOutcome` and, for each refusal, by a warning naming the reason
+without the credential in it; see [The Pipeline](#the-pipeline). What it does
+not do is distinguish them to the *HTTP client*, and that is
 deliberate rather than outstanding: a client who could tell "your signature was
 wrong" from "you sent nothing" is an attacker who can tell whether they guessed.
 The operator gets the detail; the client gets one answer.
@@ -339,13 +336,16 @@ and an application that needs one builds it today rather than waiting:
   module, and whatever its own `preExecutionHandler` records. An introspection
   or metrics route is an ordinary endpoint — declare it like any other, see
   [endpoints.md](endpoints.md).
+  <!-- unpinned: decision — none is intended; a route is an ordinary endpoint -->
 - **Server-rendered forms.** *Receiving* a form is shipped, and belongs to the
   endpoints module — see [Multipart Forms](endpoints.md#multipart-forms).
   Rendering one is a templating concern rather than a transport one, so it sits
   outside this package rather than pending inside it.
+  <!-- unpinned: pointer — receiving forms is the endpoints module's -->
 - **WebSocket.** Also the endpoint pipeline's: a socket is served as a kind of
   endpoint, declared like any other — see
   [WebSocket Endpoints](endpoints.md#websocket-endpoints).
+  <!-- unpinned: pointer — sockets are the endpoint pipeline's -->
 
 ## Dependencies
 

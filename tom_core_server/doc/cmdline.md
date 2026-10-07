@@ -402,6 +402,7 @@ tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
   intended one: a deployment that decorates a number learns it at start-up
   rather than never. Write the number plainly (`port=8080`, `offset=-5`) when
   the target is a numeric field.
+  <!-- pinned: test/cmdline_test.dart › a zero-padded value cannot fill an int field -->
 - **No entry point here reports a setting that no source supplied.** `merge`
   overlays maps and returns; `fillFromArgs` binds the keys it was given. Neither
   can answer it: the question is whether *any* source named the setting, and a
@@ -410,12 +411,14 @@ tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
   a configuration no source supplied it for (see `doc/configuration.md`, *
   Requiring a setting*), or call `tomReflectionInfo.missingRequiredFields` on
   the merged map yourself. These two helpers stay pure parsers.
+  <!-- unpinned: decision — the parsers stay pure; `@TomRequiredField` answers the question -->
 - **The two parsers still differ on whitespace.** `TomEnvFile.parse` trims
   around the key and the value; `TomArgs` takes the token as given. So
   `' k = v '` is `{'k': 'v'}` from a `.env` file and `{' k ': ' v '}` from the
   command line, and a whitespace-only token is an empty line to one and a key
   to the other. The two agree on everything else that decides a key — where it
   ends, what counts as quoted, and that an empty key is skipped.
+  <!-- pinned: test/cmdline_test.dart › differs from TomEnvFile.parse on surrounding whitespace -->
 
 ## Core Components
 

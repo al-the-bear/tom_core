@@ -1106,16 +1106,19 @@ adapted to an envelope.
   knows nor needs to. That is the same seam
   [Formats Are a Registry, Not a Switch](#formats-are-a-registry-not-a-switch)
   is about, and it is why waiting costs a caller nothing.
+  <!-- unpinned: absence — waits on the report envelope, which is unwritten -->
 - **The report-result envelope, report definitions, projections and
   scheduling.** The reporting element is deferred and its specification
   unwritten. `TomTabularResult` is deliberately the minimal shape the renderers
   need, so the envelope is adapted onto it later rather than the renderers being
   rebuilt around it. What that means concretely is
   [The Reporting Half This Is The Lower Half Of](#the-reporting-half-this-is-the-lower-half-of).
+  <!-- unpinned: absence — the reporting element is deferred -->
 - **The `email` delivery channel**, which composes out of this module and the
   `messaging` module rather than living in either alone — worked end to end in
   `example/export/export_email.dart`, and deliberately not a third method on
   `TomExportService`.
+  <!-- unpinned: absence — composes from export and messaging; not built here -->
 - **A purge on a schedule, and quota.** `TomExportStore.deletePrefix` reclaims a
   day partition in one call, and nothing in this module runs it on a timer:
   *how long* an export is worth keeping is a deployment's decision, and *when*
@@ -1124,6 +1127,7 @@ adapted to an envelope.
   [Retention](#retention) gives. There is no quota either — nothing refuses a
   write because an account has stored too much, which would need the same record
   and a limit to compare it against.
+  <!-- unpinned: absence — the timer and the quota are the deployment's -->
 
 ## Dependencies
 

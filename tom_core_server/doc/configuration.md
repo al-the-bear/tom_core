@@ -916,6 +916,7 @@ started with no configuration whose first symptom appears several layers later.
   configuration resources](#unknown-keys-in-the-configuration-resources)); the
   other layers carry the process environment, where an unknown key is the
   normal case.
+  <!-- pinned: test/configuration_test.dart › a misspelled setting merges as a live key and fills no field -->
 - **A `TomConfig` resolves once, at construction.** The value is read from the
   active provider when the object is built and cached, so a provider installed
   *afterwards* is not observed — a second install does not update an existing
@@ -924,11 +925,13 @@ started with no configuration whose first symptom appears several layers later.
   Access](#typed-property-access)). What remains is the narrower case of a
   `TomConfig` built against one provider and read after another was installed,
   which the API cannot distinguish from an intentional snapshot.
+  <!-- pinned: test/configuration_test.dart › a TomConfig does not observe a provider installed later -->
 - **A substituted YAML value is text.** `${VAR}` expansion runs after the YAML
   parser has assigned types, so `port: ${DB_PORT:3306}` yields the `String`
   `'3306'` where `port: 3306` yields an `int`, and `TomConfig` casts rather
   than parses. See [A substituted value is a
   string](#a-substituted-value-is-a-string).
+  <!-- pinned: test/configuration_test.dart › a substituted value is text, where a literal one is typed -->
 - **Nothing refuses to start on the checked-in TLS pair.** `certificateChain`
   and `privateKey` default to a throwaway `localhost` certificate committed to
   this repository — convenient for local development, and worthless as
@@ -939,6 +942,7 @@ started with no configuration whose first symptom appears several layers later.
   production is still the deployment's responsibility, and
   `usesDevelopmentTlsMaterial` is the condition for one that would rather
   refuse.
+  <!-- pinned: test/configuration_test.dart › the default TLS material is the checked-in self-signed pair -->
 - **The JWT key material defaults to nothing, deliberately.**
   `jwtSharedSecretKey`, `jwtRsaPrivKey` and `jwtRsaPubKey` are all `null` out of
   the box, and `installJwtSigning` reads that nullness as "not configured": it
@@ -952,6 +956,7 @@ started with no configuration whose first symptom appears several layers later.
   merely reported but blocks the boot, and the reason is that the alternative is
   a server signing with a published passphrase and saying nothing. Contrast the
   TLS pair above, which fails open.
+  <!-- pinned: test/configuration_test.dart › the JWT key material defaults to nothing at all -->
 
 ## Core Components
 

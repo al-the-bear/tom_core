@@ -388,26 +388,31 @@ written that way on purpose.
   a translation or adding a language means building a new
   `TomLocalizedTextResources` and re-registering the bean, which in practice
   means restarting the process.
+  <!-- unpinned: absence — no add, replace or reload exists -->
 - **Substitution is `replaceAll`, not formatting.** `substitute` replaces
   `{name}` with `'$value'` and does nothing else: no plural forms, no gender, no
   locale-aware number or date rendering — a `DateTime` interpolates through
   `toString()`, in the same shape for every locale. A message whose wording
   depends on a count needs one key per form, chosen by the caller.
+  <!-- pinned: test/documented_limitations_test.dart › substitution interpolates through toString, the same everywhere -->
 - **An unfilled placeholder is left in the text and reported to nobody.** A
   parameter that is missing, or whose value is `null`, leaves `{name}` standing
   where a reader will see it. That is deliberate — writing the word `null` reads
   as finished prose and slips past a proof-reader, where a bare placeholder does
   not — but nothing tells the *program* it happened, so there is no way to fail
   a send on it.
+  <!-- pinned: test/resources_test.dart › a null parameter leaves the placeholder rather than writing null -->
 - **Two keys naming one locale collapse silently.** Tags are normalised before
   they are stored, so `{'en': …, 'en_XX': …}` yields a single `en` bundle and
   the last one wins with no warning. Usually that is the point — `de-AT` and
   `de_AT` *should* be one bundle — and it stops being the point when the second
   key is one the deployment believed was a separate regional variant.
+  <!-- pinned: test/resources_test.dart › two keys naming one locale collapse, and the last one wins -->
 - **There is no completeness report.** `isTranslated(key, locale)` answers for
   one key at a time; nothing lists the keys a locale is missing, so "is the
   German bundle finished" is a question a deployment answers with its own script
   over `locales` and its own key inventory.
+  <!-- unpinned: absence — no completeness report exists -->
 
 ## Verification
 

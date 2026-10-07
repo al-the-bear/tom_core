@@ -1246,6 +1246,7 @@ a result is the value that crosses between them.
   above them, which is CE-RP reporting's subject rather than this module's. The
   seam is the result value: a reporting surface asks `TomAuditQuery` and renders
   `TomAuditQueryResult`.
+  <!-- unpinned: absence — the reporting product above the query is CE-RP reporting's, not this module's -->
 - ~~Anchor stores for specific external services.~~ **Decided: none ship here,
   and the question is closed.** An external store's guarantee lives in its
   configuration — an object-lock mode, a retention period, a credential that
@@ -1254,6 +1255,7 @@ a result is the value that crosses between them.
   `TomAuditAnchorStore`; a deployment implements it where its arrangement is
   reviewable. What the framework does supply is the posture:
   [declared, and never believed](#the-posture-is-declared-and-never-believed).
+  <!-- unpinned: decision — no external anchor store ships, by a closed decision -->
 - **Routing a finding somewhere other than a log or a callback.**
   `TomAuditAnchorMonitor` ships both of those and nothing else — see [Reading
   the anchors back](#reading-the-anchors-back). A deployment that wants a
@@ -1261,6 +1263,7 @@ a result is the value that crosses between them.
   in `onFinding`; the framework does not ship those routes because which of
   them is right is a property of the deployment. This is a seam rather than an
   omission.
+  <!-- unpinned: absence — routes beyond a log and a callback are the deployment's to wire -->
 
 ## Dependencies
 

@@ -631,6 +631,25 @@ void main() async {
     // Typed values round-trip
     // ------------------------------------------------------------------
 
+    test(
+      'a rewrite may change a key\'s type, and a typed reader then fails',
+      () async {
+        // `setEncoded` checks the pair it is handed against itself, not against
+        // the row it replaces — so the second write succeeds and the first
+        // writer's typed read throws from then on. Pinned for the limitation in
+        // doc/preferences.md; when the write starts refusing a type change, the
+        // bullet goes.
+        await asSession(7, (p) => p.set('theme', 'dark'));
+        await asSession(7, (p) => p.set('theme', 3));
+        await asSession(7, (p) async {
+          await expectLater(
+            () => p.get<String>('theme'),
+            throwsA(isA<TomUserPreferenceCodecException>()),
+          );
+        });
+      },
+    );
+
     test('scalar preferences round-trip as their own types', () async {
       await asSession(7, (p) async {
         await p.set('text', 'hello');

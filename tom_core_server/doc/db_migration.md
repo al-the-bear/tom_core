@@ -1042,19 +1042,23 @@ here it cannot drift silently.
   migrations after it too, and blocks on a node whose environment tags mean it
   would never have run the script. The damage is in the database the node is
   about to use, not in the tree it would have applied.
+  <!-- pinned: test/db_migration_db_test.dart › stops the whole run, not just its own version -->
 - **Migrations are forward-only.** `TomDbMigrator` is `initializeMigration` /
   `applyMigration` / `reset`; there is no down-migration and no `TomDbVersion`
   state for one. Undoing a release means writing the next migration.
+  <!-- unpinned: absence — no down-migration exists -->
 - **Nothing arbitrates between two processes migrating at once.** There is no
   lock of any kind — advisory, table-based or otherwise. Two servers starting
   together both read an applied-version list that predates the other, and both
   apply. What saves an ordinary deployment is that the versioning table's insert
   is the only write either of them makes to shared state, not any guard here.
+  <!-- unpinned: absence — no migration lock exists -->
 - **One adaptor ships.** `MariadbMigrationAdaptor` is the only implementation of
   `TomDbMigrator` in the package. The annotation-driven discovery described
   under [Adaptor Discovery](#adaptor-discovery) is a real seam — a second
   adaptor needs no change here — but it has never been exercised by a second
   implementation.
+  <!-- unpinned: absence — a second adaptor has never been written -->
 - **The application-entity check never reads a live database.**
   `TomFrameworkSchemaCheck` has [a live half](#what-the-live-check-adds);
   `TomSchemaConvergenceCheck` has no counterpart. It compares the entity model
@@ -1062,6 +1066,7 @@ here it cannot drift silently.
   and says nothing about the shape a given server actually has. A hand-edited
   application table is invisible to it, which is precisely the class of drift
   the framework-table check added `verifyLive` to catch.
+  <!-- unpinned: absence — no live counterpart to the convergence check exists -->
 
 ## Dependencies
 

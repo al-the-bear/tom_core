@@ -456,16 +456,19 @@ without either reaching the other.
   `errorKey` against its own resources, which is what makes the message
   translatable; a client that does not recognise the key has the type and the
   id, and nothing to display.
+  <!-- pinned: test/documented_limitations_test.dart › the error envelope carries no message -->
 - **A request id cannot be adopted from the caller.** `TomRequestId` mints a v4
   UUID in its constructor and exposes no way to supply one, so an inbound
   `X-Request-Id` from a proxy or an upstream service is ignored and a trace
   spanning two services has two unrelated ids. Correlating them is the log
   aggregator's job today.
+  <!-- unpinned: absence — TomRequestId offers no way to supply an id -->
 - **Only a request gets an id.** `tomDefaultAuthenticationMiddleware` is the
   single place one is seeded, so work outside the request path — a scheduled
   job, a start-up task, a script — raises exceptions with a null `requestUuid`
   and nothing to group them by. Nothing prevents a caller from establishing one
   with `runZoned`, but the framework does not do it.
+  <!-- pinned: test/little_things_test.dart › requestUuid is unset when constructed outside a request zone -->
 
 ## Verification
 

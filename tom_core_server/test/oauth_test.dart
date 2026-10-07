@@ -1042,6 +1042,38 @@ void main() {
       },
     );
 
+    test(
+      'an id_token is accepted on its claims, whatever its signature',
+      () async {
+        // Pinned for doc/authentication.md: the signature is not verified, only
+        // the claims are checked. A token signed with nothing (`alg: none`) and
+        // one carrying a signature no key could produce are both accepted. When
+        // JWKS verification lands this fails, and the bullet goes.
+        for (final signature in ['', 'not-a-signature-any-key-produced']) {
+          final unsigned = _idToken(_claims());
+          final token =
+              '${unsigned.substring(0, unsigned.length - 1)}.'
+              '$signature';
+          final flow = _flow(
+            _oidcProvider(),
+            _StubTransport(
+              tokenResponse: {
+                'access_token': 'at-1',
+                'token_type': 'Bearer',
+                'id_token': token,
+              },
+            ),
+          );
+          final begun = await flow.beginAuthorization(_authorizationRequest());
+          final exchange = await flow.completeAuthorization(
+            code: 'c',
+            state: begun.state,
+          );
+          expect(exchange.identity.subject, 'sub-1');
+        }
+      },
+    );
+
     // The exchange names its own provider, so that every decision downstream
     // can be taken from one resolution rather than each finding its own. The
     // issuer cannot serve as that name: it identifies the IdP, and two

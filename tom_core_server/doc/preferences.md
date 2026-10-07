@@ -498,6 +498,7 @@ block every login.
   loser, and the caller sees a driver error rather than a retry. Preferences are
   written by a person at a keyboard, so the race is rare — but it is not
   prevented, and a client that writes on every keystroke will find it.
+  <!-- unpinned: untestable — a race between two writers is not reproducible deterministically -->
 - **A rewrite may change a key's type, and every other reader then fails.**
   `setEncoded` validates that the `valueType` and `valueJson` it was handed
   agree with each other, not that they agree with what is already stored. So a
@@ -505,21 +506,25 @@ block every login.
   every `get<String>('theme')` on every other device throws
   `TomUserPreferenceCodecException` from then on. A key's type is a convention
   between the clients that share it.
+  <!-- pinned: test/preferences_db_test.dart › a rewrite may change a key's type, and a typed reader then fails -->
 - **There is no bulk write.** `set` takes one key, and there is no transaction
   around a group of writes, so a partial application is a reachable state. The
   delete side has both shapes — `remove` for one key and `clear` for all of
   them — because deleting everything is the operation an account reset performs
   and the one where a half-completed loop does the most damage; there is no
   equivalent single-statement write.
+  <!-- unpinned: absence — no bulk write exists -->
 - **There are no deployment-wide or role-wide defaults.** `getOr(key, fallback)`
   takes the default at the call site, so two call sites reading one key can
   disagree about what it means when unset, and a deployment cannot ship a
   default without editing code. The framework stores only what a principal
   actually wrote.
+  <!-- unpinned: absence — no stored defaults exist -->
 - **A preference is per principal and nothing else.** The row is keyed on
   `(principal_id, preference_key)`, so there is no per-device, per-application
   or per-organization dimension: a user who wants one theme on their phone and
   another on their desktop encodes that in the key.
+  <!-- unpinned: decision — the row is keyed on principal and key by design -->
 
 ## Verification
 

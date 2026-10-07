@@ -399,23 +399,23 @@ against MariaDB.
   principal only when its token expires and the next request re-resolves it. A
   deployment that needs a revocation to bite immediately has to shorten token
   lifetimes; the framework offers no push.
+  <!-- unpinned: absence — the cache offers no removal or invalidation -->
 - **The cache is per process.** `TomAuthorizationCache` is a static singleton
   and the worker-isolate route forwards to *this* process's main isolate, so
   every server node keeps its own copy and nothing coordinates them. Two nodes
   can hold different answers for one token until both expire.
-- **Eviction is opt-in.** Nothing sweeps until `startEviction()` is called.
-  Without it, an expired entry is dropped only by the read that happens to touch
-  it, so a token never read again occupies the map for the life of the process —
-  which is a leak whose size is the number of distinct tokens the node has seen.
+  <!-- unpinned: absence — nothing coordinates the per-node caches -->
 - **An entry's lifetime has one-second resolution.** `exp` is encoded in whole
   seconds, so a token good for 300 ms cannot be expressed and reads as already
   expired.
+  <!-- pinned: test/documented_limitations_test.dart › a token good for less than a second cannot be cached as live -->
 - **The graded model has four states and no fifth.**
   `TomAuthState.none`/`disabled`/`read`/`full` is the whole vocabulary, and
   `TomResourceDataScope` maps it onto rows accordingly: readable at `read` or
   wider, writable only at `full`. There is no append-only, no delete-but-not-edit
   and no per-operation grade; a deployment needing one expresses it in its own
   resource keys rather than in the grade.
+  <!-- pinned: test/documented_limitations_test.dart › the graded model has exactly four states -->
 
 ## Verification
 

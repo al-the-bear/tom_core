@@ -1649,11 +1649,13 @@ names.
   reading, and the sentence refuses `author.name` as a column it cannot
   resolve. Filter on the foreign key, or query the other entity's repository
   and pass the ids to an `IS IN` list.
+  <!-- pinned: test/query_sentence_declined_words_test.dart › a predicate cannot address an association's columns -->
 - **There is no subquery node**, so a predicate that is *about* another result
   set — `EXISTS`, `IN (SELECT …)`, a correlated aggregate — cannot be built.
   `executeQueryString` takes the SQL directly when a query genuinely needs one;
   it binds its parameters like any other statement, so reaching for it costs the
   compiler's checking, not the injection safety.
+  <!-- unpinned: absence — no subquery node exists -->
 
 What is *not* listed here is a vocabulary of word-operators — *After*,
 *Containing*, *StartsWith* and their siblings. They are set in italics because

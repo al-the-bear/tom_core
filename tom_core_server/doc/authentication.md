@@ -2384,22 +2384,26 @@ resolves the pending record for its context and calls
 
 - **`TomDummyAuthenticationService` is for scaffolding only** — it grants any
   non-`GUEST` login. Replace it before any test or production use.
+  <!-- pinned: test/authentication_test.dart › authenticates any non-GUEST user -->
 - **Three second-factor mechanisms ship**: `TomTotp2FAService` (authenticator
   app), `TomEmailCode2FAService` and `TomSmsCode2FAService` (delivered codes).
   WebAuthn and anything else remain application-supplied — the mechanism set is
   open by design, and adding one needs no change here (see
   [Writing your own mechanism](#writing-your-own-mechanism)).
+  <!-- unpinned: absence — further mechanisms are application-supplied; the set is open -->
 - **Two policies ship, and neither is a component.** `TomPrincipalFlag2FAPolicy`
   is the default and `TomRole2FAPolicy` is installed by hand. Neither carries
   `@TomComponent`, so a deployment that adds a dependency does not silently
   acquire a 2FA requirement; anything richer than "per role" or "per principal
   flag" is a `Tom2FAPolicy` the deployment writes.
+  <!-- unpinned: decision — neither policy is a component, so a dependency adds no 2FA requirement -->
 - **No enrolment store is installed by default**, deliberately.
   `Tom2FAEnrolmentStore.resolve()` returns `null` rather than an empty store,
   because "nobody tracks enrolments here" and "this user has enrolled nothing"
   must lead to different logins — see [Enrolment](#enrolment). A deployment
   installs `TomPersistent2FAEnrolmentStore` (and runs the DDL in
   `TomUserTwoFactorEnrolment.createTableSql`) to switch enrolment on.
+  <!-- pinned: test/two_factor_test.dart › resolve returns null when no store is installed -->
 - **The grace count is per process unless a deployment stores it.**
   `TomRole2FAPolicy` counts its budget down through `Tom2FAGraceStore`, and the
   default store is a map in this process — so a restart or a second node starts
@@ -2407,11 +2411,13 @@ resolves the pending record for its context and calls
   it is an acceptable default; a deployment that wants the count to survive
   implements the store against its own user data. The framework ships no table
   for it: the count is a fact about a user, and this package has no user table.
+  <!-- unpinned: decision — the in-process default store is deliberate; a deployment stores the count itself -->
 - **A delivered code's transport is not retried.** Delivery is synchronous and
   a failure fails the login, because a code that outlives its challenge is worse
   than none. The retry is the user asking for a new code. A deployment whose
   relay is unreliable therefore sees failed logins rather than late ones — which
   is the intended trade, not an oversight.
+  <!-- pinned: test/two_factor_delivered_code_test.dart › a delivery failure fails the login rather than prompting -->
 - **The per-challenge attempt cap is per process by default.** The counter in
   the token bounds a cooperative client; what bounds an uncooperative one is
   `Tom2FAAttemptStore`, which records that an interim token has been answered
@@ -2420,6 +2426,7 @@ resolves the pending record for its context and calls
   challenge's own allowance by the node count. A deployment wanting the exact
   cap installs a store its nodes share. See [the attempt counter, and what makes
   it a bound](#the-attempt-counter-and-what-makes-it-a-bound).
+  <!-- unpinned: decision — the in-process default store is deliberate; a cluster installs a shared one -->
 - **The OAuth `id_token` signature is not verified.** The token is read for its
   claims only. This is safe *as deployed here* and unsafe if copied elsewhere:
   the token arrives over TLS on the server's own back-channel call to the
@@ -2431,17 +2438,20 @@ resolves the pending record for its context and calls
   defence in depth. This limitation is about *authenticity* only — the token's
   `exp` and `nbf` **are** checked, because freshness does not follow from
   authenticity; see [The handshake](#the-handshake).
+  <!-- pinned: test/oauth_test.dart › an id_token is accepted on its claims, whatever its signature -->
 - **The `id_token`'s age is not policed, only its expiry.** `iat` is read by
   nothing: a maximum-age policy is a decision this module does not take, and
   `exp` is the provider's own statement of how long the token is good for. A
   deployment that needs "re-authenticate if the session is older than an hour"
   is asking for OIDC `max_age` / `auth_time`, which is not implemented.
+  <!-- pinned: test/oauth_test.dart › an old iat does not refuse a token that has not expired -->
 - **`TomOAuthMemoryStateStore` is the default state store, and is per-process.**
   Pending authorizations live for ten minutes in one isolate's memory, which is
   correct for a single-node deployment and wrong behind a load balancer that may
   route the callback to a different node. That default is deliberate — a single
   node and a test suite need no database — but it is a default, not the only
   choice.
+  <!-- pinned: test/oauth_test.dart › the state store defaults to memory when nothing selects one -->
 - **A clustered deployment sets `oauth.stateStore.type: sql`** and gets
   `TomSqlOAuthStateStore` over the shared `tom_oauth_state` table, where an
   authorization begun on one node completes on any other and a state stays
@@ -2449,15 +2459,18 @@ resolves the pending record for its context and calls
   other backing: there is no Redis or other cache-backed store, and a deployment
   wanting one implements the same three-method contract. See
   [Where pending authorizations live](#where-pending-authorizations-live).
+  <!-- unpinned: absence — no backing beyond memory and SQL ships -->
 - **The identity *store* has no default at all**, deliberately — see
   [The linking table](#the-linking-table). `TomPersistentExternalIdentityStore`
   needs `TomExternalIdentityLink.createTableSql`, shipped as
   `example/authentication/migrations/main/tomcore/[4]-create_tom_external_identity.sql`.
+  <!-- pinned: test/documented_limitations_test.dart › no identity store is installed by default -->
 - **The framework retains no provider token unless a provider opts in.**
   `storeTokens` defaults to `false`, so a deployment that only wants "Sign in
   with …" never acquires a third-party credential. The grant is still handed to
   the caller on every exchange; what is opt-in is *storing* it. See
   [Delegated access](#delegated-access-the-providers-tokens).
+  <!-- pinned: test/oauth_test.dart › a provider that did not opt in has nothing retained -->
 - **A retained grant needs a `TomOAuthTokenStore` and its table.** Opting a
   provider in without installing a store retains nothing and logs it — the two
   halves are separate on purpose, so a deployment can hold its identity links in
@@ -2465,12 +2478,14 @@ resolves the pending record for its context and calls
   reverse. `TomPersistentOAuthTokenStore` needs
   `TomExternalIdentityToken.createTableSql`, shipped as
   `example/authentication/migrations/main/tomcore/[3]-create_tom_external_identity_token.sql`.
+  <!-- unpinned: decision — opting in and installing a store are separate halves on purpose -->
 - **Revocation reaches only providers that publish an endpoint.** `unlink`
   revokes through `revocationEndpoint` (RFC 7009) where a provider configures
   one; where it does not, the framework's copy of the grant is deleted and the
   credential remains valid at the provider until it expires or the user
   withdraws consent there. Nothing can be done about that from here — there is
   no address to call.
+  <!-- pinned: test/oauth_test.dart › a provider with no revocation endpoint is not called -->
 
 ## Dependencies
 

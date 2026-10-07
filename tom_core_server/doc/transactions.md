@@ -418,11 +418,13 @@ a `finally`, so it clears it whatever happens on the way.
   coordinator logs the failure at error level naming every participant that
   broke its promise and commits the rest, and repair is at those resources. Two
   phases make a veto free; they do not make a commit infallible.
+  <!-- pinned: test/transactions_test.dart › and the partial commit is reported by name -->
 - **`isReadOnly` is not enforced on an XA branch.** `MariaDbXADatasource` gets
   the flag like every participant and cannot act on it: `XA START` has no
   `READ ONLY` form in MariaDB or MySQL, so writes on that connection are not
   prevented. It warns rather than failing the start, because refusing would take
   the distributed transaction with it. See [Read-Only](#read-only).
+  <!-- pinned: test/datasources_test.dart › the XA driver says it cannot honour it, and does not pretend -->
 - **There is no transaction log, so a process that dies mid-commit is not
   recovered.** The coordinator's state lives in a zone value; nothing is written
   down between the phases and nothing replays afterwards. A crash after the
@@ -430,11 +432,13 @@ a `finally`, so it clears it whatever happens on the way.
   `MariaDbXADatasource`, XA branches holding their locks until somebody issues
   `XA RECOVER`, which nothing here does. The prepare phase is what makes those
   branches *recoverable*; recovering them is the operator's.
+  <!-- unpinned: absence — no transaction log exists -->
 - **A conclusion has no deadline.** Participants are awaited with no timeout, so
   one that blocks blocks the transaction and the request behind it indefinitely.
   Timeouts belong to the participant, which is the layer that knows what its
   resource's round trip should cost. (That participants are driven *one at a
   time* is not part of this — see [Sequential by design](#sequential-by-design).)
+  <!-- unpinned: decision — timeouts belong to the participant -->
 
 ## Verification
 

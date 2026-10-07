@@ -1637,6 +1637,7 @@ correlation index, never through a mailbox.
   `email`, `sms` and `webhook` are implemented. The second is the evidence that
   the contract carries a channel it was not designed around; the third needed no
   widening of it at all.
+  <!-- unpinned: absence — `push` is a reserved name with no transport -->
 - **Nothing acts on a delivery report.** A report is recorded and published on
   `TomDeliveryReportEndpoint.reports`, and the module draws no conclusion from
   it: a `failed` state does not suppress the next message to that address, and
@@ -1644,10 +1645,12 @@ correlation index, never through a mailbox.
   to stop using, and when a re-send is worth paying for — and belong to the
   notification model, which is
   [not this framework's](#not-in-this-framework).
+  <!-- unpinned: absence — no consumer of delivery reports ships -->
 - **Vendor protocol presets in `lib/`.** Deliberate, not missing:
   `example/messaging/sms_gateway_presets.dart` carries worked mappings for three
   named vendors, and none of them is exported as library API — see
   [Describing a gateway](#describing-a-gateway) for the argument.
+  <!-- unpinned: decision — presets live in an example by design -->
 - **A templated service for push**, which waits on the push transport rather
   than on this layer: a service that composes messages for a channel nothing can
   deliver composes messages that cannot be sent. When the transport arrives, the
@@ -1656,6 +1659,7 @@ correlation index, never through a mailbox.
   generalising either existing one**. See
   [One service per channel](#one-service-per-channel) for why that instruction
   is load-bearing.
+  <!-- unpinned: absence — waits on the push transport -->
 
 ## Dependencies
 

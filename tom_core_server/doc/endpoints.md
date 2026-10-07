@@ -1098,12 +1098,14 @@ it means "nothing a caller can see", not "nothing at all".
   looking and no more than that: a caller gets a `200` computed as though the
   parameter had not been sent. The opt-in itself is deliberate — see
   [Binding a Query Parameter](#binding-a-query-parameter).
+  <!-- pinned: test/endpoints_test.dart › a query parameter the mapping does not name is dropped -->
 - **A repeated text field cannot become a list.** Both form shapes keep the
   last value of a repeated field, the way a query string does, because a DTO
   field is one value. An endpoint that needs a repeated *text* field declares a
   JSON body, where a list is expressible. Changing this would mean deciding —
   per field, not per endpoint — when two values are one list and when they are a
   correction, which the envelope does not say.
+  <!-- pinned: test/endpoints_transport_test.dart › a repeated text field keeps the last value -->
 - **Multipart parts are materialised.** A part must be buffered to be read, so
   `globalSettingMaxFilePartBytes` bounds it. Streaming a part lazily is not
   expressible over a sequential envelope; bulk transfer belongs on the raw-body
@@ -1112,6 +1114,7 @@ it means "nothing a caller can see", not "nothing at all".
   case that could have been streamed and deliberately is not — the file is last
   only if the page's markup puts it last, which the endpoint cannot require. See
   [Multipart Forms](#multipart-forms).
+  <!-- pinned: test/endpoints_transport_test.dart › a file part over the ceiling is refused while it is being read -->
 - **`TomFileSlots` is a per-isolate registry, and registering is a bootstrap
   requirement.** The map of exposed file columns is static, and Dart isolates do
   not share statics, so an application serving from several isolates must run
@@ -1122,17 +1125,20 @@ it means "nothing a caller can see", not "nothing at all".
   a bootstrap that did not run and a column deliberately left closed are
   otherwise the same 404. `TomFileSlots.reset()` exists for tests that want a
   fresh registry, not for re-registration at runtime.
+  <!-- pinned: test/file_endpoint_test.dart › resolve refuses an empty registry by name -->
 - **A socket has no server-side push registry.** A handler owns its own
   connection and can write to it at any time, but there is no shared registry to
   broadcast to every connection of a user or a topic. That is a feature of
   whatever wants to broadcast, and inventing its addressing model before a
   caller has one would be guessing.
+  <!-- unpinned: absence — no broadcast registry exists -->
 - **A socket's messages are not individually audited.** An audited socket
   contributes two records — the acceptance and the close, the latter carrying
   the duration and the frame counts in each direction — but nothing per message.
   What was *said* inside a conversation is the handler's own to record, where
   its meaning is known. See
   [What the trail says about a socket](#what-the-trail-says-about-a-socket).
+  <!-- pinned: test/endpoints_transport_test.dart › an audited socket records its acceptance and its close -->
 
 ## Verification
 
