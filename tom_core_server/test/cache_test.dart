@@ -150,11 +150,11 @@ class ProbeCacheReadCommand extends TomCommand {
 /// Runs inside a WORKER isolate and reports how an *untyped* forwarded read
 /// came back.
 ///
-/// The type argument is the whole point. `executeInCreator` never resolves to
-/// `null` — a creator result of `null`, which is what a miss is, is substituted
-/// with `TomExecutor.noResult` — so a read whose `T` admits any object accepts
-/// that sentinel as if it were the cached value. A read for `String` cannot see
-/// the defect, because the sentinel fails the type test on its way past.
+/// The type argument is the whole point. `Object` admits every cached value,
+/// so it is the read that would take anything the transport delivered for a
+/// miss as the cached value — and, since a miss arrives as `null` and `null is
+/// Object` is false, the read that would report the miss as a type mismatch if
+/// it tested the type first.
 class ProbeCacheUntypedReadCommand extends TomCommand {
   final String cacheName;
 
@@ -1118,10 +1118,9 @@ void main() {
     });
 
     test('a forwarded miss answers null even when T admits Object', () async {
-      // A miss arrives as the noResult sentinel rather than as null, so a read
-      // whose T accepts any object hands that sentinel back as if it were the
-      // cached value — an object no caller has a type for, in place of the
-      // `null` the same call returns locally.
+      // A miss arrives as `null`, which no non-nullable T admits, so the read
+      // has to recognise the miss before it tests the type — otherwise it
+      // throws a type mismatch where the same call answers `null` locally.
       TomCacheManager.addCache(_cache('shared'));
 
       final answer = await worker

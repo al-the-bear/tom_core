@@ -598,8 +598,7 @@ class TomCache {
   /// A forwarded read answers exactly as a local one does. The type mismatch
   /// throws on both paths, and a miss is `null` on both — neither follows from
   /// the transport, which reports a *remote throw* as a throw but has nothing to
-  /// say about a value that came back intact and then failed to convert, nor
-  /// about a miss that reaches this side as [TomExecutor.noResult].
+  /// say about a value that came back intact and then failed to convert.
   static Future<T?> fromNameCache<T>(String cacheName, String key) async {
     var cache = TomCacheManager.getCache(cacheName);
     if (cache != null) {
@@ -649,17 +648,14 @@ class TomCache {
       Object? cachedResult = await TomWorker.executeInCreator(
         TomCacheRetrieveMessage(cacheName, key),
       );
-      // A miss is the creator answering `null`, and executeInCreator never
-      // resolves to `null` — it substitutes this sentinel. Translating it back
-      // is what makes a forwarded miss read as a miss; without it a `T` that
-      // admits any object (`Object`, or the `dynamic` of an uninstantiated
-      // call) accepts the sentinel as the cached value.
-      //
-      // The translation is exact because a creator-side `null` has only the one
-      // meaning: a cached value is never `null` (see toNameCache), so nothing
-      // else can arrive as the sentinel and be reported as absent.
-      if (identical(cachedResult, TomExecutor.noResult)) return null;
       if (cachedResult is T) return cachedResult;
+      // A miss is the creator answering `null`, which arrives as `null`. It
+      // has to be recognised here, before the mismatch below: `null is T` is
+      // false for a non-nullable `T`, so the test above lets it through.
+      //
+      // The reading is exact because a creator-side `null` has only the one
+      // meaning: a cached value is never `null` (see toNameCache).
+      if (cachedResult == null) return null;
       // The value crossed intact and it is the *conversion* that failed, so
       // the transport cannot report this — only the call site can. Answering
       // `null` would say "the cache is empty" to a caller who has the wrong

@@ -42,6 +42,27 @@ class NoOpExecutor extends TomExecutor {
   }
 }
 
+/// Claims the payload `'answer-null'` and answers it with `null`.
+///
+/// [TomExecutor.execute] returns a non-nullable `Object`, so an executor can
+/// answer `null` only through a future — which the dispatch awaits on both
+/// sides, making this the executor-path counterpart of [FixedValueCommand].
+class NullAnsweringExecutor extends TomExecutor {
+  @override
+  Object execute(Object command) =>
+      command == 'answer-null' ? Future<Object?>.value() : TomExecutor.noResult;
+}
+
+/// Runs in the worker and sends [payload] to the creator's executor chain.
+class DelegatePayloadToCreator extends TomCommand {
+  final Object payload;
+
+  DelegatePayloadToCreator(this.payload);
+
+  @override
+  Future<Object?> execute() async => TomWorker.executeInCreator(payload);
+}
+
 /// Test command that returns a fixed value.
 class FixedValueCommand extends TomCommand {
   final Object? value;
@@ -377,10 +398,9 @@ class NullCreatorCommand extends TomCommand {
 
 /// Runs in the worker and delegates a null-returning command to the creator.
 ///
-/// The creator substitutes [TomExecutor.noResult] for the `null`, unlike the
-/// worker-bound direction which substitutes the string `"null"`. The sentinel
-/// is not null, so it survives the worker's own substitution unchanged and
-/// reaches the original caller as-is.
+/// The creator answers `null` as `null`, and the worker passes it on as
+/// `null` in turn, so the original caller receives exactly what the creator's
+/// handler returned — two hops, no substitution on either.
 class DelegateNullToCreator extends TomCommand {
   @override
   Future<Object?> execute() async {
@@ -842,11 +862,10 @@ void main() {
         );
       });
 
-      test('base class default returns the "null" sentinel string', () async {
-        // TomCommand.execute() is not abstract; its default returns the
-        // literal string "null" so subclasses that forget to override still
-        // produce a sendable, non-null response.
-        expect(await DefaultCommand().execute(), equals('null'));
+      test('base class default answers null', () async {
+        // TomCommand.execute() is not abstract; its default answers `null`,
+        // which crosses either direction as `null` like any other answer.
+        expect(await DefaultCommand().execute(), isNull);
       });
     });
   });
@@ -1565,10 +1584,18 @@ void main() {
         expect(results, containsAll([30, 70, 110]));
       });
 
-      test('should handle null result from command', () async {
+      test('a null result from a command arrives as null', () async {
         final result = await worker.executeCommand(FixedValueCommand(null));
 
-        // null is converted to "null" string in the implementation
+        expect(result, isNull);
+      });
+
+      test('the string "null" arrives as that string, not as null', () async {
+        // An answer is sent as it is, so text that spells `null` is a value
+        // like any other and cannot be mistaken for an answer of nothing.
+        final result = await worker.executeCommand(FixedValueCommand('null'));
+
+        expect(result, isA<String>());
         expect(result, equals('null'));
       });
     });
@@ -2132,6 +2159,27 @@ void main() {
           worker.close();
         },
       );
+
+      test(
+        'an executor answering null in the worker arrives as null',
+        () async {
+          final context = TestWorkerContext(namePrefix: 'ExecNull');
+          final worker = await TomWorker.spawn(
+            TomWorker.startRemoteIsolate,
+            context,
+          );
+
+          worker.sendExecutorToIsolate(NullAnsweringExecutor());
+          await Future.delayed(Duration(milliseconds: 50));
+
+          final result = await worker.executeCommand('answer-null');
+          // `null` is a claimed answer, not a decline: the unclaimed case is
+          // `notHandled`, and the two must stay apart.
+          expect(result, isNull);
+
+          worker.close();
+        },
+      );
     });
 
     group('unhandled messages', () {
@@ -2286,25 +2334,37 @@ void main() {
         worker.close();
       });
 
-      test(
-        'a null creator result comes back as the noResult sentinel',
-        () async {
-          // The two directions substitute different things for a null result:
-          // worker-bound gives the string "null", creator-bound gives the
-          // sentinel. Pinning the creator side keeps the pair from silently
-          // converging on one of the two.
-          final context = TestWorkerContext(namePrefix: 'CreatorNull');
-          final worker = await TomWorker.spawn(
-            TomWorker.startRemoteIsolate,
-            context,
-          );
+      test('a creator executor answering null comes back as null', () async {
+        TomWorker.addExecutor(NullAnsweringExecutor());
+        final context = TestWorkerContext(namePrefix: 'CreatorExecNull');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
 
-          final result = await worker.executeCommand(DelegateNullToCreator());
-          expect(result, same(TomExecutor.noResult));
+        final result = await worker
+            .executeCommand(DelegatePayloadToCreator('answer-null'))
+            .timeout(Duration(seconds: 5));
+        expect(result, isNull);
 
-          worker.close();
-        },
-      );
+        worker.close();
+      });
+
+      test('a null creator result comes back as null', () async {
+        // Both directions carry a `null` answer as `null`; a sentinel in its
+        // place would be a second spelling of the same answer, and a caller
+        // would have to know which way its command travelled to read it.
+        final context = TestWorkerContext(namePrefix: 'CreatorNull');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        final result = await worker.executeCommand(DelegateNullToCreator());
+        expect(result, isNull);
+
+        worker.close();
+      });
 
       test('executeInCreator resolves with notHandled when the creator has no '
           'executor registered', () async {
@@ -2323,10 +2383,10 @@ void main() {
             .executeCommand(DelegateUnhandledToCreator())
             .timeout(Duration(seconds: 5));
         expect(result, same(TomExecutor.notHandled));
-        // Not `noResult`, which on this call means the handler answered
-        // `null`. The two were one value until a process that forgot an
-        // addExecutor was found reporting plausible answers for ever.
-        expect(result, isNot(same(TomExecutor.noResult)));
+        // Not `null`, which on this call means the handler answered nothing.
+        // The two were one value until a process that forgot an addExecutor
+        // was found reporting plausible answers for ever.
+        expect(result, isNotNull);
 
         worker.close();
       });

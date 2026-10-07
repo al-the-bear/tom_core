@@ -681,8 +681,8 @@ void main() {
       // Asserting the miss on its own would be worthless: an unknown token
       // reads as a miss whether the creator answered or nothing did. Verified
       // by deleting the addExecutor above — the bare assertion stays green,
-      // because an unserviced command comes back as TomExecutor.noResult and
-      // `is TomPrincipal` rejects that exactly as it rejects a real miss.
+      // because an unserviced command once came back as the same value a miss
+      // does, and `is TomPrincipal` rejected both alike.
       //
       // So the two probes share one token and one worker, and only the
       // creator's map changes between them. A transition from miss to hit can
@@ -772,7 +772,7 @@ void main() {
     });
 
     test('a forwarded store claims the command, ending the chain', () async {
-      // A store now settles to nothing, and the creator decides whether an
+      // A store settles to nothing, and the creator decides whether an
       // executor claimed a command by comparing what it settled to against
       // TomExecutor.noResult. `null` is not that sentinel, so the chain must
       // stop at the cache executor -- but the two are close enough that the
@@ -817,8 +817,8 @@ void main() {
   // is what happens when a deployment forgets to, which is the whole reason
   // the transport learned to say "nothing claimed this".
   //
-  // Before it could, the answer was TomExecutor.noResult -- the same value a
-  // forwarded *miss* arrives as -- so a worker read every lookup as a miss and
+  // Before it could, the answer was the same value a forwarded *miss* arrived
+  // as, so a worker read every lookup as a miss and
   // every store as a success. Neither is visible from the worker, and both
   // survive a green suite: the "a miss becomes a hit" test above exists
   // because deleting the addExecutor from its setUp left the bare miss

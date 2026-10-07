@@ -211,15 +211,8 @@ abstract class TomExecutor {
   /// Return this value from [execute] to allow the next executor in the chain
   /// to handle the command. It is an answer to the *dispatch*, not to the
   /// caller: a chain that declines end to end is reported as [notHandled]
-  /// instead, so a caller never receives this as "nothing handled it".
-  ///
-  /// It does reach a caller in one other role, on
-  /// [TomWorker.executeInCreator]: a handler that answers `null` is
-  /// substituted with this sentinel before the response is sent, because a
-  /// bare `null` on that path is reserved. So on the receiving side of that
-  /// call it means *the handler answered nothing*, which is the opposite of
-  /// what returning it from [execute] means, and [notHandled] is what carries
-  /// the other half.
+  /// instead, and a handler that answers `null` is delivered as `null`, so the
+  /// dispatch never hands this sentinel to a caller in either direction.
   ///
   /// It carries no value equality and is recognised by identity — including
   /// on the far side of a worker's port. That holds because [TomWorker.spawn]
@@ -228,7 +221,7 @@ abstract class TomExecutor {
   /// `const` instance sent across the port arrives as the same instance, not a
   /// copy. An isolate started with `Isolate.spawnUri` is a group of its own and
   /// would not share it. `isolate_pooling_test.dart` asserts `same(...)` on
-  /// both sentinels after a real round trip in each direction.
+  /// [notHandled] after a real round trip in each direction.
   static const Object noResult = _TomNoResult();
 
   /// Sentinel value a dispatch answers with when **nothing claimed a command**.
@@ -238,8 +231,8 @@ abstract class TomExecutor {
   /// this message reached the other isolate and came back unclaimed — and both
   /// are almost always a missing `TomWorker.addExecutor` at start-up.
   ///
-  /// It is a second sentinel because one cannot carry this meaning *and* "the
-  /// handler answered `null`": the two are opposites — "there was no answer"
+  /// It is a sentinel rather than `null` because `null` already means "the
+  /// handler answered nothing", and the two are opposites — "there was no answer"
   /// against "the answer is nothing" — and nothing downstream can tell one
   /// value apart from itself. Spelled the same way, a process that forgets to
   /// register an executor reports a plausible answer for ever:
@@ -320,16 +313,13 @@ abstract class TomCommand {
   /// Override this method to implement the command's logic.
   /// The result is sent back to the caller.
   ///
-  /// Returning `null` does not deliver `null`: the dispatch substitutes it
-  /// before sending, with the string `"null"` towards the worker and with
-  /// [TomExecutor.noResult] towards the creator. Return an explicit sentinel
-  /// if the caller has to recognise "absent".
+  /// Returning `null` delivers `null`, in either direction: the dispatch
+  /// sends a command's answer as it is, and keeps the unclaimed case apart
+  /// under [TomExecutor.notHandled].
   ///
-  /// The default returns that same `"null"` string, so an unoverridden
-  /// command guarantees a sendable, non-null response — and is therefore
-  /// indistinguishable from a command that resolved to `null`.
+  /// The default answers `null`.
   Future<Object?> execute() async {
-    return "null";
+    return null;
   }
 }
 
@@ -353,8 +343,9 @@ class _TomCreatorResponse {
   /// Matches the id from the corresponding [_TomCreatorCommand].
   int id;
 
-  /// The result of executing the command.
-  Object response;
+  /// The result of executing the command, sent as the handler returned it —
+  /// `null` included.
+  Object? response;
 
   _TomCreatorResponse(this.id, this.response);
 }
@@ -375,8 +366,9 @@ class _TomIsolateResponse {
   /// Matches the id from the corresponding [_TomIsolateCommand].
   int id;
 
-  /// The result of executing the command.
-  Object response;
+  /// The result of executing the command, sent as the handler returned it —
+  /// `null` included.
+  Object? response;
 
   _TomIsolateResponse(this.id, this.response);
 }
@@ -927,11 +919,8 @@ class TomWorker {
     } else if (message is _TomCreatorCommand) {
       TomExecutor? executor;
       // Whether anything claimed the command, tracked rather than inferred
-      // from the value. Inferring it is what conflated the two conditions this
-      // handler has to report: a chain that declines answers
-      // `TomExecutor.noResult`, and so did a handler that returned `null`
-      // once the `??` below had substituted it — after which "nothing handled
-      // this" and "the answer is nothing" were the same value. An empty
+      // from the value: the value cannot say it, because a self-executing
+      // command's answer is never read as a decline whatever it is. An empty
       // executor list leaves this false and so takes the unclaimed exit, which
       // is the case a forgotten `addExecutor` produces.
       var handled = false;
@@ -968,10 +957,9 @@ class TomWorker {
         _commands.send(
           _TomCreatorResponse(
             message.id,
-            // Unclaimed answers with its own sentinel; a claimed `null` keeps
-            // the encoding it always had, so a caller that compares against
-            // `noResult` to mean "the handler answered nothing" is unaffected.
-            handled ? (result ?? TomExecutor.noResult) : TomExecutor.notHandled,
+            // A claimed answer travels as it is, `null` included; only the
+            // unclaimed case is a sentinel.
+            handled ? result : TomExecutor.notHandled,
           ),
         );
       } catch (exception, s) {
@@ -1022,7 +1010,7 @@ class TomWorker {
   /// its `await` which direction the command travelled.
   static void _completeFromResponse(
     Completer<Object?> completer,
-    Object response,
+    Object? response,
   ) {
     if (response is _TomRemoteFailure) {
       completer.completeError(
@@ -1136,7 +1124,7 @@ class TomWorker {
           if (message.command is TomCommand) {
             var command = message.command as TomCommand;
             var result = await command.execute();
-            sendPort.send(_TomIsolateResponse(message.id, result ?? "null"));
+            sendPort.send(_TomIsolateResponse(message.id, result));
             return;
           }
           // Not self-executing: offer the message to each registered executor
@@ -1154,11 +1142,9 @@ class TomWorker {
             // and liveness supervision cannot see that hang because the
             // isolate is perfectly healthy and still answers pings.
             //
-            // `notHandled`, not `noResult`: on this path a `null` answer is
-            // carried as the string `"null"` rather than as a sentinel, so the
-            // two were already distinct here — but both directions naming the
-            // unclaimed case the same way is what lets a caller write one
-            // check whichever way its command travelled.
+            // `notHandled`, the same sentinel the creator side answers with,
+            // so a caller writes one check whichever way its command travelled.
+            // A `null` answer is not this case and travels as `null`.
             tomLog.warn(
               "Isolate command resulting in NOT_HANDLED in "
               "${Isolate.current.debugName}: ${message.command}",
@@ -1168,7 +1154,7 @@ class TomWorker {
             );
             return;
           }
-          sendPort.send(_TomIsolateResponse(message.id, result ?? "null"));
+          sendPort.send(_TomIsolateResponse(message.id, result));
         } catch (e, s) {
           _sendFailure(
             sendPort,
@@ -1294,17 +1280,12 @@ class TomWorker {
   /// }
   /// ```
   ///
-  /// Never resolves to `null`: a creator result of `null` is substituted with
-  /// [TomExecutor.noResult] before the response is sent, so on this call that
-  /// sentinel means *the handler answered nothing* and nothing else. Spelling
-  /// that and "nothing claimed it" with one value would conflate opposites, and
-  /// a process missing an `addExecutor` would then report plausible answers
-  /// rather than a fault; see [TomExecutor.notHandled] for what that costs.
-  ///
-  /// The `null` substitution is still not the one the opposite direction
-  /// makes — [executeCommand] uses the string `"null"` — so the two remain
-  /// non-interchangeable in that respect. Only the unclaimed case is spelled
-  /// the same both ways.
+  /// A handler that answers `null` resolves this call to `null`. That is a
+  /// claimed answer — *the answer is nothing* — and is the opposite of
+  /// [TomExecutor.notHandled]'s *there was no answer*; spelling the two alike
+  /// would let a process missing an `addExecutor` report plausible answers
+  /// rather than a fault. [executeCommand] carries both cases the same way, so
+  /// the contract does not depend on which direction a command travels.
   ///
   /// A command that *throws* on the creator side rethrows here, with the
   /// original exception object, so the failure can be caught by type exactly as
@@ -1372,14 +1353,9 @@ class TomWorker {
   /// rather than anything about the command. Both directions spell that case
   /// the same way, so one check serves whichever way a command travelled.
   ///
-  /// Never resolves to `null`, despite the `Object?` in the signature. A
-  /// command or executor result of `null` is substituted with the string
-  /// `"null"` before the response is sent, so a nullable-returning command is
-  /// indistinguishable from one that returned that literal text — and a
-  /// `null`-checking caller never sees the case it is checking for. Return an
-  /// explicit sentinel to carry "absent" across the boundary. Note that the
-  /// creator-bound direction differs: [executeInCreator] substitutes
-  /// [TomExecutor.noResult] instead.
+  /// A command or executor that answers `null` resolves this call to `null`,
+  /// and an answer of the string `"null"` arrives as that string: the answer
+  /// is sent as it is. [executeInCreator] carries both cases the same way.
   ///
   /// A command that *throws* inside the worker rethrows here, with the original
   /// exception object, so the failure can be caught by type exactly as if the

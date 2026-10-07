@@ -270,9 +270,8 @@ class TomAuthorizationCache implements TomDisposable {
     } else {
       // An expiry raised on the creator side arrives here as a throw and
       // propagates untouched, so this branch has two answers to separate: a
-      // hit, and a miss. A miss reaches us as TomExecutor.noResult rather than
-      // `null`, because executeInCreator substitutes the sentinel for a `null`
-      // result.
+      // hit, and a miss. A miss is the creator answering `null`, which arrives
+      // as `null`.
       //
       // TomExecutor.notHandled is the third answer and is neither. It means
       // the creator received the message and nothing claimed it, which for

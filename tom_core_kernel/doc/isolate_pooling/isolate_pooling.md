@@ -325,8 +325,9 @@ means a missing `addExecutor`, and it will keep meaning that until one is
 added.
 
 `identical` rather than `==`: both are `const` instances with no value equality
-of their own, and they stay canonical across the isolate hop — that
-canonicality is exactly what makes them recognisable. They are also distinct
+of their own, and `notHandled` stays canonical across the isolate hop — that
+canonicality is exactly what makes it recognisable. `noResult` never crosses:
+the dispatch consumes it, and a declined chain is answered with `notHandled`. They are also distinct
 *types*, so the pair cannot converge by an equality route either. Both sides
 log a warning naming the unclaimed command, so a forgotten `addExecutor` shows
 up in the log rather than only as a puzzling sentinel at the call site.
@@ -352,50 +353,39 @@ class CalculateHashCommand extends TomCommand {
 }
 ```
 
-#### A result of `null` never reaches the caller as `null`
+#### A result of `null` arrives as `null`
 
-`execute` is declared `Future<Object?>`, but a `null` result is substituted
-before the response is sent — and the two directions substitute *different*
-values:
+`execute` is declared `Future<Object?>`, and the answer is sent as it is —
+`null` included, and in both directions:
 
 | Direction | Call | A `null` result arrives as |
 | --------- | ---- | -------------------------- |
-| creator → worker | `worker.executeCommand(cmd)` | the string `"null"` |
-| worker → creator | `TomWorker.executeInCreator(cmd)` | `TomExecutor.noResult` |
+| either | `worker.executeCommand(cmd)`, `TomWorker.executeInCreator(cmd)` | `null` |
 
-The creator-bound row is `noResult` and the unhandled answer is `notHandled`,
-so the two conditions the sentinel would otherwise conflate stay apart: "a
-handler ran and returned `null`" against "no executor claimed the message".
-They are opposites — the answer is nothing, against there was no answer — and
-one value for both means a process that forgot an `addExecutor` reports
-plausible answers rather than a fault. That is not hypothetical: read as a
-miss, it made `TomAuthorizationCache.getPrincipal` re-resolve every principal
-for ever, and made `storePrincipal` report a lost write as a success.
+The same holds for a `TomExecutor` that answers `null` (an executor's
+`execute` returns a non-nullable `Object`, so it answers `null` through a
+future, which the dispatch awaits).
 
-The two directions still spell a *`null` answer* differently — the string
-`"null"` one way, `noResult` the other — so only the unclaimed case is
-interchangeable between them.
+`null` and `TomExecutor.notHandled` are the two answers a caller has to tell
+apart, and they are opposites: *the answer is nothing* — a handler ran and
+returned `null` — against *there was no answer* — no executor claimed the
+message. One value for both would let a process that forgot an `addExecutor`
+report plausible answers rather than a fault: read as a miss, it would make
+`TomAuthorizationCache.getPrincipal` re-resolve every principal for ever, and
+`storePrincipal` report a lost write as a success.
 
-So `executeCommand` can never resolve to `null` despite its signature. The same
-substitution applies to a `null` returned by a `TomExecutor`, not just by a
-`TomCommand`. The consequence worth remembering is that a nullable-returning
-command is not distinguishable from one that returned the literal text:
+Because nothing is substituted, a command that answers the four characters
+`"null"` is told apart from one that answered nothing:
 
 ```dart
-// Suppose lookup() returned null inside the worker.
 final name = await worker.executeCommand(LookupCommand(id)) as String?;
-// name is "null" — four characters, not null. No error is raised here; it
-// fails somewhere later, wherever the value is finally used.
+if (name == null) {
+  // lookup() returned null inside the worker.
+}
 ```
 
-To carry "absent" across the boundary, send an explicit value you can test for
-— `TomExecutor.noResult`, an empty collection, or a sentinel of your own —
-rather than relying on `null` surviving the trip.
-
-`TomCommand.execute`'s base implementation returns the string `"null"` for the
-same reason: it guarantees a sendable, non-null response from a subclass that
-forgot to override it. That means an unoverridden command and a command that
-legitimately resolved to `null` produce identical results.
+`TomCommand.execute`'s base implementation answers `null`, so a subclass that
+forgets to override it answers nothing rather than a value.
 
 ### TomWorkerPool
 
@@ -822,16 +812,11 @@ types plain data if their type has to survive the trip.
   `healthCheckInterval`; on a standalone worker, register
   [`superviseExit`](#supervising-a-bare-worker). Either way, prefer the built-in
   mechanism to writing your own health checks
-- **Don't return `null` from a command**: it is substituted before it is sent
-  (with the string `"null"` towards the worker, with `TomExecutor.noResult`
-  towards the creator), so a `null`-checking caller never sees the case it is
-  checking for. Send an explicit sentinel instead — see
-  [TomCommand](#tomcommand)
 - **Don't cast a dispatch result unchecked**: both `executeCommand` and
-  `executeInCreator` may resolve with `TomExecutor.noResult` when nothing
+  `executeInCreator` resolve with `TomExecutor.notHandled` when nothing
   handled the message, so `await worker.executeCommand(c) as Report` throws a
   `TypeError` naming a private type, far from the `addExecutor` that was
-  forgotten. Test with `identical(result, TomExecutor.noResult)` first — see
+  forgotten. Test with `identical(result, TomExecutor.notHandled)` first — see
   [TomExecutor](#tomexecutor)
 
 ### 5. Logging Considerations
