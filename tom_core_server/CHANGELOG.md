@@ -19,6 +19,25 @@
 
 ### Added
 
+- **Push notifications: `TomPushTransport` with FCM, APNs and a described
+  protocol.** `TomMessageChannel.push` now has a transport. A `TomPushProtocol`
+  maps a notification to a service's request and its answer back:
+  `TomFcmPushProtocol` (Firebase Cloud Messaging, HTTP v1),
+  `TomApnsPushProtocol` (Apple's push service, over HTTP/2) and
+  `TomFieldMappedPushProtocol` for any other JSON push API, described by field
+  paths as `TomFieldMappedSmsProtocol` describes an SMS gateway. Credentials
+  are minted and refreshed by `TomFcmServiceAccountCredential` (an RS256
+  service-account assertion exchanged for an access token) and
+  `TomApnsProviderToken` (an ES256 provider token); a credential the service
+  rejects is refreshed and the token tried once more. The wire is a
+  `TomPushExchange`, HTTP/2 over the new `http2` dependency for APNs. Both vendor
+  protocols are tested against scripted answers in the vendors' documented
+  formats, not against the live services.
+- **`TomMessage.push`, `TomPushRequest` and `TomPushService`.** The factory
+  puts the title in `subject` and the data map in `metadata`; the service is
+  the third `TomTemplatedMessageService`, with its own required `title` and
+  `body` sub-keys.
+
 - **A server warns about its configuration at startup.** One warning lists
   every key in the configuration resources that names no field of the
   configuration class — where a misspelled setting would otherwise be dropped in

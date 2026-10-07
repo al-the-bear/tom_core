@@ -447,6 +447,24 @@ surface documented here.
 | `TomSmsGatewayRequest` | class | One gateway call, ready to send. |
 | `TomSmsGatewayAnswer` | class | What the gateway said, with a three-valued permanence. |
 | `TomSmsBodyFormat` | enum | `form`, `json`. |
+| `TomPushTransport` | class | Real delivery to device tokens through a push service. |
+| `TomPushProtocol` | abstract class | One push service's request/response shape, behind an interface. |
+| `TomFcmPushProtocol` | class | Firebase Cloud Messaging's HTTP v1 API. |
+| `TomApnsPushProtocol` | class | Apple's push service, over HTTP/2. |
+| `TomFieldMappedPushProtocol` | class | Any other JSON push API, described by field paths. |
+| `TomPushCredential` | abstract class | The bearer token a push service authenticates with. |
+| `TomStaticPushCredential` | class | A token the deployment already has. |
+| `TomApnsProviderToken` | class | An ES256 APNs provider token, cached for fifty minutes. |
+| `TomFcmServiceAccountCredential` | class | An FCM access token minted from a service-account key. |
+| `TomPushExchange` | abstract class | The wire, behind an interface so every answer is testable. |
+| `TomHttp1PushExchange` | class | HTTP/1.1 over the kernel call layer. |
+| `TomHttp2PushExchange` | class | HTTP/2 over `package:http2`, one connection per host. |
+| `TomPushSubmission` | class | One notification to one device, as handed to a protocol. |
+| `TomPushGatewayRequest` | class | One push call, ready to send. |
+| `TomPushGatewayResponse` | class | What the service answered, headers lowercased. |
+| `TomPushGatewayAnswer` | class | What a protocol made of it, with a three-valued permanence and a credential flag. |
+| `TomPushRequest` | class | A push notification named by a template key, with a data map. |
+| `TomPushService` | class | Resolves `.title` and `.body` and queues the notification. |
 | `TomWebhookTransport` | class | Real delivery over HTTP: the message's own JSON POSTed to the URL that addresses it. |
 | `TomWebhookSettings` | class | The timeout, the always-applied headers, and how much of the answer the receipt keeps. |
 | `tomVendorValueAt` | function | The dotted-path reader both vendor mappings share; a numeric segment indexes a list. |
@@ -728,6 +746,8 @@ surface documented here.
 | `TomAnnotationAnalyzerSyntaxException` | Object Persistence |
 | `TomApiEndpointImplementation` | Endpoints |
 | `TomApiImplementation` | Endpoints |
+| `TomApnsProviderToken` | Messaging |
+| `TomApnsPushProtocol` | Messaging |
 | `tomAppId` | Configuration |
 | `TomArgs` | Command Line |
 | `TomAsyncDataScopeResolver` | Object Persistence |
@@ -906,7 +926,10 @@ surface documented here.
 | `TomExternalIdentityStore` | Authentication |
 | `TomExternalIdentityToken` | Authentication |
 | `TomExternalIdentityTokenRepository` | Authentication |
+| `TomFcmPushProtocol` | Messaging |
+| `TomFcmServiceAccountCredential` | Messaging |
 | `TomFieldMappedDeliveryReportProtocol` | Messaging |
+| `TomFieldMappedPushProtocol` | Messaging |
 | `TomFieldMappedSmsProtocol` | Messaging |
 | `TomFileAuditAnchorStore` | Audit |
 | `TomFileAuditSink` | Audit |
@@ -937,6 +960,8 @@ surface documented here.
 | `TomHealthService` | Health Check |
 | `TomHealthStatus` | Health Check |
 | `TomHealthVerdict` | Health Check |
+| `TomHttp1PushExchange` | Messaging |
+| `TomHttp2PushExchange` | Messaging |
 | `TomHttpOAuthTokenTransport` | Authentication |
 | `TomHttpServiceLoginTransport` | Authentication |
 | `TomInformationSchemaColumnRow` | Database Migration |
@@ -1006,6 +1031,16 @@ surface documented here.
 | `TomPrincipalFlag2FAPolicy` | Authentication |
 | `TomPrincipalResourceGrant` | Authorization |
 | `TomPrincipalResourceRoleResolver` | Authorization |
+| `TomPushCredential` | Messaging |
+| `TomPushExchange` | Messaging |
+| `TomPushGatewayAnswer` | Messaging |
+| `TomPushGatewayRequest` | Messaging |
+| `TomPushGatewayResponse` | Messaging |
+| `TomPushProtocol` | Messaging |
+| `TomPushRequest` | Messaging |
+| `TomPushService` | Messaging |
+| `TomPushSubmission` | Messaging |
+| `TomPushTransport` | Messaging |
 | `TomQuery` | Datasources |
 | `TomQueryBuilder` | Object Persistence |
 | `TomQuerySentenceCompiler` | Object Persistence |
@@ -1086,6 +1121,7 @@ surface documented here.
 | `TomSqlTypeFamily` | Datasources |
 | `TomSqlTypeFamilyCompatibility` | Database Migration |
 | `TomStandardSqlDialect` | Datasources |
+| `TomStaticPushCredential` | Messaging |
 | `TomStatusMappingErrorHandler` | Endpoints |
 | `TomStorageException` | File Storage |
 | `TomStoredBlob` | File Storage |

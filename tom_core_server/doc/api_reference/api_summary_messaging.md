@@ -1,7 +1,8 @@
 # Tom Core Server API Reference: Messaging Module
 
 The outbound message substrate: a channel-neutral message shape, a transport
-contract, two real implementations — SMTP and an HTTP SMS gateway — stand-in
+contract, four real implementations — SMTP, an HTTP SMS gateway, push through
+FCM, APNs or a described service, and an HTTP webhook — stand-in
 transports for tests and local runs, a durable outbox that queues delivery onto
 the kernel's job scheduler, and the templating layer above it that composes
 every channel's messages from resource keys.
@@ -51,6 +52,24 @@ every channel's messages from resource keys.
   - [TomSmsTransport](#tomsmstransport)
   - [TomSmsRequest](#tomsmsrequest)
   - [TomSmsService](#tomsmsservice)
+  - [TomPushSubmission](#tompushsubmission)
+  - [TomPushGatewayRequest](#tompushgatewayrequest)
+  - [TomPushGatewayResponse](#tompushgatewayresponse)
+  - [TomPushGatewayAnswer](#tompushgatewayanswer)
+  - [TomPushExchange](#tompushexchange)
+  - [TomHttp1PushExchange](#tomhttp1pushexchange)
+  - [TomHttp2PushExchange](#tomhttp2pushexchange)
+  - [TomPushCredential](#tompushcredential)
+  - [TomStaticPushCredential](#tomstaticpushcredential)
+  - [TomApnsProviderToken](#tomapnsprovidertoken)
+  - [TomFcmServiceAccountCredential](#tomfcmserviceaccountcredential)
+  - [TomPushProtocol](#tompushprotocol)
+  - [TomFcmPushProtocol](#tomfcmpushprotocol)
+  - [TomApnsPushProtocol](#tomapnspushprotocol)
+  - [TomFieldMappedPushProtocol](#tomfieldmappedpushprotocol)
+  - [TomPushTransport](#tompushtransport)
+  - [TomPushRequest](#tompushrequest)
+  - [TomPushService](#tompushservice)
   - [TomWebhookSettings](#tomwebhooksettings)
   - [TomWebhookTransport](#tomwebhooktransport)
   - [TomDeliveryReport](#tomdeliveryreport)
@@ -75,6 +94,8 @@ Source: `lib/src/tomserver/messaging/email_service.dart`,
 `lib/src/tomserver/messaging/message_transport.dart`,
 `lib/src/tomserver/messaging/mime_encoder.dart`,
 `lib/src/tomserver/messaging/outbox.dart`,
+`lib/src/tomserver/messaging/push_service.dart`,
+`lib/src/tomserver/messaging/push_transport.dart`,
 `lib/src/tomserver/messaging/sms_service.dart`,
 `lib/src/tomserver/messaging/sms_transport.dart`,
 `lib/src/tomserver/messaging/smtp_transport.dart`,
@@ -103,7 +124,7 @@ the judgement is made once, where the evidence is, and honoured downstream.
 `TomMessageRouter` maps a channel to the transport that delivers it, and treats
 an unrouted channel as a permanent failure.
 
-Five transports implement the contract. `TomSmtpTransport` speaks the protocol
+Six transports implement the contract. `TomSmtpTransport` speaks the protocol
 directly over `TomSmtpConnection` — implemented for real sockets by
 `TomSocketSmtpConnection`, and reading each `TomSmtpReply`'s code to decide
 whether a failure is worth repeating — configured by `TomSmtpSettings` and
@@ -113,7 +134,14 @@ behind a `TomSmsGatewayProtocol` (`TomFieldMappedSmsProtocol` describes the
 common ones in configuration) that maps a `TomSmsSubmission` to a
 `TomSmsGatewayRequest` and a response back to a `TomSmsGatewayAnswer`;
 `TomSmsSegmentation` and `TomSmsEncoding` supply the GSM 03.38 length
-arithmetic an SMS is billed by. `TomMemoryMessageTransport`,
+arithmetic an SMS is billed by. `TomPushTransport` delivers to device tokens
+through a `TomPushProtocol` — `TomFcmPushProtocol`, `TomApnsPushProtocol`, or a
+`TomFieldMappedPushProtocol` describing another service — authenticated by a
+`TomPushCredential` (`TomFcmServiceAccountCredential`, `TomApnsProviderToken`,
+`TomStaticPushCredential`) over a `TomPushExchange` (`TomHttp1PushExchange`,
+`TomHttp2PushExchange`), mapping a `TomPushSubmission` to a
+`TomPushGatewayRequest` and a `TomPushGatewayResponse` back to a
+`TomPushGatewayAnswer`. `TomMemoryMessageTransport`,
 `TomNoOpMessageTransport` and `TomFileMessageTransport` are the stand-ins for
 tests, silenced deployments and local development. `TomMimeEncoder` renders the
 RFC 5322 / MIME document the SMTP transport transfers, choosing the simplest
@@ -124,18 +152,19 @@ owns no retry logic: it enqueues one job run per message on an
 inline-dispatching scheduler of its own, and durability, backoff, at-most-one
 runner per message and failure alerting all remain the kernel scheduler's.
 
-*Templating* is `TomTemplatedMessageService` and its two subclasses. A request
+*Templating* is `TomTemplatedMessageService` and its three subclasses. A request
 names a template key and supplies parameters; `TomEmailRequest` has **no subject
-and no body field** and `TomSmsRequest` has **no text field**, so there is no way
-to spell a literal user-facing string through either API. The base owns `send`,
+and no body field**, `TomSmsRequest` has **no text field** and `TomPushRequest`
+has **no title or body field**, so there is no way to spell a literal
+user-facing string through any of them. The base owns `send`,
 `sendNow`, `deliverNow` and `requiredText`; a subclass supplies only its channel name and how
 one of its requests becomes a `TomMessage`. `TomEmailService` resolves
 `<templateKey>.subject`, `.text` and (optionally) `.html` against a
 `TomLocalizedTextResources` bundle set in the recipient's locale;
 `TomSmsService` resolves `.text` alone and additionally measures the result,
-refusing a message over its segment budget. Both render a `TomMessage` and hand
-it to the outbox — never to a transport — and both raise before anything is
-queued.
+refusing a message over its segment budget; `TomPushService` resolves `.title`
+and `.body`. Each renders a `TomMessage` and hands it to the outbox — never to a
+transport — and each raises before anything is queued.
 
 `TomMessagingException` is the module's base error, from which every failure
 above derives.
@@ -153,7 +182,8 @@ TomMessageTransport  (abstract)
     ├── TomNoOpMessageTransport
     ├── TomFileMessageTransport
     ├── TomSmtpTransport
-    └── TomSmsTransport
+    ├── TomSmsTransport
+    └── TomPushTransport
 
 TomSmtpConnection  (abstract)
     └── TomSocketSmtpConnection  (implements)
@@ -161,9 +191,24 @@ TomSmtpConnection  (abstract)
 TomSmsGatewayProtocol  (abstract)
     └── TomFieldMappedSmsProtocol
 
+TomPushProtocol  (abstract)
+    ├── TomFcmPushProtocol
+    ├── TomApnsPushProtocol
+    └── TomFieldMappedPushProtocol
+
+TomPushCredential  (abstract)
+    ├── TomStaticPushCredential
+    ├── TomApnsProviderToken
+    └── TomFcmServiceAccountCredential
+
+TomPushExchange  (abstract)
+    ├── TomHttp1PushExchange
+    └── TomHttp2PushExchange
+
 TomTemplatedMessageService<R>  (abstract)
     ├── TomEmailService     (R = TomEmailRequest)
-    └── TomSmsService       (R = TomSmsRequest)
+    ├── TomSmsService       (R = TomSmsRequest)
+    └── TomPushService      (R = TomPushRequest)
 
 TomMessageChannel
 TomRecipientKind  (enum)
@@ -189,6 +234,11 @@ TomSmsBodyFormat  (enum)
 TomSmsGatewayRequest
 TomSmsGatewayAnswer
 TomSmsRequest
+TomPushSubmission
+TomPushGatewayRequest
+TomPushGatewayResponse
+TomPushGatewayAnswer
+TomPushRequest
 ```
 
 ## Classes
@@ -234,7 +284,7 @@ const TomMessageChannel(String name)
 | -------- | ---- | ----------- |
 | `email` | `static const TomMessageChannel` | Email, delivered by `TomSmtpTransport` or another mailer. |
 | `sms` | `static const TomMessageChannel` | Short text message. |
-| `push` | `static const TomMessageChannel` | Mobile or browser push notification. |
+| `push` | `static const TomMessageChannel` | Mobile push notification, delivered by `TomPushTransport`. |
 | `webhook` | `static const TomMessageChannel` | An HTTP callback to a subscribed endpoint. |
 | `standard` | `static const List<TomMessageChannel>` | The four anticipated channels, for validation and for iteration. |
 
@@ -451,8 +501,20 @@ factory TomMessage.sms({
   Map<String, Object?>? metadata,
 })
 
+factory TomMessage.push({
+  String? id,
+  required List<TomRecipient> to,
+  String? title,
+  required String body,
+  Map<String, String> data = const {},
+  Map<String, Object?>? metadata,
+})
+
 factory TomMessage.fromJson(Map<String, Object?> map)
 ```
+
+`TomMessage.push` puts the title in `subject`, the text in one body, and `data`
+in `metadata` under `TomPushTransport.dataMetadataKey`.
 
 `TomMessage.sms` composes one text body and no subject. `senderId` goes into
 `metadata` rather than into `from`, because a short code is not a
@@ -1644,6 +1706,607 @@ const TomSmsService({
 | `render` | `TomMessage render(TomSmsRequest request)` | *(override)* Resolves `.text`, measures the result, and raises `TomMessagingException` (`messaging.sms.too_long`, carrying `segments`) when it exceeds `maxSegments`. Both faults surface before the outbox, so neither becomes a queued message somebody pays for. |
 | `segmentationOf` | `TomSmsSegmentation segmentationOf(TomSmsRequest request)` | What `request` will cost, without sending or capping it. Renders first, so the answer accounts for the parameters — which is where the surprises live. Deliberately does not throw: a measurement used to *decide* whether a message is too long cannot be one that raises when it is. |
 | `resolve` | `static TomSmsService? resolve()` | The service this deployment installed, or `null`. Nullable with no fallback, for the reason `TomEmailService.resolve` is. |
+
+### TomPushSubmission
+
+One notification to one device, as a protocol sees it.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomPushSubmission({
+  required String messageId,
+  required String token,
+  required String body,
+  String? title,
+  Map<String, String> data = const {},
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `messageId` | `String` | The message this submission belongs to, for the error parameters (final). |
+| `token` | `String` | The device token — `TomRecipient.address` on this channel (final). |
+| `title` | `String?` | The notification's title; `null` sends a body-only notification (final). |
+| `body` | `String` | The notification's text (final). |
+| `data` | `Map<String, String>` | Key/value pairs for the app. Strings only, because FCM's `data` block carries nothing else (final). |
+
+### TomPushGatewayRequest
+
+One HTTP request a protocol asks the transport to make — a value, so `encode`
+stays pure.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomPushGatewayRequest({
+  required Uri url,
+  required String body,
+  String method = 'POST',
+  Map<String, String> headers = const {},
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `url` | `Uri` | Where to send it (final). |
+| `method` | `String` | The HTTP method (final). |
+| `headers` | `Map<String, String>` | The request headers, credential included (final). |
+| `body` | `String` | The request body (final). |
+
+### TomPushGatewayResponse
+
+What the push service answered, before any protocol has read it.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+TomPushGatewayResponse(
+  int statusCode,
+  String body, {
+  Map<String, String> headers = const {},
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `statusCode` | `int` | The HTTP status (final). |
+| `headers` | `Map<String, String>` | The response headers, names lowercased by the constructor. APNs answers a success with an empty body and the id in `apns-id`, so a protocol needs them (final). |
+| `body` | `String` | The response body (final). |
+
+### TomPushGatewayAnswer
+
+A protocol's reading of one response.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomPushGatewayAnswer({
+  required bool isAccepted,
+  String? remoteId,
+  String? detail,
+  bool? isPermanent,
+  bool isCredentialRejected = false,
+  String? providerCode,
+})
+
+const TomPushGatewayAnswer.accepted({String? remoteId, String? detail})
+
+const TomPushGatewayAnswer.rejected({
+  bool? permanent,
+  bool isCredentialRejected = false,
+  String? detail,
+  String? providerCode,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `isAccepted` | `bool` | Whether the service took the notification (final). |
+| `remoteId` | `String?` | The service's id for it (final). |
+| `detail` | `String?` | A short account for the receipt and the error (final). |
+| `isPermanent` | `bool?` | `true` permanent, `false` transient, `null` when the code says neither — the transport then judges by the HTTP status (final). |
+| `isCredentialRejected` | `bool` | The service refused the credential rather than the notification; the transport refreshes it and submits once more (final). |
+| `providerCode` | `String?` | The vendor's error code (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* Accepted or rejected, with the code. |
+
+### TomPushExchange
+
+Performs one request and returns what came back — the seam between protocol and
+wire, so the classification is testable without a network and the HTTP version
+is a choice.
+
+- **Extends:** none (abstract)
+
+#### Constructors
+
+```dart
+const TomPushExchange()
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `exchange` | `Future<TomPushGatewayResponse> exchange(TomPushGatewayRequest request)` | *(abstract)* Sends the request. Anything it throws counts as the service being unreachable. |
+| `close` | `Future<void> close()` | Releases whatever connections the exchange holds. Default: nothing. |
+
+### TomHttp1PushExchange
+
+An HTTP/1.1 exchange over the kernel call layer, one `TomServerChannel` per
+host. Sets `includeBearerAuthentication: false`, so the caller's token never
+reaches a third party.
+
+- **Extends:** `TomPushExchange`
+
+#### Constructors
+
+```dart
+TomHttp1PushExchange({TomHttpClientAbstractFactory? clientFactory})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `clientFactory` | `TomHttpClientAbstractFactory?` | The client factory handed to every channel, or `null` for the default; injectable for tests (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `exchange` | `Future<TomPushGatewayResponse> exchange(TomPushGatewayRequest request)` | *(override)* One call; status, headers and body. |
+| `close` | `Future<void> close()` | *(override)* Closes every channel. |
+
+### TomHttp2PushExchange
+
+An HTTP/2 exchange over `package:http2`, keeping one connection per host open
+for reuse — what APNs requires, and what Apple asks of providers.
+
+- **Extends:** `TomPushExchange`
+
+#### Constructors
+
+```dart
+TomHttp2PushExchange({Future<Socket> Function(Uri url)? connect})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `connect` | `Future<Socket> Function(Uri url)` | Opens the socket for a host. Defaults to TLS with ALPN `h2`; injectable so a test can serve plain-text HTTP/2 locally (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `exchange` | `Future<TomPushGatewayResponse> exchange(TomPushGatewayRequest request)` | *(override)* One stream on the host's connection, opening the connection on first use or after it closed. A failed connect is not cached. |
+| `close` | `Future<void> close()` | *(override)* Finishes every connection. |
+
+### TomPushCredential
+
+Supplies the bearer token a push service authenticates with.
+
+- **Extends:** none (abstract)
+
+#### Constructors
+
+```dart
+const TomPushCredential()
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `token` | `Future<String> token()` | *(abstract)* The current token, minting one when there is none or it has expired. |
+| `invalidate` | `void invalidate()` | Discards the cached token so the next `token` mints afresh. Called when the service rejects the credential; a no-op by default. |
+
+### TomStaticPushCredential
+
+A token the deployment already has.
+
+- **Extends:** `TomPushCredential`
+
+#### Constructors
+
+```dart
+const TomStaticPushCredential(String token)
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `token` | `Future<String> token()` | *(override)* The wrapped token. |
+| `toString` | `String toString()` | *(override)* Redacted. |
+
+### TomApnsProviderToken
+
+The APNs provider token: a JWT signed with ES256 over the `.p8` key, issuer the
+Team ID, `kid` the Key ID. Cached for `lifetime` — Apple rejects a token older
+than an hour and one replaced more often than every twenty minutes.
+
+- **Extends:** `TomPushCredential`
+
+#### Constructors
+
+```dart
+TomApnsProviderToken({
+  required String teamId,
+  required String keyId,
+  required String privateKeyPem,
+  Duration lifetime = const Duration(minutes: 50),
+  DateTime Function()? now,
+})
+```
+
+Parses the key immediately and raises `TomMessagingException`
+(`messaging.push.bad_key`) when it is not an EC private key.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `teamId` | `String` | The developer account's Team ID (final). |
+| `keyId` | `String` | The `.p8` key's Key ID (final). |
+| `lifetime` | `Duration` | How long a minted token is reused (final). |
+| `now` | `DateTime Function()` | The clock; injectable for tests (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `token` | `Future<String> token()` | *(override)* The cached token, or a freshly signed one once `lifetime` has passed. |
+| `invalidate` | `void invalidate()` | *(override)* Forgets the cached token. |
+| `toString` | `String toString()` | *(override)* Team and key id; never the key. |
+
+### TomFcmServiceAccountCredential
+
+An FCM access token minted from a Google service-account key: an RS256
+assertion exchanged at `tokenUri` under the JWT-bearer grant, cached until five
+minutes before the stated expiry.
+
+- **Extends:** `TomPushCredential`
+
+#### Constructors
+
+```dart
+TomFcmServiceAccountCredential({
+  required String clientEmail,
+  required String privateKeyPem,
+  Uri? tokenUri,
+  String scope = messagingScope,
+  String? projectId,
+  TomPushExchange? exchange,
+  DateTime Function()? now,
+})
+
+factory TomFcmServiceAccountCredential.fromJson(
+  String serviceAccountJson, {
+  TomPushExchange? exchange,
+  DateTime Function()? now,
+})
+```
+
+The key is parsed immediately (`messaging.push.bad_key`). `fromJson` reads the
+key file Google issues — `client_email`, `private_key`, `token_uri`,
+`project_id` — and raises `messaging.push.bad_service_account` when either of
+the first two is missing or the text is not JSON.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `messagingScope` | `static const String` | `https://www.googleapis.com/auth/firebase.messaging`. |
+| `clientEmail` | `String` | The assertion's issuer (final). |
+| `tokenUri` | `Uri` | Where the assertion is exchanged; defaults to `https://oauth2.googleapis.com/token` (final). |
+| `scope` | `String` | The scope requested (final). |
+| `projectId` | `String?` | The project, when the key file named it (final). |
+| `exchange` | `TomPushExchange` | How the token request is sent; defaults to `TomHttp1PushExchange` (final). |
+| `now` | `DateTime Function()` | The clock; injectable for tests (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `token` | `Future<String> token()` | *(override)* The cached token, or a new one. An unreachable endpoint or a `408`/`425`/`429`/`5xx` raises transient `messaging.push.credential_unavailable`; any other refusal raises permanent `messaging.push.credential_refused`. |
+| `invalidate` | `void invalidate()` | *(override)* Forgets the cached token. |
+| `toString` | `String toString()` | *(override)* The account email; never the key. |
+
+### TomPushProtocol
+
+How one push service is spoken to: field names in, status and error paths out.
+
+- **Extends:** none (abstract)
+
+#### Constructors
+
+```dart
+const TomPushProtocol()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `requiresHttp2` | `bool` | Whether the service accepts only HTTP/2; picks the transport's default exchange. `false` by default. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `encode` | `TomPushGatewayRequest encode(TomPushSubmission submission, String? token)` | *(abstract)* The request that submits `submission`, authenticated with `token`. |
+| `decode` | `TomPushGatewayAnswer decode(TomPushGatewayResponse response)` | *(abstract)* What the response means. |
+| `authorizationHeaders` | `Map<String, String> authorizationHeaders(String? token)` | `Authorization: Bearer <token>`, or nothing without a token. |
+| `rejection` | `static TomPushGatewayAnswer rejection({required String? code, required String? detail, required Set<String> permanentCodes, required Set<String> transientCodes, required Set<String> credentialCodes})` | Classifies a refusal's code: a credential code first, then the permanent and transient sets, else unclassified. |
+
+### TomFcmPushProtocol
+
+Firebase Cloud Messaging's HTTP v1 API: `POST /v1/projects/<projectId>/messages:send`
+with `{"message": {"token", "notification": {"title", "body"}, "data"}}`. The
+error code is the `FcmError` entry's `errorCode` in `error.details`, else
+`error.status`; a success's remote id is the message `name`.
+
+- **Extends:** `TomPushProtocol`
+
+#### Constructors
+
+```dart
+TomFcmPushProtocol({required String projectId, Uri? baseUri})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `permanentCodes` | `static const Set<String>` | `UNREGISTERED`, `INVALID_ARGUMENT`, `SENDER_ID_MISMATCH`, `THIRD_PARTY_AUTH_ERROR`, `NOT_FOUND`. |
+| `transientCodes` | `static const Set<String>` | `QUOTA_EXCEEDED`, `UNAVAILABLE`, `INTERNAL`. |
+| `credentialCodes` | `static const Set<String>` | `UNAUTHENTICATED` — also assumed for a `401` with no readable body. |
+| `projectId` | `String` | The Firebase project (final). |
+| `baseUri` | `Uri` | The API's base URL; injectable for tests (final). |
+| `endpoint` | `Uri` | The send endpoint. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `encode` | `TomPushGatewayRequest encode(TomPushSubmission submission, String? token)` | *(override)* The HTTP v1 message; an absent title and an empty data map are omitted. |
+| `decode` | `TomPushGatewayAnswer decode(TomPushGatewayResponse response)` | *(override)* See above. |
+| `toString` | `String toString()` | *(override)* The project id. |
+
+### TomApnsPushProtocol
+
+Apple's push service with token authentication: `POST /3/device/<token>` over
+HTTP/2, headers `authorization: bearer <token>`, `apns-topic`,
+`apns-push-type`, `apns-priority`, and `{"aps": {"alert": {"title", "body"}}}`
+with the data keys beside `aps` (written first, so a data key named `aps` cannot
+replace the alert). A refusal's code is the body's `reason`; a success's remote
+id is the `apns-id` header.
+
+- **Extends:** `TomPushProtocol`
+
+#### Constructors
+
+```dart
+const TomApnsPushProtocol({
+  required String topic,
+  bool sandbox = false,
+  String pushType = 'alert',
+  int priority = 10,
+  Uri? baseUri,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `permanentCodes` | `static const Set<String>` | Token and payload faults — `BadDeviceToken`, `Unregistered`, `DeviceTokenNotForTopic`, `PayloadTooLarge` and the other `Bad*` / `Missing*` reasons. |
+| `transientCodes` | `static const Set<String>` | `TooManyRequests`, `TooManyProviderTokenUpdates`, `InternalServerError`, `ServiceUnavailable`, `Shutdown`, `IdleTimeout`. |
+| `credentialCodes` | `static const Set<String>` | `ExpiredProviderToken`, `InvalidProviderToken`, `MissingProviderToken`. |
+| `topic` | `String` | The app's bundle id (final). |
+| `sandbox` | `bool` | Sends to `api.sandbox.push.apple.com` (final). |
+| `pushType` | `String` | The `apns-push-type` header (final). |
+| `priority` | `int` | The `apns-priority` header (final). |
+| `baseUri` | `Uri?` | Overrides the host, for tests (final). |
+| `requiresHttp2` | `bool` | *(override getter)* `true`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `authorizationHeaders` | `Map<String, String> authorizationHeaders(String? token)` | *(override)* `authorization: bearer <token>`. |
+| `encode` | `TomPushGatewayRequest encode(TomPushSubmission submission, String? token)` | *(override)* See above. |
+| `decode` | `TomPushGatewayAnswer decode(TomPushGatewayResponse response)` | *(override)* See above. |
+| `toString` | `String toString()` | *(override)* Topic and environment. |
+
+### TomFieldMappedPushProtocol
+
+Any other JSON push API, described by dotted field paths. A `{token}` in
+`endpoint` is replaced by the URL-encoded token, for services that address the
+device in the path.
+
+- **Extends:** `TomPushProtocol`
+
+#### Constructors
+
+```dart
+const TomFieldMappedPushProtocol({
+  required String endpoint,
+  String method = 'POST',
+  String? tokenField = 'token',
+  String titleField = 'title',
+  String bodyField = 'body',
+  String? dataField = 'data',
+  Map<String, Object?> extraFields = const {},
+  String authorizationHeader = 'Authorization',
+  String authorizationPrefix = 'Bearer ',
+  bool requiresHttp2 = false,
+  String? statusPath,
+  Set<String> acceptedStatuses = const {},
+  String? remoteIdPath,
+  String? errorCodePath,
+  String? errorMessagePath,
+  Set<String> permanentErrorCodes = const {},
+  Set<String> transientErrorCodes = const {},
+  Set<String> credentialErrorCodes = const {},
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `endpoint` | `String` | Where to send; may contain `{token}` (final). |
+| `method` | `String` | The HTTP method (final). |
+| `tokenField` | `String?` | The token's path in the body, or `null` when `endpoint` carries it (final). |
+| `titleField` / `bodyField` | `String` | The title's and the text's paths (final). |
+| `dataField` | `String?` | Where the data map goes, or `null` to drop it (final). |
+| `extraFields` | `Map<String, Object?>` | Constant fields every submission carries (final). |
+| `authorizationHeader` / `authorizationPrefix` | `String` | The credential's header and what precedes the token in it (final). |
+| `requiresHttp2` | `bool` | *(override)* Whether the service needs HTTP/2 (final). |
+| `statusPath` / `acceptedStatuses` | `String?` / `Set<String>` | Where the status is and which values mean "taken", case-insensitively; a configured path that does not resolve is not a success (final). |
+| `remoteIdPath` / `errorCodePath` / `errorMessagePath` | `String?` | Where the id, the error code and the error message are (final). |
+| `permanentErrorCodes` / `transientErrorCodes` / `credentialErrorCodes` | `Set<String>` | The three classifications (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `authorizationHeaders` | `Map<String, String> authorizationHeaders(String? token)` | *(override)* `authorizationHeader: authorizationPrefix + token`. |
+| `encode` | `TomPushGatewayRequest encode(TomPushSubmission submission, String? token)` | *(override)* Builds the nested body from the paths. |
+| `decode` | `TomPushGatewayAnswer decode(TomPushGatewayResponse response)` | *(override)* Reads the configured paths. |
+
+### TomPushTransport
+
+Delivers `TomMessageChannel.push` to device tokens, one request each, so a dead
+token is a rejected recipient rather than a failed message. A rejected
+credential is invalidated and the token tried once more with a fresh one.
+
+- **Extends:** `TomMessageTransport`
+
+#### Constructors
+
+```dart
+TomPushTransport(
+  TomPushProtocol protocol, {
+  TomPushCredential? credential,
+  TomPushExchange? exchange,
+  Duration timeout = const Duration(seconds: 30),
+})
+```
+
+The exchange defaults to `TomHttp2PushExchange` when `protocol.requiresHttp2`,
+else `TomHttp1PushExchange`.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `dataMetadataKey` | `static const String` | `'pushData'` — the `TomMessage.metadata` key the data map travels under. |
+| `protocol` | `TomPushProtocol` | The service mapping (final). |
+| `credential` | `TomPushCredential?` | The credential, or `null` for a service that needs none (final). |
+| `exchange` | `TomPushExchange` | The wire (final). |
+| `timeout` | `Duration` | How long one request may take before it counts as deferred (final). |
+| `channel` | `TomMessageChannel` | *(override getter)* `TomMessageChannel.push`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `send` | `Future<TomDeliveryReceipt> send(TomMessage message)` | *(override)* Permanent `messaging.push.no_body` before anything is sent when the message has no text. Then one submission per token: a permanent refusal rejects that token, a transient one stops the pass (`messaging.push.gateway_deferred`), a credential rejected twice is permanent (`messaging.push.credential_rejected`), an unreachable service is transient (`messaging.push.unreachable`), and every token refused is permanent (`messaging.push.all_recipients_rejected`). |
+| `close` | `Future<void> close()` | *(override)* Closes the exchange. |
+
+### TomPushRequest
+
+What to send, to which device tokens, and with which values — but never *what
+it says*. No title or body field; a `data` map for the app.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+TomPushRequest({
+  required String templateKey,
+  required List<TomRecipient> to,
+  TomTextLocale? locale,
+  Map<String, Object?> parameters = const {},
+  Map<String, String> data = const {},
+  String? messageId,
+})
+```
+
+Raises `TomMessagingException` under `messaging.push.template.empty` for a
+blank template key and `messaging.push.recipients.empty` for an empty `to`.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `templateKey` | `String` | The resource key prefix the title and body live under (final). |
+| `to` | `List<TomRecipient>` | The device tokens (final). |
+| `locale` | `TomTextLocale?` | The locale to render in (final). |
+| `parameters` | `Map<String, Object?>` | Values for the template's placeholders (final). |
+| `data` | `Map<String, String>` | Key/value pairs handed to the app — an id to open, never text to show (final). |
+| `messageId` | `String?` | The idempotence key the outbox deduplicates on (final). |
+
+### TomPushService
+
+Renders resource-keyed push notifications and queues them on the outbox. Two
+sub-keys, both required: `<templateKey>.title` and `.body`.
+
+- **Extends:** `TomTemplatedMessageService<TomPushRequest>`
+
+#### Constructors
+
+```dart
+const TomPushService({
+  required TomMessageOutbox outbox,
+  TomLocalizedTextResources? texts,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `titleSubKey` | `static const String` | `title`. |
+| `bodySubKey` | `static const String` | `body`. |
+| `channelName` | `String` | *(override getter)* `push`. |
+
+`outbox`, `texts`, `send`, `sendNow`, `deliverNow` and `requiredText` are inherited from
+[TomTemplatedMessageService](#tomtemplatedmessageservice).
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `render` | `TomMessage render(TomPushRequest request)` | *(override)* A `TomMessage.push` with the resolved title and body and the request's data; a missing sub-key raises `messaging.push.template.missing` before anything is queued. |
+| `resolve` | `static TomPushService? resolve()` | The service this deployment installed, or `null`. |
 
 ### TomWebhookSettings
 

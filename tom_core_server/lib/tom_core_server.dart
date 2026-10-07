@@ -107,6 +107,8 @@ export 'src/tomserver/messaging/message.dart';
 export 'src/tomserver/messaging/message_transport.dart';
 export 'src/tomserver/messaging/mime_encoder.dart';
 export 'src/tomserver/messaging/outbox.dart';
+export 'src/tomserver/messaging/push_service.dart';
+export 'src/tomserver/messaging/push_transport.dart';
 export 'src/tomserver/messaging/sms_service.dart';
 export 'src/tomserver/messaging/sms_transport.dart';
 export 'src/tomserver/messaging/smtp_transport.dart';

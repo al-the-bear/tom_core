@@ -21,7 +21,7 @@
 /// - **[TomMessage.headers]** carries transport-level name/value pairs that
 ///   only some channels have (email headers, webhook HTTP headers).
 /// - **[TomMessage.metadata]** carries channel-specific delivery hints (a push
-///   priority, an SMS sender id) that are not headers at all.
+///   notification's data map, an SMS sender id) that are not headers at all.
 ///
 /// A transport reads what it understands and ignores the rest. That is what
 /// lets a spec that names `email` today name `sms` tomorrow without the message
@@ -86,18 +86,8 @@ class TomMessageChannel {
   /// Short text message.
   static const TomMessageChannel sms = TomMessageChannel('sms');
 
-  /// Mobile or browser push notification.
-  ///
-  /// **A reserved name, not an unfinished implementation.** No transport ships
-  /// for it, and the constant is still worth having: the channel set is open,
-  /// so what a name in this class buys is that every deployment wiring up its
-  /// own push transport spells the channel the same way. Shipping one would
-  /// mean picking a vendor — FCM, APNs, or both — and a preset for an API this
-  /// repository cannot test against is a plausible-looking guess that fails in
-  /// production, which is the same reason no SMS vendor preset ships.
-  ///
-  /// A [TomNoOpMessageTransport] registered here makes a spec that names the
-  /// channel runnable, at the cost of discarding the message silently.
+  /// Mobile push notification, delivered by [TomPushTransport] through FCM,
+  /// APNs or a push service described by a [TomFieldMappedPushProtocol].
   static const TomMessageChannel push = TomMessageChannel('push');
 
   /// An HTTP callback to a subscribed endpoint, delivered by
@@ -500,6 +490,28 @@ class TomMessage {
       ...?metadata,
       if (senderId != null && senderId.isNotEmpty) 'senderId': senderId,
     },
+  );
+
+  /// A push notification to the device tokens in [to].
+  ///
+  /// [title] becomes [subject] and [body] the text body, so the queue and the
+  /// delivery report show a push the way they show a mail. [data] rides in
+  /// [metadata] under [TomPushTransport.dataMetadataKey] — strings only, since
+  /// that is all FCM's data block carries.
+  factory TomMessage.push({
+    String? id,
+    required List<TomRecipient> to,
+    String? title,
+    required String body,
+    Map<String, String> data = const {},
+    Map<String, Object?>? metadata,
+  }) => TomMessage(
+    id: id,
+    channel: TomMessageChannel.push,
+    recipients: to,
+    subject: title,
+    bodies: [TomMessageBody.text(body)],
+    metadata: {...?metadata, if (data.isNotEmpty) 'pushData': data},
   );
 
   /// The recipients addressed as [kind].

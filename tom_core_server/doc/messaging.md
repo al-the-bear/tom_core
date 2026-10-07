@@ -37,6 +37,13 @@ out of.
   - [No signing](#no-signing)
   - [Classification](#classification)
     - [Failure keys](#failure-keys)
+- [Push: Two Vendors and a Mapping](#push-two-vendors-and-a-mapping)
+  - [Wiring FCM and APNs](#wiring-fcm-and-apns)
+  - [Credentials](#credentials)
+  - [Classification, and the third outcome](#classification-and-the-third-outcome)
+  - [HTTP/2](#http2)
+  - [Why these two ship and no SMS vendor does](#why-these-two-ship-and-no-sms-vendor-does)
+  - [Push failure keys](#push-failure-keys)
 - [Delivery Reports: What Happened After Acceptance](#delivery-reports-what-happened-after-acceptance)
   - [Three pieces, and why they are separate](#three-pieces-and-why-they-are-separate)
   - [Wiring it](#wiring-it)
@@ -65,6 +72,8 @@ out of.
   - [Two caps, deliberately](#two-caps-deliberately)
   - [Addressing a principal](#addressing-a-principal)
   - [SMS request failure keys](#sms-request-failure-keys)
+- [Application Push: Title and Body](#application-push-title-and-body)
+  - [Push request failure keys](#push-request-failure-keys)
 - [Verification](#verification)
 - [Core Components](#core-components)
 - [Not in This Framework](#not-in-this-framework)
@@ -103,6 +112,11 @@ out of.
 | `TomSmsSubmission` / `TomSmsGatewayRequest` / `TomSmsGatewayAnswer` / `TomSmsBodyFormat` | classes / enum | The values a protocol maps between, so `encode` and `decode` stay pure |
 | `TomSmsSegmentation` / `TomSmsEncoding` | class / enum | GSM 03.38 length arithmetic: the unit an SMS is actually billed in |
 | `TomWebhookTransport` / `TomWebhookSettings` | classes | Real delivery over HTTP: the message's own JSON POSTed to the URL that addresses it |
+| `TomPushTransport` | class | Real delivery to device tokens through a push service |
+| `TomPushProtocol` / `TomFcmPushProtocol` / `TomApnsPushProtocol` / `TomFieldMappedPushProtocol` | abstract class / classes | The service mapping: FCM and APNs written down, any other described by field paths |
+| `TomPushCredential` / `TomFcmServiceAccountCredential` / `TomApnsProviderToken` / `TomStaticPushCredential` | abstract class / classes | The bearer token a service authenticates with, minted and refreshed |
+| `TomPushExchange` / `TomHttp1PushExchange` / `TomHttp2PushExchange` | abstract class / classes | The wire, by HTTP version — APNs accepts only HTTP/2 |
+| `TomPushSubmission` / `TomPushGatewayRequest` / `TomPushGatewayResponse` / `TomPushGatewayAnswer` | classes | The values a protocol maps between, so `encode` and `decode` stay pure |
 | `TomDeliveryReport` / `TomDeliveryState` | class / enum | What a carrier says became of a message *after* accepting it |
 | `TomDeliveryCorrelation` / `TomDeliveryReportStore` | class / abstract class | The `remoteId` → message index |
 | `TomMemoryDeliveryReportStore` / `TomSqlDeliveryReportStore` / `TomDeliveryReportRow` | classes | That index in memory and in a table, and the row the driver hands back |
@@ -116,6 +130,7 @@ out of.
 | `TomEmailRequest` | class | What to send and to whom: a template key and parameters, never a subject or body |
 | `TomEmailService` | class | Renders a template in the recipient's locale and queues it on the outbox |
 | `TomSmsRequest` / `TomSmsService` | classes | The same, for SMS — plus the segment budget email does not have |
+| `TomPushRequest` / `TomPushService` | classes | The same, for push — a title and a body, plus a data map for the app |
 | `TomMessagingException` | class | The module's base error |
 
 ## Why Not Just Call a Mailer
@@ -198,8 +213,8 @@ const slack = TomMessageChannel('slack');
 An enum would mean that a deployment with an internal channel has to patch the
 framework to name it. The four the framework itself anticipates —
 `email`, `sms`, `push`, `webhook` — are constants and are listed in
-`TomMessageChannel.standard`; anything else is equally valid and routes the
-same way.
+`TomMessageChannel.standard`, and each has a transport here; anything else is
+equally valid and routes the same way.
 
 ## The One Distinction a Transport Must Get Right
 
@@ -664,6 +679,145 @@ and the receipt is logged.
 | `messaging.webhook.refused` | transient | The endpoint answered `408`, `425`, `429` or `5xx` |
 | `messaging.webhook.unreachable` | transient | The call failed or the endpoint did not answer within the timeout |
 | `messaging.webhook.bad_detail_cap` | — | `TomWebhookSettings` was built with a negative `maxDetailChars`; a `TomMessagingException` at construction, not a delivery failure |
+
+## Push: Two Vendors and a Mapping
+
+`TomPushTransport` delivers `TomMessageChannel.push` to device tokens. It has
+the SMS transport's shape: the transport owns what every push service has in
+common, and a `TomPushProtocol` owns the vendor's vocabulary — the URL, where
+the token, title and body go, and which error codes mean what.
+
+| What push needed | What was already there |
+| --- | --- |
+| a device token instead of an address | `TomRecipient.address`, documented from the start as "for push a device token" |
+| a title | `TomMessage.subject`, which `TomMessage.push` fills |
+| key/value data for the app | `TomMessage.metadata`, under `pushData` |
+| no copies, no attachments | `checkSupported` refuses both permanently, as for SMS |
+
+```dart
+final message = TomMessage.push(
+  to: [TomRecipient(deviceToken)],
+  title: 'New task',
+  body: 'Alpha is yours.',
+  data: {'taskId': '42'},
+);
+```
+
+One request per device token, for the reason SMS sends one per number: one
+uninstalled app must not cost the user's other devices their notification.
+
+### Wiring FCM and APNs
+
+Two push services reach nearly every device there is, so both ship as
+protocols:
+
+```dart
+final fcmCredential = TomFcmServiceAccountCredential.fromJson(keyFileText);
+router.register(TomPushTransport(
+  TomFcmPushProtocol(projectId: fcmCredential.projectId!),
+  credential: fcmCredential,
+));
+```
+
+```dart
+router.register(TomPushTransport(
+  const TomApnsPushProtocol(topic: 'com.example.app'), // the bundle id
+  credential: TomApnsProviderToken(
+    teamId: appleTeamId,
+    keyId: appleKeyId,
+    privateKeyPem: p8KeyText,
+  ),
+));
+```
+
+One router holds one transport per channel, so a deployment with both kinds of
+device registers whichever serves the most and reaches the other through FCM —
+which delivers to iOS devices too — or registers a second transport under a
+channel of its own naming, `TomMessageChannel('push-apns')`.
+
+| Protocol | Request | Reads |
+| -------- | ------- | ----- |
+| `TomFcmPushProtocol` | `POST /v1/projects/<projectId>/messages:send`, body `{"message": {"token", "notification": {"title", "body"}, "data"}}` | the `errorCode` of the `FcmError` entry in `error.details`, else `error.status`; the message `name` as the remote id |
+| `TomApnsPushProtocol` | `POST /3/device/<token>` over HTTP/2, headers `apns-topic`, `apns-push-type`, `apns-priority`, body `{"aps": {"alert": {"title", "body"}}}` with the data keys beside `aps` | the body's `reason`; the `apns-id` header as the remote id |
+| `TomFieldMappedPushProtocol` | `endpoint` (a `{token}` in it is replaced by the token), dotted `tokenField` / `titleField` / `bodyField` / `dataField`, constant `extraFields` | `statusPath` / `acceptedStatuses`, `remoteIdPath`, `errorCodePath`, `errorMessagePath`, and three code sets |
+
+`TomApnsPushProtocol(sandbox: true)` sends to the development environment.
+
+### Credentials
+
+A `TomPushCredential` answers the current bearer token and can be told to
+forget it.
+
+- **`TomFcmServiceAccountCredential`** signs an RS256 assertion with the
+  service account's key, exchanges it at the token endpoint for an access
+  token, and reuses that token until five minutes before the expiry the
+  endpoint states. `fromJson` reads the key file Google issues.
+- **`TomApnsProviderToken`** signs an ES256 token with the `.p8` key, carrying
+  the Team ID as issuer and the Key ID in the header. It reuses one token for
+  fifty minutes: Apple rejects a token older than an hour and one replaced more
+  often than every twenty minutes.
+- **`TomStaticPushCredential`** wraps a token the deployment already has.
+
+Both key types are parsed when the credential is built, so a damaged key fails
+at startup.
+
+### Classification, and the third outcome
+
+The SMS rule, in two layers: the protocol classifies the vendor's code as
+permanent or transient, and a code it does not know falls back to the HTTP
+status. A permanent refusal rejects that one token — the commonest is an app
+that was uninstalled (`UNREGISTERED` from FCM, `Unregistered` from APNs) — and
+the token lands in `TomDeliveryReceipt.rejectedRecipients`, which is how an
+application learns to stop sending to it. A transient refusal stops the pass
+and defers the whole message.
+
+Push adds a third outcome: **a rejected credential.** An FCM `401` /
+`UNAUTHENTICATED` or an APNs `ExpiredProviderToken` says nothing about the
+notification. The transport discards the cached token, mints a new one and
+submits once more; a second rejection fails the message permanently under
+`messaging.push.credential_rejected`, because a credential refused twice in a
+row is a configuration fault.
+
+### HTTP/2
+
+APNs answers only HTTP/2, and `dart:io`'s client speaks only HTTP/1.1. The wire
+is therefore a `TomPushExchange`, picked from `TomPushProtocol.requiresHttp2`:
+`TomHttp2PushExchange` (over `package:http2`) keeps one connection per host
+open for reuse, which Apple asks of providers, and `TomHttp1PushExchange` runs
+over the kernel's `TomServerChannel`. Both are injectable, which is how the
+suite drives every answer without a network and runs the HTTP/2 exchange
+against a local plain-text HTTP/2 server.
+
+### Why these two ship and no SMS vendor does
+
+[Describing a gateway](#describing-a-gateway) argues against vendor presets in
+`lib/`, and push is the deliberate exception. There are two push services rather
+than dozens of SMS gateways, each with one versioned API (FCM's HTTP v1, APNs'
+`/3/device`) rather than a family of products, and a credential flow — a signed
+service-account assertion, an ES256 provider token — that a deployment cannot
+reasonably write as configuration. The argument's other half still holds: both
+protocols are built from the vendors' published formats and tested against
+scripted answers in those formats, **not against the live services**, which
+need a registered app and a real device. A deployment's first send is the check
+this repository cannot make.
+
+### Push failure keys
+
+The first two are `TomMessagingException`s thrown while a credential is built,
+so they fail at startup. The rest are `TomDeliveryException`s from `send` or
+from minting a token during it.
+
+| Key | Classification | Raised when |
+| --- | -------------- | ----------- |
+| `messaging.push.bad_key` | — | The private key handed to `TomApnsProviderToken` or `TomFcmServiceAccountCredential` is not a PEM key of the expected type |
+| `messaging.push.bad_service_account` | — | `TomFcmServiceAccountCredential.fromJson` is given text that is not JSON with `client_email` and `private_key` |
+| `messaging.push.no_body` | permanent | The message has no text body, or an empty one |
+| `messaging.push.credential_unavailable` | transient | The token endpoint could not be reached, or answered `408`, `425`, `429` or `5xx` |
+| `messaging.push.credential_refused` | permanent | The token endpoint refused the service-account assertion. Carries the endpoint's `error` code as `providerCode` |
+| `messaging.push.credential_rejected` | permanent | The push service rejected the credential, and rejected the freshly minted one too |
+| `messaging.push.gateway_deferred` | transient | The service refused a token in a way that may pass on a retry: the code classifies it as transient, or it is unclassified and the status is `408`, `425`, `429` or `5xx`. Stops the pass |
+| `messaging.push.unreachable` | transient | The request failed or did not answer within `timeout` |
+| `messaging.push.all_recipients_rejected` | permanent | Every token was refused permanently. Some but not all refused is a partial receipt instead |
 
 ## Delivery Reports: What Happened After Acceptance
 
@@ -1318,9 +1472,45 @@ none of them becomes a queued message somebody pays for.
 | `messaging.sms.principal.no_number` | `TomSmsRequest.toPrincipal` is given a principal with neither a mobile nor a phone number. Carries `templateKey` and `username` |
 | `messaging.sms.too_long` | `render` (and so `send`) produces a text that needs more segments than `TomSmsService.maxSegments`. Carries `templateKey`, `segments` and `maxSegments`. Not raised when the service cap is `null`; the transport's own cap still applies later, under the same key |
 
+## Application Push: Title and Body
+
+`TomPushService` is the third subclass of `TomTemplatedMessageService`, with its
+own sub-keys — `title` and `body`, both required, as a mail's subject and text
+are. `TomPushRequest` has no title or body field, and carries a `data` map for
+the app beside the template parameters.
+
+```dart
+await pushService.send(TomPushRequest(
+  templateKey: 'push.task_assigned',
+  to: [for (final token in deviceTokensOf(user)) TomRecipient(token)],
+  locale: TomTextLocale.fromPrincipal(principal),
+  parameters: {'task': task.title},
+  data: {'taskId': task.id},
+));
+```
+
+```yaml
+push:
+  task_assigned:
+    title: "New task"
+    body: "{task} is yours."
+```
+
+There is no `toPrincipal`: a user's device tokens are registered by the app, one
+per installation, and the framework keeps no register of them. What `render`
+hands back is a plain [`TomMessage.push`](#push-two-vendors-and-a-mapping).
+
+### Push request failure keys
+
+| Key | Raised when |
+| --- | ----------- |
+| `messaging.push.template.empty` | `TomPushRequest` is built with an empty template key |
+| `messaging.push.recipients.empty` | `TomPushRequest` is built with an empty `to` list. Carries `templateKey` |
+| `messaging.push.template.missing` | `render` finds no `title` or `body` for the template in the requested locale or the default. Carries `templateKey` and `resourceKey` |
+
 ## Verification
 
-Five suites cover the module: four split along the same seam this document
+Seven suites cover the module: six split along the same seam this document
 is — the substrate below the services, and the templated layer above it — and
 one pinning the error vocabulary.
 
@@ -1334,8 +1524,13 @@ classification described in
 and the outbox's queueing and retry. `test/sms_transport_test.dart` covers the
 gateway: the field mapping, the two layers of classification, and each branch a
 real gateway would need a bad number or a rate limit to produce.
-`test/email_service_test.dart` and `test/sms_service_test.dart` cover the
-templated services — sub-key resolution, the locale a request selects, the
+`test/push_transport_test.dart` covers push: the FCM, APNs and field-mapped
+encodings and each vendor's error codes in its documented format, both
+credentials' signatures verified against the matching public key and their
+caching against a fixed clock, the credential refresh-and-retry, and one HTTP/2
+connection carrying two notifications to a local server.
+`test/email_service_test.dart`, `test/sms_service_test.dart` and
+`test/push_service_test.dart` cover the templated services — sub-key resolution, the locale a request selects, the
 failure that fires before anything is queued, and the segment budget. What that
 locale then *resolves* against is the resources module's rule, pinned in
 `test/resources_test.dart`; both suites render against the same fixture.
@@ -1415,6 +1610,17 @@ produce either on demand.
 - **`TomWebhookTransport` / `TomWebhookSettings`** — real delivery over HTTP:
   `TomMessage.toJson()` POSTed to the URL that addresses the message, one
   endpoint per message, classified by HTTP status alone.
+- **`TomPushTransport` / `TomPushProtocol` / `TomFcmPushProtocol` /
+  `TomApnsPushProtocol` / `TomFieldMappedPushProtocol`** — real delivery to
+  device tokens, with FCM and APNs written down and any other service described
+  by field paths.
+- **`TomPushCredential` / `TomFcmServiceAccountCredential` /
+  `TomApnsProviderToken` / `TomStaticPushCredential`** — the bearer token, minted
+  and refreshed.
+- **`TomPushExchange` / `TomHttp1PushExchange` / `TomHttp2PushExchange` /
+  `TomPushSubmission` / `TomPushGatewayRequest` / `TomPushGatewayResponse` /
+  `TomPushGatewayAnswer`** — the wire by HTTP version, and the values a protocol
+  maps between.
 - **`TomMimeEncoder`** — the RFC 5322 / MIME document.
 - **`TomMessageOutbox` / `tomOutboxJobName`** — the durable send queue.
 - **`TomTemplatedMessageService`** — the template-key rule every channel shares.
@@ -1422,6 +1628,8 @@ produce either on demand.
   rendered in the recipient's locale and queued on the outbox.
 - **`TomSmsRequest` / `TomSmsService`** — the same for SMS, plus the segment
   budget.
+- **`TomPushRequest` / `TomPushService`** — the same for push: a title, a body
+  and a data map.
 - **`TomDeliveryReport` / `TomDeliveryState` / `TomDeliveryCorrelation`** — what
   a carrier says became of a message after accepting it, and the row that ties
   its id back to the message.
@@ -1502,12 +1710,13 @@ reaches the chat client, not when it crosses the HTTP boundary.
 
 Each channel that does want templating gets its own subclass **rather than a
 generalised one**, and the instruction is worth stating because the tempting
-refactor is exactly wrong. The two existing services differ in one thing:
+refactor is exactly wrong. The three services differ in one thing:
 
 | Service | Sub-keys | Extra rule |
 | ------- | -------- | ---------- |
 | `TomEmailService` | `subject`, `text`, `html` | HTML body is optional and goes last, matching `multipart/alternative` |
 | `TomSmsService` | `text` | a segment budget, refused at render |
+| `TomPushService` | `title`, `body` | a data map for the app beside the parameters |
 
 Everything else — `send`, `sendNow`, `requiredText`, the fail-before-queueing
 order — is already shared by the base. So a "generalised" service would
@@ -1625,22 +1834,6 @@ correlation index, never through a mailbox.
 
 ## Not Yet Implemented
 
-- **A push transport.** `TomMessageChannel.push` is a **reserved name**, not an
-  unfinished implementation: the channel set is open (see
-  [Channels Are Open, Not an Enum](#channels-are-open-not-an-enum)), and what
-  the constant buys is that every deployment which wires up its own push
-  transport spells the channel the same way. No transport ships, because one
-  would have to pick a vendor — FCM, APNs, or both — and a preset for an API
-  this repository cannot test against is a plausible-looking guess that fails in
-  production, the same reason no SMS vendor preset ships. A
-  `TomNoOpMessageTransport` registered on the channel makes a spec that names it
-  runnable in the meantime, at the cost of discarding the message silently,
-  which is right for a development environment and wrong for anything else.
-
-  `email`, `sms` and `webhook` are implemented. The second is the evidence that
-  the contract carries a channel it was not designed around; the third needed no
-  widening of it at all.
-  <!-- unpinned: absence — `push` is a reserved name with no transport -->
 - **Nothing acts on a delivery report.** A report is recorded and published on
   `TomDeliveryReportEndpoint.reports`, and the module draws no conclusion from
   it: a `failed` state does not suppress the next message to that address, and
@@ -1649,39 +1842,34 @@ correlation index, never through a mailbox.
   notification model, which is
   [not this framework's](#not-in-this-framework).
   <!-- unpinned: absence — no consumer of delivery reports ships -->
-- **Vendor protocol presets in `lib/`.** Deliberate, not missing:
+- **SMS vendor presets in `lib/`.** Deliberate, not missing:
   `example/messaging/sms_gateway_presets.dart` carries worked mappings for three
   named vendors, and none of them is exported as library API — see
-  [Describing a gateway](#describing-a-gateway) for the argument.
+  [Describing a gateway](#describing-a-gateway) for the argument, and
+  [Why these two ship and no SMS vendor does](#why-these-two-ship-and-no-sms-vendor-does)
+  for the push protocols that are the exception.
   <!-- unpinned: decision — presets live in an example by design -->
-- **A templated service for push**, which waits on the push transport rather
-  than on this layer: a service that composes messages for a channel nothing can
-  deliver composes messages that cannot be sent. When the transport arrives, the
-  service extends `TomTemplatedMessageService` with its own sub-key set —
-  `title` and `body` are what a push notification has — **rather than
-  generalising either existing one**. See
-  [One service per channel](#one-service-per-channel) for why that instruction
-  is load-bearing.
-  <!-- unpinned: absence — waits on the push transport -->
 
 ## Dependencies
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `delivery_report_endpoint.dart`, `message_transport.dart`, `outbox.dart`, `sms_transport.dart`, `smtp_transport.dart`, `webhook_transport.dart` | `Future`, `Stream`, `StreamController`, `unawaited` |
-| `dart:convert` | dart | `delivery_report_endpoint.dart`, `message.dart`, `mime_encoder.dart`, `sms_transport.dart`, `smtp_transport.dart`, `webhook_transport.dart` | `Encoding`, `LineSplitter`, `base64`, `json`, `jsonDecode`, `jsonEncode` |
-| `dart:io` | dart | `message_transport.dart`, `smtp_transport.dart` | `Socket` / `SecureSocket` |
+| `dart:async` | dart | 7 of 17 files | `Future`, `Stream`, `StreamController`, `unawaited` |
+| `dart:convert` | dart | 7 of 17 files | `Encoding`, `LineSplitter`, `base64`, `json`, `jsonDecode`, `jsonEncode` |
+| `dart:io` | dart | `message_transport.dart`, `push_transport.dart`, `smtp_transport.dart` | `Socket` / `SecureSocket` |
 | `dart:math` | dart | `mime_encoder.dart` | `Random`, `min` |
-| `dart:typed_data` | dart | `message.dart` | `Uint8List` |
+| `dart:typed_data` | dart | `message.dart`, `push_transport.dart` | `Uint8List`, `BytesBuilder` |
 | `async` | package | `smtp_transport.dart` | `StreamQueue` drives the SMTP line protocol |
+| `dart_jsonwebtoken` | package | `push_transport.dart` | ES256 and RS256 signing of the APNs provider token and the FCM service-account assertion |
+| `http2` | package | `push_transport.dart` | the HTTP/2 client APNs requires |
 | `path` | package | `message_transport.dart` | file naming in `TomFileMessageTransport` |
 | `shelf` | package | `delivery_report_endpoint.dart` | `Request` / `Response`, because a carrier acts on the status code and the pipeline's own envelope would make every refusal a `500` |
-| `tom_core_kernel` | package | 9 of 15 files | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `TomDataSource`, `tomLog`, `TomHeader` / `TomMimeType`, and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport` and `TomWebhookTransport` reach their endpoints through, rather than a raw client |
+| `tom_core_kernel` | package | 11 of 17 files | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `TomDataSource`, `tomLog`, `TomHeader` / `TomMimeType`, and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport`, `TomWebhookTransport` and `TomHttp1PushExchange` reach their endpoints through, rather than a raw client |
 | `uuid` | package | `message.dart` | `UuidV4`, for a message id when the caller supplies none |
 | [configuration](configuration.md) | module | `sms_transport.dart`, `smtp_transport.dart` | `TomBaseServerConfiguration` |
 | [datasources](datasources.md) | module | `delivery_report_sql.dart`, `sql_delivery_report_store.dart` | `TomFrameworkTable` — the single declaration the DDL, the statements and the convergence guard all derive from — plus `TomDataSourceInfo` and `sqlInstant` |
 | [endpoints](endpoints.md) | module | `delivery_report_endpoint.dart` | `tomService` and `TomEndpoint`, the two annotations by which the pipeline discovers the callback route |
 | [little_things](little_things.md) | module | `message.dart`, `sql_delivery_report_store.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `sql_delivery_report_store.dart` | `TomDbTable` / `TomDbColumn` on the reflected row type the driver maps |
-| [resources](resources.md) | module | `email_service.dart`, `sms_service.dart` | `TomLocalizedTextResources` |
-| [resources](resources.md) | module | `email_service.dart`, `sms_service.dart`, `templated_message_service.dart` | `TomLocalizedTextResources` and `TomTextLocale`, which `TomTemplatedMessageService` resolves every template through (see `doc/resources.md`) |
+| [resources](resources.md) | module | `email_service.dart`, `push_service.dart`, `sms_service.dart` | `TomLocalizedTextResources` |
+| [resources](resources.md) | module | `email_service.dart`, `push_service.dart`, `sms_service.dart`, `templated_message_service.dart` | `TomLocalizedTextResources` and `TomTextLocale`, which `TomTemplatedMessageService` resolves every template through (see `doc/resources.md`) |

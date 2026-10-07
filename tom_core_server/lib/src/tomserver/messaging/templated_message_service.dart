@@ -3,8 +3,8 @@
 ///
 /// ## Why this is a base rather than a convention
 ///
-/// [TomEmailService] established the shape; the SMS service is the second
-/// implementation of it. The parts that repeated are not incidental — they are
+/// [TomEmailService] established the shape; the SMS and push services are the
+/// second and third implementations of it. The parts that repeated are not incidental — they are
 /// the rule itself: resolve through resource keys, fail loudly *before*
 /// anything is queued, and hand the result to the outbox rather than to a
 /// transport. A convention re-implemented per channel is a convention that
@@ -21,18 +21,19 @@
 /// | Member | Why it cannot be shared |
 /// |--------|-------------------------|
 /// | [channelName] | it names the channel's error keys, so a missing SMS template does not report itself as an email fault |
-/// | [render] | the sub-keys and the message shape are the channel — an email has a subject and two bodies, an SMS has one text and a length budget |
+/// | [render] | the sub-keys and the message shape are the channel — an email has a subject and two bodies, an SMS has one text and a length budget, a push notification a title, a body and a data map |
 ///
 /// Everything else — [send], [sendNow], [requiredText] — is the same code for
 /// every channel, and staying that way is the point.
 ///
 /// ## One subclass per channel, never a generalised one
 ///
-/// A third channel extends this class with its own sub-key set. It does **not**
-/// generalise [TomEmailService] or [TomSmsService], and the instruction is
-/// worth writing down because the tempting refactor is exactly the wrong one:
-/// the two differ only in their sub-keys (`subject`/`text`/`html` against
-/// `text`) and in the message each builds, so a "generalised" service would
+/// Each channel extends this class with its own sub-key set — [TomPushService]
+/// with `title` and `body` is the third. None generalises [TomEmailService] or
+/// [TomSmsService], and the instruction is worth writing down because the
+/// tempting refactor is exactly the wrong one: the services differ only in
+/// their sub-keys (`subject`/`text`/`html` against `text` against
+/// `title`/`body`) and in the message each builds, so a "generalised" service would
 /// parameterise precisely the thing that distinguishes one channel from
 /// another, leave the shared part exactly as shared as it already is, and cost
 /// the compiler its ability to say that a [TomEmailRequest] has no text field
@@ -53,7 +54,7 @@ import 'outbox.dart';
 /// outbox.
 ///
 /// [R] is the channel's request type — [TomEmailRequest] for mail,
-/// [TomSmsRequest] for SMS. A request type that has no field for user-facing
+/// [TomSmsRequest] for SMS, [TomPushRequest] for push. A request type that has no field for user-facing
 /// text is what makes the rule enforceable by the compiler rather than by a
 /// reviewer.
 abstract class TomTemplatedMessageService<R> {
@@ -106,7 +107,7 @@ abstract class TomTemplatedMessageService<R> {
   }) : _texts = texts;
 
   /// The channel's name as it appears in this service's error keys — `email`,
-  /// `sms`.
+  /// `sms`, `push`.
   ///
   /// The keys are user-visible in the sense that operators read them, and a
   /// missing SMS template reporting `messaging.email.template.missing` sends

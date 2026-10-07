@@ -4,8 +4,9 @@
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Outbound messaging: one channel-neutral message shape, one delivery contract,
-and one durable queue — with SMTP, an HTTP SMS gateway and an HTTP webhook as
-the three real implementations of that contract.
+and one durable queue — with SMTP, an HTTP SMS gateway, push through FCM, APNs
+or a described push service, and an HTTP webhook as the four real
+implementations of that contract.
 
 The module is built in four layers, and the file names alone do not say which
 layer a file belongs to. From the bottom:
@@ -19,10 +20,11 @@ layer a file belongs to. From the bottom:
    network**, which is the thing its name does not say: a reader looking for the
    in-memory transport will not think to open it.
 3. **The real transports** (`smtp_transport.dart`, `sms_transport.dart`,
-   `webhook_transport.dart`) — the three implementations that do touch a wire,
+   `push_transport.dart`, `webhook_transport.dart`) — the four implementations
+   that do touch a wire,
    each with the wire itself behind an injectable seam so the protocol is
    testable without a server.
-4. **The application layer** (`templated_message_service.dart` and the two
+4. **The application layer** (`templated_message_service.dart` and the three
    services on it, plus `outbox.dart`) — resource-keyed templates, a per-channel
    request type, and the queue that makes a send survive a restart.
 
@@ -53,11 +55,11 @@ message's *structure* lives in Dart rather than in the bundle — which is the
 right way round, since a translator changing wording is the frequent act and a
 bundle that can change a message's shape is one that can break it.
 
-**A webhook has nothing to template.** `TomEmailService` and `TomSmsService` are
-the two templated services, and a third channel gets its own subclass rather
-than a generalisation of either — but a webhook's recipient is a program and its
-payload is `TomMessage.toJson()`, so there is no user-facing prose to resolve
-and no locale to resolve it in. A push service waits on the push transport.
+**A webhook has nothing to template.** `TomEmailService`, `TomSmsService` and
+`TomPushService` are the three templated services, each its own subclass rather
+than a generalisation of another — but a webhook's recipient is a program and
+its payload is `TomMessage.toJson()`, so there is no user-facing prose to
+resolve and no locale to resolve it in.
 
 **The notification model is not here and is not coming.** Which events notify,
 who subscribes to them, and through which channels is the *application's*
@@ -82,7 +84,7 @@ Source: `message.dart`
 
 | Type | What it is |
 | ---- | ---------- |
-| `TomMessage` | The composed message. `TomMessage.email` and `TomMessage.sms` are the two factories; `toJson` / `fromJson` are its round-trip. |
+| `TomMessage` | The composed message. `TomMessage.email`, `TomMessage.sms` and `TomMessage.push` are the three factories; `toJson` / `fromJson` are its round-trip. |
 | `TomMessageChannel` | A value class with constants, **not** an enum — so a deployment can name a channel this package has never heard of. |
 | `TomRecipient` | One addressee. The field is `address`, never `emailAddress`: for SMS it is a phone number, for push a device token. |
 | `TomRecipientKind` | To, Cc or Bcc. |
@@ -141,6 +143,31 @@ vocabulary goes behind a protocol object instead.
 | `TomSmsBodyFormat` | How the request body is encoded. |
 | `TomSmsSegmentation` | GSM 03.38 length arithmetic. `text.length` is the wrong number in three separate ways, and an SMS is billed per *segment*. |
 | `TomSmsEncoding` | GSM or UCS-2 — one character outside GSM 03.38 moves the whole message. |
+
+### Push
+
+Source: `push_transport.dart`
+
+The SMS gateway's shape — the transport owns what every push service shares,
+a protocol the vendor's vocabulary — with the two services that reach nearly
+every device written down rather than described.
+
+| Type | What it is |
+| ---- | ---------- |
+| `TomPushTransport` | Real push delivery. One request per device token, so a dead token is a rejected recipient rather than a failed message; a rejected credential is refreshed and the token tried once more. |
+| `TomPushProtocol` | The service mapping: request out, answer in, credential codes recognised. |
+| `TomFcmPushProtocol` | Firebase Cloud Messaging's HTTP v1 API. |
+| `TomApnsPushProtocol` | Apple's push service, over HTTP/2. |
+| `TomFieldMappedPushProtocol` | Any other JSON push API, described by field paths. |
+| `TomPushCredential` | The bearer token a service authenticates with, and how to forget it. |
+| `TomFcmServiceAccountCredential` | An FCM access token minted from a service-account key and cached until shortly before it expires. |
+| `TomApnsProviderToken` | An ES256 APNs provider token, reused for fifty minutes. |
+| `TomStaticPushCredential` | A token the deployment already has. |
+| `TomPushExchange` · `TomHttp1PushExchange` · `TomHttp2PushExchange` | The wire by HTTP version — the injectable seam, and the reason APNs works at all: it answers only HTTP/2. |
+| `TomPushSubmission` · `TomPushGatewayRequest` · `TomPushGatewayResponse` · `TomPushGatewayAnswer` | The values a protocol maps between, so `encode` and `decode` stay pure. |
+
+Both vendor protocols are tested against scripted answers in the vendors'
+documented formats, not against the live services.
 
 ### Webhook
 
@@ -207,7 +234,7 @@ Source: `outbox.dart`
 
 ### Application messaging
 
-Source: `templated_message_service.dart`, `email_service.dart`, `sms_service.dart`
+Source: `templated_message_service.dart`, `email_service.dart`, `sms_service.dart`, `push_service.dart`
 
 | Type | What it is |
 | ---- | ---------- |
@@ -216,6 +243,8 @@ Source: `templated_message_service.dart`, `email_service.dart`, `sms_service.dar
 | `TomEmailService` | Resolves `<templateKey>.subject` / `.text` / `.html` in the recipient's locale and queues the result. |
 | `TomSmsRequest` | The same for SMS, with no text field. |
 | `TomSmsService` | One sub-key — `<templateKey>.text` is the whole template — plus the segment budget, checked before anything is queued. |
+| `TomPushRequest` | The same for push, with no title or body field, and a data map for the app. |
+| `TomPushService` | Two sub-keys — `<templateKey>.title` and `.body`, both required. |
 
 ## Quick start
 
@@ -243,15 +272,16 @@ Future<void> main() async {
 See [`doc/messaging.md`](../../../../doc/messaging.md) for the full treatment:
 why this is not a mailer call, the open-channel decision, the one distinction a
 transport must get right, the SMTP conversation, the SMS gateway shape and its
-segment arithmetic, what "queued" guarantees, and the application template rule.
+segment arithmetic, the push protocols and credentials, what "queued" guarantees, and the application template rule.
 The connection-free surface runs in
 `example/messaging/messaging_example.dart` and, for the template layer, in
 `example/messaging/messaging_templated_example.dart` — `test/messaging_test.dart`
 executes both and requires them to exit 0, and that same suite drives the SMTP
 and SMS protocols through their injectable seams.
-`test/email_service_test.dart` and `test/sms_service_test.dart` cover the two
-application services, `test/sms_transport_test.dart` the gateway mapping and its
-segment arithmetic, and `test/readme_quick_start_test.dart` runs the snippet
+`test/email_service_test.dart`, `test/sms_service_test.dart` and
+`test/push_service_test.dart` cover the three application services,
+`test/sms_transport_test.dart` the gateway mapping and its segment arithmetic,
+`test/push_transport_test.dart` the push protocols, credentials and exchanges, and `test/readme_quick_start_test.dart` runs the snippet
 above.
 
 ---

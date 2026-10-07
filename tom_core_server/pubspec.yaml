@@ -43,6 +43,10 @@ dependencies:
   # encoder. The caret range spans 3.12.x (SDK >=2.19) and 3.13.x (SDK >=3.12)
   # so a machine on an older SDK still resolves.
   pdf: ^3.12.0
+  # HTTP/2 client for push delivery (messaging/push_transport.dart). APNs
+  # answers nothing else, and dart:io's HttpClient speaks only HTTP/1.1.
+  # BSD-3, from the Dart team. 2.x because 3.x needs a newer SDK floor.
+  http2: ^2.3.1
 
   http: any
   uuid: any
