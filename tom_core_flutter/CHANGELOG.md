@@ -2,6 +2,15 @@
 
 ### Changed
 
+- **`TomBaseClientConfiguration.save()` writes only what this holder
+  changed.** A declared key is written, or removed, when its override differs
+  from the snapshot of the last `load()` or `save()`; every other key is
+  carried forward from a fresh read of the store, and the holder then adopts
+  those values, so holder and store agree. Two holders over one store location
+  no longer erase each other's keys, and an external edit to an untouched key
+  survives a save. A stored entry that equals the baseline is now carried
+  forward instead of removed, but setting a value back to its baseline still
+  removes the key. Two saves that genuinely overlap can still lose one change.
 - **Registrations use `TomBean.withType<X>(bean)`**, following the kernel's
   move of the key into a type argument. Reflection artifacts regenerated.
 

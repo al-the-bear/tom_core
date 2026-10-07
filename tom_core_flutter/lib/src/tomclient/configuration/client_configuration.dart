@@ -190,6 +190,16 @@ class TomSetting<T> extends TomObject<T> {
     }
   }
 
+  /// Whether [raw] reads as this setting's current value, coercing first as
+  /// [_readsAsBaseline] does.
+  bool _equalsRaw(Object? raw) {
+    try {
+      return coerceSettingValue<T>(key, raw) == get();
+    } on TomClientConfigurationException {
+      return false;
+    }
+  }
+
   /// Applies a raw (store- or config-shaped) value, coercing it to [T].
   ///
   /// Throws [TomClientConfigurationException]
@@ -330,7 +340,7 @@ T coerceSettingValue<T>(String key, Object? raw) {
 /// final config = AppConfiguration(store: myStore);
 /// await config.load();          // adopt this install's persisted overrides
 /// config.darkMode | true;       // per-field observers fire; so do holder observers
-/// await config.save();          // persist the overrides — and only those
+/// await config.save();          // write what changed; adopt the rest
 /// ```
 ///
 /// [declareSettings] is called from the constructor, mirroring
@@ -388,8 +398,9 @@ abstract class TomBaseClientConfiguration extends TomObservable
   /// about another, and applying it to a setting would hand this install a
   /// value belonging to a location it has been moved away from.
   ///
-  /// [save] deliberately does *not* seed its carry-forward from here — see the
-  /// note on [save] for why it re-reads instead.
+  /// It is also what [save] measures "changed" against: a declared setting
+  /// whose override differs from this snapshot is written, and every other key
+  /// is taken from the store as it is at the moment of the write.
   Map<String, Object?> _persisted = {};
 
   /// Declares every setting of this holder.
@@ -651,61 +662,106 @@ abstract class TomBaseClientConfiguration extends TomObservable
     }
   }
 
-  /// Persists the install's overrides — and only those.
+  /// Writes the overrides this holder **changed**, and adopts everything else
+  /// from the store.
   ///
-  /// A setting sitting at its baseline is *not* written, and is removed from
-  /// the store if it was there before; see the class documentation for why
-  /// storing the full value set would be wrong. Neither is a setting the
-  /// environment configured — [TomSetting.isOverridden] is `false` for one, so
-  /// it never enters the written document, and unsetting the variable later
-  /// restores the layers below rather than finding the operator's value baked
-  /// in.
+  /// A declared setting has *changed* when its override differs from the
+  /// snapshot the last [load] or [save] took: an override added, a value
+  /// altered, an override dropped (a [reset] is a change too). Those keys are
+  /// written — the override, or its removal. Every other key is carried
+  /// forward exactly as the store holds it **now**, read immediately before the
+  /// write: keys this build does not declare, and declared keys this holder did
+  /// not touch. So two holders over one store location do not erase each
+  /// other: a holder that never touched `client.retries` keeps the value
+  /// another holder saved there, whether or not it reloaded in between.
   ///
-  /// That applies to a persisted value which merely *equals* the baseline, and
-  /// the consequence is worth stating: **an install cannot pin a setting to the
-  /// value it sees today.** Such a key survives [load] — it is applied, and it
-  /// is the right value — and is deleted by the next save, after which the
-  /// setting follows whatever the shipped default becomes. There is no error
-  /// and no signal; pinning would need a third state per setting (untouched /
-  /// set-to-baseline / overridden) and a store format able to carry it, which
-  /// the module does not have.
+  /// **Afterwards the holder matches the store.** Each declared setting this
+  /// holder did not change adopts the stored value — or its baseline, when the
+  /// store has none — under one notification, as [load] does. The holder never
+  /// shows a value the store does not hold, and calling [save] again with
+  /// nothing changed writes back exactly what it read.
   ///
-  /// Keys in the store that this build does not declare are carried forward
-  /// untouched. A build that has dropped a setting — or an older build during
-  /// a staged rollout — must not destroy an install's value for a key it
-  /// simply does not know about.
+  /// A setting the environment configured is never changed by the install, so
+  /// it is never written and never adopted: the store's entry for it, if any,
+  /// is carried forward and comes back into force when the variable is unset.
   ///
-  /// Carry-forward is seeded by **re-reading the store**, not from the snapshot
-  /// [load] took. The snapshot answers a different question — what this store
-  /// held when this holder started — and the two diverge in two ways that both
-  /// break the promise above. A holder pointed at a second store would deposit
-  /// the *first* store's keys into it while destroying the second's own. And a
-  /// key written by anyone else since this holder loaded — a second holder over
-  /// the same location, an external edit — is not in the snapshot, so it would
-  /// be deleted rather than carried forward, which is precisely the loss this
-  /// mechanism exists to prevent.
+  /// **What "changed" means without a snapshot.** After the [store] setter
+  /// points the holder somewhere new the snapshot is empty by design, so every
+  /// override counts as added and every setting at its baseline as untouched:
+  /// the overrides are written, and the new store's values for the rest are
+  /// kept and adopted.
   ///
-  /// What re-reading does **not** do is make a store location shareable. The
-  /// carry-forward covers keys this build does not declare; a key two holders
-  /// both declare is written from the saving holder's own view, and a holder
-  /// that has not adopted the other's change holds that key at its baseline —
-  /// so it writes "no override" over it, sequentially, with no concurrency
-  /// involved. On top of that, read-then-write is not atomic, so two saves that
-  /// genuinely overlap lose the earlier reader's change even if both reloaded.
-  /// Nothing detects either; see the module documentation.
+  /// **Pinning.** Only overrides are written, so an install cannot *create* an
+  /// entry that equals the baseline: setting a value back to the baseline is
+  /// dropping the override, and the key is removed. An entry that already
+  /// equals the baseline — written by another build, or by hand — is not a
+  /// change of this holder's and is carried forward like any other.
+  ///
+  /// What stays open is concurrency. Read-then-write is not one operation, so
+  /// two saves that genuinely overlap lose the change of whichever wrote first;
+  /// nothing detects it, because the persisted document carries no version
+  /// stamp. See the module documentation.
   ///
   /// Throws `client_configuration.store.not_configured` when no [store] is
   /// wired.
   Future<void> save() async {
     final store = _requireStore('save');
-    final live = await store.read();
-    final overrides = <String, Object?>{
-      for (final entry in live.entries)
-        if (!_settings.containsKey(entry.key)) entry.key: entry.value,
-      ..._declaredOverrides,
-    };
-    await store.write(overrides);
-    _persisted = overrides;
+    final changed = _changedOverrides;
+    final document = <String, Object?>{...await store.read()};
+    for (final entry in changed.entries) {
+      if (entry.value.$1) {
+        document[entry.key] = entry.value.$2;
+      } else {
+        document.remove(entry.key);
+      }
+    }
+    await store.write(document);
+    _persisted = document;
+    _adopt(document, except: changed.keys.toSet());
+  }
+
+  /// The declared keys this holder has changed since its snapshot, each with
+  /// whether it now holds an override and, if so, its value.
+  ///
+  /// A snapshot entry that reads as the baseline is no override — the same rule
+  /// [hasUnsavedChanges] applies — so leaving such a key untouched is not a
+  /// change, and the entry is carried forward rather than removed.
+  Map<String, (bool, Object?)> get _changedOverrides {
+    final live = _declaredOverrides;
+    final changed = <String, (bool, Object?)>{};
+    for (final setting in _settings.values) {
+      if (setting.isFromEnvironment) continue;
+      final key = setting.key;
+      final snapshotted =
+          _persisted.containsKey(key) &&
+          !setting._readsAsBaseline(_persisted[key]);
+      final overridden = live.containsKey(key);
+      if (overridden != snapshotted ||
+          (overridden && !setting._equalsRaw(_persisted[key]))) {
+        changed[key] = (overridden, live[key]);
+      }
+    }
+    return changed;
+  }
+
+  /// Brings every declared setting not in [except] to [document]'s value, or
+  /// to its baseline when [document] has none; one notification.
+  void _adopt(Map<String, Object?> document, {required Set<String> except}) {
+    mute();
+    try {
+      for (final setting in _settings.values) {
+        if (setting.isFromEnvironment || except.contains(setting.key)) {
+          continue;
+        }
+        if (document.containsKey(setting.key)) {
+          setting.applyRaw(document[setting.key]);
+        } else {
+          setting.reset();
+        }
+      }
+    } finally {
+      unmute();
+    }
   }
 
   // ---------------------------------------------------------------------------

@@ -113,10 +113,10 @@ Future<void> run() async {
   assert(!(await store.read()).containsKey('client.ui.darkMode'));
   assert(~config.darkMode == false); // back to the baseline
 
-  // Example 6: keys the running build does not declare are carried forward, so
-  // a build that has dropped a setting cannot destroy an install's value for it.
-  // The carry-forward is seeded by re-reading the store at save time, not from
-  // what load() saw — so a key another writer added in between survives too.
+  // Example 6: save() writes only what this holder changed and carries every
+  // other key forward from the store as it is at save time — so a build that
+  // has dropped a setting cannot destroy an install's value for it, and a key
+  // another writer added since load() survives too.
   await store.write({
     ...await store.read(),
     'client.legacy.key': 'written-by-someone-else',

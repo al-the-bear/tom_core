@@ -668,7 +668,9 @@ void main() {
   });
 
   group('a persisted value equal to the baseline', () {
-    test('survives load and is dropped by the next save', () async {
+    test('survives load and survives a save that did not touch it', () async {
+      // The entry is not this holder's override, so leaving it alone is not a
+      // change, and `save()` carries forward what it did not change.
       final store = TomMemoryClientConfigurationStore({'client.retries': 3});
       final config = _TestConfiguration(store: store);
 
@@ -676,16 +678,35 @@ void main() {
       expect(~config.retries, 3, reason: 'the value is applied and is right');
       expect(config.retries.isOverridden, isFalse);
 
+      config.darkMode | true;
       await config.save();
 
-      expect(
-        await store.read(),
-        isEmpty,
-        reason:
-            'if this now keeps the key, the module has gained the ability to '
-            'pin a value and the Limitations section is out of date',
-      );
+      expect(await store.read(), {
+        'client.retries': 3,
+        'client.darkMode': true,
+      });
     });
+
+    test(
+      'but the install cannot create one: back to baseline removes the key',
+      () async {
+        final store = TomMemoryClientConfigurationStore({'client.retries': 9});
+        final config = _TestConfiguration(store: store);
+        await config.load();
+
+        config.retries | 3;
+        await config.save();
+
+        expect(
+          await store.read(),
+          isEmpty,
+          reason:
+              'a value equal to the baseline is no override, so setting it is '
+              'dropping the override; if this keeps the key, the module has '
+              'gained the ability to pin a value and its documentation is wrong',
+        );
+      },
+    );
 
     test('and the holder is not reported as dirty before that save', () async {
       // `hasUnsavedChanges` agrees with `isOverridden` and with `save()` about
@@ -767,11 +788,11 @@ void main() {
     );
 
     test(
-      'a key both holders declare is erased by the one that saves last',
+      'a key both holders declare is kept by the holder that did not touch it',
       () async {
-        // No race: A saves, then B saves. B declares `client.retries` and holds
-        // it at its baseline, because B loaded before A wrote — so B's view is
-        // "this install has no override for retries", and that is what B writes.
+        // A saves, then B saves, and B never reloads. B declares
+        // `client.retries` but did not change it since its snapshot, so B
+        // carries the store's value forward instead of writing its own view.
         final store = TomMemoryClientConfigurationStore();
         final a = _TestConfiguration(store: store);
         final b = _TestConfiguration(store: store);
@@ -783,19 +804,102 @@ void main() {
         b.darkMode | true;
         await b.save();
 
-        expect(
-          await store.read(),
-          {'client.darkMode': true},
-          reason:
-              'the saving holder writes its own complete view of the keys it '
-              'declares; A\'s override is not in it',
-        );
+        expect(await store.read(), {
+          'client.retries': 9,
+          'client.darkMode': true,
+        });
       },
     );
 
-    test('and B keeps it if B loads in between', () async {
-      // The same sequence with the step that makes it safe. Sharing a location
-      // is workable exactly when every holder reloads before it saves.
+    test(
+      'and the saving holder adopts it, so holder and store agree',
+      () async {
+        final store = TomMemoryClientConfigurationStore();
+        final a = _TestConfiguration(store: store);
+        final b = _TestConfiguration(store: store);
+        await a.load();
+        await b.load();
+
+        a.retries | 9;
+        await a.save();
+        expect(~b.retries, 3, reason: 'nothing has told B yet');
+
+        b.darkMode | true;
+        await b.save();
+
+        expect(~b.retries, 9);
+        expect(b.hasUnsavedChanges, isFalse);
+      },
+    );
+
+    test(
+      'a key both holders changed goes to the one that saves last',
+      () async {
+        final store = TomMemoryClientConfigurationStore();
+        final a = _TestConfiguration(store: store);
+        final b = _TestConfiguration(store: store);
+        await a.load();
+        await b.load();
+
+        a.retries | 9;
+        await a.save();
+        b.retries | 4;
+        await b.save();
+
+        expect(await store.read(), {'client.retries': 4});
+        expect(~b.retries, 4);
+      },
+    );
+
+    test(
+      'a reset is a change, and removes the other holder\'s value',
+      () async {
+        final store = TomMemoryClientConfigurationStore({'client.retries': 9});
+        final a = _TestConfiguration(store: store);
+        await a.load();
+
+        a.reset('client.retries');
+        await a.save();
+
+        expect(await store.read(), isEmpty);
+      },
+    );
+
+    test('an external edit to an untouched key survives the save', () async {
+      final store = TomMemoryClientConfigurationStore();
+      final config = _TestConfiguration(store: store);
+      await config.load();
+      await store.write({'client.ratio': 0.5});
+
+      config.darkMode | true;
+      await config.save();
+
+      expect(await store.read(), {
+        'client.ratio': 0.5,
+        'client.darkMode': true,
+      });
+      expect(~config.ratio, 0.5);
+    });
+
+    test(
+      'saving twice with nothing changed writes back what it read',
+      () async {
+        final store = TomMemoryClientConfigurationStore({'client.retries': 9});
+        final config = _TestConfiguration(store: store);
+        await config.load();
+        await config.save();
+        await store.write({'client.retries': 7, 'client.legacy': 'x'});
+
+        await config.save();
+
+        expect(await store.read(), {'client.retries': 7, 'client.legacy': 'x'});
+        expect(~config.retries, 7);
+      },
+    );
+
+    test('and reloading in between changes nothing', () async {
+      // Before the merge rule this reload was what made sharing safe; now it
+      // is merely harmless.
       final store = TomMemoryClientConfigurationStore();
       final a = _TestConfiguration(store: store);
       final b = _TestConfiguration(store: store);
@@ -850,6 +954,31 @@ void main() {
   });
 
   group('swapping the store', () {
+    test(
+      'with no snapshot, overrides are written and untouched keys adopted',
+      () async {
+        // The snapshot is empty after a swap, so every override counts as
+        // added and every setting at its baseline as untouched.
+        final config = _TestConfiguration(
+          store: TomMemoryClientConfigurationStore(),
+        );
+        await config.load();
+        final newStore = TomMemoryClientConfigurationStore({
+          'client.ratio': 0.25,
+        });
+        config.store = newStore;
+        config.retries | 9;
+
+        await config.save();
+
+        expect(await newStore.read(), {
+          'client.ratio': 0.25,
+          'client.retries': 9,
+        });
+        expect(~config.ratio, 0.25);
+      },
+    );
+
     test('does not carry the previous store\'s keys into the new one', () async {
       // Carry-forward protects the keys of *a* store. A holder moved to a
       // different store must not deposit the first store's keys in the second:

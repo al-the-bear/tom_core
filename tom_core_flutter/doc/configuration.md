@@ -411,23 +411,39 @@ so shipping a new default in an app update actually reaches installs that never
 touched that key. Persisting everything would freeze the shipped defaults at the
 moment of the first save.
 
-Keys in the store that the running build does not declare are **carried
-forward** untouched — a build that has dropped a setting, or an older build
-during a staged rollout, must not destroy an install's value for a key it does
-not know.
+**`save()` writes what this holder changed, and nothing else.** A declared
+setting has changed when its override differs from the snapshot the last
+`load()` or `save()` took — an override added, a value altered, an override
+dropped. Those keys are written, or removed. Every other key is carried forward
+exactly as the store holds it at the moment of the write, read immediately
+before it: keys the running build does not declare — a build that has dropped a
+setting, or an older build during a staged rollout, must not destroy an
+install's value for a key it does not know — and declared keys this holder did
+not touch.
+
+So **two holders may share a store location.** A holder that never touched
+`client.retries` keeps the value another holder saved there, whether or not it
+reloaded in between, and a key both changed goes to whichever saved last. An
+external edit to the file survives the next save for the same reason.
+
+**After a save the holder matches the store.** Every declared setting the
+holder did not change adopts the stored value, or its baseline when there is
+none, under one notification as `load()` does. So the holder never shows a value
+the store does not hold, and a second `save()` with nothing changed writes back
+exactly what it read — whatever arrived in between included.
 
 Carry-forward reads the store at `save()` rather than reusing what `load()`
 found, so it protects the keys of *the store being written* at the moment it is
-written. That matters in two cases the snapshot would get wrong: a holder that
-has been pointed at a **different store** must not deposit the first store's
-keys into the second (nor destroy the second's own), and a key written by
-**someone else since this holder loaded** must be carried forward rather than
-deleted — which is exactly the loss the mechanism exists to prevent.
+written: a holder pointed at a **different store** does not deposit the first
+store's keys into the second, nor destroy the second's own.
 
 **Changing the store discards the loaded snapshot but not the settings.** A
 snapshot describes the store it came from, so assigning a different store drops
 it; the settings keep their current values, because a swap is not a load. Call
-`load()` to adopt the new store's overrides.
+`load()` to adopt the new store's overrides. A `save()` before that has no
+snapshot to compare against, so every override counts as added and is written,
+and every setting at its baseline counts as untouched — the new store's value
+for it is kept and adopted.
 
 **Saving is explicit.** There is no autosave: persisting is asynchronous, and a
 setter that silently starts an unawaited write gives the caller no way to know
@@ -477,17 +493,19 @@ installs an empty provider —
 - **No web file store.** See `client_configuration.store.unsupported_platform`
   above; supply a browser-appropriate store explicitly.
 - **An install cannot pin a setting to the value it sees today.** Only overrides
-  are stored, and a stored value that merely *equals* the baseline is not one:
-  it survives `load()` — it is applied, and it is the right value — and is
-  deleted by the next `save()`, after which the setting follows whatever the
-  shipped default becomes. There is no error and no signal. "Keep this build's
-  refresh interval whatever the next update ships" is a real operation, and the
-  module silently turns it into its opposite. Pinning would need a third state
-  per setting — untouched / set-to-baseline / overridden — and a store format
-  able to carry it; the override-only design is deliberate and is what lets a
-  shipped default still move, so this is the price of it rather than an
-  oversight. `hasUnsavedChanges` agrees with `save()` about such a key and does
-  not report an untouched holder as dirty because of one.
+  are written, and a value equal to the baseline is not one: setting a value
+  back to the baseline *drops* the override, and the next `save()` removes the
+  key, after which the setting follows whatever the shipped default becomes.
+  "Keep this build's refresh interval whatever the next update ships" is a real
+  operation the holder cannot express. An entry that already equals the
+  baseline — written by another build, or by hand — is applied by `load()` and
+  carried forward by `save()`, because leaving it alone is not a change; but
+  the holder cannot create one. Pinning would need a third state per setting —
+  untouched / set-to-baseline / overridden; the override-only design is
+  deliberate and is what lets a shipped default still move, so this is the
+  price of it rather than an oversight. `hasUnsavedChanges` agrees with `save()`
+  about such an entry and does not report an untouched holder as dirty because
+  of one.
 - **No autosave.** `save()` is the only write path, so a screen that changes a
   setting and is dismissed without calling it loses the change on the next
   start. What the holder *can* do is answer whether that would happen — see
@@ -498,29 +516,12 @@ installs an empty provider —
   server URL. `TomSetting`'s constructor is private, so a validating subclass
   cannot be substituted — range, format and enum checks are the caller's, after
   `load()` or at the point of use.
-- **Two holders must not share a store location.** `save()` writes *this
-  holder's* complete override set for the keys it declares, plus whatever it
-  found in the store under keys it does not. The carry-forward therefore
-  protects a key another **build** owns — and does not protect a key both
-  holders declare. A second holder that has not adopted the first's change
-  holds that key at its baseline, so its view is "this install has no override"
-  and that is what it writes: the first holder's value is erased, sequentially,
-  with no concurrency involved. Reloading before every save avoids it; nothing
-  enforces that, and nothing reports it.
-
-  The narrower concurrency window stays open on top of that. Read-then-write is
-  not a single operation, so two saves that genuinely overlap lose the earlier
-  reader's change even if both reloaded, and nothing notices: there is no
-  version stamp in the persisted document and `save()` cannot fail on a
-  conflict.
-
-  Both are accepted rather than guarded. A client configuration is scoped to
-  (this app, this machine), so two holders over one location are two sources of
-  truth for the same keys, and no merge rule reconciles them without changing
-  what `save()` means: writing only the keys this holder *changed* would keep
-  the other's value, at the cost of a `save()` that is no longer idempotent
-  against an externally edited store and a holder that can disagree with it
-  silently.
+- **Two saves that genuinely overlap lose one change.** Read-then-write is not
+  one operation, so when two holders over one location save at the same moment
+  — A reads, B reads, B writes, A writes — A's write carries forward the
+  document it read, without B's change, and nothing notices: the persisted
+  document carries no version stamp and `save()` cannot fail on a conflict.
+  Sequential saves do not have this problem; only the overlap does.
 
 ---
 

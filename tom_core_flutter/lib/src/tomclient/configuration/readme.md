@@ -102,9 +102,13 @@ is simply "current value differs from baseline", and that is exactly the set
 **Only layer 1 is persisted.** A key the install never changed is re-resolved at
 every start, so shipping a new default in an app update actually reaches installs
 that never touched that key — which persisting the full value set would prevent,
-freezing the shipped defaults at the moment of the first save. Keys the current
-build does not declare are carried forward untouched, so an older build during a
-staged rollout cannot destroy a value it merely does not know about.
+freezing the shipped defaults at the moment of the first save. `save()` writes
+only the keys this holder *changed* since its last load or save, and carries
+every other key forward from the store as it is at that moment — keys the
+current build does not declare, so an older build during a staged rollout cannot
+destroy a value it merely does not know about, and declared keys this holder did
+not touch, so two holders over one store location keep each other's values.
+The holder then adopts the store's values for the keys it did not change.
 
 Layer 0 is not persisted either, for the opposite reason: it is the operator's
 value rather than the install's, so `save()` never writes it, `isOverridden` is
@@ -163,10 +167,10 @@ operator must win is declared `none`.
   does this change belong" is the question the scopes exist to answer; and a
   preference is a stored document with no change notification, so an effective
   value has nothing to fire on when the narrower scope moves.
-- **No concurrency control.** `save()` re-reads the store to seed its
-  carry-forward, which narrows but does not close the window: read-then-write is
-  not atomic, so two holders saving at genuinely the same moment can still lose
-  one another's last write. Nothing detects that.
+- **No concurrency control.** `save()` re-reads the store and writes only what
+  this holder changed, so sequential saves by several holders are safe; but
+  read-then-write is not atomic, so two holders saving at genuinely the same
+  moment can still lose one another's change. Nothing detects that.
 
 ## Choosing a store
 
