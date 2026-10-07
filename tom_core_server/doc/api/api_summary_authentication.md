@@ -377,7 +377,7 @@ TomLoginException(
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `reason` | `TomLoginFailure` | Which closed-set failure this is — the five values are tabled in [api_summary_little_things.md](api_summary_little_things.md#tomloginfailure), beside the module that declares the enum. Required, and required rather than defaulted, because a default is a classification nobody made: every new throw site would silently join it and the value a client branches on would stop meaning anything. It does not replace `key` — the key stays as specific as the throw site can make it and is what the server logs. |
+| `reason` | `TomLoginFailure` | Which closed-set failure this is — the five values are tabled in the kernel's [api_summary_security.md](../../../tom_core_kernel/doc/api/api_summary_security.md#tomloginfailure), beside the module that declares the enum. Required, and required rather than defaulted, because a default is a classification nobody made: every new throw site would silently join it and the value a client branches on would stop meaning anything. It does not replace `key` — the key stays as specific as the throw site can make it and is what the server logs. |
 
 #### Methods
 

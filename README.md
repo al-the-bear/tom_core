@@ -266,7 +266,7 @@ it and start eight test suites.
 | [`tool/dart_sdk.py`](tool/dart_sdk.py) | Finds the `dart` the gates need when the shell's PATH has none — PATH, the SDKs' own environment variables, `flutter` on PATH, then conventional install locations — so the gate runner can put it on every gate's PATH |
 | [`tool/gate_cache.py`](tool/gate_cache.py) | Remembers a clean analyzer verdict per package until one of its inputs changes; used by `check_reflection_artifacts.py` and `check_doc_dart_blocks.py` |
 | [`tool/check_tooling_table.py`](tool/check_tooling_table.py) | Pins this table, and the prose sections below it, to the contents of `tool/` |
-| [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits a document's own navigation: its `## Table of Contents` and every anchor it links to itself |
+| [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits a document's navigation: its `## Table of Contents`, every anchor it links to itself, and every `#fragment` it links to in another document |
 | [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
 | [`tool/check_baseline_claims.py`](tool/check_baseline_claims.py) | Fails a completion document's `What changed` claim about what a `Tom*` symbol did at the baseline when the baseline had no such symbol |
 | [`tool/check_doc_dependencies.py`](tool/check_doc_dependencies.py) | Audits each package document's Dependencies section against the names its `pubspec.yaml` declares |
@@ -352,11 +352,13 @@ python3 tool/check_doc_tocs.py                # the whole repository
 python3 tool/check_doc_tocs.py tom_core_kernel   # one subtree
 ```
 
-It reports four faults and exits non-zero if it finds any: sections the
+It reports five faults and exits non-zero if it finds any: sections the
 contents omit, entries whose link resolves to no heading, entries listed in an
-order the document does not follow, and links *in the body* pointing at an
-anchor of their own document that no heading provides. The third is the one a
-reader cannot easily catch, and a presence check passes it silently.
+order the document does not follow, links *in the body* pointing at an anchor
+of their own document that nothing provides, and links into *another* document
+(`other.md#fragment`) whose fragment that document does not define. The third
+is the one a reader cannot easily catch, and a presence check passes it
+silently.
 
 The body-link check is why the gate scans every document rather than only the
 117 that carry contents. `check_doc_links` accepts any `#fragment` and names
@@ -365,6 +367,17 @@ nobody indexed was an anchor neither gate looked at: a `[§10](#…)` in running
 prose whose heading had since been reworded resolved to nothing, and so did two
 appendix cross-references that had picked up a doubled dash. `STALE` is this
 same fault confined to the contents block.
+
+`CROSS` is the same question asked across files, and it is the cheapest link to
+break: renaming a heading shows nothing in the edited document about who points
+at it. Its first run found one — the server's authentication summary still sent
+readers to `TomLoginFailure` in its own `little_things` summary after the enum
+had moved to the kernel. A fragment may name a heading's slug or an explicit
+`<a id="…">` / `<a name="…">`, which is how a document names a place no heading
+marks; a target that is not on disk is left to `check_doc_links`, so one broken
+link is never reported twice. `--self-test` plants each kind in memory and
+misspells one real cross-document link, so a pattern that stopped matching the
+corpus fails rather than reading as clean.
 
 Documents drift from their contents whenever a section is added without the
 list being touched, so the check is worth running after editing any document
@@ -1978,8 +1991,7 @@ fault, because `doc/` and `README.md` are what a consumer reads and
 Anchors are deliberately not checked here — whether a heading exists is
 `check_doc_tocs`'s question, and answering it twice in two dialects of
 heading-slug is how two gates come to disagree. `check_doc_tocs` answers it for
-every link *within* a document, body links included, but not for a fragment
-into another document (`other.md#heading`), which neither gate checks today. Fenced blocks are skipped and
+every link, within a document and into another one (`other.md#heading`). Fenced blocks are skipped and
 inline code spans blanked, which is correctness rather than tidiness in both
 directions: a naive scan reads `operator [](Object? key)` in every
 `api_summary_*.md` as a link, and *rewrites* the template inside a ` ```markdown `

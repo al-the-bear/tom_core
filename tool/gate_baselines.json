@@ -119,8 +119,8 @@
   },
   "check_doc_tocs": {
    "faults": 0,
-   "measured": "2026-09-07",
-   "note": "Zero is the steady state. The gate now covers every in-document anchor, not only the ones a table of contents uses: check_doc_links accepts any #fragment and names this gate as the one that decides whether the heading exists, so a [\u00a710](#stale-anchor) in running prose is this gate's fault to report. 253 documents are scanned for that; 117 of them carry a table of contents and are additionally held to listing every ## section, in document order. The four faults are exercised by planting each in a real document and requiring it to fire."
+   "measured": "2026-10-08",
+   "note": "Zero is the steady state. The gate covers every anchor a document links to: within itself (a [\u00a710](#stale-anchor) in running prose, not only contents entries -- check_doc_links accepts any #fragment and names this gate as the one that decides) and, since 2026-10-08, into another document (CROSS: other.md#fragment, resolved to the target's heading slugs plus its explicit <a id>/<a name> anchors). CROSS opened at one real fault, repaired rather than baselined: the server's authentication summary linked TomLoginFailure in its own little_things summary after the enum had moved to the kernel's security summary. A target not on disk is left to check_doc_links (DEAD). 274 documents are scanned; 128 carry a table of contents and are additionally held to listing every ## section, in document order. --self-test plants each CROSS case in memory and misspells one real cross-document link."
   },
   "check_downstream_consumers": {
    "faults": 0,

@@ -68,13 +68,13 @@ carried the defect, so the count grew by one table with every new project.
     one had an anchor it could have pointed at, so turning them into links
     would have meant inventing thirty-four targets.
 
-**What is not checked, and why.** Anchors. ``doc/foo.md#some-heading`` is
-accepted whenever ``doc/foo.md`` exists. [check_doc_tocs] owns the heading-slug
-rule, but it applies it only to links *within* a document, so a fragment into
-another document is checked by neither gate. Adding it here would mean a second
-dialect of heading-slug, which is how two gates come to disagree; the check
-belongs in [check_doc_tocs], reusing its ``anchor``. Likewise external URLs: a
-checker that reaches the network is a checker that fails when the network does.
+**What is not checked here, and why.** Anchors. ``doc/foo.md#some-heading`` is
+accepted whenever ``doc/foo.md`` exists, because [check_doc_tocs] owns the
+heading-slug rule and checks every fragment against it -- within a document
+(``DANGLING``) and into another (``CROSS``). Checking fragments here as well
+would mean a second dialect of heading-slug, which is how two gates come to
+disagree. External URLs are not checked either: a checker that reaches the
+network is a checker that fails when the network does.
 
 **Code is not prose.** Fenced blocks are skipped entirely and inline code spans
 are blanked before scanning, which is not tidiness but correctness in both
