@@ -12,7 +12,12 @@ so it can gate a build.
 Three faults are reported:
 
 ``AILINK``
-    A shipped file naming a path under ``_ai/``.
+    A shipped file naming a path under ``_ai/``, or one of the mount's own
+    directories written without it -- ``completion/README.md``,
+    ``quests/tom_core/...``. The bare form is the one citations actually take:
+    it reads like a folder beside the file it appears in, which is what makes
+    it hard to notice, and ``README.md`` beneath it is a name this repository
+    also has, so ``AINAME`` cannot see it.
 ``AINAME``
     A shipped file naming, by bare filename, a document that exists under
     ``_ai/quests/`` and nowhere in this repository -- ``deferred.tom_core.md``,
@@ -56,15 +61,15 @@ the package is not unreachable, whichever copy the author meant.
 workspace with a package: every ``.dart`` and ``.md`` file in the repository,
 ``CHANGELOG.md`` included -- it ships, and a reader following a changelog entry
 to a document it cannot open is stranded as surely as one following ``doc/``.
-Three neighbours are out of scope, because ``_ai/`` is reachable for their
-readers or because they do not ship:
+``test/`` is in scope too: a checkout of ``tom_ai/core`` carries its tests, and
+the reader of a test comment is as likely to hold the code without the mount as
+the reader of ``doc/``. Two neighbours are out of scope, because ``_ai/`` is
+reachable for their readers or because they do not ship:
 
 ``_copilot_guidelines/``
     Development documentation whose audience is the agent working in this
     workspace, where the ``_ai`` mount is present. Citing a quest todo file from
     a refactoring guideline is the correct thing to do.
-``test/``
-    A test's reader is running it inside the workspace.
 ``tool/``
     A checker that reads the completion documents has to name what it reads.
 
@@ -74,9 +79,17 @@ is scanned.
 
 **One ``_ai/`` path is not a citation.** ``_ai/trail/`` is where the Tom VS Code
 extension writes its per-quest prompt trail in *whichever* workspace it runs
-in, the reader's included; the agent models that mirror its layout name it the
-way code names any runtime directory. It is exempt by prefix, and nothing else
-under ``_ai/`` is.
+in, the reader's included; ``tom_core_agentic`` reads and writes it, and names
+it the way code names any runtime directory -- to describe its own behaviour,
+not to send a reader elsewhere for a reason. That is the whole distinction
+between a citation and a path an implementation operates on, and it is drawn
+here, by prefix, once: nothing else under ``_ai/`` is exempt.
+
+**Every package runs this for itself.** Each package under ``tom_ai/core``
+carries ``test/ai_citation_test.dart``, which runs this checker scoped to that
+package through ``tool/package_gate.dart``. The rule and its one exemption
+live here; the package members only make the failure appear in the suite of
+the package that introduced it.
 """
 
 from __future__ import annotations
@@ -93,9 +106,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 QUESTS = REPO_ROOT.parent.parent / "_ai" / "quests"
 
 #: A path into the AI-state layer, in the shapes files actually write it: bare
-#: (``_ai/quests/...``) or workspace-qualified. The lookbehind keeps ``_ai``
-#: from matching a longer identifier that merely ends that way.
-AI_PATH = re.compile(r"(?<![\w/])_ai/[\w./{}-]+")
+#: (``_ai/quests/...``), workspace-qualified, or starting at one of the mount's
+#: own directories (``completion/README.md``). The lookbehind keeps a segment
+#: from matching a longer identifier that merely ends that way --
+#: ``tom_core_completion/`` is not a citation.
+AI_PATH = re.compile(r"(?<![\w/])(?:_ai|quests|completion)/[\w./{}-]+")
 
 #: Runtime directories under ``_ai/`` that exist in every Tom workspace, the
 #: reader's included -- see the module docstring.
@@ -108,7 +123,6 @@ DOCUMENT_NAME = re.compile(r"(?<![\w/.-])[\w.-]+\.(?:md|yaml)\b")
 #: Directories that never ship or are out of scope; see the module docstring.
 EXCLUDED_DIRS = {
     "_copilot_guidelines",
-    "test",
     "tool",
     ".dart_tool",
     "build",

@@ -2,6 +2,13 @@
 
 ### Tests
 
+- **`test/ai_citation_test.dart`** fails the suite when an artefact of the
+  package cites a document in the AI-state mount. It runs
+  `tom_ai/core/tool/check_doc_ai_citations.py` over the package through
+  `tom_ai/core/tool/package_gate.dart`; the rule and its one exemption (the
+  runtime `_ai/trail/` directory) are stated in the checker alone.
+  `test/test_comment_hygiene_test.dart` no longer carries its own copy of
+  the rule.
 - **`test/formatting_test.dart` delegates to the shared guard.** The walk,
   the generated-file exclusion, the coverage floor and the choice of
   formatter moved to `tom_ai/core/tool/package_format_guard.dart`, which
@@ -1122,7 +1129,7 @@
 
 - **No artefact may cite a document in the AI-state mount
   (tcincb163).** `test/test_comment_hygiene_test.dart` gains a package-wide
-  check for it. Two test comments used to cite `completion/README.md` §6 for
+  check for it. Two test comments used to cite section 6 of the completion corpus's contract for
   their rationale; that file exists, but only in `tom_agent_state`, a different
   repository symlinked into the workspace — so a reader holding these sources
   and not that layer could not follow the reference at all. It was the least
@@ -2338,7 +2345,7 @@
   fails on a comment that records the phase of its own authorship or cites a
   numbered section of another document. It is deliberately scoped to that list
   rather than banning the section sign package-wide: `codespecs_mapping.md` and
-  `completion/README.md` are cited by number elsewhere and both exist.
+  the completion corpus's contract are cited by number elsewhere and both exist.
 
   The relocation is what makes the positive half of the guard work. Both
   negative checks pass against a file whose comments have simply been deleted,

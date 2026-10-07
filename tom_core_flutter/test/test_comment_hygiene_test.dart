@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// stale test comment costs more than stale prose elsewhere: there is nothing
 /// to contradict it, because the test underneath is passing.
 ///
-/// Three ways of going stale are specific enough to be checked for
+/// Two ways of going stale are specific enough to be checked for
 /// mechanically, and each has a check below.
 ///
 /// A comment can record the phase of its own authorship — that the test failed
@@ -26,32 +26,10 @@ import 'package:flutter_test/flutter_test.dart';
 /// than being a package-wide ban: `codespecs_mapping.md` is cited by number
 /// elsewhere in the package and does exist.
 ///
-/// The third is not about a comment going stale but about where it sends the
-/// reader, and it is package-wide rather than scoped to a file list. **No
-/// artefact of this package may cite a document in the AI-state mount.** That
-/// mount is a different repository — `tom_agent_state`, symlinked into the
-/// workspace — so a reader holding these sources and not that layer cannot
-/// follow such a reference at all. The citations that prompted this were the worst shape
-/// for it: bare relative-looking paths that read like a sibling file and were
-/// quest documents four directories away in another repository. The literal is
-/// not written here, for the reason the fragment-assembly note below gives —
-/// this file is scanned too, and an example spelled out would be an offence
-/// against the rule it illustrates.
-///
-/// Citing *another package in the code tree* is fine and stays that way. The
-/// distinction is whether the target ships with a checkout of the code, which
-/// is what a reader actually cares about: `codespecs_mapping.md` lives in
-/// `tom_core_codespecs/doc/` and comes with the code, and three artefacts
-/// here cite it deliberately.
-///
-/// The rule is about a *citation*, and that is why this guard is a member of
-/// this package's suite rather than a check over `tom_ai/core`. A package whose
-/// code reads or writes that mount at runtime names those paths to describe its
-/// own behaviour, not to send a reader elsewhere for a reason —
-/// `tom_core_agentic` stores prompt trails under one — and lifting this check
-/// across the tree without that distinction would report three such files as
-/// defects. Nothing in this package operates on the mount, so the two questions
-/// do not have to be told apart here.
+/// A related rule — no artefact may cite a document in the AI-state mount — is
+/// about where a reader is sent rather than about test comments, and binds
+/// every package alike, so it is held by `test/ai_citation_test.dart` through
+/// the checker every package under `tom_ai/core` shares.
 ///
 /// Both checks are satisfiable by deleting the prose they police — a comment
 /// that explains nothing narrates no stale history either — so each guarded
@@ -91,68 +69,6 @@ void main() {
     '§'
     r'\s*\d',
   );
-
-  /// Path segments that exist only in the AI-state repository.
-  ///
-  /// Assembled from fragments for the same reason as the two patterns above:
-  /// this file names the rule, so spelled literally each needle would match the
-  /// sentence describing it and the guard would report itself.
-  ///
-  /// Three segments rather than one, because the citations that prompted the
-  /// rule did not write the mount at all. The first catches an honest workspace
-  /// path; the other two catch the bare relative form, which is the shape that
-  /// actually appeared and the harder one to notice — it looks like a file
-  /// beside the one you are reading.
-  final questStatePaths = <RegExp>[
-    // Anchored so it cannot fire on `tom_ai/`, which is the code tree and is
-    // explicitly allowed. Written as a plain substring it matched three files
-    // that cite this repository's own tooling — exactly the reference the rule
-    // is careful to permit.
-    RegExp(
-      r'(?<![A-Za-z0-9])'
-      '_a'
-      r'i/',
-    ),
-    RegExp(
-      r'(?<![A-Za-z0-9])'
-      'complet'
-      r'ion/',
-    ),
-    RegExp(
-      r'(?<![A-Za-z0-9])'
-      'que'
-      r'sts/',
-    ),
-  ];
-
-  /// Every authored artefact of this package.
-  ///
-  /// Package-wide rather than a file list, because the rule is about where a
-  /// reader is sent and that is not a property of any particular file. Two of
-  /// the three artefacts citing the sibling specification are published
-  /// documentation rather than tests, which is what settled the scope: a rule
-  /// that only bound test comments would leave a module readme free to send a
-  /// reader into a repository they do not have.
-  ///
-  /// Generated mirrors are skipped. A generator that emitted such a path would
-  /// be the generator's defect, and failing here would point at the wrong
-  /// package.
-  List<File> authoredFiles() {
-    final files = <File>[];
-    for (final directory in const ['lib', 'test', 'example', 'doc']) {
-      final root = Directory(directory);
-      if (!root.existsSync()) continue;
-      files.addAll(
-        root
-            .listSync(recursive: true)
-            .whereType<File>()
-            .where((f) => f.path.endsWith('.dart') || f.path.endsWith('.md'))
-            .where((f) => !f.path.endsWith('.reflection.dart')),
-      );
-    }
-    files.sort((a, b) => a.path.compareTo(b.path));
-    return files;
-  }
 
   /// Per guarded module file, the claims its comments must still make, mapped
   /// to what a reader loses when one goes missing.
@@ -230,44 +146,6 @@ void main() {
                 'passed rather than what the test pins',
       ];
       expect(offenders, isEmpty);
-    });
-
-    test('the package walk reaches its own sources', () {
-      // The check below passes when it finds nothing, so it passes over a walk
-      // that found nothing. This is what makes a green result mean the files
-      // were read.
-      final found = authoredFiles();
-      expect(found, hasLength(greaterThan(40)));
-      for (final directory in const ['lib/', 'test/', 'doc/']) {
-        expect(
-          found.where((f) => f.path.startsWith(directory)),
-          isNotEmpty,
-          reason: 'the walk reached nothing under $directory',
-        );
-      }
-    });
-
-    test('no artefact cites a document in the AI-state repository', () {
-      final offenders = <String>[];
-      for (final file in authoredFiles()) {
-        final source = file.readAsStringSync();
-        for (final needle in questStatePaths) {
-          final hit = needle.firstMatch(source);
-          if (hit != null) {
-            offenders.add('${file.path} names `${hit.group(0)}`');
-          }
-        }
-      }
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            '`_ai` is a different repository, mounted into the workspace as a '
-            'symlink, so a reader who has these sources and not the AI-state '
-            'layer cannot follow such a reference at all. State the reason '
-            'inline instead. Citing another package in the code tree is fine — '
-            'that ships with a checkout:\n${offenders.join('\n')}',
-      );
     });
 
     test('no comment cites a numbered section of another document', () {

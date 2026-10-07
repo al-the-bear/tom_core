@@ -302,6 +302,7 @@ it and start eight test suites.
 | [`tool/check_doc_links.py`](tool/check_doc_links.py) | Finds markdown links that open nothing, references that point at nothing, and links from a package's documentation into `_copilot_guidelines/` |
 | [`tool/check_doc_artifacts.py`](tool/check_doc_artifacts.py) | Finds machine-generated artifacts tracked under a package's `doc/` |
 | [`tool/check_doc_ai_citations.py`](tool/check_doc_ai_citations.py) | Finds shipped files citing a document under `_ai/` — by path or by bare name — which no reader of the package can open |
+| [`tool/package_gate.dart`](tool/package_gate.dart) | Runs a `tool/` checker scoped to one package from inside that package's suite, and the Python launcher the suites share |
 | [`tool/check_reflection_artifacts.py`](tool/check_reflection_artifacts.py) | Analyzes the checked-in reflection artifacts, which the analysis options exclude, and fails on a name that no longer resolves |
 | [`tool/report_crosslib_refs.py`](tool/report_crosslib_refs.py) | **Reports** (never gates) dartdoc links naming a repo type the writing library cannot see |
 
@@ -1971,7 +1972,9 @@ document deferring its authority to a file its reader cannot obtain, which
 leaves the contract effectively unstated.
 
 Two faults, for the two shapes a citation takes. `AILINK` is a path under
-`_ai/`. `AINAME` is the shape a citation takes once its author knows the
+`_ai/`, or one starting at one of the mount's own directories (`quests`,
+`completion`) without it — the form that reads like a folder beside the file it
+appears in, and whose final name, a `README.md`, this repository also has. `AINAME` is the shape a citation takes once its author knows the
 document well enough to stop saying where it lives: a bare filename — a quest's
 deferral note, or a completion document's name. Three of those in one
 package's library and docs had been written by three different passes, and one
@@ -1989,13 +1992,23 @@ on the citation rather than on the target is what makes the answer stable.
 
 Every `.dart` and `.md` file is in scope, `CHANGELOG.md` included — it ships,
 and a reader following an entry to a document they cannot open is stranded as
-surely as one following `doc/`. `_copilot_guidelines/`, `test/` and `tool/` are
-out of scope because their readers work inside this workspace, where the mount
-is present; generated Dart is skipped because its comments are copies of
-scanned source. One `_ai/` path is not a citation: `_ai/trail/` is where the Tom
-extension writes its prompt trail in whichever workspace it runs in, and the
-agent models that mirror that layout name it as code names any runtime
-directory.
+surely as one following `doc/`. So is `test/`: a checkout of `tom_ai/core`
+carries its tests, and their reader is as likely to lack the mount.
+`_copilot_guidelines/` and `tool/` are out of scope because their readers work
+inside this workspace, where the mount is present; generated Dart is skipped
+because its comments are copies of scanned source.
+
+One `_ai/` path is not a citation, and this is the distinction between citing
+the mount and operating on it: `_ai/trail/` is where the Tom extension writes
+its prompt trail in whichever workspace it runs in, `tom_core_agentic` reads and
+writes it, and its code names it to describe its own behaviour rather than to
+send a reader elsewhere. It is exempt by prefix, here and nowhere else.
+
+Every framework package runs the rule in its own suite as well:
+`test/ai_citation_test.dart` runs this checker scoped to that package through
+`tool/package_gate.dart`, so a citation fails the suite of the package it was
+written in. The packages carry no copy of the rule — it and its exemption are
+stated in the checker alone.
 
 ```bash
 python3 tool/check_open_ends.py          # the report
@@ -2003,7 +2016,7 @@ python3 tool/check_open_ends.py --quiet  # findings only
 ```
 
 Finds completion documents that never say what is still open.
-`completion/README.md` requires every document to close with a
+The completion corpus's contract requires every document to close with a
 `### What is still open` subsection, because the section reads as a claim
 either way: present means the unit was assessed and this is the result, absent
 means it was *not* assessed — which is not the same as nothing being open, and

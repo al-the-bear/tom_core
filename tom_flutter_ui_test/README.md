@@ -103,6 +103,7 @@ overflow gate build on. Everything else is a gate, and this is all of it:
 | `resizable_box_test.dart` | 1:1 drag deltas on the right / bottom / corner handles, the 100 px minimum clamps, and first-drag intrinsic-height seeding. |
 | `widget_demos_logic_test.dart` | `DemoAuthorizationAdapter.resolveAuth`'s exact-then-parent-walk resolution, and `createPlaceholderBytes` as a pure PNG generator. |
 | `widget_test.dart` | The app builds and the tab shell renders. |
+| `ai_citation_test.dart` | No artefact of the package cites a document in the AI-state mount — `tool/check_doc_ai_citations.py`, run over this package. |
 | `formatting_test.dart` | Every file the package authors is `dart format`-clean, through the guard shared by every package under `tom_ai/core`. |
 | `debug_shrink_test.dart` | Panel 4 of `size_constraints` from 800 px down to 300 px: the fixed components sit at their preferred size while there is room, every component shrinks and none grows, none goes below its minimum, all pin to their minimum below the 328 px floor, and the only exception on the way is the by-design overflow there. |
 
@@ -139,7 +140,7 @@ the striped banner in `test/screenshots/<demo>.png`.
 | `lib/forms_demos/` | Form-framework demos. |
 | `lib/common/` | Shared `DemoTile` / `DemoScaffold`. |
 | `doc/` | `demo_catalogue.md` (navigation map of every demo) plus developer notes on widget resource parameters and discovery. |
-| `test/` | The fourteen gating suites inventoried under [Tests](#tests), plus the shared demo mount and the on-demand screenshot harness, neither of which the runner picks up. |
+| `test/` | The fifteen gating suites inventoried under [Tests](#tests), plus the shared demo mount and the on-demand screenshot harness, neither of which the runner picks up. |
 
 ## Dependencies
 

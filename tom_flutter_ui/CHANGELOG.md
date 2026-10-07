@@ -2,6 +2,12 @@
 
 ### Tests
 
+- **`test/ai_citation_test.dart`** fails the suite when an artefact of the
+  package cites a document in the AI-state mount. It runs
+  `tom_ai/core/tool/check_doc_ai_citations.py` over the package through
+  `tom_ai/core/tool/package_gate.dart`; the rule and its one exemption (the
+  runtime `_ai/trail/` directory) are stated in the checker alone.
+  `test/repo_doc_gates_test.dart` starts Python through the same helper.
 - **`test/formatting_test.dart`** fails the suite when a Dart file the
   package authors is not `dart format`-clean. It states the package's file
   floor, landmark directories and generated output, and delegates the

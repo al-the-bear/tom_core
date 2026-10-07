@@ -87,7 +87,7 @@ flutter test
 
 <!-- test-inventory:counts-begin -->
 
-`flutter test` runs **67** gating suites, every one of them a `*_test.dart`
+`flutter test` runs **68** gating suites, every one of them a `*_test.dart`
 file under [`test/`](test/):
 
 | Kind | Suites | What they cover |
@@ -99,7 +99,7 @@ file under [`test/`](test/):
 | Behaviour matrices | 2 | One case per cell of a matrix documented elsewhere, so the table and the behaviour cannot drift apart |
 | Widget-family coverage | 1 | The list-form widgets driven directly rather than through a demo screen |
 | Golden screenshots | 3 | Rendered pixels against the committed baselines under `test/goldens/` — the five numbered demos, the Examples section, and the ≥1600 px bordered band. These are why `test/fonts/` is checked in |
-| Source invariants | 5 | That every file the package authors is `dart format`-clean, that the committed `lib/main.reflection.dart` still covers the sources it mirrors, that every `formId` / `listId` literal in `lib/` is a usable scope id, and that the demo catalogue and this README group the demos exactly as the Demos tab does |
+| Source invariants | 6 | That every file the package authors is `dart format`-clean and cites nothing in the AI-state mount, that the committed `lib/main.reflection.dart` still covers the sources it mirrors, that every `formId` / `listId` literal in `lib/` is a usable scope id, and that the demo catalogue and this README group the demos exactly as the Demos tab does |
 | Unit tests | 8 | Arithmetic and mapping, with no widget tree |
 
 <!-- test-inventory:counts-end -->
@@ -107,7 +107,7 @@ file under [`test/`](test/):
 Those figures are gated by `tom_ai/core/tool/check_test_inventories.py`, which
 holds every kind, their sum, and the total against the directory itself — so a
 suite added or deleted without touching this table fails the build. The table
-names no filenames on purpose: sixty-seven of them would be the longest section
+names no filenames on purpose: sixty-eight of them would be the longest section
 of this README and still a worse list than `test/`, which is exact by
 construction. What the counts buy is the one thing the directory cannot say
 about itself, which is that its population is the one somebody wrote down.

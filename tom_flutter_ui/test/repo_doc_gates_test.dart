@@ -47,6 +47,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../tool/package_gate.dart';
+
 /// The repository root. Tests run with the package directory as the working
 /// directory, and `tool/` sits one level above it.
 final Directory _repoRoot = Directory('..');
@@ -67,16 +69,6 @@ List<String> _discoverGates() =>
         .toList()
       ..sort();
 
-/// The launchers that start Python 3, in the order they are tried.
-///
-/// `python3` everywhere except Windows, where the standard entry point is the
-/// `py` launcher. Both are tried rather than branched on [Platform] so that a
-/// machine with only one of them works without this file knowing which.
-const _pythonLaunchers = <List<String>>[
-  ['python3'],
-  ['py', '-3'],
-];
-
 /// The gates that carry a `--self-test`, found by reading them.
 ///
 /// Discovered rather than listed for the same reason the gate list is: a
@@ -93,36 +85,9 @@ List<String> _selfTestingGates() => _discoverGates()
     )
     .toList();
 
-/// Runs a Python script under `tool/` and returns its result.
-///
-/// Throws rather than skips when Python is absent. A skip would mean the gates
-/// stop being enforced on precisely the machine where nobody notices, which is
-/// the failure this file exists to end; and a repository whose documentation
-/// verification *is* a folder of Python scripts already requires Python to work
-/// on.
-ProcessResult _runPython(List<String> arguments) {
-  final failures = <String>[];
-  for (final launcher in _pythonLaunchers) {
-    try {
-      return Process.runSync(launcher.first, [
-        ...launcher.skip(1),
-        ...arguments,
-      ], workingDirectory: _repoRoot.path);
-    } on ProcessException catch (e) {
-      failures.add('${launcher.join(' ')}: ${e.message}');
-    }
-  }
-  throw StateError(
-    'no Python 3 launcher worked, so the documentation gates could not run. '
-    'Install Python 3 — the checkers in tool/ are the repository\'s '
-    'documentation verification and every one of them is a Python script.\n'
-    '${failures.join('\n')}',
-  );
-}
-
 /// Runs `tool/check_gates.py --json` and returns its parsed report.
 Map<String, dynamic> _runGates() {
-  final result = _runPython(['tool/check_gates.py', '--json']);
+  final result = runPython(['tool/check_gates.py', '--json']);
   // Exit 1 is "a gate failed", which is a result, not an error. Anything
   // else means the runner itself did not get to speak.
   if (result.exitCode > 1) {
@@ -224,7 +189,7 @@ void main() {
 
     for (final gate in selfTesting) {
       test(gate, timeout: slow, () {
-        final result = _runPython(['tool/$gate.py', '--self-test']);
+        final result = runPython(['tool/$gate.py', '--self-test']);
         expect(
           result.exitCode,
           0,
@@ -241,7 +206,7 @@ void main() {
     // reported as a timeout, with everything it started killed, and not as a
     // gate that forgot its count line.
     test('check_gates (the runner itself)', timeout: slow, () {
-      final result = _runPython(['tool/check_gates.py', '--self-test']);
+      final result = runPython(['tool/check_gates.py', '--self-test']);
       expect(
         result.exitCode,
         0,
