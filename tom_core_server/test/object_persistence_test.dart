@@ -283,6 +283,40 @@ void main() {
       expect(repo.events, ['postLoad:3']);
     });
 
+    test(
+      'a findById override sees only findById: every read is its own seam',
+      () async {
+        // The documented contract, pinned: there is no shared post-load hook, so
+        // a deployment that must see every loaded row overrides each read method.
+        // Were the read paths ever routed through one overridable funnel, this
+        // test would start seeing `postLoad` events and the documentation's
+        // instruction to repeat the override would be wrong.
+        scripted.answers.add([
+          FixtureTaskRecord()
+            ..id = 1
+            ..title = 'one',
+          FixtureTaskRecord()
+            ..id = 2
+            ..title = 'two',
+        ]);
+        scripted.answers.add([
+          FixtureTaskRecord()
+            ..id = 3
+            ..title = 'three',
+        ]);
+
+        final repo = _HookedTaskRepository();
+        final all = await repo.findAll();
+        final found = await repo.findByQuerySentence('find by title = :title', {
+          'title': 'three',
+        });
+
+        expect(all.map((r) => r.id), [1, 2]);
+        expect(found.map((r) => r.id), [3]);
+        expect(repo.events, isEmpty);
+      },
+    );
+
     test('the framework waits for an override that suspends', () async {
       // The withdrawn callbacks were `void Function(T)`: the repository could
       // not have waited for one, so a hook that did any asynchronous work

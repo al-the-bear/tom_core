@@ -450,11 +450,19 @@ on the write path, once per save. That is right for a hook that decorates a
 materialised row and wrong for one that counts reads; if you need to tell the
 two apart, do the counting in a separate method the read callers use.
 
-**The read side has four entry points, not one.** `findById`, `findAll`,
-`findAllById` and the query-sentence / query-builder finds each materialise rows
-independently, and the masking funnel they share is private. A hook that must
-see *every* loaded row is therefore repeated per method rather than declared
-once.
+**Every read method is its own seam.** Six public methods materialise rows
+independently — `findById`, `findAll`, `findAllById`, `findByQuerySentence`,
+`findByQuery` and `executeQueryString` — and there is no shared post-load hook
+to override instead, by design: the funnel they share applies column masking
+and is private. A hook that must see *every* loaded row is therefore an override
+of each of the six, and a read method added to a subclass later needs one too.
+A `findById` override does not see rows read by `findAll`;
+`test/object_persistence_test.dart` asserts exactly that.
+
+The write side has one seam, because the other writers route through it:
+`saveAll` calls `save` per entity, and `saveFile` and `clearFile` end in `save`.
+`openFile` and `describeFile` read the row through `findById`, so they reach a
+`findById` override as well.
 
 ## Query Sentences
 
