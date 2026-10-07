@@ -1294,6 +1294,10 @@ class FixtureRequiredConfig extends TomBaseServerConfiguration {
   /// required" from "reported because it is absent".
   String label = '';
 
+  /// Recommended: its absence is warned about at startup, never refused.
+  @TomRecommendedField()
+  String region = '';
+
   /// Builds the configuration from [args], through the base's merge.
   FixtureRequiredConfig(super.args);
 

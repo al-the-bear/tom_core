@@ -2,6 +2,14 @@
 
 ### Added
 
+- **A server warns about its configuration at startup.** One warning lists
+  every key in the configuration resources that names no field of the
+  configuration class — where a misspelled setting would otherwise be dropped in
+  silence — and one lists every `@TomRecommendedField` setting no source
+  supplied. Only the resources are checked for surplus keys; the environment,
+  `.env` and command line keep their tolerance. `settingWarnings` is the check
+  on its own.
+
 - **`TomPageRequest.stableUnder(key)`** returns the request with [key] appended
   as its last ascending sort term when it cuts a window and does not already
   sort on the key. It is the rule the repository applies to every paged read,

@@ -964,11 +964,10 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// `path`, `HOME`, `home` and eighty or so of their neighbours. A strict
   /// converter would refuse the first of them and no server would start.
   ///
-  /// The cost is the one strictness exists to remove: a key misspelled in a
-  /// configuration file is dropped in silence and the field keeps its default.
-  /// Catching *that* needs the check applied to the configuration layer alone,
-  /// before the environment is merged over it — a narrower question than this
-  /// method is in a position to ask.
+  /// So strictness is asked of the configuration layer alone, before the
+  /// environment is merged over it: [settingWarnings] names every key in the
+  /// configuration resources that matches no field, which is where a
+  /// misspelled setting lives.
   void setValues(Map<String, Object?> values);
 
   /// Throws when a field marked [TomRequiredField] was supplied by no source.
@@ -1030,6 +1029,53 @@ utj3flRQDLaDAl91lySpAjUp9aM8
     );
   }
 
+  /// The warnings this configuration owes its operator at startup, given the
+  /// merged [values] and the [configurationFile] layer they were merged from
+  /// (the configuration resources, before the environment, a `.env` file and
+  /// the command line were laid over them).
+  ///
+  /// At most two, each naming everything it is about at once:
+  ///
+  /// - **Surplus keys.** Every top-level key of [configurationFile] that names
+  ///   no field of this class. Only that layer is checked: the file is the
+  ///   deployment's own, while the process environment brings `PATH`, `HOME`
+  ///   and dozens more that no configuration declares. A surplus key is not an
+  ///   error — the resources are also read by code other than this class
+  ///   (`app.title`, say) — but a misspelled setting is one too, and it would
+  ///   otherwise be dropped in silence with the field left at its default.
+  /// - **Recommended settings no source supplied** — the fields marked
+  ///   [TomRecommendedField] that [values] carries no value for. A field
+  ///   marked [TomRequiredField] refuses the start instead; see
+  ///   [assertRequiredSettings].
+  ///
+  /// Empty for a configuration with no mirrors, for the reason
+  /// [assertRequiredSettings] gives.
+  List<String> settingWarnings(
+    Map<String, Object?> values,
+    Map<String, dynamic> configurationFile,
+  ) {
+    if (!tomReflectionInfo.canReflect(this)) return const [];
+    final warnings = <String>[];
+    final surplus = tomReflectionInfo.unknownFields(this, configurationFile);
+    if (surplus.isNotEmpty) {
+      warnings.add(
+        "The configuration resources name ${surplus.length == 1 ? 'a key' : '${surplus.length} keys'} "
+        "no field of $runtimeType declares: ${surplus.join(', ')}. "
+        "${surplus.length == 1 ? 'It is' : 'They are'} not bound to the "
+        "configuration; check the spelling of any that was meant as a setting.",
+      );
+    }
+    final missing = tomReflectionInfo.missingRecommendedFields(this, values);
+    if (missing.isNotEmpty) {
+      warnings.add(
+        "No source supplied the recommended "
+        "${missing.length == 1 ? 'setting' : 'settings'} ${missing.join(', ')} "
+        "for $runtimeType; ${missing.length == 1 ? 'its default is' : 'their defaults are'} in use.",
+      );
+    }
+    return warnings;
+  }
+
   /// Creates the configuration, resolving and applying values from all sources
   /// (see [getDefaultValues]) for the given [args].
   ///
@@ -1060,7 +1106,10 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// A field an application marked [TomRequiredField] is checked here too, by
   /// [assertRequiredSettings], with the merged map and before the instance
   /// registers itself: a configuration that refuses to start must not become
-  /// the isolate's active one on its way out.
+  /// the isolate's active one on its way out. The softer findings —
+  /// configuration-file keys no field declares, and [TomRecommendedField]
+  /// settings no source supplied — are logged as warnings by
+  /// [settingWarnings], and the start goes on.
   ///
   /// It applies the kernel's protection settings from [args] too
   /// ([TomResourceKeyProtection.applyArguments]), so `tom.protection=false` or
@@ -1077,6 +1126,12 @@ utj3flRQDLaDAl91lySpAjUp9aM8
     // Before the instance registers itself below: a configuration that refuses
     // to start must not become the isolate's active one on its way out.
     assertRequiredSettings(values);
+    for (final warning in settingWarnings(
+      values,
+      TomServerConfigResourceProvider.getServerConfig().resources,
+    )) {
+      tomLog.warn(warning);
+    }
     this.args = args;
     _activeConfiguration = this;
     TomRemoteLogMessage.globalSettingSenderIdResolver = () => tomAppId;

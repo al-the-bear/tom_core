@@ -122,7 +122,8 @@ Applies the kernel's protection settings from `args`
 (`TomResourceKeyProtection.applyArguments` — `tom.protection…=true|false`;
 throws `TomProtectionSettingException` for a misspelt setting), then calls
 `setValues(getDefaultValues(args))`, then `assertRequiredSettings` on the same
-merged map, then assigns `args` to the field of the same name. The order matters
+merged map, then logs each of `settingWarnings` as a warning, then assigns
+`args` to the field of the same name. The order matters
 in every direction: `setValues` runs first so a subclass's constructor body sees
 resolved fields, the required-setting check runs before the instance registers
 itself as the isolate's active configuration, and the `args` assignment runs
@@ -217,6 +218,7 @@ through the ordinary precedence chain — OS environment, `.env`, or command lin
 | `setValues` | `void setValues(Map<String, Object?> values)` | Assigns the merged configuration `values` onto this instance (implemented by generated reflection for the concrete subclass). |
 | `usesDevelopmentTlsMaterial` | `bool usesDevelopmentTlsMaterial()` | Whether **either** half of the TLS material is still the checked-in development pair. Either half, because the two fail differently: a default `privateKey` means the server authenticates itself with a key published in this repository; a default `certificateChain` beside an overridden key means the pair cannot match, so the bind fails. Compared against `developmentCertificateChain` / `developmentPrivateKey`, the very constants the fields default to, so the check cannot drift from what it checks. Says nothing about whether TLS is *served* — `noSsl` answers that — and `TomServer.warnOnDevelopmentTlsMaterial` puts the two questions together. |
 | `assertRequiredSettings` | `void assertRequiredSettings(Map<String, Object?> values)` | Throws `TomConfigurationException` (`configuration.base_configuration.required_settings_missing`) naming every field marked `@TomRequiredField` that `values` supplies no value for. Called by the constructor with the merged map — the only place the question can be asked, since the answer is "did *any* source name this setting" and no single source knows. A key present with `null` counts as missing (a `.env` line `DB_URL=`); an explicitly empty `String` counts as supplied (`dbUrl=` on the command line). Nothing on this class is marked: every field here has a documented default, and a field whose constructor falls back is not required. A configuration with no mirrors — a hand-written `setValues` — is not checked, because the annotation is read through them. Public, so a configuration composed some other way can ask the same question of its own map. |
+| `settingWarnings` | `List<String> settingWarnings(Map<String, Object?> values, Map<String, dynamic> configurationFile)` | The startup warnings this configuration owes its operator, at most two: every top-level key of `configurationFile` (the configuration resources, before the other layers are merged over them) that names no field of the class, and every field marked `@TomRecommendedField` that `values` supplies no value for. Only the resources are checked for surplus keys, because the merged map carries the process environment. Logged by the constructor with `tomLog.warn`; the start goes on. Empty for a configuration with no mirrors. |
 
 ### TomConfig&lt;T&gt;
 

@@ -12,7 +12,7 @@ resolve individual keys — obligatory (throws when absent) or with a default.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomBaseServerConfiguration` | Abstract configuration root: assembles the property sources, refuses to build when a field marked `@TomRequiredField` was supplied by no source, and installs the active config provider. |
+| `TomBaseServerConfiguration` | Abstract configuration root: assembles the property sources, refuses to build when a field marked `@TomRequiredField` was supplied by no source, warns about configuration-resource keys no field declares and about `@TomRecommendedField` settings no source supplied, and installs the active config provider. |
 | `TomServerConfigResourceProvider` | Holds the merged config map; `exists(key)` / `get(key)` back every `TomConfig` lookup. `get` is total — an unknown key resolves to the key string, a cleared one to `null` — so **gate on `exists`**: that is what tells "never mentioned" from "configured as nothing". |
 | `TomConfig<T>` | Resolves one key to `T`; `TomConfig(key)` is obligatory, `TomConfig.withDefault(key, value)` falls back. `get()` / `~config` read the value. The read is **eager**, so build one only after a provider is installed — building one before any exists is refused, naming the ordering rather than answering from an empty placeholder. |
 | `TomBaseServerConfiguration.usesDevelopmentTlsMaterial()` | Whether either half of the TLS material is still the pair committed to this repository. `TomServer.start` warns on it before every TLS bind; nothing refuses to start. |

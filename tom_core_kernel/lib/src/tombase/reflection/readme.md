@@ -20,6 +20,7 @@ fields from a map or JSON string, and read them back out — without
 | `TomReflector` | The reflection capability; annotate types with `@tomReflector` to make them reflectable. |
 | `TomReflectionInfo` | The converter: `createInstance`, `setValues`, `getValues`, `convertToJsonString`, `convertFromJsonString`, plus collection element-type resolution. |
 | `TomRequiredField` | A field annotation: a bound map must supply a value for the field. Read by `missingRequiredFields`; enforced by nobody. |
+| `TomRecommendedField` | A field annotation: a bound map should supply a value for the field. Read by `missingRecommendedFields`; a caller warns rather than refuses. |
 | `TomReflectorException` | Thrown when a type is not reflectable, a mirror lookup is ambiguous, or a value cannot be materialized onto a field. |
 
 Two globals are exported: `tomReflector` (the annotation) and
@@ -126,7 +127,9 @@ once. `missingRequiredFields` is its mirror image: the fields marked
 `@TomRequiredField` that the map supplies no value for. A value nobody supplied
 leaves the field at its initialiser, which reads exactly like a field nobody
 required, so the failure otherwise surfaces wherever that initialiser turns out
-to be wrong. Both report rather than throw, because the caller knows which
+to be wrong. `missingRecommendedFields` asks the same of the
+fields marked `@TomRecommendedField`, whose absence a caller warns about rather
+than refusing. All three report rather than throw, because the caller knows which
 document the map came from and this converter does not. A key present with
 `null` counts as missing — it names the field without giving it a value — while
 an explicitly empty `String` counts as supplied. `canReflect` is the predicate

@@ -1,5 +1,11 @@
 ## Unreleased
 
+### Added
+
+- **`@TomRecommendedField()` and `TomReflectionInfo.missingRecommendedFields`.**
+  The softer twin of `@TomRequiredField()`: a field a bound map should supply,
+  reported under the same rules, for a caller that warns rather than refuses.
+
 ### Fixed
 
 - **A `TomList<TomString>` now binds to a multi-select field.** `getValues()`

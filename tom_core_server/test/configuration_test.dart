@@ -83,6 +83,24 @@ Future<void> _withEnvFile(String contents, void Function() body) async {
 }
 
 /// Installs a fresh provider built from [resources] as the active source.
+/// Collects the warning lines a configuration logs while it is built.
+class _WarningLog extends TomLogOutput {
+  final List<String> lines = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    if (logLevel == TomLogLevel.warn) lines.add(convertToString(message));
+  }
+}
+
 void _install(Map<String, dynamic> resources) {
   TomServerConfigResourceProvider.setServerConfigProvider(
     TomServerConfigResourceProvider.from(resources),
@@ -1111,6 +1129,67 @@ void main() {
   // annotation says which settings a source has to name, and the merged map is
   // the only place that question can be answered: it asks whether *any* source
   // named it, and no single source knows.
+  // Strictness cannot sit where the layers are merged -- the process
+  // environment brings PATH and eighty neighbours -- so the configuration
+  // file is checked on its own, and only warned about: a key no field names
+  // may be a typo, or a value another consumer reads (`app.title`). A
+  // recommended setting nobody supplied is warned about too, where a
+  // required one refuses.
+  group('the warnings a configuration owes its operator', () {
+    setUpAll(initializeReflection);
+
+    test('names every configuration-file key no field declares, once', () {
+      _install({'dbUrl': 'x'});
+      final config = FixtureRequiredConfig([]);
+      final warnings = config.settingWarnings(
+        {'dbUrl': 'x', 'region': 'eu'},
+        {
+          'dbUrl': 'x',
+          'dburl': 'typo',
+          'app': {'title': 't'},
+          'region': 'eu',
+        },
+      );
+      expect(warnings, hasLength(1));
+      expect(warnings.single, contains('dburl, app'));
+      expect(warnings.single, contains('FixtureRequiredConfig'));
+    });
+
+    test('names every recommended setting no source supplied', () {
+      _install({'dbUrl': 'x'});
+      final config = FixtureRequiredConfig([]);
+      final warnings = config.settingWarnings({'dbUrl': 'x'}, {'dbUrl': 'x'});
+      expect(warnings, hasLength(1));
+      expect(warnings.single, contains('region'));
+    });
+
+    // The environment layer keeps its tolerance: a key that reached the
+    // merged map from anywhere but the configuration file is not a surplus.
+    test('says nothing about keys that came from another layer', () {
+      _install({'dbUrl': 'x'});
+      final config = FixtureRequiredConfig([]);
+      expect(
+        config.settingWarnings(
+          {'dbUrl': 'x', 'region': 'eu', 'PATH': '/bin', 'path': '/bin'},
+          {'dbUrl': 'x', 'region': 'eu'},
+        ),
+        isEmpty,
+      );
+    });
+
+    test('the constructor logs the warnings and still starts', () {
+      _install({'dbUrl': 'x', 'dburl': 'typo'});
+      final log = _WarningLog();
+      final previous = tomLog.logOutput;
+      addTearDown(() => tomLog.logOutput = previous);
+      tomLog.logOutput = log;
+      final config = FixtureRequiredConfig([]);
+      expect(config.dbUrl, 'x');
+      expect(log.lines.where((l) => l.contains('dburl')), hasLength(1));
+      expect(log.lines.where((l) => l.contains('region')), hasLength(1));
+    });
+  });
+
   group('a required setting no source supplied', () {
     setUpAll(initializeReflection);
 

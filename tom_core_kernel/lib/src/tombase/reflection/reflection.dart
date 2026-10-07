@@ -1267,6 +1267,34 @@ class TomReflectionInfo {
     ];
   }
 
+  /// The names of [o]'s [TomRecommendedField] fields that [values] supplies no
+  /// value for.
+  ///
+  /// The same question [missingRequiredFields] asks, of the fields a class
+  /// marks recommended rather than required, with the same rules: a null value
+  /// is not supplied, an empty one is, fields are reported in declaration
+  /// order from the most derived class up, and a [TomClass] or a class that
+  /// decodes the map itself answers empty. The caller decides what an absent
+  /// recommended setting means — typically a warning, where an absent required
+  /// one refuses.
+  List<String> missingRecommendedFields<T extends Object>(
+    T o,
+    Map<String, dynamic> values,
+  ) {
+    if (o is TomClass) return const [];
+
+    final im = _reflect(o, 'missingRecommendedFields');
+    final cm = _annotatedType(im, o, 'missingRecommendedFields');
+
+    if (_declaresConstructor(cm, "fromJson")) return const [];
+    if (cm.instanceMembers.containsKey("jsonDecode")) return const [];
+
+    return [
+      for (final field in _recommendedFields(cm))
+        if (values[field] == null) field,
+    ];
+  }
+
   /// The names of the [TomRequiredField] fields [cm] and its superclasses
   /// declare, most derived first.
   ///
@@ -1276,7 +1304,20 @@ class TomReflectionInfo {
   /// null for a class outside it, and a requirement declared where nothing can
   /// read it is not one this method can report. A name already seen is not
   /// repeated, so an override does not report its field twice.
-  static List<String> _requiredFields(ClassMirror cm) {
+  static List<String> _requiredFields(ClassMirror cm) =>
+      _annotatedFields(cm, (m) => m is TomRequiredField);
+
+  /// The names of the [TomRecommendedField] fields [cm] and its superclasses
+  /// declare, most derived first.
+  static List<String> _recommendedFields(ClassMirror cm) =>
+      _annotatedFields(cm, (m) => m is TomRecommendedField);
+
+  /// The names of the fields [cm] and its superclasses declare with metadata
+  /// [isMarker] accepts, most derived first.
+  static List<String> _annotatedFields(
+    ClassMirror cm,
+    bool Function(Object metadata) isMarker,
+  ) {
     final required = <String>[];
     ClassMirror? current = cm;
     while (current != null) {
@@ -1286,7 +1327,7 @@ class TomReflectionInfo {
           continue;
         }
         if (required.contains(declaration.key)) continue;
-        if (member.metadata.any((m) => m is TomRequiredField)) {
+        if (member.metadata.any(isMarker)) {
           required.add(declaration.key);
         }
       }
@@ -2722,6 +2763,29 @@ class TomReflectionInfo {
 class TomRequiredField {
   /// Marks the annotated field as required.
   const TomRequiredField();
+}
+
+/// Marks a field a bound map *should* supply a value for, where its absence is
+/// worth saying but not worth refusing.
+///
+/// The softer twin of [TomRequiredField], read by
+/// [TomReflectionInfo.missingRecommendedFields]. A server configuration warns
+/// at startup for each one no source named; a field that cannot work without a
+/// value is required instead, and one with a sensible default is neither.
+///
+/// ```dart
+/// @tomReflector
+/// class BillingConfiguration extends TomBaseServerConfiguration {
+///   @TomRequiredField()
+///   String dbUrl = '';
+///
+///   @TomRecommendedField()
+///   String supportEmail = '';
+/// }
+/// ```
+class TomRecommendedField {
+  /// Marks the annotated field as recommended.
+  const TomRecommendedField();
 }
 
 /// Global reflector instance for annotating classes.

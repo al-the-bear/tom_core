@@ -54,6 +54,24 @@ class DerivedSettings extends RequiredSettings {
   DerivedSettings();
 }
 
+/// A settings holder that marks one field required and two recommended, so a
+/// test can tell the two questions apart on one class.
+@tomReflector
+class RecommendedSettings {
+  @TomRequiredField()
+  String dbUrl = '';
+
+  @TomRecommendedField()
+  String region = '';
+
+  @TomRecommendedField()
+  int poolSize = 0;
+
+  String label = '';
+
+  RecommendedSettings();
+}
+
 @tomReflector
 class NullablePerson {
   String? name;
@@ -1106,6 +1124,51 @@ void main() {
         isEmpty,
       );
       expect(strict.setValues(SimplePerson(), accepted).name, 'John');
+    });
+  });
+
+  // The softer twin of missingRequiredFields: the same question, asked of
+  // the fields a class marks recommended, which a caller warns about rather
+  // than refusing.
+  group('tomReflectionInfo.missingRecommendedFields', () {
+    test('names every recommended field the map supplies no key for', () {
+      expect(
+        tomReflectionInfo.missingRecommendedFields(RecommendedSettings(), {
+          'dbUrl': 'mysql://h/db',
+        }),
+        ['region', 'poolSize'],
+      );
+    });
+
+    test('answers empty when every recommended field is supplied', () {
+      expect(
+        tomReflectionInfo.missingRecommendedFields(RecommendedSettings(), {
+          'region': 'eu',
+          'poolSize': 4,
+        }),
+        isEmpty,
+      );
+    });
+
+    // The two annotations are separate questions: a missing required field
+    // is not a missing recommended one, and the reverse.
+    test('keeps required and recommended fields apart', () {
+      final settings = RecommendedSettings();
+      expect(tomReflectionInfo.missingRequiredFields(settings, {}), ['dbUrl']);
+      expect(tomReflectionInfo.missingRecommendedFields(settings, {}), [
+        'region',
+        'poolSize',
+      ]);
+    });
+
+    test('a key whose value is null is not supplied', () {
+      expect(
+        tomReflectionInfo.missingRecommendedFields(RecommendedSettings(), {
+          'region': null,
+          'poolSize': 2,
+        }),
+        ['region'],
+      );
     });
   });
 

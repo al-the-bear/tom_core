@@ -190,6 +190,7 @@ The main class for reflection operations. Key methods:
 | `setValues<T>(object, values)` | Set field values on an existing object |
 | `unknownFields<T>(object, values)` | The keys of `values` that name no writable declaration on `object` |
 | `missingRequiredFields<T>(object, values)` | The `@TomRequiredField` fields of `object` that `values` supplies no value for |
+| `missingRecommendedFields<T>(object, values)` | The `@TomRecommendedField` fields of `object` that `values` supplies no value for |
 | `canReflect(object)` | Whether `object` can be reflected here — annotated, and reflection data installed |
 | `getValues(object)` | Get all field values as a map |
 | `convertToJsonString(object)` | Serialize object to JSON string; a `List` or `Map` is encoded as itself, with complex elements rendered by `getValues` |
@@ -254,6 +255,11 @@ same reason: the converter knows the class, not where the map came from.
 A field whose owner falls back to a default when nothing was supplied must
 **not** carry it. The requirement is that a source named the value, so the
 annotation would refuse the very call the default exists to serve.
+
+`@TomRecommendedField()` is the softer twin: a field a map *should* supply,
+where its absence is worth saying but not worth refusing.
+`missingRecommendedFields` reports those under the same rules, and a server
+configuration warns at startup for each one no source named.
 
 ## Instance Creation
 

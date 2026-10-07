@@ -16,9 +16,10 @@ environment-variable substitution.
   - [What a failed resolution throws](#what-a-failed-resolution-throws)
     - [The chained cause of a bad cast](#the-chained-cause-of-a-bad-cast)
 - [The Server Configuration Base](#the-server-configuration-base)
-  - [Why an unknown key is not reported](#why-an-unknown-key-is-not-reported)
+  - [Unknown keys in the configuration resources](#unknown-keys-in-the-configuration-resources)
   - [The development TLS pair announces itself](#the-development-tls-pair-announces-itself)
   - [Requiring a setting](#requiring-a-setting)
+  - [Recommending a setting](#recommending-a-setting)
   - [Naming the application](#naming-the-application)
   - [Switching protection off from the command line](#switching-protection-off-from-the-command-line)
 - [Deployment Settings](#deployment-settings)
@@ -350,46 +351,31 @@ individual fields rather than this list.
 > rest of a signing configuration — algorithm, issuer, audience, expiry — is
 > supplied in code, because there are no configuration keys for those.
 
-### Why an unknown key is not reported
+### Unknown keys in the configuration resources
 
-The check is cheap and already exists: `tomReflectionInfo.unknownFields(object,
-values)` names every key of a map that matches no field. Nothing runs it on the
-merged tree, and the reason is what the tree contains.
+A key the configuration resources hold that names no field is reported at
+startup, in one warning that lists every such key:
 
-**The merge carries the whole process environment by construction.** Every
-`PATH`, `HOME`, `SHELL` and `LANG` is a key that names no field, so on an
-ordinary machine the unknown-key list is dozens or hundreds of entries long and
-a mistyped setting is one line inside it — reported identically, and indistinguishable
-from the rest. A warning per unknown key would be noise with the useful line
-buried in it; a refusal would refuse every boot on every machine.
-
-Three ways to narrow it were considered and declined:
-
-- **Track provenance** — report only keys that came from the configuration
-  resources, the `.env` file or the command line. It is the *correct* answer and
-  it costs `getDefaultValues` its shape: the merge would have to carry a source
-  per key rather than overlay four maps, and every consumer of the returned map
-  would inherit that structure.
-- **Report near misses** — an unknown key within a small edit distance of a
-  field name. It needs no provenance and catches the real failure, but it
-  invents a similarity threshold the module would then have to defend, and a
-  deployment whose environment happens to hold `PORTAL` would be told about
-  `port`.
-- **Validate against an allowed-key list** the deployment supplies. That moves
-  the problem: the list is one more thing to keep in step with the class, and
-  the failure it prevents is the failure of forgetting to update it.
-
-**What to do instead.** On a map whose two ends are both yours — a settings
-block you read and a class you declare — run the check yourself:
-
-```dart
-final unknown = tomReflectionInfo.unknownFields(driver, settings);
-if (unknown.isNotEmpty) throw MyConfigException(blockName, unknown);
+```text
+WARN  The configuration resources name 2 keys no field of BillingConfiguration
+declares: prot, app. They are not bound to the configuration; check the
+spelling of any that was meant as a setting.
 ```
 
-That is what the datasource registry does with a driver's settings, and it is
-exactly the shape the merged tree cannot support, because the merged tree's
-other end is the operating system.
+**Only that layer is checked.** The merged tree carries the whole process
+environment by construction — every `PATH`, `HOME`, `SHELL` and `LANG` is a key
+that names no field — so a check over it would bury a mistyped setting among
+dozens of lines and refuse nothing useful. The resources are the deployment's
+own file, so a key there that matches no field is either a typo or a value some
+other code reads, and both are worth one line. The environment, `.env` and
+command-line layers keep their tolerance.
+
+**It warns rather than refuses.** The resources are read by more than this
+class: the samples keep `app.title` there for an endpoint to return, and a
+refusal would make the configuration the arbiter of a file it only partly owns.
+`settingWarnings(values, configurationFile)` is the check on its own, public for
+a configuration composed some other way, and returns the warnings rather than
+logging them.
 
 ### The development TLS pair announces itself
 
@@ -484,6 +470,39 @@ so such a class has none to read. A server whose `setValues` goes through the
 reflection is reflected by construction, so the check is in force wherever the framework binds the fields.
 `assertRequiredSettings` is public, so a configuration composed some other way
 can ask the same question of its own map.
+
+### Recommending a setting
+
+Mark a field `@TomRecommendedField()` for a setting a deployment should supply
+but can run without. No source naming it is not a refusal but a warning,
+logged once at startup for every such field together:
+
+```dart
+@tomReflector
+class BillingConfiguration extends TomBaseServerConfiguration {
+  @TomRequiredField()
+  String dbUrl = '';
+
+  @TomRecommendedField()
+  String supportEmail = '';
+
+  BillingConfiguration(super.args);
+
+  @override
+  void setValues(Map<String, Object?> values) =>
+      tomReflectionInfo.setValues<BillingConfiguration>(this, values);
+}
+```
+
+```text
+WARN  No source supplied the recommended setting supportEmail for
+BillingConfiguration; its default is in use.
+```
+
+The rules are the required check's: any source counts, a `null` value is not
+supplied and an empty one is. The three verdicts read together — a required
+setting refuses, a recommended one warns, an unmarked one is silent — are the
+whole convention, and they are stated on the field they govern.
 
 ### Naming the application
 
@@ -889,16 +908,14 @@ started with no configuration whose first symptom appears several layers later.
 
 ## Not Yet Implemented
 
-- **A misspelled setting is silently ignored, deliberately.** Nothing validates
-  the merged tree against the fields it will fill. `getDefaultValues` returns
-  whatever the sources said, and the reflection layer assigns the keys that name
-  a field and drops the rest — so `prot=8080` merges as a live key, `port` is
-  never set, and the server comes up on its subclass default. The *absence* half
-  of this is answered where it can be: a field marked `@TomRequiredField()`
-  refuses the start when no source named it (see [Requiring a
-  setting](#requiring-a-setting)). The typo half is not, and that is a decision
-  rather than an omission — see [Why an unknown key is not
-  reported](#why-an-unknown-key-is-not-reported).
+- **A misspelled setting outside the configuration resources is silently
+  ignored.** The environment, `.env` and command-line layers are not checked
+  against the fields they fill, so `prot=8080` on a command line merges as a
+  live key, `port` is never set, and the server comes up on its subclass
+  default. The resources are checked, with a warning (see [Unknown keys in the
+  configuration resources](#unknown-keys-in-the-configuration-resources)); the
+  other layers carry the process environment, where an unknown key is the
+  normal case.
 - **A `TomConfig` resolves once, at construction.** The value is read from the
   active provider when the object is built and cached, so a provider installed
   *afterwards* is not observed — a second install does not update an existing
