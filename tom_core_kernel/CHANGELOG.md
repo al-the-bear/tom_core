@@ -2,6 +2,19 @@
 
 ### Changed
 
+- **Discovered components may take their dependencies through the
+  constructor.** Discovery plans every key first and then builds each
+  component through its unnamed constructor, supplying every required
+  parameter — positional or `required` named — with the bean bound under
+  exactly the parameter's type, building that component first. Construction
+  follows the constructors' dependency order. Three new keys refuse what cannot
+  be built, each naming the class and the parameter:
+  `beanlocator.initialization.constructor_dependency_unsatisfied`,
+  `…constructor_dependency_filtered` (the provider is left out by this
+  deployment's `@TomEnvironment` / `@TomPlatform`) and
+  `…constructor_dependency_cycle`. They replace
+  `beanlocator.initialization.constructor_takes_arguments`. `TomBean` field
+  handles are unchanged, and remain the form for mutual dependencies.
 - **`TomBean.withType` takes its key as a type argument.** It is now
   `static TomBean<B> withType<B extends Object>(B bean)` (and
   `overrideWithType<B>`), so `TomBean.withType<UserService>(impl)` compiles only

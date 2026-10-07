@@ -75,18 +75,32 @@ void main() {
 }
 ```
 
-The handle is not a stylistic preference. Discovery calls the unnamed
-constructor with no arguments, so there is no constructor injection: a
-component that declares a required parameter names a constructor the pass will
-never call, and discovery refuses it by name with
-`beanlocator.initialization.constructor_takes_arguments`. Optional parameters
-are unaffected — the pass simply omits them.
+A dependency can also be a required constructor parameter. Discovery supplies
+each one — positional or `required` named — with the bean bound under exactly
+the parameter's declared type, building that component first when it is one,
+so declaration order never matters:
 
-Two consequences follow from taking dependencies through handles. A component
-cannot be immutable in its dependencies — `final` on the handle says the
-handle will not be replaced, not that what it resolves to is fixed — and a
-missing dependency is not detected when the component is built, but when the
-handle resolves, or at the next validation pass while it is still pending.
+```dart
+@tomReflector
+@TomComponent(GreetingService)
+class PoliteGreeting implements GreetingService {
+  PoliteGreeting(this._names);
+
+  final NameFormatter _names;
+
+  @override
+  String greet(String name) => 'Good day, ${_names.format(name)}';
+}
+```
+
+The two forms trade differently. A constructor parameter makes the dependency
+immutable and detects a missing one while the component is built — a type
+nothing supplies, one this deployment's selectors leave out, and components
+requiring each other through their constructors are each refused with their own
+key, naming the class and the parameter. A handle resolves on use, so two
+components may hold handles to each other, and a missing binding is found when
+the handle resolves or at the next validation pass. Optional constructor
+parameters are never supplied; the pass omits them.
 
 ### Registered by hand
 

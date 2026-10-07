@@ -63,9 +63,14 @@ import '../reflection/reflection.dart';
 ///   `@TomPlatform` selector, leaving discovery nothing to bind
 /// - `beanlocator.initialization.ambiguous_implementation`: two implementations
 ///   qualify equally for one interface
-/// - `beanlocator.initialization.constructor_takes_arguments`: a discovered
-///   component declares a constructor with a required parameter, and discovery
-///   calls the unnamed constructor with no arguments
+/// - `beanlocator.initialization.constructor_dependency_unsatisfied`: a
+///   discovered component's constructor requires a type that no registration
+///   and no component supplies
+/// - `beanlocator.initialization.constructor_dependency_cycle`: components
+///   require each other through their constructors, which cannot be built
+/// - `beanlocator.initialization.constructor_dependency_filtered`: a
+///   constructor requires a component this deployment's `@TomEnvironment` or
+///   `@TomPlatform` selector leaves out
 /// - `beanlocator.bean_access.bean_not_found_by_name`: nothing is registered
 ///   under the name the handle resolves by
 /// - `beanlocator.bean_access.bean_not_found_by_type`: a bean is registered
@@ -146,11 +151,40 @@ class TomBeanLocatorException extends TomException {
 /// selection is concerned, and `"none"` is reserved for the sentinels that mean
 /// "unconstrained".
 ///
-/// ## Dependencies come from fields, not from the constructor
+/// ## Dependencies: constructor parameters or handles
 ///
-/// Discovery builds every component by calling its **unnamed constructor with
-/// no arguments**. A component cannot therefore declare its dependencies as
-/// constructor parameters; it holds [TomBean] fields and resolves them on use:
+/// A component declares a dependency in one of two ways, and they mix freely.
+///
+/// **As a required constructor parameter.** Discovery builds every component
+/// through its unnamed constructor and supplies each required parameter —
+/// positional or `required` named — with the bean bound under exactly the
+/// parameter's declared type: one registered before [initializeBeanContext],
+/// or a component the pass builds first. The pass orders construction by the
+/// constructors, so declaration order never matters:
+///
+/// ```dart
+/// @tomReflector
+/// @TomComponent(OrderService)
+/// class OrderServiceImpl implements OrderService {
+///   OrderServiceImpl(this._users);
+///
+///   final UserService _users;
+///
+///   Order place(int id) => Order(_users.find(id));
+/// }
+/// ```
+///
+/// The dependency is then immutable, and a missing one is detected while the
+/// component is built: a type nothing supplies is refused with
+/// `beanlocator.initialization.constructor_dependency_unsatisfied`, one this
+/// deployment's selectors leave out with `…constructor_dependency_filtered`,
+/// and components requiring each other with `…constructor_dependency_cycle` —
+/// each naming the class and the parameter. Optional parameters are never
+/// supplied; the pass omits them, so a defaulted argument keeps its default.
+///
+/// **As a [TomBean] field, resolved on use.** The handle resolves lazily, so
+/// two components may hold handles to each other — a cycle that constructors
+/// cannot express:
 ///
 /// ```dart
 /// @tomReflector
@@ -162,21 +196,10 @@ class TomBeanLocatorException extends TomException {
 /// }
 /// ```
 ///
-/// Declaring a required parameter anyway is refused by name at discovery with
-/// `beanlocator.initialization.constructor_takes_arguments`, rather than left
-/// to fail inside the reflector. Three consequences are worth knowing before
-/// designing around the constraint:
-///
-/// - **A component cannot be immutable in its dependencies.** A `final` field
-///   holding the collaborator itself cannot be initialized, because there is
-///   no constructor argument to initialize it from. The `final` above is on
-///   the *handle*, which is a weaker promise: the handle cannot be replaced,
-///   but what it resolves to is decided later.
-/// - **A missing dependency is not detected at construction.** The component
-///   builds regardless; the binding is answered for when the handle resolves,
-///   or by the next [validateBeanReferences] pass while it is still pending.
-/// - **Optional parameters are not affected.** The pass omits them, so a
-///   defaulted argument is no obstacle to discovery.
+/// Here the `final` is on the *handle*, a weaker promise: what it resolves to
+/// is decided later, and a missing binding is answered for when the handle
+/// resolves, or by the next [validateBeanReferences] pass while it is still
+/// pending.
 class TomComponent extends Object {
   /// Creates a TomComponent annotation.
   ///
@@ -877,163 +900,258 @@ void initializeBeanContext() {
   TomBean._initialized = true;
 }
 
-/// Discovers and instantiates all annotated bean classes.
+/// Discovers every annotated component and builds it, dependencies first.
+///
+/// Two phases. The *plan* decides, for every key discovery will bind, which
+/// class builds it — the concrete class itself, or the implementation the
+/// four-tier selector picks for an interface — leaving alone every key that is
+/// already bound, and recording the concrete components this deployment's
+/// `@TomEnvironment` / `@TomPlatform` selectors leave out. The *build* then
+/// constructs each planned key, supplying a constructor's required parameters
+/// from the registry or by building their providers first. The registry's walk
+/// order therefore no longer matters: a dependency is built when its first
+/// dependent needs it, so the order is the topological one the constructors
+/// imply.
 void _discoverAndInstantiateBeans() {
-  for (var t in tomReflector.annotatedClasses) {
-    TomComponent tc =
-        t.metadata.firstWhere(
-              (md) => md is TomComponent,
-              orElse: () => _nullComponent,
-            )
-            as TomComponent;
+  final pass = _DiscoveryPass();
+  pass.plan();
+  pass.buildAll();
+}
 
-    if (tc == _nullComponent) continue;
+/// One discovery pass: what each key is built from, and the chain currently
+/// being built.
+class _DiscoveryPass {
+  /// Every key the pass will bind, and the class that builds it.
+  final Map<Type, ClassMirror> _providers = {};
 
-    if (tc.getType() == TomNoInterface) {
-      _instantiateConcreteBean(t);
-    } else {
-      _instantiateInterfaceBean(t, tc);
+  /// Concrete components this deployment's selectors leave out, with the
+  /// selector that did — the difference between a dependency nothing declares
+  /// and one that was declared and filtered away.
+  final Map<Type, String> _filteredOut = {};
+
+  /// The constructor chain being built, outermost first: each entry is a key
+  /// and the parameter of the previous entry that asked for it.
+  final List<(Type, String?)> _chain = [];
+
+  void plan() {
+    for (final classMirror in tomReflector.annotatedClasses) {
+      final tc =
+          classMirror.metadata.firstWhere(
+                (md) => md is TomComponent,
+                orElse: () => _nullComponent,
+              )
+              as TomComponent;
+      if (tc == _nullComponent) continue;
+
+      if (tc.getType() == TomNoInterface) {
+        _planConcrete(classMirror);
+      } else {
+        _planInterface(classMirror, tc);
+      }
     }
+  }
+
+  /// Plans a component registered under its own type.
+  void _planConcrete(ClassMirror classMirror) {
+    tomLog.trace(
+      "Service class candidate ${classMirror.qualifiedName} without interface found.",
+    );
+    final key = classMirror.reflectedType;
+
+    // A key that is already bound is an answer, not a candidate — so leave it
+    // alone, exactly as an interface key is left alone. This is what makes
+    // "register before initializeBeanContext()" mean the same thing for a
+    // concrete bean as it does for an interface implementation.
+    if (TomBean._tomBeansByType[key] != null) {
+      tomLog.trace(
+        "Service instance for $key already assigned to "
+        "${TomBean._tomBeansByType[key]}",
+      );
+      return;
+    }
+
+    // The runtime is consulted only for a class that actually carries a
+    // selector, so an unannotated bean is discoverable without a configured
+    // runtime — the lookup stays inside the condition.
+    for (final meta in classMirror.metadata) {
+      if (meta is TomEnvironment &&
+          !_environmentMatches(
+            meta,
+            _requireCurrentEnvironment(
+              "environment selection",
+              classMirror.qualifiedName,
+            ),
+          )) {
+        tomLog.trace(
+          "Discarding service class $classMirror because environments don't match.",
+        );
+        _filteredOut[key] = "environment ${meta.env}";
+        return;
+      }
+      if (meta is TomPlatform &&
+          !_platformMatches(meta, TomRuntime.getCurrentPlatform())) {
+        tomLog.trace(
+          "Discarding service class $classMirror because platforms don't match.",
+        );
+        _filteredOut[key] = "platform ${meta.name}";
+        return;
+      }
+    }
+    _providers[key] = classMirror;
+  }
+
+  /// Plans the implementation of an interface component.
+  void _planInterface(ClassMirror classMirror, TomComponent tc) {
+    final key = tc.getType();
+    if (TomBean._tomBeansByType[key] != null) {
+      tomLog.trace(
+        "Service Instance for $key already assigned to "
+        "${TomBean._tomBeansByType[key]}",
+      );
+      return;
+    }
+    // Every implementor of the interface reaches here; the first one plans
+    // the key for all of them.
+    if (_providers.containsKey(key)) return;
+
+    tomLog.trace("Determining implementation for $key");
+    final implementation = _TomImplementationInfo._findImplementation(
+      _findImplementors(tc),
+      tc,
+    );
+    if (implementation == null) {
+      throw TomBeanLocatorException(
+        "beanlocator.initialization.no_matching_implementation_found",
+        "No matching implementation for $key found.",
+        parameters: {"type": key},
+        autoLog: true,
+      );
+    }
+    _providers[key] = implementation;
+  }
+
+  void buildAll() {
+    for (final key in _providers.keys.toList()) {
+      _build(key);
+    }
+  }
+
+  /// The bean bound to [key], building it — and what its constructor
+  /// requires — when it is not bound yet.
+  Object _build(Type key) {
+    final existing = TomBean._tomBeansByType[key];
+    if (existing != null) return existing;
+
+    final classMirror = _providers[key]!;
+    final positional = <Object?>[];
+    final named = <Symbol, Object?>{};
+    for (final parameter in _requiredParameters(classMirror)) {
+      final value = _supply(classMirror, parameter);
+      if (parameter.isNamed) {
+        named[Symbol(parameter.simpleName)] = value;
+      } else {
+        positional.add(value);
+      }
+    }
+
+    final obj = classMirror.newInstance("", positional, named);
+    TomBean._tomBeansByType[key] = obj;
+    tomLog.info(
+      "Service class ${classMirror.qualifiedName} has been instantiated "
+      "and assigned for $key. Instance is $obj",
+    );
+    return obj;
+  }
+
+  /// The value for one required constructor parameter of [owner].
+  ///
+  /// Supplied by the bean bound under exactly the parameter's declared type —
+  /// already registered, or built here first. Optional parameters are never
+  /// asked for: the pass omits them, so a defaulted argument is no obstacle.
+  Object _supply(ClassMirror owner, ParameterMirror parameter) {
+    final type = parameter.hasReflectedType ? parameter.reflectedType : null;
+    final name = parameter.simpleName;
+
+    final bound = type == null ? null : TomBean._tomBeansByType[type];
+    if (bound != null) return bound;
+
+    if (type != null && _providers.containsKey(type)) {
+      final cycleStart = _chain.indexWhere((entry) => entry.$1 == type);
+      if (cycleStart >= 0) {
+        final cycle = [
+          for (final entry in _chain.sublist(cycleStart)) "${entry.$1}",
+          "$type",
+        ];
+        throw TomBeanLocatorException(
+          "beanlocator.initialization.constructor_dependency_cycle",
+          "Component ${owner.simpleName} requires $type through constructor "
+              "parameter '$name', and building $type requires "
+              "${owner.simpleName} in turn: ${cycle.join(' -> ')}. A cycle "
+              "through constructors cannot be built; hold one side as a "
+              "TomBean field, which resolves on use.",
+          parameters: {
+            "class": owner.simpleName,
+            "parameter": name,
+            "type": type,
+            "cycle": cycle,
+          },
+          autoLog: true,
+        );
+      }
+      _chain.add((type, name));
+      try {
+        return _build(type);
+      } finally {
+        _chain.removeLast();
+      }
+    }
+
+    final filter = type == null ? null : _filteredOut[type];
+    if (filter != null) {
+      throw TomBeanLocatorException(
+        "beanlocator.initialization.constructor_dependency_filtered",
+        "Component ${owner.simpleName} requires $type through constructor "
+            "parameter '$name', and $type is a component this deployment "
+            "leaves out by its $filter selector. The graph cannot be "
+            "satisfied in this deployment.",
+        parameters: {
+          "class": owner.simpleName,
+          "parameter": name,
+          "type": type,
+          "selector": filter,
+        },
+        autoLog: true,
+      );
+    }
+
+    throw TomBeanLocatorException(
+      "beanlocator.initialization.constructor_dependency_unsatisfied",
+      "Component ${owner.simpleName} requires "
+          "${type ?? 'a type the reflector cannot name'} through constructor "
+          "parameter '$name', and no component or registration supplies it. "
+          "Register a bean under exactly that type before "
+          "initializeBeanContext(), annotate a component for it, or hold it in "
+          "a TomBean field and resolve it on use.",
+      parameters: {"class": owner.simpleName, "parameter": name, "type": type},
+      autoLog: true,
+    );
   }
 }
 
-/// Refuses a component whose unnamed constructor takes required arguments.
-///
-/// Discovery builds every component with `newInstance("", [])`, so a class
-/// that declares a required parameter names a constructor the pass will never
-/// call. Left to `newInstance`, that arrives as
-/// `NoSuchCapabilityError: no capability to invoke the constructor ""` —
-/// which points at the reflector's configuration, not at the parameter, and
-/// sends the reader to add capabilities that would not have helped. It is also
-/// an exception type this module never tells anyone to catch.
-///
-/// Decided by inspection rather than by catching, so the message can name the
-/// parameters the class actually declares.
-void _refuseConstructorArguments(ClassMirror classMirror) {
-  MethodMirror? unnamed;
+/// The parameters of [classMirror]'s unnamed constructor that discovery must
+/// supply: every one that is not optional.
+List<ParameterMirror> _requiredParameters(ClassMirror classMirror) {
   for (final declaration in classMirror.declarations.values) {
     if (declaration is MethodMirror &&
         declaration.isConstructor &&
         declaration.constructorName.isEmpty) {
-      unnamed = declaration;
-      break;
+      return [
+        for (final parameter in declaration.parameters)
+          if (!parameter.isOptional) parameter,
+      ];
     }
   }
-  if (unnamed == null) return;
-
-  // Optional and defaulted parameters are fine: the pass simply does not pass
-  // them. Only a parameter the constructor insists on makes it uncallable.
-  final required = unnamed.parameters
-      .where((parameter) => !parameter.isOptional)
-      .toList();
-  if (required.isEmpty) return;
-
-  final named = required
-      .map((parameter) => "${parameter.simpleName}")
-      .join(", ");
-  throw TomBeanLocatorException(
-    "beanlocator.initialization.constructor_takes_arguments",
-    "Component ${classMirror.simpleName} declares a constructor requiring "
-        "$named, and discovery builds every component by calling the unnamed "
-        "constructor with no arguments. Hold it in a TomBean field and resolve "
-        "it on use instead.",
-    parameters: {
-      "class": classMirror.simpleName,
-      "parameters": required.map((p) => p.simpleName).toList(),
-    },
-    autoLog: true,
-  );
-}
-
-/// Instantiates a bean without an interface (concrete type).
-void _instantiateConcreteBean(ClassMirror classMirror) {
-  tomLog.trace(
-    "Service class candidate ${classMirror.qualifiedName} without interface found.",
-  );
-
-  // A key that is already bound is an answer, not a candidate — so leave it
-  // alone, exactly as _instantiateInterfaceBean does. This is what makes
-  // "register before initializeBeanContext()" mean the same thing for a
-  // concrete bean as it does for an interface implementation. The check runs
-  // before newInstance so the pass does not construct an object it would only
-  // discard.
-  if (TomBean._tomBeansByType[classMirror.reflectedType] != null) {
-    tomLog.trace(
-      "Service instance for ${classMirror.reflectedType} already assigned to "
-      "${TomBean._tomBeansByType[classMirror.reflectedType]}",
-    );
-    return;
-  }
-
-  // Check environment constraint. The runtime is consulted only for a class
-  // that actually carries a selector, so an unannotated bean is discoverable
-  // without a configured runtime — the lookup stays inside the condition.
-  for (var meta in classMirror.metadata) {
-    if (meta is TomEnvironment &&
-        !_environmentMatches(
-          meta,
-          _requireCurrentEnvironment(
-            "environment selection",
-            classMirror.qualifiedName,
-          ),
-        )) {
-      tomLog.trace(
-        "Discarding service class $classMirror because environments don't match.",
-      );
-      return;
-    }
-    if (meta is TomPlatform &&
-        !_platformMatches(meta, TomRuntime.getCurrentPlatform())) {
-      tomLog.trace(
-        "Discarding service class $classMirror because platforms don't match.",
-      );
-      return;
-    }
-  }
-
-  _refuseConstructorArguments(classMirror);
-  var obj = classMirror.newInstance("", []);
-  tomLog.info(
-    "Service class ${classMirror.qualifiedName} has been instantiated "
-    "and assigned for ${obj.runtimeType}. Instance is $obj",
-  );
-  TomBean._tomBeansByType[obj.runtimeType] = obj;
-}
-
-/// Instantiates a bean that implements an interface.
-void _instantiateInterfaceBean(ClassMirror classMirror, TomComponent tc) {
-  if (TomBean._tomBeansByType[tc.getType()] != null) {
-    tomLog.trace(
-      "Service Instance for ${tc.getType()} already assigned to "
-      "${TomBean._tomBeansByType[tc.getType()]}",
-    );
-    return;
-  }
-
-  tomLog.trace("Determining implementation for ${tc.getType()}");
-  List<_TomImplementationInfo> implementors = _findImplementors(tc);
-
-  ClassMirror? implementation = _TomImplementationInfo._findImplementation(
-    implementors,
-    tc,
-  );
-
-  if (implementation != null) {
-    _refuseConstructorArguments(implementation);
-    var obj = implementation.newInstance("", []);
-    TomBean._tomBeansByType[tc.getType()] = obj;
-    tomLog.info(
-      "Service class ${implementation.qualifiedName} has been instantiated "
-      "and assigned for interface ${tc.getType()} service instance is $obj.",
-    );
-  } else {
-    throw TomBeanLocatorException(
-      "beanlocator.initialization.no_matching_implementation_found",
-      "No matching implementation for ${tc.getType()} found.",
-      parameters: {"type": tc.getType()},
-      autoLog: true,
-    );
-  }
+  return const [];
 }
 
 /// Finds all classes that implement the given component's interface.

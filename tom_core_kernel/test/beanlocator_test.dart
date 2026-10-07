@@ -55,12 +55,12 @@ class DiscoveredConcreteService {
 
 /// A component whose constructor parameters are all optional.
 ///
-/// The control for the refusal in `beanlocator_constructor_arity_test.dart`:
-/// discovery calls the unnamed constructor with no arguments, so a parameter
-/// it can leave out is no obstacle and this component must still be built.
-/// Without it, a guard that refused *any* parameter would look correct —
-/// every test of the refusal would still pass, and only a real component with
-/// a defaulted argument would find out.
+/// The control for the refusal in
+/// `beanlocator_constructor_unsatisfied_test.dart`: discovery supplies only
+/// required parameters, so a parameter it can leave out is no obstacle — even
+/// a `String`, which nothing supplies — and this component must still be built
+/// with its default. Without it, a pass that tried to supply *every*
+/// parameter would look correct to every test of the refusal.
 @tomReflector
 @tomComponent
 class OptionalArgumentService {

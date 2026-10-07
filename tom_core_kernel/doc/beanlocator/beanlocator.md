@@ -657,7 +657,9 @@ so the handler above is sufficient and does not need a second `catch`.
 | `beanlocator.initialization.duplicate_bean_with_name` | Duplicate named bean registration via `TomBean.withName`. To replace a binding deliberately, see [Substituting an Implementation](#substituting-an-implementation) |
 | `beanlocator.initialization.duplicate_bean_with_type` | Duplicate typed bean registration via `TomBean.withType` — including a type discovery has already bound. To replace a binding deliberately, see [Substituting an Implementation](#substituting-an-implementation) |
 | `beanlocator.initialization.no_matching_implementation_found` | Every implementation of an interface was ruled out by its `@TomEnvironment` or `@TomPlatform` selector, leaving discovery nothing to bind — see [Environment-Specific Beans](#environment-specific-beans) |
-| `beanlocator.initialization.constructor_takes_arguments` | A discovered component declares a constructor with a required parameter. Discovery calls the unnamed constructor with no arguments, so the parameter names a constructor it will never call — see [No Bean Resolution in Constructors](#5-no-bean-resolution-in-constructors) |
+| `beanlocator.initialization.constructor_dependency_unsatisfied` | A discovered component's constructor requires a type that no registration and no component supplies. Names the class, the parameter and the type — see [No Bean Resolution in Constructors](#5-no-bean-resolution-in-constructors) |
+| `beanlocator.initialization.constructor_dependency_cycle` | Components require each other through their constructors, which cannot be built. Names the class, the parameter and the cycle; hold one side as a `TomBean` field instead |
+| `beanlocator.initialization.constructor_dependency_filtered` | A constructor requires a component this deployment's `@TomEnvironment` or `@TomPlatform` selector leaves out. Names the class, the parameter, the type and the selector |
 | `beanlocator.initialization.ambiguous_implementation` | Two implementations qualify equally for one interface — distinguish them with `@TomEnvironment` / `@TomPlatform`, or remove one |
 | `beanlocator.bean_access.bean_not_found_by_name` | Named bean not found. Raised on `get()`, never by [startup validation](#startup-validation) — a name that is not registered yet is a supported state |
 | `beanlocator.bean_access.bean_not_found_by_type` | Type mismatch for named bean. Also raised by [startup validation](#startup-validation), since the name is registered and the mismatch is answerable at boot |
@@ -765,12 +767,50 @@ const prodEnv = TomEnvironment('prod', parent: baseEnv);
 
 ### 5. No Bean Resolution in Constructors
 
-Discovery builds every component by calling its **unnamed constructor with no
-arguments**. Two rules follow, and both are about the constructor.
+Discovery builds every component through its **unnamed constructor**, and a
+component declares each dependency in one of two ways.
 
-**A component takes its dependencies from fields, not from parameters.** There
-is no constructor injection: the pass has no arguments to pass, so a component
-holds `TomBean` handles and resolves them on use.
+**As a required constructor parameter.** The pass supplies every required
+parameter — positional or `required` named — with the bean bound under exactly
+the parameter's declared type: a registration made before
+`initializeBeanContext()`, or a component the pass builds first. Construction
+follows the constructors, not the order the components were declared in.
+
+```dart
+@tomReflector
+@TomComponent(OrderService)
+class OrderServiceImpl implements OrderService {
+  OrderServiceImpl(this._users, {required this.clock});
+
+  final UserService _users;   // a component, built first
+  final Clock clock;          // registered with withType<Clock> before the pass
+
+  Order place(int id) => Order(_users.find(id), at: clock.now());
+}
+```
+
+Such a dependency is **immutable**, and a missing one is **detected while the
+component is built**, by name:
+
+```dart
+initializeBeanContext();
+// throws beanlocator.initialization.constructor_dependency_unsatisfied:
+// "Component OrderServiceImpl requires Clock through constructor parameter
+//  'clock', and no component or registration supplies it. ..."
+```
+
+Three things refuse a constructor, each with its own key naming the class and
+the parameter: a type nothing supplies (`…constructor_dependency_unsatisfied`),
+a component this deployment's `@TomEnvironment` / `@TomPlatform` selector
+leaves out (`…constructor_dependency_filtered` — the graph cannot be satisfied
+*here*, which is different from nothing declaring it), and components that
+require each other through their constructors (`…constructor_dependency_cycle`,
+naming the chain). Optional parameters are never supplied: the pass omits them,
+so a defaulted argument keeps its default.
+
+**As a `TomBean` field, resolved on use.** The handle is lazy, so it is the
+form for a mutual dependency — a cycle through constructors cannot be built,
+a cycle through handles can:
 
 ```dart
 @tomReflector
@@ -782,36 +822,10 @@ class OrderServiceImpl implements OrderService {
 }
 ```
 
-Declaring a required parameter anyway is refused at discovery, by name:
-
-```dart
-@tomReflector
-@TomComponent(OrderService)
-class OrderServiceImpl implements OrderService {
-  OrderServiceImpl(this.users);        // never called
-  final UserService users;
-}
-
-initializeBeanContext();
-// throws beanlocator.initialization.constructor_takes_arguments:
-// "Component OrderServiceImpl declares a constructor requiring users, and
-//  discovery builds every component by calling the unnamed constructor with
-//  no arguments. Hold it in a TomBean field and resolve it on use instead."
-```
-
-Three consequences are worth knowing before designing around the constraint:
-
-- **A component cannot be immutable in its dependencies.** A `final` field
-  holding the collaborator itself cannot be initialized, because there is no
-  constructor argument to initialize it from. The `final` on the handle above
-  is a weaker promise: the handle cannot be replaced, but what it resolves to
-  is decided later.
-- **A missing dependency is not detected at construction.** The component is
-  built regardless; the binding is answered for when the handle resolves, or
-  by the next [validation pass](#startup-validation) while it is still
-  pending.
-- **Optional parameters are not affected.** The pass omits them, so a
-  defaulted argument is no obstacle to discovery.
+The `final` here is on the handle, a weaker promise: what it resolves to is
+decided later, and a missing binding is answered for when the handle resolves,
+or by the next [validation pass](#startup-validation) while it is still
+pending.
 
 **A constructor must not resolve a bean.** Holding the handle is not the same
 as calling it, and the difference is what makes mutual dependencies work:

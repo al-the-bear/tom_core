@@ -4,6 +4,7 @@
 /// - `@tomReflector` + `@tomComponent` for concrete type beans
 /// - `@tomReflector` + `@TomComponent(InterfaceType)` for interface-based beans
 /// - Bean dependency injection using `TomBean<T>` fields
+/// - Bean dependency injection through constructor parameters
 ///
 /// These annotations enable automatic bean discovery via
 /// `initializeBeanContext()`, and this sample **performs that discovery
@@ -134,6 +135,30 @@ class NotificationService {
     );
 
     _logger().log('Notification sent and recorded');
+  }
+}
+
+/// An audit trail that takes its dependencies through its CONSTRUCTOR.
+///
+/// Discovery supplies each required parameter with the bean bound under
+/// exactly the parameter's type, building that component first — so the
+/// dependencies are `final` and the class never sees an unresolved one.
+/// Compare [NotificationService], which holds lazy handles instead.
+@tomReflector
+@tomComponent
+class AuditTrail {
+  AuditTrail(this._logger, this._storage);
+
+  final LoggingHelper _logger;
+  final StorageService _storage;
+
+  /// Exposed so the sample can show the injected beans are the bound ones.
+  LoggingHelper get logger => _logger;
+  StorageService get storage => _storage;
+
+  void record(String event) {
+    _logger.log('audit: $event');
+    _storage.save('audit_last', event);
   }
 }
 
@@ -396,6 +421,7 @@ class AnnotationBasedBeansExample {
     example5CallableSyntax();
     example6InitializationSequence();
     example7AdvancedAnnotations();
+    example8ConstructorInjection();
 
     // The runtime is process-global and this sample configured it. Sample 01
     // hands it back the same way; leaving 'dev' current would make the next
@@ -415,7 +441,29 @@ class AnnotationBasedBeansExample {
     assert(callableSyntaxIsSameInstance);
   }
 
-  /// Registers this file's four beans the way the sample is about: by letting
+  /// Example 8: dependencies taken through the constructor.
+  static void example8ConstructorInjection() {
+    print('8. Constructor injection:');
+    print('');
+
+    final audit = TomBean<AuditTrail>().get();
+    audit.record('user signed in');
+    print(
+      '   AuditTrail received ${audit.logger.runtimeType} and '
+      '${audit.storage.runtimeType} through its constructor',
+    );
+    print('');
+
+    // The parameters were supplied with the bound beans themselves, so the
+    // audit trail and every other consumer share one logger and one store.
+    assert(identical(audit.logger, TomBean<LoggingHelper>().get()));
+    assert(identical(audit.storage, TomBean<StorageService>().get()));
+    assert(
+      TomBean<StorageService>().get().load('audit_last') == 'user signed in',
+    );
+  }
+
+  /// Registers this file's five beans the way the sample is about: by letting
   /// discovery read the annotations.
   ///
   /// Nothing here registers a bean by hand. That is the whole claim, and it is
@@ -458,6 +506,7 @@ class AnnotationBasedBeansExample {
     assert(TomBean.getBeanByType(NotificationService) is NotificationService);
     assert(TomBean.getBeanByType(EmailService) is DefaultEmailService);
     assert(TomBean.getBeanByType(StorageService) is DefaultStorageService);
+    assert(TomBean.getBeanByType(AuditTrail) is AuditTrail);
     assert(
       TomBean.getBeanByType(DefaultEmailService) == null,
       '@TomComponent(EmailService) registers under the interface only',
