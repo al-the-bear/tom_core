@@ -77,6 +77,52 @@ class _FailingErrorHandler extends TomErrorHandler {
   ) => throw StateError('the error handler failed as well');
 }
 
+/// An error handler that records which hook the pipeline called and with
+/// what, and answers every hook with a plain `500`.
+class _RecordingErrorHandler extends TomErrorHandler {
+  _RecordingErrorHandler();
+
+  final List<String> hooks = [];
+  final List<Object> errors = [];
+
+  Response _record(String hook, Object error) {
+    hooks.add(hook);
+    errors.add(error);
+    return Response.internalServerError(body: hook);
+  }
+
+  @override
+  Response handleInvocationError(
+    Object error,
+    StackTrace stacktrace,
+    Request r,
+  ) => _record('invocation', error);
+
+  @override
+  Response handleConversionError(
+    Object error,
+    StackTrace stacktrace,
+    Request r,
+    Object? result,
+  ) => _record('conversion', error);
+
+  @override
+  Response handleUnknownResultTypeError(
+    Object error,
+    StackTrace stacktrace,
+    Request r,
+    Object? result,
+  ) => _record('unknownResultType', error);
+
+  @override
+  Response handleErrorDefault(
+    Object error,
+    StackTrace stacktrace,
+    Request r,
+    Object? result,
+  ) => _record('default', error);
+}
+
 /// A transaction participant that refuses at prepare, so the transaction it is
 /// enlisted in concludes without committing.
 class _VetoingParticipant implements TomTransactionParticipant {
@@ -550,6 +596,51 @@ void main() {
         );
       });
     }
+
+    group('a result that cannot be rendered reaches the hook for its cause', () {
+      test('a type the converter has no rendering for is an unknown result '
+          'type', () async {
+        // `silent`'s implementation answers a bare int, which carries no
+        // @tomReflector: the converter refuses the type itself.
+        final recorder = _RecordingErrorHandler();
+        final base = _handler('/fixture/silent', 'DELETE');
+        final handler = _redeclared(
+          base,
+          errorHandler: recorder,
+          declaration: base.method,
+        );
+
+        final response = await handler.handleMethodCall(
+          _request('DELETE', '/fixture/silent'),
+        );
+
+        expect(recorder.hooks, ['unknownResultType']);
+        expect(
+          recorder.errors.single,
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflector.type.not_annotated',
+          ),
+        );
+        expect(response.statusCode, 500);
+      });
+
+      test('a known shape that fails to encode is a conversion error', () async {
+        // A map of scalars is a shape the converter renders; the NaN inside it
+        // is what JSON refuses — a rendering failure, not a type refusal.
+        final recorder = _RecordingErrorHandler();
+        final handler = _redeclared(
+          _handler('/fixture/unencodable'),
+          errorHandler: recorder,
+        );
+
+        await handler.handleMethodCall(_request('GET', '/fixture/unencodable'));
+
+        expect(recorder.hooks, ['conversion']);
+        expect(recorder.errors.single, isNot(isA<TomReflectorException>()));
+      });
+    });
 
     test(
       'a socket handshake on an HTTP endpoint raises handle_web_socket_call.not_a_socket_endpoint',

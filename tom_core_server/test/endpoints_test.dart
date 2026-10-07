@@ -343,8 +343,8 @@ void main() {
       expect(r.statusCode, 500);
     });
 
-    test('handleUnknowResultTypeError returns an opaque 500', () {
-      final r = handler.handleUnknowResultTypeError(
+    test('handleUnknownResultTypeError returns an opaque 500', () {
+      final r = handler.handleUnknownResultTypeError(
         StateError('boom'),
         st,
         _req(),
@@ -476,7 +476,8 @@ void main() {
       for (final call in <void Function(_TraceCapturingHandler)>[
         (h) => h.handleInvocationError(StateError('x'), trace, _req()),
         (h) => h.handleConversionError(StateError('x'), trace, _req(), 'r'),
-        (h) => h.handleUnknowResultTypeError(StateError('x'), trace, _req(), 1),
+        (h) =>
+            h.handleUnknownResultTypeError(StateError('x'), trace, _req(), 1),
       ]) {
         final handler = _TraceCapturingHandler();
         call(handler);

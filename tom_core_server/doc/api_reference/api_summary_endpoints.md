@@ -166,7 +166,7 @@ const TomErrorHandler()
 | ------ | --------- | ----------- |
 | `handleInvocationError` | `Response handleInvocationError(Object error, StackTrace stacktrace, Request r)` | Builds the response for an error thrown by the service method (delegates to `handleErrorDefault`). |
 | `handleConversionError` | `Response handleConversionError(Object error, StackTrace stacktrace, Request r, Object? result)` | Builds the response for an error thrown while converting `result` into the body (delegates to `handleErrorDefault`). |
-| `handleUnknowResultTypeError` | `Response handleUnknowResultTypeError(Object error, StackTrace stacktrace, Request r, Object? result)` | Builds the response for a `result` whose type cannot be mapped to a body (delegates to `handleErrorDefault`). Declared, and not reached by the pipeline today — that case leaves as a conversion error. |
+| `handleUnknownResultTypeError` | `Response handleUnknownResultTypeError(Object error, StackTrace stacktrace, Request r, Object? result)` | Builds the response when rendering the result is refused with `reflector.type.not_annotated` — a result type, or a type nested in it, without `@tomReflector` (delegates to `handleErrorDefault`). Called by the pipeline; any other rendering failure goes to `handleConversionError`. |
 | `handleErrorDefault` | `Response handleErrorDefault(Object error, StackTrace stacktrace, Request r, Object? result)` | The fallback every hook delegates to; the one method a concrete handler must implement. |
 
 ### TomStatusMappingErrorHandler

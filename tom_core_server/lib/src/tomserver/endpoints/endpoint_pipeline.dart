@@ -1221,13 +1221,33 @@ class TomEndpointHandler {
       }
       return response;
     } catch (error, stacktrace) {
-      if (metadata.endpoint.errorHandler != null) {
+      final errorHandler = metadata.endpoint.errorHandler;
+      if (errorHandler != null) {
+        // The converter refusing a *type* is a different failure from a
+        // rendering that went wrong on a type it knows: the first is a gap in
+        // the endpoint's declaration, the second a value it could not encode.
+        // Each has its own hook so an application can answer them apart.
+        final unknownType = _isUnknownResultType(error);
+        final hook = unknownType
+            ? 'handleUnknownResultTypeError'
+            : 'handleConversionError';
         try {
-          Response response = metadata.endpoint.errorHandler!
-              .handleConversionError(error, stacktrace, req, result);
+          final Response response = unknownType
+              ? errorHandler.handleUnknownResultTypeError(
+                  error,
+                  stacktrace,
+                  req,
+                  result,
+                )
+              : errorHandler.handleConversionError(
+                  error,
+                  stacktrace,
+                  req,
+                  result,
+                );
           if (shouldLogRequests) {
             tomLog.info(
-              "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] ${req.encoding?.name ?? "no encoding"} /$reqId-${req.url} ${req.requestedUri} => ${response.statusCode} ${response.encoding} [handleConversionError]",
+              "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] ${req.encoding?.name ?? "no encoding"} /$reqId-${req.url} ${req.requestedUri} => ${response.statusCode} ${response.encoding} [$hook]",
             );
             logInfo.hasBeenLogged = true;
           }
@@ -1235,7 +1255,7 @@ class TomEndpointHandler {
         } catch (error2, stacktrace2) {
           throw TomEndpointHandlerException(
             "endpoint_pipeline.handle_method_call.conversion_error_handler_failed",
-            "Error handler for conversion error also failed on $callName on ${instance.type.simpleName} with parameters [$positionalArguments] context is ${req.context}: $error2",
+            "Error handler ($hook) for a result that could not be rendered also failed on $callName on ${instance.type.simpleName} with parameters [$positionalArguments] context is ${req.context}: $error2",
             autoLog: true,
             rootException: error2,
             stack: stacktrace2,
@@ -1554,6 +1574,15 @@ class TomEndpointHandler {
     return holdsMember ? true : accessCheck;
   }
 }
+
+/// The reflection layer's refusal of a type it has no rendering for.
+const String _notAnnotatedErrorKey = 'reflector.type.not_annotated';
+
+/// Whether [error] is the converter refusing a result's *type*, rather than a
+/// rendering that failed on a type it knows. The first is what
+/// [TomErrorHandler.handleUnknownResultTypeError] answers for.
+bool _isUnknownResultType(Object error) =>
+    error is TomReflectorException && error.key == _notAnnotatedErrorKey;
 
 /// Identifies one mounted route: a path template *and* the HTTP method it was
 /// mounted for.

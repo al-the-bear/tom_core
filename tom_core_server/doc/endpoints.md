@@ -945,7 +945,8 @@ argument.
 
 The pipeline logs **once per exit**, and the line names the exit it came from —
 `[Normal processing]`, `[handler-supplied response]`,
-`[handleInvocationError by error handler]`, `[handleConversionError]`,
+`[handleInvocationError by error handler]`, `[handleUnknownResultTypeError]`,
+`[handleConversionError]`,
 `[WebSocket handshake]` or `[WebSocket handshake refused]` — together with the
 produced mime type and the encoding.
 
@@ -976,14 +977,24 @@ at the same line count. That is a degradation no request counter can see.
 
 ## Error Handling
 
-Each endpoint has a `TomErrorHandler`. The pipeline calls
-`handleInvocationError` when the method throws and `handleConversionError` when
-serialising the result fails; both default to `handleErrorDefault`. If a handler
-itself throws, the pipeline raises a `TomEndpointHandlerException` wrapping both
-errors — `endpoint_pipeline.handle_method_call.error_handler_failed` for the
-invocation hook, `endpoint_pipeline.handle_method_call.conversion_error_handler_failed`
-for the conversion hook, the handler's error as the root and the original under
-`original_error`. An endpoint with no error handler at all whose result fails to
+Each endpoint has a `TomErrorHandler`. The pipeline calls a hook for each
+place a call can fail, and all three default to `handleErrorDefault`:
+
+| Hook | When |
+| ---- | ---- |
+| `handleInvocationError` | the method threw |
+| `handleUnknownResultTypeError` | the method succeeded, but its result holds a type the converter has no rendering for — the reflection layer refused it with `reflector.type.not_annotated` (a class without `@tomReflector`, or a bare scalar where an object was expected) |
+| `handleConversionError` | rendering a result of a shape the converter knows failed for any other reason — a value JSON cannot encode, a rendering hook that threw |
+
+The middle row is separate because its cause is the endpoint's *declaration* —
+a result type nobody annotated — rather than a value that happened to be
+unencodable, and an application may want to answer the two apart.
+
+If a handler itself throws, the pipeline raises a `TomEndpointHandlerException`
+wrapping both errors — `endpoint_pipeline.handle_method_call.error_handler_failed`
+for the invocation hook, `endpoint_pipeline.handle_method_call.conversion_error_handler_failed`
+for either result hook (the message names which), the handler's error as the
+root and the original under `original_error`. An endpoint with no error handler at all whose result fails to
 serialise raises `endpoint_pipeline.handle_method_call.result_conversion_failed_no_error_handler`.
 
 The default handler, `TomDefaultErrorHandler`, answers **the framework
@@ -1029,9 +1040,7 @@ contradict one of them.
 Every hook takes the trace as a **`StackTrace`**. Each call site binds one from
 a `catch (error, stacktrace)`, so a looser `Object` bought nothing and cost each
 implementation a cast before it could call anything a trace offers — a cost paid
-once per implementation and then forever. `handleUnknowResultTypeError` is
-declared for a result whose type cannot be mapped to a body and is not reached
-by the pipeline today; that case leaves as a conversion error.
+once per implementation and then forever.
 
 ## Building the Router
 

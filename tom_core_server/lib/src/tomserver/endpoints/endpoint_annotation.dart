@@ -8,13 +8,15 @@ import '../little_things/server_exception.dart';
 /// Turns an error raised while serving an endpoint into a shelf [Response].
 ///
 /// The endpoint pipeline calls a hook depending on *where* the failure
-/// occurred: [handleInvocationError] when the service method itself threw, and
-/// [handleConversionError] when serialising the (successful) result failed.
-/// [handleUnknowResultTypeError] is declared for a result whose type cannot be
-/// mapped to a body and is not reached by the pipeline today — that case leaves
-/// as a conversion error. All three default to [handleErrorDefault], which is
-/// the single method a concrete handler must implement; override the individual
-/// hooks only when a stage needs a different response.
+/// occurred: [handleInvocationError] when the service method itself threw;
+/// [handleUnknownResultTypeError] when the method succeeded but its result
+/// holds a type the converter has no rendering for (the reflection layer's
+/// `reflector.type.not_annotated` refusal — a class without `@tomReflector`,
+/// or a bare scalar where an object was expected); and [handleConversionError]
+/// when rendering a result of a known shape failed for any other reason. All
+/// three default to [handleErrorDefault], which is the single method a concrete
+/// handler must implement; override the individual hooks only when a stage
+/// needs a different response.
 ///
 /// The stack trace is a [StackTrace] on every hook. Every call site binds one
 /// from a `catch (error, stacktrace)` clause, so a looser `Object` bought
@@ -44,9 +46,17 @@ abstract class TomErrorHandler {
     return handleErrorDefault(error, stacktrace, r, result);
   }
 
-  /// Builds the response for a [result] whose type the pipeline cannot map to a
-  /// body.
-  Response handleUnknowResultTypeError(
+  /// Builds the response for a [result] holding a type the pipeline cannot map
+  /// to a body.
+  ///
+  /// Called by the pipeline when rendering the result is refused with
+  /// `reflector.type.not_annotated`: the method did its work, and the failure
+  /// is in the endpoint's declaration — a result type, or a type nested in it,
+  /// that carries no `@tomReflector`. That is a programming error of a
+  /// different kind from a rendering that failed on a known shape, which is
+  /// [handleConversionError]'s case, so an application can answer for it
+  /// distinctly.
+  Response handleUnknownResultTypeError(
     Object error,
     StackTrace stacktrace,
     Request r,

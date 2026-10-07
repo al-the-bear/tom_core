@@ -417,6 +417,18 @@ abstract class FixtureApiService {
   )
   Future<void> silentRenderable();
 
+  /// An endpoint whose result has a shape the converter renders — a map of
+  /// scalars — holding a value JSON cannot encode. Its failure is a rendering
+  /// failure on a known type, as opposed to [silent]'s unknown type, so the
+  /// two error-handler hooks are separable in a test.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/unencodable',
+    logRequests: false,
+  )
+  Future<Map<String, Object>> unencodable();
+
   /// A `@TomTransactional` endpoint that reports the transaction it ran in.
   ///
   /// It parks on [FixtureApiServer.transactionalRelease] in the middle of its
@@ -933,6 +945,13 @@ class FixtureApiServer implements FixtureApiService {
   @override
   Future<Map<String, Object>> silentRenderable() async => <String, Object>{
     'leaked': true,
+  };
+
+  /// `NaN` is a `double`, so the map is a shape the converter accepts — and
+  /// `jsonEncode` refuses it.
+  @override
+  Future<Map<String, Object>> unencodable() async => <String, Object>{
+    'value': double.nan,
   };
 
   @override

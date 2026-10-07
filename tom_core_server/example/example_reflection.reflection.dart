@@ -11207,7 +11207,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         196,
         const prefix33.TomReflector(),
         const <int>[3444, 3445, 3446, 3447, 3448, 3449, 3450, 3451, 3452],
-        const <int>[872, 873, 874, 875, 876, 3446],
+        const <int>[872, 873, 874, 875, 876],
         const <int>[3450],
         102,
         {
@@ -43816,7 +43816,7 @@ final _data = <r.Reflection, r.ReflectorData>{
       ),
       r.MethodMirrorImpl(
         r'isOperational',
-        2097154,
+        2097666,
         196,
         114,
         114,

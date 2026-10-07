@@ -43,6 +43,12 @@
 
 ### Changed
 
+- **`TomErrorHandler.handleUnknownResultTypeError` is called, and spelt
+  right.** Renamed from `handleUnknowResultTypeError`. The pipeline now calls
+  it when rendering a result is refused with `reflector.type.not_annotated`
+  (an unannotated result type, or a type nested in one); every other rendering
+  failure still goes to `handleConversionError`. The log line names the hook,
+  and a failing hook still raises `conversion_error_handler_failed`.
 - **`TomDataSource.isOperational` is abstract.** It defaulted to `true`, so a
   driver that never implemented it reported usable forever through
   `TomDataSourceInfo.isOperational`. Every instance member of the data-source
