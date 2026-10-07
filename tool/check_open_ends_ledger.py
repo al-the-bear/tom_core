@@ -36,15 +36,12 @@ reads prose to decide what a document is about.
     hand-typed id resolves to nothing, and a reader cannot tell that from a
     todo they lack permission to see.
 
-**The third question is deliberately not asked.** "A struck-through item cites a
-todo that is not completed" sounds like the same defect from the other side, and
-it cannot be stated without judgement: a closed item legitimately cites an open
-todo when the finding MOVED rather than ended, which is what this unit's own
-reference-link item does -- closed here, still open in two other pages, and
-`tcopen347` named so the reader can follow it. A rule that faulted that would be
-faulting the sentence worth writing, which is the bar `check_consumer_claims.py`
-sets for a rule worth keeping. UNNAMED is the fault that actually occurred and
-it needs no judgement at all.
+**What an item says about its todos is ``check_open_lists.py``'s question.**
+That gate reads the items: an open item must name an unfinished todo, a closed
+one a finished todo. A closed item may also name an unfinished todo -- a finding
+that MOVED rather than ended, as this unit's own reference-link item does,
+closed here and still open in two other pages -- so the rule there is that the
+finished one is named too, not that no unfinished one is.
 
 **A todo about the document is not an item in it.** ``tcopen345`` asks for this
 very section to be written; a section naming it would be reporting itself as an

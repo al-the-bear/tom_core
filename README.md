@@ -296,6 +296,7 @@ it and start eight test suites.
 | [`tool/check_doc_overview_types.py`](tool/check_doc_overview_types.py) | Holds a module document's Overview table to every public type its module's barrel exports |
 | [`tool/check_open_ends.py`](tool/check_open_ends.py) | Finds completion documents with no `### What is still open` section, or an empty one |
 | [`tool/check_open_ends_ledger.py`](tool/check_open_ends_ledger.py) | Holds each open-ends section to the quest todos still open on its unit |
+| [`tool/check_open_lists.py`](tool/check_open_lists.py) | Holds every item of an open-ends section to the todo it names: an open item to an unfinished one, a closed item to a finished one |
 | [`tool/check_readme_status.py`](tool/check_readme_status.py) | Holds a package README's `## Status` version to its `pubspec.yaml`, and forbids a test count |
 | [`tool/check_doc_class_inventories.py`](tool/check_doc_class_inventories.py) | Holds a document's marked class inventory to the directory it inventories, in both directions |
 | [`tool/check_sample_account_rosters.py`](tool/check_sample_account_rosters.py) | Holds every marked enumeration of the advanced sample's demo accounts to the seed it describes, and reserves "seeded live accounts" for the `auth_db` rows |
@@ -2121,12 +2122,37 @@ it — a todo asking for the section to be written would otherwise report itself
 as an open end forever. That is a rule about what the todo is *about* rather
 than an exemption list, so the next one needs no edit here.
 
-The obvious third question — a struck-through item citing a todo that is not
-completed — is deliberately not asked. A closed item legitimately cites an open
-todo when a finding *moved* rather than ended, which is what `mcp_auth`'s
-reference-link item does: closed on that page, still open on two others, with
-the id named so a reader can follow it. Faulting that would fault the sentence
-worth writing.
+What an item says about the todos it names is the next gate's question, not
+this one's.
+
+```bash
+python3 tool/check_open_lists.py             # the report
+python3 tool/check_open_lists.py --self-test # plant each fault, require detection
+```
+
+Holds every *item* of a `### What is still open` section to the todo it names.
+The ledger above starts from the todos; this starts from the items, and catches
+the case the ledger cannot see: an item still listed as open, tracked by a todo
+that finished months ago. The configuration section did exactly that, in a
+document whose own part 1 tabulated the two methods that had closed it.
+
+An item is a list item at the left margin of the section, with its indented
+continuation lines. An item marked `**Closed**` reports something that ended and
+names the todo that closed it; every other item is open and names the todo that
+tracks it. Four faults: `UNTRACKED` is an open item naming no todo the corpus
+contains, `STALE` an open item whose every named todo is finished,
+`CLOSED-UNTRACKED` a closed item naming no todo, and `CLOSED-UNFINISHED` a
+closed item naming no *finished* todo. A closed item may also name an
+unfinished one — a finding that moved rather than ended points at where it went,
+which is what `mcp_auth`'s reference-link item does — so long as it names the
+finished todo that closed it here.
+
+The count is expected to fall. Most of it is `UNTRACKED`: open items written as
+prose before the contract required an id, each of which is resolved by
+assessing the item against the code — closing it, or filing the todo that
+tracks it — rather than by attaching whichever id is nearest. An open end
+written as a paragraph rather than an item is invisible to the gate, as it is
+to a reader wanting to check it; the rule is to write it as an item.
 
 
 ```bash
