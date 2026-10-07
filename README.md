@@ -1440,8 +1440,8 @@ sentence checkable.
 the `TomFormFileDropzone` case. Only classes whose `extends` chain reaches the
 base named in the marker are demanded, so the private widget and `State` classes
 that make up most of a Flutter field file are not inventory entries and are not
-asked for. `PHANTOM` reports a `Tom*` name the region lists that no `lib/` in
-the repository declares — the `TomFormEmailStringInput` case, a planned name the
+asked for. `PHANTOM` reports a name the region lists, in the family's own
+vocabulary, that no `lib/` in the repository declares — the `TomFormEmailStringInput` case, a planned name the
 build reached by another route. The phantom index spans every package rather
 than the marked directory, because an inventory legitimately mentions its
 neighbours (`TomList`, `TomSelectableSource`, `TomAuthState`) and a gate that
@@ -1452,12 +1452,28 @@ inventory for contrast, and demanding that every mentioned class live in the
 inventoried folder would forbid the sentence that tells a reader where the
 boundary runs.
 
+A family is not always written in `Tom*`. The server's exception family includes
+`MariadbDatasourceException` and `MariadbMigrationException`, and its inventory
+has to be able to list them. So a region's listed names are every backticked
+capitalised identifier in it, and a name is held to the declaration index when
+its leading word is one the family itself uses — `Tom` always, `Mariadb` in the
+server's exceptions. A name in any other vocabulary (`String`, `List`) is the
+SDK's, which the repository's index cannot speak for, and is neither demanded
+nor called a phantom.
+
+Markers are read from every markdown file in this repository **and from the
+completion corpus**, which inventories the same families from outside the tree
+and is found where `check_doc_inventories` finds it. The marked regions are the
+forms inventory in `tom_ui_widgets_forms.md` and, in the corpus, the server's
+exception hierarchy.
+
 A gate baselined at zero passes just as well when it has stopped reading
 anything, so this one refuses to run rather than report success: it exits 2 when
-the declaration index is empty, when no marked region is found at all, and when
+the declaration index is empty, when the completion corpus cannot be found, when no marked region is found at all, and when
 a marked region resolves to a directory that declares nothing of the named
-family. `--self-test` asks the opposite question directly — it perturbs a real
-inventory by one name in each direction and requires the checker to object.
+family. `--self-test` asks the opposite question directly — it perturbs every marked
+inventory by one name in each direction, once per leading word the family uses,
+and requires the checker to object each time.
 
 ```bash
 python3 tool/check_doc_phantom_names.py                 # the whole repository

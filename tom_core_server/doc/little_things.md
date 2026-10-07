@@ -185,8 +185,8 @@ read where it is used and cannot outlive the code it excuses.
 ### The Whole Kernel Parameter List
 
 `TomServerException`'s constructor forwards **every** parameter the kernel's
-`TomException` accepts. That matters more than it sounds: all 27 exception types
-in the package chain through this one constructor, so a parameter missing here
+`TomException` accepts. That matters more than it sounds: every exception type
+in the package chains through this one constructor, so a parameter missing here
 is missing from every one of them — and three were.
 
 | Parameter | What it makes possible |

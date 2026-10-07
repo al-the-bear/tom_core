@@ -62,13 +62,26 @@ Two faults are reported.
     field file are not inventory entries and are not asked for.
 
 ``PHANTOM``
-    The region names a ``Tom*`` symbol that no ``lib/`` in the repository
-    declares. This is the decay that produced ``TomFormEmailStringInput``: a
+    The region names a class, in its family's vocabulary, that no ``lib/`` in
+    the repository declares. This is the decay that produced ``TomFormEmailStringInput``: a
     planned name that the build reached by another route, left behind in the
     plan's own list. The index spans every package rather than the marked
     directory, because an inventory legitimately mentions its neighbours --
     ``TomList``, ``TomSelectableSource``, ``TomAuthState`` -- and a gate that
     called those phantoms would be unusable.
+
+*In the family's vocabulary* is what lets a family reach past ``Tom*``. The
+server's exception family includes ``MariadbMigrationException``, and an
+inventory of it has to be able to say so. So a region's listed names are every
+backticked capitalised identifier in it, and a name is held to the index when
+its leading word is one the family itself uses -- ``Tom`` always, ``Mariadb``
+in the server's exceptions. A name in any other vocabulary -- ``String``,
+``List`` in the forms inventory -- is the SDK's, which this repository's index
+cannot speak for, and is neither demanded nor called a phantom.
+
+Markers are read from every markdown file under this repository and from the
+completion corpus in the quest folder, which inventories the same families from
+outside the tree.
 
 There is deliberately no third fault for a name that exists elsewhere in the
 repository but not under the marked directory. ``TomListForm`` belongs to the
@@ -78,11 +91,12 @@ that tells a reader where the boundary runs.
 
 **Anti-vacuity.** A gate baselined at zero passes just as well when it has
 stopped reading anything. ``main`` exits 2 when the declaration index is empty,
-when no marked region is found at all, and when a marked region resolves to a
-directory that declares nothing -- each of which is the checker failing rather
-than the tree being clean. ``--self-test`` asks the opposite question directly:
-it perturbs a real inventory by one name in each direction and requires this
-checker to object.
+when the completion corpus cannot be found, when no marked region is found at
+all, and when a marked region resolves to a directory that declares nothing --
+each of which is the checker failing rather than the tree being clean.
+``--self-test`` asks the opposite question directly: it perturbs every marked
+inventory by one name in each direction, once per leading word its family uses,
+and requires this checker to object each time.
 """
 
 from __future__ import annotations
@@ -105,7 +119,17 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 #: its own notation rather than about the tree. The parameter list may be
 #: markdown-escaped (``\<T\>``), which is how a name is written outside a code
 #: span in the same document.
-NAMED = re.compile(r"`(Tom\w+)(?:\\?<[^`]*>)?`")
+NAMED = re.compile(r"`([A-Z]\w*)(?:\\?<[^`]*>)?`")
+
+#: The completion corpus. It describes this tree from outside it, in the quest
+#: folder, and its tables inventory families exactly as the package guides do --
+#: so a marker placed there is held to the same directory. The path is the one
+#: ``check_doc_inventories`` reads the corpus from.
+CORPUS_ROOT = REPO_ROOT.parent.parent / "_ai" / "quests" / "tom_core" / "completion"
+
+#: A class name's leading word -- ``Tom`` in ``TomStorageException``,
+#: ``Mariadb`` in ``MariadbMigrationException``. See :func:`audit`.
+LEADING_WORD = re.compile(r"^[A-Z][a-z0-9]*")
 
 #: The opening marker. The directory is repository-relative; the base type is
 #: the class an entry must descend from to be demanded of the region.
@@ -259,7 +283,7 @@ class Report:
     def render(self) -> str:
         region = self.region
         lines = [
-            f"{region.document.relative_to(REPO_ROOT)}:{region.first_line}"
+            f"{shown(region.document)}:{region.first_line}"
             f"  ({region.directory}, extends {region.base})"
         ]
         if not region.closed:
@@ -289,60 +313,113 @@ def audit(region: Region, declared: dict[str, Path]) -> Report:
 
     report.demanded = len(expected)
     report.missing = sorted(expected - region.named)
+    vocabulary = family_words(expected)
     report.phantom = sorted(
-        name for name in region.named if name not in declared and name not in expected
+        name
+        for name in region.named
+        if name not in declared
+        and name not in expected
+        and leading_word(name) in vocabulary
     )
     return report
 
 
+def leading_word(name: str) -> str:
+    """A class name's first word: ``Tom``, ``Mariadb``."""
+    match = LEADING_WORD.match(name)
+    return match.group(0) if match else name
+
+
+def family_words(family: set[str]) -> set[str]:
+    """The leading words a family's names are written in, ``Tom`` always."""
+    return {"Tom"} | {leading_word(name) for name in family}
+
+
+def shown(path: Path) -> str:
+    """A document's reported path: repository-relative, or the corpus's own."""
+    if path.is_relative_to(REPO_ROOT):
+        return str(path.relative_to(REPO_ROOT))
+    return str(path.relative_to(REPO_ROOT.parent.parent))
+
+
 def documents(prefix: str) -> list[Path]:
-    """Every markdown file in scope, narrowed by a reported-path prefix."""
-    return sorted(
+    """Every markdown file in scope, narrowed by a reported-path prefix.
+
+    The repository is walked except for dot-folders; the corpus is one flat
+    folder of documents.
+    """
+    inside = (
         path
         for path in REPO_ROOT.rglob("*.md")
-        if not any(part.startswith(".") for part in path.parts)
-        and str(path.relative_to(REPO_ROOT)).startswith(prefix)
+        if not any(part.startswith(".") for part in path.relative_to(REPO_ROOT).parts)
+    )
+    return sorted(
+        path
+        for path in [*inside, *CORPUS_ROOT.glob("*.md")]
+        if shown(path).startswith(prefix)
     )
 
 
 def self_test(declared: dict[str, Path]) -> int:
-    """Perturb a real region by one name each way and require an objection."""
+    """Perturb every real region one name each way, in each of its vocabularies.
+
+    Every region is perturbed rather than the first one found, because the
+    vocabularies differ between regions: the forms inventory is all ``Tom*``,
+    and only the server's exception family exercises a second leading word.
+    """
     found = [r for path in documents("") for r in regions(path)]
     if not found:
         print("self-test: no inventory regions to perturb", file=sys.stderr)
         return 2
 
-    region = found[0]
-    if not audit(region, declared).clean:
-        print(f"self-test: {region.document} is already defective", file=sys.stderr)
-        return 2
+    checks = 0
+    for region in found:
+        where = f"{shown(region.document)}:{region.first_line}"
+        if not audit(region, declared).clean:
+            print(f"self-test: {where} is already defective", file=sys.stderr)
+            return 2
+        family = descendants(superclasses(REPO_ROOT / region.directory), region.base)
+        for word in sorted(family_words(family)):
+            members = sorted(
+                n for n in family & region.named if leading_word(n) == word
+            )
+            if members:
+                dropped = _variant(region, region.named - {members[0]})
+                if members[0] not in audit(dropped, declared).missing:
+                    print(
+                        f"self-test: {where}: dropping `{members[0]}` "
+                        "raised no MISSING",
+                        file=sys.stderr,
+                    )
+                    return 2
+                checks += 1
+            invented = f"{word}NoSuchClassEver"
+            planted = _variant(region, region.named | {invented})
+            if invented not in audit(planted, declared).phantom:
+                print(
+                    f"self-test: {where}: listing `{invented}` raised no PHANTOM",
+                    file=sys.stderr,
+                )
+                return 2
+            checks += 1
 
-    dropped = Region(
-        region.document,
-        region.first_line,
-        region.directory,
-        region.base,
-        set(sorted(region.named)[1:]),
-        closed=True,
+    print(
+        f"self-test: MISSING and PHANTOM both fire "
+        f"({len(found)} regions, {checks} perturbations)"
     )
-    if not audit(dropped, declared).missing:
-        print("self-test: dropping a listed class raised no MISSING", file=sys.stderr)
-        return 2
-
-    invented = Region(
-        region.document,
-        region.first_line,
-        region.directory,
-        region.base,
-        region.named | {"TomFormNoSuchFieldEver"},
-        closed=True,
-    )
-    if not audit(invented, declared).phantom:
-        print("self-test: an invented class raised no PHANTOM", file=sys.stderr)
-        return 2
-
-    print("self-test: MISSING and PHANTOM both fire")
     return 0
+
+
+def _variant(region: Region, named: set[str]) -> Region:
+    """`region` listing `named` instead, and closed."""
+    return Region(
+        region.document,
+        region.first_line,
+        region.directory,
+        region.base,
+        named,
+        closed=True,
+    )
 
 
 def main(argv: list[str]) -> int:
@@ -355,6 +432,12 @@ def main(argv: list[str]) -> int:
     # of nonsense is harder to notice than a refusal to run.
     if not declared:
         print(f"no declarations found under {REPO_ROOT}", file=sys.stderr)
+        return 2
+
+    # The corpus holds markers too; without it those regions vanish from the
+    # count instead of failing, which reads as a clean run.
+    if not CORPUS_ROOT.is_dir():
+        print(f"completion documents not found at {CORPUS_ROOT}", file=sys.stderr)
         return 2
 
     if testing:
