@@ -235,7 +235,8 @@ final _link = RegExp(r'\]\(([^)]+)\)');
 /// than three types with one each. Counting types put `placeholders` (6 types,
 /// 35 members) beside `bearer_auth` (3 and 5) when it belongs beside
 /// `isolate_streaming` (12 and 47). `doc/api/api_summary_index.md` states the
-/// rule and tabulates the six units against it.
+/// rule and tabulates the six units against it, and says that `tom_flutter_ui`
+/// applies the same ten to exported types.
 const _summaryThreshold = 10;
 
 /// Comments and string literals, removed before any structural scan.
@@ -434,6 +435,21 @@ void _unitRules() {
 
     if (!index.existsSync()) return;
     final text = index.readAsStringSync();
+
+    test('it says that tom_flutter_ui counts types for the same ten', () {
+      // Both packages state "a summary at ten", and each counts a different
+      // thing. A reader who has met one index reads the other's number as the
+      // same number unless the index says otherwise, and so does a third
+      // package adopting "the rule". tom_flutter_ui's suite holds the mirror
+      // sentence in its own index.
+      expect(
+        text,
+        contains('**`tom_flutter_ui` states the same threshold over types**'),
+        reason:
+            'the index must say that tom_flutter_ui applies ten to exported '
+            'types, so the two numbers are never read as one',
+      );
+    });
 
     test('it links every summary under doc/api/', () {
       final linked = _link.allMatches(text).map((m) => m.group(1)!).toSet();

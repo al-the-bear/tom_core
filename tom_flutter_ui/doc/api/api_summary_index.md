@@ -36,6 +36,17 @@ correctly: `resource_auth` declares 13 of them across 11,352 lines and wants a
 summary, `theme` declares 4 across 365 and does not. A line threshold would be
 measuring the generated tables inside one of them.
 
+**`tom_core_agentic` states the same threshold over members**, and
+deliberately so: its units concentrate their surface in a few types with many
+members — `placeholders` is 6 types and 35 members — so a type count there puts
+a unit beside the two-constant ones that its size says it is not. Here the
+opposite holds: a widget is the unit of surface, most of the 299 are a
+constructor and no more, and a member count would measure the base class's
+parameter list rather than the kit. The two rules disagree because the packages
+have different shapes, not because one is stale — so the number is the same and
+what it counts is not, and a reader who has met one index should not assume the
+other.
+
 A **catalogue** module is outside the rule, and `widgets` is the reason the
 exemption is not a shortcut. Its 299 public types are kept, checked and
 answerable without a summary, in a form a markdown mirror cannot match:
