@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../widget_base/tom_construction_helpers.dart';
+import '../decoration/tom_field_anatomy.dart';
 import '../events/tom_form_event.dart';
 import '../events/tom_form_event_listener.dart';
 import '../events/tom_form_event_source.dart';
@@ -16,7 +16,7 @@ import '../validation/form_validation_error.dart';
 /// Subscribes to the form's event bus and rebuilds on
 /// [FormValidatedEvent] / [FormSavedEvent] / [FormDiscardedEvent].
 ///
-/// Errors are resolved through `TomCtr.text(...)` so callers can use
+/// Errors are worded by [resolveFormValidationMessage] so callers can use
 /// resource keys like `'order.items.minRequired'` and have them
 /// resolved by the active text resource provider. Unresolved keys fall
 /// back to the raw key.
@@ -112,37 +112,6 @@ class _TomErrorViewState extends State<TomErrorView> with TomFormEventListener {
     });
   }
 
-  /// Resolve a [FormValidationError] to user-facing text.
-  ///
-  /// Two lookup rules, both easy to get subtly wrong:
-  ///   - [FormValidationError.errorKey] is used **unprefixed**. Stock
-  ///     validators already emit it with the `error.` prefix attached
-  ///     (`error.required`), so adding another one yields
-  ///     `error.error.required` and never matches.
-  ///   - The global lookup passes the key as `basePath` with an empty
-  ///     suffix, not as `TomCtr.textOrNull('', key)`. The latter builds
-  ///     the path as `'.<key>'` — a leading dot that breaks
-  ///     `getObjectFromTree`. This mirrors
-  ///     `resolveFieldValidationMessage`.
-  String _resolveMessage(FormValidationError error) {
-    final key = error.errorKey;
-    if (error.fields.length == 1) {
-      final field = error.fields.first;
-      final scoped = TomCtr.textOrNull(field.basePath, key);
-      if (scoped != null) return _applyParams(scoped, error.params);
-    }
-    final global = TomCtr.textOrNull(key);
-    if (global != null) return _applyParams(global, error.params);
-    return key;
-  }
-
-  String _applyParams(String template, Map<String, dynamic>? params) {
-    if (params == null || params.isEmpty) return template;
-    var out = template;
-    params.forEach((k, v) => out = out.replaceAll('{$k}', '$v'));
-    return out;
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -184,7 +153,7 @@ class _TomErrorViewState extends State<TomErrorView> with TomFormEventListener {
             const SizedBox(height: 8),
           ],
           ..._errors.map((error) {
-            final message = _resolveMessage(error);
+            final message = resolveFormValidationMessage(error);
             final row = Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Row(

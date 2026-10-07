@@ -9,7 +9,7 @@
 
 This document describes the **list-form** layer of the Tom Forms Framework: how lists of nested sub-forms are modelled (`TomListForm`), the three reusable widgets that render them (`TomInlineListForm`, `TomExpandableListForm`, `TomMasterDetailListForm`), the two helper widgets they share (`TomListFormToolbar`, `TomReorderHandle`), how list-of-list nesting works, and how dirty / structural-change propagation reaches the outer form's UI.
 
-It is the practical companion to [tom_ui_widgets_forms.md](tom_ui_widgets_forms.md) §13–§16 (Phase 2a) — read that for the underlying form/field model; read this for the *list* dimension.
+It is the practical companion to [tom_ui_widgets_forms.md](tom_ui_widgets_forms.md) §13–§16 — read that for the underlying form/field model; read this for the *list* dimension.
 
 ---
 
@@ -450,7 +450,7 @@ Authorization gate is identical to `TomInlineListForm` — the whole list shares
 
 **File:** `lib/src/forms/list/tom_master_detail_list_form.dart`
 
-Renders a `TomListForm` as a two-pane scaffold: a master pane on the left builds the row index (typically a `TomInlineListForm` with selection callbacks), a detail pane on the right edits the **row's own sub-form** (`listForm[selectedIndex]`). There is **no sibling form** — the detail pane sees the same `TForm` instance the list owns, so dirty / structural changes propagate without the divergence problem `TomMasterDetailScaffold` had to work around.
+Renders a `TomListForm` as a two-pane scaffold: a master pane on the left builds the row index (typically a `TomInlineListForm` with selection callbacks), a detail pane on the right edits the **row's own sub-form** (`listForm[selectedIndex]`). There is **no sibling form** — the detail pane sees the same `TForm` instance the list owns, so dirty / structural changes propagate with no second form to diverge from it.
 
 ### Signature
 
@@ -749,7 +749,11 @@ Each nested widget observes its own `TomListForm`. Structural changes at any dep
 | Drag-to-reorder. | Set `reorderable: true` on the inline / expandable / master pane and embed a `TomReorderHandle(index: i)` in each row. |
 | You need a `DataTable`-specific feature (sortable columns, row stripes, native column alignment). | Hand-rolled `DataTable` over `TomListForm.length`, wrapped in a `ListenableBuilder` over a relay listener that fires on the list-form's event bus. |
 
-> **`TomMasterDetailScaffold` was removed in this iteration.** It bound a sibling `TFormB` to the selected row, which forced every consumer to deal with the divergent-`_forms`-array problem (§3 talked about the dirty-propagation regression that change of contract created). `TomMasterDetailListForm` replaces it everywhere — the detail pane reads `listForm[selectedIndex]` directly, so there is exactly one `_forms` array per list and no propagation gap.
+> **The detail pane edits the row itself, never a copy bound beside it.** A
+> sibling form bound to the selected row would leave two `_forms` arrays per
+> list, and every consumer would have to keep them from diverging.
+> `TomMasterDetailListForm` reads `listForm[selectedIndex]` directly, so there is
+> exactly one `_forms` array per list and no propagation gap.
 
 ---
 
@@ -787,7 +791,7 @@ Every constructor argument that has a hard-coded default is *also* resource-reso
 2. The resource value at `<basePath>.<key>`, if defined.
 3. The hard-coded default.
 
-This matches the field widgets exactly — see [tom_ui_widgets_forms.md](tom_ui_widgets_forms.md) Phase 0b for the full pipeline.
+This matches the field widgets exactly — see [tom_ui_widgets_forms.md](tom_ui_widgets_forms.md) §10 for how a field resolves its texts.
 
 Per-widget resource keys are listed in each widget's "Resources and authorization" subsection above. The conventions across the layer:
 

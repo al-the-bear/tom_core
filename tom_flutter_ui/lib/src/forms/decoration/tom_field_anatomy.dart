@@ -6,6 +6,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../style/form_style_enums.dart';
 import '../style/tom_form_style.dart';
+import '../validation/form_validation_error.dart';
 import '../validation/validation_result.dart';
 import '../validation/validators.dart';
 import '../tom_form_labels.dart';
@@ -149,6 +150,33 @@ String? resolveFieldValidationMessage({
       TomCtr.textOrNull(key) ??
       key;
   return validationState.interpolate(template);
+}
+
+/// Resolves a form-level [FormValidationError] to the text a user reads.
+///
+/// An error naming exactly one field is looked up first under that field's
+/// `basePath`, so a form can word it per field; every error is then looked up
+/// globally by its key, and the key itself is the fallback. [FormValidationError.errorKey]
+/// is used **unprefixed** — stock keys already carry their `error.` prefix — and
+/// the global lookup passes the key as the path with no suffix, because
+/// `TomCtr.textOrNull('', key)` would build `'.<key>'`, which never resolves.
+///
+/// Whatever resolves, the error's `params` replace their `{name}` placeholders.
+/// Every widget that shows form-level errors reads them through this, so the
+/// same error says the same thing wherever it is displayed.
+String resolveFormValidationMessage(FormValidationError error) {
+  final key = error.errorKey;
+  final template =
+      (error.fields.length == 1
+          ? TomCtr.textOrNull(error.fields.first.basePath, key)
+          : null) ??
+      TomCtr.textOrNull(key) ??
+      key;
+  final params = error.params;
+  if (params == null || params.isEmpty) return template;
+  var out = template;
+  params.forEach((name, value) => out = out.replaceAll('{$name}', '$value'));
+  return out;
 }
 
 /// Text suffix for the required indicator in plain-text slots such as

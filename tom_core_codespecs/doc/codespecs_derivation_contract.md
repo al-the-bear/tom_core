@@ -891,7 +891,7 @@ the output.
    line sits immediately above the first annotation, with no blank line between.
 4. The text is markdown and stays markdown — dartdoc renders it. Exactly two
    constructs are escaped, because dartdoc reinterprets them:
-   - `[` → `\[` and `]` → `\]`. Dartdoc reads `[Name]` as a code reference; the
+   - an opening square bracket becomes `\[` and a closing one `\]`. Dartdoc reads `[Name]` as a code reference; the
      SOM is technology-neutral (`codespecs_mapping.md` §1.2) and names no Dart
      element, so a bracketed word in a description is always text.
    - `<` → `&lt;`. Dartdoc passes inline HTML straight through.
@@ -2413,7 +2413,7 @@ validator's pass over the resolved annotation for **all** thirty-seven.
 | 24 | A `@CsCollaborator` class is `abstract`, declares only abstract methods, and has no field, constructor or static member | §3.0.1 | `CsCollaboratorShapeCheck` |
 | 25 | Every method of a form-3a or form-3b declaration, and every method of a `@CsCollaborator` class, carries a doc comment — C2 calls its absence a **generation error**, not a lapse of style | §2.8 C2 P3, §3.0.1 | `CsMethodCommentCheck` |
 | 26 | No generated file holds a non-documentation comment other than §2.7's three-line banner | §2.8 C6, §2.7 | `CsNoInBodyCommentCheck` |
-| 27 | A doc comment carries no trailing whitespace, sits immediately above the first annotation with no blank line, and escapes `[`, `]` and `<` outside fenced code blocks | §2.8 C4 | `CsDocCommentShapeCheck` |
+| 27 | A doc comment carries no trailing whitespace, sits immediately above the first annotation with no blank line, and escapes square brackets and `<` outside fenced code blocks | §2.8 C4 | `CsDocCommentShapeCheck` |
 | 28 | A form-3b body contains only the five §2.4 statement kinds; every local binding is `final` and initialised from a call, and none binds a collaborator result | §2.4, §2.4 B3 | `CsBodyStatementShapeCheck` |
 | 29 | Every branch in a generated body is an `if` on a `…Applies` collaborator guard call, never a composed expression, and no body repeats (`for`, `while`) or selects multi-way (`switch`) | §2.4 B4, §2.4 B7 | `CsBranchConditionCheck` |
 | 30 | A collaborator method repeats its calling body's parameters name-for-name and type-for-type, and its return type follows the call's position — the body's own on a `return`, `void`/`Future<void>` on an earlier step, `bool`/`Future<bool>` on a guard | §3.0.1, §2.4 B3, §2.4 B4 | `CsCollaboratorSignatureCheck` |

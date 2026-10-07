@@ -476,7 +476,7 @@ not solve.
 | `tom_core_kernel` | package | 40 of 74 files | `TomClass`/reflection, `TomScope`, `TomObject`/observables, and the authorization types (`TomAuthState`, `TomAuthorizer`, `TomUIStateController`, …) |
 | [actions](actions.md) | module | `tom_form.dart` | `TomAction`, `TomActionController` |
 | [resource_auth](resource_auth.md) | module | `style/tom_form_style_scope.dart` | `TomUIColors` |
-| [widget_base](widget_base.md) | module | 36 of 74 files | `TomAuthLayers`, `TomContainerBase`, `TomCtr`, `TomImageBase`, `TomListBase`, `TomScopePath` |
+| [widget_base](widget_base.md) | module | 35 of 74 files | `TomAuthLayers`, `TomContainerBase`, `TomCtr`, `TomImageBase`, `TomListBase`, `TomScopePath` |
 | [widgets](widgets.md) | module | `fields/tom_form_file_field.dart` | `TomMessenger` |
 
 > The model, validation, selectable-source, event, and style-value surfaces are

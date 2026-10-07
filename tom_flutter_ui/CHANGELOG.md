@@ -2,6 +2,15 @@
 
 ### Fixed
 
+- **`TomFormErrorBanner` shows messages, not resource keys.** It printed each
+  error's `errorKey` verbatim, so a user read `error.dateRange.invalid`.
+  It now words errors with `resolveFormValidationMessage` — the resolution
+  `TomErrorView` already used, moved beside `resolveFieldValidationMessage` so
+  both widgets say the same thing for the same error.
+- **The forms specification describes what ships.** `tom_ui_widgets_forms.md`
+  §20 names the two error-display widgets the package declares, §24b points at
+  `tom_flutter_form_test`'s demo catalogue, and the historical implementation
+  plan is gone.
 - **The `FormFieldFamily` both-sided rule is held.** The factory's dartdoc
   promises a method exists exactly when a field kind has a concrete on both
   sides, and nothing derived that set. `form_field_family_completeness_test.dart`

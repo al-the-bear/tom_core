@@ -278,6 +278,7 @@ it and start eight test suites.
 | [`tool/check_open_ends_ledger.py`](tool/check_open_ends_ledger.py) | Holds each open-ends section to the quest todos still open on its unit |
 | [`tool/check_readme_status.py`](tool/check_readme_status.py) | Holds a package README's `## Status` version to its `pubspec.yaml`, and forbids a test count |
 | [`tool/check_doc_class_inventories.py`](tool/check_doc_class_inventories.py) | Holds a document's marked class inventory to the directory it inventories, in both directions |
+| [`tool/check_doc_phantom_names.py`](tool/check_doc_phantom_names.py) | Counts the `Tom*` type names shipped documentation writes that no code under `tom_ai/` declares |
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
 | [`tool/check_resource_key_namespace.py`](tool/check_resource_key_namespace.py) | Finds resource keys written with the field-grade scope glued to the front of the type |
 | [`tool/check_figure_wellformed.py`](tool/check_figure_wellformed.py) | Finds SVG figures that are not well-formed XML, and so render as nothing |
@@ -1397,6 +1398,30 @@ the declaration index is empty, when no marked region is found at all, and when
 a marked region resolves to a directory that declares nothing of the named
 family. `--self-test` asks the opposite question directly — it perturbs a real
 inventory by one name in each direction and requires the checker to object.
+
+```bash
+python3 tool/check_doc_phantom_names.py                 # the whole repository
+python3 tool/check_doc_phantom_names.py tom_flutter_ui  # one subtree
+python3 tool/check_doc_phantom_names.py --names         # grouped by name
+```
+
+The same question asked outside the marked regions, where it cannot be asked
+at zero. The forms specification described its error presentation with five
+widgets the framework never declared — `TomFormErrorDisplay` among them — in
+ordinary prose, where the inventory gate does not look. A phantom anywhere in
+shipped markdown is a name in a code span that begins `Tom`, an upper-case
+letter, and that no `class`, `enum`, `mixin`, `typedef` or `extension` under
+`tom_ai/` declares; each (line, name) occurrence counts once.
+
+It is a ratchet, not a zero. Most of the population is legitimate — a design
+document that states it is partially implemented names its unbuilt parts, a
+migration note names what it migrated from, a divergence table names what the
+specification called a type before the build chose otherwise, and a family is
+written by its prefix — and telling those from a defect is a judgement. So the
+count is frozen: a new phantom moves it and fails the run, and repairing one is
+recorded by lowering the baseline. `--names` groups the population for that
+work. It refuses to run on a declaration index under 500 names, because a walk
+that missed the code would report every name as a phantom.
 
 ```bash
 python3 tool/check_field_grade_matrix.py                  # the whole repository

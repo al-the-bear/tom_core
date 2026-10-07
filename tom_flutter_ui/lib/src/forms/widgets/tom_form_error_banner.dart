@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../decoration/tom_field_anatomy.dart';
 import '../events/tom_form_event.dart';
 import '../events/tom_form_event_listener.dart';
 import '../events/tom_form_event_source.dart';
@@ -12,7 +13,8 @@ import '../validation/form_validation_error.dart';
 ///
 /// Field-level errors are displayed by each field's own decoration.
 /// This banner shows only the errors from [TomForm.validate()] that
-/// are cross-field validation failures.
+/// are cross-field validation failures, each worded by
+/// [resolveFormValidationMessage].
 ///
 /// Subscribes to the form's event system to show/hide automatically.
 /// Auto-dismisses when the form becomes valid; not user-dismissible.
@@ -126,7 +128,7 @@ class _TomFormErrorBannerState extends State<TomFormErrorBanner>
             (error) => Padding(
               padding: const EdgeInsets.only(left: 28, bottom: 4),
               child: Text(
-                error.errorKey,
+                resolveFormValidationMessage(error),
                 style: (style.errorStyle ?? theme.textTheme.bodySmall)
                     ?.copyWith(color: onErrorContainer),
               ),

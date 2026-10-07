@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // ---------------------------------------------------------------------------
@@ -361,6 +362,68 @@ void main() {
       );
       await tester.pump();
       expect(find.text('error.from1'), findsOneWidget);
+    });
+  });
+
+  group('TomFormErrorBanner — messages', () {
+    tearDown(
+      () => TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from(const {}),
+      ),
+    );
+
+    testWidgets('shows the resolved message, not the resource key', (
+      tester,
+    ) async {
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from(const {
+          'error.dateRange.invalid': 'The range ends before {start}.',
+        }),
+      );
+      final form = _TestEventSource();
+      await tester.pumpWidget(_wrap(TomFormErrorBanner(form: form)));
+
+      form.fireEvent(
+        FormValidatedEvent(
+          source: 'testForm',
+          errors: [
+            FormValidationError(
+              errorKey: 'error.dateRange.invalid',
+              params: const {'start': 'the start date'},
+              fields: [fieldStartDate, fieldEndDate],
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.text('The range ends before the start date.'),
+        findsOneWidget,
+      );
+      expect(find.text('error.dateRange.invalid'), findsNothing);
+    });
+
+    testWidgets('falls back to the key when no resource defines it', (
+      tester,
+    ) async {
+      final form = _TestEventSource();
+      await tester.pumpWidget(_wrap(TomFormErrorBanner(form: form)));
+
+      form.fireEvent(
+        FormValidatedEvent(
+          source: 'testForm',
+          errors: [
+            FormValidationError(
+              errorKey: 'error.unknown',
+              fields: [fieldA, fieldB],
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('error.unknown'), findsOneWidget);
     });
   });
 }
