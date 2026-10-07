@@ -265,6 +265,12 @@ class TomReference<
   final Type repositoryType;
 
   /// The entity that models the join.
+  ///
+  /// Required, because a join table is always a mapped `@TomDbTable` entity:
+  /// there is no form of this annotation over a bare table. Mapping an existing
+  /// join table costs one class and changes nothing in the schema, and it gives
+  /// the join row what every other row has — an address, a `@TomDbScope` and
+  /// column grades — none of which a bare table could carry.
   final Type joinEntity;
 
   /// The key type linking the two sides.

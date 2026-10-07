@@ -218,6 +218,39 @@ from a mirror that carries no type arguments. A `null` field is refused with
 the field: leaving the association empty instead would be indistinguishable
 from an owner that genuinely has none.
 
+**The join table is an entity, always.** There is no form of `@TomReference`
+over a bare join table: `joinEntity` is required. A join table nobody has mapped
+yet is given one `@TomDbTable` class whose fields are its columns:
+
+```dart
+@tomReflector
+@TomDbTable(datasource: 'app', table: 'user_role', primaryKeyField: 'id')
+class UserRole {
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  @TomDbColumn(columnName: 'user_id')
+  int? userId;
+
+  @TomDbColumn(columnName: 'role_id')
+  int? roleId;
+}
+```
+
+That class is the whole cost, and it buys the join row what every other row
+has: it is read, written and deleted through a repository like any entity,
+filtered by a `@TomDbScope`, and graded column by column. A bare table would be
+a row to which none of those guarantees applied, and the repository would need
+a write path for a row with no entity — so the convenience is declined rather
+than missing.
+
+The entity needs **one** primary-key field, so a join table maps unchanged when
+it has a key column of its own. One keyed only by its two foreign keys has no
+single field to name: the module has no composite primary key (see
+[Not Yet Implemented](#not-yet-implemented)), and such a table needs a
+surrogate key column before it can be mapped.
+
 **One reference query per owning row.** The association cannot be resolved while
 its row is being mapped, so the mapper stacks the row's pending references and
 drains the stack at the end of *that row*. A stack shared across rows would
@@ -1637,9 +1670,9 @@ its own result, and `test/examples_test.dart` runs it.
 
 ## Not Yet Implemented
 
-Both entries are about the *shape of a predicate*, and both are bounded by the
-same thing: an expression tree over the columns of the tables a query already
-names.
+The first and last entries are about the *shape of a predicate*, and both are
+bounded by the same thing: an expression tree over the columns of the tables a
+query already names. The middle one is about how a row is addressed.
 
 - **A predicate cannot address an association's columns.** `@TomReference`
   declares an association, and the repository loads the other side with a
@@ -1648,6 +1681,12 @@ names.
   resolve. Filter on the foreign key, or query the other entity's repository
   and pass the ids to an `IS IN` list.
   <!-- pinned: test/query_sentence_declined_words_test.dart › a predicate cannot address an association's columns -->
+- **There is no composite primary key.** `@TomDbTable.primaryKeyField` names
+  one field, and `findById`, `save` and `delete` address a row by that one
+  value. A table keyed by several columns — the usual shape of a legacy
+  many-to-many join table — is mapped once it has a single key column; until
+  then its rows are reached through `executeQueryString`.
+  <!-- unpinned: absence — TomDbTable takes one primaryKeyField -->
 - **There is no subquery node**, so a predicate that is *about* another result
   set — `EXISTS`, `IN (SELECT …)`, a correlated aggregate — cannot be built.
   `executeQueryString` takes the SQL directly when a query genuinely needs one;
