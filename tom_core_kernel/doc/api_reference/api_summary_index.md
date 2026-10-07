@@ -290,6 +290,7 @@ declarations are omitted.
 | `TomAccessControlInformation` | class | Resolved access-control info for a principal. |
 | `TomClientLimitsInformation` | class | Client-side limits info. |
 | `TomAccessControlDefinition` | class | Definition of an access-control policy. |
+| `TomLoginFailure` | enum | Why a login failed, as the closed set a client branches on; carried by the server's `TomLoginException` and by a failed `TomAuthenticationResult`. |
 | `TomAuthState` | enum | `none`, `disabled`, `read`, `full` (with `narrow`/`widen`, visibility getters). |
 | `AuthGroupMode` | enum | `controlsAll`, `controlsWidest`, `controlsNarrowest`. |
 | `TomAuthorizerStrategy` | enum | `authorizerDecides`, `authorizerNarrowsOnly`. |

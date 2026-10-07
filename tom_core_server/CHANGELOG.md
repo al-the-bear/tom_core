@@ -43,6 +43,11 @@
 
 ### Changed
 
+- **`TomLoginFailure` moved to `tom_core_kernel`**, beside
+  `TomAuthenticationResult`. `TomAuthenticationServer` now sets the result's
+  `loginFailureReason` wherever it sets `error`: from the caught
+  `TomLoginException`'s reason, `secondFactorInvalid` for a refused code it
+  offers again, and `providerError` for a masked unexpected error.
 - **`TomErrorHandler.handleUnknownResultTypeError` is called, and spelt
   right.** Renamed from `handleUnknowResultTypeError`. The pipeline now calls
   it when rendering a result is refused with `reflector.type.not_annotated`

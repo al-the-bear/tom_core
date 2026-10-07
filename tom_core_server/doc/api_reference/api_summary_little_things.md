@@ -2,8 +2,8 @@
 
 The base exception type for every error raised by `tom_core_server`, adding
 isolate attribution and request correlation to the kernel exception — plus
-`TomLoginException` and its `TomLoginFailure` reason, the one subclass declared
-beside it, `TomRequestId`, the correlation id the base reads out of the zone, and
+`TomLoginException`, the one subclass declared beside it (its `TomLoginFailure`
+reason is a kernel type), `TomRequestId`, the correlation id the base reads out of the zone, and
 `tomErrorEnvelope`, which renders any of them into the wire error body.
 
 ## Table of Contents
@@ -13,8 +13,6 @@ beside it, `TomRequestId`, the correlation id the base reads out of the zone, an
 - [Classes](#classes)
   - [TomRequestId](#tomrequestid)
   - [TomServerException](#tomserverexception)
-- [Enums](#enums)
-  - [TomLoginFailure](#tomloginfailure)
 - [Global Functions and Constants](#global-functions-and-constants)
   - [tomErrorEnvelope](#tomerrorenvelope)
 
@@ -65,7 +63,7 @@ TomRequestId          (standalone)
 TomException  (kernel)
     └── TomServerException
             ├── TomLoginException  (declared here; documented under Auth)
-            │                      (with TomLoginFailure, its reason enum)
+            │                      (reason: TomLoginFailure, from the kernel)
             └── …                  (every other module's exception type)
 ```
 
@@ -154,32 +152,6 @@ this one's id.
 | ------ | --------- | ----------- |
 | `clientMessage` | `String clientMessage(String maskedFallback)` | The message this exception may be shown to a client as: `defaultUserMessage` when `clientThrow` is true, `maskedFallback` when it is not. **Every response that carries a message reads it from here** — a handler reading `defaultUserMessage` directly breaks the thrower's promise by omission, and five types in the package set the flag `false` precisely because their messages describe server internals. The fallback is required and has no default: text belongs to the rendering tier, reached through a resource key. Only the *message* is masked; `key` stays on the wire for every exception. |
 | `toString` | `String toString()` | *(override)* The base `TomException` string extended with `isolateName`, the `clientThrow` flag, and — only when the exception was raised inside a request — a labelled ` request: <uuid>` segment. The segment is omitted entirely when `requestUuid` is null. |
-
-## Enums
-
-### TomLoginFailure
-
-Why a login could not succeed, as a closed set a caller can switch on. The set
-is deliberately **coarser than the framework's own knowledge**: the `key` serves
-the server, which wants every distinction for its logs and lockout logic, and
-this enum serves the client, which must not be told more than it has earned.
-
-There is no `badCredentials`, no `unknownUser` and no `accountLocked` — all three
-are `accountProblem`, because telling a caller which of them it hit is a
-user-enumeration oracle.
-
-`tomErrorEnvelope` reports it as `loginFailure`, so a client branches on a closed
-set rather than matching `key` values that no type enumerates.
-
-#### Values
-
-| Value | Meaning |
-| ----- | ------- |
-| `accountProblem` | The account cannot authenticate: no such account, wrong credentials, or locked. One value for the three on purpose. |
-| `secondFactorRequired` | A second factor is needed that the caller has not supplied or not enrolled; the credentials themselves were not refused. |
-| `secondFactorInvalid` | A second factor was supplied and is not usable: wrong code, expired challenge, one already answered. The remedy is to try again. |
-| `rateLimited` | The attempts for this challenge or enrolment are spent. Distinct from `secondFactorInvalid` because trying the same factor again cannot succeed. |
-| `providerError` | The deployment's side failed: a provider refused or is unreachable, a code could not be delivered, or a mechanism has no adaptor. |
 
 ## Global Functions and Constants
 

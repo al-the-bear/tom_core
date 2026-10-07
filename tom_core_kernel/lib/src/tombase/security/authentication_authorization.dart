@@ -149,6 +149,57 @@ class TomAuthenticationMessage {
 // AUTHENTICATION RESULT
 // =============================================================================
 
+/// Why a login could not succeed, as a closed set a caller can switch on.
+///
+/// The set is deliberately **coarser than the framework's own knowledge**. A
+/// login failure carries two audiences with opposite needs: the server, which
+/// wants every distinction it can get for its logging and its lockout logic,
+/// and the client, which must not be told more than it has earned. This enum
+/// serves the client, and the `key` — free-form, and as specific as the throw
+/// site likes — still serves the server.
+///
+/// That is why there is no `badCredentials`, no `unknownUser` and no
+/// `accountLocked`: all three are [accountProblem]. Telling a caller which of
+/// the three it hit is a **user-enumeration oracle** — "unknown user" and "wrong
+/// password" as separate answers let anyone confirm which accounts exist, and
+/// "locked" confirms it a second way. One value, and the account's owner learns
+/// the detail through a channel that already knows who they are.
+///
+/// The rest are separated because a client can act on each differently and
+/// none of them says anything about whether an account exists.
+///
+/// It lives in the kernel, beside [TomAuthenticationResult], because it is a
+/// fact about authentication rather than about the server: the server's
+/// `TomLoginException` carries it, a failed [TomAuthenticationResult] carries
+/// it, and a client switches on it without depending on the server package.
+enum TomLoginFailure {
+  /// The account cannot authenticate: no such account, wrong credentials, or
+  /// the account is locked. One value for the three on purpose — see above.
+  accountProblem,
+
+  /// The first factor was accepted and a second one is needed that the caller
+  /// has not supplied or not enrolled. The remedy is to complete or begin
+  /// enrolment; the credentials themselves were not refused.
+  secondFactorRequired,
+
+  /// A second factor was supplied and is not usable: the wrong code, an expired
+  /// challenge, one already answered, or one this token does not carry. The
+  /// remedy is to try the factor again.
+  secondFactorInvalid,
+
+  /// The attempts for this challenge or enrolment are spent. Distinct from
+  /// [secondFactorInvalid] because the remedy differs: trying the same factor
+  /// again cannot succeed, and the caller has to start the login over.
+  rateLimited,
+
+  /// The failure is on the deployment's side rather than the caller's: an
+  /// identity provider refused or is unreachable, a one-time code could not be
+  /// delivered, or the configuration names a mechanism nothing implements.
+  /// Retrying the same credentials may well work once the cause is fixed, and
+  /// nothing the caller did is wrong.
+  providerError,
+}
+
 /// Represents the server's response to an authentication request.
 ///
 /// Contains either an error message or the authentication/authorization
@@ -217,6 +268,27 @@ class TomAuthenticationMessage {
 class TomAuthenticationResult {
   /// Error message if authentication failed; empty on success.
   String error = "";
+
+  /// Why the login failed, as the [TomLoginFailure] value's name; empty on
+  /// success.
+  ///
+  /// The wire form of [loginFailureReason], and the same name the server's
+  /// error envelope reports as `loginFailure` for a failure that is thrown, so
+  /// a client reads one vocabulary whichever way a login failed. A string
+  /// because the reflection layer serializes plain fields; read and write it
+  /// through [loginFailureReason].
+  String loginFailure = "";
+
+  /// Why the login failed, or `null` when it did not (or the name on the wire
+  /// is one this build does not know).
+  ///
+  /// Set wherever [error] is set, so a caller switches on a closed set instead
+  /// of matching the free-form key in [error].
+  TomLoginFailure? get loginFailureReason =>
+      TomLoginFailure.values.asNameMap()[loginFailure];
+
+  set loginFailureReason(TomLoginFailure? reason) =>
+      loginFailure = reason?.name ?? "";
 
   /// JWT token proving user identity.
   ///

@@ -59,6 +59,7 @@ per-principal-per-resource role resolution.
   - [TomOAuthCallbackRequest](#tomoauthcallbackrequest)
   - [TomOAuthApiService](#tomoauthapiservice)
 - [Enums](#enums)
+  - [TomLoginFailure](#tomloginfailure)
   - [TomAuthState](#tomauthstate)
   - [AuthGroupMode](#authgroupmode)
   - [TomAuthorizerStrategy](#tomauthorizerstrategy)
@@ -1164,6 +1165,8 @@ TomAuthenticationResult([String error = ""])
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `error` | `String` | Error message if authentication failed; empty on success. |
+| `loginFailure` | `String` | Why the login failed, as a `TomLoginFailure` value's name; empty on success. The wire form of `loginFailureReason`, and the name the server's error envelope reports as `loginFailure` for a thrown failure. |
+| `loginFailureReason` | `TomLoginFailure?` (getter/setter) | `loginFailure` as the enum; `null` on success or for a name this build does not know. Set wherever `error` is. |
 | `authenticationToken` | `String` | JWT token proving user identity. |
 | `authorizationToken` | `String` | JWT token containing authorization information (ACI). |
 | `requires2FA` | `bool` | The user holds a factor and must now **use** it. |
@@ -1735,6 +1738,34 @@ here — the same split the rest of the framework's contracts follow.
 | `completeOAuthAuthorization(TomOAuthCallbackRequest request)` | `Future<TomAuthenticationResult>` | `tomOAuthCompleteEndpointId` — exchanges the code and completes the login, answering exactly what a password login answers. |
 
 ## Enums
+
+### TomLoginFailure
+
+Why a login could not succeed, as a closed set a caller can switch on. The set
+is deliberately **coarser than the framework's own knowledge**: the `key` serves
+the server, which wants every distinction for its logs and lockout logic, and
+this enum serves the client, which must not be told more than it has earned.
+
+There is no `badCredentials`, no `unknownUser` and no `accountLocked` — all three
+are `accountProblem`, because telling a caller which of them it hit is a
+user-enumeration oracle.
+
+It is declared in the kernel because it is a fact about authentication rather
+than about the server: the server's `TomLoginException` carries it as `reason`,
+and `tom_core_server`'s `tomErrorEnvelope` reports it as `loginFailure`; a
+failed `TomAuthenticationResult` carries it as `loginFailureReason` (on the wire,
+its name in `loginFailure`). A client switches on it without depending on the
+server package.
+
+#### Values
+
+| Value | Meaning |
+| ----- | ------- |
+| `accountProblem` | The account cannot authenticate: no such account, wrong credentials, or locked. One value for the three on purpose. |
+| `secondFactorRequired` | A second factor is needed that the caller has not supplied or not enrolled; the credentials themselves were not refused. |
+| `secondFactorInvalid` | A second factor was supplied and is not usable: wrong code, expired challenge, one already answered. The remedy is to try again. |
+| `rateLimited` | The attempts for this challenge or enrolment are spent. Distinct from `secondFactorInvalid` because trying the same factor again cannot succeed. |
+| `providerError` | The deployment's side failed: a provider refused or is unreachable, a code could not be delivered, or a mechanism has no adaptor. |
 
 ### TomAuthState
 

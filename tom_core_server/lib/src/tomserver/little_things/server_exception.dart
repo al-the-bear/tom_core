@@ -255,52 +255,6 @@ Map<String, Object?> tomErrorEnvelope(Object error) {
   return envelope;
 }
 
-/// Why a login could not succeed, as a closed set a caller can switch on.
-///
-/// The set is deliberately **coarser than the framework's own knowledge**. A
-/// login failure carries two audiences with opposite needs: the server, which
-/// wants every distinction it can get for its logging and its lockout logic,
-/// and the client, which must not be told more than it has earned. This enum
-/// serves the client, and the `key` — free-form, and as specific as the throw
-/// site likes — still serves the server.
-///
-/// That is why there is no `badCredentials`, no `unknownUser` and no
-/// `accountLocked`: all three are [accountProblem]. Telling a caller which of
-/// the three it hit is a **user-enumeration oracle** — "unknown user" and "wrong
-/// password" as separate answers let anyone confirm which accounts exist, and
-/// "locked" confirms it a second way. One value, and the account's owner learns
-/// the detail through a channel that already knows who they are.
-///
-/// The rest are separated because a client can act on each differently and
-/// none of them says anything about whether an account exists.
-enum TomLoginFailure {
-  /// The account cannot authenticate: no such account, wrong credentials, or
-  /// the account is locked. One value for the three on purpose — see above.
-  accountProblem,
-
-  /// The first factor was accepted and a second one is needed that the caller
-  /// has not supplied or not enrolled. The remedy is to complete or begin
-  /// enrolment; the credentials themselves were not refused.
-  secondFactorRequired,
-
-  /// A second factor was supplied and is not usable: the wrong code, an expired
-  /// challenge, one already answered, or one this token does not carry. The
-  /// remedy is to try the factor again.
-  secondFactorInvalid,
-
-  /// The attempts for this challenge or enrolment are spent. Distinct from
-  /// [secondFactorInvalid] because the remedy differs: trying the same factor
-  /// again cannot succeed, and the caller has to start the login over.
-  rateLimited,
-
-  /// The failure is on the deployment's side rather than the caller's: an
-  /// identity provider refused or is unreachable, a one-time code could not be
-  /// delivered, or the configuration names a mechanism nothing implements.
-  /// Retrying the same credentials may well work once the cause is fixed, and
-  /// nothing the caller did is wrong.
-  providerError,
-}
-
 /// A server-side login failure.
 ///
 /// Thrown by a `TomAuthenticationService`, a `Tom2FAService`, or their helpers
@@ -308,7 +262,8 @@ enum TomLoginFailure {
 /// enrolled second factor, an expired challenge. Carries the [TomServerException]
 /// payload (`key`, user message, `parameters`, `stack`, `rootException`,
 /// `autoLog`) plus a [reason]; `TomAuthenticationServer` catches it and turns
-/// its `key` into a failed `TomAuthenticationResult` rather than propagating.
+/// its `key` and [reason] into a failed `TomAuthenticationResult` (`error` and
+/// `loginFailureReason`) rather than propagating.
 ///
 /// It lives here, next to the exception base, rather than beside the
 /// authentication server, so that the 2FA subsystem can throw it without

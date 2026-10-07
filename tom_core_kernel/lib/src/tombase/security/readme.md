@@ -22,7 +22,8 @@ an element is hidden, locked, read-only, or fully editable.
 | `TomClientContext` | The language, country and timezone a principal carries when nothing better is known. Named once because they are compared as often as assigned: `noCountry` (`XX`) is a non-locale sentinel a locale key must drop, not a country. |
 | `TomBearerAuthentication` | Bearer-token authentication. |
 | `TomTokenLifetimeException` | A token refused because it is not live — expired, without a readable `exp`, or with a `validUntil` more than two minutes from its `exp`. Raised before any principal is built. |
-| `TomAuthenticationMessage` / `TomAuthenticationResult` | Authentication request/response payloads. |
+| `TomAuthenticationMessage` / `TomAuthenticationResult` | Authentication request/response payloads. A failed result carries its key in `error` and its reason in `loginFailureReason`. |
+| `TomLoginFailure` | Why a login failed, as the closed set a client branches on — the same value the server's `TomLoginException` carries. |
 | `TomAuthorizationGroup` / `AuthGroupMode` | Collective authorization: widgets register with a group, and the mode decides how the group's state applies to its members. |
 | `TomAuthorizerStrategy` | How a `TomAuthorizer`'s verdict combines with resource authorization rather than replacing it. |
 | `TomUIStateController` | The last layer of the resolution: given the combined authorization state, it returns the final UI state. Build-time, and narrowing only. |

@@ -4,7 +4,7 @@ The server-side base exception, the correlation id it reads, and the wire shape
 it is rendered into. This module contributes three types — `TomServerException`,
 which every other `tom_core_server` exception extends; `TomLoginException`, the
 one subclass declared here rather than beside the module that raises it, with
-its closed-set `TomLoginFailure` reason; and `TomRequestId`, the per-request id
+a closed-set `TomLoginFailure` reason (a kernel type); and `TomRequestId`, the per-request id
 the exception constructor recovers from the zone — plus one function,
 `tomErrorEnvelope`, which turns any error into the body a client receives.
 
@@ -37,7 +37,6 @@ the exception constructor recovers from the zone — plus one function,
 | `TomRequestId` | class | Per-request v4-UUID correlation id, published into the request zone by the server's authentication middleware |
 | `TomServerException` | class | Base class for all server-raised exceptions; extends the kernel's `TomException` |
 | `TomLoginException` | class | A failed login, raised by the authentication services; extends `TomServerException` and adds a `TomLoginFailure` reason |
-| `TomLoginFailure` | enum | The closed set a client branches on: `accountProblem`, `secondFactorRequired`, `secondFactorInvalid`, `rateLimited`, `providerError` |
 | `tomErrorEnvelope` | function | Renders any error into the package's wire error body — the shape every error response uses |
 
 The kernel already provides `TomException` (UUID tracking, parameters,
@@ -515,13 +514,16 @@ transcript; `test/examples_test.dart` runs it, which is what keeps that true.
 - **`TomLoginException`** — a login that cannot succeed: unknown client or user,
   invalid credentials, no enrolled second factor, an expired challenge. Raised
   by `TomAuthenticationService`, `Tom2FAService` and their helpers, and caught
-  by `TomAuthenticationServer`, which turns its `key` into a failed
-  `TomAuthenticationResult`. It adds a required `TomLoginFailure` reason over
+  by `TomAuthenticationServer`, which turns its `key` and its reason into a
+  failed `TomAuthenticationResult`. It adds a required `TomLoginFailure` reason over
   the base — see
   [TomLoginException and Its Reason](#tomloginexception-and-its-reason). See
   `doc/authentication.md` for the login flow it belongs to.
 - **`TomLoginFailure`** — the closed set a client switches on, deliberately
-  coarser than the server's own knowledge.
+  coarser than the server's own knowledge. Declared in `tom_core_kernel`,
+  beside `TomAuthenticationResult`, which carries the same value as
+  `loginFailureReason` when the server returns a failed result instead of
+  throwing.
 - **`tomErrorEnvelope`** — renders any error into the wire error body, reporting
   `errorType` always, the `TomException` fields for a Tom error, and
   `clientThrow` for a server one. Used by `TomServer.errorHandler` and

@@ -414,7 +414,6 @@ surface documented here.
 | ---- | ---- | ----------- |
 | `TomRequestId` | class | Per-request v4-UUID correlation id, published into the request zone. |
 | `TomServerException` | class | Server-side base exception (extends `TomException`). |
-| `TomLoginFailure` | enum | The closed set a login failure classifies itself as, and what a client branches on. |
 | `tomErrorEnvelope` | function | Renders any error into the package's wire error body — the shape every error response uses. |
 
 ### Messaging (`lib/src/tomserver/messaging/`)
@@ -949,7 +948,6 @@ surface documented here.
 | `TomLocalizedTextResources` | Resources |
 | `tomLoggingMiddleware` | Server |
 | `TomLoginException` | Authentication |
-| `TomLoginFailure` | Little Things |
 | `TomMemory2FAEnrolmentStore` | Authentication |
 | `TomMemory2FAGraceStore` | Authentication |
 | `TomMemoryAuditAnchorStore` | Audit |

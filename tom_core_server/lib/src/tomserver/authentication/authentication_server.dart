@@ -387,6 +387,7 @@ class TomAuthenticationServer {
         twoFactorVerification: verification,
       );
       retry.error = 'login.error.2fa.invalid-code';
+      retry.loginFailureReason = TomLoginFailure.secondFactorInvalid;
       return retry;
     } catch (ex, s) {
       return _failedResult(ex, s);
@@ -769,6 +770,7 @@ class TomAuthenticationServer {
           enrolment: consumed,
         );
         retry.error = ex.key;
+        retry.loginFailureReason = ex.reason;
         return retry;
       }
 
@@ -1127,15 +1129,19 @@ class TomAuthenticationServer {
   }
 
   /// Maps a thrown error onto a failed result: a [TomLoginException] surfaces
-  /// its stable `key`, anything else is masked behind `"login.error.unknown"` so
-  /// an internal fault never describes itself to the caller.
+  /// its stable `key` and its [TomLoginException.reason]; anything else is
+  /// masked behind `"login.error.unknown"` so an internal fault never describes
+  /// itself to the caller, and classified as
+  /// [TomLoginFailure.providerError] — a failure on the deployment's side,
+  /// which is all the caller may learn about it.
   TomAuthenticationResult _failedResult(Object ex, StackTrace s) {
     if (ex is TomLoginException) {
       tomLog.info("Login failed ${ex.key} ${ex.parameters}");
-      return TomAuthenticationResult(ex.key);
+      return TomAuthenticationResult(ex.key)..loginFailureReason = ex.reason;
     }
     tomLog.error("Login failed with unexpected error $ex");
     tomPrintStackTrace(s);
-    return TomAuthenticationResult("login.error.unknown");
+    return TomAuthenticationResult("login.error.unknown")
+      ..loginFailureReason = TomLoginFailure.providerError;
   }
 }

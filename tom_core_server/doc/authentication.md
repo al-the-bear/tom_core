@@ -195,9 +195,13 @@ TomAuthenticationResult
 ```
 
 A thrown `TomLoginException` is **not** propagated — the server catches it and
-returns a `TomAuthenticationResult` carrying the exception's `key` so the client
-can show a localized message. Any other error becomes a
-`"login.error.unknown"` result.
+returns a `TomAuthenticationResult` carrying the exception's `key` in `error`, so
+the client can show a localized message, and its reason in
+`loginFailureReason`, so the client can branch on the closed `TomLoginFailure`
+set rather than on the key. Any other error becomes a `"login.error.unknown"`
+result classified `providerError`. A refused second factor that is offered
+again — a re-issued challenge or enrolment token — carries its reason the same
+way.
 
 ## Implementing a Service
 

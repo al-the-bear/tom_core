@@ -2,6 +2,12 @@
 
 ### Changed
 
+- **`TomLoginFailure` lives here, and a failed `TomAuthenticationResult`
+  carries it.** The enum moved from `tom_core_server` beside the result, which
+  gains `loginFailure` (the value's name, on the wire) and a typed
+  `loginFailureReason` accessor. A client switches on the closed set whether a
+  login failure was thrown (the server's envelope) or returned as a result,
+  without depending on the server package.
 - **A mixin scope keeps its path.** `TomScopeMixin.getScopePath` composes the
   path from the parent's and keeps it once the parent has kept its own (or
   there is no parent), so on a chain of mixin scopes each path is built once.

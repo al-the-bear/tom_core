@@ -17,8 +17,10 @@ have pointed the dependency arrow backwards.
 
 One further subclass is declared here too: `TomLoginException`, which lives next
 to the base rather than beside the authentication server that consumes it, so
-the 2FA subsystem can throw it without importing that server — together with
-`TomLoginFailure`, the closed set it classifies itself as.
+the 2FA subsystem can throw it without importing that server. The closed set it
+classifies itself as, `TomLoginFailure`, is the kernel's: a failed
+`TomAuthenticationResult` carries the same value, so a client switches on it
+without depending on this package.
 
 The module also owns `tomErrorEnvelope`, the package's single definition of what
 a Tom error looks like on the wire. It is declared here for the same reason
@@ -33,7 +35,6 @@ on, so both error handlers reach the builder without either reaching the other.
 | `TomRequestId` | Per-request v4 UUID. Created once per request by `tomDefaultAuthenticationMiddleware` and published into the request zone; recovered with `getFromCurrentZone<TomRequestId>()` for log and exception correlation. |
 | `TomServerException` | Base server error: carries `key` + `defaultUserMessage`, records `isolateName` (the isolate that **raised** it, never updated afterwards — so it says where a failure happened, not where it surfaced, and it survives an isolate hop), exposes `clientThrow` (both `final` — fixed where the error is raised), and copies the active request UUID into `requestUuid` for correlation — unless the caller supplied one, which wins, because a caller that names a request is relaying a failure from elsewhere. It forwards the kernel's whole parameter list, including `uuid` and `serverCallError`, which every exception type in the package chains through. A response that carries a message reads it through `clientMessage(fallback)`, which returns the message only when `clientThrow` is true — reading the field directly is how an exception marked internal leaks its text. |
 | `TomLoginException` | A login that cannot succeed. Adds a required `TomLoginFailure` reason to the base; the authentication services throw it and `TomAuthenticationServer` catches it. Its constructor omits `clientThrow`, so it is client-visible, unlike the rest of the authentication subsystem's exceptions. See `doc/authentication.md`. |
-| `TomLoginFailure` | The closed set a client switches on: `accountProblem`, `secondFactorRequired`, `secondFactorInvalid`, `rateLimited`, `providerError`. Coarser than the `key` on purpose — there is no `badCredentials`/`unknownUser`/`accountLocked`, because naming which of the three it was is a user-enumeration oracle. |
 | `tomErrorEnvelope` | Renders any error into the wire error body. Reports `errorType` always, adds `errorKey`/`uuid`/`autoLog`/`requestUuid` for a `TomException`, `clientThrow` for a `TomServerException` and `loginFailure` for a `TomLoginException`. A field is **absent rather than null** when the error does not carry it, so its presence tells a client where the error came from. |
 
 ## Quick start

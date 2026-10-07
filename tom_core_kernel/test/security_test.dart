@@ -1318,6 +1318,44 @@ void main() {
         expect(result.error.isNotEmpty, isTrue);
       });
     });
+
+    group('loginFailure', () {
+      setUpAll(initializeReflection);
+
+      test('a success carries no reason', () {
+        final result = TomAuthenticationResult();
+        expect(result.loginFailure, isEmpty);
+        expect(result.loginFailureReason, isNull);
+      });
+
+      test('the reason is stored as the enum value\'s name', () {
+        // The same name the server's error envelope reports as
+        // `loginFailure` for a thrown failure, so a client reads one
+        // vocabulary whichever way a login failed.
+        final result = TomAuthenticationResult('login.error.2fa.invalid-code')
+          ..loginFailureReason = TomLoginFailure.secondFactorInvalid;
+        expect(result.loginFailure, 'secondFactorInvalid');
+        expect(result.loginFailureReason, TomLoginFailure.secondFactorInvalid);
+
+        result.loginFailureReason = null;
+        expect(result.loginFailure, isEmpty);
+      });
+
+      test('a name this build does not know reads as no reason', () {
+        final result = TomAuthenticationResult('x')..loginFailure = 'newReason';
+        expect(result.loginFailureReason, isNull);
+      });
+
+      test('every reason survives the wire', () {
+        for (final reason in TomLoginFailure.values) {
+          final sent = TomAuthenticationResult('login.error.any')
+            ..loginFailureReason = reason;
+          final received = _wireRoundTrip(sent);
+          expect(received.loginFailureReason, reason, reason: reason.name);
+          expect(received.error, 'login.error.any');
+        }
+      });
+    });
   });
 
   // ===========================================================================

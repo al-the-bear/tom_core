@@ -300,15 +300,14 @@ class AuthTokenService {
         challengeToken: result.authorizationToken,
       );
     }
-    // No re-issued token came back, so this challenge cannot be answered again
-    // and the caller has to start the login over — which is what rateLimited
-    // says. The two branches are the framework's own distinction: every failed
-    // TomAuthenticationResult it produces is a refused second factor, and the
-    // token is how it says whether another attempt is on offer.
+    // No re-issued token came back, so no retry is on offer: the result
+    // carries the framework's own classification of why, which the exception
+    // passes on unchanged. A result without one would be a framework defect,
+    // and is reported as the deployment's side of the failure.
     return TomLoginException(
       result.error,
       'Login failed (${result.error})',
-      reason: TomLoginFailure.rateLimited,
+      reason: result.loginFailureReason ?? TomLoginFailure.providerError,
     );
   }
 }

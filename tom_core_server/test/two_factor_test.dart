@@ -2317,6 +2317,7 @@ void main() {
         );
 
         expect(retry.error, 'login.error.2fa.invalid-code');
+        expect(retry.loginFailureReason, TomLoginFailure.secondFactorInvalid);
         expect(retry.requires2FA, isTrue);
         expect(retry.authorizationToken, isNotEmpty);
 
@@ -2379,6 +2380,7 @@ void main() {
         );
 
         expect(result.error, 'login.error.2fa.attempts-exhausted');
+        expect(result.loginFailureReason, TomLoginFailure.rateLimited);
         expect(adaptor.verified, 0);
       },
     );
@@ -2398,6 +2400,7 @@ void main() {
         );
 
         expect(result.error, 'login.error.2fa.expired');
+        expect(result.loginFailureReason, TomLoginFailure.secondFactorInvalid);
         expect(result.authorizationToken, isEmpty);
         expect(adaptor.verified, 0);
       },
@@ -2478,6 +2481,7 @@ void main() {
       final result = await server.authenticatePass1(_message());
 
       expect(result.error, 'login.error.2fa.not-enrolled');
+      expect(result.loginFailureReason, TomLoginFailure.secondFactorRequired);
       expect(result.authorizationToken, isEmpty);
     });
 
@@ -2492,6 +2496,7 @@ void main() {
         final result = await server.authenticatePass1(_message());
 
         expect(result.error, 'login.error.unknown');
+        expect(result.loginFailureReason, TomLoginFailure.providerError);
       },
     );
 
@@ -2501,6 +2506,7 @@ void main() {
       final result = await server.authenticatePass1(_message());
 
       expect(result.error, isEmpty);
+      expect(result.loginFailureReason, isNull);
       expect(result.requires2FA, isFalse);
       expect(adaptor.issued, 0);
       expect(
@@ -3640,6 +3646,7 @@ void main() {
         );
 
         expect(retry.error, 'login.error.2fa.enrolment-invalid-code');
+        expect(retry.loginFailureReason, TomLoginFailure.secondFactorInvalid);
         expect(retry.requires2FAEnrolment, isTrue);
         expect(await store.enrolmentsFor(contextOfAlice()), isEmpty);
         expect(

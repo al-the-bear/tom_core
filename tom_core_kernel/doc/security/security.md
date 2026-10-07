@@ -13,6 +13,7 @@ The security module provides a comprehensive authentication and authorization sy
 - [Core Components](#core-components)
   - [Authentication](#authentication)
     - [TomAuthenticationResult](#tomauthenticationresult)
+    - [TomLoginFailure](#tomloginfailure)
   - [Identity](#identity)
     - [TomUser](#tomuser)
   - [Authorization](#authorization)
@@ -94,6 +95,7 @@ The security module provides a comprehensive authentication and authorization sy
 | `TomResourceKeyProtection` | class | Protects a value behind a resource key. |
 | `TomAuthenticationMessage` | class | Authentication request message. |
 | `TomAuthenticationResult` | class | Authentication response. |
+| `TomLoginFailure` | enum | Why a login failed, as the closed set a client branches on. |
 | `TomBearerAuthentication` | class | Bearer-token authentication helper. |
 | `Tom2FAChallenge` | class | A pending second factor, carried in an interim token's public claims. |
 | `Tom2FAClaims` | class | The claim names a pending 2FA challenge travels under. |
@@ -287,6 +289,36 @@ if (result.error.isNotEmpty) {
   useTokens(result.authenticationToken, result.authorizationToken);
 }
 ```
+
+#### TomLoginFailure
+
+A failed result says why in two forms. `error` is the free-form key — as
+specific as the server cares to make it, for its logs and a message catalogue.
+`loginFailureReason` is the closed set a client branches on:
+
+```dart
+switch (result.loginFailureReason) {
+  case TomLoginFailure.secondFactorInvalid:
+    askForTheCodeAgain();
+  case TomLoginFailure.rateLimited:
+    startTheLoginOver();
+  case TomLoginFailure.providerError:
+    showTryAgainLater();
+  case TomLoginFailure.accountProblem || TomLoginFailure.secondFactorRequired:
+    showError(result.error);
+  case null:
+    break; // succeeded
+}
+```
+
+The set is coarser than the server's own knowledge on purpose: there is no
+`badCredentials`, `unknownUser` or `accountLocked` — all three are
+`accountProblem`, because telling a caller which one it hit confirms which
+accounts exist. On the wire the reason is the plain field `loginFailure`,
+holding the value's name — the same key and value the server's error envelope
+reports for a login failure that is thrown, so a client reads one vocabulary
+whichever way the server answered. A name this build does not know reads as
+`null`.
 
 ### Identity
 
