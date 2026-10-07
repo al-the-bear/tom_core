@@ -441,8 +441,17 @@ class TomAuthorizationCache implements TomDisposable {
 /// [authorizedPrincipal] for [authenticationToken]. Handled by
 /// [TomAuthorizationCacheExecutor].
 class TomAuthorizationCacheStoreMessage {
+  /// The token the principal is cached under. Its token string is the key,
+  /// and its `validUntil` claim is when the entry expires; a token without a
+  /// readable one is refused on the creator side, and the refusal reaches the
+  /// storing worker as a throw.
   TomClientJwtToken authenticationToken;
+
+  /// The principal to cache for [authenticationToken].
   TomPrincipal authorizedPrincipal;
+
+  /// Creates the store command for [authenticationToken] and
+  /// [authorizedPrincipal].
   TomAuthorizationCacheStoreMessage(
     this.authenticationToken,
     this.authorizedPrincipal,
@@ -453,7 +462,11 @@ class TomAuthorizationCacheStoreMessage {
 /// principal for [authenticationToken]. Handled by
 /// [TomAuthorizationCacheExecutor].
 class TomAuthorizationCacheRetrieveMessage {
+  /// The token whose cached principal is asked for; its token string is the
+  /// key the creator looks up.
   TomClientJwtToken authenticationToken;
+
+  /// Creates the retrieve command for [authenticationToken].
   TomAuthorizationCacheRetrieveMessage(this.authenticationToken);
 }
 

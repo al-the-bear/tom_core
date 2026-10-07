@@ -1403,14 +1403,32 @@ String? _fieldNameOf(String line) {
   if (!line.startsWith('  ') || line.startsWith('   ')) return null;
   final statement = line.trimRight();
   if (!statement.endsWith(';')) return null;
+  // A line opening on a closing bracket ends a construct begun above it — the
+  // `) async => _grants[key] = grant;` that closes a wrapped parameter list —
+  // and declares nothing, however much it ends like a field.
+  if (RegExp(r'^\s*[)}\]]').hasMatch(statement)) return null;
 
   // Everything left of the initialiser: a field's name is the last identifier
-  // there, a method's is followed by its parameters.
-  final declaration = statement
-      .substring(0, statement.length - 1)
-      .split('=')
-      .first
-      .trimRight();
+  // there, a method's is followed by its parameters. Only an `=` outside every
+  // bracket starts an initialiser — the one in a constructor's default value,
+  // `TomTransaction._(this._scope, [this.isReadOnly = false]);`, does not, and
+  // splitting there reads the constructor as a field named `isReadOnly`.
+  final body = statement.substring(0, statement.length - 1);
+  var depth = 0;
+  var end = body.length;
+  for (var i = 0; i < body.length; i++) {
+    final char = body[i];
+    if ('([{<'.contains(char)) depth++;
+    if (')]}>'.contains(char) &&
+        !(char == '>' && i > 0 && body[i - 1] == '=')) {
+      depth--;
+    }
+    if (char == '=' && depth == 0) {
+      end = i;
+      break;
+    }
+  }
+  final declaration = body.substring(0, end).trimRight();
   if (declaration.endsWith(')')) return null;
 
   final name = RegExp(r'([A-Za-z_][A-Za-z0-9_]*)$').firstMatch(declaration);
@@ -1476,6 +1494,10 @@ List<String> _secretBearingFields(String path, String className) {
 List<String> _undocumentedFields(String path, String className) {
   final undocumented = <String>[];
   var documented = false;
+  // An override inherits the contract it implements, and demanding a comment
+  // on one asks for a restatement of the interface's.
+  var overrides = false;
+  var annotationDepth = 0;
   for (final line in _classBody(path, className).split('\n')) {
     final trimmed = line.trim();
     if (trimmed.startsWith('///')) {
@@ -1484,14 +1506,54 @@ List<String> _undocumentedFields(String path, String className) {
     }
     if (trimmed.isEmpty) {
       documented = false;
+      overrides = false;
       continue;
     }
-    if (trimmed.startsWith('@')) continue;
+    // An annotation may wrap across lines — `@TomDbColumn<…>(` with one
+    // argument per line — and its continuation lines sit between a dartdoc and
+    // the field it documents. They belong to the annotation, not to the class.
+    if (annotationDepth > 0 || trimmed.startsWith('@')) {
+      if (trimmed == '@override') overrides = true;
+      annotationDepth +=
+          '('.allMatches(trimmed).length - ')'.allMatches(trimmed).length;
+      if (annotationDepth < 0) annotationDepth = 0;
+      continue;
+    }
     final name = _fieldNameOf(line);
-    if (name != null && !documented) undocumented.add(name);
+    if (name != null && !documented && !overrides) undocumented.add(name);
     documented = false;
+    overrides = false;
   }
   return undocumented;
+}
+
+/// Every public class, mixin, enum and extension type declared in the
+/// package's hand-written sources, as `(path, name)` pairs.
+///
+/// Generated reflection files are left out: their members are written by the
+/// generator, and a comment added there would be overwritten by the next run.
+List<(String, String)> _publicOwners() {
+  final owners = <(String, String)>[];
+  final files =
+      Directory('lib/src/tomserver')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where(
+            (file) =>
+                file.path.endsWith('.dart') &&
+                !file.path.endsWith('.reflection.dart'),
+          )
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
+  for (final file in files) {
+    for (final line in file.readAsLinesSync()) {
+      final name = _ownerDeclaration.firstMatch(line)?.group(1);
+      if (name != null && !name.startsWith('_')) {
+        owners.add((file.path, name));
+      }
+    }
+  }
+  return owners;
 }
 
 /// Whether [field] belongs to one of the four deployment-facing blocks the
@@ -5745,6 +5807,85 @@ One: `TomKind`, documented beside the type that carries it.
       expect(
         _declaredFields(path, className),
         containsAll(<String>['certificateChain', 'privateKey']),
+      );
+    });
+  });
+
+  // The same all-or-nothing rule as above, over every public type the package
+  // declares. A field with no comment is the smallest thing a document can
+  // omit and the easiest; holding one class to the rule would leave the next
+  // field to arrive anywhere else uncommented, and noticed only by a sweep.
+  group('every public field in the package is documented', () {
+    test('the census reads the package', () {
+      // An empty walk would pass the guard below by finding nothing to report.
+      // The configuration class alone declares dozens of fields, so a census
+      // that cannot see them has lost the package rather than cleared it.
+      final owners = _publicOwners();
+      expect(owners.length, greaterThan(200));
+      final fields = [
+        for (final (path, name) in owners) ..._declaredFields(path, name),
+      ];
+      expect(fields.length, greaterThan(200));
+      expect(
+        owners,
+        contains((
+          'lib/src/tomserver/configuration/base_server_configuration.dart',
+          'TomBaseServerConfiguration',
+        )),
+      );
+    });
+
+    test('the census reads a field only where one is declared', () {
+      // Each shape below was once reported as an undocumented field, and so
+      // as a defect in a class that was in fact complete. A guard that cries
+      // wolf on the shapes the formatter produces is a guard somebody deletes.
+      expect(
+        _fieldNameOf('  ) async => _grants[_keyOf(issuer, subject)] = grant;'),
+        isNull,
+        reason: 'the end of a wrapped parameter list declares nothing',
+      );
+      expect(
+        _fieldNameOf('  }) : storedAt = storedAt.toUtc();'),
+        isNull,
+        reason: 'a constructor initialiser list declares nothing',
+      );
+      expect(
+        _fieldNameOf(
+          '  TomTransaction._(this._scope, [this.isReadOnly = false]);',
+        ),
+        isNull,
+        reason: 'a default value inside a parameter list is not an initialiser',
+      );
+      expect(_fieldNameOf('  final DateTime Function() clock;'), 'clock');
+      expect(_fieldNameOf('  final Map<String, int> counts = {};'), 'counts');
+
+      // A dartdoc above an annotation that wraps across lines still documents
+      // the field below it.
+      const grantPath =
+          'lib/src/tomserver/authorization/graded_authorization.dart';
+      expect(
+        _declaredFields(grantPath, 'TomResourceGrant'),
+        contains('accessLevel'),
+      );
+      expect(
+        _undocumentedFields(grantPath, 'TomResourceGrant'),
+        isNot(contains('accessLevel')),
+      );
+    });
+
+    test('no public field is left to the reader to guess at', () {
+      final missing = [
+        for (final (path, name) in _publicOwners())
+          for (final field in _undocumentedFields(path, name))
+            '$name.$field ($path)',
+      ];
+      expect(
+        missing,
+        isEmpty,
+        reason:
+            'these public fields carry no dartdoc: ${missing.join(', ')}. '
+            'Say what the field holds and when it matters, unless it is an '
+            '@override, which inherits its contract.',
       );
     });
   });

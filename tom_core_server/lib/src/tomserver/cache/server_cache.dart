@@ -792,7 +792,12 @@ class TomCache {
 /// [TomWorker.executeInCreator] when a worker isolate stores into a cache it
 /// does not hold.
 class TomCacheStoreMessage extends TomCommand {
+  /// The name the target cache is registered under with [TomCacheManager] on
+  /// the main isolate. A name nothing registered there fails the command
+  /// rather than answering as an empty cache.
   String cacheName;
+
+  /// The entry key to store into within [cacheName].
   String key;
 
   /// The value to store. Non-nullable, like [TomCache.toNameCache]'s own
@@ -812,6 +817,8 @@ class TomCacheStoreMessage extends TomCommand {
   /// on reporting success.
   DateTime? deletionTime;
 
+  /// Creates the store command. A `null` [deletionTime] leaves the expiry to
+  /// the target cache's default.
   TomCacheStoreMessage(this.cacheName, this.key, this.value, this.deletionTime);
 
   @override
@@ -829,9 +836,15 @@ class TomCacheStoreMessage extends TomCommand {
 /// to the main isolate via [TomWorker.executeInCreator] when a worker isolate
 /// removes from a cache it does not hold.
 class TomCacheRemoveMessage extends TomCommand {
+  /// The name the target cache is registered under with [TomCacheManager] on
+  /// the main isolate. A name nothing registered there fails the command
+  /// rather than answering as an empty cache.
   String cacheName;
+
+  /// The entry key to remove from within [cacheName].
   String key;
 
+  /// Creates the remove command.
   TomCacheRemoveMessage(this.cacheName, this.key);
 
   @override
@@ -847,9 +860,15 @@ class TomCacheRemoveMessage extends TomCommand {
 /// the value. Dispatched to the main isolate via [TomWorker.executeInCreator]
 /// when a worker isolate reads from a cache it does not hold.
 class TomCacheRetrieveMessage extends TomCommand {
+  /// The name the target cache is registered under with [TomCacheManager] on
+  /// the main isolate. A name nothing registered there fails the command
+  /// rather than answering as an empty cache.
   String cacheName;
+
+  /// The entry key to read from within [cacheName].
   String key;
 
+  /// Creates the retrieve command.
   TomCacheRetrieveMessage(this.cacheName, this.key);
 
   @override
