@@ -48,6 +48,7 @@ import argparse
 import datetime
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -121,6 +122,16 @@ def fault_count(output: str) -> int | None:
 #: refuse to run without `dart`; finding it once here is what makes the
 #: documented command measure them from a plain shell.
 GATE_ENV, ADDED_DART = environment_with_dart()
+
+#: Whether any `dart` resolves in the environment the gates run in. When none
+#: does, every gate that needs one fails for that single reason, and the run
+#: says so once, before the per-gate rows, so that a column of failures with a
+#: shared cause is not read as that many regressions.
+DART_FOUND = shutil.which("dart", path=GATE_ENV.get("PATH")) is not None
+
+#: The statuses in which a gate measured nothing: it refused, crashed or was
+#: stopped. Its count is absent from the total, which is not the same as zero.
+UNMEASURED = {"cannot-run", "crashed", "timed-out"}
 
 
 def _stop_tree(process: subprocess.Popen) -> None:
@@ -226,6 +237,25 @@ def judge(run: dict, baselines: dict) -> dict:
             f"{said[-1] if said else '(no reason given)'}")
         return result
 
+    if faults is None and "Traceback (most recent call last)" in (
+            run.get("stderr") or ""):
+        # The gate died before it could count, and Python said why. The
+        # exception line is the diagnosis -- a `dart` that could not be
+        # started, a module that would not import -- so it is what is
+        # reported. Telling the reader to add a `report_faults` the gate
+        # already ends with sent them to edit healthy gates, and when several
+        # crash for one shared reason the message is the only place that
+        # reason appears.
+        said = [line for line in run["stderr"].splitlines() if line.strip()]
+        result["status"] = "crashed"
+        result["message"] = (
+            f"{name} crashed before it reported a count, so nothing was "
+            f"measured: {said[-1].strip() if said else '(no message)'}. "
+            f"Its content has not been judged -- this is not a missing "
+            f"'{FAULT_LINE}:' line. Run `python3 tool/{name}.py` for the "
+            f"whole traceback.")
+        return result
+
     if faults is None:
         result["status"] = "no-count"
         result["message"] = (
@@ -275,6 +305,8 @@ def row_text(result: dict) -> str:
         return f"timed out after {result['limit']:g}s"
     if result["status"] == "cannot-run":
         return "not measured"
+    if result["status"] == "crashed":
+        return "crashed"
     return "no count"
 
 
@@ -341,8 +373,8 @@ def _alive(pid: int) -> bool:
 
 
 def self_test() -> int:
-    """Run throwaway gates that stall, stay silent and refuse, and check that
-    each is reported as what it is.
+    """Run throwaway gates that stall, stay silent, crash and refuse, and check
+    that each is reported as what it is.
 
     The stalling one starts a child of its own, as a gate running `dart`
     does, so the test also checks that a timeout leaves nothing running.
@@ -385,6 +417,20 @@ def self_test() -> int:
     if row_text(silent) != "no count":
         failures.append(f"the no-count row reads {row_text(silent)!r}")
 
+    crashing = judge(run_gate(gate(
+        "check_crashing",
+        "import subprocess\n"
+        "subprocess.run(['no-such-executable-for-check-gates'])\n")), {})
+    if crashing["status"] != "crashed":
+        failures.append(f"a crashing gate was judged {crashing['status']!r}")
+    if "No such file or directory" not in (crashing.get("message") or ""):
+        failures.append("the crash message drops the exception that explains "
+                        "it")
+    if "report_faults" in (crashing.get("message") or ""):
+        failures.append("the crash message sends the reader to report_faults")
+    if row_text(crashing) != "crashed":
+        failures.append(f"the crashed row reads {row_text(crashing)!r}")
+
     refusing = judge(run_gate(gate(
         "check_refusing",
         "import sys\nprint('dart is not on PATH', file=sys.stderr)\n"
@@ -394,7 +440,7 @@ def self_test() -> int:
 
     for failure in failures:
         print(f"self-test: {failure}", file=sys.stderr)
-    print(f"self-test: 3 throwaway gates, {len(failures)} failure(s)")
+    print(f"self-test: 4 throwaway gates, {len(failures)} failure(s)")
     return 1 if failures else 0
 
 
@@ -408,7 +454,7 @@ def main(argv: list[str]) -> int:
                         help="rewrite the baselines to the counts measured now")
     parser.add_argument("--self-test", action="store_true",
                         help="check the runner's own verdicts on throwaway "
-                             "gates that stall, stay silent and refuse")
+                             "gates that stall, stay silent, crash and refuse")
     args = parser.parse_args(argv)
     if args.self_test:
         return self_test()
@@ -446,6 +492,12 @@ def main(argv: list[str]) -> int:
         print()
     if ADDED_DART is not None:
         print(f"dart was not on PATH; gates ran with {ADDED_DART}\n")
+    if not DART_FOUND:
+        print("dart could not be found -- not on PATH, not under DART_SDK or "
+              "FLUTTER_ROOT, and not in any conventional install location "
+              "(tool/dart_sdk.py). Every gate that needs it is reported as not "
+              "measured, for this one reason. Put the SDK's bin/ on PATH or "
+              "set DART_SDK and run again.\n")
     width = max(len(r["name"]) for r in results)
     for result in results:
         mark = "ok  " if result["status"] in PASSING else "FAIL"
@@ -459,8 +511,11 @@ def main(argv: list[str]) -> int:
         print(f"\n  {problem}")
 
     total = sum(r["faults"] or 0 for r in results)
-    print(f"\n{len(results)} gates, {len(failed)} failing, "
-          f"{total} fault(s) outstanding")
+    unmeasured = sum(1 for r in results if r["status"] in UNMEASURED)
+    print(f"\n{len(results)} gates, {len(failed)} failing"
+          + (f" ({unmeasured} not measured, so their faults are not in the "
+             f"total)" if unmeasured else "")
+          + f", {total} fault(s) outstanding")
     return 0 if ok else 1
 
 

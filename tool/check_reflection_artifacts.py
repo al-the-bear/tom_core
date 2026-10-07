@@ -44,6 +44,7 @@ does not resolve, and a file full of them is a file that will not compile.
 from __future__ import annotations
 
 import subprocess
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -204,6 +205,15 @@ def main(argv: list[str]) -> int:
         key = package_key(package, gate_source)
         if cache.get(name, key) is not None:
             continue
+        # Asked here rather than up front: a package whose inputs match its
+        # last clean run needs no analyzer, so a run on a machine without the
+        # SDK still measures everything cached. One that does need analyzing
+        # cannot be measured, and saying so is the gate's answer rather than a
+        # traceback from the subprocess that could not start.
+        if shutil.which("dart") is None:
+            print("dart is not on PATH, so no artifact can be analyzed",
+                  file=sys.stderr)
+            return 2
         lines = errors_in(package, packages[package])
         if lines:
             cache.forget(name)

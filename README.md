@@ -202,7 +202,7 @@ remedy. Each gate runs as its own process group and the whole group is killed:
 a gate shells out to `dart analyze`, and an analyzer left running would compete
 with every gate after it, and hold the runner's pipes open past the limit it
 had just enforced. `--self-test` runs throwaway gates that stall (with a child
-process), stay silent and refuse, and checks the verdict on each and that
+process), stay silent, crash and refuse, and checks the verdict on each and that
 nothing is left running. The analyzer-backed gates keep their
 clean verdicts in [`tool/gate_cache.py`](tool/gate_cache.py), keyed on every
 input the verdict depends on — the package, its path dependencies' sources, its
@@ -213,10 +213,16 @@ unrelated edit re-analyzes only what moved. A faulty verdict is never cached;
 Several gates shell out to `dart`, and each refuses to run without one rather
 than guess. The runner does not leave that to the shell: when `dart` is not on
 PATH it looks for an SDK ([`tool/dart_sdk.py`](tool/dart_sdk.py)) and puts it on
-every gate's PATH, saying so above the results. A gate that still cannot run
-exits 2 with its reason, and is reported `cannot-run` with that reason — not as
-a gate that forgot to print its count, which is a different failure with a
-different remedy.
+every gate's PATH, saying so above the results. When it finds none at all it
+says that once, above the per-gate rows, because every gate that needs `dart`
+then fails for that single reason and a column of failures with one shared
+cause otherwise reads as that many regressions. A gate that still cannot run
+exits 2 with its reason, and is reported `cannot-run` with that reason; a gate
+that dies with a traceback before it counts is reported `crashed`, quoting the
+exception. Neither is a gate that forgot to print its count, which is a
+different failure with a different remedy, and the closing line says how many
+gates measured nothing, since their faults are absent from the total rather
+than zero.
 
 **The gates are not the package suites.** A green gate run says the
 documentation still describes the code; it says nothing about whether the
