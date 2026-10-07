@@ -48,11 +48,11 @@ A `TomForm<T>` binds to a single `TomClass` instance. When the bound class has a
 
 **File:** `lib/src/forms/list/tom_list_form.dart`
 
-```dart
+```dart quote
 class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     extends TomObservable
     implements TomFormEventSource, TomFormChildContainer,
-        TomListLifecycleListener
+        TomListLifecycleListener { ... }
 ```
 
 A `TomListForm` is declared inside a parent `TomForm` and bound to a `TomList<TItem>` member of the parent's bound class:
@@ -167,7 +167,7 @@ Renders a `TomListForm` as a vertical column of always-visible row bodies. Use t
 
 ### Signature
 
-```dart
+```dart quote
 class TomInlineListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     extends TomListBase {
   TomInlineListForm({
@@ -199,7 +199,7 @@ class TomInlineListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   final Widget Function(BuildContext, TomListForm<TItem, TForm>)? toolbarBuilder;
   final Widget Function(BuildContext)? emptyBuilder;
   final Widget Function(BuildContext, int index)? rowSeparatorBuilder;
-  final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? _padding;
   final CrossAxisAlignment crossAxisAlignment;
   final bool reorderable;
   final void Function(int from, int to)? onReorder;
@@ -289,7 +289,7 @@ enum TomExpansionPolicy {
 
 ### Controller
 
-```dart
+```dart quote
 class TomExpandableListFormController extends ChangeNotifier {
   TomExpandableListFormController({Set<int>? initialExpanded});
 
@@ -309,7 +309,7 @@ The widget creates an internal controller when you don't provide one. Pass your 
 
 ### Signature
 
-```dart
+```dart quote
 class TomExpandableListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     extends TomListBase {
   TomExpandableListForm({
@@ -348,12 +348,12 @@ class TomExpandableListForm<TItem extends TomClass, TForm extends TomForm<TItem>
   final Widget Function(BuildContext, TomListForm<TItem, TForm>)? toolbarBuilder;
   final Widget Function(BuildContext)? emptyBuilder;
   final Widget Function(BuildContext, int index)? rowSeparatorBuilder;
-  final TomExpansionPolicy policy;
+  final TomExpansionPolicy _policy;
   final TomExpandableListFormController? controller;
   final Set<int>? initialExpanded;
   final Future<bool> Function(int index, TForm rowForm, bool willOpen)? onBeforeChange;
   final void Function(Set<int> expanded)? onExpansionChanged;
-  final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? _padding;
   final CrossAxisAlignment crossAxisAlignment;
   final bool reorderable;
   final void Function(int from, int to)? onReorder;
@@ -454,7 +454,7 @@ Renders a `TomListForm` as a two-pane scaffold: a master pane on the left builds
 
 ### Signature
 
-```dart
+```dart quote
 class TomMasterDetailListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     extends TomListBase {
   TomMasterDetailListForm({
@@ -496,9 +496,9 @@ class TomMasterDetailListForm<TItem extends TomClass, TForm extends TomForm<TIte
   /// Optional widget shown when no row is selected.
   final Widget Function(BuildContext context)? emptyDetailBuilder;
 
-  final double masterPaneWidth;
-  final double gap;
-  final EdgeInsetsGeometry? padding;
+  final double _masterPaneWidth;
+  final double _gap;
+  final EdgeInsetsGeometry? _padding;
   final bool guardUnsavedSelectionChange;
   final int? initialSelectedIndex;
 }
@@ -601,14 +601,14 @@ TomReorderHandle({
   TomScope? scope,
   TomAuthorizer? authorizer,
   TomAuthorizerStrategy? authorizerStrategy,
-  TomUiStateController? uiStateController,
+  TomUIStateController? uiStateController,
   required int index,
   IconData? icon,
   double? size,
   Color? color,
   String? tooltip,
   EdgeInsetsGeometry? padding,
-})
+});
 ```
 
 The handle uses a tooltip and a grab-cursor `MouseRegion` so the affordance is clear on every platform. It's the one piece of UI the row builder MUST supply — `TomInlineListForm` and `TomExpandableListForm` set `buildDefaultDragHandles: false` so long-pressing the row body doesn't accidentally start a drag (which would interfere with row taps, expansion toggles, and text selection inside fields).
@@ -630,14 +630,14 @@ The handle uses a tooltip and a grab-cursor `MouseRegion` so the affordance is c
 Add / Remove / Move up / Move down for a `TomListForm`. Each action is enabled only when meaningful for the current selection (e.g. *Move up* disabled at index 0; *Remove* disabled when nothing is selected). After Add the new row is selected; after Remove the selection clears; after Move the selection follows the moved row.
 
 ```dart
-TomListFormToolbar<TItem, TForm>({
+TomListFormToolbar<TItem extends TomClass, TForm extends TomForm<TItem>>({
   Key? key,
   String? tomId,
   TomGroup? tomGroup,
   TomScope? scope,
   TomAuthorizer? authorizer,
   TomAuthorizerStrategy? authorizerStrategy,
-  TomUiStateController? uiStateController,
+  TomUIStateController? uiStateController,
   required TomListForm<TItem, TForm> listForm,
   int? selectedIndex,
   Future<void> Function(int? index)? onSelectionChanged,
@@ -660,7 +660,7 @@ TomListFormToolbar<TItem, TForm>({
   Future<bool> Function()? beforeAdd,
   Future<bool> Function(int index)? beforeRemove,
   Future<bool> Function(int from, int to)? beforeMove,
-})
+});
 ```
 
 **Per-button resources** (resolved when `tomId` is set; replace `<btn>` with `add` / `remove` / `moveUp` / `moveDown`):

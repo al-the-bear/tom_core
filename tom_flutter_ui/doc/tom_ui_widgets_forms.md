@@ -180,8 +180,11 @@ class CustomerForm extends CustomerFormSpec {
   CustomerForm() : super(formId: 'customer');
 
   late final name  = TomFormStringInput('name',  '', form: this);
-  late final email = TomFormEmailStringInput('email', '', form: this);
-  late final phone = TomFormPhoneStringInput('phone', '', form: this);
+  late final email = TomFormStringInput('email', '', form: this,
+      keyboardType: TextInputType.emailAddress,
+      validators: [Validators.email()]);
+  late final phone = TomFormStringInput('phone', '', form: this,
+      keyboardType: TextInputType.phone);
 }
 
 // Layout: mix form fields and other content freely
@@ -196,8 +199,8 @@ Widget build(BuildContext context) {
     Text('Contact Information'),
     customerForm.phone.widget,
     Row(children: [
-      TomElevatedButton(onPressed: customerForm.saveAction.trigger, child: Text('Save')),
-      TomElevatedButton(onPressed: customerForm.discardAction.trigger, child: Text('Cancel')),
+      TomElevatedButton(onPressed: () => customerForm.save(), child: Text('Save')),
+      TomElevatedButton(onPressed: customerForm.discard, child: Text('Cancel')),
     ]),
   ]);
 }
@@ -258,8 +261,8 @@ class MyForm extends MyFormSpec {
       form: this, source: countriesSource);
   late final income  = TomFormIntSlider('income', 50000,
       form: this,
-      min: TomInt(0),
-      max: TomInt(1000000));
+      min: 0,
+      max: 1000000);
 }
 ```
 
@@ -314,7 +317,7 @@ country = TomFormStringDropdown('country', '', source: countrySource);
 Since every concrete field has a `.widget` getter, fields participate directly in the widget tree:
 
 ```dart
-...child: myForm.income.widget  // returns the Slider configured by TomIntSlider
+final income = myForm.income.widget;  // the Slider TomFormIntSlider configures
 ```
 
 The field is not itself a Widget, but it produces one. This is true for both abstract types (which delegate to their concrete subclass) and concrete types (which build the actual Flutter widget).
@@ -340,7 +343,7 @@ field.value = 'new value';  // DO NOT DO THIS
 
 ### Technical Mechanism
 
-```dart
+```dart quote
 /// Abstract field type — not instantiated directly
 abstract class TomFormStringField extends TomField<String> {
   TomFormStringField(super.tomId, super.initialValue);
@@ -348,14 +351,14 @@ abstract class TomFormStringField extends TomField<String> {
 
 /// Concrete implementation — extends abstract type
 class TomFormStringInput extends TomFormStringField {
-  final TextInputType keyboard;
+  final TextInputType? keyboardType;
 
   TomFormStringInput(super.tomId, super.initialValue, {
-    this.keyboard = TextInputType.text,
+    this.keyboardType,
   });
 
   @override
-  Widget get widget => TomTextFieldWidget(field: this);
+  Widget get widget { ... }   // a TextField bound to this field
 }
 
 /// Concrete implementation with selection via SelectableItem
@@ -367,7 +370,7 @@ class TomFormStringDropdown extends TomFormStringField {
   });
 
   @override
-  Widget get widget => TomDropdownWidget<String>(field: this, source: source);
+  Widget get widget { ... }   // a dropdown over [source]
 }
 
 /// Concrete implementation with additional constructor bindings
@@ -383,7 +386,7 @@ class TomFormIntSlider extends TomFormIntField {
   });
 
   @override
-  Widget get widget => TomSliderWidget(field: this, min: min, max: max);
+  Widget get widget { ... }   // a Slider between [min] and [max]
 }
 ```
 
@@ -397,7 +400,7 @@ This makes the system open for extension: new implementations can be added witho
 
 All form fields extend `TomField<T>`, which extends `TomObject<T>`:
 
-```dart
+```dart quote
 /// Base class for all form fields.
 ///
 /// Identity model (consistent with the rest of tom_flutter_ui):
@@ -537,7 +540,7 @@ When a `TomForm` discovers its members via reflection (`getMembers()`), it finds
 
 Forms extend `TomClass`, so fields register as members and the entire form is observable:
 
-```dart
+```dart quote
 @tomReflector
 abstract class TomForm<T extends TomClass> extends TomClass
     implements TomScreenElementsProvider, TomActionController {
@@ -763,10 +766,10 @@ this section asked for a `TomObject` wrapper per value type
 (`TomDuration`, `TomIntRange`, `TomFileRef`, and nullable variants), and none of
 them was built, because the generic base already covers every `T`:
 
-```dart
-abstract class TomField<T> extends TomObject<T> implements TomAuthorizable { … }
+```dart quote
+abstract class TomField<T> extends TomObject<T> implements TomAuthorizable { ... }
 
-class TomFormDurationField extends TomField<Duration> { … }
+class TomFormDurationField extends TomField<Duration> { ... }
 ```
 
 So a `Duration` field observes a `Duration`, not a `TomDuration`. Read the value
@@ -1011,20 +1014,18 @@ Every Flutter widget parameter falls into one of these categories:
 
 The core binding pattern for all concrete implementations:
 
-```dart
+```dart quote
 class TomFormIntSlider extends TomFormIntField {
   final int min;
   final int max;
   final int? divisions;
-  final ValueChanged<int>? onChangeStart;
-  final ValueChanged<int>? onChangeEnd;
+  final bool showValueLabel;
 
   TomFormIntSlider(super.tomId, super.initialValue, {
     required this.min,
     required this.max,
     this.divisions,
-    this.onChangeStart,
-    this.onChangeEnd,
+    this.showValueLabel = true,
   });
 
   @override
@@ -1037,42 +1038,26 @@ class _TomFormIntSliderWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Rebuilds when field.value, field.min, or field.max change
+    // Rebuilds when the field's value changes
     return TomMultiObservableBuilder(
-      observables: [field, field.min, field.max],
+      observables: [field],
       builder: (context) {
-        final minVal = field.min.value.toDouble();
-        final maxVal = field.max.value.toDouble();
-
         return Slider(
           // VALUE BINDING — read from observable
-          value: field.value.toDouble().clamp(minVal, maxVal),
+          value: field.value.toDouble().clamp(field.min.toDouble(), field.max.toDouble()),
 
           // WRITE-BACK — write to observable
           onChanged: field.isEditable
               ? (v) => field.setValue(v.round())
               : null,  // null = disabled (auth-driven)
 
-          // OBSERVABLE CONFIG — reactive parameters
-          min: minVal,
-          max: maxVal,
-
-          // STATIC CONFIG
+          // BOUNDS AND STATIC CONFIG — plain constructor values
+          min: field.min.toDouble(),
+          max: field.max.toDouble(),
           divisions: field.divisions,
 
           // DERIVED — from value
-          label: field.value.toString(),
-
-          // USER CALLBACKS — scope-wrapped pass-through
-          onChangeStart: field.onChangeStart != null
-              ? (v) => field.onChangeStart!(v.round())
-              : null,
-          onChangeEnd: field.onChangeEnd != null
-              ? (v) => field.onChangeEnd!(v.round())
-              : null,
-
-          // THEME — resolved from Tom theme
-          activeColor: TomTheme.of(context).sliderActiveColor,
+          label: field.showValueLabel ? field.value.toString() : null,
         );
       },
     );
@@ -1531,7 +1516,7 @@ inner widget's *own* decoration:
 All three expose the same `decorateField`, and resolve label, error and
 description the same way, so a form author sees one anatomy:
 
-```dart
+```dart quote
 mixin TomGenericFieldDecorationMixin<T> on TomField<T> {
   /// Wraps the inner widget with the standard field anatomy (label, error, description, actions).
   Widget decorateField(BuildContext context, Widget innerWidget) {
@@ -1781,16 +1766,19 @@ State visuals:
 
 ### TomBreakpoint
 
-A tiny class with three **mutable** static fields — apps retune the ladder once at startup and every downstream reference follows:
+A tiny class with three static getters behind one setter — apps retune the ladder once at startup with `configure`, and every downstream reference follows:
 
 ```dart
 class TomBreakpoint {
-  static double mobile  = 600;
-  static double tablet  = 900;
-  static double desktop = 1200;
+  static double get mobile { ... }    // 600 until configured
+  static double get tablet { ... }    // 900
+  static double get desktop { ... }   // 1200
 
-  static double? resolve(String name);     // 'mobile' | 'tablet' | 'desktop' → value
-  static const List<String> names;         // ['mobile', 'tablet', 'desktop']
+  static void configure({double? mobile, double? tablet, double? desktop}) { ... }
+  static void reset() { ... }         // back to 600 / 900 / 1200
+
+  static double? resolve(String name) { ... }   // 'mobile' | 'tablet' | 'desktop' → value
+  static const List<String> names = ['mobile', 'tablet', 'desktop'];
 }
 ```
 
@@ -1799,9 +1787,9 @@ Both resources and programmatic code can refer to named breakpoints; the name re
 ### Presets
 
 ```dart
-TomFormStyle.material3  // vanilla M3 defaults; null borders (Material underline).
-TomFormStyle.compact    // floatingLabel + labelFieldGap/errorFieldGap = 2.
-TomFormStyle.bordered   // floatingLabel + errorBorderEnabled/errorIconEnabled true +
+TomFormStyle.material3; // vanilla M3 defaults; null borders (Material underline).
+TomFormStyle.compact;   // floatingLabel + labelFieldGap/errorFieldGap = 2.
+TomFormStyle.bordered;  // floatingLabel + errorBorderEnabled/errorIconEnabled true +
                         // OutlineInputBorder triad (field/focused/error).
 ```
 
@@ -1877,7 +1865,7 @@ TomFormStyleScope(
   // Explicitly pre-theme the style — the scope's automatic withTheme
   // call is a no-op because no fields will still be at origin after this.
   style: TomFormStyle.material3.withTheme(Theme.of(context)),
-  child: ...,
+  child: formBody,
 )
 ```
 
@@ -1918,7 +1906,7 @@ Resource schema for a spec — keys are all optional:
 
 ### TomFormStyleScope
 
-```dart
+```dart quote
 class TomFormStyleScope extends StatelessWidget {
   final String?        tomId;                 // resource overlay root
   final TomScope?      scope;
@@ -2130,7 +2118,7 @@ TomFormStyleScope(
     (TomBreakpoint.tablet, TomFormStyle.compact),
     (TomBreakpoint.desktop, TomFormStyle.bordered),
   ],
-  child: /* ... */,
+  child: formBody,
 )
 ```
 
@@ -2381,7 +2369,7 @@ abstract interface class TomFormChildContainer {
 
 `TomListForm` is a concrete class (not abstract) that extends `TomObservable` and implements both `TomFormEventSource` and `TomFormChildContainer`. It owns an ordered list of sub-form instances, mirrors all mutations into the bound `TomList<TItem>`, and fans the form lifecycle across every sub-form.
 
-```dart
+```dart quote
 class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     extends TomObservable
     implements TomFormEventSource, TomFormChildContainer {
@@ -2464,7 +2452,7 @@ When a `TomListForm` is constructed with `parentForm: this` (or passed `parentFo
 
 The relevant `TomForm` API:
 
-```dart
+```dart quote
 class TomForm<T> {
   /// All explicitly-registered child containers (e.g. TomListForm instances).
   List<TomFormChildContainer> get childContainers;
@@ -2528,8 +2516,9 @@ class OrderItemForm extends TomForm<OrderItem> {
 Override `validateList()` to enforce cross-row rules. Returned strings are treated as resource keys and are included in the `FormValidatedEvent` fired by `validate()` through the parent bus — so a `TomErrorView(form: parentForm)` sees them without any extra wiring:
 
 ```dart
-class OrderItemForm extends TomForm<OrderItem>
-    with /* ... */ {
+class OrderItemListForm extends TomListForm<OrderItem, OrderItemForm> {
+  OrderItemListForm({required super.listId, required super.formFactory});
+
   @override
   Future<List<String>> validateList() async {
     if (length == 0) return ['error.items.minRequired'];
@@ -2578,7 +2567,7 @@ Widget build(BuildContext context) {
 
     // Actions
     Row(children: [
-      TomElevatedButton(onPressed: customerForm.saveAction.trigger, child: Text('Save')),
+      TomElevatedButton(onPressed: () => customerForm.save(), child: Text('Save')),
     ]),
   ]);
 }
@@ -2713,10 +2702,13 @@ Before changing selection, check for unsaved changes:
 ```dart
 Future<void> _selectItem(int index) async {
   if (customerForm.isDirty) {
-    final result = await showDialog<SaveDiscardCancel>(...);
+    final result = await showDialog<SaveDiscardCancel>(
+      context: context,
+      builder: buildSaveDiscardDialog,
+    );
     switch (result) {
       case SaveDiscardCancel.save:
-        if (!customerForm.save()) return;
+        if (!await customerForm.save()) return;
         break;
       case SaveDiscardCancel.discard:
         customerForm.discard();
@@ -2760,7 +2752,11 @@ Forms can appear inline within list items rather than in a separate detail panel
 
 ### Single-Field Inline Edit
 
-```dart
+> **Intended — not yet built.** Fields have no inline editing state —
+> `isEditing` / `startEditing` are not in `tom_flutter_ui`; the sketch shows
+> the design.
+
+```dart intended
 class InlineEditableItem extends StatelessWidget {
   final Customer customer;
   final TomFormStringInput nameField;
@@ -2861,21 +2857,30 @@ first names the **frame** it stands in — the `TomScope` every path it produces
 comes out of. A form reads the ambient `TomScope.current`; a field inherits its
 form's frame, or reads the ambient scope when it has no form:
 
-```dart
-// TomForm
-scope = TomScope.current;
-basePath = TomScopePath.qualify(formId, scope);
+```dart quote
+abstract class TomForm<T extends TomClass> extends TomClass {
+  @override
+  void prepareForSelfObservation() {
+    scope = TomScope.current;
+    basePath = TomScopePath.qualify(formId, scope);
+    // ...
+  }
+}
 
-// TomField — the form's frame, not the form's basePath. The field is often
-// declared at its class-level `late final x = TomFormStringInput('x', '',
-// form: this, ...)`, which fires during reflection-driven member enumeration
-// where only the outer scope is pushed, so TomScope.current is the wrong
-// answer there.
-constructionScope = form?.constructionScope ?? TomScope.current;
-scope = form == null
-    ? constructionScope.getScopePath()
-    : TomScopePath.qualify(form!.formId, constructionScope);
-basePath = TomScopePath.join(scope, tomId);
+abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
+  TomField(this.tomId, this._initialValue, {this.form}) {
+    // The form's frame, not the form's basePath. The field is often declared
+    // at its class-level `late final x = TomFormStringInput('x', '',
+    // form: this, ...)`, which fires during reflection-driven member
+    // enumeration where only the outer scope is pushed, so TomScope.current
+    // is the wrong answer there.
+    constructionScope = form?.constructionScope ?? TomScope.current;
+    scope = form == null
+        ? constructionScope.getScopePath()
+        : TomScopePath.qualify(form!.formId, constructionScope);
+    basePath = TomScopePath.join(scope, tomId);
+  }
+}
 ```
 
 Both go through `TomScopePath`, the same helper `TomNodeBase` uses — `qualify`
@@ -3038,16 +3043,19 @@ When you need to control a **subset** of fields within a form independently, use
 class CustomerForm extends TomForm<Customer> {
   CustomerForm() : super(formId: 'customer');
 
-  late final name = TomFormStringInput('name', '');
-  late final email = TomFormEmailStringInput('email', '');
+  late final name = TomFormStringInput('name', '', form: this);
+  late final email = TomFormStringInput('email', '', form: this,
+      keyboardType: TextInputType.emailAddress);
 
   // Financial fields controlled as a group
   late final financialGroup = TomAuthorizationGroup(
-    groupId: 'financial',
+    'financial',
     mode: AuthGroupMode.controlsAll,
   );
-  late final salary = TomFormCurrencyDoubleInput('salary', 0.0, group: financialGroup);
-  late final bonus = TomFormCurrencyDoubleInput('bonus', 0.0, group: financialGroup);
+  late final salary = TomFormCurrencyDoubleInput('salary', 0.0,
+      form: this, tomGroup: financialGroup);
+  late final bonus = TomFormCurrencyDoubleInput('bonus', 0.0,
+      form: this, tomGroup: financialGroup);
 }
 ```
 
@@ -3078,38 +3086,25 @@ enum AuthGroupMode {
 
 Auth resolution for a field considers all layers in order. **CRITICAL: All four layers must be evaluated.** Skipping any layer (especially group auth) is a severe bug that causes authorization groups to be silently ignored.
 
-```dart
-TomAuthState resolveEffectiveAuth() {
-  // 1. Resource-based authorization via basePath + group (mode-dependent)
-  //    The resource lookup and group are evaluated together because
-  //    the group mode determines how resource auth and group auth combine.
-  //    CRITICAL: The group auth MUST be applied here. If tomGroup is non-null,
-  //    applyMode() must be called — otherwise authorization groups have no effect.
-  var state = basePath != null
-      ? TomAuthorization.resolveAuth(basePath!)
-      : TomAuthState.full;
-
-  // The group resolves in the frame basePath was built from. Read against the
-  // ambient scope instead, the ceiling lands on whichever same-named group the
-  // *reader* happens to stand in — or, at the root, on no group rule at all.
-  if (tomGroup != null) {
-    state = tomGroup!.applyMode(state, constructionScope);
-  }
-
-  // 2. Form authorization (form acts as implicit group — always narrows)
-  state = state.narrow(form.auth);
-
-  // 3. Per-widget authorizer (overridable, based on authorizer mode)
-  if (authorizer != null) {
-    state = authorizer!.effectiveAuth(state);
-  }
-
-  // 4. Build-time UI state controller (can only narrow).
-  if (uiStateController != null) {
-    state = uiStateController!.apply(state);
-  }
-
-  return state;
+```dart quote
+abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
+  // The layers, in order, live in TomAuthLayers.resolve and are shared with
+  // the widget-side resolvers:
+  // 1. resource auth at basePath, combined with the group per its mode -- the
+  //    group resolving in the frame basePath was built from, not the reader's;
+  // 2. the form, an implicit group that can only narrow;
+  // 3. the per-widget authorizer;
+  // 4. the build-time UI state controller, which can only narrow.
+  TomAuthState resolveEffectiveAuth() => TomAuthLayers.resolve(
+        basePath: basePath,
+        group: tomGroup,
+        groupScope: constructionScope,
+        narrowBy: form != null
+            ? TomAuthorization.resolveAuth(form!.basePath)
+            : null,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
 }
 ```
 
@@ -3299,7 +3294,7 @@ success/error → (commit/reset/discard/bind) → pristine
 
 Fields declare validators as a list. Sync validators return immediately; async validators return `Future<ValidationResult>`:
 
-```dart
+```dart quote
 typedef TomValidator<T> = FutureOr<ValidationResult> Function(T value);
 
 abstract class TomField<T> extends TomObject<T> {
@@ -3565,7 +3560,7 @@ TomFormStringInput('email', '',
 
 #### Debounce Behavior
 
-```dart
+```dart quote
 abstract class TomField<T> extends TomObject<T> {
   /// Debounce duration for fast validation. Default: 300ms.
   Duration get validationDebounce => const Duration(milliseconds: 300);
@@ -3703,7 +3698,7 @@ stateDiagram-v2
 
 ### Lifecycle Methods
 
-```dart
+```dart quote
 abstract class TomForm<T extends TomClass> extends TomClass {
   T? _binding;
 
@@ -3868,9 +3863,16 @@ PopScope(
 
 ## 22. Form Actions
 
-Forms are action controllers. They provide standard actions that can be triggered from anywhere.
+Forms are action controllers. A form registers the actions it owns with
+`registerAction` and finds them with `findAction`; they resolve under the
+form's `basePath`, so a policy rule that reaches the form reaches its actions.
 
 ### Standard Form Actions
+
+> **Intended — not yet built.** `TomForm` registers none of the standard
+> actions below; the table shows the design. A form's buttons call `save()`,
+> `discard()` and `validate()` directly, and anything else is a custom action,
+> registered as shown under [Custom Actions](#custom-actions).
 
 | Action Path | Description | Undoable |
 |-------------|-------------|----------|
@@ -3879,66 +3881,45 @@ Forms are action controllers. They provide standard actions that can be triggere
 | `<form.basePath>.validate` | Validates without saving | No |
 | `<form.basePath>.clear` | Clears all fields | No |
 
-### Action Implementation
-
-```dart
-abstract class TomForm<T> extends TomClass implements TomActionController {
-  @override
-  String get controllerId => basePath;
-
-  late final saveAction = TomAction(
-    actionId: 'save',
-    execute: (_) => save(),
-    canExecute: (_) => isDirty,
-  );
-
-  late final discardAction = TomAction(
-    actionId: 'discard',
-    execute: (_) => discard(),
-    canExecute: (_) => isDirty,
-  );
-
-  late final validateAction = TomAction(
-    actionId: 'validate',
-    execute: (_) => validate(),
-    canExecute: (_) => true,
-  );
-
-  @override
-  Iterable<TomAction> get actions => [saveAction, discardAction, validateAction];
-}
-```
-
 ### Wiring Actions to Buttons
 
+A registered action reaches a button through `TomActionTrigger`, which checks
+authorization and `canExecute` before it runs the action in a transaction:
+
 ```dart
+final submit = orderForm.findAction('submitForApproval')!;
+
 TomElevatedButton(
-  tomId: 'saveBtn',
-  // TomAction exposes `.authorizer` which wraps fromAction(() => authState)
+  tomId: 'submitBtn',
+  // TomAction exposes `.authorizer`, which wraps fromAction(() => authState)
   // for you — no need to construct the factory by hand.
-  authorizer: form.saveAction.authorizer,
-  onPressed: form.saveAction.trigger,
-  label: form.saveAction.label,
-)
+  authorizer: submit.authorizer,
+  onPressed: TomActionTrigger(
+    action: submit,
+    contextBuilder: () => TomActionContext(),
+  ).trigger,
+  child: Text(submit.label),
+);
 ```
 
 ### Custom Actions
 
+A form-specific action subclasses `TomSimpleAction` with the form as its
+controller; constructing it registers it with the form:
+
 ```dart
-class OrderForm extends TomForm<Order> {
-  late final submitForApproval = TomAction(
-    actionId: 'submitForApproval',
-    execute: (ctx) async {
-      if (!save()) return false;
-      await _orderService.submitForApproval(~orderNumber);
-      return true;
-    },
-    canExecute: (_) => !isDirty && ~status == OrderStatus.draft,
-  );
+class SubmitForApprovalAction extends TomSimpleAction<TomActionContext> {
+  SubmitForApprovalAction(OrderForm form)
+      : super(actionId: 'submitForApproval', controller: form);
 
   @override
-  Iterable<TomAction> get actions => [...super.actions, submitForApproval];
+  void executeSimple(TomActionContext context, TomActionTransaction tx) {
+    // submit the order for approval
+  }
 }
+
+// Registers itself with the form it is given:
+SubmitForApprovalAction(orderForm);
 ```
 
 ---
@@ -4042,7 +4023,7 @@ Forms and fields must be **inspectable at runtime** — for debugging, logging, 
 
 All form events extend a base class:
 
-```dart
+```dart quote
 abstract class TomFormEvent {
   final DateTime timestamp;
   final String source;      // field ID or form ID
@@ -4185,7 +4166,7 @@ ListView.builder(
       subtitle: Text('${event.source} — ${event.timestamp}'),
     );
   },
-)
+);
 ```
 
 ---
@@ -4478,6 +4459,8 @@ final countrySource = StaticSelectableSource<String>(const [
 ]);
 
 class AddressForm extends TomForm {
+  AddressForm() : super(formId: 'address');
+
   late final country = TomFormStringDropdown(
     'country',
     '',

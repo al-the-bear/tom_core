@@ -268,14 +268,14 @@ Range types extend `TomClass` — their fields are automatically registered and 
 
 ### Automatic Member Registration
 
-When a `TomClass` is instantiated, reflection (`@tomReflect`) discovers all `TomObject` fields and:
+When a `TomClass` is instantiated, reflection (`@tomReflector`) discovers all `TomObject` fields and:
 
 1. Registers them as members via `getMembers()`
 2. Calls `startSelfObservation()` which registers the `TomClass` as an observer on each member
 3. Returns a member map for programmatic access
 
 ```dart
-@tomReflect
+@tomReflector
 class Person extends TomClass {
   TomString name = TomString("");
   TomInt age = TomInt(0);
@@ -290,13 +290,13 @@ The class **knows its own structure** — it can enumerate, read, and write all 
 Changes to any member (or nested `TomClass` member) propagate up to the parent:
 
 ```dart
-@tomReflect
+@tomReflector
 class Address extends TomClass {
   TomString city = TomString("");
   TomString zip = TomString("");
 }
 
-@tomReflect
+@tomReflector
 class Customer extends TomClass {
   TomString name = TomString("");
   Address address = Address();
@@ -370,9 +370,11 @@ An observable list that:
 
 ```dart
 final tasks = TomList<Task>();
-final tasksObserver = tasks >> (obs) => print("Tasks changed!");
+final tasksObserver = tasks >> ((obs) => print("Tasks changed!"));
 
-tasks.add(Task()..title | "Buy groceries");     // "Tasks changed!"
+final task = Task();
+task.title | "Buy groceries";
+tasks.add(task);                                 // "Tasks changed!"
 tasks[0].title | "Buy organic groceries";        // "Tasks changed!" (element change)
 
 tasks.removeObserver(tasksObserver);
@@ -391,9 +393,11 @@ An observable map that:
 
 ```dart
 final users = TomMap<String, User>();
-final usersObserver = users >> (obs) => print("Users changed!");
+final usersObserver = users >> ((obs) => print("Users changed!"));
 
-users['alice'] = User()..name | "Alice";   // "Users changed!"
+final alice = User();
+alice.name | "Alice";
+users['alice'] = alice;                    // "Users changed!"
 users['alice']!.score | 100;                // "Users changed!" (value change)
 
 users.removeObserver(usersObserver);
@@ -433,15 +437,17 @@ The state class implements `TomObserver` and registers itself on the observable 
 **Usage (from tom_uam_client):**
 
 ```dart
+import 'package:tom_core_flutter/tom_core_flutter.dart';
+
 TomObservingWidget<BlocFormData>(
   subState: state.formData,
-  child: (BlocFormData s) => Column(
+  builder: (s, _) => Column(
     children: [
       Text("Username ${~s.username}"),
       Text("Password ${~s.password}"),
     ],
   ),
-)
+);
 ```
 
 This rebuilds only when `formData` (or any of its members) changes, without requiring a `StreamBuilder` or external state management library.
@@ -453,6 +459,8 @@ Bridges the Tom observable system to Flutter's `ValueListenable<T>` interface, e
 **Source:** `tom_core_flutter/lib/src/tomclient/observing/value_listenable_observer.dart`
 
 ```dart
+import 'package:tom_core_flutter/tom_core_flutter.dart';
+
 class ValueListenableObserver<T extends TomObservable>
     implements TomObserver<T>, ValueListenable<T> {
   ValueListenableObserver(this.observable) {
@@ -518,7 +526,7 @@ class CustomerForm extends TomForm<TomClass> {
   );
 
   @override
-  Future<List<FormValidationError>> validateForm() async { … }
+  Future<List<FormValidationError>> validateForm() async { ... }
 }
 
 // Usage
@@ -570,7 +578,7 @@ install their own in `setUp`.
 The UAM client demonstrates a global state pattern:
 
 ```dart
-@tomReflect
+@tomReflector
 class AppState extends TomClass {
   static AppState appState = AppState();
 
@@ -597,7 +605,9 @@ This provides:
 **Sub-state example:**
 
 ```dart
-@tomReflect
+import 'package:tom_core_flutter/tom_core_flutter.dart';
+
+@tomReflector
 class AppErrorInfo extends TomClass {
   TomBool hasError = TomBool(false);
   TomString errorKey = TomString('');
@@ -624,13 +634,15 @@ class AppErrorInfo extends TomClass {
 **Usage in widgets** (from `loginformpage.dart`):
 
 ```dart
+import 'package:tom_core_flutter/tom_core_flutter.dart';
+
 // Option A: Using TomObservingWidget (Tom-native)
 TomObservingWidget<AppErrorInfo>(
   subState: state.error,
-  child: (AppErrorInfo e) => Column(
+  builder: (e, _) => Column(
     children: [Text(~e.errorKey), Text(~e.errorMessage)],
   ),
-)
+);
 
 // Option B: Using ValueListenableBuilder via adapter
 ValueListenableBuilder<AppErrorInfo>(
@@ -638,7 +650,7 @@ ValueListenableBuilder<AppErrorInfo>(
   builder: (context, e, child) => Column(
     children: [Text(~e.errorKey), Text(~e.errorMessage)],
   ),
-)
+);
 ```
 
 ---
@@ -686,7 +698,7 @@ ValueListenable<T> (Flutter interface)
 
 > The UI architecture uses reflection for screen element discovery, ActionController wiring, undo/redo snapshots, debug inspection, and semantic annotations. See [§2 in tom_ui_design_architecture.md](tom_ui_design_architecture.md#2-observable-state-and-reflection--the-foundation) for the UI-specific implications.
 
-**Current state:** `TomClass` relies on the `@tomReflect` annotation and `TomReflectionInfo` for automatic member discovery. This provides:
+**Current state:** `TomClass` relies on the `@tomReflector` annotation and `TomReflectionInfo` for automatic member discovery. This provides:
 
 - Zero-boilerplate member registration (no manual `registerMember()` calls)
 - JSON serialization/deserialization via `setValues()` / `getValues()`

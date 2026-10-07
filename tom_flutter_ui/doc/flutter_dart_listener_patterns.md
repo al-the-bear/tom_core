@@ -416,7 +416,7 @@ NotificationListener<ItemSelectedNotification>(
     return true;  // true = stop bubbling, false = continue
   },
   child: childWidget,
-)
+);
 ```
 
 **Built-in notifications:** `ScrollNotification`, `OverscrollNotification`, `LayoutChangedNotification`, `SizeChangedLayoutNotification`, `KeepAliveNotification`.
@@ -499,7 +499,7 @@ ListenableBuilder(
   builder: (context, child) {
     return Text('Value: ${myChangeNotifier.someProperty}');
   },
-)
+);
 
 // AnimatedBuilder — identical API, typically used with Animation
 AnimatedBuilder(
@@ -511,7 +511,7 @@ AnimatedBuilder(
     );
   },
   child: Icon(Icons.refresh),
-)
+);
 ```
 
 ---
@@ -577,7 +577,7 @@ class AnalyticsObserver extends NavigatorObserver {
 }
 
 // Register:
-MaterialApp(navigatorObservers: [AnalyticsObserver()])
+MaterialApp(navigatorObservers: [AnalyticsObserver()]);
 ```
 
 **RouteObserver + RouteAware** — individual widgets observe their own route visibility:

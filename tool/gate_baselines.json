@@ -99,9 +99,9 @@
    "note": "Zero from the day it landed. Nineteen of the twenty faults it found were one row in tom_flutter_ui/doc/widget_base.md eliding twenty branch bases behind an ellipsis, which is exactly the curation the exhaustive rule forbids; the row now names them. 31 documents and 569 public types are in scope. Zero is the expected steady state: the gate exists for recurrence, and a fault is repaired by adding the row, never by narrowing the scope."
   },
   "check_doc_phantom_names": {
-   "faults": 218,
+   "faults": 216,
    "measured": "2026-10-07",
-   "note": "218 occurrences of 110 Tom* names in shipped markdown that no Dart under tom_ai/ declares. Frozen, not zero: most are legitimate -- unbuilt parts of design documents that say they are partially implemented, migration notes naming what they migrated from, the forms specification's divergence table, prefix families such as TomCupertinoForm and TomN. The five phantoms that motivated the gate (TomFormErrorDisplay, TomFormErrorSnackbar, TomFormErrorInline, TomFormErrorList, TomMasterDetailScaffold, seven occurrences) were removed before it was baselined, so the count starts from a forms specification that names only types that exist. Lower it as entries are repaired; never raise it -- a new phantom is a name the documentation invented."
+   "note": "216 occurrences of Tom* names in shipped markdown that no Dart under tom_ai/ declares. Frozen, not zero: most are legitimate -- unbuilt parts of design documents that say they are partially implemented, migration notes naming what they migrated from, the forms specification's divergence table, prefix families such as TomCupertinoForm and TomN. The five phantoms that motivated the gate (TomFormErrorDisplay, TomFormErrorSnackbar, TomFormErrorInline, TomFormErrorList, TomMasterDetailScaffold, seven occurrences) were removed before it was baselined, so the count starts from a forms specification that names only types that exist. Lower it as entries are repaired; never raise it -- a new phantom is a name the documentation invented. Lowered 218 -> 216 when tom_flutter_ui's design documents were triaged for check_doc_dart_blocks: samples still showing the retired TomGroupScope and TomUIResources were rewritten to the shipped API."
   },
   "check_doc_samples": {
    "faults": 0,

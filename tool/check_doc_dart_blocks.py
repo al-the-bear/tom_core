@@ -66,6 +66,38 @@ honest answer for them. One was neither: `logging.md`'s multi-isolate sample
 passed `args` to `startIsolatedLogging` from a `main()` that declared none, so
 a reader copying it got exactly the error this rule exists to report.
 
+*Rule D -- a fence that says it is unbuilt must be.* A design document also
+sketches constructs that are intended rather than built, and Rule B would fault
+each one for the very names that make it a sketch. Such a fence opts out of
+Rule B on its own info string::
+
+    ```dart intended
+
+It must still parse -- Rule A holds, because a sketch that is not Dart is not a
+sketch of Dart -- and it must name at least one framework symbol that does not
+resolve. A fence marked `intended` whose framework names all resolve claims to
+describe the unbuilt while describing what exists, and is a fault: without that
+check the marker would be a blanket escape. The prose beside such a fence
+carries the document's **Intended — not yet built** marker for the reader; the
+info string is the same claim made to the gate.
+
+*Rule E -- a fence that says it quotes must quote something real.* A design
+document also quotes a framework declaration abridged -- the members that
+matter to the section, the rest cut. Such a quote declares a class of the same
+name as the real one, which shadows it, so Rule B's verdict on it means
+nothing; and completing it would mean pasting the source. It opts in instead::
+
+    ```dart quote
+
+It must parse, and every public member it declares directly inside a quoted
+`Tom*` class or mixin must exist on the real type: the gate writes one probe
+library per quote that touches each such member on the framework's own type,
+and every probe that does not resolve is a fault. So a quote may leave members
+out, but may not show one the class does not have -- which is the drift a
+quoted declaration actually suffers. Constructors, setters and operators are
+not probed; a constructor's quoted signature is `check_api_signatures.py`'s
+question.
+
 **The documents' elision conventions are honoured, not edited away.** `{ ... }`
 for a body and `// ...` for elided statements are how a sample says "the rest
 is not the point", and they are legitimate. [desugar] translates them. Three
@@ -124,12 +156,8 @@ statements, where a null check promotes it, unless a declaration in the same
 block refers to it.
 
 **Which packages are gated.** Every package under `tom_ai/core` that carries
-```dart fences is in `PACKAGES` except two:
+```dart fences is in `PACKAGES` except one:
 
-* `tom_flutter_ui` -- its corpus has a backlog of its own, several hundred
-  faults across five large design documents, and several of its documents
-  describe constructs that are intended rather than built. Listing it would pin
-  that backlog; it is gated once triaged to zero.
 * `tom_flutter_form_test` -- its documents carry no ```dart fence at all, and a
   gated package with nothing to read makes this gate exit unmeasured, which is
   the guard working rather than a pass.
@@ -170,6 +198,7 @@ PACKAGES = [
     "tom_core_codespecs",
     "tom_core_flutter",
     "tom_core_server",
+    "tom_flutter_ui",
     "tom_flutter_ui_test",
 ]
 
@@ -221,6 +250,18 @@ FENCE_OPEN = re.compile(r"^\s*```dart(?P<info>[^\n]*)$")
 
 #: The marker that says "this fence is a whole program, judge it as one".
 COMPLETE = "complete"
+
+#: The marker that says "this fence sketches something not built yet". Rule A
+#: still holds; Rule B is waived, because the unbuilt names are the point; and a
+#: fence carrying it must name at least one framework symbol that does not
+#: resolve, or the claim is false -- see the module docstring.
+INTENDED = "intended"
+
+#: The marker that says "this fence quotes a real declaration, abridged". Rule
+#: A holds; Rule B is waived, because the quote's own class shadows the real
+#: one; and every member the quote declares must exist on the real type -- see
+#: [quoted_members] and the module docstring.
+QUOTE = "quote"
 FENCE_CLOSE = re.compile(r"^\s*```\s*$")
 
 BRACE_ELLIPSIS = re.compile(r"\{\s*\.\.\.\s*\}")
@@ -240,11 +281,11 @@ TOM_NAME = re.compile(r"'(?:[\w.<>]*\b)?([Tt]om[A-Z]\w*)")
 
 
 def fenced_dart(text: str):
-    """Every ```dart block, as `(first content line, body, is complete)`.
+    """Every ```dart block, as `(first content line, body, marker)`.
 
-    `is complete` is the opt-in of the module docstring: the fence said so in
-    its own info string, so this one is judged by every diagnostic rather than
-    by the two rules a fragment is held to.
+    `marker` is the fence's own claim about itself, from its info string:
+    `complete` (judge it by every diagnostic), `intended` (it sketches an
+    unbuilt construct), or None for an ordinary fragment.
     """
     lines = text.split("\n")
     index = 0
@@ -255,8 +296,10 @@ def fenced_dart(text: str):
             end = start
             while end < len(lines) and not FENCE_CLOSE.match(lines[end]):
                 end += 1
-            complete = COMPLETE in opened.group("info").split()
-            yield start + 1, "\n".join(lines[start:end]), complete
+            info = opened.group("info").split()
+            marker = next(
+                (m for m in (COMPLETE, INTENDED, QUOTE) if m in info), None)
+            yield start + 1, "\n".join(lines[start:end]), marker
             index = end
         index += 1
 
@@ -514,6 +557,143 @@ def depends_on(package: Path, dependency: str) -> bool:
     ) is not None
 
 
+#: A type a quote declares, at the start of a top-level line.
+QUOTED_TYPE = re.compile(
+    r"^(?:abstract\s+|base\s+|final\s+|sealed\s+|interface\s+|mixin\s+)*"
+    r"(?:class|mixin)\s+(Tom[A-Z]\w*)")
+#: A getter's name.
+GETTER = re.compile(r"\bget\s+([A-Za-z_]\w*)")
+
+
+def member_name(text: str) -> str | None:
+    """The name a member declaration line declares, or None.
+
+    A getter names itself after `get`. Anything else -- a method, or a field
+    with or without an initializer -- names itself as the last identifier
+    before the first `(`, `=`, `;` or `{` on the line, once type arguments are
+    removed: `Future<bool> save()`, `T? value = x;`, `final List<A<B>> items;`.
+    Reading the *first* such token is what keeps an initializer's own calls
+    (`= const ValidationSuccess()`, `=> fields.where(...)`) from being taken
+    for the member.
+    """
+    getter = GETTER.search(text)
+    if getter:
+        return getter.group(1)
+    # Type arguments first: a record type inside them -- `List<(double, X)>`
+    # -- carries a `(` that is not a parameter list.
+    while re.search(r"<[^<>]*>", text):
+        text = re.sub(r"<[^<>]*>", "", text)
+    cut = re.search(r"[(=;{]", text)
+    prefix = text[: cut.start()] if cut else text
+    names = re.findall(r"[A-Za-z_]\w*", prefix)
+    if not names or names[-1] in ("Function", "get", "static", "final",
+                                  "late", "const", "var", "void"):
+        return None
+    return names[-1]
+
+
+def quoted_members(block: str) -> list[tuple[str, str, bool]]:
+    """`(type, member, is static)` for every public member a quote declares.
+
+    Read line by line with the brace depth tracked, so a member is recognised
+    only where it is declared -- directly inside a quoted `Tom*` class or
+    mixin -- and never inside a body or a parameter list that spans lines.
+    Constructors, factories, setters and operators are left out: a quote of a
+    constructor is a signature, which `check_api_signatures.py` judges, and a
+    setter or operator cannot be touched by a probe without inventing a value.
+    """
+    members: list[tuple[str, str, bool]] = []
+    depth = 0
+    paren = 0
+    current: str | None = None
+    # A declaration whose line did not close it -- an `=>` body, a wrapped
+    # initializer -- continues on the next lines, which declare nothing.
+    continuing = False
+    for raw in block.split("\n"):
+        line = re.sub(r"//.*$", "", raw)
+        stripped = line.strip()
+        was_continuing = continuing
+        if was_continuing:
+            pass
+        elif depth == 0:
+            header = QUOTED_TYPE.match(stripped)
+            if header:
+                current = header.group(1)
+        elif depth == 1 and paren == 0 and current and stripped:
+            text = re.sub(r"^(?:@\w+(?:\([^)]*\))?\s+)+", "", stripped)
+            is_static = text.startswith("static ")
+            skip = (re.search(r"\)\s*:\s*(?:super|this)\b", text)
+                    or text.startswith(("factory ", "const " + current,
+                                     current + "(", current + ".", "@", "}",
+                                     ":", ")", ",", "."))
+                    or re.search(r"\bset\s+\w|\boperator\b", text))
+            if not skip:
+                name = member_name(text)
+                if name and not name.startswith("_") and name != current:
+                    members.append((current, name, is_static))
+        for ch in line:
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    current = None
+            elif ch == "(":
+                paren += 1
+            elif ch == ")":
+                paren -= 1
+        if depth == 1 and paren == 0 and stripped and \
+                not re.fullmatch(r"(?:@\w+(?:\([^)]*\))?\s*)+", stripped):
+            continuing = not stripped.endswith((";", "{", "}"))
+    return members
+
+
+#: A quoted type's header, with the clauses that name its supertypes.
+QUOTED_HEADER = re.compile(
+    r"^\s*(?:abstract\s+|base\s+|final\s+|sealed\s+|interface\s+)*"
+    r"(?:class|mixin)\s+(Tom[A-Z]\w*)(?:<[^{]*?>)?\s+(?P<rest>[^{]*)",
+    re.M)
+
+
+def quoted_supertypes(block: str) -> list[tuple[str, str]]:
+    """`(type, supertype)` for every `Tom*` supertype a quoted header names.
+
+    A quote that shows only a hierarchy -- `class TomFormStringInput extends
+    TomFormStringField { ... }` -- still makes a claim, and it is checkable:
+    the real type must be assignable to the supertype it is quoted with.
+    """
+    pairs = []
+    for header in QUOTED_HEADER.finditer(block):
+        rest = re.sub(r"<[^<>]*>", "", header.group("rest"))
+        for supertype in re.findall(
+                r"\b(?:extends|with|implements|on)\s+([^{]*)", rest):
+            for name in re.findall(r"\bTom[A-Z]\w*", supertype):
+                pairs.append((header.group(1), name))
+    return pairs
+
+
+def quote_probe(members: list[tuple[str, str, bool]],
+                packages: list[str],
+                supertypes: list[tuple[str, str]] = ()) -> str:
+    """A library touching each quoted member on the real type it claims, and
+    assigning each quoted type to each supertype it is quoted with."""
+    imports = "".join(
+        f"import '{p}';\n" if ":" in p else f"import 'package:{p}/{p}.dart';\n"
+        for p in packages
+    )
+    probes = []
+    for index, (owner, member, is_static) in enumerate(members):
+        if is_static:
+            probes.append(f"void _probe{index}() {{ {owner}.{member}; }}")
+        else:
+            probes.append(
+                f"void _probe{index}({owner} target) {{ target.{member}; }}")
+    for index, (owner, supertype) in enumerate(supertypes):
+        probes.append(
+            f"{supertype} _super{index}({owner} target) => target;")
+    return PREAMBLE + imports + "\n" + "\n".join(probes) + "\n"
+
+
 def build(body: str, wrapper: str, packages: list[str]) -> str:
     """Render one block as a library, in the named context.
 
@@ -690,7 +870,8 @@ class Fault:
 
 
 def check(package: Path) -> tuple[list[Fault], int, int]:
-    """`(faults, blocks checked, blocks skipped, blocks marked complete)`."""
+    """`(faults, blocks checked, blocks skipped, marked complete, marked
+    intended)`."""
     context = context_packages(package)
     # A block importing a package outside that context is left out; one that
     # imports the kernel beside its own barrel is written as shipping code
@@ -703,9 +884,11 @@ def check(package: Path) -> tuple[list[Fault], int, int]:
 
     origin: dict[str, tuple[str, str]] = {}
     complete: set[str] = set()
+    intended: set[str] = set()
+    quoted: set[str] = set()
     skipped = 0
     for path in documents(package):
-        for line, block, is_complete in fenced_dart(
+        for line, block, marker in fenced_dart(
             path.read_text(encoding="utf-8")
         ):
             if foreign_import.search(block):
@@ -714,8 +897,12 @@ def check(package: Path) -> tuple[list[Fault], int, int]:
             where = f"{path.relative_to(package)}:{line}"
             name = slug(path, package, line)
             origin[name] = (where, desugar(block))
-            if is_complete:
+            if marker == COMPLETE:
                 complete.add(name)
+            elif marker == INTENDED:
+                intended.add(name)
+            elif marker == QUOTE:
+                quoted.add(name)
 
     scratch = scratch_for(package)
     write_scratch(package, [])
@@ -753,6 +940,25 @@ def check(package: Path) -> tuple[list[Fault], int, int]:
                     best_syntax[name] = syntax
                 still[name] = (where, body)
                 continue
+            if name in quoted:
+                # Its own class shadows the real one, so what resolves here
+                # says nothing; the members are checked against the real type
+                # below, once every block has settled.
+                continue
+            if name in intended:
+                # The unbuilt names are the point, so they are not faults --
+                # but a fence claiming to sketch the unbuilt while naming
+                # nothing unbuilt is a false claim, and an escape hatch if
+                # nothing held it to the claim.
+                if not framework:
+                    faults.append(Fault(
+                        name, where, "intended", wrapper, [{
+                            "code": "intended_but_built",
+                            "problemMessage": "marked `intended`, yet every "
+                            "framework name it uses resolves -- remove the "
+                            "marker",
+                        }], scratch))
+                continue
             if framework:
                 faults.append(Fault(
                     name,
@@ -768,6 +974,32 @@ def check(package: Path) -> tuple[list[Fault], int, int]:
         faults.append(
             Fault(name, where, "parse", None, best_syntax[name], scratch))
 
+    # A quote is held to the type it quotes: one probe library per quote that
+    # parsed, touching each declared member on the real type.
+    probes = {}
+    for name in quoted:
+        if name in pending:
+            continue
+        members = quoted_members(origin[name][1])
+        supertypes = quoted_supertypes(origin[name][1])
+        if not members and not supertypes:
+            faults.append(Fault(name, origin[name][0], "quote", None, [{
+                "code": "quote_names_nothing",
+                "problemMessage": "marked `quote`, but declares no member of "
+                "a Tom class or mixin to check",
+            }], scratch))
+            continue
+        probes[f"{name}_quote"] = (
+            name, quote_probe(members, context, supertypes))
+    if probes:
+        write_scratch(package, [(n, src) for n, (_, src) in probes.items()])
+        found = analyze(scratch)
+        for probe, (name, _) in probes.items():
+            wrong = found.get(probe, [])
+            if wrong:
+                faults.append(Fault(
+                    name, origin[name][0], "quote", None, wrong, scratch))
+
     # Leave behind exactly the libraries that failed, and nothing else. They
     # are the evidence -- a fault reads far more easily as the source the
     # analyzer saw than as a line number in a document -- while the 400-odd
@@ -778,7 +1010,8 @@ def check(package: Path) -> tuple[list[Fault], int, int]:
                            fault.wrapper or WRAPPERS[0], context))
         for fault in faults
     ])
-    return faults, len(origin), skipped, len(complete)
+    return (faults, len(origin), skipped, len(complete),
+            len(intended) + len(quoted))
 
 
 def self_test() -> int:
@@ -813,6 +1046,13 @@ def self_test() -> int:
     probe = "@tomReflector\nclass SelfTestProbe {}\n"
     missing = "@tomReflectorThatDoesNotExist\nclass SelfTestProbe {}\n"
     widget = "final selfTestWidget = Text('probe');\n"
+    # Rule E: a quote is held to the real type -- `save` is TomForm's, the
+    # other member is not, and the supertype claim is false.
+    quote = quote_probe(
+        quoted_members("class TomForm {\n  Future<bool> save();\n"
+                       "  void noSuchQuotedMember();\n}"),
+        context,
+        [("TomForm", "TomField")])
     write_scratch(package, [
         ("self_test_kernel_context", build(probe, "top", context)),
         ("self_test_own_barrel_only", build(probe, "top", [package.name])),
@@ -820,12 +1060,13 @@ def self_test() -> int:
         ("self_test_widget_context", build(widget, "top", context)),
         ("self_test_widget_no_material",
          build(widget, "top", [p for p in context if p != FLUTTER_MATERIAL])),
+        ("self_test_quote", quote),
     ])
     found = analyze(scratch)
     codes = {name: {d["code"] for d in found.get(name, [])} for name in (
         "self_test_kernel_context", "self_test_own_barrel_only",
         "self_test_missing_name", "self_test_widget_context",
-        "self_test_widget_no_material")}
+        "self_test_widget_no_material", "self_test_quote")}
     write_scratch(package, [])
     expectations = [
         ("self_test_kernel_context", not codes["self_test_kernel_context"],
@@ -842,6 +1083,9 @@ def self_test() -> int:
          bool(codes["self_test_widget_no_material"]),
          "a widget resolves without the material import, so the test does "
          "not show that import doing anything"),
+        ("self_test_quote", len(found.get("self_test_quote", [])) == 2,
+         "a quote's probes did not report exactly the missing member and "
+         "the false supertype"),
     ]
     for name, ok, message in expectations:
         if not ok:
@@ -850,7 +1094,8 @@ def self_test() -> int:
             return 1
     print("self-test: a kernel-only name resolves in the kernel context, "
           "is missing from the package barrel alone, and a genuinely missing "
-          "name is still reported; a widget resolves only with material")
+          "name is still reported; a widget resolves only with material; a "
+          "quote's missing member and false supertype are reported")
     return 0
 
 
@@ -871,7 +1116,7 @@ def main(argv: list[str]) -> int:
                       enabled="--no-cache" not in argv)
     gate_source = Path(__file__).read_text(encoding="utf-8")
     total_faults: list[Fault] = []
-    checked = skipped = opted_in = 0
+    checked = skipped = opted_in = sketched = 0
     for name in wanted:
         package = REPO_ROOT / name
         if not (package / "pubspec.yaml").is_file():
@@ -881,13 +1126,14 @@ def main(argv: list[str]) -> int:
         key = package_key(package, gate_source)
         remembered = cache.get(name, key)
         if remembered is not None:
-            faults, (blocks, left_out, marked) = [], remembered
+            faults, (blocks, left_out, marked, sketches) = [], remembered
         else:
-            faults, blocks, left_out, marked = check(package)
+            faults, blocks, left_out, marked, sketches = check(package)
             if faults:
                 cache.forget(name)
             else:
-                cache.put_clean(name, key, [blocks, left_out, marked])
+                cache.put_clean(
+                    name, key, [blocks, left_out, marked, sketches])
         if blocks == 0:
             print(f"no ```dart blocks found under {name}", file=sys.stderr)
             return 2
@@ -895,10 +1141,13 @@ def main(argv: list[str]) -> int:
         checked += blocks
         skipped += left_out
         opted_in += marked
+        sketched += sketches
 
     parse = [f for f in total_faults if f.rule == "parse"]
     framework = [f for f in total_faults if f.rule == "framework"]
     incomplete = [f for f in total_faults if f.rule == "complete"]
+    unbuilt_claims = [f for f in total_faults if f.rule == "intended"]
+    misquotes = [f for f in total_faults if f.rule == "quote"]
 
     if parse:
         print("=== blocks that do not parse in any context ===")
@@ -907,6 +1156,14 @@ def main(argv: list[str]) -> int:
     if incomplete:
         print("\n=== blocks marked `complete` that do not analyze clean ===")
         for fault in sorted(incomplete, key=lambda f: f.where):
+            print(fault.render())
+    if misquotes:
+        print("\n=== blocks marked `quote` whose members the type lacks ===")
+        for fault in sorted(misquotes, key=lambda f: f.where):
+            print(fault.render())
+    if unbuilt_claims:
+        print("\n=== blocks marked `intended` that name nothing unbuilt ===")
+        for fault in sorted(unbuilt_claims, key=lambda f: f.where):
             print(fault.render())
     if framework:
         print("\n=== blocks naming something the framework does not have ===")
@@ -926,6 +1183,7 @@ def main(argv: list[str]) -> int:
         f"dart blocks analyzed    : {checked}\n"
         f"blocks skipped (foreign): {skipped}\n"
         f"blocks marked `complete`: {opted_in}\n"
+        f"blocks marked intended/quote: {sketched}\n"
         f"blocks that do not parse: {len(parse)}\n"
         f"framework names missing : {sum(f.weight for f in framework)}\n"
         f"complete blocks unclean : {sum(f.weight for f in incomplete)}\n"

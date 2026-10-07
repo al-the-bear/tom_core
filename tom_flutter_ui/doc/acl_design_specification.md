@@ -400,11 +400,11 @@ gapRow(separator: AclSeparator(
 ### Example
 
 ```dart
-..newRow()..append(header)
+builder..newRow()..append(header)
 ..gapRow()                          // weight=1 elastic spacer, no separator
 ..append(body)                      // implicit new row
 ..gapRow(weight: 2, separator: AclSeparator(style: AclSeparatorStyle.single))   // or .doubleLine
-..append(footer)                    // implicit new row
+..append(footer);                   // implicit new row
 ```
 
 ```
@@ -719,17 +719,17 @@ AclBuilder({
   AclTitlePosition titlePosition = AclTitlePosition.topLeft,
   AclTitleBorderAlign titleBorderAlign = AclTitleBorderAlign.bottom,
   double titleVerticalOffset = 0.0,
-})
+});
 ```
 
 ### Component placement
 
 ```dart
 // Append a component to the current row
-AclBuilder append(Widget child, {double dist = 0})
+AclBuilder append(Widget child, {double dist = 0});
 
 // Insert an elastic horizontal gap into the current row
-AclBuilder gap({double weight = 1})
+AclBuilder gap({double weight = 1});
 ```
 
 ### Row management
@@ -743,29 +743,29 @@ AclBuilder newRow({
   double dist = 0,
   double? height,
   List<(double, double?)> heightBpOverrides = const [],
-})
+});
 
 // Insert an elastic vertical gap row; implicitly starts a new content row
-AclBuilder gapRow({double weight = 1, AclSeparator? separator, double minSize = 0})
+AclBuilder gapRow({double weight = 1, AclSeparator? separator, double minSize = 0});
 
 // Height of the current row / of every row that sets none of its own
-AclBuilder setRowHeight(double? height, [List<(double, double?)> heightBpOverrides = const []])
-AclBuilder setAclDefaultRowHeight(double? height, [List<(double, double?)> heightBpOverrides = const []])
+AclBuilder setRowHeight(double? height, [List<(double, double?)> heightBpOverrides = const []]);
+AclBuilder setAclDefaultRowHeight(double? height, [List<(double, double?)> heightBpOverrides = const []]);
 ```
 
 ### Container-level sizing
 
 ```dart
-AclBuilder setAclPSize(double width, double height)    // preferred container size
-AclBuilder setAclMSize(double width, double height)    // minimum container size
-AclBuilder setAclXSize(double width, double height)    // maximum container size
+AclBuilder setAclPSize(double width, double height);   // preferred container size
+AclBuilder setAclMSize(double width, double height);   // minimum container size
+AclBuilder setAclXSize(double width, double height);   // maximum container size
 ```
 
 ### Container-level scroll mode
 
 ```dart
-AclBuilder setAclScrollableX()   // switch horizontal axis to scroll mode
-AclBuilder setAclScrollableY()   // switch vertical axis to scroll mode
+AclBuilder setAclScrollableX();  // switch horizontal axis to scroll mode
+AclBuilder setAclScrollableY();  // switch vertical axis to scroll mode
 ```
 
 ### Per-component sizing
@@ -776,23 +776,23 @@ earlier call on the same component set. With no earlier call the height is `0`
 rule is contrasted with the builder-wide one.
 
 ```dart
-AclBuilder setPSize(double width, [double height = 0])    // preferred
-AclBuilder setMSize(double width, [double height = 0])    // minimum
-AclBuilder setXSize(double width, [double height = 0])    // maximum
-AclBuilder setPWidthInChars(int chars, {double charWidth = 8, double height = 40})
-AclBuilder setMWidthInChars(int chars, {double charWidth = 8})
-AclBuilder setXWidthInChars(int chars, {double charWidth = 8})
+AclBuilder setPSize(double width, [double height = 0]);   // preferred
+AclBuilder setMSize(double width, [double height = 0]);   // minimum
+AclBuilder setXSize(double width, [double height = 0]);   // maximum
+AclBuilder setPWidthInChars(int chars, {double charWidth = 8, double height = 40});
+AclBuilder setMWidthInChars(int chars, {double charWidth = 8});
+AclBuilder setXWidthInChars(int chars, {double charWidth = 8});
 ```
 
 ### Per-component expand flags
 
 ```dart
-AclBuilder setAttr(int attr)     // raw flags (use extensions instead)
-AclBuilder clearAttr(int attr)
+AclBuilder setAttr(int attr);    // raw flags (use extensions instead)
+AclBuilder clearAttr(int attr);
 // via AclBuilderExtensions:
-AclBuilder expandX()
-AclBuilder expandY()
-AclBuilder expand()
+AclBuilder expandX();
+AclBuilder expandY();
+AclBuilder expand();
 ```
 
 ### Per-component size references (dynamic, back-reference only)
@@ -801,10 +801,10 @@ AclBuilder expand()
 takes a raw `AclFlags.otherDimX` / `otherDimY` / `otherDim` mask.
 
 ```dart
-AclBuilder sameWidthAs(Widget reference)
-AclBuilder sameHeightAs(Widget reference)
-AclBuilder sameSize(Widget reference)
-AclBuilder setComp(Widget reference, int otherAttr)
+AclBuilder sameWidthAs(Widget reference);
+AclBuilder sameHeightAs(Widget reference);
+AclBuilder sameSize(Widget reference);
+AclBuilder setComp(Widget reference, int otherAttr);
 ```
 
 ### Vertical alignment within a row
@@ -815,45 +815,45 @@ both throws. See §11.
 
 ```dart
 // This component only
-AclBuilder setVerticalAlignment(AclRowCrossAlignment align)
+AclBuilder setVerticalAlignment(AclRowCrossAlignment align);
 
 // The current row
-AclBuilder setRowVerticalAlignment(AclRowCrossAlignment align)
+AclBuilder setRowVerticalAlignment(AclRowCrossAlignment align);
 // via AclBuilderExtensions:
-AclBuilder setRowAlignTop()
-AclBuilder setRowAlignMiddle()
-AclBuilder setRowAlignBottom()
+AclBuilder setRowAlignTop();
+AclBuilder setRowAlignMiddle();
+AclBuilder setRowAlignBottom();
 
 // Every row that sets none of its own
-AclBuilder setAclDefaultRowVerticalAlignment(AclRowCrossAlignment alignment)
+AclBuilder setAclDefaultRowVerticalAlignment(AclRowCrossAlignment alignment);
 ```
 
 ### Cross-row horizontal alignment (reference must be in a different row)
 
 ```dart
-AclBuilder alignLeftToLeft(Widget reference,   {double gap = 0})
-AclBuilder alignLeftToCenter(Widget reference, {double gap = 0})
-AclBuilder alignLeftToRight(Widget reference,  {double gap = 0})
-AclBuilder alignCenterToLeft(Widget reference,   {double gap = 0})
-AclBuilder alignCenterToCenter(Widget reference, {double gap = 0})
-AclBuilder alignCenterToRight(Widget reference,  {double gap = 0})
-AclBuilder alignRightToLeft(Widget reference,   {double gap = 0})
-AclBuilder alignRightToCenter(Widget reference, {double gap = 0})
-AclBuilder alignRightToRight(Widget reference,  {double gap = 0})
+AclBuilder alignLeftToLeft(Widget reference,   {double gap = 0});
+AclBuilder alignLeftToCenter(Widget reference, {double gap = 0});
+AclBuilder alignLeftToRight(Widget reference,  {double gap = 0});
+AclBuilder alignCenterToLeft(Widget reference,   {double gap = 0});
+AclBuilder alignCenterToCenter(Widget reference, {double gap = 0});
+AclBuilder alignCenterToRight(Widget reference,  {double gap = 0});
+AclBuilder alignRightToLeft(Widget reference,   {double gap = 0});
+AclBuilder alignRightToCenter(Widget reference, {double gap = 0});
+AclBuilder alignRightToRight(Widget reference,  {double gap = 0});
 ```
 
 ### Same-row vertical alignment (reference must be in same row; mutually exclusive with setVerticalAlignment)
 
 ```dart
-AclBuilder alignTopToTop(Widget reference,      {double gap = 0})
-AclBuilder alignTopToMiddle(Widget reference,   {double gap = 0})
-AclBuilder alignTopToBottom(Widget reference,   {double gap = 0})
-AclBuilder alignMiddleToTop(Widget reference,   {double gap = 0})
-AclBuilder alignMiddleToMiddle(Widget reference,{double gap = 0})
-AclBuilder alignMiddleToBottom(Widget reference,{double gap = 0})
-AclBuilder alignBottomToTop(Widget reference,   {double gap = 0})
-AclBuilder alignBottomToMiddle(Widget reference,{double gap = 0})
-AclBuilder alignBottomToBottom(Widget reference,{double gap = 0})
+AclBuilder alignTopToTop(Widget reference,      {double gap = 0});
+AclBuilder alignTopToMiddle(Widget reference,   {double gap = 0});
+AclBuilder alignTopToBottom(Widget reference,   {double gap = 0});
+AclBuilder alignMiddleToTop(Widget reference,   {double gap = 0});
+AclBuilder alignMiddleToMiddle(Widget reference,{double gap = 0});
+AclBuilder alignMiddleToBottom(Widget reference,{double gap = 0});
+AclBuilder alignBottomToTop(Widget reference,   {double gap = 0});
+AclBuilder alignBottomToMiddle(Widget reference,{double gap = 0});
+AclBuilder alignBottomToBottom(Widget reference,{double gap = 0});
 ```
 
 ### Horizontal alignment of a whole row
@@ -863,36 +863,36 @@ Horizontal placement is a row-level concern — there is no per-component form.
 decides where the slack goes.)*
 
 ```dart
-AclBuilder setRowHorizontalAlignment(RowAlignment align)  // left | center | right
+AclBuilder setRowHorizontalAlignment(RowAlignment align); // left | center | right
 // via AclBuilderExtensions:
-AclBuilder setRowAlignLeft()
-AclBuilder setRowAlignCenter()
-AclBuilder setRowAlignRight()
+AclBuilder setRowAlignLeft();
+AclBuilder setRowAlignCenter();
+AclBuilder setRowAlignRight();
 
 // Every row that sets none of its own
-AclBuilder setAclDefaultRowHorizontalAlignment(RowAlignment alignment)
+AclBuilder setAclDefaultRowHorizontalAlignment(RowAlignment alignment);
 ```
 
 ### Container-level decoration
 
 ```dart
-AclBuilder setAclDefaultFlags(int flags)
-AclBuilder setAclBorderStyle(AclBorderStyle style)
-AclBuilder setAclBorderInsets(EdgeInsetsGeometry insets)
-AclBuilder setAclFocusedBorderStyle(AclBorderStyle style)
-AclBuilder setAclPadding(EdgeInsetsGeometry padding)
-AclBuilder setAclPaddingPx(double left, double top, double right, double bottom)
-AclBuilder setAclPaddingTop(double value)
-AclBuilder setAclPaddingBottom(double value)
-AclBuilder setAclPaddingLeft(double value)
-AclBuilder setAclPaddingRight(double value)
-AclBuilder setAclBackgroundColor(Color color)
-AclBuilder setAclTitle(String? title)
-AclBuilder setAclTitleWidget(Widget? widget)
-AclBuilder setAclTitleStyle(TextStyle style)
-AclBuilder setAclTitlePosition(AclTitlePosition position)
-AclBuilder setAclTitleBorderAlign(AclTitleBorderAlign align)
-AclBuilder setAclTitleVerticalOffset(double offset)
+AclBuilder setAclDefaultFlags(int flags);
+AclBuilder setAclBorderStyle(AclBorderStyle style);
+AclBuilder setAclBorderInsets(EdgeInsetsGeometry insets);
+AclBuilder setAclFocusedBorderStyle(AclBorderStyle style);
+AclBuilder setAclPadding(EdgeInsetsGeometry padding);
+AclBuilder setAclPaddingPx(double left, double top, double right, double bottom);
+AclBuilder setAclPaddingTop(double value);
+AclBuilder setAclPaddingBottom(double value);
+AclBuilder setAclPaddingLeft(double value);
+AclBuilder setAclPaddingRight(double value);
+AclBuilder setAclBackgroundColor(Color color);
+AclBuilder setAclTitle(String? title);
+AclBuilder setAclTitleWidget(Widget? widget);
+AclBuilder setAclTitleStyle(TextStyle style);
+AclBuilder setAclTitlePosition(AclTitlePosition position);
+AclBuilder setAclTitleBorderAlign(AclTitleBorderAlign align);
+AclBuilder setAclTitleVerticalOffset(double offset);
 ```
 
 ### Container-level component defaults
@@ -902,22 +902,22 @@ setters below read a `0` argument three different ways.
 
 ```dart
 // Enable/disable expandX for all subsequently appended components
-AclBuilder setAclExpandXDefault(bool enabled)
+AclBuilder setAclExpandXDefault(bool enabled);
 
 // Default horizontal gap before each appended component, with optional
 // (minWidth, gap) breakpoint overrides
-AclBuilder setAclDefaultAppendGap(double gap, [List<(double, double)> gapBpOverrides = const []])
+AclBuilder setAclDefaultAppendGap(double gap, [List<(double, double)> gapBpOverrides = const []]);
 
 // Default vertical gap (pixels) before each new content row
-AclBuilder setAclDefaultRowGap(int pixels)
+AclBuilder setAclDefaultRowGap(int pixels);
 
 // Default minimum size for components without explicit setMSize/setMWidthInChars
 // Zeros are stored as zeros — no fallback on either axis
-AclBuilder setAclDefaultUnknownMinimumSize(double width, [double height = 0])
+AclBuilder setAclDefaultUnknownMinimumSize(double width, [double height = 0]);
 
 // Default preferred size for components without explicit setPSize/setPWidthInChars
 // Width = 0 falls back to the factory 150; height = 0 leaves height unconstrained
-AclBuilder setAclDefaultUnknownPreferredSize(double width, [double height = 0])
+AclBuilder setAclDefaultUnknownPreferredSize(double width, [double height = 0]);
 ```
 
 ### Identity, groups and visibility
@@ -927,21 +927,21 @@ listed here so this section stays a complete index of the builder surface.
 
 ```dart
 // IDs — §24
-AclBuilder setAclId(String id)
-AclBuilder setRowId(String id)
-AclBuilder setId(String id)
-AclBuilder setAclIdScope(bool idScope)
-AclBuilder setRowIdScope(bool idScope)
+AclBuilder setAclId(String id);
+AclBuilder setRowId(String id);
+AclBuilder setId(String id);
+AclBuilder setAclIdScope(bool idScope);
+AclBuilder setRowIdScope(bool idScope);
 
 // Groups — §25
-AclBuilder setAclGroup(String name)
-AclBuilder setRowGroup(String name)
-AclBuilder startGroup(String name)
-AclBuilder endGroup()
-AclBuilder group(String name)
+AclBuilder setAclGroup(String name);
+AclBuilder setRowGroup(String name);
+AclBuilder startGroup(String name);
+AclBuilder endGroup();
+AclBuilder group(String name);
 
 // Visibility — §26
-AclBuilder setGroupVisibilityController(String groupName, AclGroupVisibilityController controller)
+AclBuilder setGroupVisibilityController(String groupName, AclGroupVisibilityController controller);
 ```
 
 ### Authorization-driven hiding
@@ -950,8 +950,8 @@ Drops a component whose child evaluates to `TomAuthState.none` from the row at
 build time, rather than rendering it disabled. See §26b.
 
 ```dart
-AclBuilder setAclDefaultHideUnauthorized(bool value)
-AclBuilder setHideUnauthorized(bool? value)   // null = fall back to the default
+AclBuilder setAclDefaultHideUnauthorized(bool value);
+AclBuilder setHideUnauthorized(bool? value);  // null = fall back to the default
 ```
 
 ### Responsive layout
@@ -960,8 +960,8 @@ Covered in depth by §27 (variants), §28 (row breakpoints), §29 (inline
 component variants) and §30 (layout direction).
 
 ```dart
-AclBuilder addVariant(String name, {required double atWidth, required void Function(AclBuilder) builder})
-AclBuilder addRowBreakpoint({required double atWidth, double splitRowDist = 0})
+AclBuilder addVariant(String name, {required double atWidth, required void Function(AclBuilder) builder});
+AclBuilder addRowBreakpoint({required double atWidth, double splitRowDist = 0});
 AclBuilder startVariant({
   double? width,
   double? height,
@@ -974,15 +974,15 @@ AclBuilder startVariant({
   TextDirection? textDirection,
   double? minAccessibilityScale,
   AclVariantDetector? detector,
-})
-AclBuilder endVariant()
-AclBuilder setAclDirection(AclDirection direction)
+});
+AclBuilder endVariant();
+AclBuilder setAclDirection(AclDirection direction);
 ```
 
 ### Build
 
 ```dart
-Acl build()
+Acl build();
 ```
 
 ---
@@ -1412,7 +1412,7 @@ More precisely: variants are checked from **largest `atWidth` to smallest**. The
 ### Builder method
 
 ```dart
-AclBuilder addVariant(String name, {required double atWidth, required void Function(AclBuilder) builder})
+AclBuilder addVariant(String name, {required double atWidth, required void Function(AclBuilder) builder});
 ```
 
 The callback receives a **fresh** `AclBuilder`, and *fresh* is literal: it inherits nothing from the parent builder. Every `setAclDefault*` value — append gap, row gap, row height, both row alignments, flags, unknown preferred size, unknown minimum size — starts at its framework default inside the callback and must be restated if the variant needs it.
@@ -1420,11 +1420,11 @@ The callback receives a **fresh** `AclBuilder`, and *fresh* is literal: it inher
 Container-level settings (border, padding, background, title) are unaffected by which variant is active, but not because the variant builder inherits them: they belong to the container, and a variant supplies only rows. Setting them inside the callback therefore does nothing.
 
 ```dart
-..addVariant('narrow', atWidth: 480, builder: (b) => b
+builder..addVariant('narrow', atWidth: 480, builder: (b) => b
     ..setAclDefaultAppendGap(16)   // restate — not inherited
     ..append(street)
     ..newRow()
-    ..append(number))
+    ..append(number));
 ```
 
 `test/advanced_container_layout/acl_variant_inheritance_test.dart` pins what is inherited and what is dropped.
@@ -1458,7 +1458,7 @@ At runtime:
 ### Builder method
 
 ```dart
-AclBuilder addRowBreakpoint({required double atWidth, double splitRowDist = 0})
+AclBuilder addRowBreakpoint({required double atWidth, double splitRowDist = 0});
 ```
 
 | Parameter | Meaning |
@@ -1473,11 +1473,11 @@ The split position is determined by the number of components already appended wh
 Multiple breakpoints can be placed at different positions in the builder chain:
 
 ```dart
-..append(a, dist: 8)
+builder..append(a, dist: 8)
 ..addRowBreakpoint(atWidth: 400)          // below 400: [a] / [b c d]
 ..append(b, dist: 8)
 ..addRowBreakpoint(atWidth: 800)          // below 800: [a b] / [c d]
-..append(c, dist: 8)..append(d, dist: 8)
+..append(c, dist: 8)..append(d, dist: 8);
 ```
 
 Breakpoints are evaluated from **smallest `atWidth` to largest**. Each active breakpoint inserts an additional row break. The result is cumulative.
@@ -1510,7 +1510,8 @@ A snapshot of the current device and layout environment, resolved from Flutter's
 | `accessibilityScale` | `double` | From `MediaQuery.of(context).textScaler.scale(1.0)` |
 
 ```dart
-factory AclDeviceContext.of(BuildContext context, {required double width, double? height})
+// factory AclDeviceContext.of(BuildContext context, {required double width, double? height})
+final device = AclDeviceContext.of(context, width: constraints.maxWidth);
 ```
 
 ### AclVariantDetector
@@ -1544,9 +1545,9 @@ AclBuilder startVariant({
   double? minAccessibilityScale,
   // Custom detector (overrides all convenience parameters):
   AclVariantDetector? detector,
-})
+});
 
-AclBuilder endVariant()
+AclBuilder endVariant();
 ```
 
 When **no parameters** are specified, the variant is the **default** — shown when no other detector matches.
@@ -1763,7 +1764,7 @@ By default, ACL lays out components left-to-right. Setting the layout direction 
 ### API
 
 ```dart
-AclBuilder setAclDirection(AclDirection direction)
+AclBuilder setAclDirection(AclDirection direction);
 ```
 
 ```dart
@@ -1945,7 +1946,6 @@ TomAclBuilder(
   id: 'customerForm',
   elementProvider: form,
 )
-  .setAclDefaultRowAlignment(AclRowCrossAlignment.top)  // redundant — matches default
   .setAclExpandXDefault(true)
   .append((p) => p.fullName.widget)
   .newRow()
@@ -1960,9 +1960,9 @@ TomAclBuilder(
 
 ### JSON-ACL Support (future)
 
-`TomAclBuilder` is designed to support building from JSON layout definitions. Element references in JSON correspond to field names on the `@tomReflector`-annotated provider class. The API below is aspirational; the runtime is not yet in tom_flutter_ui.
+> **Intended — not yet built.** `TomAclBuilder` is designed to support building from JSON layout definitions; element references in JSON correspond to field names on the `@tomReflector`-annotated provider class. `buildFromJson` below is a sketch: the runtime is not in tom_flutter_ui.
 
-```dart
+```dart intended
 return TomAclBuilder<LoginScreenElements>(
   id: 'loginScreen',
   elementProvider: LoginScreenElements(),

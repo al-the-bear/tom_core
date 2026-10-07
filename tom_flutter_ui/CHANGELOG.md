@@ -1,5 +1,13 @@
 ## Unreleased
 
+### Changed
+
+- **`TomForm.createFormElements` has an empty default.** It was abstract, so
+  every form had to override it, yet fields declared as `late final` members
+  passing `form: this` are registered by reflection and need nothing there. A
+  form overrides it only for wiring a `late final` initializer cannot express,
+  which is what the forms specification always said.
+
 ### Fixed
 
 - **`TomFormErrorBanner` shows messages, not resource keys.** It printed each

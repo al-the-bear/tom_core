@@ -44,8 +44,8 @@ Create a group and pass it to each related widget:
 ```dart
 final shipping = TomAuthorizationGroup('shipping'); // default mode: controlsWidest
 
-TomTextField(tomId: 'street', tomGroup: shipping, ...),
-TomTextField(tomId: 'city',   tomGroup: shipping, ...),
+final street = TomTextField(tomId: 'street', tomGroup: shipping);
+final city   = TomTextField(tomId: 'city',   tomGroup: shipping);
 ```
 
 Members are tracked as **weak references**, so a group never keeps a disposed

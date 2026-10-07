@@ -76,9 +76,9 @@ user has touched every field, and disabled again the moment they save. Gate on
 data is bad, so it is safe to call on a form that has never been validated.
 
 ```dart
-onPressed: form.isDirty ? () async {
+final onPressed = form.isDirty ? () async {
   if (!await form.save()) showErrors(form.fieldsWithErrors);
-} : null,
+} : null;
 ```
 
 Reach for `isValid` when you genuinely mean "has this form been checked and
@@ -162,7 +162,7 @@ typed over `Iterable<Object?>` so they drop straight into a
 `TomField<List<String>>` or `TomField<List<int>>`:
 
 ```dart
-final toppings = TomFormStringFilterChips('toppings', const [], source: …,
+final toppings = TomFormStringFilterChips('toppings', const [], source: toppingsSource,
     validators: [Validators.minItems(2), Validators.maxItems(3)]);
 ```
 

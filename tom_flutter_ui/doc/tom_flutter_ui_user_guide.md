@@ -132,7 +132,7 @@ Column(children: [
   TomTextField(tomId: 'street', tomGroup: shippingGroup),
   TomTextField(tomId: 'city', tomGroup: shippingGroup),
   TomTextField(tomId: 'zip', tomGroup: shippingGroup),
-])
+]);
 ```
 
 When the group is hidden by authorization, all members are hidden.
@@ -141,24 +141,16 @@ When the group is hidden by authorization, all members are hidden.
 
 ## 4. Resources
 
-### Setting up the resource adapter
+### Installing the text resources
+
+Widgets read their texts from the kernel's app-wide `TomTextResourceProvider`,
+installed once at startup from wherever the texts live — a YAML asset, a
+backend, a map:
 
 ```dart
-TomUIResources.adapter = MyResourceAdapter();
-
-class MyResourceAdapter extends TomUIResourceAdapter {
-  @override
-  String resolveText(String basePath, String suffix) {
-    // basePath: 'checkout.email'
-    // suffix: 'label', 'hint', 'error.required', etc.
-    return lookupFromResourceFile('$basePath.$suffix');
-  }
-
-  @override
-  bool resourceExists(String basePath, String suffix) {
-    return hasResource('$basePath.$suffix');
-  }
-}
+TomTextResourceProvider.setAppResourceProvider(
+  TomTextResourceProvider.from(loadAppTexts()),
+);
 ```
 
 ### Using resources in widgets
@@ -167,9 +159,9 @@ Tom widgets resolve resources automatically via their `basePath`:
 
 ```dart
 // In a widget's buildContent() method:
-final label = resolveResource('label');      // looks up: {basePath}.label
-final hint = resolveResourceOrNull('hint');  // looks up: {basePath}.hint
-final icon = resolveIcon('icon');            // looks up: {basePath}.icon
+final label = TomCtr.text(basePath, 'label');       // {basePath}.label, or the key
+final hint = TomCtr.textOrNull(basePath, 'hint');   // {basePath}.hint, or null
+final icon = TomCtr.icon(basePath, 'icon');         // {basePath}.icon, or null
 ```
 
 Resource file entries:
@@ -189,7 +181,7 @@ checkout.submit.tooltip: "Submit your order for processing"
 
 Extend a family base class and implement `buildContent()`:
 
-```dart
+```dart quote
 class TomElevatedButton extends TomButtonBase {
   final VoidCallback? onPressed;
   final Widget? child;
@@ -360,9 +352,15 @@ Where `checkout` is the outer scope and `addressForm` is the form's scope.
 ### Defining an action
 
 ```dart
-class DeleteOrderAction extends TomAction<OrderActionContext, Order> {
-  @override
-  String get actionId => 'delete';
+class DeletedOrder implements TomActionUndo {
+  final Order order;
+  DeletedOrder(this.order);
+}
+
+class DeleteOrderAction extends TomAction<OrderActionContext, DeletedOrder> {
+  // Registers itself with [controller] on construction.
+  DeleteOrderAction(TomActionController controller)
+      : super(actionId: 'delete', controller: controller);
 
   @override
   bool canExecute(OrderActionContext context) {
@@ -370,17 +368,17 @@ class DeleteOrderAction extends TomAction<OrderActionContext, Order> {
   }
 
   @override
-  Order? execute(OrderActionContext context, TomActionTransaction tx) {
+  DeletedOrder? execute(OrderActionContext context, TomActionTransaction tx) {
     final order = context.selectedOrder;
     context.orderRepo.delete(order.id);
-    return order;  // returned for undo
+    return DeletedOrder(order);  // returned for undo
   }
 
   @override
   bool get isUndoable => true;
 
   @override
-  void undo(Order undoState) {
+  void undo(DeletedOrder undoState) {
     // Restore the deleted order
   }
 }
@@ -392,16 +390,15 @@ Group related actions in a controller:
 
 ```dart
 class OrderController extends TomActionController {
-  @override
-  final String controllerId = 'orderMgmt';
-
-  final create = CreateOrderAction();
-  final delete = DeleteOrderAction();
-
-  OrderController() {
-    registerAction(create);
-    registerAction(delete);
+  // An action registers itself with the controller it is constructed with,
+  // so creating them here is the whole of the wiring.
+  OrderController() : super(controllerId: 'orderMgmt') {
+    create = CreateOrderAction(this);
+    delete = DeleteOrderAction(this);
   }
+
+  late final CreateOrderAction create;
+  late final DeleteOrderAction delete;
 }
 ```
 
@@ -457,13 +454,13 @@ TomElevatedButton(
   tomId: 'save',
   style: variants.primary,     // Primary action style
   onPressed: () => save(),
-)
+);
 
 TomElevatedButton(
   tomId: 'delete',
   style: variants.destructive, // Destructive action style
   onPressed: () => delete(),
-)
+);
 ```
 
 Available variants: `primary`, `secondary`, `auxiliary`, `destructive`.
@@ -504,7 +501,7 @@ Action paths also use **plain IDs**: `orderMgmt.delete`
 ### Element provider
 
 ```dart
-@tomReflect
+@tomReflector
 class LoginScreenElements extends TomScreenElementsProviderBase {
   LoginScreenElements() : super('login');
 
@@ -542,8 +539,10 @@ void main() {
   // 1. Set global authorization adapter
   TomAuthorization.adapter = MyAuthAdapter();
 
-  // 2. Set global resource adapter
-  TomUIResources.adapter = MyResourceAdapter();
+  // 2. Install the app's text resources
+  TomTextResourceProvider.setAppResourceProvider(
+    TomTextResourceProvider.from(loadAppTexts()),
+  );
 
   // 3. Run app with TomThemeScope
   runApp(

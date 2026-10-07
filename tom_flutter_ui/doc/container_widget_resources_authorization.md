@@ -304,10 +304,10 @@ var principal = TomBearerAuthentication.getPrincipal();
 Groups all authorization data resolved during login.
 
 ```dart
-principal.aci.roles         // List<String> — job functions
-principal.aci.groups        // List<String> — organizational units
-principal.aci.entitlements  // List<String> — fine-grained permissions
-principal.aci.resourceKeys  // List<String> — field-level access keys
+principal.aci.roles;        // List<String> — job functions
+principal.aci.groups;       // List<String> — organizational units
+principal.aci.entitlements; // List<String> — fine-grained permissions
+principal.aci.resourceKeys; // List<String> — field-level access keys
 ```
 
 **TomResourceKeyProtection**
@@ -471,7 +471,7 @@ This base class is mandatory for all Tom widgets.
 
 Concrete outline:
 
-```dart
+```dart quote
 abstract class TomPolicyNodeBase extends TomNodeBase {
   TomPolicyNodeBase({
     super.key,
@@ -599,7 +599,9 @@ External logic should usually depend on family type, not concrete widget class.
 
 ## 6.1 Button family example
 
-```dart
+> **Intended — not yet built (Appendix A.1).** The sketch below shows the designed API; the shipped one differs — see the module documentation for what ships.
+
+```dart intended
 abstract class TomButtonBase extends TomFamilyBase {
   /// Direct callback (for simple cases without action system).
   final VoidCallback? onPressed;
@@ -787,7 +789,9 @@ class TomFallbackResourceAdapter implements TomUIResourceAdapter {
 
 Provided via InheritedWidget:
 
-```dart
+> **Intended — not yet built (Appendix A.1).** The sketch below shows the designed API; the shipped one differs — see the module documentation for what ships.
+
+```dart intended
 class TomResourceAdapterProvider extends InheritedWidget {
   final TomUIResourceAdapter adapter;
 
@@ -809,7 +813,9 @@ Connection to existing `TomField` resource access:
 
 Current `TomField` calls `t("$formName.$fieldName.label")` via `TomTextResourceProvider` directly. The evolution path replaces this with:
 
-```dart
+> **Intended — not yet built (Appendix A.1).** The sketch below shows the designed API; the shipped one differs — see the module documentation for what ships.
+
+```dart intended
 final resourceAdapter = TomResourceAdapterProvider.of(context);
 final labelText = resourceAdapter.resolveText(basePath, 'label');
 ```
@@ -913,7 +919,9 @@ abstract class TomAction<TContext extends TomActionContext, TUndo> {
 
 Every action declares exactly which context it requires. `TomActionContext` is the base class providing common infrastructure. Specific actions extend it to declare the state subtree, selections, or parameters they operate on.
 
-```dart
+> **Intended — not yet built (Appendix A.1).** The sketch below shows the designed API; the shipped one differs — see the module documentation for what ships.
+
+```dart intended
 /// Base context — always available.
 class TomActionContext {
   /// Access to the application state tree.
@@ -953,7 +961,9 @@ class OrderActionContext extends TomActionContext {
 
 This enables type-safe action execution — `execute()` receives the exact context type, not a generic bag of optional fields:
 
-```dart
+> **Intended — not yet built (Appendix A.1).** The sketch below shows the designed API; the shipped one differs — see the module documentation for what ships.
+
+```dart intended
 class DeleteOrderAction extends TomAction<OrderActionContext, Order> {
   @override
   String get actionId => 'deleteOrder';
@@ -1027,7 +1037,9 @@ abstract class TomActionController {
 
 Example:
 
-```dart
+> **Intended — not yet built (Appendix A.1).** The sketch below shows the designed API; the shipped one differs — see the module documentation for what ships.
+
+```dart intended
 class OrderController extends TomActionController {
   @override
   String getControllerId() => 'orderMgmt';
@@ -1121,7 +1133,9 @@ A single user intent (one "undo step") may involve multiple sub-actions. Transac
 
 ### TomActionTransaction
 
-```dart
+> **Intended — not yet built (Appendix A.1).** The sketch below shows the designed API; the shipped one differs — see the module documentation for what ships.
+
+```dart intended
 class TomActionTransaction {
   final String transactionId;
   final List<_TransactionEntry> _entries = [];
@@ -1155,7 +1169,9 @@ class TomActionTransaction {
 
 ### TomUndoHistory
 
-```dart
+> **Intended — not yet built (Appendix A.1).** The sketch below shows the designed API; the shipped one differs — see the module documentation for what ships.
+
+```dart intended
 class TomUndoHistory {
   final int maxDepth;
   final List<TomActionTransaction> _undoStack = [];
@@ -1212,7 +1228,9 @@ class TomUndoHistory {
 
 When an action triggers another action based on conditions, both belong to the same transaction:
 
-```dart
+> **Intended — not yet built (Appendix A.1).** The sketch below shows the designed API; the shipped one differs — see the module documentation for what ships.
+
+```dart intended
 class SubmitOrderAction extends TomAction<OrderActionContext, OrderSnapshot> {
   @override
   String get actionId => 'submitOrder';
@@ -1548,7 +1566,9 @@ The form and field system has been implemented in `tom_flutter_ui/lib/src/forms/
 
 `TomForm` is an abstract class extending `TomClass` that implements `TomScreenElementsProvider`. Fields are auto-discovered via `getMembers()` (tom_reflection):
 
-```dart
+> **Intended — not yet built (Appendix A.1).** The sketch below shows the designed API; the shipped one differs — see the module documentation for what ships.
+
+```dart intended
 @tomReflector
 abstract class TomForm extends TomClass implements TomScreenElementsProvider {
   late final TomScope scope;
@@ -1577,7 +1597,9 @@ abstract class TomForm extends TomClass implements TomScreenElementsProvider {
 
 `TomField<T>` extends `TomObject<T>` for observable field values:
 
-```dart
+> **Intended — not yet built (Appendix A.1).** The sketch below shows the designed API; the shipped one differs — see the module documentation for what ships.
+
+```dart intended
 abstract class TomField<T> extends TomObject<T> {
   late String scope;
   String fieldName;
@@ -2426,7 +2448,9 @@ A Tom list view composes:
 3. **Selection model** — single, multi, or none.
 4. **Action bar** — buttons above the list (add, delete, refresh, filter).
 
-```dart
+> **Intended — not yet built (Appendix A.1).** The sketch below shows the designed API; the shipped one differs — see the module documentation for what ships.
+
+```dart intended
 class TomListView<T> extends TomPolicyNodeBase {
   final TomListDataSource<T> dataSource;
   final Widget Function(T item, int index) rowBuilder;
@@ -2449,7 +2473,9 @@ The list view handles:
 
 Same approach with hierarchical data:
 
-```dart
+> **Intended — not yet built (Appendix A.1).** The sketch below shows the designed API; the shipped one differs — see the module documentation for what ships.
+
+```dart intended
 class TomTreeView<T> extends TomPolicyNodeBase {
   final TomTreeDataSource<T> dataSource;
   final Widget Function(T node, int depth) nodeBuilder;
@@ -2491,7 +2517,9 @@ Workflow:
 4. On save, the buffer is committed back to the data source.
 5. On cancel, the buffer is discarded.
 
-```dart
+> **Intended — not yet built (Appendix A.1).** The sketch below shows the designed API; the shipped one differs — see the module documentation for what ships.
+
+```dart intended
 class TomMasterDetail<T> extends TomPolicyNodeBase {
   final TomListDataSource<T> dataSource;       // or TomTreeDataSource<T>
   final Widget Function(T item) listRowBuilder;

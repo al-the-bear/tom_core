@@ -4,6 +4,10 @@
 **Status:** Proposal
 **Package:** tom_flutter_ui
 
+> **Intended — not yet built.** This document is a proposal. The debug overlay,
+> its configuration, its collectors and their record types are not in
+> `tom_flutter_ui`; every code sample below sketches the design.
+
 ---
 
 ## Table of Contents
@@ -100,7 +104,7 @@ flutter run --release --dart-define=TOM_DEBUG=true
 
 ### 2.3 App Integration
 
-```dart
+```dart intended
 void main() {
   // Initialize debug config from environment
   TomDebugConfig.initFromEnvironment();
@@ -123,7 +127,7 @@ void main() {
 
 ### 3.1 Overlay Structure
 
-```dart
+```dart intended
 /// Root widget that provides debug overlay functionality.
 /// Tree-shaken in release builds when TomDebugConfig.enabled is const false.
 class TomDebugOverlay extends StatefulWidget {
@@ -303,7 +307,7 @@ class _TomDebugPanelState extends State<TomDebugPanel> {
 
 Collects debug information from the live widget tree:
 
-```dart
+```dart intended
 /// Walks the Flutter element tree collecting Tom widget information.
 class TomWidgetTreeCollector {
   /// Collects all TomNodeBase widgets from the tree.
@@ -385,7 +389,7 @@ class TomWidgetInfo {
 
 Collects deep information using `tom_reflection`:
 
-```dart
+```dart intended
 /// Collects state and metadata using reflection.
 class TomReflectionCollector {
   /// Inspects a TomClass state tree and returns all member information.
@@ -481,7 +485,7 @@ class TomReflectionCollector {
 
 Accesses global singletons for auth and resource data:
 
-```dart
+```dart intended
 /// Collector for global authorization data.
 class TomAuthCollector {
   /// Resolves authorization for a path and returns full trace.
@@ -556,7 +560,7 @@ class TomResourceCollector {
 
 Displays authorization state for all Tom widgets:
 
-```dart
+```dart intended
 class AuthorizationDebugView extends StatelessWidget {
   final String filter;
   
@@ -616,7 +620,7 @@ class _AuthInfoTile extends StatelessWidget {
 
 Displays resource resolution status:
 
-```dart
+```dart intended
 class ResourcesDebugView extends StatefulWidget {
   final String filter;
   
@@ -690,7 +694,7 @@ class _ResourceList extends StatelessWidget {
 
 Displays the hierarchical ID tree:
 
-```dart
+```dart intended
 class IdStructureDebugView extends StatelessWidget {
   final String filter;
   
@@ -742,7 +746,7 @@ class IdStructureDebugView extends StatelessWidget {
 
 Displays registered actions and execution history:
 
-```dart
+```dart intended
 class ActionsDebugView extends StatelessWidget {
   final String filter;
   
@@ -805,7 +809,7 @@ class _ActionRegistryTab extends StatelessWidget {
 
 Reflection-powered state tree browser:
 
-```dart
+```dart intended
 class StateInspectorDebugView extends StatefulWidget {
   final String filter;
   
@@ -909,7 +913,7 @@ class _MemberTile extends StatelessWidget {
 
 Deep trace for a selected widget's authorization:
 
-```dart
+```dart intended
 class AuthTraceDebugView extends StatefulWidget {
   final String filter;
   
@@ -983,7 +987,7 @@ class _AuthTraceDetail extends StatelessWidget {
 
 Deep trace for resource resolution:
 
-```dart
+```dart intended
 class ResourceTraceDebugView extends StatefulWidget {
   final String filter;
   
@@ -1105,7 +1109,7 @@ Platform-specific modifier keys:
 
 Each view supports multiple export formats:
 
-```dart
+```dart intended
 enum ExportFormat {
   yaml,
   json,
@@ -1162,7 +1166,7 @@ class AuthorizationExporter implements DebugExporter {
 
 Generate resource map entries for missing resources:
 
-```dart
+```dart intended
 class ResourceEntryGenerator {
   /// Generates resource map entries for all missing resources.
   static String generateMissingEntries(List<TomResourceTrace> traces) {
@@ -1187,7 +1191,7 @@ class ResourceEntryGenerator {
 
 The debug system is completely removed in release builds when unused:
 
-```dart
+```dart intended
 // In release mode with TomDebugConfig.enabled = false,
 // Dart's tree-shaking removes all debug code.
 
@@ -1246,7 +1250,7 @@ class LazyDebugData<T> {
 
 Minimize tree traversals with batched collection:
 
-```dart
+```dart intended
 class BatchedTreeCollector {
   /// Single pass collects all debug information.
   static DebugSnapshot collectAll(BuildContext context) {
@@ -1333,7 +1337,7 @@ class BatchedTreeCollector {
 
 ## Appendix: Data Models
 
-```dart
+```dart intended
 /// Authorization trace result.
 class TomAuthTrace {
   final String requestedPath;

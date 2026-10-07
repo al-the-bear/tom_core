@@ -11,9 +11,8 @@ how to write authorizers that depend on *other* field values (e.g.
 `TomAuthorizer.fromAction` takes a **nullary** closure:
 
 ```dart
-factory TomAuthorizer.fromAction({
-  required TomAuthState Function() actionAuth,
-});
+// factory TomAuthorizer.fromAction({required TomAuthState Function() actionAuth})
+final authorizer = TomAuthorizer.fromAction(actionAuth: () => action.authState);
 ```
 
 It does **not** accept a `(Object data) => ...` signature. Any sample
@@ -30,7 +29,7 @@ authorizer ever receives is the widget's own resource-auth result.
 See [`TomAuthorizer`](../../tom_core_kernel/lib/src/tombase/security/tom_authorization.dart)
 in `tom_core_kernel`.
 
-```dart
+```dart quote
 class TomAuthorizer {
   final TomAuthorizerStrategy strategy;
   final TomAuthState Function(TomAuthState resourceAuth) resolve;
@@ -49,10 +48,10 @@ class TomAuthorizer {
     }
   }
 
-  factory TomAuthorizer.fixed(TomAuthState state) => ...;
+  factory TomAuthorizer.fixed(TomAuthState state) { ... }
   factory TomAuthorizer.fromAction({
     required TomAuthState Function() actionAuth,
-  }) => ...;
+  }) { ... }
 }
 ```
 
@@ -61,21 +60,18 @@ class TomAuthorizer {
 Every Tom widget routes its auth through
 [`TomPolicyNodeBase.resolveEffectiveAuth`](../lib/src/widget_base/tom_policy_node_base.dart):
 
-```dart
-TomAuthState resolveEffectiveAuth() {
-  var state = basePath != null
-      ? TomAuthorization.resolveAuth(basePath!)   // 1. resource auth
-      : TomAuthState.full;
-  if (tomGroup != null) {
-    state = tomGroup!.applyMode(state, constructionScope);  // 2. group
-  }
-  if (authorizer != null) {
-    state = authorizer!.effectiveAuth(state);     // 3. this widget's authorizer
-  }
-  if (uiStateController != null) {
-    state = uiStateController!.apply(state);      // 4. build-time narrowing
-  }
-  return state;
+```dart quote
+abstract class TomPolicyNodeBase extends TomNodeBase {
+  // TomAuthLayers.resolve applies, in order: 1. resource auth at basePath;
+  // 2. the group, in the frame basePath was built from; 3. this widget's
+  // authorizer; 4. build-time narrowing by the UI state controller.
+  TomAuthState resolveEffectiveAuth() => TomAuthLayers.resolve(
+        basePath: basePath,
+        group: tomGroup,
+        groupScope: constructionScope,
+        authorizer: authorizer,
+        uiStateController: uiStateController,
+      );
 }
 ```
 
@@ -125,12 +121,12 @@ action says `none`, and hides entirely when the resource itself says
 ### 2. Narrowing a field based on its own resource (role-driven `read`)
 
 ```dart
-authorizer: TomAuthorizer(
+final authorizer = TomAuthorizer(
   strategy: TomAuthorizerStrategy.authorizerNarrowsOnly,
   resolve: (resourceAuth) => resourceAuth == TomAuthState.full
       ? TomAuthState.read
       : resourceAuth,
-),
+);
 ```
 
 This is declarative and stateless — the closure has no sibling

@@ -220,10 +220,10 @@ var principal = TomBearerAuthentication.getPrincipal();
 **TomAccessControlInformation (ACI)** — all authorization data resolved at login:
 
 ```dart
-principal.aci.roles         // List<String> — job functions
-principal.aci.groups        // List<String> — organizational units
-principal.aci.entitlements  // List<String> — fine-grained permissions
-principal.aci.resourceKeys  // List<String> — field-level access keys
+principal.aci.roles;        // List<String> — job functions
+principal.aci.groups;       // List<String> — organizational units
+principal.aci.entitlements; // List<String> — fine-grained permissions
+principal.aci.resourceKeys; // List<String> — field-level access keys
 ```
 
 **TomAccessControl hierarchy** — annotation-style access control:
@@ -300,7 +300,7 @@ The `TomAuthorization` singleton resolves auth state globally — initialized at
 
 ```dart
 // App startup — set global authorization adapter
-TomAuthorization.adapter = TomKernelAuthorizationAdapter();
+TomAuthorization.adapter = TomResourceRoleAdapter(principal.aci.resourceRoles);
 
 // Usage anywhere — no context needed
 TomAuthorization.resolveAuth('checkout.email');
@@ -380,27 +380,22 @@ To avoid duplicate resource entries while allowing precise overrides, resources 
 4. **Form + widget** — `<form>.<widget>.<suffix>`
 5. **Widget only** — `<widget>.<suffix>`
 
-> **Implementation note:** The current `TomUIResources.resolveText()` does a direct `basePath.suffix` lookup. The multi-level fallback chain described above is the target design; it will be implemented when resource management is built out.
+> **Intended — not yet built.** `TomCtr.text()` does a direct `basePath.suffix` lookup, falling back to the key itself. The multi-level fallback chain described above is the target design and is not in `tom_flutter_ui`.
 
 If all lookups miss, the full key string becomes the visible value. This guarantees a widget is never blank — it shows the key path as a visual indicator that a resource is missing.
 
-### Resource adapter
+### Resource lookup
+
+Widgets resolve text through `TomCtr`, which reads the kernel's app-wide `TomTextResourceProvider`. The provider is installed once at app startup and read directly by widgets — no `InheritedWidget` or `BuildContext` needed.
 
 ```dart
-abstract class TomUIResourceAdapter {
-  String resolveText(String basePath, String suffix);
-  bool resourceExists(String basePath, String suffix);
-}
-```
+// App startup — install the app's text resources
+TomTextResourceProvider.setAppResourceProvider(
+  TomTextResourceProvider.from(appTexts),
+);
 
-The resource adapter is a global singleton, consuming `TomTextResourceProvider` from the kernel internally. Initialized at app startup, accessed directly by widgets — no `InheritedWidget` or `BuildContext` needed.
-
-```dart
-// App startup — set global resource adapter
-TomUIResources.adapter = TomKernelResourceAdapter();
-
-// Usage anywhere
-TomUIResources.resolveText('checkout.email', 'label');
+// Usage anywhere — `<basePath>.<suffix>`, falling back to the key itself
+TomCtr.text('checkout.email', 'label');
 ```
 
 ### Configuration — environment and platform
@@ -457,19 +452,16 @@ Group IDs follow the canonical path pattern, extending from scopes:
 
 **ACL containers with IDs are implicit group scopes.** Any container that sets a `containerId` in `AclScope` creates a potential group boundary. Widgets inside inherit the scope path.
 
-For **explicit group scope** (without a container ID), use `TomGroupScope`:
+For an **explicit group** (without a container ID), pass the group to each widget's `tomGroup`:
 
 ```dart
 final shippingGroup = TomAuthorizationGroup('shippingPanel');
 
-TomGroupScope(
-  groupId: 'shippingPanel',
-  child: Column(children: [
-    TomTextField(tomId: 'street', tomGroup: shippingGroup, ...),
-    TomTextField(tomId: 'city', tomGroup: shippingGroup, ...),
-    TomTextField(tomId: 'zip', tomGroup: shippingGroup, ...),
-  ]),
-)
+Column(children: [
+  TomTextField(tomId: 'street', tomGroup: shippingGroup),
+  TomTextField(tomId: 'city', tomGroup: shippingGroup),
+  TomTextField(tomId: 'zip', tomGroup: shippingGroup),
+]);
 ```
 
 ### TomAuthorizationGroup (was TomGroup)
@@ -494,18 +486,13 @@ class TomAuthorizationGroup {
 
 Widgets with an `tomGroup` register on mount and unregister on dispose. The mixin provides the registration hook:
 
-```dart
+```dart quote
 mixin TomWidgetMixin on Widget implements TomAuthorizable {
   String? get tomId;
   TomAuthorizationGroup? get tomGroup => null;
 
   void registerWithGroup() {
     tomGroup?.register(this);
-  }
-
-  void unregisterFromGroup() {
-    tomGroup?.unregister(this);
-    }
   }
 
   /// Called by State.dispose() or StatelessWidget unmount.
@@ -598,7 +585,7 @@ graph LR
 
 Tom widgets extend family-specific base classes (`TomButtonBase`, `TomInputBase`, etc.) that inherit from `TomFamilyBase`. The base class handles authorization checks and readonly styling; the widget only implements `buildContent()`:
 
-```dart
+```dart quote
 class TomElevatedButton extends TomButtonBase {
   final VoidCallback? onPressed;
   final Widget? child;
@@ -904,10 +891,10 @@ class TomExpanded extends Expanded with TomWidgetMixin {
 
 **Parent container filtering:**
 
-```dart
-class TomRow extends Row with TomWidgetMixin {
-  TomRow({required this.tomId, required List<Widget> children, ...})
-      : super(children: children, ...);
+```dart quote
+class TomRow extends TomContainerBase {
+  TomRow({required this.tomId, required List<Widget> children})
+      : super(children: children);
 
   @override
   final String tomId;
@@ -939,7 +926,7 @@ class TomRow extends Row with TomWidgetMixin {
 
 Widget identity paths are resolved at **construction time** using `TomScope` — a Zone-based hierarchical scoping system from `tom_core_kernel`. There is no InheritedWidget involved in path resolution.
 
-```dart
+```dart quote
 abstract class TomScope {
   String get id;
   TomScope? get parent;
@@ -948,7 +935,7 @@ abstract class TomScope {
   static TomScope get current => getFromCurrentZone<TomScope>() ?? defaultScope;
 
   /// Runs [body] in a child scope with the given [scope] ID.
-  static T withScope<T>(String scope, T Function() body);
+  static T withScope<T>(String scope, T Function() body) { ... }
 
   /// Runs [body] within this scope's Zone.
   T runInScope<T>(T Function() body);
@@ -962,20 +949,22 @@ abstract class TomScope {
 delegate to `TomScopePath` — the single implementation of the composition rule
 (see [Widget Base Module](widget_base.md#path-composition-tomscopepath)):
 
-```dart
-// In TomNodeBase constructor:
-constructionScope = scope ?? TomScope.current;
-basePath = TomScopePath.resolve(tomId, scope);
+```dart quote
+// TomNodeBase's constructor:
+//   constructionScope = scope ?? TomScope.current;
+//   basePath = TomScopePath.resolve(tomId, scope);
 
-// In TomScopePath — the one implementation of the rule:
-static String join(String parentPath, String tomId) =>
-    parentPath.isEmpty ? tomId : '$parentPath.$tomId';
+// TomScopePath — the one implementation of the rule:
+class TomScopePath {
+  static String join(String parentPath, String tomId) =>
+      parentPath.isEmpty ? tomId : '$parentPath.$tomId';
 
-static String qualify(String tomId, [TomScope? scope]) =>
-    join((scope ?? TomScope.current).getScopePath(), tomId);
+  static String qualify(String tomId, [TomScope? scope]) =>
+      join((scope ?? TomScope.current).getScopePath(), tomId);
 
-static String? resolve(String? tomId, [TomScope? scope]) =>
-    tomId == null ? null : qualify(tomId, scope);
+  static String? resolve(String? tomId, [TomScope? scope]) =>
+      tomId == null ? null : qualify(tomId, scope);
+}
 ```
 
 **Example:** A widget with `tomId='submit'` constructed inside scope `'checkout.order'` gets `basePath = 'checkout.order.submit'`.
@@ -989,7 +978,7 @@ Scopes are set up in two ways:
 
 `TomStatelessWidget` and `TomStatefulWidget` capture scope at construction and re-enter it during `build()`:
 
-```dart
+```dart quote
 abstract class TomStatelessWidget extends StatelessWidget {
   final TomScope _constructionScope;
   TomStatelessWidget({super.key}) : _constructionScope = TomScope.current;
@@ -1040,7 +1029,12 @@ class OrderScreenProvider extends TomScreenElementsProviderBase {
   OrderScreenProvider([TomScreenElementsProvider? parent])
       : super('order', parent);
 
-  late final submitButton = TomButton(tomId: 'submit', scope: this);
+  late final submitButton = TomElevatedButton(
+    tomId: 'submit',
+    scope: this,
+    onPressed: submit,
+    child: const Text('Submit'),
+  );
   late final details = OrderDetailsProvider(this); // nested provider
 }
 ```
@@ -1053,7 +1047,7 @@ With an outer zone `'demo'`, resulting paths:
 
 `TomForm` implements `TomScreenElementsProvider` and captures `TomScope.current` at construction. It creates a child scope for its fields:
 
-```dart
+```dart quote
 abstract class TomForm extends TomClass implements TomScreenElementsProvider {
   late final TomScope scope;
 
@@ -1297,9 +1291,11 @@ graph LR
 `TomObservingWidget<T extends TomObservable>` (from `tom_core_flutter`) subscribes to one or more observables and rebuilds its child tree when any of them change. The wrapped widget receives the current value as a plain Dart value via its normal constructor.
 
 ```dart
-TomObservingWidget(
-  observable: appState.user.name,  // TomString
-  builder: (context, name) => TomText(text: name.value),
+import 'package:tom_core_flutter/tom_core_flutter.dart';
+
+TomObservingWidget<TomString>(
+  subState: appState.user.name,
+  builder: (name, _) => TomText(text: name.value),
 );
 ```
 
@@ -1308,9 +1304,11 @@ TomObservingWidget(
 The write direction uses standard Flutter callbacks. Application code in the callback updates the observable:
 
 ```dart
-TomObservingWidget(
-  observable: appState.settings.volume,  // TomDouble
-  builder: (context, volume) => TomSlider(
+import 'package:tom_core_flutter/tom_core_flutter.dart';
+
+TomObservingWidget<TomDouble>(
+  subState: appState.settings.volume,
+  builder: (volume, _) => TomSlider(
     value: volume.value,
     onChanged: (v) => volume.value = v,
   ),
@@ -1347,9 +1345,9 @@ Forms provide validated, coordinated editing of application state. The form syst
 
 All form fields extend `TomField<T>`, which extends `TomObject<T>`:
 
-```dart
+```dart quote
 abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
-  final String fieldId;
+  String tomId;
   T _initialValue;
 
   // Authorization (5-layer resolution: resource → group → form → authorizer → uiStateController)
@@ -1384,7 +1382,7 @@ Fields use a two-layer abstraction:
 
 Naming convention: Abstract = `TomForm{Type}Field`, Concrete = `TomForm{Format}{Type}{Widget}`.
 
-```dart
+```dart quote
 // Abstract: declares "this is a string field"
 abstract class TomFormStringField extends TomField<String> { ... }
 
@@ -1612,9 +1610,11 @@ class OrderActionContext extends TomActionContext {
 
 ### Action UI flows
 
-Actions can trigger user interactions during execution. This ensures consistency — the same confirmation dialog appears whether triggered by a button, keyboard shortcut, or context menu:
+Actions can trigger user interactions during execution. This ensures consistency — the same confirmation dialog appears whether triggered by a button, keyboard shortcut, or context menu.
 
-```dart
+> **Intended — not yet built.** `TomActionTransaction` has no `requestUi`, and none of the UI-flow types below exists; the sketch shows the design.
+
+```dart intended
 class ArchiveOrderAction extends TomAction<OrderActionContext, Order> {
   @override
   Order? execute(OrderActionContext context, TomActionTransaction tx) {
@@ -1641,26 +1641,23 @@ UI flows are testable — in tests, they can be stubbed to return predetermined 
 
 ### Action controllers
 
-Controllers group related actions. With `@tomReflector`, the action list and parent-child links are discovered automatically via reflection — no manual `actions` list, no manual wiring:
+Controllers group related actions. An action registers itself with the controller it is constructed with, so constructing it is the wiring — no manual `actions` list:
 
 ```dart
 @tomReflector
 class OrderController extends TomActionController {
-  @override
-  final String controllerId = 'orderMgmt';
-
-  final create = CreateOrderAction();
-  final update = UpdateOrderAction();
-  final delete = DeleteOrderAction();
-  final archive = ArchiveOrderAction();
-
-  // Register actions in the constructor or via reflection
-  OrderController() {
-    registerAction(create);
-    registerAction(update);
-    registerAction(delete);
-    registerAction(archive);
+  // An action registers itself with the controller it is constructed with.
+  OrderController() : super(controllerId: 'orderMgmt') {
+    create = CreateOrderAction(this);
+    update = UpdateOrderAction(this);
+    delete = DeleteOrderAction(this);
+    archive = ArchiveOrderAction(this);
   }
+
+  late final CreateOrderAction create;
+  late final UpdateOrderAction update;
+  late final DeleteOrderAction delete;
+  late final ArchiveOrderAction archive;
 }
 ```
 
@@ -1723,17 +1720,21 @@ TomElevatedButton(
 
 A transaction groups sub-actions into one atomic undo unit:
 
-```dart
+```dart quote
 class TomActionTransaction {
-  final String transactionId;
+  final String label;
 
-  void run<TCtx extends TomActionContext, TUndo extends TomActionUndo>(
-    TomAction<TCtx, TUndo> action, TCtx context,
+  void run<TContext extends TomActionContext, TUndo extends TomActionUndo>(
+    TomAction<TContext, TUndo> action, TContext context,
   ) { ... }
 
-  T requestUi<T>(TomUiRequest<T> request) { ... }
+  void commit() { ... }
+  void rollback() { ... }
+  void undoAll() { ... }
+  void redoAll() { ... }
 
-  bool get isUndoable => _entries.every((e) => e.action.isUndoable);
+  bool get hasEntries { ... }
+  bool get isCommitted { ... }
 }
 ```
 
@@ -2173,7 +2174,7 @@ Widgets — especially buttons — often need to express semantic roles (primary
 
 #### `TomButtonVariants`
 
-```dart
+```dart quote
 class TomButtonVariants {
   final ColorScheme _colors;
 
@@ -2208,14 +2209,14 @@ TomElevatedButton(
   tomId: 'save',
   style: TomButtonVariants.of(context).primary,
   onPressed: () => save(),
-)
+);
 
 // No variant — uses the widget's explicit style, or Flutter theme default
 TomElevatedButton(
   tomId: 'cancel',
   style: OutlinedButton.styleFrom(/* custom */),
   onPressed: () => cancel(),
-)
+);
 ```
 
 ### `TomTheme` — Tom-specific extensions only
@@ -2275,10 +2276,10 @@ class TomStateStyle {
 
 ```dart
 // Minimal — just change opacity
-TomTheme(readonlyStyle: TomStateStyle(opacity: 0.4))
+TomTheme(readonlyStyle: TomStateStyle(opacity: 0.4));
 
 // Grey tint instead of opacity
-TomTheme(readonlyStyle: TomStateStyle(opacity: 1.0, colorOverlay: Color(0x33888888)))
+TomTheme(readonlyStyle: TomStateStyle(opacity: 1.0, colorOverlay: Color(0x33888888)));
 
 // Fully custom builder
 TomTheme(
@@ -2290,7 +2291,7 @@ TomTheme(
       ),
     ),
   ),
-)
+);
 ```
 
 ### Two meanings of "disabled"
@@ -2429,7 +2430,7 @@ graph TB
 
     subgraph "Globals (initialized at startup)"
         AUTH["TomAuthorization<br/>resolveAuth(path) → TomAuthState"]
-        RES["TomUIResources<br/>resolveText(path, suffix) → String"]
+        RES["TomCtr<br/>text(basePath, suffix) → String"]
         CFG["TomConfigProvider<br/>environment, platform, flags"]
     end
 

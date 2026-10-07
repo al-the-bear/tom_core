@@ -219,15 +219,12 @@ Every breakpoint-aware style property is expressed on its sub-style class
 as *two* fields — the plain value and a matching list of
 `(minWidth, value)` overrides:
 
-```dart
-class TomStringInputStyle extends TomFieldStyle {
+```dart quote
+class TomFieldStyle {
   final double labelFieldGap;
   final List<(double, double)> labelFieldGapBpOverrides;
 
-  final Color? focusedBackground;
-  final List<(double, Color?)> focusedBackgroundBpOverrides;
-
-  // …
+  // ... the same pair for every other breakpoint-aware property
 }
 ```
 
@@ -237,13 +234,13 @@ breakpoints supply both:
 
 ```dart
 // No breakpoints — just a value.
-TomStringInputStyle(labelFieldGap: 4.0)
+TomStringInputStyle(labelFieldGap: 4.0);
 
 // Width-indexed.
 TomStringInputStyle(
   labelFieldGap: 4.0,
   labelFieldGapBpOverrides: [(600, 6.0), (1200, 8.0)],
-)
+);
 ```
 
 **Resolution helper.** A single type-safe generic method on the style
@@ -462,13 +459,18 @@ mixin TomCheckboxDecorationMixin on TomField<bool> {
 
 Concrete fields apply the mixin for their widget type:
 
-```dart
+```dart quote
 class TomFormStringInput extends TomFormStringField
-    with TomStringInputDecorationMixin<String> { … }
+    with TomStringInputDecorationMixin<String> { ... }
 
 class TomFormBoolCheckbox extends TomFormBoolField
-    with TomCheckboxDecorationMixin { … }
+    with TomGenericFieldDecorationMixin<bool> { ... }
 ```
+
+As shipped, the per-widget mixins were consolidated to three: one for string
+inputs, one for dropdowns, and `TomGenericFieldDecorationMixin<T>` for every
+other field — which is why the checkbox above carries the generic one rather
+than the checkbox-specific mixin this plan sketched.
 
 This removes the indirection of a shared `resolveStyle`/`mergedWith`
 method entirely: the mixin has both halves of the style in scope and
@@ -639,17 +641,19 @@ added.
 **(b)** Three new ACL APIs, all using the raw-value + overrides pair:
 
 ```dart
-AclBuilder.setAclDefaultRowHeight(
+// AclBuilder
+AclBuilder setAclDefaultRowHeight(
   double? height, [
   List<(double, double?)> heightBpOverrides = const [],
 ]);
 
-builder.setRowHeight(
+AclBuilder setRowHeight(
   double? height, [
   List<(double, double?)> heightBpOverrides = const [],
 ]);
 
-builder.newRow({
+AclBuilder newRow({
+  double dist = 0,
   double? height,
   List<(double, double?)> heightBpOverrides = const [],
 });
@@ -694,7 +698,8 @@ border, not a dropdown inside a separate box.
 3. accepts the raw-value + overrides pair:
 
 ```dart
-builder.setAclDefaultAppendGap(
+// AclBuilder
+AclBuilder setAclDefaultAppendGap(
   double gap, [
   List<(double, double)> gapBpOverrides = const [],
 ]);

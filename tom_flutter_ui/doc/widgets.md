@@ -242,7 +242,8 @@ read-only style, `full` → the content. The resolution itself is pure:
 
 ```dart
 TomAuthorization.adapter = myAdapter; // 'save' → read
-TomElevatedButton(tomId: 'save', …).effectiveAuthState; // TomAuthState.read
+TomElevatedButton(tomId: 'save', onPressed: save, child: saveLabel)
+    .effectiveAuthState; // TomAuthState.read
 ```
 
 Membership in a `TomAuthorizationGroup` narrows (or replaces/lifts) the member per the

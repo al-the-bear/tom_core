@@ -166,8 +166,14 @@ abstract class TomForm<T extends TomClass> extends TomClass
     TomScope.withScope(formId, () => createFormElements());
   }
 
-  /// Subclasses create their fields here (called inside form's scope).
-  void createFormElements();
+  /// Wires fields that a `late final` initializer cannot express — cross
+  /// references between fields, or anything that needs the form's scope.
+  ///
+  /// Called inside the form's scope. The common case needs nothing here:
+  /// fields declared as `late final` members passing `form: this` are found by
+  /// reflection and registered by the constructor, so the default does
+  /// nothing and a form overrides it only when it has wiring to do.
+  void createFormElements() {}
 
   // --- Binding ---
 

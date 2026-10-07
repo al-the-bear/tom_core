@@ -264,7 +264,7 @@ it and start eight test suites.
 | [`tool/check_member_attributions.py`](tool/check_member_attributions.py) | Finds documentation — the package docs and the completion corpus — that names a member its type does not declare, written `Type.member` or listed in a member table |
 | [`tool/check_doc_samples.py`](tool/check_doc_samples.py) | Finds Dart samples in the docs that call a constructor the wrong way, quote its signature with the wrong parameter kind, or `const` one that is not |
 | [`tool/check_downstream_consumers.py`](tool/check_downstream_consumers.py) | Holds `tom_uam`, the application-sized consumer kept on tom_core's current level, to the framework as it stands: each package is resolved with `pub get`, analyzed, and has its generated `*.reflection.dart` analyzed by name for errors, since its own options exclude them |
-| [`tool/check_doc_dart_blocks.py`](tool/check_doc_dart_blocks.py) | Runs every ` ```dart ` block in a package's documents through the analyzer: it must parse, every framework name in it must resolve, and a fence marked ` ```dart complete ` must analyze clean outright |
+| [`tool/check_doc_dart_blocks.py`](tool/check_doc_dart_blocks.py) | Runs every ` ```dart ` block in a package's documents through the analyzer: it must parse, every framework name in it must resolve, a fence marked ` ```dart complete ` must analyze clean outright, ` ```dart intended ` must name something unbuilt, and ` ```dart quote ` must match the members of the type it quotes |
 | [`tool/check_api_signatures.py`](tool/check_api_signatures.py) | Holds every signature an API summary quotes in a fence to the analyzer's element model: existence, modifiers, return type, and each parameter's kind, type and default. The comparison runs in [`tool/api_signatures/`](tool/api_signatures/) |
 | [`tool/check_section_refs.py`](tool/check_section_refs.py) | Finds `§` references in shipped code and prose that name no resolvable document |
 | [`tool/check_section_numbers.py`](tool/check_section_numbers.py) | Finds `§` references that resolve to a document but cite a section it does not have |
@@ -756,6 +756,21 @@ stay unmarked. One was neither, and is the reason the rule exists:
 `logging.md`'s multi-isolate sample passed `args` to `startIsolatedLogging` from
 a `main()` that declared none, so a reader copying it got an undefined name.
 
+**Two more markers let a design document stay honest.** A fence marked
+` ```dart intended ` sketches something not built: it must still parse, its
+unbuilt framework names are not faults, and it must name at least one framework
+symbol that does not resolve — a fence claiming to sketch the unbuilt while
+describing what exists is itself a fault, so the marker cannot become a blanket
+escape. Its prose carries the page's **Intended — not yet built** marker for the
+reader. A fence marked ` ```dart quote ` quotes a real declaration abridged: its
+own class shadows the real one, so the name rule is waived, and instead every
+public member it declares, and every `Tom*` supertype it names, is probed
+against the framework's own type. A quote may leave members out; it may not show
+one the class lacks. `tom_flutter_ui`'s design documents were triaged to zero
+with them: of 298 faults, the bulk were signatures quoted without a `;`,
+retired names still shown as working code, and quotes of classes whose members
+had drifted, which only the quote probes could see.
+
 The documents' elision conventions are honoured rather than edited away: `{ ... }`
 for a body and `// ...` for elided statements are how a sample says "the rest is
 not the point". Three positions for `{ ... }` have to be told apart, because
@@ -781,13 +796,11 @@ fire. A green light there would be coverage in appearance only. Whether those
 signatures are *true* is a different question, answered by
 `check_api_signatures.py` below.
 
-Six packages are triaged to zero and gated: `tom_core_kernel`,
-`tom_core_agentic`, `tom_core_codespecs`, `tom_core_flutter`, `tom_core_server`
-and `tom_flutter_ui_test`. Two are not, for stated reasons: `tom_flutter_ui`
-still answers with a backlog of its own, and adding it to `PACKAGES` before
-repairing it would pin that backlog in place rather than fix it — run it with
-the argument in the meantime; `tom_flutter_form_test` carries no ` ```dart `
-fence, and a gated package with nothing to read exits unmeasured. The sample
+Seven packages are triaged to zero and gated: `tom_core_kernel`,
+`tom_core_agentic`, `tom_core_codespecs`, `tom_core_flutter`, `tom_core_server`,
+`tom_flutter_ui` and `tom_flutter_ui_test`. One is not: `tom_flutter_form_test`
+carries no ` ```dart ` fence, and a gated package with nothing to read exits
+unmeasured. The sample
 packages under `tom_core_samples/` are not read by this gate. A Flutter
 package's samples are read with `package:flutter/material.dart`, so this gate
 needs the Flutter SDK on PATH.
