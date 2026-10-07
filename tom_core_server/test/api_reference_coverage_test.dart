@@ -1900,14 +1900,18 @@ class _Declaration {
   /// The type parameters the declaration itself introduces — `T` of
   /// `class TomConfigValue<T extends Object>`.
   ///
-  /// Held so that a resolved type can be recognised as one this parser cannot
-  /// finish. `TomStringConfig extends TomConfigValue<String>` inherits
-  /// `withDefault(T value)`, and the type a caller writes is `String`, not `T`;
-  /// substituting it needs the type-argument binding of every `extends` in the
-  /// chain, which is a real element model's job. So a type that mentions one of
-  /// these is reported as unresolved rather than compared, and the summary's
-  /// (correct) `String` is left alone.
+  /// Held for two jobs. An ancestor's type written in these is rewritten by
+  /// the arguments a subclass's clause binds ([supertypeArguments]), and a type
+  /// still naming one of the *queried* class's own parameters is generic at
+  /// that level — the caller instantiating it chooses — so it is reported as
+  /// unresolved rather than compared.
   final Set<String> typeParameters = {};
+
+  /// The type arguments each supertype clause binds, keyed by supertype name —
+  /// `{'TomConfig': ['String']}` for `TomStringConfig extends
+  /// TomConfig<String>`. What lets a type an ancestor declares in its own type
+  /// parameters be rewritten in this class's terms; see [_parameterTypeIn].
+  final Map<String, List<String>> supertypeArguments = {};
 
   /// The declared type of each field, keyed by field name.
   ///
@@ -2337,10 +2341,11 @@ Map<String, _Declaration> _parseDeclarations(String root) {
 
     void readSupertypes(String text) {
       readTypeParameters(text);
+      current!.supertypeArguments.addAll(_typeArgumentsOf(text));
       final flattened = _withoutTypeArguments(text);
       final clause = _supertypeClause.firstMatch(flattened);
       if (clause == null) return;
-      current!.supertypes.addAll(
+      current.supertypes.addAll(
         _supertypeName.allMatches(clause.group(1)!).map((m) => m.group(1)!),
       );
       current.superclass = _extendsClause.firstMatch(flattened)?.group(1);
@@ -2945,20 +2950,74 @@ String? _signatureCell(String line) {
 /// kernel is parsed: `TomException` is where `stack` is finally spelled, and
 /// every exception in this package reaches it through a chain of `super.stack`.
 ///
+/// A type an ancestor declares in its own type parameters is carried down by
+/// the arguments each `extends` binds, so `TomStringConfig.withDefault`'s
+/// `super.value` resolves to `String` rather than to `TomConfig`'s `T`.
+///
 /// `null` where the chain leaves both packages — a supertype from `tom_basics`,
-/// say — so an unresolvable parameter is skipped rather than guessed at.
+/// say — and where the type still names a type parameter of [type] itself, so
+/// an unresolvable parameter is skipped rather than guessed at.
 String? _declaredParameterType(
   String type,
   String member,
   String parameter, {
   bool constructor = true,
-  Set<String>? visited,
 }) {
-  final seen = visited ?? <String>{};
-  if (!seen.add('$type.$member.$parameter.$constructor')) return null;
+  final declaration = _declarationOf(type);
+  if (declaration == null) return null;
+  final resolved = _parameterTypeIn(
+    type,
+    member,
+    parameter,
+    constructor: constructor,
+    visited: <String>{},
+  );
+  // A type is an answer only when it is written in terms the caller shares:
+  // one still naming a type parameter of [type] itself is generic at this
+  // level, and the caller who instantiates the class is the one who chooses.
+  if (resolved == null ||
+      _mentionsTypeParameter(resolved, declaration.typeParameters)) {
+    return null;
+  }
+  return resolved;
+}
+
+/// The type the source declares for [parameter] of [type]'s [member], written
+/// in terms of [type]'s own type parameters — or `null` when the chain leaves
+/// both packages, or reaches a type parameter no `extends` binds.
+///
+/// A type found on an ancestor is in the *ancestor's* terms, and is carried
+/// down by substituting the arguments [type]'s supertype clause binds:
+/// `TomStringConfig extends TomConfig<String>` turns `TomConfig`'s `T` into
+/// `String`. Each step of a longer chain does the same, so a parameter declared
+/// three classes up arrives in the terms of the class that asked.
+String? _parameterTypeIn(
+  String type,
+  String member,
+  String parameter, {
+  required bool constructor,
+  required Set<String> visited,
+}) {
+  if (!visited.add('$type.$member.$parameter.$constructor')) return null;
 
   final declaration = _declarationOf(type);
   if (declaration == null) return null;
+
+  String? inheritedFrom(
+    String parent,
+    String parentMember,
+    bool asConstructor,
+  ) {
+    final inherited = _parameterTypeIn(
+      parent,
+      parentMember,
+      parameter,
+      constructor: asConstructor,
+      visited: visited,
+    );
+    if (inherited == null) return null;
+    return _boundIn(declaration, parent, inherited);
+  }
 
   final declared = constructor
       ? declaration.constructorParameters[member]
@@ -2967,32 +3026,17 @@ String? _declaredParameterType(
     // A method is inherited; a constructor never is.
     if (constructor) return null;
     for (final parent in declaration.supertypes) {
-      final inherited = _declaredParameterType(
-        parent,
-        member,
-        parameter,
-        constructor: false,
-        visited: seen,
-      );
+      final inherited = inheritedFrom(parent, member, false);
       if (inherited != null) return inherited;
     }
     return null;
   }
 
-  /// A type is an answer only when it is written in terms the caller shares.
-  String? settled(String? type) =>
-      type == null ||
-          _typeIdentifier
-              .allMatches(type)
-              .any((m) => declaration.typeParameters.contains(m.group(0)))
-      ? null
-      : type;
-
   for (final candidate in declared) {
     if (candidate.name != parameter) continue;
-    if (candidate.type != null) return settled(candidate.type);
+    if (candidate.type != null) return candidate.type;
     if (candidate.forwarding == 'this') {
-      return settled(declaration.fieldTypes[parameter]);
+      return declaration.fieldTypes[parameter];
     }
     if (candidate.forwarding == 'super') {
       // Every constructor of the superclass, not just the unnamed one: a class
@@ -3002,12 +3046,7 @@ String? _declaredParameterType(
         final ancestor = _declarationOf(parent);
         if (ancestor == null) continue;
         for (final name in ancestor.constructorParameters.keys) {
-          final inherited = _declaredParameterType(
-            parent,
-            name,
-            parameter,
-            visited: seen,
-          );
+          final inherited = inheritedFrom(parent, name, true);
           if (inherited != null) return inherited;
         }
       }
@@ -3015,6 +3054,102 @@ String? _declaredParameterType(
     return null;
   }
   return null;
+}
+
+/// [inherited], a type in [parent]'s terms, rewritten in [child]'s terms by
+/// the arguments [child]'s supertype clause binds — or `null` when it names a
+/// type parameter of [parent] that the clause does not bind (a raw `extends
+/// TomConfig`), since then no type a caller could write is known.
+String? _boundIn(_Declaration child, String parent, String inherited) {
+  final parameters = _declarationOf(parent)?.typeParameters.toList() ?? [];
+  if (parameters.isEmpty) return inherited;
+  final arguments = child.supertypeArguments[parent];
+  if (arguments == null || arguments.length != parameters.length) {
+    return _mentionsTypeParameter(inherited, parameters.toSet())
+        ? null
+        : inherited;
+  }
+  return _substituteTypeArguments(inherited, {
+    for (var i = 0; i < parameters.length; i++) parameters[i]: arguments[i],
+  });
+}
+
+/// Whether [type] names any of [parameters] as a whole identifier.
+bool _mentionsTypeParameter(String type, Set<String> parameters) =>
+    _typeIdentifier
+        .allMatches(type)
+        .any((m) => parameters.contains(m.group(0)));
+
+/// [type] with every whole identifier that is a key of [binding] replaced by
+/// its value, in one pass — so a substituted argument is never substituted
+/// again, and `TValue` is not mistaken for `T`.
+String _substituteTypeArguments(String type, Map<String, String> binding) =>
+    type.replaceAllMapped(
+      _typeIdentifier,
+      (match) => binding[match.group(0)] ?? match.group(0)!,
+    );
+
+/// The type arguments each supertype in [header]'s `extends` / `implements` /
+/// `with` clause is given, keyed by supertype name, in declaration order.
+///
+/// The clause starts at the first of those keywords outside every `<…>`, which
+/// is what keeps a bound on the class's own type parameter — `class A<T extends
+/// Object>` — from being read as a supertype. A supertype written without
+/// arguments has no entry.
+Map<String, List<String>> _typeArgumentsOf(String header) {
+  var depth = 0;
+  var start = -1;
+  for (var i = 0; i < header.length && start < 0; i++) {
+    final character = header[i];
+    if (character == '<') depth++;
+    if (character == '>') depth--;
+    if (depth == 0 &&
+        RegExp(r'(?:extends|implements|with)\b').matchAsPrefix(header, i) !=
+            null &&
+        (i == 0 || !RegExp(r'\w').hasMatch(header[i - 1]))) {
+      start = i;
+    }
+  }
+  if (start < 0) return const {};
+  var end = header.length;
+  for (final stop in ['{', ';']) {
+    final at = header.indexOf(stop, start);
+    if (at >= 0 && at < end) end = at;
+  }
+  final clause = header.substring(start, end);
+
+  final arguments = <String, List<String>>{};
+  for (final opening in RegExp(r'\b([A-Z]\w*)\s*<').allMatches(clause)) {
+    // Only an opening at depth zero of the clause names a supertype; one
+    // inside another's arguments is an argument.
+    final before = clause.substring(0, opening.start);
+    if ('<'.allMatches(before).length != '>'.allMatches(before).length) {
+      continue;
+    }
+    var level = 0;
+    final chunk = StringBuffer();
+    final parts = <String>[];
+    for (var i = opening.end - 1; i < clause.length; i++) {
+      final character = clause[i];
+      if (character == '<') {
+        level++;
+        if (level == 1) continue;
+      }
+      if (character == '>') {
+        level--;
+        if (level == 0) break;
+      }
+      if (character == ',' && level == 1) {
+        parts.add(chunk.toString().trim());
+        chunk.clear();
+        continue;
+      }
+      chunk.write(character);
+    }
+    parts.add(chunk.toString().trim());
+    arguments[opening.group(1)!] = parts;
+  }
+  return arguments;
 }
 
 /// An identifier inside a type, which is what a type parameter appears as.
@@ -8098,21 +8233,77 @@ class After {}
       );
     });
 
-    test('an inherited type parameter is left to the summary', () {
+    test('an inherited type parameter is substituted by its argument', () {
       // `TomStringConfig extends TomConfig<String>` forwards `super.value` to
-      // `TomConfig.withDefault(String key, T value)`. The summary writes
-      // `String`, which is right and is not what the source says; substituting
-      // the argument needs a real element model. So the parameter resolves to
-      // nothing and is skipped — the alternative being four false reports in
-      // `configuration` alone.
+      // `TomConfig.withDefault(String key, T value)`. The type a caller writes
+      // is `String` — the argument the `extends` clause binds `T` to — so that
+      // is what the parameter resolves to, and a summary writing anything else
+      // is reported like any other mistyped signature.
       expect(_declarationOf('TomConfig')!.typeParameters, contains('T'));
+      expect(_declarationOf('TomStringConfig')!.supertypeArguments, {
+        'TomConfig': ['String'],
+      });
+      for (final (type, argument) in [
+        ('TomStringConfig', 'String'),
+        ('TomIntConfig', 'int'),
+        ('TomDoubleConfig', 'double'),
+        ('TomBoolConfig', 'bool'),
+      ]) {
+        expect(
+          _declaredParameterType(type, 'withDefault', 'value'),
+          argument,
+          reason: '$type.withDefault binds T to $argument',
+        );
+        expect(_declaredParameterType(type, 'withDefault', 'key'), 'String');
+      }
+    });
+
+    test('a generic constructor that mistypes its parameter is reported', () {
       expect(
-        _declarationOf('TomConfig')!.constructorParameters['withDefault'],
-        contains((name: 'value', type: 'T', forwarding: null)),
+        _mistypedParametersIn(
+          _classSectionsOf('synthetic.md', [
+            '### TomIntConfig',
+            '',
+            '#### Constructors',
+            '',
+            '```dart',
+            'TomIntConfig.withDefault(String key, String value)',
+            '```',
+          ]),
+        ),
+        [
+          'synthetic.md:6 TomIntConfig.withDefault types value as String, '
+              'declared int',
+        ],
       );
+    });
+
+    test('a type parameter of the declaration itself stays unresolved', () {
+      // `TomConfig.withDefault` is written in terms of its own `T`, which no
+      // `extends` binds — there is nothing to substitute, and a summary of the
+      // generic class writes `T` because a caller instantiating it chooses.
       expect(
-        _declaredParameterType('TomStringConfig', 'withDefault', 'value'),
+        _declaredParameterType('TomConfig', 'withDefault', 'value'),
         isNull,
+      );
+    });
+
+    test('a substitution replaces whole identifiers only', () {
+      expect(
+        _substituteTypeArguments('Map<T, List<TValue>>', {'T': 'String'}),
+        'Map<String, List<TValue>>',
+      );
+      expect(_typeArgumentsOf('class A extends B<Map<String, int>, C> {'), {
+        'B': ['Map<String, int>', 'C'],
+      });
+      expect(
+        _typeArgumentsOf(
+          'class TomList<T> extends TomListBase<T> implements Iterable<T> {',
+        ),
+        {
+          'TomListBase': ['T'],
+          'Iterable': ['T'],
+        },
       );
     });
 
