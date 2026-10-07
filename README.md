@@ -256,7 +256,8 @@ it and start eight test suites.
 | [`tool/check_dart_format.py`](tool/check_dart_format.py) | Holds every Dart file in the repository to `dart format`, across all 23 packages |
 | [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the error vocabulary a document states — the completion documents' "Error keys" sections, and the hand-written module guides — against the keys the code raises |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
-| [`tool/check_dartdoc_build.py`](tool/check_dartdoc_build.py) | Builds each gated package's API documentation and requires `dart doc` to report nothing |
+| [`tool/check_dartdoc_build.py`](tool/check_dartdoc_build.py) | Builds each gated package's API documentation, requires `dart doc` to report nothing, and fails a doc-comment link into a package the writer does not depend on |
+| [`tool/dartdoc_links.py`](tool/dartdoc_links.py) | Reads the doc-comment prose `dart doc` rendered and reports links into packages the writing package does not depend on; imported by `check_dartdoc_build.py` |
 | [`tool/check_consumer_claims.py`](tool/check_consumer_claims.py) | Finds dartdoc that names a consumer which does not consume |
 | [`tool/check_doc_attributions.py`](tool/check_doc_attributions.py) | Finds prose that names a source file and then names a type that file has not got |
 | [`tool/check_member_attributions.py`](tool/check_member_attributions.py) | Finds documentation — the package docs and the completion corpus — that names a member its type does not declare, written `Type.member` or listed in a member table |
@@ -519,6 +520,7 @@ code and are never in scope: their comments are not ours to correct.
 ```bash
 python3 tool/check_dartdoc_build.py                  # the gated packages
 python3 tool/check_dartdoc_build.py tom_core_server  # one package, ad hoc
+python3 tool/dartdoc_links.py --self-test            # check the link reader
 ```
 
 The other half of the same question, and the only thing in the toolchain that
@@ -541,11 +543,26 @@ comment that reads perfectly, which is why review does not catch them and a
 build does.
 
 Every warning counts, not only unresolved references: a documentation build
-that is allowed to say one thing is a build nobody reads. The rendered HTML is
-thrown away — 18 MB for `tom_core_kernel` alone, and what the gate wants is the
-log, which names every fault by file and line. The log is kept under
-`tool/ztmp/dartdoc/`. Packages are gated only once they are silent, the same
-rule `check_doc_dart_blocks.py` states.
+that is allowed to say one thing is a build nobody reads. The log names every
+warning by file and line and is kept under `tool/ztmp/dartdoc/`; the HTML is
+deleted once it has been read. Packages are gated only once they are silent,
+the same rule `check_doc_dart_blocks.py` states. The three framework packages
+are listed and the eight `advanced_*` samples are discovered, and all of them
+build in parallel — about eighty seconds, against four minutes in series.
+
+**A silent build is necessary, not sufficient.** `dart doc` resolves a
+reference by walking outward until something answers, and an answer is never a
+warning. `[hash]`, written in `advanced_auth_server` for a record's own field,
+bound to `vector_math`'s deprecated `hash` library — a transitive dependency the
+package never names — and rendered a live link to it. `dart doc` said nothing,
+and the `comment_references` lint would have said nothing either, because the
+name does resolve. So before the HTML is deleted, `dartdoc_links.py` reads the
+prose dartdoc rendered from doc comments — page descriptions and member
+summaries, never signatures — and every link into a package that is neither a
+direct dependency nor re-exported by one is a fault. A signature legitimately
+links wherever the code's types come from; a sentence links where its author
+chose. The reader's self-test runs at the start of every gate run, and a package
+whose pages render no doc prose is refused as not measured.
 
 ```bash
 python3 tool/check_consumer_claims.py                 # the whole repository

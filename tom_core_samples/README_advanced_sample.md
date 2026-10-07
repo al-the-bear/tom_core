@@ -279,24 +279,21 @@ tom_core_samples/advanced_ops_server/tool/run_ops_integration.sh
 
 ### Checking the generated API pages
 
-A third runner needs neither a database nor a server: it runs `dart doc` over
-every `advanced_*` package and fails on any warning.
+The API pages of every `advanced_*` package are built by the `tom_ai/core`
+gate `tool/check_dartdoc_build.py`, which runs with the rest of the gate suite:
 
 ```sh
-tom_core_samples/tool/check_advanced_dartdoc.sh
+python3 tool/check_dartdoc_build.py                                   # all gated packages
+python3 tool/check_dartdoc_build.py tom_core_samples/advanced_app_client  # one
 ```
 
-It asks a question no other check in this repository asks. `dart doc` resolves a
-`[name]` against its **canonical library** — the barrel — rather than the file
-that declares it, so it accepts references the `comment_references` lint rejects
-and rejects some the lint accepts (a `[Type.member]` reference cannot reach an
-extension member, which is why `[ProjectRole.name]` fails where
-`[ProjectRole.viewer]` resolves). Neither guard implies the other, and this is
-the one that decides whether the published pages contain dead names.
-
-It is a runner rather than one of the `tom_ai/core/tool/` gates only because of
-cost: the whole python gate set takes about fifteen seconds, while `dart doc`
-takes twelve to thirty per package. Run it after editing a doc comment here.
+It fails on any `dart doc` warning, and on a doc-comment link that lands in a
+package this one does not depend on. The second matters because a reference
+can resolve to the wrong thing silently: `dart doc` resolves a `[name]` by
+walking outward until something answers, so a bare `[hash]` meant for a record
+field became a link to another package's library with no warning at all.
+Record fields, extension members and parameters of a function type have no
+page to link to; write them in backticks.
 
 ### Checking that the generated reflection is current
 
