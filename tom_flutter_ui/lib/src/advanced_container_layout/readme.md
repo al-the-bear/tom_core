@@ -19,7 +19,7 @@ type or static this table does not name.
 | Type | Responsibility |
 | ---- | -------------- |
 | `AclBuilder` | Fluent builder — `append`, `gap`, `newRow`, `setPSize` / `setMSize`, `expandX`. `AclBuilder.defaultPreferredWidth` (150) is the width a component gets when it declares none |
-| `AclBuilderExtensions` | The builder's convenience methods, kept off the class so the core stays small |
+| `AclBuilderSizing` / `AclBuilderAlignment` / `AclBuilderChrome` / `AclBuilderIdentity` / `AclBuilderResponsive` | The builder's method families — sizing and the `expandX` shorthands, alignment, container defaults and chrome, ids and groups, responsive variants — each an extension in its own part of the `acl_builder` library. They come with the builder: nothing to import |
 | `AclFlags` | Growth and role flags: `AclFlags.expandX`, `expandY`, `expand`, `otherDimX`, `otherDimY`, `otherDim` (grow in the cross dimension) and `gapElement` (this cell is a gap, not content) |
 | `Acl` / `AclLayout` / `AclContainer` | The rendered layout widgets `build()` returns |
 | `AclComponent` / `AclRow` | One cell and one row of the computed grid — the data an authored or generated layout reduces to |

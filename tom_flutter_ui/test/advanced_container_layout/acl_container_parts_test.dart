@@ -71,20 +71,12 @@ void main() {
 
   test('no file in the unit is longer than $_maxLines lines', () {
     // The library itself and its parts, plus the rest of the module: the point
-    // is the ceiling, not which file happens to be under it.
-    //
-    // `acl_builder.dart` is over it and is exempt, with a reason rather than
-    // by omission. Its length is ~100 fluent methods of three to ten lines
-    // each on one class — a shape a reviewer reads by jumping to a name, not
-    // by holding the file. What made the container's length dangerous was five
-    // subsystems that had to agree with each other while being hundreds of
-    // lines apart, and the builder has one. Splitting it is a separate
-    // question, and the day it is answered this line comes out.
-    const exempt = {'acl_builder.dart'};
+    // is the ceiling, not which file happens to be under it. No file is
+    // exempt: the builder, the one file that was, is split into parts by
+    // method family the way the container is.
     final offenders = <String>[];
     for (final file in Directory(_dir).listSync().whereType<File>()) {
       if (!file.path.endsWith('.dart')) continue;
-      if (exempt.contains(file.uri.pathSegments.last)) continue;
       final length = file.readAsLinesSync().length;
       if (length > _maxLines) {
         offenders.add('${file.path}: $length lines');

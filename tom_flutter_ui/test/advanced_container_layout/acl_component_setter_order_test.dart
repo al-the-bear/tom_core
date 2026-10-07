@@ -15,11 +15,11 @@
 /// one would otherwise hide behind the others.
 library;
 
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
+
+import 'acl_builder_sources.dart';
 
 /// Calls one per-component setter on [b], named for the message it should
 /// raise.
@@ -181,9 +181,7 @@ void main() {
     late List<String> lines;
 
     setUp(() {
-      lines = File(
-        'lib/src/advanced_container_layout/acl_builder.dart',
-      ).readAsLinesSync();
+      lines = aclBuilderSourceLines();
     });
 
     /// The methods that legitimately touch `_currentComponent` directly: the

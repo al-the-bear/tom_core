@@ -25,10 +25,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import 'acl_builder_sources.dart';
+
 /// The builder whose setters must all be exercised, and this file, which must
 /// exercise them. Paths are package-relative; `flutter test` runs with the
 /// package root as its working directory.
-const _builderSource = 'lib/src/advanced_container_layout/acl_builder.dart';
+const _builderSource =
+    'lib/src/advanced_container_layout/acl_builder.dart and its parts';
 const _thisTest =
     'test/advanced_container_layout/acl_builder_defaults_test.dart';
 
@@ -396,10 +399,9 @@ void main() {
       // added to AclBuilder and never exercised here is a documented default
       // nothing checks — the condition that let setAclDefaultRowGap document
       // 0 while the field held 8.
-      final declared = RegExp(r'\bAclBuilder\s+(setAclDefault\w*)\s*\(')
-          .allMatches(File(_builderSource).readAsStringSync())
-          .map((m) => m.group(1)!)
-          .toSet();
+      final declared = RegExp(
+        r'\bAclBuilder\s+(setAclDefault\w*)\s*\(',
+      ).allMatches(aclBuilderSource()).map((m) => m.group(1)!).toSet();
       expect(
         declared,
         isNotEmpty,

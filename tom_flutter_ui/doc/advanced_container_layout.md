@@ -65,7 +65,7 @@ direction — so this index is complete by construction rather than by review.
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
 | `AclBuilder` | class | Fluent builder; `build()` returns an `Acl` widget. |
-| `AclBuilderExtensions` | extension | Shorthand over `setAttr` and the row-alignment setters — `expandX()`, `setRowAlignCenter()`, … |
+| `AclBuilderSizing` / `AclBuilderAlignment` / `AclBuilderChrome` / `AclBuilderIdentity` / `AclBuilderResponsive` | extension | `AclBuilder`'s method families, one per part of the `acl_builder` library: sizing (including the `expandX()` shorthands), alignment (including `setRowAlignCenter()` and its siblings), container defaults and chrome, ids and groups, responsive variants. They are part of the builder's API and need no import of their own |
 | `Acl` | class | The built layout: an `AclLayout` that additionally draws a [container title](#container-titles). |
 | `AclLayout` | class | The title-less layout widget `Acl` extends. An `Acl` with no title renders exactly this. |
 | `AclContainer` | class | The stateful render engine that lays rows/components out. |
@@ -204,7 +204,7 @@ is one the container actually reads — `acl_flags_contract_test.dart` derives
 this table's left three columns from `AclFlags` and fails if a flag is
 declared but never read, documented with the wrong bit, or missing here.
 
-The `AclBuilderExtensions` extension surfaces `expandX()` / `expandY()` /
+The `AclBuilderSizing` extension surfaces `expandX()` / `expandY()` /
 `expand()` shortcuts over `setAttr`. The "Read with" column is a getter on
 `AclComponent`, which is what lets you interpret a row you were handed rather
 than one you built.

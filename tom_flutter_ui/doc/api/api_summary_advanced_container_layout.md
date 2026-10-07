@@ -10,7 +10,11 @@ components, and the widgets that render the result.
 - [Exported Surface](#exported-surface)
 - [The builder](#the-builder)
   - [AclBuilder](#aclbuilder)
-  - [AclBuilderExtensions](#aclbuilderextensions)
+  - [AclBuilderSizing](#aclbuildersizing)
+  - [AclBuilderAlignment](#aclbuilderalignment)
+  - [AclBuilderChrome](#aclbuilderchrome)
+  - [AclBuilderIdentity](#aclbuilderidentity)
+  - [AclBuilderResponsive](#aclbuilderresponsive)
 - [The layout model](#the-layout-model)
   - [AclComponent](#aclcomponent)
   - [AclRow](#aclrow)
@@ -64,7 +68,7 @@ doing:
 
 | Layer | Types | When |
 | ----- | ----- | ---- |
-| **Author** a layout | `AclBuilder`, `AclBuilderExtensions` | Almost always. The builder is the only type most callers name. |
+| **Author** a layout | `AclBuilder` and its method-family extensions | Almost always. The builder is the only type most callers name. |
 | **Describe** one | `AclRow`, `AclComponent`, `AclFlags`, plus the appearance and placement values | When a layout is generated, transformed, or asserted on without rendering. |
 | **Render** one | `Acl`, `AclLayout`, `AclContainer`, `AclFlowContainer` | When `build()`'s result is not enough — an unwrapped variant, or a flat child list whose row breaks the container decides. |
 
@@ -84,7 +88,7 @@ mirror of the surface both describe.
 
 ```
 Object
-├── AclBuilder                                (fluent; AclBuilderExtensions adds shortcuts)
+├── AclBuilder                                (fluent; its method families are extensions)
 ├── AclComponent                              (immutable cell)
 ├── AclRow                                    (immutable row)
 ├── AclFlags                                  (bit constants; not instantiable)
@@ -128,7 +132,7 @@ declaration in them:
 
 | File | Public declarations |
 | ---- | ------------------- |
-| `acl_builder.dart` | `AclBuilder`, `AclBuilderExtensions` |
+| `acl_builder.dart` (and its parts) | `AclBuilder`, `AclBuilderSizing`, `AclBuilderAlignment`, `AclBuilderChrome`, `AclBuilderIdentity`, `AclBuilderResponsive` |
 | `acl_container.dart` and its eleven `part` files | `Acl`, `AclLayout`, `AclContainer`, `AclRow`, `AclComponent`, `AclBorderStyle`, `AclBorderKind`, `AclSeparator`, `AclSeparatorStyle`, `AclSeparatorAlignment`, `AclTitlePosition`, `AclTitleBorderAlign`, `AclRowCrossAlignment`, `AclAxisPointX`, `AclAxisPointY`, `AclDirection`, `AclDirectionScope`, `aclResolveBreakpointed`, `aclEffectiveGapBefore`, `aclResolveRowHeight` |
 | `acl_device_context.dart` | `AclDeviceContext`, `AclFormFactor`, `AclInputMode`, `AclDensity`, `AclVariantDetector` |
 | `acl_flags.dart` | `AclFlags` |
@@ -286,19 +290,54 @@ component.
 | `addRowBreakpoint` | Split the current row here below a width. The split index is where the chain has got to — the number of components appended to this row so far — so the call goes *between* the two `append`s it separates. |
 | `startVariant` / `endVariant` | Tag components as belonging to an inline variant selected by a detector. |
 
-### AclBuilderExtensions
+### AclBuilderSizing
 
-Convenience methods kept off the class so the core stays small. All delegate.
+The sizing family: the methods under [Sizing the current component](#sizing-the-current-component)
+and [Size references](#size-references), the container size and scrolling
+setters, and the growth shorthands. One part of the `acl_builder` library;
+called on an `AclBuilder` like any member.
 
 **Kind:** `extension on AclBuilder`
 
-| Method | Equivalent to |
-|--------|---------------|
+| Shorthand | Equivalent to |
+|-----------|---------------|
 | `expandX()` | `setAttr(AclFlags.expandX)` |
 | `expandY()` | `setAttr(AclFlags.expandY)` |
 | `expand()` | `setAttr(AclFlags.expand)` |
+
+### AclBuilderAlignment
+
+The alignment family: the methods under [Alignment anchors](#alignment-anchors),
+the row-alignment setters and their shorthands.
+
+**Kind:** `extension on AclBuilder`
+
+| Shorthand | Equivalent to |
+|-----------|---------------|
 | `setRowAlignLeft()` / `setRowAlignCenter()` / `setRowAlignRight()` | `setRowHorizontalAlignment(RowAlignment.…)` |
 | `setRowAlignTop()` / `setRowAlignMiddle()` / `setRowAlignBottom()` | `setRowVerticalAlignment(AclRowCrossAlignment.…)` |
+
+### AclBuilderChrome
+
+The container's defaults and chrome: the methods under
+[Builder-wide defaults](#builder-wide-defaults) and the border, padding,
+background and title setters under [Container chrome](#container-chrome).
+
+**Kind:** `extension on AclBuilder`
+
+### AclBuilderIdentity
+
+Ids, groups and group visibility: the methods under
+[Identity, groups and visibility](#identity-groups-and-visibility).
+
+**Kind:** `extension on AclBuilder`
+
+### AclBuilderResponsive
+
+Variants, row breakpoints and inline variants: the methods under
+[Responsive](#responsive).
+
+**Kind:** `extension on AclBuilder`
 
 ## The layout model
 

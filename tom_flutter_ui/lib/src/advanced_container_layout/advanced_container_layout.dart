@@ -29,7 +29,8 @@
 ///
 /// | Area | Types |
 /// | ---- | ----- |
-/// | Growth flags | [AclFlags], and the [AclBuilderExtensions] shorthands `expandX` / `expandY` / `expand` that set them |
+/// | The builder's method families | [AclBuilderSizing], [AclBuilderAlignment], [AclBuilderChrome], [AclBuilderIdentity], [AclBuilderResponsive] — extensions on [AclBuilder], one per part of its library |
+/// | Growth flags | [AclFlags], and the [AclBuilderSizing] shorthands `expandX` / `expandY` / `expand` that set them |
 /// | Borders and titled groups | [AclBorderStyle], [AclBorderKind], [AclTitlePosition], [AclTitleBorderAlign] |
 /// | Separators in gap rows | [AclSeparator], [AclSeparatorStyle], [AclSeparatorAlignment] |
 /// | Row-*generating* containers | [AclFlowContainer], [AclFlowKind] — `wrap` and `grid`, for a flat child list whose row breaks the container decides |

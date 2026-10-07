@@ -33,11 +33,14 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'acl_builder_sources.dart';
+
 /// The section-17 source of truth, and the unit it describes. Paths are
 /// package-relative; `flutter test` runs with the package root as its working
 /// directory.
 const _specPath = 'doc/acl_design_specification.md';
-const _builderPath = 'lib/src/advanced_container_layout/acl_builder.dart';
+const _builderPath =
+    'lib/src/advanced_container_layout/acl_builder.dart and its parts';
 
 /// A declaration as written, before canonicalisation.
 class _Signature {
@@ -171,11 +174,11 @@ Map<String, _Signature> _specSignatures() {
 /// Every public method declared at class or extension level in the builder.
 ///
 /// Two-space indentation is the discriminator: it selects members of
-/// `AclBuilder` and of the `AclBuilderExtensions` extension while excluding
+/// `AclBuilder` and of the family extensions its parts declare, while excluding
 /// top-level functions, nested closures, and the constructor (which has no
 /// return type, so no space before its name).
 Map<String, _Signature> _sourceSignatures() {
-  final source = File(_builderPath).readAsStringSync();
+  final source = aclBuilderSource();
   final header = RegExp(
     r'^  (?:[A-Za-z_][\w<>?, ]*?)\s+(\w+)\(',
     multiLine: true,
@@ -188,7 +191,7 @@ Map<String, _Signature> _sourceSignatures() {
 /// Methods returning anything else (`bool` predicates, `int` counts) are
 /// legitimately outside the section's scope.
 Set<String> _fluentMethodNames() {
-  final source = File(_builderPath).readAsStringSync();
+  final source = aclBuilderSource();
   return RegExp(r'^  (?:AclBuilder|Acl)\s+(\w+)\(', multiLine: true)
       .allMatches(source)
       .map((m) => m.group(1)!)

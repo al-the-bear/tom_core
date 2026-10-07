@@ -699,10 +699,11 @@ Convenience constructors:
 
 ## 17. Complete `AclBuilder` Public API
 
-Every public method of `AclBuilder` and of the `AclBuilderExtensions`
-extension, with the signature it actually has.
-`test/advanced_container_layout/acl_spec_api_test.dart` pins this section
-against `lib/src/advanced_container_layout/acl_builder.dart`: a signature that
+Every public method of `AclBuilder` and of the extensions it is split into by
+method family (`AclBuilderSizing`, `AclBuilderAlignment`, `AclBuilderChrome`,
+`AclBuilderIdentity`, `AclBuilderResponsive`), with the signature it actually
+has. `test/advanced_container_layout/acl_spec_api_test.dart` pins this section
+against `lib/src/advanced_container_layout/acl_builder.dart` and its parts: a signature that
 drifts, or a method added to the builder and not listed here, fails that test.
 
 ### Constructor
@@ -789,7 +790,7 @@ AclBuilder setXWidthInChars(int chars, {double charWidth = 8});
 ```dart
 AclBuilder setAttr(int attr);    // raw flags (use extensions instead)
 AclBuilder clearAttr(int attr);
-// via AclBuilderExtensions:
+// via AclBuilderSizing:
 AclBuilder expandX();
 AclBuilder expandY();
 AclBuilder expand();
@@ -819,7 +820,7 @@ AclBuilder setVerticalAlignment(AclRowCrossAlignment align);
 
 // The current row
 AclBuilder setRowVerticalAlignment(AclRowCrossAlignment align);
-// via AclBuilderExtensions:
+// via AclBuilderAlignment:
 AclBuilder setRowAlignTop();
 AclBuilder setRowAlignMiddle();
 AclBuilder setRowAlignBottom();
@@ -864,7 +865,7 @@ decides where the slack goes.)*
 
 ```dart
 AclBuilder setRowHorizontalAlignment(RowAlignment align); // left | center | right
-// via AclBuilderExtensions:
+// via AclBuilderAlignment:
 AclBuilder setRowAlignLeft();
 AclBuilder setRowAlignCenter();
 AclBuilder setRowAlignRight();

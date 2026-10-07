@@ -24,6 +24,13 @@ import 'package:flutter_test/flutter_test.dart';
 /// the package root as its working directory.
 const _sourcePaths = <String>[
   'lib/src/advanced_container_layout/acl_builder.dart',
+  // The `acl_builder` library's parts, listed for the same reason.
+  'lib/src/advanced_container_layout/acl_builder_data.dart',
+  'lib/src/advanced_container_layout/acl_builder_sizing.dart',
+  'lib/src/advanced_container_layout/acl_builder_alignment.dart',
+  'lib/src/advanced_container_layout/acl_builder_chrome.dart',
+  'lib/src/advanced_container_layout/acl_builder_identity.dart',
+  'lib/src/advanced_container_layout/acl_builder_responsive.dart',
   'lib/src/advanced_container_layout/acl_container.dart',
   // The `acl_container` library's parts. Listed rather than globbed: a file
   // that stops being scanned should be a line somebody deleted, not a name

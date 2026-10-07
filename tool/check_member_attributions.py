@@ -555,7 +555,12 @@ def index_types(root: Path) -> dict[str, list[TypeInfo]]:
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
-        if "class " not in text and "mixin " not in text and "enum " not in text:
+        # `extension ` counts as a declaration too: a part file that holds only
+        # extensions on a type declared elsewhere carries members a document
+        # can name, and skipping it would report them missing.
+        if not any(
+            keyword in text for keyword in ("class ", "mixin ", "enum ", "extension ")
+        ):
             if "lib" in path.parts:
                 TOP_LEVEL_NAMES[package_of(path)].update(
                     n

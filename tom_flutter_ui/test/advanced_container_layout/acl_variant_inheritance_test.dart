@@ -21,11 +21,11 @@
 /// list came to be complete rather than plausible.
 library;
 
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
+
+import 'acl_builder_sources.dart';
 
 /// Builds a container whose every builder-wide default differs from the
 /// framework default, plus a variant that restates only its rows — the usage
@@ -228,9 +228,7 @@ void main() {
     late String builderSource;
 
     setUp(() {
-      builderSource = File(
-        'lib/src/advanced_container_layout/acl_builder.dart',
-      ).readAsStringSync();
+      builderSource = aclBuilderSource();
     });
 
     /// The fields `_copyRowDefaultsTo` assigns onto its target.
