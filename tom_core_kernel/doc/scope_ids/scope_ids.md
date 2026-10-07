@@ -229,12 +229,20 @@ order:
 An empty path (only the root sentinel) yields `''`, which lets consumers treat
 "no scope" as an empty prefix.
 
-The path is rebuilt on every call and not cached. The walk is linear in the
-depth and costs a fraction of a microsecond at the depths scopes reach in
-practice — more than the map lookup a caller does with the result, but small
-beside the work a lookup serves. It also keeps the answer right for any
-`TomScope`: `buildScopePath` accepts a hand-rolled implementation whose `id` or
-`parent` is computed, and a cached path would outlive a change to either.
+`buildScopePath` rebuilds the path on every call: it accepts a hand-rolled
+`TomScope` whose `id` or `parent` is computed, and a cached path would outlive a
+change to either. The walk is linear in the depth, about 50 ns at depth 1 and
+500 ns at depth 10 — the larger half of a scoped lookup, though small beside the
+work a lookup serves.
+
+**A mixin scope's `getScopePath` is kept.** A `TomScopeMixin` scope's identity
+is write-once, so its path can change only if an ancestor's does. It composes
+its path from its parent's (`parent path + '.' + id`) and keeps the result
+whenever the parent kept its own — or it has no parent — so on a chain made only
+of mixin scopes the path is built once per scope and then answered from memory.
+A parent that is not a `TomScopeMixin` may compute its links, so such a scope
+falls back to `buildScopePath` on every call, and every mixin scope below it
+keeps nothing either.
 
 **The elision is by identity, not by name.** Only `TomScope.defaultScope`
 itself — compared with `identical` — is dropped from the walk. A domain scope

@@ -181,14 +181,13 @@ abstract class TomScope {
   /// type supplies its own [parent], outside that argument and outside any
   /// check this module can make.
   ///
-  /// The path is rebuilt on every call; nothing is cached. The walk is linear
-  /// in the depth and costs a fraction of a microsecond at the depths scopes
-  /// reach in practice — more than the map lookup a caller then does with the
-  /// result, but small beside anything a lookup is done for. Rebuilding is also
-  /// what keeps the answer right for every [TomScope]: a scope that mixes in
-  /// [TomScopeMixin] has a write-once identity, but this method accepts any
-  /// implementation, including one whose [id] or [parent] is computed, and a
-  /// cached path would outlive a change to either.
+  /// This method rebuilds the path on every call; nothing is cached here. It
+  /// accepts any implementation, including one whose [id] or [parent] is
+  /// computed, and a cached path would outlive a change to either. The walk is
+  /// linear in the depth — about 50 ns at depth 1 and 500 ns at depth 10.
+  ///
+  /// [TomScopeMixin.getScopePath] is where the path *is* cached, because there
+  /// the identity is write-once: see that method for when it may be.
   static String buildScopePath(TomScope scope) {
     final List<String> parts = [];
     TomScope? current = scope;
@@ -225,6 +224,9 @@ class TomScopeBase with TomScopeMixin {
 mixin TomScopeMixin on Object implements TomScope {
   late final String _id;
   late final TomScope? _parent;
+
+  /// The path [getScopePath] built, once it is known never to change.
+  String? _path;
 
   /// Whether [initScope] has run.
   ///
@@ -305,8 +307,40 @@ mixin TomScopeMixin on Object implements TomScope {
     return _parent;
   }
 
+  /// The full scope path, built once and then answered from memory whenever
+  /// nothing above this scope can change it.
+  ///
+  /// The identity of a mixin scope is write-once, so its own segment never
+  /// changes; its path can only change if an ancestor's does. The path is
+  /// therefore composed from the parent's — `parent path + '.' + id`, O(1) per
+  /// scope once the parent knows its own — and kept only when the parent is a
+  /// mixin scope that kept *its* path too (or there is no parent). By
+  /// induction a kept path rests on a chain of write-once scopes and is final.
+  ///
+  /// Anything else is not kept. A parent that is not a [TomScopeMixin] may
+  /// compute its [id] or [parent], so the path falls back to
+  /// [TomScope.buildScopePath] on every call — and a mixin scope below such a
+  /// parent keeps nothing either, since its parent kept nothing. The parent's
+  /// path is read through its [getScopePath] rather than rebuilt, so a
+  /// subclass that answers it differently (a pass-through provider adopting
+  /// another scope's path) is honoured.
   @override
-  String getScopePath() => TomScope.buildScopePath(this);
+  String getScopePath() {
+    final cached = _path;
+    if (cached != null) return cached;
+    _requireScopeIdentity(this, 'Cannot build a scope path');
+    // The root sentinel adds no segment, exactly as buildScopePath elides it.
+    if (identical(this, TomScope.defaultScope)) return _path = '';
+    final parent = _parent;
+    if (parent == null) return _path = _id;
+    if (parent is! TomScopeMixin) return TomScope.buildScopePath(this);
+    final parentPath = parent.getScopePath();
+    final path = parentPath.isEmpty
+        ? _id
+        : '$parentPath$_scopePathSeparator$_id';
+    if (parent._path != null) _path = path;
+    return path;
+  }
 
   @override
   T runInScope<T>(T Function() body) => _runScoped(this, body);

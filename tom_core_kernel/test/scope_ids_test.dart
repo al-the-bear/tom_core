@@ -158,6 +158,67 @@ void main() {
       });
     });
 
+    group('getScopePath on a mixin scope', () {
+      test('is kept after the first call over a chain of mixin scopes', () {
+        final root = TomScopeBase(scopeId: 'app');
+        final mid = TomScopeBase(scopeId: 'checkout', parentScope: root);
+        final leaf = TomScopeBase(scopeId: 'orderForm', parentScope: mid);
+
+        final first = leaf.getScopePath();
+        expect(first, equals('app.checkout.orderForm'));
+        // The same String instance comes back: the path is answered from
+        // memory, not rebuilt.
+        expect(identical(leaf.getScopePath(), first), isTrue);
+        expect(identical(mid.getScopePath(), mid.getScopePath()), isTrue);
+      });
+
+      test('agrees with buildScopePath on every chain shape', () {
+        final root = TomScopeBase(scopeId: 'app');
+        final named = TomScopeBase(scopeId: 'default', parentScope: root);
+        final leaf = TomScopeBase(scopeId: 'child', parentScope: named);
+        final underSentinel = TomScopeBase(
+          scopeId: 'top',
+          parentScope: TomScope.defaultScope,
+        );
+        final deep = TomScopeBase(scopeId: 'deep', parentScope: underSentinel);
+
+        for (final scope in [
+          TomScope.defaultScope,
+          root,
+          named,
+          leaf,
+          underSentinel,
+          deep,
+        ]) {
+          expect(
+            scope.getScopePath(),
+            equals(TomScope.buildScopePath(scope)),
+            reason: 'path of ${scope.id}',
+          );
+        }
+        expect(TomScope.defaultScope.getScopePath(), isEmpty);
+        expect(deep.getScopePath(), equals('top.deep'));
+      });
+
+      test('follows a hand-rolled parent whose parent changes', () {
+        final first = TomScopeBase(scopeId: 'first');
+        final second = TomScopeBase(scopeId: 'second');
+        final movable = _MovableScope('middle', first);
+        final child = TomScopeBase(scopeId: 'leaf', parentScope: movable);
+        final grandchild = TomScopeBase(scopeId: 'tip', parentScope: child);
+
+        expect(child.getScopePath(), equals('first.middle.leaf'));
+        expect(grandchild.getScopePath(), equals('first.middle.leaf.tip'));
+
+        movable.parentScope = second;
+
+        // A chain with a computed link anywhere above is never kept, at any
+        // depth below it.
+        expect(child.getScopePath(), equals('second.middle.leaf'));
+        expect(grandchild.getScopePath(), equals('second.middle.leaf.tip'));
+      });
+    });
+
     group('buildScopePath', () {
       test('elides the root sentinel from a chain rooted at it', () {
         final scope = TomScopeBase(

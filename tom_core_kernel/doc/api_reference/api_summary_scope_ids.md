@@ -135,7 +135,7 @@ known later.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `initScope` | `void initScope({required String scopeId, TomScope? parentScope})` | Initialises this scope's identity. The single write-once entry point: call it exactly once, from the constructor or — for a scope whose parent is only known later — on the constructed instance. Throws `TomScopeException` if `scopeId` is empty or contains `.`, if the scope already has an identity (a second call, even with the same values), or if `parentScope` has no identity of its own — the latter is also what keeps the chain acyclic, since it makes every parent strictly older than its child and the link is then written once. Validation runs before any field is written, so a refused call leaves the instance still initialisable. |
-| `getScopePath` | `String getScopePath()` | *(override)* Returns the full dot-separated scope path. |
+| `getScopePath` | `String getScopePath()` | *(override)* Returns the full dot-separated scope path, composed from the parent's and kept once the parent has kept its own (or there is no parent). A parent that is not a `TomScopeMixin` falls back to `buildScopePath` on every call, and nothing below it is kept. |
 | `runInScope` | `T runInScope<T>(T Function() body)` | *(override)* Runs `body` inside this scope's zone, reusing the current zone when already active. Throws `TomScopeException` before `initScope` has run, without running `body`. |
 
 Until `initScope` runs, the instance is not yet a scope: it can neither be

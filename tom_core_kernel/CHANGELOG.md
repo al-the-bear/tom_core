@@ -2,6 +2,12 @@
 
 ### Changed
 
+- **A mixin scope keeps its path.** `TomScopeMixin.getScopePath` composes the
+  path from the parent's and keeps it once the parent has kept its own (or
+  there is no parent), so on a chain of mixin scopes each path is built once.
+  A parent that is not a `TomScopeMixin` falls back to `buildScopePath` on every
+  call, and nothing below it is kept, so a hand-rolled scope whose parent
+  changes is still followed. `buildScopePath` itself stays uncached.
 - **The isolate log sinks take their transport as an interface.**
   `TomIsolateLogOutput(TomCommandDispatcher dispatcher)` replaces the
   `TomWorkerPool workerPool` field; `TomWorkerPool` implements the new
