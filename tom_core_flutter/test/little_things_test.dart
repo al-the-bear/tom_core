@@ -753,7 +753,7 @@ void main() {
     // kernel constructor rather than from the field declarations; the short
     // version is that a super-parameter resolves against the immediate
     // superclass constructor, and for `stack` the two disagree.
-    const summaryPath = 'doc/api_reference/api_summary_little_things.md';
+    const summaryPath = 'doc/api/api_summary_little_things.md';
     const sourcePath = 'lib/src/tomclient/little_things/client_exceptions.dart';
     const classNames = ['TomClientException', 'TomClientUIException'];
     final kernel = File(kernelExceptionPath).readAsStringSync();

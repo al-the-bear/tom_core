@@ -685,7 +685,7 @@ See `messaging/sms_transport.dart` and `doc/messaging.md`.
 
 The remaining fields — the server, TLS, JWT, handler and logging settings — are
 listed with their types and defaults in
-`doc/api_reference/api_summary_configuration.md`.
+`doc/api/api_summary_configuration.md`.
 
 ## Source Precedence
 

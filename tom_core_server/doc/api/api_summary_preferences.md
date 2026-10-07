@@ -344,7 +344,7 @@ report `clientThrow`, while the `400`s arrive from the kernel as plain
 
 None — this module exposes no top-level functions or constants. The API id and
 endpoint id constants it binds to are the kernel's (see
-`tom_core_kernel/doc/api_reference/api_summary_preferences.md`).
+`tom_core_kernel/doc/api/api_summary_preferences.md`).
 
 The framework migration `migrations/main/tomcore/[1]-create_tom_user_preference.sql`
 reproduces `TomUserPreference.createTableSql` verbatim — pinned by

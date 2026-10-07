@@ -540,7 +540,7 @@ void main() {
       'lib/src/tomclient/resources/tom_properties.dart',
       'lib/src/tomclient/resources/readme.md',
       'doc/resources.md',
-      'doc/api_reference/api_summary_resources.md',
+      'doc/api/api_summary_resources.md',
     ];
 
     /// The three consumer-facing documents — the artefacts a reader who is not
@@ -548,7 +548,7 @@ void main() {
     const consumerDocs = <String>[
       'lib/src/tomclient/resources/readme.md',
       'doc/resources.md',
-      'doc/api_reference/api_summary_resources.md',
+      'doc/api/api_summary_resources.md',
     ];
 
     test('every artefact recommends the typed subclasses', () {
@@ -623,7 +623,7 @@ void main() {
     // type, the message shape, nor the fact that a wrong-typed *present* value
     // fails as hard as a missing one.
     const source = 'lib/src/tomclient/resources/tom_properties.dart';
-    const summary = 'doc/api_reference/api_summary_resources.md';
+    const summary = 'doc/api/api_summary_resources.md';
 
     /// The message of every `TomPropertyException` thrown in [source] — the
     /// second constructor argument, the first being the matchable `key`.
@@ -854,7 +854,7 @@ void main() {
       'lib/src/tomclient/resources/tom_properties.dart',
       'lib/src/tomclient/resources/readme.md',
       'doc/resources.md',
-      'doc/api_reference/api_summary_resources.md',
+      'doc/api/api_summary_resources.md',
     ];
 
     test('every artefact names the construction for a list', () {
@@ -973,7 +973,7 @@ void main() {
       'lib/src/tomclient/resources/tom_properties.dart',
       'lib/src/tomclient/resources/readme.md',
       'doc/resources.md',
-      'doc/api_reference/api_summary_resources.md',
+      'doc/api/api_summary_resources.md',
     ];
 
     /// [file]'s text with markdown emphasis, code markers, link brackets,

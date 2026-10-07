@@ -652,7 +652,7 @@ void main() {
     const documents = <String>[
       'lib/src/tomclient/preferences/readme.md',
       'doc/preferences.md',
-      'doc/api_reference/api_summary_preferences.md',
+      'doc/api/api_summary_preferences.md',
     ];
 
     test('every document that explains location shows the per-account '
@@ -721,7 +721,7 @@ void main() {
       'lib/src/tomclient/preferences/device_preference_store.dart',
       'lib/src/tomclient/preferences/readme.md',
       'doc/preferences.md',
-      'doc/api_reference/api_summary_preferences.md',
+      'doc/api/api_summary_preferences.md',
     ];
 
     /// [file]'s text with emphasis and code markers removed, so a document is
@@ -772,7 +772,7 @@ void main() {
       'lib/src/tomclient/preferences/user_preferences_client.dart',
       'lib/src/tomclient/preferences/readme.md',
       'doc/preferences.md',
-      'doc/api_reference/api_summary_preferences.md',
+      'doc/api/api_summary_preferences.md',
     ];
 
     String plainTextOf(String file) =>
@@ -2513,7 +2513,7 @@ void main() {
         'lib/src/tomclient/preferences/platform_device_preference_store_neutral.dart';
     const variants = [io, web, neutral];
     const className = 'TomPlatformDevicePreferenceStore';
-    const summaryPath = 'doc/api_reference/api_summary_preferences.md';
+    const summaryPath = 'doc/api/api_summary_preferences.md';
 
     test('every variant agrees about const', () {
       expectVariantsAgreeOnConst(variantPaths: variants, className: className);
@@ -2600,7 +2600,7 @@ void main() {
     // The checks live in `support/exception_constructor_mirror.dart`, shared
     // with `little_things` and `configuration`; the parser they use is pinned
     // by `little_things_test.dart`.
-    const summaryPath = 'doc/api_reference/api_summary_preferences.md';
+    const summaryPath = 'doc/api/api_summary_preferences.md';
     const sourcePaths = [
       'lib/src/tomclient/preferences/device_preferences.dart',
       'lib/src/tomclient/preferences/user_preferences_client.dart',

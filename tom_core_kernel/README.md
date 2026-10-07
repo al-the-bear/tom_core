@@ -363,9 +363,9 @@ the common dependency of the server and Flutter layers. See the
 - [`doc/scheduling/scheduling.md`](doc/scheduling/scheduling.md) — the job
   scheduler: schedule kinds, retry and missed-window policies, the job store,
   and the lease lock that keeps one owner per job across processes.
-- Per-module API reference under [`doc/api_reference/`](doc/api_reference/) —
+- Per-module API reference under [`doc/api/`](doc/api/) —
   one summary per barrel-exported module plus a cross-module type index; start at
-  [`api_summary_index.md`](doc/api_reference/api_summary_index.md).
+  [`api_summary_index.md`](doc/api/api_summary_index.md).
 - [`tom_basics/doc/runtime/runtime.md`](../../basics/tom_basics/doc/runtime/runtime.md)
   — the runtime guide (`TomEnvironment`, `TomPlatform`, `TomRuntime`). The code
   lives in `tom_basics`; the kernel barrel re-exports it.

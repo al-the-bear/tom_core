@@ -115,7 +115,7 @@ has no zero-argument form -- eight lines under a paragraph stating that the
 constructor argument in question is required.
 
 **What is not covered, and why.** The generated API summaries are excluded --
-`doc/api_reference/` in some packages, `doc/api/` in others. Those
+`doc/api/` in every package. Those
 fences quote *signatures* -- `factory TomBean.fromName(String name)`,
 `const TomComponent(Type type)` -- and a signature is a declaration, not a use.
 Making them parse would take a mechanical `;` per block and would buy nothing:
@@ -204,9 +204,9 @@ PACKAGES = [
 
 #: Document subtrees left out, keyed by the reason (see the module docstring).
 #: Two names for one thing: the packages disagree on whether the generated API
-#: summaries live under `doc/api_reference/` or `doc/api/`, and the content is
+#: summaries live under `doc/api/`, and the content is
 #: the same quoted signatures either way.
-EXCLUDED_DIRS = {"api_reference", "api"}
+EXCLUDED_DIRS = {"api"}
 
 PUBSPEC = """name: doc_dart_blocks
 publish_to: none

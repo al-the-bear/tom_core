@@ -13,6 +13,10 @@
 
 ### Changed
 
+- **The API summaries moved from `doc/api_reference/` to `doc/api/`**, where
+  every other package and the workspace guideline already kept them. The
+  folder held only the markdown summaries and their index; the name
+  `api_reference` now means only the built PDF, `doc/{package}_api_reference.pdf`.
 - **`TomLoginFailure` lives here, and a failed `TomAuthenticationResult`
   carries it.** The enum moved from `tom_core_server` beside the result, which
   gains `loginFailure` (the value's name, on the wire) and a typed

@@ -1845,7 +1845,7 @@ void main() {
     // mirror. What stays here is what is genuinely about *this* module: the
     // conditional-export store's `const` decision, and the hand-picked list of
     // classes whose constructor call shape the summary must show.
-    const summaryPath = 'doc/api_reference/api_summary_configuration.md';
+    const summaryPath = 'doc/api/api_summary_configuration.md';
 
     test('the summary reproduces the file store constructor exactly', () {
       // The one signature the summary previously disagreed with the source

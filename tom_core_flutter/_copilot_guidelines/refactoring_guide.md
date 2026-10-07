@@ -40,7 +40,7 @@ Located in `lib/src/tomclient/` (keep in sync with the folder):
 > The same suite holds five further inventories level with the folder: every
 > live module has a per-module checklist step below; the barrel exports exactly
 > the live modules; each module ships its five artifacts (module `readme.md`,
-> `doc/<m>.md`, `doc/api_reference/api_summary_<m>.md`, `example/<m>/`,
+> `doc/<m>.md`, `doc/api/api_summary_<m>.md`, `example/<m>/`,
 > `test/<m>_test.dart`); no doc, summary or example outlives the module it
 > describes; and every **bolded** number word in this file equals the current
 > module count.
@@ -93,12 +93,12 @@ Iterate in order. Each step states its **done** condition.
 > ✅ **RCE3 done (2026-07-15) — api-summary parity settled + verified.** The
 > api-summary question is closed in favour of **symmetry**: the core packages
 > (`tom_core_kernel` per RCE2, `tom_core_server`, and this package via OT6) now
-> carry a hand-written `doc/api_reference/` summary set
+> carry a hand-written `doc/api/` summary set
 > (`doc/api/` is gitignored for generated HTML, so summaries live in
-> `doc/api_reference/`). This package's six per-module summaries
+> `doc/api/`). This package's six per-module summaries
 > (`forms`, `little_things`, `observing`, `resources`, `runtime`, `security`)
 > plus `api_summary_index.md` were re-verified accurate against current source
-> — that was the set on 15 July 2026; `doc/api_reference/` holds **seven**
+> — that was the set on 15 July 2026; `doc/api/` holds **seven**
 > today, `forms` having gone with the module and `configuration` and
 > `preferences` having arrived since (see the Target Modules table, which is
 > the current census);
@@ -139,7 +139,7 @@ Iterate in order. Each step states its **done** condition.
    as unvisited. It is not: the machine-scoped settings holder carries dartdoc
    on its public surface (336 dartdoc lines across five files),
    [`doc/configuration.md`](../doc/configuration.md),
-   `doc/api_reference/api_summary_configuration.md`,
+   `doc/api/api_summary_configuration.md`,
    `example/configuration/configuration_example.dart` and
    `test/configuration_test.dart`. What it genuinely lacked was the module
    `readme.md` its six siblings all carry; that was written in the same pass.

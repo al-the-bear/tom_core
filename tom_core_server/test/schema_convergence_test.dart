@@ -280,7 +280,7 @@ void main() {
     late final String acceptsEntry;
 
     setUpAll(() {
-      acceptsEntry = File('doc/api_reference/api_summary_db_migration.md')
+      acceptsEntry = File('doc/api/api_summary_db_migration.md')
           .readAsLinesSync()
           .firstWhere(
             (line) => line.startsWith('| `accepts` |'),
@@ -355,7 +355,7 @@ void main() {
     const sites = {
       'lib/src/tomserver/db_migration/schema_model.dart':
           _builderClassDartdocOf,
-      'doc/api_reference/api_summary_db_migration.md': _builderSummaryProseOf,
+      'doc/api/api_summary_db_migration.md': _builderSummaryProseOf,
     };
 
     for (final entry in sites.entries) {

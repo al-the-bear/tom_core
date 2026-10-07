@@ -2031,7 +2031,7 @@ void main() {
       'lib/src/tomserver/transactions/transaction_manager.dart',
       'lib/src/tomserver/transactions/readme.md',
       'doc/transactions.md',
-      'doc/api_reference/api_summary_transactions.md',
+      'doc/api/api_summary_transactions.md',
     ];
 
     /// Whether `TomTransactionParticipant` declares a prepare step.

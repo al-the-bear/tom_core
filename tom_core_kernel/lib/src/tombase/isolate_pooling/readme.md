@@ -90,7 +90,7 @@ workers in the first place. A member is an instance member when it acts on one
 
 This readme states the rule and does not repeat the members one by one. The
 complete surface, with signatures, is in
-[`api_summary_isolate_pooling.md`](../../../../doc/api_reference/api_summary_isolate_pooling.md),
+[`api_summary_isolate_pooling.md`](../../../../doc/api/api_summary_isolate_pooling.md),
 which is maintained alongside `tom_worker.dart`; a second hand-written
 inventory could only drift away from it.
 

@@ -393,7 +393,7 @@ void main() {
   group('TomObservableEnum toString', () {
     // This is the form that appears in every log line and debug inspection of
     // an enum cell, and it is published in
-    // `doc/api_reference/api_summary_observable.md`. Asserted exactly, so the
+    // `doc/api/api_summary_observable.md`. Asserted exactly, so the
     // documented form cannot drift away from the code.
     test('renders as ~<value name> (<display text>)', () {
       final status = TomObservableEnum(

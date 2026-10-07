@@ -68,9 +68,9 @@ Iterate in order. Each step states its **done** condition.
 > ✅ **RCE4 done (2026-07-15) — api-summary parity settled + verified.** The
 > api-summary question is closed in favour of **symmetry**: the core packages
 > (`tom_core_kernel` per RCE2, this package via OT7, `tom_core_flutter` per OT6)
-> carry a hand-written `doc/api_reference/`
+> carry a hand-written `doc/api/`
 > summary set (`doc/api/` is gitignored for generated HTML, so summaries live in
-> `doc/api_reference/`). This package's 13 per-module summaries plus
+> `doc/api/`). This package's 13 per-module summaries plus
 > `api_summary_index.md` were verified present and accurate against source
 > (healthcheck spot-checked exactly); `dart analyze` is clean and — no source or
 > doc changed in this pass — the OT3 `testkit :test` 422/422 baseline stands. The

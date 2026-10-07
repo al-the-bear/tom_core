@@ -17,6 +17,10 @@
 
 ### Changed
 
+- **The API summaries moved from `doc/api_reference/` to `doc/api/`**, where
+  every other package and the workspace guideline already kept them. The
+  folder held only the markdown summaries and their index; the name
+  `api_reference` now means only the built PDF, `doc/{package}_api_reference.pdf`.
 - **`TomBaseClientConfiguration.save()` writes only what this holder
   changed.** A declared key is written, or removed, when its override differs
   from the snapshot of the last `load()` or `save()`; every other key is

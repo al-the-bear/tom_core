@@ -8,7 +8,7 @@ Run from anywhere::
 
 Exits non-zero when a quoted signature disagrees with the code.
 
-**Why it exists.** The API summaries (``doc/api_reference/api_summary_*.md``)
+**Why it exists.** The API summaries (``doc/api/api_summary_*.md``)
 are what a reader consults *instead of* the source, so a stale signature there
 misleads more directly than anywhere else -- and nothing read them.
 ``check_doc_dart_blocks.py`` skips the directory on purpose: its fences quote
@@ -77,9 +77,9 @@ SCRATCH = TOOL_DIR / "ztmp" / "api_signatures"
 #: (package, its API summary folder) -- every one triaged to zero. The folder's
 #: name differs by package; the content is the same kind of document.
 PACKAGES = [
-    ("tom_core_kernel", "doc/api_reference"),
-    ("tom_core_server", "doc/api_reference"),
-    ("tom_core_flutter", "doc/api_reference"),
+    ("tom_core_kernel", "doc/api"),
+    ("tom_core_server", "doc/api"),
+    ("tom_core_flutter", "doc/api"),
     ("tom_core_agentic", "doc/api"),
     ("tom_core_codespecs", "doc/api"),
     ("tom_flutter_ui", "doc/api"),

@@ -15,7 +15,7 @@ compile. Where a private mechanism explains an observable behaviour, the
 
 Being short is the point, so this is a selection rather than an inventory. For
 the complete member-by-member listing — every overload, every signature, every
-static — see **[the API reference](../api_reference/api_summary_observable.md)**,
+static — see **[the API reference](../api/api_summary_observable.md)**,
 which is the authoritative statement. Where the two differ, the API reference
 wins and this document has a bug.
 
@@ -454,7 +454,7 @@ An observable map implementation that automatically observes all contained value
 ## Class Hierarchy
 
 The full tree is in
-**[the API reference](../api_reference/api_summary_observable.md#class-hierarchy)**,
+**[the API reference](../api/api_summary_observable.md#class-hierarchy)**,
 which is the authoritative statement; it is deliberately not duplicated here.
 In short:
 

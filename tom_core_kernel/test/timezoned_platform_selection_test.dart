@@ -258,7 +258,7 @@ final _moduleDirectory = Directory('lib/src/tombase/timezoned');
 final _documents = <File>[
   File('lib/src/tombase/timezoned/readme.md'),
   File('doc/timezoned/timezoned.md'),
-  File('doc/api_reference/api_summary_timezoned.md'),
+  File('doc/api/api_summary_timezoned.md'),
 ];
 
 /// The word each conditional arm's dartdoc has to contain to have described

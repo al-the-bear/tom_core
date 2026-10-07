@@ -54,7 +54,7 @@ import 'package:test/test.dart';
 const Set<String> _pagesWithoutContents = {
   // An index of the other summaries: the page *is* a table of contents, and a
   // contents block listing its own sections would be a contents of a contents.
-  'doc/api_reference/api_summary_index.md',
+  'doc/api/api_summary_index.md',
   // A lookup sheet, not a narrative. Its sections are the types themselves, in
   // alphabetical-ish order, and a reader arrives by searching for a name rather
   // than by reading down a list of them.

@@ -1,6 +1,6 @@
 /// Holds every module's API summary to the sources it mirrors.
 ///
-/// `doc/api_reference/api_summary_<module>.md` is a mirror of a module's public
+/// `doc/api/api_summary_<module>.md` is a mirror of a module's public
 /// surface, and a mirror is to be verified rather than trusted: nothing in the
 /// toolchain regenerates one, so it stays true only for as long as someone
 /// remembers to update it by hand — and a summary that omits a public member
@@ -100,7 +100,7 @@ List<_Module> _modules() {
     modules.add((
       name: name,
       sources: sources,
-      summary: 'doc/api_reference/api_summary_$name.md',
+      summary: 'doc/api/api_summary_$name.md',
     ));
   }
   modules.sort((a, b) => a.name.compareTo(b.name));

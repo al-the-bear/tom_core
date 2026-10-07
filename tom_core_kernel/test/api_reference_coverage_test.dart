@@ -1,8 +1,8 @@
-/// The guard that keeps `doc/`, `doc/api_reference/` and `example/samples/` a
+/// The guard that keeps `doc/`, `doc/api/` and `example/samples/` a
 /// mirror of `lib/`.
 ///
 /// `doc/` claims, by existing, that it documents the package: the README calls
-/// it "one folder per module", and `doc/api_reference/` calls itself the
+/// it "one folder per module", and `doc/api/` calls itself the
 /// per-module API reference. Nothing enforced either claim, and both drifted —
 /// `result` and `scheduling` shipped with neither a summary nor (for `result`) a
 /// guide, and a `doc/runtime/` folder outlived the module it was written for.
@@ -16,7 +16,7 @@
 ///
 ///  * the module directories under `lib/src/tombase/`;
 ///  * the narrative guides `doc/<module>/`;
-///  * the API summaries `doc/api_reference/api_summary_<module>.md`;
+///  * the API summaries `doc/api/api_summary_<module>.md`;
 ///  * the sample folders `example/samples/<module>/`.
 ///
 /// The example direction was added after the package was found carrying *two*
@@ -49,17 +49,17 @@ import 'package:test/test.dart';
 
 /// Directories under `doc/` that are not module guides.
 ///
-/// `api_reference` is the summaries' own home, not a guide for a module named
-/// "api_reference". This is a structural exclusion — it is not, and must not
+/// `api` is the summaries' own home, not a guide for a module named
+/// "api". This is a structural exclusion — it is not, and must not
 /// become, a place to park a folder whose module has gone away.
-const Set<String> _nonModuleDocDirectories = {'api_reference'};
+const Set<String> _nonModuleDocDirectories = {'api'};
 
 /// Sample folders that legitimately have no module under `lib/src/tombase/`.
 ///
 /// `crypto` and `runtime` are re-exported wholesale from `tom_crypto` and
 /// `tom_basics`: the kernel's barrel presents them as part of its own surface,
 /// so they need samples here, but the code lives in the upstream package and
-/// there is no directory for them to mirror. Like `api_reference` above this is
+/// there is no directory for them to mirror. Like `api` above this is
 /// a structural exclusion, named one entry at a time — it is not a place to
 /// park a sample folder whose module has gone away.
 const Set<String> _reExportedSampleFolders = {'crypto', 'runtime'};
@@ -85,7 +85,7 @@ List<String> _guides() =>
         .toList()
       ..sort();
 
-/// Module names of the API summaries under `doc/api_reference/`, sorted.
+/// Module names of the API summaries under `doc/api/`, sorted.
 ///
 /// The `api_summary_` prefix is stripped so the set comes back keyed by plain
 /// module name and compares directly against [_modules]. The index is not a
@@ -93,7 +93,7 @@ List<String> _guides() =>
 List<String> _summaries() {
   const prefix = 'api_summary_';
   const suffix = '.md';
-  return Directory('doc/api_reference')
+  return Directory('doc/api')
       .listSync()
       .whereType<File>()
       .map((entry) => entry.uri.pathSegments.last)
@@ -120,7 +120,7 @@ void main() {
         missing,
         isEmpty,
         reason:
-            'These modules have no doc/api_reference/api_summary_<module>.md: '
+            'These modules have no doc/api/api_summary_<module>.md: '
             '${missing.join(', ')}. Add one following the structure the other '
             'summaries use and list it in api_summary_index.md.',
       );
@@ -172,9 +172,7 @@ void main() {
     });
 
     test('the index links every API summary', () {
-      final index = File(
-        'doc/api_reference/api_summary_index.md',
-      ).readAsStringSync();
+      final index = File('doc/api/api_summary_index.md').readAsStringSync();
       final unlisted = _summaries()
           .where((s) => !index.contains('api_summary_$s.md'))
           .toList();

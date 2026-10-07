@@ -138,7 +138,7 @@ void main() {
       for (final path in <String>[
         'lib/src/tomclient/$module/readme.md',
         'doc/$module.md',
-        'doc/api_reference/api_summary_$module.md',
+        'doc/api/api_summary_$module.md',
         'test/${module}_test.dart',
       ]) {
         if (!File(path).existsSync()) offenders.add(path);
@@ -173,15 +173,13 @@ void main() {
       if (!name.endsWith('.md') || _nonModuleDocs.contains(name)) continue;
       check('doc/$name', name.substring(0, name.length - 3));
     }
-    for (final file in Directory(
-      'doc/api_reference',
-    ).listSync().whereType<File>()) {
+    for (final file in Directory('doc/api').listSync().whereType<File>()) {
       final name = file.uri.pathSegments.last;
       if (!name.startsWith('api_summary_') || _nonModuleDocs.contains(name)) {
         continue;
       }
       check(
-        'doc/api_reference/$name',
+        'doc/api/$name',
         name.substring('api_summary_'.length, name.length - 3),
       );
     }

@@ -2509,7 +2509,7 @@ void main() {
   });
 
   // The rendered forms are asserted exactly, not with `contains`. These strings
-  // are published in `doc/api_reference/api_summary_observable.md`, and a
+  // are published in `doc/api/api_summary_observable.md`, and a
   // documented format that no test pins is a format free to drift away from its
   // own documentation. `contains("42")` passed for every conceivable rendering
   // of a TomInt holding 42, which is precisely why the doc could go stale

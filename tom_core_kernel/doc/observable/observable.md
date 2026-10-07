@@ -2119,7 +2119,7 @@ condition can occur on more than one type without ambiguity.
 
 The full tree — every leaf type and its exact `extends` / `implements` clauses
 — lives in
-**[the API reference](../api_reference/api_summary_observable.md#class-hierarchy)**,
+**[the API reference](../api/api_summary_observable.md#class-hierarchy)**,
 which is the authoritative statement. It is not repeated here: a second copy is
 a second thing to keep in step with the source.
 

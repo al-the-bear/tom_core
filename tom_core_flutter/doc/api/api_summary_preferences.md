@@ -634,4 +634,4 @@ keys it is addressed with are the kernel's `TomUserPreferenceKeys`, and so are
 the API and endpoint ids the client resolves its URIs from
 (`tomUserPreferencesApi`, `tomUserPreferences{List,Read,Write,Delete}EndpointId`,
 `registerTomUserPreferencesApi`) — see
-`tom_core_kernel/doc/api_reference/api_summary_preferences.md`.
+`tom_core_kernel/doc/api/api_summary_preferences.md`.

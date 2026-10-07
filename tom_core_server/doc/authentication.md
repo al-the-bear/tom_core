@@ -1786,7 +1786,7 @@ Every decision a login takes out of provider configuration — `provisioning`,
 when twins exist, and taking them apart is what would let a login provision
 under one registration's policy while retaining under the other's. The flow
 resolves the provider once, when it spends the pending record, and hands it on
-as [`TomOAuthExchange.provider`](api_reference/api_summary_authentication.md#tomoauthexchange);
+as [`TomOAuthExchange.provider`](api/api_summary_authentication.md#tomoauthexchange);
 nothing downstream resolves it again.
 
 The identity is unaffected: `TomExternalIdentity.issuer` names the **IdP**, not

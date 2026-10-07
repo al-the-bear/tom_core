@@ -335,9 +335,9 @@ toolkit lives in [`tom_flutter_ui`](../tom_flutter_ui/README.md). See the
   (`doc/observing.md`, `doc/resources.md`, `doc/configuration.md`,
   `doc/preferences.md`, `doc/runtime.md`, `doc/security.md`,
   `doc/little_things.md`).
-- Per-module API reference under [`doc/api_reference/`](doc/api_reference/) —
+- Per-module API reference under [`doc/api/`](doc/api/) —
   start at
-  [`doc/api_reference/api_summary_index.md`](doc/api_reference/api_summary_index.md)
+  [`doc/api/api_summary_index.md`](doc/api/api_summary_index.md)
   for the type index and one `api_summary_{module}.md` per module.
   (`doc/api/` is reserved for generated `dart doc` HTML and is gitignored.)
 - [`tom_core_kernel`](../tom_core_kernel/README.md) — the platform-neutral

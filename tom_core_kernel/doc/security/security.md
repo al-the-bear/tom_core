@@ -136,7 +136,7 @@ This document explains the module by *concept* and shows the calls each concept
 is used through. It is not an exhaustive member list: for the full signature of
 every public type —
 including the ones named only in passing here — see
-[`api_summary_security.md`](../api_reference/api_summary_security.md).
+[`api_summary_security.md`](../api/api_summary_security.md).
 
 ### Key Concepts
 

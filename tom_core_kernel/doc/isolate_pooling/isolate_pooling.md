@@ -165,7 +165,7 @@ The main class for managing worker isolates. Handles spawning, communication, an
 
 The tables below name the members this guide goes on to use, not the whole
 class. For the complete surface with full signatures see
-[`api_summary_isolate_pooling.md`](../api_reference/api_summary_isolate_pooling.md).
+[`api_summary_isolate_pooling.md`](../api/api_summary_isolate_pooling.md).
 
 | Property/Method | Description |
 |-----------------|-------------|
@@ -837,7 +837,7 @@ When using logging in workers that delegate to a logging isolate, avoid logging 
 
 ## API Reference
 
-See `doc/api_reference/api_summary_isolate_pooling.md` for the full public
+See `doc/api/api_summary_isolate_pooling.md` for the full public
 surface, or the dartdoc in `lib/src/tombase/isolate_pooling/tom_worker.dart`.
 
 ---

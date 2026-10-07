@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Hold every package's `doc/api_reference/` to the code it documents.
+"""Hold every package's `doc/api/` to the code it documents.
 
 Run from anywhere::
 
@@ -24,7 +24,7 @@ one.)
 
 **What is checked**, per module directory under `lib/src/<layer>/`:
 
-- **summary** -- the module has `doc/api_reference/api_summary_<module>.md`, no
+- **summary** -- the module has `doc/api/api_summary_<module>.md`, no
   summary documents a module that does not exist, and the index links every
   summary;
 - **source** -- the summary's `Source:` list names every file the barrel
@@ -45,8 +45,11 @@ one.)
   declares, or an ancestor's section does. `toString`, `hashCode`,
   `noSuchMethod` and `runtimeType` are not demanded.
 
-A package with no `doc/api_reference/` at all is one fault: the absence is
+A package with no `doc/api/` at all is one fault: the absence is
 recorded as debt rather than passed over in silence.
+So is a package listed in `UNWRITTEN`, whose summaries exist but predate the
+gate: the one fault names the detail count, and naming the package on the
+command line (or `--full`) prints the detail.
 
 The parsers are ports of the server suite's, including its fixes: block
 comments are opened only where Dart would open one, multi-line strings are
@@ -78,6 +81,15 @@ PACKAGES = {
     "tom_flutter_ui": "",
     "tom_core_agentic": "",
 }
+
+#: Packages whose summaries in `doc/api/` were written before this gate read
+#: them and have not yet been brought to its standard. In a default run each
+#: counts as ONE fault naming how many it would report, so the debt stays
+#: visible without a thousand detail lines drowning the packages that are at
+#: zero; name the package on the command line (or pass `--full`) for the
+#: detail. An entry whose package now audits clean is itself a fault, so the
+#: set cannot outlive what it records.
+UNWRITTEN = {"tom_flutter_ui", "tom_core_agentic"}
 
 #: Members no class section has to name: the `Object` members, as in the
 #: server's suite, and `createState`, which every `StatefulWidget` overrides for
@@ -488,7 +500,7 @@ class Package:
 
     @property
     def reference(self) -> Path:
-        return self.root / "doc" / "api_reference"
+        return self.root / "doc" / "api"
 
     def modules(self) -> list[str]:
         return sorted(p.name for p in self.modules_root.iterdir()
@@ -544,7 +556,7 @@ def audit(package: Package) -> list[str]:
     """Every fault in [package], one line each."""
     faults: list[str] = []
     if not package.reference.is_dir():
-        return [f"{package.name}: no doc/api_reference/ — the package's API "
+        return [f"{package.name}: no doc/api/ — the package's API "
                 "is documented nowhere a reader can look it up"]
 
     modules = package.modules()
@@ -750,6 +762,9 @@ def self_test() -> int:
 def main(argv: list[str]) -> int:
     if argv == ["--self-test"]:
         return self_test()
+    full = "--full" in argv
+    argv = [arg for arg in argv if arg != "--full"]
+    explicit = bool(argv)
     chosen = argv or list(PACKAGES)
     unknown = [name for name in chosen if name not in PACKAGES]
     if unknown:
@@ -764,6 +779,12 @@ def main(argv: list[str]) -> int:
                   file=sys.stderr)
             return 2
         faults = audit(package)
+        if name in UNWRITTEN and not (full or explicit):
+            faults = ([f"{name}: doc/api/ is not yet written to this gate's "
+                       f"standard -- {len(faults)} fault(s) in detail; run "
+                       f"`check_api_reference.py {name}`"]
+                      if faults else
+                      [f"{name}: audits clean -- remove it from UNWRITTEN"])
         for fault in faults:
             print(fault)
         print(f"{name}: {len(faults)} fault(s)")

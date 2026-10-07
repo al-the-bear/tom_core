@@ -224,7 +224,7 @@ const String _readmePath = 'lib/src/tombase/timezoned/readme.md';
 const String _guidePath = 'doc/timezoned/timezoned.md';
 
 /// The API mirror.
-const String _apiPath = 'doc/api_reference/api_summary_timezoned.md';
+const String _apiPath = 'doc/api/api_summary_timezoned.md';
 
 /// The method whose contract this guards.
 const String _method = 'findTimezone';

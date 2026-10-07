@@ -361,9 +361,9 @@ apps get the full kernel API through one dependency. See the
 
 - Per-module guides under [`doc/`](doc/) — one markdown file per module
   (`doc/object_persistence.md`, `doc/datasources.md`, `doc/endpoints.md`, …).
-- Per-module API reference under [`doc/api_reference/`](doc/api_reference/) —
+- Per-module API reference under [`doc/api/`](doc/api/) —
   start at
-  [`doc/api_reference/api_summary_index.md`](doc/api_reference/api_summary_index.md)
+  [`doc/api/api_summary_index.md`](doc/api/api_summary_index.md)
   for the type index and one `api_summary_{module}.md` per module.
   (`doc/api/` is reserved for generated `dart doc` HTML and is gitignored.)
 - [`doc/reflection_generation.md`](doc/reflection_generation.md) — how the
@@ -390,7 +390,7 @@ apps get the full kernel API through one dependency. See the
 - **Conformance guards:** some of those suites check the package rather than the
   code — `test/formatting_test.dart` fails when any Dart file is not
   `dart format` clean (the fix is always `dart format .`, never a code change),
-  `test/api_reference_coverage_test.dart` fails when `doc/api_reference/` and
+  `test/api_reference_coverage_test.dart` fails when `doc/api/` and
   `lib/` disagree, `test/reflection_currency_test.dart` fails when a class or
   column was added to a reflection root without regenerating, and
   `test/examples_test.dart` fails when an example stops being verified. They need

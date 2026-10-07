@@ -156,7 +156,7 @@ const List<String> _formatTemplates = [
 /// The files that state the format to a reader.
 const List<String> _documents = [
   'doc/timezoned/timezoned.md',
-  'doc/api_reference/api_summary_timezoned.md',
+  'doc/api/api_summary_timezoned.md',
   'lib/src/tombase/timezoned/timezones.dart',
 ];
 

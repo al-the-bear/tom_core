@@ -257,7 +257,7 @@ what it is.
   `platform_detection_client.dart`, and that file pulls in the selected variant
   with a conditional *import*, so `TomFlutterPlatformUtils` does not escape
   `src/`. It is documented — in
-  [`api_summary_runtime.md`](api_reference/api_summary_runtime.md) — but it is
+  [`api_summary_runtime.md`](api/api_summary_runtime.md) — but it is
   **not part of the barrel's public API**, and a test that wants it has to
   import the variant file directly:
 

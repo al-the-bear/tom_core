@@ -301,7 +301,7 @@ it and start eight test suites.
 | [`tool/check_doc_class_inventories.py`](tool/check_doc_class_inventories.py) | Holds a document's marked class inventory to the directory it inventories, in both directions |
 | [`tool/check_sample_account_rosters.py`](tool/check_sample_account_rosters.py) | Holds every marked enumeration of the advanced sample's demo accounts to the seed it describes, and reserves "seeded live accounts" for the `auth_db` rows |
 | [`tool/check_doc_phantom_names.py`](tool/check_doc_phantom_names.py) | Counts the `Tom*` type names shipped documentation writes that no code under `tom_ai/` declares |
-| [`tool/check_api_reference.py`](tool/check_api_reference.py) | Holds every package's `doc/api_reference/` to its barrel and sources — Source lists, index, names, functions, enums and class members |
+| [`tool/check_api_reference.py`](tool/check_api_reference.py) | Holds every package's `doc/api/` to its barrel and sources — Source lists, index, names, functions, enums and class members |
 | [`tool/check_field_grade_matrix.py`](tool/check_field_grade_matrix.py) | Pins every documented copy of the advanced field-grade matrix — tables and prose remainders — to the map in code |
 | [`tool/check_resource_key_namespace.py`](tool/check_resource_key_namespace.py) | Finds resource keys written with the field-grade scope glued to the front of the type |
 | [`tool/check_figure_wellformed.py`](tool/check_figure_wellformed.py) | Finds SVG figures that are not well-formed XML, and so render as nothing |
@@ -828,7 +828,7 @@ failing block is left behind as the source the analyzer actually saw — under
 easily than a line number; a clean run leaves nothing. The scratch directory is
 per package, because the pubspec inside it names exactly one path dependency.
 
-The generated API summaries are excluded — `doc/api_reference/` in some
+The generated API summaries are excluded — `doc/api/` in some
 packages, `doc/api/` in others, one category under two names. Those fences
 quote *signatures*, and a signature is a declaration rather than a use: making
 them parse would take a mechanical `;` per block and buy nothing, because a
@@ -1589,7 +1589,7 @@ every class section names each public member its class declares, or an
 ancestor's section does.
 
 The parsers are ports of the suite's, including its fixes, which is why the
-gate reads `tom_core_server` at zero. A package with no `doc/api_reference/` at
+gate reads `tom_core_server` at zero. A package with no `doc/api/` at
 all counts as one fault, so the absence is recorded rather than passed over:
 `tom_flutter_ui` and `tom_core_agentic` are that baseline.
 

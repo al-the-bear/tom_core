@@ -1274,7 +1274,7 @@ void main() {
     /// Every file in this module that tells a reader what `dispose` does.
     const lifecycleFiles = <String>[
       'doc/observing.md',
-      'doc/api_reference/api_summary_observing.md',
+      'doc/api/api_summary_observing.md',
       'lib/src/tomclient/observing/tom_observing_widget.dart',
     ];
 
@@ -1350,7 +1350,7 @@ void main() {
     /// Every file in this module that describes the listener surface.
     const surfaceFiles = <String>[
       'doc/observing.md',
-      'doc/api_reference/api_summary_observing.md',
+      'doc/api/api_summary_observing.md',
       'lib/src/tomclient/observing/value_listenable_observer.dart',
       'lib/src/tomclient/observing/readme.md',
     ];
@@ -1392,7 +1392,7 @@ void main() {
       // as soon as the prose elsewhere is right. The table is what a reader
       // scanning for the signature actually reads.
       final summary = File(
-        'doc/api_reference/api_summary_observing.md',
+        'doc/api/api_summary_observing.md',
       ).readAsStringSync();
       final row = RegExp(
         r'^\| `removeListener` \|.*$',

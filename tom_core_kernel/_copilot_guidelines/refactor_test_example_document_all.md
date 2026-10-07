@@ -52,7 +52,7 @@ Iterate through these steps in order. Each step states its **done** condition.
 > ✅ **RCE2 done (2026-07-15) — documentation half.** The Per-Module Workflow's
 > API-documentation deliverable (sub-steps 6–8: the `api.dart`-equivalent
 > reference + "docs cover all public API, describe nothing absent") is complete
-> for all 15 barrel modules: `doc/api_reference/` now holds one verified
+> for all 15 barrel modules: `doc/api/` now holds one verified
 > per-module `api_summary_*.md` plus `api_summary_index.md` (kernel 1.1.1). The
 > open-ended internal-refactor + example/test-surface scaling (sub-steps 1–4) is
 > deferred as low-priority depth work under quest todo **RCF1**.

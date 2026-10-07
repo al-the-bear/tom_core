@@ -642,9 +642,7 @@ void main() {
       reason: 'the two no longer share a destination; revise the summary',
     );
 
-    final summary = File(
-      'doc/api_reference/api_summary_runtime.md',
-    ).readAsStringSync();
+    final summary = File('doc/api/api_summary_runtime.md').readAsStringSync();
     String descriptionOf(String method) => RegExp(
       '^\\| `$method` \\|[^|]*\\|(.*)\\|\\s*\$',
       multiLine: true,
@@ -707,7 +705,7 @@ void main() {
       // does not hold it.
       final documents = [
         'doc/runtime.md',
-        'doc/api_reference/api_summary_runtime.md',
+        'doc/api/api_summary_runtime.md',
         'README.md',
       ];
       final type = RegExp(r'\bTom(Fallback)?PlatformUtils\b');
@@ -810,9 +808,7 @@ void main() {
             'documented path has nothing left to match',
       );
 
-      final summary = File(
-        'doc/api_reference/api_summary_runtime.md',
-      ).readAsStringSync();
+      final summary = File('doc/api/api_summary_runtime.md').readAsStringSync();
       expect(
         summary,
         contains(importPath!),
@@ -841,8 +837,8 @@ void main() {
       // away called it not part of the public API, and the index tabulated it
       // beside the exported ones with nothing to distinguish them.
       final documents = [
-        'doc/api_reference/api_summary_runtime.md',
-        'doc/api_reference/api_summary_index.md',
+        'doc/api/api_summary_runtime.md',
+        'doc/api/api_summary_index.md',
       ];
       // `TomFlutterPlatformUtilsBase` needs naming separately: a word boundary
       // after `Utils` does not exist in front of `Base`, so the bare pattern
@@ -961,10 +957,7 @@ void main() {
     // only one of them would leave the other free to drift — which is how the
     // module ended up with three descriptions of one set of files, no two of
     // them agreeing.
-    const documents = [
-      'doc/runtime.md',
-      'doc/api_reference/api_summary_runtime.md',
-    ];
+    const documents = ['doc/runtime.md', 'doc/api/api_summary_runtime.md'];
 
     test('the base declares what the variants answer the same way', () {
       // Named rather than counted, because the point of the base is *which*
@@ -1364,10 +1357,7 @@ void main() {
       // "throws", which was never false but told a reader nothing they could
       // catch on.
       final thrown = neutralHttpClientError().runtimeType.toString();
-      for (final path in [
-        'doc/api_reference/api_summary_runtime.md',
-        'doc/runtime.md',
-      ]) {
+      for (final path in ['doc/api/api_summary_runtime.md', 'doc/runtime.md']) {
         final row = File(path)
             .readAsLinesSync()
             .where((l) => l.startsWith('|') && l.contains('throws'))

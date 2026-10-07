@@ -1,6 +1,6 @@
-/// The guard that keeps `doc/api_reference/` a mirror of `lib/`.
+/// The guard that keeps `doc/api/` a mirror of `lib/`.
 ///
-/// `doc/api_reference/` claims, by existing, that it documents the package.
+/// `doc/api/` claims, by existing, that it documents the package.
 /// Nothing enforced that claim, and it drifted: five modules — audit,
 /// scheduling, messaging, export, file_storage — shipped with a full narrative
 /// guide and no API summary at all. That was not any one module's omission.
@@ -13,7 +13,7 @@
 ///
 ///  * the module directories under `lib/src/tomserver/`;
 ///  * the narrative guides `doc/<module>.md`;
-///  * the API summaries `doc/api_reference/api_summary_<module>.md`.
+///  * the API summaries `doc/api/api_summary_<module>.md`.
 ///
 /// Both directions matter. A module without a summary is undocumented; a
 /// summary without a module documents something that no longer exists, which
@@ -964,10 +964,9 @@ List<String> _abbreviatedSourceEntries(String summary) {
   ];
 }
 
-/// The `Source:` list of `doc/api_reference/api_summary_<module>.md`.
-List<String>? _summarySourceList(String module) => _sourceListOf(
-  File('doc/api_reference/api_summary_$module.md').readAsStringSync(),
-);
+/// The `Source:` list of `doc/api/api_summary_<module>.md`.
+List<String>? _summarySourceList(String module) =>
+    _sourceListOf(File('doc/api/api_summary_$module.md').readAsStringSync());
 
 /// Whether [index] names [api] — as a bare `` `name` `` or as a generic
 /// `` `name<T>` ``, which is how the index writes the type parameters.
@@ -1022,7 +1021,7 @@ _IndexTables _indexTablesOf(List<String> lines) {
 
 /// [_indexTablesOf] applied to the package's own index.
 final _IndexTables _indexTables = _indexTablesOf(
-  File('doc/api_reference/api_summary_index.md').readAsLinesSync(),
+  File('doc/api/api_summary_index.md').readAsLinesSync(),
 );
 
 /// The types each per-module summary gives a section of its own, keyed by
@@ -1065,9 +1064,7 @@ List<String> _missingFromIndexTable(String module) => [
 /// collapses the same rows to a set, because every other check asks whether a
 /// name is there.
 List<String> _indexAlphaOrder() {
-  final lines = File(
-    'doc/api_reference/api_summary_index.md',
-  ).readAsLinesSync();
+  final lines = File('doc/api/api_summary_index.md').readAsLinesSync();
   final start = lines.indexWhere(
     (l) => l.trim() == '## Alphabetical Type Index',
   );
@@ -1199,9 +1196,9 @@ List<String>? _globalFunctionNamesOf(String summary) {
   return names;
 }
 
-/// The Global Functions section of `doc/api_reference/api_summary_<module>.md`.
+/// The Global Functions section of `doc/api/api_summary_<module>.md`.
 List<String>? _globalFunctionNames(String module) => _globalFunctionNamesOf(
-  File('doc/api_reference/api_summary_$module.md').readAsStringSync(),
+  File('doc/api/api_summary_$module.md').readAsStringSync(),
 );
 
 /// The public enums [source] declares.
@@ -1295,7 +1292,7 @@ String? _enumSection(String summary) {
 
 /// The summary text of [module].
 String _summary(String module) =>
-    File('doc/api_reference/api_summary_$module.md').readAsStringSync();
+    File('doc/api/api_summary_$module.md').readAsStringSync();
 
 /// Every name [summary] puts in front of a reader — its headings, and every
 /// identifier inside an inline code span outside a fenced block.
@@ -1721,7 +1718,7 @@ String? _headingType(String title) {
   return _declarations.containsKey(name) ? name : null;
 }
 
-/// Every `#### Properties` table in `doc/api_reference`, in document order.
+/// Every `#### Properties` table in `doc/api`, in document order.
 ///
 /// A table belongs to the nearest heading above it that names a type, at any
 /// level: most summaries put the class at `###`, while `datasources` and
@@ -1733,9 +1730,7 @@ String? _headingType(String title) {
 List<_PropertyTable> _propertyTables() {
   final tables = <_PropertyTable>[];
   for (final module in _modules()) {
-    final lines = File(
-      'doc/api_reference/api_summary_$module.md',
-    ).readAsLinesSync();
+    final lines = File('doc/api/api_summary_$module.md').readAsLinesSync();
 
     String? type;
     var typeLevel = 0;
@@ -1799,9 +1794,7 @@ List<String> _firstColumn(List<String> lines, int index) {
 /// table headed anything else than `Properties` is checked by nothing, and the
 /// only way that stays deliberate is for the set of such titles to be named.
 List<(int, String)> _propertiesHeadingsOf(String module) => [
-  for (final line in File(
-    'doc/api_reference/api_summary_$module.md',
-  ).readAsLinesSync())
+  for (final line in File('doc/api/api_summary_$module.md').readAsLinesSync())
     if (RegExp(r'^(#+)\s+((?:Static )?Properties\b.*)$').firstMatch(line)
         case final heading?)
       (heading.group(1)!.length, heading.group(2)!.trim()),
@@ -2568,7 +2561,7 @@ bool _isMemberSection(String title) => _memberSectionHeadings.contains(
   title.replaceFirst(_memberSectionQualifier, ''),
 );
 
-/// Every member row in `doc/api_reference/`, paired with the class it is filed
+/// Every member row in `doc/api/`, paired with the class it is filed
 /// under — the rows of [_classSections], flattened.
 List<_Attribution> _attributions() => [
   for (final section in _classSections)
@@ -2722,12 +2715,11 @@ List<_ClassSection> _classSectionsOf(String file, List<String> lines) {
   return sections;
 }
 
-/// Parsed once: every class section of every summary in `doc/api_reference/`.
+/// Parsed once: every class section of every summary in `doc/api/`.
 final List<_ClassSection> _classSections = [
-  for (final file
-      in Directory('doc/api_reference').listSync().whereType<File>().where(
-        (e) => e.uri.pathSegments.last.startsWith('api_summary_'),
-      ))
+  for (final file in Directory('doc/api').listSync().whereType<File>().where(
+    (e) => e.uri.pathSegments.last.startsWith('api_summary_'),
+  ))
     ..._classSectionsOf(file.uri.pathSegments.last, file.readAsLinesSync()),
 ];
 
@@ -2790,11 +2782,9 @@ typedef _Referral = ({
   List<String> names,
 });
 
-/// Every referring paragraph in `doc/api_reference/`.
+/// Every referring paragraph in `doc/api/`.
 List<_Referral> _summaryParagraphs() => [
-  for (final file in Directory(
-    'doc/api_reference',
-  ).listSync().whereType<File>())
+  for (final file in Directory('doc/api').listSync().whereType<File>())
     if (file.uri.pathSegments.last.startsWith('api_summary_'))
       ..._referralsIn(file.uri.pathSegments.last, file.readAsLinesSync()),
 ];
@@ -3275,8 +3265,8 @@ typedef _RelationshipClaim = ({
   Set<String> named,
 });
 
-/// Every relationship line in `doc/api_reference/`, attributed to its class.
-List<_RelationshipClaim> _relationshipClaims() => Directory('doc/api_reference')
+/// Every relationship line in `doc/api/`, attributed to its class.
+List<_RelationshipClaim> _relationshipClaims() => Directory('doc/api')
     .listSync()
     .whereType<File>()
     .where((entry) => entry.path.endsWith('.md'))
@@ -3871,7 +3861,7 @@ List<List<int>> _paragraphsOf(
 /// what proves the check reports one — so it cannot be its own subject.
 List<(String, List<String>)> _citingSurfaces() => [
   ..._guides().map((guide) => ('doc/${guide.$1}', guide.$2)),
-  for (final directory in const ['doc/api_reference', 'lib', 'test', 'example'])
+  for (final directory in const ['doc/api', 'lib', 'test', 'example'])
     for (final entry in Directory(directory).listSync(recursive: true))
       if (entry is File &&
           entry.path != _selfExcludedSuite &&
@@ -4374,7 +4364,7 @@ List<_ModulePointer> _modulePointers() {
   final modules = _modules().toSet();
   final pointers = <_ModulePointer>[];
   for (final file
-      in Directory('doc/api_reference').listSync().whereType<File>()
+      in Directory('doc/api').listSync().whereType<File>()
       // The index carries no hierarchy diagrams; every other summary may.
       .where(
         (entry) => entry.uri.pathSegments.last.startsWith('api_summary_'),
@@ -4415,11 +4405,11 @@ List<_ModulePointer> _modulePointers() {
 }
 
 void main() {
-  group('doc/api_reference mirrors lib/src/tomserver', () {
+  group('doc/api mirrors lib/src/tomserver', () {
     test('every module has an API summary', () {
       final modules = _modules();
       final summaries = _docs(
-        'doc/api_reference',
+        'doc/api',
         stripPrefix: 'api_summary_',
       ).where((name) => name != 'index').toList();
 
@@ -4428,7 +4418,7 @@ void main() {
         missing,
         isEmpty,
         reason:
-            'These modules have no doc/api_reference/api_summary_<module>.md: '
+            'These modules have no doc/api/api_summary_<module>.md: '
             '${missing.join(', ')}. Add one following the structure the other '
             'summaries use and list it in api_summary_index.md.',
       );
@@ -4437,7 +4427,7 @@ void main() {
     test('every API summary has a module', () {
       final modules = _modules();
       final summaries = _docs(
-        'doc/api_reference',
+        'doc/api',
         stripPrefix: 'api_summary_',
       ).where((name) => name != 'index').toList();
 
@@ -4468,11 +4458,9 @@ void main() {
     });
 
     test('the index links every API summary', () {
-      final index = File(
-        'doc/api_reference/api_summary_index.md',
-      ).readAsStringSync();
+      final index = File('doc/api/api_summary_index.md').readAsStringSync();
       final summaries = _docs(
-        'doc/api_reference',
+        'doc/api',
         stripPrefix: 'api_summary_',
       ).where((name) => name != 'index').toList();
 
@@ -5052,7 +5040,7 @@ class RealClass {}
       final abbreviated = <String>[];
       for (final module in _modules()) {
         final entries = _abbreviatedSourceEntries(
-          File('doc/api_reference/api_summary_$module.md').readAsStringSync(),
+          File('doc/api/api_summary_$module.md').readAsStringSync(),
         );
         for (final entry in entries) {
           abbreviated.add('$module: $entry');
@@ -5136,9 +5124,7 @@ class RealClass {}
   });
 
   group('the index names every exported name', () {
-    final index = File(
-      'doc/api_reference/api_summary_index.md',
-    ).readAsStringSync();
+    final index = File('doc/api/api_summary_index.md').readAsStringSync();
 
     for (final module in _modules()) {
       test(module, () {
@@ -5929,9 +5915,7 @@ One: `TomKind`, documented beside the type that carries it.
       // check above — which enumerates headings — would never look at it.
       final stray = <String>[];
       for (final module in _modules()) {
-        final lines = File(
-          'doc/api_reference/api_summary_$module.md',
-        ).readAsLinesSync();
+        final lines = File('doc/api/api_summary_$module.md').readAsLinesSync();
         String title = '';
         for (var index = 0; index < lines.length; index++) {
           final heading = RegExp(r'^#+\s+(.*)$').firstMatch(lines[index]);
@@ -6043,7 +6027,7 @@ One: `TomKind`, documented beside the type that carries it.
         'lib/src/tomserver/configuration/base_server_configuration.dart';
 
     /// The Properties table for this class, from the census the whole
-    /// api_reference is held to.
+    /// api is held to.
     List<String> tableRows() => _propertyTableCensus
         .firstWhere(
           (table) => table.module == 'configuration' && table.type == className,
@@ -6454,7 +6438,7 @@ class After {}
         greaterThan(1500),
         reason:
             'only ${rows.length} member rows were recovered from '
-            'doc/api_reference; the summaries are no longer being read',
+            'doc/api; the summaries are no longer being read',
       );
 
       final undecidable = rows
@@ -6595,7 +6579,7 @@ class After {}
       // every relationship line in the directory must have found a class, and
       // an unrecognised heading fails here instead of quietly shrinking the
       // check above.
-      final written = Directory('doc/api_reference')
+      final written = Directory('doc/api')
           .listSync()
           .whereType<File>()
           .where((entry) => entry.path.endsWith('.md'))
@@ -7935,7 +7919,7 @@ class After {}
           incomplete,
           isEmpty,
           reason:
-              'doc/api_reference/api_summary_$module.md documents these '
+              'doc/api/api_summary_$module.md documents these '
               'classes without naming every public member they declare: '
               '${incomplete.join('; ')}. A member list is read as complete — '
               'that is the only way to read one — so an omission does not '
@@ -8066,7 +8050,7 @@ class After {}
           isEmpty,
           reason:
               'these constructor listings in '
-              'doc/api_reference/api_summary_$module.md name fewer parameters '
+              'doc/api/api_summary_$module.md name fewer parameters '
               'than the constructor declares: ${underListed.join('; ')}. A '
               'signature is the one part of a summary a reader copies rather '
               'than reads, so an omitted parameter is not a thin description — '
@@ -8291,7 +8275,7 @@ class After {}
           mistyped,
           isEmpty,
           reason:
-              'these signatures in doc/api_reference/api_summary_$module.md '
+              'these signatures in doc/api/api_summary_$module.md '
               'give a parameter a type the source does not: '
               '${mistyped.join('; ')}. A signature is copied rather than read, '
               'and a type copied wider than the declared one does not compile — '
@@ -9554,7 +9538,7 @@ List<_EntityKey> _documentedEntityKeys() => [
 /// The markdown this package maintains by hand, as paths from the package root.
 List<String> _handWrittenDocuments() => [
   'README.md',
-  for (final directory in ['doc', 'doc/api_reference'])
+  for (final directory in ['doc', 'doc/api'])
     ...Directory(directory)
         .listSync()
         .whereType<File>()
@@ -9973,7 +9957,7 @@ typedef _RequestScope = ({
 /// the same middleware, so all three have to describe the same request.
 const List<String> _requestScopeMirrors = [
   'doc/server.md',
-  'doc/api_reference/api_summary_server.md',
+  'doc/api/api_summary_server.md',
   'lib/src/tomserver/server/readme.md',
 ];
 

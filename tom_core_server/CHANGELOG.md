@@ -77,6 +77,10 @@
 
 ### Changed
 
+- **The API summaries moved from `doc/api_reference/` to `doc/api/`**, where
+  every other package and the workspace guideline already kept them. The
+  folder held only the markdown summaries and their index; the name
+  `api_reference` now means only the built PDF, `doc/{package}_api_reference.pdf`.
 - **`TomLoginFailure` moved to `tom_core_kernel`**, beside
   `TomAuthenticationResult`. `TomAuthenticationServer` now sets the result's
   `loginFailureReason` wherever it sets `error`: from the caught
