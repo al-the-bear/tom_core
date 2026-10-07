@@ -118,10 +118,16 @@ abstract class TomDataSource implements TomTransactionParticipant {
   /// Closes the connection and frees its resources.
   Future<void> close();
 
-  /// Whether the connection is currently usable (default `true`).
-  bool isOperational() {
-    return true;
-  }
+  /// Whether the connection is currently usable.
+  ///
+  /// Abstract, like the rest of this contract, because its answer is acted on:
+  /// [TomDataSourceInfo.isOperational] reports it, and code that gates work or
+  /// a readiness answer on that trusts it. A default `true` would let a driver
+  /// that never implemented it report usable forever — a readiness signal that
+  /// cannot fail. A driver with no cheap liveness probe still has to answer,
+  /// and should answer from what it does know (whether it holds an open
+  /// connection), not from optimism.
+  bool isOperational();
 
   /// Compiles [query] (optionally mapping rows to [resultType]) into a reusable
   /// [TomPreparedStatement].

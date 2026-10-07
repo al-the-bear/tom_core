@@ -43,6 +43,11 @@
 
 ### Changed
 
+- **`TomDataSource.isOperational` is abstract.** It defaulted to `true`, so a
+  driver that never implemented it reported usable forever through
+  `TomDataSourceInfo.isOperational`. Every instance member of the data-source
+  contract is now abstract, as `TomPreparedStatement`'s already were, and a
+  source-reading test holds both contracts to it.
 - **Unreachable raises removed, with their documented entries:**
   `annotation_analyzer.analyse_persistent_type.columns_not_found`,
   `query_sentence_compiler.analyse_order_by.failed`,

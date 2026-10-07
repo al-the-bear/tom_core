@@ -1960,6 +1960,42 @@ void main() {
       expect(body, contains('int get lastAffectedRows;'));
       expect(body, contains('Future<List<T>> execute('));
     });
+
+    /// The instance members of `abstract class TomDataSource`: its body up to
+    /// the first static declaration, which is the registry machinery and
+    /// legitimately has bodies.
+    String dataSourceContract() {
+      final source = File(
+        'lib/src/tomserver/datasources/datasource_initialization.dart',
+      ).readAsStringSync();
+      const header =
+          'abstract class TomDataSource implements TomTransactionParticipant {';
+      final start = source.indexOf(header);
+      expect(start, isNot(-1), reason: 'the contract was renamed');
+      final body = source.substring(start + header.length);
+      return body.substring(0, body.indexOf('\n  static '));
+    }
+
+    test('every instance member of TomDataSource is abstract', () {
+      // The same rule, for the data-source half. Its sharpest case is
+      // `isOperational`, which TomDataSourceInfo.isOperational reports and
+      // readiness checks trust: a default `true` would let a driver that never
+      // implemented it report usable forever.
+      final body = declarations(dataSourceContract());
+      expect(
+        body.where((line) => line.contains('=>') || line.contains('{')),
+        isEmpty,
+        reason:
+            'a member of TomDataSource gained a default implementation; a '
+            'driver can now leave it unanswered and have the silence read as '
+            'an answer',
+      );
+      expect(
+        body.join('\n'),
+        contains('bool isOperational();'),
+        reason: 'the check above passes trivially if the member is removed',
+      );
+    });
   });
 
   // The third state, and the one close used to leave unrepresentable. Closing

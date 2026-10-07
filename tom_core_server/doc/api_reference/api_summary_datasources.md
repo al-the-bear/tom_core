@@ -799,7 +799,7 @@ exposes its `sqlDialect`, lifecycle, and execution surface, and is a
 | ------ | --------- | ----------- |
 | `initialize` | `Future<void> initialize(Map<String, dynamic> settings)` | Opens the connection and applies `settings`. |
 | `close` | `Future<void> close()` | Closes the connection and frees its resources. |
-| `isOperational` | `bool isOperational()` | Whether the connection is currently usable (default `true`). |
+| `isOperational` | `bool isOperational()` | Whether the connection is currently usable. Abstract: a driver must answer, from what it knows (whether it holds an open connection), so a driver that never implemented it cannot report usable by default. |
 | `prepareStatement` | `Future<TomPreparedStatement<T>> prepareStatement<T extends Object>(TomQuery query, [Type? resultType])` | Compiles `query` into a reusable prepared statement. |
 | `executeCommand` | `Future<BigInt> executeCommand(String command, [Map<String, dynamic>? params])` | Executes a write command and returns the affected-row count. |
 | `executeQuery` | `Future<List<T>> executeQuery<T extends Object>(String command, [Map<String, dynamic>? params, Type? resultType])` | Executes a read command, mapping rows to `resultType`. |
