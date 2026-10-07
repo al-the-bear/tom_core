@@ -120,7 +120,7 @@ class OpsTexts {
     final installed = TomLocalizedTextResources.resolve();
     if (installed != null) return installed;
     final texts = load(directory: directory);
-    TomBean.withType(TomLocalizedTextResources, texts);
+    TomBean.withType<TomLocalizedTextResources>(texts);
     return texts;
   }
 

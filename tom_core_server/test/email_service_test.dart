@@ -311,7 +311,7 @@ void main() {
     test('resolve answers the installed bean', () {
       expect(TomEmailService.resolve(), isNull);
       addTearDown(TomBean.resetBeanContext);
-      TomBean.withType(TomEmailService, service);
+      TomBean.withType<TomEmailService>(service);
       expect(TomEmailService.resolve(), same(service));
     });
   });

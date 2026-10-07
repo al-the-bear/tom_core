@@ -200,8 +200,7 @@ machine-local persistence says so with `TomMemoryDevicePreferenceStore`.
 implementation. The simplest wiring registers one instance:
 
 ```dart
-TomBean.withType(
-  TomDevicePreferences,
+TomBean.withType<TomDevicePreferences>(
   TomStoredDevicePreferences(TomPlatformDevicePreferenceStore(location)),
 );
 
@@ -489,8 +488,7 @@ construction.** It gives the store a `location` naming the signed-in account,
 and installs a new store when the account changes:
 
 ```dart
-TomBean.withType(
-  TomDevicePreferences,
+TomBean.withType<TomDevicePreferences>(
   TomStoredDevicePreferences(
     TomPlatformDevicePreferenceStore(
       '$supportDirectory/preferences/$accountId.json',

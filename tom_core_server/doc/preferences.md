@@ -438,8 +438,7 @@ The endpoints resolve `TomUserPreferences` per call, so a deployment installs it
 once at bootstrap:
 
 ```dart
-TomBean.withType(
-  TomUserPreferences,
+TomBean.withType<TomUserPreferences>(
   TomUserPreferences(TomUserPreferenceRepository()),
 );
 ```

@@ -593,7 +593,7 @@ abstract class TomDeliveredCode2FAService<S extends Object>
 /// it — is challenged with a code sent to their address.
 ///
 /// ```dart
-/// TomBean.withType(TomEmailService, TomEmailService(outbox: outbox, texts: texts));
+/// TomBean.withType<TomEmailService>(TomEmailService(outbox: outbox, texts: texts));
 /// // The template the code arrives in:
 /// //   email.two_factor_code.subject: "Your {application} sign-in code"
 /// //   email.two_factor_code.text:    "Your code is {code}. It expires in {minutes} minutes."
@@ -749,7 +749,7 @@ class TomEmailCode2FAService
 /// notification reach the same handset.
 ///
 /// ```dart
-/// TomBean.withType(TomSmsService, TomSmsService(outbox: outbox, texts: texts));
+/// TomBean.withType<TomSmsService>(TomSmsService(outbox: outbox, texts: texts));
 /// //   sms.two_factor_code.text: "{code} is your {application} code."
 /// ```
 ///

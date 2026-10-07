@@ -49,8 +49,7 @@ Future<void> main() async {
   const supportDirectory = '/var/lib/example-app';
 
   // Register once at startup — the only line that knows about storage.
-  TomBean.withType(
-    TomDevicePreferences,
+  TomBean.withType<TomDevicePreferences>(
     TomStoredDevicePreferences(
       TomPlatformDevicePreferenceStore('$supportDirectory/preferences.json'),
     ),
@@ -77,8 +76,7 @@ construction** — it gives the store a `location` naming the signed-in account
 and installs a new store when the account changes:
 
 ```dart
-TomBean.withType(
-  TomDevicePreferences,
+TomBean.withType<TomDevicePreferences>(
   TomStoredDevicePreferences(
     TomPlatformDevicePreferenceStore(
       '$supportDirectory/preferences/$accountId.json',

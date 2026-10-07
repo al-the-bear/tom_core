@@ -443,7 +443,7 @@ class TomOAuthProviderConfig {
 /// consumer changing:
 ///
 /// ```dart
-/// TomBean.withType(TomOAuthProviders, TomOAuthProviders.fromConfiguration());
+/// TomBean.withType<TomOAuthProviders>(TomOAuthProviders.fromConfiguration());
 /// ```
 class TomOAuthProviders {
   /// The configuration path the provider set is read from.

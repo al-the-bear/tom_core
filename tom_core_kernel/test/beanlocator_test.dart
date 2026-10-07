@@ -294,8 +294,8 @@ void main() {
         // Two beans assignable to AmbiguousService are registered under
         // distinct type keys; resolving by the shared interface must raise the
         // ambiguous-implementation error.
-        TomBean.withType(AmbiguousServiceA, AmbiguousServiceA());
-        TomBean.withType(AmbiguousServiceB, AmbiguousServiceB());
+        TomBean.withType<AmbiguousServiceA>(AmbiguousServiceA());
+        TomBean.withType<AmbiguousServiceB>(AmbiguousServiceB());
 
         expect(
           () => TomBean<AmbiguousService>().get(),
@@ -319,18 +319,17 @@ void main() {
     group('withType', () {
       test('should register a bean by type', () {
         final service = AnotherService('type-test');
-        // Use a unique type to avoid conflicts with other tests
-        TomBean.withType(TestService, service);
+        TomBean.withType<AnotherService>(service);
 
-        final retrieved = TomBean.getBeanByType(TestService);
+        final retrieved = TomBean.getBeanByType(AnotherService);
         expect(retrieved, same(service));
       });
 
       test('should throw for duplicate types', () {
-        TomBean.withType(TestService, AnotherService('first'));
+        TomBean.withType<AnotherService>(AnotherService('first'));
 
         expect(
-          () => TomBean.withType(TestService, AnotherService('second')),
+          () => TomBean.withType<AnotherService>(AnotherService('second')),
           throwsA(isA<TomBeanLocatorException>()),
         );
       });
@@ -526,8 +525,7 @@ void main() {
         equals('concrete'),
       );
 
-      TomBean.overrideWithType(
-        DiscoveredConcreteService,
+      TomBean.overrideWithType<DiscoveredConcreteService>(
         MockConcreteService(),
       );
 
@@ -539,8 +537,7 @@ void main() {
 
       expect(
         keyOfThrow(
-          () => TomBean.withType(
-            DiscoveredConcreteService,
+          () => TomBean.withType<DiscoveredConcreteService>(
             MockConcreteService(),
           ),
         ),
@@ -558,8 +555,7 @@ void main() {
       final resolved = TomBean<DiscoveredConcreteService>();
       expect(resolved.get().ping(), equals('concrete'));
 
-      TomBean.overrideWithType(
-        DiscoveredConcreteService,
+      TomBean.overrideWithType<DiscoveredConcreteService>(
         MockConcreteService(),
       );
 
@@ -572,7 +568,7 @@ void main() {
       // must leave an occupied key alone — otherwise "register before
       // initializeBeanContext()" would work for interface components and fail,
       // silently, for concrete ones.
-      TomBean.withType(DiscoveredConcreteService, MockConcreteService());
+      TomBean.withType<DiscoveredConcreteService>(MockConcreteService());
 
       initializeBeanContext();
 
@@ -584,8 +580,7 @@ void main() {
       // puts in setUp, and it empties the registry — so an override has to be
       // re-applied after every pass, not merely applied once.
       initializeBeanContext();
-      TomBean.overrideWithType(
-        DiscoveredConcreteService,
+      TomBean.overrideWithType<DiscoveredConcreteService>(
         MockConcreteService(),
       );
 
@@ -743,7 +738,7 @@ void main() {
       // list would grow for the life of the process and every late validation
       // would re-resolve every handle ever made.
       initializeBeanContext();
-      TomBean.withType(TestService, TestServiceImpl());
+      TomBean.withType<TestService>(TestServiceImpl());
       final resolvable = TomBean<TestService>();
 
       expect(keyOfThrow(validateBeanReferences), equals('<did-not-throw>'));
@@ -881,7 +876,7 @@ void main() {
   // ==========================================================================
   group('type resolution', () {
     test('resolves a bean registered by type through its interface', () {
-      TomBean.withType(TestService, TestServiceImpl());
+      TomBean.withType<TestService>(TestServiceImpl());
 
       final resolved = TomBean<TestService>().get();
 
@@ -890,7 +885,7 @@ void main() {
     });
 
     test('callable syntax works on a type-resolved bean', () {
-      TomBean.withType(TestService, TestServiceImpl());
+      TomBean.withType<TestService>(TestServiceImpl());
 
       final bean = TomBean<TestService>();
 
@@ -900,7 +895,7 @@ void main() {
 
     test('caches the resolved instance on the handle', () {
       final service = AnotherService('cached');
-      TomBean.withType(AnotherService, service);
+      TomBean.withType<AnotherService>(service);
 
       final bean = TomBean<AnotherService>();
       expect(identical(bean.get(), service), isTrue);
@@ -922,18 +917,19 @@ void main() {
     );
 
     test('a bean under a type it is not names both types', () {
-      // `withType` takes its key as a `Type` *value*, and Dart has no
-      // expression that decides whether an object is an instance of one, so
-      // the registration below cannot be refused where it is made. Resolution
-      // is the first point at which the relation is decidable, because there
-      // `T` is a real type argument.
+      // `withType` cannot make this registration: its key is a type argument
+      // the compiler checks the bean against. `withRuntimeType` takes its key
+      // as a `Type` *value*, and Dart has no expression that decides whether
+      // an object is an instance of one, so the registration below cannot be
+      // refused where it is made. Resolution is the first point at which the
+      // relation is decidable, because there `T` is a real type argument.
       //
       // Reporting it as an absence would be wrong twice over: the key *is*
       // bound, and "no bean found" sends the reader looking for a missing
       // registration rather than the wrong one sitting in front of them. That
       // is the failure this test exists for; a consumer in tom_core_server
       // already type-tests what it resolves rather than trust the key.
-      TomBean.withType(TestService, AnotherService('not a TestService'));
+      TomBean.withRuntimeType(TestService, AnotherService('not a TestService'));
 
       final error = errorOfThrow(() => TomBean<TestService>().get());
       expect(
@@ -979,7 +975,7 @@ void main() {
       );
 
       TomBean.resetBeanContext();
-      TomBean.withType(AnotherService, AnotherService('typed'));
+      TomBean.withType<AnotherService>(AnotherService('typed'));
 
       expect(
         keyOfThrow(
@@ -1004,9 +1000,9 @@ void main() {
     });
 
     test('duplicate typed registration', () {
-      TomBean.withType(TestService, TestServiceImpl());
+      TomBean.withType<TestService>(TestServiceImpl());
       expect(
-        keyOfThrow(() => TomBean.withType(TestService, TestServiceImpl())),
+        keyOfThrow(() => TomBean.withType<TestService>(TestServiceImpl())),
         equals('beanlocator.initialization.duplicate_bean_with_type'),
       );
     });
@@ -1027,8 +1023,8 @@ void main() {
     });
 
     test('ambiguous type resolution', () {
-      TomBean.withType(AmbiguousServiceA, AmbiguousServiceA());
-      TomBean.withType(AmbiguousServiceB, AmbiguousServiceB());
+      TomBean.withType<AmbiguousServiceA>(AmbiguousServiceA());
+      TomBean.withType<AmbiguousServiceB>(AmbiguousServiceB());
       expect(
         keyOfThrow(() => TomBean<AmbiguousService>().get()),
         equals('beanlocator.bean_access.more_than_one_implementation_found'),
@@ -1041,8 +1037,8 @@ void main() {
       // iterate first would be doing exactly the arbitrary resolution the error
       // exists to prevent — and it would do it silently, since the caller who
       // sees the answer is not the caller who saw the throw.
-      TomBean.withType(AmbiguousServiceA, AmbiguousServiceA());
-      TomBean.withType(AmbiguousServiceB, AmbiguousServiceB());
+      TomBean.withType<AmbiguousServiceA>(AmbiguousServiceA());
+      TomBean.withType<AmbiguousServiceB>(AmbiguousServiceB());
 
       final handle = TomBean<AmbiguousService>();
       final first = errorOfThrow(handle.get);

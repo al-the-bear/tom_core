@@ -63,8 +63,7 @@ Future<void> run() async {
   try {
     // Example 1: registration. The one line in an application that knows where
     // machine-local state lives — every call site below resolves the interface.
-    TomBean.withType(
-      TomDevicePreferences,
+    TomBean.withType<TomDevicePreferences>(
       TomStoredDevicePreferences(TomPlatformDevicePreferenceStore(location)),
     );
     final preferences = TomDevicePreferences.resolve()!;

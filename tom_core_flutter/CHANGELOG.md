@@ -1,5 +1,10 @@
 ## Unreleased
 
+### Changed
+
+- **Registrations use `TomBean.withType<X>(bean)`**, following the kernel's
+  move of the key into a type argument. Reflection artifacts regenerated.
+
 ### Tests
 
 - **`test/ai_citation_test.dart`** fails the suite when an artefact of the

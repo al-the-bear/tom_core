@@ -12,7 +12,7 @@ collaborator declares the dependency it needs instead of constructing it.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomBean<T>` | Typed handle to a bean, resolving lazily on `get()` (or on `()`). The factories also register: `withName` / `withType` bind a key, `overrideWithName` / `overrideWithType` replace one, `fromName` binds a handle to a name that need not exist yet. |
+| `TomBean<T>` | Typed handle to a bean, resolving lazily on `get()` (or on `()`). The factories and statics also register: `withName` / `withType<B>` bind a key, `overrideWithName` / `overrideWithType<B>` replace one, `withRuntimeType` / `overrideWithRuntimeType` bind a key held only as a `Type` value (unchecked), `fromName` binds a handle to a name that need not exist yet. |
 | `TomComponent` | The discovery annotation — not a base class, and nothing to implement. It carries the interface `Type` the annotated class registers under: `@TomComponent(UserService)` on an implementation, or `@tomComponent` on a class that registers under its own concrete type. |
 | `TomNoInterface` | The `Type` `@tomComponent` carries, meaning "register me by my own type". |
 | `TomBeanLocatorException` | Thrown on duplicate registration, failed resolution, an interface with no matching or several equally matching implementations, and a runtime that is not configured yet. |
@@ -98,7 +98,7 @@ void main() {
 
   // … or under a type. Discovery then leaves that key alone — a binding is an
   // answer, not a candidate — which is how a test substitutes a stub.
-  TomBean.withType(GreetingService, StubGreetingService());
+  TomBean.withType<GreetingService>(StubGreetingService());
 }
 ```
 

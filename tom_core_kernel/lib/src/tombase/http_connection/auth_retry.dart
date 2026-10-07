@@ -52,7 +52,7 @@ abstract class TomAuthRefresher {
 ///
 /// The default ([tomDefaultAuthRetryPolicy]) treats a single `401` as an expiry
 /// and retries exactly once. Register a different instance as a bean
-/// (`TomBean.withType(TomAuthRetryPolicy, ...)`) to tune it per environment; the
+/// (`TomBean.withType<TomAuthRetryPolicy>(...)`) to tune it per environment; the
 /// coordinator resolves the active policy through [active].
 class TomAuthRetryPolicy {
   /// The HTTP status codes that mean "the bearer token has expired" and should

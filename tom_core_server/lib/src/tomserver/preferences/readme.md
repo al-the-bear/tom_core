@@ -65,8 +65,7 @@ Future<void> main() async {
   });
 
   // Install the store once, at bootstrap.
-  TomBean.withType(
-    TomUserPreferences,
+  TomBean.withType<TomUserPreferences>(
     TomUserPreferences(TomUserPreferenceRepository()),
   );
 

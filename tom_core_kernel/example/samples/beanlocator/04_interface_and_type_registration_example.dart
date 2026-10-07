@@ -128,7 +128,7 @@ class InterfaceAndTypeRegistrationExample {
     final emailService = EmailNotificationService();
 
     // Register by interface type - this allows resolution by NotificationService
-    TomBean.withType(NotificationService, emailService);
+    TomBean.withType<NotificationService>(emailService);
     registeredNotificationType = emailService.runtimeType.toString();
 
     print('   - Registered EmailNotificationService as NotificationService');
@@ -165,7 +165,7 @@ class InterfaceAndTypeRegistrationExample {
 
     // Register a metrics service by type
     final metricsService = InMemoryMetricsService();
-    TomBean.withType(MetricsService, metricsService);
+    TomBean.withType<MetricsService>(metricsService);
 
     // Use static accessor to retrieve bean
     final retrieved = TomBean.getBeanByType(MetricsService);
@@ -226,14 +226,14 @@ class InterfaceAndTypeRegistrationExample {
     final cacheService = InMemoryCacheService();
 
     // First registration succeeds
-    TomBean.withType(CacheService, cacheService);
+    TomBean.withType<CacheService>(cacheService);
     cacheServiceType = 'CacheService registered';
     print('   - First registration of CacheService: success');
 
     // Second registration of same type should throw
     try {
       final anotherCache = InMemoryCacheService();
-      TomBean.withType(CacheService, anotherCache);
+      TomBean.withType<CacheService>(anotherCache);
       print('   - ERROR: Should have thrown exception');
     } on TomBeanLocatorException catch (e) {
       caughtDuplicateTypeError = true;

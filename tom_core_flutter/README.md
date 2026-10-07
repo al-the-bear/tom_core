@@ -250,8 +250,7 @@ await config.save();     // persist the overrides — and only those
 
 ```dart
 // The one line in an application that knows where machine-local state lives.
-TomBean.withType(
-  TomDevicePreferences,
+TomBean.withType<TomDevicePreferences>(
   TomStoredDevicePreferences(TomPlatformDevicePreferenceStore(location)),
 );
 

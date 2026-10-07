@@ -212,8 +212,7 @@ Future<void> run() async {
     '${identical(TomAuthRetryPolicy.active, tomDefaultAuthRetryPolicy)}',
   );
 
-  TomBean.withType(
-    TomAuthRetryPolicy,
+  TomBean.withType<TomAuthRetryPolicy>(
     const TomAuthRetryPolicy(expiryStatusCodes: {440}, maxRefreshRetries: 3),
   );
   final active = TomAuthRetryPolicy.active;

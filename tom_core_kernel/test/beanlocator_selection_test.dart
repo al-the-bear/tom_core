@@ -314,7 +314,7 @@ void main() {
         prodEnvironment,
         platformMacos,
         beforeDiscovery: () =>
-            TomBean.withType(GreetingService, StubGreetingService()),
+            TomBean.withType<GreetingService>(StubGreetingService()),
       );
 
       expect(

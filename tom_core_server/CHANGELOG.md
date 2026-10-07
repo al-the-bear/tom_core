@@ -39,6 +39,10 @@
 
 ### Changed
 
+- **Registrations use `TomBean.withType<X>(bean)`**, following the kernel's
+  move of the key into a type argument. The endpoint pipeline's default
+  component, whose type is read off a mirror, registers through
+  `TomBean.withRuntimeType`. Reflection artifacts regenerated.
 - **`TomBaseServerConfiguration.listenToAnyIP` is renamed `listenToAnyIp`.**
   It was the one field whose name did not round-trip through the
   `SCREAMING_SNAKE_CASE` environment convention, so `LISTEN_TO_ANY_IP` bound

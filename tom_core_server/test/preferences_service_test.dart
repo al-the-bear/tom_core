@@ -76,7 +76,7 @@ void main() {
       // quietly take its fallback path against a store that was wired
       // correctly.
       final store = preferenceStore();
-      TomBean.withType(TomUserPreferences, store);
+      TomBean.withType<TomUserPreferences>(store);
 
       expect(TomUserPreferences.resolve(), same(store));
     });
@@ -87,7 +87,7 @@ void main() {
       // type test keeps the failure shaped like the absence it is — the caller
       // takes its fallback — rather than a cast error raised at whichever
       // consumer happened to ask first.
-      TomBean.overrideWithType(TomUserPreferences, 'not a store');
+      TomBean.overrideWithRuntimeType(TomUserPreferences, 'not a store');
 
       expect(TomUserPreferences.resolve(), isNull);
     });

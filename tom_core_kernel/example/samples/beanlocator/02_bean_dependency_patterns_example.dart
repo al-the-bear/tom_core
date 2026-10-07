@@ -288,7 +288,7 @@ class BeanDependencyPatternsExample {
 
     // Register a logger bean
     TomBean.withName("sample_logger", ConsoleLoggingService());
-    TomBean.withType(ConsoleLoggingService, ConsoleLoggingService());
+    TomBean.withType<ConsoleLoggingService>(ConsoleLoggingService());
 
     // Get by name
     final byName = TomBean.getBeanByName('sample_primaryPayment');

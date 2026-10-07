@@ -31,7 +31,7 @@
 /// own by type:
 ///
 /// ```dart
-/// TomBean.withType(Tom2FAPolicy, TomRole2FAPolicy(
+/// TomBean.withType<Tom2FAPolicy>(TomRole2FAPolicy(
 ///   requirementByRole: {'admin': Tom2FARequirement.required},
 /// ));
 /// ```
@@ -335,7 +335,7 @@ class TomPrincipalFlag2FAPolicy implements Tom2FAPolicy {
 /// drift apart.
 ///
 /// ```dart
-/// TomBean.withType(Tom2FAPolicy, TomRole2FAPolicy(
+/// TomBean.withType<Tom2FAPolicy>(TomRole2FAPolicy(
 ///   requirementByRole: {
 ///     'admin': Tom2FARequirement.required,
 ///     'staff': Tom2FARequirement.optional,

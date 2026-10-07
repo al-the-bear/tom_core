@@ -68,7 +68,7 @@ class TomUserPreferenceException extends TomServerException {
 /// (a caching one, a read-only one) without any consumer changing:
 ///
 /// ```dart
-/// TomBean.withType(TomUserPreferences, TomUserPreferences(TomUserPreferenceRepository()));
+/// TomBean.withType<TomUserPreferences>(TomUserPreferences(TomUserPreferenceRepository()));
 /// final timezone = await TomUserPreferences.resolve()?.get<String>(
 ///   TomUserPreferenceKeys.timezone,
 /// );

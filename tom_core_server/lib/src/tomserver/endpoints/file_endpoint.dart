@@ -41,7 +41,7 @@
 ///
 /// ```dart
 /// TomFileSlots.register(documentRepository); // TomFileRepository<Document, int>
-/// TomBean.withType(TomFileServer, TomFileServer());
+/// TomBean.withType<TomFileServer>(TomFileServer());
 /// ```
 ///
 /// The client then addresses it with no knowledge of any of the above:

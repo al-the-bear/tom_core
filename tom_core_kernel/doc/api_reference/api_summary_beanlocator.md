@@ -134,34 +134,51 @@ factory TomBean.fromName(String name)
 
 factory TomBean.withName(String name, Object bean)
 
-factory TomBean.withType(Type t, Object bean)
-
 factory TomBean.overrideWithName(String name, Object bean)
-
-factory TomBean.overrideWithType(Type t, Object bean)
 ```
 
 `fromName` creates a handle that resolves by registered name; the name need not
 be registered yet, so a handle may be held as a field and the bean registered
 later in startup. `withName`
 registers a named bean and returns a handle for it, throwing
-`TomBeanLocatorException` if the name already exists. `withType` registers a
-bean by type, throwing `TomBeanLocatorException` if the type is already
-registered — including a type discovery has bound; a registration made before
-`initializeBeanContext` does take precedence, since discovery leaves an occupied
-key alone.
+`TomBeanLocatorException` if the name already exists. `overrideWithName`
+replaces whatever is registered under the name instead of refusing it, for
+substituting an implementation in a test.
 
-`overrideWithName` and `overrideWithType` replace whatever is registered under
-the key instead of refusing it, for substituting an implementation in a test.
-Note that a handle which has already resolved keeps its instance, that
-`initializeBeanContext` discards overrides, and that the replacement must be
-assignable to the type consumers request.
+#### Registration by Type
+
+```dart
+static TomBean<B> withType<B extends Object>(B bean)
+
+static TomBean<B> overrideWithType<B extends Object>(B bean)
+
+static TomBean<Object> withRuntimeType(Type type, Object bean)
+
+static TomBean<Object> overrideWithRuntimeType(Type type, Object bean)
+```
+
+`withType<B>` registers `bean` under its type argument `B`, so the compiler
+checks the bean against its key: `TomBean.withType<UserService>(impl)` compiles
+only when `impl` is a `UserService`. Name `B` explicitly — inferred, it becomes
+the static type of `bean`, usually the implementation class, which nobody
+resolves. It throws `TomBeanLocatorException` if the type is already registered,
+including a type discovery has bound; a registration made before
+`initializeBeanContext` takes precedence, since discovery leaves an occupied key
+alone. `overrideWithType<B>` replaces the binding instead of refusing it, for
+substituting an implementation in a test; a handle which has already resolved
+keeps its instance, and `initializeBeanContext` discards overrides.
+
+`withRuntimeType` and `overrideWithRuntimeType` take the key as a `Type` value,
+for the one kind of caller that has no type argument to give — a component type
+read off a reflection mirror. They cannot check the bean against the key; a
+mismatch is reported at resolution as
+`beanlocator.bean_access.bean_not_assignable_to_type`.
 
 #### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `installByEnvironment` | `static TomBean<T> installByEnvironment<T>(Map<String, T Function()> factories, {String? environment})` | Selects and installs exactly one implementation of `T` by the active environment name (from `environment` or `TomRuntime.getCurrentEnvironment`); registers the built instance by type. Throws `TomBeanLocatorException` if no factory is registered for the active environment, or if `environment` is omitted and no runtime environment is configured. |
+| `installByEnvironment` | `static TomBean<T> installByEnvironment<T extends Object>(Map<String, T Function()> factories, {String? environment})` | Selects and installs exactly one implementation of `T` by the active environment name (from `environment` or `TomRuntime.getCurrentEnvironment`); registers the built instance by type. Throws `TomBeanLocatorException` if no factory is registered for the active environment, or if `environment` is omitted and no runtime environment is configured. |
 | `getBeanByType` | `static Object? getBeanByType(Type type)` | Returns the bean registered for `type`, or `null` if not found. |
 | `getBeanByName` | `static Object? getBeanByName(String name)` | Returns the bean registered with `name`, or `null` if not found. |
 | `resetBeanContext` | `static void resetBeanContext()` | Clears all registered beans, drops pending unresolved handles, and marks the context uninitialized so a later `initializeBeanContext` starts clean. |

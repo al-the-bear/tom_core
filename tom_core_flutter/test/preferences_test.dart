@@ -2486,7 +2486,7 @@ void main() {
       final installed = TomStoredDevicePreferences(
         TomMemoryDevicePreferenceStore(),
       );
-      TomBean.withType(TomDevicePreferences, installed);
+      TomBean.withType<TomDevicePreferences>(installed);
       expect(identical(TomDevicePreferences.resolve(), installed), isTrue);
     });
   });

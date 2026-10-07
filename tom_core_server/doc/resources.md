@@ -288,7 +288,7 @@ final texts = TomLocalizedTextResources(
   },
 );
 
-TomBean.withType(TomLocalizedTextResources, texts);
+TomBean.withType<TomLocalizedTextResources>(texts);
 ```
 
 `TomYaml.loadYamlFile` comes from the configuration module and is the usual
@@ -317,7 +317,7 @@ With neither, the first render throws
 `messaging.<channel>.texts.not_configured` rather than rendering blank.
 
 ```dart
-TomBean.withType(TomLocalizedTextResources, texts);   // once, at bootstrap
+TomBean.withType<TomLocalizedTextResources>(texts);   // once, at bootstrap
 
 final email = TomEmailService(outbox: outbox);        // reads the bean
 final fixture = TomEmailService(outbox: outbox, texts: testBundles); // overrides it

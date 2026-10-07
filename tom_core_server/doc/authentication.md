@@ -530,8 +530,7 @@ boolean, and a boolean cannot distinguish "may use a factor" from "must".
 per role rather than per user:
 
 ```dart
-TomBean.withType(
-  Tom2FAPolicy,
+TomBean.withType<Tom2FAPolicy>(
   TomRole2FAPolicy(
     requirementByRole: const {
       'admin':   Tom2FARequirement.required,
@@ -561,7 +560,7 @@ a reader to think they matter.
 | `[]` | **no** mechanism is permitted. A `required` decision then has nothing to satisfy it and the login fails with `login.error.2fa.unsupported-mechanism` |
 
 Neither shipped policy carries `@TomComponent`. Installing one is a deliberate
-act — `TomBean.withType(Tom2FAPolicy, ...)` — because a policy that got picked
+act — `TomBean.withType<Tom2FAPolicy>(...)` — because a policy that got picked
 up by a component scan would silently start demanding second factors from a
 deployment that only added a dependency.
 
@@ -820,8 +819,7 @@ nobody", "insist, but allow three more logins first". The flags cannot express
 any of those; a policy is one bean:
 
 ```dart
-TomBean.withType(
-  Tom2FAPolicy,
+TomBean.withType<Tom2FAPolicy>(
   TomRole2FAPolicy(
     requirementByRole: const {'admin': Tom2FARequirement.required},
     mechanisms: const [TomTotp2FAService.mechanismType],
@@ -857,8 +855,7 @@ the first code. See
 **3 — Install an enrolment store**, so users can set a factor up themselves:
 
 ```dart
-TomBean.withType(
-  Tom2FAEnrolmentStore,
+TomBean.withType<Tom2FAEnrolmentStore>(
   TomPersistent2FAEnrolmentStore(TomUserTwoFactorEnrolmentRepository()),
 );
 ```
@@ -1020,8 +1017,8 @@ rule live there once. A subclass supplies only its channel.
 templates. Nothing else:
 
 ```dart
-TomBean.withType(TomEmailService, TomEmailService(outbox: outbox, texts: texts));
-TomBean.withType(TomSmsService, TomSmsService(outbox: outbox, texts: texts));
+TomBean.withType<TomEmailService>(TomEmailService(outbox: outbox, texts: texts));
+TomBean.withType<TomSmsService>(TomSmsService(outbox: outbox, texts: texts));
 ```
 
 Install them **before the first login**, not merely before the first code: the
@@ -1632,9 +1629,8 @@ TomAuthenticationServer.globalSettingUserAuthenticationService =
       delegate: TomAuthenticationServer.globalSettingUserAuthenticationService,
     );
 
-TomBean.withType(TomOAuthProviders, TomOAuthProviders.fromConfiguration());
-TomBean.withType(
-  TomExternalIdentityStore,
+TomBean.withType<TomOAuthProviders>(TomOAuthProviders.fromConfiguration());
+TomBean.withType<TomExternalIdentityStore>(
   TomPersistentExternalIdentityStore(TomExternalIdentityLinkRepository()),
 );
 ```
@@ -1935,8 +1931,7 @@ oauth:
 ```
 
 ```dart
-TomBean.withType(
-  TomOAuthTokenStore,
+TomBean.withType<TomOAuthTokenStore>(
   TomPersistentOAuthTokenStore(TomExternalIdentityTokenRepository()),
 );
 ```
@@ -2066,8 +2061,7 @@ oauth:
 ```dart
 // Read the block and install whatever it named. TomOAuthStateStore.resolve()
 // picks the installed bean up; nothing else changes.
-TomBean.withType(
-  TomOAuthStateStore,
+TomBean.withType<TomOAuthStateStore>(
   TomOAuthStateStoreSettings.fromConfiguration().createStore(),
 );
 ```

@@ -597,8 +597,7 @@ class TomOAuthStateStoreSettings {
   /// Builds the store these settings describe.
   ///
   /// ```dart
-  /// TomBean.withType(
-  ///   TomOAuthStateStore,
+  /// TomBean.withType<TomOAuthStateStore>(
   ///   TomOAuthStateStoreSettings.fromConfiguration().createStore(),
   /// );
   /// ```

@@ -219,9 +219,8 @@ void _configure(Tom2FARequirement requirement) {
 
   TomBean.resetBeanContext();
   _store = TomMemory2FAEnrolmentStore();
-  TomBean.withType(Tom2FAEnrolmentStore, _store);
-  TomBean.withType(
-    Tom2FAPolicy,
+  TomBean.withType<Tom2FAEnrolmentStore>(_store);
+  TomBean.withType<Tom2FAPolicy>(
     TomRole2FAPolicy(
       defaultRequirement: requirement,
       mechanisms: const [_SmsAdaptor.type, _AuthenticatorApp.type],

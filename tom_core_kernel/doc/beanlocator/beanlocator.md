@@ -323,7 +323,7 @@ To resolve to service instances that are not marked with @tomReflector/@tomCompo
 
 ```dart
 // Register, for example in platform initialization, environment initialization...
-TomBean.withType(MyService, MyServiceImplementation());
+TomBean.withType<MyService>(MyServiceImplementation());
 
 // ... elsewhere, once that registration has run:
 
@@ -331,18 +331,23 @@ TomBean.withType(MyService, MyServiceImplementation());
 final myService = TomBean<MyService>().get();
 ```
 
-**The key is not checked against the bean, and cannot be.** `MyService` here is
-a `Type` *value*, and Dart has no expression that decides whether an object is
-an instance of one — `is` needs a type, not a value of type `Type`.
-Reflection does not close the gap: `canReflectType` answers false for any class
-carrying no `@tomReflector`, which is exactly the population this registration
-form exists for.
+**The key is a type argument, so the compiler checks the bean against it.**
+`TomBean.withType<MyService>(NotAMyService())` does not compile. Name the type
+argument explicitly: left to inference it becomes the static type of the bean —
+`MyServiceImplementation` above — and the bean is registered under a key no
+consumer asks for.
 
-So the mismatch is reported where it becomes decidable, on resolution, because
+One caller has no type argument to give: code that holds the key only as a
+`Type` value, such as a component type read off a reflection mirror. It uses
+`TomBean.withRuntimeType(type, bean)` (and `overrideWithRuntimeType`), whose
+name says it is unchecked — Dart has no expression that decides whether an
+object is an instance of a `Type` *value*, and reflection does not close the gap
+(`canReflectType` answers false for any class carrying no `@tomReflector`). A
+mismatch there is reported where it becomes decidable, on resolution, because
 `TomBean<MyService>()` has a real type argument:
 
 ```dart
-TomBean.withType(MyService, NotAMyService());   // accepted, unchecked
+TomBean.withRuntimeType(MyService, NotAMyService());   // accepted, unchecked
 
 TomBean<MyService>().get();
 // throws beanlocator.bean_access.bean_not_assignable_to_type:
@@ -370,7 +375,7 @@ silently clobbering each other, so replacing a binding has to say so:
 initializeBeanContext();
 
 // Substitute the collaborator under test.
-TomBean.overrideWithType(PaymentGateway, MockPaymentGateway());
+TomBean.overrideWithType<PaymentGateway>(MockPaymentGateway());
 
 final gateway = TomBean<PaymentGateway>().get(); // the mock
 ```
@@ -386,9 +391,10 @@ Three things about an override fail silently, so they are worth knowing:
   (see [Resetting the Bean Context](#resetting-the-bean-context)), so an override
   belongs *after* the pass in `setUp`, and must be re-applied after every later
   pass.
-- **The replacement must be assignable** to the type consumers ask for. If it is
-  not, resolution skips it and reports the bean as missing rather than as a type
-  mismatch.
+- **The replacement is registered under the type argument.**
+  `overrideWithType<PaymentGateway>(mock)` replaces the `PaymentGateway`
+  binding; written without the type argument it binds `MockPaymentGateway`
+  instead and leaves the original in place.
 
 ## Environment and Platform Beans
 
@@ -656,7 +662,7 @@ so the handler above is sufficient and does not need a second `catch`.
 | `beanlocator.bean_access.bean_not_found_by_name` | Named bean not found. Raised on `get()`, never by [startup validation](#startup-validation) — a name that is not registered yet is a supported state |
 | `beanlocator.bean_access.bean_not_found_by_type` | Type mismatch for named bean. Also raised by [startup validation](#startup-validation), since the name is registered and the mismatch is answerable at boot |
 | `beanlocator.bean_access.no_bean_found_uninitialized` | Bean type not registered. Also raised by [startup validation](#startup-validation) for a typed handle nothing bound |
-| `beanlocator.bean_access.bean_not_assignable_to_type` | The type key *is* bound, but to something that is not an instance of it — a bean registered through `withType` under a type it does not implement. Names both the type asked for and the type found |
+| `beanlocator.bean_access.bean_not_assignable_to_type` | The type key *is* bound, but to something that is not an instance of it — a bean registered through `withRuntimeType` under a type it does not implement — `withType` cannot produce this, the compiler refuses it. Names both the type asked for and the type found |
 | `beanlocator.bean_access.more_than_one_implementation_found` | More than one registered bean satisfies the requested type. Raised on *every* `get()` — a handle that failed to resolve caches nothing, so the ambiguity never wears down into an arbitrary answer |
 | `beanlocator.environment.no_factory_for_environment` | `installByEnvironment` has no factory for the active environment |
 | `beanlocator.environment.runtime_environment_not_initialized` | An operation needed the active environment and the runtime was never configured — see [Initialize in Correct Sequence](#1-initialize-in-correct-sequence). The `operation` and `subject` parameters name what was being wired |

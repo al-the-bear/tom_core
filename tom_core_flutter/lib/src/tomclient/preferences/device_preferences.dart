@@ -53,8 +53,7 @@
 /// ```dart
 /// // On sign-in. One location per account, so two accounts on one machine
 /// // keep two documents and never read each other's keys.
-/// TomBean.withType(
-///   TomDevicePreferences,
+/// TomBean.withType<TomDevicePreferences>(
 ///   TomStoredDevicePreferences(
 ///     TomPlatformDevicePreferenceStore(
 ///       '$supportDirectory/preferences/$accountId.json',
@@ -154,8 +153,7 @@ class TomDevicePreferenceException extends TomClientException {
 /// needed:
 ///
 /// ```dart
-/// TomBean.withType(
-///   TomDevicePreferences,
+/// TomBean.withType<TomDevicePreferences>(
 ///   TomStoredDevicePreferences(TomPlatformDevicePreferenceStore(path)),
 /// );
 ///

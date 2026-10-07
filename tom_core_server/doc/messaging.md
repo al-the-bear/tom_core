@@ -1042,7 +1042,7 @@ and supplies values:
 
 ```dart
 final emailService = TomEmailService(outbox: outbox, texts: texts);
-TomBean.withType(TomEmailService, emailService);
+TomBean.withType<TomEmailService>(emailService);
 
 await emailService.send(TomEmailRequest.toPrincipal(
   templateKey: 'email.password_reset',

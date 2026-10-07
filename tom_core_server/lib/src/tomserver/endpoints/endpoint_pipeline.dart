@@ -2121,7 +2121,9 @@ class TomEndpointRouting {
   Object? instantiateComponent(ClassMirror componentType) {
     try {
       final instance = componentType.newInstance('', const []);
-      TomBean.withType(componentType.dynamicReflectedType, instance);
+      // The key exists only as a Type value read off the mirror, so this is
+      // the one registration that cannot take its key as a type argument.
+      TomBean.withRuntimeType(componentType.dynamicReflectedType, instance);
       tomLog.trace(
         "No bean registered for ${componentType.qualifiedName}; constructed the default instance.",
       );

@@ -251,9 +251,9 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       router = TomEndpointRouting().initializeRouter();
     });
 
@@ -350,9 +350,9 @@ void main() {
       // The router resolves each @tomService interface to a component bean; both
       // the fixture service and the (transitively captured) health service have
       // endpoint methods, so both need a registered instance.
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       router = TomEndpointRouting().initializeRouter();
     });
 
@@ -448,9 +448,9 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       router = TomEndpointRouting().initializeRouter();
       // The defaults are mutable statics, so one test changing one would
       // otherwise leak into every test after it — including the default-case
@@ -600,9 +600,9 @@ void main() {
   group('routingInfo is keyed by route and method', () {
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       // `initializeRouter` starts from an empty table, so a stale entry from an
       // earlier run cannot let an absent route look present here.
       TomEndpointRouting().initializeRouter();
@@ -734,9 +734,9 @@ void main() {
   group('the routing tables are readable, not writable', () {
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       TomEndpointRouting().initializeRouter();
     });
 
@@ -827,9 +827,9 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       TomEndpointRouting().initializeRouter();
       // Any mounted endpoint will do. The switch reads `tep.methods`; the
       // handler and the mirror are only what serves the route and what names the
@@ -922,9 +922,9 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       router = TomEndpointRouting().initializeRouter();
     });
 
@@ -1000,9 +1000,9 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(GreetingServer, GreetingServer());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<GreetingServer>(GreetingServer());
       router = TomEndpointRouting().initializeRouter();
     });
 
@@ -1118,13 +1118,13 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
       // Step 2 of the readme: register the implementation as its own bean. The
       // router would fall back to default-constructing it, but the readme shows
       // the explicit registration because that is the step an application with a
       // real constructor cannot skip.
-      TomBean.withType(TodoApiServer, TodoApiServer());
+      TomBean.withType<TodoApiServer>(TodoApiServer());
       router = TomEndpointRouting().initializeRouter();
     });
 
@@ -1195,8 +1195,8 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
       router = TomEndpointRouting().initializeRouter();
     });
 
@@ -1316,9 +1316,9 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       TomHealthServer.resetHealthChecks();
       router = TomEndpointRouting().initializeRouter();
     });
@@ -1541,9 +1541,9 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       TomEndpointRouting().initializeRouter();
       publicHandler = _routeInfo('/fixture/health').handler;
       unguardedHandler = _routeInfo('/fixture/unguarded').handler;
@@ -1619,9 +1619,9 @@ void main() {
         () => TomResourceKeyProtection.globalSettingProtectionDefault = false,
       );
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       TomEndpointRouting().initializeRouter();
       contractGatedHandler = _routeInfo(
         '/fixture-access/contract-gated',
@@ -1814,9 +1814,9 @@ void main() {
       TomResourceKeyProtection.globalSettingProtectionDefault = true;
       addTearDown(TomResourceKeyProtection.restoreDefaults);
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       TomEndpointRouting().initializeRouter();
       contractGatedHandler = _routeInfo(
         '/fixture-access/contract-gated',
@@ -1986,9 +1986,9 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       router = TomEndpointRouting().initializeRouter();
 
       previousOutput = tomLog.logOutput;
@@ -2181,9 +2181,9 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       router = TomEndpointRouting().initializeRouter();
       sink = TomMemoryAuditSink();
       TomAuditTrail.install(sink);
@@ -2274,9 +2274,9 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       TomEndpointRouting().initializeRouter();
       parseHandler = _routeInfo('/fixture/parse', 'POST').handler;
     });
@@ -2396,9 +2396,9 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       TomEndpointRouting().initializeRouter();
       typed = _routeInfo('/fixture/typed/{id}').handler;
     });
@@ -2585,9 +2585,9 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       TomEndpointRouting().initializeRouter();
       pairHandler = _routeInfo('/fixture/pair').handler;
       optionalTailHandler = _routeInfo('/fixture/optional_tail').handler;
@@ -2733,9 +2733,9 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       router = TomEndpointRouting().initializeRouter();
       FixtureApiServer.transactionalArrivals.clear();
     });

@@ -4245,13 +4245,12 @@ void main() {
         expiryStatusCodes: {440},
         maxRefreshRetries: 5,
       );
-      TomBean.withType(TomAuthRetryPolicy, custom);
+      TomBean.withType<TomAuthRetryPolicy>(custom);
       expect(TomAuthRetryPolicy.active, same(custom));
     });
 
     test('active falls back to default after the bean context is reset', () {
-      TomBean.withType(
-        TomAuthRetryPolicy,
+      TomBean.withType<TomAuthRetryPolicy>(
         const TomAuthRetryPolicy(expiryStatusCodes: {440}),
       );
       TomBean.resetBeanContext();
@@ -4413,8 +4412,7 @@ void main() {
     });
 
     test('resolves the active policy bean when no policy is passed', () async {
-      TomBean.withType(
-        TomAuthRetryPolicy,
+      TomBean.withType<TomAuthRetryPolicy>(
         const TomAuthRetryPolicy(expiryStatusCodes: {419}),
       );
       final refresher = _ScriptedRefresher(succeeds: true);

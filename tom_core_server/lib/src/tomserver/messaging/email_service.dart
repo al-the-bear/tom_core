@@ -191,7 +191,7 @@ class TomEmailRequest {
 ///
 /// ```dart
 /// final emailService = TomEmailService(outbox: outbox, texts: texts);
-/// TomBean.withType(TomEmailService, emailService);
+/// TomBean.withType<TomEmailService>(emailService);
 /// ```
 class TomEmailService extends TomTemplatedMessageService<TomEmailRequest> {
   /// The sub-key holding a template's subject line.

@@ -231,7 +231,7 @@ class NamedBeansExample {
       database: 'app_typed',
       isPrimary: true,
     );
-    TomBean.withType(DatabaseConfig, typedDb);
+    TomBean.withType<DatabaseConfig>(typedDb);
 
     final byTypeResult = TomBean.getBeanByType(DatabaseConfig);
     print('   - TomBean.getBeanByType(DatabaseConfig):');

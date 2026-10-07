@@ -421,12 +421,11 @@ Future<void> run() async {
   // front end controls instead of in an address bar.
   TomBean.resetBeanContext();
   final endpointIdentities = TomMemoryExternalIdentityStore();
-  TomBean.withType(
-    TomOAuthProviders,
+  TomBean.withType<TomOAuthProviders>(
     _providers(provisioning: 'autoProvision'),
   );
-  TomBean.withType(TomOAuthStateStore, TomOAuthMemoryStateStore());
-  TomBean.withType(TomOAuthTokenTransport, _ScriptedProvider());
+  TomBean.withType<TomOAuthStateStore>(TomOAuthMemoryStateStore());
+  TomBean.withType<TomOAuthTokenTransport>(_ScriptedProvider());
   final savedService =
       TomAuthenticationServer.globalSettingUserAuthenticationService;
   TomAuthenticationServer.globalSettingUserAuthenticationService =

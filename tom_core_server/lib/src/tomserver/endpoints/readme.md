@@ -66,7 +66,7 @@ void main() {
   // 2. Register the implementation as a bean. The router would fall back to
   //    default-constructing the @tomComponent, but an implementation with a
   //    real constructor cannot rely on that.
-  TomBean.withType(TodoApiServer, TodoApiServer());
+  TomBean.withType<TodoApiServer>(TodoApiServer());
 
   // 3. Build the router. TomEndpointRouting scans TodoApi's metadata, finds
   //    `GET /todos`, resolves TodoApiServer as its instance and mounts the

@@ -67,8 +67,8 @@ void main() {
 
     setUp(() async {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       router = TomEndpointRouting().initializeRouter();
       final handler = const Pipeline()
           .addMiddleware(

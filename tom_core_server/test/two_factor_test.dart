@@ -718,7 +718,7 @@ void main() {
     });
 
     test('resolve finds the installed store', () {
-      TomBean.withType(Tom2FAEnrolmentStore, store);
+      TomBean.withType<Tom2FAEnrolmentStore>(store);
       expect(identical(Tom2FAEnrolmentStore.resolve(), store), isTrue);
     });
 
@@ -820,7 +820,7 @@ void main() {
     // means *this user has genuinely enrolled nothing*.
     test('an empty store is distinguishable from no store', () async {
       expect(Tom2FAEnrolmentStore.resolve(), isNull);
-      TomBean.withType(Tom2FAEnrolmentStore, store);
+      TomBean.withType<Tom2FAEnrolmentStore>(store);
       expect(Tom2FAEnrolmentStore.resolve(), isNotNull);
       expect(await store.enrolmentsFor(contextFor(1)), isEmpty);
     });
@@ -1241,7 +1241,7 @@ void main() {
           ),
         );
       }
-      TomBean.withType(Tom2FAEnrolmentStore, store);
+      TomBean.withType<Tom2FAEnrolmentStore>(store);
     }
 
     // The store is the source of truth once installed; a stale resolver left
@@ -1312,7 +1312,7 @@ void main() {
           secretData: const {TomTotp2FAService.secretDataKey: _rfcSecretBase32},
         ),
       );
-      TomBean.withType(Tom2FAEnrolmentStore, store);
+      TomBean.withType<Tom2FAEnrolmentStore>(store);
 
       expect(
         await TomTotp2FAService().verifySubmission(
@@ -1480,7 +1480,7 @@ void main() {
 
         final store = TomMemory2FAEnrolmentStore();
         await store.store(context(), enrolment);
-        TomBean.withType(Tom2FAEnrolmentStore, store);
+        TomBean.withType<Tom2FAEnrolmentStore>(store);
 
         expect(
           await adaptor.verifySubmission(
@@ -1529,7 +1529,7 @@ void main() {
 
     test('a wrong code is refused and leaves nothing stored', () async {
       final store = TomMemory2FAEnrolmentStore();
-      TomBean.withType(Tom2FAEnrolmentStore, store);
+      TomBean.withType<Tom2FAEnrolmentStore>(store);
 
       final adaptor = TomTotp2FAService();
       final offer = await adaptor.beginEnrolment(context());
@@ -1856,7 +1856,7 @@ void main() {
         // Zero is always zero, and a store read per login to learn it is a
         // round trip a deployment that configured no grace did not ask for.
         final counting = _CountingGraceStore();
-        TomBean.withType(Tom2FAGraceStore, counting);
+        TomBean.withType<Tom2FAGraceStore>(counting);
 
         await TomRole2FAPolicy().decideFor(contextForId(42));
 
@@ -1865,7 +1865,7 @@ void main() {
 
       test('an installed store replaces the process-wide default', () async {
         final store = _CountingGraceStore(consumed: 1);
-        TomBean.withType(Tom2FAGraceStore, store);
+        TomBean.withType<Tom2FAGraceStore>(store);
 
         final decision = await TomRole2FAPolicy(
           graceLogins: 3,
@@ -1931,7 +1931,7 @@ void main() {
 
     test('resolve returns the installed bean', () {
       final installed = TomRole2FAPolicy();
-      TomBean.withType(Tom2FAPolicy, installed);
+      TomBean.withType<Tom2FAPolicy>(installed);
 
       expect(identical(Tom2FAPolicy.resolve(), installed), isTrue);
     });
@@ -2527,8 +2527,7 @@ void main() {
         // Flags say exempt. The deployment's policy says every `admin` owes one.
         TomAuthenticationServer.globalSettingUserAuthenticationService =
             _StubAuthService();
-        TomBean.withType(
-          Tom2FAPolicy,
+        TomBean.withType<Tom2FAPolicy>(
           TomRole2FAPolicy(
             requirementByRole: {'admin': Tom2FARequirement.required},
             mechanisms: ['fake'],
@@ -2548,7 +2547,7 @@ void main() {
       'an installed policy can exempt a principal whose flag requires one',
       () async {
         // Flags say required (the group default). The policy says nobody is.
-        TomBean.withType(Tom2FAPolicy, TomRole2FAPolicy());
+        TomBean.withType<Tom2FAPolicy>(TomRole2FAPolicy());
 
         final result = await server.authenticatePass1(_message());
 
@@ -2565,8 +2564,7 @@ void main() {
     test(
       'a policy naming only unregistered mechanisms fails the login',
       () async {
-        TomBean.withType(
-          Tom2FAPolicy,
+        TomBean.withType<Tom2FAPolicy>(
           TomRole2FAPolicy(
             defaultRequirement: Tom2FARequirement.required,
             // 'push' rather than 'sms': the framework ships an sms adaptor, and
@@ -2587,8 +2585,7 @@ void main() {
     test(
       'the login challenges with the policy\'s first offerable mechanism',
       () async {
-        TomBean.withType(
-          Tom2FAPolicy,
+        TomBean.withType<Tom2FAPolicy>(
           TomRole2FAPolicy(
             defaultRequirement: Tom2FARequirement.required,
             // 'push' is permitted but not installed here, so preference order has
@@ -2754,7 +2751,7 @@ void main() {
 
     test('an installed store replaces the process-wide default', () async {
       final recording = _RecordingAttemptStore();
-      TomBean.withType(Tom2FAAttemptStore, recording);
+      TomBean.withType<Tom2FAAttemptStore>(recording);
 
       final token = await issuedChallenge();
       await server.authenticatePass2(
@@ -2780,7 +2777,7 @@ void main() {
       () async {
         // The escape hatch for a deployment that wants the old behaviour: the
         // seam takes it, so nobody has to fork the pass to get it.
-        TomBean.withType(Tom2FAAttemptStore, _AlwaysFreshAttemptStore());
+        TomBean.withType<Tom2FAAttemptStore>(_AlwaysFreshAttemptStore());
 
         final token = await issuedChallenge();
         await server.authenticatePass2(
@@ -3141,7 +3138,7 @@ void main() {
       Tom2FARegistry.register('fake', unenrollable);
 
       store = TomMemory2FAEnrolmentStore();
-      TomBean.withType(Tom2FAEnrolmentStore, store);
+      TomBean.withType<Tom2FAEnrolmentStore>(store);
 
       // The principal's own flags say nothing here — every test in this group
       // installs the policy that decides.
@@ -3162,8 +3159,7 @@ void main() {
     void policy(
       Tom2FARequirement requirement, {
       List<String> mechanisms = const ['app'],
-    }) => TomBean.withType(
-      Tom2FAPolicy,
+    }) => TomBean.withType<Tom2FAPolicy>(
       TomRole2FAPolicy(defaultRequirement: requirement, mechanisms: mechanisms),
     );
 
@@ -3514,7 +3510,7 @@ void main() {
           requirement: Tom2FARequirement.required,
           graceLogins: 2,
         );
-        TomBean.withType(Tom2FAPolicy, graced);
+        TomBean.withType<Tom2FAPolicy>(graced);
 
         final (offer, token) = await login();
         expect(offer.requires2FAEnrolment, isTrue);
@@ -3536,7 +3532,7 @@ void main() {
         requirement: Tom2FARequirement.required,
         graceLogins: 2,
       );
-      TomBean.withType(Tom2FAPolicy, graced);
+      TomBean.withType<Tom2FAPolicy>(graced);
 
       final (_, token) = await login();
       final begun = await server.beginTwoFactorEnrolment(
@@ -3556,7 +3552,7 @@ void main() {
         requirement: Tom2FARequirement.optional,
         graceLogins: 2,
       );
-      TomBean.withType(Tom2FAPolicy, graced);
+      TomBean.withType<Tom2FAPolicy>(graced);
 
       final (_, token) = await login();
       await server.skipTwoFactorEnrolment(_message(), enrolmentToken: token);

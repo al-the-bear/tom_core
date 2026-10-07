@@ -387,81 +387,99 @@ class TomBean<T> {
     return result;
   }
 
-  /// Registers a bean by type and creates a handle for it.
+  /// Registers [bean] under its type argument [B] and creates a handle for it.
   ///
-  /// [t] The type to register the bean under.
-  /// [bean] The bean instance to register.
+  /// [B] is the key, and it is a type argument rather than a `Type` value so
+  /// that the compiler checks the bean against it:
+  /// `TomBean.withType<UserService>(UserServiceImpl())` compiles only when
+  /// `UserServiceImpl` is a `UserService`. **Name [B] explicitly.** Left to
+  /// inference it becomes the static type of [bean] — the implementation class
+  /// rather than the interface consumers ask for — and the bean is registered
+  /// under a key nobody resolves.
   ///
-  /// Throws [TomBeanLocatorException] if a bean with [t] already exists.
+  /// Throws [TomBeanLocatorException] if a bean is already registered under [B].
   ///
   /// Example:
   /// ```dart
-  /// TomBean.withType(UserService, UserServiceImpl());
+  /// TomBean.withType<UserService>(UserServiceImpl());
   /// ```
   ///
-  /// Note: registering a type *before* [initializeBeanContext] takes precedence
-  /// over any `@TomComponent` registration for the same type — discovery leaves
-  /// a key that is already bound alone. To substitute an implementation once the
-  /// context is initialized, use [TomBean.overrideWithType]; this factory throws
+  /// Registering a type *before* [initializeBeanContext] takes precedence over
+  /// any `@TomComponent` registration for the same type — discovery leaves a
+  /// key that is already bound alone. To substitute an implementation once the
+  /// context is initialized, use [TomBean.overrideWithType]; this method throws
   /// there rather than replacing.
   ///
-  /// **[bean] is not checked against [t] here, and cannot be.** [t] arrives as
-  /// a `Type` *value*, and Dart has no expression that decides whether an
-  /// object is an instance of one: `is` needs a type, not a value of type
-  /// `Type`. Reflection does not close the gap either, and that is measured
-  /// rather than assumed — `tomReflector.canReflectType` answers false for
-  /// any class carrying no `@tomReflector`, which is precisely the population
-  /// this factory exists to serve, and `superinterfaces` comes back empty even
-  /// for a class it can reflect.
-  ///
-  /// So the check happens where the relation *is* decidable: resolving
-  /// `TomBean<X>()` has a real type argument, and a bean registered under `X`
-  /// that is not an `X` raises
-  /// `beanlocator.bean_access.bean_not_assignable_to_type` naming both the
-  /// type asked for and the type found — rather than reporting the bean as
-  /// missing, which sends the reader looking for a registration that is in
-  /// fact right there.
-  factory TomBean.withType(Type t, Object bean) {
-    if (_tomBeansByType[t] != null) {
-      throw TomBeanLocatorException(
-        "beanlocator.initialization.duplicate_bean_with_type",
-        "Duplicate bean with type $t",
-        parameters: {"type": t},
-        autoLog: true,
-      );
-    }
-
-    return TomBean<T>.overrideWithType(t, bean);
+  /// The one caller that holds its key only as a `Type` value — a type read off
+  /// a reflection mirror — uses [TomBean.withRuntimeType] instead.
+  static TomBean<B> withType<B extends Object>(B bean) {
+    _refuseDuplicateType(B);
+    return overrideWithType<B>(bean);
   }
 
-  /// Registers a bean by type, replacing whatever was registered under [t].
+  /// Registers [bean] under [B], replacing whatever was registered there.
   ///
   /// Where [TomBean.withType] refuses a type that is already bound — the guard
   /// that stops two startup paths from silently clobbering each other — this
-  /// factory is the deliberate exception, for substituting an implementation in
+  /// method is the deliberate exception, for substituting an implementation in
   /// a test:
   ///
   /// ```dart
   /// initializeBeanContext();
-  /// TomBean.overrideWithType(UserService, MockUserService());
+  /// TomBean.overrideWithType<UserService>(MockUserService());
   /// ```
   ///
-  /// Three consequences are worth knowing, because all three fail silently:
+  /// Two consequences are worth knowing, because both fail silently:
   ///
   /// - A handle that has already resolved keeps the instance it resolved. Only
   ///   handles created (or first used) after the override see the replacement.
   /// - [initializeBeanContext] empties the registry, so an override must be
   ///   applied *after* the pass, and re-applied after every later pass.
-  /// - [bean] must be assignable to the type consumers ask for. It is not
-  ///   checked here — see [TomBean.withType] for why that is not possible —
-  ///   and a mismatch is raised by resolution as
-  ///   `beanlocator.bean_access.bean_not_assignable_to_type`.
-  factory TomBean.overrideWithType(Type t, Object bean) {
-    TomBean<T> result = TomBean();
-    result._bean = bean as T;
-
-    _tomBeansByType[t] = bean;
+  static TomBean<B> overrideWithType<B extends Object>(B bean) {
+    final result = TomBean<B>();
+    result._bean = bean;
+    _tomBeansByType[B] = bean;
     return result;
+  }
+
+  /// Registers [bean] under a key held only as a `Type` value, unchecked.
+  ///
+  /// The escape hatch from [TomBean.withType] for a caller whose key is not
+  /// known at compile time — a component type read off a reflection mirror.
+  /// **[bean] is not checked against [type], and cannot be**: Dart has no
+  /// expression relating a `Type` value to an instance, and reflection does
+  /// not close the gap (`canReflectType` answers false for any class without
+  /// `@tomReflector`). A mismatch surfaces at resolution instead, where
+  /// `TomBean<X>()` has a real type argument, as
+  /// `beanlocator.bean_access.bean_not_assignable_to_type` naming both types.
+  ///
+  /// Throws [TomBeanLocatorException] if a bean is already registered under
+  /// [type].
+  static TomBean<Object> withRuntimeType(Type type, Object bean) {
+    _refuseDuplicateType(type);
+    return overrideWithRuntimeType(type, bean);
+  }
+
+  /// [TomBean.withRuntimeType], replacing whatever was registered under
+  /// [type] — unchecked in the same way.
+  static TomBean<Object> overrideWithRuntimeType(Type type, Object bean) {
+    final result = TomBean<Object>();
+    result._bean = bean;
+    _tomBeansByType[type] = bean;
+    return result;
+  }
+
+  /// Throws when [type] already has a bean — the guard [TomBean.withType] and
+  /// [TomBean.withRuntimeType] share.
+  static void _refuseDuplicateType(Type type) {
+    if (_tomBeansByType[type] != null) {
+      throw TomBeanLocatorException(
+        "beanlocator.initialization.duplicate_bean_with_type",
+        "Duplicate bean with type $type",
+        parameters: {"type": type},
+        autoLog: true,
+      );
+    }
   }
 
   /// Selects and installs exactly one implementation of [T] by the current
@@ -487,7 +505,7 @@ class TomBean<T> {
   /// unconfigured runtime when [environment] is omitted and there is no active
   /// environment to read. Passing [environment] answers that question at the
   /// call site, so it needs no configured runtime at all.
-  static TomBean<T> installByEnvironment<T>(
+  static TomBean<T> installByEnvironment<T extends Object>(
     Map<String, T Function()> factories, {
     String? environment,
   }) {
@@ -503,7 +521,7 @@ class TomBean<T> {
         autoLog: true,
       );
     }
-    return TomBean<T>.withType(T, factory() as Object);
+    return withType<T>(factory());
   }
 
   // ---------------------------------------------------------------------------
@@ -635,11 +653,12 @@ class TomBean<T> {
       // and the two send the reader looking in different places.
       //
       // This is also the only point at which that relation can be decided at
-      // all. [TomBean.withType] takes the key as a `Type` value, and Dart has
-      // no expression relating a `Type` to an instance — see the note there
-      // for why reflection does not close the gap either. Here `T` is a real
-      // type argument, so `is` answers, and a bean mis-keyed at registration
-      // is named here or nowhere.
+      // all for a bean registered through [TomBean.withRuntimeType], whose
+      // key is a `Type` value: Dart has no expression relating a `Type` to an
+      // instance — see the note there. Here `T` is a real type argument, so
+      // `is` answers, and a bean mis-keyed at registration is named here or
+      // nowhere. [TomBean.withType] cannot produce this case; the compiler
+      // checks its bean against its key.
       final misKeyed = _tomBeansByType[T];
       if (misKeyed != null) {
         throw TomBeanLocatorException(

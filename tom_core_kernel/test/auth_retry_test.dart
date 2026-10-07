@@ -147,8 +147,7 @@ void main() {
 
     test('the active policy is resolved from a registered bean', () async {
       // A policy that treats 419 (not 401) as the expiry status.
-      TomBean.withType(
-        TomAuthRetryPolicy,
+      TomBean.withType<TomAuthRetryPolicy>(
         const TomAuthRetryPolicy(expiryStatusCodes: {419}),
       );
       final send = _ScriptedSend([(419, 'auth.expired'), (200, null)]);

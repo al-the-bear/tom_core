@@ -158,8 +158,7 @@ void _configure({required Tom2FARequirement forAdmins}) {
   Tom2FARegistry.reset();
   Tom2FARegistry.register(_mechanism, _adaptor);
   TomBean.resetBeanContext();
-  TomBean.withType(
-    Tom2FAPolicy,
+  TomBean.withType<Tom2FAPolicy>(
     TomRole2FAPolicy(
       requirementByRole: {'admin': forAdmins},
       defaultRequirement: Tom2FARequirement.disabled,

@@ -360,8 +360,7 @@ Future<void> seedDemoPasswords() async {
 /// while everyone else enrols into the table. See its own docs for why the
 /// bridge belongs here and not in the framework.
 void installTwoFactorPolicy() {
-  TomBean.withType(
-    Tom2FAPolicy,
+  TomBean.withType<Tom2FAPolicy>(
     TomRole2FAPolicy(
       requirementByRole: const {
         'two_factor_required': Tom2FARequirement.required,
@@ -370,8 +369,7 @@ void installTwoFactorPolicy() {
       mechanisms: const [TomTotp2FAService.mechanismType],
     ),
   );
-  TomBean.withType(
-    Tom2FAEnrolmentStore,
+  TomBean.withType<Tom2FAEnrolmentStore>(
     LegacyBridging2FAEnrolmentStore(
       TomPersistent2FAEnrolmentStore(TomUserTwoFactorEnrolmentRepository()),
     ),

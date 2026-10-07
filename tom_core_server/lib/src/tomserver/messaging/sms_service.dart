@@ -169,7 +169,7 @@ class TomSmsRequest {
 ///
 /// ```dart
 /// final smsService = TomSmsService(outbox: outbox, texts: texts);
-/// TomBean.withType(TomSmsService, smsService);
+/// TomBean.withType<TomSmsService>(smsService);
 /// ```
 class TomSmsService extends TomTemplatedMessageService<TomSmsRequest> {
   /// The sub-key holding a template's text — the whole template, on this

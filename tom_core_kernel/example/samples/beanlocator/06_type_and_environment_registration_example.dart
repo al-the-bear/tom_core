@@ -61,7 +61,7 @@ void run() {
   // -------------------------------------------------------------------------
   print('1. Register by type, resolve by interface:');
 
-  TomBean.withType(PaymentGateway, SandboxPaymentGateway());
+  TomBean.withType<PaymentGateway>(SandboxPaymentGateway());
 
   final gatewayViaGet = TomBean<PaymentGateway>().get();
   final gatewayViaCall = TomBean<PaymentGateway>()(); // callable syntax
@@ -130,8 +130,8 @@ void run() {
   }
 
   String ambiguousKey = '';
-  TomBean.withType(EmailNotifier, EmailNotifier());
-  TomBean.withType(SmsNotifier, SmsNotifier());
+  TomBean.withType<EmailNotifier>(EmailNotifier());
+  TomBean.withType<SmsNotifier>(SmsNotifier());
   try {
     TomBean<Notifier>().get();
   } on TomBeanLocatorException catch (e) {

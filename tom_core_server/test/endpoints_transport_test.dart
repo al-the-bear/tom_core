@@ -581,9 +581,9 @@ void main() {
   group('the router mounts a socket endpoint alongside the HTTP ones', () {
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
     });
 
     tearDown(TomBean.resetBeanContext);
@@ -633,9 +633,9 @@ void main() {
 
     setUp(() async {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       router = TomEndpointRouting().initializeRouter();
       // Both middlewares a real server runs in front of the router, and both
       // are load-bearing here: the context one seeds the TomRequestLogInfo the

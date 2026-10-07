@@ -775,7 +775,7 @@ void main() {
 
     test('resolve answers the installed set', () {
       final texts = fixtureTexts();
-      TomBean.withType(TomLocalizedTextResources, texts);
+      TomBean.withType<TomLocalizedTextResources>(texts);
 
       expect(TomLocalizedTextResources.resolve(), same(texts));
     });
@@ -784,14 +784,17 @@ void main() {
       // It type-tests what it finds rather than casting, so a mis-wired
       // deployment fails as an absence its caller already handles rather than
       // as a cast error raised at whichever consumer asked first.
-      TomBean.overrideWithType(TomLocalizedTextResources, 'not a bundle set');
+      TomBean.overrideWithRuntimeType(
+        TomLocalizedTextResources,
+        'not a bundle set',
+      );
 
       expect(TomLocalizedTextResources.resolve(), isNull);
     });
 
     test('a service with no texts argument reads the installed set', () {
       final texts = fixtureTexts();
-      TomBean.withType(TomLocalizedTextResources, texts);
+      TomBean.withType<TomLocalizedTextResources>(texts);
 
       expect(TomEmailService(outbox: _outbox()).texts, same(texts));
     });
@@ -802,7 +805,7 @@ void main() {
       // deployment installed.
       final installed = fixtureTexts();
       final own = fixtureTexts();
-      TomBean.withType(TomLocalizedTextResources, installed);
+      TomBean.withType<TomLocalizedTextResources>(installed);
 
       final service = TomEmailService(outbox: _outbox(), texts: own);
 

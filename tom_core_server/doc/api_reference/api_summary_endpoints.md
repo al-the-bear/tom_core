@@ -1031,7 +1031,7 @@ registers to mount the endpoint:
 
 ```dart
 TomFileSlots.register(documentRepository); // TomFileRepository<Document, int>
-TomBean.withType(TomFileServer, TomFileServer());
+TomBean.withType<TomFileServer>(TomFileServer());
 ```
 
 Holds no state — the registry is `TomFileSlots` and the request is the argument

@@ -59,8 +59,8 @@ void main() async {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(TomHealthServer, TomHealthServer());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
       router = TomEndpointRouting().initializeRouter();
     });
 

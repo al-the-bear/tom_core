@@ -1,5 +1,19 @@
 ## Unreleased
 
+### Changed
+
+- **`TomBean.withType` takes its key as a type argument.** It is now
+  `static TomBean<B> withType<B extends Object>(B bean)` (and
+  `overrideWithType<B>`), so `TomBean.withType<UserService>(impl)` compiles only
+  when `impl` is a `UserService`. The `Type`-value forms are renamed
+  `withRuntimeType(Type, Object)` / `overrideWithRuntimeType`, unchecked, for a
+  key known only at runtime. `installByEnvironment<T>` now requires
+  `T extends Object`. Breaking: every `TomBean.withType(X, bean)` becomes
+  `TomBean.withType<X>(bean)`, and every generated reflection artifact that
+  captures `TomBean` must be regenerated. The change found three registrations
+  in this package's own suite that keyed an `AnotherService` under
+  `TestService`.
+
 ### Tests
 
 - **`test/ai_citation_test.dart`** fails the suite when an artefact of the

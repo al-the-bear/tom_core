@@ -305,12 +305,10 @@ void main() {
         clock: clock.call,
       );
       addTearDown(outbox.close);
-      TomBean.withType(
-        TomEmailService,
+      TomBean.withType<TomEmailService>(
         TomEmailService(outbox: outbox, texts: _texts()),
       );
-      TomBean.withType(
-        TomSmsService,
+      TomBean.withType<TomSmsService>(
         TomSmsService(outbox: outbox, texts: _texts()),
       );
       email = TomEmailCode2FAService();
@@ -620,8 +618,7 @@ void main() {
     // mail but has no SMS contract keeps its mail codes.
     test('the two channels are judged separately', () {
       TomBean.resetBeanContext();
-      TomBean.withType(
-        TomEmailService,
+      TomBean.withType<TomEmailService>(
         TomEmailService(outbox: outbox, texts: _texts()),
       );
 
@@ -651,12 +648,11 @@ void main() {
         clock: clock.call,
       );
       addTearDown(outbox.close);
-      TomBean.withType(
-        TomEmailService,
+      TomBean.withType<TomEmailService>(
         TomEmailService(outbox: outbox, texts: _texts()),
       );
       store = TomMemory2FAEnrolmentStore();
-      TomBean.withType(Tom2FAEnrolmentStore, store);
+      TomBean.withType<Tom2FAEnrolmentStore>(store);
       email = TomEmailCode2FAService();
     });
 
@@ -868,12 +864,10 @@ void main() {
         clock: clock.call,
       );
       addTearDown(outbox.close);
-      TomBean.withType(
-        TomEmailService,
+      TomBean.withType<TomEmailService>(
         TomEmailService(outbox: outbox, texts: _texts()),
       );
-      TomBean.withType(
-        Tom2FAPolicy,
+      TomBean.withType<Tom2FAPolicy>(
         TomRole2FAPolicy(
           defaultRequirement: Tom2FARequirement.required,
           mechanisms: const ['email'],
@@ -1016,7 +1010,7 @@ void main() {
       'the enrol-on-first-login round trip confirms before storing',
       () async {
         final store = TomMemory2FAEnrolmentStore();
-        TomBean.withType(Tom2FAEnrolmentStore, store);
+        TomBean.withType<Tom2FAEnrolmentStore>(store);
         final context = _context();
 
         final offered = await server.authenticatePass1(_message());

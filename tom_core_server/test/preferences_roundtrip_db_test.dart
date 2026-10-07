@@ -325,8 +325,7 @@ void main() async {
       // The shipped handler over the shipped service over a real table: the
       // point of the file is that nothing in the chain is a stand-in except the
       // credential.
-      TomBean.withType(
-        TomUserPreferences,
+      TomBean.withType<TomUserPreferences>(
         TomUserPreferences(TomUserPreferenceRepository()),
       );
       // The *store* is installed and the *handler* is not, which is exactly the
@@ -350,8 +349,8 @@ void main() async {
       // is therefore the accurate half of the picture, not the same omission as
       // the handler above.
       registerFixtureAccessApi();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
 
       final router = TomEndpointRouting().initializeRouter();
       final handler = const Pipeline()

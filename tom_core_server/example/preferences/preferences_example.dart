@@ -67,7 +67,7 @@ Future<void> run() async {
   //    same line with a different object, and no consumer changes.
   final table = _InMemoryPreferenceTable();
   final store = TomUserPreferences(table);
-  TomBean.withType(TomUserPreferences, store);
+  TomBean.withType<TomUserPreferences>(store);
   print(
     '3. resolve after install    : ${TomUserPreferences.resolve() != null}',
   );

@@ -628,8 +628,7 @@ otherwise, resolved fresh on each call so a test or a late environment
 registration is honoured:
 
 ```dart
-TomBean.withType(
-  TomAuthRetryPolicy,
+TomBean.withType<TomAuthRetryPolicy>(
   const TomAuthRetryPolicy(expiryStatusCodes: {401, 419}, maxRefreshRetries: 2),
 );
 ```

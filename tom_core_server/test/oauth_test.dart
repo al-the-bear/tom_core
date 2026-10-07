@@ -3268,13 +3268,12 @@ void main() {
       tearDown(TomBean.resetBeanContext);
 
       test('the provider is told before the grant is forgotten', () async {
-        TomBean.withType(
-          TomOAuthProviders,
+        TomBean.withType<TomOAuthProviders>(
           TomOAuthProviders({
             'stub': _oidcProvider(revocationEndpoint: '$_issuer/revoke'),
           }),
         );
-        TomBean.withType(TomOAuthTokenTransport, transport);
+        TomBean.withType<TomOAuthTokenTransport>(transport);
 
         await identities.unlink(_issuer, 'sub-1');
 
@@ -3298,14 +3297,12 @@ void main() {
         // The safety property. Refusing to unlink because the provider is down
         // would leave the deployment holding the credential it was told to
         // drop — the opposite of what the user asked for.
-        TomBean.withType(
-          TomOAuthProviders,
+        TomBean.withType<TomOAuthProviders>(
           TomOAuthProviders({
             'stub': _oidcProvider(revocationEndpoint: '$_issuer/revoke'),
           }),
         );
-        TomBean.withType(
-          TomOAuthTokenTransport,
+        TomBean.withType<TomOAuthTokenTransport>(
           _ThrowingTransport(StateError('provider unreachable')),
         );
 
@@ -3326,8 +3323,7 @@ void main() {
         // registration — so which client credentials minted this grant is not
         // recorded. Asking both is what makes the revocation reliable; RFC
         // 7009 makes an unknown token a success, so the extra call is free.
-        TomBean.withType(
-          TomOAuthProviders,
+        TomBean.withType<TomOAuthProviders>(
           TomOAuthProviders({
             'stub': _oidcProvider(revocationEndpoint: '$_issuer/revoke'),
             'second': _oidcProvider(
@@ -3336,7 +3332,7 @@ void main() {
             ),
           }),
         );
-        TomBean.withType(TomOAuthTokenTransport, transport);
+        TomBean.withType<TomOAuthTokenTransport>(transport);
 
         await identities.unlink(_issuer, 'sub-1');
 
@@ -3344,11 +3340,10 @@ void main() {
       });
 
       test('no configured revocation endpoint is not a failure', () async {
-        TomBean.withType(
-          TomOAuthProviders,
+        TomBean.withType<TomOAuthProviders>(
           TomOAuthProviders({'stub': _oidcProvider()}),
         );
-        TomBean.withType(TomOAuthTokenTransport, transport);
+        TomBean.withType<TomOAuthTokenTransport>(transport);
 
         await identities.unlink(_issuer, 'sub-1');
 
@@ -3379,8 +3374,7 @@ void main() {
     });
 
     test('lists the configured providers as resource keys only', () async {
-      TomBean.withType(
-        TomOAuthProviders,
+      TomBean.withType<TomOAuthProviders>(
         TomOAuthProviders({'stub': _oidcProvider()}),
       );
       final providers = await endpoints.listOAuthProviders();
@@ -3401,12 +3395,11 @@ void main() {
       'begins an authorization through the installed provider set',
       () async {
         final store = TomOAuthMemoryStateStore();
-        TomBean.withType(
-          TomOAuthProviders,
+        TomBean.withType<TomOAuthProviders>(
           TomOAuthProviders({'stub': _oidcProvider()}),
         );
-        TomBean.withType(TomOAuthStateStore, store);
-        TomBean.withType(TomOAuthTokenTransport, _StubTransport());
+        TomBean.withType<TomOAuthStateStore>(store);
+        TomBean.withType<TomOAuthTokenTransport>(_StubTransport());
 
         final dto = await endpoints.beginOAuthAuthorization(
           _authorizationRequest(),
@@ -3448,9 +3441,9 @@ void main() {
 
       test('a provider refusal is refused by key, before any exchange', () async {
         final store = TomOAuthMemoryStateStore();
-        TomBean.withType(TomOAuthStateStore, store);
+        TomBean.withType<TomOAuthStateStore>(store);
         final transport = _StubTransport();
-        TomBean.withType(TomOAuthTokenTransport, transport);
+        TomBean.withType<TomOAuthTokenTransport>(transport);
 
         await expectLater(
           endpoints.completeOAuthAuthorization(
@@ -3479,7 +3472,7 @@ void main() {
       });
 
       test('an unknown state is refused by key', () async {
-        TomBean.withType(TomOAuthStateStore, TomOAuthMemoryStateStore());
+        TomBean.withType<TomOAuthStateStore>(TomOAuthMemoryStateStore());
 
         await expectLater(
           endpoints.completeOAuthAuthorization(
@@ -3498,16 +3491,15 @@ void main() {
 
     test('the callback completes the login the flow started', () async {
       final store = TomOAuthMemoryStateStore();
-      TomBean.withType(
-        TomOAuthProviders,
+      TomBean.withType<TomOAuthProviders>(
         TomOAuthProviders({
           'stub': _oidcProvider(
             provisioning: TomOAuthProvisioning.autoProvision,
           ),
         }),
       );
-      TomBean.withType(TomOAuthStateStore, store);
-      TomBean.withType(TomOAuthTokenTransport, _StubTransport());
+      TomBean.withType<TomOAuthStateStore>(store);
+      TomBean.withType<TomOAuthTokenTransport>(_StubTransport());
       TomAuthenticationServer.globalSettingUserAuthenticationService =
           TomOAuthAuthenticationService(
             directory: _StubDirectory(canProvision: true),

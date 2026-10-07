@@ -1066,8 +1066,8 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       registerFixtureAccessApi();
     });
 
@@ -1147,8 +1147,8 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       registerFixtureAccessApi();
     });
 
@@ -1211,8 +1211,8 @@ void main() {
 
     setUp(() {
       TomBean.resetBeanContext();
-      TomBean.withType(FixtureApiServer, FixtureApiServer());
-      TomBean.withType(FixtureAccessApiService, FixtureAccessApiService());
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       registerFixtureAccessApi();
     });
 
