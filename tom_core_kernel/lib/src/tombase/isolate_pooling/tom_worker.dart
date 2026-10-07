@@ -1554,6 +1554,55 @@ class TomWorker {
 // WORKER POOL
 // =============================================================================
 
+/// Somewhere a command can be sent to run in another isolate.
+///
+/// The part of [TomWorkerPool] a consumer that only dispatches needs: send a
+/// command, await its answer, and release the dispatcher when done. Depending
+/// on this rather than on the pool says in the type what the consumer uses —
+/// one call, not a pool's sizing and supervision — and lets a test substitute
+/// a dispatcher that records what it was given, which the pool's private
+/// constructor rules out.
+abstract interface class TomCommandDispatcher {
+  /// Runs [command] in another isolate and answers its result.
+  Future<Object?> execute(Object command);
+
+  /// Releases the dispatcher; a command sent afterwards is refused.
+  void close();
+}
+
+/// The one-way channel from a worker isolate back to the isolate that created
+/// it.
+///
+/// [current] is the channel [TomWorker] holds for the running isolate: open in
+/// a worker, closed in the main isolate. A consumer that takes the channel as
+/// a parameter, defaulting to [current], can be handed an open one by a test —
+/// which otherwise runs in the main isolate, where the real channel is always
+/// closed and the sending path can never be observed.
+abstract interface class TomCreatorChannel {
+  /// The channel of the running isolate, backed by [TomWorker.canSendToCreator]
+  /// and [TomWorker.sendToCreator].
+  static const TomCreatorChannel current = _TomWorkerCreatorChannel();
+
+  /// Whether [send] can reach the creator.
+  bool get isOpen;
+
+  /// Sends [message] to the creator, fire-and-forget.
+  ///
+  /// Throws [TomWorkerException] when the channel is not open.
+  void send(Object message);
+}
+
+/// [TomCreatorChannel.current]: the running isolate's back-channel.
+class _TomWorkerCreatorChannel implements TomCreatorChannel {
+  const _TomWorkerCreatorChannel();
+
+  @override
+  bool get isOpen => TomWorker.canSendToCreator();
+
+  @override
+  void send(Object message) => TomWorker.sendToCreator(message);
+}
+
 /// Manages a pool of worker isolates for parallel task execution.
 ///
 /// [TomWorkerPool] provides automatic load balancing by distributing
@@ -1619,7 +1668,7 @@ class TomWorker {
 /// - A command that finds every worker busy is queued, and the next worker
 ///   released is handed to it directly, in arrival order
 /// - Consider pool size based on CPU cores and task characteristics
-class TomWorkerPool {
+class TomWorkerPool implements TomCommandDispatcher {
   /// All workers in this pool.
   final List<TomWorker> _workers = [];
 
@@ -2072,6 +2121,7 @@ class TomWorkerPool {
   /// ```dart
   /// final result = await pool.execute(MyCommand());
   /// ```
+  @override
   Future<Object?> execute(Object command) async {
     if (_closed) throw _closedException();
     final TomWorker tw = await _acquire();
@@ -2105,6 +2155,7 @@ class TomWorkerPool {
   /// Supervision (if enabled) is stopped first. Each worker is closed via
   /// [TomWorker.close]; workers still processing in-flight commands close their
   /// response ports once those commands resolve (see [TomWorker.close]).
+  @override
   void close() {
     _closed = true;
     _healthTimer?.cancel();

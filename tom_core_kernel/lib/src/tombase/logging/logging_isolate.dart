@@ -205,11 +205,16 @@ class TomInterIsolateLogMessage {
 /// tomLog.logOutput = TomIsolateLogOutput(pool);
 /// ```
 class TomIsolateLogOutput extends TomLogOutput {
-  /// The worker pool that processes log messages.
-  TomWorkerPool workerPool;
+  /// Where each log record is sent: in production the [TomWorkerPool] running
+  /// the logging isolate.
+  ///
+  /// Typed as the dispatch interface rather than the pool, because dispatching
+  /// a record — and closing the dispatcher when logging stops — is all this
+  /// sink does with it.
+  final TomCommandDispatcher dispatcher;
 
-  /// Creates a log output that routes to the given worker pool.
-  TomIsolateLogOutput(this.workerPool);
+  /// Creates a log output that routes every record to [dispatcher].
+  TomIsolateLogOutput(this.dispatcher);
 
   @override
   void output(
@@ -226,7 +231,7 @@ class TomIsolateLogOutput extends TomLogOutput {
       // block or fail the caller that emitted the log line, so the pooled
       // delivery future is deliberately not awaited.
       unawaited(
-        workerPool.execute(
+        dispatcher.execute(
           TomInterIsolateLogMessage(
             loggerLevel: loggerLevel,
             logLevel: logLevel,
@@ -259,8 +264,12 @@ class TomIsolateLogOutput extends TomLogOutput {
 /// TomIsolateLogging.startLoggingToCreator();
 /// ```
 class TomCreatorLogOutput extends TomLogOutput {
-  /// Creates a creator-routing log output.
-  TomCreatorLogOutput();
+  /// Creates a creator-routing log output sending through [channel] — by
+  /// default the running isolate's own back-channel.
+  TomCreatorLogOutput({this.channel = TomCreatorChannel.current});
+
+  /// The channel each record is sent through while it is open.
+  final TomCreatorChannel channel;
 
   /// Fallback output used when the creator connection is unavailable.
   ///
@@ -285,8 +294,8 @@ class TomCreatorLogOutput extends TomLogOutput {
     String? origin,
   ]) {
     if (logLevel.matches(loggerLevel)) {
-      if (TomWorker.canSendToCreator()) {
-        TomWorker.sendToCreator(
+      if (channel.isOpen) {
+        channel.send(
           TomInterIsolateLogMessage(
             loggerLevel: loggerLevel,
             logLevel: logLevel,

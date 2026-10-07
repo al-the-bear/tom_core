@@ -151,20 +151,20 @@ asynchronous (fire-and-forget) processing.
 #### Constructors
 
 ```dart
-TomIsolateLogOutput(TomWorkerPool workerPool)
+TomIsolateLogOutput(TomCommandDispatcher dispatcher)
 ```
 
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `workerPool` | `TomWorkerPool` | The worker pool that processes log messages. |
+| `dispatcher` | `TomCommandDispatcher` | Where each record is sent — in production the `TomWorkerPool` running the logging isolate. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `output` | `void output(TomLogLevel loggerLevel, TomLogLevel logLevel, String level, Object message, String isolateName, DateTime timeStamp, [String? origin])` | *(override)* Dispatches a `TomInterIsolateLogMessage` to the worker pool when `logLevel` matches `loggerLevel`; delivery is intentionally not awaited. |
+| `output` | `void output(TomLogLevel loggerLevel, TomLogLevel logLevel, String level, Object message, String isolateName, DateTime timeStamp, [String? origin])` | *(override)* Dispatches a `TomInterIsolateLogMessage` to the dispatcher when `logLevel` matches `loggerLevel`; delivery is intentionally not awaited. |
 
 ### TomCreatorLogOutput
 
@@ -177,8 +177,14 @@ available.
 #### Constructors
 
 ```dart
-TomCreatorLogOutput()
+TomCreatorLogOutput({TomCreatorChannel channel = TomCreatorChannel.current})
 ```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `channel` | `TomCreatorChannel` | The channel each record is sent through while it is open; by default the running isolate's back-channel. |
 
 #### Static Properties
 

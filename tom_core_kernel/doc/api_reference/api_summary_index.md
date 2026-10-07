@@ -111,6 +111,8 @@ declarations are omitted.
 | ---- | ---- | ----------- |
 | `TomWorker` | class | An isolate worker. |
 | `TomWorkerPool` | class | A pool of workers dispatching commands. |
+| `TomCommandDispatcher` | abstract interface class | Dispatch-only view of a pool: `execute` and `close`. |
+| `TomCreatorChannel` | abstract interface class | The worker-to-creator back-channel; `current` is the running isolate's. |
 | `TomWorkerContext` | class | Per-worker isolate context/bootstrap. |
 | `TomExecutor` | abstract class | Executes a command inside a worker. |
 | `TomCommand` | abstract class | A unit of work sent to a worker. |

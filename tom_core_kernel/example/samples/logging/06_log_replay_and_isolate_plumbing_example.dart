@@ -154,9 +154,9 @@ Future<void> run() async {
   final pool = await TomWorkerPool.withSize(1, _emptyLoggingContext());
   pool.close();
   final isolateOutput = TomIsolateLogOutput(pool);
-  final poolIsWired = identical(isolateOutput.workerPool, pool);
+  final poolIsWired = identical(isolateOutput.dispatcher, pool);
 
-  print('   workerPool wired?        $poolIsWired');
+  print('   dispatcher wired?        $poolIsWired');
 
   // output() never awaits its pooled delivery, so it always returns normally.
   // Watching the zone for the closed pool's refusal is what actually shows

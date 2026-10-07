@@ -3055,13 +3055,13 @@ void main() {
 
   group('TomIsolateLogOutput', () {
     group('constructor', () {
-      test('should store the worker pool it is given', () async {
+      test('should store the dispatcher it is given', () async {
         final pool = await TomWorkerPool.withSize(1, _testLoggingContext());
         addTearDown(pool.close);
 
         final output = TomIsolateLogOutput(pool);
 
-        expect(output.workerPool, same(pool));
+        expect(output.dispatcher, same(pool));
       });
     });
 
@@ -3125,6 +3125,30 @@ void main() {
 
         expect(await escaped, contains(isA<TomWorkerException>()));
       });
+
+      test('dispatches a record carrying all seven arguments', () {
+        final dispatcher = _RecordingDispatcher();
+
+        _sendSinkRecord(TomIsolateLogOutput(dispatcher));
+
+        expect(dispatcher.commands, hasLength(1));
+        _expectSinkRecord(dispatcher.commands.single);
+      });
+
+      test('dispatches nothing when the level is gated out', () {
+        final dispatcher = _RecordingDispatcher();
+
+        TomIsolateLogOutput(dispatcher).output(
+          TomLogLevel.production,
+          TomLogLevel.trace,
+          'TRACE  ',
+          'gated out',
+          'main',
+          DateTime(2026, 1, 2),
+        );
+
+        expect(dispatcher.commands, isEmpty);
+      });
     });
   });
 
@@ -3166,8 +3190,8 @@ void main() {
       });
 
       test('falls back to local output when not in a worker isolate', () {
-        // In the main isolate TomWorker.canSendToCreator() is false, so the
-        // creator output must route to its fallback.
+        // In the main isolate the default channel is closed, so the creator
+        // output must route to its fallback.
         final output = TomCreatorLogOutput();
 
         output.output(
@@ -3190,6 +3214,27 @@ void main() {
         expect(fallback.lastLevel, equals('INFO   '));
         expect(fallback.lastIsolateName, equals('main'));
         expect(fallback.lastTimeStamp, equals(DateTime(2026, 1, 2)));
+      });
+
+      test('sends a record carrying all seven arguments when the channel is '
+          'open', () {
+        final channel = _RecordingCreatorChannel();
+
+        _sendSinkRecord(TomCreatorLogOutput(channel: channel));
+
+        expect(channel.sent, hasLength(1));
+        _expectSinkRecord(channel.sent.single);
+        expect(
+          fallback.outputCalled,
+          isFalse,
+          reason: 'an open channel is used instead of the fallback',
+        );
+      });
+
+      test('uses the running isolate\'s channel by default', () {
+        expect(TomCreatorLogOutput().channel, same(TomCreatorChannel.current));
+        // A test runs in the main isolate, where the back-channel is closed.
+        expect(TomCreatorChannel.current.isOpen, isFalse);
       });
 
       test('does not output when the level is gated out', () {
@@ -3695,4 +3740,57 @@ class _TestObject {
 
   @override
   String toString() => 'TestObject($value)';
+}
+
+/// Asserts every field of a dispatched record against the arguments
+/// `_sendSinkRecord` passed. The values differ in every field, and `level`
+/// and `message` are both strings, so a sink binding the right value to the
+/// wrong name — `level: message` — fails here by name.
+void _expectSinkRecord(Object? sent) {
+  expect(sent, isA<TomInterIsolateLogMessage>());
+  final record = sent! as TomInterIsolateLogMessage;
+  expect(record.loggerLevel, same(TomLogLevel.production));
+  expect(record.logLevel, same(TomLogLevel.warn));
+  expect(record.level, 'WARN   ');
+  expect(record.message, 'disk almost full');
+  expect(record.isolateName, 'worker-7');
+  expect(record.timeStamp, DateTime(2026, 3, 4, 5, 6, 7));
+  expect(record.origin, 'storage.monitor');
+}
+
+/// Emits the record [_expectSinkRecord] checks through [output].
+void _sendSinkRecord(TomLogOutput output) => output.output(
+  TomLogLevel.production,
+  TomLogLevel.warn,
+  'WARN   ',
+  'disk almost full',
+  'worker-7',
+  DateTime(2026, 3, 4, 5, 6, 7),
+  'storage.monitor',
+);
+
+/// A dispatcher that records every command instead of running it.
+class _RecordingDispatcher implements TomCommandDispatcher {
+  final List<Object> commands = [];
+  bool closed = false;
+
+  @override
+  Future<Object?> execute(Object command) async {
+    commands.add(command);
+    return null;
+  }
+
+  @override
+  void close() => closed = true;
+}
+
+/// A creator channel that is open and records what it is sent.
+class _RecordingCreatorChannel implements TomCreatorChannel {
+  final List<Object> sent = [];
+
+  @override
+  bool get isOpen => true;
+
+  @override
+  void send(Object message) => sent.add(message);
 }

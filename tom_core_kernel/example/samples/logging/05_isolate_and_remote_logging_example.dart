@@ -325,7 +325,7 @@ Future<void> runIsolateLoggingDemo(List<String> args) async {
 
   final isolateOutput = tomLog.logOutput;
   if (isolateOutput is TomIsolateLogOutput) {
-    isolateOutput.workerPool.close();
+    isolateOutput.dispatcher.close();
   }
   tomLog.logOutput = originalOutput;
 

@@ -46,6 +46,8 @@ The isolate pooling module provides a robust framework for managing Dart isolate
 | ---- | ---- | ------- |
 | `TomWorker` | class | An isolate worker. |
 | `TomWorkerPool` | class | A pool of workers dispatching commands. |
+| `TomCommandDispatcher` | abstract interface class | Dispatch-only view of a pool: `execute` and `close`. `TomWorkerPool` implements it. |
+| `TomCreatorChannel` | abstract interface class | The worker-to-creator back-channel; `TomCreatorChannel.current` is the running isolate's. |
 | `TomWorkerContext` | class | Per-worker isolate context/bootstrap. |
 | `TomExecutor` | abstract class | Executes a command inside a worker. |
 | `TomCommand` | abstract class | A unit of work sent to a worker. |

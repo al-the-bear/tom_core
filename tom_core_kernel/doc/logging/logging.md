@@ -563,7 +563,9 @@ the pool is either spawned and installed, or the call throws on the way — so
 there is no result to branch on.
 
 `startIsolatedLogging` replaces the *main* isolate's output with a
-`TomIsolateLogOutput` that forwards every record to the pool. The record is
+`TomIsolateLogOutput` that forwards every record to the pool — through the
+`TomCommandDispatcher` interface the pool implements, which is also how a test
+hands the sink a recorder and reads back the record it dispatched. The record is
 finally written by `TomLoggingExecutor` in the spawned isolate, through *that*
 isolate's `tomLog.logOutput`. Dart statics are per-isolate, so assigning
 `tomLog.logOutput` in `main` cannot change where the logging isolate writes — it
@@ -610,9 +612,10 @@ run as `CustomLoggingContext` in
 #### When the creator channel is absent
 
 `TomCreatorLogOutput` sends to the creator isolate only when there is one to
-send to; `TomWorker.canSendToCreator()` is false in the main isolate and in any
-worker started without a back-channel. Everything else goes to
-`TomCreatorLogOutput.fallbackOutput`.
+send to: its `channel`, by default `TomCreatorChannel.current`, is closed in the
+main isolate and in any worker started without a back-channel. Everything else
+goes to `TomCreatorLogOutput.fallbackOutput`. Passing an open channel of its own
+is how a test observes the record a worker would send.
 
 That slot is a `TomLogOutput`, so any sink can be installed there — a remote
 collector, a capture in a test, an application's own sink — and the whole

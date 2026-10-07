@@ -2787,7 +2787,9 @@ void main() {
         // assertion is the flakiest thing that could stand here.
         final path = 'lib/src/tombase/isolate_pooling/tom_worker.dart';
         final source = File(path).readAsStringSync();
-        final start = source.indexOf('class TomWorkerPool {');
+        final start = source.indexOf(
+          'class TomWorkerPool implements TomCommandDispatcher {',
+        );
         expect(
           start,
           greaterThanOrEqualTo(0),

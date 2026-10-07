@@ -2,6 +2,14 @@
 
 ### Changed
 
+- **The isolate log sinks take their transport as an interface.**
+  `TomIsolateLogOutput(TomCommandDispatcher dispatcher)` replaces the
+  `TomWorkerPool workerPool` field; `TomWorkerPool` implements the new
+  `TomCommandDispatcher` (`execute`, `close`). `TomCreatorLogOutput` takes an
+  optional `TomCreatorChannel channel`, defaulting to the new
+  `TomCreatorChannel.current` (the running isolate's back-channel). Tests now
+  assert all seven fields of the record each sink dispatches, which a
+  level/message transposition at either call site fails.
 - **`schedule.cron.empty_field` is gone.** No cron field that parses can
   match nothing — every item either raises its own key or adds at least the
   low end of its range — so the raise was unreachable and is removed with its

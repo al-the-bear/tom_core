@@ -16,6 +16,8 @@ executors, and load-balancing worker pools.
   - [TomWorkerContext](#tomworkercontext)
   - [TomWorker](#tomworker)
   - [TomWorkerPool](#tomworkerpool)
+  - [TomCommandDispatcher](#tomcommanddispatcher)
+  - [TomCreatorChannel](#tomcreatorchannel)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -69,7 +71,10 @@ TomWorkerContext
 
 TomWorker
 
-TomWorkerPool
+TomCommandDispatcher  (interface)
+    └── TomWorkerPool
+
+TomCreatorChannel  (interface)
 ```
 
 ## Classes
@@ -314,6 +319,50 @@ run:
    it through mechanism 1.
 
 A failed in-flight command is deliberately **not** re-dispatched.
+
+### TomCommandDispatcher
+
+The part of `TomWorkerPool` a consumer that only dispatches needs: send a
+command to run in another isolate, await its answer, and release the dispatcher.
+`TomWorkerPool` implements it. Depending on it rather than on the pool says what
+a consumer uses, and lets a test substitute a dispatcher that records what it
+was given — the pool's constructor is private.
+
+- **Kind:** `abstract interface class`
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `execute` | `Future<Object?> execute(Object command)` | Runs `command` in another isolate and answers its result. |
+| `close` | `void close()` | Releases the dispatcher; a command sent afterwards is refused. |
+
+### TomCreatorChannel
+
+The one-way channel from a worker isolate back to the isolate that created it.
+`TomCreatorChannel.current` is the channel `TomWorker` holds for the running
+isolate — open in a worker, closed in the main isolate — so a consumer that takes
+a channel defaulting to `current` can be handed an open one by a test.
+
+- **Kind:** `abstract interface class`
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `current` | `TomCreatorChannel` (const) | The running isolate's back-channel, backed by `TomWorker.canSendToCreator` and `TomWorker.sendToCreator`. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `isOpen` | `bool` (getter) | Whether `send` can reach the creator. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `send` | `void send(Object message)` | Sends `message` to the creator, fire-and-forget. Throws `TomWorkerException` when the channel is not open. |
 
 ## Global Functions and Constants
 
