@@ -2,7 +2,8 @@
 
 The client half of the framework's second-factor design — the flow widget, the
 controller seam, the pluggable mechanism contract and its registry, the shipped
-TOTP mechanism, the resource keys and the QR view.
+TOTP and passkey mechanisms, the passkey platform seam, the resource keys and
+the QR view.
 
 ## Table of Contents
 
@@ -16,6 +17,10 @@ TOTP mechanism, the resource keys and the QR view.
   - [Tom2FAChallengePanelContext](#tom2fachallengepanelcontext)
   - [Tom2FAClientRegistry](#tom2faclientregistry)
   - [TomTotp2FAClientMechanism](#tomtotp2faclientmechanism)
+  - [TomWebAuthn2FAClientMechanism](#tomwebauthn2faclientmechanism)
+  - [TomWebAuthnPlatform](#tomwebauthnplatform)
+  - [TomUnavailableWebAuthnPlatform](#tomunavailablewebauthnplatform)
+  - [TomWebAuthnPlatformException](#tomwebauthnplatformexception)
   - [Tom2FATexts](#tom2fatexts)
   - [TomQrCodeView](#tomqrcodeview)
 - [Global Functions and Constants](#global-functions-and-constants)
@@ -23,18 +28,22 @@ TOTP mechanism, the resource keys and the QR view.
 
 ## Overview
 
-Sources: all five exported from the package barrel
-(`lib/tom_core_flutter.dart`):
+Sources: all seven exported from the package barrel
+(`lib/tom_core_flutter.dart`). The two passkey bindings a conditional import
+selects between are not exported, and are listed under
+[Internal Symbols](#internal-symbols-not-exported):
 
 | File | Declares |
 | ---- | -------- |
 | `lib/src/tomclient/security/two_factor_flow.dart` | `Tom2FAFlowController`, `Tom2FAFlowPanel` |
 | `lib/src/tomclient/security/two_factor_client.dart` | `Tom2FAEnrolmentPanelContext`, `Tom2FAChallengePanelContext`, `Tom2FAClientMechanism`, `Tom2FAClientRegistry` |
 | `lib/src/tomclient/security/two_factor_totp_client.dart` | `TomTotp2FAClientMechanism` |
+| `lib/src/tomclient/security/two_factor_webauthn_client.dart` | `TomWebAuthn2FAClientMechanism` |
+| `lib/src/tomclient/security/webauthn_platform.dart` | `TomWebAuthnPlatform`, `TomUnavailableWebAuthnPlatform`, `TomWebAuthnPlatformException` |
 | `lib/src/tomclient/security/two_factor_texts.dart` | `Tom2FATexts` |
 | `lib/src/tomclient/security/qr_code_view.dart` | `TomQrCodeView` |
 
-Nine public types. The flow widget renders whichever stop of a second-factor
+Thirteen public types. The flow widget renders whichever stop of a second-factor
 login the application's controller reports; per-mechanism rendering is resolved
 through a process-wide registry keyed by mechanism string. See
 [`security.md`](../security.md) for the design and the integration narrative.
@@ -51,7 +60,15 @@ StatelessWidget
     └── TomQrCodeView
 
 Tom2FAClientMechanism             (abstract)
-    └── TomTotp2FAClientMechanism (shipped, registered under 'totp')
+    ├── TomTotp2FAClientMechanism (shipped, registered under 'totp')
+    └── TomWebAuthn2FAClientMechanism (shipped, registered under 'webauthn'
+                                       where an authenticator exists)
+
+TomWebAuthnPlatform               (abstract)
+    └── TomUnavailableWebAuthnPlatform
+
+Exception
+    └── TomWebAuthnPlatformException
 
 Tom2FAEnrolmentPanelContext       (value)
 Tom2FAChallengePanelContext       (value)
@@ -274,12 +291,13 @@ The shipped authenticator-app mechanism, registered under `'totp'`. Ships
 registered rather than as a sample to copy, because TOTP is the mechanism every
 deployment has.
 
-**It is the only client mechanism this package provides.** The server ships
-`totp`, `email` and `sms` adaptors; a deployment offering email or SMS codes
-writes the client mechanism for it, and WebAuthn exists on neither side. The
-suite asserts both halves of the client claim — the
-registry holds exactly `totp` after the built-ins install, and `lib/` declares
-exactly one `Tom2FAClientMechanism`.
+**It is one of two client mechanisms this package provides**, beside
+`TomWebAuthn2FAClientMechanism`, which registers only where a platform
+authenticator exists. The server also ships `email` and `sms` adaptors; a
+deployment offering those writes the client mechanism for them. The suite
+asserts the set — the registry holds exactly `totp` after the built-ins install
+on a target with no authenticator and `totp` and `webauthn` where one exists, and
+`lib/` declares exactly those two `Tom2FAClientMechanism` subclasses.
 
 Reads all four `clientData` keys the server's TOTP service writes —
 `otpauthUri`, `secret`, `digits` and `periodSeconds` — each defensively, because
@@ -332,6 +350,104 @@ panel uses.
 `tom-2fa-totp-challenge-code`, `tom-2fa-totp-challenge-countdown`,
 `tom-2fa-totp-challenge-code-changed`, `tom-2fa-totp-challenge-submit`.
 
+### TomWebAuthn2FAClientMechanism
+
+The shipped passkey mechanism, registered under `'webauthn'` by
+`Tom2FAFlowPanel.registerBuiltInMechanisms` where
+`TomWebAuthnPlatform.instance.isAvailable`. Each panel is a sentence and one
+button — Safari refuses a WebAuthn ceremony a user gesture did not start — which
+hands the server's options to the platform and submits the authenticator's
+response, encoded by `toSubmission()`, through the `String` seam.
+
+- **Extends:** `Tom2FAClientMechanism`
+
+#### Constructors
+
+```dart
+const TomWebAuthn2FAClientMechanism()
+```
+
+#### Static Constants
+
+| Constant | Value | Description |
+| -------- | ----- | ----------- |
+| `mechanismType` | `'webauthn'` | The mechanism key, matching the server adaptor's. |
+| `optionsKey` | `'publicKey'` | The `clientData` key the server sends its creation or request options under. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `buildEnrolmentPanel` | `Widget buildEnrolmentPanel(BuildContext context, Tom2FAEnrolmentPanelContext data)` | *(override)* Reads `TomWebAuthnCreationOptions` from `clientData`, calls `TomWebAuthnPlatform.instance.create` on the button press, and submits the response. A failed or cancelled prompt shows `two_factor.webauthn.failed` and keeps the button. |
+| `buildChallengePanel` | `Widget buildChallengePanel(BuildContext context, Tom2FAChallengePanelContext data)` | *(override)* The same with `TomWebAuthnRequestOptions` and `get`. |
+
+### TomWebAuthnPlatform
+
+The seam between the passkey mechanism and whatever makes passkeys on this
+target. On the web the default reaches `navigator.credentials` through
+`dart:js_interop`, with no plugin; elsewhere it is
+`TomUnavailableWebAuthnPlatform`.
+
+- **Extends:** none (abstract)
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `instance` | `TomWebAuthnPlatform` | The binding this target uses. Replace it before the first login to supply a native plugin, or a fake in a test. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `isAvailable` | `bool` | *(abstract)* Whether this target can make and use passkeys. The flow registers the passkey mechanism only when it is `true`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `create` | `Future<TomWebAuthnRegistrationResponse> create(TomWebAuthnCreationOptions options)` | *(abstract)* Asks the authenticator to make a passkey. Throws `TomWebAuthnPlatformException` when the user cancels or the authenticator refuses. |
+| `get` | `Future<TomWebAuthnAuthenticationResponse> get(TomWebAuthnRequestOptions options)` | *(abstract)* Asks the authenticator to sign a challenge, with the same failure. |
+
+### TomUnavailableWebAuthnPlatform
+
+The binding for a target with no passkey support: `isAvailable` is `false`, and
+both ceremonies fail with `TomWebAuthnPlatformException`.
+
+- **Extends:** `TomWebAuthnPlatform`
+
+#### Constructors
+
+```dart
+const TomUnavailableWebAuthnPlatform()
+```
+
+### TomWebAuthnPlatformException
+
+The platform could not complete a passkey ceremony. The browser reports a
+cancelled, timed-out and refused prompt alike, deliberately, so the panel shows
+one message for all of them.
+
+- **Implements:** `Exception`
+
+#### Constructors
+
+```dart
+const TomWebAuthnPlatformException(String message)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `message` | `String` | What the platform said, for the log (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* `TomWebAuthnPlatformException: <message>`. |
+
 ### Tom2FATexts
 
 The resource keys the second-factor flow and its shipped panels resolve, and the
@@ -369,6 +485,11 @@ hits that screen.
 | `totpChallengeSubmit` | `two_factor.totp.challenge.submit` |
 | `totpChallengeExpiresIn` | `two_factor.totp.challenge.expiresIn` |
 | `totpChallengeCodeChanged` | `two_factor.totp.challenge.codeChanged` |
+| `webauthnEnrolIntro` | `two_factor.webauthn.enrol.intro` |
+| `webauthnEnrolSubmit` | `two_factor.webauthn.enrol.submit` |
+| `webauthnChallengeIntro` | `two_factor.webauthn.challenge.intro` |
+| `webauthnChallengeSubmit` | `two_factor.webauthn.challenge.submit` |
+| `webauthnFailed` | `two_factor.webauthn.failed` |
 
 #### Static Methods
 
@@ -446,4 +567,7 @@ so the widget tree the keys hang on is identifiable.
 | `_Tom2FAFlowPanelState` | `two_factor_flow.dart` | Holds the busy flag and last error, and builds the three stops and their shared frame. |
 | `_TotpEnrolmentPanel` | `two_factor_totp_client.dart` | The QR-and-secret enrolment panel. |
 | `_TotpChallengePanel` | `two_factor_totp_client.dart` | The one-time-code challenge panel. |
+| `_PasskeyPanel` | `two_factor_webauthn_client.dart` | The sentence-and-button panel both passkey stops use. |
+| `_BrowserWebAuthn` | `webauthn_platform_web.dart` | The browser binding over `navigator.credentials`. |
+| `defaultWebAuthnPlatform` | `webauthn_platform_web.dart`, `webauthn_platform_neutral.dart` | The function the conditional import selects to supply `TomWebAuthnPlatform.instance`. |
 | `_QrPainter` | `qr_code_view.dart` | Paints a `QrImage`'s modules, overdrawing each by half a pixel so neighbours meet cleanly instead of leaving hairline seams a scanner reads badly. |

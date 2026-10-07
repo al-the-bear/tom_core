@@ -101,6 +101,11 @@ surface documented here.
 | `TomDeliveredCode2FAService` | abstract class | The shape every *delivered* one-time code shares: generate, seal into `verificationData`, send, recognise, and prove the destination by enrolment. |
 | `TomEmailCode2FAService` | class | A one-time code mailed through `TomEmailService`. |
 | `TomSmsCode2FAService` | class | A one-time code texted through `TomSmsService`. |
+| `TomWebAuthn2FAService` | class | Passkeys as a second factor, verified by signature; offered once a relying party is configured. |
+| `TomWebAuthnVerifier` | abstract final class | The WebAuthn registration and assertion checks as pure functions. |
+| `TomWebAuthnRegisteredCredential` | class | A credential a registration verified. |
+| `TomWebAuthnVerifiedAssertion` | class | An assertion that verified, with its new counter. |
+| `TomWebAuthnSoftwareAuthenticator` | class | A passkey authenticator in software, for tests and bring-up only. |
 | `Tom2FAPolicy` | abstract class | Decides, per login, whether a second factor is owed and which mechanisms may satisfy it. |
 | `Tom2FARequirement` | enum | How strongly a factor is owed: `disabled`, `optional`, `required`. |
 | `Tom2FADecision` | class | One policy verdict: requirement, permitted mechanisms, grace logins left. |
@@ -1156,6 +1161,11 @@ surface documented here.
 | `TomUserTwoFactorEnrolment` | Authentication |
 | `TomUserTwoFactorEnrolmentRepository` | Authentication |
 | `tomVendorValueAt` | Messaging |
+| `TomWebAuthn2FAService` | Authentication |
+| `TomWebAuthnRegisteredCredential` | Authentication |
+| `TomWebAuthnSoftwareAuthenticator` | Authentication |
+| `TomWebAuthnVerifiedAssertion` | Authentication |
+| `TomWebAuthnVerifier` | Authentication |
 | `TomWebhookSettings` | Messaging |
 | `TomWebhookTransport` | Messaging |
 | `TomWebSocketConnection` | Endpoints |

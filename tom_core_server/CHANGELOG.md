@@ -1,5 +1,20 @@
 ## Unreleased
 
+### Added
+
+- **Passkeys: `TomWebAuthn2FAService`.** The fourth shipped second factor,
+  registered as `@Tom2FAAdaptor('webauthn')` and offered once
+  `globalSettingRelyingPartyId` is set. It issues WebAuthn creation and request
+  options (the kernel's W3C JSON wire types), verifies registrations and
+  assertions with `TomWebAuthnVerifier` — client data type, challenge and
+  origin, RP id hash, user-present and user-verified flags, an ES256 or RS256
+  signature, a rising signature counter, the user handle — and keeps one
+  enrolment per credential, writing the counter back after every login.
+  Attestation is requested as `none` and not verified. New key
+  `login.error.2fa.webauthn-registration-invalid`.
+- **`TomWebAuthnSoftwareAuthenticator`**, a passkey authenticator in software
+  (real P-256 keys, CBOR and signatures in memory) for tests and bring-up.
+
 ### Tests
 
 - **Every error key the package raises is named by a test.** New

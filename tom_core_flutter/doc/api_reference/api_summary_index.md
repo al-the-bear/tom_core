@@ -101,6 +101,10 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `Tom2FAEnrolmentPanelContext` | class | What an enrolment panel is given to render itself. |
 | `Tom2FAChallengePanelContext` | class | What a challenge panel is given to render itself. |
 | `TomTotp2FAClientMechanism` | class | The shipped authenticator-app mechanism, registered under `'totp'`. |
+| `TomWebAuthn2FAClientMechanism` | class | The shipped passkey mechanism, registered under `'webauthn'` where a platform authenticator exists. |
+| `TomWebAuthnPlatform` | abstract class | The seam to whatever makes passkeys on this target — the browser on the web. |
+| `TomUnavailableWebAuthnPlatform` | class | The binding for a target with no passkey support. |
+| `TomWebAuthnPlatformException` | class | A passkey ceremony the platform could not complete. |
 | `Tom2FATexts` | class | Every resource key the second-factor UI resolves, and the helpers that resolve them; entirely static. |
 | `TomQrCodeView` | class | A QR code painted from the pure-Dart `qr` encoder, re-encoded only when its payload changes. |
 
@@ -127,10 +131,10 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomClientEnvironment` | Configuration |
 | `TomClientException` | Little Things |
 | `TomClientUIException` | Little Things |
+| `TomDevicePreferenceCipher` | Preferences |
 | `TomDevicePreferenceException` | Preferences |
 | `TomDevicePreferenceJson` | Preferences |
 | `TomDevicePreferences` | Preferences |
-| `TomDevicePreferenceCipher` | Preferences |
 | `TomDevicePreferenceStore` | Preferences |
 | `TomDevicePreferenceStoreConflictDetection` | Preferences |
 | `TomDoubleProperty` | Resources |
@@ -142,8 +146,8 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomMemoryClientConfigurationStore` | Configuration |
 | `TomMemoryDevicePreferenceStore` | Preferences |
 | `TomObservingWidget<T>` | Observing |
-| `TomOverridableBy` | Configuration |
 | `TomObservingWidgetState<T>` | Observing |
+| `TomOverridableBy` | Configuration |
 | `TomPlatformDevicePreferenceStore` | Preferences |
 | `TomPreferenceLookup` | Configuration |
 | `TomProperty<T>` | Resources |
@@ -153,6 +157,10 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomStoredDevicePreferences` | Preferences |
 | `TomStringProperty` | Resources |
 | `TomTotp2FAClientMechanism` | Security |
+| `TomUnavailableWebAuthnPlatform` | Security |
 | `TomUserPreferencesClient` | Preferences |
 | `TomUserPreferencesClientException` | Preferences |
+| `TomWebAuthn2FAClientMechanism` | Security |
+| `TomWebAuthnPlatform` | Security |
+| `TomWebAuthnPlatformException` | Security |
 | `ValueListenableObserver<T>` | Observing |

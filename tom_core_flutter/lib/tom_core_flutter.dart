@@ -28,5 +28,7 @@ export 'src/tomclient/security/two_factor_client.dart';
 export 'src/tomclient/security/two_factor_flow.dart';
 export 'src/tomclient/security/two_factor_texts.dart';
 export 'src/tomclient/security/two_factor_totp_client.dart';
+export 'src/tomclient/security/two_factor_webauthn_client.dart';
+export 'src/tomclient/security/webauthn_platform.dart';
 export 'package:tom_reflection/tom_reflection.dart';
 export 'package:tom_reflection/generated.dart';

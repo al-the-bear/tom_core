@@ -154,6 +154,8 @@ and the server are two readings of one contract. See
 | `Tom2FAClientRegistry` | The process-wide mechanism catalog the flow dispatches through |
 | `Tom2FAEnrolmentPanelContext` / `Tom2FAChallengePanelContext` | What a mechanism's two panels are given to render themselves |
 | `TomTotp2FAClientMechanism` | The shipped authenticator-app mechanism, registered under `'totp'` |
+| `TomWebAuthn2FAClientMechanism` | The shipped passkey mechanism, registered under `'webauthn'` where a platform authenticator exists |
+| `TomWebAuthnPlatform` | The seam to whatever makes passkeys on this target — the browser on the web |
 | `Tom2FATexts` | Every resource key the second-factor UI resolves, and the helpers that resolve them |
 | `TomQrCodeView` | A QR code painted from the pure-Dart `qr` encoder, themed like any other widget |
 

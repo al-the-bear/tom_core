@@ -44,6 +44,16 @@
         "expiresIn": "Good for another {seconds} s",
         "codeChanged": "Your authenticator now shows a new code — enter that one."
       }
+    },
+    "webauthn": {
+      "name": "Passkey",
+      "description": "Sign in with your fingerprint, face or device PIN — nothing to type.",
+      "enrol": {
+        "intro": "Create a passkey on this device. Your browser will ask you to confirm with your fingerprint, face or PIN.",
+        "submit": "Create passkey"
+      },
+      "challenge": { "intro": "Use your passkey to finish signing in.", "submit": "Use passkey" },
+      "failed": "The passkey prompt was cancelled or did not complete. Try again."
     }
   },
   "adminLogin": {

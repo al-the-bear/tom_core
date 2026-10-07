@@ -47,6 +47,8 @@ an element is hidden, locked, read-only, or fully editable.
 | `Tom2FAMethodDescriptor` | One available mechanism — produced by the server's registry, consumed by a client choosing between them. |
 | `Tom2FAPendingEnrolment` | An enrolment mid-confirmation: the mechanism and the client data needed to set it up (for TOTP, the `otpauth://` URI and the base32 secret). |
 | `TomTotp` | The TOTP primitive itself, shared so the tiers that must agree about a code cannot disagree. |
+| `TomWebAuthnCreationOptions` · `TomWebAuthnRequestOptions` · `TomWebAuthnRegistrationResponse` · `TomWebAuthnAuthenticationResponse` | The passkey wire types the server issues and the client returns, in WebAuthn's own JSON forms; a response travels through the second factor's `String` seam as `toSubmission()`. |
+| `TomWebAuthnUserVerification` · `TomWebAuthnAlgorithms` · `TomBase64Url` | The user-verification requirement, the COSE algorithm ids, and the unpadded base64url codec every WebAuthn field uses. |
 
 ### External identity (OAuth)
 

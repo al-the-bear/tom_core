@@ -347,9 +347,10 @@ Future<void> seedDemoPasswords() async {
 /// Roles rather than the principal flag: [TomRole2FAPolicy] reads the roles the
 /// principal already carries in its access-control information, so the axis that
 /// grants a privilege and the axis that demands a factor cannot drift apart.
-/// `mechanisms` is pinned to TOTP because that is the one adaptor this
-/// deployment registers; leaving it null would say "every registered mechanism",
-/// which is the same list today and a silently widening one tomorrow.
+/// `mechanisms` is pinned to [advancedTwoFactorMechanisms] — TOTP and passkeys —
+/// rather than left null, which would say "every registered mechanism": the
+/// same list today and a silently widening one tomorrow. Passkeys are offered
+/// once [installPasskeyRelyingParty] has bound them to `localhost`.
 ///
 /// **The store is the persistent one, bridged.** Installing any store makes it
 /// the authority on whether a user has a factor, which would send the seeded
@@ -366,7 +367,7 @@ void installTwoFactorPolicy() {
         'two_factor_required': Tom2FARequirement.required,
         'two_factor_optional': Tom2FARequirement.optional,
       },
-      mechanisms: const [TomTotp2FAService.mechanismType],
+      mechanisms: advancedTwoFactorMechanisms,
     ),
   );
   TomBean.withType<Tom2FAEnrolmentStore>(
@@ -376,7 +377,8 @@ void installTwoFactorPolicy() {
   );
   tomLog.info(
     'Two-factor policy installed: required for role "two_factor_required", '
-    'offered for "two_factor_optional", disabled otherwise; TOTP only, '
+    'offered for "two_factor_optional", disabled otherwise; TOTP and '
+    'passkeys, '
     'enrolments persisted to tom_user_two_factor_enrolment.',
   );
 }
@@ -431,6 +433,7 @@ Future<void> main(List<String> args) async {
   await TomBlobStoreInfo.initializeBlobStores(blobStoreLoaderFunction());
 
   initializeBeanContext();
+  installPasskeyRelyingParty();
   installTwoFactorPolicy();
 
   tomLog.setLogLevelByName(configuration.logLevel);

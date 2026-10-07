@@ -315,6 +315,13 @@ declarations are omitted.
 | `Tom2FAEnrolmentClaims` | class | The claim names a pending 2FA enrolment travels under. |
 | `Tom2FAMethodDescriptor` | class | How a mechanism names itself to a user choosing one — an identifier plus three resource keys, never literal text. |
 | `TomTotp` | class | RFC 4226/6238 code derivation and the base32 codec. |
+| `TomBase64Url` | abstract final class | Unpadded base64url, the encoding every WebAuthn field uses. |
+| `TomWebAuthnAlgorithms` | abstract final class | The COSE algorithm ids a passkey may be created with. |
+| `TomWebAuthnUserVerification` | enum | What a passkey must prove about the user. |
+| `TomWebAuthnCreationOptions` | class | The options to make a passkey, in their W3C JSON form. |
+| `TomWebAuthnRequestOptions` | class | The options to sign in with a passkey, in their W3C JSON form. |
+| `TomWebAuthnRegistrationResponse` | class | What an authenticator returned when it made a passkey. |
+| `TomWebAuthnAuthenticationResponse` | class | What an authenticator returned when it signed a challenge. |
 | `tomProtect<T>`, `tomProtected` | function | Wrap/read a resource-key-protected value. |
 | `TomAccessControlHandler` | typedef | Function signature for custom access control handlers. |
 | `TomClientContext` | class | The language, country and timezone a principal carries when nothing better is known. |

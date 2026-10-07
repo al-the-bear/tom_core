@@ -1,5 +1,16 @@
 ## Unreleased
 
+### Added
+
+- **Passkey wire types** in `security/webauthn.dart`:
+  `TomWebAuthnCreationOptions`, `TomWebAuthnRequestOptions`,
+  `TomWebAuthnRegistrationResponse` and `TomWebAuthnAuthenticationResponse`,
+  each serialising to WebAuthn Level 3's JSON form, with `toSubmission()` /
+  `fromSubmission()` carrying a response through the second factor's `String`
+  seam; plus `TomWebAuthnUserVerification`, `TomWebAuthnAlgorithms` and the
+  unpadded base64url codec `TomBase64Url`. Shared by `tom_core_server`'s
+  `TomWebAuthn2FAService` and `tom_core_flutter`'s passkey mechanism.
+
 ### Changed
 
 - **`TomLoginFailure` lives here, and a failed `TomAuthenticationResult`

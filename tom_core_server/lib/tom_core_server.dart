@@ -45,6 +45,8 @@ export 'src/tomserver/authentication/two_factor_attempts.dart';
 export 'src/tomserver/authentication/two_factor_delivered_code.dart';
 export 'src/tomserver/authentication/two_factor_enrolment.dart';
 export 'src/tomserver/authentication/two_factor_policy.dart';
+export 'src/tomserver/authentication/two_factor_webauthn.dart';
+export 'src/tomserver/authentication/webauthn_software_authenticator.dart';
 export 'src/tomserver/authorization/authorization_cache.dart';
 export 'src/tomserver/authorization/graded_authorization.dart';
 export 'src/tomserver/authorization/principal_delegation.dart';

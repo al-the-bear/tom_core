@@ -66,18 +66,19 @@
 ///
 /// ## What the framework ships, and what it does not
 ///
-/// **TOTP is the only client mechanism in the box.** `TomTotp2FAClientMechanism`
-/// is the single implementation of [Tom2FAClientMechanism] this package
-/// provides, and the flow installs it for you.
+/// **Two client mechanisms are in the box.** `TomTotp2FAClientMechanism`
+/// everywhere, and `TomWebAuthn2FAClientMechanism` (passkeys) where
+/// `TomWebAuthnPlatform.instance` reports a platform authenticator — on the
+/// web. The flow installs both for you.
 ///
-/// The server ships more: `tom_core_server` registers `totp` and the
-/// delivered-code `email` and `sms` adaptors, each offered once its delivery
-/// service is installed. For those two the missing half is this one — a code
-/// field, a confirm step at enrolment, and the masked destination the server
-/// sends as `hint`. A deployment that offers them writes the mechanism and
-/// registers it; until then the enrolment chooser leaves the key out. The
+/// The server ships more: `tom_core_server` also registers the delivered-code
+/// `email` and `sms` adaptors, each offered once its delivery service is
+/// installed. For those two the missing half is this one — a code field, a
+/// confirm step at enrolment, and the masked destination the server sends as
+/// `hint`. A deployment that offers them writes the mechanism and registers it;
+/// until then the enrolment chooser leaves the key out. The
 /// `if (type == 'sms')` above and the `SmsClientMechanism()` below are that
-/// mechanism. WebAuthn exists on neither side.
+/// mechanism.
 ///
 /// The SMS panel is not shipped on purpose. SMS is the weakest of the common
 /// factors and the dearest to run, so registering its client mechanism is the
@@ -129,7 +130,9 @@ class Tom2FAEnrolmentPanelContext {
   /// context has no equivalent yet.
   final String accountLabel;
 
-  /// Called with whatever the user typed to confirm the factor.
+  /// Called with what the mechanism collected to confirm the factor — the
+  /// code a user typed for TOTP, the authenticator's encoded response for a
+  /// passkey.
   ///
   /// The panel does *not* decide what happens next: the flow posts it, handles
   /// the refusal, and re-renders. A panel that awaited a result here would be
@@ -192,7 +195,8 @@ class Tom2FAChallengePanelContext {
   /// How many verification attempts remain before the challenge is burned.
   final int attemptsRemaining;
 
-  /// Called with the code the user entered.
+  /// Called with what the mechanism collected — a typed code, or a passkey's
+  /// encoded response.
   final ValueChanged<String> onSubmit;
 
   /// Whether the flow is mid-call.

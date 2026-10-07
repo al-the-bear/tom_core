@@ -101,6 +101,11 @@ void main() {
     Tom2FATexts.totpChallengeSubmit: 'Sign in',
     Tom2FATexts.totpChallengeExpiresIn: 'Good for another {seconds} s',
     Tom2FATexts.totpChallengeCodeChanged: 'Your app shows a new code now.',
+    Tom2FATexts.webauthnEnrolIntro: 'Create a passkey on this device.',
+    Tom2FATexts.webauthnEnrolSubmit: 'Create passkey',
+    Tom2FATexts.webauthnChallengeIntro: 'Use your passkey to continue.',
+    Tom2FATexts.webauthnChallengeSubmit: 'Use passkey',
+    Tom2FATexts.webauthnFailed: 'The passkey prompt did not complete.',
     // Descriptors the chooser falls back to when the server sent none.
     'two_factor.totp.name': 'Authenticator app',
     'two_factor.totp.description': 'A code from an app on your phone.',
@@ -119,10 +124,13 @@ void main() {
     // that mechanism" is not silently rescued by a leftover registration.
     Tom2FAClientRegistry.reset();
     TomUIIcons.adapter = AllIconsAdapter();
+    // The VM has no authenticator; a test that wants one installs a fake.
+    TomWebAuthnPlatform.instance = const TomUnavailableWebAuthnPlatform();
   });
 
   tearDown(() {
     Tom2FAClientRegistry.reset();
+    TomWebAuthnPlatform.instance = const TomUnavailableWebAuthnPlatform();
     // The adapter is process-wide, so a test that sets one must put it back —
     // otherwise "no adapter configured" can never be asserted again.
     TomUIIcons.reset();
@@ -803,6 +811,133 @@ void main() {
     });
   });
 
+  group('the passkey panels', () {
+    Tom2FAPendingEnrolment passkeyOffer() => Tom2FAPendingEnrolment(
+      type: 'webauthn',
+      expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+      offeredTypes: const ['webauthn'],
+      clientData: {
+        'publicKey': const TomWebAuthnCreationOptions(
+          rpId: 'example.com',
+          rpName: 'Acme',
+          userId: 'dXNlcg',
+          userName: 'alice',
+          userDisplayName: 'Alice',
+          challenge: 'Y2hhbGxlbmdl',
+        ).toJson(),
+      },
+    );
+
+    Tom2FAChallenge passkeyChallenge() => Tom2FAChallenge(
+      type: 'webauthn',
+      expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+      clientData: {
+        'publicKey': const TomWebAuthnRequestOptions(
+          challenge: 'Y2hhbGxlbmdl',
+          rpId: 'example.com',
+          allowCredentialIds: ['Y3JlZA'],
+        ).toJson(),
+      },
+    );
+
+    testWidgets('enrolment hands the options over and submits the response', (
+      tester,
+    ) async {
+      final passkeys = _FakePasskeys();
+      TomWebAuthnPlatform.instance = passkeys;
+      final controller = _FakeController(enrolment: passkeyOffer());
+      await pump(tester, controller);
+
+      expect(
+        find.byKey(const Key('tom-2fa-webauthn-enrolment')),
+        findsOneWidget,
+      );
+      expect(find.text('Create a passkey on this device.'), findsOneWidget);
+      expect(passkeys.created, isEmpty, reason: 'only a tap may start it');
+
+      await tester.tap(find.byKey(const Key('tom-2fa-webauthn-submit')));
+      await tester.pumpAndSettle();
+
+      expect(passkeys.created.single.rpId, 'example.com');
+      expect(passkeys.created.single.challenge, 'Y2hhbGxlbmdl');
+      final submitted = TomWebAuthnRegistrationResponse.fromSubmission(
+        controller.confirmed.single,
+      );
+      expect(submitted?.id, 'bmV3LWNyZWQ');
+    });
+
+    testWidgets('a challenge signs and submits through the same seam', (
+      tester,
+    ) async {
+      final passkeys = _FakePasskeys();
+      TomWebAuthnPlatform.instance = passkeys;
+      final controller = _FakeController(challenge: passkeyChallenge());
+      await pump(tester, controller);
+
+      await tester.tap(find.byKey(const Key('tom-2fa-webauthn-submit')));
+      await tester.pumpAndSettle();
+
+      expect(passkeys.requested.single.allowCredentialIds, ['Y3JlZA']);
+      final submitted = TomWebAuthnAuthenticationResponse.fromSubmission(
+        controller.answered.single,
+      );
+      expect(submitted?.signature, 'c2ln');
+    });
+
+    testWidgets('a cancelled prompt says so and can be tried again', (
+      tester,
+    ) async {
+      final passkeys = _FakePasskeys()..failNext = true;
+      TomWebAuthnPlatform.instance = passkeys;
+      final controller = _FakeController(challenge: passkeyChallenge());
+      await pump(tester, controller);
+
+      await tester.tap(find.byKey(const Key('tom-2fa-webauthn-submit')));
+      await tester.pumpAndSettle();
+
+      expect(controller.answered, isEmpty, reason: 'nothing to submit');
+      expect(find.byKey(const Key('tom-2fa-webauthn-failed')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('tom-2fa-webauthn-submit')));
+      await tester.pumpAndSettle();
+
+      expect(controller.answered, hasLength(1));
+      expect(find.byKey(const Key('tom-2fa-webauthn-failed')), findsNothing);
+    });
+
+    testWidgets(
+      'without an authenticator a passkey challenge is unrenderable',
+      (tester) async {
+        // The path the flow's find-returns-null handling was written for: the
+        // server asks for a passkey, this target has no way to make one.
+        await pump(tester, _FakeController(challenge: passkeyChallenge()));
+
+        expect(
+          find.byKey(const Key('tom-2fa-webauthn-challenge')),
+          findsNothing,
+        );
+        expect(
+          find.text('This sign-in method needs a newer version of the app.'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('and is left out of the chooser', (tester) async {
+      await pump(
+        tester,
+        _FakeController(
+          enrolment: Tom2FAPendingEnrolment(
+            offeredTypes: const ['totp', 'webauthn'],
+          ),
+        ),
+      );
+
+      expect(find.byKey(const Key('tom-2fa-method-totp')), findsOneWidget);
+      expect(find.byKey(const Key('tom-2fa-method-webauthn')), findsNothing);
+    });
+  });
+
   group('the challenge hint', () {
     // No shipped mechanism renders the hint — TOTP has nothing to hint, since
     // the user reads the code off the device in their hand. Delivering it is
@@ -1159,27 +1294,38 @@ void main() {
       expect(Tom2FAClientRegistry.types, contains('totp'));
     });
 
-    test('and is the only one the framework ships', () {
-      // `contains` above would go on passing beside a second built-in. The
-      // documents say TOTP is the only *client* mechanism in the box — the
-      // server's `email` and `sms` adaptors have no shipped panel, by decision —
-      // so the exclusivity is the claim, and this is what holds the sentence to
-      // the code.
+    test('and is the only one where no authenticator exists', () {
+      // `contains` above would go on passing beside a second built-in. On a
+      // target with no platform authenticator the framework installs TOTP and
+      // nothing else, so a passkey offer is left out of the chooser rather
+      // than shown as a button that can only fail.
       Tom2FAFlowPanel.registerBuiltInMechanisms();
 
       expect(
         Tom2FAClientRegistry.types,
         ['totp'],
         reason:
-            'the framework now installs a second client mechanism; four '
-            'documents say TOTP is the only one this package ships',
+            'a target without a platform authenticator now gets a second '
+            'built-in mechanism; the documents say passkeys are registered '
+            'only where one exists',
       );
     });
 
-    test('and the only implementation in lib/', () {
+    test('and passkeys join it where an authenticator exists', () {
+      TomWebAuthnPlatform.instance = _FakePasskeys();
+      Tom2FAFlowPanel.registerBuiltInMechanisms();
+
+      expect(Tom2FAClientRegistry.types, ['totp', 'webauthn']);
+      expect(
+        Tom2FAClientRegistry.find('webauthn'),
+        isA<TomWebAuthn2FAClientMechanism>(),
+      );
+    });
+
+    test('and lib/ implements exactly those two', () {
       // The registry is one way to ship a mechanism; declaring a class is the
       // other, and a mechanism declared but left unregistered would still be
-      // part of the package's surface and still make the documented boundary
+      // part of the package's surface and still make the documented set
       // false. Read from the sources, because there is nothing at run time
       // that enumerates a type nobody instantiated.
       final declared = <String>[];
@@ -1197,12 +1343,12 @@ void main() {
       }
 
       expect(
-        declared,
-        ['TomTotp2FAClientMechanism'],
+        declared..sort(),
+        ['TomTotp2FAClientMechanism', 'TomWebAuthn2FAClientMechanism'],
         reason:
-            'lib/ declares a mechanism beside the TOTP one; the documented '
-            'boundary — TOTP is the only client mechanism this package '
-            'provides — has to be revisited with it',
+            'lib/ declares a mechanism beside TOTP and passkeys; the '
+            'documented set — TOTP everywhere, passkeys where an '
+            'authenticator exists — has to be revisited with it',
       );
     });
 
@@ -1693,4 +1839,47 @@ class _WrappingTotpMechanism extends Tom2FAClientMechanism {
     BuildContext context,
     Tom2FAChallengePanelContext data,
   ) => const TomTotp2FAClientMechanism().buildChallengePanel(context, data);
+}
+
+/// A platform authenticator that answers with canned responses.
+class _FakePasskeys extends TomWebAuthnPlatform {
+  final List<TomWebAuthnCreationOptions> created = [];
+  final List<TomWebAuthnRequestOptions> requested = [];
+  bool failNext = false;
+
+  @override
+  bool get isAvailable => true;
+
+  @override
+  Future<TomWebAuthnRegistrationResponse> create(
+    TomWebAuthnCreationOptions options,
+  ) async {
+    created.add(options);
+    if (failNext) {
+      failNext = false;
+      throw const TomWebAuthnPlatformException('NotAllowedError');
+    }
+    return const TomWebAuthnRegistrationResponse(
+      id: 'bmV3LWNyZWQ',
+      clientDataJson: 'e30',
+      attestationObject: 'oA',
+    );
+  }
+
+  @override
+  Future<TomWebAuthnAuthenticationResponse> get(
+    TomWebAuthnRequestOptions options,
+  ) async {
+    requested.add(options);
+    if (failNext) {
+      failNext = false;
+      throw const TomWebAuthnPlatformException('NotAllowedError');
+    }
+    return const TomWebAuthnAuthenticationResponse(
+      id: 'Y3JlZA',
+      clientDataJson: 'e30',
+      authenticatorData: 'YXV0aA',
+      signature: 'c2ln',
+    );
+  }
 }

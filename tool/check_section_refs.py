@@ -85,7 +85,7 @@ sit in view of each. The rule covers both, and leaves both checked.
 
 **What counts as naming the document.** A document name is a markdown-quoted or
 bare ``.md`` filename, an ``RFC <n>``, or one of the specification names used in
-this tree (``CodeSpecs``, ``OIDC Core``). The reference resolves when such a
+this tree (``CodeSpecs``, ``OIDC Core``, ``WebAuthn Level <n>``). The reference resolves when such a
 name sits *in view of it*: on the same line, or on a line immediately above or
 below within the same comment block.
 
@@ -203,7 +203,7 @@ REFERENCE = re.compile(r"§\s*([A-Za-z]?\.?[0-9]+(?:\.[0-9]+)*)")
 #: decides. ``Core`` is here and not in [DOCUMENT_NAME] because it only names a
 #: document in the fixed phrase "OIDC Core"; loose in a line it is a word.
 NAMED_SOURCE = re.compile(
-    r"(\.md`?|RFC\s*\d+|CodeSpecs|OIDC Core|Core)\s*$",
+    r"(\.md`?|RFC\s*\d+|CodeSpecs|OIDC Core|Core|WebAuthn Level\s*\d+)\s*$",
     re.IGNORECASE,
 )
 
@@ -211,7 +211,7 @@ NAMED_SOURCE = re.compile(
 #: carry at least one filename character before the extension so that a bare
 #: ``.md`` in prose about the format does not resolve anything.
 DOCUMENT_NAME = re.compile(
-    r"([\w./-]+\.md|RFC\s*\d+|CodeSpecs|OIDC Core)",
+    r"([\w./-]+\.md|RFC\s*\d+|CodeSpecs|OIDC Core|WebAuthn Level\s*\d+)",
     re.IGNORECASE,
 )
 

@@ -52,6 +52,12 @@ per-principal-per-resource role resolution.
   - [Tom2FAPendingEnrolment](#tom2fapendingenrolment)
   - [Tom2FAMethodDescriptor](#tom2famethoddescriptor)
   - [TomTotp](#tomtotp)
+  - [TomBase64Url](#tombase64url)
+  - [TomWebAuthnAlgorithms](#tomwebauthnalgorithms)
+  - [TomWebAuthnCreationOptions](#tomwebauthncreationoptions)
+  - [TomWebAuthnRequestOptions](#tomwebauthnrequestoptions)
+  - [TomWebAuthnRegistrationResponse](#tomwebauthnregistrationresponse)
+  - [TomWebAuthnAuthenticationResponse](#tomwebauthnauthenticationresponse)
   - [TomServerPrincipal](#tomserverprincipal)
   - [TomOAuthProviderDto](#tomoauthproviderdto)
   - [TomOAuthAuthorizationRequest](#tomoauthauthorizationrequest)
@@ -60,6 +66,7 @@ per-principal-per-resource role resolution.
   - [TomOAuthApiService](#tomoauthapiservice)
 - [Enums](#enums)
   - [TomLoginFailure](#tomloginfailure)
+  - [TomWebAuthnUserVerification](#tomwebauthnuserverification)
   - [TomAuthState](#tomauthstate)
   - [AuthGroupMode](#authgroupmode)
   - [TomAuthorizerStrategy](#tomauthorizerstrategy)
@@ -74,7 +81,7 @@ Sources: `lib/src/tombase/security/user_principal_aci.dart`,
 `lib/src/tombase/security/tom_authorization.dart`, `lib/src/tombase/security/access_controls.dart`,
 `lib/src/tombase/security/resource_role_authorization.dart`, `lib/src/tombase/security/authentication_authorization.dart`,
 `lib/src/tombase/security/bearer_authentication.dart`, `lib/src/tombase/security/two_factor.dart`, `lib/src/tombase/security/server_principal.dart`,
-`lib/src/tombase/security/oauth_contract.dart`.
+`lib/src/tombase/security/oauth_contract.dart`, `lib/src/tombase/security/webauthn.dart`.
 
 `user_principal_aci.dart` holds the identity/authorization data model:
 `TomUser` (identity), `TomPrincipal` (authenticated session + context),
@@ -125,7 +132,10 @@ user who has no factor yet: `Tom2FAEnrolmentClaims` and
 mechanism and confirming it. `Tom2FAMethodDescriptor` is how a mechanism names
 itself to a user being asked to choose, in resource keys rather than literal
 text; and `TomTotp` is the RFC 4226/6238 derivation primitives plus the base32
-codec. These live in the kernel because three tiers must agree about them
+codec. `webauthn.dart` holds the passkey wire types — creation and request
+options, the registration and authentication responses with their
+`toSubmission()` encoding, and the base64url codec. These live in the kernel
+because three tiers must agree about them
 exactly — the server issuing and verifying, enrolment tooling handing out a
 secret, and the client driving the second-factor UI. The server-side
 orchestration (adaptor registry, mechanisms, the two passes) is
@@ -175,6 +185,12 @@ Object
 ├── Tom2FAPendingEnrolment
 ├── Tom2FAMethodDescriptor                   (@tomReflector)
 ├── TomTotp                                  (private constructor)
+├── TomBase64Url                             (abstract final, static)
+├── TomWebAuthnAlgorithms                    (abstract final, constants)
+├── TomWebAuthnCreationOptions
+├── TomWebAuthnRequestOptions
+├── TomWebAuthnRegistrationResponse
+├── TomWebAuthnAuthenticationResponse
 ├── TomServerPrincipal                       (private constructor)
 ├── TomOAuthProviderDto                      (@tomReflector)
 ├── TomOAuthAuthorizationRequest             (@tomReflector)
@@ -1520,6 +1536,129 @@ agree on it exactly.
 | `decodeBase32(String secret)` | `List<int>` | Decodes an RFC 4648 base32 secret to bytes; case-insensitive, ignoring spaces, `-` and `=`. Returns an empty list for an out-of-alphabet character. |
 | `encodeBase32(List<int> bytes)` | `String` | Encodes bytes as an unpadded base32 secret, for enrolment. |
 
+### TomBase64Url
+
+Unpadded base64url, the encoding every WebAuthn JSON field uses. Not
+constructible.
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `encode` | `static String encode(List<int> bytes)` | Encodes without padding. |
+| `decode` | `static Uint8List? decode(String text)` | Decodes with or without padding; `null` when the text is not base64url. |
+
+### TomWebAuthnAlgorithms
+
+The COSE algorithm ids a passkey may be created with. Not constructible.
+
+| Constant | Value | Description |
+| -------- | ----- | ----------- |
+| `es256` | `-7` | ECDSA over P-256 with SHA-256. |
+| `rs256` | `-257` | RSASSA-PKCS1-v1_5 with SHA-256. |
+
+### TomWebAuthnCreationOptions
+
+The options a client passes to `navigator.credentials.create`.
+
+#### Constructors
+
+```dart
+const TomWebAuthnCreationOptions({
+  required String rpId,
+  required String rpName,
+  required String userId,
+  required String userName,
+  required String userDisplayName,
+  required String challenge,
+  List<int> algorithms = const [TomWebAuthnAlgorithms.es256, TomWebAuthnAlgorithms.rs256],
+  int timeoutMs = 120000,
+  TomWebAuthnUserVerification userVerification = TomWebAuthnUserVerification.preferred,
+  List<String> excludeCredentialIds = const [],
+})
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | The `PublicKeyCredentialCreationOptionsJSON` form, attestation `none`. |
+| `fromJson` | `static TomWebAuthnCreationOptions? fromJson(Object? json)` | Reads it back; `null` when a required field is missing. |
+
+### TomWebAuthnRequestOptions
+
+The options a client passes to `navigator.credentials.get`.
+
+#### Constructors
+
+```dart
+const TomWebAuthnRequestOptions({
+  required String challenge,
+  required String rpId,
+  List<String> allowCredentialIds = const [],
+  int timeoutMs = 120000,
+  TomWebAuthnUserVerification userVerification = TomWebAuthnUserVerification.preferred,
+})
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | The `PublicKeyCredentialRequestOptionsJSON` form. |
+| `fromJson` | `static TomWebAuthnRequestOptions? fromJson(Object? json)` | Reads it back; `null` when a required field is missing. |
+
+### TomWebAuthnRegistrationResponse
+
+What the authenticator returned when it made a credential: `id`,
+`clientDataJson`, `attestationObject` (base64url) and `transports`.
+
+#### Constructors
+
+```dart
+const TomWebAuthnRegistrationResponse({
+  required String id,
+  required String clientDataJson,
+  required String attestationObject,
+  List<String> transports = const [],
+})
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | The `RegistrationResponseJSON` form. |
+| `fromJson` | `static TomWebAuthnRegistrationResponse? fromJson(Object? json)` | Reads it back, or `null`. |
+| `toSubmission` | `String toSubmission()` | The JSON form, UTF-8, base64url — what a panel hands to `onSubmit`. |
+| `fromSubmission` | `static TomWebAuthnRegistrationResponse? fromSubmission(String submission)` | The reverse, or `null` for anything that is not one. |
+
+### TomWebAuthnAuthenticationResponse
+
+What the authenticator returned when it signed: `id`, `clientDataJson`,
+`authenticatorData`, `signature` and an optional `userHandle` (base64url).
+
+#### Constructors
+
+```dart
+const TomWebAuthnAuthenticationResponse({
+  required String id,
+  required String clientDataJson,
+  required String authenticatorData,
+  required String signature,
+  String? userHandle,
+})
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | The `AuthenticationResponseJSON` form. |
+| `fromJson` | `static TomWebAuthnAuthenticationResponse? fromJson(Object? json)` | Reads it back, or `null`. |
+| `toSubmission` | `String toSubmission()` | As for the registration response. |
+| `fromSubmission` | `static TomWebAuthnAuthenticationResponse? fromSubmission(String submission)` | As for the registration response. |
+
 ### TomServerPrincipal
 
 The **ambient server principal** — the deployment's own identity, held for the
@@ -1766,6 +1905,19 @@ server package.
 | `secondFactorInvalid` | A second factor was supplied and is not usable: wrong code, expired challenge, one already answered. The remedy is to try again. |
 | `rateLimited` | The attempts for this challenge or enrolment are spent. Distinct from `secondFactorInvalid` because trying the same factor again cannot succeed. |
 | `providerError` | The deployment's side failed: a provider refused or is unreachable, a code could not be delivered, or a mechanism has no adaptor. |
+
+### TomWebAuthnUserVerification
+
+What a passkey must prove about the user. Serialised by its `name`, the token
+WebAuthn's JSON forms use.
+
+#### Values
+
+| Value | Meaning |
+| ----- | ------- |
+| `required` | The authenticator must verify the user (PIN or biometric); the server refuses an answer without the user-verified flag. |
+| `preferred` | Verify when the authenticator can; presence alone is accepted. |
+| `discouraged` | Presence only. |
 
 ### TomAuthState
 

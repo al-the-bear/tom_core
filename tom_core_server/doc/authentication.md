@@ -22,6 +22,7 @@ principal into an authentication token and an authorization token.
   - [Wiring a second factor](#wiring-a-second-factor)
   - [Mechanisms that need something installed](#mechanisms-that-need-something-installed)
   - [Codes delivered by email or SMS](#codes-delivered-by-email-or-sms)
+  - [Passkeys (WebAuthn)](#passkeys-webauthn)
   - [How a mechanism names itself](#how-a-mechanism-names-itself)
   - [Writing your own mechanism](#writing-your-own-mechanism)
   - [Outcomes](#outcomes)
@@ -59,6 +60,8 @@ principal into an authentication token and an authorization token.
   - [`TomTotp2FAService`](#tomtotp2faservice)
   - [`TomDeliveredCode2FAService`](#tomdeliveredcode2faservice)
   - [`TomEmailCode2FAService` / `TomSmsCode2FAService`](#tomemailcode2faservice--tomsmscode2faservice)
+  - [`TomWebAuthn2FAService`](#tomwebauthn2faservice)
+  - [`TomWebAuthnVerifier` / `TomWebAuthnSoftwareAuthenticator`](#tomwebauthnverifier--tomwebauthnsoftwareauthenticator)
   - [Adaptor annotations](#adaptor-annotations)
   - [`TomServerSelfLogin` / `TomServiceCredential`](#tomserverselflogin--tomservicecredential)
   - [`TomOAuthAuthenticationService` / `TomExternalIdentityDirectory`](#tomoauthauthenticationservice--tomexternalidentitydirectory)
@@ -96,6 +99,9 @@ principal into an authentication token and an authorization token.
 | `TomDeliveredCode2FAService` | abstract class | The shape every *delivered* code shares: generate, seal, send, recognise, and prove the destination by enrolment |
 | `TomEmailCode2FAService` | class | A one-time code mailed through the Messaging module, registered as `@Tom2FAAdaptor('email')` |
 | `TomSmsCode2FAService` | class | A one-time code texted through the Messaging module, registered as `@Tom2FAAdaptor('sms')` |
+| `TomWebAuthn2FAService` | class | Passkeys: a credential made by an authenticator and verified by its signature, registered as `@Tom2FAAdaptor('webauthn')` |
+| `TomWebAuthnVerifier` / `TomWebAuthnRegisteredCredential` / `TomWebAuthnVerifiedAssertion` | abstract final class / classes | The WebAuthn ceremony checks as pure functions, and what each yields |
+| `TomWebAuthnSoftwareAuthenticator` | class | A passkey authenticator in software, for tests and bring-up **only** |
 | `Tom2FAPolicy` | abstract class | Decides per login whether a second factor is owed and which mechanisms may answer for it |
 | `Tom2FARequirement` | enum | `disabled` / `optional` / `required` — what a policy concluded |
 | `Tom2FADecision` | class | One policy answer: the requirement, the permitted mechanisms, and any grace logins |
@@ -1099,6 +1105,76 @@ should do.
 `globalSettingChallengeTemplateKey` / `globalSettingEnrolmentTemplateKey`,
 `globalSettingEnrolmentAttemptsAllowed` and `globalSettingEnrolmentValidity`.
 
+### Passkeys (WebAuthn)
+
+`TomWebAuthn2FAService` is the strongest factor the framework ships. A passkey is
+a key pair made by an authenticator — a phone's secure enclave, a security key,
+a laptop's TPM — whose private half never leaves it. Enrolment stores the public
+half; a challenge asks the authenticator to sign a fresh random value together
+with the origin the page is on. A phishing page cannot get a usable answer,
+because the browser writes the page's *real* origin into what is signed and the
+server refuses any other.
+
+```dart
+TomWebAuthn2FAService.globalSettingRelyingPartyId = 'example.com';
+TomWebAuthn2FAService.globalSettingAllowedOrigins = {'https://app.example.com'};
+```
+
+**It is offered only once a relying party is configured.** The RP id is the
+registrable domain passkeys are bound to, forever: a guessed one would make
+every passkey enrolled under it unusable once the guess is corrected, so an
+unset RP id keeps the mechanism out of the registry (`Tom2FAPrerequisite`). The
+allowed origins default to `https://<RP id>`; list every origin the login page
+is served from, including `http://localhost:…` for development (browsers allow
+WebAuthn on `localhost` without TLS) and the `android:apk-key-hash:…` origin of
+an Android app.
+
+**What travels.** The challenge's `clientData` carries the W3C request options
+under `publicKey` (`TomWebAuthnRequestOptions` in the kernel), and enrolment's
+carries the creation options the same way; the challenge itself is kept in the
+encrypted half, so the client cannot choose it. The answer comes back through the
+same `String` a typed code does — the authenticator's response in its W3C JSON
+form, base64url, decoded by `TomWebAuthnAuthenticationResponse.fromSubmission`.
+
+**What is verified**, following WebAuthn Level 2 §7.1 and §7.2, by
+`TomWebAuthnVerifier`:
+
+| Check | Registration | Assertion |
+| ----- | ------------ | --------- |
+| client data names the ceremony (`webauthn.create` / `webauthn.get`) | ✓ | ✓ |
+| client data carries exactly the challenge this server issued | ✓ | ✓ |
+| client data's origin is an allowed origin | ✓ | ✓ |
+| authenticator data's RP id hash is SHA-256 of the RP id | ✓ | ✓ |
+| user-present flag set; user-verified flag set when verification is `required` | ✓ | ✓ |
+| the attested credential id is the response's id, and its COSE key is ES256 or RS256 | ✓ | |
+| the signature over authenticator data and SHA-256 of the client data verifies | | ✓ |
+| the signature counter rose, whenever either it or the stored one is non-zero | | ✓ |
+| the user handle, when returned, is this user's | | ✓ |
+
+A counter that does not rise means two copies of the credential exist, and the
+login is refused. Synced passkeys report `0` every time, which is accepted. The
+new counter is written back to the enrolment after every successful login.
+
+**Attestation is not verified, deliberately.** The creation options request
+attestation `none`, and a statement that arrives anyway is not checked.
+Attestation answers *which model of authenticator* made a credential — useful
+to a deployment that admits only certified hardware keys, and a certificate
+trust store to maintain for everyone else. The server trusts what the credential
+signs, never what it claims to be, which is what every consumer passkey provider
+expects.
+
+Each passkey is its own enrolment (`webauthn:<credential id>`), so a user may
+hold one per device and any of them answers a challenge; creating a second for a
+credential the user already has is excluded by the creation options. A
+registration that fails any check refuses the confirmation with
+`login.error.2fa.webauthn-registration-invalid`; an assertion that fails is a
+wrong answer and spends an attempt, like a wrong code.
+
+`TomWebAuthnSoftwareAuthenticator` makes real P-256 key pairs, CBOR and
+signatures in memory, so a suite drives the whole mechanism without a browser.
+Its private key lives in the process and its "user verification" is a flag: it
+proves nothing about anyone, and is for tests and bring-up only.
+
 ### How a mechanism names itself
 
 A user choosing between second factors reads words: *Authenticator app*,
@@ -1292,6 +1368,7 @@ Expiry, the attempt counter and adaptor dispatch are generic and handled once in
 | `login.error.2fa.no-destination` | Enrolment was begun for a delivered code with no address on record to confirm | None |
 | `login.error.2fa.enrolment-code-invalid` | The confirmation code did not match the one just sent; nothing is stored | A re-issued offer, until attempts run out |
 | `login.error.2fa.enrolment-offer-invalid` | The enrolment offer is unusable — no destination for a delivered code, a confirmation on a token on which nothing was begun, or a begun offer whose `enrolmentExpiresAt` claim is absent or unreadable | None |
+| `login.error.2fa.webauthn-registration-invalid` | The authenticator's registration response failed a check — another challenge, origin, ceremony or RP id, an unverified user where verification is required, or a key this server cannot verify with; nothing is stored | A re-issued offer, until attempts run out |
 
 The enrolment passes add their own, all of them from
 `TomAuthenticationServer` rather than from a mechanism:
@@ -2299,6 +2376,22 @@ failure. See [Codes delivered by email or SMS](#codes-delivered-by-email-or-sms)
 and
 [Mechanisms that need something installed](#mechanisms-that-need-something-installed).
 
+### `TomWebAuthn2FAService`
+
+Passkeys, registered under `'webauthn'`, offered once
+`globalSettingRelyingPartyId` is set. Statics configure the RP id and name, the
+allowed origins, the user-verification requirement and the attempt and validity
+budgets. It implements `Tom2FAEnrolmentSupport` and `Tom2FAPrerequisite`. See
+[Passkeys (WebAuthn)](#passkeys-webauthn).
+
+### `TomWebAuthnVerifier` / `TomWebAuthnSoftwareAuthenticator`
+
+`verifyRegistration` and `verifyAssertion` are the ceremony checks as pure
+functions over the kernel's wire types; each answers `null` for anything that
+fails, since every failure is the same "not a valid passkey answer" to the
+caller. The software authenticator is the test double that makes real
+credentials in memory.
+
 ### Adaptor annotations
 
 `TomAuthenticationAdaptor` (with `guestOnly` / `userOnly`) and `Tom2FAAdaptor`
@@ -2383,14 +2476,15 @@ resolves the pending record for its context and calls
 - **`TomDummyAuthenticationService` is for scaffolding only** — it grants any
   non-`GUEST` login. Replace it before any test or production use.
   <!-- pinned: test/authentication_test.dart › authenticates any non-GUEST user -->
-- **Three second-factor mechanisms ship**: `TomTotp2FAService` (authenticator
-  app), `TomEmailCode2FAService` and `TomSmsCode2FAService` (delivered codes).
-  WebAuthn and anything else remain application-supplied — the mechanism set is
-  open by design, and adding one needs no change here (see
+- **Four second-factor mechanisms ship**: `TomTotp2FAService` (authenticator
+  app), `TomWebAuthn2FAService` (passkeys), and `TomEmailCode2FAService` and
+  `TomSmsCode2FAService` (delivered codes). Anything else remains
+  application-supplied — the mechanism set is open by design, and adding one
+  needs no change here (see
   [Writing your own mechanism](#writing-your-own-mechanism)).
   <!-- unpinned: absence — further mechanisms are application-supplied; the set is open -->
 - **The delivered-code factors have no shipped client panel.** `tom_core_flutter`
-  ships the TOTP client mechanism only. A deployment that offers `email` or `sms`
+  ships the TOTP and passkey client mechanisms only. A deployment that offers `email` or `sms`
   codes writes and registers the client mechanism — a code field and an
   enrolment confirm step — and until it does, the client's enrolment chooser
   leaves the key out. For SMS that is deliberate: it is the weakest common
@@ -2404,6 +2498,12 @@ resolves the pending record for its context and calls
   per time window. A deployment offering SMS codes bounds sends at its gateway or
   in its own login front until a send limit exists here.
   <!-- unpinned: absence — no per-principal or per-destination send limit -->
+- **Passkey attestation is not verified.** The server requests attestation
+  `none` and does not check a statement that arrives anyway, so it cannot admit
+  only certified hardware keys. That is the trust model consumer passkeys
+  expect; a deployment that needs an authenticator allow-list verifies the
+  attestation statement itself. See [Passkeys (WebAuthn)](#passkeys-webauthn).
+  <!-- unpinned: decision — attestation none; the server trusts what a credential signs -->
 - **Two policies ship, and neither is a component.** `TomPrincipalFlag2FAPolicy`
   is the default and `TomRole2FAPolicy` is installed by hand. Neither carries
   `@TomComponent`, so a deployment that adds a dependency does not silently
@@ -2505,17 +2605,18 @@ resolves the pending record for its context and calls
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `server_self_login.dart`, `two_factor.dart` | `Future`, `FutureOr`, and the `Timer` the server principal's renewal is scheduled on |
-| `dart:convert` | dart | 7 of 16 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
-| `dart:math` | dart | `oauth_flow.dart` | `Random`, `exp` |
-| `dart:typed_data` | dart | `two_factor_delivered_code.dart` | `Uint8List` |
-| `crypto` | package | `oauth_flow.dart`, `two_factor_attempts.dart`, `two_factor_delivered_code.dart` | `sha256`, for the PKCE code challenge, the interim-token fingerprint an attempt store keys on, and the delivered-code digest |
+| `dart:convert` | dart | 9 of 18 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
+| `dart:math` | dart | `oauth_flow.dart`, `webauthn_software_authenticator.dart` | `Random`, `exp` |
+| `dart:typed_data` | dart | `two_factor_delivered_code.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | `Uint8List`, `ByteData`, `BytesBuilder` |
+| `crypto` | package | `oauth_flow.dart`, `two_factor_attempts.dart`, `two_factor_delivered_code.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | `sha256`, for the PKCE code challenge, the interim-token fingerprint an attempt store keys on, the delivered-code digest, and the WebAuthn RP id hash, client-data hash and user handle |
 | `dart_jsonwebtoken` | package | `jwt_signing.dart` | `jwt.SecretKey`, `jwt.signing` |
 | `http` | package | `oauth_flow.dart` | `http.dart`, `http.get`, `http.post` |
-| `tom_core_kernel` | package | 15 of 16 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
+| `pointycastle` | package | `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | ECDSA P-256 and RSA PKCS#1 v1.5 signature verification for passkeys, and the software authenticator's key generation and signing |
+| `tom_core_kernel` | package | 17 of 18 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
 | [configuration](configuration.md) | module | `jwt_signing.dart`, `oauth_provider.dart`, `server_self_login.dart`, `sql_oauth_state_store.dart` | `TomBaseServerConfiguration` supplies the service-account fields `TomServiceCredential.fromConfiguration` reads |
 | [datasources](datasources.md) | module | `oauth_identity.dart`, `oauth_state_sql.dart`, `oauth_tokens.dart`, `sql_oauth_state_store.dart`, `two_factor_enrolment.dart` | `TomDataSource`, `TomDataSourceInfo`, `TomDbBool`, `TomDbDateTime`, `TomDbInt`, `TomDbString` |
 | [endpoints](endpoints.md) | module | `oauth_endpoints.dart` | `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract |
-| [little_things](little_things.md) | module | 9 of 16 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException` and `TomOAuthException` |
+| [little_things](little_things.md) | module | 10 of 18 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException` and `TomOAuthException` |
 | [messaging](messaging.md) | module | `two_factor_delivered_code.dart` | `TomEmailService` and `TomSmsService` deliver the one-time codes, through `TomTemplatedMessageService.deliverNow` rather than the outbox. A deployment that registers neither can still run TOTP |
 | [object_persistence](object_persistence.md) | module | `oauth_identity.dart`, `oauth_tokens.dart`, `sql_oauth_state_store.dart`, `two_factor_enrolment.dart` | `TomExternalIdentityLink` and `TomUserTwoFactorEnrolment` are ordinary entities over `TomSqlDatasourceRepository`. Neither table is created by the framework; each entity carries its own `createTableSql` for a deployment's migration to run |
 | [preferences](preferences.md) | module | `authentication_server.dart` | `TomUserPreferences` |

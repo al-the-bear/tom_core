@@ -103,6 +103,9 @@ The security module provides a comprehensive authentication and authorization sy
 | `Tom2FAEnrolmentClaims` | class | The claim names a pending 2FA enrolment travels under. |
 | `Tom2FAMethodDescriptor` | class | How a mechanism names itself to a user choosing one — an identifier plus three resource keys, never literal text. |
 | `TomTotp` | class | RFC 4226/6238 code derivation and the base32 codec. |
+| `TomWebAuthnCreationOptions` / `TomWebAuthnRequestOptions` | classes | The passkey options a server issues, in their W3C JSON form. |
+| `TomWebAuthnRegistrationResponse` / `TomWebAuthnAuthenticationResponse` | classes | What a passkey authenticator returned, and its `toSubmission()` encoding through the second factor's `String` seam. |
+| `TomWebAuthnUserVerification` / `TomWebAuthnAlgorithms` / `TomBase64Url` | enum / classes | User-verification requirement, the COSE algorithm ids, and the unpadded base64url codec. |
 | `TomAccessControlHandler` | typedef | Function signature for custom access control handlers. |
 | `TomClientContext` | class | The language, country and timezone a principal carries when nothing better is known. |
 | `TomClientLimitsProvider` | abstract class | The source of a client's limits: what its subscription currently grants. |
@@ -1667,8 +1670,14 @@ hard-coding "Authenticator app" beside it would put one locale's English there
 permanently.
 
 `Tom2FAChallenge`, `Tom2FAPendingEnrolment`, their claim-name namespaces
-(`Tom2FAClaims`, `Tom2FAEnrolmentClaims`), `Tom2FAMethodDescriptor` and
-`TomTotp` live in this module because both tiers must agree on them exactly.
+(`Tom2FAClaims`, `Tom2FAEnrolmentClaims`), `Tom2FAMethodDescriptor`, `TomTotp`
+and the passkey wire types live in this module because both tiers must agree on
+them exactly. The passkey types — `TomWebAuthnCreationOptions`,
+`TomWebAuthnRequestOptions` and the two responses — serialise to the JSON forms
+WebAuthn Level 3 defines, every binary field unpadded base64url
+(`TomBase64Url`), so a browser's own `PublicKeyCredential.toJSON()` output and
+these types speak the same shape. A response crosses the second factor's
+`String` seam as `toSubmission()`: its JSON, UTF-8, then base64url.
 The server half — the adaptor registry, the mechanisms, the enrolment store and
 the passes — is `tom_core_server`'s authentication module; see its
 `doc/authentication.md` for wiring a second factor and for what the server does
@@ -1708,8 +1717,9 @@ disappears a few seconds after login, with nothing in the logs.
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:collection` | dart | `tom_authorization.dart` | `HashSet` |
+| `dart:convert` | dart | `webauthn.dart` | `base64Url`, `jsonEncode`, `jsonDecode`, `utf8` |
 | `dart:math` | dart | `two_factor.dart` | `e`, `pow` |
-| `dart:typed_data` | dart | `two_factor.dart` | `Uint8List` |
+| `dart:typed_data` | dart | `two_factor.dart`, `webauthn.dart` | `Uint8List` |
 | `crypto` | package | `two_factor.dart` | `Hmac`/`sha1`, the TOTP primitive |
 | `meta` | package | `access_controls.dart` | `@nonVirtual` only; no runtime behaviour |
 | `tom_crypto` | package | `bearer_authentication.dart` | `TomClientJwtToken`, the parsed form of both bearer tokens |

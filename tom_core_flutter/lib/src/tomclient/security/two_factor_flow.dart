@@ -56,6 +56,8 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import 'two_factor_client.dart';
 import 'two_factor_texts.dart';
 import 'two_factor_totp_client.dart';
+import 'two_factor_webauthn_client.dart';
+import 'webauthn_platform.dart';
 
 /// The moves a second-factor login can make, implemented by the application
 /// over its own auth client.
@@ -120,7 +122,8 @@ class Tom2FAFlowPanel extends StatefulWidget {
   /// The seam to the application's auth client.
   final Tom2FAFlowController controller;
 
-  /// Registers the mechanisms the framework ships with.
+  /// Registers the mechanisms the framework ships with: TOTP always, passkeys
+  /// where [TomWebAuthnPlatform.instance] reports a platform authenticator.
   ///
   /// Called by the panel itself, so an application gets TOTP without wiring —
   /// a framework whose one built-in mechanism required three lines of set-up
@@ -128,10 +131,18 @@ class Tom2FAFlowPanel extends StatefulWidget {
   /// case. Idempotent, and it never overwrites a mechanism an application
   /// registered under the same key first.
   static void registerBuiltInMechanisms() {
-    if (Tom2FAClientRegistry.has(TomTotp2FAClientMechanism.mechanismType)) {
-      return;
+    if (!Tom2FAClientRegistry.has(TomTotp2FAClientMechanism.mechanismType)) {
+      Tom2FAClientRegistry.register(const TomTotp2FAClientMechanism());
     }
-    Tom2FAClientRegistry.register(const TomTotp2FAClientMechanism());
+    // A target with no authenticator leaves the key unregistered, so the
+    // chooser omits passkeys and a challenge for one reads as unrenderable
+    // rather than opening a button that can only fail.
+    if (TomWebAuthnPlatform.instance.isAvailable &&
+        !Tom2FAClientRegistry.has(
+          TomWebAuthn2FAClientMechanism.mechanismType,
+        )) {
+      Tom2FAClientRegistry.register(const TomWebAuthn2FAClientMechanism());
+    }
   }
 
   @override

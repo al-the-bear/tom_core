@@ -171,9 +171,9 @@ ID_SHAPE = re.compile(r"\b([a-z]{2,12})\d+(_[a-zäñößü]{4})?\b")
 KNOWN_STEMS = frozenset(
     """
     abc address api arg arm avc base black col command container data db dec
-    demo element
+    demo element es
     fade field flex form gsm http image iso layer level list map march material mp
-    name names oauth operant opt pass person phase pkcs prefix python row scope
+    name names oauth operant opt pass person phase pkcs prefix python row rs scope
     scores sha shade sigusr spacer sqlite step street strongpass subtitle time
     total tz ucs utf value white woff wrap
     """.split()

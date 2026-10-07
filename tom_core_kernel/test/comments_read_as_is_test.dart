@@ -95,6 +95,7 @@ const _knownStems = <String>{
   'data',
   'db',
   'element',
+  'es',
   'field',
   'image',
   'iso',
@@ -106,6 +107,7 @@ const _knownStems = <String>{
   'names',
   'person',
   'pkcs',
+  'rs',
   'scores',
   'sha',
   'sigusr',
@@ -130,10 +132,12 @@ final _capsShape = RegExp(r'\b([A-Z]{2,12})\d+\b');
 /// ALL-CAPS names a reader can look up — hash and cipher families, media and
 /// encoding standards, signal names.
 const _knownCaps = <String>{
+  'ES',
   'ISO',
   'MP',
   'PKCS',
   'RFC',
+  'RS',
   'SHA',
   'SIGUSR',
   'SKU',

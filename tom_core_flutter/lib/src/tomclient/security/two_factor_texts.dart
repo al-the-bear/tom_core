@@ -130,6 +130,26 @@ class Tom2FATexts {
   static const String totpChallengeCodeChanged =
       '$scope.totp.challenge.codeChanged';
 
+  // --- The passkey panels -------------------------------------------------
+
+  /// What a passkey is, above the enrolment button.
+  static const String webauthnEnrolIntro = '$scope.webauthn.enrol.intro';
+
+  /// The button that asks the platform to make a passkey.
+  static const String webauthnEnrolSubmit = '$scope.webauthn.enrol.submit';
+
+  /// What to do, above the challenge button.
+  static const String webauthnChallengeIntro =
+      '$scope.webauthn.challenge.intro';
+
+  /// The button that asks the platform to sign in with a passkey.
+  static const String webauthnChallengeSubmit =
+      '$scope.webauthn.challenge.submit';
+
+  /// Shown when the platform prompt was cancelled, timed out or refused —
+  /// which the browser reports identically on purpose.
+  static const String webauthnFailed = '$scope.webauthn.failed';
+
   /// Resolves [key] against the installed provider.
   ///
   /// The single lookup point for this feature, so a deployment that swaps the

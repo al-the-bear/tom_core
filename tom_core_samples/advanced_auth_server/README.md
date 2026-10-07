@@ -78,6 +78,7 @@ rest are wiring to reuse or records to read.
 | `src/endpoints/auth_endpoints.dart` | The `/auth/*` surface — credential login and the token lifecycle: `AuthTokenService`, the `AdvancedAuthApiService` adapter, `SecondFactorRetryException`, `LoginUnauthorizedErrorHandler` | reuse |
 | `src/endpoints/admin_endpoints.dart` | The `/admin/*` surface — account, role and group CRUD, assignments, and the four-state grant matrix: `AdminService` over **`AdminStore`**, its repository and in-memory implementations, the `AdvancedAdminApiService` adapter, `GrantRepository`, `forbiddenOnAccessDenied` | **implement `AdminStore`** |
 | `src/auth/authentication_service.dart` | The credential check the framework's `TomAuthenticationServer` delegates each login to: `AdvancedAuthenticationService` over **`AuthUserStore`**, with a repository and an in-memory implementation | **implement `AuthUserStore`** |
+| `src/auth/passkeys.dart` | The second factors this server offers (`advancedTwoFactorMechanisms`: TOTP and passkeys) and `installPasskeyRelyingParty`, which binds passkeys to `localhost` and the origins in `ADVANCED_PASSKEY_ORIGINS` | reuse |
 | `src/auth/password_hashing.dart` | Four functions over the `auth_db` `UserRecord` shape — `hashPassword`, `verifyPassword`, `applyPassword`, `verifyUserPassword` — a thin adapter over the kernel's `TomPasswordHasher` | reuse |
 | `src/auth/two_factor_enrolment_store.dart` | The persistent second-factor enrolment store, with `LegacyBridging2FAEnrolmentStore` over accounts that predate it | reuse |
 | `src/persistence/auth_persistence_model.dart` | The `auth_db` records and their repositories — users, roles, groups, the two membership join tables, and the grant/delegation repositories | read |
@@ -241,6 +242,18 @@ code against it and stores the enrolment; `POST /auth/enrol/skip` declines and
 completes the login unchanged. An account that confirms is challenged on its
 *next* login — from `tom_user_two_factor_enrolment`, not from the legacy
 `two_factor_type` column that carries dave's.
+
+The offer lists two factors: an authenticator app and a **passkey**. Choosing
+`webauthn` at `POST /auth/enrol/begin` returns WebAuthn creation options in
+`clientData.publicKey`; the browser's authenticator answers them, and the
+answer goes to `POST /auth/enrol/confirm` in the `code` field like a typed code
+would — `TomWebAuthn2FAService` verifies it and stores the passkey. Passkeys are
+bound to the relying party `localhost`, and a ceremony is accepted only from the
+origins in the OS environment variable `ADVANCED_PASSKEY_ORIGINS`
+(comma-separated, and not read from `.env`; default `http://localhost:8090`, the
+port a `flutter run -d chrome --web-port 8090` build is served on). `test/passkey_login_test.dart` drives the whole round —
+offer, enrolment, the next login's challenge, sign-in — with the framework's
+software authenticator, since a test has no browser.
 
 ## JWT signing
 

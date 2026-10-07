@@ -47,6 +47,11 @@ server's own self-login against an auth server.
   - [TomDeliveredCode2FAService](#tomdeliveredcode2faservice)
   - [TomEmailCode2FAService](#tomemailcode2faservice)
   - [TomSmsCode2FAService](#tomsmscode2faservice)
+  - [TomWebAuthn2FAService](#tomwebauthn2faservice)
+  - [TomWebAuthnVerifier](#tomwebauthnverifier)
+  - [TomWebAuthnRegisteredCredential](#tomwebauthnregisteredcredential)
+  - [TomWebAuthnVerifiedAssertion](#tomwebauthnverifiedassertion)
+  - [TomWebAuthnSoftwareAuthenticator](#tomwebauthnsoftwareauthenticator)
   - [TomAuthenticationInfo](#tomauthenticationinfo)
   - [TomDummyAuthenticationService](#tomdummyauthenticationservice)
   - [TomAuthenticationServer](#tomauthenticationserver)
@@ -99,6 +104,8 @@ Sources: `lib/src/tomserver/authentication/authentication_server.dart`,
 `lib/src/tomserver/authentication/two_factor_enrolment.dart`,
 `lib/src/tomserver/authentication/two_factor_attempts.dart`,
 `lib/src/tomserver/authentication/two_factor_delivered_code.dart`,
+`lib/src/tomserver/authentication/two_factor_webauthn.dart`,
+`lib/src/tomserver/authentication/webauthn_software_authenticator.dart`,
 `lib/src/tomserver/authentication/server_self_login.dart`,
 `lib/src/tomserver/authentication/oauth_provider.dart`,
 `lib/src/tomserver/authentication/oauth_flow.dart`,
@@ -166,7 +173,10 @@ stateless as the challenge one, and nothing is written until a confirmation
 succeeds. `TomMemory2FAEnrolmentStore` and `TomPersistent2FAEnrolmentStore`
 (over `TomUserTwoFactorEnrolment`, secrets encrypted at rest) ship.
 
-Three mechanisms ship. `TomTotp2FAService` (RFC 6238 authenticator app) needs no
+Four mechanisms ship. `TomWebAuthn2FAService` (passkeys) verifies a signature
+by a key that never leaves the user's authenticator, against the origin the
+browser reports — see its entry below. `TomTotp2FAService` (RFC 6238
+authenticator app) needs no
 delivery channel and stores nothing in `verificationData`, re-deriving its answer
 from the shared secret. `TomEmailCode2FAService` and `TomSmsCode2FAService` are
 *delivered* codes — both thin subclasses of `TomDeliveredCode2FAService`, which
@@ -226,6 +236,8 @@ TomSqlDatasourceRepository<TomExternalIdentityToken, int>
 Tom2FAService  (@tomReflector, abstract)
     ├── TomTotp2FAService  (implements, @Tom2FAAdaptor('totp'),
     │                       + Tom2FAEnrolmentSupport)
+    ├── TomWebAuthn2FAService  (implements, @Tom2FAAdaptor('webauthn'),
+    │                           + Tom2FAEnrolmentSupport, + Tom2FAPrerequisite)
     └── TomDeliveredCode2FAService<S>  (implements, + Tom2FAEnrolmentSupport,
             │                           + Tom2FAPrerequisite)
             ├── TomEmailCode2FAService  (extends <TomEmailService>,
@@ -235,10 +247,17 @@ Tom2FAService  (@tomReflector, abstract)
 
 Tom2FAEnrolmentSupport  (abstract, mixed into an enrollable Tom2FAService)
     ├── TomTotp2FAService           (implements)
+    ├── TomWebAuthn2FAService       (implements)
     └── TomDeliveredCode2FAService  (implements)
 
 Tom2FAPrerequisite  (abstract, opt-in on an adaptor that needs a collaborator)
+    ├── TomWebAuthn2FAService       (implements)
     └── TomDeliveredCode2FAService  (implements)
+
+TomWebAuthnVerifier                 (abstract final, static checks)
+TomWebAuthnRegisteredCredential     (value)
+TomWebAuthnVerifiedAssertion        (value)
+TomWebAuthnSoftwareAuthenticator    (test double)
 
 Tom2FAPolicy  (abstract)
     ├── TomPrincipalFlag2FAPolicy  (implements, const, the default)
@@ -1457,6 +1476,133 @@ TomSmsCode2FAService()
 | `maskDestination` | `String maskDestination(String destination)` | *(override)* Delegates to `maskPhoneNumber`. |
 | `deliver` | `Future<void> deliver(Tom2FAContext context, {...})` | *(override)* Renders `templateKey` through `TomSmsService.deliverNow`. |
 | `maskPhoneNumber` | `static String maskPhoneNumber(String number)` | `+41791234567` → `+*******4567`. The last four **digits** are kept and non-digits are preserved, so `+41 79 …` and `0041 79 …` still look like the same handset. Counted over digits rather than characters, so spacing does not change which part survives. |
+
+### TomWebAuthn2FAService
+
+Passkeys as a second factor (`@Tom2FAAdaptor('webauthn')`, `@tomReflector`).
+Issues WebAuthn creation and request options, verifies the authenticator's
+response with `TomWebAuthnVerifier`, stores one enrolment per credential, and
+writes the signature counter back after every login. Offered only once
+`globalSettingRelyingPartyId` is set (`Tom2FAPrerequisite`). Attestation is
+requested as `none` and not verified.
+
+- **Implements:** `Tom2FAService`, `Tom2FAEnrolmentSupport`, `Tom2FAPrerequisite`
+
+#### Constructors
+
+```dart
+TomWebAuthn2FAService()
+```
+
+*(no-argument, so the registry can reflect it into life)*
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `mechanismType` | `String` | `'webauthn'`. |
+| `optionsKey` | `String` | `'publicKey'` — the `clientData` key the options travel under. |
+| `challengeKey` | `String` | `'challenge'` — where the issued challenge is kept in the encrypted half. |
+| `credentialIdKey` / `publicKeyKey` / `signCountKey` / `userHandleKey` | `String` | The keys of an enrolment's `secretData`. |
+| `globalSettingRelyingPartyId` | `String` | The registrable domain passkeys are bound to. Empty (the default) keeps the mechanism out of the registry. |
+| `globalSettingRelyingPartyName` | `String` | The RP display name; the context's application when empty. |
+| `globalSettingAllowedOrigins` | `Set<String>` | The origins a ceremony may run on; empty means `https://<RP id>`. |
+| `globalSettingUserVerification` | `TomWebAuthnUserVerification` | Defaults to `preferred`; `required` refuses an answer without the user-verified flag. |
+| `globalSettingAttemptsAllowed` | `int` | Defaults to `3`. |
+| `globalSettingChallengeValidity` | `Duration` | Defaults to 5 minutes. |
+| `globalSettingEnrolmentAttemptsAllowed` | `int` | Defaults to `3`. |
+| `globalSettingEnrolmentValidity` | `Duration` | Defaults to 10 minutes. |
+| `allowedOrigins` | `Set<String>` | *(getter)* The effective origin set. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `descriptor` | `Tom2FAMethodDescriptor` | *(override)* Scoped under `'webauthn'`. |
+| `unmetPrerequisite` | `String?` | *(override)* Names the unset RP id, or `null`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `issueChallenge` | `Future<Tom2FAChallengeSpec> issueChallenge(Tom2FAContext context)` | *(override)* Request options allowing every enrolled credential; `login.error.2fa.not-enrolled` when there is none. |
+| `verifySubmission` | `Future<bool> verifySubmission(Tom2FAContext context, Tom2FASubmission submission)` | *(override)* Verifies the assertion against the matching credential and stores the new counter. Any failure is `false`. |
+| `beginEnrolment` | `Future<Tom2FAEnrolmentOffer> beginEnrolment(Tom2FAContext context)` | *(override)* Creation options, excluding the user's existing credentials. |
+| `confirmEnrolment` | `Future<Tom2FAEnrolment> confirmEnrolment(Tom2FAContext context, Tom2FAEnrolmentOffer offer, String submitted)` | *(override)* Verifies the registration; `login.error.2fa.webauthn-registration-invalid` on any failed check, `login.error.2fa.enrolment-offer-invalid` for an offer with no challenge. |
+| `userHandleOf` | `static String userHandleOf(Tom2FAContext context)` | The opaque user handle: SHA-256 of the principal key, base64url. |
+
+### TomWebAuthnVerifier
+
+The WebAuthn ceremony checks (WebAuthn Level 2 §7.1, §7.2) as pure functions.
+Each answers `null` for anything that fails. Not constructible.
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `verifyRegistration` | `static TomWebAuthnRegisteredCredential? verifyRegistration({required TomWebAuthnRegistrationResponse response, required String expectedChallenge, required String rpId, required Set<String> allowedOrigins, required TomWebAuthnUserVerification userVerification})` | Client data (type, challenge, origin), RP id hash, flags, the attested credential id and an ES256 or RS256 COSE key. |
+| `verifyAssertion` | `static TomWebAuthnVerifiedAssertion? verifyAssertion({required TomWebAuthnAuthenticationResponse response, required String expectedChallenge, required String rpId, required Set<String> allowedOrigins, required TomWebAuthnUserVerification userVerification, required String publicKey, required int storedSignCount, String? expectedUserHandle})` | Client data, RP id hash, flags, the signature, the rising counter and the user handle. |
+
+### TomWebAuthnRegisteredCredential
+
+A credential registration verified: `credentialId`, `publicKey` (COSE,
+base64url) and `signCount`.
+
+#### Constructors
+
+```dart
+const TomWebAuthnRegisteredCredential({
+  required String credentialId,
+  required String publicKey,
+  required int signCount,
+})
+```
+
+### TomWebAuthnVerifiedAssertion
+
+An assertion that verified: the new `signCount`, and `userVerified`.
+
+#### Constructors
+
+```dart
+const TomWebAuthnVerifiedAssertion({
+  required int signCount,
+  required bool userVerified,
+})
+```
+
+### TomWebAuthnSoftwareAuthenticator
+
+A passkey authenticator in software, for tests and bring-up **only**: a P-256
+key pair in memory, `none` attestation, and deterministic ECDSA signatures.
+
+#### Constructors
+
+```dart
+factory TomWebAuthnSoftwareAuthenticator({
+  required String origin,
+  bool userVerified = true,
+  bool countsSignatures = true,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `origin` | `String` | The origin the "browser" writes into client data; settable, so a test can sign on another one. |
+| `userVerified` | `bool` | Whether the user-verified flag is set. |
+| `countsSignatures` | `bool` | Whether the counter moves; synced passkeys report `0`. |
+| `credentialId` | `Uint8List` | The credential id (final). |
+| `signCount` | `int` | The signature counter. |
+| `id` | `String` | The credential id, base64url. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `create` | `TomWebAuthnRegistrationResponse create(TomWebAuthnCreationOptions options)` | Answers a creation request. |
+| `get` | `TomWebAuthnAuthenticationResponse get(TomWebAuthnRequestOptions options, {String? userHandle})` | Signs a request. |
 
 ### TomAuthenticationInfo
 

@@ -1,5 +1,20 @@
 ## Unreleased
 
+### Added
+
+- **Passkeys: `TomWebAuthn2FAClientMechanism`.** The second shipped client
+  mechanism, registered under `'webauthn'` by the flow wherever
+  `TomWebAuthnPlatform.instance` reports a platform authenticator. Its panels
+  are a sentence and one button (Safari requires a user gesture), and they hand
+  the server's options to the platform and submit the authenticator's response
+  through the existing `String` seam, encoded by `toSubmission()`. On the web
+  `TomWebAuthnPlatform` reaches `navigator.credentials` through
+  `dart:js_interop` with no plugin; elsewhere it is
+  `TomUnavailableWebAuthnPlatform`, so the chooser omits passkeys and a passkey
+  challenge reads as unrenderable. New text keys under `two_factor.webauthn.*`.
+  The `onSubmit` dartdoc now says the string is what the mechanism collected,
+  not only what the user typed.
+
 ### Changed
 
 - **`TomBaseClientConfiguration.save()` writes only what this holder

@@ -159,6 +159,18 @@ class InMemoryAppBackend implements AppBackend {
     'two_factor.totp.challenge.expiresIn': 'Good for another {seconds} s',
     'two_factor.totp.challenge.codeChanged':
         'Your authenticator now shows a new code — enter that one.',
+    'two_factor.webauthn.name': 'Passkey',
+    'two_factor.webauthn.description':
+        'Sign in with your fingerprint, face or device PIN — nothing to type.',
+    'two_factor.webauthn.enrol.intro':
+        'Create a passkey on this device. Your browser will ask you to confirm '
+        'with your fingerprint, face or PIN.',
+    'two_factor.webauthn.enrol.submit': 'Create passkey',
+    'two_factor.webauthn.challenge.intro':
+        'Use your passkey to finish signing in.',
+    'two_factor.webauthn.challenge.submit': 'Use passkey',
+    'two_factor.webauthn.failed':
+        'The passkey prompt was cancelled or did not complete. Try again.',
     'adminLogin.title': 'Advanced Todo — Admin sign in',
     'adminLogin.intro':
         'Sign in as admin (password pw). A non-admin (alice, bob, carol) is rejected.',

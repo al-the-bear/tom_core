@@ -49,14 +49,17 @@ the first build:
 Tom2FAClientRegistry.register(SmsClientMechanism());
 ```
 
-**TOTP is the only client mechanism this package ships.** `tom_core_server`
-ships three adaptors — `totp`, and the delivered-code `email` and `sms`, each
-offered once its delivery service is installed — so a deployment that offers SMS
-or email codes writes only the client mechanism: a code field, a confirm step at
-enrolment, and the server's masked destination as `hint`. Until it registers
-one, the enrolment chooser leaves that key out. The SMS panel is not shipped on
-purpose: SMS is the weakest common factor and the dearest to run, so offering it
-is a step the deployment takes. WebAuthn exists on neither side.
+**Two client mechanisms ship: TOTP everywhere, and passkeys
+(`TomWebAuthn2FAClientMechanism`) where the target has a platform
+authenticator** — on the web, through the browser's `navigator.credentials`,
+with no plugin. Elsewhere the passkey key stays unregistered, so the chooser
+omits it and a challenge for one reads as unrenderable; a native app supplies its
+own `TomWebAuthnPlatform`. `tom_core_server` also ships the delivered-code
+`email` and `sms` adaptors, each offered once its delivery service is installed,
+so a deployment that offers SMS or email codes writes only the client mechanism:
+a code field, a confirm step at enrolment, and the server's masked destination
+as `hint`. The SMS panel is not shipped on purpose: SMS is the weakest common
+factor and the dearest to run, so offering it is a step the deployment takes.
 
 `MyFlowController` is the one piece an application writes.
 [`example/security/security_example.dart`](../../../../example/security/security_example.dart)
