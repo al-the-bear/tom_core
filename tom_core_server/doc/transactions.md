@@ -369,10 +369,18 @@ need not be the zone the transaction was opened in.
 
 ## Sequential by design
 
-Both conclusions are `for` loops with an `await` in the body. A transaction
-spanning *n* resources therefore pays *n* sequential round trips on each phase,
-at the point in a request where the client is waiting and the connections are
-still held. That cost is real and is not an oversight.
+Both conclusions are `for` loops with an `await` in the body, and the phases
+differ in what that costs:
+
+| Phase | What one participant does | Sequential cost |
+| ----- | ------------------------- | --------------- |
+| prepare | `XA END` then `XA PREPARE` for an XA source, as two calls; nothing for a one-phase one | two round trips per XA participant |
+| commit / rollback | `COMMIT` / `ROLLBACK`, or the XA forms | a round trip per participant |
+| end | releases the connection — completes a completer, issues no statement | microseconds, measured below |
+
+So a transaction spanning *n* resources pays *n* sequential round trips on the
+deciding phases, at the point in a request where the client is waiting and the
+connections are still held. That cost is real and is not an oversight.
 
 **The order is the contract.** `commitTransaction` prepares and commits "in
 registration order", and a veto depends on it: which participants have already
@@ -388,9 +396,21 @@ databases" is `MariaDbXADatasource`, not more of them. Nobody has reported this
 latency; weakening a guarantee two suites enforce, to buy an unmeasured
 improvement, is the wrong trade.
 
-The end phase has the weakest case for staying sequential — releasing a
-connection is not ordered by anything — and is therefore the one most likely to
-be quietly parallelised. `test/transactions_test.dart` holds the group
+**The end phase is sequential for a different reason: it is free.** Releasing a
+connection is ordered by nothing, so the order argument does not reach it; what
+keeps it a loop is that there is nothing to win. `tool/bench_transaction_end_phase.dart`
+drives participants that release exactly as `MariaDbDatasource` does, and on
+2026-10-07 it measured the whole sequential end phase at 0.01–0.04 µs for one
+to four participants and about 2 µs for sixteen, with `Future.wait` *slower* at
+every size — it allocates a list and a future per participant to save awaits
+that cost less. A whole committed transaction through the coordinator, with no
+I/O, took 1.7–11.6 µs over the same range; one `COMMIT` on a database is a
+network round trip. A participant whose release is itself a round trip would
+change the answer, and the benchmark is the place to show it before the loop
+changes.
+
+The end phase is still the one most likely to be quietly parallelised, because
+nothing about its *meaning* forbids it. `test/transactions_test.dart` holds the group
 `the drives are sequential, not merely ordered`, which drives participants that
 suspend inside every hook and fails if any two are ever inside one phase at
 once. Ordering tests alone cannot see this: a fake that completes without

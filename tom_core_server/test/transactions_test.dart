@@ -835,10 +835,12 @@ void main() {
     });
 
     test('and ends one at a time', () async {
-      // The phase with the weakest case for staying sequential — releasing a
-      // connection is not ordered by anything — and therefore the one most
-      // likely to be quietly parallelised. If that is ever wanted it is a
-      // decision to take, measure and write down, not one to arrive at by edit.
+      // Releasing a connection is ordered by nothing, so this phase stays a
+      // loop for a measured reason rather than for its order:
+      // tool/bench_transaction_end_phase.dart puts the whole sequential phase
+      // at microseconds for every shipped participant, with `Future.wait`
+      // slower. Parallelising it is a change to make against a new
+      // measurement, not by edit.
       expectSerial(await drive(byRollback: false), 'end');
     });
 
