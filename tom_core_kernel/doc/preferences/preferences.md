@@ -26,6 +26,7 @@ client and a server both bind to.
     - [What "not set" looks like on the wire](#what-not-set-looks-like-on-the-wire)
     - [How big the account store can get](#how-big-the-account-store-can-get)
     - [Where the key is stated](#where-the-key-is-stated)
+    - [Changes are pulled, not pushed](#changes-are-pulled-not-pushed)
   - [TomUserPreferencesApiService](#tomuserpreferencesapiservice)
 - [The Two Stores](#the-two-stores)
   - [When both stores hold the same key](#when-both-stores-hold-the-same-key)
@@ -762,6 +763,26 @@ entity declares a row scope on the principal column, so the repository ANDs the
 caller's own id into every read and rejects every write that would touch another
 principal's row. No URI carries a principal parameter for exactly that reason:
 there is nothing to ask for but your own.
+
+#### Changes are pulled, not pushed
+
+The contract is request and response — list, read, write, delete — and declares
+no change channel, on purpose. A preference follows the user across devices, but
+a device learns that another device changed one **by reading it again**: the
+server is the source of truth, and a stale read is corrected by the next one.
+Nothing in the framework notifies the phone that the desktop switched the theme.
+
+The decision is about what a channel would cost against what it would buy. A
+push stream means a long-lived connection per client, and a delivery guarantee
+the framework then owes — including what a client that was offline or
+reconnecting missed — for settings whose whole character is that a moment of
+staleness harms nothing. Keeping the contract pull-only keeps it stateless on
+the server and identical for every transport.
+
+An application that does need a change on one device to appear promptly on
+another re-reads on the moments that matter — on resume, on focusing a settings
+screen — or polls `listPreferences` at an interval it chooses. Both are built on
+the endpoints above; neither needs anything the contract does not already have.
 
 ### TomUserPreferencesApiService
 
