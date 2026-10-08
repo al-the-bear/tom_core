@@ -223,6 +223,22 @@ before committing a regenerated seed. When it fails: regenerate, run the
 package's suite — and its live runner, where it has one — against the result,
 and commit the seed together with the change that moved it.
 
+Across all thirteen packages at once, from the repository root:
+
+```bash
+python3 tool/sweep_reflection_seeds.py           # every seed, ~15 minutes
+python3 tool/sweep_reflection_seeds.py --status  # last sweep, and what changed since
+```
+
+It runs each package's `--check`, reports every seed by package as `FRESH`,
+`STALE` (with the file), `FAILED` or `NOT MEASURED`, and exits non-zero unless
+all are fresh. Because a seed goes stale where nobody is looking, the sweep is
+what a framework change owes the samples: run it after any change to
+`tom_core_kernel`, `tom_core_server`, `tom_core_flutter` or `tom_flutter_ui`,
+after a generator upgrade, and before a release. `--status` is the cheap
+question — it reads the last full sweep recorded on this machine and names the
+framework packages and samples whose content has changed since.
+
 ---
 
 ## Documentation index

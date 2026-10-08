@@ -258,10 +258,38 @@ non-zero if any suite failed. Run it before calling a cross-package change
 finished. It is deliberately not a `check_*.py`: the gate runner would discover
 it and start eight test suites.
 
+**Nor are the gates the reflection seeds.** The thirteen sample seeds mirror
+every type reachable from their roots, the framework's included, so a change to
+`tom_core_kernel` or `tom_core_server`, or a generator upgrade, makes them stale
+without touching a sample — and a stale seed analyzes and passes every suite.
+Only the generator's own `--check` sees it, and it takes about fifteen minutes
+over all thirteen, so it is a script run by hand rather than a gate:
+
+```bash
+python3 tool/sweep_reflection_seeds.py                  # every seed
+python3 tool/sweep_reflection_seeds.py todo_domain ops  # a subset, by name or part of one
+python3 tool/sweep_reflection_seeds.py --status         # the last sweep, and what changed since
+```
+
+Each seed gets a verdict — `FRESH`, `STALE` (naming the file), `FAILED` or
+`NOT MEASURED`, the last for a run that checked nothing — and a package with a
+tracked seed but no `reflection_generation.sh` is reported as uncheckable. A
+full sweep records its result on this machine
+(`tool/ztmp/reflection_sweep/last_run.json`) together with a content digest of
+every input — each framework package's `lib/`, and each sample minus its seeds
+plus its `pubspec.lock`, which pins the generator. `--status` recomputes them
+and names what changed: the reminder to run it again, without the fifteen
+minutes. Comparing content rather than commits means an uncommitted edit
+counts, and the commit that saves regenerated seeds does not. Run it after a framework change a sample
+reaches, after a generator upgrade, and before a release;
+`tom_core_samples/README.md` § "Reflection seeds" says what to do with a stale
+one.
+
 | Tool | What it does |
 | ---- | ------------ |
 | [`tool/check_gates.py`](tool/check_gates.py) | Runs every gate below, and every gate's `--self-test`, and holds each to its recorded fault count |
 | [`tool/run_suites.py`](tool/run_suites.py) | Runs every package suite and the gate suite, with a per-suite verdict and one exit status |
+| [`tool/sweep_reflection_seeds.py`](tool/sweep_reflection_seeds.py) | Runs every sample's `reflection_generation.sh --check` and reports each seed FRESH, STALE, FAILED or NOT MEASURED; `--status` names what changed since the last sweep |
 | [`tool/gate_report.py`](tool/gate_report.py) | The contract a gate implements: prints the machine-readable fault total and derives the exit status from it |
 | [`tool/dart_sdk.py`](tool/dart_sdk.py) | Finds the `dart` the gates need when the shell's PATH has none — PATH, the SDKs' own environment variables, `flutter` on PATH, then conventional install locations — so the gate runner can put it on every gate's PATH |
 | [`tool/gate_cache.py`](tool/gate_cache.py) | Remembers a clean analyzer verdict per package until one of its inputs changes; used by `check_reflection_artifacts.py` and `check_doc_dart_blocks.py` |
