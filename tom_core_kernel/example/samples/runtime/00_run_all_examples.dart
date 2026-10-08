@@ -27,9 +27,7 @@ void main() {
 /// Run all runtime examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 void run() {
-  print('Running Runtime Examples...\n');
-  print('=' * 60);
-  print('');
+  sampleGroupHeader('Runtime');
 
   platform_detection.run();
   print('✓ Platform detection examples passed\n');
@@ -43,6 +41,5 @@ void run() {
   advanced_runtime.run();
   print('✓ Advanced runtime examples passed\n');
 
-  print('=' * 60);
-  print('All runtime examples completed successfully!');
+  sampleGroupFooter('Runtime');
 }

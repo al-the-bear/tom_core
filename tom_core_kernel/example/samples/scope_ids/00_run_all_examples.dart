@@ -26,17 +26,11 @@ void main() {
 /// Run all scope IDs examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 void run() {
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║              Tom Scope IDs System Samples                        ║');
-  print(
-    '╚══════════════════════════════════════════════════════════════════╝\n',
-  );
+  sampleGroupHeader('Scope IDs');
 
   scope_basics.run();
   scope_capture.run();
   scope_mixin.run();
 
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║                    All Samples Complete!                         ║');
-  print('╚══════════════════════════════════════════════════════════════════╝');
+  sampleGroupFooter('Scope IDs');
 }

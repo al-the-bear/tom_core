@@ -32,11 +32,7 @@ Future<void> main() async {
 /// Run all reflection examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 Future<void> run() async {
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║           Tom Reflection System Samples                          ║');
-  print(
-    '╚══════════════════════════════════════════════════════════════════╝\n',
-  );
+  sampleGroupHeader('Reflection');
 
   // Run all examples
   basic.run();
@@ -46,7 +42,5 @@ Future<void> run() async {
   tomclass.run();
   advanced.run();
 
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║                    All Samples Complete!                         ║');
-  print('╚══════════════════════════════════════════════════════════════════╝');
+  sampleGroupFooter('Reflection');
 }

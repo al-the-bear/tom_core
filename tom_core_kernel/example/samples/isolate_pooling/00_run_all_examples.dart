@@ -50,9 +50,7 @@ Future<void> main() async {
 /// Run all isolate pooling examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 Future<void> run() async {
-  print('Running Isolate Pooling Examples...\n');
-  print('=' * 60);
-  print('');
+  sampleGroupHeader('Isolate Pooling');
 
   await worker_basics.run();
   print('✓ Worker basics examples passed\n');
@@ -69,6 +67,5 @@ Future<void> run() async {
   await creator_backchannel.run();
   print('✓ Creator back-channel examples passed\n');
 
-  print('=' * 60);
-  print('All isolate pooling examples completed successfully!');
+  sampleGroupFooter('Isolate Pooling');
 }

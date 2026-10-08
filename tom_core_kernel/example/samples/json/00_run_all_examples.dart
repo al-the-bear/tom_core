@@ -27,9 +27,7 @@ void main() {
 /// Run all JSON examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 void run() {
-  print('Running JSON Examples...\n');
-  print('=' * 60);
-  print('');
+  sampleGroupHeader('JSON');
 
   json_formatting.run();
   print('✓ JSON formatting examples passed\n');
@@ -43,6 +41,5 @@ void run() {
   json_serialization.run();
   print('✓ JSON serialization examples passed\n');
 
-  print('=' * 60);
-  print('All JSON examples completed successfully!');
+  sampleGroupFooter('JSON');
 }

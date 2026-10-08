@@ -36,9 +36,7 @@ Future<void> main() async {
 /// Run all scheduling examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 Future<void> run() async {
-  print('Running Scheduling Examples...\n');
-  print('=' * 60);
-  print('');
+  sampleGroupHeader('Scheduling');
 
   await memory_substrate.run();
   print('✓ Memory substrate examples passed\n');
@@ -55,6 +53,5 @@ Future<void> run() async {
   await durable_store.run();
   print('✓ Durable store examples passed\n');
 
-  print('=' * 60);
-  print('All Scheduling examples completed successfully!');
+  sampleGroupFooter('Scheduling');
 }

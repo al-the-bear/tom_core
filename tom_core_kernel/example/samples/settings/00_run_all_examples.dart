@@ -24,13 +24,10 @@ void main() {
 /// Run all settings examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 void run() {
-  print('Running Settings Examples...\n');
-  print('=' * 60);
-  print('');
+  sampleGroupHeader('Settings');
 
   client_authorization.run();
   print('✓ Client authorization examples passed\n');
 
-  print('=' * 60);
-  print('All settings examples completed successfully!');
+  sampleGroupFooter('Settings');
 }

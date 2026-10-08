@@ -28,9 +28,7 @@ Future<void> main() async {
 /// Run all little things examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 Future<void> run() async {
-  print('Running Little Things Examples...\n');
-  print('=' * 60);
-  print('');
+  sampleGroupHeader('Little Things');
 
   utility_functions.run();
   print('✓ Utility functions examples passed\n');
@@ -47,6 +45,5 @@ Future<void> run() async {
   stack_trace_noise.run();
   print('✓ Stack trace noise examples passed\n');
 
-  print('=' * 60);
-  print('All little_things examples completed successfully!');
+  sampleGroupFooter('Little Things');
 }

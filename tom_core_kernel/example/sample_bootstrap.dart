@@ -66,3 +66,24 @@ void bootstrapSamples() {
   prepareSampleProcess();
   initializeReflection();
 }
+
+/// Opens a group runner's output: `Running <group> Examples...` and a rule.
+///
+/// Every `samples/<group>/00_run_all_examples.dart` announces its group through
+/// this pair rather than its own `print`s, so a transcript of
+/// `run_all_samples.dart` shows one shape at every group boundary — and a new
+/// runner gets that shape by calling it rather than by copying a neighbour.
+/// The chrome names the *group* only; each sample names itself.
+void sampleGroupHeader(String group) {
+  print('Running $group Examples...\n');
+  print('=' * 60);
+  print('');
+}
+
+/// Closes a group runner's output: a rule and `All <group> examples completed
+/// successfully!`. Printed only after every sample in the group returned, so
+/// it is reached only when none of their checks failed.
+void sampleGroupFooter(String group) {
+  print('=' * 60);
+  print('All $group examples completed successfully!');
+}

@@ -29,9 +29,7 @@ void main() {
 /// Run all crypto examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 void run() {
-  print('Running Crypto Examples...\n');
-  print('=' * 60);
-  print('');
+  sampleGroupHeader('Crypto');
 
   rsa_encryption.run();
   print('✓ RSA encryption examples passed\n');
@@ -51,6 +49,5 @@ void run() {
   advanced_jwt.run();
   print('✓ Advanced JWT examples passed\n');
 
-  print('=' * 60);
-  print('All crypto examples completed successfully!');
+  sampleGroupFooter('Crypto');
 }

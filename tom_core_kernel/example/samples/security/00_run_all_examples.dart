@@ -35,11 +35,7 @@ Future<void> main() async {
 /// Run all security examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 Future<void> run() async {
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║              Tom Security System Samples                         ║');
-  print(
-    '╚══════════════════════════════════════════════════════════════════╝\n',
-  );
+  sampleGroupHeader('Security');
 
   user_principal.run();
   access_control.run();
@@ -54,7 +50,5 @@ Future<void> run() async {
   acl_definition.run();
   automatic_protection.run();
 
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║                    All Samples Complete!                         ║');
-  print('╚══════════════════════════════════════════════════════════════════╝');
+  sampleGroupFooter('Security');
 }

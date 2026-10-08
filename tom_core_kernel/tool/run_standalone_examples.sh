@@ -69,6 +69,14 @@
 # sample must appear in its group's stream. Two checks, because they answer two
 # different questions and each passes while the other fails.
 #
+# The group runners carry one shape of their own: each opens with
+# `sampleGroupHeader('<Group>')` and closes with `sampleGroupFooter('<Group>')`,
+# from `example/sample_bootstrap.dart`, and prints no group chrome of its own —
+# so a transcript of several groups shows one boundary shape throughout, and a
+# new runner gets it by calling the pair rather than by copying a neighbour.
+# Two shapes once coexisted (a box-drawn title against a `Running X Examples…`
+# line and a rule), which is how a copied neighbour decides the shape.
+#
 # Exits non-zero if any sample fails, any documented command omits the flag or
 # names a file that does not exist, any sample verifies nothing — either by
 # asserting nothing, or by running hollow without the flag — or any sample does
@@ -251,6 +259,23 @@ if [ ${#unattributable[@]} -gt 0 ]; then
   echo
 fi
 
+# Every group runner frames its stream the same way: sampleGroupHeader /
+# sampleGroupFooter from sample_bootstrap.dart, and no rule or box of its own.
+unframed=()
+while IFS= read -r runner; do
+  grep -q "sampleGroupHeader('" "$runner" || unframed+=("$runner -> no sampleGroupHeader")
+  grep -q "sampleGroupFooter('" "$runner" || unframed+=("$runner -> no sampleGroupFooter")
+  if grep -qE "print\('=' \*|╔|╚|║" "$runner"; then
+    unframed+=("$runner -> prints group chrome of its own")
+  fi
+done < <(find example/samples -name '00_run_all_examples.dart' | sort)
+
+if [ ${#unframed[@]} -gt 0 ]; then
+  echo "Group runners not framed by sampleGroupHeader/Footer (${#unframed[@]}):"
+  printf '    %s\n' "${unframed[@]}"
+  echo
+fi
+
 # A third way a documented command fails the reader, and the one nothing above
 # catches: the path it names does not exist.
 #
@@ -384,13 +409,14 @@ fi
 if [ ${#failed[@]} -eq 0 ] && [ ${#hung[@]} -eq 0 ] && [ ${#flagless[@]} -eq 0 ] \
   && [ ${#unguarded[@]} -eq 0 ] && [ ${#unverified[@]} -eq 0 ] \
   && [ ${#unattributable[@]} -eq 0 ] && [ ${#anonymous[@]} -eq 0 ] \
-  && [ ${#missing_path[@]} -eq 0 ]; then
+  && [ ${#missing_path[@]} -eq 0 ] && [ ${#unframed[@]} -eq 0 ]; then
   echo "All ${#files[@]} samples ran standalone and exited 0,"
   echo "every documented command names a file that exists and passes"
   echo "--enable-asserts, every sample asserts something, every sample"
   echo "refuses to run without the flag, and every sample names itself"
   echo "with the number it is filed under — in its own group's stream,"
-  echo "not merely somewhere in its source."
+  echo "not merely somewhere in its source — and every group runner"
+  echo "frames its stream with sampleGroupHeader/Footer."
   exit 0
 fi
 
@@ -427,6 +453,10 @@ fi
 if [ ${#missing_path[@]} -gt 0 ]; then
   echo "Documented path does not exist (${#missing_path[@]}):"
   printf '    %s\n' "${missing_path[@]}"
+fi
+if [ ${#unframed[@]} -gt 0 ]; then
+  echo "Group runner not framed by sampleGroupHeader/Footer (${#unframed[@]}):"
+  printf '    %s\n' "${unframed[@]}"
 fi
 echo "Logs: $LOG_DIR"
 exit 1

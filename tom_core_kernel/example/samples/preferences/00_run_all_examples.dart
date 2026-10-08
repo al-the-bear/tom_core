@@ -28,9 +28,7 @@ void main() {
 /// Run all preferences examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 void run() {
-  print('Running Preferences Examples...\n');
-  print('=' * 60);
-  print('');
+  sampleGroupHeader('Preferences');
 
   codec.run();
   print('✓ Preference codec examples passed\n');
@@ -38,6 +36,5 @@ void run() {
   contract.run();
   print('✓ Preference contract examples passed\n');
 
-  print('=' * 60);
-  print('All preferences examples completed successfully!');
+  sampleGroupFooter('Preferences');
 }

@@ -28,11 +28,7 @@ void main() {
 /// Run all resources examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 void run() {
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║              Tom Resources System Samples                        ║');
-  print(
-    '╚══════════════════════════════════════════════════════════════════╝\n',
-  );
+  sampleGroupHeader('Resources');
 
   resource_provider.run();
   config_provider.run();
@@ -40,7 +36,5 @@ void run() {
   app_singleton.run();
   resource_revision.run();
 
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║                    All Samples Complete!                         ║');
-  print('╚══════════════════════════════════════════════════════════════════╝');
+  sampleGroupFooter('Resources');
 }

@@ -27,9 +27,7 @@ Future<void> main() async {
 /// Run all context examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 Future<void> run() async {
-  print('Running Context Examples...\n');
-  print('=' * 60);
-  print('');
+  sampleGroupHeader('Context');
 
   basic_context.run();
   print('✓ Basic context examples passed\n');
@@ -43,6 +41,5 @@ Future<void> run() async {
   await async_zonevalues.run();
   print('✓ Async and zone-values examples passed\n');
 
-  print('=' * 60);
-  print('All context examples completed successfully!');
+  sampleGroupFooter('Context');
 }

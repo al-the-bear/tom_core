@@ -29,9 +29,7 @@ Future<void> main() async {
 /// Run all logging examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 Future<void> run() async {
-  print('Running Logging Examples...\n');
-  print('=' * 60);
-  print('');
+  sampleGroupHeader('Logging');
 
   basic_logging.run();
   print('✓ Basic logging examples passed\n');
@@ -54,6 +52,5 @@ Future<void> run() async {
   await log_replay_plumbing.run();
   print('✓ Log replay and isolate plumbing examples passed\n');
 
-  print('=' * 60);
-  print('All logging examples completed successfully!');
+  sampleGroupFooter('Logging');
 }

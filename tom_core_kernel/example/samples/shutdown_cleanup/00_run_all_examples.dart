@@ -26,9 +26,7 @@ Future<void> main() async {
 /// Run all shutdown cleanup examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 Future<void> run() async {
-  print('Running Shutdown Cleanup Examples...\n');
-  print('=' * 60);
-  print('');
+  sampleGroupHeader('Shutdown Cleanup');
 
   await shutdown_handler.run();
   print('✓ Shutdown handler examples passed\n');
@@ -39,6 +37,5 @@ Future<void> run() async {
   await shutdown_execution.run();
   print('✓ Shutdown execution examples passed\n');
 
-  print('=' * 60);
-  print('All shutdown cleanup examples completed successfully!');
+  sampleGroupFooter('Shutdown Cleanup');
 }

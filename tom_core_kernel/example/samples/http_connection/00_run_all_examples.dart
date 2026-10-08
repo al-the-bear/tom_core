@@ -34,11 +34,7 @@ Future<void> main() async {
 /// Run all HTTP connection examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 Future<void> run() async {
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║              Tom HTTP Connection System Samples                  ║');
-  print(
-    '╚══════════════════════════════════════════════════════════════════╝\n',
-  );
+  sampleGroupHeader('HTTP Connection');
 
   // Run all examples
   http_client.run();
@@ -50,7 +46,5 @@ Future<void> run() async {
   await endpoint_call.run();
   await file_transfer.run();
 
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║                    All Samples Complete!                         ║');
-  print('╚══════════════════════════════════════════════════════════════════╝');
+  sampleGroupFooter('HTTP Connection');
 }

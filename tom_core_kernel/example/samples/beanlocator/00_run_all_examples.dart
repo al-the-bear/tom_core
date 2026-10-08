@@ -33,11 +33,7 @@ void main() {
 /// Run all beanlocator examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 void run() {
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║              Tom Beanlocator System Samples                      ║');
-  print(
-    '╚══════════════════════════════════════════════════════════════════╝\n',
-  );
+  sampleGroupHeader('Beanlocator');
 
   // Run all examples
   init_sequence.run();
@@ -47,7 +43,5 @@ void run() {
   annotation_beans.run();
   type_env_registration.run();
 
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║                    All Samples Complete!                         ║');
-  print('╚══════════════════════════════════════════════════════════════════╝');
+  sampleGroupFooter('Beanlocator');
 }

@@ -34,11 +34,7 @@ Future<void> main() async {
 /// Run all observable examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 Future<void> run() async {
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║              Tom Observable System Samples                       ║');
-  print(
-    '╚══════════════════════════════════════════════════════════════════╝\n',
-  );
+  sampleGroupHeader('Observable');
 
   // Run all examples
   tom_object.run();
@@ -50,7 +46,5 @@ Future<void> run() async {
   list_reset_lifecycle.run();
   observable_enum.run();
 
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║                    All Samples Complete!                         ║');
-  print('╚══════════════════════════════════════════════════════════════════╝');
+  sampleGroupFooter('Observable');
 }

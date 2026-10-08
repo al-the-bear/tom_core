@@ -35,11 +35,7 @@ Future<void> main() async {
 /// Run all timezoned examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
 Future<void> run() async {
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║              Tom Timezoned System Samples                        ║');
-  print(
-    '╚══════════════════════════════════════════════════════════════════╝\n',
-  );
+  sampleGroupHeader('Timezoned');
 
   // Run all examples
   timezone_basics.run();
@@ -52,7 +48,5 @@ Future<void> run() async {
   timezone_lookup.run();
   practical_patterns.run();
 
-  print('╔══════════════════════════════════════════════════════════════════╗');
-  print('║                    All Samples Complete!                         ║');
-  print('╚══════════════════════════════════════════════════════════════════╝');
+  sampleGroupFooter('Timezoned');
 }

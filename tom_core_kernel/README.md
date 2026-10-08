@@ -235,6 +235,12 @@ package *hands out* — anywhere in it, not just in a sample header:
   continuous stream can tell which file each block came from. A sample that
   prints nothing contributes no block at all; one whose banner carries somebody
   else's number sends a reader to the wrong file, which is worse.
+- every group runner **frames its stream with `sampleGroupHeader('<Group>')` and
+  `sampleGroupFooter('<Group>')`** from `example/sample_bootstrap.dart` and
+  prints no group chrome of its own, so a transcript of several groups shows one
+  boundary shape throughout — `Running <Group> Examples...` and a rule, then the
+  rule and `All <Group> examples completed successfully!` — and a new runner is
+  written to that shape by calling the pair, not by copying a neighbour;
 
 And after the sweep, one check that reads its output rather than the source:
 every sample **appears in its own group's stream**. The check above sees a

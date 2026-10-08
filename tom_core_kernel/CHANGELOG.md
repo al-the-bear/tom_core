@@ -17,6 +17,11 @@
 
 ### Changed
 
+- **Every sample group runner frames its output the same way**, through
+  `sampleGroupHeader` / `sampleGroupFooter` in `example/sample_bootstrap.dart`
+  (`Running <Group> Examples...` and a rule; the rule and `All <Group> examples
+  completed successfully!`). Eight runners printed a box-drawn title instead.
+  `tool/run_standalone_examples.sh` fails a runner that does not use the pair.
 - **A resource miss no longer constructs an exception.** Both resource
   providers resolve dotted keys through `lookupObjectInTree` instead of catching
   `getObjectFromTree`'s `TomJsonPathException`. Constructing a `TomException`
