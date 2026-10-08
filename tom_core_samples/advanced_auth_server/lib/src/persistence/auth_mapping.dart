@@ -53,12 +53,14 @@ int? _idOrNull(String value, String field) {
 }
 
 /// Parses a display-id that must name an already-persisted row, as a
-/// membership entry does.
+/// membership entry does — and as every id taken from a URL path does
+/// (`/admin/users/{id}`), which `AdminService` parses through this too, so a
+/// malformed id is answered the same way wherever in the request it sat.
 ///
 /// Same as [_idOrNull] except that the empty string is rejected too: "not
 /// persisted yet" is not something a foreign key pointing at an existing user
 /// can mean.
-int _persistedId(String value, String field) =>
+int persistedId(String value, String field) =>
     _idOrNull(value, field) ??
     (throw MalformedIdException.persisted(field, value));
 
@@ -178,7 +180,7 @@ GroupRecord groupDtoToRecord(GroupDto dto) => GroupRecord()
 /// [GroupMemberRecord]s for the given [groupId].
 ///
 /// Every member id must name a persisted user, so one that does not raises
-/// [MalformedIdException] (via [_persistedId]) and the whole edit fails. This
+/// [MalformedIdException] (via [persistedId]) and the whole edit fails. This
 /// used to *skip* such ids, and the skip was documented — but a documented skip
 /// is still a silent one where it counts: a group edit carrying a single
 /// corrupt id saved successfully and persisted a membership list quietly
@@ -192,7 +194,7 @@ List<GroupMemberRecord> groupMemberRecords(
   for (final memberId in dto.memberUserIds)
     GroupMemberRecord()
       ..groupId = groupId
-      ..userId = _persistedId(memberId, 'GroupDto.memberUserIds'),
+      ..userId = persistedId(memberId, 'GroupDto.memberUserIds'),
 ];
 
 /// Rejects a [GroupDto] whose membership names a user id that is not a
@@ -206,6 +208,6 @@ List<GroupMemberRecord> groupMemberRecords(
 /// row is saved is not rolled back.
 void checkGroupMembership(GroupDto dto) {
   for (final memberId in dto.memberUserIds) {
-    _persistedId(memberId, 'GroupDto.memberUserIds');
+    persistedId(memberId, 'GroupDto.memberUserIds');
   }
 }

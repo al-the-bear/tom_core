@@ -59,9 +59,13 @@ pipeline catches it in the per-endpoint `try/catch` and the server-level one
 never sees it. `AdminEndpointErrorHandler`, declared on the
 `@TomApiImplementation`, maps a `MalformedIdException` from
 `persistence/auth_mapping.dart` to **HTTP 400** with body
-`{"error": "request.id.malformed"}` — a group create or update whose
-`memberUserIds` names something that is not a persisted user key is the caller's
-mistake, not a server fault. `AdminService` checks the membership before it
+`{"error": "request.id.malformed"}` — an id that is not a database key is the
+caller's mistake, not a server fault, wherever it sat: a group's
+`memberUserIds`, an `AssignmentRequest`'s user or group id, or a path id
+(`/admin/users/{id}`, `/admin/groups/{id}`) on an update or a delete. All of them
+go through `persistedId` in `auth_mapping.dart`. A well-formed id that names no
+row is `admin.user.not_found` / `admin.group.not_found` instead, and a delete or
+assignment is never reported as done when the id could not name anything. `AdminService` checks the membership before it
 writes anything, because these endpoints declare no transaction and a rejection
 further down would leave an orphan group, or a persisted rename, behind a
 request the client was told had failed.

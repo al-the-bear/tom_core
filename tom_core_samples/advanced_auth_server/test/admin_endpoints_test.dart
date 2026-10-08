@@ -13,6 +13,7 @@ library;
 import 'package:advanced_auth_server/advanced_auth_server.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
+import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
@@ -352,6 +353,152 @@ void main() {
         isTrue,
       );
       expect((await store.membersOfGroup(9)).any((m) => m.userId == 1), isTrue);
+    });
+  });
+
+  group('a malformed path id is a 400, not a silent no-op', () {
+    // An id taken from the URL path is a client's claim about which row it
+    // means. One that is not a database key is a malformed request: rejecting
+    // it with MalformedIdException (which AdminEndpointErrorHandler maps to
+    // 400 `request.id.malformed`) is the same answer the body-id path gives.
+    // Swallowing it reported a delete or an assignment as done when nothing
+    // happened. Each case is paired with the well-formed call, so the group
+    // cannot pass by rejecting everything.
+    final malformed = throwsA(isA<MalformedIdException>());
+
+    InMemoryAdminStore seeded() => InMemoryAdminStore(
+      users: [
+        UserRecord()
+          ..id = 1
+          ..username = 'ada',
+      ],
+      roles: [
+        RoleRecord()
+          ..id = 5
+          ..roleKey = 'admin'
+          ..name = 'Admin',
+      ],
+      groups: [
+        GroupRecord()
+          ..id = 9
+          ..name = 'Engineering',
+      ],
+    );
+
+    test('deleteUser rejects a malformed id and leaves the account', () async {
+      final store = seeded();
+      final admin = AdminService(store);
+
+      await expectLater(admin.deleteUser('one'), malformed);
+      expect(await store.findUser(1), isNotNull);
+
+      await admin.deleteUser('1');
+      expect(await store.findUser(1), isNull);
+    });
+
+    test('deleteGroup rejects a malformed id and leaves the group', () async {
+      final store = seeded();
+      final admin = AdminService(store);
+
+      await expectLater(admin.deleteGroup('nine'), malformed);
+      expect(await store.findGroup(9), isNotNull);
+
+      await admin.deleteGroup('9');
+      expect(await store.findGroup(9), isNull);
+    });
+
+    test('assign rejects a malformed user id and assigns nothing', () async {
+      final store = seeded();
+      final admin = AdminService(store);
+
+      await expectLater(
+        admin.assign(AssignmentRequest(userId: 'ada', roleKey: 'admin')),
+        malformed,
+      );
+      expect(store.userRoleRows, isEmpty);
+
+      await admin.assign(AssignmentRequest(userId: '1', roleKey: 'admin'));
+      expect(store.userRoleRows.single.userId, 1);
+    });
+
+    test(
+      'assign rejects a malformed group id, before assigning the role',
+      () async {
+        final store = seeded();
+        final admin = AdminService(store);
+
+        await expectLater(
+          admin.assign(
+            AssignmentRequest(userId: '1', roleKey: 'admin', groupId: 'eng'),
+          ),
+          malformed,
+        );
+        expect(store.userRoleRows, isEmpty, reason: 'nothing half-applied');
+        expect(await store.membersOfGroup(9), isEmpty);
+      },
+    );
+
+    test('an empty group id still means "no group"', () async {
+      final store = seeded();
+      final admin = AdminService(store);
+
+      await admin.assign(AssignmentRequest(userId: '1', roleKey: 'admin'));
+      expect(store.userRoleRows.single.roleId, 5);
+      expect(await store.membersOfGroup(9), isEmpty);
+    });
+
+    test('updateUser answers malformed and absent differently', () async {
+      final admin = AdminService(seeded());
+
+      await expectLater(admin.updateUser('x', UserDto(id: 'x')), malformed);
+      await expectLater(
+        admin.updateUser('99', UserDto(id: '99')),
+        throwsA(
+          isA<TomEndpointHandlerException>().having(
+            (e) => e.key,
+            'key',
+            'admin.user.not_found',
+          ),
+        ),
+      );
+      final updated = await admin.updateUser(
+        '1',
+        UserDto(id: '1', username: 'ada', displayName: 'Ada'),
+      );
+      expect(updated.displayName, 'Ada');
+    });
+
+    test('updateGroup answers malformed and absent differently', () async {
+      final admin = AdminService(seeded());
+
+      await expectLater(
+        admin.updateGroup('x', GroupDto(id: 'x', name: 'n')),
+        malformed,
+      );
+      await expectLater(
+        admin.updateGroup('99', GroupDto(id: '99', name: 'n')),
+        throwsA(
+          isA<TomEndpointHandlerException>().having(
+            (e) => e.key,
+            'key',
+            'admin.group.not_found',
+          ),
+        ),
+      );
+      final renamed = await admin.updateGroup(
+        '9',
+        GroupDto(id: '9', name: 'Platform'),
+      );
+      expect(renamed.name, 'Platform');
+    });
+
+    test('the endpoint error handler answers it with 400', () {
+      final response = badRequestOnMalformedId(
+        Request('DELETE', Uri.parse('http://x/admin/users/one')),
+        MalformedIdException.persisted('users/{id}', 'one'),
+        StackTrace.current,
+      );
+      expect(response?.statusCode, 400);
     });
   });
 

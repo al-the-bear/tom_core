@@ -488,15 +488,19 @@ class AdminService {
     return userRecordToDto(await store.saveUser(applyUserDto(record, user)));
   }
 
-  /// Deletes the account with [id].
+  /// Deletes the account with [id]. Throws [MalformedIdException] when [id] is
+  /// not a database key, rather than reporting a delete that did not happen.
   Future<void> deleteUser(String id) async {
-    final key = int.tryParse(id);
-    if (key != null) await store.removeUser(key);
+    await store.removeUser(persistedId(id, _userPathId));
   }
 
+  /// The account [id] names. A malformed [id] throws [MalformedIdException]
+  /// (400 `request.id.malformed`); a well-formed one naming no account is
+  /// `admin.user.not_found`. Two answers because they are two mistakes: the
+  /// first is a request no row could satisfy, the second names a row that is
+  /// not there.
   Future<UserRecord> _requireUser(String id) async {
-    final key = int.tryParse(id);
-    final record = key == null ? null : await store.findUser(key);
+    final record = await store.findUser(persistedId(id, _userPathId));
     if (record == null) {
       throw TomEndpointHandlerException(
         'admin.user.not_found',
@@ -505,6 +509,10 @@ class AdminService {
     }
     return record;
   }
+
+  /// The field names a malformed path id is reported under.
+  static const _userPathId = 'users/{id}';
+  static const _groupPathId = 'groups/{id}';
 
   // ----- Roles -------------------------------------------------------------
 
@@ -567,8 +575,8 @@ class AdminService {
   /// Updates the group with [id] (name + membership). Throws when no such group
   /// exists, or when a member id is not a key naming a persisted user.
   Future<GroupDto> updateGroup(String id, GroupDto group) async {
-    final key = int.tryParse(id);
-    final record = key == null ? null : await store.findGroup(key);
+    // Malformed vs absent are answered apart, as in [_requireUser].
+    final record = await store.findGroup(persistedId(id, _groupPathId));
     if (record == null) {
       throw TomEndpointHandlerException(
         'admin.group.not_found',
@@ -591,10 +599,10 @@ class AdminService {
     return groupToDto(saved, await store.membersOfGroup(groupId));
   }
 
-  /// Deletes the group with [id] together with its membership.
+  /// Deletes the group with [id] together with its membership. Throws
+  /// [MalformedIdException] when [id] is not a database key.
   Future<void> deleteGroup(String id) async {
-    final key = int.tryParse(id);
-    if (key == null) return;
+    final key = persistedId(id, _groupPathId);
     await store.replaceGroupMembers(key, const []);
     await store.removeGroup(key);
   }
@@ -602,19 +610,20 @@ class AdminService {
   // ----- Assignments -------------------------------------------------------
 
   /// Assigns a role and/or group to the user in [request]. An empty role key /
-  /// group id skips that half of the assignment.
+  /// group id skips that half of the assignment. A user id, or a non-empty
+  /// group id, that is not a database key throws [MalformedIdException] before
+  /// anything is written, so an assignment is never half-applied.
   Future<void> assign(AssignmentRequest request) async {
-    final userId = int.tryParse(request.userId);
-    if (userId == null) return;
+    final userId = persistedId(request.userId, 'AssignmentRequest.userId');
+    final groupId = request.groupId.isEmpty
+        ? null
+        : persistedId(request.groupId, 'AssignmentRequest.groupId');
     if (request.roleKey.isNotEmpty) {
       final role = await store.findRoleByKey(request.roleKey);
       final roleId = role?.id;
       if (roleId != null) await store.addUserRole(userId, roleId);
     }
-    if (request.groupId.isNotEmpty) {
-      final groupId = int.tryParse(request.groupId);
-      if (groupId != null) await store.addGroupMember(groupId, userId);
-    }
+    if (groupId != null) await store.addGroupMember(groupId, userId);
   }
 
   // ----- Grants ------------------------------------------------------------
