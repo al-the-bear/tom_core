@@ -473,6 +473,12 @@ disagree with the directory. `--fix` writes the measurements back; the two
 faults it leaves alone are adding and retiring rows, because each needs a
 sentence saying what the file carries.
 
+A length or a file count is stated where the check reads it — the opening
+census, an inventory row, a layout line — and nowhere else. A figure copied into
+a sentence further down is a measurement nothing re-takes, so `PROSE` reports
+every one no audit read: write the sentence without the number (`every file of
+lib/src/agent/`, `across the kit`) or move it into the census.
+
 ```bash
 python3 tool/check_doc_dependencies.py                  # every package document
 python3 tool/check_doc_dependencies.py tom_core_samples # one prefix

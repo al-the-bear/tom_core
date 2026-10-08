@@ -123,13 +123,14 @@ Eleven faults are reported:
     ``demo_25_remaining_widgets.dart`` is one screen or several.
 
 ``PROSE``
-    A length written into a sentence that no audit above read -- ``a 74-line
-    controller``, ``Eight steps, one file, 239 lines``. It is not reported as a
+    A length or a file count written into a sentence that no audit above read
+    -- ``a 74-line controller``, ``Eight steps, one file, 239 lines``,
+    ``assessed against all 23 files``. It is not reported as a
     wrong number, because usually it is not one *yet*; it is reported as a
     measurement in the one position nothing can maintain. Unlike every other
     fault this one is defined by the others rather than by a shape of its own:
-    each audit records the spans it read a length out of, and this reports the
-    leftovers. Widening any audit therefore narrows this one automatically,
+    each audit records the spans it read a length or a file count out of, and
+    this reports the leftovers. Widening any audit therefore narrows this one automatically,
     with no second list of covered positions to keep in step.
 
 ``PKGINV`` exists because the opening inventory of a *package* document was
@@ -331,7 +332,9 @@ rule made mechanical: a length figure sitting anywhere no audit read it faults,
 so the choice is to put it in the inventory or to write the sentence without
 it. Both are improvements on a number nothing maintains, and the second is
 usually the better one -- ``one small controller`` says what the sentence was
-actually claiming, where ``a 74-line controller`` only appeared to.
+actually claiming, where ``a 74-line controller`` only appeared to. File counts
+follow the same rule: ``every file of lib/src/agent/`` cannot go stale, where
+``all 23 files`` did, under a census that by then said 25.
 
 ``--fix`` repairs ``LINES``, ``HEADER``, ``COUNT``, ``BARREL``, ``PKGINV``,
 ``LIBSIZE`` and ``INDEX``
@@ -612,16 +615,17 @@ class Report:
         self.path = path
         self.faults: list[str] = []
         self.edits: list[tuple[int, int, str]] = []
-        #: Spans of `text` an audit actually read a length out of. `PROSE`
-        #: reports the line figures left over, so this is what separates a
-        #: measurement the gate holds to the tree from one nothing checks.
+        #: Spans of `text` an audit actually read a figure out of -- a length
+        #: or a file count. `PROSE` reports the figures left over, so this is
+        #: what separates a measurement the gate holds to the tree from one
+        #: nothing checks.
         #: Recorded whether or not the figure faulted, and whether or not it
         #: was deliberately skipped: a hedged `~4 000 lines` was read and
         #: waived, which is a decision, not a gap.
         self.read: list[tuple[int, int]] = []
 
     def mark(self, span: tuple[int, int]) -> None:
-        """Record that an audit consumed the length figure at `span`."""
+        """Record that an audit consumed the figure at `span`."""
         self.read.append(span)
 
     def was_read(self, start: int, end: int) -> bool:
@@ -695,6 +699,7 @@ def audit_text(text: str, path: Path) -> Report | None:
     # nothing -- a document with no inventory is exactly where a stray length
     # in a sentence has nothing to be checked against.
     audit_prose_lengths(text, report)
+    audit_prose_file_counts(text, report)
 
     return report if measured or report.faults else None
 
@@ -979,6 +984,7 @@ def audit_module_header(text: str, module: Path, report: Report) -> bool:
     files = MODULE_FILES.search(text, start, end)
     if files is None:
         return False
+    report.mark(files.span())
 
     on_disk = module_files(module)
     dart = [p for p in on_disk if p.suffix == ".dart"]
@@ -1145,6 +1151,8 @@ def package_atom_claims(
             claims.append(
                 (match, len(hand), f"hand-written files under {folder}/")
             )
+    for match, _, _ in claims:
+        report.mark(match.span())
     return claims, stated
 
 
@@ -1210,6 +1218,8 @@ def audit_library_size(text: str, report: Report) -> bool:
         report.edits.append(rewrite_groups(total, {1: like(written, measured)}))
 
     count = LIB_FILES.search(text, total.end(), end)
+    if count is not None:
+        report.mark(count.span())
     if count is not None and as_count(count.group(1)) != len(sources):
         report.faults.append(
             f"LIBSIZE  says lib/ is {count.group(1).strip()} files;"
@@ -1354,6 +1364,22 @@ PROSE_EXEMPT = re.compile(
 )
 
 
+def prose_text(text: str) -> str:
+    """`text` with fenced blocks and table rows blanked, offsets preserved."""
+    keep: list[str] = []
+    fenced = False
+    for line in text.splitlines(keepends=True):
+        stripped = line.lstrip()
+        if stripped.startswith("```"):
+            fenced = not fenced
+            keep.append(" " * len(line))
+        elif fenced or stripped.startswith("|"):
+            keep.append(" " * len(line))
+        else:
+            keep.append(line)
+    return "".join(keep)
+
+
 def prose_spans(text: str):
     """Yield `(start, end)` for each length figure in running text.
 
@@ -1368,19 +1394,7 @@ def prose_spans(text: str):
     claim written on two lines, and a per-line reader sees no measurement at
     all. Blanking preserves every offset, so the spans stay the document's own.
     """
-    keep: list[str] = []
-    fenced = False
-    for line in text.splitlines(keepends=True):
-        stripped = line.lstrip()
-        if stripped.startswith("```"):
-            fenced = not fenced
-            keep.append(" " * len(line))
-        elif fenced or stripped.startswith("|"):
-            keep.append(" " * len(line))
-        else:
-            keep.append(line)
-    prose = "".join(keep)
-
+    prose = prose_text(text)
     for match in PROSE_LENGTH.finditer(prose):
         # Anchored at the figure and reading forward: the words that turn a
         # count into a direction follow it. Newlines count as spaces here, so
@@ -1418,6 +1432,55 @@ def audit_prose_lengths(text: str, report: Report) -> None:
         report.faults.append(
             f"PROSE    line {line}: `{quoted}` is a length no gate can check;"
             f" state it in the inventory or drop the number"
+        )
+
+
+#: A file count written into a sentence: `25 Dart files`, `81 files`,
+#: `3 test files`. Digits only, as `PROSE_LENGTH` is: a count spelled in words
+#: (`three files`) reads as part of the sentence rather than as a measurement
+#: of the tree, and is left to the census audits that do read words. A digit
+#: run joined by a hyphen is part of a name, not a count -- `UTF-8 file`.
+PROSE_FILES = re.compile(
+    r"(?<![\w.\-‑])(" + NUMBER + r")\s+"
+    r"(?:(?:source|Dart|test|library|hand-written|generated)\s+)?files?\b"
+)
+
+
+def prose_file_spans(text: str):
+    """Yield `(start, end)` for each file count in running text.
+
+    Excludes the shapes `prose_spans` excludes -- fenced blocks and table
+    rows, which the inventory audits read -- for the same reason.
+    """
+    prose = prose_text(text)
+    for match in PROSE_FILES.finditer(prose):
+        yield match.start(), match.end()
+
+
+def audit_prose_file_counts(text: str, report: Report) -> None:
+    """Report every file count in prose that no other audit read.
+
+    The counterpart of `audit_prose_lengths` for the other figure a census
+    states. A document opens with a census the gate holds to the tree --
+    `HEADER`, `PKGINV`, `INDEX`, `LIBSIZE` -- and a file count restated below
+    it is a copy with nothing behind it. The copies that went stale were
+    exactly that shape: an "assessed against all 23 files" line under a
+    census that by then said 25, which a reader cannot tell from a second,
+    conflicting census.
+
+    The rule, as for lengths, is that a file count is stated where a gate reads
+    it and nowhere else. A sentence that needs to say how many files something
+    touches can name them, point at the census, or say "every file" -- none of
+    which can go out of date.
+    """
+    for start, end in prose_file_spans(text):
+        if report.was_read(start, end):
+            continue
+        quoted = " ".join(text[start:end].split())
+        line = text.count("\n", 0, start) + 1
+        report.faults.append(
+            f"PROSE    line {line}: `{quoted}` is a file count no gate can"
+            f" check; state it in the census or drop the number"
         )
 
 
@@ -1527,6 +1590,8 @@ def index_claims(
     claims: dict[str, re.Match[str]] = {}
     files = INDEX_FILES.search(text, start, end)
     if files is not None:
+        if report is not None:
+            report.mark(files.span())
         claims["files"] = files
     lines = INDEX_LINES.search(text, start, end)
     if lines is not None:
@@ -1970,6 +2035,71 @@ def self_test_prose(documents: list[Path]) -> list[str]:
     return failures
 
 
+def self_test_prose_files(documents: list[Path]) -> list[str]:
+    """Prove ``PROSE`` still reports a file count written into a sentence.
+
+    The same shape as :func:`self_test_prose`, for the other figure a census
+    states: add a sentence carrying a file count to the clean document whose
+    census file counts the audits mark most often, and require exactly one new
+    fault naming it -- the rule reads prose, and the chosen document's own
+    marked census figures are not reported beside it.
+
+    What guards the marks corpus-wide is the main run rather than this test:
+    the corpus is held at zero, and a census audit that stopped marking the
+    file counts it reads would turn every one of them into a ``PROSE`` fault
+    (removing the package-atom marks alone raises twenty).
+
+    The negative case is the shape that once read as a count: ``UTF-8 file``,
+    where the digit belongs to a name.
+    """
+    best: tuple[int, Path, str] | None = None
+    for path in documents:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        report = audit_text(text, path)
+        if report is None or not report.clean:
+            continue
+        marked = sum(
+            1 for s, e in prose_file_spans(text) if report.was_read(s, e)
+        )
+        if best is None or marked > best[0]:
+            best = (marked, path, text)
+
+    if best is None:
+        return ["prose file count: no document audits clean, so nothing "
+                "exercises it"]
+
+    marked, path, text = best
+    failures: list[str] = []
+    if marked == 0:
+        failures.append(
+            "prose file count: no clean document carries a marked file count, "
+            "so nothing would notice if the census audits stopped marking"
+        )
+
+    reported = audit_text(text + "\n\nAssessed against all 4242 files.\n", path)
+    assert reported is not None
+    if len(reported.faults) != 1 or "4242" not in reported.faults[0]:
+        failures.append(
+            f"prose file count: adding `4242 files` to {path.name} produced "
+            f"{len(reported.faults)} faults, not one naming it -- either the "
+            f"rule stopped reading prose or a census audit stopped marking"
+        )
+    else:
+        print(f"  ok  prose file count — caught in {path.name} ({marked} marked)")
+
+    named = audit_text(text + "\n\nIt writes a UTF-8 file.\n", path)
+    assert named is not None
+    if not named.clean:
+        failures.append(
+            f"prose file count: `UTF-8 file` in {path.name} raised "
+            f"{named.faults[0]}, but a digit joined to a name is not a count"
+        )
+    else:
+        print(f"  ok  prose file count — `UTF-8 file` held in {path.name}")
+
+    return failures
+
+
 def self_test() -> int:
     """Prove each audit still fails a document whose figures are wrong.
 
@@ -2020,7 +2150,8 @@ def self_test() -> int:
             )
 
     failures += self_test_prose(documents)
-    families = len(SELF_TEST_CASES) + 1
+    failures += self_test_prose_files(documents)
+    families = len(SELF_TEST_CASES) + 2
 
     for failure in failures:
         print(f"  FAIL {failure}", file=sys.stderr)
