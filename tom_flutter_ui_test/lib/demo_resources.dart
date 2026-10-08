@@ -3590,6 +3590,6 @@ void initializeDemoResources() {
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(allResources),
   );
-  TomUIIcons.adapter = AllIconsAdapter();
-  TomUIColors.adapter = AllColorsAdapter();
+  TomUIIcons.adapter = TomAllIconsAdapter();
+  TomUIColors.adapter = TomAllColorsAdapter();
 }

@@ -123,7 +123,7 @@ void main() {
     // Start from a bare registry so a test asserting "this build cannot render
     // that mechanism" is not silently rescued by a leftover registration.
     Tom2FAClientRegistry.reset();
-    TomUIIcons.adapter = AllIconsAdapter();
+    TomUIIcons.adapter = TomAllIconsAdapter();
     // The VM has no authenticator; a test that wants one installs a fake.
     TomWebAuthnPlatform.instance = const TomUnavailableWebAuthnPlatform();
   });
@@ -197,7 +197,7 @@ void main() {
       expect(iconIn('totp'), findsOneWidget);
       expect(
         tester.widget<Icon>(iconIn('totp')).icon,
-        AllIconsAdapter().resolveIcon('mSecurity'),
+        TomAllIconsAdapter().resolveIcon('mSecurity'),
         reason: 'the icon named by two_factor.totp.icon, not an arbitrary one',
       );
 

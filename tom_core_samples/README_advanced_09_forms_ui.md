@@ -33,9 +33,9 @@ class LoginForm extends TomForm<LoginCredentials> {
   @override
   void createFormElements() {
     username = TomFormStringInput('username', '', form: this,
-        validators: [Validators.required()]);
+        validators: [TomValidators.required()]);
     password = TomFormStringInput('password', '', form: this,
-        obscureText: true, validators: [Validators.required()]);
+        obscureText: true, validators: [TomValidators.required()]);
   }
 }
 ```
@@ -181,8 +181,8 @@ the client packages add no field widgets of their own:
 | `TomFormNDateInput` | nullable dates (the item's due date) |
 | `TomFormNDoubleInput` | nullable numbers (the estimate, `decimals: 1`) |
 | `TomEnumNameSelectableSource` | the option list behind an enum picker: *valued by the `Enum.name` the entity stores, labelled from the enum's `global.<enumtype>.<value>` key (G-RES-5)* |
-| `StaticSelectableSource` / `SelectableItem` | a fixed option list over tokens that are **not** a Dart enum here (the admin console's account status), each label a bundle key |
-| `Validators.required()` | declarative per-field validation |
+| `TomStaticSelectableSource` / `TomSelectableItem` | a fixed option list over tokens that are **not** a Dart enum here (the admin console's account status), each label a bundle key |
+| `TomValidators.required()` | declarative per-field validation |
 | `TomFormFileUpload` | the item's attachment — a **slot**, not a bound member: it moves bytes over the file endpoint through a transfer client rather than through `save()` (part [13](README_advanced_13_file_transfer.md)) |
 | `TomAuthorizer.fixed(state)` | a per-field grade (the item screen's DB-resolved grades and the admin forms' stable-key fields — part 07) |
 
@@ -191,7 +191,7 @@ label/hint/options from the installed resource bundle (part 08) and its grade
 from the per-field `TomAuthorizer.fixed` the item screen stamps on it (part 07).
 The dropdowns illustrate the
 stored-name-vs-display-text split from part
-[03](README_advanced_03_domain_reflection.md): the `SelectableItem` `value` is
+[03](README_advanced_03_domain_reflection.md): the `TomSelectableItem` `value` is
 the enum `name` the entity stores, while its label is resolved from the bundle
 under the enum's `global.<enumtype>.<value>` key (G-RES-5). The form hands
 `TomEnumNameSelectableSource` the enum's `values` and nothing else — no client
@@ -222,7 +222,7 @@ The two clients layer screens over these forms. The **app client**
   the authorization mechanism of part 07 doing the gating, not the screen.
   Beneath the form sits the item's **attachment**: a `TomFormFileUpload` scoped
   under `board.item.attachment`, built outside the form because it holds a
-  `FileRef` rather than a bound member and its bytes travel over the file
+  `TomFileRef` rather than a bound member and its bytes travel over the file
   endpoint. It is graded by the same rule as the fields all the same — the
   registry-resolved resource ceiling narrowed by the role's grade — which is why
   a viewer sees the download and no picker (part

@@ -334,7 +334,7 @@ void main() {
   group('through the registered picker', () {
     tearDown(TomFilePickerRegistry.clear);
 
-    test('a path-returning adaptor produces a readable FileRef', () async {
+    test('a path-returning adaptor produces a readable TomFileRef', () async {
       // What every mainstream picker plugin actually does on desktop and
       // mobile — and, until now, the one journey nothing exercised.
       final path = write('chosen.txt', const [42, 43]);

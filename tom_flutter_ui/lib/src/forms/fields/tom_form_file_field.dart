@@ -1,6 +1,6 @@
 /// File fields — choosing a file, and moving it to and from a file store.
 ///
-/// The value type [FileRef] and the [TomFilePicker] contract live in
+/// The value type [TomFileRef] and the [TomFilePicker] contract live in
 /// `../files/file_ref.dart` and are re-exported here, so importing this file
 /// still gives you everything a file field deals in.
 ///
@@ -16,7 +16,7 @@
 ///
 /// Give a field a [TomFileTransferClient] and a `storageSlot` and it uploads
 /// what the user picked, showing progress and offering cancel and retry; the
-/// picked [FileRef] is replaced by a stored one carrying the server's key. A
+/// picked [TomFileRef] is replaced by a stored one carrying the server's key. A
 /// field re-opened later describes its slot and shows the stored file without
 /// downloading it.
 ///
@@ -58,34 +58,35 @@ export '../files/file_ref.dart';
 /// Returns a [TomValidator] that checks the file's extension against [allowed].
 /// Pristine `null` values pass. Files without an extension fail when an
 /// allow-list is configured.
-TomValidator<FileRef?> _fileExtensionValidator(List<String> allowed) =>
-    (FileRef? value) {
-      if (value == null) return const ValidationSuccess();
+TomValidator<TomFileRef?> _fileExtensionValidator(List<String> allowed) =>
+    (TomFileRef? value) {
+      if (value == null) return const TomValidationSuccess();
       return allowed.contains(value.extension)
-          ? const ValidationSuccess()
-          : const ValidationError('error.fileExtension');
+          ? const TomValidationSuccess()
+          : const TomValidationError('error.fileExtension');
     };
 
 /// Returns a [TomValidator] that checks the file's size against [maxBytes].
 /// Pristine `null` values pass.
-TomValidator<FileRef?> _fileSizeValidator(int maxBytes) => (FileRef? value) {
-  if (value == null) return const ValidationSuccess();
-  return value.sizeBytes <= maxBytes
-      ? const ValidationSuccess()
-      : const ValidationError('error.fileTooLarge');
-};
+TomValidator<TomFileRef?> _fileSizeValidator(int maxBytes) =>
+    (TomFileRef? value) {
+      if (value == null) return const TomValidationSuccess();
+      return value.sizeBytes <= maxBytes
+          ? const TomValidationSuccess()
+          : const TomValidationError('error.fileTooLarge');
+    };
 
 // ===========================================================================
 // Abstract type
 // ===========================================================================
 
-abstract class TomFormFileField extends TomField<FileRef?> {
+abstract class TomFormFileField extends TomField<TomFileRef?> {
   final String? labelTextOverride;
   final String? descriptionTextOverride;
 
   /// Optional list of allowed file extensions (without dot, lowercase).
   /// Surfaced to the picker callback and used to auto-prepend a built-in
-  /// `TomValidator<FileRef?>` so that programmatic `setValue` paths flow
+  /// `TomValidator<TomFileRef?>` so that programmatic `setValue` paths flow
   /// through the same validation pipeline as picker-driven selections.
   final List<String>? allowedExtensions;
 
@@ -129,7 +130,7 @@ abstract class TomFormFileField extends TomField<FileRef?> {
   /// The field offers the download affordance and runs the transfer; what a
   /// downloaded file *is* — a preview, a share sheet, a save dialog — is the
   /// application's decision, so it gets the bytes and nothing more.
-  final void Function(FileRef ref, Uint8List bytes)? onDownload;
+  final void Function(TomFileRef ref, Uint8List bytes)? onDownload;
 
   TomFormFileField(
     super.tomId,
@@ -193,7 +194,7 @@ abstract class TomFormFileField extends TomField<FileRef?> {
   /// Delegates to [picker] when one was given, otherwise to the registered
   /// application picker with this field's extensions and size limit — so a
   /// user is offered only files the field would accept.
-  Future<FileRef?> runPicker(BuildContext context) {
+  Future<TomFileRef?> runPicker(BuildContext context) {
     final explicit = picker;
     if (explicit != null) return explicit(context);
     return TomFilePickerRegistry.pick(
@@ -216,9 +217,9 @@ abstract class TomFormFileField extends TomField<FileRef?> {
   ///
   /// Used by the picker shim to show an immediate message and reject the file
   /// before it ever reaches `setValue`. The same constraints are also
-  /// auto-prepended as `TomValidator<FileRef?>`s, so any programmatic
+  /// auto-prepended as `TomValidator<TomFileRef?>`s, so any programmatic
   /// `setValue(invalidFile)` will be caught by the framework pipeline.
-  String? checkFile(FileRef ref) {
+  String? checkFile(TomFileRef ref) {
     if (allowedExtensions != null &&
         !allowedExtensions!.contains(ref.extension)) {
       return 'error.fileExtension';
@@ -339,7 +340,7 @@ mixin TomFileFieldStateMixin<TWidget extends StatefulWidget> on State<TWidget> {
   ///
   /// The replacement is what makes the upload visible to the rest of the form:
   /// a value carrying a storage key is a value the form can save.
-  Future<void> upload(FileRef ref) async {
+  Future<void> upload(TomFileRef ref) async {
     final controller = transferController;
     if (controller == null || !ref.hasLocalContent) return;
     final stored = await controller.upload(ref);
@@ -393,7 +394,7 @@ mixin TomFileFieldStateMixin<TWidget extends StatefulWidget> on State<TWidget> {
   /// Shared because both concretes show the same thing for a chosen file; they
   /// differ only in what they say when there is *no* file, which is a different
   /// sentence in each ("— no file selected" vs. an invitation to tap).
-  String selectedCaption(FileRef ref) => TomFileLabels.selected(
+  String selectedCaption(TomFileRef ref) => TomFileLabels.selected(
     field.basePath,
     ref.name,
     humanSize(ref.sizeBytes),
@@ -444,7 +445,7 @@ const Set<String> _renderableImageExtensions = {
 ///
 /// A free function for the same reason as [tomHumanFileSize] — both widget
 /// families need it and neither owns it.
-bool tomFileIsRenderableImage(FileRef ref, TomFilePickKind pickKind) {
+bool tomFileIsRenderableImage(TomFileRef ref, TomFilePickKind pickKind) {
   final mediaType = ref.mimeType;
   if (mediaType != null && mediaType.isNotEmpty) {
     return mediaType.startsWith('image/') &&
@@ -559,7 +560,7 @@ mixin TomFileThumbnailStateMixin<TWidget extends StatefulWidget>
 
 @tomReflector
 class TomFormFileUpload extends TomFormFileField
-    with TomGenericFieldDecorationMixin<FileRef?> {
+    with TomGenericFieldDecorationMixin<TomFileRef?> {
   TomFormFileUpload(
     super.tomId,
     super.initialValue, {
@@ -684,7 +685,7 @@ class _FileUploadWidgetState extends State<_FileUploadWidget>
 
 @tomReflector
 class TomFormFileDropzone extends TomFormFileField
-    with TomGenericFieldDecorationMixin<FileRef?> {
+    with TomGenericFieldDecorationMixin<TomFileRef?> {
   /// Height of the drop-zone surface.
   final double height;
 
@@ -841,7 +842,7 @@ class _FileDropzoneWidgetState extends State<_FileDropzoneWidget>
 /// for how that is decided.
 @tomReflector
 class TomFormFileThumbnail extends TomFormFileField
-    with TomGenericFieldDecorationMixin<FileRef?> {
+    with TomGenericFieldDecorationMixin<TomFileRef?> {
   /// Edge length of the square preview surface.
   final double thumbnailSize;
 

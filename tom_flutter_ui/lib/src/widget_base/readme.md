@@ -105,7 +105,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void resolveFromResources() {
-  TomUIColors.adapter = AllColorsAdapter();
+  TomUIColors.adapter = TomAllColorsAdapter();
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from({'login': {'title': 'Sign in', 'gap': 12}}),
   );

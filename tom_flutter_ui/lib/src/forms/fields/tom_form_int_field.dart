@@ -54,8 +54,8 @@ abstract class TomFormIntField extends TomField<int> {
     super.onActionIconPressed,
   }) : super(
          validators: [
-           if (minValue != null) Validators.min(minValue),
-           if (maxValue != null) Validators.max(maxValue),
+           if (minValue != null) TomValidators.min(minValue),
+           if (maxValue != null) TomValidators.max(maxValue),
            ...validators,
          ],
        );
@@ -161,7 +161,7 @@ class _TomFormIntInputWidgetState extends State<_TomFormIntInputWidget> {
     final n = int.tryParse(text);
     if (n == null) return;
     // Don't silently clamp here — the abstract field auto-prepends
-    // Validators.min/max so out-of-range values surface as a normal
+    // TomValidators.min/max so out-of-range values surface as a normal
     // validation error in the field anatomy. Slider and stepper variants
     // still clamp because the widget itself can't produce out-of-range
     // values in the first place.
@@ -439,7 +439,7 @@ class _TomFormIntStepperWidgetState extends State<_TomFormIntStepperWidget> {
 // ---------------------------------------------------------------------------
 
 String? _floatingLabelOrNull(TomFieldStyle style, TomFormIntField field) {
-  if (style.labelPlacement != LabelPlacement.floating) return null;
+  if (style.labelPlacement != TomLabelPlacement.floating) return null;
   final label = field.labelText;
   if (label == null || label.isEmpty) return null;
   return label;

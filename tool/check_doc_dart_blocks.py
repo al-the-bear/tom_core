@@ -573,7 +573,7 @@ def member_name(text: str) -> str | None:
     before the first `(`, `=`, `;` or `{` on the line, once type arguments are
     removed: `Future<bool> save()`, `T? value = x;`, `final List<A<B>> items;`.
     Reading the *first* such token is what keeps an initializer's own calls
-    (`= const ValidationSuccess()`, `=> fields.where(...)`) from being taken
+    (`= const TomValidationSuccess()`, `=> fields.where(...)`) from being taken
     for the member.
     """
     getter = GETTER.search(text)

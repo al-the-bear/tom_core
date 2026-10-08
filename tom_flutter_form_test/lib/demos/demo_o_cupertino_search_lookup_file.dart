@@ -8,7 +8,7 @@
 /// `TomCupertinoFormStyle.cupertino`. The form binds to
 /// [Phase5cDemoState] for the four nullable rows; the search / lookup /
 /// file rows stay form-local because their value types
-/// (`City`, `Country`, `FileRef`) have no `TomObject<…>` wrapper.
+/// (`City`, `Country`, `TomFileRef`) have no `TomObject<…>` wrapper.
 ///
 /// A side panel reads back the live state via [TomMultiObservableBuilder]
 /// so every row's value is visible without scrolling.

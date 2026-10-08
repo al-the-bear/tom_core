@@ -67,10 +67,10 @@ class TomCupertinoFormStyle extends TomFormStyle {
   ///     concretes emit a placeholder *inside* the field independently.
   static TomCupertinoFormStyle get cupertino => const TomCupertinoFormStyle(
     defaults: TomFieldStyle(
-      labelPlacement: LabelPlacement.above,
-      errorPlacement: ErrorPlacement.below,
-      descriptionPlacement: DescriptionPlacement.below,
-      actionIconPlacement: ActionIconPlacement.trailing,
+      labelPlacement: TomLabelPlacement.above,
+      errorPlacement: TomErrorPlacement.below,
+      descriptionPlacement: TomDescriptionPlacement.below,
+      actionIconPlacement: TomActionIconPlacement.trailing,
       labelFieldGap: 4.0,
       errorFieldGap: 4.0,
       descriptionFieldGap: 4.0,
@@ -87,7 +87,7 @@ class TomCupertinoFormStyle extends TomFormStyle {
   /// Delegates to [TomFormStyle.withTheme] for the bulk of the work and
   /// then re-wraps the result so it remains a [TomCupertinoFormStyle]
   /// (subtype identity matters for `is TomCupertinoFormStyle` checks
-  /// in style-family-aware widgets and for `FormFieldFamily`
+  /// in style-family-aware widgets and for `TomFormFieldFamily`
   /// resolution downstream).
   @override
   TomCupertinoFormStyle withTheme(ThemeData theme) {

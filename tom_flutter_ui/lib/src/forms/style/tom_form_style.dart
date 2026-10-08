@@ -20,14 +20,14 @@ import 'form_style_enums.dart';
 class TomFieldStyle {
   // --- Anatomy placements --------------------------------------------------
 
-  final LabelPlacement labelPlacement;
-  final List<(double, LabelPlacement)> labelPlacementBpOverrides;
-  final ErrorPlacement errorPlacement;
-  final RequiredIndicator requiredIndicator;
-  final RequiredIndicator requiredIndicatorOnHint;
-  final RequiredIndicator requiredIndicatorOnDescription;
-  final DescriptionPlacement descriptionPlacement;
-  final ActionIconPlacement actionIconPlacement;
+  final TomLabelPlacement labelPlacement;
+  final List<(double, TomLabelPlacement)> labelPlacementBpOverrides;
+  final TomErrorPlacement errorPlacement;
+  final TomRequiredIndicator requiredIndicator;
+  final TomRequiredIndicator requiredIndicatorOnHint;
+  final TomRequiredIndicator requiredIndicatorOnDescription;
+  final TomDescriptionPlacement descriptionPlacement;
+  final TomActionIconPlacement actionIconPlacement;
 
   // --- Intra-field anatomy gaps -------------------------------------------
 
@@ -148,14 +148,14 @@ class TomFieldStyle {
   final double trailingGap;
 
   const TomFieldStyle({
-    this.labelPlacement = LabelPlacement.above,
+    this.labelPlacement = TomLabelPlacement.above,
     this.labelPlacementBpOverrides = const [],
-    this.errorPlacement = ErrorPlacement.below,
-    this.requiredIndicator = RequiredIndicator.asterisk,
-    this.requiredIndicatorOnHint = RequiredIndicator.none,
-    this.requiredIndicatorOnDescription = RequiredIndicator.none,
-    this.descriptionPlacement = DescriptionPlacement.below,
-    this.actionIconPlacement = ActionIconPlacement.trailing,
+    this.errorPlacement = TomErrorPlacement.below,
+    this.requiredIndicator = TomRequiredIndicator.asterisk,
+    this.requiredIndicatorOnHint = TomRequiredIndicator.none,
+    this.requiredIndicatorOnDescription = TomRequiredIndicator.none,
+    this.descriptionPlacement = TomDescriptionPlacement.below,
+    this.actionIconPlacement = TomActionIconPlacement.trailing,
     this.labelFieldGap = 4.0,
     this.labelFieldGapBpOverrides = const [],
     this.errorFieldGap = 4.0,
@@ -235,14 +235,14 @@ class TomFieldStyle {
   }
 
   TomFieldStyle copyWith({
-    LabelPlacement? labelPlacement,
-    List<(double, LabelPlacement)>? labelPlacementBpOverrides,
-    ErrorPlacement? errorPlacement,
-    RequiredIndicator? requiredIndicator,
-    RequiredIndicator? requiredIndicatorOnHint,
-    RequiredIndicator? requiredIndicatorOnDescription,
-    DescriptionPlacement? descriptionPlacement,
-    ActionIconPlacement? actionIconPlacement,
+    TomLabelPlacement? labelPlacement,
+    List<(double, TomLabelPlacement)>? labelPlacementBpOverrides,
+    TomErrorPlacement? errorPlacement,
+    TomRequiredIndicator? requiredIndicator,
+    TomRequiredIndicator? requiredIndicatorOnHint,
+    TomRequiredIndicator? requiredIndicatorOnDescription,
+    TomDescriptionPlacement? descriptionPlacement,
+    TomActionIconPlacement? actionIconPlacement,
     double? labelFieldGap,
     List<(double, double)>? labelFieldGapBpOverrides,
     double? errorFieldGap,
@@ -363,7 +363,7 @@ class TomFieldStyle {
 /// Partial override for text-input fields.
 class TomStringInputStyle extends TomFieldPartialStyle {
   /// Which text-input look to render. `null` → use the default look.
-  final StringInputVariant? variant;
+  final TomStringInputVariant? variant;
 
   const TomStringInputStyle({
     this.variant,
@@ -413,7 +413,7 @@ class TomStringInputStyle extends TomFieldPartialStyle {
 }
 
 /// Variant flavor for text-input decoration.
-enum StringInputVariant { material, bordered }
+enum TomStringInputVariant { material, bordered }
 
 /// Partial override for dropdown selection fields.
 class TomDropdownStyle extends TomFieldPartialStyle {
@@ -988,14 +988,14 @@ class TomMultilineInputStyle extends TomFieldPartialStyle {
 // ---------------------------------------------------------------------------
 
 class TomFieldPartialStyle {
-  final LabelPlacement? labelPlacement;
-  final List<(double, LabelPlacement)> labelPlacementBpOverrides;
-  final ErrorPlacement? errorPlacement;
-  final RequiredIndicator? requiredIndicator;
-  final RequiredIndicator? requiredIndicatorOnHint;
-  final RequiredIndicator? requiredIndicatorOnDescription;
-  final DescriptionPlacement? descriptionPlacement;
-  final ActionIconPlacement? actionIconPlacement;
+  final TomLabelPlacement? labelPlacement;
+  final List<(double, TomLabelPlacement)> labelPlacementBpOverrides;
+  final TomErrorPlacement? errorPlacement;
+  final TomRequiredIndicator? requiredIndicator;
+  final TomRequiredIndicator? requiredIndicatorOnHint;
+  final TomRequiredIndicator? requiredIndicatorOnDescription;
+  final TomDescriptionPlacement? descriptionPlacement;
+  final TomActionIconPlacement? actionIconPlacement;
 
   final double? labelFieldGap;
   final List<(double, double)> labelFieldGapBpOverrides;
@@ -1153,7 +1153,7 @@ class TomFormStyle {
   /// Compact style — floating labels, reduced gaps.
   static const TomFormStyle compact = TomFormStyle(
     defaults: TomFieldStyle(
-      labelPlacement: LabelPlacement.floating,
+      labelPlacement: TomLabelPlacement.floating,
       labelFieldGap: 2.0,
       errorFieldGap: 2.0,
     ),
@@ -1164,7 +1164,7 @@ class TomFormStyle {
   static TomFormStyle get bordered => TomFormStyle(
     defaults:
         const TomFieldStyle(
-          labelPlacement: LabelPlacement.floating,
+          labelPlacement: TomLabelPlacement.floating,
           errorBorderEnabled: true,
           errorIconEnabled: true,
         ).copyWith(
@@ -1191,7 +1191,7 @@ class TomFormStyle {
     over ??= const TomFieldPartialStyle();
 
     return TomFieldStyle(
-      labelPlacement: base.pickPair<LabelPlacement>(
+      labelPlacement: base.pickPair<TomLabelPlacement>(
         width,
         over.labelPlacement,
         over.labelPlacementBpOverrides,

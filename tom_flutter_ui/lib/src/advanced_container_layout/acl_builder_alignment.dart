@@ -176,7 +176,7 @@ extension AclBuilderAlignment on AclBuilder {
   //
   // Two orthogonal axes:
   //   * Horizontal — where components sit along the row's main axis
-  //     (RowAlignment.left / center / right). Set via
+  //     (AclRowAlignment.left / center / right). Set via
   //     [setRowHorizontalAlignment] or the [setRowAlignLeft] / Center /
   //     Right shortcuts.
   //   * Vertical — where components sit along the row's cross axis
@@ -190,7 +190,7 @@ extension AclBuilderAlignment on AclBuilder {
   // [setAclDefaultRowHorizontalAlignment]).
 
   /// Horizontal main-axis placement for the **current row only**.
-  AclBuilder setRowHorizontalAlignment(RowAlignment align) {
+  AclBuilder setRowHorizontalAlignment(AclRowAlignment align) {
     _currentRow.alignment = align;
     _currentRow.alignmentSet = true;
     return this;
@@ -216,11 +216,12 @@ extension AclBuilderAlignment on AclBuilder {
   }
 
   // ── Row-level horizontal alignment shortcuts ──
-  AclBuilder setRowAlignLeft() => setRowHorizontalAlignment(RowAlignment.left);
+  AclBuilder setRowAlignLeft() =>
+      setRowHorizontalAlignment(AclRowAlignment.left);
   AclBuilder setRowAlignCenter() =>
-      setRowHorizontalAlignment(RowAlignment.center);
+      setRowHorizontalAlignment(AclRowAlignment.center);
   AclBuilder setRowAlignRight() =>
-      setRowHorizontalAlignment(RowAlignment.right);
+      setRowHorizontalAlignment(AclRowAlignment.right);
 
   // ── Row-level vertical alignment shortcuts ──
   AclBuilder setRowAlignTop() =>

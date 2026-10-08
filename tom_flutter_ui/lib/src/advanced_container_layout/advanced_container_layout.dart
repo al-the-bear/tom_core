@@ -38,7 +38,7 @@
 /// | Device inputs behind those variants | [AclDeviceContext], [AclFormFactor], [AclDensity], [AclInputMode] |
 /// | Group show / hide | [AclGroupVisibilityController], [AclBinaryVisibilityController], [AclCallbackVisibilityController], and the [AclGroupVisibilityMode] they answer with |
 /// | Ids and groups inside a layout | [AclScope] — what a widget inside an ACL layout reads to learn its id and group |
-/// | Alignment and direction | [RowAlignment], [AclRowCrossAlignment], [AclDirection], [AclDirectionScope] |
+/// | Alignment and direction | [AclRowAlignment], [AclRowCrossAlignment], [AclDirection], [AclDirectionScope] |
 /// | The resolved model | [AclRow] and [AclComponent] — the rows a layout resolves to and the appended widgets in them, computable and assertable without a widget tree; [AclAxisPointX] / [AclAxisPointY] — a position on either axis |
 ///
 /// ## Prose documentation

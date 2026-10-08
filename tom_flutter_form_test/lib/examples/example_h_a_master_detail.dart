@@ -31,7 +31,7 @@ import 'shared/example_scaffold.dart';
 //
 // The Material and Cupertino variants are the same file: switching the
 // constructor's `family` parameter swaps every field widget through
-// `FormFieldFamily`. The pedagogical point is that *application code* does
+// `TomFormFieldFamily`. The pedagogical point is that *application code* does
 // not branch on family.
 class ExampleHAMasterDetail extends StatefulWidget {
   const ExampleHAMasterDetail({super.key, required this.family});
@@ -44,7 +44,7 @@ class ExampleHAMasterDetail extends StatefulWidget {
 
 class _ExampleHAMasterDetailState extends State<ExampleHAMasterDetail> {
   late final ExampleCustomerListForm _listForm;
-  late final FormFieldFamily _family;
+  late final TomFormFieldFamily _family;
 
   @override
   void initState() {
@@ -54,8 +54,8 @@ class _ExampleHAMasterDetailState extends State<ExampleHAMasterDetail> {
     installExampleAuthorization();
 
     _family = widget.family == ExampleFamily.cupertino
-        ? FormFieldFamily.cupertino
-        : FormFieldFamily.material;
+        ? TomFormFieldFamily.cupertino
+        : TomFormFieldFamily.material;
 
     _listForm = ExampleCustomerListForm(family: _family);
     _listForm.bind(phase2aCustomers.customers);

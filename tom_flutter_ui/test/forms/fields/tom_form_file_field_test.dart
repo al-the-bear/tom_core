@@ -26,7 +26,7 @@ void _installResources(Map<String, dynamic> tree) {
   );
 }
 
-FileRef _localRef(String name, {int size = 4}) => FileRef(
+TomFileRef _localRef(String name, {int size = 4}) => TomFileRef(
   name: name,
   sizeBytes: size,
   bytes: Uint8List.fromList(List.filled(size, 1)),
@@ -49,7 +49,7 @@ final Uint8List _pngBytes = Uint8List.fromList(const [
   0x42, 0x60, 0x82,
 ]);
 
-FileRef _pngRef([String name = 'face.png']) => FileRef(
+TomFileRef _pngRef([String name = 'face.png']) => TomFileRef(
   name: name,
   sizeBytes: _pngBytes.length,
   mimeType: 'image/png',
@@ -58,7 +58,7 @@ FileRef _pngRef([String name = 'face.png']) => FileRef(
 
 /// Stores [bytes] in [slot] and returns the stored-only reference a re-opened
 /// form would hold — metadata and a key, no local content.
-Future<FileRef> _seedStored(
+Future<TomFileRef> _seedStored(
   TomMemoryFileTransferClient client,
   String slot, {
   required String name,
@@ -69,7 +69,7 @@ Future<FileRef> _seedStored(
     slot: slot,
     source: TomFileSource.bytes(name, bytes, mediaType: mediaType),
   );
-  return FileRef.stored(metadata);
+  return TomFileRef.stored(metadata);
 }
 
 void main() {
@@ -191,13 +191,13 @@ void main() {
           maxSizeBytes: 10,
         );
         field.setValue(_localRef('scan.png'));
-        expect(await field.validate(), isA<ValidationError>());
+        expect(await field.validate(), isA<TomValidationError>());
 
         field.setValue(_localRef('scan.pdf', size: 11));
-        expect(await field.validate(), isA<ValidationError>());
+        expect(await field.validate(), isA<TomValidationError>());
 
         field.setValue(_localRef('scan.pdf', size: 4));
-        expect(await field.validate(), isA<ValidationSuccess>());
+        expect(await field.validate(), isA<TomValidationSuccess>());
       },
     );
 
@@ -208,7 +208,7 @@ void main() {
         allowedExtensions: const ['pdf'],
         maxSizeBytes: 10,
       );
-      expect(await field.validate(), isA<ValidationSuccess>());
+      expect(await field.validate(), isA<TomValidationSuccess>());
     });
   });
 
@@ -418,7 +418,7 @@ void main() {
       final client = TomMemoryFileTransferClient();
       final field = TomFormFileUpload(
         'doc',
-        FileRef.stored(
+        TomFileRef.stored(
           const TomFileMetadata(
             key: 'docs/2026/07/a.pdf',
             mediaType: 'application/pdf',
@@ -474,7 +474,11 @@ void main() {
 
   group('tomFileIsRenderableImage', () {
     test('a reported image media type decides it', () {
-      final ref = FileRef(name: 'scan', sizeBytes: 1, mimeType: 'image/jpeg');
+      final ref = TomFileRef(
+        name: 'scan',
+        sizeBytes: 1,
+        mimeType: 'image/jpeg',
+      );
       expect(tomFileIsRenderableImage(ref, TomFilePickKind.any), isTrue);
     });
 
@@ -482,7 +486,7 @@ void main() {
       // Even under `pickKind: image`: what the field *asked* for cannot
       // overrule what the value turned out to be, and handing a PDF to
       // `Image.memory` is exactly the mistake this ordering prevents.
-      final ref = FileRef(
+      final ref = TomFileRef(
         name: 'invoice.png',
         sizeBytes: 1,
         mimeType: 'application/pdf',
@@ -493,14 +497,14 @@ void main() {
     test('without a media type the extension decides it', () {
       expect(
         tomFileIsRenderableImage(
-          const FileRef(name: 'face.WebP', sizeBytes: 1),
+          const TomFileRef(name: 'face.WebP', sizeBytes: 1),
           TomFilePickKind.any,
         ),
         isTrue,
       );
       expect(
         tomFileIsRenderableImage(
-          const FileRef(name: 'report.pdf', sizeBytes: 1),
+          const TomFileRef(name: 'report.pdf', sizeBytes: 1),
           TomFilePickKind.image,
         ),
         isFalse,
@@ -510,7 +514,7 @@ void main() {
     test('a vector image is not renderable — Flutter has no codec for it', () {
       expect(
         tomFileIsRenderableImage(
-          const FileRef(name: 'logo.svg', sizeBytes: 1),
+          const TomFileRef(name: 'logo.svg', sizeBytes: 1),
           TomFilePickKind.image,
         ),
         isFalse,
@@ -520,14 +524,14 @@ void main() {
     test('with neither, the field\'s pick kind is all that is left', () {
       expect(
         tomFileIsRenderableImage(
-          const FileRef(name: 'scan', sizeBytes: 1),
+          const TomFileRef(name: 'scan', sizeBytes: 1),
           TomFilePickKind.image,
         ),
         isTrue,
       );
       expect(
         tomFileIsRenderableImage(
-          const FileRef(name: 'scan', sizeBytes: 1),
+          const TomFileRef(name: 'scan', sizeBytes: 1),
           TomFilePickKind.any,
         ),
         isFalse,
@@ -632,7 +636,7 @@ void main() {
       // down with it.
       final field = TomFormFileThumbnail(
         'doc',
-        const FileRef(
+        const TomFileRef(
           name: 'face.png',
           sizeBytes: 67,
           mimeType: 'image/png',
@@ -794,14 +798,14 @@ void main() {
   // Family reachability
   // -------------------------------------------------------------------------
 
-  group('FormFieldFamily.fileThumbnail', () {
+  group('TomFormFieldFamily.fileThumbnail', () {
     test('the Material family builds the Material concrete', () {
-      final field = FormFieldFamily.material.fileThumbnail('doc', null);
+      final field = TomFormFieldFamily.material.fileThumbnail('doc', null);
       expect(field, isA<TomFormFileThumbnail>());
     });
 
     test('the Cupertino family builds the Cupertino concrete', () {
-      final field = FormFieldFamily.cupertino.fileThumbnail('doc', null);
+      final field = TomFormFieldFamily.cupertino.fileThumbnail('doc', null);
       expect(field, isA<TomCupertinoFormFileThumbnail>());
     });
 
@@ -809,7 +813,7 @@ void main() {
       // The presentation is the point of the field: a thumbnail that opened a
       // "choose any file" dialog would invite exactly the file it cannot show.
       expect(
-        FormFieldFamily.material.fileThumbnail('doc', null).pickKind,
+        TomFormFieldFamily.material.fileThumbnail('doc', null).pickKind,
         TomFilePickKind.image,
       );
     });
@@ -818,7 +822,7 @@ void main() {
       // Without it the stored-preview path is unreachable through the family,
       // which is the path a generated form takes when it re-opens.
       final client = TomMemoryFileTransferClient();
-      final field = FormFieldFamily.material.fileThumbnail(
+      final field = TomFormFieldFamily.material.fileThumbnail(
         'doc',
         null,
         transferClient: client,

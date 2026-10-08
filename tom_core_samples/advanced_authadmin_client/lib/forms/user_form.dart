@@ -82,20 +82,20 @@ class UserForm extends TomForm<UserDraft> {
       authorizer: TomAuthorizer.fixed(
         isCreate ? TomAuthState.full : TomAuthState.read,
       ),
-      validators: [Validators.required()],
+      validators: [TomValidators.required()],
     );
     password = TomFormStringInput(
       'password',
       '',
       form: this,
       obscureText: true,
-      validators: isCreate ? [Validators.required()] : const [],
+      validators: isCreate ? [TomValidators.required()] : const [],
     );
     displayName = TomFormStringInput(
       'displayName',
       '',
       form: this,
-      validators: [Validators.required()],
+      validators: [TomValidators.required()],
     );
     email = TomFormStringInput(
       'email',
@@ -116,7 +116,7 @@ class UserForm extends TomForm<UserDraft> {
       '',
       form: this,
       validators: [
-        Validators.pattern(
+        TomValidators.pattern(
           RegExp(r'^\s*([A-Za-z]{2,3})?\s*$'),
           errorKey: 'error.language',
         ),
@@ -127,7 +127,7 @@ class UserForm extends TomForm<UserDraft> {
       '',
       form: this,
       validators: [
-        Validators.pattern(
+        TomValidators.pattern(
           RegExp(r'^\s*([A-Za-z]{2})?\s*$'),
           errorKey: 'error.country',
         ),
@@ -141,12 +141,12 @@ class UserForm extends TomForm<UserDraft> {
 /// `user.status.suspended`, G-RES-5). Built when the form's field is created —
 /// i.e. after the session installs the server-sent bundle — so the options
 /// render server-delivered text rather than any hardcoded string.
-TomSelectableSource<String> _statusSource() => StaticSelectableSource([
-  SelectableItem<String>(
+TomSelectableSource<String> _statusSource() => TomStaticSelectableSource([
+  TomSelectableItem<String>(
     value: 'active',
     label: TomCtr.text('user.status.active'),
   ),
-  SelectableItem<String>(
+  TomSelectableItem<String>(
     value: 'suspended',
     label: TomCtr.text('user.status.suspended'),
   ),

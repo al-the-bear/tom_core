@@ -92,7 +92,7 @@ class NumericDemoForm extends TomForm<NumericDemoState> {
 
   late final headcountRange = TomFormIntRangeSlider(
     'headcountRange',
-    const NumRange<int>(8, 32),
+    const TomNumRange<int>(8, 32),
     form: this,
     min: 0,
     max: 64,
@@ -102,7 +102,7 @@ class NumericDemoForm extends TomForm<NumericDemoState> {
 
   late final budgetRange = TomFormDoubleRangeSlider(
     'budgetRange',
-    const NumRange<double>(2.5, 7.5),
+    const TomNumRange<double>(2.5, 7.5),
     form: this,
     min: 0.0,
     max: 10.0,

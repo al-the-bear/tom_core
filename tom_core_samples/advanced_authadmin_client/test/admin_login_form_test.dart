@@ -8,7 +8,7 @@
 ///    precondition for labels to resolve from the public `/resources/login`
 ///    bundle the admin client installs before sign-in — a double-scope
 ///    (`adminLogin.adminLogin.*`) would silently miss every key.
-/// 2. **Required validation.** Both fields are `Validators.required()`, so a
+/// 2. **Required validation.** Both fields are `TomValidators.required()`, so a
 ///    `save()` with either empty fails (returns false) and a `save()` with both
 ///    present succeeds.
 /// 3. **`bind`/`save` round-trip.** Saving writes the typed field values straight

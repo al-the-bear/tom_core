@@ -36,13 +36,13 @@ class ProjectBriefForm extends TomForm<TomClass> {
     'code',
     '',
     form: this,
-    validators: [Validators.required(), Validators.minLength(3)],
+    validators: [TomValidators.required(), TomValidators.minLength(3)],
   );
   late final title = TomFormStringInput(
     'title',
     '',
     form: this,
-    validators: [Validators.required(), Validators.minLength(3)],
+    validators: [TomValidators.required(), TomValidators.minLength(3)],
   );
   late final summary = TomFormStringInput(
     'summary',
@@ -58,28 +58,28 @@ class ProjectBriefForm extends TomForm<TomClass> {
     'engineering',
     form: this,
     source: _categorySource,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
   late final priority = TomFormStringDropdown(
     'priority',
     'medium',
     form: this,
     source: _prioritySource,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
   late final status = TomFormStringDropdown(
     'status',
     'draft',
     form: this,
     source: _statusSource,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
   late final phase = TomFormStringDropdown(
     'phase',
     'plan',
     form: this,
     source: _phaseSource,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   // --- Flags --------------------------------------------------------------
@@ -147,10 +147,10 @@ class ProjectBriefForm extends TomForm<TomClass> {
   );
 
   // The Classic path validates with a plain `String? Function(String)` that
-  // returns a resource key, rather than with the `Validators` pipeline the
+  // returns a resource key, rather than with the `TomValidators` pipeline the
   // spec-conforming fields use — so the shape check lives here at the call
   // site. New code wanting a validated email writes a `TomFormStringInput`
-  // with `Validators.email()`, as `CustomerForm.email` does.
+  // with `TomValidators.email()`, as `CustomerForm.email` does.
   late final contactEmail = TomTextFormFieldBase<String>(
     'contactEmail',
     '',
@@ -205,19 +205,19 @@ class PersonSubform extends TomForm<TomClass> {
     'firstName',
     '',
     form: this,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
   late final lastName = TomFormStringInput(
     'lastName',
     '',
     form: this,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
   late final email = TomFormStringInput(
     'email',
     '',
     form: this,
-    validators: [Validators.required(), Validators.email()],
+    validators: [TomValidators.required(), TomValidators.email()],
     keyboardType: TextInputType.emailAddress,
   );
   late final phone = TomFormStringInput(
@@ -233,40 +233,40 @@ class PersonSubform extends TomForm<TomClass> {
 // Selection sources for the classification dropdowns.
 // ---------------------------------------------------------------------------
 
-final _categorySource = StaticSelectableSource<String>([
-  const SelectableItem(value: 'engineering', label: 'Engineering'),
-  const SelectableItem(value: 'design', label: 'Design'),
-  const SelectableItem(value: 'product', label: 'Product'),
-  const SelectableItem(value: 'operations', label: 'Operations'),
-  const SelectableItem(value: 'marketing', label: 'Marketing'),
+final _categorySource = TomStaticSelectableSource<String>([
+  const TomSelectableItem(value: 'engineering', label: 'Engineering'),
+  const TomSelectableItem(value: 'design', label: 'Design'),
+  const TomSelectableItem(value: 'product', label: 'Product'),
+  const TomSelectableItem(value: 'operations', label: 'Operations'),
+  const TomSelectableItem(value: 'marketing', label: 'Marketing'),
 ]);
 
-final _prioritySource = StaticSelectableSource<String>([
-  const SelectableItem(value: 'low', label: 'Low'),
-  const SelectableItem(value: 'medium', label: 'Medium'),
-  const SelectableItem(value: 'high', label: 'High'),
-  const SelectableItem(value: 'critical', label: 'Critical'),
+final _prioritySource = TomStaticSelectableSource<String>([
+  const TomSelectableItem(value: 'low', label: 'Low'),
+  const TomSelectableItem(value: 'medium', label: 'Medium'),
+  const TomSelectableItem(value: 'high', label: 'High'),
+  const TomSelectableItem(value: 'critical', label: 'Critical'),
 ]);
 
-final _statusSource = StaticSelectableSource<String>([
-  const SelectableItem(value: 'draft', label: 'Draft'),
-  const SelectableItem(value: 'active', label: 'Active'),
-  const SelectableItem(value: 'paused', label: 'Paused'),
-  const SelectableItem(value: 'done', label: 'Done'),
+final _statusSource = TomStaticSelectableSource<String>([
+  const TomSelectableItem(value: 'draft', label: 'Draft'),
+  const TomSelectableItem(value: 'active', label: 'Active'),
+  const TomSelectableItem(value: 'paused', label: 'Paused'),
+  const TomSelectableItem(value: 'done', label: 'Done'),
 ]);
 
-final _phaseSource = StaticSelectableSource<String>([
-  const SelectableItem(value: 'plan', label: 'Planning'),
-  const SelectableItem(value: 'build', label: 'Build'),
-  const SelectableItem(value: 'review', label: 'Review'),
-  const SelectableItem(value: 'ship', label: 'Ship'),
+final _phaseSource = TomStaticSelectableSource<String>([
+  const TomSelectableItem(value: 'plan', label: 'Planning'),
+  const TomSelectableItem(value: 'build', label: 'Build'),
+  const TomSelectableItem(value: 'review', label: 'Review'),
+  const TomSelectableItem(value: 'ship', label: 'Ship'),
 ]);
 
 /// Item set behind the brief's `tags` multi-select.
-final _tagSource = StaticSelectableSource<String>([
-  const SelectableItem(value: 'dashboard', label: 'dashboard'),
-  const SelectableItem(value: 'metrics', label: 'metrics'),
-  const SelectableItem(value: 'sla', label: 'sla'),
-  const SelectableItem(value: 'incident', label: 'incident'),
-  const SelectableItem(value: 'frontend', label: 'frontend'),
+final _tagSource = TomStaticSelectableSource<String>([
+  const TomSelectableItem(value: 'dashboard', label: 'dashboard'),
+  const TomSelectableItem(value: 'metrics', label: 'metrics'),
+  const TomSelectableItem(value: 'sla', label: 'sla'),
+  const TomSelectableItem(value: 'incident', label: 'incident'),
+  const TomSelectableItem(value: 'frontend', label: 'frontend'),
 ]);

@@ -3,12 +3,12 @@ import 'dart:async';
 /// Result of validating a field value.
 ///
 /// This is a sealed class with four variants:
-/// - [ValidationPristine] — field has not yet been validated (initial state)
-/// - [ValidationSuccess] — validation passed
-/// - [ValidationError] — validation failed with an error key
-/// - [ValidationPending] — async validation is in progress
-sealed class ValidationResult {
-  const ValidationResult();
+/// - [TomValidationPristine] — field has not yet been validated (initial state)
+/// - [TomValidationSuccess] — validation passed
+/// - [TomValidationError] — validation failed with an error key
+/// - [TomValidationPending] — async validation is in progress
+sealed class TomValidationResult {
+  const TomValidationResult();
 }
 
 /// Initial state of every field before the user has interacted with it.
@@ -24,42 +24,42 @@ sealed class ValidationResult {
 ///
 /// After `commit()`, `reset()`, `discard()`, or `bind()` the field returns
 /// to pristine state.
-class ValidationPristine extends ValidationResult {
-  const ValidationPristine();
+class TomValidationPristine extends TomValidationResult {
+  const TomValidationPristine();
 
   @override
-  bool operator ==(Object other) => other is ValidationPristine;
+  bool operator ==(Object other) => other is TomValidationPristine;
 
   @override
   int get hashCode => runtimeType.hashCode;
 
   @override
-  String toString() => 'ValidationPristine()';
+  String toString() => 'TomValidationPristine()';
 }
 
 /// Indicates the field value is valid.
-class ValidationSuccess extends ValidationResult {
-  const ValidationSuccess();
+class TomValidationSuccess extends TomValidationResult {
+  const TomValidationSuccess();
 
   @override
-  bool operator ==(Object other) => other is ValidationSuccess;
+  bool operator ==(Object other) => other is TomValidationSuccess;
 
   @override
   int get hashCode => runtimeType.hashCode;
 
   @override
-  String toString() => 'ValidationSuccess()';
+  String toString() => 'TomValidationSuccess()';
 }
 
 /// Indicates the field value is invalid.
 ///
 /// [errorKey] is a resource key relative to the field's basePath.
 /// [params] provides values for message interpolation (e.g., `{'min': 5}`).
-class ValidationError extends ValidationResult {
+class TomValidationError extends TomValidationResult {
   final String errorKey;
   final Map<String, dynamic>? params;
 
-  const ValidationError(this.errorKey, {this.params});
+  const TomValidationError(this.errorKey, {this.params});
 
   /// Substitutes this error's [params] into a resolved message [template],
   /// replacing each `{name}` placeholder with its value.
@@ -84,57 +84,57 @@ class ValidationError extends ValidationResult {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ValidationError && other.errorKey == errorKey;
+      other is TomValidationError && other.errorKey == errorKey;
 
   @override
   int get hashCode => errorKey.hashCode;
 
   @override
   String toString() =>
-      'ValidationError($errorKey${params != null ? ', params: $params' : ''})';
+      'TomValidationError($errorKey${params != null ? ', params: $params' : ''})';
 }
 
 /// Indicates that an async validation is in progress.
-class ValidationPending extends ValidationResult {
-  const ValidationPending();
+class TomValidationPending extends TomValidationResult {
+  const TomValidationPending();
 
   @override
-  bool operator ==(Object other) => other is ValidationPending;
+  bool operator ==(Object other) => other is TomValidationPending;
 
   @override
   int get hashCode => runtimeType.hashCode;
 
   @override
-  String toString() => 'ValidationPending()';
+  String toString() => 'TomValidationPending()';
 }
 
 /// A function that validates a value of type [T].
 ///
-/// Returns a [ValidationResult] synchronously or asynchronously.
+/// Returns a [TomValidationResult] synchronously or asynchronously.
 /// Sync validators return the result directly; async validators
-/// return a `Future<ValidationResult>`.
-typedef TomValidator<T> = FutureOr<ValidationResult> Function(T value);
+/// return a `Future<TomValidationResult>`.
+typedef TomValidator<T> = FutureOr<TomValidationResult> Function(T value);
 
 /// Wraps a validator to mark it as "slow" (e.g., remote API call).
 ///
 /// Slow validators differ from fast validators in two ways:
 /// 1. They trigger after a longer debounce (`slowValidationDebounce`)
-/// 2. They show a pending spinner (`ValidationPending`) during execution
+/// 2. They show a pending spinner (`TomValidationPending`) during execution
 ///
 /// Fast validators run immediately after the standard debounce and
-/// do NOT transition through `ValidationPending`.
+/// do NOT transition through `TomValidationPending`.
 ///
 /// Usage:
 /// ```dart
 /// TomFormStringInput('email', '',
 ///   validators: [
-///     Validators.required(),        // fast — no spinner
-///     Validators.email(),           // fast — no spinner
-///     SlowValidator(checkEmailAvailable), // slow — spinner shown
+///     TomValidators.required(),        // fast — no spinner
+///     TomValidators.email(),           // fast — no spinner
+///     TomSlowValidator(checkEmailAvailable), // slow — spinner shown
 ///   ],
 /// )
 /// ```
-class SlowValidator<T> {
+class TomSlowValidator<T> {
   final TomValidator<T> validate;
-  const SlowValidator(this.validate);
+  const TomSlowValidator(this.validate);
 }

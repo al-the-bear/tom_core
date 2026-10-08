@@ -39,13 +39,13 @@ class RoleForm extends TomForm<RoleDraft> {
       authorizer: TomAuthorizer.fixed(
         isCreate ? TomAuthState.full : TomAuthState.read,
       ),
-      validators: [Validators.required()],
+      validators: [TomValidators.required()],
     );
     name = TomFormStringInput(
       'name',
       '',
       form: this,
-      validators: [Validators.required()],
+      validators: [TomValidators.required()],
     );
   }
 }

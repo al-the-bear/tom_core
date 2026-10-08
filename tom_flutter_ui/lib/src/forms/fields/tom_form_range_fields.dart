@@ -17,14 +17,14 @@ import 'tom_field_widget_adapter.dart';
 /// A simple `(low, high)` pair used as the value type for the range
 /// slider fields. Equatable so observers see a real change only when at
 /// least one endpoint moves.
-class NumRange<T extends num> {
+class TomNumRange<T extends num> {
   final T low;
   final T high;
-  const NumRange(this.low, this.high);
+  const TomNumRange(this.low, this.high);
 
   @override
   bool operator ==(Object other) =>
-      other is NumRange<T> && other.low == low && other.high == high;
+      other is TomNumRange<T> && other.low == low && other.high == high;
 
   @override
   int get hashCode => Object.hash(low, high);
@@ -37,7 +37,7 @@ class NumRange<T extends num> {
 // TomFormIntRangeField — Abstract Int-range field
 // ---------------------------------------------------------------------------
 
-abstract class TomFormIntRangeField extends TomField<NumRange<int>> {
+abstract class TomFormIntRangeField extends TomField<TomNumRange<int>> {
   final String? labelTextOverride;
   final String? descriptionTextOverride;
   final int min;
@@ -69,7 +69,7 @@ abstract class TomFormIntRangeField extends TomField<NumRange<int>> {
 
 @tomReflector
 class TomFormIntRangeSlider extends TomFormIntRangeField
-    with TomGenericFieldDecorationMixin<NumRange<int>> {
+    with TomGenericFieldDecorationMixin<TomNumRange<int>> {
   final int? divisions;
 
   TomFormIntRangeSlider(
@@ -155,7 +155,8 @@ class _TomFormIntRangeSliderWidgetState
       divisions: divisions > 0 ? divisions : null,
       labels: RangeLabels('${value.low}', '${value.high}'),
       onChanged: field.isEditable
-          ? (v) => field.setValue(NumRange<int>(v.start.round(), v.end.round()))
+          ? (v) =>
+                field.setValue(TomNumRange<int>(v.start.round(), v.end.round()))
           : null,
     );
     return field.decorateField(context, slider);
@@ -166,7 +167,7 @@ class _TomFormIntRangeSliderWidgetState
 // TomFormDoubleRangeField — Abstract Double-range field
 // ---------------------------------------------------------------------------
 
-abstract class TomFormDoubleRangeField extends TomField<NumRange<double>> {
+abstract class TomFormDoubleRangeField extends TomField<TomNumRange<double>> {
   final String? labelTextOverride;
   final String? descriptionTextOverride;
   final double min;
@@ -198,7 +199,7 @@ abstract class TomFormDoubleRangeField extends TomField<NumRange<double>> {
 
 @tomReflector
 class TomFormDoubleRangeSlider extends TomFormDoubleRangeField
-    with TomGenericFieldDecorationMixin<NumRange<double>> {
+    with TomGenericFieldDecorationMixin<TomNumRange<double>> {
   final int? divisions;
   final int valueLabelDecimals;
 
@@ -288,7 +289,7 @@ class _TomFormDoubleRangeSliderWidgetState
         value.high.toStringAsFixed(field.valueLabelDecimals),
       ),
       onChanged: field.isEditable
-          ? (v) => field.setValue(NumRange<double>(v.start, v.end))
+          ? (v) => field.setValue(TomNumRange<double>(v.start, v.end))
           : null,
     );
     return field.decorateField(context, slider);

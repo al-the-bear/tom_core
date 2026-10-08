@@ -34,13 +34,13 @@ double? lookupProductPrice(String name) => productCatalogue[name];
 TomSelectableSource<String> productSource() {
   final items = productCatalogue.entries
       .map(
-        (e) => SelectableItem<String>(
+        (e) => TomSelectableItem<String>(
           value: e.key,
           label: '${e.key}  —  \$${e.value.toStringAsFixed(2)}',
         ),
       )
       .toList();
-  return StaticSelectableSource<String>(items);
+  return TomStaticSelectableSource<String>(items);
 }
 
 /// A single editable order-item row.
@@ -58,7 +58,7 @@ class OrderItemForm extends TomForm<OrderItem> {
     form: this,
     labelTextOverride: 'Product',
     hintTextOverride: 'Type to search the catalogue…',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   /// Quantity — required positive integer, validated as the user types.
@@ -68,7 +68,7 @@ class OrderItemForm extends TomForm<OrderItem> {
     form: this,
     labelTextOverride: 'Qty',
     autoValidate: true,
-    validators: [Validators.required(), _positiveIntegerValidator],
+    validators: [TomValidators.required(), _positiveIntegerValidator],
   );
 
   /// Unit price — required non-negative decimal, validated as the user types.
@@ -78,7 +78,7 @@ class OrderItemForm extends TomForm<OrderItem> {
     form: this,
     labelTextOverride: 'Unit price',
     autoValidate: true,
-    validators: [Validators.required(), _decimalValidator],
+    validators: [TomValidators.required(), _decimalValidator],
   );
 
   /// Free-text notes.
@@ -155,16 +155,16 @@ TomList<OrderItem> seededOrderItems() {
   return items;
 }
 
-ValidationResult _positiveIntegerValidator(String value) {
+TomValidationResult _positiveIntegerValidator(String value) {
   final n = int.tryParse(value);
-  if (n == null) return const ValidationError('error.invalidInteger');
-  if (n <= 0) return const ValidationError('error.mustBePositive');
-  return const ValidationSuccess();
+  if (n == null) return const TomValidationError('error.invalidInteger');
+  if (n <= 0) return const TomValidationError('error.mustBePositive');
+  return const TomValidationSuccess();
 }
 
-ValidationResult _decimalValidator(String value) {
+TomValidationResult _decimalValidator(String value) {
   final n = double.tryParse(value);
-  if (n == null) return const ValidationError('error.invalidDecimal');
-  if (n < 0) return const ValidationError('error.mustBeNonNegative');
-  return const ValidationSuccess();
+  if (n == null) return const TomValidationError('error.invalidDecimal');
+  if (n < 0) return const TomValidationError('error.mustBeNonNegative');
+  return const TomValidationSuccess();
 }

@@ -1,5 +1,5 @@
 /// Alignment for rows in an AclContainer.
-enum RowAlignment {
+enum AclRowAlignment {
   /// Align children to the left (start)
   left,
 

@@ -23,7 +23,7 @@ class OrderForm extends TomForm<Order> {
     '',
     form: this,
     labelTextOverride: 'Order #',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final customer = TomFormStringInput(
@@ -31,7 +31,7 @@ class OrderForm extends TomForm<Order> {
     '',
     form: this,
     labelTextOverride: 'Customer',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   /// The list-of-sub-forms — events bubble up to this form's bus so

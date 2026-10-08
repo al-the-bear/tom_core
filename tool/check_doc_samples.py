@@ -50,7 +50,7 @@ The fourth is about the signature rather than the call:
 
 ``SIGNATURE``
     A document *quoting* a constructor with the wrong parameter kind --
-    ``SelectableItem(T value, String label)`` where the real declaration is
+    ``TomSelectableItem(T value, String label)`` where the real declaration is
     named-only. The three rules above all read a line as a call; this one reads
     it as a claim, and a wrong claim is the worse of the two defects, because a
     reader cannot detect it from the page. A miscalled sample fails when it is

@@ -3,7 +3,7 @@
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
-The declarative form system: the `TomForm<T>` data model, the `FormFieldFamily`
+The declarative form system: the `TomForm<T>` data model, the `TomFormFieldFamily`
 factory that picks the Material or Cupertino concrete per field, validators,
 selectable option sources, the form event bus, and the `TomFormStyle` decoration
 system. Fields bind to the kernel's `TomObject<T>` state and drive bind / save /
@@ -18,7 +18,7 @@ discard, validation, and authorization.
 >
 > **The rule:** a field is `TomForm<Kind><Variant>`, with `TomCupertinoForm…`
 > for the Cupertino half of the pair, and you do not usually name either — you
-> declare the field once and `FormFieldFamily` builds the concrete for the
+> declare the field once and `TomFormFieldFamily` builds the concrete for the
 > family in scope. Reach for a concrete only when a screen is deliberately
 > single-family.
 >
@@ -37,12 +37,12 @@ discard, validation, and authorization.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomForm<T>` | The form base — bind / save / discard, validation, authorization |
-| `FormFieldFamily` | Factory selecting the Material (`.material`) or Cupertino (`.cupertino`) concrete |
+| `TomFormFieldFamily` | Factory selecting the Material (`.material`) or Cupertino (`.cupertino`) concrete |
 | `TomFormStyle` / `TomFormStyleScope` | Presets (`material3`, `compact`, `bordered`) + inherited scoping |
-| `LabelPlacement` / `DescriptionPlacement` / `RequiredIndicator` | Field-chrome controls |
-| `TomSelectableSource` / `StaticSelectableSource` / `SelectableItem` | Pluggable option sources |
+| `TomLabelPlacement` / `TomDescriptionPlacement` / `TomRequiredIndicator` | Field-chrome controls |
+| `TomSelectableSource` / `TomStaticSelectableSource` / `TomSelectableItem` | Pluggable option sources |
 | `TomEnumSelectableSource<E>` | Enum options labelled from the text bundle (`<scope>.<enumName>.<value>`), relabelled on a locale change |
-| `FormValidationError` | Cross-field validation result keyed by a resource error key |
+| `TomFormValidationError` | Cross-field validation result keyed by a resource error key |
 | `TomFormEvent` / `TomFormEventSource` / `TomFormEventListener` | The form event bus |
 | `TomListForm` / `TomMasterDetailListForm` | Collection / master-detail forms |
 
@@ -57,16 +57,16 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void editName() {
   // The family hands back the platform concrete; the field owns its value.
-  final family = FormFieldFamily.material; // or .cupertino
+  final family = TomFormFieldFamily.material; // or .cupertino
   final name = family.stringInput('user.name', 'Alice');
 
   name.set('Bob');
   name.commit(); // 'Bob' becomes the new initial value
   name.reset();  // reverts to the committed value → 'Bob'
 
-  final countries = StaticSelectableSource<String>(const [
-    SelectableItem(value: 'de', label: 'Germany'),
-    SelectableItem(value: 'jp', label: 'Japan', enabled: false),
+  final countries = TomStaticSelectableSource<String>(const [
+    TomSelectableItem(value: 'de', label: 'Germany'),
+    TomSelectableItem(value: 'jp', label: 'Japan', enabled: false),
   ]);
   print(countries); // a sync option source for a dropdown/radio field
 }

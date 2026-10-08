@@ -254,7 +254,7 @@ class _TomFormStringInputWidgetState extends State<_TomFormStringInputWidget> {
     // Floating label lives inside InputDecoration; the anatomy column does
     // not render a label row for this placement.
     String? floatingLabel;
-    if (style.labelPlacement == LabelPlacement.floating) {
+    if (style.labelPlacement == TomLabelPlacement.floating) {
       final resolved = field.labelText;
       if (resolved != null && resolved.isNotEmpty) {
         floatingLabel =
@@ -373,7 +373,7 @@ class TomFormStringDropdown extends TomFormStringField
   /// mounted state — so remounts caused by anatomy-structure changes
   /// (e.g. `labelPlacement` flipping between breakpoints) don't flash the
   /// hint text while `source.getItems()` re-resolves.
-  List<SelectableItem<String>>? _cachedItems;
+  List<TomSelectableItem<String>>? _cachedItems;
 
   @override
   Widget get widget => TomFieldWidgetAdapter(
@@ -394,8 +394,8 @@ class _TomFormStringDropdownWidget extends StatefulWidget {
 
 class _TomFormStringDropdownWidgetState
     extends State<_TomFormStringDropdownWidget> {
-  List<SelectableItem<String>> _items = [];
-  StreamSubscription<List<SelectableItem<String>>>? _subscription;
+  List<TomSelectableItem<String>> _items = [];
+  StreamSubscription<List<TomSelectableItem<String>>>? _subscription;
   late TomFunctionObserver<TomObservable> _observer;
 
   TomFormStringDropdown get field => widget.field;
@@ -465,7 +465,7 @@ class _TomFormStringDropdownWidgetState
 
   /// C13: When the source items change, reset the field value if the current
   /// value is no longer present among the available items.
-  void _resetIfValueMissing(List<SelectableItem<String>> items) {
+  void _resetIfValueMissing(List<TomSelectableItem<String>> items) {
     final current = field.get();
     if (current.isEmpty) return;
     final stillPresent = items.any((item) => item.value == current);
@@ -494,7 +494,7 @@ class _TomFormStringDropdownWidgetState
     }
 
     String? floatingLabel;
-    if (style.labelPlacement == LabelPlacement.floating) {
+    if (style.labelPlacement == TomLabelPlacement.floating) {
       final resolved = field.labelText;
       if (resolved != null && resolved.isNotEmpty) {
         floatingLabel =

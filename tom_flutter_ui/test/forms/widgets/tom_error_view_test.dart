@@ -4,7 +4,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // Starter coverage for the placement-flexible TomErrorView. Mirrors the
 // established TomFormErrorBanner harness — a lightweight event source plus
-// minimal fields for FormValidationError construction.
+// minimal fields for TomFormValidationError construction.
 
 class _TestField<T> extends TomField<T> {
   _TestField(super.tomId, super.initialValue);
@@ -70,14 +70,14 @@ void main() {
       await tester.pumpWidget(_wrap(TomErrorView(form: form)));
 
       form.fireEvent(
-        FormValidatedEvent(
+        TomFormValidatedEvent(
           source: 'testForm',
           errors: [
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.required',
               fields: [fieldName],
             ),
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.mismatch',
               fields: [fieldA, fieldB],
             ),
@@ -100,14 +100,14 @@ void main() {
         );
 
         form.fireEvent(
-          FormValidatedEvent(
+          TomFormValidatedEvent(
             source: 'testForm',
             errors: [
-              FormValidationError(
+              TomFormValidationError(
                 errorKey: 'error.required',
                 fields: [fieldName],
               ),
-              FormValidationError(
+              TomFormValidationError(
                 errorKey: 'error.mismatch',
                 fields: [fieldA, fieldB],
               ),
@@ -129,10 +129,10 @@ void main() {
       );
 
       form.fireEvent(
-        FormValidatedEvent(
+        TomFormValidatedEvent(
           source: 'testForm',
           errors: [
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.mismatch',
               fields: [fieldA, fieldB],
             ),
@@ -146,16 +146,16 @@ void main() {
   });
 
   group('TomErrorView — auto-clear', () {
-    testWidgets('clears on FormSavedEvent', (tester) async {
+    testWidgets('clears on TomFormSavedEvent', (tester) async {
       final form = _TestEventSource();
 
       await tester.pumpWidget(_wrap(TomErrorView(form: form)));
 
       form.fireEvent(
-        FormValidatedEvent(
+        TomFormValidatedEvent(
           source: 'testForm',
           errors: [
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.mismatch',
               fields: [fieldA, fieldB],
             ),
@@ -165,21 +165,21 @@ void main() {
       await tester.pump();
       expect(find.text('error.mismatch'), findsOneWidget);
 
-      form.fireEvent(FormSavedEvent(source: 'testForm'));
+      form.fireEvent(TomFormSavedEvent(source: 'testForm'));
       await tester.pump();
       expect(find.text('error.mismatch'), findsNothing);
     });
 
-    testWidgets('clears on FormDiscardedEvent', (tester) async {
+    testWidgets('clears on TomFormDiscardedEvent', (tester) async {
       final form = _TestEventSource();
 
       await tester.pumpWidget(_wrap(TomErrorView(form: form)));
 
       form.fireEvent(
-        FormValidatedEvent(
+        TomFormValidatedEvent(
           source: 'testForm',
           errors: [
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.mismatch',
               fields: [fieldA, fieldB],
             ),
@@ -189,7 +189,7 @@ void main() {
       await tester.pump();
       expect(find.text('error.mismatch'), findsOneWidget);
 
-      form.fireEvent(FormDiscardedEvent(source: 'testForm'));
+      form.fireEvent(TomFormDiscardedEvent(source: 'testForm'));
       await tester.pump();
       expect(find.text('error.mismatch'), findsNothing);
     });

@@ -64,7 +64,7 @@ Widget _wrap(Widget child) => MaterialApp(
   home: Scaffold(body: Center(child: child)),
 );
 
-FileRef _ref() => FileRef(
+TomFileRef _ref() => TomFileRef(
   name: 'note.txt',
   sizeBytes: 4,
   bytes: Uint8List.fromList([1, 2, 3, 4]),

@@ -15,14 +15,14 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import '../domain/responsive_entities.dart';
 
 /// The industry dropdown source — a static, labelled selectable list.
-final StaticSelectableSource<String> industrySource =
-    StaticSelectableSource<String>([
-      const SelectableItem(value: 'tech', label: 'Technology'),
-      const SelectableItem(value: 'finance', label: 'Finance'),
-      const SelectableItem(value: 'healthcare', label: 'Healthcare'),
-      const SelectableItem(value: 'manufacturing', label: 'Manufacturing'),
-      const SelectableItem(value: 'retail', label: 'Retail'),
-      const SelectableItem(value: 'other', label: 'Other'),
+final TomStaticSelectableSource<String> industrySource =
+    TomStaticSelectableSource<String>([
+      const TomSelectableItem(value: 'tech', label: 'Technology'),
+      const TomSelectableItem(value: 'finance', label: 'Finance'),
+      const TomSelectableItem(value: 'healthcare', label: 'Healthcare'),
+      const TomSelectableItem(value: 'manufacturing', label: 'Manufacturing'),
+      const TomSelectableItem(value: 'retail', label: 'Retail'),
+      const TomSelectableItem(value: 'other', label: 'Other'),
     ]);
 
 /// A flat company form: string input, dropdown and two pattern-validated
@@ -44,7 +44,7 @@ class CompanyForm extends TomForm<CompanyProfile> {
     '',
     form: this,
     labelTextOverride: 'Company name',
-    validators: [Validators.required(), Validators.minLength(2)],
+    validators: [TomValidators.required(), TomValidators.minLength(2)],
   );
 
   /// Industry dropdown.
@@ -54,12 +54,12 @@ class CompanyForm extends TomForm<CompanyProfile> {
     form: this,
     labelTextOverride: 'Industry',
     source: industrySource,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   /// Tax ID — pattern-checked.
   ///
-  /// The `errorKey` keeps the framework's `error.*` prefix (`Validators`
+  /// The `errorKey` keeps the framework's `error.*` prefix (`TomValidators`
   /// built-ins emit `error.required`, `error.minLength`, …) so a custom rule
   /// lands in the same namespace and resolves through the same chain. Its
   /// message lives in `companyValidationTexts`; the key on its own would render
@@ -71,8 +71,8 @@ class CompanyForm extends TomForm<CompanyProfile> {
     form: this,
     labelTextOverride: 'Tax ID',
     validators: [
-      Validators.required(),
-      Validators.pattern(
+      TomValidators.required(),
+      TomValidators.pattern(
         RegExp(r'^[A-Z0-9-]+$'),
         errorKey: 'error.taxIdFormat',
       ),
@@ -86,7 +86,7 @@ class CompanyForm extends TomForm<CompanyProfile> {
     form: this,
     labelTextOverride: 'Website',
     validators: [
-      Validators.pattern(
+      TomValidators.pattern(
         RegExp(
           r'^https?:\/\/(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+'
           r'[a-zA-Z]{2,}(?::\d{1,5})?(?:\/[^\s]*)?$',

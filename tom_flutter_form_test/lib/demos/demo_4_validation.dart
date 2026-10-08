@@ -11,10 +11,10 @@ import '../state/application_state.dart';
 
 /// Demonstrates:
 /// - Fast validators: required, email, minLength, maxLength, pattern
-/// - Slow validators with pending spinner (SlowValidator)
+/// - Slow validators with pending spinner (TomSlowValidator)
 /// - Validation debouncing (300ms fast, 600ms slow)
 /// - Compose() for combining validators
-/// - Validation state observation (ValidationPristine/Success/Error/Pending)
+/// - Validation state observation (TomValidationPristine/Success/Error/Pending)
 /// - [TomFormInspector] event log
 /// - Field labels/hints resolved from resources (scope: companyBasicInfo)
 /// - Container title / padding / borderStyle from resources
@@ -57,19 +57,19 @@ class _Demo4ValidationState extends State<Demo4Validation> {
         String text;
 
         switch (state) {
-          case ValidationPristine():
+          case TomValidationPristine():
             icon = Icons.remove_circle_outline;
             color = Colors.grey;
             text = 'Pristine';
-          case ValidationSuccess():
+          case TomValidationSuccess():
             icon = Icons.check_circle;
             color = Colors.green;
             text = 'Valid';
-          case ValidationPending():
+          case TomValidationPending():
             icon = Icons.hourglass_empty;
             color = Colors.orange;
             text = 'Validating...';
-          case ValidationError():
+          case TomValidationError():
             icon = Icons.error;
             color = Colors.red;
             text = 'Error: ${state.errorKey}';
@@ -105,7 +105,7 @@ class _Demo4ValidationState extends State<Demo4Validation> {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       const Text(
-                        'Validators: required, minLength(2) | ',
+                        'TomValidators: required, minLength(2) | ',
                         style: TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                       _buildValidationStatus(p.name),
@@ -115,7 +115,7 @@ class _Demo4ValidationState extends State<Demo4Validation> {
               ),
             )
             .newRow()
-            // Tax ID - pattern + SlowValidator
+            // Tax ID - pattern + TomSlowValidator
             .append(
               (p) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,14 +127,14 @@ class _Demo4ValidationState extends State<Demo4Validation> {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       const Text(
-                        'Validators: required, pattern, SLOW (1s) | ',
+                        'TomValidators: required, pattern, SLOW (1s) | ',
                         style: TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                       _buildValidationStatus(p.taxId),
                     ],
                   ),
                   const Text(
-                    'Try: "X123" triggers SlowValidator error',
+                    'Try: "X123" triggers TomSlowValidator error',
                     style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic),
                   ),
                 ],
@@ -153,7 +153,7 @@ class _Demo4ValidationState extends State<Demo4Validation> {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       const Text(
-                        'Validators: pattern (URL) | ',
+                        'TomValidators: pattern (URL) | ',
                         style: TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                       _buildValidationStatus(p.website),
@@ -175,7 +175,7 @@ class _Demo4ValidationState extends State<Demo4Validation> {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       const Text(
-                        'Validators: maxLength(500) | ',
+                        'TomValidators: maxLength(500) | ',
                         style: TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                       _buildValidationStatus(p.description),
@@ -209,7 +209,7 @@ class _Demo4ValidationState extends State<Demo4Validation> {
                     Text(
                       '• Fast: required, email, minLength, maxLength, pattern',
                     ),
-                    Text('• Slow: SlowValidator (shows pending spinner)'),
+                    Text('• Slow: TomSlowValidator (shows pending spinner)'),
                     Text('• Debounce: Fast=300ms, Slow=600ms'),
                     SizedBox(height: 8),
                     Text(

@@ -17,10 +17,10 @@ import 'validation/form_validation_error.dart';
 /// `getMembers().values.whereType<TomFormChildContainer>()`.
 abstract interface class TomFormChildContainer {
   /// Aggregate validation. Implementations are expected to fire their
-  /// own `FormValidatedEvent` through whatever event bus they're wired
+  /// own `TomFormValidatedEvent` through whatever event bus they're wired
   /// into; the returned list lets the parent merge errors into a single
   /// combined event from the parent form.
-  Future<List<FormValidationError>> validate();
+  Future<List<TomFormValidationError>> validate();
 
   /// Aggregate save. Returns `false` when validation or any nested save
   /// fails so the parent form can short-circuit its own commit.

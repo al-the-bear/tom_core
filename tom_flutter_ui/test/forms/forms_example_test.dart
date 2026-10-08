@@ -14,45 +14,48 @@ void main() {
   // so a regression there fails here with a precise message rather than only
   // tripping an assert inside the example.
   group('forms pure-logic surfaces', () {
-    test('FormFieldFamily picks distinct concrete types per family', () {
-      final m = FormFieldFamily.material.stringInput('a', '');
-      final c = FormFieldFamily.cupertino.stringInput('a', '');
-      expect(FormFieldFamily.material.isCupertino, isFalse);
-      expect(FormFieldFamily.cupertino.isCupertino, isTrue);
+    test('TomFormFieldFamily picks distinct concrete types per family', () {
+      final m = TomFormFieldFamily.material.stringInput('a', '');
+      final c = TomFormFieldFamily.cupertino.stringInput('a', '');
+      expect(TomFormFieldFamily.material.isCupertino, isFalse);
+      expect(TomFormFieldFamily.cupertino.isCupertino, isTrue);
       expect(m.runtimeType, isNot(c.runtimeType));
     });
 
-    test('StaticSelectableSource returns an unmodifiable snapshot', () async {
-      final source = StaticSelectableSource<int>(const [
-        SelectableItem(value: 1, label: 'one'),
-        SelectableItem(value: 2, label: 'two'),
-      ]);
-      final items = await source.getItems();
-      expect(items, hasLength(2));
-      expect(
-        () => items.add(const SelectableItem(value: 3, label: 'x')),
-        throwsUnsupportedError,
-      );
-      expect(source.itemsStream, isNull);
-    });
+    test(
+      'TomStaticSelectableSource returns an unmodifiable snapshot',
+      () async {
+        final source = TomStaticSelectableSource<int>(const [
+          TomSelectableItem(value: 1, label: 'one'),
+          TomSelectableItem(value: 2, label: 'two'),
+        ]);
+        final items = await source.getItems();
+        expect(items, hasLength(2));
+        expect(
+          () => items.add(const TomSelectableItem(value: 3, label: 'x')),
+          throwsUnsupportedError,
+        );
+        expect(source.itemsStream, isNull);
+      },
+    );
 
     test('TomFormInspector filters by type and source', () {
       final inspector = TomFormInspector();
-      inspector.handleEvent(FormBoundEvent(source: 'f'));
+      inspector.handleEvent(TomFormBoundEvent(source: 'f'));
       inspector.handleEvent(
-        FieldValueChangedEvent(source: 'f.x', oldValue: 1, newValue: 2),
+        TomFieldValueChangedEvent(source: 'f.x', oldValue: 1, newValue: 2),
       );
       expect(inspector.length, 2);
-      expect(inspector.ofType<FieldValueChangedEvent>(), hasLength(1));
+      expect(inspector.ofType<TomFieldValueChangedEvent>(), hasLength(1));
       expect(inspector.fromSource('f'), hasLength(1));
       inspector.clear();
       expect(inspector.isEmpty, isTrue);
     });
 
-    test('FormValidationError exposes field ids via tomIds', () {
-      final start = FormFieldFamily.material.intInput('range.start', 0);
-      final end = FormFieldFamily.material.intInput('range.end', 0);
-      final error = FormValidationError(
+    test('TomFormValidationError exposes field ids via tomIds', () {
+      final start = TomFormFieldFamily.material.intInput('range.start', 0);
+      final end = TomFormFieldFamily.material.intInput('range.end', 0);
+      final error = TomFormValidationError(
         errorKey: 'error.endBeforeStart',
         fields: [start, end],
       );

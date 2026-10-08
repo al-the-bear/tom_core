@@ -1,4 +1,4 @@
-/// Interaction tests for Demo P — `FormFieldFamily` swap by breakpoint
+/// Interaction tests for Demo P — `TomFormFieldFamily` swap by breakpoint
 /// (Phase 5c).
 ///
 /// Demo P pre-builds two `Phase5cFamilyForm` instances (one Material,
@@ -57,7 +57,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-      find.text('Demo P: FormFieldFamily swap by breakpoint (Phase 5c)'),
+      find.text('Demo P: TomFormFieldFamily swap by breakpoint (Phase 5c)'),
       200,
       scrollable: find.descendant(
         of: find.byType(DemoListScreen),
@@ -65,7 +65,7 @@ void main() {
       ),
     );
     await tester.tap(
-      find.text('Demo P: FormFieldFamily swap by breakpoint (Phase 5c)'),
+      find.text('Demo P: TomFormFieldFamily swap by breakpoint (Phase 5c)'),
     );
     await tester.pumpAndSettle();
     if (finalSize != const Size(2400, 2400)) {

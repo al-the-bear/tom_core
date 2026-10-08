@@ -63,7 +63,7 @@ void main() {
 
   setUpAll(() {
     initializeReflection();
-    const family = FormFieldFamily.material;
+    const family = TomFormFieldFamily.material;
     forms = <TomForm>[
       ExampleCustomerForm(family: family),
       ExampleCustomerRichForm(family: family),

@@ -46,9 +46,9 @@ Widget _narrow(Widget child) {
   );
 }
 
-StaticSelectableSource<String> _stringSource() => StaticSelectableSource([
+TomStaticSelectableSource<String> _stringSource() => TomStaticSelectableSource([
   for (var i = 0; i < _longLabels.length; i++)
-    SelectableItem(value: 'v$i', label: _longLabels[i]),
+    TomSelectableItem(value: 'v$i', label: _longLabels[i]),
 ]);
 
 void main() {

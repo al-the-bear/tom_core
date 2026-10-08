@@ -191,7 +191,7 @@ column a slot names, never whether this caller may have it.**
 The end-user app renders the attachment through `TomFormFileUpload`, scoped under
 `board.item.attachment` so its label, caption and messages resolve from the
 server-delivered bundle like every other text ([Part 08](README_advanced_08_resources_texts.md)).
-It is **not** a member of `TodoItemForm` — the field holds a `FileRef`, the
+It is **not** a member of `TodoItemForm` — the field holds a `TomFileRef`, the
 entity member holds a storage key, and the bytes travel over a different
 endpoint — so `item_detail_screen.dart` grades it by hand where the form's
 `gradableFields` loop cannot reach:

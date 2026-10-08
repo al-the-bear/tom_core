@@ -108,7 +108,7 @@ class BorderedGroupsDemo extends StatelessWidget {
                 OutlinedButton(onPressed: () {}, child: const Text('Cancel')),
                 dist: 8,
               )
-              .setRowHorizontalAlignment(RowAlignment.center)
+              .setRowHorizontalAlignment(AclRowAlignment.center)
               .build(),
           const SizedBox(height: 24),
 

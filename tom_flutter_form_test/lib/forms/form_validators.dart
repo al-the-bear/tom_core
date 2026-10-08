@@ -11,24 +11,24 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // ---------------------------------------------------------------------------
 
 /// Accepts any parseable `int`; rejects non-integer text.
-ValidationResult integerValidator(String value) {
+TomValidationResult integerValidator(String value) {
   final n = int.tryParse(value);
-  if (n == null) return const ValidationError('error.invalidInteger');
-  return const ValidationSuccess();
+  if (n == null) return const TomValidationError('error.invalidInteger');
+  return const TomValidationSuccess();
 }
 
 /// Accepts a strictly positive `int`; rejects non-integers and `n <= 0`.
-ValidationResult positiveIntegerValidator(String value) {
+TomValidationResult positiveIntegerValidator(String value) {
   final n = int.tryParse(value);
-  if (n == null) return const ValidationError('error.invalidInteger');
-  if (n <= 0) return const ValidationError('error.mustBePositive');
-  return const ValidationSuccess();
+  if (n == null) return const TomValidationError('error.invalidInteger');
+  if (n <= 0) return const TomValidationError('error.mustBePositive');
+  return const TomValidationSuccess();
 }
 
 /// Accepts a non-negative `double`; rejects non-numbers and `n < 0`.
-ValidationResult decimalValidator(String value) {
+TomValidationResult decimalValidator(String value) {
   final n = double.tryParse(value);
-  if (n == null) return const ValidationError('error.invalidDecimal');
-  if (n < 0) return const ValidationError('error.mustBeNonNegative');
-  return const ValidationSuccess();
+  if (n == null) return const TomValidationError('error.invalidDecimal');
+  if (n < 0) return const TomValidationError('error.mustBeNonNegative');
+  return const TomValidationSuccess();
 }

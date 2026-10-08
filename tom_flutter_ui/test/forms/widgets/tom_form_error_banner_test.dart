@@ -4,7 +4,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // ---------------------------------------------------------------------------
-// Minimal TomField subclass for test FormValidationError construction
+// Minimal TomField subclass for test TomFormValidationError construction
 // ---------------------------------------------------------------------------
 class _TestField<T> extends TomField<T> {
   _TestField(super.tomId, super.initialValue);
@@ -47,7 +47,7 @@ Widget _wrap(Widget child, {TomFormStyle? style}) {
 }
 
 void main() {
-  // Reusable test field references for FormValidationError construction
+  // Reusable test field references for TomFormValidationError construction
   final fieldA = _TestField<String>('a', '');
   final fieldB = _TestField<String>('b', '');
   final fieldName = _TestField<String>('name', '');
@@ -74,12 +74,12 @@ void main() {
 
       await tester.pumpWidget(_wrap(banner));
 
-      // Fire a FormValidatedEvent with cross-field errors
+      // Fire a TomFormValidatedEvent with cross-field errors
       form.fireEvent(
-        FormValidatedEvent(
+        TomFormValidatedEvent(
           source: 'testForm',
           errors: [
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.passwordMismatch',
               fields: [fieldPassword, fieldConfirmPassword],
             ),
@@ -99,14 +99,14 @@ void main() {
       await tester.pumpWidget(_wrap(banner));
 
       form.fireEvent(
-        FormValidatedEvent(
+        TomFormValidatedEvent(
           source: 'testForm',
           errors: [
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.passwordMismatch',
               fields: [fieldPassword, fieldConfirmPassword],
             ),
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.dateRange',
               fields: [fieldStartDate, fieldEndDate],
             ),
@@ -126,16 +126,16 @@ void main() {
       await tester.pumpWidget(_wrap(banner));
 
       form.fireEvent(
-        FormValidatedEvent(
+        TomFormValidatedEvent(
           source: 'testForm',
           errors: [
             // Single-field error — should NOT appear in banner
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.required',
               fields: [fieldName],
             ),
             // Cross-field error — should appear
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.mismatch',
               fields: [fieldA, fieldB],
             ),
@@ -150,7 +150,7 @@ void main() {
   });
 
   group('TomFormErrorBanner — auto-dismiss', () {
-    testWidgets('hides on FormSavedEvent', (tester) async {
+    testWidgets('hides on TomFormSavedEvent', (tester) async {
       final form = _TestEventSource();
       final banner = TomFormErrorBanner(form: form);
 
@@ -158,10 +158,10 @@ void main() {
 
       // Show errors
       form.fireEvent(
-        FormValidatedEvent(
+        TomFormValidatedEvent(
           source: 'testForm',
           errors: [
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.cross',
               fields: [fieldA, fieldB],
             ),
@@ -172,13 +172,13 @@ void main() {
       expect(find.text('error.cross'), findsOneWidget);
 
       // Save clears errors
-      form.fireEvent(FormSavedEvent(source: 'testForm'));
+      form.fireEvent(TomFormSavedEvent(source: 'testForm'));
       await tester.pump();
       expect(find.text('error.cross'), findsNothing);
       expect(find.text('Form Errors'), findsNothing);
     });
 
-    testWidgets('hides on FormDiscardedEvent', (tester) async {
+    testWidgets('hides on TomFormDiscardedEvent', (tester) async {
       final form = _TestEventSource();
       final banner = TomFormErrorBanner(form: form);
 
@@ -186,10 +186,10 @@ void main() {
 
       // Show errors
       form.fireEvent(
-        FormValidatedEvent(
+        TomFormValidatedEvent(
           source: 'testForm',
           errors: [
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.cross',
               fields: [fieldA, fieldB],
             ),
@@ -200,7 +200,7 @@ void main() {
       expect(find.text('error.cross'), findsOneWidget);
 
       // Discard clears errors
-      form.fireEvent(FormDiscardedEvent(source: 'testForm'));
+      form.fireEvent(TomFormDiscardedEvent(source: 'testForm'));
       await tester.pump();
       expect(find.text('error.cross'), findsNothing);
     });
@@ -215,10 +215,10 @@ void main() {
 
       // Show errors
       form.fireEvent(
-        FormValidatedEvent(
+        TomFormValidatedEvent(
           source: 'testForm',
           errors: [
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.cross',
               fields: [fieldA, fieldB],
             ),
@@ -229,7 +229,7 @@ void main() {
       expect(find.text('error.cross'), findsOneWidget);
 
       // Validate again with no errors
-      form.fireEvent(FormValidatedEvent(source: 'testForm', errors: []));
+      form.fireEvent(TomFormValidatedEvent(source: 'testForm', errors: []));
       await tester.pump();
       expect(find.text('Form Errors'), findsNothing);
     });
@@ -251,10 +251,10 @@ void main() {
 
       // Show errors
       form.fireEvent(
-        FormValidatedEvent(
+        TomFormValidatedEvent(
           source: 'testForm',
           errors: [
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.cross',
               fields: [fieldA, fieldB],
             ),
@@ -277,10 +277,10 @@ void main() {
       await tester.pumpWidget(_wrap(banner));
 
       form.fireEvent(
-        FormValidatedEvent(
+        TomFormValidatedEvent(
           source: 'testForm',
           errors: [
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.cross',
               fields: [fieldA, fieldB],
             ),
@@ -308,10 +308,10 @@ void main() {
       // Firing events after dispose should not throw
       expect(
         () => form.fireEvent(
-          FormValidatedEvent(
+          TomFormValidatedEvent(
             source: 'testForm',
             errors: [
-              FormValidationError(
+              TomFormValidationError(
                 errorKey: 'error.cross',
                 fields: [fieldA, fieldB],
               ),
@@ -350,10 +350,10 @@ void main() {
 
       // Fire event on form1
       form1.fireEvent(
-        FormValidatedEvent(
+        TomFormValidatedEvent(
           source: 'testForm',
           errors: [
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.from1',
               fields: [fieldA, fieldB],
             ),
@@ -384,10 +384,10 @@ void main() {
       await tester.pumpWidget(_wrap(TomFormErrorBanner(form: form)));
 
       form.fireEvent(
-        FormValidatedEvent(
+        TomFormValidatedEvent(
           source: 'testForm',
           errors: [
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.dateRange.invalid',
               params: const {'start': 'the start date'},
               fields: [fieldStartDate, fieldEndDate],
@@ -411,10 +411,10 @@ void main() {
       await tester.pumpWidget(_wrap(TomFormErrorBanner(form: form)));
 
       form.fireEvent(
-        FormValidatedEvent(
+        TomFormValidatedEvent(
           source: 'testForm',
           errors: [
-            FormValidationError(
+            TomFormValidationError(
               errorKey: 'error.unknown',
               fields: [fieldA, fieldB],
             ),

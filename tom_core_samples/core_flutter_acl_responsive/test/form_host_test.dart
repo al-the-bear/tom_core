@@ -37,7 +37,7 @@ void main() {
   /// out of the tree before it can be found.
   ///
   /// The dropdown is left out deliberately: its declared default (`''`) matches
-  /// no [SelectableItem], so including it would make the *unbound* case a test
+  /// no [TomSelectableItem], so including it would make the *unbound* case a test
   /// of the dropdown's empty-value handling rather than of [FormHost].
   Future<void> pumpHost(
     WidgetTester tester, {

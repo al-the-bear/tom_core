@@ -176,7 +176,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   }
 
   /// Horizontal main-axis alignment for the **current row only**.
-  TomAclBuilder<T> setRowHorizontalAlignment(RowAlignment alignment) {
+  TomAclBuilder<T> setRowHorizontalAlignment(AclRowAlignment alignment) {
     _builder.setRowHorizontalAlignment(alignment);
     return this;
   }
@@ -603,7 +603,9 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
   /// Builder-wide default for the **horizontal** main-axis placement of
   /// every row.
-  TomAclBuilder<T> setAclDefaultRowHorizontalAlignment(RowAlignment alignment) {
+  TomAclBuilder<T> setAclDefaultRowHorizontalAlignment(
+    AclRowAlignment alignment,
+  ) {
     _builder.setAclDefaultRowHorizontalAlignment(alignment);
     return this;
   }

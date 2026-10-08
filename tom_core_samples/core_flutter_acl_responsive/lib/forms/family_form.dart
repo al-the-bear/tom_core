@@ -1,7 +1,7 @@
 /// A family-swappable `TomForm` bound to [ResponsiveProfile].
 ///
 /// One form *declaration* that resolves Material vs Cupertino field concretes
-/// at construction time via [FormFieldFamily]. The family-swap screen pre-builds
+/// at construction time via [TomFormFieldFamily]. The family-swap screen pre-builds
 /// one instance per family, both bound to the **same** [ResponsiveProfile], and
 /// renders whichever matches the current breakpoint — so edits round-trip across
 /// the swap. Mirrors the verified `Phase5cFamilyForm` from
@@ -24,7 +24,7 @@ class FamilyForm extends TomForm<ResponsiveProfile> {
   /// Which family this form was instantiated against (Material vs Cupertino).
   /// Stored for inspection by the screen; the concrete classes are picked once
   /// at construction.
-  final FormFieldFamily family;
+  final TomFormFieldFamily family;
 
   /// Free-form name.
   late final fullName = family.stringInput(

@@ -32,7 +32,7 @@ class ExampleHCEditableTable extends StatefulWidget {
 }
 
 class _ExampleHCEditableTableState extends State<ExampleHCEditableTable> {
-  late final FormFieldFamily _family;
+  late final TomFormFieldFamily _family;
   late final ExampleOrderForm _form;
 
   @override
@@ -40,8 +40,8 @@ class _ExampleHCEditableTableState extends State<ExampleHCEditableTable> {
     super.initState();
     installExampleAuthorization();
     _family = widget.family == ExampleFamily.cupertino
-        ? FormFieldFamily.cupertino
-        : FormFieldFamily.material;
+        ? TomFormFieldFamily.cupertino
+        : TomFormFieldFamily.material;
     _form = ExampleOrderForm(family: _family);
     // Bind to the first order of the H-C seed customer so this example
     // does not depend on the H-D / H-E mutable seeds.

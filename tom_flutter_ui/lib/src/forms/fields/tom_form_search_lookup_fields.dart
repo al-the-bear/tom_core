@@ -98,8 +98,8 @@ class TomFormSearchInput<T> extends TomFormSearchField<T>
   final TomSelectableSource<T> source;
 
   /// Custom search predicate. Defaults to substring (case-insensitive)
-  /// match against `SelectableItem.label`.
-  final bool Function(String query, SelectableItem<T> item)? searchPredicate;
+  /// match against `TomSelectableItem.label`.
+  final bool Function(String query, TomSelectableItem<T> item)? searchPredicate;
 
   /// Map from selected value → display string. Required because the
   /// `TextEditingController` round-trips through string. Defaults to the
@@ -151,8 +151,8 @@ class _SearchInputWidget<T> extends StatefulWidget {
 }
 
 class _SearchInputWidgetState<T> extends State<_SearchInputWidget<T>> {
-  StreamSubscription<List<SelectableItem<T>>>? _subscription;
-  List<SelectableItem<T>> _items = <SelectableItem<T>>[];
+  StreamSubscription<List<TomSelectableItem<T>>>? _subscription;
+  List<TomSelectableItem<T>> _items = <TomSelectableItem<T>>[];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomFormSearchInput<T> get field => widget.field;
@@ -197,12 +197,12 @@ class _SearchInputWidgetState<T> extends State<_SearchInputWidget<T>> {
     if (fn != null) return fn(v);
     final hit = _items.firstWhere(
       (it) => it.value == v,
-      orElse: () => SelectableItem<T>(value: v, label: v?.toString() ?? ''),
+      orElse: () => TomSelectableItem<T>(value: v, label: v?.toString() ?? ''),
     );
     return hit.label;
   }
 
-  bool _match(String q, SelectableItem<T> it) {
+  bool _match(String q, TomSelectableItem<T> it) {
     final pred = field.searchPredicate;
     if (pred != null) return pred(q, it);
     return it.label.toLowerCase().contains(q.toLowerCase());
@@ -229,7 +229,7 @@ class _SearchInputWidgetState<T> extends State<_SearchInputWidget<T>> {
     // the controller to that option's display string.
     final display = _label(f.get());
 
-    final autocomplete = Autocomplete<SelectableItem<T>>(
+    final autocomplete = Autocomplete<TomSelectableItem<T>>(
       key: ValueKey<String>(display),
       initialValue: TextEditingValue(text: display),
       displayStringForOption: (it) => it.label,
@@ -302,8 +302,8 @@ class _SearchInputWidgetState<T> extends State<_SearchInputWidget<T>> {
 /// width by default; the alignment lets the inner [Material]
 /// shrink-wrap to the intrinsic width instead.
 class _SearchOptionsPopup<T> extends StatelessWidget {
-  final Iterable<SelectableItem<T>> options;
-  final void Function(SelectableItem<T>) onSelected;
+  final Iterable<TomSelectableItem<T>> options;
+  final void Function(TomSelectableItem<T>) onSelected;
   final TextStyle? textStyle;
 
   const _SearchOptionsPopup({
@@ -421,8 +421,8 @@ class _LookupDialogWidget<T> extends StatefulWidget {
 }
 
 class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
-  StreamSubscription<List<SelectableItem<T>>>? _subscription;
-  List<SelectableItem<T>> _items = <SelectableItem<T>>[];
+  StreamSubscription<List<TomSelectableItem<T>>>? _subscription;
+  List<TomSelectableItem<T>> _items = <TomSelectableItem<T>>[];
   late final TomFunctionObserver<TomObservable> _observer;
 
   /// Read-only controller mirrored from the bound field so the lookup
@@ -490,7 +490,7 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
     if (fn != null) return fn(v);
     final hit = _items.firstWhere(
       (it) => it.value == v,
-      orElse: () => SelectableItem<T>(value: v, label: v?.toString() ?? ''),
+      orElse: () => TomSelectableItem<T>(value: v, label: v?.toString() ?? ''),
     );
     return hit.label;
   }
@@ -614,7 +614,7 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
     // labelStyle font size doesn't overflow the floating slot. Same
     // logic as TomFormStringField.
     String? floatingLabel;
-    if (style.labelPlacement == LabelPlacement.floating) {
+    if (style.labelPlacement == TomLabelPlacement.floating) {
       final resolved = f.labelText;
       if (resolved != null && resolved.isNotEmpty) floatingLabel = resolved;
     }

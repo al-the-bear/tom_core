@@ -216,13 +216,13 @@ void main() {
     });
   });
 
-  group('FormFieldFamily.nullableBoolToggle', () {
+  group('TomFormFieldFamily.nullableBoolToggle', () {
     test('resolves to the Material or Cupertino concrete', () {
-      final material = FormFieldFamily.material.nullableBoolToggle(
+      final material = TomFormFieldFamily.material.nullableBoolToggle(
         'answer',
         null,
       );
-      final cupertino = FormFieldFamily.cupertino.nullableBoolToggle(
+      final cupertino = TomFormFieldFamily.cupertino.nullableBoolToggle(
         'answer',
         null,
       );
@@ -236,13 +236,13 @@ void main() {
 
     test('threads tristate through to either family', () {
       expect(
-        FormFieldFamily.material
+        TomFormFieldFamily.material
             .nullableBoolToggle('answer', null, tristate: false)
             .tristate,
         isFalse,
       );
       expect(
-        FormFieldFamily.cupertino
+        TomFormFieldFamily.cupertino
             .nullableBoolToggle('answer', null, tristate: false)
             .tristate,
         isFalse,

@@ -496,7 +496,7 @@ class _ItemRow extends StatelessWidget {
       tomId: 'orderItems',
       style: TomFormStyle.material3.copyWith(
         defaults: TomFormStyle.material3.defaults.copyWith(
-          descriptionPlacement: DescriptionPlacement.tooltip,
+          descriptionPlacement: TomDescriptionPlacement.tooltip,
         ),
       ),
       child: fieldWidget,

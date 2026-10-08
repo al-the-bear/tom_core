@@ -15,7 +15,7 @@ import '../state/application_state.dart';
 /// - TomForm bound to global [demoState]
 /// - TomFormStringInput and TomFormStringDropdown usage
 /// - Required, minLength, maxLength, pattern validators
-/// - SlowValidator with pending spinner (Tax ID field)
+/// - TomSlowValidator with pending spinner (Tax ID field)
 /// - ACL layout with append(), newRow(), gap()
 /// - Resources: title / padding / borderStyle / field labels resolved from
 ///   demo_resources.json (scope: companyBasicInfo)

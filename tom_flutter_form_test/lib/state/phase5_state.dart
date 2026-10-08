@@ -42,32 +42,32 @@ Phase5DemoState phase5DemoState = Phase5DemoState();
 
 class _ColorSource extends TomSelectableSource<String> {
   @override
-  Future<List<SelectableItem<String>>> getItems() async => const [
-    SelectableItem<String>(value: 'red', label: 'Red'),
-    SelectableItem<String>(value: 'green', label: 'Green'),
-    SelectableItem<String>(value: 'blue', label: 'Blue'),
-    SelectableItem<String>(value: 'yellow', label: 'Yellow'),
-    SelectableItem<String>(value: 'purple', label: 'Purple'),
+  Future<List<TomSelectableItem<String>>> getItems() async => const [
+    TomSelectableItem<String>(value: 'red', label: 'Red'),
+    TomSelectableItem<String>(value: 'green', label: 'Green'),
+    TomSelectableItem<String>(value: 'blue', label: 'Blue'),
+    TomSelectableItem<String>(value: 'yellow', label: 'Yellow'),
+    TomSelectableItem<String>(value: 'purple', label: 'Purple'),
   ];
 }
 
 class _SizeSource extends TomSelectableSource<String> {
   @override
-  Future<List<SelectableItem<String>>> getItems() async => const [
-    SelectableItem<String>(value: 'S', label: 'S'),
-    SelectableItem<String>(value: 'M', label: 'M'),
-    SelectableItem<String>(value: 'L', label: 'L'),
+  Future<List<TomSelectableItem<String>>> getItems() async => const [
+    TomSelectableItem<String>(value: 'S', label: 'S'),
+    TomSelectableItem<String>(value: 'M', label: 'M'),
+    TomSelectableItem<String>(value: 'L', label: 'L'),
   ];
 }
 
 class _TagSource extends TomSelectableSource<String> {
   @override
-  Future<List<SelectableItem<String>>> getItems() async => const [
-    SelectableItem<String>(value: 'alpha', label: 'Alpha'),
-    SelectableItem<String>(value: 'beta', label: 'Beta'),
-    SelectableItem<String>(value: 'gamma', label: 'Gamma'),
-    SelectableItem<String>(value: 'delta', label: 'Delta'),
-    SelectableItem<String>(value: 'epsilon', label: 'Epsilon'),
+  Future<List<TomSelectableItem<String>>> getItems() async => const [
+    TomSelectableItem<String>(value: 'alpha', label: 'Alpha'),
+    TomSelectableItem<String>(value: 'beta', label: 'Beta'),
+    TomSelectableItem<String>(value: 'gamma', label: 'Gamma'),
+    TomSelectableItem<String>(value: 'delta', label: 'Delta'),
+    TomSelectableItem<String>(value: 'epsilon', label: 'Epsilon'),
   ];
 }
 
@@ -146,7 +146,7 @@ Phase5cDemoState phase5cDemoState = Phase5cDemoState();
 // Phase 5c — Demo P backing state (family-swap by breakpoint).
 //
 // Demo P shows how a single form declaration can resolve to either
-// Material or Cupertino concretes via [FormFieldFamily]. The state
+// Material or Cupertino concretes via [TomFormFieldFamily]. The state
 // mirrors the cross-section of fields the family supports.
 // ---------------------------------------------------------------------------
 

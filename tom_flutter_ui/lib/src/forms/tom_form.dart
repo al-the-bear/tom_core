@@ -215,7 +215,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// top of that this method walks every nested [TomForm] (via
   /// [nestedForms]) and runs the binding lifecycle — initial snapshot,
   /// per-field `_initialValue` reset, pristine validation state, and
-  /// `FieldBoundEvent` / `FormBoundEvent` dispatch — all the way down.
+  /// `TomFieldBoundEvent` / `TomFormBoundEvent` dispatch — all the way down.
   void bind(T target) {
     _detachBindingObserver();
     _binding = target;
@@ -280,7 +280,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
     for (final field in fields.values) {
       field._debounceTimer?.cancel();
       if (!field._disposed) {
-        field._validationNotifier.value = const ValidationPristine();
+        field._validationNotifier.value = const TomValidationPristine();
       }
     }
   }
@@ -294,8 +294,8 @@ abstract class TomForm<T extends TomClass> extends TomClass
     for (final field in fields.values) {
       field._initialValue = field.get();
       field._debounceTimer?.cancel();
-      field._validationNotifier.value = const ValidationPristine();
-      _fireEvent(FieldBoundEvent(source: field.tomId));
+      field._validationNotifier.value = const TomValidationPristine();
+      _fireEvent(TomFieldBoundEvent(source: field.tomId));
       if (field.autoValidate) {
         field.validate();
       }
@@ -312,7 +312,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
       }
     }
     onBound();
-    _fireEvent(FormBoundEvent(source: formId));
+    _fireEvent(TomFormBoundEvent(source: formId));
   }
 
   /// Save form values back to bound state.
@@ -320,7 +320,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// Runs full validation (including nested forms' AND child containers'
   /// validations) first — returns `false` if any errors. On success,
   /// commits every field in the form tree, snapshots each child
-  /// container, and fires `FormSavedEvent` at each level.
+  /// container, and fires `TomFormSavedEvent` at each level.
   ///
   /// **Nested-save semantics.** When the user calls `save()` on a form
   /// that has an outer ancestor in the form tree (see [hasFormAncestor]),
@@ -370,7 +370,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
       nested._applySave(commitBaselines: commitBaselines);
     }
     onSaved();
-    _fireEvent(FormSavedEvent(source: formId));
+    _fireEvent(TomFormSavedEvent(source: formId));
   }
 
   /// Discard edits — resets every field in this form, every nested form,
@@ -420,7 +420,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
       }
     }
     onDiscarded();
-    _fireEvent(FormDiscardedEvent(source: formId));
+    _fireEvent(TomFormDiscardedEvent(source: formId));
   }
 
   /// Detach from the bound state object.
@@ -459,7 +459,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// currently has a successful validation state. Pristine fields count
   /// as NOT valid.
   bool get isValid =>
-      fields.values.every((f) => f.validationState is ValidationSuccess) &&
+      fields.values.every((f) => f.validationState is TomValidationSuccess) &&
       nestedForms.every((f) => f.isValid) &&
       childContainers.every((c) => c.isValid);
 
@@ -468,11 +468,11 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// Validate every field in this form, every nested form, and every
   /// child container (e.g. `TomListForm`); then run this form's
   /// cross-field validation. Returns the combined error list and fires
-  /// a single `FormValidatedEvent` carrying all of it — child containers
+  /// a single `TomFormValidatedEvent` carrying all of it — child containers
   /// also fire their own events through the bus, but downstream
   /// `TomErrorView`s subscribed to the parent see one merged snapshot.
-  Future<List<FormValidationError>> validate() async {
-    final errors = <FormValidationError>[];
+  Future<List<TomFormValidationError>> validate() async {
+    final errors = <TomFormValidationError>[];
 
     // 1. Validate this form's own fields in parallel.
     final fieldResults = await Future.wait(
@@ -480,10 +480,10 @@ abstract class TomForm<T extends TomClass> extends TomClass
     );
     for (var i = 0; i < fields.values.length; i++) {
       final result = fieldResults.elementAt(i);
-      if (result is ValidationError) {
+      if (result is TomValidationError) {
         final field = fields.values.elementAt(i);
         errors.add(
-          FormValidationError(
+          TomFormValidationError(
             errorKey: result.errorKey,
             params: result.params,
             fields: [field],
@@ -492,14 +492,14 @@ abstract class TomForm<T extends TomClass> extends TomClass
       }
     }
 
-    // 2. Recurse into nested forms (they fire their own FormValidatedEvent).
+    // 2. Recurse into nested forms (they fire their own TomFormValidatedEvent).
     for (final nested in nestedForms) {
       errors.addAll(await nested.validate());
     }
 
     // 2b. Recurse into child containers (TomListForm and friends) — same
     //     contract: they fire their own event, but we merge their
-    //     errors into ours so the parent's FormValidatedEvent carries a
+    //     errors into ours so the parent's TomFormValidatedEvent carries a
     //     complete snapshot.
     for (final child in childContainers) {
       errors.addAll(await child.validate());
@@ -510,12 +510,12 @@ abstract class TomForm<T extends TomClass> extends TomClass
       errors.addAll(await validateForm());
     }
 
-    _fireEvent(FormValidatedEvent(source: formId, errors: errors));
+    _fireEvent(TomFormValidatedEvent(source: formId, errors: errors));
     return errors;
   }
 
   /// Override for cross-field validation. Always async.
-  Future<List<FormValidationError>> validateForm() async => [];
+  Future<List<TomFormValidationError>> validateForm() async => [];
 
   // --- Inspection ---
 
@@ -526,8 +526,9 @@ abstract class TomForm<T extends TomClass> extends TomClass
   Map<String, dynamic>? get initialSnapshot => _initialSnapshot;
 
   /// All fields that currently have validation errors.
-  List<TomField> get fieldsWithErrors =>
-      fields.values.where((f) => f.validationState is ValidationError).toList();
+  List<TomField> get fieldsWithErrors => fields.values
+      .where((f) => f.validationState is TomValidationError)
+      .toList();
 
   /// All fields whose values differ from initial.
   List<TomField> get dirtyFields =>
@@ -710,7 +711,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   /// Set a new value from user interaction.
   ///
-  /// Fires [FieldValueChangedEvent], transitions out of pristine state,
+  /// Fires [TomFieldValueChangedEvent], transitions out of pristine state,
   /// and schedules debounced re-validation. Fast validators run after
   /// [validationDebounce]; slow validators run after [slowValidationDebounce].
   void setValue(T newValue) {
@@ -718,7 +719,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     if (newValue == oldValue) return;
     set(newValue);
     form?._fireEvent(
-      FieldValueChangedEvent(
+      TomFieldValueChangedEvent(
         source: tomId,
         oldValue: oldValue,
         newValue: newValue,
@@ -726,7 +727,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     );
     // Transition out of pristine — clear to success for UX responsiveness.
     _slowValidationPending = false;
-    _validationNotifier.value = const ValidationSuccess();
+    _validationNotifier.value = const TomValidationSuccess();
     // Debounced re-validation
     _debounceTimer?.cancel();
     _slowDebounceTimer?.cancel();
@@ -739,13 +740,13 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// Run only fast validators (called after fast debounce).
   Future<void> _validateFast() async {
     for (final validator in validators) {
-      if (validator is SlowValidator) continue;
+      if (validator is TomSlowValidator) continue;
       final result = await (validator as TomValidator<T>)(get());
-      if (result is ValidationError) {
+      if (result is TomValidationError) {
         _slowValidationPending = false;
         _slowDebounceTimer?.cancel();
         _validationNotifier.value = result;
-        form?._fireEvent(FieldValidatedEvent(source: tomId, result: result));
+        form?._fireEvent(TomFieldValidatedEvent(source: tomId, result: result));
         return;
       }
     }
@@ -753,9 +754,12 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     if (!_slowValidationPending) {
       // No slow validators or they haven't started yet — mark success for now
       if (!hasSlowValidators) {
-        _validationNotifier.value = const ValidationSuccess();
+        _validationNotifier.value = const TomValidationSuccess();
         form?._fireEvent(
-          FieldValidatedEvent(source: tomId, result: _validationNotifier.value),
+          TomFieldValidatedEvent(
+            source: tomId,
+            result: _validationNotifier.value,
+          ),
         );
       }
     }
@@ -765,45 +769,45 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   Future<void> _validateSlow() async {
     // First re-check fast validators (value may have changed)
     for (final validator in validators) {
-      if (validator is SlowValidator) continue;
+      if (validator is TomSlowValidator) continue;
       final result = await (validator as TomValidator<T>)(get());
-      if (result is ValidationError) {
+      if (result is TomValidationError) {
         _slowValidationPending = false;
         _validationNotifier.value = result;
-        form?._fireEvent(FieldValidatedEvent(source: tomId, result: result));
+        form?._fireEvent(TomFieldValidatedEvent(source: tomId, result: result));
         return;
       }
     }
 
     // Run slow validators with pending state
     _slowValidationPending = true;
-    _validationNotifier.value = const ValidationPending();
-    final slowValidators = validators.whereType<SlowValidator<T>>().toList();
+    _validationNotifier.value = const TomValidationPending();
+    final slowValidators = validators.whereType<TomSlowValidator<T>>().toList();
     for (final slow in slowValidators) {
       final result = await slow.validate(get());
-      if (result is ValidationError) {
+      if (result is TomValidationError) {
         _slowValidationPending = false;
         _validationNotifier.value = result;
-        form?._fireEvent(FieldValidatedEvent(source: tomId, result: result));
+        form?._fireEvent(TomFieldValidatedEvent(source: tomId, result: result));
         return;
       }
     }
     _slowValidationPending = false;
-    _validationNotifier.value = const ValidationSuccess();
+    _validationNotifier.value = const TomValidationSuccess();
     form?._fireEvent(
-      FieldValidatedEvent(source: tomId, result: _validationNotifier.value),
+      TomFieldValidatedEvent(source: tomId, result: _validationNotifier.value),
     );
   }
 
   /// Commit current value as the new initial value.
-  /// Resets validation state to [ValidationPristine] — no errors shown after save.
+  /// Resets validation state to [TomValidationPristine] — no errors shown after save.
   void commit() {
     _initialValue = get();
     _debounceTimer?.cancel();
     _slowDebounceTimer?.cancel();
     _slowValidationPending = false;
-    _validationNotifier.value = const ValidationPristine();
-    form?._fireEvent(FieldCommittedEvent(source: tomId));
+    _validationNotifier.value = const TomValidationPristine();
+    form?._fireEvent(TomFieldCommittedEvent(source: tomId));
   }
 
   /// Reset to initial value and reset validation to pristine.
@@ -812,7 +816,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     _debounceTimer?.cancel();
     _slowDebounceTimer?.cancel();
     _slowValidationPending = false;
-    _validationNotifier.value = const ValidationPristine();
+    _validationNotifier.value = const TomValidationPristine();
   }
 
   // --- Authorization ---
@@ -873,7 +877,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// at the highest priority, before the resource lookup.
   String get resolvedLabel => TomCtr.textOrNull(basePath, 'label') ?? tomId;
 
-  /// Translates the field's current [ValidationError] to a human-readable
+  /// Translates the field's current [TomValidationError] to a human-readable
   /// string, or returns an empty string when the field has no error.
   ///
   /// Resolution order for the error key (e.g. `error.required`):
@@ -886,7 +890,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// produce localised messages correctly.
   String get resolvedErrorMessage {
     final state = validationState;
-    if (state is! ValidationError) return '';
+    if (state is! TomValidationError) return '';
     final template =
         TomCtr.textOrNull(basePath, state.errorKey) ??
         TomCtr.textOrNull(state.errorKey) ??
@@ -896,16 +900,16 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   // --- Validation ---
 
-  /// Validators passed to the constructor in code.
+  /// TomValidators passed to the constructor in code.
   ///
   /// Kept separate from [validators] so the effective list can merge these
   /// with any resource-declared validators (C-11) resolved lazily.
   final List<Object> _codeValidators;
 
-  /// Validators applied to this field: the code-declared validators followed
+  /// TomValidators applied to this field: the code-declared validators followed
   /// by any resource-declared validators (C-11).
   ///
-  /// Accepts both [TomValidator<T>] (fast) and [SlowValidator<T>] (slow).
+  /// Accepts both [TomValidator<T>] (fast) and [TomSlowValidator<T>] (slow).
   /// Fast validators run without showing a pending spinner.
   /// Slow validators (e.g., remote API calls) show a spinner and trigger
   /// after a longer debounce.
@@ -937,21 +941,21 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// for user interaction. Useful for auto-save forms.
   final bool autoValidate;
 
-  /// Current validation state — starts as [ValidationPristine].
+  /// Current validation state — starts as [TomValidationPristine].
   /// Backed by a [ValueNotifier] so UI rebuilds are driven independently
   /// from value-change observers. Validation transitions must NOT call
   /// [notifyObservers] — that channel is for value changes only.
-  final ValueNotifier<ValidationResult> _validationNotifier = ValueNotifier(
-    const ValidationPristine(),
+  final ValueNotifier<TomValidationResult> _validationNotifier = ValueNotifier(
+    const TomValidationPristine(),
   );
 
   /// Listenable fired when the validation state changes. UI code (field
   /// widgets, `TomFormInspector`, …) should subscribe here rather than
   /// observing the field as a value.
-  ValueListenable<ValidationResult> get validationListenable =>
+  ValueListenable<TomValidationResult> get validationListenable =>
       _validationNotifier;
 
-  ValidationResult get validationState => _validationNotifier.value;
+  TomValidationResult get validationState => _validationNotifier.value;
 
   /// Whether slow validation is currently in progress.
   /// Used by decoration mixin to decide whether to show a spinner.
@@ -980,49 +984,51 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   Duration get slowValidationDebounce => const Duration(milliseconds: 600);
 
   /// Whether this field has any slow validators.
-  bool get hasSlowValidators => validators.any((v) => v is SlowValidator);
+  bool get hasSlowValidators => validators.any((v) => v is TomSlowValidator);
 
   /// Validate the current value.
   ///
   /// Runs fast validators first (no pending spinner), then slow validators
   /// (with pending spinner). Stops on first error at any stage.
-  Future<ValidationResult> validate() async {
+  Future<TomValidationResult> validate() async {
     // Run fast validators first — no pending state
     for (final validator in validators) {
-      if (validator is SlowValidator) continue;
+      if (validator is TomSlowValidator) continue;
       final result = await (validator as TomValidator<T>)(get());
       if (_disposed) return result;
-      if (result is ValidationError) {
+      if (result is TomValidationError) {
         _slowValidationPending = false;
         _validationNotifier.value = result;
-        form?._fireEvent(FieldValidatedEvent(source: tomId, result: result));
+        form?._fireEvent(TomFieldValidatedEvent(source: tomId, result: result));
         return result;
       }
     }
 
     // Run slow validators — show pending state
-    final slowValidators = validators.whereType<SlowValidator<T>>().toList();
+    final slowValidators = validators.whereType<TomSlowValidator<T>>().toList();
     if (slowValidators.isNotEmpty) {
-      if (_disposed) return const ValidationPristine();
+      if (_disposed) return const TomValidationPristine();
       _slowValidationPending = true;
-      _validationNotifier.value = const ValidationPending();
+      _validationNotifier.value = const TomValidationPending();
       for (final slow in slowValidators) {
         final result = await slow.validate(get());
         if (_disposed) return result;
-        if (result is ValidationError) {
+        if (result is TomValidationError) {
           _slowValidationPending = false;
           _validationNotifier.value = result;
-          form?._fireEvent(FieldValidatedEvent(source: tomId, result: result));
+          form?._fireEvent(
+            TomFieldValidatedEvent(source: tomId, result: result),
+          );
           return result;
         }
       }
       _slowValidationPending = false;
     }
 
-    const success = ValidationSuccess();
+    const success = TomValidationSuccess();
     if (_disposed) return success;
     _validationNotifier.value = success;
-    form?._fireEvent(FieldValidatedEvent(source: tomId, result: success));
+    form?._fireEvent(TomFieldValidatedEvent(source: tomId, result: success));
     return success;
   }
 

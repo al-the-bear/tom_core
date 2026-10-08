@@ -30,7 +30,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void main() {
   setUpAll(() {
-    TomUIColors.adapter = AllColorsAdapter();
+    TomUIColors.adapter = TomAllColorsAdapter();
   });
 
   tearDown(() {

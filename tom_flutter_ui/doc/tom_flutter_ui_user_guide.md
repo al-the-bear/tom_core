@@ -270,11 +270,11 @@ class AddressForm extends TomForm<Address> {
   @override
   void createFormElements() {
     street = TomFormStringInput('street', '', form: this,
-        validators: [Validators.required()]);
+        validators: [TomValidators.required()]);
     city = TomFormStringInput('city', '', form: this);
     zip = TomFormStringInput('zip', '', form: this);
     email = TomFormStringInput('email', '', form: this,
-        validators: [Validators.required(), Validators.email()]);
+        validators: [TomValidators.required(), TomValidators.email()]);
   }
 }
 ```

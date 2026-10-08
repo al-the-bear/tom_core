@@ -235,7 +235,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   /// **Not a member of [TodoItemForm], and deliberately not under
   /// `todo.item.*` in the form** — although it *is* graded by the same matrix:
   ///
-  ///  * The value types differ. The field holds a [FileRef]; `TodoItem.attachment`
+  ///  * The value types differ. The field holds a [TomFileRef]; `TodoItem.attachment`
   ///    holds the *storage key* the server stamps. They cannot be the same bound
   ///    member.
   ///  * The write paths differ. Bytes travel over the file endpoint; the server
@@ -270,7 +270,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       'board',
       () => TomFormFileUpload(
         'item.attachment',
-        stored == null ? null : FileRef.stored(stored.toMetadata()),
+        stored == null ? null : TomFileRef.stored(stored.toMetadata()),
         storageSlot: AppFileSlots.itemAttachment(_item.id.get()),
         transferClient: _session.backend.files,
         onDownload: _onAttachmentDownloaded,
@@ -285,7 +285,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   /// the application's decision, which is why the field hands over the bytes and
   /// nothing more. This sample has nowhere to put them (its clients ship no
   /// platform folders), so it reports what arrived; a real app writes them.
-  void _onAttachmentDownloaded(FileRef ref, Uint8List bytes) {
+  void _onAttachmentDownloaded(TomFileRef ref, Uint8List bytes) {
     if (!mounted) return;
     TomMessenger.showSnackBar(
       context,

@@ -13,8 +13,8 @@ void _installResources(Map<String, dynamic> tree) {
 
 void main() {
   setUpAll(() {
-    TomUIColors.adapter = AllColorsAdapter();
-    TomUIIcons.adapter = AllIconsAdapter();
+    TomUIColors.adapter = TomAllColorsAdapter();
+    TomUIIcons.adapter = TomAllIconsAdapter();
   });
 
   tearDown(() {

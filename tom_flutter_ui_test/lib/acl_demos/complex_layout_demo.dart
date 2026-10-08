@@ -33,7 +33,7 @@ class ComplexLayoutDemo extends StatelessWidget {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                 )
-                .setRowHorizontalAlignment(RowAlignment.center)
+                .setRowHorizontalAlignment(AclRowAlignment.center)
                 .newRow(dist: 16)
                 .append(const SizedBox(width: 80, child: Text('User:')))
                 .setPSize(80, 36)
@@ -113,7 +113,7 @@ class ComplexLayoutDemo extends StatelessWidget {
                 .append(const SizedBox.shrink())
                 .setAttr(AclFlags.expandX)
                 .append(const Text('v1.0.0'))
-                .setRowHorizontalAlignment(RowAlignment.left)
+                .setRowHorizontalAlignment(AclRowAlignment.left)
                 .build(),
           ),
         ],

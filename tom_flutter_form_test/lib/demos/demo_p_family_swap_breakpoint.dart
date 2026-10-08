@@ -1,8 +1,8 @@
-/// Demo P — `FormFieldFamily` swap by breakpoint (Phase 5c).
+/// Demo P — `TomFormFieldFamily` swap by breakpoint (Phase 5c).
 ///
 /// One [Phase5cFamilyState] feeds two `Phase5cFamilyForm` instances:
-/// one constructed against [FormFieldFamily.material] and one against
-/// [FormFieldFamily.cupertino]. A [LayoutBuilder] picks which form to
+/// one constructed against [TomFormFieldFamily.material] and one against
+/// [TomFormFieldFamily.cupertino]. A [LayoutBuilder] picks which form to
 /// render based on the 700 px breakpoint:
 ///
 ///   * `width >= 700 px` → Material form, light + airy themeSpec
@@ -49,11 +49,11 @@ class _DemoPFamilySwapBreakpointState extends State<DemoPFamilySwapBreakpoint> {
     super.initState();
     _materialForm = TomScope.withScope(
       'demoP-material',
-      () => Phase5cFamilyForm(family: FormFieldFamily.material),
+      () => Phase5cFamilyForm(family: TomFormFieldFamily.material),
     );
     _cupertinoForm = TomScope.withScope(
       'demoP-cupertino',
-      () => Phase5cFamilyForm(family: FormFieldFamily.cupertino),
+      () => Phase5cFamilyForm(family: TomFormFieldFamily.cupertino),
     );
 
     // Both forms share one TomClass — bind() on each so observable
@@ -72,7 +72,7 @@ class _DemoPFamilySwapBreakpointState extends State<DemoPFamilySwapBreakpoint> {
   @override
   Widget build(BuildContext context) {
     return DemoScaffold(
-      title: 'Demo P — FormFieldFamily swap by breakpoint (Phase 5c)',
+      title: 'Demo P — TomFormFieldFamily swap by breakpoint (Phase 5c)',
       child: TomFormStyleScope(
         // Outer style swap by breakpoint. Width >= 700 px → Material3,
         // width < 700 px → Cupertino. The styleBpOverrides API lets the
@@ -85,8 +85,8 @@ class _DemoPFamilySwapBreakpointState extends State<DemoPFamilySwapBreakpoint> {
           builder: (context, constraints) {
             final isWide = constraints.maxWidth >= _phase5cBreakpoint;
             final family = isWide
-                ? FormFieldFamily.material
-                : FormFieldFamily.cupertino;
+                ? TomFormFieldFamily.material
+                : TomFormFieldFamily.cupertino;
             final form = isWide ? _materialForm : _cupertinoForm;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -126,7 +126,7 @@ class _DemoPFamilySwapBreakpointState extends State<DemoPFamilySwapBreakpoint> {
   Widget _buildBpBadge(
     BuildContext context,
     double width,
-    FormFieldFamily family,
+    TomFormFieldFamily family,
   ) {
     final theme = Theme.of(context);
     final wide = width >= _phase5cBreakpoint;

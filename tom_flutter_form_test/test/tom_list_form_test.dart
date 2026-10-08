@@ -130,36 +130,36 @@ void main() {
   });
 
   group('TomListForm — events', () {
-    test('add fires ListItemAddedEvent through the parent bus', () {
+    test('add fires TomListItemAddedEvent through the parent bus', () {
       final form = makeBoundForm();
       final inspector = TomFormInspector();
       form.addListener(inspector);
       form.items.add();
-      final added = inspector.events.whereType<ListItemAddedEvent>();
+      final added = inspector.events.whereType<TomListItemAddedEvent>();
       expect(added, hasLength(1));
       expect(added.first.itemFormId, 'items');
       form.removeListener(inspector);
       form.dispose();
     });
 
-    test('removeAt fires ListItemRemovedEvent', () {
+    test('removeAt fires TomListItemRemovedEvent', () {
       final form = makeBoundForm();
       final inspector = TomFormInspector();
       form.addListener(inspector);
       form.items.removeAt(0);
-      final removed = inspector.events.whereType<ListItemRemovedEvent>();
+      final removed = inspector.events.whereType<TomListItemRemovedEvent>();
       expect(removed, hasLength(1));
       expect(removed.first.index, 0);
       form.removeListener(inspector);
       form.dispose();
     });
 
-    test('move fires ListItemReorderedEvent with from/to', () {
+    test('move fires TomListItemReorderedEvent with from/to', () {
       final form = makeBoundForm();
       final inspector = TomFormInspector();
       form.addListener(inspector);
       form.items.move(0, 1);
-      final reordered = inspector.events.whereType<ListItemReorderedEvent>();
+      final reordered = inspector.events.whereType<TomListItemReorderedEvent>();
       expect(reordered, hasLength(1));
       expect(reordered.first.fromIndex, 0);
       expect(reordered.first.toIndex, 1);
@@ -167,22 +167,25 @@ void main() {
       form.dispose();
     });
 
-    test('validate fires FormValidatedEvent through the parent bus', () async {
-      final form = makeBoundForm();
-      final inspector = TomFormInspector();
-      form.addListener(inspector);
-      await form.items.validate();
-      final validated = inspector.events.whereType<FormValidatedEvent>();
-      // One FormValidatedEvent per sub-form + one from TomListForm itself.
-      expect(validated, isNotEmpty);
-      // The list-level event is the last one fired (after all sub-forms).
-      expect(validated.last.source, 'items');
-      form.removeListener(inspector);
-      form.dispose();
-    });
+    test(
+      'validate fires TomFormValidatedEvent through the parent bus',
+      () async {
+        final form = makeBoundForm();
+        final inspector = TomFormInspector();
+        form.addListener(inspector);
+        await form.items.validate();
+        final validated = inspector.events.whereType<TomFormValidatedEvent>();
+        // One TomFormValidatedEvent per sub-form + one from TomListForm itself.
+        expect(validated, isNotEmpty);
+        // The list-level event is the last one fired (after all sub-forms).
+        expect(validated.last.source, 'items');
+        form.removeListener(inspector);
+        form.dispose();
+      },
+    );
 
     test(
-      'validate fires FormValidatedEvent with list error when empty',
+      'validate fires TomFormValidatedEvent with list error when empty',
       () async {
         final form = makeBoundForm();
         form.items.removeAt(0);
@@ -191,7 +194,7 @@ void main() {
         form.addListener(inspector);
         await form.items.validate();
         final listEvent = inspector.events
-            .whereType<FormValidatedEvent>()
+            .whereType<TomFormValidatedEvent>()
             .lastWhere((e) => e.source == 'items');
         expect(listEvent.errors, hasLength(1));
         form.removeListener(inspector);
@@ -286,14 +289,14 @@ void main() {
           errors.any((e) => e.errorKey == 'error.items.minRequired'),
           isTrue,
         );
-        // The parent's FormValidatedEvent (last with source == formId)
+        // The parent's TomFormValidatedEvent (last with source == formId)
         // must carry the list error too — that's what TomErrorView
         // subscribed to the parent will see.
         final parentEvent = inspector.events
-            .whereType<FormValidatedEvent>()
+            .whereType<TomFormValidatedEvent>()
             .lastWhere((e) => e.source == 'order');
         expect(
-          parentEvent.errors.whereType<FormValidationError>().any(
+          parentEvent.errors.whereType<TomFormValidationError>().any(
             (e) => e.errorKey == 'error.items.minRequired',
           ),
           isTrue,

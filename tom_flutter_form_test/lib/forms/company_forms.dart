@@ -8,56 +8,56 @@ import '../state/company_state.dart';
 // Industry Selection Source
 // ---------------------------------------------------------------------------
 
-final _industrySource = StaticSelectableSource<String>([
-  const SelectableItem(value: 'tech', label: 'Technology'),
-  const SelectableItem(value: 'finance', label: 'Finance'),
-  const SelectableItem(value: 'healthcare', label: 'Healthcare'),
-  const SelectableItem(value: 'manufacturing', label: 'Manufacturing'),
-  const SelectableItem(value: 'retail', label: 'Retail'),
-  const SelectableItem(value: 'other', label: 'Other'),
+final _industrySource = TomStaticSelectableSource<String>([
+  const TomSelectableItem(value: 'tech', label: 'Technology'),
+  const TomSelectableItem(value: 'finance', label: 'Finance'),
+  const TomSelectableItem(value: 'healthcare', label: 'Healthcare'),
+  const TomSelectableItem(value: 'manufacturing', label: 'Manufacturing'),
+  const TomSelectableItem(value: 'retail', label: 'Retail'),
+  const TomSelectableItem(value: 'other', label: 'Other'),
 ]);
 
 // ---------------------------------------------------------------------------
 // Country Selection Source
 // ---------------------------------------------------------------------------
 
-final _countrySource = StaticSelectableSource<String>([
-  const SelectableItem(value: 'US', label: 'United States'),
-  const SelectableItem(value: 'CA', label: 'Canada'),
-  const SelectableItem(value: 'GB', label: 'United Kingdom'),
-  const SelectableItem(value: 'DE', label: 'Germany'),
-  const SelectableItem(value: 'FR', label: 'France'),
-  const SelectableItem(value: 'JP', label: 'Japan'),
-  const SelectableItem(value: 'AU', label: 'Australia'),
+final _countrySource = TomStaticSelectableSource<String>([
+  const TomSelectableItem(value: 'US', label: 'United States'),
+  const TomSelectableItem(value: 'CA', label: 'Canada'),
+  const TomSelectableItem(value: 'GB', label: 'United Kingdom'),
+  const TomSelectableItem(value: 'DE', label: 'Germany'),
+  const TomSelectableItem(value: 'FR', label: 'France'),
+  const TomSelectableItem(value: 'JP', label: 'Japan'),
+  const TomSelectableItem(value: 'AU', label: 'Australia'),
 ]);
 
 // ---------------------------------------------------------------------------
 // Timezone Selection Source
 // ---------------------------------------------------------------------------
 
-final _timezoneSource = StaticSelectableSource<String>([
-  const SelectableItem(value: 'UTC', label: 'UTC'),
-  const SelectableItem(
+final _timezoneSource = TomStaticSelectableSource<String>([
+  const TomSelectableItem(value: 'UTC', label: 'UTC'),
+  const TomSelectableItem(
     value: 'America/New_York',
     label: 'Eastern Time (US)',
     description: 'UTC-5',
   ),
-  const SelectableItem(
+  const TomSelectableItem(
     value: 'America/Los_Angeles',
     label: 'Pacific Time (US)',
     description: 'UTC-8',
   ),
-  const SelectableItem(
+  const TomSelectableItem(
     value: 'Europe/London',
     label: 'London',
     description: 'UTC+0',
   ),
-  const SelectableItem(
+  const TomSelectableItem(
     value: 'Europe/Berlin',
     label: 'Berlin',
     description: 'UTC+1',
   ),
-  const SelectableItem(
+  const TomSelectableItem(
     value: 'Asia/Tokyo',
     label: 'Tokyo',
     description: 'UTC+9',
@@ -68,35 +68,35 @@ final _timezoneSource = StaticSelectableSource<String>([
 // Notification Frequency Source
 // ---------------------------------------------------------------------------
 
-final _notificationFrequencySource = StaticSelectableSource<String>([
-  const SelectableItem(value: 'realtime', label: 'Real-time'),
-  const SelectableItem(value: 'hourly', label: 'Hourly digest'),
-  const SelectableItem(value: 'daily', label: 'Daily digest'),
-  const SelectableItem(value: 'weekly', label: 'Weekly digest'),
+final _notificationFrequencySource = TomStaticSelectableSource<String>([
+  const TomSelectableItem(value: 'realtime', label: 'Real-time'),
+  const TomSelectableItem(value: 'hourly', label: 'Hourly digest'),
+  const TomSelectableItem(value: 'daily', label: 'Daily digest'),
+  const TomSelectableItem(value: 'weekly', label: 'Weekly digest'),
 ]);
 
 // ---------------------------------------------------------------------------
-// Slow Validators (demonstrates async validation)
+// Slow TomValidators (demonstrates async validation)
 // ---------------------------------------------------------------------------
 
 /// Simulates server-side validation checking if a tax ID is already taken.
-final _taxIdValidator = SlowValidator<String>((value) async {
+final _taxIdValidator = TomSlowValidator<String>((value) async {
   await Future<void>.delayed(const Duration(seconds: 1));
   // Simulate: tax IDs starting with 'X' are already taken
   if (value.startsWith('X')) {
-    return const ValidationError('taxIdTaken');
+    return const TomValidationError('taxIdTaken');
   }
-  return const ValidationSuccess();
+  return const TomValidationSuccess();
 });
 
 /// Simulates checking if an email domain has valid MX records.
-final _emailDomainValidator = SlowValidator<String>((value) async {
+final _emailDomainValidator = TomSlowValidator<String>((value) async {
   await Future<void>.delayed(const Duration(milliseconds: 800));
   // Simulate: test.invalid domain always fails
   if (value.endsWith('@test.invalid')) {
-    return const ValidationError('invalidEmailDomain');
+    return const TomValidationError('invalidEmailDomain');
   }
-  return const ValidationSuccess();
+  return const TomValidationSuccess();
 });
 
 // ---------------------------------------------------------------------------
@@ -121,7 +121,7 @@ class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
   late final name = TomFormStringInput(
     'name',
     '',
-    validators: [Validators.required(), Validators.minLength(2)],
+    validators: [TomValidators.required(), TomValidators.minLength(2)],
   );
 
   /// Industry dropdown selection.
@@ -129,7 +129,7 @@ class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
     'industry',
     '',
     source: _industrySource,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   /// Tax ID with slow validation (simulates server check).
@@ -137,8 +137,8 @@ class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
     'taxId',
     '',
     validators: [
-      Validators.required(),
-      Validators.pattern(RegExp(r'^[A-Z0-9-]+$'), errorKey: 'taxIdFormat'),
+      TomValidators.required(),
+      TomValidators.pattern(RegExp(r'^[A-Z0-9-]+$'), errorKey: 'taxIdFormat'),
       _taxIdValidator,
     ],
   );
@@ -153,7 +153,7 @@ class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
     'website',
     '',
     validators: [
-      Validators.pattern(
+      TomValidators.pattern(
         RegExp(
           r'^https?:\/\/(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+'
           r'[a-zA-Z]{2,}(?::\d{1,5})?(?:\/[^\s]*)?$',
@@ -170,7 +170,7 @@ class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
     '',
     maxLength: 500,
     maxLines: 4,
-    validators: [Validators.maxLength(500)],
+    validators: [TomValidators.maxLength(500)],
   );
 }
 
@@ -194,7 +194,7 @@ class AddressForm extends TomForm<Address> {
   late final street = TomFormStringInput(
     'street',
     '',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final street2 = TomFormStringInput('street2', '');
@@ -202,7 +202,7 @@ class AddressForm extends TomForm<Address> {
   late final city = TomFormStringInput(
     'city',
     '',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final state = TomFormStringInput('state', '');
@@ -210,7 +210,7 @@ class AddressForm extends TomForm<Address> {
   late final zipCode = TomFormStringInput(
     'zipCode',
     '',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
     keyboardType: TextInputType.text,
   );
 
@@ -218,7 +218,7 @@ class AddressForm extends TomForm<Address> {
     'country',
     'US',
     source: _countrySource,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 }
 
@@ -242,21 +242,21 @@ class PersonForm extends TomForm<Person> {
   late final firstName = TomFormStringInput(
     'firstName',
     '',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final lastName = TomFormStringInput(
     'lastName',
     '',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final email = TomFormStringInput(
     'email',
     '',
     validators: [
-      Validators.required(),
-      Validators.email(),
+      TomValidators.required(),
+      TomValidators.email(),
       _emailDomainValidator,
     ],
     keyboardType: TextInputType.emailAddress,
@@ -297,7 +297,7 @@ class CompanySettingsForm extends TomForm<CompanySettings> {
     'locale',
     'en_US',
     validators: [
-      Validators.pattern(
+      TomValidators.pattern(
         RegExp(r'^[a-z]{2}_[A-Z]{2}$'),
         errorKey: 'invalidLocale',
       ),
@@ -308,8 +308,8 @@ class CompanySettingsForm extends TomForm<CompanySettings> {
     'currency',
     'USD',
     validators: [
-      Validators.required(),
-      Validators.pattern(RegExp(r'^[A-Z]{3}$'), errorKey: 'invalidCurrency'),
+      TomValidators.required(),
+      TomValidators.pattern(RegExp(r'^[A-Z]{3}$'), errorKey: 'invalidCurrency'),
     ],
   );
 
@@ -318,7 +318,7 @@ class CompanySettingsForm extends TomForm<CompanySettings> {
   late final notificationEmail = TomFormStringInput(
     'notificationEmail',
     '',
-    validators: [Validators.email()],
+    validators: [TomValidators.email()],
     keyboardType: TextInputType.emailAddress,
   );
 

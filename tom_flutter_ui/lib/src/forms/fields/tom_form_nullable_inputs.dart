@@ -626,8 +626,8 @@ class _NEnumDropdownWidget<T> extends StatefulWidget {
 }
 
 class _NEnumDropdownWidgetState<T> extends State<_NEnumDropdownWidget<T>> {
-  StreamSubscription<List<SelectableItem<T>>>? _subscription;
-  List<SelectableItem<T>> _items = const [];
+  StreamSubscription<List<TomSelectableItem<T>>>? _subscription;
+  List<TomSelectableItem<T>> _items = const [];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomFormNEnumDropdown<T> get field => widget.field;

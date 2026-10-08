@@ -1,6 +1,6 @@
 /// Form for Demo L — File upload + nullable input variants.
 ///
-/// File fields don't bind into a `TomClass` (no `TomObject<FileRef>` in
+/// File fields don't bind into a `TomClass` (no `TomObject<TomFileRef>` in
 /// the kernel), so they live directly on the form. The nullable text /
 /// numeric / date inputs all bind into [FileNullableDemoState].
 library;
@@ -131,12 +131,12 @@ TomFormNEnumDropdown<Priority> makeDemoLPriorityField() =>
 
 /// In-memory deterministic picker so the demo doesn't depend on a
 /// platform file picker and so the smoke test can still call it.
-Future<FileRef?> demoFilePicker(_) async {
+Future<TomFileRef?> demoFilePicker(_) async {
   // Simulate the user choosing a small text file.
   final bytes = Uint8List.fromList(
     'Hello from the in-memory demo picker.\n'.codeUnits,
   );
-  return FileRef(
+  return TomFileRef(
     name: 'demo_picked_file.txt',
     sizeBytes: bytes.length,
     mimeType: 'text/plain',

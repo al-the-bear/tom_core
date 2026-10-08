@@ -69,7 +69,7 @@ List<AclRow> aclWrapRows(
   double gutterWidth = 8.0,
   double runSpacing = 8.0,
   double defaultItemWidth = kAclDefaultFlowItemWidth,
-  RowAlignment alignment = RowAlignment.left,
+  AclRowAlignment alignment = AclRowAlignment.left,
   String? rowIdPrefix,
 }) {
   if (components.isEmpty) return const [];
@@ -136,7 +136,7 @@ List<AclRow> aclGridRows(
   double? availableWidth,
   double gutterWidth = 8.0,
   double runSpacing = 8.0,
-  RowAlignment alignment = RowAlignment.left,
+  AclRowAlignment alignment = AclRowAlignment.left,
   String? rowIdPrefix,
 }) {
   if (columns < 1) {
@@ -184,7 +184,7 @@ AclRow _flowRow(
   List<AclComponent> components, {
   required int index,
   required double runSpacing,
-  required RowAlignment alignment,
+  required AclRowAlignment alignment,
   required String? rowIdPrefix,
 }) {
   return AclRow(
@@ -236,7 +236,7 @@ class AclFlowContainer extends StatelessWidget {
   final double defaultItemWidth;
 
   /// Horizontal alignment applied to every generated row.
-  final RowAlignment alignment;
+  final AclRowAlignment alignment;
 
   // ── AclContainer passthroughs ─────────────────────────────────────────────
 
@@ -257,7 +257,7 @@ class AclFlowContainer extends StatelessWidget {
     this.gutterWidth = 8.0,
     this.runSpacing = 8.0,
     this.defaultItemWidth = kAclDefaultFlowItemWidth,
-    this.alignment = RowAlignment.left,
+    this.alignment = AclRowAlignment.left,
     this.aclId,
     this.idScope = false,
     this.aclGroup,

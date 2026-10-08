@@ -26,18 +26,18 @@ class ValidationForm extends TomForm<TomClass> {
     '',
     form: this,
     validators: [
-      Validators.required(),
-      Validators.minLength(3),
-      Validators.pattern(
+      TomValidators.required(),
+      TomValidators.minLength(3),
+      TomValidators.pattern(
         RegExp(r'^[a-zA-Z0-9_]+$'),
         errorKey: 'error.usernamePattern',
       ),
-      SlowValidator<String>((value) async {
+      TomSlowValidator<String>((value) async {
         await Future<void>.delayed(const Duration(milliseconds: 800));
         if (value.toLowerCase().startsWith('admin')) {
-          return const ValidationError('error.usernameTaken');
+          return const TomValidationError('error.usernameTaken');
         }
-        return const ValidationSuccess();
+        return const TomValidationSuccess();
       }),
     ],
   );
@@ -46,7 +46,7 @@ class ValidationForm extends TomForm<TomClass> {
     'email',
     '',
     form: this,
-    validators: [Validators.required(), Validators.email()],
+    validators: [TomValidators.required(), TomValidators.email()],
     keyboardType: TextInputType.emailAddress,
   );
 
@@ -55,7 +55,7 @@ class ValidationForm extends TomForm<TomClass> {
     '',
     form: this,
     obscureText: true,
-    validators: [Validators.required(), Validators.minLength(8)],
+    validators: [TomValidators.required(), TomValidators.minLength(8)],
   );
 
   late final confirmPassword = TomFormStringInput(
@@ -63,7 +63,7 @@ class ValidationForm extends TomForm<TomClass> {
     '',
     form: this,
     obscureText: true,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final website = TomFormStringInput(
@@ -71,7 +71,7 @@ class ValidationForm extends TomForm<TomClass> {
     '',
     form: this,
     validators: [
-      Validators.pattern(
+      TomValidators.pattern(
         RegExp(
           r'^https?:\/\/(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+'
           r'[a-zA-Z]{2,}(?::\d{1,5})?(?:\/[^\s]*)?$',
@@ -83,13 +83,13 @@ class ValidationForm extends TomForm<TomClass> {
   );
 
   @override
-  Future<List<FormValidationError>> validateForm() async {
-    final errors = <FormValidationError>[];
+  Future<List<TomFormValidationError>> validateForm() async {
+    final errors = <TomFormValidationError>[];
     if (password.get().isNotEmpty &&
         confirmPassword.get().isNotEmpty &&
         password.get() != confirmPassword.get()) {
       errors.add(
-        FormValidationError(
+        TomFormValidationError(
           errorKey: 'error.passwordsMismatch',
           fields: [password, confirmPassword],
         ),

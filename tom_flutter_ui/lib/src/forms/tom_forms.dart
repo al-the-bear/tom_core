@@ -13,11 +13,11 @@
 /// - [TomForm] — the model: fields, values, submit and validation runs.
 /// - [TomField] — one typed, observable, validating value; the concretes
 ///   ([TomFormStringInput] and its siblings) only add the rendering.
-/// - [FormFieldFamily] — the factory that picks the Material or Cupertino
+/// - [TomFormFieldFamily] — the factory that picks the Material or Cupertino
 ///   concrete for a declared field kind.
 ///
-/// Validation lives under `validation/` ([Validators],
-/// [TomValidatorRegistry], [ValidationResult]), styling under `style/`
+/// Validation lives under `validation/` ([TomValidators],
+/// [TomValidatorRegistry], [TomValidationResult]), styling under `style/`
 /// ([TomFormStyle]), and list-shaped forms under `list/` ([TomListForm]).
 ///
 /// Prose: `doc/forms.md`.
@@ -118,5 +118,5 @@ export 'fields/cupertino/tom_cupertino_form_search_lookup_fields.dart';
 export 'fields/cupertino/tom_cupertino_form_file_field.dart';
 export 'fields/cupertino/tom_cupertino_form_nullable_inputs.dart';
 
-// FormFieldFamily factory (Material vs Cupertino concrete picker)
+// TomFormFieldFamily factory (Material vs Cupertino concrete picker)
 export 'form_field_family.dart';

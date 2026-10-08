@@ -2,9 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void main() {
-  group('SelectableItem', () {
+  group('TomSelectableItem', () {
     test('stores value, label, description, enabled', () {
-      const item = SelectableItem(
+      const item = TomSelectableItem(
         value: 42,
         label: 'Forty-Two',
         description: 'The answer',
@@ -18,49 +18,49 @@ void main() {
     });
 
     test('enabled defaults to true', () {
-      const item = SelectableItem(value: 1, label: 'One');
+      const item = TomSelectableItem(value: 1, label: 'One');
       expect(item.enabled, true);
     });
 
     test('description defaults to null', () {
-      const item = SelectableItem(value: 1, label: 'One');
+      const item = TomSelectableItem(value: 1, label: 'One');
       expect(item.description, isNull);
     });
 
     test('equality based on value', () {
-      const a = SelectableItem(value: 1, label: 'One');
-      const b = SelectableItem(value: 1, label: 'Different Label');
-      const c = SelectableItem(value: 2, label: 'One');
+      const a = TomSelectableItem(value: 1, label: 'One');
+      const b = TomSelectableItem(value: 1, label: 'Different Label');
+      const c = TomSelectableItem(value: 2, label: 'One');
 
       expect(a, equals(b));
       expect(a, isNot(equals(c)));
     });
 
     test('hashCode based on value', () {
-      const a = SelectableItem(value: 1, label: 'One');
-      const b = SelectableItem(value: 1, label: 'Other');
+      const a = TomSelectableItem(value: 1, label: 'One');
+      const b = TomSelectableItem(value: 1, label: 'Other');
 
       expect(a.hashCode, equals(b.hashCode));
     });
 
     test('toString provides readable representation', () {
-      const item = SelectableItem(value: 1, label: 'One');
+      const item = TomSelectableItem(value: 1, label: 'One');
       expect(item.toString(), contains('One'));
       expect(item.toString(), contains('1'));
     });
 
     test('toString indicates disabled state', () {
-      const item = SelectableItem(value: 1, label: 'One', enabled: false);
+      const item = TomSelectableItem(value: 1, label: 'One', enabled: false);
       expect(item.toString(), contains('disabled'));
     });
   });
 
-  group('StaticSelectableSource', () {
+  group('TomStaticSelectableSource', () {
     test('returns all items', () async {
-      final source = StaticSelectableSource([
-        const SelectableItem(value: 'a', label: 'Alpha'),
-        const SelectableItem(value: 'b', label: 'Beta'),
-        const SelectableItem(value: 'c', label: 'Charlie'),
+      final source = TomStaticSelectableSource([
+        const TomSelectableItem(value: 'a', label: 'Alpha'),
+        const TomSelectableItem(value: 'b', label: 'Beta'),
+        const TomSelectableItem(value: 'c', label: 'Charlie'),
       ]);
 
       final items = await source.getItems();
@@ -71,26 +71,26 @@ void main() {
     });
 
     test('returns unmodifiable list', () async {
-      final source = StaticSelectableSource([
-        const SelectableItem(value: 1, label: 'One'),
+      final source = TomStaticSelectableSource([
+        const TomSelectableItem(value: 1, label: 'One'),
       ]);
 
       final items = await source.getItems();
       expect(
-        () => items.add(const SelectableItem(value: 2, label: 'Two')),
+        () => items.add(const TomSelectableItem(value: 2, label: 'Two')),
         throwsA(isA<UnsupportedError>()),
       );
     });
 
     test('returns empty list for empty source', () async {
-      final source = StaticSelectableSource<String>([]);
+      final source = TomStaticSelectableSource<String>([]);
       final items = await source.getItems();
       expect(items, isEmpty);
     });
 
     test('itemsStream is null (static source)', () {
-      final source = StaticSelectableSource([
-        const SelectableItem(value: 1, label: 'One'),
+      final source = TomStaticSelectableSource([
+        const TomSelectableItem(value: 1, label: 'One'),
       ]);
 
       expect(source.itemsStream, isNull);
@@ -100,8 +100,8 @@ void main() {
   group('TomMutableSelectableSource', () {
     TomMutableSelectableSource<String> newSource() {
       final source = TomMutableSelectableSource<String>([
-        const SelectableItem(value: 'a', label: 'Alpha'),
-        const SelectableItem(value: 'b', label: 'Beta'),
+        const TomSelectableItem(value: 'a', label: 'Alpha'),
+        const TomSelectableItem(value: 'b', label: 'Beta'),
       ]);
       addTearDown(source.dispose);
       return source;
@@ -116,11 +116,11 @@ void main() {
 
     test('copies the initial list, so the caller cannot mutate it behind '
         'the source', () async {
-      final initial = [const SelectableItem(value: 'a', label: 'Alpha')];
+      final initial = [const TomSelectableItem(value: 'a', label: 'Alpha')];
       final source = TomMutableSelectableSource<String>(initial);
       addTearDown(source.dispose);
 
-      initial.add(const SelectableItem(value: 'b', label: 'Beta'));
+      initial.add(const TomSelectableItem(value: 'b', label: 'Beta'));
 
       expect(source.items, hasLength(1));
     });
@@ -128,7 +128,7 @@ void main() {
     test('setItems replaces the catalogue', () async {
       final source = newSource();
 
-      source.setItems([const SelectableItem(value: 'c', label: 'Charlie')]);
+      source.setItems([const TomSelectableItem(value: 'c', label: 'Charlie')]);
 
       expect(source.items.map((i) => i.value), ['c']);
       expect((await source.getItems()).map((i) => i.value), ['c']);
@@ -142,8 +142,8 @@ void main() {
       );
       addTearDown(sub.cancel);
 
-      source.setItems([const SelectableItem(value: 'c', label: 'Charlie')]);
-      source.setItems([const SelectableItem(value: 'd', label: 'Delta')]);
+      source.setItems([const TomSelectableItem(value: 'c', label: 'Charlie')]);
+      source.setItems([const TomSelectableItem(value: 'd', label: 'Delta')]);
       await Future<void>.delayed(Duration.zero);
 
       expect(seen, [
@@ -166,7 +166,7 @@ void main() {
 
     test('items and getItems return unmodifiable lists', () async {
       final source = newSource();
-      const extra = SelectableItem(value: 'z', label: 'Zulu');
+      const extra = TomSelectableItem(value: 'z', label: 'Zulu');
 
       expect(() => source.items.add(extra), throwsUnsupportedError);
       expect(
@@ -196,7 +196,8 @@ void main() {
       source.dispose();
 
       expect(
-        () => source.setItems(const [SelectableItem(value: 'c', label: 'C')]),
+        () =>
+            source.setItems(const [TomSelectableItem(value: 'c', label: 'C')]),
         throwsA(isA<StateError>()),
       );
     });

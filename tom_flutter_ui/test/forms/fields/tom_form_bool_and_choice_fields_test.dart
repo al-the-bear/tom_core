@@ -12,10 +12,10 @@ Widget _wrap(Widget child, {TomFormStyle? style}) {
   );
 }
 
-TomSelectableSource<String> _threeOptions() => StaticSelectableSource([
-  const SelectableItem(value: 'a', label: 'Apple'),
-  const SelectableItem(value: 'b', label: 'Banana'),
-  const SelectableItem(value: 'c', label: 'Cherry'),
+TomSelectableSource<String> _threeOptions() => TomStaticSelectableSource([
+  const TomSelectableItem(value: 'a', label: 'Apple'),
+  const TomSelectableItem(value: 'b', label: 'Banana'),
+  const TomSelectableItem(value: 'c', label: 'Cherry'),
 ]);
 
 void main() {

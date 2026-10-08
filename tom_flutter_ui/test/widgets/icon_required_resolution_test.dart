@@ -32,7 +32,7 @@ void _installResources(Map<String, dynamic> tree) {
 }
 
 void main() {
-  setUpAll(() => TomUIIcons.adapter = AllIconsAdapter());
+  setUpAll(() => TomUIIcons.adapter = TomAllIconsAdapter());
 
   tearDown(() => _installResources(<String, dynamic>{}));
 
@@ -144,7 +144,7 @@ void main() {
     // does not supply is a legitimate no-icon `Icon(null)`, which is why this
     // is not a second `…OrFail` site.
 
-    tearDown(AllIconsAdapter.clearCustomIcons);
+    tearDown(TomAllIconsAdapter.clearCustomIcons);
 
     testWidgets('tcinc791-09: a resource icon name is resolved', (
       tester,
@@ -167,7 +167,7 @@ void main() {
     testWidgets(
       'tcinc791-11: an icon named like a key is not mistaken for one',
       (tester) async {
-        AllIconsAdapter.registerIcons(<String, IconData>{
+        TomAllIconsAdapter.registerIcons(<String, IconData>{
           'brand.icon': Icons.star,
         });
         _installResources(<String, dynamic>{

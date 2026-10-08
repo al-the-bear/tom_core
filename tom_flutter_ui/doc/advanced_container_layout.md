@@ -76,7 +76,7 @@ direction — so this index is complete by construction rather than by review.
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
 | `AclFlags` | class | AWT-style attribute bit constants (`expandX`, `expandY`, …). |
-| `RowAlignment` | enum | Horizontal row packing (`left` / `center` / `right`). |
+| `AclRowAlignment` | enum | Horizontal row packing (`left` / `center` / `right`). |
 | `AclRowCrossAlignment` | enum | Vertical placement of a component within its row (`top` / `center` / `bottom`). |
 | `AclAxisPointX` / `AclAxisPointY` | enum | The edge and centre anchors the `alignX*` / `alignY*` families record on `AclComponent`. Not passed directly — the named methods write them. |
 
@@ -246,7 +246,7 @@ guard against overflow.
 
 ## Row alignment
 
-`RowAlignment` (`left` / `center` / `right`) controls a row's horizontal
+`AclRowAlignment` (`left` / `center` / `right`) controls a row's horizontal
 packing. Set it per row with `setRowHorizontalAlignment`, or via the
 extension shortcuts `setRowAlignLeft` / `setRowAlignCenter` /
 `setRowAlignRight`. Vertical (cross-axis) packing uses `AclRowCrossAlignment`,
@@ -265,7 +265,7 @@ final Acl centred = AclBuilder()
     .append(const Text('one'))
     .newRow()
     .append(const Text('two'))
-    .setAclDefaultRowHorizontalAlignment(RowAlignment.center)
+    .setAclDefaultRowHorizontalAlignment(AclRowAlignment.center)
     .build();
 ```
 
@@ -402,7 +402,7 @@ gapRow(separator: const AclSeparator(
 | `alignment` | `AclSeparatorAlignment` | `middle` | `top` / `middle` / `bottom` of the gap row's computed height. |
 
 The rule spans the full container width — it is not affected by
-[`RowAlignment`](#row-alignment), which packs components rather than chrome.
+[`AclRowAlignment`](#row-alignment), which packs components rather than chrome.
 
 ## Container borders
 
@@ -560,8 +560,8 @@ Under `rtl`:
 
 1. **Component order within a row** reverses — the first appended component
    renders on the right.
-2. **Row alignment flips**: `RowAlignment.left` packs from the right edge and
-   `RowAlignment.right` from the left.
+2. **Row alignment flips**: `AclRowAlignment.left` packs from the right edge and
+   `AclRowAlignment.right` from the left.
 3. **Horizontal offsets are negated**, so `alignX*` cross-row references keep
    pointing at the correct visual position.
 4. **Padding** swaps its `left` and `right` sides.

@@ -38,7 +38,7 @@ shipped class in the right column.
 | Named in this spec | Shipped as | Where |
 | ------------------ | ---------- | ----- |
 | `TomStringFormField` | `TomFormStringField` / `TomFormStringInput` | `forms/fields/tom_form_string_field.dart` |
-| `TomEmailFormField` | `TomFormStringInput` (+ `Validators.email()`) | `forms/fields/tom_form_string_field.dart` |
+| `TomEmailFormField` | `TomFormStringInput` (+ `TomValidators.email()`) | `forms/fields/tom_form_string_field.dart` |
 | `TomPasswordFormField` | `TomFormStringInput` (`obscureText: true`) | `forms/fields/tom_form_string_field.dart` |
 | `TomIntFormField` | `TomFormIntInput` | `forms/fields/tom_form_int_field.dart` |
 | `TomDoubleFormField` | `TomFormDoubleInput` | `forms/fields/tom_form_double_field.dart` |
@@ -55,7 +55,7 @@ shipped class in the right column.
 | `TomZoned` | `TomZonedDate` / `TomZonedTime` / `TomZonedDateTime` | `tom_core_kernel/.../timezoned/` |
 | `TomDatePicker` / `TomTimePicker` / `TomDateTimePicker` / `TomDateRangePicker` | `TomFormDatePicker` / `TomFormTimePicker` / `TomFormDateTimePicker` / `TomFormDateRangePicker` (+ `TomFormDateCalendar`, `TomFormDateTextInput`) | `forms/fields/tom_form_date_time_fields.dart` |
 | `TomDateTimePickerFamilyBase` | `TomFormDateField` / `TomFormTimeField` / `TomFormDateTimeField` / `TomFormTimeRangeField` / `TomFormDateTimeRangeField` | `forms/fields/tom_form_date_time_fields.dart` |
-| `TomFilePicker` / `TomFileRef` | `TomFormFileUpload` / `TomFormFileDropzone` (base `TomFormFileField`, value type `FileRef`) | `forms/fields/tom_form_file_field.dart` |
+| `TomFilePicker` / `TomFileRef` | `TomFormFileUpload` / `TomFormFileDropzone` (base `TomFormFileField`, value type `TomFileRef`) | `forms/fields/tom_form_file_field.dart` |
 | `TomMasterDetail` | `TomMasterDetailListForm` (+ `TomListForm`, `TomListFormToolbar`) | `forms/list/` |
 | `TomChoiceList` | `TomFormStringDropdown` / `TomFormEnumDropdown` / `TomListForm` | `forms/fields/`, `forms/list/` |
 | `TomSearchFieldFamilyBase` | `TomFormSearchField` / `TomFormLookupField` (concrete `TomFormSearchInput` / `TomFormLookupDialog`) | `forms/fields/tom_form_search_lookup_fields.dart` |
@@ -1620,7 +1620,7 @@ Concrete implementations: `TomTextFormFieldBase<T>` (with `TextEditingController
 
 | Class | Type | Description |
 |-------|------|-------------|
-| `TomFormStringInput` | `String` | Standard text input; `obscureText: true` for passwords, `Validators.email()` for email |
+| `TomFormStringInput` | `String` | Standard text input; `obscureText: true` for passwords, `TomValidators.email()` for email |
 | `TomFormIntInput` | `int` | Integer with optional min/max |
 | `TomFormDoubleInput` | `double` | Decimal with optional min/max |
 
@@ -1680,7 +1680,7 @@ They have their own family bases and internally compose widgets from other famil
 | DateTimePicker | `TomFormDateField` / `TomFormTimeField` / `TomFormDateTimeField` | `TomObject<T>` read/write (`DateTime` / `TimeOfDay`) via validation buffer | `TomFormDatePicker` / `TomFormTimePicker` / `TomFormDateTimePicker` / `TomFormDateRangePicker` / `TomFormDateCalendar` / `TomFormDateTextInput` | Input, Button, Dialog families |
 | MasterDetail | `TomMasterDetailListForm` | Read from `TomList`; edit via detail `TomForm` | List/tree + detail edit form pattern | List or Tree, Container, FormField families |
 | SearchField | `TomFormSearchField` / `TomFormLookupField` (concrete `TomFormSearchInput` / `TomFormLookupDialog`) | `TomObject<T>` read/write (selected); search source from data source or static list | Input with live search, dropdown results, selection | Input, List, Container families |
-| FileUpload | `TomFormFileUpload` / `TomFormFileDropzone` (base `TomFormFileField`) | `TomObject<FileRef?>` read/write | File selection, preview, progress | Button, Progress, Label families |
+| FileUpload | `TomFormFileUpload` / `TomFormFileDropzone` (base `TomFormFileField`) | `TomObject<TomFileRef?>` read/write | File selection, preview, progress | Button, Progress, Label families |
 
 > **Note — paginated data-source layer (retained-intended, Appendix A.1).** The
 > component families above ship today over observable `TomList` collections:
@@ -2113,7 +2113,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   bool get isDirty => get() != _initialValue;
 
   /// Validates the current edit state.
-  Future<ValidationResult> validate();
+  Future<TomValidationResult> validate();
 
   /// Accepts the current value as the new baseline.
   void commit();
@@ -2155,7 +2155,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
   void discard();
 
   /// The collected validation errors of this form and everything under it.
-  Future<List<FormValidationError>> validate();
+  Future<List<TomFormValidationError>> validate();
 }
 ```
 
@@ -2215,14 +2215,14 @@ class ProfileForm extends TomForm<UserProfile> {
     'firstName',
     '',
     form: this,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final lastName = TomFormStringInput(
     'lastName',
     '',
     form: this,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final email = TomFormStringInput(
@@ -2230,7 +2230,7 @@ class ProfileForm extends TomForm<UserProfile> {
     '',
     form: this,
     keyboardType: TextInputType.emailAddress,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final birthDate = TomFormDatePicker(

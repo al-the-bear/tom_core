@@ -73,7 +73,7 @@ class _ComponentData {
 
 class _RowData {
   List<_ComponentData> components = [];
-  RowAlignment alignment = RowAlignment.left;
+  AclRowAlignment alignment = AclRowAlignment.left;
 
   /// Whether [alignment] was set explicitly via `setRowHorizontalAlignment`
   /// (as opposed to inherited from the builder-wide default at row creation).

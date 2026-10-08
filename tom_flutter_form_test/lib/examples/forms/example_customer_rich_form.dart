@@ -14,7 +14,7 @@ import '../state/example_state.dart';
 //     - orders    → ExampleOrderListForm    (each row → ExampleOrderForm)
 //                                             which owns its own items list
 //
-// Every field is created through a [FormFieldFamily] factory so the same
+// Every field is created through a [TomFormFieldFamily] factory so the same
 // form classes render natively in both Material and Cupertino — only the
 // `family` parameter passed at construction time changes between the two
 // example screens.
@@ -32,18 +32,18 @@ import '../state/example_state.dart';
 // ---------------------------------------------------------------------------
 @tomReflector
 class ExampleOrderItemForm extends TomForm<ExampleOrderItem> {
-  ExampleOrderItemForm({required FormFieldFamily family})
+  ExampleOrderItemForm({required TomFormFieldFamily family})
     : _f = family,
       super(formId: 'exampleOrderItem');
 
-  final FormFieldFamily _f;
+  final TomFormFieldFamily _f;
 
   late final productName = _f.stringInput(
     'productName',
     '',
     form: this,
     labelTextOverride: 'Product',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final quantity = _f.intInput(
@@ -51,7 +51,7 @@ class ExampleOrderItemForm extends TomForm<ExampleOrderItem> {
     1,
     form: this,
     labelTextOverride: 'Qty',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final unitPrice = _f.doubleInput(
@@ -60,7 +60,7 @@ class ExampleOrderItemForm extends TomForm<ExampleOrderItem> {
     form: this,
     labelTextOverride: 'Unit price',
     decimals: 2,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final notes = _f.nStringInput(
@@ -80,11 +80,13 @@ class ExampleOrderItemForm extends TomForm<ExampleOrderItem> {
 @tomReflector
 class ExampleOrderItemListForm
     extends TomListForm<ExampleOrderItem, ExampleOrderItemForm> {
-  ExampleOrderItemListForm({required FormFieldFamily family, super.parentForm})
-    : super(
-        listId: 'exampleOrderItem',
-        formFactory: (_) => ExampleOrderItemForm(family: family),
-      );
+  ExampleOrderItemListForm({
+    required TomFormFieldFamily family,
+    super.parentForm,
+  }) : super(
+         listId: 'exampleOrderItem',
+         formFactory: (_) => ExampleOrderItemForm(family: family),
+       );
 
   @override
   ExampleOrderItem createItem() {
@@ -101,18 +103,18 @@ class ExampleOrderItemListForm
 // ---------------------------------------------------------------------------
 @tomReflector
 class ExampleOrderForm extends TomForm<ExampleOrder> {
-  ExampleOrderForm({required FormFieldFamily family})
+  ExampleOrderForm({required TomFormFieldFamily family})
     : _f = family,
       super(formId: 'exampleOrder');
 
-  final FormFieldFamily _f;
+  final TomFormFieldFamily _f;
 
   late final orderId = _f.stringInput(
     'orderId',
     '',
     form: this,
     labelTextOverride: 'Order ID',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final orderDate = _f.datePicker(
@@ -172,7 +174,7 @@ class ExampleOrderForm extends TomForm<ExampleOrder> {
 
 @tomReflector
 class ExampleOrderListForm extends TomListForm<ExampleOrder, ExampleOrderForm> {
-  ExampleOrderListForm({required FormFieldFamily family, super.parentForm})
+  ExampleOrderListForm({required TomFormFieldFamily family, super.parentForm})
     : super(
         listId: 'exampleOrder',
         formFactory: (_) => ExampleOrderForm(family: family),
@@ -195,18 +197,18 @@ class ExampleOrderListForm extends TomListForm<ExampleOrder, ExampleOrderForm> {
 // ---------------------------------------------------------------------------
 @tomReflector
 class ExampleAddressForm extends TomForm<ExampleAddress> {
-  ExampleAddressForm({required FormFieldFamily family})
+  ExampleAddressForm({required TomFormFieldFamily family})
     : _f = family,
       super(formId: 'exampleAddress');
 
-  final FormFieldFamily _f;
+  final TomFormFieldFamily _f;
 
   late final label = _f.stringInput(
     'label',
     '',
     form: this,
     labelTextOverride: 'Label',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final line1 = _f.stringInput(
@@ -214,7 +216,7 @@ class ExampleAddressForm extends TomForm<ExampleAddress> {
     '',
     form: this,
     labelTextOverride: 'Address line 1',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final city = _f.stringInput(
@@ -222,7 +224,7 @@ class ExampleAddressForm extends TomForm<ExampleAddress> {
     '',
     form: this,
     labelTextOverride: 'City',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final country = _f.stringInput(
@@ -230,7 +232,7 @@ class ExampleAddressForm extends TomForm<ExampleAddress> {
     '',
     form: this,
     labelTextOverride: 'Country',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   @override
@@ -240,7 +242,7 @@ class ExampleAddressForm extends TomForm<ExampleAddress> {
 @tomReflector
 class ExampleAddressListForm
     extends TomListForm<ExampleAddress, ExampleAddressForm> {
-  ExampleAddressListForm({required FormFieldFamily family, super.parentForm})
+  ExampleAddressListForm({required TomFormFieldFamily family, super.parentForm})
     : super(
         listId: 'exampleAddress',
         formFactory: (_) => ExampleAddressForm(family: family),
@@ -270,11 +272,11 @@ class ExampleAddressListForm
 // ---------------------------------------------------------------------------
 @tomReflector
 class ExampleCustomerRichForm extends TomForm<ExampleCustomerRich> {
-  ExampleCustomerRichForm({required FormFieldFamily family})
+  ExampleCustomerRichForm({required TomFormFieldFamily family})
     : _f = family,
       super(formId: 'exampleCustomer');
 
-  final FormFieldFamily _f;
+  final TomFormFieldFamily _f;
 
   // --- Strings -----------------------------------------------------------
   late final fullName = _f.stringInput(
@@ -282,7 +284,7 @@ class ExampleCustomerRichForm extends TomForm<ExampleCustomerRich> {
     '',
     form: this,
     labelTextOverride: 'Full name',
-    validators: [Validators.required(), Validators.minLength(2)],
+    validators: [TomValidators.required(), TomValidators.minLength(2)],
   );
 
   late final email = _f.stringInput(
@@ -290,7 +292,7 @@ class ExampleCustomerRichForm extends TomForm<ExampleCustomerRich> {
     '',
     form: this,
     labelTextOverride: 'Email',
-    validators: [Validators.required(), Validators.email()],
+    validators: [TomValidators.required(), TomValidators.email()],
   );
 
   late final phone = _f.stringInput(
@@ -314,7 +316,7 @@ class ExampleCustomerRichForm extends TomForm<ExampleCustomerRich> {
     form: this,
     source: _tierOptions,
     labelTextOverride: 'Tier',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   // --- Bool / int / double / date ---------------------------------------
@@ -378,15 +380,15 @@ class ExampleCustomerRichForm extends TomForm<ExampleCustomerRich> {
 // ---------------------------------------------------------------------------
 // Static selectable sources — referenced by the form fields above
 // ---------------------------------------------------------------------------
-final _tierOptions = StaticSelectableSource<String>(const [
-  SelectableItem(value: 'standard', label: 'Standard'),
-  SelectableItem(value: 'silver', label: 'Silver'),
-  SelectableItem(value: 'gold', label: 'Gold'),
-  SelectableItem(value: 'platinum', label: 'Platinum'),
+final _tierOptions = TomStaticSelectableSource<String>(const [
+  TomSelectableItem(value: 'standard', label: 'Standard'),
+  TomSelectableItem(value: 'silver', label: 'Silver'),
+  TomSelectableItem(value: 'gold', label: 'Gold'),
+  TomSelectableItem(value: 'platinum', label: 'Platinum'),
 ]);
 
-final _priorityOptions = StaticSelectableSource<String>(const [
-  SelectableItem(value: 'standard', label: 'Standard'),
-  SelectableItem(value: 'priority', label: 'Priority'),
-  SelectableItem(value: 'overnight', label: 'Overnight'),
+final _priorityOptions = TomStaticSelectableSource<String>(const [
+  TomSelectableItem(value: 'standard', label: 'Standard'),
+  TomSelectableItem(value: 'priority', label: 'Priority'),
+  TomSelectableItem(value: 'overnight', label: 'Overnight'),
 ]);

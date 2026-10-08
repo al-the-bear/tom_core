@@ -67,7 +67,7 @@ class AclBuilder {
   Size? _defaultUnknownMinimumSize;
   Size? _defaultUnknownPreferredSize;
   AclRowCrossAlignment _defaultRowVerticalAlignment = AclRowCrossAlignment.top;
-  RowAlignment _defaultRowHorizontalAlignment = RowAlignment.left;
+  AclRowAlignment _defaultRowHorizontalAlignment = AclRowAlignment.left;
   AclBorderStyle _borderStyle = const AclBorderStyle.none();
   AclBorderStyle? _focusedBorderStyle;
   EdgeInsetsGeometry _padding = EdgeInsets.zero;

@@ -16,7 +16,7 @@ void main() {
     });
 
     test('collects field value changed events', () {
-      final event = FieldValueChangedEvent(
+      final event = TomFieldValueChangedEvent(
         source: 'name',
         oldValue: 'A',
         newValue: 'B',
@@ -30,55 +30,59 @@ void main() {
 
     test('collects all event types', () {
       inspector.onFieldValueChanged(
-        FieldValueChangedEvent(source: 'f1', oldValue: 'a', newValue: 'b'),
+        TomFieldValueChangedEvent(source: 'f1', oldValue: 'a', newValue: 'b'),
       );
       inspector.onFieldValidated(
-        FieldValidatedEvent(source: 'f1', result: 'ok'),
+        TomFieldValidatedEvent(source: 'f1', result: 'ok'),
       );
       inspector.onFieldAuthChanged(
-        FieldAuthChangedEvent(source: 'f1', oldState: 'full', newState: 'read'),
+        TomFieldAuthChangedEvent(
+          source: 'f1',
+          oldState: 'full',
+          newState: 'read',
+        ),
       );
-      inspector.onFieldBound(FieldBoundEvent(source: 'f1'));
-      inspector.onFieldCommitted(FieldCommittedEvent(source: 'f1'));
-      inspector.onFormBound(FormBoundEvent(source: 'form1'));
-      inspector.onFormSaved(FormSavedEvent(source: 'form1'));
-      inspector.onFormDiscarded(FormDiscardedEvent(source: 'form1'));
+      inspector.onFieldBound(TomFieldBoundEvent(source: 'f1'));
+      inspector.onFieldCommitted(TomFieldCommittedEvent(source: 'f1'));
+      inspector.onFormBound(TomFormBoundEvent(source: 'form1'));
+      inspector.onFormSaved(TomFormSavedEvent(source: 'form1'));
+      inspector.onFormDiscarded(TomFormDiscardedEvent(source: 'form1'));
 
       expect(inspector.length, 8);
     });
 
     test('ofType filters by event type', () {
-      inspector.onFieldValueChanged(FieldValueChangedEvent(source: 'f1'));
+      inspector.onFieldValueChanged(TomFieldValueChangedEvent(source: 'f1'));
       inspector.onFieldValidated(
-        FieldValidatedEvent(source: 'f1', result: 'ok'),
+        TomFieldValidatedEvent(source: 'f1', result: 'ok'),
       );
-      inspector.onFieldValueChanged(FieldValueChangedEvent(source: 'f2'));
-      inspector.onFormSaved(FormSavedEvent(source: 'form'));
+      inspector.onFieldValueChanged(TomFieldValueChangedEvent(source: 'f2'));
+      inspector.onFormSaved(TomFormSavedEvent(source: 'form'));
 
-      final valueChanges = inspector.ofType<FieldValueChangedEvent>();
+      final valueChanges = inspector.ofType<TomFieldValueChangedEvent>();
       expect(valueChanges, hasLength(2));
       expect(valueChanges[0].source, 'f1');
       expect(valueChanges[1].source, 'f2');
 
-      final saves = inspector.ofType<FormSavedEvent>();
+      final saves = inspector.ofType<TomFormSavedEvent>();
       expect(saves, hasLength(1));
     });
 
     test('ofType returns empty for unrecorded types', () {
-      inspector.onFieldValueChanged(FieldValueChangedEvent(source: 'f1'));
+      inspector.onFieldValueChanged(TomFieldValueChangedEvent(source: 'f1'));
 
-      expect(inspector.ofType<FormDiscardedEvent>(), isEmpty);
+      expect(inspector.ofType<TomFormDiscardedEvent>(), isEmpty);
     });
 
     test('fromSource filters by source', () {
       inspector.onFieldValueChanged(
-        FieldValueChangedEvent(source: 'name', oldValue: 'A', newValue: 'B'),
+        TomFieldValueChangedEvent(source: 'name', oldValue: 'A', newValue: 'B'),
       );
       inspector.onFieldValidated(
-        FieldValidatedEvent(source: 'name', result: 'ok'),
+        TomFieldValidatedEvent(source: 'name', result: 'ok'),
       );
       inspector.onFieldValueChanged(
-        FieldValueChangedEvent(source: 'email', oldValue: '', newValue: 'x'),
+        TomFieldValueChangedEvent(source: 'email', oldValue: '', newValue: 'x'),
       );
 
       final nameEvents = inspector.fromSource('name');
@@ -92,8 +96,8 @@ void main() {
     });
 
     test('clear removes all events', () {
-      inspector.onFieldValueChanged(FieldValueChangedEvent(source: 'f1'));
-      inspector.onFormSaved(FormSavedEvent(source: 'form'));
+      inspector.onFieldValueChanged(TomFieldValueChangedEvent(source: 'f1'));
+      inspector.onFormSaved(TomFormSavedEvent(source: 'form'));
       expect(inspector.length, 2);
 
       inspector.clear();
@@ -104,18 +108,18 @@ void main() {
     });
 
     test('events returns unmodifiable list', () {
-      inspector.onFieldBound(FieldBoundEvent(source: 'f1'));
+      inspector.onFieldBound(TomFieldBoundEvent(source: 'f1'));
 
       expect(
-        () => inspector.events.add(FormSavedEvent(source: 'x')),
+        () => inspector.events.add(TomFormSavedEvent(source: 'x')),
         throwsA(isA<UnsupportedError>()),
       );
     });
 
     test('events maintain insertion order', () {
-      inspector.onFieldBound(FieldBoundEvent(source: 'first'));
-      inspector.onFieldCommitted(FieldCommittedEvent(source: 'second'));
-      inspector.onFormSaved(FormSavedEvent(source: 'third'));
+      inspector.onFieldBound(TomFieldBoundEvent(source: 'first'));
+      inspector.onFieldCommitted(TomFieldCommittedEvent(source: 'second'));
+      inspector.onFormSaved(TomFormSavedEvent(source: 'third'));
 
       expect(inspector.events[0].source, 'first');
       expect(inspector.events[1].source, 'second');

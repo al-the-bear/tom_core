@@ -5,12 +5,12 @@ void main() {
   group('TomFieldStyle — defaults', () {
     test('canonical untouched defaults', () {
       const s = TomFieldStyle();
-      expect(s.labelPlacement, LabelPlacement.above);
-      expect(s.errorPlacement, ErrorPlacement.below);
-      expect(s.requiredIndicator, RequiredIndicator.asterisk);
-      expect(s.requiredIndicatorOnHint, RequiredIndicator.none);
-      expect(s.descriptionPlacement, DescriptionPlacement.below);
-      expect(s.actionIconPlacement, ActionIconPlacement.trailing);
+      expect(s.labelPlacement, TomLabelPlacement.above);
+      expect(s.errorPlacement, TomErrorPlacement.below);
+      expect(s.requiredIndicator, TomRequiredIndicator.asterisk);
+      expect(s.requiredIndicatorOnHint, TomRequiredIndicator.none);
+      expect(s.descriptionPlacement, TomDescriptionPlacement.below);
+      expect(s.actionIconPlacement, TomActionIconPlacement.trailing);
       expect(s.labelFieldGap, 4.0);
       expect(s.errorFieldGap, 4.0);
       expect(s.borderRadius, 8.0);
@@ -84,10 +84,10 @@ void main() {
     test('replaces named fields only', () {
       const base = TomFieldStyle();
       final next = base.copyWith(
-        labelPlacement: LabelPlacement.floating,
+        labelPlacement: TomLabelPlacement.floating,
         borderRadius: 16.0,
       );
-      expect(next.labelPlacement, LabelPlacement.floating);
+      expect(next.labelPlacement, TomLabelPlacement.floating);
       expect(next.borderRadius, 16.0);
       expect(next.labelFieldGap, base.labelFieldGap);
       expect(next.errorPlacement, base.errorPlacement);

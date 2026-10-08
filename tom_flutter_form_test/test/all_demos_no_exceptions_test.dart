@@ -49,7 +49,7 @@ const List<String> kAllDemoTiles = [
   'Demo M: Material vs Cupertino (Phase 5a)',
   'Demo N: Cupertino numeric + date/time (Phase 5b)',
   'Demo O: Cupertino search / lookup / file (Phase 5c)',
-  'Demo P: FormFieldFamily swap by breakpoint (Phase 5c)',
+  'Demo P: TomFormFieldFamily swap by breakpoint (Phase 5c)',
   'Demo Q: Auth / Empty / Overlay (Phase 6)',
   'Demo R: Tree / Radio / Infinite scroll (Phase 6)',
   // Reference / supporting numbered demos

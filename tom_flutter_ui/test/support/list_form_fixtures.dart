@@ -82,7 +82,7 @@ class OrderItemForm extends TomForm<OrderItem> {
     'product',
     '',
     form: this,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final quantity = TomFormStringInput('quantity', '1', form: this);
@@ -128,14 +128,14 @@ class TwoRequiredFieldsForm extends TomForm<OrderItem> {
     'product',
     '',
     form: this,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final quantity = TomFormStringInput(
     'quantity',
     '',
     form: this,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   @override
@@ -162,7 +162,7 @@ class AddressForm extends TomForm<Address> {
     'street',
     '',
     form: this,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final city = TomFormStringInput('city', '', form: this);

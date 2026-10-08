@@ -44,7 +44,7 @@ mixin TomGenericFieldDecorationMixin<T> on TomField<T> {
 
   /// Text suffix for the required indicator, suitable for appending to
   /// plain-text slots. Same semantics as the string-input mixin.
-  String requiredIndicatorSuffix(RequiredIndicator kind) {
+  String requiredIndicatorSuffix(TomRequiredIndicator kind) {
     return requiredIndicatorSuffixFor(
       kind,
       hasRequired: hasRequiredValidator,

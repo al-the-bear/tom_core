@@ -39,7 +39,7 @@ mixin TomDropdownDecorationMixin<T> on TomField<T> {
   }
 
   /// Text suffix for the required indicator.
-  String requiredIndicatorSuffix(RequiredIndicator kind) {
+  String requiredIndicatorSuffix(TomRequiredIndicator kind) {
     return requiredIndicatorSuffixFor(
       kind,
       hasRequired: hasRequiredValidator,

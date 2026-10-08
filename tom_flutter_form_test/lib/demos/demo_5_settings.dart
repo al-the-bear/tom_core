@@ -14,7 +14,7 @@ import '../state/application_state.dart';
 /// Demonstrates:
 /// - Multiple TomFormStringDropdown fields
 /// - Compact form style (TomFormStyle.compact)
-/// - StaticSelectableSource with descriptions (timezone)
+/// - TomStaticSelectableSource with descriptions (timezone)
 /// - Locale / currency pattern validators
 /// - Field labels/hints resolved from resources (scope: companySettings)
 /// - Container title / padding / borderStyle from resources
@@ -91,8 +91,8 @@ class _Demo5SettingsFormState extends State<Demo5SettingsForm> {
                       'Form Features:',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    Text('• Dropdown fields with StaticSelectableSource'),
-                    Text('• SelectableItem with descriptions (timezone)'),
+                    Text('• Dropdown fields with TomStaticSelectableSource'),
+                    Text('• TomSelectableItem with descriptions (timezone)'),
                     Text('• Pattern validation for locale (e.g., en_US)'),
                     Text('• Pattern validation for currency (e.g., USD)'),
                     Text('• Compact form style'),

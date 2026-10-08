@@ -24,7 +24,7 @@ class CustomerDetailForm extends TomForm<Customer> {
     '',
     form: this,
     labelTextOverride: 'Full name',
-    validators: [Validators.required(), Validators.minLength(2)],
+    validators: [TomValidators.required(), TomValidators.minLength(2)],
   );
 
   late final email = TomFormStringInput(
@@ -33,7 +33,7 @@ class CustomerDetailForm extends TomForm<Customer> {
     form: this,
     labelTextOverride: 'Email',
     keyboardType: TextInputType.emailAddress,
-    validators: [Validators.required(), Validators.email()],
+    validators: [TomValidators.required(), TomValidators.email()],
   );
 
   late final phone = TomFormStringInput(
@@ -56,7 +56,7 @@ class CustomerDetailForm extends TomForm<Customer> {
     'standard',
     form: this,
     source: _tierSource,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   @override
@@ -66,9 +66,9 @@ class CustomerDetailForm extends TomForm<Customer> {
   }
 }
 
-final _tierSource = StaticSelectableSource<String>([
-  const SelectableItem(value: 'standard', label: 'Standard'),
-  const SelectableItem(value: 'silver', label: 'Silver'),
-  const SelectableItem(value: 'gold', label: 'Gold'),
-  const SelectableItem(value: 'platinum', label: 'Platinum'),
+final _tierSource = TomStaticSelectableSource<String>([
+  const TomSelectableItem(value: 'standard', label: 'Standard'),
+  const TomSelectableItem(value: 'silver', label: 'Silver'),
+  const TomSelectableItem(value: 'gold', label: 'Gold'),
+  const TomSelectableItem(value: 'platinum', label: 'Platinum'),
 ]);

@@ -21,10 +21,10 @@ import 'demo_widgets.dart';
 ///   * `bind()` / `save()` / `discard()` lifecycle on [ValidationForm]
 ///   * `setValue(T)` (programmatic AND user-driven via the text fields)
 ///   * Sync validators (`required`, `email`, `minLength`, `pattern`)
-///   * Async validation (`SlowValidator` on `username`)
+///   * Async validation (`TomSlowValidator` on `username`)
 ///   * Cross-field validation (`password == confirmPassword`)
 ///   * Debounced fast/slow validation (built into `TomField.setValue`)
-///   * `ValidationPristine` — errors hidden on initial bind
+///   * `TomValidationPristine` — errors hidden on initial bind
 ///   * `commit()` returns the form to pristine after a successful save
 ///   * `TomFormErrorBanner` surfaces cross-field errors
 ///   * Resource resolution for every label/hint/error (see `demo_resources.json`)

@@ -6,53 +6,53 @@ import 'tom_form_event.dart';
 /// ```dart
 /// class MyFormLogger with TomFormEventListener {
 ///   @override
-///   void onFieldValueChanged(FieldValueChangedEvent event) {
+///   void onFieldValueChanged(TomFieldValueChangedEvent event) {
 ///     print('${event.source}: ${event.description}');
 ///   }
 /// }
 /// ```
 mixin TomFormEventListener {
-  void onFieldValueChanged(FieldValueChangedEvent event) {}
-  void onFieldValidated(FieldValidatedEvent event) {}
-  void onFieldAuthChanged(FieldAuthChangedEvent event) {}
-  void onFieldBound(FieldBoundEvent event) {}
-  void onFieldCommitted(FieldCommittedEvent event) {}
-  void onFormBound(FormBoundEvent event) {}
-  void onFormSaved(FormSavedEvent event) {}
-  void onFormDiscarded(FormDiscardedEvent event) {}
-  void onFormValidated(FormValidatedEvent event) {}
+  void onFieldValueChanged(TomFieldValueChangedEvent event) {}
+  void onFieldValidated(TomFieldValidatedEvent event) {}
+  void onFieldAuthChanged(TomFieldAuthChangedEvent event) {}
+  void onFieldBound(TomFieldBoundEvent event) {}
+  void onFieldCommitted(TomFieldCommittedEvent event) {}
+  void onFormBound(TomFormBoundEvent event) {}
+  void onFormSaved(TomFormSavedEvent event) {}
+  void onFormDiscarded(TomFormDiscardedEvent event) {}
+  void onFormValidated(TomFormValidatedEvent event) {}
 
   // List form events
-  void onListItemAdded(ListItemAddedEvent event) {}
-  void onListItemRemoved(ListItemRemovedEvent event) {}
-  void onListItemReordered(ListItemReorderedEvent event) {}
+  void onListItemAdded(TomListItemAddedEvent event) {}
+  void onListItemRemoved(TomListItemRemovedEvent event) {}
+  void onListItemReordered(TomListItemReorderedEvent event) {}
 
   /// Dispatches an event to the appropriate typed handler.
   void handleEvent(TomFormEvent event) {
     switch (event) {
-      case FieldValueChangedEvent e:
+      case TomFieldValueChangedEvent e:
         onFieldValueChanged(e);
-      case FieldValidatedEvent e:
+      case TomFieldValidatedEvent e:
         onFieldValidated(e);
-      case FieldAuthChangedEvent e:
+      case TomFieldAuthChangedEvent e:
         onFieldAuthChanged(e);
-      case FieldBoundEvent e:
+      case TomFieldBoundEvent e:
         onFieldBound(e);
-      case FieldCommittedEvent e:
+      case TomFieldCommittedEvent e:
         onFieldCommitted(e);
-      case FormBoundEvent e:
+      case TomFormBoundEvent e:
         onFormBound(e);
-      case FormSavedEvent e:
+      case TomFormSavedEvent e:
         onFormSaved(e);
-      case FormDiscardedEvent e:
+      case TomFormDiscardedEvent e:
         onFormDiscarded(e);
-      case FormValidatedEvent e:
+      case TomFormValidatedEvent e:
         onFormValidated(e);
-      case ListItemAddedEvent e:
+      case TomListItemAddedEvent e:
         onListItemAdded(e);
-      case ListItemRemovedEvent e:
+      case TomListItemRemovedEvent e:
         onListItemRemoved(e);
-      case ListItemReorderedEvent e:
+      case TomListItemReorderedEvent e:
         onListItemReordered(e);
       default:
         break;

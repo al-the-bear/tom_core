@@ -28,7 +28,7 @@ void main() {
   group('eventCategoryOf — event type → filter category', () {
     test('a value change maps to value', () {
       expect(
-        eventCategoryOf(FieldValueChangedEvent(source: 'f', newValue: 'x')),
+        eventCategoryOf(TomFieldValueChangedEvent(source: 'f', newValue: 'x')),
         EventCategory.value,
       );
     });
@@ -36,12 +36,15 @@ void main() {
     test('field and form validation both map to validation', () {
       expect(
         eventCategoryOf(
-          FieldValidatedEvent(source: 'f', result: const ValidationSuccess()),
+          TomFieldValidatedEvent(
+            source: 'f',
+            result: const TomValidationSuccess(),
+          ),
         ),
         EventCategory.validation,
       );
       expect(
-        eventCategoryOf(FormValidatedEvent(source: 'f', errors: const [])),
+        eventCategoryOf(TomFormValidatedEvent(source: 'f', errors: const [])),
         EventCategory.validation,
       );
     });
@@ -49,7 +52,7 @@ void main() {
     test('an effective-auth change maps to auth', () {
       expect(
         eventCategoryOf(
-          FieldAuthChangedEvent(
+          TomFieldAuthChangedEvent(
             source: 'f',
             oldState: TomAuthState.full,
             newState: TomAuthState.read,
@@ -63,28 +66,28 @@ void main() {
       'everything else (bind/commit/save/discard/list) maps to lifecycle',
       () {
         expect(
-          eventCategoryOf(FieldBoundEvent(source: 'f')),
+          eventCategoryOf(TomFieldBoundEvent(source: 'f')),
           EventCategory.lifecycle,
         );
         expect(
-          eventCategoryOf(FieldCommittedEvent(source: 'f')),
+          eventCategoryOf(TomFieldCommittedEvent(source: 'f')),
           EventCategory.lifecycle,
         );
         expect(
-          eventCategoryOf(FormBoundEvent(source: 'f')),
+          eventCategoryOf(TomFormBoundEvent(source: 'f')),
           EventCategory.lifecycle,
         );
         expect(
-          eventCategoryOf(FormSavedEvent(source: 'f')),
+          eventCategoryOf(TomFormSavedEvent(source: 'f')),
           EventCategory.lifecycle,
         );
         expect(
-          eventCategoryOf(FormDiscardedEvent(source: 'f')),
+          eventCategoryOf(TomFormDiscardedEvent(source: 'f')),
           EventCategory.lifecycle,
         );
         expect(
           eventCategoryOf(
-            ListItemAddedEvent(source: 'f', index: 0, itemFormId: 'i0'),
+            TomListItemAddedEvent(source: 'f', index: 0, itemFormId: 'i0'),
           ),
           EventCategory.lifecycle,
         );
@@ -103,11 +106,11 @@ void main() {
 
   group('fieldValidationLabel — validation result → label', () {
     test('each validation variant maps to its label', () {
-      expect(fieldValidationLabel(const ValidationPristine()), 'pristine');
-      expect(fieldValidationLabel(const ValidationSuccess()), 'valid');
-      expect(fieldValidationLabel(const ValidationPending()), 'pending');
+      expect(fieldValidationLabel(const TomValidationPristine()), 'pristine');
+      expect(fieldValidationLabel(const TomValidationSuccess()), 'valid');
+      expect(fieldValidationLabel(const TomValidationPending()), 'pending');
       expect(
-        fieldValidationLabel(const ValidationError('minRequired')),
+        fieldValidationLabel(const TomValidationError('minRequired')),
         'error: minRequired',
       );
     });
@@ -119,33 +122,37 @@ void main() {
     test('a disabled auth state greys the row regardless of validation', () {
       // Even a *successful* validation is overridden by disabled auth.
       expect(
-        fieldRowColour(theme, TomAuthState.disabled, const ValidationSuccess()),
+        fieldRowColour(
+          theme,
+          TomAuthState.disabled,
+          const TomValidationSuccess(),
+        ),
         theme.colorScheme.surfaceContainer,
       );
     });
 
     test('a none auth state greys the row regardless of validation', () {
       expect(
-        fieldRowColour(theme, TomAuthState.none, const ValidationError('x')),
+        fieldRowColour(theme, TomAuthState.none, const TomValidationError('x')),
         theme.colorScheme.surfaceContainerLow,
       );
     });
 
     test('with full auth the validation state drives the colour', () {
       expect(
-        fieldRowColour(theme, TomAuthState.full, const ValidationError('x')),
+        fieldRowColour(theme, TomAuthState.full, const TomValidationError('x')),
         theme.colorScheme.errorContainer.withValues(alpha: 0.4),
       );
       expect(
-        fieldRowColour(theme, TomAuthState.full, const ValidationPending()),
+        fieldRowColour(theme, TomAuthState.full, const TomValidationPending()),
         Colors.amber.withValues(alpha: 0.25),
       );
       expect(
-        fieldRowColour(theme, TomAuthState.full, const ValidationSuccess()),
+        fieldRowColour(theme, TomAuthState.full, const TomValidationSuccess()),
         Colors.green.withValues(alpha: 0.12),
       );
       expect(
-        fieldRowColour(theme, TomAuthState.full, const ValidationPristine()),
+        fieldRowColour(theme, TomAuthState.full, const TomValidationPristine()),
         theme.colorScheme.surface,
       );
     });
@@ -153,7 +160,7 @@ void main() {
     test('read auth is not greyed — validation still drives the colour', () {
       // read != disabled/none, so it falls through to the validation switch.
       expect(
-        fieldRowColour(theme, TomAuthState.read, const ValidationSuccess()),
+        fieldRowColour(theme, TomAuthState.read, const TomValidationSuccess()),
         Colors.green.withValues(alpha: 0.12),
       );
     });
@@ -163,17 +170,17 @@ void main() {
     Future<TomFormInspector> pumpPanel(WidgetTester tester) async {
       final inspector = TomFormInspector()
         ..onFieldValueChanged(
-          FieldValueChangedEvent(source: 'a', newValue: '1'),
+          TomFieldValueChangedEvent(source: 'a', newValue: '1'),
         )
-        ..onFormValidated(FormValidatedEvent(source: 'f', errors: const []))
+        ..onFormValidated(TomFormValidatedEvent(source: 'f', errors: const []))
         ..onFieldAuthChanged(
-          FieldAuthChangedEvent(
+          TomFieldAuthChangedEvent(
             source: 'a',
             oldState: TomAuthState.full,
             newState: TomAuthState.read,
           ),
         )
-        ..onFormBound(FormBoundEvent(source: 'f'));
+        ..onFormBound(TomFormBoundEvent(source: 'f'));
       final rebuildOn = ValueNotifier<int>(0);
       addTearDown(rebuildOn.dispose);
       await tester.pumpWidget(

@@ -52,9 +52,9 @@ void main() {
         _wrap(
           field.widget,
           style: const TomFormStyle(
-            defaults: TomFieldStyle(labelPlacement: LabelPlacement.above),
+            defaults: TomFieldStyle(labelPlacement: TomLabelPlacement.above),
             dropdownStyle: TomDropdownStyle(
-              labelPlacement: LabelPlacement.hidden,
+              labelPlacement: TomLabelPlacement.hidden,
             ),
           ),
         ),
@@ -70,7 +70,7 @@ void main() {
         _wrap(
           field.widget,
           style: const TomFormStyle(
-            defaults: TomFieldStyle(labelPlacement: LabelPlacement.above),
+            defaults: TomFieldStyle(labelPlacement: TomLabelPlacement.above),
           ),
         ),
       );
@@ -84,14 +84,14 @@ void main() {
         'city',
         '',
         labelText: 'City',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
       );
       await tester.pumpWidget(
         _wrap(
           field.widget,
           style: const TomFormStyle(
             dropdownStyle: TomDropdownStyle(
-              requiredIndicator: RequiredIndicator.text,
+              requiredIndicator: TomRequiredIndicator.text,
             ),
           ),
         ),

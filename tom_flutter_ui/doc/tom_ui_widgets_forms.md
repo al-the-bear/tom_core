@@ -182,7 +182,7 @@ class CustomerForm extends CustomerFormSpec {
   late final name  = TomFormStringInput('name',  '', form: this);
   late final email = TomFormStringInput('email', '', form: this,
       keyboardType: TextInputType.emailAddress,
-      validators: [Validators.email()]);
+      validators: [TomValidators.email()]);
   late final phone = TomFormStringInput('phone', '', form: this,
       keyboardType: TextInputType.phone);
 }
@@ -361,7 +361,7 @@ class TomFormStringInput extends TomFormStringField {
   Widget get widget { ... }   // a TextField bound to this field
 }
 
-/// Concrete implementation with selection via SelectableItem
+/// Concrete implementation with selection via TomSelectableItem
 class TomFormStringDropdown extends TomFormStringField {
   final TomSelectableSource<String> source;
 
@@ -421,12 +421,12 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   late final String scope;
   late final String basePath;
 
-  /// Validators applied to this field. Sync validators return immediately;
-  /// async validators return Future<ValidationResult>.
+  /// TomValidators applied to this field. Sync validators return immediately;
+  /// async validators return Future<TomValidationResult>.
   final List<TomValidator<T>> validators;
 
   /// Current validation state — may be pending, success, or error.
-  ValidationResult _validationState = const ValidationSuccess();
+  TomValidationResult _validationState = const TomValidationSuccess();
 
   /// Debounce timer for change-triggered validation.
   Timer? _debounceTimer;
@@ -476,7 +476,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   void reset() {
     set(_initialValue);
     _debounceTimer?.cancel();
-    _validationState = const ValidationSuccess();
+    _validationState = const TomValidationSuccess();
   }
 
   // --- Authorization ---
@@ -497,13 +497,13 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   // --- Validation ---
 
   /// Current validation state.
-  ValidationResult get validationState => _validationState;
+  TomValidationResult get validationState => _validationState;
 
   /// Debounce duration for change-triggered validation. Default: 300ms.
   Duration get validationDebounce => const Duration(milliseconds: 300);
 
   /// Validate the current value. Always async.
-  Future<ValidationResult> validate() async { /* see §20 */ }
+  Future<TomValidationResult> validate() async { /* see §20 */ }
 
   // --- Widget ---
 
@@ -615,13 +615,13 @@ abstract class TomForm<T extends TomClass> extends TomClass
 
   bool get isDirty => fields.values.any((f) => f.isDirty);
   bool get isValid => fields.values.every(
-    (f) => f.validationState is ValidationSuccess,
+    (f) => f.validationState is TomValidationSuccess,
   );
 
   // --- Validation (async — see §20) ---
 
-  Future<List<FormValidationError>> validate() async { /* see §20 */ }
-  Future<List<FormValidationError>> validateForm() async => [];
+  Future<List<TomFormValidationError>> validate() async { /* see §20 */ }
+  Future<List<TomFormValidationError>> validateForm() async => [];
 
   // --- Inspection ---
 
@@ -636,7 +636,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
 
   /// All fields that currently have validation errors.
   List<TomField> get fieldsWithErrors => fields.values
-      .where((f) => f.validationState is ValidationError)
+      .where((f) => f.validationState is TomValidationError)
       .toList();
 
   /// All fields that are dirty (value differs from initial).
@@ -689,24 +689,25 @@ class AddressForm extends TomForm<TomClass> {
   late final street = TomFormStringInput(
     'street', '',
     form: this,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
   late final city = TomFormStringInput(
     'city', '',
     form: this,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
   late final zip = TomFormStringInput(
     'zip', '',
     form: this,
-    validators: [Validators.required(), Validators.pattern(r'^\d{5}$')],
+    validators: [TomValidators.required(), TomValidators.pattern(r'^\d{5}$')],
   );
   late final country = TomFormStringDropdown(
     'country', 'US',
     form: this,
-    source: StaticSelectableSource<String>(
-      const ['US', 'CA', 'MX', 'GB', 'DE', 'FR'],
-    ),
+    source: TomStaticSelectableSource<String>([
+      for (final code in const ['US', 'CA', 'MX', 'GB', 'DE', 'FR'])
+        TomSelectableItem(value: code, label: code),
+    ]),
   );
 }
 
@@ -742,7 +743,11 @@ class DependentFieldsForm extends TomForm<TomClass> {
     secondary = TomFormStringInput(
       'secondary', '',
       form: this,
-      validators: [Validators.mustMatch(() => primary.get())],
+      validators: [
+        (String value) => value == primary.get()
+            ? const TomValidationSuccess()
+            : TomValidationError('error.mismatch'),
+      ],
     );
   }
 }
@@ -777,8 +782,8 @@ with `.value` or `~`, and write it with `setValue` (§4), exactly as for any oth
 `TomObject`.
 
 The four value types the framework had to define itself are plain classes, not
-observables: `NumRange<int>` and `NumRange<double>` (a `low`/`high` pair),
-`TimeRange`, and `FileRef`. They are immutable values with `==` and `hashCode`,
+observables: `TomNumRange<int>` and `TomNumRange<double>` (a `low`/`high` pair),
+`TomTimeOfDayRange`, and `TomFileRef`. They are immutable values with `==` and `hashCode`,
 so a field change is a whole-value replacement and comparison is by content.
 
 ### Naming convention
@@ -822,11 +827,11 @@ carries only what the appendix does not, which is the value type.
 | `TomFormTimeField` | `TimeOfDay` | |
 | `TomFormDateTimeField` | `DateTime` | |
 | `TomFormDateRangeField` | `DateTimeRange` | Flutter's own range type |
-| `TomFormTimeRangeField` | `TimeRange` | No concrete implementation ships — see §9 |
+| `TomFormTimeRangeField` | `TomTimeOfDayRange` | No concrete implementation ships — see §9 |
 | `TomFormDateTimeRangeField` | `DateTimeRange` | No concrete implementation ships — see §9 |
 | `TomFormDurationField` | `Duration` | |
-| `TomFormIntRangeField` | `NumRange<int>` | `low` / `high` pair |
-| `TomFormDoubleRangeField` | `NumRange<double>` | |
+| `TomFormIntRangeField` | `TomNumRange<int>` | `low` / `high` pair |
+| `TomFormDoubleRangeField` | `TomNumRange<double>` | |
 | `TomFormEnumField<T>` | `T` (an enum constant) | Labels resolve from the text bundle |
 | `TomFormObjectField<T>` | `T` | Selection over arbitrary objects |
 | `TomFormSearchField<T>` | `T` | Type-ahead over a source |
@@ -835,7 +840,7 @@ carries only what the appendix does not, which is the value type.
 | `TomFormIntListField` | `List<int>` | |
 | `TomFormEnumListField<T>` | `List<T>` | |
 | `TomFormObjectListField<T>` | `List<T>` | |
-| `TomFormFileField` | `FileRef?` | Nullable in the type: "no file chosen" is a state of the field, not a separate type |
+| `TomFormFileField` | `TomFileRef?` | Nullable in the type: "no file chosen" is a state of the field, not a separate type |
 
 ### Nullable fields
 
@@ -866,10 +871,10 @@ A range field binds one immutable value, not two coupled ones:
 
 | Range Field | Binds | Members |
 |-------------|-------|---------|
-| `TomFormIntRangeField` | `NumRange<int>` | `int low`, `int high` |
-| `TomFormDoubleRangeField` | `NumRange<double>` | `double low`, `double high` |
+| `TomFormIntRangeField` | `TomNumRange<int>` | `int low`, `int high` |
+| `TomFormDoubleRangeField` | `TomNumRange<double>` | `double low`, `double high` |
 | `TomFormDateRangeField` | `DateTimeRange` | `DateTime start`, `DateTime end` |
-| `TomFormTimeRangeField` | `TimeRange` | `TimeOfDay start`, `TimeOfDay end` |
+| `TomFormTimeRangeField` | `TomTimeOfDayRange` | `TimeOfDay start`, `TimeOfDay end` |
 | `TomFormDateTimeRangeField` | `DateTimeRange` | `DateTime start`, `DateTime end` |
 
 Single-value binding is what makes `start ≤ end` checkable: the invariant holds
@@ -920,22 +925,22 @@ needs answered:
 
 ```dart
 abstract class TomSelectableSource<T> {
-  Future<List<SelectableItem<T>>> getItems();
+  Future<List<TomSelectableItem<T>>> getItems();
 
   /// Non-null when the options can change after construction; the field
   /// subscribes and rebuilds. A fixed source returns null and is read once.
-  Stream<List<SelectableItem<T>>>? get itemsStream => null;
+  Stream<List<TomSelectableItem<T>>>? get itemsStream => null;
 }
 ```
 
-`SelectableItem<T>` pairs the value the field binds with the label the widget
+`TomSelectableItem<T>` pairs the value the field binds with the label the widget
 shows, so the two never have to be kept in step by the caller:
 
 ```dart
-class SelectableItem<T> {
+class TomSelectableItem<T> {
   final T value;
   final String label;
-  const SelectableItem({required this.value, required this.label});
+  const TomSelectableItem({required this.value, required this.label});
 }
 ```
 
@@ -945,9 +950,9 @@ changes while the form is open. The four shipped sources are listed in
 [Appendix C.10](#c10-selectable-sources); two of them cover most forms:
 
 ```dart
-final countrySource = StaticSelectableSource<String>(const [
-  SelectableItem(value: 'de', label: 'Germany'),
-  SelectableItem(value: 'fr', label: 'France'),
+final countrySource = TomStaticSelectableSource<String>(const [
+  TomSelectableItem(value: 'de', label: 'Germany'),
+  TomSelectableItem(value: 'fr', label: 'France'),
 ]);
 
 // Labels come from the text bundle, not from Dart:
@@ -985,7 +990,7 @@ case where the currently selected value is no longer among the options:
 2. **Multi-select fields:** Remove any selected values that are no longer in the new items list. Keep selected values that are still available.
 3. **Search fields:** Clear the search text and selection if the source changes fundamentally (e.g., switching from one API endpoint to another).
 
-This convention prevents stale/orphaned values that don't match any available option. The field fires a `FieldValueChangedEvent` when the reset occurs.
+This convention prevents stale/orphaned values that don't match any available option. The field fires a `TomFieldValueChangedEvent` when the reset occurs.
 
 ---
 
@@ -1207,7 +1212,7 @@ accepts input:
 |-------------------|-----|----------|-------------|-------|
 | `groupValue` | `RadioGroup<T>` | Value binding | `TomObject<T>.value` | One per field, shared by every row |
 | `onChanged` | `RadioGroup<T>` | Write-back | `(v) => field.setValue(v)` | Always supplied; rows opt out through `enabled` |
-| `value` | `Radio<T>` | Data source | `item.value` from `SelectableItem<T>` | One radio per option |
+| `value` | `Radio<T>` | Data source | `item.value` from `TomSelectableItem<T>` | One radio per option |
 | `enabled` | `Radio<T>` | Availability | `field.isEditable && item.enabled` | The per-row lever; a null `onChanged` no longer expresses this |
 
 The label is a sibling `Text`, not a `title` on the radio — the row is
@@ -1223,7 +1228,7 @@ Renders one `FilterChip` per `TomSelectableSource<T>` item:
 |-------------------|----------|-------------|-------|
 | `selected` (per chip) | Value binding | `TomList<T>.contains(item.value)` | Per-chip check |
 | `onSelected` | Write-back | `(sel) => sel ? set.add(item.value) : set.remove(item.value)` | Toggle per chip |
-| `label` | Data source | `Text(item.label)` from `SelectableItem<T>` | |
+| `label` | Data source | `Text(item.label)` from `TomSelectableItem<T>` | |
 
 #### ChoiceChip (group)
 
@@ -1235,7 +1240,7 @@ Renders one `ChoiceChip` per `TomSelectableSource<T>` item:
 |-------------------|----------|-------------|-------|
 | `selected` (per chip) | Value binding | `TomObject<T>.value == item.value` | Per-chip check |
 | `onSelected` | Write-back | `(sel) => field.setValue(item.value)` | Writes selected value |
-| `label` | Data source | `Text(item.label)` from `SelectableItem<T>` | |
+| `label` | Data source | `Text(item.label)` from `TomSelectableItem<T>` | |
 
 #### CheckboxListTile (group)
 
@@ -1247,7 +1252,7 @@ Renders one `CheckboxListTile` per `TomSelectableSource<T>` item:
 |-------------------|----------|-------------|-------|
 | `value` (per tile) | Value binding | `TomList<T>.contains(item.value)` | Per-tile check |
 | `onChanged` | Write-back | `(v) => v! ? set.add(item.value) : set.remove(item.value)` | Toggle per tile |
-| `title` | Data source | `Text(item.label)` from `SelectableItem<T>` | |
+| `title` | Data source | `Text(item.label)` from `TomSelectableItem<T>` | |
 
 #### Date Picker (hybrid text + dialog)
 
@@ -1444,7 +1449,7 @@ specification is owed the choice as well as its outcome.
 | Decision | Specified | Built |
 |----------|-----------|-------|
 | **Cupertino naming** | `TomForm{Type}{Widget}` throughout, with Cupertino as a widget style — `TomFormCupertinoDatePicker` | A `TomCupertinoForm…` prefix family — `TomCupertinoFormDatePicker`. The platform is a property of the whole field, not of its widget style, so it reads at the front where a reader scanning a form declaration sees it |
-| **Value types** | Six new observables — `TomDuration`, `TomIntRange`, `TomDoubleRange`, `TomFileRef` and two nullable variants | None of them. `TomField<T>` binds the plain value directly, so the fields bind `Duration`, `NumRange<int>`, `NumRange<double>`, `TimeRange` and `FileRef?` with no observable wrapper. The observability a form needs is the field's, and a second one inside it bought nothing |
+| **Value types** | Six new observables — `TomDuration`, `TomIntRange`, `TomDoubleRange`, `TomFileRef` and two nullable variants | None of them. `TomField<T>` binds the plain value directly, so the fields bind `Duration`, `TomNumRange<int>`, `TomNumRange<double>`, `TomTimeOfDayRange` and `TomFileRef?` with no observable wrapper. The observability a form needs is the field's, and a second one inside it bought nothing |
 | **Format variants** | A class per text format — `TomFormEmailStringInput`, `TomFormUrlStringInput`, `TomFormPhoneStringInput`, `TomFormPasswordStringInput`, `TomFormMultilineStringInput`, `TomFormStringOutlinedInput` | Constructor parameters on `TomFormStringInput` — `keyboardType`, `maxLines`, `obscureText` — plus a validator where the format needs one. Six classes differing only in a fixed argument are the shape the Classic tier above declines |
 
 Two abstract types have no concrete implementation:
@@ -1549,7 +1554,7 @@ description are built by the same code whatever the inner widget is.
 
 The benefit is **uniform look and feel** across all field types. A `TomFormStringInput`, `TomFormBoolCheckbox`, and `TomFormStringDropdown` all share the same label/error/description structure, spacing, and style inheritance from `TomFormStyle`. This makes per-section and per-form theming consistent without special-casing text fields.
 
-> **Required indicator:** When a field has `Validators.required()` in its validators list, the decoration mixin appends a required symbol (default: red asterisk `*`) to the label text. The indicator style is configurable via `TomFieldStyle.requiredIndicator`.
+> **Required indicator:** When a field has `TomValidators.required()` in its validators list, the decoration mixin appends a required symbol (default: red asterisk `*`) to the label text. The indicator style is configurable via `TomFieldStyle.requiredIndicator`.
 
 ### Anatomy Configuration Options
 
@@ -1557,20 +1562,20 @@ Field anatomy elements can be configured per-field or globally via `TomFormStyle
 
 | Option | Type | Default | Values |
 |--------|------|---------|--------|
-| `labelPlacement` | `LabelPlacement` | `above` | `above` — label row above field; `below` — label row below field; `floating` — Material floating label inside field; `inline` — label to the left of the field; `hidden` — no label (e.g., for icon-only fields) |
-| `errorPlacement` | `ErrorPlacement` | `below` | `below` — error below field; `above` — error above field; `tooltip` — error in a tooltip on hover/focus; `both` — above and below; `replaceDescription` — error takes the description (helper-text) slot below the field, rendered in the error colour; if no description is set the slot still materialises so the error is visible. Unlike the retired `replaceHint` mode, the error stays visible while the user types. |
-| `requiredIndicator` | `RequiredIndicator` | `asterisk` | `asterisk` — red asterisk after label; `text` — "(required)" text; `none` — no indicator; `custom` — custom widget |
-| `requiredIndicatorOnHint` | `RequiredIndicator` | `none` | Same options, applied to the **placeholder** (Material's `InputDecoration.hintText`) — visible only while the field is empty. |
-| `requiredIndicatorOnDescription` | `RequiredIndicator` | `none` | Same options, applied to the **description** (helper text below the field). |
-| `descriptionPlacement` | `DescriptionPlacement` | `below` | `below` — below error; `above` — between label and field; `tooltip` — on info icon click |
-| `actionIconPlacement` | `ActionIconPlacement` | `trailing` | `trailing` — right side of input row; `leading` — left side; `above` — in label row |
+| `labelPlacement` | `TomLabelPlacement` | `above` | `above` — label row above field; `below` — label row below field; `floating` — Material floating label inside field; `inline` — label to the left of the field; `hidden` — no label (e.g., for icon-only fields) |
+| `errorPlacement` | `TomErrorPlacement` | `below` | `below` — error below field; `above` — error above field; `tooltip` — error in a tooltip on hover/focus; `both` — above and below; `replaceDescription` — error takes the description (helper-text) slot below the field, rendered in the error colour; if no description is set the slot still materialises so the error is visible. Unlike the retired `replaceHint` mode, the error stays visible while the user types. |
+| `requiredIndicator` | `TomRequiredIndicator` | `asterisk` | `asterisk` — red asterisk after label; `text` — "(required)" text; `none` — no indicator; `custom` — custom widget |
+| `requiredIndicatorOnHint` | `TomRequiredIndicator` | `none` | Same options, applied to the **placeholder** (Material's `InputDecoration.hintText`) — visible only while the field is empty. |
+| `requiredIndicatorOnDescription` | `TomRequiredIndicator` | `none` | Same options, applied to the **description** (helper text below the field). |
+| `descriptionPlacement` | `TomDescriptionPlacement` | `below` | `below` — below error; `above` — between label and field; `tooltip` — on info icon click |
+| `actionIconPlacement` | `TomActionIconPlacement` | `trailing` | `trailing` — right side of input row; `leading` — left side; `above` — in label row |
 
 ```dart
-enum LabelPlacement       { above, below, floating, inline, hidden }
-enum ErrorPlacement       { below, above, tooltip, both, replaceDescription }
-enum RequiredIndicator    { asterisk, text, none, custom }
-enum DescriptionPlacement { below, above, tooltip }
-enum ActionIconPlacement  { trailing, leading, above }
+enum TomLabelPlacement       { above, below, floating, inline, hidden }
+enum TomErrorPlacement       { below, above, tooltip, both, replaceDescription }
+enum TomRequiredIndicator    { asterisk, text, none, custom }
+enum TomDescriptionPlacement { below, above, tooltip }
+enum TomActionIconPlacement  { trailing, leading, above }
 ```
 
 ### Field Action Icons
@@ -1615,8 +1620,8 @@ These options are typically set via `TomFormStyle` for the entire application, b
 ```dart
 // Per-field override
 name = TomFormStringInput('name', '',
-  labelPlacement: LabelPlacement.floating,  // override global setting
-  errorPlacement: ErrorPlacement.tooltip,
+  labelPlacement: TomLabelPlacement.floating,  // override global setting
+  errorPlacement: TomErrorPlacement.tooltip,
 );
 ```
 
@@ -1626,7 +1631,7 @@ Each field widget has three text slots, all independently stylable and all resou
 
 | Slot        | Code name     | Material concept         | Visibility                                  |
 |-------------|---------------|--------------------------|---------------------------------------------|
-| label       | `label`       | label above / floating   | always (unless `LabelPlacement.hidden`)     |
+| label       | `label`       | label above / floating   | always (unless `TomLabelPlacement.hidden`)     |
 | placeholder | `hint`        | `InputDecoration.hintText` | only while the field value is empty      |
 | helper text | `description` | "helper text"             | always when non-empty                       |
 
@@ -1636,7 +1641,7 @@ Resource keys reflect these names: `{fieldPath}.label`, `{fieldPath}.hint`, `{fi
 
 Fields with a `required` validator display a required indicator (default: red asterisk after the label). The indicator is rendered by the decoration mixin based on:
 
-1. Whether the field has `Validators.required()` in its validator list
+1. Whether the field has `TomValidators.required()` in its validator list
 2. The `requiredIndicator` / `requiredIndicatorOnHint` / `requiredIndicatorOnDescription` settings (from field or `TomFormStyle`)
 3. Whether the field is editable (hidden when auth state is `read` or `disabled`)
 
@@ -1698,13 +1703,13 @@ Anatomy placements (none breakpointable by default except `labelPlacement`):
 
 | Property | Type | Default |
 |---|---|---|
-| `labelPlacement` | `LabelPlacement` | `above` |
-| `errorPlacement` | `ErrorPlacement` | `below` |
-| `requiredIndicator` | `RequiredIndicator` | `asterisk` |
-| `requiredIndicatorOnHint` | `RequiredIndicator` | `none` |
-| `requiredIndicatorOnDescription` | `RequiredIndicator` | `none` |
-| `descriptionPlacement` | `DescriptionPlacement` | `below` |
-| `actionIconPlacement` | `ActionIconPlacement` | `trailing` |
+| `labelPlacement` | `TomLabelPlacement` | `above` |
+| `errorPlacement` | `TomErrorPlacement` | `below` |
+| `requiredIndicator` | `TomRequiredIndicator` | `asterisk` |
+| `requiredIndicatorOnHint` | `TomRequiredIndicator` | `none` |
+| `requiredIndicatorOnDescription` | `TomRequiredIndicator` | `none` |
+| `descriptionPlacement` | `TomDescriptionPlacement` | `below` |
+| `actionIconPlacement` | `TomActionIconPlacement` | `trailing` |
 
 Intra-field gaps (breakpointable — `<prop>BpOverrides: List<(double, double)>`):
 
@@ -2356,7 +2361,7 @@ Many business objects contain lists of sub-objects — orders have line items, c
 
 ```dart
 abstract interface class TomFormChildContainer {
-  Future<List<FormValidationError>> validate();
+  Future<List<TomFormValidationError>> validate();
   Future<bool> save();
   void discard();
   void unbind();
@@ -2391,11 +2396,11 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   TForm operator [](int index);
 
   // --- Mutation (mirrored into the bound TomList) ---
-  TForm add();                   // append + fire ListItemAddedEvent
-  TForm insert(int index);       // insert at index + fire ListItemAddedEvent
-  void removeAt(int index);      // remove + fire ListItemRemovedEvent
+  TForm add();                   // append + fire TomListItemAddedEvent
+  TForm insert(int index);       // insert at index + fire TomListItemAddedEvent
+  void removeAt(int index);      // remove + fire TomListItemRemovedEvent
   bool remove(TForm form);       // convenience: remove by instance
-  void move(int from, int to);   // reorder + fire ListItemReorderedEvent
+  void move(int from, int to);   // reorder + fire TomListItemReorderedEvent
   void reorder(int from, int to); // spec-canonical alias of move()
 
   // --- Binding ---
@@ -2403,9 +2408,9 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   @override void unbind();           // detach + dispose all sub-forms
 
   // --- Lifecycle (TomFormChildContainer) ---
-  @override Future<List<FormValidationError>> validate();
+  @override Future<List<TomFormValidationError>> validate();
   // Fans into every sub-form, runs validateList(), then fires
-  // FormValidatedEvent(source: listId) through the event bus.
+  // TomFormValidatedEvent(source: listId) through the event bus.
 
   @override Future<bool> save();
   // Validates first; updates snapshot on success so isDirty / hasStructuralChanges reset.
@@ -2431,7 +2436,7 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
 }
 ```
 
-**`reorder` vs `move`:** Both forward to the same implementation and fire `ListItemReorderedEvent`. `reorder` is the spec-canonical name used by drag-handle UIs (§16); `move` is kept for backward compatibility and directional button code.
+**`reorder` vs `move`:** Both forward to the same implementation and fire `TomListItemReorderedEvent`. `reorder` is the spec-canonical name used by drag-handle UIs (§16); `move` is kept for backward compatibility and directional button code.
 
 **`hasStructuralChanges`:** Compares the current bound list identity to the snapshot captured at `bind` / `save` time. Returns `true` if any item was added, removed, or moved. `isDirty` includes `hasStructuralChanges` so the parent form's dirty state is correctly propagated even when every individual sub-form field is untouched.
 
@@ -2445,7 +2450,7 @@ When a `TomListForm` is constructed with `parentForm: this` (or passed `parentFo
 |---|---|
 | `isDirty` | includes `listForm.isDirty` (`hasStructuralChanges` + any sub-form dirty) |
 | `isValid` | includes `listForm.isValid` (every sub-form is valid) |
-| `validate()` | calls `listForm.validate()`, merges errors into parent `FormValidatedEvent` |
+| `validate()` | calls `listForm.validate()`, merges errors into parent `TomFormValidatedEvent` |
 | `save()` | calls `listForm.save()` after own `_applySave` |
 | `discard()` | calls `listForm.discard()` |
 | `unbind()` | calls `listForm.unbind()` |
@@ -2513,7 +2518,7 @@ class OrderItemForm extends TomForm<OrderItem> {
 
 ### List-Level Validation
 
-Override `validateList()` to enforce cross-row rules. Returned strings are treated as resource keys and are included in the `FormValidatedEvent` fired by `validate()` through the parent bus — so a `TomErrorView(form: parentForm)` sees them without any extra wiring:
+Override `validateList()` to enforce cross-row rules. Returned strings are treated as resource keys and are included in the `TomFormValidatedEvent` fired by `validate()` through the parent bus — so a `TomErrorView(form: parentForm)` sees them without any extra wiring:
 
 ```dart
 class OrderItemListForm extends TomListForm<OrderItem, OrderItemForm> {
@@ -2533,10 +2538,10 @@ Every structural mutation fires a typed event through the form bus. When `parent
 
 | Event | Fired by | Key fields |
 |---|---|---|
-| `ListItemAddedEvent` | `add()`, `insert()` | `source` (listId), `index`, `itemFormId` |
-| `ListItemRemovedEvent` | `removeAt()` | `source`, `index`, `itemFormId` |
-| `ListItemReorderedEvent` | `move()`, `reorder()` | `source`, `fromIndex`, `toIndex`, `itemFormId` |
-| `FormValidatedEvent` | `validate()` | `source` (listId), `errors` (combined per-row + list-level) |
+| `TomListItemAddedEvent` | `add()`, `insert()` | `source` (listId), `index`, `itemFormId` |
+| `TomListItemRemovedEvent` | `removeAt()` | `source`, `index`, `itemFormId` |
+| `TomListItemReorderedEvent` | `move()`, `reorder()` | `source`, `fromIndex`, `toIndex`, `itemFormId` |
+| `TomFormValidatedEvent` | `validate()` | `source` (listId), `errors` (combined per-row + list-level) |
 
 ---
 
@@ -3236,50 +3241,50 @@ This means the form never returns validation results synchronously. The caller a
 ### Validation Result Types
 
 ```dart
-sealed class ValidationResult {
-  const ValidationResult();
+sealed class TomValidationResult {
+  const TomValidationResult();
 }
 
-class ValidationPristine extends ValidationResult {
-  const ValidationPristine();
+class TomValidationPristine extends TomValidationResult {
+  const TomValidationPristine();
 }
 
-class ValidationSuccess extends ValidationResult {
-  const ValidationSuccess();
+class TomValidationSuccess extends TomValidationResult {
+  const TomValidationSuccess();
 }
 
-class ValidationError extends ValidationResult {
+class TomValidationError extends TomValidationResult {
   final String errorKey;
   final Map<String, dynamic>? params;
-  const ValidationError(this.errorKey, {this.params});
+  const TomValidationError(this.errorKey, {this.params});
 }
 
-class ValidationPending extends ValidationResult {
-  const ValidationPending();
+class TomValidationPending extends TomValidationResult {
+  const TomValidationPending();
 }
 ```
 
-**`ValidationPristine`** is the **initial state** of every field before the user has interacted with it. While pristine:
+**`TomValidationPristine`** is the **initial state** of every field before the user has interacted with it. While pristine:
 - The field does **not** display validation errors, even if the value is technically invalid (e.g., a required field that is empty)
 - The form's `isValid` returns `false` (pristine ≠ valid) but no errors are shown in the UI
 - This prevents showing a wall of red errors on a fresh, untouched form
 
 A field transitions out of pristine when:
-- The user modifies the field value (triggers debounced validation → `ValidationSuccess` or `ValidationError`)
+- The user modifies the field value (triggers debounced validation → `TomValidationSuccess` or `TomValidationError`)
 - The user attempts to save the form (form-level `validate()` forces all pristine fields to validate, showing errors)
 - `autoValidate` is `true` on the field (immediately validates on `bind()` without waiting for user interaction)
 
 The `autoValidate` setting is useful for **auto-save forms** where validation must happen immediately without user-triggered save actions.
 
-**`ValidationPending`** indicates that a **slow** async validation is in progress. While pending:
+**`TomValidationPending`** indicates that a **slow** async validation is in progress. While pending:
 - The field displays a loading indicator (spinner on the trailing edge) — **only for slow validators**
 - The form's save action is disabled
 - The form's `isValid` returns `false` (pending ≠ valid)
 - Other fields may continue editing — pending does not block the UI, only submission
 
-Fast validators (local checks like `required`, `email`, `minLength`) do **not** transition through `ValidationPending` and never show a spinner. Only validators explicitly marked as slow (e.g., remote API calls) trigger the pending state.
+Fast validators (local checks like `required`, `email`, `minLength`) do **not** transition through `TomValidationPending` and never show a spinner. Only validators explicitly marked as slow (e.g., remote API calls) trigger the pending state.
 
-Once the async validator resolves, the field transitions to either `ValidationSuccess` or `ValidationError`.
+Once the async validator resolves, the field transitions to either `TomValidationSuccess` or `TomValidationError`.
 
 **State transitions:**
 ```
@@ -3292,72 +3297,72 @@ success/error → (commit/reset/discard/bind) → pristine
 
 ### Field Validators
 
-Fields declare validators as a list. Sync validators return immediately; async validators return `Future<ValidationResult>`:
+Fields declare validators as a list. Sync validators return immediately; async validators return `Future<TomValidationResult>`:
 
 ```dart quote
-typedef TomValidator<T> = FutureOr<ValidationResult> Function(T value);
+typedef TomValidator<T> = FutureOr<TomValidationResult> Function(T value);
 
 abstract class TomField<T> extends TomObject<T> {
   final List<TomValidator<T>> validators;
   final bool autoValidate;
-  ValidationResult _validationState = const ValidationPristine();
+  TomValidationResult _validationState = const TomValidationPristine();
 
   /// Current validation state — may be pristine, pending, success, or error.
-  ValidationResult get validationState => _validationState;
+  TomValidationResult get validationState => _validationState;
 
   /// Validate the current value. Always async.
-  Future<ValidationResult> validate() async {
-    _validationState = const ValidationPending();
+  Future<TomValidationResult> validate() async {
+    _validationState = const TomValidationPending();
     // Field updates its widget via its own reactive state — no manual notify needed
     _validationNotifier.value = _validationState;
 
     for (final validator in validators) {
       final result = await validator(value);
-      if (result is ValidationError) {
+      if (result is TomValidationError) {
         _validationState = result;
         _validationNotifier.value = _validationState;
         return result;
       }
     }
 
-    _validationState = const ValidationSuccess();
+    _validationState = const TomValidationSuccess();
     _validationNotifier.value = _validationState;
     return _validationState;
   }
 }
 ```
 
-The field communicates validation state changes through a `ValueNotifier<ValidationResult>` that the widget observes via `ValueListenableBuilder`. There is no `notifyObservers()` call during validation — validation state is a separate reactive channel from the field's value.
+The field communicates validation state changes through a `ValueNotifier<TomValidationResult>` that the widget observes via `ValueListenableBuilder`. There is no `notifyObservers()` call during validation — validation state is a separate reactive channel from the field's value.
 
 ### Built-in Validators
 
 ```dart
-class Validators {
+class TomValidators {
   static TomValidator<String> required() => (v) =>
-      v.isEmpty ? const ValidationError('error.required') : const ValidationSuccess();
+      v.isEmpty ? const TomValidationError('error.required') : const TomValidationSuccess();
 
   static TomValidator<String> pattern(RegExp regex) => (v) =>
-      !regex.hasMatch(v) ? const ValidationError('error.format') : const ValidationSuccess();
+      !regex.hasMatch(v) ? const TomValidationError('error.format') : const TomValidationSuccess();
 
   static TomValidator<String> email() =>
       pattern(RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$'));
 
   static TomValidator<String> minLength(int min) => (v) =>
-      v.length < min ? ValidationError('error.minLength', params: {'min': min}) : const ValidationSuccess();
+      v.length < min ? TomValidationError('error.minLength', params: {'min': min}) : const TomValidationSuccess();
 
   static TomValidator<num> min(num minValue) => (v) =>
-      v < minValue ? ValidationError('error.min', params: {'min': minValue}) : const ValidationSuccess();
+      v < minValue ? TomValidationError('error.min', params: {'min': minValue}) : const TomValidationSuccess();
 
   static TomValidator<num> max(num maxValue) => (v) =>
-      v > maxValue ? ValidationError('error.max', params: {'max': maxValue}) : const ValidationSuccess();
+      v > maxValue ? TomValidationError('error.max', params: {'max': maxValue}) : const TomValidationSuccess();
 
   /// Compose multiple validators into one. Runs sequentially, stops on first error.
   static TomValidator<T> compose<T>(List<TomValidator<T>> validators) => (value) async {
     for (final validator in validators) {
       final result = await validator(value);
-      if (result is! ValidationSuccess) return result;
+      if (result is! TomValidationSuccess) return result;
     }
-    return const ValidationSuccess();
+    return const TomValidationSuccess();
   };
 }
 ```
@@ -3368,15 +3373,15 @@ Validation error keys are **relative to the field's `basePath`**. The field reso
 
 ```dart
 // Field basePath: "orderForm.email"
-// Validator returns: ValidationError('error.format')
+// Validator returns: TomValidationError('error.format')
 // Resolved resource key: "orderForm.email.error.format"
 final message = t(errorKey);  // looks up "{basePath}.{errorKey}" in resource system
 ```
 
-Parameter interpolation uses `params` from `ValidationError`:
+Parameter interpolation uses `params` from `TomValidationError`:
 
 ```dart
-// Validator: ValidationError('error.minLength', params: {'min': 5})
+// Validator: TomValidationError('error.minLength', params: {'min': 5})
 // Resource: "orderForm.name.error.minLength" → "Must be at least {min} characters"
 // Resolved: "Must be at least 5 characters"
 ```
@@ -3390,20 +3395,20 @@ The form validates all fields first, then runs cross-field validation:
 ```dart
 abstract class TomForm<T extends TomClass> extends TomClass {
   /// Validate all fields and then run cross-field validation.
-  /// Returns an empty list on success, or a list of FormValidationError.
-  Future<List<FormValidationError>> validate() async {
+  /// Returns an empty list on success, or a list of TomFormValidationError.
+  Future<List<TomFormValidationError>> validate() async {
     // 1. Validate all fields in parallel
     final fieldResults = await Future.wait(
       fields.values.map((f) => f.validate()),
     );
 
     // 2. Collect field-level errors
-    final errors = <FormValidationError>[];
+    final errors = <TomFormValidationError>[];
     for (var i = 0; i < fields.values.length; i++) {
       final result = fieldResults.elementAt(i);
-      if (result is ValidationError) {
+      if (result is TomValidationError) {
         final field = fields.values.elementAt(i);
-        errors.add(FormValidationError(
+        errors.add(TomFormValidationError(
           errorKey: result.errorKey,
           params: result.params,
           fields: [field],
@@ -3420,10 +3425,10 @@ abstract class TomForm<T extends TomClass> extends TomClass {
   }
 
   /// Override for cross-field validation. Always async.
-  Future<List<FormValidationError>> validateForm() async => [];
+  Future<List<TomFormValidationError>> validateForm() async => [];
 
   bool get isValid => fields.values.every(
-    (f) => f.validationState is ValidationSuccess,
+    (f) => f.validationState is TomValidationSuccess,
   );
 }
 ```
@@ -3433,7 +3438,7 @@ abstract class TomForm<T extends TomClass> extends TomClass {
 Cross-field validation can produce errors that link to **multiple fields** with **field-specific messages**:
 
 ```dart
-class FormValidationError {
+class TomFormValidationError {
   /// The primary error key (for the form-level error message).
   final String errorKey;
 
@@ -3448,7 +3453,7 @@ class FormValidationError {
   /// If null, all fields show the same errorKey.
   final Map<TomField, String>? fieldErrorKeys;
 
-  FormValidationError({
+  TomFormValidationError({
     required this.errorKey,
     this.params,
     required this.fields,
@@ -3464,11 +3469,11 @@ Example — date range cross-validation with per-field messages:
 
 ```dart
 @override
-Future<List<FormValidationError>> validateForm() async {
-  final errors = <FormValidationError>[];
+Future<List<TomFormValidationError>> validateForm() async {
+  final errors = <TomFormValidationError>[];
 
   if (~endDate < ~startDate) {
-    errors.add(FormValidationError(
+    errors.add(TomFormValidationError(
       errorKey: 'error.dateRange.invalid',
       fields: [startDate, endDate],
       fieldErrorKeys: {
@@ -3487,13 +3492,13 @@ Future<List<FormValidationError>> validateForm() async {
 A field-level error is shown by the field's own decoration. Errors that span
 fields — and, if wanted, all of a form's errors in one place — are shown by one
 of two widgets placed in the form's layout. Both listen to the form as a
-`TomFormEventSource`: they take the errors of each `FormValidatedEvent` and
-clear on `FormSavedEvent` and `FormDiscardedEvent`, so a form that has not been
+`TomFormEventSource`: they take the errors of each `TomFormValidatedEvent` and
+clear on `TomFormSavedEvent` and `TomFormDiscardedEvent`, so a form that has not been
 validated shows nothing, and neither can be dismissed by the user.
 
 | Widget | Shows | Layout |
 |--------|-------|--------|
-| `TomFormErrorBanner` | Cross-field errors only — every `FormValidationError` that does not name exactly one field | A full-width banner titled by the `form.errorBannerTitle` resource ("Form Errors"); collapses to nothing when there are no errors |
+| `TomFormErrorBanner` | Cross-field errors only — every `TomFormValidationError` that does not name exactly one field | A full-width banner titled by the `form.errorBannerTitle` resource ("Form Errors"); collapses to nothing when there are no errors |
 | `TomErrorView` | Every error by default; `includeFieldErrors: false` narrows it to cross-field errors, like the banner | Wherever it is mounted — above, below or beside the form. Optional `title`, an `emptyState` widget, and `onErrorTap` for a "go to this field" affordance |
 
 Both word each error with `resolveFormValidationMessage`: an error naming one
@@ -3537,13 +3542,13 @@ Field-change validation is **debounced** to avoid excessive validation calls, es
 Validators are categorized as **fast** (local, synchronous or near-synchronous) or **slow** (remote, potentially high-latency):
 
 - **Fast validators** (default): Run after the standard debounce (`validationDebounce`, default 300ms). They do **not** show a pending spinner. Examples: `required()`, `email()`, `minLength()`, `pattern()`.
-- **Slow validators**: Wrapped in `SlowValidator<T>`. Run after a longer debounce (`slowValidationDebounce`, default 600ms). They **do** show a pending spinner (`ValidationPending`). Examples: API availability checks, server-side validation.
+- **Slow validators**: Wrapped in `TomSlowValidator<T>`. Run after a longer debounce (`slowValidationDebounce`, default 600ms). They **do** show a pending spinner (`TomValidationPending`). Examples: API availability checks, server-side validation.
 
 ```dart
 /// Wraps a validator to mark it as "slow" (e.g., remote API call).
-class SlowValidator<T> {
+class TomSlowValidator<T> {
   final TomValidator<T> validate;
-  const SlowValidator(this.validate);
+  const TomSlowValidator(this.validate);
 }
 ```
 
@@ -3551,9 +3556,9 @@ Usage:
 ```dart
 TomFormStringInput('email', '',
   validators: [
-    Validators.required(),              // fast — no spinner
-    Validators.email(),                 // fast — no spinner
-    SlowValidator(checkEmailAvailable), // slow — spinner shown after 600ms
+    TomValidators.required(),              // fast — no spinner
+    TomValidators.email(),                 // fast — no spinner
+    TomSlowValidator(checkEmailAvailable), // slow — spinner shown after 600ms
   ],
 )
 ```
@@ -3631,8 +3636,8 @@ After a validation error is displayed, the error must be cleared at the right mo
 /// In TomField — clear error on value change
 void _onValueChanged(T newValue) {
   // Immediately clear any displayed error (user is correcting)
-  if (_validationState is ValidationError) {
-    _validationState = const ValidationSuccess();
+  if (_validationState is TomValidationError) {
+    _validationState = const TomValidationSuccess();
     _validationNotifier.value = _validationState;
   }
 
@@ -3655,8 +3660,8 @@ class RegistrationForm extends TomForm<Registration> {
 
   late final username = TomFormStringInput('username', '',
     validators: [
-      Validators.required(),
-      Validators.minLength(3),
+      TomValidators.required(),
+      TomValidators.minLength(3),
       _checkUsernameAvailability,
     ],
   );
@@ -3664,11 +3669,11 @@ class RegistrationForm extends TomForm<Registration> {
   @override
   Duration get validationDebounce => const Duration(milliseconds: 600);
 
-  Future<ValidationResult> _checkUsernameAvailability(String value) async {
+  Future<TomValidationResult> _checkUsernameAvailability(String value) async {
     final available = await _userService.isUsernameAvailable(value);
     return available
-        ? const ValidationSuccess()
-        : const ValidationError('error.usernameTaken');
+        ? const TomValidationSuccess()
+        : const TomValidationError('error.usernameTaken');
   }
 }
 ```
@@ -4024,56 +4029,54 @@ Forms and fields must be **inspectable at runtime** — for debugging, logging, 
 All form events extend a base class:
 
 ```dart quote
-abstract class TomFormEvent {
-  final DateTime timestamp;
-  final String source;      // field ID or form ID
-  final String description; // human-readable summary
-
-  const TomFormEvent({
-    required this.timestamp,
-    required this.source,
-    required this.description,
-  });
+class TomFormEvent {
+  final DateTime timestamp;   // defaults to now
+  final String source;        // field ID or form ID
+  final String description;   // human-readable summary
 }
 
-class FieldValueChangedEvent extends TomFormEvent {
-  final String tomId;
-  final dynamic oldValue;
-  final dynamic newValue;
+// Field events — `source` is the field's ID.
+class TomFieldValueChangedEvent extends TomFormEvent {
+  final Object? oldValue;
+  final Object? newValue;
 }
 
-class FieldValidatedEvent extends TomFormEvent {
-  final String tomId;
-  final ValidationResult result;  // ValidationSuccess, ValidationError, or ValidationPending
-  final List<FormValidationError> errors;
+class TomFieldValidatedEvent extends TomFormEvent {
+  final Object result;        // the field's TomValidationResult
 }
 
-class FieldAuthChangedEvent extends TomFormEvent {
-  final String tomId;
-  final TomAuthState oldAuth;
-  final TomAuthState newAuth;
+class TomFieldAuthChangedEvent extends TomFormEvent {
+  final Object oldState;      // TomAuthState before
+  final Object newState;      // TomAuthState after
 }
 
-class FormBoundEvent extends TomFormEvent {
-  final Map<String, dynamic> values;
+class TomFieldBoundEvent extends TomFormEvent {}
+class TomFieldCommittedEvent extends TomFormEvent {}
+
+// Form events — `source` is the form's ID.
+class TomFormBoundEvent extends TomFormEvent {}
+class TomFormSavedEvent extends TomFormEvent {}
+class TomFormDiscardedEvent extends TomFormEvent {}
+
+class TomFormValidatedEvent extends TomFormEvent {
+  final List<Object> errors;  // empty when the form is valid
 }
 
-class FormSavedEvent extends TomFormEvent {
-  final Map<String, dynamic> values;
+// List form events.
+class TomListItemAddedEvent extends TomFormEvent {
+  final int index;
+  final String itemFormId;
 }
 
-class FormDiscardedEvent extends TomFormEvent {
-  final Map<String, dynamic> restoredValues;
+class TomListItemRemovedEvent extends TomFormEvent {
+  final int index;
+  final String itemFormId;
 }
 
-class FieldBoundEvent extends TomFormEvent {
-  final String tomId;
-  final dynamic initialValue;
-}
-
-class FieldCommittedEvent extends TomFormEvent {
-  final String tomId;
-  final dynamic committedValue;
+class TomListItemReorderedEvent extends TomFormEvent {
+  final int fromIndex;
+  final int toIndex;
+  final String itemFormId;
 }
 ```
 
@@ -4083,14 +4086,14 @@ class FieldCommittedEvent extends TomFormEvent {
 /// Callback interface for form events.
 /// Implement selectively — all methods have default no-op implementations.
 mixin TomFormEventListener {
-  void onFieldValueChanged(FieldValueChangedEvent event) {}
-  void onFieldValidated(FieldValidatedEvent event) {}
-  void onFieldAuthChanged(FieldAuthChangedEvent event) {}
-  void onFieldBound(FieldBoundEvent event) {}
-  void onFieldCommitted(FieldCommittedEvent event) {}
-  void onFormBound(FormBoundEvent event) {}
-  void onFormSaved(FormSavedEvent event) {}
-  void onFormDiscarded(FormDiscardedEvent event) {}
+  void onFieldValueChanged(TomFieldValueChangedEvent event) {}
+  void onFieldValidated(TomFieldValidatedEvent event) {}
+  void onFieldAuthChanged(TomFieldAuthChangedEvent event) {}
+  void onFieldBound(TomFieldBoundEvent event) {}
+  void onFieldCommitted(TomFieldCommittedEvent event) {}
+  void onFormBound(TomFormBoundEvent event) {}
+  void onFormSaved(TomFormSavedEvent event) {}
+  void onFormDiscarded(TomFormDiscardedEvent event) {}
 }
 ```
 
@@ -4106,8 +4109,8 @@ class TomForm<T> {
   // Internal: fire events
   void _fireEvent(TomFormEvent event) {
     for (final listener in _listeners) {
-      if (event is FieldValueChangedEvent) listener.onFieldValueChanged(event);
-      if (event is FieldValidatedEvent) listener.onFieldValidated(event);
+      if (event is TomFieldValueChangedEvent) listener.onFieldValueChanged(event);
+      if (event is TomFieldValidatedEvent) listener.onFieldValidated(event);
       // ... etc.
     }
   }
@@ -4126,9 +4129,9 @@ class TomFormInspector with TomFormEventListener {
   TomFormInspector({this.maxEvents = 500});
 
   @override
-  void onFieldValueChanged(FieldValueChangedEvent event) => _add(event);
+  void onFieldValueChanged(TomFieldValueChangedEvent event) => _add(event);
   @override
-  void onFieldValidated(FieldValidatedEvent event) => _add(event);
+  void onFieldValidated(TomFieldValidatedEvent event) => _add(event);
   // ... all event types
 
   void _add(TomFormEvent event) {
@@ -4281,7 +4284,7 @@ These types are defined in `tom_core_kernel` and are the Tom-native value types 
 | `TomZonedDateTime` | `TomOZonedDateTime` / `TomNOZonedDateTime` | Full datetime with timezone | ✅ (as `ZonedDateTime`) |
 | `TomTimezone` | — | Timezone selector (IANA timezone ID) | ❌ |
 | `TomDateRange` | — | Date range (nullable endpoints) | ✅ (as `DateRange`) |
-| `TomTimeRange` | — | Time range (nullable endpoints) | ✅ (as `TimeRange`) |
+| `TomTimeRange` | — | Time range (nullable endpoints) | ✅ (as `TomTimeOfDayRange`) |
 | `TomDateTimeRange` | — | DateTime range (nullable endpoints) | ✅ (as `DateTimeRange`) |
 
 ### Observable Primitive Wrappers (bind targets)
@@ -4453,9 +4456,9 @@ Selection classes take their two positional arguments — the field id and the
 initial value — like every other field, then the source:
 
 ```dart
-final countrySource = StaticSelectableSource<String>(const [
-  SelectableItem(value: 'de', label: 'Germany'),
-  SelectableItem(value: 'fr', label: 'France'),
+final countrySource = TomStaticSelectableSource<String>(const [
+  TomSelectableItem(value: 'de', label: 'Germany'),
+  TomSelectableItem(value: 'fr', label: 'France'),
 ]);
 
 class AddressForm extends TomForm {
@@ -4506,7 +4509,7 @@ selection field in C.7 and C.8 takes one:
 
 | Source | Options come from | Reactive |
 |--------|-------------------|----------|
-| `StaticSelectableSource<T>` | A `List<SelectableItem<T>>` given at construction | No |
+| `TomStaticSelectableSource<T>` | A `List<TomSelectableItem<T>>` given at construction | No |
 | `TomEnumSelectableSource<E extends Enum>` | `E.values`, labelled from the text bundle | Yes — re-emits on a locale change |
 | `TomEnumNameSelectableSource<E extends Enum>` | The same, but valued by `Enum.name` | Yes |
 | `TomSelectableSource<T>` | The abstract base — implement `getItems()` and, if the options change, `itemsStream` | Depends |
@@ -4552,7 +4555,7 @@ is not a member of the enum family, and
 Seven further public declarations live under `lib/src/forms/fields/` without
 being fields: `TomDateTimeFormat`, `TomFieldWidgetAdapter`,
 `TomFileFieldStateMixin`, `TomFileThumbnailStateMixin`, and the three plain
-value types `NumRange`, `TimeRange` and `CurrencyFormatProfile`.
+value types `TomNumRange`, `TomTimeOfDayRange` and `TomCurrencyFormatProfile`.
 
 Two abstract types have no concrete implementation on either platform —
 `TomFormTimeRangeField` and `TomFormDateTimeRangeField` — so 21 of the 23 are

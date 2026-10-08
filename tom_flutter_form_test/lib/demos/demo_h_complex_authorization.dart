@@ -78,7 +78,7 @@ class _DemoHComplexAuthorizationState extends State<DemoHComplexAuthorization> {
 
   // No form listener: FieldStateTable already rebuilds off form.changes, and
   // auth dropdowns carry their own setState via [_setAuth]. An outer
-  // setState on every FieldValueChangedEvent would rebuild the full demo
+  // setState on every TomFieldValueChangedEvent would rebuild the full demo
   // subtree per keystroke, and the resulting InheritedWidget churn wipes
   // the TextField FocusNode after the first character (same root cause
   // that was fixed for Demo G).

@@ -75,7 +75,7 @@ void main() {
       const bKey = Key('b');
 
       final acl = AclBuilder()
-          .setAclDefaultRowHorizontalAlignment(RowAlignment.right)
+          .setAclDefaultRowHorizontalAlignment(AclRowAlignment.right)
           .append(Container(key: aKey, color: Colors.red))
           .setPSize(40, 20)
           .gap()

@@ -124,9 +124,9 @@ void main() {
         final field = TomCupertinoFormObjectPicker<String>(
           'country',
           'de',
-          source: StaticSelectableSource<String>(const [
-            SelectableItem(label: 'Deutschland', value: 'de'),
-            SelectableItem(label: 'Frankreich', value: 'fr'),
+          source: TomStaticSelectableSource<String>(const [
+            TomSelectableItem(label: 'Deutschland', value: 'de'),
+            TomSelectableItem(label: 'Frankreich', value: 'fr'),
           ]),
         );
         await tester.pumpWidget(_wrapCupertino(field.widget));
@@ -174,7 +174,7 @@ void main() {
         'de',
         // An empty source is what leaves a picker with nothing to show, so
         // this is the state the placeholder exists for.
-        source: StaticSelectableSource<String>(const []),
+        source: TomStaticSelectableSource<String>(const []),
       );
       await tester.pumpWidget(_wrapCupertino(field.widget));
 
@@ -200,8 +200,8 @@ void main() {
       final field = TomFormSearchInput<String>(
         'q',
         '',
-        source: StaticSelectableSource<String>(const [
-          SelectableItem(label: 'Alpha', value: 'a'),
+        source: TomStaticSelectableSource<String>(const [
+          TomSelectableItem(label: 'Alpha', value: 'a'),
         ]),
       );
       await tester.pumpWidget(_wrap(field.widget));
@@ -288,7 +288,7 @@ void main() {
       });
       expect(
         requiredIndicatorSuffixFor(
-          RequiredIndicator.text,
+          TomRequiredIndicator.text,
           hasRequired: true,
           isEditable: true,
         ),

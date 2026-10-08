@@ -4,8 +4,8 @@
 /// [TomLoadingOverlay.isLoading] is true.
 ///
 /// Suits any operation that suspends a whole surface rather than one
-/// control — a `SlowValidator` round-trip or a save action, for example.
-/// Backticked rather than linked: `SlowValidator` belongs to this
+/// control — a `TomSlowValidator` round-trip or a save action, for example.
+/// Backticked rather than linked: `TomSlowValidator` belongs to this
 /// package's `forms/validation` library, which `custom/` does not import
 /// and must not import for the sake of a doc reference.
 ///

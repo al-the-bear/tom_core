@@ -57,7 +57,7 @@ with the Examples section's `example.*` keys) at startup — see `lib/main.dart`
 | Demo | Source file | `tom_flutter_ui` / kernel feature validated |
 | ---- | ----------- | ------------------------------------------- |
 | A — Lifecycle & Validation | `demo_a_lifecycle.dart` | `TomForm` lifecycle (`bind` / `save` / `discard`), sync / async / cross-field validators, pristine tracking, `TomErrorView` banner, form actions |
-| B — Authorization & Events | `demo_b_authorization.dart` | Authorizer + four auth states, groups + modes, UI-state controller, live event bus (`FieldAuthChangedEvent`) |
+| B — Authorization & Events | `demo_b_authorization.dart` | Authorizer + four auth states, groups + modes, UI-state controller, live event bus (`TomFieldAuthChangedEvent`) |
 | C — Nested Forms & Theming | `demo_c_nested_theming.dart` | Nested `TomForm` (CustomerForm + billing/shipping), dirty tracking, live `TomFormStyle` switching, `styleBpOverrides`, per-section styling |
 | D — Hide on Authorization | `demo_d_hide_unauthorized.dart` | `setAclDefaultHideUnauthorized`, read / disabled states, row elision, gallery of ten non-form Tom widgets |
 
@@ -111,7 +111,7 @@ with the Examples section's `example.*` keys) at startup — see `lib/main.dart`
 | Demo | Source file | `tom_flutter_ui` / kernel feature validated |
 | ---- | ----------- | ------------------------------------------- |
 | O — Cupertino search / lookup / file | `demo_o_cupertino_search_lookup_file.dart` | Cupertino `SearchInput<City>`, `LookupSheet<Country>`, `FileUpload`, and four nullable variants pinned to `TomCupertinoFormStyle.cupertino` |
-| P — FormFieldFamily swap by breakpoint | `demo_p_family_swap_breakpoint.dart` | One `Phase5cFamilyForm` resolving Material vs Cupertino concretes via `FormFieldFamily`; `LayoutBuilder` + `styleBpOverrides` flip family + style at 700 px with shared state surviving |
+| P — TomFormFieldFamily swap by breakpoint | `demo_p_family_swap_breakpoint.dart` | One `Phase5cFamilyForm` resolving Material vs Cupertino concretes via `TomFormFieldFamily`; `LayoutBuilder` + `styleBpOverrides` flip family + style at 700 px with shared state surviving |
 
 ### Phase 6 — Non-form custom widgets
 
@@ -121,7 +121,7 @@ of the `tom_flutter_ui` widget specification.
 
 | Demo | Source file | `tom_flutter_ui` / kernel feature validated |
 | ---- | ----------- | ------------------------------------------- |
-| Q — Auth / Empty / Overlay | `demo_q_auth_empty_overlay.dart` | `TomAuthGuard`, `TomEmptyState` (built by a `TomInlineListForm`'s `emptyBuilder` when its list has no rows), `TomLoadingOverlay` (over a `ValidationForm.save()` awaiting an 800 ms `SlowValidator`) |
+| Q — Auth / Empty / Overlay | `demo_q_auth_empty_overlay.dart` | `TomAuthGuard`, `TomEmptyState` (built by a `TomInlineListForm`'s `emptyBuilder` when its list has no rows), `TomLoadingOverlay` (over a `ValidationForm.save()` awaiting an 800 ms `TomSlowValidator`) |
 | R — Tree / Radio / Infinite scroll | `demo_r_tree_radio_infinite.dart` | `TomAuthTreeView` (per-node auth + inheritance), `TomChoiceGroup` (group-level auth), `TomInfiniteScroll` over 10 000 rows with `TomSkeletonLoader` + `TomErrorBoundary` |
 
 ### Supporting reference demos
@@ -134,7 +134,7 @@ of the `tom_flutter_ui` widget specification.
 | 4 — Validation | `demo_4_validation.dart` | Fast vs slow validators, validation states, `TomFormInspector` |
 | 5 — Settings Form | `demo_5_settings.dart` | Dropdown fields, compact style, boolean toggles |
 | 6 — Field Layout Options | `demo_6_field_layout.dart` | Live-switch `labelPlacement`, `requiredIndicator`, `descriptionPlacement` |
-| 7 — Error Placement | `demo_7_error_placement.dart` | `ErrorPlacement` options incl. `replaceDescription`; 3-step error-message resolution chain |
+| 7 — Error Placement | `demo_7_error_placement.dart` | `TomErrorPlacement` options incl. `replaceDescription`; 3-step error-message resolution chain |
 | 8 — Breakpoints | `demo_8_breakpoints.dart` | Draggable splitter drives `TomFormStyleScope` width; gaps / error border / error icon react via breakpoint overrides |
 | 9 — Preset Showcase | `demo_9_preset_showcase.dart` | Grid of field types × presets (material3 / compact / bordered) with a `withTheme()` toggle |
 | 10 — Central JSON-Driven Style | `demo_10_central_json_style.dart` | Single root-level `TomFormStyleScope`; every style property + breakpoint variant defined in `demo_resources.json` |
@@ -150,9 +150,9 @@ and state binding are family-agnostic.
 
 | Example | Source file | `tom_flutter_ui` / kernel feature validated | Flavours |
 | ------- | ----------- | ------------------------------------------- | -------- |
-| H-A — Master / Detail | `examples/example_h_a_master_detail.dart` | `TomMasterDetailListForm` + `TomListForm`, `AclBuilder` rows, breakpoint-aware master pane, static resources/auth maps, `FormFieldFamily` | Material · Cupertino |
-| H-B — Expandable rows | `examples/example_h_b_expandable_rows.dart` | `TomExpandableListForm` (header/summary/body/toolbar builders + controller), per-row `AclBuilder` breakpoints, `TomMultiObservableBuilder` summaries, `FormFieldFamily` | Material · Cupertino |
-| H-C — Editable table | `examples/example_h_c_editable_table.dart` | Editable items table with int/double inputs, derived line totals, 720 px column-to-card reflow, `FormFieldFamily` | Material · Cupertino |
+| H-A — Master / Detail | `examples/example_h_a_master_detail.dart` | `TomMasterDetailListForm` + `TomListForm`, `AclBuilder` rows, breakpoint-aware master pane, static resources/auth maps, `TomFormFieldFamily` | Material · Cupertino |
+| H-B — Expandable rows | `examples/example_h_b_expandable_rows.dart` | `TomExpandableListForm` (header/summary/body/toolbar builders + controller), per-row `AclBuilder` breakpoints, `TomMultiObservableBuilder` summaries, `TomFormFieldFamily` | Material · Cupertino |
+| H-C — Editable table | `examples/example_h_c_editable_table.dart` | Editable items table with int/double inputs, derived line totals, 720 px column-to-card reflow, `TomFormFieldFamily` | Material · Cupertino |
 | H-D — Full customer form | `examples/example_h_d_customer_form.dart` | Rich form across every field family (string / search / bool / int / double / date) + address & order master-detail sub-lists, `AclBuilder` 700 px reflow | Material · Cupertino |
 | H-E — Read-only with edit dialogs | `examples/example_h_e_read_only.dart` | Same data graph as H-D as compact read-only rows; per-row Edit opens a modal form; Save commits / Cancel discards through the observable | Material · Cupertino |
 

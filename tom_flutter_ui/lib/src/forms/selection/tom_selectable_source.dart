@@ -1,11 +1,11 @@
 /// A single item that can be selected from a [TomSelectableSource].
-class SelectableItem<T> {
+class TomSelectableItem<T> {
   final T value;
   final String label;
   final String? description;
   final bool enabled;
 
-  const SelectableItem({
+  const TomSelectableItem({
     required this.value,
     required this.label,
     this.description,
@@ -15,14 +15,14 @@ class SelectableItem<T> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is SelectableItem<T> && other.value == value;
+      other is TomSelectableItem<T> && other.value == value;
 
   @override
   int get hashCode => value.hashCode;
 
   @override
   String toString() =>
-      'SelectableItem($label: $value${!enabled ? ', disabled' : ''})';
+      'TomSelectableItem($label: $value${!enabled ? ', disabled' : ''})';
 }
 
 /// Abstract source of selectable items for selection-based form fields.
@@ -31,8 +31,8 @@ class SelectableItem<T> {
 /// for sources that update over time.
 abstract class TomSelectableSource<T> {
   /// Fetches the current list of selectable items.
-  Future<List<SelectableItem<T>>> getItems();
+  Future<List<TomSelectableItem<T>>> getItems();
 
   /// Optional stream of item updates. Returns `null` if the source is static.
-  Stream<List<SelectableItem<T>>>? get itemsStream => null;
+  Stream<List<TomSelectableItem<T>>>? get itemsStream => null;
 }

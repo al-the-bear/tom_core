@@ -33,7 +33,7 @@ is not a guard.
 Nor can that backlog be triaged mechanically. Whether a given reference wants an
 import or a demotion to backticks turns on whether the two libraries *ought* to
 depend on each other, which is an architectural judgement and not a property of
-the reference. ``custom/tom_loading_overlay.dart`` linking ``[SlowValidator]``
+the reference. ``custom/tom_loading_overlay.dart`` linking ``[TomSlowValidator]``
 over in ``forms/validation`` wanted backticks -- the dependency would have been
 new and wrong; ``[TomForm]`` from ``tom_form_child_container.dart`` plausibly
 wants the link. No single rule separates them, so a checker over this population

@@ -25,14 +25,14 @@ class AddressForm extends TomForm<TomClass> {
     'street',
     '',
     form: this,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final city = TomFormStringInput(
     'city',
     '',
     form: this,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final state = TomFormStringInput('state', '', form: this);
@@ -41,7 +41,7 @@ class AddressForm extends TomForm<TomClass> {
     'zipCode',
     '',
     form: this,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
     keyboardType: TextInputType.text,
   );
 
@@ -50,7 +50,7 @@ class AddressForm extends TomForm<TomClass> {
     'US',
     form: this,
     source: _countrySource,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 }
 
@@ -58,12 +58,12 @@ class AddressForm extends TomForm<TomClass> {
 // Shared selection source for the address `country` field.
 // ---------------------------------------------------------------------------
 
-final _countrySource = StaticSelectableSource<String>([
-  const SelectableItem(value: 'US', label: 'United States'),
-  const SelectableItem(value: 'CA', label: 'Canada'),
-  const SelectableItem(value: 'GB', label: 'United Kingdom'),
-  const SelectableItem(value: 'DE', label: 'Germany'),
-  const SelectableItem(value: 'FR', label: 'France'),
-  const SelectableItem(value: 'JP', label: 'Japan'),
-  const SelectableItem(value: 'AU', label: 'Australia'),
+final _countrySource = TomStaticSelectableSource<String>([
+  const TomSelectableItem(value: 'US', label: 'United States'),
+  const TomSelectableItem(value: 'CA', label: 'Canada'),
+  const TomSelectableItem(value: 'GB', label: 'United Kingdom'),
+  const TomSelectableItem(value: 'DE', label: 'Germany'),
+  const TomSelectableItem(value: 'FR', label: 'France'),
+  const TomSelectableItem(value: 'JP', label: 'Japan'),
+  const TomSelectableItem(value: 'AU', label: 'Australia'),
 ]);

@@ -1,6 +1,6 @@
 /// Material / Cupertino parity.
 ///
-/// `FormFieldFamily` promises that a single field declaration resolves to
+/// `TomFormFieldFamily` promises that a single field declaration resolves to
 /// either presentation. That promise is only worth anything if the two sides
 /// behave identically below the pixels — otherwise swapping the family at a
 /// breakpoint silently changes what the form *does*, not just how it looks.
@@ -22,7 +22,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // Harness
 // ---------------------------------------------------------------------------
 
-Widget _shell(FormFieldFamily family, Widget child) => family.isCupertino
+Widget _shell(TomFormFieldFamily family, Widget child) => family.isCupertino
     ? CupertinoApp(
         home: CupertinoPageScaffold(child: Center(child: child)),
       )
@@ -30,7 +30,7 @@ Widget _shell(FormFieldFamily family, Widget child) => family.isCupertino
         home: Scaffold(body: Center(child: child)),
       );
 
-/// One factory method of [FormFieldFamily], reduced to the four things the
+/// One factory method of [TomFormFieldFamily], reduced to the four things the
 /// shared body needs: how to build it, how to move its value, and which
 /// concrete each family is expected to produce.
 ///
@@ -48,7 +48,7 @@ class _Case {
   });
 
   final String name;
-  final TomField<dynamic> Function(FormFieldFamily family) build;
+  final TomField<dynamic> Function(TomFormFieldFamily family) build;
 
   /// Moves the field to a value different from its initial one.
   final void Function(TomField<dynamic> field) mutate;
@@ -60,7 +60,7 @@ class _Case {
   /// share — the whole point of the factory.
   final void Function(TomField<dynamic> field) sharedBase;
 
-  Type expected(FormFieldFamily f) =>
+  Type expected(TomFormFieldFamily f) =>
       f.isCupertino ? cupertinoType : materialType;
 }
 
@@ -68,7 +68,7 @@ class _Case {
 /// `nextValue` cannot be handed a value of the wrong type.
 _Case _case<T>(
   String name, {
-  required TomField<T> Function(FormFieldFamily family) build,
+  required TomField<T> Function(TomFormFieldFamily family) build,
   required T Function(TomField<T> field) nextValue,
   required Type material,
   required Type cupertino,
@@ -92,15 +92,15 @@ _Case _case<T>(
 enum Priority { low, high }
 
 TomSelectableSource<Priority> _prioritySource() =>
-    StaticSelectableSource<Priority>(const [
-      SelectableItem(value: Priority.low, label: 'Low'),
-      SelectableItem(value: Priority.high, label: 'High'),
+    TomStaticSelectableSource<Priority>(const [
+      TomSelectableItem(value: Priority.low, label: 'Low'),
+      TomSelectableItem(value: Priority.high, label: 'High'),
     ]);
 
 TomSelectableSource<String> _citySource() =>
-    StaticSelectableSource<String>(const [
-      SelectableItem(value: 'oslo', label: 'Oslo'),
-      SelectableItem(value: 'lima', label: 'Lima'),
+    TomStaticSelectableSource<String>(const [
+      TomSelectableItem(value: 'oslo', label: 'Oslo'),
+      TomSelectableItem(value: 'lima', label: 'Lima'),
     ]);
 
 final DateTime _first = DateTime(2020);
@@ -338,12 +338,12 @@ void main() {
   });
 
   for (final family in const [
-    FormFieldFamily.material,
-    FormFieldFamily.cupertino,
+    TomFormFieldFamily.material,
+    TomFormFieldFamily.cupertino,
   ]) {
     final label = family.isCupertino ? 'cupertino' : 'material';
 
-    group('FormFieldFamily.$label', () {
+    group('TomFormFieldFamily.$label', () {
       for (final c in _cases()) {
         group(c.name, () {
           test('resolves to the $label concrete behind the shared base', () {
@@ -379,7 +379,7 @@ void main() {
             expect(field.initialValue, field.get());
             expect(
               field.validationState,
-              isA<ValidationPristine>(),
+              isA<TomValidationPristine>(),
               reason: 'commit clears validation — no errors after a save',
             );
           });
@@ -414,8 +414,8 @@ void main() {
   group('the two families are interchangeable', () {
     test('every case yields distinct concretes from a shared base', () {
       for (final c in _cases()) {
-        final m = c.build(FormFieldFamily.material);
-        final cup = c.build(FormFieldFamily.cupertino);
+        final m = c.build(TomFormFieldFamily.material);
+        final cup = c.build(TomFormFieldFamily.cupertino);
         expect(
           m.runtimeType,
           isNot(cup.runtimeType),
@@ -429,8 +429,8 @@ void main() {
     test('both families start from the same value', () {
       for (final c in _cases()) {
         expect(
-          c.build(FormFieldFamily.material).get(),
-          c.build(FormFieldFamily.cupertino).get(),
+          c.build(TomFormFieldFamily.material).get(),
+          c.build(TomFormFieldFamily.cupertino).get(),
           reason: '${c.name}: initial value must not depend on presentation',
         );
       }
@@ -439,8 +439,8 @@ void main() {
     test('both families derive the same basePath', () {
       for (final c in _cases()) {
         expect(
-          c.build(FormFieldFamily.material).basePath,
-          c.build(FormFieldFamily.cupertino).basePath,
+          c.build(TomFormFieldFamily.material).basePath,
+          c.build(TomFormFieldFamily.cupertino).basePath,
           reason: '${c.name}: a resource bundle must serve both families',
         );
       }
@@ -448,29 +448,29 @@ void main() {
 
     test('validators run identically on both sides', () async {
       for (final family in const [
-        FormFieldFamily.material,
-        FormFieldFamily.cupertino,
+        TomFormFieldFamily.material,
+        TomFormFieldFamily.cupertino,
       ]) {
         final field = family.stringInput(
           'name',
           '',
-          validators: [Validators.required()],
+          validators: [TomValidators.required()],
         );
         expect(
           await field.validate(),
-          isA<ValidationError>(),
+          isA<TomValidationError>(),
           reason: 'an empty required field is invalid in either family',
         );
 
         field.setValue('Ada');
-        expect(await field.validate(), isA<ValidationSuccess>());
+        expect(await field.validate(), isA<TomValidationSuccess>());
       }
     });
 
     test('a read-only controller disables the field in either family', () {
       for (final family in const [
-        FormFieldFamily.material,
-        FormFieldFamily.cupertino,
+        TomFormFieldFamily.material,
+        TomFormFieldFamily.cupertino,
       ]) {
         final field = family.stringInput(
           'name',
@@ -493,8 +493,8 @@ void main() {
           }),
         );
         for (final family in const [
-          FormFieldFamily.material,
-          FormFieldFamily.cupertino,
+          TomFormFieldFamily.material,
+          TomFormFieldFamily.cupertino,
         ]) {
           final field = family.enumPickerFor<Priority>(
             'prio',

@@ -19,9 +19,9 @@
 ///     on this, and losing it turns one edit into an event storm.
 ///
 ///   * **`setValue` does not validate; it schedules validation.** The
-///     `FieldValidatedEvent` arrives after `validationDebounce`, not on the same
+///     `TomFieldValidatedEvent` arrives after `validationDebounce`, not on the same
 ///     turn — which is why a test that reads validation state immediately after
-///     an edit sees `ValidationSuccess` (the optimistic transition out of
+///     an edit sees `TomValidationSuccess` (the optimistic transition out of
 ///     pristine) rather than a validator's verdict.
 ///
 ///   * **A field with no form is silent, not broken.** The `form?.` guard is
@@ -72,7 +72,7 @@ void main() {
 
       form.product.setValue('Washer');
 
-      final event = heard.ofType<FieldValueChangedEvent>().single;
+      final event = heard.ofType<TomFieldValueChangedEvent>().single;
       expect(event.source, 'product');
       expect(event.oldValue, 'Bolt');
       expect(event.newValue, 'Washer');
@@ -108,8 +108,8 @@ void main() {
 
         form.product.setValue('');
 
-        expect(heard.ofType<FieldValidatedEvent>(), isEmpty);
-        expect(form.product.validationState, const ValidationSuccess());
+        expect(heard.ofType<TomFieldValidatedEvent>(), isEmpty);
+        expect(form.product.validationState, const TomValidationSuccess());
       },
     );
 
@@ -121,10 +121,10 @@ void main() {
         form.product.validationDebounce + const Duration(milliseconds: 100),
       );
 
-      final event = heard.ofType<FieldValidatedEvent>().single;
+      final event = heard.ofType<TomFieldValidatedEvent>().single;
       expect(event.source, 'product');
-      expect(event.result, isA<ValidationError>());
-      expect(form.product.validationState, isA<ValidationError>());
+      expect(event.result, isA<TomValidationError>());
+      expect(form.product.validationState, isA<TomValidationError>());
     });
   });
 
@@ -138,10 +138,10 @@ void main() {
 
       final result = await form.product.validate();
 
-      expect(result, isA<ValidationError>());
+      expect(result, isA<TomValidationError>());
       expect(
-        heard.ofType<FieldValidatedEvent>().single.result,
-        isA<ValidationError>(),
+        heard.ofType<TomFieldValidatedEvent>().single.result,
+        isA<TomValidationError>(),
       );
     });
 
@@ -150,10 +150,10 @@ void main() {
 
       final result = await form.product.validate();
 
-      expect(result, isA<ValidationSuccess>());
+      expect(result, isA<TomValidationSuccess>());
       expect(
-        heard.ofType<FieldValidatedEvent>().single.result,
-        isA<ValidationSuccess>(),
+        heard.ofType<TomFieldValidatedEvent>().single.result,
+        isA<TomValidationSuccess>(),
       );
     });
   });
@@ -170,7 +170,7 @@ void main() {
       form.product.setValue('Washer');
       form.product.commit();
 
-      expect(heard.ofType<FieldCommittedEvent>().single.source, 'product');
+      expect(heard.ofType<TomFieldCommittedEvent>().single.source, 'product');
     });
 
     test(
@@ -179,11 +179,11 @@ void main() {
         final (:form, heard: _) = _bound('Bolt');
 
         await form.product.validate();
-        expect(form.product.validationState, const ValidationSuccess());
+        expect(form.product.validationState, const TomValidationSuccess());
 
         form.product.commit();
 
-        expect(form.product.validationState, const ValidationPristine());
+        expect(form.product.validationState, const TomValidationPristine());
       },
     );
   });
@@ -199,7 +199,7 @@ void main() {
     TomFormStringInput loose() => TomFormStringInput(
       'loose',
       'Bolt',
-      validators: [Validators.required()],
+      validators: [TomValidators.required()],
     );
 
     test('changes value without a listener to tell', () {
@@ -212,7 +212,7 @@ void main() {
     test('validates without a listener to tell', () async {
       final field = loose();
 
-      expect(await field.validate(), isA<ValidationSuccess>());
+      expect(await field.validate(), isA<TomValidationSuccess>());
     });
 
     test('commits without a listener to tell', () {

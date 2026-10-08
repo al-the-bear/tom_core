@@ -1,6 +1,6 @@
 /// Interaction tests for Demo 7 — Error Placement (legacy demo).
 ///
-/// Demo 7 hosts one [SegmentedButton<ErrorPlacement>] (below / above /
+/// Demo 7 hosts one [SegmentedButton<TomErrorPlacement>] (below / above /
 /// both / replaceDescription) and two [OutlinedButton.icon]s (Trigger
 /// errors / Clear errors). Trigger errors mutates the bound state with
 /// invalid values so the chosen placement renders visible error text.
@@ -75,7 +75,7 @@ void main() {
   }
 
   Future<void> tapPlacement(WidgetTester tester, String label) async {
-    final segmented = find.byType(SegmentedButton<ErrorPlacement>);
+    final segmented = find.byType(SegmentedButton<TomErrorPlacement>);
     expect(segmented, findsOneWidget);
     final seg = find.descendant(of: segmented, matching: find.text(label));
     expect(
@@ -89,10 +89,10 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Set<ErrorPlacement> selected(WidgetTester tester) {
+  Set<TomErrorPlacement> selected(WidgetTester tester) {
     final w =
-        find.byType(SegmentedButton<ErrorPlacement>).evaluate().first.widget
-            as SegmentedButton<ErrorPlacement>;
+        find.byType(SegmentedButton<TomErrorPlacement>).evaluate().first.widget
+            as SegmentedButton<TomErrorPlacement>;
     return w.selected;
   }
 
@@ -110,8 +110,8 @@ void main() {
     tester,
   ) async {
     await openDemo7(tester);
-    expect(find.byType(SegmentedButton<ErrorPlacement>), findsOneWidget);
-    expect(selected(tester), {ErrorPlacement.below});
+    expect(find.byType(SegmentedButton<TomErrorPlacement>), findsOneWidget);
+    expect(selected(tester), {TomErrorPlacement.below});
     expect(
       find.widgetWithText(OutlinedButton, 'Trigger errors'),
       findsOneWidget,
@@ -170,13 +170,13 @@ void main() {
   ) async {
     await openDemo7(tester);
     await tapPlacement(tester, 'above');
-    expect(selected(tester), {ErrorPlacement.above});
+    expect(selected(tester), {TomErrorPlacement.above});
     await tapPlacement(tester, 'both');
-    expect(selected(tester), {ErrorPlacement.both});
+    expect(selected(tester), {TomErrorPlacement.both});
     await tapPlacement(tester, 'replaceDescription');
-    expect(selected(tester), {ErrorPlacement.replaceDescription});
+    expect(selected(tester), {TomErrorPlacement.replaceDescription});
     await tapPlacement(tester, 'below');
-    expect(selected(tester), {ErrorPlacement.below});
+    expect(selected(tester), {TomErrorPlacement.below});
   });
 
   testWidgets(

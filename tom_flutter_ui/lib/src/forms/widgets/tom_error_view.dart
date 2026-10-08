@@ -14,7 +14,7 @@ import '../validation/form_validation_error.dart';
 /// `TomFormErrorBanner`, which is locked to a banner slot at the top).
 ///
 /// Subscribes to the form's event bus and rebuilds on
-/// [FormValidatedEvent] / [FormSavedEvent] / [FormDiscardedEvent].
+/// [TomFormValidatedEvent] / [TomFormSavedEvent] / [TomFormDiscardedEvent].
 ///
 /// Errors are worded by [resolveFormValidationMessage] so callers can use
 /// resource keys like `'order.items.minRequired'` and have them
@@ -43,8 +43,8 @@ class TomErrorView extends StatefulWidget {
 
   /// Optional handler invoked when an error row is tapped — useful for
   /// "focus this field" affordances. Receives the original
-  /// [FormValidationError].
-  final void Function(FormValidationError error)? onErrorTap;
+  /// [TomFormValidationError].
+  final void Function(TomFormValidationError error)? onErrorTap;
 
   /// Whether per-field validation errors are included alongside cross-
   /// field ones. Defaults to `true`. When set to `false`, behaves like
@@ -58,7 +58,7 @@ class TomErrorView extends StatefulWidget {
 }
 
 class _TomErrorViewState extends State<TomErrorView> with TomFormEventListener {
-  List<FormValidationError> _errors = [];
+  List<TomFormValidationError> _errors = [];
 
   @override
   void initState() {
@@ -83,9 +83,9 @@ class _TomErrorViewState extends State<TomErrorView> with TomFormEventListener {
   }
 
   @override
-  void onFormValidated(FormValidatedEvent event) {
+  void onFormValidated(TomFormValidatedEvent event) {
     setState(() {
-      final errors = event.errors.whereType<FormValidationError>();
+      final errors = event.errors.whereType<TomFormValidationError>();
       _errors = widget.includeFieldErrors
           ? errors.toList()
           : errors.where((e) => e.fields.length != 1).toList();
@@ -93,18 +93,18 @@ class _TomErrorViewState extends State<TomErrorView> with TomFormEventListener {
   }
 
   @override
-  void onFormSaved(FormSavedEvent event) {
+  void onFormSaved(TomFormSavedEvent event) {
     setState(() => _errors = []);
   }
 
   @override
-  void onFormDiscarded(FormDiscardedEvent event) {
+  void onFormDiscarded(TomFormDiscardedEvent event) {
     setState(() => _errors = []);
   }
 
   /// Imperative override — primarily for tests / demos that compute the
   /// error list separately from form events.
-  void setErrors(List<FormValidationError> errors) {
+  void setErrors(List<TomFormValidationError> errors) {
     setState(() {
       _errors = widget.includeFieldErrors
           ? errors

@@ -43,8 +43,8 @@ class TomCupertinoFormSearchInput<T> extends TomFormSearchField<T>
   final TomSelectableSource<T> source;
 
   /// Custom predicate. Defaults to case-insensitive substring match on
-  /// `SelectableItem.label`.
-  final bool Function(String query, SelectableItem<T> item)? searchPredicate;
+  /// `TomSelectableItem.label`.
+  final bool Function(String query, TomSelectableItem<T> item)? searchPredicate;
 
   /// Display-label resolver. Defaults to lookup against the current
   /// source snapshot, falling back to `value.toString()`.
@@ -96,8 +96,8 @@ class _CupertinoSearchInputWidget<T> extends StatefulWidget {
 
 class _CupertinoSearchInputWidgetState<T>
     extends State<_CupertinoSearchInputWidget<T>> {
-  StreamSubscription<List<SelectableItem<T>>>? _subscription;
-  List<SelectableItem<T>> _items = const [];
+  StreamSubscription<List<TomSelectableItem<T>>>? _subscription;
+  List<TomSelectableItem<T>> _items = const [];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomCupertinoFormSearchInput<T> get field => widget.field;
@@ -147,7 +147,7 @@ class _CupertinoSearchInputWidgetState<T>
     return hit ?? (v?.toString() ?? '');
   }
 
-  bool _match(String q, SelectableItem<T> it) {
+  bool _match(String q, TomSelectableItem<T> it) {
     final pred = field.searchPredicate;
     if (pred != null) return pred(q, it);
     return it.label.toLowerCase().contains(q.toLowerCase());
@@ -159,7 +159,7 @@ class _CupertinoSearchInputWidgetState<T>
     final style = f.resolveStyle(context);
     final hint = f.hintText ?? TomFormLabels.searchHint(f.basePath);
 
-    final autocomplete = Autocomplete<SelectableItem<T>>(
+    final autocomplete = Autocomplete<TomSelectableItem<T>>(
       initialValue: TextEditingValue(text: _label(f.get())),
       displayStringForOption: (it) => it.label,
       optionsBuilder: (input) {
@@ -299,8 +299,8 @@ class _CupertinoLookupSheetWidget<T> extends StatefulWidget {
 
 class _CupertinoLookupSheetWidgetState<T>
     extends State<_CupertinoLookupSheetWidget<T>> {
-  StreamSubscription<List<SelectableItem<T>>>? _subscription;
-  List<SelectableItem<T>> _items = const [];
+  StreamSubscription<List<TomSelectableItem<T>>>? _subscription;
+  List<TomSelectableItem<T>> _items = const [];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomCupertinoFormLookupSheet<T> get field => widget.field;
@@ -412,7 +412,7 @@ class _CupertinoLookupSheetWidgetState<T>
 /// doesn't have to carry transient search state.
 class _CupertinoLookupSheetBody<T> extends StatefulWidget {
   final String title;
-  final List<SelectableItem<T>> items;
+  final List<TomSelectableItem<T>> items;
 
   /// The opening field's resource scope, so its Cancel button and filter
   /// placeholder can be reworded per field rather than only application-wide.

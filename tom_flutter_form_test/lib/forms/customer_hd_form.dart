@@ -36,7 +36,7 @@ class OrderItemHDForm extends TomForm<OrderItemHD> {
     form: this,
     source: phase2aProductSource(),
     labelTextOverride: 'Product',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
     autoValidate: true,
   );
 
@@ -46,7 +46,7 @@ class OrderItemHDForm extends TomForm<OrderItemHD> {
     form: this,
     labelTextOverride: 'Qty',
     keyboardType: const TextInputType.numberWithOptions(),
-    validators: [Validators.required(), integerValidator],
+    validators: [TomValidators.required(), integerValidator],
     autoValidate: true,
   );
 
@@ -56,7 +56,7 @@ class OrderItemHDForm extends TomForm<OrderItemHD> {
     form: this,
     labelTextOverride: 'Unit price',
     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-    validators: [Validators.required(), decimalValidator],
+    validators: [TomValidators.required(), decimalValidator],
     autoValidate: true,
   );
 
@@ -113,7 +113,7 @@ class OrderHDForm extends TomForm<OrderHD> {
   /// Falls back to a plain text input when null (e.g. in stand-alone tests).
   OrderHDForm({TomSelectableSource<String>? shippingLabelSource})
     : _shippingLabelSource =
-          shippingLabelSource ?? StaticSelectableSource<String>([]),
+          shippingLabelSource ?? TomStaticSelectableSource<String>([]),
       super(formId: 'orderHD');
 
   final TomSelectableSource<String> _shippingLabelSource;
@@ -123,7 +123,7 @@ class OrderHDForm extends TomForm<OrderHD> {
     '',
     form: this,
     labelTextOverride: 'Order ID',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final orderDate = TomFormStringInput(
@@ -131,7 +131,7 @@ class OrderHDForm extends TomForm<OrderHD> {
     '',
     form: this,
     labelTextOverride: 'Order date (YYYY-MM-DD)',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   /// Search picker over the customer's shipping address labels.
@@ -216,7 +216,7 @@ class ShippingAddressHDForm extends TomForm<ShippingAddressHD> {
     form: this,
     labelTextOverride: 'Label',
     hintTextOverride: 'e.g. Warehouse, Main Office',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final line1 = TomFormStringInput(
@@ -224,7 +224,7 @@ class ShippingAddressHDForm extends TomForm<ShippingAddressHD> {
     '',
     form: this,
     labelTextOverride: 'Address line 1',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final line2 = TomFormStringInput(
@@ -239,7 +239,7 @@ class ShippingAddressHDForm extends TomForm<ShippingAddressHD> {
     '',
     form: this,
     labelTextOverride: 'City',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final stateRegion = TomFormStringInput(
@@ -254,7 +254,7 @@ class ShippingAddressHDForm extends TomForm<ShippingAddressHD> {
     '',
     form: this,
     labelTextOverride: 'ZIP / Postal code',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final country = TomFormStringInput(
@@ -262,7 +262,7 @@ class ShippingAddressHDForm extends TomForm<ShippingAddressHD> {
     '',
     form: this,
     labelTextOverride: 'Country',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   @override
@@ -316,7 +316,7 @@ class CustomerHDForm extends TomForm<CustomerHD> {
     '',
     form: this,
     labelTextOverride: 'Full name',
-    validators: [Validators.required(), Validators.minLength(2)],
+    validators: [TomValidators.required(), TomValidators.minLength(2)],
   );
 
   late final email = TomFormStringInput(
@@ -325,7 +325,7 @@ class CustomerHDForm extends TomForm<CustomerHD> {
     form: this,
     labelTextOverride: 'Email',
     keyboardType: TextInputType.emailAddress,
-    validators: [Validators.required(), Validators.email()],
+    validators: [TomValidators.required(), TomValidators.email()],
   );
 
   late final phone = TomFormStringInput(
@@ -431,13 +431,13 @@ class _ShippingLabelSource extends TomSelectableSource<String> {
   _ShippingLabelSource(this._listProvider);
 
   @override
-  Future<List<SelectableItem<String>>> getItems() async {
+  Future<List<TomSelectableItem<String>>> getItems() async {
     final list = _listProvider();
-    final items = <SelectableItem<String>>[];
+    final items = <TomSelectableItem<String>>[];
     for (var i = 0; i < list.length; i++) {
       final label = list[i].currentBinding?.label.get() ?? '';
       if (label.isNotEmpty) {
-        items.add(SelectableItem<String>(value: label, label: label));
+        items.add(TomSelectableItem<String>(value: label, label: label));
       }
     }
     return items;

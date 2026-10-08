@@ -72,7 +72,7 @@ void main() {
       registry.register(
         'strongPassword',
         (_) =>
-            (Object? value) => const ValidationSuccess(),
+            (Object? value) => const TomValidationSuccess(),
       );
       expect(registry.has('strongPassword'), isTrue);
       expect(registry.names, contains('strongPassword'));
@@ -95,21 +95,21 @@ void main() {
   group('TomValidatorRegistry — built-in validators run correctly', () {
     test('required rejects empty and null, accepts non-empty', () async {
       final v = TomValidatorRegistry().resolveOrThrow('required');
-      expect(await v(''), isA<ValidationError>());
-      expect(await v(null), isA<ValidationError>());
-      expect(await v('ok'), isA<ValidationSuccess>());
+      expect(await v(''), isA<TomValidationError>());
+      expect(await v(null), isA<TomValidationError>());
+      expect(await v('ok'), isA<TomValidationSuccess>());
     });
 
     test('minLength enforces its integer argument', () async {
       final v = TomValidatorRegistry().resolveSpec('minLength:3');
-      expect(await v('ab'), isA<ValidationError>());
-      expect(await v('abc'), isA<ValidationSuccess>());
+      expect(await v('ab'), isA<TomValidationError>());
+      expect(await v('abc'), isA<TomValidationSuccess>());
     });
 
     test('min enforces its numeric argument', () async {
       final v = TomValidatorRegistry().resolveSpec('min:5');
-      expect(await v(4), isA<ValidationError>());
-      expect(await v(5), isA<ValidationSuccess>());
+      expect(await v(4), isA<TomValidationError>());
+      expect(await v(5), isA<TomValidationSuccess>());
     });
 
     test('minLength with a missing argument throws', () {
@@ -131,14 +131,14 @@ void main() {
     // bundle without any per-field constructor argument.
     test('minItems enforces its integer argument on a selection', () async {
       final v = TomValidatorRegistry().resolveSpec('minItems:2');
-      expect(await v(['a']), isA<ValidationError>());
-      expect(await v(['a', 'b']), isA<ValidationSuccess>());
+      expect(await v(['a']), isA<TomValidationError>());
+      expect(await v(['a', 'b']), isA<TomValidationSuccess>());
     });
 
     test('maxItems enforces its integer argument on a selection', () async {
       final v = TomValidatorRegistry().resolveSpec('maxItems:2');
-      expect(await v(['a', 'b', 'c']), isA<ValidationError>());
-      expect(await v(['a', 'b']), isA<ValidationSuccess>());
+      expect(await v(['a', 'b', 'c']), isA<TomValidationError>());
+      expect(await v(['a', 'b']), isA<TomValidationSuccess>());
     });
 
     test('minItems with a non-integer argument throws', () {
@@ -174,7 +174,7 @@ void main() {
         ..register(
           'x',
           (_) =>
-              (Object? v) => const ValidationSuccess(),
+              (Object? v) => const TomValidationSuccess(),
         );
       TomValidatorRegistry.instance = custom;
       expect(TomValidatorRegistry.instance.has('x'), isTrue);
@@ -197,8 +197,8 @@ void main() {
         'strongPassword',
         (_) =>
             (Object? value) => (value as String).length >= 8
-            ? const ValidationSuccess()
-            : const ValidationError('error.weakPassword'),
+            ? const TomValidationSuccess()
+            : const TomValidationError('error.weakPassword'),
       );
 
       // 2. A field's resource bundle names the validator and provides the
@@ -216,22 +216,22 @@ void main() {
 
       // Invalid value → the custom validator fires.
       final result = await field.validate();
-      expect(result, isA<ValidationError>());
-      expect((result as ValidationError).errorKey, 'error.weakPassword');
+      expect(result, isA<TomValidationError>());
+      expect((result as TomValidationError).errorKey, 'error.weakPassword');
 
       // 4. The error message resolves from resources (global key here).
       expect(field.resolvedErrorMessage, 'Password is too weak.');
 
       // A valid value passes.
       field.setValue('longenough');
-      expect(await field.validate(), isA<ValidationSuccess>());
+      expect(await field.validate(), isA<TomValidationSuccess>());
     });
 
     test('scoped error message overrides the global one', () async {
       TomValidatorRegistry.instance.register(
         'strongPassword',
         (_) =>
-            (Object? value) => const ValidationError('error.weakPassword'),
+            (Object? value) => const TomValidationError('error.weakPassword'),
       );
       TomTextResourceProvider.setAppResourceProvider(
         TomTextResourceProvider.from({
@@ -252,9 +252,9 @@ void main() {
         TomTextResourceProvider.from({'username.validators': 'required'}),
       );
       final field = TomFormStringInput('username', '');
-      expect(await field.validate(), isA<ValidationError>());
+      expect(await field.validate(), isA<TomValidationError>());
       field.setValue('alice');
-      expect(await field.validate(), isA<ValidationSuccess>());
+      expect(await field.validate(), isA<TomValidationSuccess>());
     });
 
     test(
@@ -272,29 +272,29 @@ void main() {
         final field = TomFormStringFilterChips(
           'toppings',
           const ['cheese'],
-          source: StaticSelectableSource<String>(const [
-            SelectableItem(value: 'cheese', label: 'Cheese'),
-            SelectableItem(value: 'basil', label: 'Basil'),
-            SelectableItem(value: 'olives', label: 'Olives'),
-            SelectableItem(value: 'chilli', label: 'Chilli'),
+          source: TomStaticSelectableSource<String>(const [
+            TomSelectableItem(value: 'cheese', label: 'Cheese'),
+            TomSelectableItem(value: 'basil', label: 'Basil'),
+            TomSelectableItem(value: 'olives', label: 'Olives'),
+            TomSelectableItem(value: 'chilli', label: 'Chilli'),
           ]),
         );
 
         // Below the lower bound.
         final tooFew = await field.validate();
-        expect(tooFew, isA<ValidationError>());
-        expect((tooFew as ValidationError).errorKey, 'error.minItems');
+        expect(tooFew, isA<TomValidationError>());
+        expect((tooFew as TomValidationError).errorKey, 'error.minItems');
         expect(field.resolvedErrorMessage, 'Pick at least 2.');
 
         // Inside the range.
         field.setValue(const ['cheese', 'basil']);
-        expect(await field.validate(), isA<ValidationSuccess>());
+        expect(await field.validate(), isA<TomValidationSuccess>());
 
         // Above the upper bound.
         field.setValue(const ['cheese', 'basil', 'olives', 'chilli']);
         final tooMany = await field.validate();
-        expect(tooMany, isA<ValidationError>());
-        expect((tooMany as ValidationError).errorKey, 'error.maxItems');
+        expect(tooMany, isA<TomValidationError>());
+        expect((tooMany as TomValidationError).errorKey, 'error.maxItems');
       },
     );
 
@@ -306,13 +306,13 @@ void main() {
       final field = TomFormStringInput(
         'nickname',
         '',
-        validators: [(String v) => const ValidationSuccess()],
+        validators: [(String v) => const TomValidationSuccess()],
       );
       // 'ab' passes the code validator but fails resource minLength:3.
       field.setValue('ab');
       final result = await field.validate();
-      expect(result, isA<ValidationError>());
-      expect((result as ValidationError).errorKey, 'error.minLength');
+      expect(result, isA<TomValidationError>());
+      expect((result as TomValidationError).errorKey, 'error.minLength');
     });
 
     test(

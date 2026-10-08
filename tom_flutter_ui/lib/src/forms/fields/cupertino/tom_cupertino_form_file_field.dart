@@ -34,7 +34,7 @@ import '../tom_form_file_field.dart';
 
 @tomReflector
 class TomCupertinoFormFileUpload extends TomFormFileField
-    with TomGenericFieldDecorationMixin<FileRef?> {
+    with TomGenericFieldDecorationMixin<TomFileRef?> {
   TomCupertinoFormFileUpload(
     super.tomId,
     super.initialValue, {
@@ -196,7 +196,7 @@ class _CupertinoFileUploadWidgetState extends State<_CupertinoFileUploadWidget>
 /// Material side uses an `InkWell`, and the hand-built transfer status row.
 @tomReflector
 class TomCupertinoFormFileThumbnail extends TomFormFileField
-    with TomGenericFieldDecorationMixin<FileRef?> {
+    with TomGenericFieldDecorationMixin<TomFileRef?> {
   /// Edge length of the square preview surface.
   final double thumbnailSize;
 

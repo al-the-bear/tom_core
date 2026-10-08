@@ -62,10 +62,10 @@ class _Demo8BreakpointsState extends State<Demo8Breakpoints> {
   TomFormStyle get _style => TomFormStyle(
     defaults:
         const TomFieldStyle(
-          labelPlacement: LabelPlacement.floating,
+          labelPlacement: TomLabelPlacement.floating,
           labelPlacementBpOverrides: [
-            (400, LabelPlacement.above),
-            (700, LabelPlacement.inline),
+            (400, TomLabelPlacement.above),
+            (700, TomLabelPlacement.inline),
           ],
           labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
           labelStyleBpOverrides: [

@@ -485,7 +485,7 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
             child: Text(
               [
                 for (final f in errors)
-                  '${f.tomId}: ${resolveFieldValidationMessage(validationState: f.validationState, basePath: f.basePath, scope: f.scope) ?? (f.validationState as ValidationError).errorKey}',
+                  '${f.tomId}: ${resolveFieldValidationMessage(validationState: f.validationState, basePath: f.basePath, scope: f.scope) ?? (f.validationState as TomValidationError).errorKey}',
               ].join('  •  '),
               style: theme.textTheme.bodySmall,
             ),
@@ -507,7 +507,7 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
         child: TomFormStyleScope(
           style: const TomFormStyle(
             defaults: TomFieldStyle(
-              errorPlacement: ErrorPlacement.tooltip,
+              errorPlacement: TomErrorPlacement.tooltip,
               errorBorderEnabled: false,
             ),
           ),

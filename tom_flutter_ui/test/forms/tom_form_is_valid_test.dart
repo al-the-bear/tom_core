@@ -2,9 +2,9 @@
 /// acceptable" — and the difference is invisible from the call site.
 ///
 /// A form bound to entirely valid data reports `isValid == false`, because
-/// every field is still `ValidationPristine` and pristine is deliberately not
+/// every field is still `TomValidationPristine` and pristine is deliberately not
 /// success. The rule is stated in the source (`TomForm.isValid`,
-/// `ValidationPristine`, `TomListForm.isValid`) but it is the kind of thing a
+/// `TomValidationPristine`, `TomListForm.isValid`) but it is the kind of thing a
 /// caller discovers by shipping a Save button that never enables, so it is
 /// pinned here rather than left to prose.
 ///
@@ -38,8 +38,8 @@ void main() {
         'validator failed', () {
       final form = OrderItemForm()..bind(_validItem());
 
-      expect(form.product.validationState, const ValidationPristine());
-      expect(form.quantity.validationState, const ValidationPristine());
+      expect(form.product.validationState, const TomValidationPristine());
+      expect(form.quantity.validationState, const TomValidationPristine());
       expect(form.fieldsWithErrors, isEmpty);
     });
 
@@ -63,8 +63,8 @@ void main() {
 
       form.product.setValue('Washer');
 
-      expect(form.product.validationState, const ValidationSuccess());
-      expect(form.quantity.validationState, const ValidationPristine());
+      expect(form.product.validationState, const TomValidationSuccess());
+      expect(form.quantity.validationState, const TomValidationPristine());
       expect(form.isValid, isFalse);
     });
 

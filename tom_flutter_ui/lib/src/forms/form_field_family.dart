@@ -12,8 +12,8 @@
 ///
 /// ```dart
 /// final family = isNarrow
-///     ? FormFieldFamily.cupertino
-///     : FormFieldFamily.material;
+///     ? TomFormFieldFamily.cupertino
+///     : TomFormFieldFamily.material;
 ///
 /// final name = family.stringInput('user.name', '');
 /// final age  = family.intInput('user.age', 0);
@@ -74,7 +74,7 @@ import 'selection/tom_selectable_source.dart';
 import 'tom_form.dart';
 
 /// Family identifier — picks Material or Cupertino concrete implementations.
-enum FormFieldFamilyKind { material, cupertino }
+enum TomFormFieldFamilyKind { material, cupertino }
 
 /// Factory that constructs concrete field instances of either the Material
 /// or Cupertino family while exposing the shared abstract types as the
@@ -84,28 +84,28 @@ enum FormFieldFamilyKind { material, cupertino }
 /// constructor if you need to compute the family at runtime:
 ///
 /// ```dart
-/// final family = FormFieldFamily(
-///   isNarrow ? FormFieldFamilyKind.cupertino : FormFieldFamilyKind.material,
+/// final family = TomFormFieldFamily(
+///   isNarrow ? TomFormFieldFamilyKind.cupertino : TomFormFieldFamilyKind.material,
 /// );
 /// ```
-class FormFieldFamily {
+class TomFormFieldFamily {
   /// Which family this factory resolves to.
-  final FormFieldFamilyKind kind;
+  final TomFormFieldFamilyKind kind;
 
-  const FormFieldFamily(this.kind);
+  const TomFormFieldFamily(this.kind);
 
   /// Material family — emits `TomForm…` concretes.
-  static const FormFieldFamily material = FormFieldFamily(
-    FormFieldFamilyKind.material,
+  static const TomFormFieldFamily material = TomFormFieldFamily(
+    TomFormFieldFamilyKind.material,
   );
 
   /// Cupertino family — emits `TomCupertinoForm…` concretes.
-  static const FormFieldFamily cupertino = FormFieldFamily(
-    FormFieldFamilyKind.cupertino,
+  static const TomFormFieldFamily cupertino = TomFormFieldFamily(
+    TomFormFieldFamilyKind.cupertino,
   );
 
   /// Convenience: `true` when this family resolves to Cupertino concretes.
-  bool get isCupertino => kind == FormFieldFamilyKind.cupertino;
+  bool get isCupertino => kind == TomFormFieldFamilyKind.cupertino;
 
   // ---------------------------------------------------------------------
   // String input & selection — TomFormStringField
@@ -886,7 +886,7 @@ class FormFieldFamily {
   /// Resolves each option under `<scope>.<enumName>.<value>` via
   /// [TomEnumSelectableSource], so the picker carries no Dart-side label
   /// table and re-renders when the application switches locale. Prefer this
-  /// over building a [StaticSelectableSource] of hardcoded labels.
+  /// over building a [TomStaticSelectableSource] of hardcoded labels.
   ///
   /// ```dart
   /// family.enumPickerFor('status', TodoStatus.open, values: TodoStatus.values);
@@ -1022,7 +1022,7 @@ class FormFieldFamily {
     String tomId,
     T initialValue, {
     required TomSelectableSource<T> source,
-    bool Function(String query, SelectableItem<T> item)? searchPredicate,
+    bool Function(String query, TomSelectableItem<T> item)? searchPredicate,
     String Function(T value)? labelOf,
     String? labelTextOverride,
     String? hintTextOverride,
@@ -1129,7 +1129,7 @@ class FormFieldFamily {
   /// Cupertino's alert dialog respectively.
   TomFormFileField fileUpload(
     String tomId,
-    FileRef? initialValue, {
+    TomFileRef? initialValue, {
     required TomFilePicker picker,
     String? labelTextOverride,
     String? descriptionTextOverride,
@@ -1197,12 +1197,12 @@ class FormFieldFamily {
   /// "choose any file" dialog would invite the one file it cannot show.
   TomFormFileField fileThumbnail(
     String tomId,
-    FileRef? initialValue, {
+    TomFileRef? initialValue, {
     TomFilePicker? picker,
     TomFilePickKind pickKind = TomFilePickKind.image,
     TomFileTransferClient? transferClient,
     String? storageSlot,
-    void Function(FileRef ref, Uint8List bytes)? onDownload,
+    void Function(TomFileRef ref, Uint8List bytes)? onDownload,
     double thumbnailSize = 96.0,
     String? labelTextOverride,
     String? descriptionTextOverride,

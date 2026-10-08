@@ -39,7 +39,7 @@ Acl buildWithVariant() {
       .setAclDefaultAppendGap(40)
       .setAclDefaultRowGap(20)
       .setAclDefaultRowHeight(50)
-      .setAclDefaultRowHorizontalAlignment(RowAlignment.right)
+      .setAclDefaultRowHorizontalAlignment(AclRowAlignment.right)
       .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.bottom)
       .setAclDefaultFlags(AclFlags.expandX)
       .setAclDefaultUnknownPreferredSize(222, 33)
@@ -74,7 +74,7 @@ void main() {
       expect(base[0].defaultAppendGap, 40.0);
       expect(base[1].gapBefore, 20.0);
       expect(base[0].height, 50.0);
-      expect(base[0].alignment, RowAlignment.right);
+      expect(base[0].alignment, AclRowAlignment.right);
       expect(
         base[0].components[0].rowCrossAlignment,
         AclRowCrossAlignment.bottom,
@@ -119,8 +119,8 @@ void main() {
       // The first row is created by the builder's constructor, before the
       // defaults are copied in — so it is the one a copy that only sets the
       // fields would miss.
-      expect(variant[0].alignment, RowAlignment.right);
-      expect(variant[1].alignment, RowAlignment.right);
+      expect(variant[0].alignment, AclRowAlignment.right);
+      expect(variant[1].alignment, AclRowAlignment.right);
     });
 
     test('the vertical alignment', () {
@@ -196,22 +196,22 @@ void main() {
       // already-created row, so "the variant can still override it" is worth
       // asserting separately from the others.
       final overridden = AclBuilder()
-          .setAclDefaultRowHorizontalAlignment(RowAlignment.right)
+          .setAclDefaultRowHorizontalAlignment(AclRowAlignment.right)
           .append(const Text('A'))
           .addVariant(
             'narrow',
             atWidth: 600,
             builder: (b) => b
-                .setAclDefaultRowHorizontalAlignment(RowAlignment.center)
+                .setAclDefaultRowHorizontalAlignment(AclRowAlignment.center)
                 .newRow()
                 .append(const Text('X')),
           )
           .build();
 
-      expect(overridden.rows[0].alignment, RowAlignment.right);
+      expect(overridden.rows[0].alignment, AclRowAlignment.right);
       expect(
         overridden.variants.single.rows.last.alignment,
-        RowAlignment.center,
+        AclRowAlignment.center,
       );
     });
   });

@@ -194,7 +194,7 @@ class TomFileTransferController extends ValueNotifier<TomFileTransferState> {
   /// [value]. Callers that want to react to a specific failure read
   /// [TomFileTransferState.errorKey] rather than catching, because the error is
   /// already captured in the published state.
-  Future<TomFileMetadata?> upload(FileRef ref) {
+  Future<TomFileMetadata?> upload(TomFileRef ref) {
     TomFileMetadata? stored;
     return _run(TomTransferKind.upload, () async {
       stored = await client.upload(

@@ -38,7 +38,7 @@ A `TomForm<T>` binds to a single `TomClass` instance. When the bound class has a
 - **Per-row sub-forms** — one `TomForm<TItem>` per element, sharing the parent form's resources, validation lifecycle, and event bus.
 - **Structural change tracking** — adds, removes, and reorders are first-class dirty operations.
 - **Lifecycle propagation** — `parent.save()`, `parent.discard()`, and `parent.validate()` must fan out into every row.
-- **Event surfacing** — list-level events (`ListItemAddedEvent`, `ListItemRemovedEvent`, `ListItemReorderedEvent`) and per-row form events must reach the parent's `TomFormInspector` listeners.
+- **Event surfacing** — list-level events (`TomListItemAddedEvent`, `TomListItemRemovedEvent`, `TomListItemReorderedEvent`) and per-row form events must reach the parent's `TomFormInspector` listeners.
 
 `TomListForm` is the model that owns this contract. The two list widgets — `TomInlineListForm` and `TomExpandableListForm` — render a `TomListForm` without re-implementing any of that machinery.
 
@@ -93,7 +93,7 @@ class OrderForm extends TomForm<Order> {
 | `bool get hasStructuralChanges` | True if the list membership/order differs from the snapshot. |
 | `bool get isDirty` | True if any row is dirty OR `hasStructuralChanges`. |
 | `bool get isValid` | True if every row sub-form is currently valid. |
-| `Future<List<FormValidationError>> validate()` | Validate every row, then run `validateList`; fires `FormValidatedEvent`. |
+| `Future<List<TomFormValidationError>> validate()` | Validate every row, then run `validateList`; fires `TomFormValidatedEvent`. |
 | `Future<List<String>> validateList()` | List-level validation hook. Override for row-count or cross-row rules; returns resource keys. Default empty. |
 | `Future<bool> save({bool? commitBaselines})` | Validate; on success, snapshot every row and `hasStructuralChanges → false`. `commitBaselines` mirrors `TomForm.save`'s policy; `null` auto-detects nesting. |
 | `void discard()` | Restore membership, order, and per-row contents to the last save/bind snapshot. |
@@ -106,10 +106,10 @@ class OrderForm extends TomForm<Order> {
 
 `TomListForm` re-fires structural events through the parent form's event bus, so a single `TomFormInspector` attached to the parent sees the whole picture:
 
-- `ListItemAddedEvent { itemFormId, index }`
-- `ListItemRemovedEvent { itemFormId, index }`
-- `ListItemReorderedEvent { itemFormId, fromIndex, toIndex }`
-- `FormValidatedEvent { source, errors }` — one per row + one with `source == listId` aggregating list-level errors.
+- `TomListItemAddedEvent { itemFormId, index }`
+- `TomListItemRemovedEvent { itemFormId, index }`
+- `TomListItemReorderedEvent { itemFormId, fromIndex, toIndex }`
+- `TomFormValidatedEvent { source, errors }` — one per row + one with `source == listId` aggregating list-level errors.
 
 ---
 

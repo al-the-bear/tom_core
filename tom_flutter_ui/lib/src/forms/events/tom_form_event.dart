@@ -28,29 +28,32 @@ class TomFormEvent {
 // ---------------------------------------------------------------------------
 
 /// Fired when a field's value changes.
-class FieldValueChangedEvent extends TomFormEvent {
+class TomFieldValueChangedEvent extends TomFormEvent {
   final Object? oldValue;
   final Object? newValue;
 
-  FieldValueChangedEvent({required super.source, this.oldValue, this.newValue})
-    : super(description: 'Value changed from $oldValue to $newValue');
+  TomFieldValueChangedEvent({
+    required super.source,
+    this.oldValue,
+    this.newValue,
+  }) : super(description: 'Value changed from $oldValue to $newValue');
 }
 
 /// Fired when a field completes validation.
-class FieldValidatedEvent extends TomFormEvent {
+class TomFieldValidatedEvent extends TomFormEvent {
   /// The validation result (success, error, or pending).
   final Object result;
 
-  FieldValidatedEvent({required super.source, required this.result})
+  TomFieldValidatedEvent({required super.source, required this.result})
     : super(description: 'Validated: $result');
 }
 
 /// Fired when a field's effective authorization state changes.
-class FieldAuthChangedEvent extends TomFormEvent {
+class TomFieldAuthChangedEvent extends TomFormEvent {
   final Object oldState;
   final Object newState;
 
-  FieldAuthChangedEvent({
+  TomFieldAuthChangedEvent({
     required super.source,
     required this.oldState,
     required this.newState,
@@ -58,13 +61,14 @@ class FieldAuthChangedEvent extends TomFormEvent {
 }
 
 /// Fired when a field is bound to data.
-class FieldBoundEvent extends TomFormEvent {
-  FieldBoundEvent({required super.source}) : super(description: 'Field bound');
+class TomFieldBoundEvent extends TomFormEvent {
+  TomFieldBoundEvent({required super.source})
+    : super(description: 'Field bound');
 }
 
 /// Fired when a field's current value is committed as the new initial value.
-class FieldCommittedEvent extends TomFormEvent {
-  FieldCommittedEvent({required super.source})
+class TomFieldCommittedEvent extends TomFormEvent {
+  TomFieldCommittedEvent({required super.source})
     : super(description: 'Field committed');
 }
 
@@ -73,27 +77,27 @@ class FieldCommittedEvent extends TomFormEvent {
 // ---------------------------------------------------------------------------
 
 /// Fired when a form is bound to a data object.
-class FormBoundEvent extends TomFormEvent {
-  FormBoundEvent({required super.source}) : super(description: 'Form bound');
+class TomFormBoundEvent extends TomFormEvent {
+  TomFormBoundEvent({required super.source}) : super(description: 'Form bound');
 }
 
 /// Fired when a form saves successfully.
-class FormSavedEvent extends TomFormEvent {
-  FormSavedEvent({required super.source}) : super(description: 'Form saved');
+class TomFormSavedEvent extends TomFormEvent {
+  TomFormSavedEvent({required super.source}) : super(description: 'Form saved');
 }
 
 /// Fired when a form discards its edits.
-class FormDiscardedEvent extends TomFormEvent {
-  FormDiscardedEvent({required super.source})
+class TomFormDiscardedEvent extends TomFormEvent {
+  TomFormDiscardedEvent({required super.source})
     : super(description: 'Form discarded');
 }
 
 /// Fired when a form completes validation.
-class FormValidatedEvent extends TomFormEvent {
+class TomFormValidatedEvent extends TomFormEvent {
   /// The validation errors (empty list = success).
   final List<Object> errors;
 
-  FormValidatedEvent({required super.source, required this.errors})
+  TomFormValidatedEvent({required super.source, required this.errors})
     : super(
         description: errors.isEmpty
             ? 'Form validated: success'
@@ -106,14 +110,14 @@ class FormValidatedEvent extends TomFormEvent {
 // ---------------------------------------------------------------------------
 
 /// Fired when a sub-form is appended or inserted into a [TomListForm].
-class ListItemAddedEvent extends TomFormEvent {
+class TomListItemAddedEvent extends TomFormEvent {
   /// Index at which the new sub-form sits after insertion.
   final int index;
 
   /// Stable id of the newly added sub-form (its `formId`).
   final String itemFormId;
 
-  ListItemAddedEvent({
+  TomListItemAddedEvent({
     required super.source,
     required this.index,
     required this.itemFormId,
@@ -121,14 +125,14 @@ class ListItemAddedEvent extends TomFormEvent {
 }
 
 /// Fired when a sub-form is removed from a [TomListForm].
-class ListItemRemovedEvent extends TomFormEvent {
+class TomListItemRemovedEvent extends TomFormEvent {
   /// Index the sub-form occupied before removal.
   final int index;
 
   /// Stable id of the removed sub-form.
   final String itemFormId;
 
-  ListItemRemovedEvent({
+  TomListItemRemovedEvent({
     required super.source,
     required this.index,
     required this.itemFormId,
@@ -136,7 +140,7 @@ class ListItemRemovedEvent extends TomFormEvent {
 }
 
 /// Fired when an existing sub-form is moved within a [TomListForm].
-class ListItemReorderedEvent extends TomFormEvent {
+class TomListItemReorderedEvent extends TomFormEvent {
   /// Original index of the sub-form before the move.
   final int fromIndex;
 
@@ -146,7 +150,7 @@ class ListItemReorderedEvent extends TomFormEvent {
   /// Stable id of the moved sub-form.
   final String itemFormId;
 
-  ListItemReorderedEvent({
+  TomListItemReorderedEvent({
     required super.source,
     required this.fromIndex,
     required this.toIndex,

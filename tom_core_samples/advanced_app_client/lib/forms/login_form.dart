@@ -32,14 +32,14 @@ class LoginForm extends TomForm<LoginCredentials> {
       'username',
       '',
       form: this,
-      validators: [Validators.required()],
+      validators: [TomValidators.required()],
     );
     password = TomFormStringInput(
       'password',
       '',
       form: this,
       obscureText: true,
-      validators: [Validators.required()],
+      validators: [TomValidators.required()],
     );
   }
 }

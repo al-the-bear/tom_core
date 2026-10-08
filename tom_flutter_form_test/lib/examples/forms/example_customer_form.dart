@@ -5,7 +5,7 @@ import '../../state/phase2a_state.dart';
 
 /// Family-agnostic form for a single [Customer].
 ///
-/// All fields are produced through [FormFieldFamily] factories so the same
+/// All fields are produced through [TomFormFieldFamily] factories so the same
 /// form class works for both Material and Cupertino — the only difference
 /// between the two example screens is the `family` value passed in here.
 ///
@@ -21,18 +21,18 @@ import '../../state/phase2a_state.dart';
 /// 'a' → 'b'.
 @tomReflector
 class ExampleCustomerForm extends TomForm<Customer> {
-  ExampleCustomerForm({required FormFieldFamily family})
+  ExampleCustomerForm({required TomFormFieldFamily family})
     : _family = family,
       super(formId: 'exampleCustomer');
 
-  final FormFieldFamily _family;
+  final TomFormFieldFamily _family;
 
   late final fullName = _family.stringInput(
     'fullName',
     '',
     form: this,
     labelTextOverride: 'Full name',
-    validators: [Validators.required(), Validators.minLength(2)],
+    validators: [TomValidators.required(), TomValidators.minLength(2)],
   );
 
   late final email = _family.stringInput(
@@ -40,7 +40,7 @@ class ExampleCustomerForm extends TomForm<Customer> {
     '',
     form: this,
     labelTextOverride: 'Email',
-    validators: [Validators.required(), Validators.email()],
+    validators: [TomValidators.required(), TomValidators.email()],
   );
 
   late final phone = _family.stringInput(
@@ -66,18 +66,18 @@ class ExampleCustomerForm extends TomForm<Customer> {
     form: this,
     source: _tierSource,
     labelTextOverride: 'Tier',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   @override
   void createFormElements() {}
 }
 
-final _tierSource = StaticSelectableSource<String>(const [
-  SelectableItem(value: 'standard', label: 'Standard'),
-  SelectableItem(value: 'silver', label: 'Silver'),
-  SelectableItem(value: 'gold', label: 'Gold'),
-  SelectableItem(value: 'platinum', label: 'Platinum'),
+final _tierSource = TomStaticSelectableSource<String>(const [
+  TomSelectableItem(value: 'standard', label: 'Standard'),
+  TomSelectableItem(value: 'silver', label: 'Silver'),
+  TomSelectableItem(value: 'gold', label: 'Gold'),
+  TomSelectableItem(value: 'platinum', label: 'Platinum'),
 ]);
 
 /// `TomListForm` that owns a list of [Customer] records and produces an
@@ -85,7 +85,7 @@ final _tierSource = StaticSelectableSource<String>(const [
 @tomReflector
 class ExampleCustomerListForm
     extends TomListForm<Customer, ExampleCustomerForm> {
-  ExampleCustomerListForm({required FormFieldFamily family})
+  ExampleCustomerListForm({required TomFormFieldFamily family})
     : super(
         listId: 'exampleCustomer',
         formFactory: (_) => ExampleCustomerForm(family: family),

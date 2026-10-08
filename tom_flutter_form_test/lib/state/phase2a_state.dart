@@ -235,15 +235,15 @@ TomSelectableSource<String> phase2aProductSource() {
   // Deduplicate names so the search list stays clean even if the
   // catalog has overlapping entries.
   final seen = <String>{};
-  final items = <SelectableItem<String>>[];
+  final items = <TomSelectableItem<String>>[];
   for (final p in phase2aProductCatalog) {
     if (!seen.add(p.name)) continue;
     items.add(
-      SelectableItem<String>(
+      TomSelectableItem<String>(
         value: p.name,
         label: '${p.name}  —  \$${p.price.toStringAsFixed(2)}',
       ),
     );
   }
-  return StaticSelectableSource<String>(items);
+  return TomStaticSelectableSource<String>(items);
 }

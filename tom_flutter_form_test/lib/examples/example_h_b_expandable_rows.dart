@@ -23,7 +23,7 @@ import 'state/example_state.dart';
 //     toolbar builders and the `controller` used to track which row is
 //     open. The default policy keeps a single row expanded at a time.
 //   * Family-agnostic editing: the row's `ExampleOrderForm` and its
-//     items list both use `FormFieldFamily`, so flipping `family` to
+//     items list both use `TomFormFieldFamily`, so flipping `family` to
 //     Cupertino changes every input automatically.
 //   * Per-row breakpoints: the order header row built with `AclBuilder`
 //     stacks `priority + paid` vertically below 600 px so the editor
@@ -43,7 +43,7 @@ class ExampleHBExpandableRows extends StatefulWidget {
 }
 
 class _ExampleHBExpandableRowsState extends State<ExampleHBExpandableRows> {
-  late final FormFieldFamily _family;
+  late final TomFormFieldFamily _family;
   late final ExampleCustomerRichForm _form;
   late final TomExpandableListFormController _controller;
 
@@ -52,8 +52,8 @@ class _ExampleHBExpandableRowsState extends State<ExampleHBExpandableRows> {
     super.initState();
     installExampleAuthorization();
     _family = widget.family == ExampleFamily.cupertino
-        ? FormFieldFamily.cupertino
-        : FormFieldFamily.material;
+        ? TomFormFieldFamily.cupertino
+        : TomFormFieldFamily.material;
     _form = ExampleCustomerRichForm(family: _family);
     _form.bind(exampleCustomerHb);
     _controller = TomExpandableListFormController(
@@ -201,7 +201,7 @@ class _Body extends StatelessWidget {
   const _Body({required this.form, required this.family});
 
   final ExampleOrderForm form;
-  final FormFieldFamily family;
+  final TomFormFieldFamily family;
 
   @override
   Widget build(BuildContext context) {

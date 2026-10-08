@@ -357,8 +357,8 @@ class _CupertinoStringPickerWidget extends StatefulWidget {
 
 class _CupertinoStringPickerWidgetState
     extends State<_CupertinoStringPickerWidget> {
-  StreamSubscription<List<SelectableItem<String>>>? _subscription;
-  List<SelectableItem<String>> _items = const [];
+  StreamSubscription<List<TomSelectableItem<String>>>? _subscription;
+  List<TomSelectableItem<String>> _items = const [];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomCupertinoFormStringPicker get field => widget.field;
@@ -562,8 +562,8 @@ class _CupertinoStringSegmentedWidget extends StatefulWidget {
 
 class _CupertinoStringSegmentedWidgetState
     extends State<_CupertinoStringSegmentedWidget> {
-  StreamSubscription<List<SelectableItem<String>>>? _subscription;
-  List<SelectableItem<String>> _items = const [];
+  StreamSubscription<List<TomSelectableItem<String>>>? _subscription;
+  List<TomSelectableItem<String>> _items = const [];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomCupertinoFormStringSegmented get field => widget.field;

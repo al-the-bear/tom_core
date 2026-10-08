@@ -120,7 +120,7 @@ InputBorder? applyBorderWidth(InputBorder? border, double? width) {
 /// True when [validators] contains the canonical Required validator.
 bool fieldHasRequiredValidator(List<Object> validators) {
   for (final v in validators) {
-    if (v == Validators.requiredInstance) return true;
+    if (v == TomValidators.requiredInstance) return true;
   }
   return false;
 }
@@ -134,15 +134,15 @@ bool fieldHasRequiredValidator(List<Object> validators) {
 /// Falls through to the raw errorKey as a development indicator.
 ///
 /// Whatever level resolves, the error's `params` are interpolated into it (see
-/// [ValidationError.interpolate]), so a template such as
+/// [TomValidationError.interpolate]), so a template such as
 /// `Use at least {min} characters.` reaches the screen with the bound value
 /// substituted rather than the placeholder showing through.
 String? resolveFieldValidationMessage({
-  required ValidationResult validationState,
+  required TomValidationResult validationState,
   required String basePath,
   required String scope,
 }) {
-  if (validationState is! ValidationError) return null;
+  if (validationState is! TomValidationError) return null;
   final key = validationState.errorKey;
   final template =
       TomCtr.textOrNull(basePath, key) ??
@@ -152,11 +152,11 @@ String? resolveFieldValidationMessage({
   return validationState.interpolate(template);
 }
 
-/// Resolves a form-level [FormValidationError] to the text a user reads.
+/// Resolves a form-level [TomFormValidationError] to the text a user reads.
 ///
 /// An error naming exactly one field is looked up first under that field's
 /// `basePath`, so a form can word it per field; every error is then looked up
-/// globally by its key, and the key itself is the fallback. [FormValidationError.errorKey]
+/// globally by its key, and the key itself is the fallback. [TomFormValidationError.errorKey]
 /// is used **unprefixed** — stock keys already carry their `error.` prefix — and
 /// the global lookup passes the key as the path with no suffix, because
 /// `TomCtr.textOrNull('', key)` would build `'.<key>'`, which never resolves.
@@ -164,7 +164,7 @@ String? resolveFieldValidationMessage({
 /// Whatever resolves, the error's `params` replace their `{name}` placeholders.
 /// Every widget that shows form-level errors reads them through this, so the
 /// same error says the same thing wherever it is displayed.
-String resolveFormValidationMessage(FormValidationError error) {
+String resolveFormValidationMessage(TomFormValidationError error) {
   final key = error.errorKey;
   final template =
       (error.fields.length == 1
@@ -182,17 +182,17 @@ String resolveFormValidationMessage(FormValidationError error) {
 /// Text suffix for the required indicator in plain-text slots such as
 /// `InputDecoration.labelText` or `hintText`.
 String requiredIndicatorSuffixFor(
-  RequiredIndicator kind, {
+  TomRequiredIndicator kind, {
   required bool hasRequired,
   required bool isEditable,
   String? basePath,
 }) {
   if (!hasRequired || !isEditable) return '';
   return switch (kind) {
-    RequiredIndicator.asterisk => ' *',
-    RequiredIndicator.text => TomFormLabels.requiredSuffix(basePath),
-    RequiredIndicator.none => '',
-    RequiredIndicator.custom => '',
+    TomRequiredIndicator.asterisk => ' *',
+    TomRequiredIndicator.text => TomFormLabels.requiredSuffix(basePath),
+    TomRequiredIndicator.none => '',
+    TomRequiredIndicator.custom => '',
   };
 }
 
@@ -369,8 +369,8 @@ Widget _anatomyColumn({
   // override to 1.15 to reclaim most of that leading while still leaving a
   // little room for ascenders/descenders.
   final bool tightHeader =
-      style.labelPlacement == LabelPlacement.above &&
-      style.descriptionPlacement == DescriptionPlacement.above;
+      style.labelPlacement == TomLabelPlacement.above &&
+      style.descriptionPlacement == TomDescriptionPlacement.above;
   const double headerBlockHeight = 1.15;
   final double? headerHeightOverride = tightHeader ? headerBlockHeight : null;
 
@@ -390,9 +390,9 @@ Widget _anatomyColumn({
   // When replaceDescription is active and the field is in error, the error
   // message replaces the description slot's text (rendered in error color).
   final replacingDesc =
-      style.errorPlacement == ErrorPlacement.replaceDescription &&
+      style.errorPlacement == TomErrorPlacement.replaceDescription &&
       errorMessage != null;
-  final descAbove = style.descriptionPlacement == DescriptionPlacement.above
+  final descAbove = style.descriptionPlacement == TomDescriptionPlacement.above
       ? _description(
           style,
           theme,
@@ -403,7 +403,7 @@ Widget _anatomyColumn({
           lineHeightOverride: headerHeightOverride,
         )
       : null;
-  final descBelow = style.descriptionPlacement == DescriptionPlacement.below
+  final descBelow = style.descriptionPlacement == TomDescriptionPlacement.below
       ? _description(
           style,
           theme,
@@ -416,21 +416,21 @@ Widget _anatomyColumn({
 
   Widget? errorAbove;
   Widget? errorBelow;
-  if (style.errorPlacement == ErrorPlacement.above ||
-      style.errorPlacement == ErrorPlacement.both) {
+  if (style.errorPlacement == TomErrorPlacement.above ||
+      style.errorPlacement == TomErrorPlacement.both) {
     errorAbove = _error(style, theme, errorMessage);
   }
-  if (style.errorPlacement == ErrorPlacement.below ||
-      style.errorPlacement == ErrorPlacement.both) {
+  if (style.errorPlacement == TomErrorPlacement.below ||
+      style.errorPlacement == TomErrorPlacement.both) {
     errorBelow = _error(style, theme, errorMessage);
   }
 
   final isLabelAbove =
-      label != null && style.labelPlacement == LabelPlacement.above;
+      label != null && style.labelPlacement == TomLabelPlacement.above;
   final isLabelBelow =
-      label != null && style.labelPlacement == LabelPlacement.below;
+      label != null && style.labelPlacement == TomLabelPlacement.below;
 
-  if (style.labelPlacement == LabelPlacement.inline) {
+  if (style.labelPlacement == TomLabelPlacement.inline) {
     if (descAbove != null) {
       children.add(descAbove);
       children.add(SizedBox(height: style.labelFieldGap));
@@ -511,8 +511,8 @@ Widget? _labelRow(
   bool isEditable, {
   double? lineHeightOverride,
 }) {
-  if (style.labelPlacement == LabelPlacement.hidden ||
-      style.labelPlacement == LabelPlacement.floating) {
+  if (style.labelPlacement == TomLabelPlacement.hidden ||
+      style.labelPlacement == TomLabelPlacement.floating) {
     return null;
   }
   if (labelText == null || labelText.isEmpty) return null;
@@ -554,7 +554,7 @@ Widget? _requiredIndicatorWidget(
 ) {
   if (!hasRequired || !isEditable) return null;
   return switch (style.requiredIndicator) {
-    RequiredIndicator.asterisk => Text(
+    TomRequiredIndicator.asterisk => Text(
       ' *',
       style: (style.errorStyle ?? theme.textTheme.bodySmall)?.copyWith(
         color: theme.colorScheme.error,
@@ -563,12 +563,12 @@ Widget? _requiredIndicatorWidget(
     // Resolved globally rather than per field: the anatomy builder is style-
     // driven and carries no basePath, and the required marker is a form-wide
     // convention an application words once anyway.
-    RequiredIndicator.text => Text(
+    TomRequiredIndicator.text => Text(
       TomFormLabels.requiredSuffix(null),
       style: style.descriptionStyle ?? theme.textTheme.bodySmall,
     ),
-    RequiredIndicator.none => null,
-    RequiredIndicator.custom => null,
+    TomRequiredIndicator.none => null,
+    TomRequiredIndicator.custom => null,
   };
 }
 
@@ -602,7 +602,7 @@ Widget _inputRow(
               )
             : const SizedBox.shrink());
 
-  if (style.actionIconPlacement == ActionIconPlacement.leading) {
+  if (style.actionIconPlacement == TomActionIconPlacement.leading) {
     return Row(
       children: [
         trailing,

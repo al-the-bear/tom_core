@@ -86,7 +86,7 @@ class TodoItemForm extends TomForm<TodoItem> {
       'title',
       '',
       form: this,
-      validators: [Validators.required()],
+      validators: [TomValidators.required()],
     );
     status = TomFormStringDropdown(
       'status',

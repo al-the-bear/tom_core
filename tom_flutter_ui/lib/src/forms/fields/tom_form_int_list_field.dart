@@ -118,8 +118,8 @@ class _TomFormIntFilterChipsWidget extends StatefulWidget {
 
 class _TomFormIntFilterChipsWidgetState
     extends State<_TomFormIntFilterChipsWidget> {
-  StreamSubscription<List<SelectableItem<int>>>? _subscription;
-  List<SelectableItem<int>> _items = const [];
+  StreamSubscription<List<TomSelectableItem<int>>>? _subscription;
+  List<TomSelectableItem<int>> _items = const [];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomFormIntFilterChips get field => widget.field;
@@ -157,7 +157,7 @@ class _TomFormIntFilterChipsWidgetState
     }
   }
 
-  void _pruneVanished(List<SelectableItem<int>> current) {
+  void _pruneVanished(List<TomSelectableItem<int>> current) {
     final selected = field.get();
     if (selected.isEmpty) return;
     final available = current.map((i) => i.value).toSet();

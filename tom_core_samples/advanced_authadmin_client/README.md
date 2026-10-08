@@ -256,7 +256,7 @@ The platform picker is registered once at bootstrap through
 registers exactly one adaptor with `TomFilePickerRegistry` and every file field
 in it opens that one. This console's adaptor composes a real 1×1 PNG rather than
 opening a gallery, because the sample's Flutter clients ship no platform folders;
-everything downstream of the picker — the `FileRef` conversion, the streaming
+everything downstream of the picker — the `TomFileRef` conversion, the streaming
 upload, progress, cancel, retry — is the real code path.
 
 ## Grant matrix

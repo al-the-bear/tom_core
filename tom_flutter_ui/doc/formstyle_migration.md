@@ -31,11 +31,11 @@ kept.
 | ------------------------- | ---------------------------------------------------------- |
 | `TomFormStyle`            | `lib/src/forms/style/tom_form_style.dart`                  |
 | `TomFormStyleScope`       | `lib/src/forms/style/tom_form_style_scope.dart`            |
-| `LabelPlacement` et al.   | `lib/src/forms/style/form_style_enums.dart`                |
+| `TomLabelPlacement` et al.   | `lib/src/forms/style/form_style_enums.dart`                |
 | `TomFieldDecorationMixin` | `lib/src/forms/decoration/tom_field_decoration_mixin.dart` |
 
-The enums file holds `LabelPlacement`, `ErrorPlacement`,
-`RequiredIndicator`, `DescriptionPlacement`, and `ActionIconPlacement`.
+The enums file holds `TomLabelPlacement`, `TomErrorPlacement`,
+`TomRequiredIndicator`, `TomDescriptionPlacement`, and `TomActionIconPlacement`.
 
 A single flat `TomFormStyle` class carries **every** style property for
 **every** form field. Fields read the style via `TomFormStyleScope.of(context)`.
@@ -44,11 +44,11 @@ A single flat `TomFormStyle` class carries **every** style property for
 
 | Enum                   | Values                                                       |
 | ---------------------- | ------------------------------------------------------------ |
-| `LabelPlacement`       | `above`, `below`, `floating`, `inline`, `hidden`             |
-| `ErrorPlacement`       | `below`, `above`, `tooltip`, `both`, `replaceHint`           |
-| `RequiredIndicator`    | `asterisk`, `text`, `none`, `custom`                         |
-| `DescriptionPlacement` | `below`, `above`, `tooltip`                                  |
-| `ActionIconPlacement`  | `trailing`, `leading`, `above`                               |
+| `TomLabelPlacement`       | `above`, `below`, `floating`, `inline`, `hidden`             |
+| `TomErrorPlacement`       | `below`, `above`, `tooltip`, `both`, `replaceHint`           |
+| `TomRequiredIndicator`    | `asterisk`, `text`, `none`, `custom`                         |
+| `TomDescriptionPlacement` | `below`, `above`, `tooltip`                                  |
+| `TomActionIconPlacement`  | `trailing`, `leading`, `above`                               |
 
 ### 1.3 `TomFormStyle` properties
 
@@ -56,12 +56,12 @@ Anatomy defaults (what goes where):
 
 | Property                  | Type                   | Default                       |
 | ------------------------- | ---------------------- | ----------------------------- |
-| `labelPlacement`          | `LabelPlacement`       | `above`                       |
-| `errorPlacement`          | `ErrorPlacement`       | `below`                       |
-| `requiredIndicator`       | `RequiredIndicator`    | `asterisk` (applies to label) |
-| `requiredIndicatorOnHint` | `RequiredIndicator`    | `none`                        |
-| `descriptionPlacement`    | `DescriptionPlacement` | `below`                       |
-| `actionIconPlacement`     | `ActionIconPlacement`  | `trailing`                    |
+| `labelPlacement`          | `TomLabelPlacement`       | `above`                       |
+| `errorPlacement`          | `TomErrorPlacement`       | `below`                       |
+| `requiredIndicator`       | `TomRequiredIndicator`    | `asterisk` (applies to label) |
+| `requiredIndicatorOnHint` | `TomRequiredIndicator`    | `none`                        |
+| `descriptionPlacement`    | `TomDescriptionPlacement` | `below`                       |
+| `actionIconPlacement`     | `TomActionIconPlacement`  | `trailing`                    |
 
 Spacing:
 
@@ -108,7 +108,7 @@ Authorization visuals:
 ### 1.4 Presets
 
 - `TomFormStyle.material3` — all defaults.
-- `TomFormStyle.compact` — `LabelPlacement.floating`, `fieldSpacing: 8.0`,
+- `TomFormStyle.compact` — `TomLabelPlacement.floating`, `fieldSpacing: 8.0`,
   `fieldGroupSpacing: 16.0`.
 
 ### 1.5 Resource loading
@@ -439,7 +439,7 @@ mixin TomStringInputDecorationMixin<String> on TomField<String> {
         : base.resolveForBp(width, base.labelFieldGap, base.labelFieldGapBpOverrides);
 
     // Widget-specific props (not on TomFieldStyle) read from `over` only:
-    final variant = over?.variant ?? StringInputVariant.material;
+    final variant = over?.variant ?? TomStringInputVariant.material;
 
     // …build the anatomy…
   }
@@ -511,7 +511,7 @@ final gap = base.pickPair(width,
   `errorBorderEnabled: false`, `errorIconEnabled: false`.
 - `TomFormStyle.bordered`  — new: every field that *can* render a box
   renders with a full outlined border and **no underline**; for those
-  fields the label uses `LabelPlacement.floating` (the Flutter floating
+  fields the label uses `TomLabelPlacement.floating` (the Flutter floating
   label on an outlined input already draws the label at the top-left of
   the border). `errorBorderEnabled: true`, `errorIconEnabled: true`.
 
@@ -635,7 +635,7 @@ found: `TomFormStyle.material3`.
 
 ### 2.6 Per-request mapping
 
-**(a)** *Dropped per your call* — `ErrorPlacement.replaceLabel` is **not**
+**(a)** *Dropped per your call* — `TomErrorPlacement.replaceLabel` is **not**
 added.
 
 **(b)** Three new ACL APIs, all using the raw-value + overrides pair:
@@ -680,7 +680,7 @@ behind the widget.
 **(e)** `TomFormStyle.bordered` preset — **no new enum value**. The
 bordered look is achieved by combining existing pieces:
 
-- `labelPlacement: LabelPlacement.floating` (Flutter already draws the
+- `labelPlacement: TomLabelPlacement.floating` (Flutter already draws the
   floating label at the top-left of an `OutlineInputBorder`).
 - An outlined `fieldBorder` / `focusedBorder` / `errorBorder`.
 - `TextField`'s underline suppressed (either via `OutlineInputBorder`
@@ -722,13 +722,13 @@ final List<(double, bool)> errorIconEnabledBpOverrides;
   icon** (dropdown arrow, password-reveal eye, clear button, …) — never
   replacing them.
 
-Both are independent of `ErrorPlacement` (which only controls *error
+Both are independent of `TomErrorPlacement` (which only controls *error
 text* placement). Defaults per preset: both `false` for `material3` and
 `compact`, both `true` for `bordered`.
 
 ### 2.7 New / changed enum values
 
-None. The bordered variant reuses `LabelPlacement.floating` combined with
+None. The bordered variant reuses `TomLabelPlacement.floating` combined with
 an outlined border, avoiding a redundant enum value.
 
 ### 2.8 Migration plan

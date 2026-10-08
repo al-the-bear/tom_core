@@ -269,7 +269,7 @@ void main() {
       list.move(1, 1);
 
       expect(_formProducts(list), ['Bolt', 'Nut']);
-      expect(recorder.ofType<ListItemReorderedEvent>(), isEmpty);
+      expect(recorder.ofType<TomListItemReorderedEvent>(), isEmpty);
     });
 
     test('reorder is an alias of move, not a second implementation', () {
@@ -282,7 +282,7 @@ void main() {
 
       expect(_boundProducts(order), ['Nut', 'Bolt']);
       // Same event type as move — the alias must not invent its own.
-      expect(recorder.ofType<ListItemReorderedEvent>(), hasLength(1));
+      expect(recorder.ofType<TomListItemReorderedEvent>(), hasLength(1));
     });
   });
 
@@ -298,7 +298,7 @@ void main() {
 
       list.add();
 
-      final events = recorder.ofType<ListItemAddedEvent>();
+      final events = recorder.ofType<TomListItemAddedEvent>();
       expect(events, hasLength(1));
       expect(events.single.index, 1);
       expect(events.single.source, 'items');
@@ -312,7 +312,7 @@ void main() {
 
       list.removeAt(0);
 
-      final events = recorder.ofType<ListItemRemovedEvent>();
+      final events = recorder.ofType<TomListItemRemovedEvent>();
       expect(events, hasLength(1));
       expect(events.single.index, 0);
     });
@@ -325,7 +325,7 @@ void main() {
 
       list.move(2, 0);
 
-      final event = recorder.ofType<ListItemReorderedEvent>().single;
+      final event = recorder.ofType<TomListItemReorderedEvent>().single;
       expect(event.fromIndex, 2);
       expect(event.toIndex, 0);
     });
@@ -342,7 +342,7 @@ void main() {
 
         form.items.add();
 
-        expect(recorder.ofType<ListItemAddedEvent>(), hasLength(1));
+        expect(recorder.ofType<TomListItemAddedEvent>(), hasLength(1));
       },
     );
 
@@ -357,7 +357,7 @@ void main() {
 
         form.items.add();
 
-        expect(recorder.ofType<ListItemAddedEvent>(), hasLength(1));
+        expect(recorder.ofType<TomListItemAddedEvent>(), hasLength(1));
       },
     );
 
@@ -377,9 +377,9 @@ void main() {
       final recorder = _Recorder();
       list.addListener(recorder);
 
-      list.fireEvent(FormSavedEvent(source: 'items'));
+      list.fireEvent(TomFormSavedEvent(source: 'items'));
 
-      expect(recorder.ofType<FormSavedEvent>(), hasLength(1));
+      expect(recorder.ofType<TomFormSavedEvent>(), hasLength(1));
     });
   });
 
@@ -587,17 +587,20 @@ void main() {
       expect(errors.single.fields, isEmpty);
     });
 
-    test('validation fires a FormValidatedEvent carrying the errors', () async {
-      final list = OrderItemListForm()..bind(orderWith(['']).items);
-      final recorder = _Recorder();
-      list.addListener(recorder);
+    test(
+      'validation fires a TomFormValidatedEvent carrying the errors',
+      () async {
+        final list = OrderItemListForm()..bind(orderWith(['']).items);
+        final recorder = _Recorder();
+        list.addListener(recorder);
 
-      await list.validate();
+        await list.validate();
 
-      final event = recorder.ofType<FormValidatedEvent>().last;
-      expect(event.source, 'items');
-      expect(event.errors, hasLength(1));
-    });
+        final event = recorder.ofType<TomFormValidatedEvent>().last;
+        expect(event.source, 'items');
+        expect(event.errors, hasLength(1));
+      },
+    );
 
     test('isValid is false until every row has actually validated', () async {
       // Pristine counts as not-valid: a form that has never been checked is
@@ -861,7 +864,7 @@ void main() {
       list.dispose();
 
       expect(list.length, 0);
-      list.fireEvent(FormSavedEvent(source: 'items'));
+      list.fireEvent(TomFormSavedEvent(source: 'items'));
       expect(recorder.events, isEmpty);
     });
 

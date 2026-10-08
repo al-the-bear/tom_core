@@ -39,9 +39,9 @@ void main() {
     });
   });
 
-  group('FieldValueChangedEvent', () {
+  group('TomFieldValueChangedEvent', () {
     test('stores old and new values', () {
-      final event = FieldValueChangedEvent(
+      final event = TomFieldValueChangedEvent(
         source: 'name',
         oldValue: 'Alice',
         newValue: 'Bob',
@@ -52,7 +52,7 @@ void main() {
     });
 
     test('generates description from values', () {
-      final event = FieldValueChangedEvent(
+      final event = TomFieldValueChangedEvent(
         source: 'age',
         oldValue: 25,
         newValue: 30,
@@ -62,7 +62,7 @@ void main() {
     });
 
     test('handles null values', () {
-      final event = FieldValueChangedEvent(
+      final event = TomFieldValueChangedEvent(
         source: 'field',
         oldValue: null,
         newValue: 'hello',
@@ -72,22 +72,22 @@ void main() {
     });
   });
 
-  group('FieldValidatedEvent', () {
+  group('TomFieldValidatedEvent', () {
     test('stores result', () {
-      final event = FieldValidatedEvent(source: 'email', result: 'success');
+      final event = TomFieldValidatedEvent(source: 'email', result: 'success');
       expect(event.result, 'success');
       expect(event.source, 'email');
     });
 
     test('description includes result', () {
-      final event = FieldValidatedEvent(source: 'email', result: 'error');
+      final event = TomFieldValidatedEvent(source: 'email', result: 'error');
       expect(event.description, contains('error'));
     });
   });
 
-  group('FieldAuthChangedEvent', () {
+  group('TomFieldAuthChangedEvent', () {
     test('stores old and new states', () {
-      final event = FieldAuthChangedEvent(
+      final event = TomFieldAuthChangedEvent(
         source: 'secret',
         oldState: 'full',
         newState: 'read',
@@ -97,41 +97,41 @@ void main() {
     });
   });
 
-  group('FieldBoundEvent', () {
+  group('TomFieldBoundEvent', () {
     test('creates with source', () {
-      final event = FieldBoundEvent(source: 'name');
+      final event = TomFieldBoundEvent(source: 'name');
       expect(event.source, 'name');
       expect(event.description, contains('bound'));
     });
   });
 
-  group('FieldCommittedEvent', () {
+  group('TomFieldCommittedEvent', () {
     test('creates with source', () {
-      final event = FieldCommittedEvent(source: 'name');
+      final event = TomFieldCommittedEvent(source: 'name');
       expect(event.source, 'name');
       expect(event.description, contains('committed'));
     });
   });
 
-  group('FormBoundEvent', () {
+  group('TomFormBoundEvent', () {
     test('creates with source', () {
-      final event = FormBoundEvent(source: 'loginForm');
+      final event = TomFormBoundEvent(source: 'loginForm');
       expect(event.source, 'loginForm');
       expect(event.description, contains('bound'));
     });
   });
 
-  group('FormSavedEvent', () {
+  group('TomFormSavedEvent', () {
     test('creates with source', () {
-      final event = FormSavedEvent(source: 'loginForm');
+      final event = TomFormSavedEvent(source: 'loginForm');
       expect(event.source, 'loginForm');
       expect(event.description, contains('saved'));
     });
   });
 
-  group('FormDiscardedEvent', () {
+  group('TomFormDiscardedEvent', () {
     test('creates with source', () {
-      final event = FormDiscardedEvent(source: 'loginForm');
+      final event = TomFormDiscardedEvent(source: 'loginForm');
       expect(event.source, 'loginForm');
       expect(event.description, contains('discarded'));
     });
@@ -139,20 +139,20 @@ void main() {
 
   group('event hierarchy', () {
     test('all events are TomFormEvent subtypes', () {
-      expect(FieldValueChangedEvent(source: 's'), isA<TomFormEvent>());
+      expect(TomFieldValueChangedEvent(source: 's'), isA<TomFormEvent>());
       expect(
-        FieldValidatedEvent(source: 's', result: 'ok'),
+        TomFieldValidatedEvent(source: 's', result: 'ok'),
         isA<TomFormEvent>(),
       );
       expect(
-        FieldAuthChangedEvent(source: 's', oldState: 'a', newState: 'b'),
+        TomFieldAuthChangedEvent(source: 's', oldState: 'a', newState: 'b'),
         isA<TomFormEvent>(),
       );
-      expect(FieldBoundEvent(source: 's'), isA<TomFormEvent>());
-      expect(FieldCommittedEvent(source: 's'), isA<TomFormEvent>());
-      expect(FormBoundEvent(source: 's'), isA<TomFormEvent>());
-      expect(FormSavedEvent(source: 's'), isA<TomFormEvent>());
-      expect(FormDiscardedEvent(source: 's'), isA<TomFormEvent>());
+      expect(TomFieldBoundEvent(source: 's'), isA<TomFormEvent>());
+      expect(TomFieldCommittedEvent(source: 's'), isA<TomFormEvent>());
+      expect(TomFormBoundEvent(source: 's'), isA<TomFormEvent>());
+      expect(TomFormSavedEvent(source: 's'), isA<TomFormEvent>());
+      expect(TomFormDiscardedEvent(source: 's'), isA<TomFormEvent>());
     });
   });
 }

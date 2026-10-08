@@ -62,7 +62,7 @@ class TomConfigProvider {
   ///
   /// It stops at spelling. Synonyms — `'yes'`, `'on'`, `'y'` — are *not*
   /// enabled, because admitting one commits this to a list of them that
-  /// nobody agreed on. It is the line [AllColorsAdapter] already draws: it
+  /// nobody agreed on. It is the line [TomAllColorsAdapter] already draws: it
   /// folds case in `#FFF` and `rgb(...)` syntax and still does not know what
   /// `crimson` means.
   ///

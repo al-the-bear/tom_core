@@ -1,7 +1,7 @@
 /// Family swap — Material ↔ Cupertino at a width threshold, shared state.
 ///
-/// Two [FamilyForm] instances are pre-built once (one [FormFieldFamily.material],
-/// one [FormFieldFamily.cupertino]) and bound to the **same** [ResponsiveProfile].
+/// Two [FamilyForm] instances are pre-built once (one [TomFormFieldFamily.material],
+/// one [TomFormFieldFamily.cupertino]) and bound to the **same** [ResponsiveProfile].
 /// A `LayoutBuilder` renders whichever matches the 700 px breakpoint; the
 /// page-root [TomFormStyleScope] flips the form *style* (Material3 ↔ Cupertino)
 /// at the same threshold via [TomFormStyleScope.styleBpOverrides]. Because both
@@ -37,8 +37,8 @@ final ShowcaseGroup familySwapGroup = ShowcaseGroup(
           'state panel keeps every value — both forms bind the same entity.',
       code:
           '// Pre-build one form per family, both bound to ONE entity:\n'
-          'final material  = FamilyForm(family: FormFieldFamily.material);\n'
-          'final cupertino = FamilyForm(family: FormFieldFamily.cupertino);\n'
+          'final material  = FamilyForm(family: TomFormFieldFamily.material);\n'
+          'final cupertino = FamilyForm(family: TomFormFieldFamily.cupertino);\n'
           'material.bind(shared); cupertino.bind(shared);\n\n'
           '// (minWidth, style): highest minWidth <= width wins, so the\n'
           '// override applies at/above 700 where the Material family renders.\n'
@@ -87,11 +87,11 @@ class _FamilySwapDemoState extends TomState<FamilySwapDemo> {
     super.initState();
     _materialForm = TomScope.withScope(
       'familySwap-material',
-      () => FamilyForm(family: FormFieldFamily.material),
+      () => FamilyForm(family: TomFormFieldFamily.material),
     );
     _cupertinoForm = TomScope.withScope(
       'familySwap-cupertino',
-      () => FamilyForm(family: FormFieldFamily.cupertino),
+      () => FamilyForm(family: TomFormFieldFamily.cupertino),
     );
     // Both forms share one entity so observable values round-trip across the
     // swap.
@@ -147,7 +147,7 @@ class _BreakpointBadge extends TomStatelessWidget {
   _BreakpointBadge({required this.width, required this.family});
 
   final double width;
-  final FormFieldFamily family;
+  final TomFormFieldFamily family;
 
   @override
   Widget buildContent(BuildContext context) {

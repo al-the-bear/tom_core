@@ -154,7 +154,11 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     }
     notifyObservers();
     _fireEvent(
-      ListItemAddedEvent(source: listId, index: index, itemFormId: form.formId),
+      TomListItemAddedEvent(
+        source: listId,
+        index: index,
+        itemFormId: form.formId,
+      ),
     );
     return form;
   }
@@ -171,7 +175,11 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     }
     notifyObservers();
     _fireEvent(
-      ListItemAddedEvent(source: listId, index: index, itemFormId: form.formId),
+      TomListItemAddedEvent(
+        source: listId,
+        index: index,
+        itemFormId: form.formId,
+      ),
     );
     return form;
   }
@@ -186,7 +194,7 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     }
     notifyObservers();
     _fireEvent(
-      ListItemRemovedEvent(
+      TomListItemRemovedEvent(
         source: listId,
         index: index,
         itemFormId: form.formId,
@@ -207,7 +215,7 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   /// is reordered to match.
   ///
   /// See [reorder] for the spec-canonical name; both forward to the same
-  /// implementation and fire a [ListItemReorderedEvent].
+  /// implementation and fire a [TomListItemReorderedEvent].
   void move(int from, int to) {
     if (from == to) return;
     final form = _forms.removeAt(from);
@@ -220,7 +228,7 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     }
     notifyObservers();
     _fireEvent(
-      ListItemReorderedEvent(
+      TomListItemReorderedEvent(
         source: listId,
         fromIndex: from,
         toIndex: to,
@@ -338,22 +346,22 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   /// Validate every sub-form plus this list's own [validateList] hook.
   /// Returns the combined error list.
   ///
-  /// After computing errors a [FormValidatedEvent] is fired through the
+  /// After computing errors a [TomFormValidatedEvent] is fired through the
   /// event bus (bubbling to the parent form when [parentForm] is set).
   /// This lets [TomErrorView] widgets subscribed to the parent form's bus
   /// pick up list-level errors — e.g. "at least one item required" —
   /// without needing a separate imperative update call.
   @override
-  Future<List<FormValidationError>> validate() async {
-    final errors = <FormValidationError>[];
+  Future<List<TomFormValidationError>> validate() async {
+    final errors = <TomFormValidationError>[];
     for (final form in _forms) {
       errors.addAll(await form.validate());
     }
     final listErrors = await validateList();
     for (final key in listErrors) {
-      errors.add(FormValidationError(errorKey: key, fields: const []));
+      errors.add(TomFormValidationError(errorKey: key, fields: const []));
     }
-    _fireEvent(FormValidatedEvent(source: listId, errors: errors));
+    _fireEvent(TomFormValidatedEvent(source: listId, errors: errors));
     return errors;
   }
 

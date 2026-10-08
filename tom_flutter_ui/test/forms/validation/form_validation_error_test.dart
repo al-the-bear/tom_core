@@ -11,11 +11,11 @@ class _TestField<T> extends TomField<T> {
 }
 
 void main() {
-  group('FormValidationError', () {
+  group('TomFormValidationError', () {
     test('stores errorKey and fields', () {
       final startDate = _TestField<String>('startDate', '');
       final endDate = _TestField<String>('endDate', '');
-      final error = FormValidationError(
+      final error = TomFormValidationError(
         errorKey: 'error.dateRange',
         fields: [startDate, endDate],
       );
@@ -30,7 +30,7 @@ void main() {
     test('stores params', () {
       final amount1 = _TestField<String>('amount1', '');
       final amount2 = _TestField<String>('amount2', '');
-      final error = FormValidationError(
+      final error = TomFormValidationError(
         errorKey: 'error.sumExceeds',
         params: {'max': 1000},
         fields: [amount1, amount2],
@@ -42,7 +42,7 @@ void main() {
     test('stores per-field error keys', () {
       final startDate = _TestField<String>('startDate', '');
       final endDate = _TestField<String>('endDate', '');
-      final error = FormValidationError(
+      final error = TomFormValidationError(
         errorKey: 'error.dateRange.invalid',
         fields: [startDate, endDate],
         fieldErrorKeys: {
@@ -57,7 +57,7 @@ void main() {
 
     test('toString provides readable representation', () {
       final field1 = _TestField<String>('field1', '');
-      final error = FormValidationError(
+      final error = TomFormValidationError(
         errorKey: 'error.test',
         fields: [field1],
       );
@@ -69,7 +69,7 @@ void main() {
     test('tomIds returns field IDs from field references', () {
       final name = _TestField<String>('name', '');
       final email = _TestField<String>('email', '');
-      final error = FormValidationError(
+      final error = TomFormValidationError(
         errorKey: 'error.duplicate',
         fields: [name, email],
       );

@@ -5,7 +5,7 @@
 ///   * email (email)
 ///   * minLength (username: 3, password: 8)
 ///   * pattern (username: `[a-zA-Z0-9_]+`, website: http(s) URL)
-///   * SlowValidator async (username starts with "admin")
+///   * TomSlowValidator async (username starts with "admin")
 ///   * cross-field `validateForm()` (password == confirmPassword)
 ///
 /// `demo_a_lifecycle_test.dart` already covers pristine, Clear,

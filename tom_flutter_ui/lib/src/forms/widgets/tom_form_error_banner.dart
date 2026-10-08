@@ -30,7 +30,7 @@ class TomFormErrorBanner extends StatefulWidget {
 
 class _TomFormErrorBannerState extends State<TomFormErrorBanner>
     with TomFormEventListener {
-  List<FormValidationError> _errors = [];
+  List<TomFormValidationError> _errors = [];
 
   @override
   void initState() {
@@ -55,28 +55,28 @@ class _TomFormErrorBannerState extends State<TomFormErrorBanner>
   }
 
   @override
-  void onFormValidated(FormValidatedEvent event) {
+  void onFormValidated(TomFormValidatedEvent event) {
     setState(() {
       // Show only cross-field errors (errors spanning multiple fields)
       _errors = event.errors
-          .whereType<FormValidationError>()
+          .whereType<TomFormValidationError>()
           .where((e) => e.fields.length != 1)
           .toList();
     });
   }
 
   @override
-  void onFormSaved(FormSavedEvent event) {
+  void onFormSaved(TomFormSavedEvent event) {
     setState(() => _errors = []);
   }
 
   @override
-  void onFormDiscarded(FormDiscardedEvent event) {
+  void onFormDiscarded(TomFormDiscardedEvent event) {
     setState(() => _errors = []);
   }
 
   /// Update errors externally (e.g., after calling form.validate()).
-  void setErrors(List<FormValidationError> errors) {
+  void setErrors(List<TomFormValidationError> errors) {
     setState(() {
       _errors = errors.where((e) => e.fields.length != 1).toList();
     });

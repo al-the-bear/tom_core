@@ -39,7 +39,7 @@ void _installResources(Map<String, dynamic> tree) {
 }
 
 void main() {
-  setUpAll(() => TomUIColors.adapter = AllColorsAdapter());
+  setUpAll(() => TomUIColors.adapter = TomAllColorsAdapter());
   tearDown(() => _installResources({}));
 
   group('TomWidgetMixin typed resources: values that are present', () {

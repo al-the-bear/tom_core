@@ -8,7 +8,7 @@ import '../tom_form_labels.dart';
 // ---------------------------------------------------------------------------
 //
 // Renders a coloured strip that lists every field in [form] that currently
-// has a [ValidationError], using each field's [TomField.resolvedLabel] and
+// has a [TomValidationError], using each field's [TomField.resolvedLabel] and
 // [TomField.resolvedErrorMessage] so no string-resolution boilerplate is
 // needed at the call site.
 //

@@ -244,11 +244,11 @@ void main() {
 
     // Validation info text
     expect(
-      find.textContaining('Validators: required, minLength(2)'),
+      find.textContaining('TomValidators: required, minLength(2)'),
       findsOneWidget,
     );
     expect(
-      find.textContaining('Validators: required, pattern'),
+      find.textContaining('TomValidators: required, pattern'),
       findsOneWidget,
     );
 

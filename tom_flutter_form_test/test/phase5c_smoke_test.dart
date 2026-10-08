@@ -1,5 +1,5 @@
 /// Smoke tests for Phase 5c — Demo O (Cupertino search/lookup/file +
-/// nullable variants) and Demo P (FormFieldFamily swap by breakpoint).
+/// nullable variants) and Demo P (TomFormFieldFamily swap by breakpoint).
 ///
 /// Mirrors `phase5b_smoke_test.dart`: opens each demo through the demo
 /// list and asserts the headline title plus a few anchor widgets render
@@ -87,7 +87,7 @@ void main() {
   });
 
   // -------------------------------------------------------------------
-  // Demo P — FormFieldFamily swap by breakpoint
+  // Demo P — TomFormFieldFamily swap by breakpoint
   // -------------------------------------------------------------------
 
   testWidgets('Demo P opens at wide width — Material family active', (
@@ -95,11 +95,11 @@ void main() {
   ) async {
     await openDemo(
       tester,
-      'Demo P: FormFieldFamily swap by breakpoint (Phase 5c)',
+      'Demo P: TomFormFieldFamily swap by breakpoint (Phase 5c)',
       size: const Size(1600, 2400),
     );
     expect(
-      find.text('Demo P — FormFieldFamily swap by breakpoint (Phase 5c)'),
+      find.text('Demo P — TomFormFieldFamily swap by breakpoint (Phase 5c)'),
       findsOneWidget,
     );
     // Breakpoint badge — wide branch shows Material kind
@@ -124,7 +124,7 @@ void main() {
   ) async {
     await openDemo(
       tester,
-      'Demo P: FormFieldFamily swap by breakpoint (Phase 5c)',
+      'Demo P: TomFormFieldFamily swap by breakpoint (Phase 5c)',
       size: const Size(600, 3000),
     );
     // Breakpoint badge — narrow branch shows Cupertino kind

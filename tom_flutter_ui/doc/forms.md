@@ -4,7 +4,7 @@
 (`TomForm` / `TomField`) that binds to a reflected `TomClass`, a validation
 layer, pluggable selectable sources, a typed event bus, a Material + Cupertino
 style/decoration system, and the full field catalogue behind a
-`FormFieldFamily` factory.
+`TomFormFieldFamily` factory.
 
 The guiding split is **data vs presentation**. A `TomForm` is a *model*: it owns
 the fields, their dirty/valid state, the bind→edit→validate→save lifecycle, and
@@ -26,7 +26,7 @@ Cupertino sibling changes the rendering without touching the model.
 - [Selectable sources](#selectable-sources)
 - [The event bus](#the-event-bus)
 - [Style and decoration](#style-and-decoration)
-- [The field catalogue and `FormFieldFamily`](#the-field-catalogue-and-formfieldfamily)
+- [The field catalogue and `TomFormFieldFamily`](#the-field-catalogue-and-tomformfieldfamily)
 - [Captions and wording](#captions-and-wording)
 - [File fields](#file-fields)
 - [List and master-detail forms](#list-and-master-detail-forms)
@@ -40,15 +40,15 @@ Cupertino sibling changes the rendering without touching the model.
 | ------ | ---- | ------- |
 | `TomForm<T extends TomClass>` | abstract class | Owns fields and the bind/save/discard/validate lifecycle; is a `TomScreenElementsProvider`, `TomActionController`, and `TomFormEventSource`. |
 | `TomField<T>` | abstract class | A single value with dirty tracking (`get`/`set`/`commit`/`reset`), validation state, and 5-layer authorization; renders via its `widget` getter. |
-| `Validators` | class | Built-in `required`/`email`/`minLength`/`maxLength`/`pattern`/`min`/`max`/`minItems`/`maxItems`/`compose` rules, each a static factory. |
-| `ValidationResult` | sealed class | `ValidationPristine` / `ValidationSuccess` / `ValidationError` / `ValidationPending`. |
-| `FormValidationError` | class | A cross-field error spanning several `TomField`s. |
-| `SelectableItem<T>` / `TomSelectableSource<T>` | class / abstract class | Items for selection fields; `StaticSelectableSource` is the fixed-list implementation. |
+| `TomValidators` | class | Built-in `required`/`email`/`minLength`/`maxLength`/`pattern`/`min`/`max`/`minItems`/`maxItems`/`compose` rules, each a static factory. |
+| `TomValidationResult` | sealed class | `TomValidationPristine` / `TomValidationSuccess` / `TomValidationError` / `TomValidationPending`. |
+| `TomFormValidationError` | class | A cross-field error spanning several `TomField`s. |
+| `TomSelectableItem<T>` / `TomSelectableSource<T>` | class / abstract class | Items for selection fields; `TomStaticSelectableSource` is the fixed-list implementation. |
 | `TomEnumSelectableSource<E extends Enum>` | class | Enum options whose labels come from the text bundle and re-emit on a locale change. |
 | `TomFormEvent` (+ subtypes) | class | Field/form/list lifecycle events fired on the bus. |
 | `TomFormEventListener` / `TomFormInspector` | mixin / class | Typed event handling; the inspector buffers and filters events. |
-| `TomFormStyle` / `TomBreakpoint` / `LabelPlacement` … | classes / enum | The responsive, themeable decoration system and anatomy placement enums. |
-| `FormFieldFamily` | class | Builds a Material or Cupertino concrete from one declaration, returning the shared abstract base. |
+| `TomFormStyle` / `TomBreakpoint` / `TomLabelPlacement` … | classes / enum | The responsive, themeable decoration system and anatomy placement enums. |
+| `TomFormFieldFamily` | class | Builds a Material or Cupertino concrete from one declaration, returning the shared abstract base. |
 | `TomListForm` / `TomMasterDetailListForm` … | classes | Collections of sub-forms with add/remove/reorder. |
 
 ## Data model: `TomForm` and `TomField`
@@ -60,7 +60,7 @@ committing baselines so the fields are no longer dirty); `discard()` resets.
 `isDirty` and `isValid` aggregate the field states.
 
 **`isValid` means "validation has run and passed", not "the data is
-acceptable".** A field starts at `ValidationPristine`, and pristine is
+acceptable".** A field starts at `TomValidationPristine`, and pristine is
 deliberately not success — so a form freshly bound to entirely valid data
 reports `isValid == false`. A field leaves pristine only when the user edits it
 (`setValue`), when `validate()` forces it, or when it was declared
@@ -93,7 +93,7 @@ name.set('Bob');        // mutate; isDirty becomes true
 name.isDirty;           // value != initialValue
 name.commit();          // current value becomes the new initial (clears dirty)
 name.reset();           // restore the initial value and clear validation state
-await name.validate();  // run validators → ValidationResult
+await name.validate();  // run validators → TomValidationResult
 ```
 
 Authorization is resolved by `TomField.resolveEffectiveAuth()` into a
@@ -135,26 +135,26 @@ ceiling.
 
 ## Validation
 
-`Validators` is a static factory of `TomValidator<T>` functions — each is a
-`FutureOr<ValidationResult> Function(T value)`, so rules can be sync or async.
+`TomValidators` is a static factory of `TomValidator<T>` functions — each is a
+`FutureOr<TomValidationResult> Function(T value)`, so rules can be sync or async.
 `compose` chains rules and **stops on the first failure**:
 
 ```dart
-final rule = Validators.compose<String>([
-  Validators.required(),     // → error.required
-  Validators.minLength(3),   // → error.minLength {min: 3}
-  Validators.maxLength(12),  // → error.maxLength {max: 12}
+final rule = TomValidators.compose<String>([
+  TomValidators.required(),     // → error.required
+  TomValidators.minLength(3),   // → error.minLength {min: 3}
+  TomValidators.maxLength(12),  // → error.maxLength {max: 12}
 ]);
-final result = await rule('ab'); // ValidationError('error.minLength', {min: 3})
+final result = await rule('ab'); // TomValidationError('error.minLength', {min: 3})
 ```
 
-More precisely it returns the first result that is not `ValidationSuccess`, and
+More precisely it returns the first result that is not `TomValidationSuccess`, and
 an empty list is success. You do **not** need it for a field's `validators:`
 list — a field runs that list in order and stops at the first error by itself.
 Reach for `compose` where a *single* validator is required: nesting one rule set
-inside another, or handing one function to `SlowValidator`. A composite is a
-plain, fast validator however slow its members are; only `SlowValidator` grants
-the long debounce and the `ValidationPending` spinner.
+inside another, or handing one function to `TomSlowValidator`. A composite is a
+plain, fast validator however slow its members are; only `TomSlowValidator` grants
+the long debounce and the `TomValidationPending` spinner.
 
 `minItems` / `maxItems` bound the *size* of a collection rather than a value,
 which is how a multi-select field expresses its selection count — the rules are
@@ -163,7 +163,7 @@ typed over `Iterable<Object?>` so they drop straight into a
 
 ```dart
 final toppings = TomFormStringFilterChips('toppings', const [], source: toppingsSource,
-    validators: [Validators.minItems(2), Validators.maxItems(3)]);
+    validators: [TomValidators.minItems(2), TomValidators.maxItems(3)]);
 ```
 
 Rules can also be named rather than constructed: `TomValidatorRegistry`
@@ -172,11 +172,11 @@ resolves a comma-separated declaration (`'required, minLength:8'`,
 resource, so a form's constraints are localisable and editable without a
 rebuild. Applications register their own rules by name with `register`.
 
-Results are a `sealed` family: `ValidationPristine` (never validated),
-`ValidationSuccess`, `ValidationError(errorKey, {params})`, and
-`ValidationPending` (async in flight). `ValidationError` equality compares only
+Results are a `sealed` family: `TomValidationPristine` (never validated),
+`TomValidationSuccess`, `TomValidationError(errorKey, {params})`, and
+`TomValidationPending` (async in flight). `TomValidationError` equality compares only
 the `errorKey`, so tests can assert the key without reconstructing params.
-`FormValidationError` represents a **cross-field** error (e.g. "end before
+`TomFormValidationError` represents a **cross-field** error (e.g. "end before
 start"); it carries the involved `TomField`s and exposes their ids via `tomIds`.
 
 ### From key to sentence
@@ -186,15 +186,15 @@ the bound value in `params` where there is one:
 
 | Rule | Error key | `params` |
 | ---- | --------- | -------- |
-| `Validators.required()` | `error.required` | — |
-| `Validators.minLength(n)` | `error.minLength` | `min` |
-| `Validators.maxLength(n)` | `error.maxLength` | `max` |
-| `Validators.email()` | `error.email` | — |
-| `Validators.pattern(re)` | its `errorKey:` argument, default `error.format` | — |
-| `Validators.min(n)` | `error.min` | `min` |
-| `Validators.max(n)` | `error.max` | `max` |
-| `Validators.minItems(n)` | `error.minItems` | `min` |
-| `Validators.maxItems(n)` | `error.maxItems` | `max` |
+| `TomValidators.required()` | `error.required` | — |
+| `TomValidators.minLength(n)` | `error.minLength` | `min` |
+| `TomValidators.maxLength(n)` | `error.maxLength` | `max` |
+| `TomValidators.email()` | `error.email` | — |
+| `TomValidators.pattern(re)` | its `errorKey:` argument, default `error.format` | — |
+| `TomValidators.min(n)` | `error.min` | `min` |
+| `TomValidators.max(n)` | `error.max` | `max` |
+| `TomValidators.minItems(n)` | `error.minItems` | `min` |
+| `TomValidators.maxItems(n)` | `error.maxItems` | `max` |
 | a file field's `allowedExtensions` | `error.fileExtension` | — |
 | a file field's `maxSizeBytes` | `error.fileTooLarge` | — |
 
@@ -206,7 +206,7 @@ The field resolves that key against `<basePath>.<key>` first — so
 one field can override a message every other field shares — then the field's
 scope, then the bare `<key>`, and finally **returns the key itself** as a
 development indicator. Whatever level answers, the error's `params` are
-substituted into it by `ValidationError.interpolate`, so a template such as
+substituted into it by `TomValidationError.interpolate`, so a template such as
 `Use at least {min} characters.` reaches the screen with the bound value in place
 of the placeholder.
 
@@ -223,9 +223,9 @@ example, and it also sweeps the rendered tree for any `Text` still starting with
 ## Selectable sources
 
 Selection fields (dropdowns, pickers, lookups, search) read their options from a
-`TomSelectableSource<T>`. Each option is a `SelectableItem<T>` (`value`, `label`,
+`TomSelectableSource<T>`. Each option is a `TomSelectableItem<T>` (`value`, `label`,
 optional `description`, and an `enabled` flag; equality is by `value`).
-`StaticSelectableSource` wraps a fixed list and returns an **unmodifiable**
+`TomStaticSelectableSource` wraps a fixed list and returns an **unmodifiable**
 snapshot from `getItems()`; dynamic sources can additionally expose an
 `itemsStream` (static sources return `null`).
 
@@ -236,7 +236,7 @@ table**. It observes `TomTextResourceProvider.appResourcesRevision` and re-emits
 relabelled items on its `itemsStream`, which is what makes a locale switch
 re-render an enum field without the caller rebuilding it. A value with no
 resource key renders its raw enum name (and logs a warning) rather than nothing.
-`FormFieldFamily.enumPickerFor` is the convenience constructor that builds the
+`TomFormFieldFamily.enumPickerFor` is the convenience constructor that builds the
 source for you.
 
 ## The event bus
@@ -244,10 +244,10 @@ source for you.
 `TomForm` is a `TomFormEventSource` — `addListener` / `removeListener` /
 `fireEvent`. Events are a typed hierarchy under `TomFormEvent` (carrying a
 `timestamp`, a `source` id, and a `description`): field events
-(`FieldValueChangedEvent`, `FieldValidatedEvent`, `FieldAuthChangedEvent`,
-`FieldBoundEvent`, `FieldCommittedEvent`), form events (`FormBoundEvent`,
-`FormSavedEvent`, `FormDiscardedEvent`, `FormValidatedEvent`), and list-form
-events (`ListItemAddedEvent`, `ListItemRemovedEvent`, `ListItemReorderedEvent`).
+(`TomFieldValueChangedEvent`, `TomFieldValidatedEvent`, `TomFieldAuthChangedEvent`,
+`TomFieldBoundEvent`, `TomFieldCommittedEvent`), form events (`TomFormBoundEvent`,
+`TomFormSavedEvent`, `TomFormDiscardedEvent`, `TomFormValidatedEvent`), and list-form
+events (`TomListItemAddedEvent`, `TomListItemRemovedEvent`, `TomListItemReorderedEvent`).
 
 `TomFormEventListener` is a mixin with a no-op handler per event type and a
 `handleEvent` dispatcher, so a listener overrides only what it cares about.
@@ -271,23 +271,23 @@ Form rendering is themeable and responsive, kept separate from the model:
   `reset()` restores the defaults and exists so breakpoint state cannot leak
   between tests. `resolve(name)` maps a named key to its current pixel value
   (unknown names → `null`, i.e. "skip this entry").
-- The anatomy enums (`LabelPlacement`, `ErrorPlacement`, `RequiredIndicator`,
-  `DescriptionPlacement`, `ActionIconPlacement`) configure where each part of a
+- The anatomy enums (`TomLabelPlacement`, `TomErrorPlacement`, `TomRequiredIndicator`,
+  `TomDescriptionPlacement`, `TomActionIconPlacement`) configure where each part of a
   field sits, consumed by the decoration mixins
   (`TomStringInputDecorationMixin`, `TomDropdownDecorationMixin`,
   `TomGenericFieldDecorationMixin`).
 
-## The field catalogue and `FormFieldFamily`
+## The field catalogue and `TomFormFieldFamily`
 
 Fields come in two families that share an abstract base
 (`TomFormStringField`, `TomFormEnumField<T>`, `TomFormFileField`, …): the
 Material `TomForm…` concretes and the Cupertino `TomCupertinoForm…` concretes.
-`FormFieldFamily` is the factory that picks one at construction time while
+`TomFormFieldFamily` is the factory that picks one at construction time while
 returning the shared base, so a single declaration can resolve to either side —
 e.g. swap families by breakpoint:
 
 ```dart
-final family = isNarrow ? FormFieldFamily.cupertino : FormFieldFamily.material;
+final family = isNarrow ? TomFormFieldFamily.cupertino : TomFormFieldFamily.material;
 final name = family.stringInput('user.name', '');   // TomFormStringField
 final age  = family.intInput('user.age', 0);        // TomFormIntField
 final dob  = family.datePicker('user.dob', DateTime(2000),
@@ -314,7 +314,7 @@ both honour — `durationPicker` omits Material's `maxHours` and Cupertino's
 `mode` / `minuteInterval`, because choosing either would be choosing a
 rendering. Pass them by constructing the concrete.
 
-`FormFieldFamily.material` / `.cupertino` are const singletons; `isCupertino`
+`TomFormFieldFamily.material` / `.cupertino` are const singletons; `isCupertino`
 reports which side a family resolves to.
 
 ### Tristate booleans
@@ -461,7 +461,7 @@ The override is only needed for that one path. A list-form that is never bound
 the first time a user presses **Add**.
 
 The matching list-level validation hook is `validateList()`, which returns
-resource keys rather than `FormValidationError`s and runs after every row has
+resource keys rather than `TomFormValidationError`s and runs after every row has
 validated; it is where "at least one item" and cross-row duplicate checks go.
 
 ### Authorization is per list, not per row

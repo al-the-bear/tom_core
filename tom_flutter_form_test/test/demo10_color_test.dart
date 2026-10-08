@@ -55,7 +55,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
-    TomUIColors.adapter = AllColorsAdapter();
+    TomUIColors.adapter = TomAllColorsAdapter();
     TomFormStyleScope.invalidateResourceCache();
     final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
     final resources = json.decode(jsonStr) as Map<String, dynamic>;

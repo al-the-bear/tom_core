@@ -1,7 +1,7 @@
 // Family-swap tests: two forms (Material + Cupertino) bound to one entity, the
 // active one chosen by the 700px breakpoint, with shared state that survives.
 //
-// [FamilySwapDemo] pre-builds one form per [FormFieldFamily], binds both to the
+// [FamilySwapDemo] pre-builds one form per [TomFormFieldFamily], binds both to the
 // same [ResponsiveProfile], and renders whichever matches the live width. The
 // page-root [TomFormStyleScope] flips the form style at the same threshold. The
 // header badge and the section header read back the active family; the shared

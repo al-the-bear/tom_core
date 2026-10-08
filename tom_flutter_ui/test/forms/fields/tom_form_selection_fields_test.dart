@@ -46,11 +46,11 @@ Future<void> _pumpLoaded(WidgetTester tester, Widget child) async {
   await tester.pump();
 }
 
-StaticSelectableSource<int> _grades({bool betaEnabled = true}) =>
-    StaticSelectableSource<int>([
-      const SelectableItem(value: 1, label: 'Alpha'),
-      SelectableItem(value: 2, label: 'Beta', enabled: betaEnabled),
-      const SelectableItem(value: 3, label: 'Gamma'),
+TomStaticSelectableSource<int> _grades({bool betaEnabled = true}) =>
+    TomStaticSelectableSource<int>([
+      const TomSelectableItem(value: 1, label: 'Alpha'),
+      TomSelectableItem(value: 2, label: 'Beta', enabled: betaEnabled),
+      const TomSelectableItem(value: 3, label: 'Gamma'),
     ]);
 
 /// A domain object with value semantics — the object fields key their menus off
@@ -72,11 +72,11 @@ const _de = _Country('DE', 'Germany');
 const _fr = _Country('FR', 'France');
 const _jp = _Country('JP', 'Japan');
 
-StaticSelectableSource<_Country> _countries() =>
-    StaticSelectableSource<_Country>(const [
-      SelectableItem(value: _de, label: 'Germany'),
-      SelectableItem(value: _fr, label: 'France'),
-      SelectableItem(value: _jp, label: 'Japan'),
+TomStaticSelectableSource<_Country> _countries() =>
+    TomStaticSelectableSource<_Country>(const [
+      TomSelectableItem(value: _de, label: 'Germany'),
+      TomSelectableItem(value: _fr, label: 'France'),
+      TomSelectableItem(value: _jp, label: 'Japan'),
     ]);
 
 void main() {
@@ -93,14 +93,14 @@ void main() {
   });
 
   // =========================================================================
-  // SelectableItem
+  // TomSelectableItem
   // =========================================================================
 
-  group('SelectableItem', () {
+  group('TomSelectableItem', () {
     test('is equal by value alone, so a relabel is not a different item', () {
-      const a = SelectableItem(value: 1, label: 'Alpha');
-      const b = SelectableItem(value: 1, label: 'Α (relabelled)');
-      const c = SelectableItem(value: 2, label: 'Alpha');
+      const a = TomSelectableItem(value: 1, label: 'Alpha');
+      const b = TomSelectableItem(value: 1, label: 'Α (relabelled)');
+      const c = TomSelectableItem(value: 2, label: 'Alpha');
 
       expect(a, b);
       expect(a.hashCode, b.hashCode);
@@ -109,7 +109,7 @@ void main() {
 
     test('reports its disabled state when described', () {
       expect(
-        const SelectableItem(
+        const TomSelectableItem(
           value: 1,
           label: 'Alpha',
           enabled: false,
@@ -117,7 +117,7 @@ void main() {
         contains('disabled'),
       );
       expect(
-        const SelectableItem(value: 1, label: 'Alpha').toString(),
+        const TomSelectableItem(value: 1, label: 'Alpha').toString(),
         isNot(contains('disabled')),
       );
     });
@@ -237,9 +237,9 @@ void main() {
       final field = TomFormEnumDropdown<int>(
         'grade',
         99,
-        source: StaticSelectableSource<int>(const [
-          SelectableItem(value: 1, label: 'Alpha', enabled: false),
-          SelectableItem(value: 2, label: 'Beta'),
+        source: TomStaticSelectableSource<int>(const [
+          TomSelectableItem(value: 1, label: 'Alpha', enabled: false),
+          TomSelectableItem(value: 2, label: 'Beta'),
         ]),
       );
       await _pumpLoaded(tester, field.widget);

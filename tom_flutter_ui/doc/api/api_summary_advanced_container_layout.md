@@ -34,7 +34,7 @@ components, and the widgets that render the result.
   - [AclTitlePosition](#acltitleposition)
   - [AclTitleBorderAlign](#acltitleborderalign)
 - [Placement](#placement)
-  - [RowAlignment](#rowalignment)
+  - [AclRowAlignment](#aclrowalignment)
   - [AclRowCrossAlignment](#aclrowcrossalignment)
   - [AclAxisPointX](#aclaxispointx)
   - [AclAxisPointY](#aclaxispointy)
@@ -114,7 +114,7 @@ Widget
 
 (enums)
 AclBorderKind, AclSeparatorStyle, AclSeparatorAlignment, AclTitlePosition,
-AclTitleBorderAlign, RowAlignment, AclRowCrossAlignment, AclAxisPointX,
+AclTitleBorderAlign, AclRowAlignment, AclRowCrossAlignment, AclAxisPointX,
 AclAxisPointY, AclDirection, AclFlowKind, AclFormFactor, AclInputMode,
 AclDensity, AclGroupVisibilityMode
 
@@ -140,7 +140,7 @@ declaration in them:
 | `acl_group_visibility.dart` | `AclGroupVisibilityMode`, `AclGroupVisibilityController`, `AclBinaryVisibilityController`, `AclCallbackVisibilityController` |
 | `acl_responsive.dart` | `AclVariant`, `AclRowBreakpoint` |
 | `acl_scope.dart` | `AclScope` |
-| `row_alignment.dart` | `RowAlignment` |
+| `row_alignment.dart` | `AclRowAlignment` |
 
 Thirty-five public types, six top-level functions and constants, and fourteen
 public static members — `AclBuilder.defaultPreferredWidth`, the seven
@@ -314,7 +314,7 @@ the row-alignment setters and their shorthands.
 
 | Shorthand | Equivalent to |
 |-----------|---------------|
-| `setRowAlignLeft()` / `setRowAlignCenter()` / `setRowAlignRight()` | `setRowHorizontalAlignment(RowAlignment.…)` |
+| `setRowAlignLeft()` / `setRowAlignCenter()` / `setRowAlignRight()` | `setRowHorizontalAlignment(AclRowAlignment.…)` |
 | `setRowAlignTop()` / `setRowAlignMiddle()` / `setRowAlignBottom()` | `setRowVerticalAlignment(AclRowCrossAlignment.…)` |
 
 ### AclBuilderChrome
@@ -397,7 +397,7 @@ One row of the computed grid. Immutable.
 | Property | Type | Description |
 |----------|------|-------------|
 | `components` | `List<AclComponent>` | Its cells, in order. |
-| `alignment` | `RowAlignment` | How the row justifies its contents when there is surplus and no gap slot. |
+| `alignment` | `AclRowAlignment` | How the row justifies its contents when there is surplus and no gap slot. |
 | `gapBefore` | `double` | Pixels above this row. |
 | `isGapRow` | `bool` | Whether the row is elastic vertical space rather than content. |
 | `gapRowWeight` | `double` | Its share of the vertical surplus. |
@@ -545,7 +545,7 @@ being told them.
 | `gutterWidth` | `double` | Horizontal space between items. |
 | `runSpacing` | `double` | Vertical space between generated rows. |
 | `defaultItemWidth` | `double` | Width assumed for an item that declares none. Defaults to `kAclDefaultFlowItemWidth`. |
-| `alignment` | `RowAlignment` | Justification of each generated row. |
+| `alignment` | `AclRowAlignment` | Justification of each generated row. |
 | `aclId` / `idScope` / `aclGroup` | `String?` / `bool` / `String?` | As on `AclLayout`. |
 | `padding` / `borderStyle` / `backgroundColor` / `scrollableY` | | As on `AclLayout`. |
 
@@ -561,8 +561,8 @@ being told them.
 |-------------|-------------|
 | `const double kAclDefaultFlowItemWidth` | `150.0`. The width a flow item with no hint is assumed to take. |
 | `double aclFlowItemWidth(AclComponent comp, double defaultItemWidth)` | That item's width: preferred, else minimum, else the default. |
-| `List<AclRow> aclWrapRows(List<AclComponent> components, {required double availableWidth, double gutterWidth = 8.0, double runSpacing = 8.0, double defaultItemWidth = kAclDefaultFlowItemWidth, RowAlignment alignment = RowAlignment.left, String? rowIdPrefix})` | Break the list into rows that fit the width. |
-| `List<AclRow> aclGridRows(List<AclComponent> components, {required int columns, double? availableWidth, double gutterWidth = 8.0, double runSpacing = 8.0, RowAlignment alignment = RowAlignment.left, String? rowIdPrefix})` | Break it into fixed-width columns. A null or infinite width gives the cells no width instead of an absurd one. |
+| `List<AclRow> aclWrapRows(List<AclComponent> components, {required double availableWidth, double gutterWidth = 8.0, double runSpacing = 8.0, double defaultItemWidth = kAclDefaultFlowItemWidth, AclRowAlignment alignment = AclRowAlignment.left, String? rowIdPrefix})` | Break the list into rows that fit the width. |
+| `List<AclRow> aclGridRows(List<AclComponent> components, {required int columns, double? availableWidth, double gutterWidth = 8.0, double runSpacing = 8.0, AclRowAlignment alignment = AclRowAlignment.left, String? rowIdPrefix})` | Break it into fixed-width columns. A null or infinite width gives the cells no width instead of an absurd one. |
 | `T aclResolveBreakpointed<T>(T base, List<(double, T)> overrides, double? availableWidth)` | The value in force at a width: the override with the greatest `minWidth` at or below it, else `base`. The one breakpoint rule the row height, the append gap and the flow column count all use. |
 | `double aclEffectiveGapBefore(AclComponent comp, AclRow row, double? availableWidth)` | The gap before a component: its own when declared, otherwise the row's default resolved at this width. |
 | `double? aclResolveRowHeight(AclRow row, double? availableWidth)` | The row's height at this width, breakpoints applied. |
@@ -658,7 +658,7 @@ to the title band: above it, through it, or below it.
 
 ## Placement
 
-### RowAlignment
+### AclRowAlignment
 
 How a row justifies its contents when it has surplus width and no gap slot to
 absorb it.

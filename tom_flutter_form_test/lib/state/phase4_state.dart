@@ -79,16 +79,17 @@ class City {
 
 class _PrioritySource extends TomSelectableSource<Priority> {
   @override
-  Future<List<SelectableItem<Priority>>> getItems() async => [
+  Future<List<TomSelectableItem<Priority>>> getItems() async => [
     for (final p in Priority.values)
-      SelectableItem<Priority>(value: p, label: p.label),
+      TomSelectableItem<Priority>(value: p, label: p.label),
   ];
 }
 
 class _TagSource extends TomSelectableSource<Tag> {
   @override
-  Future<List<SelectableItem<Tag>>> getItems() async => [
-    for (final t in Tag.values) SelectableItem<Tag>(value: t, label: t.label),
+  Future<List<TomSelectableItem<Tag>>> getItems() async => [
+    for (final t in Tag.values)
+      TomSelectableItem<Tag>(value: t, label: t.label),
   ];
 }
 
@@ -104,9 +105,9 @@ class _CountrySource extends TomSelectableSource<Country> {
   ];
 
   @override
-  Future<List<SelectableItem<Country>>> getItems() async => [
+  Future<List<TomSelectableItem<Country>>> getItems() async => [
     for (final c in _countries)
-      SelectableItem<Country>(value: c, label: c.toString()),
+      TomSelectableItem<Country>(value: c, label: c.toString()),
   ];
 }
 
@@ -127,17 +128,17 @@ class _BigCitySource extends TomSelectableSource<City> {
     ('Helsinki', 'FI'),
   ];
 
-  late final List<SelectableItem<City>> _cache = _build();
+  late final List<TomSelectableItem<City>> _cache = _build();
 
-  List<SelectableItem<City>> _build() {
-    final out = <SelectableItem<City>>[];
+  List<TomSelectableItem<City>> _build() {
+    final out = <TomSelectableItem<City>>[];
     var id = 0;
     for (var i = 0; i < 500; i++) {
       for (final (name, country) in _roots) {
         final fullName = i == 0 ? name : '$name $i';
         final city = City(id, fullName, country);
         out.add(
-          SelectableItem<City>(value: city, label: '$fullName, $country'),
+          TomSelectableItem<City>(value: city, label: '$fullName, $country'),
         );
         id++;
       }
@@ -146,7 +147,7 @@ class _BigCitySource extends TomSelectableSource<City> {
   }
 
   @override
-  Future<List<SelectableItem<City>>> getItems() async => _cache;
+  Future<List<TomSelectableItem<City>>> getItems() async => _cache;
 }
 
 /// Closed integer set — point-size options shown by the
@@ -157,8 +158,8 @@ class _PointSizeSource extends TomSelectableSource<int> {
   static const _sizes = <int>[8, 10, 12, 14, 16, 18, 24];
 
   @override
-  Future<List<SelectableItem<int>>> getItems() async => [
-    for (final s in _sizes) SelectableItem<int>(value: s, label: '$s pt'),
+  Future<List<TomSelectableItem<int>>> getItems() async => [
+    for (final s in _sizes) TomSelectableItem<int>(value: s, label: '$s pt'),
   ];
 }
 
@@ -187,9 +188,9 @@ class _LookupCountrySource extends TomSelectableSource<Country> {
   ];
 
   @override
-  Future<List<SelectableItem<Country>>> getItems() async => [
+  Future<List<TomSelectableItem<Country>>> getItems() async => [
     for (final c in _items)
-      SelectableItem<Country>(value: c, label: c.toString()),
+      TomSelectableItem<Country>(value: c, label: c.toString()),
   ];
 }
 

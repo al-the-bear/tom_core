@@ -72,7 +72,7 @@ Future<void> run() async {
   );
 
   // A picker that read the file eagerly gives bytes instead; both are a
-  // FileRef, and both can produce the TomFileSource an upload needs.
+  // TomFileRef, and both can produce the TomFileSource an upload needs.
   final small = TomFilePickers.toFileRef(
     TomPickedFile(name: 'note.txt', bytes: Uint8List.fromList([1, 2, 3])),
   );
@@ -147,7 +147,7 @@ Future<void> run() async {
   // show the attachment without downloading it.
   final described = await controller.describe();
   print('described: ${described!.fileName} (${described.byteCount} B)');
-  final restored = FileRef.stored(described);
+  final restored = TomFileRef.stored(described);
   print(
     'restored value: ${restored.name} localContent=${restored.hasLocalContent}',
   );
@@ -169,7 +169,7 @@ Future<void> run() async {
   );
   print('field canPick=${field.canPick} canTransfer=${field.canTransfer}');
   print(
-    'field rejects a .png: ${field.checkFile(const FileRef(name: 'photo.png', sizeBytes: 10))}',
+    'field rejects a .png: ${field.checkFile(const TomFileRef(name: 'photo.png', sizeBytes: 10))}',
   );
 
   // ---------------------------------------------------------------------------
@@ -211,7 +211,7 @@ Future<void> run() async {
   assert(field.canPick); // via the registered picker, with no picker argument
   assert(field.canTransfer);
   assert(
-    field.checkFile(const FileRef(name: 'photo.png', sizeBytes: 10)) ==
+    field.checkFile(const TomFileRef(name: 'photo.png', sizeBytes: 10)) ==
         'error.fileExtension',
   );
 

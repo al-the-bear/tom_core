@@ -11,7 +11,7 @@
 ///
 /// Subclasses the same `TomFormStringListField` abstract used by the
 /// Material concretes so a shared bound state object can be rendered
-/// by either family — this is the contract the `FormFieldFamily`
+/// by either family — this is the contract the `TomFormFieldFamily`
 /// factory leans on.
 library;
 
@@ -93,8 +93,8 @@ class _CupertinoStringListCheckedPickerWidget extends StatefulWidget {
 
 class _CupertinoStringListCheckedPickerWidgetState
     extends State<_CupertinoStringListCheckedPickerWidget> {
-  StreamSubscription<List<SelectableItem<String>>>? _subscription;
-  List<SelectableItem<String>> _items = const [];
+  StreamSubscription<List<TomSelectableItem<String>>>? _subscription;
+  List<TomSelectableItem<String>> _items = const [];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomCupertinoFormStringListCheckedPicker get field => widget.field;
@@ -132,7 +132,7 @@ class _CupertinoStringListCheckedPickerWidgetState
     }
   }
 
-  void _pruneVanishedSelections(List<SelectableItem<String>> current) {
+  void _pruneVanishedSelections(List<TomSelectableItem<String>> current) {
     final selected = field.get();
     if (selected.isEmpty) return;
     final availableValues = current.map((i) => i.value).toSet();
@@ -223,7 +223,7 @@ class _CupertinoStringListCheckedPickerWidgetState
 /// Stateful sheet body — rebuilds as items toggle so check-marks
 /// reflect the live selection without dismissing the sheet.
 class _CheckedPickerSheet extends StatefulWidget {
-  final List<SelectableItem<String>> items;
+  final List<TomSelectableItem<String>> items;
   final double height;
   final Set<String> initialSelection;
   final void Function(String value, bool include) onItemToggled;

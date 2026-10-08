@@ -494,14 +494,14 @@ This wraps any `TomObservable` (here `AppErrorInfo extends TomClass`) into a `Va
 **Source:** `tom_flutter_ui/lib/src/forms/`  
 **Full spec:** [tom_ui_widgets_forms.md](tom_ui_widgets_forms.md)
 
-The `TomForm` / `TomField` pattern in `tom_core_flutter` is **superseded** by the Tom Forms Framework in `tom_flutter_ui`. One field of the older tier remains: `TomTextFormFieldBase<T>`, which renders its own `TextField` against a `TextEditingController` and validates through plain string-returning callbacks rather than the `Validators` pipeline. It has no subclasses in the package — a caller who wants it uses it directly, as `tom_flutter_form_test` does for the Classic-coexistence story in Demo C — and new fields are built on `TomFormStringField` and its siblings instead.
+The `TomForm` / `TomField` pattern in `tom_core_flutter` is **superseded** by the Tom Forms Framework in `tom_flutter_ui`. One field of the older tier remains: `TomTextFormFieldBase<T>`, which renders its own `TextField` against a `TextEditingController` and validates through plain string-returning callbacks rather than the `TomValidators` pipeline. It has no subclasses in the package — a caller who wants it uses it directly, as `tom_flutter_form_test` does for the Classic-coexistence story in Demo C — and new fields are built on `TomFormStringField` and its siblings instead.
 
 **Shape of the new framework (condensed; see the full spec for §-level detail):**
 
 - **`TomForm<T extends TomClass>`** is an abstract `TomClass` with a `formId`, a `basePath`, a lazy `fields` map populated from `@tomReflector`-discovered members, a built-in event bus (`addListener(TomFormEventListener)` / `changes` / `form.events`), and a full lifecycle: `bind(target)` → `validate()` → `save()` / `discard()` / `unbind()` / `commit()`. Forms aggregate `isDirty`, `isValid`, `dirtyFields`, `fieldsWithErrors`, an `initialSnapshot`, and run cross-field validation via `validateForm()`.
-- **`TomField<T extends TomObservable>`** extends `TomObject<T>` and implements `TomAuthorizable`. Identity is `(tomId, basePath)` — `tomId` is the short id the caller passed, `basePath` is the scope-prefixed full path used for resource and auth lookups (`"$basePath.<suffix>"`). Fields carry validators, debounce timers (fast + slow), an effective auth chain (resource → group → form → authorizer → UI-state controller), and emit `FieldValueChangedEvent` / `FieldValidatedEvent` / `FieldAuthChangedEvent` / lifecycle events on the owning form's bus.
+- **`TomField<T extends TomObservable>`** extends `TomObject<T>` and implements `TomAuthorizable`. Identity is `(tomId, basePath)` — `tomId` is the short id the caller passed, `basePath` is the scope-prefixed full path used for resource and auth lookups (`"$basePath.<suffix>"`). Fields carry validators, debounce timers (fast + slow), an effective auth chain (resource → group → form → authorizer → UI-state controller), and emit `TomFieldValueChangedEvent` / `TomFieldValidatedEvent` / `TomFieldAuthChangedEvent` / lifecycle events on the owning form's bus.
 - **Concrete fields** in the spec-aligned tier: `TomFormStringInput`, `TomFormStringDropdown` (and — Phase 2+ — checkbox/switch/radio/chips, numeric, date/time, selection, file, list variants). Each field instantiates **at its declaration site** with `form: this`, so the base-class constructor derives `scope` from `form.basePath` — no reliance on zone scope at lazy-init time.
-- **Validation** is a sealed `ValidationResult` (`Pristine` / `Success` / `Error(errorKey, params)` / `Pending`) plus sync `TomValidator<T>` and explicit `SlowValidator<T>` wrappers (longer debounce + `Pending` transition). `Validators.compose`, `.required`, `.email`, `.minLength`, `.maxLength`, `.pattern`, `.min`, `.max` are provided. Cross-field errors return a `FormValidationError(errorKey, fields)` from `validateForm`.
+- **Validation** is a sealed `TomValidationResult` (`Pristine` / `Success` / `Error(errorKey, params)` / `Pending`) plus sync `TomValidator<T>` and explicit `TomSlowValidator<T>` wrappers (longer debounce + `Pending` transition). `TomValidators.compose`, `.required`, `.email`, `.minLength`, `.maxLength`, `.pattern`, `.min`, `.max` are provided. Cross-field errors return a `TomFormValidationError(errorKey, fields)` from `validateForm`.
 - **Styling** goes through `TomFormStyle` — a nested `TomFieldStyle` (`labelPlacement`, placements / indicators, spacing, borders, `borderRadius`, typography, hint tuning, `disabledOpacity`, `readOnlyOpacity`, `readOnlyBackground`, error visuals) plus per-widget partial overrides (`TomStringInputStyle`, `TomDropdownStyle`, …). Presets `material3` / `compact` / `bordered`. Resolution is `programmatic → JSON overlay → withTheme(ThemeData)` — applied by `TomFormStyleScope`, which also owns the breakpoint ladder and cs.* colour-token substitution.
 - **Layout hand-off**: fields are Flutter widgets via `field.widget` and drop straight into a `TomAclBuilder<T extends TomScreenElementsProvider>` where `T` is the `TomForm` subclass. See [acl_design_specification.md §31](acl_design_specification.md) for the container-level authorization + resource plumbing and the form-alignment rules.
 
@@ -515,18 +515,19 @@ class CustomerForm extends TomForm<TomClass> {
   late final fullName = TomFormStringInput(
     'fullName', '',
     form: this,
-    validators: [Validators.required(), Validators.minLength(2)],
+    validators: [TomValidators.required(), TomValidators.minLength(2)],
   );
 
   late final email = TomFormStringInput(
     'email', '',
     form: this,
-    validators: [Validators.required(), Validators.email()],
+    validators: [TomValidators.required(), TomValidators.email()],
     keyboardType: TextInputType.emailAddress,
   );
 
   @override
-  Future<List<FormValidationError>> validateForm() async { ... }
+  Future<List<TomFormValidationError>> validateForm() async =>
+      const []; // cross-field checks return their errors here
 }
 
 // Usage
@@ -821,8 +822,8 @@ abstract class TomFieldResourceKeys {
 | Field Type | Extra Resource Keys |
 |------------|-------------------|
 | `TomFormStringInput` | `.label`, `.placeholder`, `.helperText`, `.errors.*` |
-| `TomFormStringInput` + `Validators.email()` | + `.errors.validEmail` |
-| `TomFormStringInput(obscureText: true)` + `Validators.minLength()` | + `.errors.minLength` |
+| `TomFormStringInput` + `TomValidators.email()` | + `.errors.validEmail` |
+| `TomFormStringInput(obscureText: true)` + `TomValidators.minLength()` | + `.errors.minLength` |
 | `TomFormIntInput` / `TomFormDoubleInput` | + `.errors.minValue`, `.errors.maxValue` |
 | `TomFormStringDropdown` / `TomFormEnumDropdown` | + `.options.{value}` for option labels |
 | `TomFormBoolCheckbox` | `.label`, `.helperText` |

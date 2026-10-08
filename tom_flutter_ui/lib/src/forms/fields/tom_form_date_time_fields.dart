@@ -750,7 +750,7 @@ class _TomFormDateRangePickerWidgetState
 }
 
 // ---------------------------------------------------------------------------
-// TimeRange value type + TomFormTimeRangeField (abstract)
+// TomTimeOfDayRange value type + TomFormTimeRangeField (abstract)
 // ---------------------------------------------------------------------------
 
 /// A `(start, end)` pair of [TimeOfDay] values, used as the value type for
@@ -760,15 +760,15 @@ class _TomFormDateRangePickerWidgetState
 /// No concrete widget ships for this type. Apps that need a time-range
 /// picker can subclass [TomFormTimeRangeField] with two stacked
 /// [TomFormTimePicker]-style buttons.
-class TimeRange {
+class TomTimeOfDayRange {
   final TimeOfDay start;
   final TimeOfDay end;
 
-  const TimeRange(this.start, this.end);
+  const TomTimeOfDayRange(this.start, this.end);
 
   @override
   bool operator ==(Object other) =>
-      other is TimeRange && other.start == start && other.end == end;
+      other is TomTimeOfDayRange && other.start == start && other.end == end;
 
   @override
   int get hashCode => Object.hash(start, end);
@@ -777,7 +777,7 @@ class TimeRange {
   String toString() => '($start, $end)';
 }
 
-abstract class TomFormTimeRangeField extends TomField<TimeRange> {
+abstract class TomFormTimeRangeField extends TomField<TomTimeOfDayRange> {
   final String? labelTextOverride;
   final String? descriptionTextOverride;
 
@@ -806,7 +806,7 @@ abstract class TomFormTimeRangeField extends TomField<TimeRange> {
       '${t.hour.toString().padLeft(2, '0')}:'
       '${t.minute.toString().padLeft(2, '0')}';
 
-  String formatRange(TimeRange r) =>
+  String formatRange(TomTimeOfDayRange r) =>
       '${formatTime(r.start)}  →  ${formatTime(r.end)}';
 }
 

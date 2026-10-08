@@ -54,11 +54,11 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
   _Preset _preset = _Preset.bordered;
   bool _withTheme = false;
 
-  LabelPlacement _labelPlacement = LabelPlacement.above;
-  ErrorPlacement _errorPlacement = ErrorPlacement.below;
-  RequiredIndicator _requiredLabel = RequiredIndicator.asterisk;
-  RequiredIndicator _requiredHint = RequiredIndicator.none;
-  RequiredIndicator _requiredDescription = RequiredIndicator.none;
+  TomLabelPlacement _labelPlacement = TomLabelPlacement.above;
+  TomErrorPlacement _errorPlacement = TomErrorPlacement.below;
+  TomRequiredIndicator _requiredLabel = TomRequiredIndicator.asterisk;
+  TomRequiredIndicator _requiredHint = TomRequiredIndicator.none;
+  TomRequiredIndicator _requiredDescription = TomRequiredIndicator.none;
 
   double _labelFieldGap = 4;
   double _errorFieldGap = 4;
@@ -418,32 +418,32 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
           onChanged: (v) => setState(() => _withTheme = v),
         ),
         const InfoPanelHeading('Label placement'),
-        _enumRow<LabelPlacement>(
-          LabelPlacement.values,
+        _enumRow<TomLabelPlacement>(
+          TomLabelPlacement.values,
           _labelPlacement,
           (v) => setState(() => _labelPlacement = v),
         ),
         const InfoPanelHeading('Error placement'),
-        _enumRow<ErrorPlacement>(
-          ErrorPlacement.values,
+        _enumRow<TomErrorPlacement>(
+          TomErrorPlacement.values,
           _errorPlacement,
           (v) => setState(() => _errorPlacement = v),
         ),
         const InfoPanelHeading('Required — label'),
-        _enumRow<RequiredIndicator>(
-          RequiredIndicator.values,
+        _enumRow<TomRequiredIndicator>(
+          TomRequiredIndicator.values,
           _requiredLabel,
           (v) => setState(() => _requiredLabel = v),
         ),
         const InfoPanelHeading('Required — placeholder (hint)'),
-        _enumRow<RequiredIndicator>(
-          RequiredIndicator.values,
+        _enumRow<TomRequiredIndicator>(
+          TomRequiredIndicator.values,
           _requiredHint,
           (v) => setState(() => _requiredHint = v),
         ),
         const InfoPanelHeading('Required — description'),
-        _enumRow<RequiredIndicator>(
-          RequiredIndicator.values,
+        _enumRow<TomRequiredIndicator>(
+          TomRequiredIndicator.values,
           _requiredDescription,
           (v) => setState(() => _requiredDescription = v),
         ),

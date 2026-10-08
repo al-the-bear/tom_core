@@ -58,7 +58,7 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
       hintTextOverride: 'TomFormStringInput — validates email format',
       prefixIcon: const Icon(Icons.email),
       keyboardType: TextInputType.emailAddress,
-      validators: [Validators.required(), Validators.email()],
+      validators: [TomValidators.required(), TomValidators.email()],
     );
 
     _password = TomFormStringInput(
@@ -68,7 +68,7 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
       hintTextOverride: 'TomFormStringInput — obscured, min 6 chars',
       prefixIcon: const Icon(Icons.lock),
       obscureText: true,
-      validators: [Validators.required(), Validators.minLength(6)],
+      validators: [TomValidators.required(), TomValidators.minLength(6)],
     );
 
     _username = TomFormStringInput(
@@ -77,7 +77,7 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
       labelTextOverride: 'Username',
       hintTextOverride: 'TomFormStringInput — required text field',
       prefixIcon: const Icon(Icons.person),
-      validators: [Validators.required()],
+      validators: [TomValidators.required()],
     );
 
     _age = TomFormStringInput(
@@ -113,7 +113,7 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
     bool valid = true;
     for (final field in _fields) {
       final result = await field.validate();
-      if (result is ValidationError) valid = false;
+      if (result is TomValidationError) valid = false;
     }
     setState(() => _formValid = valid);
   }

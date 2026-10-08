@@ -86,7 +86,7 @@ void main() {
 
   test('custom/ reaches only for what it cannot do without', () {
     // The other direction. `tom_loading_overlay.dart` says in its own dartdoc
-    // that it backticks `SlowValidator` rather than linking it, because
+    // that it backticks `TomSlowValidator` rather than linking it, because
     // `custom/` does not import `forms/validation` "and must not import for
     // the sake of a doc reference". This is that sentence, checked.
     const allowed = {'widget_base/', 'custom/'};

@@ -163,7 +163,7 @@ class ExampleListScreen extends StatelessWidget {
 ///
 /// Each example screen is constructed with a single [family] parameter, and
 /// every field widget inside it is created via the matching
-/// [FormFieldFamily] factory. Switching families is the *only* difference
+/// [TomFormFieldFamily] factory. Switching families is the *only* difference
 /// between the Material and Cupertino versions of an example — the layout
 /// code, the form definition, and the state binding are all family-agnostic.
 enum ExampleFamily { material, cupertino }

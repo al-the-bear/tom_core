@@ -1,7 +1,7 @@
 part of 'acl_demos.dart';
 
 /// Exercises the `tom_flutter_ui` ACL feature: per-row horizontal alignment
-/// via `setRowHorizontalAlignment(RowAlignment.left/center/right)`.
+/// via `setRowHorizontalAlignment(AclRowAlignment.left/center/right)`.
 class AlignmentDemo extends StatelessWidget {
   const AlignmentDemo({super.key});
 
@@ -20,15 +20,15 @@ class AlignmentDemo extends StatelessWidget {
           child: AclBuilder()
               .append(const DemoBox('Left', Colors.red))
               .append(const DemoBox('Aligned', Colors.green))
-              .setRowHorizontalAlignment(RowAlignment.left)
+              .setRowHorizontalAlignment(AclRowAlignment.left)
               .newRow(dist: 8)
               .append(const DemoBox('Center', Colors.blue))
               .append(const DemoBox('Aligned', Colors.orange))
-              .setRowHorizontalAlignment(RowAlignment.center)
+              .setRowHorizontalAlignment(AclRowAlignment.center)
               .newRow(dist: 8)
               .append(const DemoBox('Right', Colors.purple))
               .append(const DemoBox('Aligned', Colors.teal))
-              .setRowHorizontalAlignment(RowAlignment.right)
+              .setRowHorizontalAlignment(AclRowAlignment.right)
               .build(),
         ),
         const SizedBox(height: 24),
@@ -36,13 +36,13 @@ class AlignmentDemo extends StatelessWidget {
         const CodeBlock('''
 AclBuilder()
     .append(Widget_A).append(Widget_B)
-    .setRowHorizontalAlignment(RowAlignment.left)
+    .setRowHorizontalAlignment(AclRowAlignment.left)
     .newRow()
     .append(Widget_C).append(Widget_D)
-    .setRowHorizontalAlignment(RowAlignment.center)
+    .setRowHorizontalAlignment(AclRowAlignment.center)
     .newRow()
     .append(Widget_E).append(Widget_F)
-    .setRowHorizontalAlignment(RowAlignment.right)
+    .setRowHorizontalAlignment(AclRowAlignment.right)
     .build()
 '''),
       ],

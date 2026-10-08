@@ -232,7 +232,7 @@ class _DemoINumericFormsState extends State<DemoINumericForms> {
             // previous symbol/separators). Without this, the field's
             // State persists across rebuilds and keeps showing the old
             // formatted text — the locale switch becomes a no-op
-            // visually even though the underlying CurrencyFormatProfile
+            // visually even though the underlying TomCurrencyFormatProfile
             // has changed.
             KeyedSubtree(
               key: ValueKey('currencyField_$_currency'),

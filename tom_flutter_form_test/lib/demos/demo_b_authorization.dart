@@ -28,7 +28,7 @@ import 'demo_widgets.dart';
 ///     `notes` is empty (data-dependent build-time narrowing).
 ///   * Form-level auth ceiling — selecting `read` at the form level narrows
 ///     every field; the field-state table reflects this in real time.
-///   * Event log streams every `TomFormEvent` including `FieldAuthChangedEvent`
+///   * Event log streams every `TomFormEvent` including `TomFieldAuthChangedEvent`
 ///     when auth transitions fire (via `form.changes` rebuild).
 class DemoBAuthorization extends StatefulWidget {
   const DemoBAuthorization({super.key});
@@ -65,7 +65,7 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
   bool _authorizerEnabled = false;
   bool _uiStateControllerEnabled = false;
 
-  // Per-field FieldAuthChangedEvent tracking — we synthesise these events
+  // Per-field TomFieldAuthChangedEvent tracking — we synthesise these events
   // manually since `resolveEffectiveAuth` is pull-based.
   final Map<String, TomAuthState> _lastAuthSeen = {};
 
@@ -91,12 +91,12 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
   // event system instead of wiring manual `>>` observers on individual
   // TomObservables. TomForm holds listeners by strong reference, so we
   // don't have to baby-sit them to keep them alive; the Classic-field
-  // bypass problem also goes away because FieldValueChangedEvent is only
+  // bypass problem also goes away because TomFieldValueChangedEvent is only
   // fired through `setValue`, which every spec-aligned field routes user
   // input through.
 
   @override
-  void onFieldValueChanged(FieldValueChangedEvent event) {
+  void onFieldValueChanged(TomFieldValueChangedEvent event) {
     _snapshotAuthAndRebuild();
   }
 
@@ -134,7 +134,7 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
     _snapshotAuthAndRebuild();
   }
 
-  /// Emit `FieldAuthChangedEvent` entries for every field whose effective
+  /// Emit `TomFieldAuthChangedEvent` entries for every field whose effective
   /// auth state changed since the last call. Keeps the event log in sync
   /// with auth transitions that happen outside the observable value stream.
   void _snapshotAuthAndRebuild() {
@@ -147,7 +147,7 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
         final previous = _lastAuthSeen[path];
         if (previous != null && previous != newState) {
           _inspector.onFieldAuthChanged(
-            FieldAuthChangedEvent(
+            TomFieldAuthChangedEvent(
               source: field.tomId,
               oldState: previous,
               newState: newState,
@@ -202,7 +202,7 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
       // `phone` (a spec-aligned TomFormStringInput) instead of the Classic
       // `notes` field keeps the observer chain clean: spec fields route
       // user input through setValue, which reliably fires
-      // FieldValueChangedEvent + notifyObservers, whereas Classic fields
+      // TomFieldValueChangedEvent + notifyObservers, whereas Classic fields
       // update their TomObject through a controller listener that has
       // timing quirks inside a nested form tree.
       form.email.uiStateController = TomUIStateController(
@@ -402,7 +402,7 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
             const DemoBullet(
               'Every transition shows up in the event log — '
               'value changes, validations, and synthetic '
-              'FieldAuthChangedEvent entries emitted on auth swaps.',
+              'TomFieldAuthChangedEvent entries emitted on auth swaps.',
             ),
           ],
         ),

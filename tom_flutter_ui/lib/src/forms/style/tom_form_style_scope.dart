@@ -134,13 +134,13 @@ class _OverlayBorder {
 // ---------------------------------------------------------------------------
 
 class _StyleOverlay {
-  final LabelPlacement? labelPlacement;
-  final ErrorPlacement? errorPlacement;
-  final DescriptionPlacement? descriptionPlacement;
-  final ActionIconPlacement? actionIconPlacement;
-  final RequiredIndicator? requiredIndicator;
-  final RequiredIndicator? requiredIndicatorOnHint;
-  final RequiredIndicator? requiredIndicatorOnDescription;
+  final TomLabelPlacement? labelPlacement;
+  final TomErrorPlacement? errorPlacement;
+  final TomDescriptionPlacement? descriptionPlacement;
+  final TomActionIconPlacement? actionIconPlacement;
+  final TomRequiredIndicator? requiredIndicator;
+  final TomRequiredIndicator? requiredIndicatorOnHint;
+  final TomRequiredIndicator? requiredIndicatorOnDescription;
   final double? labelFieldGap;
   final double? errorFieldGap;
   final double? descriptionFieldGap;
@@ -284,31 +284,31 @@ class _StyleOverlay {
     return _StyleOverlay(
       labelPlacement: _parseEnum(
         TomCtr.textOrNull(block, 'labelPlacement'),
-        LabelPlacement.values,
+        TomLabelPlacement.values,
       ),
       errorPlacement: _parseEnum(
         TomCtr.textOrNull(block, 'errorPlacement'),
-        ErrorPlacement.values,
+        TomErrorPlacement.values,
       ),
       descriptionPlacement: _parseEnum(
         TomCtr.textOrNull(block, 'descriptionPlacement'),
-        DescriptionPlacement.values,
+        TomDescriptionPlacement.values,
       ),
       actionIconPlacement: _parseEnum(
         TomCtr.textOrNull(block, 'actionIconPlacement'),
-        ActionIconPlacement.values,
+        TomActionIconPlacement.values,
       ),
       requiredIndicator: _parseEnum(
         TomCtr.textOrNull(block, 'requiredIndicator'),
-        RequiredIndicator.values,
+        TomRequiredIndicator.values,
       ),
       requiredIndicatorOnHint: _parseEnum(
         TomCtr.textOrNull(block, 'requiredIndicatorOnHint'),
-        RequiredIndicator.values,
+        TomRequiredIndicator.values,
       ),
       requiredIndicatorOnDescription: _parseEnum(
         TomCtr.textOrNull(block, 'requiredIndicatorOnDescription'),
-        RequiredIndicator.values,
+        TomRequiredIndicator.values,
       ),
       labelFieldGap: TomCtr.doubleVal(block, 'labelFieldGap'),
       errorFieldGap: TomCtr.doubleVal(block, 'errorFieldGap'),

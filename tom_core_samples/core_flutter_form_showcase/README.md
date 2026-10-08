@@ -125,7 +125,7 @@ class CompanyForm extends TomForm<CompanyProfile> {
     'name', '',
     form: this,
     labelTextOverride: 'Company name',
-    validators: [Validators.required(), Validators.minLength(2)],
+    validators: [TomValidators.required(), TomValidators.minLength(2)],
   );
   // … industry, taxId, website, description …
 }
@@ -300,11 +300,11 @@ TomFormStringInput(
   'name', '',
   form: this,
   labelTextOverride: 'Company name',
-  validators: [Validators.required(), Validators.minLength(2)],
+  validators: [TomValidators.required(), TomValidators.minLength(2)],
 )
 ```
 
-**`TomFormStringDropdown`** — a dropdown over a `StaticSelectableSource` of
+**`TomFormStringDropdown`** — a dropdown over a `TomStaticSelectableSource` of
 labelled values:
 
 ```dart
@@ -313,7 +313,7 @@ TomFormStringDropdown(
   form: this,
   labelTextOverride: 'Industry',
   source: industrySource,
-  validators: [Validators.required()],
+  validators: [TomValidators.required()],
 )
 ```
 
@@ -327,7 +327,7 @@ TomFormSearchInput<String>(
   form: this,
   source: productSource(),
   labelTextOverride: 'Product',
-  validators: [Validators.required()],
+  validators: [TomValidators.required()],
 )
 ```
 
@@ -348,31 +348,31 @@ TomFormStringInput(
 ## 8. Feature group 2 — Validation
 
 Validators attach per field. Synchronous ones resolve instantly; an async
-`SlowValidator` resolves through a pending → resolved lifecycle; `autoValidate`
+`TomSlowValidator` resolves through a pending → resolved lifecycle; `autoValidate`
 revalidates as the user types; a `TomErrorView` aggregates a form's errors.
 
 **Required + minLength** (sync, validates on focus-out):
 
 ```dart
-validators: [Validators.required(), Validators.minLength(2)]
+validators: [TomValidators.required(), TomValidators.minLength(2)]
 ```
 
 **Pattern** — a `RegExp` validator with a named `errorKey`:
 
 ```dart
 validators: [
-  Validators.pattern(RegExp(r'^https?:\/\/...'), errorKey: 'error.invalidUrl'),
+  TomValidators.pattern(RegExp(r'^https?:\/\/...'), errorKey: 'error.invalidUrl'),
 ]
 ```
 
-**Async (`SlowValidator`)** — a simulated 600 ms server round-trip; tax IDs
+**Async (`TomSlowValidator`)** — a simulated 600 ms server round-trip; tax IDs
 starting with `X` resolve to *taken*, and a pending spinner shows while it runs:
 
 ```dart
-final taxIdUniquenessValidator = SlowValidator<String>((value) async {
+final taxIdUniquenessValidator = TomSlowValidator<String>((value) async {
   await Future.delayed(const Duration(milliseconds: 600));
-  if (value.startsWith('X')) return const ValidationError('error.taxIdTaken');
-  return const ValidationSuccess();
+  if (value.startsWith('X')) return const TomValidationError('error.taxIdTaken');
+  return const TomValidationSuccess();
 });
 ```
 
@@ -383,7 +383,7 @@ TomFormStringInput(
   'quantity', '1',
   form: this,
   autoValidate: true,
-  validators: [Validators.required(), positiveInteger],
+  validators: [TomValidators.required(), positiveInteger],
 )
 ```
 
@@ -402,7 +402,7 @@ That last step is a trap worth naming: a key no bundle defines does not throw,
 log, or render blank — it renders as `error.invalidUrl`, which reads enough like
 a message to survive review and any test that merely asserts an error appeared.
 So custom keys take the framework's `error.` prefix, sit in
-`showcaseValidationTexts` beside the `Validators` built-ins (§5), and
+`showcaseValidationTexts` beside the `TomValidators` built-ins (§5), and
 `validation_message_test.dart` asserts the human sentences *by name*, sweeps the
 rendered form for anything still starting with `error.`, and scans `lib/` so that
 even a rule no interaction can provoke must still have a sentence behind it.

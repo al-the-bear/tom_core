@@ -12,7 +12,7 @@
 /// Socket-free: the console runs over the seeded [InMemoryAdminBackend], whose
 /// blob store is the kernel's own [TomMemoryFileTransferClient]. Only the
 /// platform *dialog* is stubbed — everything downstream of the picker (the
-/// [FileRef] conversion, the streaming upload, progress, cancel, describe,
+/// [TomFileRef] conversion, the streaming upload, progress, cancel, describe,
 /// download and delete) is the real code path.
 library;
 

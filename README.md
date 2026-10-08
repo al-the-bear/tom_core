@@ -762,7 +762,7 @@ inside some enclosing `TomErrorBoundary`, and `custom/readme.md` went on showing
 a const one until this check was written.
 
 A fourth reads a line as a *claim* rather than a call: a document quoting a
-constructor with the wrong parameter kind, `SelectableItem(T value, String
+constructor with the wrong parameter kind, `TomSelectableItem(T value, String
 label)` where the real declaration is named-only. Of the two this is the worse
 defect, because a reader cannot detect it from the page — a miscalled sample
 fails when it is pasted, a misquoted signature is simply believed. Only the kind
@@ -1245,7 +1245,7 @@ checks above are for. Untriageable is the operative half: whether a given
 reference wants an import or a demotion to backticks turns on whether the two
 libraries *ought* to depend on each other, which is an architectural judgement
 and not a property of the reference. `custom/tom_loading_overlay.dart` linking
-`[SlowValidator]` over in `forms/validation` wanted backticks — that dependency
+`[TomSlowValidator]` over in `forms/validation` wanted backticks — that dependency
 would have been new and wrong; `[TomForm]` from `tom_form_child_container.dart`
 plausibly wants the link. No single rule separates them, so a gate here would
 spend most of its output being wrong. Re-run the report before revisiting any of

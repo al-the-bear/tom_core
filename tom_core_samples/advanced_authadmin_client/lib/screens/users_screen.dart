@@ -187,7 +187,7 @@ class UsersScreen extends StatelessWidget {
       'admin',
       () => TomFormFileUpload(
         'users.avatar',
-        stored == null ? null : FileRef.stored(stored.toMetadata()),
+        stored == null ? null : TomFileRef.stored(stored.toMetadata()),
         storageSlot: AppFileSlots.userAvatar(user.id),
         transferClient: session.backend.files,
         // The one constraint an avatar has that an attachment does not. The
@@ -205,7 +205,11 @@ class UsersScreen extends StatelessWidget {
   /// application's decision, which is why the field hands over the bytes and
   /// nothing more. This console has nowhere to put them (its clients ship no
   /// platform folders), so it reports what arrived.
-  void _onAvatarDownloaded(BuildContext context, FileRef ref, Uint8List bytes) {
+  void _onAvatarDownloaded(
+    BuildContext context,
+    TomFileRef ref,
+    Uint8List bytes,
+  ) {
     if (!context.mounted) return;
     TomMessenger.showSnackBar(
       context,

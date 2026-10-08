@@ -86,8 +86,8 @@ void main() {
     // accessors hand the name to an adapter, and with none installed every
     // lookup misses. An application installs these at startup, so the fixture
     // does too.
-    TomUIIcons.adapter = AllIconsAdapter();
-    TomUIColors.adapter = AllColorsAdapter();
+    TomUIIcons.adapter = TomAllIconsAdapter();
+    TomUIColors.adapter = TomAllColorsAdapter();
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(_requiredResources()),
     );

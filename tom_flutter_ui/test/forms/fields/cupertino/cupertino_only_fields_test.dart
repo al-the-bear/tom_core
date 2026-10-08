@@ -1,4 +1,4 @@
-/// The Cupertino concretes that `FormFieldFamily` cannot reach.
+/// The Cupertino concretes that `TomFormFieldFamily` cannot reach.
 ///
 /// Eleven of the twenty-two public Cupertino field classes have no entry in
 /// the family factory: they are either iOS-idiomatic surfaces with no Material
@@ -31,17 +31,18 @@ Widget _app(Widget child) => CupertinoApp(
 TomUIStateController get _readOnly =>
     TomUIStateController(resolve: (_, _) => TomAuthState.read);
 
-TomSelectableSource<String> _cities() => StaticSelectableSource<String>(const [
-  SelectableItem(value: 'oslo', label: 'Oslo'),
-  SelectableItem(value: 'lima', label: 'Lima'),
-]);
+TomSelectableSource<String> _cities() =>
+    TomStaticSelectableSource<String>(const [
+      TomSelectableItem(value: 'oslo', label: 'Oslo'),
+      TomSelectableItem(value: 'lima', label: 'Lima'),
+    ]);
 
 enum Priority { low, high }
 
 TomSelectableSource<Priority> _priorities() =>
-    StaticSelectableSource<Priority>(const [
-      SelectableItem(value: Priority.low, label: 'Low'),
-      SelectableItem(value: Priority.high, label: 'High'),
+    TomStaticSelectableSource<Priority>(const [
+      TomSelectableItem(value: Priority.low, label: 'Low'),
+      TomSelectableItem(value: Priority.high, label: 'High'),
     ]);
 
 /// Drains the 300 ms validation debounce a `setValue` schedules, so the timer

@@ -43,7 +43,7 @@ void main() {
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(const {}),
   );
-  TomUIColors.adapter = AllColorsAdapter();
+  TomUIColors.adapter = TomAllColorsAdapter();
   runApp(const Phase1DemoApp());
 }
 
@@ -309,21 +309,21 @@ class AddressForm extends TomForm<AddressData> {
       '',
       labelTextOverride: 'Street Address',
       hintTextOverride: '123 Main St',
-      validators: [Validators.required()],
+      validators: [TomValidators.required()],
     );
     city = TomFormStringInput(
       'city',
       '',
       labelTextOverride: 'City',
-      validators: [Validators.required()],
+      validators: [TomValidators.required()],
     );
     zipCode = TomFormStringInput(
       'zipCode',
       '',
       labelTextOverride: 'ZIP Code',
       validators: [
-        Validators.required(),
-        Validators.pattern(RegExp(r'^\d{5}$'), errorKey: 'error.zipFormat'),
+        TomValidators.required(),
+        TomValidators.pattern(RegExp(r'^\d{5}$'), errorKey: 'error.zipFormat'),
       ],
     );
   }
@@ -334,12 +334,12 @@ class AddressForm extends TomForm<AddressData> {
 // ---------------------------------------------------------------------------
 
 /// Async validator that simulates checking email uniqueness.
-Future<ValidationResult> _emailUniqueValidator(String value) async {
+Future<TomValidationResult> _emailUniqueValidator(String value) async {
   await Future.delayed(const Duration(milliseconds: 500));
   if (value == 'taken@example.com') {
-    return const ValidationError('error.emailTaken');
+    return const TomValidationError('error.emailTaken');
   }
-  return const ValidationSuccess();
+  return const TomValidationSuccess();
 }
 
 @tomReflector
@@ -366,14 +366,14 @@ class ProfileForm extends TomForm<UserProfile> {
       labelTextOverride: 'First Name',
       hintTextOverride: 'Enter first name',
       descriptionTextOverride: 'Your given name',
-      validators: [Validators.required()],
+      validators: [TomValidators.required()],
       tomGroup: nameGroup,
     );
     lastName = TomFormStringInput(
       'lastName',
       '',
       labelTextOverride: 'Last Name',
-      validators: [Validators.required()],
+      validators: [TomValidators.required()],
       tomGroup: nameGroup,
     );
     email = TomFormStringInput(
@@ -383,8 +383,8 @@ class ProfileForm extends TomForm<UserProfile> {
       hintTextOverride: 'user@example.com',
       keyboardType: TextInputType.emailAddress,
       validators: [
-        Validators.required(),
-        Validators.email(),
+        TomValidators.required(),
+        TomValidators.email(),
         _emailUniqueValidator,
       ],
       // Demo feature #5: per-field authorizer narrows to read when role=admin
@@ -398,23 +398,23 @@ class ProfileForm extends TomForm<UserProfile> {
       '',
       labelTextOverride: 'Country',
       hintTextOverride: 'Select a country',
-      source: StaticSelectableSource([
-        const SelectableItem(value: 'US', label: 'United States'),
-        const SelectableItem(value: 'UK', label: 'United Kingdom'),
-        const SelectableItem(value: 'DE', label: 'Germany'),
-        const SelectableItem(value: 'FR', label: 'France'),
-        const SelectableItem(value: 'JP', label: 'Japan'),
+      source: TomStaticSelectableSource([
+        const TomSelectableItem(value: 'US', label: 'United States'),
+        const TomSelectableItem(value: 'UK', label: 'United Kingdom'),
+        const TomSelectableItem(value: 'DE', label: 'Germany'),
+        const TomSelectableItem(value: 'FR', label: 'France'),
+        const TomSelectableItem(value: 'JP', label: 'Japan'),
       ]),
-      validators: [Validators.required()],
+      validators: [TomValidators.required()],
     );
     role = TomFormStringDropdown(
       'role',
       'user',
       labelTextOverride: 'Role',
-      source: StaticSelectableSource([
-        const SelectableItem(value: 'user', label: 'User'),
-        const SelectableItem(value: 'admin', label: 'Administrator'),
-        const SelectableItem(value: 'editor', label: 'Editor'),
+      source: TomStaticSelectableSource([
+        const TomSelectableItem(value: 'user', label: 'User'),
+        const TomSelectableItem(value: 'admin', label: 'Administrator'),
+        const TomSelectableItem(value: 'editor', label: 'Editor'),
       ]),
       // Demo feature #6: uiStateController disables role unless country is set
       uiStateController: TomUIStateController(
@@ -429,11 +429,11 @@ class ProfileForm extends TomForm<UserProfile> {
 
   /// Cross-field validation: email domain must match role requirements.
   @override
-  Future<List<FormValidationError>> validateForm() async {
-    final errors = <FormValidationError>[];
+  Future<List<TomFormValidationError>> validateForm() async {
+    final errors = <TomFormValidationError>[];
     if (role.get() == 'admin' && !email.get().endsWith('@company.com')) {
       errors.add(
-        FormValidationError(
+        TomFormValidationError(
           errorKey: 'error.adminEmailRequired',
           fields: [email, role],
         ),

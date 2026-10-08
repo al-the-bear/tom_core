@@ -91,9 +91,9 @@ void main() {
     expect(find.text('Profile auth (TomAuthGuard)'), findsOneWidget);
     expect(find.text('Items list (TomEmptyState)'), findsOneWidget);
     expect(find.text('Loading overlay (TomLoadingOverlay)'), findsOneWidget);
-    // New: Save button now drives an actual SlowValidator instead of a
+    // New: Save button now drives an actual TomSlowValidator instead of a
     // fake Future.delayed.
-    expect(find.text('Save (awaits SlowValidator)'), findsOneWidget);
+    expect(find.text('Save (awaits TomSlowValidator)'), findsOneWidget);
   });
 
   testWidgets('Demo Q empty-state slot renders when items are cleared', (
@@ -140,28 +140,29 @@ void main() {
     expect(find.text('Profile hidden — auth = none'), findsOneWidget);
   });
 
-  testWidgets('Demo Q save button drives TomLoadingOverlay via SlowValidator', (
-    tester,
-  ) async {
-    await openDemo(tester, 'Demo Q: Auth / Empty / Overlay (Phase 6)');
-    // Baseline: no overlay before pressing save.
-    expect(find.text('Saving — SlowValidator pending…'), findsNothing);
+  testWidgets(
+    'Demo Q save button drives TomLoadingOverlay via TomSlowValidator',
+    (tester) async {
+      await openDemo(tester, 'Demo Q: Auth / Empty / Overlay (Phase 6)');
+      // Baseline: no overlay before pressing save.
+      expect(find.text('Saving — TomSlowValidator pending…'), findsNothing);
 
-    // Fire-and-forget the save. We pump a short frame-interval so the
-    // setState flipping isSaving=true runs, but do NOT pumpAndSettle
-    // (which would await the 800 ms SlowValidator and clear the overlay).
-    await tester.tap(find.text('Save (awaits SlowValidator)'));
-    await tester.pump(const Duration(milliseconds: 50));
+      // Fire-and-forget the save. We pump a short frame-interval so the
+      // setState flipping isSaving=true runs, but do NOT pumpAndSettle
+      // (which would await the 800 ms TomSlowValidator and clear the overlay).
+      await tester.tap(find.text('Save (awaits TomSlowValidator)'));
+      await tester.pump(const Duration(milliseconds: 50));
 
-    // Overlay visible + button swapped to the saving label.
-    expect(find.text('Saving — SlowValidator pending…'), findsOneWidget);
-    expect(find.text('Saving…'), findsOneWidget);
+      // Overlay visible + button swapped to the saving label.
+      expect(find.text('Saving — TomSlowValidator pending…'), findsOneWidget);
+      expect(find.text('Saving…'), findsOneWidget);
 
-    // Let the SlowValidator resolve; overlay tears down.
-    await tester.pumpAndSettle();
-    expect(find.text('Saving — SlowValidator pending…'), findsNothing);
-    expect(find.text('Save (awaits SlowValidator)'), findsOneWidget);
-  });
+      // Let the TomSlowValidator resolve; overlay tears down.
+      await tester.pumpAndSettle();
+      expect(find.text('Saving — TomSlowValidator pending…'), findsNothing);
+      expect(find.text('Save (awaits TomSlowValidator)'), findsOneWidget);
+    },
+  );
 
   // -------------------------------------------------------------------
   // Demo R — Tree / Radio / Infinite scroll

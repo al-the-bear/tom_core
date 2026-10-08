@@ -864,14 +864,14 @@ Horizontal placement is a row-level concern — there is no per-component form.
 decides where the slack goes.)*
 
 ```dart
-AclBuilder setRowHorizontalAlignment(RowAlignment align); // left | center | right
+AclBuilder setRowHorizontalAlignment(AclRowAlignment align); // left | center | right
 // via AclBuilderAlignment:
 AclBuilder setRowAlignLeft();
 AclBuilder setRowAlignCenter();
 AclBuilder setRowAlignRight();
 
 // Every row that sets none of its own
-AclBuilder setAclDefaultRowHorizontalAlignment(RowAlignment alignment);
+AclBuilder setAclDefaultRowHorizontalAlignment(AclRowAlignment alignment);
 ```
 
 ### Container-level decoration
@@ -991,7 +991,7 @@ Acl build();
 ## 18. Enumerations and Value Types
 
 ```dart
-enum RowAlignment            { left, center, right }
+enum AclRowAlignment            { left, center, right }
 enum AclTitlePosition        { topLeft, topCenter, topRight }
 enum AclBorderKind           { none, solid, solidDouble,
                                top, bottom, left, right,
@@ -1775,7 +1775,7 @@ enum AclDirection { ltr, rtl }
 The default is `AclDirection.ltr`. Setting `AclDirection.rtl` causes:
 
 1. **Component order within rows** — rendered right-to-left (first component on the right).
-2. **Row alignment** — `RowAlignment.left` starts from the right; `RowAlignment.right` starts from the left.
+2. **Row alignment** — `AclRowAlignment.left` starts from the right; `AclRowAlignment.right` starts from the left.
 3. **Horizontal alignment offsets** — `alignX*` cross-row deltas and `Transform.translate` horizontal offsets are negated.
 4. **Padding** — `left`/`right` extra padding swaps sides.
 5. **Border kinds** — `AclBorderKind.left` and `AclBorderKind.right` are visual (do **not** flip); the developer chooses the physical side.

@@ -141,9 +141,9 @@ class TodoItemForm extends TomForm<TodoItem> {
 /// `required` is the one that reports a missing title) and fails only on a
 /// value that differs from its trimmed form. Its `error.titleWhitespace` key
 /// resolves as a resource exactly like the built-ins' keys (G-RES-1).
-ValidationResult _noSurroundingSpace(String value) => value.trim() != value
-    ? const ValidationError('error.titleWhitespace')
-    : const ValidationSuccess();
+TomValidationResult _noSurroundingSpace(String value) => value.trim() != value
+    ? const TomValidationError('error.titleWhitespace')
+    : const TomValidationSuccess();
 
 /// The priority options: valued by the enum name the entity stores, labelled
 /// from `global.todopriority.<value>` in the installed bundle (G-RES-5). The

@@ -34,7 +34,7 @@ the census is asserted from the sources by
 `button`, `input`, `label`, `dialog` — fixed on the base class at compile time,
 and it says what a widget is *for*, not what it looks like. The kit's one
 runtime Material-vs-Cupertino switch lives in [`forms`](../forms/readme.md),
-where `FormFieldFamily` builds either concrete from a single declaration; even
+where `TomFormFieldFamily` builds either concrete from a single declaration; even
 there the caller chooses (by breakpoint, typically), so it is a decision rather
 than a probe.
 
@@ -132,7 +132,7 @@ void buildWidgets() {
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(const {}),
   );
-  TomUIColors.adapter = AllColorsAdapter();
+  TomUIColors.adapter = TomAllColorsAdapter();
 
   final button = TomElevatedButton(
     tomId: 'save',

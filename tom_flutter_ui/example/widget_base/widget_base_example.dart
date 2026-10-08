@@ -18,7 +18,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void run() {
   // TomUIColors needs an adapter to turn names/hex strings into Colors.
-  TomUIColors.adapter = AllColorsAdapter();
+  TomUIColors.adapter = TomAllColorsAdapter();
 
   // Install a resource tree. The provider walks nested maps by dotted path, so
   // TomCtr.text('login', 'title') resolves login → title, and

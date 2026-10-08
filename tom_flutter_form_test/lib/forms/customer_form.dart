@@ -35,14 +35,14 @@ class CustomerForm extends TomForm<TomClass> {
     'fullName',
     '',
     form: this,
-    validators: [Validators.required(), Validators.minLength(2)],
+    validators: [TomValidators.required(), TomValidators.minLength(2)],
   );
 
   late final email = TomFormStringInput(
     'email',
     '',
     form: this,
-    validators: [Validators.required(), Validators.email()],
+    validators: [TomValidators.required(), TomValidators.email()],
     keyboardType: TextInputType.emailAddress,
   );
 
@@ -58,7 +58,7 @@ class CustomerForm extends TomForm<TomClass> {
     'standard',
     form: this,
     source: _tierSource,
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   /// Classic field mixed alongside new spec-conforming fields. Demo C
@@ -68,7 +68,7 @@ class CustomerForm extends TomForm<TomClass> {
   /// The Classic path is [TomTextFormFieldBase] used directly: it renders its
   /// own `TextField` against a `TextEditingController` and takes plain
   /// string-returning validators, where the spec-conforming fields above
-  /// render through the decoration mixins and validate through `Validators`.
+  /// render through the decoration mixins and validate through `TomValidators`.
   late final notes = TomTextFormFieldBase<String>(
     'notes',
     '',
@@ -88,9 +88,9 @@ class CustomerForm extends TomForm<TomClass> {
   }
 }
 
-final _tierSource = StaticSelectableSource<String>([
-  const SelectableItem(value: 'standard', label: 'Standard'),
-  const SelectableItem(value: 'silver', label: 'Silver'),
-  const SelectableItem(value: 'gold', label: 'Gold'),
-  const SelectableItem(value: 'platinum', label: 'Platinum'),
+final _tierSource = TomStaticSelectableSource<String>([
+  const TomSelectableItem(value: 'standard', label: 'Standard'),
+  const TomSelectableItem(value: 'silver', label: 'Silver'),
+  const TomSelectableItem(value: 'gold', label: 'Gold'),
+  const TomSelectableItem(value: 'platinum', label: 'Platinum'),
 ]);

@@ -17,6 +17,10 @@
 
 ### Changed
 
+- Follows `tom_flutter_ui`'s rename of its last unprefixed public types
+  (`TomValidators`, `TomValidationError`, `TomSelectableItem`, `TomFileRef`, the
+  `Tom…Event` family, …).
+
 - **The API summaries moved from `doc/api_reference/` to `doc/api/`**, where
   every other package and the workspace guideline already kept them. The
   folder held only the markdown summaries and their index; the name

@@ -22,7 +22,7 @@ typedef TomValidatorFactory = TomValidator<Object?> Function(List<String> args);
 /// A field's resource bundle may declare its validators by name under the
 /// `<basePath>.validators` key, e.g. `required,minLength:8,strongPassword`.
 /// The registry maps each name to a [TomValidatorFactory] and produces the
-/// validator instances the field runs. The built-in [Validators] are
+/// validator instances the field runs. The built-in [TomValidators] are
 /// pre-registered; applications add custom validators (e.g. `strongPassword`)
 /// via [register].
 ///
@@ -119,29 +119,39 @@ class TomValidatorRegistry {
     // decides whether to paint the required marker by looking for exactly this
     // validator in the merged list, so a wrapper would render a
     // bundle-declared `required` unmarked.
-    register('required', (_) => Validators.requiredInstance);
-    register('email', (_) => _wrapString(Validators.email()));
+    register('required', (_) => TomValidators.requiredInstance);
+    register('email', (_) => _wrapString(TomValidators.email()));
     register(
       'minLength',
-      (args) => _wrapString(Validators.minLength(_intArg(args, 'minLength'))),
+      (args) =>
+          _wrapString(TomValidators.minLength(_intArg(args, 'minLength'))),
     );
     register(
       'maxLength',
-      (args) => _wrapString(Validators.maxLength(_intArg(args, 'maxLength'))),
+      (args) =>
+          _wrapString(TomValidators.maxLength(_intArg(args, 'maxLength'))),
     );
     register('pattern', (args) {
       final regex = _regexArg(args, 'pattern');
-      return _wrapString(Validators.pattern(regex));
+      return _wrapString(TomValidators.pattern(regex));
     });
-    register('min', (args) => _wrapNum(Validators.min(_numArg(args, 'min'))));
-    register('max', (args) => _wrapNum(Validators.max(_numArg(args, 'max'))));
+    register(
+      'min',
+      (args) => _wrapNum(TomValidators.min(_numArg(args, 'min'))),
+    );
+    register(
+      'max',
+      (args) => _wrapNum(TomValidators.max(_numArg(args, 'max'))),
+    );
     register(
       'minItems',
-      (args) => _wrapIterable(Validators.minItems(_intArg(args, 'minItems'))),
+      (args) =>
+          _wrapIterable(TomValidators.minItems(_intArg(args, 'minItems'))),
     );
     register(
       'maxItems',
-      (args) => _wrapIterable(Validators.maxItems(_intArg(args, 'maxItems'))),
+      (args) =>
+          _wrapIterable(TomValidators.maxItems(_intArg(args, 'maxItems'))),
     );
   }
 

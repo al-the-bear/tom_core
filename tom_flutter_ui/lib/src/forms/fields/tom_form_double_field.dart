@@ -50,8 +50,8 @@ abstract class TomFormDoubleField extends TomField<double> {
     super.onActionIconPressed,
   }) : super(
          validators: [
-           if (minValue != null) Validators.min(minValue),
-           if (maxValue != null) Validators.max(maxValue),
+           if (minValue != null) TomValidators.min(minValue),
+           if (maxValue != null) TomValidators.max(maxValue),
            ...validators,
          ],
        );
@@ -256,8 +256,8 @@ class TomFormCurrencyDoubleInput extends TomFormDoubleField
   /// Without `intl`, we ship a minimal table covering the common cases
   /// (USD, EUR, GBP, JPY) plus a sensible default — a locale switcher
   /// needs visual differences, not full ICU coverage.
-  CurrencyFormatProfile get formatProfile =>
-      CurrencyFormatProfile.resolve(locale: locale, code: currencyCode);
+  TomCurrencyFormatProfile get formatProfile =>
+      TomCurrencyFormatProfile.resolve(locale: locale, code: currencyCode);
 
   /// Returns true when the currency symbol sits *before* the amount (USD,
   /// GBP, JPY) — used by the widget to decide whether the symbol becomes
@@ -312,7 +312,7 @@ class _TomFormCurrencyDoubleInputWidgetState
   }
 
   /// Format the value's amount portion only (no symbol, no surrounding
-  /// space). Mirrors [CurrencyFormatProfile.format] minus the symbol
+  /// space). Mirrors [TomCurrencyFormatProfile.format] minus the symbol
   /// concat at the end so the rendered symbol Widget can sit outside.
   String _amount(double v) {
     final p = field.formatProfile;
@@ -516,9 +516,9 @@ class _TomFormPercentDoubleInputWidgetState
     final n = double.tryParse(text);
     if (n == null) return;
     // Don't silently clamp — the abstract field's auto-prepended
-    // Validators.min(0)/Validators.max(1) (forwarded via super(...,
+    // TomValidators.min(0)/TomValidators.max(1) (forwarded via super(...,
     // minValue: 0.0, maxValue: 1.0)) surface out-of-range as a normal
-    // ValidationError. Storing 1.5 for "150%" lets the user see + fix
+    // TomValidationError. Storing 1.5 for "150%" lets the user see + fix
     // their typo instead of having the field silently revert to "100".
     final fraction = n / 100.0;
     _updatingFromField = true;
@@ -660,28 +660,28 @@ class _TomFormDoubleSliderWidgetState
 // ---------------------------------------------------------------------------
 
 String? _floatingLabelOrNull(TomFieldStyle style, TomFormDoubleField field) {
-  if (style.labelPlacement != LabelPlacement.floating) return null;
+  if (style.labelPlacement != TomLabelPlacement.floating) return null;
   final label = field.labelText;
   if (label == null || label.isEmpty) return null;
   return label;
 }
 
 // ---------------------------------------------------------------------------
-// CurrencyFormatProfile — minimal locale-aware currency renderer
+// TomCurrencyFormatProfile — minimal locale-aware currency renderer
 // ---------------------------------------------------------------------------
 
 /// Tiny built-in currency formatter, so the package need not depend on
 /// `intl`. Covers USD / EUR / GBP / JPY visually — enough for a locale
 /// switcher. Apps that need full ICU coverage can swap their own
 /// `TomFormCurrencyDoubleInput` subclass that uses the `intl` package.
-class CurrencyFormatProfile {
+class TomCurrencyFormatProfile {
   final String symbol;
   final bool symbolBeforeAmount;
   final String groupSeparator;
   final String decimalSeparator;
   final int decimals;
 
-  const CurrencyFormatProfile({
+  const TomCurrencyFormatProfile({
     required this.symbol,
     required this.symbolBeforeAmount,
     required this.groupSeparator,
@@ -689,7 +689,7 @@ class CurrencyFormatProfile {
     required this.decimals,
   });
 
-  static CurrencyFormatProfile resolve({String? locale, String? code}) {
+  static TomCurrencyFormatProfile resolve({String? locale, String? code}) {
     // If no explicit code, derive from locale (lang_REGION). This makes
     // the previously-dead `locale` constructor parameter functional —
     // pass `locale: 'de_DE'` and you get EUR formatting without having
@@ -697,7 +697,7 @@ class CurrencyFormatProfile {
     final effectiveCode = code ?? _codeFromLocale(locale);
     switch (effectiveCode) {
       case 'EUR':
-        return const CurrencyFormatProfile(
+        return const TomCurrencyFormatProfile(
           symbol: '€',
           symbolBeforeAmount: false,
           groupSeparator: '.',
@@ -705,7 +705,7 @@ class CurrencyFormatProfile {
           decimals: 2,
         );
       case 'GBP':
-        return const CurrencyFormatProfile(
+        return const TomCurrencyFormatProfile(
           symbol: '£',
           symbolBeforeAmount: true,
           groupSeparator: ',',
@@ -713,7 +713,7 @@ class CurrencyFormatProfile {
           decimals: 2,
         );
       case 'JPY':
-        return const CurrencyFormatProfile(
+        return const TomCurrencyFormatProfile(
           symbol: '¥',
           symbolBeforeAmount: true,
           groupSeparator: ',',
@@ -722,7 +722,7 @@ class CurrencyFormatProfile {
         );
       case 'USD':
       default:
-        return const CurrencyFormatProfile(
+        return const TomCurrencyFormatProfile(
           symbol: r'$',
           symbolBeforeAmount: true,
           groupSeparator: ',',

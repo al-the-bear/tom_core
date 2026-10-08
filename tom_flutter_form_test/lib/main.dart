@@ -156,7 +156,7 @@ class DemoListScreen extends StatelessWidget {
           description:
               '4 auth states, groups + modes, authorizer, '
               'UI-state controller, live event log with '
-              'FieldAuthChangedEvent.',
+              'TomFieldAuthChangedEvent.',
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const DemoBAuthorization()),
@@ -422,10 +422,10 @@ class DemoListScreen extends StatelessWidget {
         ),
         _DemoTile(
           icon: Icons.compare_arrows,
-          title: 'Demo P: FormFieldFamily swap by breakpoint (Phase 5c)',
+          title: 'Demo P: TomFormFieldFamily swap by breakpoint (Phase 5c)',
           description:
               'One Phase5cFamilyForm declaration resolves '
-              'Material vs Cupertino concretes via FormFieldFamily; '
+              'Material vs Cupertino concretes via TomFormFieldFamily; '
               'LayoutBuilder + styleBpOverrides flip both family and '
               'style at 700 px while shared state survives the swap.',
           onTap: () => Navigator.push(
@@ -534,7 +534,7 @@ class DemoListScreen extends StatelessWidget {
           icon: Icons.report_gmailerrorred,
           title: 'Demo 7: Error Placement',
           description:
-              'ErrorPlacement options including replaceDescription; '
+              'TomErrorPlacement options including replaceDescription; '
               'explains the 3-step error message resolution chain.',
           onTap: () => Navigator.push(
             context,

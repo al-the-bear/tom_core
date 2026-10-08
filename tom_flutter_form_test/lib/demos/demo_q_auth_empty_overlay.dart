@@ -11,7 +11,7 @@
 ///     has no rows; the list renderer decides, not the page. Clear / Seed
 ///     / +1 row map to `items.removeAt` / `items.add` on the list form.
 ///   * `TomLoadingOverlay` — overlays the items pane while the
-///     [ValidationForm.save] awaits its async `SlowValidator` (800 ms
+///     [ValidationForm.save] awaits its async `TomSlowValidator` (800 ms
 ///     synthetic latency on the `username` field).
 library;
 
@@ -43,7 +43,7 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
   late final OrderForm _orderForm;
   late final Order _order;
 
-  /// Side form that carries an async `SlowValidator` on `username`.
+  /// Side form that carries an async `TomSlowValidator` on `username`.
   /// Driving `TomLoadingOverlay` off the real `form.save()` future is how
   /// an overlay is meant to be paired with async validation: the overlay's
   /// lifetime is the save's, not a timer's.
@@ -61,7 +61,7 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
 
     _validationForm = TomScope.withScope('demoQ', () => ValidationForm());
     _validationForm.bind(TomClass());
-    // Prime non-visible fields so the SlowValidator path (which we care
+    // Prime non-visible fields so the TomSlowValidator path (which we care
     // about) runs without unrelated required-field errors surfacing.
     _validationForm.username.setValue('guest');
     _validationForm.email.setValue('guest@example.com');
@@ -296,10 +296,10 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
             ),
             const SizedBox(height: 8),
             // Overlay wraps only the list area so the title row stays
-            // readable while the SlowValidator-backed save runs.
+            // readable while the TomSlowValidator-backed save runs.
             TomLoadingOverlay(
               isLoading: _controller.isSaving,
-              message: 'Saving — SlowValidator pending…',
+              message: 'Saving — TomSlowValidator pending…',
               child: SizedBox(
                 height: 260,
                 // The list renderer decides when "no rows" shows:
@@ -385,7 +385,7 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
         const InfoPanelHeading('Loading overlay (TomLoadingOverlay)'),
         Text(
           'Press Save to run ValidationForm.save(). The username field '
-          'carries an 800 ms SlowValidator — the items pane is overlaid '
+          'carries an 800 ms TomSlowValidator — the items pane is overlaid '
           'until that Future resolves.',
           style: theme.textTheme.bodySmall,
         ),
@@ -396,7 +396,7 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
           onPressed: _controller.isSaving ? null : _runSlowSave,
           icon: const Icon(Icons.save_outlined),
           label: Text(
-            _controller.isSaving ? 'Saving…' : 'Save (awaits SlowValidator)',
+            _controller.isSaving ? 'Saving…' : 'Save (awaits TomSlowValidator)',
           ),
         ),
       ],

@@ -452,7 +452,7 @@ void main() {
       field.reset();
       expect(field.get(), DateTime(2026, 5, 7));
       expect(field.isDirty, isFalse);
-      expect(field.validationState, isA<ValidationPristine>());
+      expect(field.validationState, isA<TomValidationPristine>());
     });
 
     test('commit moves the baseline reset falls back to', () async {
@@ -756,21 +756,21 @@ void main() {
   });
 
   // =========================================================================
-  // TimeRange value type
+  // TomTimeOfDayRange value type
   // =========================================================================
 
-  group('TimeRange', () {
+  group('TomTimeOfDayRange', () {
     test('is equal by endpoints, so an observer sees a real change only when '
         'one moves', () {
-      const a = TimeRange(
+      const a = TomTimeOfDayRange(
         TimeOfDay(hour: 9, minute: 0),
         TimeOfDay(hour: 17, minute: 0),
       );
-      const b = TimeRange(
+      const b = TomTimeOfDayRange(
         TimeOfDay(hour: 9, minute: 0),
         TimeOfDay(hour: 17, minute: 0),
       );
-      const c = TimeRange(
+      const c = TomTimeOfDayRange(
         TimeOfDay(hour: 9, minute: 0),
         TimeOfDay(hour: 18, minute: 0),
       );
@@ -781,7 +781,7 @@ void main() {
     });
 
     test('stringifies as a pair', () {
-      const r = TimeRange(
+      const r = TomTimeOfDayRange(
         TimeOfDay(hour: 9, minute: 0),
         TimeOfDay(hour: 17, minute: 30),
       );

@@ -111,7 +111,7 @@ void main() {
       );
     });
 
-    test('the first picked file is converted to a FileRef', () async {
+    test('the first picked file is converted to a TomFileRef', () async {
       TomFilePickerRegistry.register(
         (_) async => [
           TomPickedFile(name: 'first.txt', bytes: Uint8List.fromList([1])),
@@ -176,7 +176,7 @@ void main() {
     });
 
     testWidgets('fixed() always returns the same reference', (tester) async {
-      const ref = FileRef(name: 'demo.pdf', sizeBytes: 12);
+      const ref = TomFileRef(name: 'demo.pdf', sizeBytes: 12);
       final picker = TomFilePickers.fixed(ref);
 
       late BuildContext captured;

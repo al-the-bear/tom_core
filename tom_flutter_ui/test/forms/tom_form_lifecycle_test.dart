@@ -97,29 +97,29 @@ void main() {
 
       expect(form.isDirty, isFalse);
       expect(form.dirtyFields, isEmpty);
-      expect(form.product.validationState, const ValidationPristine());
+      expect(form.product.validationState, const TomValidationPristine());
     });
 
-    test('fires one FieldBoundEvent per field, then FormBoundEvent', () {
-      // The order matters to a listener that rebuilds on FormBoundEvent: by
+    test('fires one TomFieldBoundEvent per field, then TomFormBoundEvent', () {
+      // The order matters to a listener that rebuilds on TomFormBoundEvent: by
       // the time it arrives, every field has already been announced.
       final form = OrderItemForm();
       final inspector = _watch(form);
 
       form.bind(_item('Bolt'));
 
-      expect(inspector.ofType<FieldBoundEvent>(), hasLength(2));
-      expect(inspector.ofType<FormBoundEvent>(), hasLength(1));
-      expect(inspector.events.last, isA<FormBoundEvent>());
+      expect(inspector.ofType<TomFieldBoundEvent>(), hasLength(2));
+      expect(inspector.ofType<TomFormBoundEvent>(), hasLength(1));
+      expect(inspector.events.last, isA<TomFormBoundEvent>());
     });
 
-    test('names the form, not a field, as the FormBoundEvent source', () {
+    test('names the form, not a field, as the TomFormBoundEvent source', () {
       final form = OrderItemForm();
       final inspector = _watch(form);
 
       form.bind(_item('Bolt'));
 
-      expect(inspector.ofType<FormBoundEvent>().single.source, 'items');
+      expect(inspector.ofType<TomFormBoundEvent>().single.source, 'items');
     });
 
     test('rebinding replaces both the values and the snapshot', () {
@@ -209,18 +209,18 @@ void main() {
       expect(item.product.get(), 'Bolt');
     });
 
-    test('fires FormSavedEvent only on the successful save', () async {
+    test('fires TomFormSavedEvent only on the successful save', () async {
       final item = _item('Bolt');
       final form = _boundTo(item);
       final inspector = _watch(form);
 
       form.product.setValue('');
       await form.save();
-      expect(inspector.ofType<FormSavedEvent>(), isEmpty);
+      expect(inspector.ofType<TomFormSavedEvent>(), isEmpty);
 
       form.product.setValue('Washer');
       await form.save();
-      expect(inspector.ofType<FormSavedEvent>(), hasLength(1));
+      expect(inspector.ofType<TomFormSavedEvent>(), hasLength(1));
     });
   });
 
@@ -254,13 +254,13 @@ void main() {
       expect(item.product.get(), 'Bolt');
     });
 
-    test('fires FormDiscardedEvent', () {
+    test('fires TomFormDiscardedEvent', () {
       final form = _boundTo(_item('Bolt'));
       final inspector = _watch(form);
 
       form.discard();
 
-      expect(inspector.ofType<FormDiscardedEvent>(), hasLength(1));
+      expect(inspector.ofType<TomFormDiscardedEvent>(), hasLength(1));
     });
   });
 
@@ -393,7 +393,10 @@ void main() {
         final form = _boundOrder();
 
         expect(form.address.isDirty, isFalse);
-        expect(form.address.street.validationState, const ValidationPristine());
+        expect(
+          form.address.street.validationState,
+          const TomValidationPristine(),
+        );
       });
     });
 

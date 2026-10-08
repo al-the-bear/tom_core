@@ -74,7 +74,7 @@ void main() {
         _wrap(
           field.widget,
           style: const TomFormStyle(
-            defaults: TomFieldStyle(labelPlacement: LabelPlacement.hidden),
+            defaults: TomFieldStyle(labelPlacement: TomLabelPlacement.hidden),
           ),
         ),
       );
@@ -89,7 +89,7 @@ void main() {
         _wrap(
           field.widget,
           style: const TomFormStyle(
-            defaults: TomFieldStyle(labelPlacement: LabelPlacement.floating),
+            defaults: TomFieldStyle(labelPlacement: TomLabelPlacement.floating),
           ),
         ),
       );
@@ -107,7 +107,7 @@ void main() {
         _wrap(
           field.widget,
           style: const TomFormStyle(
-            defaults: TomFieldStyle(labelPlacement: LabelPlacement.inline),
+            defaults: TomFieldStyle(labelPlacement: TomLabelPlacement.inline),
           ),
         ),
       );
@@ -154,7 +154,7 @@ void main() {
         'name',
         '',
         labelText: 'Name',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
       );
 
       await tester.pumpWidget(_wrap(field.widget));
@@ -175,14 +175,16 @@ void main() {
         'name',
         '',
         labelText: 'Name',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
       );
 
       await tester.pumpWidget(
         _wrap(
           field.widget,
           style: const TomFormStyle(
-            defaults: TomFieldStyle(requiredIndicator: RequiredIndicator.text),
+            defaults: TomFieldStyle(
+              requiredIndicator: TomRequiredIndicator.text,
+            ),
           ),
         ),
       );
@@ -190,19 +192,21 @@ void main() {
       expect(find.text(' (required)'), findsOneWidget);
     });
 
-    testWidgets('no indicator when RequiredIndicator.none', (tester) async {
+    testWidgets('no indicator when TomRequiredIndicator.none', (tester) async {
       final field = _DecoratedTestField(
         'name',
         '',
         labelText: 'Name',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
       );
 
       await tester.pumpWidget(
         _wrap(
           field.widget,
           style: const TomFormStyle(
-            defaults: TomFieldStyle(requiredIndicator: RequiredIndicator.none),
+            defaults: TomFieldStyle(
+              requiredIndicator: TomRequiredIndicator.none,
+            ),
           ),
         ),
       );
@@ -217,7 +221,7 @@ void main() {
       final field = _DecoratedTestField(
         'name',
         '',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
         labelText: 'Name',
       );
 
@@ -233,7 +237,7 @@ void main() {
       final field = _DecoratedTestField(
         'name',
         '',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
         labelText: 'Name',
       );
 
@@ -243,7 +247,7 @@ void main() {
         _wrap(
           field.widget,
           style: const TomFormStyle(
-            defaults: TomFieldStyle(errorPlacement: ErrorPlacement.above),
+            defaults: TomFieldStyle(errorPlacement: TomErrorPlacement.above),
           ),
         ),
       );
@@ -257,7 +261,7 @@ void main() {
       final field = _DecoratedTestField(
         'name',
         '',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
         labelText: 'Name',
       );
 
@@ -267,7 +271,7 @@ void main() {
         _wrap(
           field.widget,
           style: const TomFormStyle(
-            defaults: TomFieldStyle(errorPlacement: ErrorPlacement.both),
+            defaults: TomFieldStyle(errorPlacement: TomErrorPlacement.both),
           ),
         ),
       );
@@ -280,7 +284,7 @@ void main() {
       final field = _DecoratedTestField(
         'name',
         'Alice',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
         labelText: 'Name',
       );
 
@@ -321,7 +325,7 @@ void main() {
           field.widget,
           style: const TomFormStyle(
             defaults: TomFieldStyle(
-              descriptionPlacement: DescriptionPlacement.above,
+              descriptionPlacement: TomDescriptionPlacement.above,
             ),
           ),
         ),
@@ -464,7 +468,7 @@ void main() {
         'name',
         '',
         labelText: 'Name',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
       );
 
       await tester.pumpWidget(_wrap(field.widget));

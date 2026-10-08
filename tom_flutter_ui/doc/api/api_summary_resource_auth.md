@@ -12,15 +12,15 @@ environment and platform facts a resolution may depend on.
 - [Colours](#colours)
   - [TomUIColors](#tomuicolors)
   - [TomUIColorAdapter](#tomuicoloradapter)
-  - [AllColorsAdapter](#allcolorsadapter)
-  - [MaterialOnlyColorAdapter](#materialonlycoloradapter)
-  - [CupertinoOnlyColorAdapter](#cupertinoonlycoloradapter)
+  - [TomAllColorsAdapter](#tomallcolorsadapter)
+  - [TomMaterialOnlyColorAdapter](#tommaterialonlycoloradapter)
+  - [TomCupertinoOnlyColorAdapter](#tomcupertinoonlycoloradapter)
 - [Icons](#icons)
   - [TomUIIcons](#tomuiicons)
   - [TomUIIconAdapter](#tomuiiconadapter)
-  - [AllIconsAdapter](#alliconsadapter)
-  - [MaterialOnlyIconAdapter](#materialonlyiconadapter)
-  - [CupertinoOnlyIconAdapter](#cupertinoonlyiconadapter)
+  - [TomAllIconsAdapter](#tomalliconsadapter)
+  - [TomMaterialOnlyIconAdapter](#tommaterialonlyiconadapter)
+  - [TomCupertinoOnlyIconAdapter](#tomcupertinoonlyiconadapter)
 - [Configuration](#configuration)
   - [TomConfigProvider](#tomconfigprovider)
   - [TomConfigEnvironment](#tomconfigenvironment)
@@ -82,9 +82,9 @@ one adapter and not another.
 
 ```
 TomUIColorAdapter (abstract)          TomUIIconAdapter (abstract)
-└── AllColorsAdapter                  └── AllIconsAdapter
-    MaterialOnlyColorAdapter              MaterialOnlyIconAdapter
-    CupertinoOnlyColorAdapter             CupertinoOnlyIconAdapter
+└── TomAllColorsAdapter                  └── TomAllIconsAdapter
+    TomMaterialOnlyColorAdapter              TomMaterialOnlyIconAdapter
+    TomCupertinoOnlyColorAdapter             TomCupertinoOnlyIconAdapter
 
 TomUIColors    — the installed colour adapter, statically
 TomUIIcons     — the installed icon adapter, statically
@@ -116,28 +116,28 @@ The contract: `resolveColor(String name)` and `colorExists(String name)`. An
 application implements it only to replace the catalogue wholesale; to *extend*
 one, register.
 
-### AllColorsAdapter
+### TomAllColorsAdapter
 
 Material and Cupertino together, plus the hex and rgb syntax. The recommended
 adapter. It owns the module's two registration statics:
-`AllColorsAdapter.registerColors` adds or overrides names for **every** adapter
-in the module, and `AllColorsAdapter.clearCustomColors` drops them while
+`TomAllColorsAdapter.registerColors` adds or overrides names for **every** adapter
+in the module, and `TomAllColorsAdapter.clearCustomColors` drops them while
 leaving the installed adapter alone — the narrower tool `TomUIColors.reset`
 is the blunt version of.
 
 They are static on this class and module-wide in effect, which is deliberate:
 an application that registers its brand colours and then switches to
-`MaterialOnlyColorAdapter` for bundle size must not lose them, and losing them
+`TomMaterialOnlyColorAdapter` for bundle size must not lose them, and losing them
 would be silent — every registered name would simply resolve to `null`.
 
-### MaterialOnlyColorAdapter
+### TomMaterialOnlyColorAdapter
 
 The Material palette only. Two reasons to reach for it: bundle size, and making
 a stray `cSystemBlue` in a resource file resolve to `null` and be caught rather
 than quietly working. Registrations, hex and rgb all still resolve; only the
 Cupertino table is gone.
 
-### CupertinoOnlyColorAdapter
+### TomCupertinoOnlyColorAdapter
 
 The iOS-facing counterpart, with the same two reasons and the same guarantees.
 
@@ -153,17 +153,17 @@ The static entry point, mirroring `TomUIColors` member for member:
 
 The contract: `resolveIcon(String name)` and `iconExists(String name)`.
 
-### AllIconsAdapter
+### TomAllIconsAdapter
 
 Material and Cupertino together — the recommended adapter — and the owner of
-`AllIconsAdapter.registerIcons` and `AllIconsAdapter.clearCustomIcons`, which
+`TomAllIconsAdapter.registerIcons` and `TomAllIconsAdapter.clearCustomIcons`, which
 are the icon side of the same module-wide registry.
 
-### MaterialOnlyIconAdapter
+### TomMaterialOnlyIconAdapter
 
 The Material table only; registrations still resolve.
 
-### CupertinoOnlyIconAdapter
+### TomCupertinoOnlyIconAdapter
 
 The Cupertino table only; registrations still resolve.
 

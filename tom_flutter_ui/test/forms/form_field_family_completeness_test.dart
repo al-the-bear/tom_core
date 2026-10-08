@@ -1,4 +1,4 @@
-/// `FormFieldFamily`'s both-sided rule, derived from the catalogue.
+/// `TomFormFieldFamily`'s both-sided rule, derived from the catalogue.
 ///
 /// The library dartdoc promises that a method exists **exactly when** a field
 /// kind has a concrete on both sides — Material and Cupertino — so that the
@@ -116,7 +116,7 @@ void main() {
 
   final factorySource = File(_factory).readAsStringSync();
   final classBody = factorySource.substring(
-    factorySource.indexOf('class FormFieldFamily'),
+    factorySource.indexOf('class TomFormFieldFamily'),
   );
   final methods = {
     for (final m in _method.allMatches(classBody))
@@ -124,7 +124,7 @@ void main() {
   };
   final covered = methods.values.toSet();
 
-  group('FFC: the FormFieldFamily both-sided rule [2026-09-30]', () {
+  group('FFC: the TomFormFieldFamily both-sided rule [2026-09-30]', () {
     test('FFC-1: the derivation finds the catalogue', () {
       // Guards the parse, not the rule: an empty or tiny set would make both
       // directions below vacuous, and read as a factory in perfect order.
@@ -144,7 +144,7 @@ void main() {
         isEmpty,
         reason:
             'these kinds have a Material and a Cupertino concrete and no '
-            'FormFieldFamily method, so the factory has a gap while its '
+            'TomFormFieldFamily method, so the factory has a gap while its '
             'dartdoc says a missing method means a one-sided control',
       );
     });

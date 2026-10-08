@@ -44,9 +44,9 @@ const Map<String, dynamic> chromeTexts = <String, dynamic>{
 
 /// Validator messages for `CompanyForm` and `OrderItemForm` (G-UI-7 / G-RES-1).
 ///
-/// **A validator carries a key, never a sentence.** `Validators.required()`
-/// emits `error.required`, `Validators.minLength(2)` emits `error.minLength`
-/// with `params: {'min': 2}`, and a `Validators.pattern(...)` emits whatever
+/// **A validator carries a key, never a sentence.** `TomValidators.required()`
+/// emits `error.required`, `TomValidators.minLength(2)` emits `error.minLength`
+/// with `params: {'min': 2}`, and a `TomValidators.pattern(...)` emits whatever
 /// `errorKey` it was given. The field resolves that key against
 /// `<basePath>.<key>` first (so one field can override a shared message), then
 /// the bare `<key>` — which is the level these entries sit at, since the wording
@@ -65,12 +65,12 @@ const Map<String, dynamic> chromeTexts = <String, dynamic>{
 /// resolution time, so each bound is stated once — in the form that declares it
 /// — and never duplicated as prose here.
 const Map<String, dynamic> showcaseValidationTexts = <String, dynamic>{
-  // Built-ins. Their key names come from `Validators`, not from this sample.
+  // Built-ins. Their key names come from `TomValidators`, not from this sample.
   'error.required': 'This field is required.',
   'error.minLength': 'Use at least {min} characters.',
   'error.maxLength': 'Use at most {max} characters.',
 
-  // Custom rules named by `errorKey:` / `ValidationError(...)` in
+  // Custom rules named by `errorKey:` / `TomValidationError(...)` in
   // forms/company_form.dart. They keep the framework's `error.` prefix so they
   // sit in the same namespace as the built-ins and resolve through the
   // identical chain.

@@ -1209,7 +1209,7 @@ Each value type needs its own widget subclass because rendering, input method, p
 | `TomFormSearchInput<T>` | `TomFormSearchField<T>` | `T` / `T?` | Type-ahead search with datasource, returns selected item |
 | `TomFormLookupDialog<T>` | `TomFormLookupField<T>` | `T` / `T?` | Lookup via dialog/panel with datasource, returns selected item |
 | **File** | | | |
-| `TomFormFileUpload` | `TomFormFileField` | `FileRef` / `FileRef?` | File selection with upload |
+| `TomFormFileUpload` | `TomFormFileField` | `TomFileRef` / `TomFileRef?` | File selection with upload |
 | **Slider** | | | |
 | `TomFormDoubleSlider` | `TomFormDoubleField` | `double` | Continuous value selection |
 | `TomFormIntSlider` | `TomFormIntField` | `int` | Integer value selection |
@@ -1338,7 +1338,7 @@ Forms provide validated, coordinated editing of application state. The form syst
 1. **`TomField<T>` extends `TomObject<T>`** — each field is an observable with a typed value, and implements `TomAuthorizable` for authorization integration
 2. **`TomForm<T>` extends `TomClass`** — fields are discovered via reflection (`@tomReflector`), form itself is observable
 3. **Initial + current values** — fields track both original and edited state for dirty detection
-4. **Async validation** — all validation is async with `ValidationPristine` → `ValidationSuccess`/`ValidationError` states
+4. **Async validation** — all validation is async with `TomValidationPristine` → `TomValidationSuccess`/`TomValidationError` states
 5. **Form is a `TomScreenElementsProvider` and `TomActionController`** — contributes widgets, actions, and resources
 
 ### TomField — the base form field
@@ -1358,7 +1358,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   // Validation
   final List<TomValidator<T>> validators;
-  ValidationResult _validationState = const ValidationPristine();
+  TomValidationResult _validationState = const TomValidationPristine();
 
   bool get isDirty => value != _initialValue;
   bool get isEditable => effectiveAuthState == TomAuthState.full;
@@ -1366,7 +1366,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   void commit() => _initialValue = value;
   void reset() => value = _initialValue;
-  Future<ValidationResult> validate();
+  Future<TomValidationResult> validate();
 
   /// Returns the concrete Flutter widget for this field.
   Widget get widget;
@@ -1422,18 +1422,18 @@ abstract class TomForm<T extends TomClass> extends TomClass
     for (final field in fields.values) field.reset();
   }
 
-  Future<List<FormValidationError>> validate() async {
+  Future<List<TomFormValidationError>> validate() async {
     final fieldResults = await Future.wait(fields.values.map((f) => f.validate()));
-    final errors = <FormValidationError>[];
+    final errors = <TomFormValidationError>[];
     // Collect field errors, then run cross-field validation
     if (errors.isEmpty) errors.addAll(await validateForm());
     return errors;
   }
 
   /// Override for cross-field validation.
-  Future<List<FormValidationError>> validateForm() async => [];
+  Future<List<TomFormValidationError>> validateForm() async => [];
 
-  bool get isValid => fields.values.every((f) => f.validationState is ValidationSuccess);
+  bool get isValid => fields.values.every((f) => f.validationState is TomValidationSuccess);
   bool get isDirty => fields.values.any((f) => f.isDirty);
 }
 ```
@@ -1465,7 +1465,7 @@ class AddressForm extends TomForm<Address> {
   late final street = TomFormStringInput('street', '');
   late final city = TomFormStringInput('city', '');
   late final zip = TomFormStringInput('zip', '',
-    validators: [Validators.required(), Validators.pattern(RegExp(r'^\d{5}$'))],
+    validators: [TomValidators.required(), TomValidators.pattern(RegExp(r'^\d{5}$'))],
   );
   late final country = TomFormStringDropdown('country', null,
     source: countrySource,
@@ -1490,7 +1490,7 @@ class OrderForm extends TomForm<Order> {
 
 ### Validation
 
-Validation is always async with four states: `ValidationPristine` (initial — no errors shown), `ValidationSuccess`, `ValidationError(errorKey, params?)`, and `ValidationPending` (slow async validation in progress). Fields start pristine and only show errors after user interaction or an explicit `validate()` call.
+Validation is always async with four states: `TomValidationPristine` (initial — no errors shown), `TomValidationSuccess`, `TomValidationError(errorKey, params?)`, and `TomValidationPending` (slow async validation in progress). Fields start pristine and only show errors after user interaction or an explicit `validate()` call.
 
 ### Form as an implicit action controller
 

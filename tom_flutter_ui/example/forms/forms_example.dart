@@ -6,12 +6,12 @@
 /// to a reflected `TomClass` and renders a widget tree, so this example
 /// exercises the **pure-logic surfaces** that need no `BuildContext`:
 ///
-/// 1. validators and the sealed `ValidationResult` states,
-/// 2. selectable sources (`SelectableItem` / `StaticSelectableSource`),
+/// 1. validators and the sealed `TomValidationResult` states,
+/// 2. selectable sources (`TomSelectableItem` / `TomStaticSelectableSource`),
 /// 3. the typed event bus (`TomFormInspector` collecting `TomFormEvent`s),
-/// 4. the `FormFieldFamily` factory building Material vs Cupertino fields and
+/// 4. the `TomFormFieldFamily` factory building Material vs Cupertino fields and
 ///    the shared `TomField` value/dirty/commit/reset contract,
-/// 5. a cross-field `FormValidationError`,
+/// 5. a cross-field `TomFormValidationError`,
 /// 6. the responsive `TomBreakpoint` ladder and the anatomy placement enums,
 /// 7. the tristate boolean field and the collection-size rules.
 ///
@@ -28,19 +28,19 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 Future<void> run() async {
   // ---------------------------------------------------------------------------
-  // 1. Validators + ValidationResult
+  // 1. TomValidators + TomValidationResult
   // ---------------------------------------------------------------------------
-  // Validators are `FutureOr<ValidationResult> Function(value)`; `compose`
+  // TomValidators are `FutureOr<TomValidationResult> Function(value)`; `compose`
   // chains them and stops on the first failure.
-  final usernameRule = Validators.compose<String>([
-    Validators.required(),
-    Validators.minLength(3),
-    Validators.maxLength(12),
+  final usernameRule = TomValidators.compose<String>([
+    TomValidators.required(),
+    TomValidators.minLength(3),
+    TomValidators.maxLength(12),
   ]);
 
   final tooShort = await usernameRule('ab');
   final ok = await usernameRule('alice');
-  final emailErr = await Validators.email()('not-an-email');
+  final emailErr = await TomValidators.email()('not-an-email');
   print('username "ab"    -> $tooShort');
   print('username "alice" -> $ok');
   print('email bad        -> $emailErr');
@@ -48,10 +48,10 @@ Future<void> run() async {
   // ---------------------------------------------------------------------------
   // 2. Selectable sources
   // ---------------------------------------------------------------------------
-  final countries = StaticSelectableSource<String>(const [
-    SelectableItem(value: 'de', label: 'Germany'),
-    SelectableItem(value: 'fr', label: 'France'),
-    SelectableItem(value: 'jp', label: 'Japan', enabled: false),
+  final countries = TomStaticSelectableSource<String>(const [
+    TomSelectableItem(value: 'de', label: 'Germany'),
+    TomSelectableItem(value: 'fr', label: 'France'),
+    TomSelectableItem(value: 'jp', label: 'Japan', enabled: false),
   ]);
   final items = await countries.getItems();
   print(
@@ -63,16 +63,16 @@ Future<void> run() async {
   // 3. Event bus — collect and filter typed events
   // ---------------------------------------------------------------------------
   final inspector = TomFormInspector();
-  inspector.handleEvent(FormBoundEvent(source: 'signupForm'));
+  inspector.handleEvent(TomFormBoundEvent(source: 'signupForm'));
   inspector.handleEvent(
-    FieldValueChangedEvent(source: 'user.name', oldValue: '', newValue: 'a'),
+    TomFieldValueChangedEvent(source: 'user.name', oldValue: '', newValue: 'a'),
   );
   inspector.handleEvent(
-    FieldValueChangedEvent(source: 'user.age', oldValue: 0, newValue: 30),
+    TomFieldValueChangedEvent(source: 'user.age', oldValue: 0, newValue: 30),
   );
-  inspector.handleEvent(FormSavedEvent(source: 'signupForm'));
+  inspector.handleEvent(TomFormSavedEvent(source: 'signupForm'));
 
-  final valueChanges = inspector.ofType<FieldValueChangedEvent>();
+  final valueChanges = inspector.ofType<TomFieldValueChangedEvent>();
   final formEvents = inspector.fromSource('signupForm');
   print(
     'events collected: ${inspector.length}, '
@@ -81,10 +81,10 @@ Future<void> run() async {
   );
 
   // ---------------------------------------------------------------------------
-  // 4. FormFieldFamily — same declaration, Material vs Cupertino concretes
+  // 4. TomFormFieldFamily — same declaration, Material vs Cupertino concretes
   // ---------------------------------------------------------------------------
-  final material = FormFieldFamily.material;
-  final cupertino = FormFieldFamily.cupertino;
+  final material = TomFormFieldFamily.material;
+  final cupertino = TomFormFieldFamily.cupertino;
 
   final mName = material.stringInput('user.name', 'Alice');
   final cName = cupertino.stringInput('user.name', 'Alice');
@@ -108,7 +108,7 @@ Future<void> run() async {
   // ---------------------------------------------------------------------------
   final start = material.intInput('range.start', 10);
   final end = material.intInput('range.end', 5);
-  final rangeError = FormValidationError(
+  final rangeError = TomFormValidationError(
     errorKey: 'error.endBeforeStart',
     fields: [start, end],
   );
@@ -123,7 +123,7 @@ Future<void> run() async {
     'desktop=${TomBreakpoint.resolve('desktop')} '
     'unknown=${TomBreakpoint.resolve('watch')}',
   );
-  print('label placements: ${LabelPlacement.values}');
+  print('label placements: ${TomLabelPlacement.values}');
 
   // ---------------------------------------------------------------------------
   // 7. Tristate booleans + collection-size rules
@@ -142,9 +142,9 @@ Future<void> run() async {
 
   // minItems/maxItems bound the *size* of a selection rather than a value —
   // this is how a multi-select expresses its selection count.
-  final toppingsRule = Validators.compose<List<String>>([
-    Validators.minItems(2),
-    Validators.maxItems(3),
+  final toppingsRule = TomValidators.compose<List<String>>([
+    TomValidators.minItems(2),
+    TomValidators.maxItems(3),
   ]);
   final tooFew = await toppingsRule(['cheese']);
   final justRight = await toppingsRule(['cheese', 'basil']);
@@ -156,10 +156,10 @@ Future<void> run() async {
   // ---------------------------------------------------------------------------
   // Assertions
   // ---------------------------------------------------------------------------
-  assert(tooShort is ValidationError);
-  assert((tooShort as ValidationError).errorKey == 'error.minLength');
-  assert(ok is ValidationSuccess);
-  assert((emailErr as ValidationError).errorKey == 'error.email');
+  assert(tooShort is TomValidationError);
+  assert((tooShort as TomValidationError).errorKey == 'error.minLength');
+  assert(ok is TomValidationSuccess);
+  assert((emailErr as TomValidationError).errorKey == 'error.email');
 
   assert(items.length == 3);
   assert(items.first.value == 'de');
@@ -185,7 +185,7 @@ Future<void> run() async {
 
   assert(TomBreakpoint.resolve('mobile') == TomBreakpoint.mobile);
   assert(TomBreakpoint.resolve('watch') == null);
-  assert(LabelPlacement.values.contains(LabelPlacement.floating));
+  assert(TomLabelPlacement.values.contains(TomLabelPlacement.floating));
 
   // The third state is a real value, not an absent one.
   assert(unsetToTrue == null);
@@ -193,9 +193,9 @@ Future<void> run() async {
   assert(answered.isDirty == true);
   assert(answered.tristate == true);
 
-  assert((tooFew as ValidationError).errorKey == 'error.minItems');
-  assert(justRight is ValidationSuccess);
-  assert((tooMany as ValidationError).errorKey == 'error.maxItems');
+  assert((tooFew as TomValidationError).errorKey == 'error.minItems');
+  assert(justRight is TomValidationSuccess);
+  assert((tooMany as TomValidationError).errorKey == 'error.maxItems');
 }
 
 void main() => run();

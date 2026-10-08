@@ -261,7 +261,7 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
               .append((p) => p.countryField, dist: 16)
               .setPWidthInChars(25)
               .newRow(dist: 16)
-              .setRowHorizontalAlignment(RowAlignment.right)
+              .setRowHorizontalAlignment(AclRowAlignment.right)
               .append((p) => _contactProvider.resetButton, dist: 16)
               .setMWidthInChars(20)
               .setXWidthInChars(30)

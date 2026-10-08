@@ -10,7 +10,7 @@
 ///     list (so change detection fires) and is idempotent.
 ///   * Nullable inputs: distinguish pristine vs explicit-null vs set.
 ///   * File field: `checkFile` enforces `allowedExtensions` and
-///     `maxSizeBytes`; `FileRef` is equatable / hashable.
+///     `maxSizeBytes`; `TomFileRef` is equatable / hashable.
 library;
 
 import 'package:flutter/foundation.dart';
@@ -39,27 +39,27 @@ class _Country {
 
 class _PrioritySource extends TomSelectableSource<_Priority> {
   @override
-  Future<List<SelectableItem<_Priority>>> getItems() async => [
+  Future<List<TomSelectableItem<_Priority>>> getItems() async => [
     for (final p in _Priority.values)
-      SelectableItem<_Priority>(value: p, label: p.name),
+      TomSelectableItem<_Priority>(value: p, label: p.name),
   ];
 }
 
 class _CountrySource extends TomSelectableSource<_Country> {
   @override
-  Future<List<SelectableItem<_Country>>> getItems() async => const [
-    SelectableItem(value: _Country('US'), label: 'US'),
-    SelectableItem(value: _Country('DE'), label: 'DE'),
-    SelectableItem(value: _Country('FR'), label: 'FR'),
+  Future<List<TomSelectableItem<_Country>>> getItems() async => const [
+    TomSelectableItem(value: _Country('US'), label: 'US'),
+    TomSelectableItem(value: _Country('DE'), label: 'DE'),
+    TomSelectableItem(value: _Country('FR'), label: 'FR'),
   ];
 }
 
 class _IntSource extends TomSelectableSource<int> {
   @override
-  Future<List<SelectableItem<int>>> getItems() async => const [
-    SelectableItem(value: 8, label: '8'),
-    SelectableItem(value: 10, label: '10'),
-    SelectableItem(value: 12, label: '12'),
+  Future<List<TomSelectableItem<int>>> getItems() async => const [
+    TomSelectableItem(value: 8, label: '8'),
+    TomSelectableItem(value: 10, label: '10'),
+    TomSelectableItem(value: 12, label: '12'),
   ];
 }
 
@@ -274,7 +274,7 @@ void main() {
     test('null constraints accept any file', () {
       final f = makeFile();
       expect(
-        f.checkFile(const FileRef(name: 'foo.bin', sizeBytes: 999)),
+        f.checkFile(const TomFileRef(name: 'foo.bin', sizeBytes: 999)),
         isNull,
       );
     });
@@ -282,7 +282,7 @@ void main() {
     test('rejects extension mismatch with error.fileExtension', () {
       final f = makeFile(allowedExtensions: const ['pdf', 'png']);
       expect(
-        f.checkFile(const FileRef(name: 'notes.txt', sizeBytes: 10)),
+        f.checkFile(const TomFileRef(name: 'notes.txt', sizeBytes: 10)),
         'error.fileExtension',
       );
     });
@@ -290,7 +290,7 @@ void main() {
     test('extension match is case-insensitive', () {
       final f = makeFile(allowedExtensions: const ['pdf']);
       expect(
-        f.checkFile(const FileRef(name: 'REPORT.PDF', sizeBytes: 10)),
+        f.checkFile(const TomFileRef(name: 'REPORT.PDF', sizeBytes: 10)),
         isNull,
       );
     });
@@ -298,7 +298,7 @@ void main() {
     test('files without an extension fail when allowedExtensions is set', () {
       final f = makeFile(allowedExtensions: const ['pdf']);
       expect(
-        f.checkFile(const FileRef(name: 'README', sizeBytes: 10)),
+        f.checkFile(const TomFileRef(name: 'README', sizeBytes: 10)),
         'error.fileExtension',
       );
     });
@@ -306,7 +306,7 @@ void main() {
     test('rejects oversize with error.fileTooLarge', () {
       final f = makeFile(maxSizeBytes: 1024);
       expect(
-        f.checkFile(const FileRef(name: 'big.bin', sizeBytes: 2048)),
+        f.checkFile(const TomFileRef(name: 'big.bin', sizeBytes: 2048)),
         'error.fileTooLarge',
       );
     });
@@ -314,7 +314,7 @@ void main() {
     test('size at the boundary is accepted', () {
       final f = makeFile(maxSizeBytes: 1024);
       expect(
-        f.checkFile(const FileRef(name: 'edge.bin', sizeBytes: 1024)),
+        f.checkFile(const TomFileRef(name: 'edge.bin', sizeBytes: 1024)),
         isNull,
       );
     });
@@ -323,7 +323,7 @@ void main() {
       // Both fail; the extension error should surface first.
       final f = makeFile(allowedExtensions: const ['pdf'], maxSizeBytes: 1024);
       expect(
-        f.checkFile(const FileRef(name: 'big.txt', sizeBytes: 2048)),
+        f.checkFile(const TomFileRef(name: 'big.txt', sizeBytes: 2048)),
         'error.fileExtension',
       );
     });
@@ -367,7 +367,8 @@ void main() {
       });
 
       test('user-supplied validators are appended after built-ins', () {
-        ValidationResult always(FileRef? _) => const ValidationSuccess();
+        TomValidationResult always(TomFileRef? _) =>
+            const TomValidationSuccess();
         final f = TomFormFileUpload(
           'doc',
           null,
@@ -388,7 +389,7 @@ void main() {
             maxSizeBytes: 1024,
           );
           final r = await f.validate();
-          expect(r, isA<ValidationSuccess>());
+          expect(r, isA<TomValidationSuccess>());
         },
       );
 
@@ -396,10 +397,10 @@ void main() {
         'setValue(invalid extension) → validate() yields fileExtension error',
         () async {
           final f = makeFile(allowedExtensions: const ['pdf']);
-          f.setValue(const FileRef(name: 'bad.txt', sizeBytes: 1));
+          f.setValue(const TomFileRef(name: 'bad.txt', sizeBytes: 1));
           final r = await f.validate();
-          expect(r, isA<ValidationError>());
-          expect((r as ValidationError).errorKey, 'error.fileExtension');
+          expect(r, isA<TomValidationError>());
+          expect((r as TomValidationError).errorKey, 'error.fileExtension');
         },
       );
 
@@ -407,23 +408,23 @@ void main() {
         'setValue(oversize) → validate() yields fileTooLarge error',
         () async {
           final f = makeFile(maxSizeBytes: 1024);
-          f.setValue(const FileRef(name: 'huge.bin', sizeBytes: 2048));
+          f.setValue(const TomFileRef(name: 'huge.bin', sizeBytes: 2048));
           final r = await f.validate();
-          expect(r, isA<ValidationError>());
-          expect((r as ValidationError).errorKey, 'error.fileTooLarge');
+          expect(r, isA<TomValidationError>());
+          expect((r as TomValidationError).errorKey, 'error.fileTooLarge');
         },
       );
 
       test(
-        'setValue(valid file) → validate() yields ValidationSuccess',
+        'setValue(valid file) → validate() yields TomValidationSuccess',
         () async {
           final f = makeFile(
             allowedExtensions: const ['pdf'],
             maxSizeBytes: 1024,
           );
-          f.setValue(const FileRef(name: 'ok.pdf', sizeBytes: 512));
+          f.setValue(const TomFileRef(name: 'ok.pdf', sizeBytes: 512));
           final r = await f.validate();
-          expect(r, isA<ValidationSuccess>());
+          expect(r, isA<TomValidationSuccess>());
         },
       );
 
@@ -435,10 +436,10 @@ void main() {
             allowedExtensions: const ['pdf'],
             maxSizeBytes: 1024,
           );
-          f.setValue(const FileRef(name: 'big.txt', sizeBytes: 9999));
+          f.setValue(const TomFileRef(name: 'big.txt', sizeBytes: 9999));
           final r = await f.validate();
-          expect(r, isA<ValidationError>());
-          expect((r as ValidationError).errorKey, 'error.fileExtension');
+          expect(r, isA<TomValidationError>());
+          expect((r as TomValidationError).errorKey, 'error.fileExtension');
         },
       );
 
@@ -453,28 +454,28 @@ void main() {
             maxSizeBytes: 1024,
           );
           expect(f.validators.length, 2);
-          f.setValue(const FileRef(name: 'big.pdf', sizeBytes: 99999));
+          f.setValue(const TomFileRef(name: 'big.pdf', sizeBytes: 99999));
           final r = await f.validate();
-          expect(r, isA<ValidationError>());
-          expect((r as ValidationError).errorKey, 'error.fileTooLarge');
+          expect(r, isA<TomValidationError>());
+          expect((r as TomValidationError).errorKey, 'error.fileTooLarge');
         },
       );
     },
   );
 
-  group('Phase 4 — FileRef value type', () {
+  group('Phase 4 — TomFileRef value type', () {
     test('equatable + hashable on (name, size, mime)', () {
-      const a = FileRef(
+      const a = TomFileRef(
         name: 'a.pdf',
         sizeBytes: 100,
         mimeType: 'application/pdf',
       );
-      const b = FileRef(
+      const b = TomFileRef(
         name: 'a.pdf',
         sizeBytes: 100,
         mimeType: 'application/pdf',
       );
-      const c = FileRef(
+      const c = TomFileRef(
         name: 'a.pdf',
         sizeBytes: 200,
         mimeType: 'application/pdf',
@@ -485,12 +486,12 @@ void main() {
     });
 
     test('equality ignores byte payload', () {
-      final a = FileRef(
+      final a = TomFileRef(
         name: 'x',
         sizeBytes: 3,
         bytes: Uint8List.fromList([1, 2, 3]),
       );
-      final b = FileRef(
+      final b = TomFileRef(
         name: 'x',
         sizeBytes: 3,
         bytes: Uint8List.fromList([4, 5, 6]),
@@ -503,7 +504,7 @@ void main() {
     });
 
     test('toString includes name and size', () {
-      const a = FileRef(name: 'doc.pdf', sizeBytes: 42);
+      const a = TomFileRef(name: 'doc.pdf', sizeBytes: 42);
       expect(a.toString(), contains('doc.pdf'));
       expect(a.toString(), contains('42'));
     });

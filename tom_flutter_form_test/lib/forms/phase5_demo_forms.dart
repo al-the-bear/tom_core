@@ -252,11 +252,11 @@ class CupertinoPhase5Form extends TomForm<Phase5DemoState> {
 /// In-memory deterministic file picker reused by Demo O. Mirrors the
 /// `demoFilePicker` in [file_nullable_demo_form.dart] so the Cupertino
 /// upload field behaves the same way under tests.
-Future<FileRef?> phase5cFilePicker(_) async {
+Future<TomFileRef?> phase5cFilePicker(_) async {
   final bytes = Uint8List.fromList(
     'Hello from the Phase 5c Cupertino demo picker.\n'.codeUnits,
   );
-  return FileRef(
+  return TomFileRef(
     name: 'cupertino_demo_file.txt',
     sizeBytes: bytes.length,
     mimeType: 'text/plain',
@@ -289,7 +289,7 @@ class CupertinoPhase5cForm extends TomForm<Phase5cDemoState> {
     labelTextOverride: 'Country (lookup sheet)',
   );
 
-  // ---- File upload — value type FileRef? has no TomObject wrapper ----
+  // ---- File upload — value type TomFileRef? has no TomObject wrapper ----
 
   late final upload = TomCupertinoFormFileUpload(
     'upload',
@@ -346,7 +346,7 @@ class CupertinoPhase5cForm extends TomForm<Phase5cDemoState> {
 // Phase 5c — Family-swappable form (Demo P)
 //
 // One `TomForm` declaration that resolves Material vs Cupertino concretes
-// at construction time via [FormFieldFamily]. The demo rebuilds the form
+// at construction time via [TomFormFieldFamily]. The demo rebuilds the form
 // when the breakpoint flips; the backing state survives so all values
 // round-trip across the swap.
 // ---------------------------------------------------------------------------
@@ -359,7 +359,7 @@ class Phase5cFamilyForm extends TomForm<Phase5cFamilyState> {
   /// Which family this form was instantiated against (Material vs
   /// Cupertino). Stored for inspection in the demo — the actual concrete
   /// classes are picked once at construction.
-  final FormFieldFamily family;
+  final TomFormFieldFamily family;
 
   late final fullName = family.stringInput(
     'fullName',

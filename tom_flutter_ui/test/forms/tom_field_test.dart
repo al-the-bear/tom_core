@@ -81,14 +81,14 @@ void main() {
       final field = _TestField<String>(
         'name',
         '',
-        validators: [Validators.required()],
+        validators: [TomValidators.required()],
       );
 
       // Validate to produce error
       field.validate();
 
       field.reset();
-      expect(field.validationState, isA<ValidationPristine>());
+      expect(field.validationState, isA<TomValidationPristine>());
     });
 
     test('works with int values', () {
@@ -136,40 +136,40 @@ void main() {
   });
 
   group('TomField — validation', () {
-    test('starts with ValidationPristine', () {
+    test('starts with TomValidationPristine', () {
       final field = _TestField<String>('name', 'Alice');
-      expect(field.validationState, isA<ValidationPristine>());
+      expect(field.validationState, isA<TomValidationPristine>());
     });
 
     test('validate returns success when no validators', () async {
       final field = _TestField<String>('name', 'Alice');
       final result = await field.validate();
-      expect(result, isA<ValidationSuccess>());
+      expect(result, isA<TomValidationSuccess>());
     });
 
     test('validate runs validators and returns error', () async {
       final field = _TestField<String>(
         'name',
         '',
-        validators: [Validators.required()],
+        validators: [TomValidators.required()],
       );
 
       final result = await field.validate();
-      expect(result, isA<ValidationError>());
-      expect((result as ValidationError).errorKey, 'error.required');
-      expect(field.validationState, isA<ValidationError>());
+      expect(result, isA<TomValidationError>());
+      expect((result as TomValidationError).errorKey, 'error.required');
+      expect(field.validationState, isA<TomValidationError>());
     });
 
     test('validate returns success when validators pass', () async {
       final field = _TestField<String>(
         'name',
         'Alice',
-        validators: [Validators.required()],
+        validators: [TomValidators.required()],
       );
 
       final result = await field.validate();
-      expect(result, isA<ValidationSuccess>());
-      expect(field.validationState, isA<ValidationSuccess>());
+      expect(result, isA<TomValidationSuccess>());
+      expect(field.validationState, isA<TomValidationSuccess>());
     });
 
     test('validate stops on first error', () async {
@@ -178,10 +178,10 @@ void main() {
         'name',
         '',
         validators: [
-          Validators.required(),
+          TomValidators.required(),
           (value) {
             secondCalled = true;
-            return const ValidationSuccess();
+            return const TomValidationSuccess();
           },
         ],
       );
@@ -197,13 +197,13 @@ void main() {
         validators: [
           (value) async {
             await Future.delayed(const Duration(milliseconds: 10));
-            return const ValidationSuccess();
+            return const TomValidationSuccess();
           },
         ],
       );
 
       final result = await field.validate();
-      expect(result, isA<ValidationSuccess>());
+      expect(result, isA<TomValidationSuccess>());
     });
 
     // Because the field already stops on the first error (above), composing
@@ -213,38 +213,41 @@ void main() {
       final asList = _TestField<String>(
         'name',
         'ab',
-        validators: [Validators.required(), Validators.minLength(3)],
+        validators: [TomValidators.required(), TomValidators.minLength(3)],
       );
       final asComposite = _TestField<String>(
         'name',
         'ab',
         validators: [
-          Validators.compose<String>([
-            Validators.required(),
-            Validators.minLength(3),
+          TomValidators.compose<String>([
+            TomValidators.required(),
+            TomValidators.minLength(3),
           ]),
         ],
       );
 
-      expect(await asList.validate(), const ValidationError('error.minLength'));
+      expect(
+        await asList.validate(),
+        const TomValidationError('error.minLength'),
+      );
       expect(
         await asComposite.validate(),
-        const ValidationError('error.minLength'),
+        const TomValidationError('error.minLength'),
       );
     });
 
     // compose returns a plain TomValidator, so however slow its members are the
     // composite is dispatched on the fast path — no pending spinner, short
-    // debounce. SlowValidator is what moves it, and it accepts a composite.
+    // debounce. TomSlowValidator is what moves it, and it accepts a composite.
     test('a composite of async rules is still a fast validator', () async {
-      Future<ValidationResult> remote(String value) async =>
-          const ValidationSuccess();
+      Future<TomValidationResult> remote(String value) async =>
+          const TomValidationSuccess();
 
       final fast = _TestField<String>(
         'name',
         'x',
         validators: [
-          Validators.compose<String>([Validators.required(), remote]),
+          TomValidators.compose<String>([TomValidators.required(), remote]),
         ],
       );
       expect(fast.hasSlowValidators, isFalse);
@@ -253,8 +256,8 @@ void main() {
         'name',
         'x',
         validators: [
-          SlowValidator(
-            Validators.compose<String>([Validators.required(), remote]),
+          TomSlowValidator(
+            TomValidators.compose<String>([TomValidators.required(), remote]),
           ),
         ],
       );
@@ -410,7 +413,7 @@ void main() {
       final field = _TestField<String>(
         'name',
         'test',
-        validators: [Validators.required()],
+        validators: [TomValidators.required()],
       );
       await field.validate();
       expect(() => field.dispose(), returnsNormally);

@@ -26,7 +26,7 @@ type or static this table does not name.
 | `AclBorderStyle` / `AclBorderKind` | Border appearance and which kind is drawn |
 | `AclTitlePosition` / `AclTitleBorderAlign` | Where a titled group's title sits, and how the border aligns to it |
 | `AclAxisPointX` / `AclAxisPointY` | Horizontal and vertical anchor points for a component within its cell |
-| `AclRowCrossAlignment` / `RowAlignment` | How a row aligns its components across the row's height |
+| `AclRowCrossAlignment` / `AclRowAlignment` | How a row aligns its components across the row's height |
 | `AclSeparator` / `AclSeparatorStyle` / `AclSeparatorAlignment` | Rules drawn between rows: the separator, `single` vs `doubleLine`, and where in the gap it sits |
 | `AclDirection` / `AclDirectionScope` | LTR / RTL for the layout, and the inherited widget that supplies it — read with `AclDirectionScope.maybeOf(context)`, which answers `null` rather than throwing when no scope is above |
 | `AclScope` | Inherited id-scope for nested layouts; `AclScope.of(context)` reads it |

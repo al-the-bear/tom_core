@@ -23,9 +23,9 @@ extension _AclRowBuild on _AclContainerState {
             AclDirection.ltr) ==
         AclDirection.rtl;
     final mainAxisAlignment = switch (row.alignment) {
-      RowAlignment.left => MainAxisAlignment.start,
-      RowAlignment.center => MainAxisAlignment.center,
-      RowAlignment.right => MainAxisAlignment.end,
+      AclRowAlignment.left => MainAxisAlignment.start,
+      AclRowAlignment.center => MainAxisAlignment.center,
+      AclRowAlignment.right => MainAxisAlignment.end,
     };
 
     final hasExpandX = row.components.any((c) => c.expandX && !c.isGap);

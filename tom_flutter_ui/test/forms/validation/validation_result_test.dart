@@ -2,120 +2,135 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void main() {
-  group('ValidationResult sealed class', () {
-    group('ValidationSuccess', () {
-      test('is a ValidationResult', () {
-        const result = ValidationSuccess();
-        expect(result, isA<ValidationResult>());
+  group('TomValidationResult sealed class', () {
+    group('TomValidationSuccess', () {
+      test('is a TomValidationResult', () {
+        const result = TomValidationSuccess();
+        expect(result, isA<TomValidationResult>());
       });
 
       test('two instances are equal', () {
-        expect(const ValidationSuccess(), equals(const ValidationSuccess()));
+        expect(
+          const TomValidationSuccess(),
+          equals(const TomValidationSuccess()),
+        );
       });
 
       test('has consistent hashCode', () {
         expect(
-          const ValidationSuccess().hashCode,
-          equals(const ValidationSuccess().hashCode),
+          const TomValidationSuccess().hashCode,
+          equals(const TomValidationSuccess().hashCode),
         );
       });
 
       test('toString returns readable representation', () {
-        expect(const ValidationSuccess().toString(), 'ValidationSuccess()');
+        expect(
+          const TomValidationSuccess().toString(),
+          'TomValidationSuccess()',
+        );
       });
     });
 
-    group('ValidationError', () {
-      test('is a ValidationResult', () {
-        const result = ValidationError('error.required');
-        expect(result, isA<ValidationResult>());
+    group('TomValidationError', () {
+      test('is a TomValidationResult', () {
+        const result = TomValidationError('error.required');
+        expect(result, isA<TomValidationResult>());
       });
 
       test('stores errorKey', () {
-        const result = ValidationError('error.required');
+        const result = TomValidationError('error.required');
         expect(result.errorKey, 'error.required');
       });
 
       test('stores params', () {
-        const result = ValidationError('error.minLength', params: {'min': 5});
+        const result = TomValidationError(
+          'error.minLength',
+          params: {'min': 5},
+        );
         expect(result.params, {'min': 5});
       });
 
       test('params defaults to null', () {
-        const result = ValidationError('error.required');
+        const result = TomValidationError('error.required');
         expect(result.params, isNull);
       });
 
       test('two errors with same errorKey are equal', () {
         expect(
-          const ValidationError('error.required'),
-          equals(const ValidationError('error.required')),
+          const TomValidationError('error.required'),
+          equals(const TomValidationError('error.required')),
         );
       });
 
       test('two errors with different errorKeys are not equal', () {
         expect(
-          const ValidationError('error.required'),
-          isNot(equals(const ValidationError('error.email'))),
+          const TomValidationError('error.required'),
+          isNot(equals(const TomValidationError('error.email'))),
         );
       });
 
       test('toString without params', () {
         expect(
-          const ValidationError('error.required').toString(),
-          'ValidationError(error.required)',
+          const TomValidationError('error.required').toString(),
+          'TomValidationError(error.required)',
         );
       });
 
       test('toString with params', () {
         expect(
-          const ValidationError('error.min', params: {'min': 5}).toString(),
-          'ValidationError(error.min, params: {min: 5})',
+          const TomValidationError('error.min', params: {'min': 5}).toString(),
+          'TomValidationError(error.min, params: {min: 5})',
         );
       });
     });
 
-    group('ValidationPending', () {
-      test('is a ValidationResult', () {
-        const result = ValidationPending();
-        expect(result, isA<ValidationResult>());
+    group('TomValidationPending', () {
+      test('is a TomValidationResult', () {
+        const result = TomValidationPending();
+        expect(result, isA<TomValidationResult>());
       });
 
       test('two instances are equal', () {
-        expect(const ValidationPending(), equals(const ValidationPending()));
+        expect(
+          const TomValidationPending(),
+          equals(const TomValidationPending()),
+        );
       });
 
       test('toString returns readable representation', () {
-        expect(const ValidationPending().toString(), 'ValidationPending()');
+        expect(
+          const TomValidationPending().toString(),
+          'TomValidationPending()',
+        );
       });
     });
 
     group('pattern matching', () {
       test('can switch on all variants', () {
-        ValidationResult result = const ValidationSuccess();
+        TomValidationResult result = const TomValidationSuccess();
 
         final description = switch (result) {
-          ValidationPristine() => 'pristine',
-          ValidationSuccess() => 'success',
-          ValidationError(errorKey: final key) => 'error: $key',
-          ValidationPending() => 'pending',
+          TomValidationPristine() => 'pristine',
+          TomValidationSuccess() => 'success',
+          TomValidationError(errorKey: final key) => 'error: $key',
+          TomValidationPending() => 'pending',
         };
 
         expect(description, 'success');
       });
 
-      test('matches ValidationError with destructuring', () {
-        const ValidationResult result = ValidationError(
+      test('matches TomValidationError with destructuring', () {
+        const TomValidationResult result = TomValidationError(
           'error.min',
           params: {'min': 10},
         );
 
         final message = switch (result) {
-          ValidationPristine() => 'pristine',
-          ValidationSuccess() => 'ok',
-          ValidationError(errorKey: final key, params: final p) =>
+          TomValidationPristine() => 'pristine',
+          TomValidationSuccess() => 'ok',
+          TomValidationError(errorKey: final key, params: final p) =>
             '$key (${p?['min']})',
-          ValidationPending() => 'pending',
+          TomValidationPending() => 'pending',
         };
 
         expect(message, 'error.min (10)');
@@ -123,16 +138,22 @@ void main() {
     });
 
     group('type relationships', () {
-      test('ValidationSuccess is not ValidationError', () {
-        expect(const ValidationSuccess(), isNot(isA<ValidationError>()));
+      test('TomValidationSuccess is not TomValidationError', () {
+        expect(const TomValidationSuccess(), isNot(isA<TomValidationError>()));
       });
 
-      test('ValidationError is not ValidationPending', () {
-        expect(const ValidationError('e'), isNot(isA<ValidationPending>()));
+      test('TomValidationError is not TomValidationPending', () {
+        expect(
+          const TomValidationError('e'),
+          isNot(isA<TomValidationPending>()),
+        );
       });
 
-      test('ValidationPending is not ValidationSuccess', () {
-        expect(const ValidationPending(), isNot(isA<ValidationSuccess>()));
+      test('TomValidationPending is not TomValidationSuccess', () {
+        expect(
+          const TomValidationPending(),
+          isNot(isA<TomValidationSuccess>()),
+        );
       });
     });
   });

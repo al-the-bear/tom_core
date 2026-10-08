@@ -78,7 +78,7 @@ void main() {
 
     test('the default row horizontal alignment is left', () {
       final acl = AclBuilder().append(const Text('A')).build();
-      expect(acl.rows[0].alignment, RowAlignment.left);
+      expect(acl.rows[0].alignment, AclRowAlignment.left);
     });
 
     test('the default unknown preferred size is 150 x 0', () {
@@ -385,11 +385,11 @@ void main() {
 
     test('setAclDefaultRowHorizontalAlignment reaches the rows', () {
       final acl = AclBuilder()
-          .setAclDefaultRowHorizontalAlignment(RowAlignment.right)
+          .setAclDefaultRowHorizontalAlignment(AclRowAlignment.right)
           .append(const Text('A'))
           .build();
 
-      expect(acl.rows[0].alignment, RowAlignment.right);
+      expect(acl.rows[0].alignment, AclRowAlignment.right);
     });
   });
 

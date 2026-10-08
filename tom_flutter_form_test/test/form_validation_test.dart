@@ -273,7 +273,7 @@ void main() {
     // pumpAndSettle() — because CircularProgressIndicator keeps scheduling
     // animation frames and would cause pumpAndSettle() to time out.
     await tester.pump(const Duration(milliseconds: 700));
-    // Process the rebuild frame triggered by the ValidationPending setState.
+    // Process the rebuild frame triggered by the TomValidationPending setState.
     await tester.pump();
     await tester.pump();
     expect(find.text('Validating...'), findsOneWidget);

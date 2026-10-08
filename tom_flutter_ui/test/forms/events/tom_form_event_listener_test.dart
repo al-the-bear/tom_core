@@ -6,42 +6,42 @@ class _RecordingListener with TomFormEventListener {
   final List<String> calls = [];
 
   @override
-  void onFieldValueChanged(FieldValueChangedEvent event) {
+  void onFieldValueChanged(TomFieldValueChangedEvent event) {
     calls.add('onFieldValueChanged:${event.source}');
   }
 
   @override
-  void onFieldValidated(FieldValidatedEvent event) {
+  void onFieldValidated(TomFieldValidatedEvent event) {
     calls.add('onFieldValidated:${event.source}');
   }
 
   @override
-  void onFieldAuthChanged(FieldAuthChangedEvent event) {
+  void onFieldAuthChanged(TomFieldAuthChangedEvent event) {
     calls.add('onFieldAuthChanged:${event.source}');
   }
 
   @override
-  void onFieldBound(FieldBoundEvent event) {
+  void onFieldBound(TomFieldBoundEvent event) {
     calls.add('onFieldBound:${event.source}');
   }
 
   @override
-  void onFieldCommitted(FieldCommittedEvent event) {
+  void onFieldCommitted(TomFieldCommittedEvent event) {
     calls.add('onFieldCommitted:${event.source}');
   }
 
   @override
-  void onFormBound(FormBoundEvent event) {
+  void onFormBound(TomFormBoundEvent event) {
     calls.add('onFormBound:${event.source}');
   }
 
   @override
-  void onFormSaved(FormSavedEvent event) {
+  void onFormSaved(TomFormSavedEvent event) {
     calls.add('onFormSaved:${event.source}');
   }
 
   @override
-  void onFormDiscarded(FormDiscardedEvent event) {
+  void onFormDiscarded(TomFormDiscardedEvent event) {
     calls.add('onFormDiscarded:${event.source}');
   }
 }
@@ -57,53 +57,55 @@ void main() {
       listener = _RecordingListener();
     });
 
-    test('handleEvent dispatches FieldValueChangedEvent', () {
-      listener.handleEvent(FieldValueChangedEvent(source: 'name'));
+    test('handleEvent dispatches TomFieldValueChangedEvent', () {
+      listener.handleEvent(TomFieldValueChangedEvent(source: 'name'));
       expect(listener.calls, ['onFieldValueChanged:name']);
     });
 
-    test('handleEvent dispatches FieldValidatedEvent', () {
-      listener.handleEvent(FieldValidatedEvent(source: 'email', result: 'ok'));
+    test('handleEvent dispatches TomFieldValidatedEvent', () {
+      listener.handleEvent(
+        TomFieldValidatedEvent(source: 'email', result: 'ok'),
+      );
       expect(listener.calls, ['onFieldValidated:email']);
     });
 
-    test('handleEvent dispatches FieldAuthChangedEvent', () {
+    test('handleEvent dispatches TomFieldAuthChangedEvent', () {
       listener.handleEvent(
-        FieldAuthChangedEvent(source: 'x', oldState: 'a', newState: 'b'),
+        TomFieldAuthChangedEvent(source: 'x', oldState: 'a', newState: 'b'),
       );
       expect(listener.calls, ['onFieldAuthChanged:x']);
     });
 
-    test('handleEvent dispatches FieldBoundEvent', () {
-      listener.handleEvent(FieldBoundEvent(source: 'f'));
+    test('handleEvent dispatches TomFieldBoundEvent', () {
+      listener.handleEvent(TomFieldBoundEvent(source: 'f'));
       expect(listener.calls, ['onFieldBound:f']);
     });
 
-    test('handleEvent dispatches FieldCommittedEvent', () {
-      listener.handleEvent(FieldCommittedEvent(source: 'f'));
+    test('handleEvent dispatches TomFieldCommittedEvent', () {
+      listener.handleEvent(TomFieldCommittedEvent(source: 'f'));
       expect(listener.calls, ['onFieldCommitted:f']);
     });
 
-    test('handleEvent dispatches FormBoundEvent', () {
-      listener.handleEvent(FormBoundEvent(source: 'form'));
+    test('handleEvent dispatches TomFormBoundEvent', () {
+      listener.handleEvent(TomFormBoundEvent(source: 'form'));
       expect(listener.calls, ['onFormBound:form']);
     });
 
-    test('handleEvent dispatches FormSavedEvent', () {
-      listener.handleEvent(FormSavedEvent(source: 'form'));
+    test('handleEvent dispatches TomFormSavedEvent', () {
+      listener.handleEvent(TomFormSavedEvent(source: 'form'));
       expect(listener.calls, ['onFormSaved:form']);
     });
 
-    test('handleEvent dispatches FormDiscardedEvent', () {
-      listener.handleEvent(FormDiscardedEvent(source: 'form'));
+    test('handleEvent dispatches TomFormDiscardedEvent', () {
+      listener.handleEvent(TomFormDiscardedEvent(source: 'form'));
       expect(listener.calls, ['onFormDiscarded:form']);
     });
 
     test('handleEvent dispatches multiple events in order', () {
-      listener.handleEvent(FieldBoundEvent(source: 'f1'));
-      listener.handleEvent(FieldValueChangedEvent(source: 'f1'));
-      listener.handleEvent(FieldValidatedEvent(source: 'f1', result: 'ok'));
-      listener.handleEvent(FormSavedEvent(source: 'myForm'));
+      listener.handleEvent(TomFieldBoundEvent(source: 'f1'));
+      listener.handleEvent(TomFieldValueChangedEvent(source: 'f1'));
+      listener.handleEvent(TomFieldValidatedEvent(source: 'f1', result: 'ok'));
+      listener.handleEvent(TomFormSavedEvent(source: 'myForm'));
 
       expect(listener.calls, [
         'onFieldBound:f1',
@@ -122,16 +124,16 @@ void main() {
     test('default handlers do not throw', () {
       final noOp = _NoOpListener();
       expect(() {
-        noOp.handleEvent(FieldValueChangedEvent(source: 'f'));
-        noOp.handleEvent(FieldValidatedEvent(source: 'f', result: 'ok'));
+        noOp.handleEvent(TomFieldValueChangedEvent(source: 'f'));
+        noOp.handleEvent(TomFieldValidatedEvent(source: 'f', result: 'ok'));
         noOp.handleEvent(
-          FieldAuthChangedEvent(source: 'f', oldState: 'a', newState: 'b'),
+          TomFieldAuthChangedEvent(source: 'f', oldState: 'a', newState: 'b'),
         );
-        noOp.handleEvent(FieldBoundEvent(source: 'f'));
-        noOp.handleEvent(FieldCommittedEvent(source: 'f'));
-        noOp.handleEvent(FormBoundEvent(source: 'form'));
-        noOp.handleEvent(FormSavedEvent(source: 'form'));
-        noOp.handleEvent(FormDiscardedEvent(source: 'form'));
+        noOp.handleEvent(TomFieldBoundEvent(source: 'f'));
+        noOp.handleEvent(TomFieldCommittedEvent(source: 'f'));
+        noOp.handleEvent(TomFormBoundEvent(source: 'form'));
+        noOp.handleEvent(TomFormSavedEvent(source: 'form'));
+        noOp.handleEvent(TomFormDiscardedEvent(source: 'form'));
       }, returnsNormally);
     });
   });

@@ -16,15 +16,15 @@ file transfer, and the list-form containers.
   - [TomFormLabels](#tomformlabels)
   - [TomFieldWidgetAdapter](#tomfieldwidgetadapter)
 - [Family selection](#family-selection)
-  - [FormFieldFamilyKind](#formfieldfamilykind)
-  - [FormFieldFamily](#formfieldfamily)
+  - [TomFormFieldFamilyKind](#tomformfieldfamilykind)
+  - [TomFormFieldFamily](#tomformfieldfamily)
 - [Styling](#styling)
   - [TomFormStyle](#tomformstyle)
   - [TomCupertinoFormStyle](#tomcupertinoformstyle)
   - [TomFieldStyle](#tomfieldstyle)
   - [TomFieldPartialStyle](#tomfieldpartialstyle)
   - [TomStringInputStyle](#tomstringinputstyle)
-  - [StringInputVariant](#stringinputvariant)
+  - [TomStringInputVariant](#tomstringinputvariant)
   - [TomDropdownStyle](#tomdropdownstyle)
   - [TomSliderStyle](#tomsliderstyle)
   - [TomCheckboxStyle](#tomcheckboxstyle)
@@ -39,53 +39,53 @@ file transfer, and the list-form containers.
   - [TomFormStyleScope](#tomformstylescope)
   - [TomBreakpoint](#tombreakpoint)
   - [TomThemeSpec](#tomthemespec)
-  - [LabelPlacement](#labelplacement)
-  - [ErrorPlacement](#errorplacement)
-  - [RequiredIndicator](#requiredindicator)
-  - [DescriptionPlacement](#descriptionplacement)
-  - [ActionIconPlacement](#actioniconplacement)
+  - [TomLabelPlacement](#tomlabelplacement)
+  - [TomErrorPlacement](#tomerrorplacement)
+  - [TomRequiredIndicator](#tomrequiredindicator)
+  - [TomDescriptionPlacement](#tomdescriptionplacement)
+  - [TomActionIconPlacement](#tomactioniconplacement)
 - [Decoration mixins](#decoration-mixins)
   - [TomStringInputDecorationMixin](#tomstringinputdecorationmixin)
   - [TomDropdownDecorationMixin](#tomdropdowndecorationmixin)
   - [TomGenericFieldDecorationMixin](#tomgenericfielddecorationmixin)
 - [Validation](#validation)
-  - [ValidationResult](#validationresult)
-  - [ValidationPristine](#validationpristine)
-  - [ValidationSuccess](#validationsuccess)
-  - [ValidationError](#validationerror)
-  - [ValidationPending](#validationpending)
+  - [TomValidationResult](#tomvalidationresult)
+  - [TomValidationPristine](#tomvalidationpristine)
+  - [TomValidationSuccess](#tomvalidationsuccess)
+  - [TomValidationError](#tomvalidationerror)
+  - [TomValidationPending](#tomvalidationpending)
   - [TomValidator](#tomvalidator)
-  - [SlowValidator](#slowvalidator)
-  - [Validators](#validators)
+  - [TomSlowValidator](#tomslowvalidator)
+  - [TomValidators](#tomvalidators)
   - [TomValidatorFactory](#tomvalidatorfactory)
   - [TomValidatorRegistry](#tomvalidatorregistry)
-  - [FormValidationError](#formvalidationerror)
+  - [TomFormValidationError](#tomformvalidationerror)
 - [Events](#events)
   - [TomFormEvent](#tomformevent)
-  - [FieldValueChangedEvent](#fieldvaluechangedevent)
-  - [FieldValidatedEvent](#fieldvalidatedevent)
-  - [FieldAuthChangedEvent](#fieldauthchangedevent)
-  - [FieldBoundEvent](#fieldboundevent)
-  - [FieldCommittedEvent](#fieldcommittedevent)
-  - [FormBoundEvent](#formboundevent)
-  - [FormSavedEvent](#formsavedevent)
-  - [FormDiscardedEvent](#formdiscardedevent)
-  - [FormValidatedEvent](#formvalidatedevent)
-  - [ListItemAddedEvent](#listitemaddedevent)
-  - [ListItemRemovedEvent](#listitemremovedevent)
-  - [ListItemReorderedEvent](#listitemreorderedevent)
+  - [TomFieldValueChangedEvent](#tomfieldvaluechangedevent)
+  - [TomFieldValidatedEvent](#tomfieldvalidatedevent)
+  - [TomFieldAuthChangedEvent](#tomfieldauthchangedevent)
+  - [TomFieldBoundEvent](#tomfieldboundevent)
+  - [TomFieldCommittedEvent](#tomfieldcommittedevent)
+  - [TomFormBoundEvent](#tomformboundevent)
+  - [TomFormSavedEvent](#tomformsavedevent)
+  - [TomFormDiscardedEvent](#tomformdiscardedevent)
+  - [TomFormValidatedEvent](#tomformvalidatedevent)
+  - [TomListItemAddedEvent](#tomlistitemaddedevent)
+  - [TomListItemRemovedEvent](#tomlistitemremovedevent)
+  - [TomListItemReorderedEvent](#tomlistitemreorderedevent)
   - [TomFormEventListener](#tomformeventlistener)
   - [TomFormEventSource](#tomformeventsource)
   - [TomFormInspector](#tomforminspector)
 - [Selection sources](#selection-sources)
   - [TomSelectableSource](#tomselectablesource)
-  - [SelectableItem](#selectableitem)
-  - [StaticSelectableSource](#staticselectablesource)
+  - [TomSelectableItem](#tomselectableitem)
+  - [TomStaticSelectableSource](#tomstaticselectablesource)
   - [TomEnumSelectableSource](#tomenumselectablesource)
   - [TomEnumNameSelectableSource](#tomenumnameselectablesource)
   - [TomMutableSelectableSource](#tommutableselectablesource)
 - [File fields and transfer](#file-fields-and-transfer)
-  - [FileRef](#fileref)
+  - [TomFileRef](#tomfileref)
   - [TomFilePicker](#tomfilepicker)
   - [TomPlatformFilePicker](#tomplatformfilepicker)
   - [TomPickedFile](#tompickedfile)
@@ -116,7 +116,7 @@ file transfer, and the list-form containers.
   - [TomRowErrorStrip](#tomrowerrorstrip)
   - [TomMultiObservableBuilder](#tommultiobservablebuilder)
   - [TomUnsavedChangesGuard](#tomunsavedchangesguard)
-  - [UnsavedChangesChoice](#unsavedchangeschoice)
+  - [TomUnsavedChangesChoice](#tomunsavedchangeschoice)
 - [Material fields](#material-fields)
   - [TomFormBoolField](#tomformboolfield)
   - [TomFormBoolCheckbox](#tomformboolcheckbox)
@@ -144,8 +144,8 @@ file transfer, and the list-form containers.
   - [TomFormCurrencyDoubleInput](#tomformcurrencydoubleinput)
   - [TomFormPercentDoubleInput](#tomformpercentdoubleinput)
   - [TomFormDoubleSlider](#tomformdoubleslider)
-  - [CurrencyFormatProfile](#currencyformatprofile)
-  - [NumRange](#numrange)
+  - [TomCurrencyFormatProfile](#tomcurrencyformatprofile)
+  - [TomNumRange](#tomnumrange)
   - [TomFormIntRangeField](#tomformintrangefield)
   - [TomFormIntRangeSlider](#tomformintrangeslider)
   - [TomFormDoubleRangeField](#tomformdoublerangefield)
@@ -163,7 +163,7 @@ file transfer, and the list-form containers.
   - [TomFormDateTimeTextInput](#tomformdatetimetextinput)
   - [TomFormDateRangeField](#tomformdaterangefield)
   - [TomFormDateRangePicker](#tomformdaterangepicker)
-  - [TimeRange](#timerange)
+  - [TomTimeOfDayRange](#tomtimeofdayrange)
   - [TomFormTimeRangeField](#tomformtimerangefield)
   - [TomFormDateTimeRangeField](#tomformdatetimerangefield)
   - [TomFormDurationField](#tomformdurationfield)
@@ -243,14 +243,14 @@ what the two navigation gates and the cross-document links rely on.
 The catalogue is the bulk of the surface and is parallel by construction: for
 most value types there is an abstract `TomForm<Value>Field` naming the
 contract, one or more Material renderings, and a `TomCupertinoForm…` twin.
-`FormFieldFamily` is what picks between the two families at construction time,
+`TomFormFieldFamily` is what picks between the two families at construction time,
 so an application chooses once rather than at every call site. Appendix C of
 `doc/tom_ui_widgets_forms.md` is the same catalogue arranged for reading;
 this document is arranged for lookup.
 
 Four support types are not fields but are exported beside them because they are
-the value types the fields carry or the engines they use: `TimeRange`,
-`NumRange`, `TomDateTimeFormat` and `CurrencyFormatProfile`.
+the value types the fields carry or the engines they use: `TomTimeOfDayRange`,
+`TomNumRange`, `TomDateTimeFormat` and `TomCurrencyFormatProfile`.
 
 ## Class Hierarchy
 
@@ -278,11 +278,11 @@ TomFormStyle
 TomFieldPartialStyle
 └── eleven per-family partial styles
 
-ValidationResult (sealed)
-├── ValidationPristine
-├── ValidationSuccess
-├── ValidationError
-└── ValidationPending
+TomValidationResult (sealed)
+├── TomValidationPristine
+├── TomValidationSuccess
+├── TomValidationError
+└── TomValidationPending
 
 TomFormEvent
 ├── five field events
@@ -299,7 +299,7 @@ subclasses. It owns a `TomScope`, a `basePath` for resource and authorization
 resolution, the `fields` map, the bound object (`currentBinding`), the initial
 snapshot used for dirty tracking, and the `changes` listenable. Subclasses
 implement `createFormElements()`; `validateForm()` is the cross-field hook and
-returns `FormValidationError`s. `isDirty`, `isValid`, `dirtyFields`,
+returns `TomFormValidationError`s. `isDirty`, `isValid`, `dirtyFields`,
 `fieldsWithErrors`, `getField`, `nestedForms` and `childContainers` are the
 read surface; `fireEvent` is the write end of the event bus.
 
@@ -309,7 +309,7 @@ read surface; `fireEvent` is the write end of the event bus.
 `effectiveAuthState` resolves through `TomAuthLayers` and drives `isEditable`
 and `isVisible`. It holds `tomId`, `basePath`, `initialValue`, the validator
 list, the debounced `validationListenable` / `validationState` pair (with a
-separate, longer debounce for `SlowValidator`s), the optional action icon, and
+separate, longer debounce for `TomSlowValidator`s), the optional action icon, and
 `widget` — the one member every concrete field implements.
 
 ### TomTextFormFieldBase
@@ -347,15 +347,15 @@ declared at.
 
 ## Family selection
 
-### FormFieldFamilyKind
+### TomFormFieldFamilyKind
 
 `material` or `cupertino` — the identifier a family carries, and what an
 application stores when it persists the choice.
 
-### FormFieldFamily
+### TomFormFieldFamily
 
 The factory that constructs concrete field instances of one family. The two
-instances are `FormFieldFamily.material` and `FormFieldFamily.cupertino`; a
+instances are `TomFormFieldFamily.material` and `TomFormFieldFamily.cupertino`; a
 form built through a family is written once and renders in either.
 
 ## Styling
@@ -397,9 +397,9 @@ The base of the eleven partial overrides: the same properties as
 
 ### TomStringInputStyle
 
-Partial override for text-input fields. Carries `StringInputVariant`.
+Partial override for text-input fields. Carries `TomStringInputVariant`.
 
-### StringInputVariant
+### TomStringInputVariant
 
 `material` or `bordered` — the decoration flavour a text input uses.
 
@@ -475,23 +475,23 @@ A small serialisable view of `ThemeData` covering the properties a form style
 needs. `TomThemeSpec.fromResources` builds one from a resource bundle, so a
 theme can be declared in resources rather than in code.
 
-### LabelPlacement
+### TomLabelPlacement
 
 `above`, `below`, `floating`, `inline` or `hidden`.
 
-### ErrorPlacement
+### TomErrorPlacement
 
 `below`, `above`, `tooltip`, `both` or `replaceDescription`.
 
-### RequiredIndicator
+### TomRequiredIndicator
 
 `asterisk`, `text`, `none` or `custom`.
 
-### DescriptionPlacement
+### TomDescriptionPlacement
 
 `below`, `above` or `tooltip`.
 
-### ActionIconPlacement
+### TomActionIconPlacement
 
 `trailing`, `leading` or `above`.
 
@@ -510,7 +510,7 @@ one.
 
 ### TomStringInputDecorationMixin
 
-Decoration for string-input fields, including the `StringInputVariant` split.
+Decoration for string-input fields, including the `TomStringInputVariant` split.
 Nine files mix it in.
 
 ### TomDropdownDecorationMixin
@@ -525,44 +525,44 @@ field that is not a text input or a dropdown.
 
 ## Validation
 
-### ValidationResult
+### TomValidationResult
 
 The sealed result of validating one field value. Exhaustive over the four
 states below, so a `switch` on it needs no default arm.
 
-### ValidationPristine
+### TomValidationPristine
 
 The initial state, before the user has interacted with the field. Distinct from
 success: a pristine field is not yet known to be valid.
 
-### ValidationSuccess
+### TomValidationSuccess
 
 The value is valid.
 
-### ValidationError
+### TomValidationError
 
 The value is invalid; carries the message to display.
 
-### ValidationPending
+### TomValidationPending
 
 An async validation is in flight.
 
 ### TomValidator
 
-`TomValidator<T>` — `FutureOr<ValidationResult> Function(T value)`. The
+`TomValidator<T>` — `FutureOr<TomValidationResult> Function(T value)`. The
 contract every validator satisfies, sync and async alike.
 
-### SlowValidator
+### TomSlowValidator
 
 Wraps a validator to declare it slow — a remote call, typically. `TomField`
 debounces slow validators separately and longer, and reports
 `isSlowValidationPending` while one is outstanding.
 
-### Validators
+### TomValidators
 
-The built-in validators, all statics: `Validators.required` (and the shared
-`Validators.requiredInstance`), `email`, `minLength`, `maxLength`, `pattern`,
-`min`, `max`, `minItems`, `maxItems`, and `Validators.compose`, which runs a
+The built-in validators, all statics: `TomValidators.required` (and the shared
+`TomValidators.requiredInstance`), `email`, `minLength`, `maxLength`, `pattern`,
+`min`, `max`, `minItems`, `maxItems`, and `TomValidators.compose`, which runs a
 list in order and returns the first failure.
 
 ### TomValidatorFactory
@@ -579,10 +579,10 @@ validators. `TomValidatorRegistry.instance` is the ambient registry and
 a test uses to avoid leaking registrations. `TomValidatorRegistry.parseSpec`
 splits a spec string into its name and argument list.
 
-### FormValidationError
+### TomFormValidationError
 
 A cross-field error produced by `TomForm.validateForm` — it belongs to the form
-rather than to any one field, which is why it is not a `ValidationResult`.
+rather than to any one field, which is why it is not a `TomValidationResult`.
 
 ## Events
 
@@ -594,52 +594,52 @@ widget that did it.
 
 The base of every event below. Carries the form and the timestamp.
 
-### FieldValueChangedEvent
+### TomFieldValueChangedEvent
 
 A field's value changed.
 
-### FieldValidatedEvent
+### TomFieldValidatedEvent
 
-A field finished validating; carries the resulting `ValidationResult`.
+A field finished validating; carries the resulting `TomValidationResult`.
 
-### FieldAuthChangedEvent
+### TomFieldAuthChangedEvent
 
 A field's effective authorization state changed.
 
-### FieldBoundEvent
+### TomFieldBoundEvent
 
 A field was bound to data.
 
-### FieldCommittedEvent
+### TomFieldCommittedEvent
 
 A field's current value became its new initial value — what a successful save
 does, and what resets `isDirty`.
 
-### FormBoundEvent
+### TomFormBoundEvent
 
 A form was bound to a data object.
 
-### FormSavedEvent
+### TomFormSavedEvent
 
 A form saved successfully.
 
-### FormDiscardedEvent
+### TomFormDiscardedEvent
 
 A form discarded its edits.
 
-### FormValidatedEvent
+### TomFormValidatedEvent
 
 A form finished validating.
 
-### ListItemAddedEvent
+### TomListItemAddedEvent
 
 A sub-form was appended to or inserted into a `TomListForm`.
 
-### ListItemRemovedEvent
+### TomListItemRemovedEvent
 
 A sub-form was removed from a `TomListForm`.
 
-### ListItemReorderedEvent
+### TomListItemReorderedEvent
 
 A sub-form moved within a `TomListForm`.
 
@@ -666,14 +666,14 @@ events it should have.
 selection field: dropdowns, segmented buttons, radio groups, chips and the
 lookup dialogs all read one.
 
-### SelectableItem
+### TomSelectableItem
 
-`SelectableItem<T>` — one option: its value, its label, and its optional icon
+`TomSelectableItem<T>` — one option: its value, its label, and its optional icon
 and enabled flag.
 
-### StaticSelectableSource
+### TomStaticSelectableSource
 
-`StaticSelectableSource<T>` — a source backed by a fixed list.
+`TomStaticSelectableSource<T>` — a source backed by a fixed list.
 
 ### TomEnumSelectableSource
 
@@ -694,14 +694,14 @@ runtime, which is what a dependent dropdown needs.
 
 ## File fields and transfer
 
-### FileRef
+### TomFileRef
 
 The reference a file field carries as its value: the stored file's identity,
 not its bytes.
 
 ### TomFilePicker
 
-`TomFilePicker` — `Future<FileRef?> Function(BuildContext context)`. What a
+`TomFilePicker` — `Future<TomFileRef?> Function(BuildContext context)`. What a
 file field calls to obtain a file; `null` means the user cancelled.
 
 ### TomPlatformFilePicker
@@ -736,7 +736,7 @@ installs it, `TomFilePickerRegistry.clear` removes it,
 Ready-made `TomFilePicker` callbacks: `TomFilePickers.registered` builds one
 that goes through the registry, `TomFilePickers.fixed` one that always returns
 the same reference (what a test uses), and `TomFilePickers.toFileRef` converts
-a `TomPickedFile` into the `FileRef` a field stores.
+a `TomPickedFile` into the `TomFileRef` a field stores.
 
 ### TomFileLabels
 
@@ -830,7 +830,7 @@ A placement-flexible form-wide error display.
 ### TomFormErrorBanner
 
 The Material banner for form-level, cross-field errors — the
-`FormValidationError`s `TomForm.validateForm` returned.
+`TomFormValidationError`s `TomForm.validateForm` returned.
 
 ### TomRowErrorStrip
 
@@ -848,7 +848,7 @@ outside the field tree uses to follow form state.
 Wraps a subtree in a `PopScope` that defers a route pop while its form is
 dirty, and prompts.
 
-### UnsavedChangesChoice
+### TomUnsavedChangesChoice
 
 `save`, `discard` or `cancel` — the result of that prompt. `save` runs the
 form's save before allowing the pop.
@@ -956,7 +956,7 @@ Plain decimal text input.
 
 ### TomFormCurrencyDoubleInput
 
-Locale-aware currency input, formatted through a `CurrencyFormatProfile`.
+Locale-aware currency input, formatted through a `TomCurrencyFormatProfile`.
 
 ### TomFormPercentDoubleInput
 
@@ -966,20 +966,20 @@ Percentage input: the display runs 0–100, the value 0.0–1.0.
 
 Slider rendering, with divisions.
 
-### CurrencyFormatProfile
+### TomCurrencyFormatProfile
 
 The small built-in currency formatter, so the package does not depend on a
-localisation library for the one thing it needs. `CurrencyFormatProfile.resolve`
+localisation library for the one thing it needs. `TomCurrencyFormatProfile.resolve`
 picks the profile for a locale or currency code.
 
-### NumRange
+### TomNumRange
 
-`NumRange<T extends num>` — a `(low, high)` pair, the value type of the range
+`TomNumRange<T extends num>` — a `(low, high)` pair, the value type of the range
 fields.
 
 ### TomFormIntRangeField
 
-Abstract base for `NumRange<int>` fields.
+Abstract base for `TomNumRange<int>` fields.
 
 ### TomFormIntRangeSlider
 
@@ -987,7 +987,7 @@ Two-thumb slider rendering.
 
 ### TomFormDoubleRangeField
 
-Abstract base for `NumRange<double>` fields.
+Abstract base for `TomNumRange<double>` fields.
 
 ### TomFormDoubleRangeSlider
 
@@ -1050,14 +1050,14 @@ Abstract base for `DateTimeRange` fields.
 
 Opens the Material date-range dialog.
 
-### TimeRange
+### TomTimeOfDayRange
 
 A `(start, end)` pair of `TimeOfDay` values — the value type of
 `TomFormTimeRangeField`, which Flutter provides no equivalent of.
 
 ### TomFormTimeRangeField
 
-Abstract base for `TimeRange` fields.
+Abstract base for `TomTimeOfDayRange` fields.
 
 ### TomFormDateTimeRangeField
 
@@ -1154,7 +1154,7 @@ option.
 
 ### TomFormFileField
 
-Abstract base for `FileRef?` fields.
+Abstract base for `TomFileRef?` fields.
 
 ### TomFormFileUpload
 
@@ -1182,7 +1182,7 @@ The preview bytes behind a thumbnail, and the single fetch that obtains them.
 
 Twenty-eight types. Each extends the same abstract base as its Material twin —
 so a form written against the bases renders in either family, and
-`FormFieldFamily.cupertino` is the only thing that has to change.
+`TomFormFieldFamily.cupertino` is the only thing that has to change.
 
 ### TomCupertinoFormBoolSwitch
 

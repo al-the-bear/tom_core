@@ -1,14 +1,14 @@
 /// The value a file field holds: a reference to a file, whether it is sitting
 /// in memory, waiting on disk, or already stored on a server.
 ///
-/// [FileRef] stays a small value type so `tom_flutter_ui` never has to depend
+/// [TomFileRef] stays a small value type so `tom_flutter_ui` never has to depend
 /// on a file-picker package (see `tom_file_picker_registry.dart` for how a
 /// concrete picker is wired in without one). What it gained beyond name, size
 /// and bytes are the two things a *streaming* upload needs:
 ///
-///   * [FileRef.source] — a re-openable byte stream, so a 400 MB file is
+///   * [TomFileRef.source] — a re-openable byte stream, so a 400 MB file is
 ///     uploaded straight from disk instead of being read into memory first;
-///   * [FileRef.storageKey] — the server-generated key of an already-stored
+///   * [TomFileRef.storageKey] — the server-generated key of an already-stored
 ///     file, so a form can be re-opened and show its attachment without
 ///     re-uploading it.
 ///
@@ -23,7 +23,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// Lightweight, framework-agnostic file reference. Apps may extend or
 /// adapt to richer types (e.g. wrap a `PlatformFile` from `file_picker`).
 @immutable
-class FileRef {
+class TomFileRef {
   /// The file name as the user knows it, including its extension.
   final String name;
 
@@ -52,7 +52,7 @@ class FileRef {
   /// somewhere other than this device.
   final String? storageKey;
 
-  const FileRef({
+  const TomFileRef({
     required this.name,
     required this.sizeBytes,
     this.mimeType,
@@ -65,7 +65,7 @@ class FileRef {
   ///
   /// Built from the descriptor the transfer client returns, so a form
   /// re-opened later can show the attachment without downloading it.
-  factory FileRef.stored(TomFileMetadata metadata) => FileRef(
+  factory TomFileRef.stored(TomFileMetadata metadata) => TomFileRef(
     name: metadata.fileName ?? metadata.key.split('/').last,
     sizeBytes: metadata.byteCount,
     mimeType: metadata.mediaType,
@@ -91,7 +91,7 @@ class FileRef {
       return TomFileSource.bytes(name, buffer, mediaType: mimeType);
     }
     throw StateError(
-      'FileRef "$name" has no local content to upload; it carries only '
+      'TomFileRef "$name" has no local content to upload; it carries only '
       '${isStored ? 'a storage key' : 'metadata'}.',
     );
   }
@@ -100,14 +100,14 @@ class FileRef {
   ///
   /// [storageKey] is the one field worth setting after the fact: it is what
   /// turns a just-picked reference into a stored one when an upload completes.
-  FileRef copyWith({
+  TomFileRef copyWith({
     String? name,
     int? sizeBytes,
     String? mimeType,
     Uint8List? bytes,
     TomFileSource? source,
     String? storageKey,
-  }) => FileRef(
+  }) => TomFileRef(
     name: name ?? this.name,
     sizeBytes: sizeBytes ?? this.sizeBytes,
     mimeType: mimeType ?? this.mimeType,
@@ -125,7 +125,7 @@ class FileRef {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is FileRef &&
+      other is TomFileRef &&
           other.name == name &&
           other.sizeBytes == sizeBytes &&
           other.mimeType == mimeType &&
@@ -139,7 +139,7 @@ class FileRef {
 
   @override
   String toString() =>
-      'FileRef($name, $sizeBytes B'
+      'TomFileRef($name, $sizeBytes B'
       '${mimeType != null ? ', $mimeType' : ''}'
       '${storageKey != null ? ', stored as $storageKey' : ''})';
 }
@@ -147,4 +147,4 @@ class FileRef {
 /// Picker callback contract. Returns the chosen file (or `null` if the
 /// user cancels). Implementations can wrap `file_picker`, `image_picker`,
 /// or any platform-specific picker.
-typedef TomFilePicker = Future<FileRef?> Function(BuildContext context);
+typedef TomFilePicker = Future<TomFileRef?> Function(BuildContext context);

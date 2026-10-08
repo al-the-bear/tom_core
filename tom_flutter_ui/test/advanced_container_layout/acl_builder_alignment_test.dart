@@ -14,15 +14,15 @@ void main() {
       () {
         final acl = AclBuilder()
             .append(const Text('a'))
-            .setAclDefaultRowHorizontalAlignment(RowAlignment.center)
+            .setAclDefaultRowHorizontalAlignment(AclRowAlignment.center)
             .newRow()
             .append(const Text('b'))
             .build();
 
         // The first row existed before the setter was called; it must pick up
         // the new default just like the later row.
-        expect(acl.rows[0].alignment, RowAlignment.center);
-        expect(acl.rows[1].alignment, RowAlignment.center);
+        expect(acl.rows[0].alignment, AclRowAlignment.center);
+        expect(acl.rows[1].alignment, AclRowAlignment.center);
       },
     );
 
@@ -45,18 +45,18 @@ void main() {
       () {
         final acl = AclBuilder()
             .append(const Text('a'))
-            .setRowHorizontalAlignment(RowAlignment.right)
-            .setAclDefaultRowHorizontalAlignment(RowAlignment.center)
+            .setRowHorizontalAlignment(AclRowAlignment.right)
+            .setAclDefaultRowHorizontalAlignment(AclRowAlignment.center)
             .newRow()
             .append(const Text('b'))
             .build();
 
         expect(
           acl.rows[0].alignment,
-          RowAlignment.right,
+          AclRowAlignment.right,
           reason: 'explicit per-row alignment must survive a default change',
         );
-        expect(acl.rows[1].alignment, RowAlignment.center);
+        expect(acl.rows[1].alignment, AclRowAlignment.center);
       },
     );
 
@@ -68,28 +68,28 @@ void main() {
         // default), so a later default change must NOT clobber it.
         final acl = AclBuilder()
             .append(const Text('a'))
-            .setRowHorizontalAlignment(RowAlignment.left)
-            .setAclDefaultRowHorizontalAlignment(RowAlignment.center)
+            .setRowHorizontalAlignment(AclRowAlignment.left)
+            .setAclDefaultRowHorizontalAlignment(AclRowAlignment.center)
             .newRow()
             .append(const Text('b'))
             .build();
 
         expect(
           acl.rows[0].alignment,
-          RowAlignment.left,
+          AclRowAlignment.left,
           reason: 'an explicit left override must not be treated as inherited',
         );
-        expect(acl.rows[1].alignment, RowAlignment.center);
+        expect(acl.rows[1].alignment, AclRowAlignment.center);
       },
     );
 
     test('a default set before any append still reaches the first row', () {
       final acl = AclBuilder()
-          .setAclDefaultRowHorizontalAlignment(RowAlignment.right)
+          .setAclDefaultRowHorizontalAlignment(AclRowAlignment.right)
           .append(const Text('a'))
           .build();
 
-      expect(acl.rows[0].alignment, RowAlignment.right);
+      expect(acl.rows[0].alignment, AclRowAlignment.right);
     });
   });
 }

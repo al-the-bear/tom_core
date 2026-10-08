@@ -166,8 +166,8 @@ abstract class TomFormObjectListField<T> extends TomField<List<T>> {
 
 mixin _SourceBackedSingleStateMixin<TWidget extends StatefulWidget, T>
     on State<TWidget> {
-  StreamSubscription<List<SelectableItem<T>>>? _subscription;
-  List<SelectableItem<T>> items = const [];
+  StreamSubscription<List<TomSelectableItem<T>>>? _subscription;
+  List<TomSelectableItem<T>> items = const [];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomField<T> get field;
@@ -211,7 +211,7 @@ mixin _SourceBackedSingleStateMixin<TWidget extends StatefulWidget, T>
     }
   }
 
-  void _resetIfMissing(List<SelectableItem<T>> current) {
+  void _resetIfMissing(List<TomSelectableItem<T>> current) {
     final v = field.get();
     final stillPresent = current.any((i) => i.value == v);
     if (!stillPresent) {
@@ -232,8 +232,8 @@ mixin _SourceBackedSingleStateMixin<TWidget extends StatefulWidget, T>
 
 mixin _SourceBackedListStateMixin<TWidget extends StatefulWidget, T>
     on State<TWidget> {
-  StreamSubscription<List<SelectableItem<T>>>? _subscription;
-  List<SelectableItem<T>> items = const [];
+  StreamSubscription<List<TomSelectableItem<T>>>? _subscription;
+  List<TomSelectableItem<T>> items = const [];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomField<List<T>> get field;
@@ -278,7 +278,7 @@ mixin _SourceBackedListStateMixin<TWidget extends StatefulWidget, T>
     }
   }
 
-  void _prune(List<SelectableItem<T>> current) {
+  void _prune(List<TomSelectableItem<T>> current) {
     final selected = field.get();
     if (selected.isEmpty) return;
     final available = current.map((i) => i.value).toSet();

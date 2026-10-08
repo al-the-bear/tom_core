@@ -4,7 +4,7 @@
 /// [TomFormBoolToggle]) backed by Cupertino controls. They subclass
 /// the same `TomFormBoolField` abstract used by the Material concretes
 /// so a single bound state object can be rendered by either family —
-/// the `FormFieldFamily` factory leans on this.
+/// the `TomFormFieldFamily` factory leans on this.
 ///
 ///   * [TomCupertinoFormBoolSwitch] → `CupertinoSwitch`
 ///   * [TomCupertinoFormBoolToggle] → `CupertinoSegmentedControl<bool>`

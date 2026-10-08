@@ -32,7 +32,7 @@ final ShowcaseGroup fieldTypesGroup = ShowcaseGroup(
           "  '',\n"
           "  form: this,\n"
           "  labelTextOverride: 'Company name',\n"
-          "  validators: [Validators.required(), Validators.minLength(2)],\n"
+          "  validators: [TomValidators.required(), TomValidators.minLength(2)],\n"
           ")",
       child: FormHost<CompanyForm>(
         scopeId: 'ft_text',
@@ -43,7 +43,7 @@ final ShowcaseGroup fieldTypesGroup = ShowcaseGroup(
     ),
     ShowcaseCell(
       title: 'TomFormStringDropdown',
-      note: 'A dropdown over a StaticSelectableSource of labelled values.',
+      note: 'A dropdown over a TomStaticSelectableSource of labelled values.',
       code:
           "TomFormStringDropdown(\n"
           "  'industry',\n"
@@ -51,7 +51,7 @@ final ShowcaseGroup fieldTypesGroup = ShowcaseGroup(
           "  form: this,\n"
           "  labelTextOverride: 'Industry',\n"
           "  source: industrySource,\n"
-          "  validators: [Validators.required()],\n"
+          "  validators: [TomValidators.required()],\n"
           ")",
       child: FormHost<CompanyForm>(
         scopeId: 'ft_dropdown',
@@ -73,7 +73,7 @@ final ShowcaseGroup fieldTypesGroup = ShowcaseGroup(
           "  source: productSource(),\n"
           "  labelTextOverride: 'Product',\n"
           "  hintTextOverride: 'Type to search the catalogue…',\n"
-          "  validators: [Validators.required()],\n"
+          "  validators: [TomValidators.required()],\n"
           ")",
       child: FormHost<OrderItemForm>(
         scopeId: 'ft_search',
@@ -93,7 +93,7 @@ final ShowcaseGroup fieldTypesGroup = ShowcaseGroup(
           "  labelTextOverride: 'Description',\n"
           "  maxLength: 500,\n"
           "  maxLines: 4,\n"
-          "  validators: [Validators.maxLength(500)],\n"
+          "  validators: [TomValidators.maxLength(500)],\n"
           ")",
       child: FormHost<CompanyForm>(
         scopeId: 'ft_multiline',

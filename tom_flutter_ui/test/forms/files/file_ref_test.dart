@@ -4,9 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void main() {
-  group('FileRef — content forms', () {
+  group('TomFileRef — content forms', () {
     test('a bytes reference carries local content and no storage key', () {
-      final ref = FileRef(
+      final ref = TomFileRef(
         name: 'note.txt',
         sizeBytes: 3,
         bytes: Uint8List.fromList([1, 2, 3]),
@@ -16,7 +16,7 @@ void main() {
     });
 
     test('a source reference carries local content', () {
-      final ref = FileRef(
+      final ref = TomFileRef(
         name: 'big.bin',
         sizeBytes: 10,
         source: TomFileSource.stream(
@@ -29,13 +29,13 @@ void main() {
     });
 
     test('a name-only reference has neither content nor a key', () {
-      const ref = FileRef(name: 'ghost.pdf', sizeBytes: 0);
+      const ref = TomFileRef(name: 'ghost.pdf', sizeBytes: 0);
       expect(ref.hasLocalContent, isFalse);
       expect(ref.isStored, isFalse);
     });
 
-    test('FileRef.stored describes a file that is only on the server', () {
-      final ref = FileRef.stored(
+    test('TomFileRef.stored describes a file that is only on the server', () {
+      final ref = TomFileRef.stored(
         const TomFileMetadata(
           key: 'invoices/2026/07/abc.pdf',
           mediaType: 'application/pdf',
@@ -51,25 +51,28 @@ void main() {
       expect(ref.hasLocalContent, isFalse);
     });
 
-    test('FileRef.stored falls back to the key\'s last segment for a name', () {
-      final ref = FileRef.stored(
-        const TomFileMetadata(
-          key: 'scans/2026/07/9f2.png',
-          mediaType: 'image/png',
-          byteCount: 12,
-        ),
-      );
-      expect(ref.name, '9f2.png');
-    });
+    test(
+      'TomFileRef.stored falls back to the key\'s last segment for a name',
+      () {
+        final ref = TomFileRef.stored(
+          const TomFileMetadata(
+            key: 'scans/2026/07/9f2.png',
+            mediaType: 'image/png',
+            byteCount: 12,
+          ),
+        );
+        expect(ref.name, '9f2.png');
+      },
+    );
   });
 
-  group('FileRef — toSource', () {
+  group('TomFileRef — toSource', () {
     test('prefers the streamed source over in-memory bytes', () {
       final source = TomFileSource.stream(
         fileName: 'streamed.bin',
         open: () => Stream<List<int>>.value(const [1]),
       );
-      final ref = FileRef(
+      final ref = TomFileRef(
         name: 'streamed.bin',
         sizeBytes: 1,
         bytes: Uint8List.fromList([9, 9, 9]),
@@ -79,7 +82,7 @@ void main() {
     });
 
     test('wraps bytes in a source that can be opened twice', () async {
-      final ref = FileRef(
+      final ref = TomFileRef(
         name: 'note.txt',
         sizeBytes: 3,
         bytes: Uint8List.fromList([1, 2, 3]),
@@ -90,28 +93,31 @@ void main() {
     });
 
     test('throws when there is nothing to send', () {
-      const ref = FileRef(name: 'ghost.pdf', sizeBytes: 0);
+      const ref = TomFileRef(name: 'ghost.pdf', sizeBytes: 0);
       expect(ref.toSource, throwsStateError);
     });
   });
 
-  group('FileRef — extension', () {
+  group('TomFileRef — extension', () {
     test('is the lowercased text after the last dot', () {
-      expect(const FileRef(name: 'Report.PDF', sizeBytes: 0).extension, 'pdf');
       expect(
-        const FileRef(name: 'archive.tar.gz', sizeBytes: 0).extension,
+        const TomFileRef(name: 'Report.PDF', sizeBytes: 0).extension,
+        'pdf',
+      );
+      expect(
+        const TomFileRef(name: 'archive.tar.gz', sizeBytes: 0).extension,
         'gz',
       );
     });
 
     test('is empty when the name has no dot', () {
-      expect(const FileRef(name: 'README', sizeBytes: 0).extension, '');
+      expect(const TomFileRef(name: 'README', sizeBytes: 0).extension, '');
     });
   });
 
-  group('FileRef — copyWith and equality', () {
+  group('TomFileRef — copyWith and equality', () {
     test('copyWith adds a storage key without losing the content', () {
-      final ref = FileRef(
+      final ref = TomFileRef(
         name: 'note.txt',
         sizeBytes: 3,
         bytes: Uint8List.fromList([1, 2, 3]),
@@ -123,10 +129,10 @@ void main() {
     });
 
     test('the storage key participates in equality', () {
-      const a = FileRef(name: 'n', sizeBytes: 1);
-      const b = FileRef(name: 'n', sizeBytes: 1, storageKey: 'k');
+      const a = TomFileRef(name: 'n', sizeBytes: 1);
+      const b = TomFileRef(name: 'n', sizeBytes: 1, storageKey: 'k');
       expect(a, isNot(equals(b)));
-      expect(a, equals(const FileRef(name: 'n', sizeBytes: 1)));
+      expect(a, equals(const TomFileRef(name: 'n', sizeBytes: 1)));
       expect(b.hashCode, isNot(equals(a.hashCode)));
     });
   });

@@ -207,7 +207,7 @@ when a reflected signature changes.
 The item's file lives beside the graded fields but not among them: it is a
 **slot** on the server (`AppFileSlots.itemAttachment(<id>)`), moved by
 `AppBackend.files` rather than by `AppBackend.saveItem`. The value types differ
-(the field holds a `FileRef`, the entity holds the storage key the server
+(the field holds a `TomFileRef`, the entity holds the storage key the server
 stamps) and so do the write paths — the app server keeps the file column out of
 the item's writable bindings precisely so a client cannot mint a storage key by
 editing an item.
@@ -228,7 +228,7 @@ registers **one** adaptor with `TomFilePickerRegistry` and every file field in
 the app opens it. `lib/files/sample_file_picker.dart` is that registration; it
 *composes* a small text file rather than asking the platform, because this
 sample's clients ship no platform folders. Everything downstream is the real
-thing — the same `TomPickedFile` shape a plugin returns, the same `FileRef`
+thing — the same `TomPickedFile` shape a plugin returns, the same `TomFileRef`
 conversion, the same streaming upload, progress, cancel and retry — and that
 file's dartdoc carries the six lines a real application writes instead.
 

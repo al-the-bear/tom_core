@@ -40,7 +40,7 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
     _form = TomScope.withScope('demoJ', () => DateTimeDemoForm());
     _form.bind(phase3DateState);
     // Keep the duration input + minute slider in lockstep — edits to
-    // either fire FieldValueChangedEvent on both, demonstrating that
+    // either fire TomFieldValueChangedEvent on both, demonstrating that
     // Duration and int can share state cleanly even though they're two
     // different field types. Uses the codebase-standard `>>` operator
     // (returns a TomFunctionObserver registered on the LHS observable).

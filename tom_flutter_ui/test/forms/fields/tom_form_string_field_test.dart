@@ -124,21 +124,21 @@ void main() {
       final field = TomFormStringInput(
         'name',
         '',
-        validators: [Validators.required()],
+        validators: [TomValidators.required()],
       );
       final result = await field.validate();
-      expect(result, isA<ValidationError>());
-      expect((result as ValidationError).errorKey, 'error.required');
+      expect(result, isA<TomValidationError>());
+      expect((result as TomValidationError).errorKey, 'error.required');
     });
 
     test('validates successfully when value is valid', () async {
       final field = TomFormStringInput(
         'name',
         'John',
-        validators: [Validators.required()],
+        validators: [TomValidators.required()],
       );
       final result = await field.validate();
-      expect(result, isA<ValidationSuccess>());
+      expect(result, isA<TomValidationSuccess>());
     });
 
     test('async validator with delay', () async {
@@ -149,31 +149,31 @@ void main() {
           (value) async {
             await Future.delayed(const Duration(milliseconds: 10));
             if (value == 'taken') {
-              return const ValidationError('already_taken');
+              return const TomValidationError('already_taken');
             }
-            return const ValidationSuccess();
+            return const TomValidationSuccess();
           },
         ],
       );
       final result = await field.validate();
-      expect(result, isA<ValidationError>());
-      expect((result as ValidationError).errorKey, 'already_taken');
+      expect(result, isA<TomValidationError>());
+      expect((result as TomValidationError).errorKey, 'already_taken');
     });
 
     test('setValue clears error and schedules debounced validation', () async {
       final field = TomFormStringInput(
         'name',
         '',
-        validators: [Validators.required()],
+        validators: [TomValidators.required()],
       );
 
       // First validate to get an error
       await field.validate();
-      expect(field.validationState, isA<ValidationError>());
+      expect(field.validationState, isA<TomValidationError>());
 
       // setValue should clear error immediately
       field.setValue('valid');
-      expect(field.validationState, isA<ValidationSuccess>());
+      expect(field.validationState, isA<TomValidationSuccess>());
     });
 
     test('multiple validators stop on first failure', () async {
@@ -182,10 +182,10 @@ void main() {
         'name',
         '',
         validators: [
-          Validators.required(),
+          TomValidators.required(),
           (value) {
             secondCalled = true;
-            return const ValidationSuccess();
+            return const TomValidationSuccess();
           },
         ],
       );
@@ -360,7 +360,7 @@ void main() {
         'name',
         '',
         labelTextOverride: 'Name',
-        validators: [Validators.required()],
+        validators: [TomValidators.required()],
       );
 
       // Validate to produce an error
@@ -375,19 +375,19 @@ void main() {
     });
 
     testWidgets('shows spinner during slow pending validation', (tester) async {
-      final completer = Completer<ValidationResult>();
+      final completer = Completer<TomValidationResult>();
       final field = TomFormStringInput(
         'name',
         'test',
         labelTextOverride: 'Name',
-        validators: [SlowValidator<String>((value) => completer.future)],
+        validators: [TomSlowValidator<String>((value) => completer.future)],
       );
 
       // Start validation (don't await)
       field.validate();
       // After fast validators pass, slow validation starts → pending
       await tester.pump(const Duration(milliseconds: 10));
-      expect(field.validationState, isA<ValidationPending>());
+      expect(field.validationState, isA<TomValidationPending>());
       expect(field.isSlowValidationPending, isTrue);
 
       await tester.pumpWidget(_wrap(field.widget));
@@ -396,7 +396,7 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
       // Complete the validation
-      completer.complete(const ValidationSuccess());
+      completer.complete(const TomValidationSuccess());
     });
 
     testWidgets('obscureText enabled for password field', (tester) async {
@@ -423,9 +423,9 @@ void main() {
       final field = TomFormStringDropdown(
         'country',
         'US',
-        source: StaticSelectableSource([
-          const SelectableItem(value: 'US', label: 'United States'),
-          const SelectableItem(value: 'UK', label: 'United Kingdom'),
+        source: TomStaticSelectableSource([
+          const TomSelectableItem(value: 'US', label: 'United States'),
+          const TomSelectableItem(value: 'UK', label: 'United Kingdom'),
         ]),
       );
       expect(field.get(), 'US');
@@ -435,8 +435,8 @@ void main() {
       final field = TomFormStringDropdown(
         'country',
         '',
-        source: StaticSelectableSource([
-          const SelectableItem(value: 'US', label: 'United States'),
+        source: TomStaticSelectableSource([
+          const TomSelectableItem(value: 'US', label: 'United States'),
         ]),
       );
       field.setValue('US');
@@ -447,21 +447,21 @@ void main() {
       final field = TomFormStringDropdown(
         'country',
         '',
-        source: StaticSelectableSource([
-          const SelectableItem(value: 'US', label: 'United States'),
+        source: TomStaticSelectableSource([
+          const TomSelectableItem(value: 'US', label: 'United States'),
         ]),
-        validators: [Validators.required()],
+        validators: [TomValidators.required()],
       );
       final result = await field.validate();
-      expect(result, isA<ValidationError>());
+      expect(result, isA<TomValidationError>());
     });
 
     test('labelText resolves through override (not mixin default)', () {
       final field = TomFormStringDropdown(
         'country',
         '',
-        source: StaticSelectableSource([
-          const SelectableItem(value: 'US', label: 'US'),
+        source: TomStaticSelectableSource([
+          const TomSelectableItem(value: 'US', label: 'US'),
         ]),
         labelTextOverride: 'Country Label',
       );
@@ -472,8 +472,8 @@ void main() {
       final field = TomFormStringDropdown(
         'country',
         '',
-        source: StaticSelectableSource([
-          const SelectableItem(value: 'US', label: 'US'),
+        source: TomStaticSelectableSource([
+          const TomSelectableItem(value: 'US', label: 'US'),
         ]),
         descriptionTextOverride: 'Pick your country',
       );
@@ -484,8 +484,8 @@ void main() {
       final field = TomFormStringDropdown(
         'country',
         '',
-        source: StaticSelectableSource([
-          const SelectableItem(value: 'US', label: 'US'),
+        source: TomStaticSelectableSource([
+          const TomSelectableItem(value: 'US', label: 'US'),
         ]),
       );
       expect(field.labelText, isNull);
@@ -497,9 +497,9 @@ void main() {
       final field = TomFormStringDropdown(
         'country',
         '',
-        source: StaticSelectableSource([
-          const SelectableItem(value: 'US', label: 'United States'),
-          const SelectableItem(value: 'UK', label: 'United Kingdom'),
+        source: TomStaticSelectableSource([
+          const TomSelectableItem(value: 'US', label: 'United States'),
+          const TomSelectableItem(value: 'UK', label: 'United Kingdom'),
         ]),
         labelTextOverride: 'Country',
       );
@@ -514,8 +514,8 @@ void main() {
       final field = TomFormStringDropdown(
         'country',
         '',
-        source: StaticSelectableSource([
-          const SelectableItem(value: 'US', label: 'United States'),
+        source: TomStaticSelectableSource([
+          const TomSelectableItem(value: 'US', label: 'United States'),
         ]),
         labelTextOverride: 'Country Label',
       );
@@ -531,8 +531,8 @@ void main() {
       final field = TomFormStringDropdown(
         'country',
         '',
-        source: StaticSelectableSource([
-          const SelectableItem(value: 'US', label: 'United States'),
+        source: TomStaticSelectableSource([
+          const TomSelectableItem(value: 'US', label: 'United States'),
         ]),
         labelTextOverride: 'Country',
         descriptionTextOverride: 'Select your country of residence',
@@ -552,8 +552,8 @@ void main() {
       final field = TomFormStringDropdown(
         'country',
         '',
-        source: StaticSelectableSource([
-          const SelectableItem(value: 'US', label: 'US'),
+        source: TomStaticSelectableSource([
+          const TomSelectableItem(value: 'US', label: 'US'),
         ]),
       );
 
@@ -584,16 +584,16 @@ void main() {
       final field = TomFormStringInput(
         'name',
         '',
-        validators: [Validators.required()],
+        validators: [TomValidators.required()],
       );
 
       // Produce an error state
       await field.validate();
-      expect(field.validationState, isA<ValidationError>());
+      expect(field.validationState, isA<TomValidationError>());
 
       // setValue clears it
       field.setValue('new value');
-      expect(field.validationState, isA<ValidationSuccess>());
+      expect(field.validationState, isA<TomValidationSuccess>());
       expect(field.get(), 'new value');
     });
 
@@ -636,7 +636,7 @@ void main() {
         'name',
         'Alice',
         labelTextOverride: 'Name',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
       );
 
       await tester.pumpWidget(_wrap(field.widget, style: styleWithVisuals));
@@ -651,7 +651,7 @@ void main() {
         'name',
         '',
         labelTextOverride: 'Name',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
       );
       await field.validate();
 
@@ -670,7 +670,7 @@ void main() {
         'name',
         '',
         labelTextOverride: 'Name',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
       );
       await field.validate();
 
@@ -686,7 +686,7 @@ void main() {
         'name',
         '',
         labelTextOverride: 'Name',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
       );
       await field.validate();
 
@@ -718,7 +718,7 @@ void main() {
         'name',
         '',
         labelTextOverride: 'Name',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
       );
       await field.validate();
 
@@ -745,7 +745,7 @@ void main() {
         '',
         labelTextOverride: 'Name',
         suffixIcon: const Icon(Icons.search, key: ValueKey('search')),
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
       );
       await field.validate();
 
@@ -773,9 +773,9 @@ void main() {
       ),
     );
 
-    TomSelectableSource<String> twoOptions() => StaticSelectableSource([
-      const SelectableItem(value: 'a', label: 'Apple'),
-      const SelectableItem(value: 'b', label: 'Banana'),
+    TomSelectableSource<String> twoOptions() => TomStaticSelectableSource([
+      const TomSelectableItem(value: 'a', label: 'Apple'),
+      const TomSelectableItem(value: 'b', label: 'Banana'),
     ]);
 
     testWidgets('shows error icon when in error and enabled', (tester) async {
@@ -784,7 +784,7 @@ void main() {
         '',
         source: twoOptions(),
         labelTextOverride: 'Fruit',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
       );
       await field.validate();
 
@@ -800,7 +800,7 @@ void main() {
         'a',
         source: twoOptions(),
         labelTextOverride: 'Fruit',
-        validators: [Validators.requiredInstance],
+        validators: [TomValidators.requiredInstance],
       );
 
       await tester.pumpWidget(_wrap(field.widget, style: styleWithVisuals));

@@ -50,9 +50,9 @@ void main() {
     test('sets row alignment', () {
       final container = AclBuilder()
           .append(const Text('Centered'))
-          .setRowHorizontalAlignment(RowAlignment.center)
+          .setRowHorizontalAlignment(AclRowAlignment.center)
           .build();
-      expect(container.rows[0].alignment, RowAlignment.center);
+      expect(container.rows[0].alignment, AclRowAlignment.center);
     });
 
     test('sets component attributes', () {
@@ -603,7 +603,7 @@ void main() {
       final acl = AclBuilder()
           .append(SizedBox(key: centerKey, width: 100, height: 32))
           .setPSize(100, 32)
-          .setRowHorizontalAlignment(RowAlignment.center)
+          .setRowHorizontalAlignment(AclRowAlignment.center)
           .build();
 
       await tester.pumpWidget(

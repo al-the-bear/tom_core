@@ -41,18 +41,18 @@ class DemoESelectionVariants extends StatefulWidget {
 // The two catalogues the "filtered source" switch flips between.
 // ---------------------------------------------------------------------------
 
-const _fullCatalogue = <SelectableItem<String>>[
-  SelectableItem(value: 'tech', label: 'Technology'),
-  SelectableItem(value: 'finance', label: 'Finance'),
-  SelectableItem(value: 'healthcare', label: 'Healthcare'),
-  SelectableItem(value: 'manufacturing', label: 'Manufacturing'),
-  SelectableItem(value: 'retail', label: 'Retail'),
-  SelectableItem(value: 'other', label: 'Other'),
+const _fullCatalogue = <TomSelectableItem<String>>[
+  TomSelectableItem(value: 'tech', label: 'Technology'),
+  TomSelectableItem(value: 'finance', label: 'Finance'),
+  TomSelectableItem(value: 'healthcare', label: 'Healthcare'),
+  TomSelectableItem(value: 'manufacturing', label: 'Manufacturing'),
+  TomSelectableItem(value: 'retail', label: 'Retail'),
+  TomSelectableItem(value: 'other', label: 'Other'),
 ];
 
-const _filteredCatalogue = <SelectableItem<String>>[
-  SelectableItem(value: 'tech', label: 'Technology'),
-  SelectableItem(value: 'healthcare', label: 'Healthcare'),
+const _filteredCatalogue = <TomSelectableItem<String>>[
+  TomSelectableItem(value: 'tech', label: 'Technology'),
+  TomSelectableItem(value: 'healthcare', label: 'Healthcare'),
 ];
 
 // ---------------------------------------------------------------------------

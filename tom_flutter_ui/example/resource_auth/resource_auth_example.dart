@@ -26,14 +26,14 @@ void run() {
   TomConfigProvider.reset();
 
   // Example 1: colour resolution — named, hex, and rgb, via one adapter.
-  TomUIColors.adapter = AllColorsAdapter();
+  TomUIColors.adapter = TomAllColorsAdapter();
   final named = TomUIColors.resolveColor('mRed');
   final hex = TomUIColors.resolveColor('#FF5733');
   final rgb = TomUIColors.resolveColor('rgb(0, 128, 255)');
   print('mRed=$named  #FF5733=$hex  rgb=$rgb');
 
   // Example 2: custom colour registration overrides/extends the palette.
-  AllColorsAdapter.registerColors({'brandPrimary': const Color(0xFF123456)});
+  TomAllColorsAdapter.registerColors({'brandPrimary': const Color(0xFF123456)});
   final brand = TomUIColors.resolveColor('brandPrimary');
   print(
     'brandPrimary=$brand  exists=${TomUIColors.colorExists('brandPrimary')}',
@@ -42,8 +42,8 @@ void run() {
   // Example 3: single-family colour adapters — one palette instead of both.
   // Registrations and hex/rgb literals still resolve through them; only the
   // other family's table is gone.
-  final materialColors = MaterialOnlyColorAdapter();
-  final cupertinoColors = CupertinoOnlyColorAdapter();
+  final materialColors = TomMaterialOnlyColorAdapter();
+  final cupertinoColors = TomCupertinoOnlyColorAdapter();
   print(
     'materialColors cSystemBlue -> '
     '${materialColors.resolveColor('cSystemBlue')}',
@@ -55,13 +55,13 @@ void run() {
   );
 
   // Example 4: icon resolution across families and the single-family adapters.
-  TomUIIcons.adapter = AllIconsAdapter();
+  TomUIIcons.adapter = TomAllIconsAdapter();
   final save = TomUIIcons.resolveIcon('mSave');
   final share = TomUIIcons.resolveIcon('cShare');
   print('mSave=$save  cShare=$share');
 
-  final materialOnly = MaterialOnlyIconAdapter();
-  final cupertinoOnly = CupertinoOnlyIconAdapter();
+  final materialOnly = TomMaterialOnlyIconAdapter();
+  final cupertinoOnly = TomCupertinoOnlyIconAdapter();
   print('materialOnly cShare -> ${materialOnly.resolveIcon('cShare')}');
   print('cupertinoOnly mSave -> ${cupertinoOnly.resolveIcon('mSave')}');
 

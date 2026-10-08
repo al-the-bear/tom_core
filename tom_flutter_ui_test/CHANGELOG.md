@@ -2,6 +2,10 @@
 
 ### Tests
 
+- Follows `tom_flutter_ui`'s rename of its last unprefixed public types
+  (`TomValidators`, `TomValidationError`, `TomSelectableItem`, `TomFileRef`, the
+  `Tom…Event` family, …).
+
 - **`test/package_compiles_test.dart` now runs through
   `tom_ai/core/tool/package_compile_guard.dart`**, the shared implementation
   `tom_flutter_form_test` and `tom_flutter_ui` use too. The file names the paths

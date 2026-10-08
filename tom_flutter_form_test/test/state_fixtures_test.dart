@@ -13,7 +13,7 @@
 ///     branch and the `start + pageSize > totalRows` end-clamp, neither of
 ///     which `phase6_smoke_test.dart` (page 0 only) reaches.
 ///
-/// All three are pure (the picker source is a `StaticSelectableSource`, the
+/// All three are pure (the picker source is a `TomStaticSelectableSource`, the
 /// page source is plain async arithmetic), so no reflection / widget binding
 /// is needed — these are plain `test()`s.
 library;

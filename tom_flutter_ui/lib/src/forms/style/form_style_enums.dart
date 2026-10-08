@@ -2,7 +2,7 @@
 library;
 
 /// Controls where the label appears relative to the field input.
-enum LabelPlacement {
+enum TomLabelPlacement {
   /// Label in a row above the field.
   above,
 
@@ -21,7 +21,7 @@ enum LabelPlacement {
 }
 
 /// Controls where validation error messages appear.
-enum ErrorPlacement {
+enum TomErrorPlacement {
   /// Error text below the field.
   below,
 
@@ -43,7 +43,7 @@ enum ErrorPlacement {
 }
 
 /// Controls how the required indicator is displayed.
-enum RequiredIndicator {
+enum TomRequiredIndicator {
   /// Red asterisk after the label.
   asterisk,
 
@@ -58,7 +58,7 @@ enum RequiredIndicator {
 }
 
 /// Controls where the description/helper text appears.
-enum DescriptionPlacement {
+enum TomDescriptionPlacement {
   /// Description below the error row.
   below,
 
@@ -70,7 +70,7 @@ enum DescriptionPlacement {
 }
 
 /// Controls where action icons appear relative to the field input.
-enum ActionIconPlacement {
+enum TomActionIconPlacement {
   /// Action icons on the right side of the input row.
   trailing,
 

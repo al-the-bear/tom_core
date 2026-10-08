@@ -2,62 +2,80 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void main() {
-  group('LabelPlacement', () {
+  group('TomLabelPlacement', () {
     test('has all expected values', () {
-      expect(LabelPlacement.values, hasLength(5));
-      expect(LabelPlacement.values, contains(LabelPlacement.above));
-      expect(LabelPlacement.values, contains(LabelPlacement.below));
-      expect(LabelPlacement.values, contains(LabelPlacement.floating));
-      expect(LabelPlacement.values, contains(LabelPlacement.inline));
-      expect(LabelPlacement.values, contains(LabelPlacement.hidden));
+      expect(TomLabelPlacement.values, hasLength(5));
+      expect(TomLabelPlacement.values, contains(TomLabelPlacement.above));
+      expect(TomLabelPlacement.values, contains(TomLabelPlacement.below));
+      expect(TomLabelPlacement.values, contains(TomLabelPlacement.floating));
+      expect(TomLabelPlacement.values, contains(TomLabelPlacement.inline));
+      expect(TomLabelPlacement.values, contains(TomLabelPlacement.hidden));
     });
   });
 
-  group('ErrorPlacement', () {
+  group('TomErrorPlacement', () {
     test('has all expected values', () {
-      expect(ErrorPlacement.values, hasLength(5));
-      expect(ErrorPlacement.values, contains(ErrorPlacement.below));
-      expect(ErrorPlacement.values, contains(ErrorPlacement.above));
-      expect(ErrorPlacement.values, contains(ErrorPlacement.tooltip));
-      expect(ErrorPlacement.values, contains(ErrorPlacement.both));
+      expect(TomErrorPlacement.values, hasLength(5));
+      expect(TomErrorPlacement.values, contains(TomErrorPlacement.below));
+      expect(TomErrorPlacement.values, contains(TomErrorPlacement.above));
+      expect(TomErrorPlacement.values, contains(TomErrorPlacement.tooltip));
+      expect(TomErrorPlacement.values, contains(TomErrorPlacement.both));
       expect(
-        ErrorPlacement.values,
-        contains(ErrorPlacement.replaceDescription),
+        TomErrorPlacement.values,
+        contains(TomErrorPlacement.replaceDescription),
       );
     });
   });
 
-  group('RequiredIndicator', () {
+  group('TomRequiredIndicator', () {
     test('has all expected values', () {
-      expect(RequiredIndicator.values, hasLength(4));
-      expect(RequiredIndicator.values, contains(RequiredIndicator.asterisk));
-      expect(RequiredIndicator.values, contains(RequiredIndicator.text));
-      expect(RequiredIndicator.values, contains(RequiredIndicator.none));
-      expect(RequiredIndicator.values, contains(RequiredIndicator.custom));
-    });
-  });
-
-  group('DescriptionPlacement', () {
-    test('has all expected values', () {
-      expect(DescriptionPlacement.values, hasLength(3));
-      expect(DescriptionPlacement.values, contains(DescriptionPlacement.below));
-      expect(DescriptionPlacement.values, contains(DescriptionPlacement.above));
+      expect(TomRequiredIndicator.values, hasLength(4));
       expect(
-        DescriptionPlacement.values,
-        contains(DescriptionPlacement.tooltip),
+        TomRequiredIndicator.values,
+        contains(TomRequiredIndicator.asterisk),
+      );
+      expect(TomRequiredIndicator.values, contains(TomRequiredIndicator.text));
+      expect(TomRequiredIndicator.values, contains(TomRequiredIndicator.none));
+      expect(
+        TomRequiredIndicator.values,
+        contains(TomRequiredIndicator.custom),
       );
     });
   });
 
-  group('ActionIconPlacement', () {
+  group('TomDescriptionPlacement', () {
     test('has all expected values', () {
-      expect(ActionIconPlacement.values, hasLength(3));
+      expect(TomDescriptionPlacement.values, hasLength(3));
       expect(
-        ActionIconPlacement.values,
-        contains(ActionIconPlacement.trailing),
+        TomDescriptionPlacement.values,
+        contains(TomDescriptionPlacement.below),
       );
-      expect(ActionIconPlacement.values, contains(ActionIconPlacement.leading));
-      expect(ActionIconPlacement.values, contains(ActionIconPlacement.above));
+      expect(
+        TomDescriptionPlacement.values,
+        contains(TomDescriptionPlacement.above),
+      );
+      expect(
+        TomDescriptionPlacement.values,
+        contains(TomDescriptionPlacement.tooltip),
+      );
+    });
+  });
+
+  group('TomActionIconPlacement', () {
+    test('has all expected values', () {
+      expect(TomActionIconPlacement.values, hasLength(3));
+      expect(
+        TomActionIconPlacement.values,
+        contains(TomActionIconPlacement.trailing),
+      );
+      expect(
+        TomActionIconPlacement.values,
+        contains(TomActionIconPlacement.leading),
+      );
+      expect(
+        TomActionIconPlacement.values,
+        contains(TomActionIconPlacement.above),
+      );
     });
   });
 }

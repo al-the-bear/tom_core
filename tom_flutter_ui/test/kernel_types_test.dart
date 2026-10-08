@@ -161,7 +161,7 @@ void main() {
         byteCount: 3,
         fileName: 'notes.txt',
       );
-      final ref = FileRef.stored(metadata);
+      final ref = TomFileRef.stored(metadata);
       expect(ref.isStored, isTrue);
       expect(ref.name, 'notes.txt');
       expect(ref.toSource, throwsA(isA<StateError>()));

@@ -14,7 +14,7 @@
 ///    exception: the widget cannot produce an out-of-range value, so they clamp
 ///    for display only.
 ///  * **validation triggering** — `minValue` / `maxValue` desugar into
-///    prepended `Validators.min` / `Validators.max`; the field is not simply
+///    prepended `TomValidators.min` / `TomValidators.max`; the field is not simply
 ///    annotated with bounds, it grows rules.
 ///  * **`set()` / `reset()`** — the baseline semantics `tom_field_test.dart` pins, checked
 ///    here per concrete type.
@@ -68,16 +68,16 @@ void main() {
 
       field.setValue(0);
       final low = await field.validate();
-      expect(low, isA<ValidationError>());
-      expect((low as ValidationError).errorKey, 'error.min');
+      expect(low, isA<TomValidationError>());
+      expect((low as TomValidationError).errorKey, 'error.min');
       expect(low.params, {'min': 1});
 
       field.setValue(11);
       final high = await field.validate();
-      expect((high as ValidationError).errorKey, 'error.max');
+      expect((high as TomValidationError).errorKey, 'error.max');
 
       field.setValue(7);
-      expect(await field.validate(), isA<ValidationSuccess>());
+      expect(await field.validate(), isA<TomValidationSuccess>());
     });
 
     test('a field with no bounds grows no validators', () {
@@ -92,7 +92,7 @@ void main() {
       field.reset();
       expect(field.get(), 5);
       expect(field.isDirty, isFalse);
-      expect(field.validationState, isA<ValidationPristine>());
+      expect(field.validationState, isA<TomValidationPristine>());
     });
 
     test('commit moves the baseline rather than the value', () {
@@ -139,7 +139,7 @@ void main() {
         99,
         reason: 'the user must see their typo to be able to fix it',
       );
-      expect(await field.validate(), isA<ValidationError>());
+      expect(await field.validate(), isA<TomValidationError>());
       await _drainDebounce(tester);
     });
 
@@ -367,60 +367,60 @@ void main() {
       );
       field.setValue(1.5);
       final result = await field.validate();
-      expect((result as ValidationError).errorKey, 'error.max');
+      expect((result as TomValidationError).errorKey, 'error.max');
     });
   });
 
   // =========================================================================
-  // CurrencyFormatProfile — the pure formatting core
+  // TomCurrencyFormatProfile — the pure formatting core
   // =========================================================================
 
-  group('CurrencyFormatProfile', () {
+  group('TomCurrencyFormatProfile', () {
     test('an explicit code wins over the locale', () {
-      final p = CurrencyFormatProfile.resolve(locale: 'de_DE', code: 'JPY');
+      final p = TomCurrencyFormatProfile.resolve(locale: 'de_DE', code: 'JPY');
       expect(p.symbol, '¥');
     });
 
     test('the region segment drives the currency', () {
-      expect(CurrencyFormatProfile.resolve(locale: 'de_DE').symbol, '€');
-      expect(CurrencyFormatProfile.resolve(locale: 'en_GB').symbol, '£');
-      expect(CurrencyFormatProfile.resolve(locale: 'ja_JP').symbol, '¥');
-      expect(CurrencyFormatProfile.resolve(locale: 'en_US').symbol, r'$');
+      expect(TomCurrencyFormatProfile.resolve(locale: 'de_DE').symbol, '€');
+      expect(TomCurrencyFormatProfile.resolve(locale: 'en_GB').symbol, '£');
+      expect(TomCurrencyFormatProfile.resolve(locale: 'ja_JP').symbol, '¥');
+      expect(TomCurrencyFormatProfile.resolve(locale: 'en_US').symbol, r'$');
     });
 
     test('a hyphenated tag is normalised like an underscored one', () {
-      expect(CurrencyFormatProfile.resolve(locale: 'de-DE').symbol, '€');
+      expect(TomCurrencyFormatProfile.resolve(locale: 'de-DE').symbol, '€');
     });
 
     test('a language-only tag falls back to the language table', () {
-      expect(CurrencyFormatProfile.resolve(locale: 'fr').symbol, '€');
-      expect(CurrencyFormatProfile.resolve(locale: 'ja').symbol, '¥');
+      expect(TomCurrencyFormatProfile.resolve(locale: 'fr').symbol, '€');
+      expect(TomCurrencyFormatProfile.resolve(locale: 'ja').symbol, '¥');
     });
 
     test('an unknown locale falls back to USD', () {
-      expect(CurrencyFormatProfile.resolve(locale: 'xx_XX').symbol, r'$');
-      expect(CurrencyFormatProfile.resolve().symbol, r'$');
+      expect(TomCurrencyFormatProfile.resolve(locale: 'xx_XX').symbol, r'$');
+      expect(TomCurrencyFormatProfile.resolve().symbol, r'$');
     });
 
     test('USD groups thousands and leads with the symbol', () {
-      final p = CurrencyFormatProfile.resolve(code: 'USD');
+      final p = TomCurrencyFormatProfile.resolve(code: 'USD');
       expect(p.format(1234567.5), r'$1,234,567.50');
       expect(p.format(-12.3), r'$-12.30');
     });
 
     test('EUR trails the symbol and swaps the separators', () {
-      final p = CurrencyFormatProfile.resolve(code: 'EUR');
+      final p = TomCurrencyFormatProfile.resolve(code: 'EUR');
       expect(p.format(1234.5), '1.234,50 €');
     });
 
     test('JPY carries no decimals at all', () {
-      final p = CurrencyFormatProfile.resolve(code: 'JPY');
+      final p = TomCurrencyFormatProfile.resolve(code: 'JPY');
       expect(p.format(1234.9), '¥1,235');
     });
 
     test('parse is the inverse of format for every profile', () {
       for (final code in const ['USD', 'EUR', 'GBP']) {
-        final p = CurrencyFormatProfile.resolve(code: code);
+        final p = TomCurrencyFormatProfile.resolve(code: code);
         expect(
           p.parse(p.format(9876.54)),
           closeTo(9876.54, 1e-9),
@@ -430,7 +430,7 @@ void main() {
     });
 
     test('parse tolerates a typed-in symbol and rejects nonsense', () {
-      final p = CurrencyFormatProfile.resolve(code: 'USD');
+      final p = TomCurrencyFormatProfile.resolve(code: 'USD');
       expect(p.parse(r'$1,000.25'), 1000.25);
       expect(p.parse(''), isNull);
       expect(p.parse('abc'), isNull);
@@ -543,7 +543,7 @@ void main() {
 
       await tester.enterText(find.byType(TextField), '150');
       expect(field.get(), closeTo(1.5, 1e-9));
-      expect(await field.validate(), isA<ValidationError>());
+      expect(await field.validate(), isA<TomValidationError>());
       await _drainDebounce(tester);
     });
   });
@@ -589,29 +589,29 @@ void main() {
   });
 
   // =========================================================================
-  // NumRange
+  // TomNumRange
   // =========================================================================
 
-  group('NumRange', () {
+  group('TomNumRange', () {
     test('equality is by endpoints so observers see real movement only', () {
-      expect(const NumRange<int>(1, 5), const NumRange<int>(1, 5));
+      expect(const TomNumRange<int>(1, 5), const TomNumRange<int>(1, 5));
       expect(
-        const NumRange<int>(1, 5).hashCode,
-        const NumRange<int>(1, 5).hashCode,
+        const TomNumRange<int>(1, 5).hashCode,
+        const TomNumRange<int>(1, 5).hashCode,
       );
-      expect(const NumRange<int>(1, 5), isNot(const NumRange<int>(1, 6)));
+      expect(const TomNumRange<int>(1, 5), isNot(const TomNumRange<int>(1, 6)));
     });
 
     test('the type parameter is part of the identity', () {
       expect(
-        const NumRange<int>(1, 5) == const NumRange<double>(1, 5),
+        const TomNumRange<int>(1, 5) == const TomNumRange<double>(1, 5),
         isFalse,
         reason: 'an int range and a double range are different values',
       );
     });
 
     test('toString renders the pair', () {
-      expect(const NumRange<int>(1, 5).toString(), '(1, 5)');
+      expect(const TomNumRange<int>(1, 5).toString(), '(1, 5)');
     });
   });
 
@@ -624,7 +624,7 @@ void main() {
       expect(
         () => TomFormIntRangeSlider(
           'band',
-          const NumRange<int>(1, 2),
+          const TomNumRange<int>(1, 2),
           min: 5,
           max: 5,
         ),
@@ -637,7 +637,7 @@ void main() {
     ) async {
       final field = TomFormIntRangeSlider(
         'band',
-        const NumRange<int>(2, 8),
+        const TomNumRange<int>(2, 8),
         min: 0,
         max: 10,
       );
@@ -654,7 +654,7 @@ void main() {
     ) async {
       final field = TomFormIntRangeSlider(
         'band',
-        const NumRange<int>(-5, 50),
+        const TomNumRange<int>(-5, 50),
         min: 0,
         max: 10,
       );
@@ -664,13 +664,13 @@ void main() {
         tester.widget<RangeSlider>(find.byType(RangeSlider)).values,
         const RangeValues(0, 10),
       );
-      expect(field.get(), const NumRange<int>(-5, 50));
+      expect(field.get(), const TomNumRange<int>(-5, 50));
     });
 
     testWidgets('dragging rounds both endpoints to ints', (tester) async {
       final field = TomFormIntRangeSlider(
         'band',
-        const NumRange<int>(2, 8),
+        const TomNumRange<int>(2, 8),
         min: 0,
         max: 10,
       );
@@ -680,14 +680,14 @@ void main() {
         const RangeValues(3.4, 7.6),
       );
       await tester.pump();
-      expect(field.get(), const NumRange<int>(3, 8));
+      expect(field.get(), const TomNumRange<int>(3, 8));
       await _drainDebounce(tester);
     });
 
     testWidgets('a read-only field has no onChanged', (tester) async {
       final field = TomFormIntRangeSlider(
         'band',
-        const NumRange<int>(2, 8),
+        const TomNumRange<int>(2, 8),
         min: 0,
         max: 10,
         uiStateController: _readOnly,
@@ -708,7 +708,7 @@ void main() {
     testWidgets('labels honour valueLabelDecimals', (tester) async {
       final field = TomFormDoubleRangeSlider(
         'band',
-        const NumRange<double>(0.25, 0.75),
+        const TomNumRange<double>(0.25, 0.75),
         min: 0,
         max: 1,
         valueLabelDecimals: 1,
@@ -724,7 +724,7 @@ void main() {
     testWidgets('dragging writes the raw doubles through', (tester) async {
       final field = TomFormDoubleRangeSlider(
         'band',
-        const NumRange<double>(0.25, 0.75),
+        const TomNumRange<double>(0.25, 0.75),
         min: 0,
         max: 1,
       );
@@ -734,7 +734,7 @@ void main() {
         const RangeValues(0.1, 0.9),
       );
       await tester.pump();
-      expect(field.get(), const NumRange<double>(0.1, 0.9));
+      expect(field.get(), const TomNumRange<double>(0.1, 0.9));
       await _drainDebounce(tester);
     });
   });
@@ -843,10 +843,10 @@ void main() {
   // =========================================================================
 
   group('TomFormIntFilterChips', () {
-    TomSelectableSource<int> years() => StaticSelectableSource<int>(const [
-      SelectableItem(value: 2023, label: '2023'),
-      SelectableItem(value: 2024, label: '2024'),
-      SelectableItem(value: 2025, label: '2025'),
+    TomSelectableSource<int> years() => TomStaticSelectableSource<int>(const [
+      TomSelectableItem(value: 2023, label: '2023'),
+      TomSelectableItem(value: 2024, label: '2024'),
+      TomSelectableItem(value: 2025, label: '2025'),
     ]);
 
     test('toggleItem allocates a fresh list so change detection fires', () {

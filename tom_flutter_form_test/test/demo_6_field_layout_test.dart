@@ -10,7 +10,7 @@
 ///   * baseline — every segmented control and the two action buttons render
 ///   * Clear empties the visible TextField for `name`
 ///   * Populate restores the canonical sample (`Acme Corporation`)
-///   * picking each LabelPlacement value updates the SegmentedButton
+///   * picking each TomLabelPlacement value updates the SegmentedButton
 ///     `selected` set (which feeds the live style)
 ///   * picking the `compact` preset updates its SegmentedButton selection
 library;
@@ -127,10 +127,16 @@ void main() {
     tester,
   ) async {
     await openDemo6(tester);
-    expect(find.byType(SegmentedButton<LabelPlacement>), findsOneWidget);
-    expect(find.byType(SegmentedButton<DescriptionPlacement>), findsOneWidget);
-    // Three RequiredIndicator segmented buttons (label / hint / description).
-    expect(find.byType(SegmentedButton<RequiredIndicator>), findsNWidgets(3));
+    expect(find.byType(SegmentedButton<TomLabelPlacement>), findsOneWidget);
+    expect(
+      find.byType(SegmentedButton<TomDescriptionPlacement>),
+      findsOneWidget,
+    );
+    // Three TomRequiredIndicator segmented buttons (label / hint / description).
+    expect(
+      find.byType(SegmentedButton<TomRequiredIndicator>),
+      findsNWidgets(3),
+    );
     expect(find.widgetWithText(OutlinedButton, 'Clear fields'), findsOneWidget);
     expect(
       find.widgetWithText(OutlinedButton, 'Populate with demo data'),
@@ -180,48 +186,52 @@ void main() {
     );
   });
 
-  testWidgets('picking LabelPlacement.below updates the segmented selection', (
-    tester,
-  ) async {
-    await openDemo6(tester);
-    expect(
-      selectedOf<LabelPlacement>(tester),
-      {LabelPlacement.above},
-      reason: 'baseline LabelPlacement is `above`',
-    );
-    await tapSegment<LabelPlacement>(tester, 'below');
-    expect(selectedOf<LabelPlacement>(tester), {LabelPlacement.below});
-  });
-
   testWidgets(
-    'picking LabelPlacement.floating updates the segmented selection',
+    'picking TomLabelPlacement.below updates the segmented selection',
     (tester) async {
       await openDemo6(tester);
-      await tapSegment<LabelPlacement>(tester, 'floating');
-      expect(selectedOf<LabelPlacement>(tester), {LabelPlacement.floating});
+      expect(
+        selectedOf<TomLabelPlacement>(tester),
+        {TomLabelPlacement.above},
+        reason: 'baseline TomLabelPlacement is `above`',
+      );
+      await tapSegment<TomLabelPlacement>(tester, 'below');
+      expect(selectedOf<TomLabelPlacement>(tester), {TomLabelPlacement.below});
     },
   );
 
-  testWidgets('picking LabelPlacement.hidden updates the segmented selection', (
-    tester,
-  ) async {
-    await openDemo6(tester);
-    await tapSegment<LabelPlacement>(tester, 'hidden');
-    expect(selectedOf<LabelPlacement>(tester), {LabelPlacement.hidden});
-  });
+  testWidgets(
+    'picking TomLabelPlacement.floating updates the segmented selection',
+    (tester) async {
+      await openDemo6(tester);
+      await tapSegment<TomLabelPlacement>(tester, 'floating');
+      expect(selectedOf<TomLabelPlacement>(tester), {
+        TomLabelPlacement.floating,
+      });
+    },
+  );
 
-  testWidgets('picking DescriptionPlacement.above updates the selection', (
+  testWidgets(
+    'picking TomLabelPlacement.hidden updates the segmented selection',
+    (tester) async {
+      await openDemo6(tester);
+      await tapSegment<TomLabelPlacement>(tester, 'hidden');
+      expect(selectedOf<TomLabelPlacement>(tester), {TomLabelPlacement.hidden});
+    },
+  );
+
+  testWidgets('picking TomDescriptionPlacement.above updates the selection', (
     tester,
   ) async {
     await openDemo6(tester);
     expect(
-      selectedOf<DescriptionPlacement>(tester),
-      {DescriptionPlacement.below},
-      reason: 'baseline DescriptionPlacement is `below`',
+      selectedOf<TomDescriptionPlacement>(tester),
+      {TomDescriptionPlacement.below},
+      reason: 'baseline TomDescriptionPlacement is `below`',
     );
-    await tapSegment<DescriptionPlacement>(tester, 'above');
-    expect(selectedOf<DescriptionPlacement>(tester), {
-      DescriptionPlacement.above,
+    await tapSegment<TomDescriptionPlacement>(tester, 'above');
+    expect(selectedOf<TomDescriptionPlacement>(tester), {
+      TomDescriptionPlacement.above,
     });
   });
 }

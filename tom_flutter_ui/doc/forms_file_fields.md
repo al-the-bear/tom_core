@@ -13,7 +13,7 @@ separate path, which is why this module is more than a widget.
 
 - [The pieces](#the-pieces)
 - [Wiring a picker, once](#wiring-a-picker-once)
-- [The value: `FileRef`](#the-value-fileref)
+- [The value: `TomFileRef`](#the-value-tomfileref)
 - [Slots, not keys](#slots-not-keys)
 - [Transfers: the controller](#transfers-the-controller)
 - [The transfer UX](#the-transfer-ux)
@@ -27,11 +27,11 @@ separate path, which is why this module is more than a widget.
 
 | Symbol | Where | Purpose |
 | ------ | ----- | ------- |
-| `FileRef` | `forms/files/file_ref.dart` | The field's value: name, size, media type, and one of *bytes* / *streamed source* / *storage key*. |
-| `TomFilePicker` | `forms/files/file_ref.dart` | `Future<FileRef?> Function(BuildContext)` — a field's explicit picker. |
+| `TomFileRef` | `forms/files/file_ref.dart` | The field's value: name, size, media type, and one of *bytes* / *streamed source* / *storage key*. |
+| `TomFilePicker` | `forms/files/file_ref.dart` | `Future<TomFileRef?> Function(BuildContext)` — a field's explicit picker. |
 | `TomPickedFile` | `forms/files/tom_file_picker_registry.dart` | A structural description of what a platform picker returned. |
 | `TomFilePickerRegistry` | same | Holds the application's one picker adaptor. |
-| `TomFilePickers` | same | Ready-made `TomFilePicker` callbacks and the `TomPickedFile` → `FileRef` conversion. |
+| `TomFilePickers` | same | Ready-made `TomFilePicker` callbacks and the `TomPickedFile` → `TomFileRef` conversion. |
 | `TomFileTransferController` | `forms/files/tom_file_transfer_controller.dart` | The upload/download state machine: phase, progress, cancel, retry. |
 | `TomFileTransferIndicator` | `forms/files/tom_file_transfer_indicator.dart` | The progress / cancel / retry / error row. |
 | `TomFormFileField` | `forms/fields/tom_form_file_field.dart` | The abstract field. |
@@ -53,7 +53,7 @@ can switch between them without rewiring anything.
 | dropzone | `TomFormFileDropzone` | — | A tall drop-target surface that also opens the picker on tap. |
 | thumbnail | `TomFormFileThumbnail` | `TomCupertinoFormFileThumbnail` | A square preview of the file's own content. |
 
-`FormFieldFamily.fileUpload` and `FormFieldFamily.fileThumbnail` build the
+`TomFormFieldFamily.fileUpload` and `TomFormFieldFamily.fileThumbnail` build the
 right side of the first and third rows for the family in force.
 
 **What the thumbnail can paint.** `tomFileIsRenderableImage` decides, from
@@ -119,10 +119,10 @@ The field's own constraints reach the adaptor through `TomFilePickRequest`
 its native dialog — a user who cannot select an `.exe` in the first place is
 better served than one told afterwards that `.exe` is not allowed.
 
-## The value: `FileRef`
+## The value: `TomFileRef`
 
 ```dart
-class FileRef {
+class TomFileRef {
   final String name;
   final int sizeBytes;
   final String? mimeType;
@@ -142,7 +142,7 @@ Three content forms, and a reference may carry more than one:
   whenever the picker offers both, because keeping the bytes would defeat the
   streaming upload the source exists to enable.
 - **storageKey** — set once the server has stored the file. `isStored` reports
-  it; `FileRef.stored(metadata)` builds a reference for a file that exists only
+  it; `TomFileRef.stored(metadata)` builds a reference for a file that exists only
   on the server, which is what a re-opened form has.
 
 `toSource()` produces the `TomFileSource` an upload needs from whichever form
@@ -150,7 +150,7 @@ is present, and throws when there is nothing to send.
 
 ### What `path` does
 
-`TomPickedFile` has a fourth field the adaptor above sets and `FileRef` has no
+`TomPickedFile` has a fourth field the adaptor above sets and `TomFileRef` has no
 counterpart for: `path`. It is not a content form but a way to *obtain* one.
 When a pick carries no `open` — which is the normal case, since most picker
 plugins return a path and nothing else — `toFileRef` opens that path lazily
@@ -192,7 +192,7 @@ if (controller.value.phase == TomTransferPhase.failed) {
 
 | Member | Behaviour |
 | ------ | --------- |
-| `upload(FileRef)` | Streams the reference's source; returns the stored descriptor, or `null` when cancelled or failed. |
+| `upload(TomFileRef)` | Streams the reference's source; returns the stored descriptor, or `null` when cancelled or failed. |
 | `download()` | The whole file in memory — for previews and small documents. |
 | `downloadTo(onChunk)` | The streaming form: nothing accumulates unless `onChunk` accumulates. |
 | `describe()` | One `HEAD`; cheap enough to call when a form opens. Not a transfer, so the phase stays `idle`. |
@@ -257,7 +257,7 @@ What the field then does:
 1. Opens the registered picker with this field's constraints.
 2. Rejects a file the constraints exclude — a snackbar on Material, a dialog on
    Cupertino — before it ever becomes the value. The same constraints are also
-   auto-prepended as `TomValidator<FileRef?>`s, so a programmatic `setValue` is
+   auto-prepended as `TomValidator<TomFileRef?>`s, so a programmatic `setValue` is
    caught by the normal validation pipeline. Both routes report the same key —
    `error.fileExtension` or `error.fileTooLarge` — so wording the refusal once
    words it everywhere, and the picker's immediate message cannot drift from

@@ -7,7 +7,7 @@ import '../../example/widget_base/widget_base_example.dart' as example;
 
 void main() {
   setUpAll(() {
-    TomUIColors.adapter = AllColorsAdapter();
+    TomUIColors.adapter = TomAllColorsAdapter();
   });
 
   tearDown(() {

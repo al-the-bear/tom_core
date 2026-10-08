@@ -46,8 +46,8 @@ Future<TomFormStyle> _resolve(
 
 void main() {
   setUpAll(() {
-    // Hex colour parsing (e.g. "#00897B") uses AllColorsAdapter.
-    TomUIColors.adapter = AllColorsAdapter();
+    // Hex colour parsing (e.g. "#00897B") uses TomAllColorsAdapter.
+    TomUIColors.adapter = TomAllColorsAdapter();
   });
 
   group('TomFormStyleScope — programmatic styleBpOverrides', () {
@@ -125,7 +125,7 @@ void main() {
         style: const TomFormStyle(),
         tomId: 'myForm',
       );
-      expect(resolved.defaults.labelPlacement, LabelPlacement.floating);
+      expect(resolved.defaults.labelPlacement, TomLabelPlacement.floating);
       expect(resolved.defaults.labelFieldGap, 6);
       expect(resolved.defaults.hintFontWeight, FontWeight.w700);
       expect(resolved.defaults.hintOpacity, 0.5);
@@ -145,7 +145,7 @@ void main() {
         style: const TomFormStyle(),
         tomId: 'myForm',
       );
-      expect(resolved.defaults.labelPlacement, LabelPlacement.above);
+      expect(resolved.defaults.labelPlacement, TomLabelPlacement.above);
       expect(resolved.defaults.labelFieldGap, 10);
       expect(resolved.defaults.inputStyle?.fontSize, 16);
       // Non-overridden base values survive.
@@ -161,7 +161,7 @@ void main() {
         style: const TomFormStyle(),
         tomId: 'myForm',
       );
-      expect(resolved.defaults.labelPlacement, LabelPlacement.inline);
+      expect(resolved.defaults.labelPlacement, TomLabelPlacement.inline);
       expect(resolved.defaults.labelFieldGap, 14);
     });
   });

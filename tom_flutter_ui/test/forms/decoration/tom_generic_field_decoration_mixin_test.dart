@@ -32,10 +32,11 @@ Future<void> _pumpLoaded(WidgetTester tester, Widget child) async {
   await tester.pump();
 }
 
-StaticSelectableSource<String> _industries() => StaticSelectableSource<String>([
-  const SelectableItem(value: 'tech', label: 'Technology'),
-  const SelectableItem(value: 'finance', label: 'Finance'),
-]);
+TomStaticSelectableSource<String> _industries() =>
+    TomStaticSelectableSource<String>([
+      const TomSelectableItem(value: 'tech', label: 'Technology'),
+      const TomSelectableItem(value: 'finance', label: 'Finance'),
+    ]);
 
 void main() {
   group('TomGenericFieldDecorationMixin — label anatomy', () {

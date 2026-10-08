@@ -210,7 +210,7 @@ void main() {
   // ===========================================================================
   group('enum dropdown labels', () {
     testWidgets('renders bundle labels rather than enum names', (tester) async {
-      final field = FormFieldFamily.material.enumPickerFor(
+      final field = TomFormFieldFamily.material.enumPickerFor(
         'status',
         TodoStatus.open,
         values: TodoStatus.values,
@@ -227,7 +227,7 @@ void main() {
       tester,
     ) async {
       installBundle(germanBundle());
-      final field = FormFieldFamily.material.enumPickerFor(
+      final field = TomFormFieldFamily.material.enumPickerFor(
         'status',
         TodoStatus.open,
         values: TodoStatus.values,
@@ -243,7 +243,7 @@ void main() {
     testWidgets('re-renders on a locale change without the caller rebuilding', (
       tester,
     ) async {
-      final field = FormFieldFamily.material.enumPickerFor(
+      final field = TomFormFieldFamily.material.enumPickerFor(
         'status',
         TodoStatus.open,
         values: TodoStatus.values,
@@ -292,7 +292,7 @@ void main() {
           'todostatus': {'open': 'Open'},
         },
       });
-      final field = FormFieldFamily.material.enumPickerFor(
+      final field = TomFormFieldFamily.material.enumPickerFor(
         'status',
         TodoStatus.done,
         values: TodoStatus.values,

@@ -74,7 +74,7 @@ void main() {
     // which is what squeezed the family-swap demo to a fifth of it.
     final longCode = List.filled(
       6,
-      'final material = FamilyForm(family: FormFieldFamily.material); // x',
+      'final material = FamilyForm(family: TomFormFieldFamily.material); // x',
     ).join('\n');
     const demo = Key('demo-width-probe');
 

@@ -74,7 +74,7 @@ key no exception establishes a family for.
 
 ``Error`` and ``errorKey:`` sit in pass 1 beside ``Exception`` because a form's
 validation vocabulary is raised in neither of the other two hands: a validator
-returns ``ValidationError('error.taxIdTaken')`` or is declared with
+returns ``TomValidationError('error.taxIdTaken')`` or is declared with
 ``errorKey: 'error.invalidUrl'``, and the resulting key is exactly as public as
 a thrown one -- more so, since an undeclared one does not throw but *renders as
 itself*. Requiring the first argument to be a dotted literal is what keeps
@@ -130,7 +130,7 @@ That asymmetry is deliberate rather than a shortcut. A sample document names
 framework keys it does not raise, because teaching the framework is what it is
 for: ``advanced_auth_server`` names ``login.error.2fa.invalid-code``, which
 ``tom_core_server`` throws, and ``core_flutter_acl_responsive`` names
-``error.email``, which ``Validators`` does. Reported as ``UNKNOWN`` those are
+``error.email``, which ``TomValidators`` does. Reported as ``UNKNOWN`` those are
 false alarms, and a gate that cries wolf gets turned off. ``ABSENT`` -- a key
 the sample can emit that its own document never names -- has no such ambiguity,
 and it is the defect this extension was written for: four of seven validation

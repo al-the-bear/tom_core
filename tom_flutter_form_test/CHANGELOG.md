@@ -2,6 +2,10 @@
 
 ### Tests
 
+- Follows `tom_flutter_ui`'s rename of its last unprefixed public types
+  (`TomValidators`, `TomValidationError`, `TomSelectableItem`, `TomFileRef`, the
+  `Tom…Event` family, …).
+
 - **`test/package_compiles_test.dart`** fails the suite when `dart analyze`
   reports an error under `lib/` or `test/`. A suite whose imports stop
   compiling fails to load rather than to pass — none of its assertions run and

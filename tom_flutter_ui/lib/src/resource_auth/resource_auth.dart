@@ -15,10 +15,10 @@
 ///
 /// Applications extend the two catalogues by registering a
 /// [TomUIColorAdapter] or [TomUIIconAdapter] rather than by editing them. The
-/// ready-made adapters are [AllColorsAdapter] / [AllIconsAdapter] (Material and
-/// Cupertino, the defaults), [MaterialOnlyColorAdapter] /
-/// [MaterialOnlyIconAdapter], and [CupertinoOnlyColorAdapter] /
-/// [CupertinoOnlyIconAdapter].
+/// ready-made adapters are [TomAllColorsAdapter] / [TomAllIconsAdapter] (Material and
+/// Cupertino, the defaults), [TomMaterialOnlyColorAdapter] /
+/// [TomMaterialOnlyIconAdapter], and [TomCupertinoOnlyColorAdapter] /
+/// [TomCupertinoOnlyIconAdapter].
 ///
 /// Prose: `doc/resource_auth.md`.
 library;

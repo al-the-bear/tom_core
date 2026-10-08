@@ -19,7 +19,7 @@ void main() {
     TomTextResourceProvider.setAppResourceProvider(
       TomTextResourceProvider.from(const {}),
     );
-    TomUIColors.adapter = AllColorsAdapter();
+    TomUIColors.adapter = TomAllColorsAdapter();
     TomAuthorization.reset();
   });
   tearDown(TomAuthorization.reset);

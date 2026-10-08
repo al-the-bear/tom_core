@@ -1,7 +1,7 @@
 /// Validation group — the validator families and how their results surface.
 ///
-/// Validators are attached per field. Synchronous ones (required, minLength,
-/// pattern) resolve instantly; an async [SlowValidator] resolves through a
+/// TomValidators are attached per field. Synchronous ones (required, minLength,
+/// pattern) resolve instantly; an async [TomSlowValidator] resolves through a
 /// pending → resolved lifecycle. `autoValidate` revalidates as the user types;
 /// otherwise validation runs on submit. A [TomErrorView] renders a form's
 /// aggregated errors.
@@ -23,7 +23,7 @@ final ShowcaseGroup validationGroup = ShowcaseGroup(
   title: 'Validation',
   summary:
       'required, minLength and pattern validators, an async '
-      'SlowValidator, live autoValidate, and the TomErrorView summary.',
+      'TomSlowValidator, live autoValidate, and the TomErrorView summary.',
   icon: Icons.rule_outlined,
   cells: (context) => [
     ShowcaseCell(
@@ -33,8 +33,8 @@ final ShowcaseGroup validationGroup = ShowcaseGroup(
           'see the message.',
       code:
           "validators: [\n"
-          "  Validators.required(),\n"
-          "  Validators.minLength(2),\n"
+          "  TomValidators.required(),\n"
+          "  TomValidators.minLength(2),\n"
           "]",
       child: FormHost<CompanyForm>(
         scopeId: 'val_required',
@@ -50,7 +50,7 @@ final ShowcaseGroup validationGroup = ShowcaseGroup(
           'the message that error.invalidUrl resolves to.',
       code:
           "validators: [\n"
-          "  Validators.pattern(\n"
+          "  TomValidators.pattern(\n"
           "    RegExp(r'^https?:\\/\\/...'),\n"
           "    errorKey: 'error.invalidUrl',\n"
           "  ),\n"
@@ -63,18 +63,18 @@ final ShowcaseGroup validationGroup = ShowcaseGroup(
       ),
     ),
     ShowcaseCell(
-      title: 'Async (SlowValidator)',
+      title: 'Async (TomSlowValidator)',
       note:
           'A simulated server check (600 ms). Tax IDs starting with "X" '
           'resolve to taken; watch the pending spinner.',
       code:
           "final taxIdUniquenessValidator =\n"
-          "    SlowValidator<String>((value) async {\n"
+          "    TomSlowValidator<String>((value) async {\n"
           "  await Future.delayed(Duration(milliseconds: 600));\n"
           "  if (value.startsWith('X')) {\n"
-          "    return ValidationError('error.taxIdTaken');\n"
+          "    return TomValidationError('error.taxIdTaken');\n"
           "  }\n"
-          "  return ValidationSuccess();\n"
+          "  return TomValidationSuccess();\n"
           "});",
       child: FormHost<CompanyForm>(
         scopeId: 'val_async',
@@ -95,7 +95,7 @@ final ShowcaseGroup validationGroup = ShowcaseGroup(
           "  form: this,\n"
           "  labelTextOverride: 'Qty',\n"
           "  autoValidate: true,\n"
-          "  validators: [Validators.required(), positiveInteger],\n"
+          "  validators: [TomValidators.required(), positiveInteger],\n"
           ")",
       child: FormHost<OrderItemForm>(
         scopeId: 'val_autovalidate',

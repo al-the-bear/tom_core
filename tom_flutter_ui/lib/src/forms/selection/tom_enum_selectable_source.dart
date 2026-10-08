@@ -31,7 +31,7 @@ abstract class _BundleLabelledEnumSource<E extends Enum, V>
 
   final bool Function(E value)? _isEnabled;
 
-  StreamController<List<SelectableItem<V>>>? _controller;
+  StreamController<List<TomSelectableItem<V>>>? _controller;
 
   /// Retains the bundle-revision subscription while anyone is listening.
   ///
@@ -43,19 +43,19 @@ abstract class _BundleLabelledEnumSource<E extends Enum, V>
   V valueOf(E value);
 
   @override
-  Future<List<SelectableItem<V>>> getItems() async => buildItems();
+  Future<List<TomSelectableItem<V>>> getItems() async => buildItems();
 
   @override
-  Stream<List<SelectableItem<V>>>? get itemsStream =>
-      (_controller ??= StreamController<List<SelectableItem<V>>>.broadcast(
+  Stream<List<TomSelectableItem<V>>>? get itemsStream =>
+      (_controller ??= StreamController<List<TomSelectableItem<V>>>.broadcast(
         onListen: _observeBundle,
         onCancel: _stopObservingBundle,
       )).stream;
 
   /// Builds the current option list, resolving every label from the bundle.
-  List<SelectableItem<V>> buildItems() => List.unmodifiable([
+  List<TomSelectableItem<V>> buildItems() => List.unmodifiable([
     for (final value in values)
-      SelectableItem<V>(
+      TomSelectableItem<V>(
         value: valueOf(value),
         label: TomObservableEnum.resolveText(value, scope: scope),
         enabled: _isEnabled?.call(value) ?? true,

@@ -34,7 +34,7 @@ class OrderItemForm extends TomForm<OrderItem> {
     form: this,
     labelTextOverride: 'Product',
     hintTextOverride: 'Type to search the catalog…',
-    validators: [Validators.required()],
+    validators: [TomValidators.required()],
   );
 
   late final quantity = TomFormStringInput(
@@ -43,7 +43,7 @@ class OrderItemForm extends TomForm<OrderItem> {
     form: this,
     labelTextOverride: 'Qty',
     autoValidate: true,
-    validators: [Validators.required(), positiveIntegerValidator],
+    validators: [TomValidators.required(), positiveIntegerValidator],
   );
 
   late final unitPrice = TomFormStringInput(
@@ -52,7 +52,7 @@ class OrderItemForm extends TomForm<OrderItem> {
     form: this,
     labelTextOverride: 'Unit price',
     autoValidate: true,
-    validators: [Validators.required(), decimalValidator],
+    validators: [TomValidators.required(), decimalValidator],
   );
 
   late final notes = TomFormStringInput(

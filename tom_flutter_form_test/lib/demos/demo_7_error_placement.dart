@@ -10,16 +10,16 @@ import 'demo_widgets.dart';
 // Demo 7: Error Placement Options
 // ---------------------------------------------------------------------------
 
-/// Reference demo for [ErrorPlacement]. Change the mode live with the
+/// Reference demo for [TomErrorPlacement]. Change the mode live with the
 /// segmented control. Use the "trigger errors" buttons below the form to
 /// populate the fields with invalid values so the chosen placement is
 /// visible without hand-editing.
 ///
 /// Modes:
-///   • [ErrorPlacement.below]       — red caption below the input (default).
-///   • [ErrorPlacement.above]       — red caption above the input.
-///   • [ErrorPlacement.both]        — caption above *and* below.
-///   • [ErrorPlacement.replaceDescription] — error text takes the description
+///   • [TomErrorPlacement.below]       — red caption below the input (default).
+///   • [TomErrorPlacement.above]       — red caption above the input.
+///   • [TomErrorPlacement.both]        — caption above *and* below.
+///   • [TomErrorPlacement.replaceDescription] — error text takes the description
 ///     (helper-text) slot below the field. If no description is set, the
 ///     error still appears — the slot materialises for the error. No
 ///     separate error caption is rendered.
@@ -33,7 +33,7 @@ class Demo7ErrorPlacement extends StatefulWidget {
 class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
   late final CompanyBasicInfoForm _form;
 
-  ErrorPlacement _errorPlacement = ErrorPlacement.below;
+  TomErrorPlacement _errorPlacement = TomErrorPlacement.below;
 
   @override
   void initState() {
@@ -184,23 +184,26 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'ErrorPlacement',
+              'TomErrorPlacement',
               style: Theme.of(context).textTheme.labelLarge,
             ),
             const SizedBox(height: 6),
-            SegmentedButton<ErrorPlacement>(
+            SegmentedButton<TomErrorPlacement>(
               segments: const [
                 ButtonSegment(
-                  value: ErrorPlacement.below,
+                  value: TomErrorPlacement.below,
                   label: Text('below'),
                 ),
                 ButtonSegment(
-                  value: ErrorPlacement.above,
+                  value: TomErrorPlacement.above,
                   label: Text('above'),
                 ),
-                ButtonSegment(value: ErrorPlacement.both, label: Text('both')),
                 ButtonSegment(
-                  value: ErrorPlacement.replaceDescription,
+                  value: TomErrorPlacement.both,
+                  label: Text('both'),
+                ),
+                ButtonSegment(
+                  value: TomErrorPlacement.replaceDescription,
                   label: Text('replaceDescription'),
                 ),
               ],

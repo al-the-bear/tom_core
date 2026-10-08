@@ -39,7 +39,7 @@ class ExampleHEReadOnly extends StatefulWidget {
 }
 
 class _ExampleHEReadOnlyState extends State<ExampleHEReadOnly> {
-  late final FormFieldFamily _family;
+  late final TomFormFieldFamily _family;
 
   /// The customer is bound directly — there is no top-level form, only
   /// the dialogs hold transient forms over short edits. We listen to the
@@ -51,8 +51,8 @@ class _ExampleHEReadOnlyState extends State<ExampleHEReadOnly> {
     super.initState();
     installExampleAuthorization();
     _family = widget.family == ExampleFamily.cupertino
-        ? FormFieldFamily.cupertino
-        : FormFieldFamily.material;
+        ? TomFormFieldFamily.cupertino
+        : TomFormFieldFamily.material;
     _customer = exampleCustomerHe;
   }
 
@@ -90,7 +90,7 @@ class _CustomerCard extends StatelessWidget {
   const _CustomerCard({required this.customer, required this.family});
 
   final ExampleCustomerRich customer;
-  final FormFieldFamily family;
+  final TomFormFieldFamily family;
 
   @override
   Widget build(BuildContext context) {
@@ -199,7 +199,7 @@ class _AddressesCard extends StatelessWidget {
   const _AddressesCard({required this.customer, required this.family});
 
   final ExampleCustomerRich customer;
-  final FormFieldFamily family;
+  final TomFormFieldFamily family;
 
   @override
   Widget build(BuildContext context) {
@@ -316,7 +316,7 @@ class _OrdersCard extends StatelessWidget {
   const _OrdersCard({required this.customer, required this.family});
 
   final ExampleCustomerRich customer;
-  final FormFieldFamily family;
+  final TomFormFieldFamily family;
 
   @override
   Widget build(BuildContext context) {

@@ -84,15 +84,15 @@ class SelectionVariantsDemoState extends State<SelectionVariantsDemo> {
   bool _filtered = false;
 
   static const _fullItems = [
-    SelectableItem(value: 'apple', label: 'Apple'),
-    SelectableItem(value: 'banana', label: 'Banana'),
-    SelectableItem(value: 'cherry', label: 'Cherry'),
-    SelectableItem(value: 'date', label: 'Date'),
+    TomSelectableItem(value: 'apple', label: 'Apple'),
+    TomSelectableItem(value: 'banana', label: 'Banana'),
+    TomSelectableItem(value: 'cherry', label: 'Cherry'),
+    TomSelectableItem(value: 'date', label: 'Date'),
   ];
 
   static const _filteredItems = [
-    SelectableItem(value: 'apple', label: 'Apple'),
-    SelectableItem(value: 'cherry', label: 'Cherry'),
+    TomSelectableItem(value: 'apple', label: 'Apple'),
+    TomSelectableItem(value: 'cherry', label: 'Cherry'),
   ];
 
   @override
@@ -360,10 +360,10 @@ class _BooleanVariantsDemoState extends State<BooleanVariantsDemo> {
     _language = TomFormStringDropdown(
       'language',
       'en',
-      source: StaticSelectableSource(const [
-        SelectableItem(value: 'en', label: 'English'),
-        SelectableItem(value: 'fr', label: 'Français'),
-        SelectableItem(value: 'de', label: 'Deutsch'),
+      source: TomStaticSelectableSource(const [
+        TomSelectableItem(value: 'en', label: 'English'),
+        TomSelectableItem(value: 'fr', label: 'Français'),
+        TomSelectableItem(value: 'de', label: 'Deutsch'),
       ]),
       labelTextOverride: 'Language',
     );

@@ -583,10 +583,10 @@ class TomCupertinoFormCurrencyDoubleInput extends TomFormDoubleField
   String? get descriptionText =>
       descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
 
-  /// Reuses the same lightweight `CurrencyFormatProfile` shipped with
+  /// Reuses the same lightweight `TomCurrencyFormatProfile` shipped with
   /// [TomFormCurrencyDoubleInput] so Cupertino renders identical numbers.
-  CurrencyFormatProfile get formatProfile =>
-      CurrencyFormatProfile.resolve(locale: locale, code: currencyCode);
+  TomCurrencyFormatProfile get formatProfile =>
+      TomCurrencyFormatProfile.resolve(locale: locale, code: currencyCode);
 
   /// See [TomFormCurrencyDoubleInput.symbolIsLeading] — same convention.
   bool get symbolIsLeading => formatProfile.symbolBeforeAmount;

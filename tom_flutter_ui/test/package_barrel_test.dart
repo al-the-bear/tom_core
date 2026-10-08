@@ -258,67 +258,12 @@ void main() {
     ///
     /// That the hazard is real and not hypothetical is easy to check: the
     /// `file_picker` package exports a class called `FilePicker`, and five
-    /// packages in this workspace import it. `Validators`, `ValidationResult`,
-    /// `FileRef` and `RowAlignment` are names a consumer is equally likely to
+    /// packages in this workspace import it. `TomValidators`, `TomValidationResult`,
+    /// `TomFileRef` and `AclRowAlignment` are names a consumer is equally likely to
     /// have of their own.
     ///
-    /// The names below are listed one by one rather than allowed by pattern
-    /// because each is a rename somebody has to perform, not a category the
-    /// rule was wrong to cover. The set is a ratchet: it may shrink and never
-    /// grow, because a name cannot enter it without an author editing this
-    /// list and reading this paragraph. Its size is pinned below, so removing
-    /// an entry is a deliberate edit in two places rather than a silent one.
-    const knownUnprefixed = <String>{
-      // forms/validation — the result hierarchy and its helpers.
-      'ValidationResult',
-      'ValidationSuccess',
-      'ValidationError',
-      'ValidationPristine',
-      'ValidationPending',
-      'SlowValidator',
-      'Validators',
-      'FormValidationError',
-      // forms/events — the eleven event types of one sealed family.
-      'FieldAuthChangedEvent',
-      'FieldBoundEvent',
-      'FieldCommittedEvent',
-      'FieldValidatedEvent',
-      'FieldValueChangedEvent',
-      'FormBoundEvent',
-      'FormDiscardedEvent',
-      'FormSavedEvent',
-      'FormValidatedEvent',
-      'ListItemAddedEvent',
-      'ListItemRemovedEvent',
-      'ListItemReorderedEvent',
-      // forms/style — the placement enums and the two style-valued extras.
-      'ActionIconPlacement',
-      'DescriptionPlacement',
-      'ErrorPlacement',
-      'LabelPlacement',
-      'RequiredIndicator',
-      'StringInputVariant',
-      // forms — field payloads, sources and the family selector.
-      'FileRef',
-      'NumRange',
-      'TimeRange',
-      'CurrencyFormatProfile',
-      'SelectableItem',
-      'StaticSelectableSource',
-      'FormFieldFamily',
-      'FormFieldFamilyKind',
-      'UnsavedChangesChoice',
-      // resource_auth — the theme adapters.
-      'AllColorsAdapter',
-      'AllIconsAdapter',
-      'CupertinoOnlyColorAdapter',
-      'CupertinoOnlyIconAdapter',
-      'MaterialOnlyColorAdapter',
-      'MaterialOnlyIconAdapter',
-      // advanced_container_layout — an ACL type that took neither prefix.
-      'RowAlignment',
-    };
-
+    /// There is no exemption list. A name that cannot take the prefix is a
+    /// naming question to settle, not an entry to add.
     /// Every public type a consumer receives from the package barrel.
     Set<String> barrelSurface() {
       final surface = exportSurfaces()['lib/tom_flutter_ui.dart'];
@@ -346,7 +291,6 @@ void main() {
       final offenders =
           surface
               .where((n) => !n.startsWith('Tom') && !n.startsWith('Acl'))
-              .where((n) => !knownUnprefixed.contains(n))
               .map((n) => '  $n — ${homes[n] ?? 'declared outside lib/'}')
               .toList()
             ..sort();
@@ -359,43 +303,8 @@ void main() {
             'package:tom_flutter_ui/tom_flutter_ui.dart under a name that '
             'claims no namespace, so they collide with whatever the consumer '
             'called their own:\n\n${offenders.join('\n')}\n\n'
-            'Prefix them Tom (or Acl, inside advanced_container_layout). '
-            'Do not add to `knownUnprefixed` — that set is a ratchet being '
-            'emptied, not a place to put new names',
+            'Prefix them Tom (or Acl, inside advanced_container_layout).',
       );
-    });
-
-    test('every entry in the known-unprefixed set is still real', () {
-      // An entry whose type was renamed or unexported reads as licence for a
-      // name nobody is using, and makes the set meaningless as a measure of
-      // what is left to do.
-      //
-      // The size is pinned so the ratchet cannot be loosened by accident:
-      // adding a name fails here, and removing one is a two-line edit that
-      // says out loud which direction it went.
-      expect(
-        knownUnprefixed,
-        hasLength(42),
-        reason:
-            'the known-unprefixed set changed size. Fewer is the goal — lower '
-            'this number. More is not: prefix the type instead',
-      );
-
-      final surface = barrelSurface();
-      for (final name in knownUnprefixed) {
-        expect(
-          surface,
-          contains(name),
-          reason:
-              '$name is listed as a known-unprefixed export but the barrel no '
-              'longer exports it; drop the entry',
-        );
-        expect(
-          name.startsWith('Tom') || name.startsWith('Acl'),
-          isFalse,
-          reason: '$name is prefixed now; drop the entry',
-        );
-      }
     });
   });
 }

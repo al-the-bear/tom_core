@@ -219,7 +219,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tapLabeled(tester, 'Save');
-      // save() validates asynchronously and fires a FormValidatedEvent that
+      // save() validates asynchronously and fires a TomFormValidatedEvent that
       // the TomErrorView listens for; give it a beat to resolve.
       await tester.pumpAndSettle(const Duration(milliseconds: 300));
 

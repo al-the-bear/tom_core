@@ -28,6 +28,33 @@
 
 ### Changed
 
+- **Every public type the barrel exports is now `Tom`- or `Acl`-prefixed.** The
+  last 42 unprefixed ones were renamed:
+  - validation: `TomValidationResult`, `TomValidationSuccess`,
+    `TomValidationError`, `TomValidationPristine`, `TomValidationPending`,
+    `TomSlowValidator`, `TomValidators`, `TomFormValidationError`;
+  - the sealed form-event family: `TomFieldAuthChangedEvent`,
+    `TomFieldBoundEvent`, `TomFieldCommittedEvent`, `TomFieldValidatedEvent`,
+    `TomFieldValueChangedEvent`, `TomFormBoundEvent`, `TomFormDiscardedEvent`,
+    `TomFormSavedEvent`, `TomFormValidatedEvent`, `TomListItemAddedEvent`,
+    `TomListItemRemovedEvent`, `TomListItemReorderedEvent`;
+  - style: `TomActionIconPlacement`, `TomDescriptionPlacement`,
+    `TomErrorPlacement`, `TomLabelPlacement`, `TomRequiredIndicator`,
+    `TomStringInputVariant`;
+  - field payloads and sources: `TomFileRef`, `TomNumRange`,
+    `TomTimeOfDayRange` (not `TomTimeRange`, which the kernel already uses for
+    an observable range of zoned times), `TomCurrencyFormatProfile`,
+    `TomSelectableItem`, `TomStaticSelectableSource`, `TomFormFieldFamily`,
+    `TomFormFieldFamilyKind`, `TomUnsavedChangesChoice`;
+  - theme adapters: `TomAllColorsAdapter`, `TomMaterialOnlyColorAdapter`,
+    `TomCupertinoOnlyColorAdapter`, `TomAllIconsAdapter`,
+    `TomMaterialOnlyIconAdapter`, `TomCupertinoOnlyIconAdapter`;
+  - ACL: `AclRowAlignment`.
+
+  An unprefixed name collides with whatever a consumer calls their own (the
+  `file_picker` package's `FilePicker` already did). `test/package_barrel_test.dart`
+  no longer carries an exemption list: any unprefixed export fails it.
+
 - **`TomForm.createFormElements` has an empty default.** It was abstract, so
   every form had to override it, yet fields declared as `late final` members
   passing `form: this` are registered by reflection and need nothing there. A

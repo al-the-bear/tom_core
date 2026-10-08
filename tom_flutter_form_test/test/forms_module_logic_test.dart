@@ -203,7 +203,7 @@ void main() {
   // file: a key that drifts silently falls back to raw text. Each case below
   // runs the real field's validator chain and asserts the exact key.
   group('OrderItemForm.unitPrice — decimal validator error keys', () {
-    Future<ValidationResult> validatePrice(String text) async {
+    Future<TomValidationResult> validatePrice(String text) async {
       final form = TomScope.withScope('priceKeyTest', () => OrderItemForm());
       addTearDown(form.dispose);
       form.unitPrice.set(text);
@@ -212,16 +212,16 @@ void main() {
 
     test('non-numeric text reports error.invalidDecimal', () async {
       final r = await validatePrice('abc');
-      expect((r as ValidationError).errorKey, 'error.invalidDecimal');
+      expect((r as TomValidationError).errorKey, 'error.invalidDecimal');
     });
 
     test('a negative price reports error.mustBeNonNegative', () async {
       final r = await validatePrice('-1.50');
-      expect((r as ValidationError).errorKey, 'error.mustBeNonNegative');
+      expect((r as TomValidationError).errorKey, 'error.mustBeNonNegative');
     });
 
     test('a non-negative decimal validates clean', () async {
-      expect(await validatePrice('4.20'), isA<ValidationSuccess>());
+      expect(await validatePrice('4.20'), isA<TomValidationSuccess>());
     });
   });
 
@@ -238,7 +238,7 @@ void main() {
       // Long enough for minLength(3), so the pattern is the first failure.
       form.username.set('jane!');
       final r = await form.username.validate();
-      expect((r as ValidationError).errorKey, 'error.usernamePattern');
+      expect((r as TomValidationError).errorKey, 'error.usernamePattern');
     });
 
     test('username starting with "admin" reports error.usernameTaken from '
@@ -247,14 +247,14 @@ void main() {
       // Passes every fast validator, so only the async check can reject it.
       form.username.set('admin_jane');
       final r = await form.username.validate();
-      expect((r as ValidationError).errorKey, 'error.usernameTaken');
+      expect((r as TomValidationError).errorKey, 'error.usernameTaken');
     });
 
     test('a malformed website reports error.invalidUrl', () async {
       final form = makeForm();
       form.website.set('not a url');
       final r = await form.website.validate();
-      expect((r as ValidationError).errorKey, 'error.invalidUrl');
+      expect((r as TomValidationError).errorKey, 'error.invalidUrl');
     });
   });
 }

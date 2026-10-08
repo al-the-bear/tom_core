@@ -46,7 +46,7 @@
 /// asking the platform for one.
 ///
 /// Everything downstream of the picker is the real thing — the same
-/// [TomPickedFile] shape a plugin returns, the same [FileRef] conversion, the
+/// [TomPickedFile] shape a plugin returns, the same [TomFileRef] conversion, the
 /// same streaming upload, the same progress, cancel and retry. Only the dialog
 /// is missing, and swapping it in is the registration above.
 library;

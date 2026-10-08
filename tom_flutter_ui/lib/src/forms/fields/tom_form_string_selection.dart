@@ -22,8 +22,8 @@ import 'tom_form_string_field.dart';
 
 mixin _SourceBackedStringWidgetStateMixin<TWidget extends StatefulWidget>
     on State<TWidget> {
-  StreamSubscription<List<SelectableItem<String>>>? _subscription;
-  List<SelectableItem<String>> items = const [];
+  StreamSubscription<List<TomSelectableItem<String>>>? _subscription;
+  List<TomSelectableItem<String>> items = const [];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomFormStringField get field;
@@ -62,7 +62,7 @@ mixin _SourceBackedStringWidgetStateMixin<TWidget extends StatefulWidget>
     }
   }
 
-  void _resetIfValueMissing(List<SelectableItem<String>> current) {
+  void _resetIfValueMissing(List<TomSelectableItem<String>> current) {
     final v = field.get();
     if (v.isEmpty) return;
     final stillPresent = current.any((i) => i.value == v);

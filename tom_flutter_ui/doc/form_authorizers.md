@@ -337,7 +337,7 @@ so the button lights up.
 
 **Lane 2 gates on `isDirty`, not on `isValid`, and that is deliberate.**
 `isValid` means "validation has run and passed": every field starts
-`ValidationPristine`, pristine is not success, and editing a field clears
+`TomValidationPristine`, pristine is not success, and editing a field clears
 only *that* field's state. A button also gated on `isValid` would therefore
 stay disabled until the user had touched every field in the form — and go
 dark again the moment they saved, because `commit()` returns the fields to

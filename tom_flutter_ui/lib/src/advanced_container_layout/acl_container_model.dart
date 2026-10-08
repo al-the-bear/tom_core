@@ -215,7 +215,7 @@ class AclComponent {
 /// One row of a layout: its components in order, and the row's alignment.
 class AclRow {
   final List<AclComponent> components;
-  final RowAlignment alignment;
+  final AclRowAlignment alignment;
 
   /// Fixed pixel gap before this row.
   final double gapBefore;
@@ -284,7 +284,7 @@ class AclRow {
 
   const AclRow({
     required this.components,
-    this.alignment = RowAlignment.left,
+    this.alignment = AclRowAlignment.left,
     this.gapBefore = 0,
     this.isGapRow = false,
     this.gapRowWeight = 1.0,
@@ -321,7 +321,7 @@ class AclRow {
   /// they narrow, split and filter rows, none of which drops an identity.
   AclRow copyWith({
     List<AclComponent>? components,
-    RowAlignment? alignment,
+    AclRowAlignment? alignment,
     double? gapBefore,
     bool? isGapRow,
     double? gapRowWeight,

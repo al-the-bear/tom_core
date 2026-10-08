@@ -29,14 +29,14 @@ void main() {
     });
   });
 
-  group('TomUIColors / AllColorsAdapter', () {
+  group('TomUIColors / TomAllColorsAdapter', () {
     test('returns null and false when no adapter installed', () {
       expect(TomUIColors.resolveColor('mRed'), isNull);
       expect(TomUIColors.colorExists('mRed'), isFalse);
     });
 
     test('resolves named, hex (3/4/6/8) and rgb colours', () {
-      TomUIColors.adapter = AllColorsAdapter();
+      TomUIColors.adapter = TomAllColorsAdapter();
       expect(TomUIColors.resolveColor('mRed'), Colors.red);
       expect(TomUIColors.resolveColor('#FF5733'), const Color(0xFFFF5733));
       expect(TomUIColors.resolveColor('#F53'), const Color(0xFFFF5533));
@@ -61,7 +61,7 @@ void main() {
     // spelled out in the dartdoc, the readme and doc/resource_auth.md.
     group('hex alpha is the leading pair, not the trailing one', () {
       test('the 8-digit form reads AARRGGBB', () {
-        final adapter = AllColorsAdapter();
+        final adapter = TomAllColorsAdapter();
         final c = adapter.resolveColor('#80FF5733')!;
         expect(c, const Color(0x80FF5733));
         // Spelled out channel by channel, so a reordering cannot pass by
@@ -77,7 +77,7 @@ void main() {
       });
 
       test('the 4-digit form reads ARGB, each digit doubled', () {
-        final adapter = AllColorsAdapter();
+        final adapter = TomAllColorsAdapter();
         final c = adapter.resolveColor('#8F53')!;
         expect(c, const Color(0x88FF5533));
         expect(
@@ -93,13 +93,13 @@ void main() {
       });
 
       test('the alpha-less forms are fully opaque', () {
-        final adapter = AllColorsAdapter();
+        final adapter = TomAllColorsAdapter();
         expect(adapter.resolveColor('#FF5733')!.a, 1.0);
         expect(adapter.resolveColor('#F53')!.a, 1.0);
       });
 
       test('colorExists agrees with resolveColor on every hex width', () {
-        final adapter = AllColorsAdapter();
+        final adapter = TomAllColorsAdapter();
         for (final name in ['#F53', '#8F53', '#FF5733', '#80FF5733']) {
           expect(
             adapter.colorExists(name),
@@ -118,12 +118,12 @@ void main() {
     });
 
     test('rgb values are clamped to valid ranges', () {
-      final adapter = AllColorsAdapter();
+      final adapter = TomAllColorsAdapter();
       expect(adapter.resolveColor('rgb(999, 128, 0)'), const Color(0xFFFF8000));
     });
 
     test('colorExists recognises hex, rgb and named', () {
-      final adapter = AllColorsAdapter();
+      final adapter = TomAllColorsAdapter();
       expect(adapter.colorExists('#FFFFFF'), isTrue);
       expect(adapter.colorExists('rgb(1,2,3)'), isTrue);
       expect(adapter.colorExists('mBlue'), isTrue);
@@ -131,15 +131,15 @@ void main() {
     });
 
     test('custom colours take precedence and can be cleared', () {
-      TomUIColors.adapter = AllColorsAdapter();
-      AllColorsAdapter.registerColors({'mRed': const Color(0xFF000000)});
+      TomUIColors.adapter = TomAllColorsAdapter();
+      TomAllColorsAdapter.registerColors({'mRed': const Color(0xFF000000)});
       expect(TomUIColors.resolveColor('mRed'), const Color(0xFF000000));
-      AllColorsAdapter.clearCustomColors();
+      TomAllColorsAdapter.clearCustomColors();
       expect(TomUIColors.resolveColor('mRed'), Colors.red);
     });
 
     test('unknown name resolves to null', () {
-      TomUIColors.adapter = AllColorsAdapter();
+      TomUIColors.adapter = TomAllColorsAdapter();
       expect(TomUIColors.resolveColor('notARealColor'), isNull);
     });
 
@@ -147,13 +147,13 @@ void main() {
       // Grey is the one Material swatch with off-scale shades. A table
       // transcribed by hand drops them, because they are not in the pattern
       // every other family follows; one walked out of the SDK cannot.
-      final adapter = AllColorsAdapter();
+      final adapter = TomAllColorsAdapter();
       expect(adapter.resolveColor('mGrey350'), const Color(0xFFD6D6D6));
       expect(adapter.resolveColor('mGrey850'), const Color(0xFF303030));
     });
 
     test('carries every CupertinoColors constant, transparent included', () {
-      final adapter = AllColorsAdapter();
+      final adapter = TomAllColorsAdapter();
       expect(adapter.resolveColor('cTransparent'), const Color(0x00000000));
     });
   });
@@ -164,8 +164,8 @@ void main() {
   // a bundle report — a `cSystemBlue` left in a Material-only resource file
   // resolves to null and gets caught, instead of quietly working.
   group('single-family colour adapters', () {
-    test('MaterialOnlyColorAdapter resolves only Material colours', () {
-      final adapter = MaterialOnlyColorAdapter();
+    test('TomMaterialOnlyColorAdapter resolves only Material colours', () {
+      final adapter = TomMaterialOnlyColorAdapter();
       expect(adapter.resolveColor('mRed'), Colors.red);
       expect(adapter.resolveColor('mBlueGrey500'), const Color(0xFF607D8B));
       expect(adapter.resolveColor('cSystemBlue'), isNull);
@@ -173,8 +173,8 @@ void main() {
       expect(adapter.colorExists('cSystemBlue'), isFalse);
     });
 
-    test('CupertinoOnlyColorAdapter resolves only Cupertino colours', () {
-      final adapter = CupertinoOnlyColorAdapter();
+    test('TomCupertinoOnlyColorAdapter resolves only Cupertino colours', () {
+      final adapter = TomCupertinoOnlyColorAdapter();
       expect(adapter.resolveColor('cTransparent'), const Color(0x00000000));
       expect(adapter.resolveColor('mRed'), isNull);
       expect(adapter.colorExists('cTransparent'), isTrue);
@@ -186,9 +186,9 @@ void main() {
     // a different contract rather than a smaller one.
     test('hex and rgb parse through every colour adapter', () {
       for (final adapter in <TomUIColorAdapter>[
-        AllColorsAdapter(),
-        MaterialOnlyColorAdapter(),
-        CupertinoOnlyColorAdapter(),
+        TomAllColorsAdapter(),
+        TomMaterialOnlyColorAdapter(),
+        TomCupertinoOnlyColorAdapter(),
       ]) {
         final what = adapter.runtimeType;
         expect(
@@ -209,11 +209,11 @@ void main() {
     // if it were not: registered brand colours would resolve to null after a
     // switch to a single-family adapter, with colorExists denying they exist.
     test('registrations reach the single-family colour adapters too', () {
-      AllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      TomAllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
       for (final adapter in <TomUIColorAdapter>[
-        AllColorsAdapter(),
-        MaterialOnlyColorAdapter(),
-        CupertinoOnlyColorAdapter(),
+        TomAllColorsAdapter(),
+        TomMaterialOnlyColorAdapter(),
+        TomCupertinoOnlyColorAdapter(),
       ]) {
         expect(
           adapter.resolveColor('zBrand'),
@@ -229,41 +229,44 @@ void main() {
     });
 
     test('a colour registration overrides a built-in for every adapter', () {
-      AllColorsAdapter.registerColors({'mRed': const Color(0xFF112233)});
+      TomAllColorsAdapter.registerColors({'mRed': const Color(0xFF112233)});
       expect(
-        MaterialOnlyColorAdapter().resolveColor('mRed'),
+        TomMaterialOnlyColorAdapter().resolveColor('mRed'),
         const Color(0xFF112233),
       );
-      expect(AllColorsAdapter().resolveColor('mRed'), const Color(0xFF112233));
+      expect(
+        TomAllColorsAdapter().resolveColor('mRed'),
+        const Color(0xFF112233),
+      );
     });
 
     test('clearing drops colour registrations for every adapter', () {
-      AllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
-      AllColorsAdapter.clearCustomColors();
+      TomAllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      TomAllColorsAdapter.clearCustomColors();
       for (final adapter in <TomUIColorAdapter>[
-        AllColorsAdapter(),
-        MaterialOnlyColorAdapter(),
-        CupertinoOnlyColorAdapter(),
+        TomAllColorsAdapter(),
+        TomMaterialOnlyColorAdapter(),
+        TomCupertinoOnlyColorAdapter(),
       ]) {
         expect(adapter.resolveColor('zBrand'), isNull);
         expect(adapter.colorExists('zBrand'), isFalse);
       }
       // The built-in table is untouched by the round trip.
-      expect(MaterialOnlyColorAdapter().resolveColor('mRed'), Colors.red);
+      expect(TomMaterialOnlyColorAdapter().resolveColor('mRed'), Colors.red);
     });
 
     test('colour registrations do not open the other family to a '
         'single-family adapter', () {
-      AllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
-      expect(MaterialOnlyColorAdapter().resolveColor('cSystemBlue'), isNull);
-      expect(CupertinoOnlyColorAdapter().resolveColor('mRed'), isNull);
+      TomAllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      expect(TomMaterialOnlyColorAdapter().resolveColor('cSystemBlue'), isNull);
+      expect(TomCupertinoOnlyColorAdapter().resolveColor('mRed'), isNull);
     });
 
     test('TomUIColors.reset() drops registrations for these adapters too', () {
-      AllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      TomAllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
       TomUIColors.reset();
-      expect(MaterialOnlyColorAdapter().resolveColor('zBrand'), isNull);
-      expect(CupertinoOnlyColorAdapter().resolveColor('zBrand'), isNull);
+      expect(TomMaterialOnlyColorAdapter().resolveColor('zBrand'), isNull);
+      expect(TomCupertinoOnlyColorAdapter().resolveColor('zBrand'), isNull);
     });
   });
 
@@ -291,8 +294,8 @@ void main() {
       expect(TomUIIcons.iconExists('mSave'), isFalse);
     });
 
-    test('AllIconsAdapter resolves Material and Cupertino', () {
-      TomUIIcons.adapter = AllIconsAdapter();
+    test('TomAllIconsAdapter resolves Material and Cupertino', () {
+      TomUIIcons.adapter = TomAllIconsAdapter();
       expect(TomUIIcons.resolveIcon('mSave'), Icons.save);
       expect(TomUIIcons.resolveIcon('cShare'), CupertinoIcons.share);
       expect(TomUIIcons.iconExists('mSettings'), isTrue);
@@ -300,42 +303,42 @@ void main() {
     });
 
     test('custom icons take precedence and can be cleared', () {
-      TomUIIcons.adapter = AllIconsAdapter();
-      AllIconsAdapter.registerIcons({'mSave': Icons.delete});
+      TomUIIcons.adapter = TomAllIconsAdapter();
+      TomAllIconsAdapter.registerIcons({'mSave': Icons.delete});
       expect(TomUIIcons.resolveIcon('mSave'), Icons.delete);
-      AllIconsAdapter.clearCustomIcons();
+      TomAllIconsAdapter.clearCustomIcons();
       expect(TomUIIcons.resolveIcon('mSave'), Icons.save);
     });
 
-    test('MaterialOnlyIconAdapter resolves only Material icons', () {
-      final adapter = MaterialOnlyIconAdapter();
+    test('TomMaterialOnlyIconAdapter resolves only Material icons', () {
+      final adapter = TomMaterialOnlyIconAdapter();
       expect(adapter.resolveIcon('mSave'), Icons.save);
       expect(adapter.resolveIcon('cShare'), isNull);
       expect(adapter.iconExists('mSave'), isTrue);
       expect(adapter.iconExists('cShare'), isFalse);
     });
 
-    test('CupertinoOnlyIconAdapter resolves only Cupertino icons', () {
-      final adapter = CupertinoOnlyIconAdapter();
+    test('TomCupertinoOnlyIconAdapter resolves only Cupertino icons', () {
+      final adapter = TomCupertinoOnlyIconAdapter();
       expect(adapter.resolveIcon('cShare'), CupertinoIcons.share);
       expect(adapter.resolveIcon('mSave'), isNull);
       expect(adapter.iconExists('cShare'), isTrue);
       expect(adapter.iconExists('mSave'), isFalse);
     });
 
-    // Registration is module-wide, not a property of AllIconsAdapter. The
+    // Registration is module-wide, not a property of TomAllIconsAdapter. The
     // failure this pins was silent and total: an app registers its brand
-    // icons, switches to MaterialOnlyIconAdapter for bundle size — the one
+    // icons, switches to TomMaterialOnlyIconAdapter for bundle size — the one
     // documented reason to switch — and every registered icon resolves to
     // null with iconExists reporting false. Nothing throws; icons just stop
     // rendering. The two tests above could not see it because they only ever
     // ask for built-in names.
     test('registrations reach the single-family adapters too', () {
-      AllIconsAdapter.registerIcons({'zBrandLogo': Icons.abc});
+      TomAllIconsAdapter.registerIcons({'zBrandLogo': Icons.abc});
       for (final adapter in <TomUIIconAdapter>[
-        AllIconsAdapter(),
-        MaterialOnlyIconAdapter(),
-        CupertinoOnlyIconAdapter(),
+        TomAllIconsAdapter(),
+        TomMaterialOnlyIconAdapter(),
+        TomCupertinoOnlyIconAdapter(),
       ]) {
         expect(
           adapter.resolveIcon('zBrandLogo'),
@@ -351,33 +354,33 @@ void main() {
     });
 
     test('a registration overrides a built-in for every adapter', () {
-      AllIconsAdapter.registerIcons({'mSave': Icons.delete});
-      expect(MaterialOnlyIconAdapter().resolveIcon('mSave'), Icons.delete);
-      expect(AllIconsAdapter().resolveIcon('mSave'), Icons.delete);
+      TomAllIconsAdapter.registerIcons({'mSave': Icons.delete});
+      expect(TomMaterialOnlyIconAdapter().resolveIcon('mSave'), Icons.delete);
+      expect(TomAllIconsAdapter().resolveIcon('mSave'), Icons.delete);
     });
 
     test('clearing drops registrations for every adapter', () {
-      AllIconsAdapter.registerIcons({'zBrandLogo': Icons.abc});
-      AllIconsAdapter.clearCustomIcons();
+      TomAllIconsAdapter.registerIcons({'zBrandLogo': Icons.abc});
+      TomAllIconsAdapter.clearCustomIcons();
       for (final adapter in <TomUIIconAdapter>[
-        AllIconsAdapter(),
-        MaterialOnlyIconAdapter(),
-        CupertinoOnlyIconAdapter(),
+        TomAllIconsAdapter(),
+        TomMaterialOnlyIconAdapter(),
+        TomCupertinoOnlyIconAdapter(),
       ]) {
         expect(adapter.resolveIcon('zBrandLogo'), isNull);
         expect(adapter.iconExists('zBrandLogo'), isFalse);
       }
       // The built-in table is untouched by the round trip.
-      expect(MaterialOnlyIconAdapter().resolveIcon('mSave'), Icons.save);
+      expect(TomMaterialOnlyIconAdapter().resolveIcon('mSave'), Icons.save);
     });
 
     test('registrations do not open the other family to a single-family '
         'adapter', () {
       // The point of these adapters is that they carry one family. A shared
       // registry must not become a back door to the other one.
-      AllIconsAdapter.registerIcons({'zBrandLogo': Icons.abc});
-      expect(MaterialOnlyIconAdapter().resolveIcon('cShare'), isNull);
-      expect(CupertinoOnlyIconAdapter().resolveIcon('mSave'), isNull);
+      TomAllIconsAdapter.registerIcons({'zBrandLogo': Icons.abc});
+      expect(TomMaterialOnlyIconAdapter().resolveIcon('cShare'), isNull);
+      expect(TomCupertinoOnlyIconAdapter().resolveIcon('mSave'), isNull);
     });
   });
 
@@ -390,12 +393,12 @@ void main() {
   // calls are gone now, so these tests are load-bearing for the whole file.
   group('reset() is the whole test-hygiene hook', () {
     test('TomUIColors.reset() drops custom colour registrations', () {
-      AllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      TomAllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
       // The registry is process-global, so an adapter constructed before the
       // reset must see the clear too — that instance is what a leak rides on.
-      final earlier = AllColorsAdapter();
+      final earlier = TomAllColorsAdapter();
       TomUIColors.reset();
-      TomUIColors.adapter = AllColorsAdapter();
+      TomUIColors.adapter = TomAllColorsAdapter();
 
       expect(TomUIColors.resolveColor('zBrand'), isNull);
       expect(TomUIColors.colorExists('zBrand'), isFalse);
@@ -403,26 +406,26 @@ void main() {
     });
 
     test('TomUIIcons.reset() drops custom icon registrations', () {
-      AllIconsAdapter.registerIcons({'zBrand': Icons.abc});
-      final earlier = AllIconsAdapter();
+      TomAllIconsAdapter.registerIcons({'zBrand': Icons.abc});
+      final earlier = TomAllIconsAdapter();
       TomUIIcons.reset();
-      TomUIIcons.adapter = AllIconsAdapter();
+      TomUIIcons.adapter = TomAllIconsAdapter();
 
       expect(TomUIIcons.resolveIcon('zBrand'), isNull);
       expect(TomUIIcons.iconExists('zBrand'), isFalse);
       expect(earlier.resolveIcon('zBrand'), isNull);
       // The registry is module-wide, so the single-family adapters lose it too.
-      expect(MaterialOnlyIconAdapter().resolveIcon('zBrand'), isNull);
-      expect(CupertinoOnlyIconAdapter().resolveIcon('zBrand'), isNull);
+      expect(TomMaterialOnlyIconAdapter().resolveIcon('zBrand'), isNull);
+      expect(TomCupertinoOnlyIconAdapter().resolveIcon('zBrand'), isNull);
     });
 
     test('reset() drops an override without disturbing the built-in', () {
-      AllColorsAdapter.registerColors({'mRed': const Color(0xFF112233)});
-      AllIconsAdapter.registerIcons({'mSave': Icons.delete});
+      TomAllColorsAdapter.registerColors({'mRed': const Color(0xFF112233)});
+      TomAllIconsAdapter.registerIcons({'mSave': Icons.delete});
       TomUIColors.reset();
       TomUIIcons.reset();
-      TomUIColors.adapter = AllColorsAdapter();
-      TomUIIcons.adapter = AllIconsAdapter();
+      TomUIColors.adapter = TomAllColorsAdapter();
+      TomUIIcons.adapter = TomAllIconsAdapter();
 
       // Back to the generated tables, not to null and not to the override.
       expect(TomUIColors.resolveColor('mRed'), Colors.red);
@@ -439,7 +442,7 @@ void main() {
     test('TomUIColors.adapter is null until one is installed', () {
       expect(TomUIColors.adapter, isNull);
 
-      final adapter = AllColorsAdapter();
+      final adapter = TomAllColorsAdapter();
       TomUIColors.adapter = adapter;
       expect(TomUIColors.adapter, same(adapter));
 
@@ -450,7 +453,7 @@ void main() {
     test('TomUIIcons.adapter is null until one is installed', () {
       expect(TomUIIcons.adapter, isNull);
 
-      final adapter = AllIconsAdapter();
+      final adapter = TomAllIconsAdapter();
       TomUIIcons.adapter = adapter;
       expect(TomUIIcons.adapter, same(adapter));
 
@@ -459,11 +462,11 @@ void main() {
     });
 
     test('a narrow adapter can be installed and the wide one put back', () {
-      final wide = AllColorsAdapter();
+      final wide = TomAllColorsAdapter();
       TomUIColors.adapter = wide;
       final saved = TomUIColors.adapter;
 
-      TomUIColors.adapter = MaterialOnlyColorAdapter();
+      TomUIColors.adapter = TomMaterialOnlyColorAdapter();
       // Observable through resolution, not only through identity: the narrow
       // adapter really is the one answering.
       expect(TomUIColors.resolveColor('cSystemBlue'), isNull);
@@ -476,11 +479,11 @@ void main() {
     test(
       'a narrow icon adapter can be installed and the wide one put back',
       () {
-        final wide = AllIconsAdapter();
+        final wide = TomAllIconsAdapter();
         TomUIIcons.adapter = wide;
         final saved = TomUIIcons.adapter;
 
-        TomUIIcons.adapter = CupertinoOnlyIconAdapter();
+        TomUIIcons.adapter = TomCupertinoOnlyIconAdapter();
         expect(TomUIIcons.resolveIcon('mSave'), isNull);
 
         TomUIIcons.adapter = saved;
@@ -494,26 +497,26 @@ void main() {
     // one branch a save/restore helper would otherwise need is also the one
     // that silently loses application state.
     test('restoring "nothing installed" keeps the registrations', () {
-      AllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      TomAllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
       final saved = TomUIColors.adapter; // nothing installed yet
 
-      TomUIColors.adapter = MaterialOnlyColorAdapter();
+      TomUIColors.adapter = TomMaterialOnlyColorAdapter();
       TomUIColors.adapter = saved;
 
       expect(TomUIColors.adapter, isNull);
-      TomUIColors.adapter = AllColorsAdapter();
+      TomUIColors.adapter = TomAllColorsAdapter();
       expect(TomUIColors.resolveColor('zBrand'), const Color(0xFF112233));
     });
 
     test('restoring "nothing installed" keeps icon registrations', () {
-      AllIconsAdapter.registerIcons({'zBrand': Icons.abc});
+      TomAllIconsAdapter.registerIcons({'zBrand': Icons.abc});
       final saved = TomUIIcons.adapter;
 
-      TomUIIcons.adapter = MaterialOnlyIconAdapter();
+      TomUIIcons.adapter = TomMaterialOnlyIconAdapter();
       TomUIIcons.adapter = saved;
 
       expect(TomUIIcons.adapter, isNull);
-      TomUIIcons.adapter = AllIconsAdapter();
+      TomUIIcons.adapter = TomAllIconsAdapter();
       expect(TomUIIcons.resolveIcon('zBrand'), Icons.abc);
     });
   });
@@ -595,7 +598,7 @@ void main() {
     // The tolerance is bounded on purpose. Case and surrounding space are
     // noise from the authoring source; a synonym is a different word, and
     // admitting one commits the module to a list of them that nobody agreed
-    // on. It is the line AllColorsAdapter already draws — it folds case in
+    // on. It is the line TomAllColorsAdapter already draws — it folds case in
     // `#FFF` and `rgb(...)` syntax and still does not know `crimson`.
     test('isEnabled: the tolerance stops at spelling, not synonyms', () {
       const outside = <String, Object>{

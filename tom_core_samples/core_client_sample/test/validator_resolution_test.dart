@@ -65,7 +65,7 @@ void main() {
       final result = await form.title.validate();
       // The key is pinned as well as its text: the message only resolves if
       // the rule reports exactly the key the bundle declares.
-      expect((result as ValidationError).errorKey, 'error.titleWhitespace');
+      expect((result as TomValidationError).errorKey, 'error.titleWhitespace');
       expect(
         form.title.resolvedErrorMessage,
         'Title cannot have leading or trailing spaces.',

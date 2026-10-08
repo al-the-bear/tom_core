@@ -33,7 +33,7 @@ import 'state/example_state.dart';
 //   3. Orders — master-detail list. Each order is itself an editable form
 //      with its own items list.
 //
-// Every interactive control is built through `FormFieldFamily`, so the
+// Every interactive control is built through `TomFormFieldFamily`, so the
 // only difference between the Material and Cupertino entries is the
 // `family` value passed at construction time. Static auth (read-only
 // email, disabled tier) is installed in `initState`.
@@ -47,7 +47,7 @@ class ExampleHDCustomerForm extends StatefulWidget {
 }
 
 class _ExampleHDCustomerFormState extends State<ExampleHDCustomerForm> {
-  late final FormFieldFamily _family;
+  late final TomFormFieldFamily _family;
   late final ExampleCustomerRichForm _form;
 
   @override
@@ -55,8 +55,8 @@ class _ExampleHDCustomerFormState extends State<ExampleHDCustomerForm> {
     super.initState();
     installExampleAuthorization();
     _family = widget.family == ExampleFamily.cupertino
-        ? FormFieldFamily.cupertino
-        : FormFieldFamily.material;
+        ? TomFormFieldFamily.cupertino
+        : TomFormFieldFamily.material;
     _form = ExampleCustomerRichForm(family: _family);
     _form.bind(exampleCustomerHd);
   }
@@ -174,7 +174,7 @@ class _AddressesCard extends StatelessWidget {
   const _AddressesCard({required this.form, required this.family});
 
   final ExampleCustomerRichForm form;
-  final FormFieldFamily family;
+  final TomFormFieldFamily family;
 
   @override
   Widget build(BuildContext context) {
@@ -336,7 +336,7 @@ class _OrdersCard extends StatelessWidget {
   const _OrdersCard({required this.form, required this.family});
 
   final ExampleCustomerRichForm form;
-  final FormFieldFamily family;
+  final TomFormFieldFamily family;
 
   @override
   Widget build(BuildContext context) {

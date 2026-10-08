@@ -26,7 +26,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 /// `visualDensity` and `offset` suffixes), all of them through the map route.
 void main() {
   setUpAll(() {
-    TomUIColors.adapter = AllColorsAdapter();
+    TomUIColors.adapter = TomAllColorsAdapter();
   });
 
   /// Installs [resources] as the app resource tree for one test.

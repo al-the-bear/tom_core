@@ -5,17 +5,17 @@ import 'validation_result.dart';
 /// Each method returns a [TomValidator<T>] that can be added to a field's
 /// validator list. Error keys follow the `error.*` convention and are
 /// resolved relative to the field's basePath.
-class Validators {
-  Validators._();
+class TomValidators {
+  TomValidators._();
 
   /// Singleton required validator (for identity-based detection).
   /// Accepts [dynamic] so it can be stored in validators lists of any field
   /// type. Dart's contravariance allows `TomValidator<dynamic>` to also serve
   /// as `TomValidator<String>`.
-  static ValidationResult _requiredValidator(dynamic value) =>
+  static TomValidationResult _requiredValidator(dynamic value) =>
       (value is String && value.isEmpty) || value == null
-      ? const ValidationError('error.required')
-      : const ValidationSuccess();
+      ? const TomValidationError('error.required')
+      : const TomValidationSuccess();
 
   /// The required validator instance (for identity comparison by the
   /// per-widget decoration mixins to detect required fields).
@@ -33,14 +33,14 @@ class Validators {
   /// Validates that a string has at least [min] characters.
   static TomValidator<String> minLength(int min) =>
       (String value) => value.length < min
-      ? ValidationError('error.minLength', params: {'min': min})
-      : const ValidationSuccess();
+      ? TomValidationError('error.minLength', params: {'min': min})
+      : const TomValidationSuccess();
 
   /// Validates that a string has at most [max] characters.
   static TomValidator<String> maxLength(int max) =>
       (String value) => value.length > max
-      ? ValidationError('error.maxLength', params: {'max': max})
-      : const ValidationSuccess();
+      ? TomValidationError('error.maxLength', params: {'max': max})
+      : const TomValidationSuccess();
 
   /// Validates that a string matches the given [regex].
   static TomValidator<String> pattern(
@@ -48,20 +48,20 @@ class Validators {
     String errorKey = 'error.format',
   }) =>
       (String value) => !regex.hasMatch(value)
-      ? ValidationError(errorKey)
-      : const ValidationSuccess();
+      ? TomValidationError(errorKey)
+      : const TomValidationSuccess();
 
   /// Validates that a numeric value is at least [minValue].
   static TomValidator<num> min(num minValue) =>
       (num value) => value < minValue
-      ? ValidationError('error.min', params: {'min': minValue})
-      : const ValidationSuccess();
+      ? TomValidationError('error.min', params: {'min': minValue})
+      : const TomValidationSuccess();
 
   /// Validates that a numeric value is at most [maxValue].
   static TomValidator<num> max(num maxValue) =>
       (num value) => value > maxValue
-      ? ValidationError('error.max', params: {'max': maxValue})
-      : const ValidationSuccess();
+      ? TomValidationError('error.max', params: {'max': maxValue})
+      : const TomValidationSuccess();
 
   /// Validates that a collection holds at least [min] entries.
   ///
@@ -73,15 +73,15 @@ class Validators {
   /// expected.
   static TomValidator<Iterable<Object?>> minItems(int min) =>
       (Iterable<Object?> value) => value.length < min
-      ? ValidationError('error.minItems', params: {'min': min})
-      : const ValidationSuccess();
+      ? TomValidationError('error.minItems', params: {'min': min})
+      : const TomValidationSuccess();
 
   /// Validates that a collection holds at most [max] entries — the upper
   /// selection bound (`maxSelections`). See [minItems].
   static TomValidator<Iterable<Object?>> maxItems(int max) =>
       (Iterable<Object?> value) => value.length > max
-      ? ValidationError('error.maxItems', params: {'max': max})
-      : const ValidationSuccess();
+      ? TomValidationError('error.maxItems', params: {'max': max})
+      : const TomValidationSuccess();
 
   /// Composes multiple validators into one.
   ///
@@ -90,8 +90,8 @@ class Validators {
       (T value) async {
         for (final validator in validators) {
           final result = await validator(value);
-          if (result is! ValidationSuccess) return result;
+          if (result is! TomValidationSuccess) return result;
         }
-        return const ValidationSuccess();
+        return const TomValidationSuccess();
       };
 }

@@ -9,20 +9,20 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // Helpers
 // ---------------------------------------------------------------------------
 
-FileRef _ref(String name, List<int> bytes) => FileRef(
+TomFileRef _ref(String name, List<int> bytes) => TomFileRef(
   name: name,
   sizeBytes: bytes.length,
   bytes: Uint8List.fromList(bytes),
 );
 
 /// A reference whose content arrives in [chunks] pieces of [chunkSize] bytes.
-FileRef _chunkedRef(
+TomFileRef _chunkedRef(
   String name, {
   required int chunks,
   required int chunkSize,
 }) {
   final total = chunks * chunkSize;
-  return FileRef(
+  return TomFileRef(
     name: name,
     sizeBytes: total,
     source: TomFileSource.stream(

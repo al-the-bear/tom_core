@@ -49,7 +49,7 @@ screen, ordered from single-axis primitives to the combined capstone:
 | # | Group | Teaches | Backing |
 | - | ----- | ------- | ------- |
 | 1 | **Breakpoint field style** | `TomFieldStyle.*BpOverrides` re-resolve a form's field anatomy per width tier | `CompanyForm` |
-| 2 | **Family swap** | `FormFieldFamily` Material↔Cupertino swap at a breakpoint, shared entity | `FamilyForm` ×2 |
+| 2 | **Family swap** | `TomFormFieldFamily` Material↔Cupertino swap at a breakpoint, shared entity | `FamilyForm` ×2 |
 | 3 | **Row breakpoints** | `AclBuilder.addRowBreakpoint` reflows a form row to a stack | `CompanyForm` |
 | 4 | **Form-factor variants** | `resolveFormFactor` + `addVariant` swap a whole-row layout below a width | raw `AclBuilder` |
 | 5 | **Adaptive sizing** | `setMSize` / `setPSize` / `setXSize` / `expandX` give a cell an elastic range | raw `AclBuilder` |
@@ -251,8 +251,8 @@ widget test installs in its `setUp`. The only string kept hardcoded outside it i
 `MaterialApp.title` — OS-level app identity, not on-screen copy.
 
 **Validator messages are the category with teeth.** A validator never carries a
-sentence; it emits a key (`Validators.minLength(2)` emits `error.minLength` with
-`params: {'min': 2}`, and a `Validators.pattern` emits whatever `errorKey:` it
+sentence; it emits a key (`TomValidators.minLength(2)` emits `error.minLength` with
+`params: {'min': 2}`, and a `TomValidators.pattern` emits whatever `errorKey:` it
 was given — see `lib/forms/company_form.dart`). The field resolves that key
 through `<basePath>.<key>` → `<key>` → **the key itself**, that last step being a
 development indicator. So a key no bundle defines does not throw, log, or render
@@ -279,9 +279,9 @@ re-resolves per tier with no rebuild branching:
 TomFormStyleScope(
   style: TomFormStyle(
     defaults: TomFieldStyle(
-      labelPlacement: LabelPlacement.floating,
-      labelPlacementBpOverrides: [(400, LabelPlacement.above),
-                                  (700, LabelPlacement.inline)],
+      labelPlacement: TomLabelPlacement.floating,
+      labelPlacementBpOverrides: [(400, TomLabelPlacement.above),
+                                  (700, TomLabelPlacement.inline)],
       labelStyleBpOverrides:  [(400, TextStyle(fontSize: 13)),
                                (700, TextStyle(fontSize: 15))],
       labelFieldGapBpOverrides: [(400, 4.0), (700, 8.0)],
@@ -307,13 +307,13 @@ error border on and lifts the label out of the field; 500px adds the error icon;
 
 A whole-form **family swap** at a width threshold, over a **shared entity**. One
 form *declaration* (`FamilyForm`) resolves Material vs Cupertino field concretes
-at construction time via `FormFieldFamily`. The screen pre-builds one instance
+at construction time via `TomFormFieldFamily`. The screen pre-builds one instance
 per family, binds **both to the same `ResponsiveProfile`**, and renders whichever
 matches the 700px breakpoint:
 
 ```dart
-final material  = FamilyForm(family: FormFieldFamily.material);
-final cupertino = FamilyForm(family: FormFieldFamily.cupertino);
+final material  = FamilyForm(family: TomFormFieldFamily.material);
+final cupertino = FamilyForm(family: TomFormFieldFamily.cupertino);
 material.bind(shared); cupertino.bind(shared);   // ONE entity
 
 // (minWidth, style): highest minWidth <= width wins, so the override
@@ -442,10 +442,10 @@ same width:
 ```dart
 TomFormStyleScope(
   style: TomFormStyle(defaults: TomFieldStyle(
-    labelPlacement: LabelPlacement.floating,
+    labelPlacement: TomLabelPlacement.floating,
     labelPlacementBpOverrides: [
-      (400, LabelPlacement.above),
-      (700, LabelPlacement.inline),
+      (400, TomLabelPlacement.above),
+      (700, TomLabelPlacement.inline),
     ],
     // …labelStyle / labelFieldGap overrides…
   )),
@@ -635,7 +635,7 @@ comment.
 - **Repo map:** [`tom_ai/core/README.md`](../../README.md)
 - **Sample suite index:** [`tom_core_samples/README.md`](../README.md)
 - **The kit on display:** [`tom_flutter_ui`](../../tom_flutter_ui/README.md) — the
-  `TomAclBuilder`, `TomFormStyle` and `FormFieldFamily` API reference.
+  `TomAclBuilder`, `TomFormStyle` and `TomFormFieldFamily` API reference.
 - **Sibling samples:**
   [`core_flutter_form_showcase`](../core_flutter_form_showcase/README.md) (the
   full forms framework tour) and

@@ -169,8 +169,8 @@ void main() {
     tester,
   ) async {
     // `OrderItemForm.quantity` is the only `autoValidate: true` field in the
-    // sample, and its validator is hand-written rather than a `Validators`
-    // built-in — so it is the one that proves a bespoke `ValidationError` key
+    // sample, and its validator is hand-written rather than a `TomValidators`
+    // built-in — so it is the one that proves a bespoke `TomValidationError` key
     // resolves through the same bundle as the framework's own.
     await pumpFields(
       tester,
@@ -258,7 +258,7 @@ void main() {
   // The widget cases above prove a key resolves to prose; these prove the rule
   // emits the key at all — including the ones no quick interaction paints.
   group('field validators emit their exact error keys', () {
-    Future<ValidationResult> validateItemField(
+    Future<TomValidationResult> validateItemField(
       TomFormStringInput Function(OrderItemForm form) field,
       String text,
     ) async {
@@ -270,17 +270,17 @@ void main() {
 
     test('a zero quantity emits error.mustBePositive', () async {
       final r = await validateItemField((f) => f.quantity, '0');
-      expect((r as ValidationError).errorKey, 'error.mustBePositive');
+      expect((r as TomValidationError).errorKey, 'error.mustBePositive');
     });
 
     test('a non-numeric unit price emits error.invalidDecimal', () async {
       final r = await validateItemField((f) => f.unitPrice, 'free');
-      expect((r as ValidationError).errorKey, 'error.invalidDecimal');
+      expect((r as TomValidationError).errorKey, 'error.invalidDecimal');
     });
 
     test('a negative unit price emits error.mustBeNonNegative', () async {
       final r = await validateItemField((f) => f.unitPrice, '-0.50');
-      expect((r as ValidationError).errorKey, 'error.mustBeNonNegative');
+      expect((r as TomValidationError).errorKey, 'error.mustBeNonNegative');
     });
 
     test('a well-formed tax ID starting with X emits error.taxIdTaken from '
@@ -290,7 +290,7 @@ void main() {
       // Matches the `[A-Z0-9-]+` pattern, so only the slow validator rejects.
       form.taxId.set('X-1234');
       final r = await form.taxId.validate();
-      expect((r as ValidationError).errorKey, 'error.taxIdTaken');
+      expect((r as TomValidationError).errorKey, 'error.taxIdTaken');
     });
   });
 }

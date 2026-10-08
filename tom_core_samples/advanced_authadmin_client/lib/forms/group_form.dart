@@ -30,7 +30,7 @@ class GroupForm extends TomForm<GroupDraft> {
       'name',
       '',
       form: this,
-      validators: [Validators.required()],
+      validators: [TomValidators.required()],
     );
   }
 }

@@ -43,7 +43,7 @@ mixin TomStringInputDecorationMixin<T> on TomField<T> {
 
   /// Text suffix for the required indicator, suitable for appending to
   /// plain-text slots such as `InputDecoration.labelText` or `hintText`.
-  String requiredIndicatorSuffix(RequiredIndicator kind) {
+  String requiredIndicatorSuffix(TomRequiredIndicator kind) {
     return requiredIndicatorSuffixFor(
       kind,
       hasRequired: hasRequiredValidator,

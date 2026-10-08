@@ -418,10 +418,14 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
       builder: (context, _) {
         final theme = Theme.of(context);
         final total = _inspector.length;
-        final fieldChanges = _inspector.ofType<FieldValueChangedEvent>().length;
-        final fieldCommitted = _inspector.ofType<FieldCommittedEvent>().length;
-        final formBound = _inspector.ofType<FormBoundEvent>().length;
-        final formDiscarded = _inspector.ofType<FormDiscardedEvent>().length;
+        final fieldChanges = _inspector
+            .ofType<TomFieldValueChangedEvent>()
+            .length;
+        final fieldCommitted = _inspector
+            .ofType<TomFieldCommittedEvent>()
+            .length;
+        final formBound = _inspector.ofType<TomFormBoundEvent>().length;
+        final formDiscarded = _inspector.ofType<TomFormDiscardedEvent>().length;
         final rows = [
           ('total events', '$total'),
           ('FieldValueChanged', '$fieldChanges'),
@@ -467,7 +471,7 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
     );
   }
 
-  String _formatFile(FileRef? ref) {
+  String _formatFile(TomFileRef? ref) {
     if (ref == null) return '— no file selected';
     final size = ref.sizeBytes < 1024
         ? '${ref.sizeBytes} B'

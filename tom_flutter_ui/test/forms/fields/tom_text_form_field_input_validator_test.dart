@@ -5,7 +5,7 @@
 /// against the raw text on every keystroke and can *reject* it, reverting the
 /// controller to the last text the field accepted. The spec-conforming fields
 /// ([TomFormStringInput] and the rest) have no equivalent — they validate
-/// through the `Validators` pipeline, which reports on a value rather than
+/// through the `TomValidators` pipeline, which reports on a value rather than
 /// vetoing a character. So these tests can only be written against the base
 /// class, and that is not a shortcut around a public API.
 library;

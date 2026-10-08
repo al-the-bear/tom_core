@@ -40,7 +40,7 @@ import '../tom_form_enum_object_fields.dart';
 /// matches the look of the Cupertino date / time pickers.
 Future<T?> _showCupertinoListPicker<T>({
   required BuildContext context,
-  required List<SelectableItem<T>> items,
+  required List<TomSelectableItem<T>> items,
   required int initialIndex,
   String? basePath,
   double sheetHeight = 216,
@@ -202,8 +202,8 @@ class _CupertinoEnumPickerWidget<T> extends StatefulWidget {
 
 class _CupertinoEnumPickerWidgetState<T>
     extends State<_CupertinoEnumPickerWidget<T>> {
-  StreamSubscription<List<SelectableItem<T>>>? _subscription;
-  List<SelectableItem<T>> _items = const [];
+  StreamSubscription<List<TomSelectableItem<T>>>? _subscription;
+  List<TomSelectableItem<T>> _items = const [];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomCupertinoFormEnumPicker<T> get field => widget.field;
@@ -344,8 +344,8 @@ class _CupertinoEnumSegmentedWidget<T extends Object> extends StatefulWidget {
 
 class _CupertinoEnumSegmentedWidgetState<T extends Object>
     extends State<_CupertinoEnumSegmentedWidget<T>> {
-  StreamSubscription<List<SelectableItem<T>>>? _subscription;
-  List<SelectableItem<T>> _items = const [];
+  StreamSubscription<List<TomSelectableItem<T>>>? _subscription;
+  List<TomSelectableItem<T>> _items = const [];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomCupertinoFormEnumSegmented<T> get field => widget.field;
@@ -476,8 +476,8 @@ class _CupertinoObjectPickerWidget<T> extends StatefulWidget {
 
 class _CupertinoObjectPickerWidgetState<T>
     extends State<_CupertinoObjectPickerWidget<T>> {
-  StreamSubscription<List<SelectableItem<T>>>? _subscription;
-  List<SelectableItem<T>> _items = const [];
+  StreamSubscription<List<TomSelectableItem<T>>>? _subscription;
+  List<TomSelectableItem<T>> _items = const [];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomCupertinoFormObjectPicker<T> get field => widget.field;

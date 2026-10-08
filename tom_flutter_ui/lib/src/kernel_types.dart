@@ -89,7 +89,7 @@ export 'package:tom_core_kernel/tom_core_kernel.dart'
         TomListLifecycleListener,
         TomObservableEnum,
         // File transfer — `TomFormFileField.transferClient` takes a client,
-        // `FileRef` is built from and converts to the client's types, and the
+        // `TomFileRef` is built from and converts to the client's types, and the
         // client's own methods name the progress, cancellation and error types.
         TomFileTransferClient,
         TomFileSource,

@@ -157,8 +157,8 @@ extension AclBuilderChrome on AclBuilder {
   /// every row. Individual rows override via [setRowHorizontalAlignment]
   /// or the Left/Center/Right shortcuts.
   ///
-  /// The factory default is [RowAlignment.left].
-  AclBuilder setAclDefaultRowHorizontalAlignment(RowAlignment alignment) {
+  /// The factory default is [AclRowAlignment.left].
+  AclBuilder setAclDefaultRowHorizontalAlignment(AclRowAlignment alignment) {
     _defaultRowHorizontalAlignment = alignment;
     // Retroactively apply to every row that hasn't set its own alignment —
     // including the eagerly-created first row — so call order stays flexible.

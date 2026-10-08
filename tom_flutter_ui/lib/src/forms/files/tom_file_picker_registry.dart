@@ -15,7 +15,7 @@
 ///     handful of field copies, with no type from this package involved.
 ///   * [TomFilePickerRegistry] holds one adaptor for the whole application, so
 ///     a field constructed without a `picker` still opens a real picker.
-///   * [TomFilePickers] turns a [TomPickedFile] into a [FileRef], choosing a
+///   * [TomFilePickers] turns a [TomPickedFile] into a [TomFileRef], choosing a
 ///     streamed source over in-memory bytes whenever it can.
 ///
 /// So the app writes the six lines that name its picker package, once, and
@@ -202,7 +202,7 @@ class TomFilePickerRegistry {
   ///
   /// Throws [StateError] when no picker is registered; reaching here without
   /// one is a wiring mistake, not a runtime condition to paper over.
-  static Future<FileRef?> pick(TomFilePickRequest request) async {
+  static Future<TomFileRef?> pick(TomFilePickRequest request) async {
     final picker = _picker;
     if (picker == null) {
       throw StateError(
@@ -220,7 +220,7 @@ class TomFilePickerRegistry {
 // Conversions
 // ===========================================================================
 
-/// Ready-made [TomFilePicker] callbacks and the [TomPickedFile] → [FileRef]
+/// Ready-made [TomFilePicker] callbacks and the [TomPickedFile] → [TomFileRef]
 /// conversion they share.
 class TomFilePickers {
   TomFilePickers._();
@@ -243,7 +243,7 @@ class TomFilePickers {
       );
 
   /// A picker that always returns [ref] — for demos, tests and previews.
-  static TomFilePicker fixed(FileRef? ref) =>
+  static TomFilePicker fixed(TomFileRef? ref) =>
       (BuildContext context) async => ref;
 
   /// Converts a picked file into the value a field holds.
@@ -252,7 +252,7 @@ class TomFilePickers {
   /// both, and keeping the bytes would defeat the streaming upload the source
   /// exists to enable. A path is opened lazily, so a large file is never read
   /// here.
-  static FileRef toFileRef(TomPickedFile picked) {
+  static TomFileRef toFileRef(TomPickedFile picked) {
     final mimeType =
         picked.mimeType ?? TomFileSource.guessMediaType(picked.name);
 
@@ -261,7 +261,7 @@ class TomFilePickers {
       final size =
           picked.sizeBytes ??
           (picked.path == null ? null : fileLengthAt(picked.path!));
-      return FileRef(
+      return TomFileRef(
         name: picked.name,
         // A size the picker did not report and the filesystem cannot supply is
         // recorded as 0 rather than guessed: the upload still streams, and the
@@ -279,7 +279,7 @@ class TomFilePickers {
 
     final bytes = picked.bytes;
     if (bytes != null) {
-      return FileRef(
+      return TomFileRef(
         name: picked.name,
         sizeBytes: picked.sizeBytes ?? bytes.length,
         mimeType: mimeType,
@@ -289,7 +289,7 @@ class TomFilePickers {
 
     // Neither content form: the file can still be named and validated, and the
     // upload path will say clearly that there is nothing to send.
-    return FileRef(
+    return TomFileRef(
       name: picked.name,
       sizeBytes: picked.sizeBytes ?? 0,
       mimeType: mimeType,

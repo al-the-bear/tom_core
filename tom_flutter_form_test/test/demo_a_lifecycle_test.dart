@@ -116,7 +116,7 @@ void main() {
   ) async {
     await openDemoA(tester);
     // Seed values for password / confirmPassword are empty in
-    // phase1ValidationState. Required validators run, but ValidationPristine
+    // phase1ValidationState. Required validators run, but TomValidationPristine
     // suppresses error display until the user types or attempts Save.
     expect(
       find.text('Password is required.'),
@@ -272,12 +272,12 @@ void main() {
     final usernameField = fieldByTomId('username');
     expect(usernameField, findsOneWidget);
     await tester.enterText(usernameField, 'admin42');
-    // SlowValidator delays ~800 ms.
+    // TomSlowValidator delays ~800 ms.
     await tester.pumpAndSettle(const Duration(milliseconds: 1200));
     expect(
       find.text('That username is already taken.'),
       findsAtLeastNWidgets(1),
-      reason: 'admin* triggers the async SlowValidator after ~800ms',
+      reason: 'admin* triggers the async TomSlowValidator after ~800ms',
     );
   });
 }

@@ -6,12 +6,12 @@ import '../tom_form_labels.dart';
 /// Result of an unsaved-changes prompt. [save] runs the form's save and
 /// only proceeds if it succeeds; [discard] resets the form; [cancel]
 /// aborts the pending action.
-enum UnsavedChangesChoice { save, discard, cancel }
+enum TomUnsavedChangesChoice { save, discard, cancel }
 
 /// Prompts the user to save / discard / cancel when [form] is dirty,
 /// then performs [action] only if the choice doesn't abort.
 ///
-/// Returns the chosen [UnsavedChangesChoice]. When the form isn't dirty
+/// Returns the chosen [TomUnsavedChangesChoice]. When the form isn't dirty
 /// the dialog is skipped and [action] runs immediately, returning a
 /// synthetic `discard` (nothing to save).
 ///
@@ -25,7 +25,7 @@ enum UnsavedChangesChoice { save, discard, cancel }
 /// localised application gets a localised prompt without passing anything.
 /// Passing a string still wins outright, which is what a caller wanting one
 /// specific wording here — and only here — is asking for.
-Future<UnsavedChangesChoice> guardUnsavedChanges({
+Future<TomUnsavedChangesChoice> guardUnsavedChanges({
   required BuildContext context,
   required TomForm form,
   required Future<void> Function() action,
@@ -37,11 +37,11 @@ Future<UnsavedChangesChoice> guardUnsavedChanges({
 }) async {
   if (!form.isDirty) {
     await action();
-    return UnsavedChangesChoice.discard;
+    return TomUnsavedChangesChoice.discard;
   }
 
   final path = form.basePath;
-  final choice = await showDialog<UnsavedChangesChoice>(
+  final choice = await showDialog<TomUnsavedChangesChoice>(
     context: context,
     barrierDismissible: false,
     builder: (ctx) => AlertDialog(
@@ -49,15 +49,17 @@ Future<UnsavedChangesChoice> guardUnsavedChanges({
       content: Text(message ?? TomFormLabels.unsavedMessage(path)),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(ctx).pop(UnsavedChangesChoice.cancel),
+          onPressed: () =>
+              Navigator.of(ctx).pop(TomUnsavedChangesChoice.cancel),
           child: Text(cancelLabel ?? TomFormLabels.cancel(path)),
         ),
         TextButton(
-          onPressed: () => Navigator.of(ctx).pop(UnsavedChangesChoice.discard),
+          onPressed: () =>
+              Navigator.of(ctx).pop(TomUnsavedChangesChoice.discard),
           child: Text(discardLabel ?? TomFormLabels.discard(path)),
         ),
         FilledButton(
-          onPressed: () => Navigator.of(ctx).pop(UnsavedChangesChoice.save),
+          onPressed: () => Navigator.of(ctx).pop(TomUnsavedChangesChoice.save),
           child: Text(saveLabel ?? TomFormLabels.save(path)),
         ),
       ],
@@ -65,19 +67,19 @@ Future<UnsavedChangesChoice> guardUnsavedChanges({
   );
 
   switch (choice) {
-    case UnsavedChangesChoice.save:
+    case TomUnsavedChangesChoice.save:
       final ok = await form.save();
       if (ok) {
         await action();
       }
-      return UnsavedChangesChoice.save;
-    case UnsavedChangesChoice.discard:
+      return TomUnsavedChangesChoice.save;
+    case TomUnsavedChangesChoice.discard:
       form.discard();
       await action();
-      return UnsavedChangesChoice.discard;
-    case UnsavedChangesChoice.cancel:
+      return TomUnsavedChangesChoice.discard;
+    case TomUnsavedChangesChoice.cancel:
     case null:
-      return UnsavedChangesChoice.cancel;
+      return TomUnsavedChangesChoice.cancel;
   }
 }
 

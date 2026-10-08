@@ -41,12 +41,12 @@ data** resolved here.
 | ------ | ---- | ------- |
 | `TomUIColorAdapter` | abstract class | Contract: resolve a colour `name` → `Color?`, plus `colorExists`. |
 | `TomUIColors` | class | Global colour resolver; delegates to the installed adapter. |
-| `AllColorsAdapter` | class | Resolves named (`mRed`, `cSystemBlue`), hex (`#RGB`, `#ARGB`, `#RRGGBB`, `#AARRGGBB` — alpha first), and `rgb()/rgba()` colours; supports custom registration. |
-| `MaterialOnlyColorAdapter` / `CupertinoOnlyColorAdapter` | classes | Single-family colour resolvers for smaller bundles. |
+| `TomAllColorsAdapter` | class | Resolves named (`mRed`, `cSystemBlue`), hex (`#RGB`, `#ARGB`, `#RRGGBB`, `#AARRGGBB` — alpha first), and `rgb()/rgba()` colours; supports custom registration. |
+| `TomMaterialOnlyColorAdapter` / `TomCupertinoOnlyColorAdapter` | classes | Single-family colour resolvers for smaller bundles. |
 | `TomUIIconAdapter` | abstract class | Contract: resolve an icon `name` → `IconData?`, plus `iconExists`. |
 | `TomUIIcons` | class | Global icon resolver; delegates to the installed adapter. |
-| `AllIconsAdapter` | class | Resolves the full Material + Cupertino icon set; supports custom registration. |
-| `MaterialOnlyIconAdapter` / `CupertinoOnlyIconAdapter` | classes | Single-family icon resolvers for smaller bundles. |
+| `TomAllIconsAdapter` | class | Resolves the full Material + Cupertino icon set; supports custom registration. |
+| `TomMaterialOnlyIconAdapter` / `TomCupertinoOnlyIconAdapter` | classes | Single-family icon resolvers for smaller bundles. |
 | `TomConfigProvider` | class | Environment, platform, and feature-flag configuration. |
 | `TomConfigEnvironment` / `TomConfigPlatform` | enums | `development`/`staging`/`production`; `mobile`/`web`/`desktop`. |
 
@@ -56,13 +56,13 @@ data** resolved here.
 startup, then resolve names anywhere:
 
 ```dart
-TomUIColors.adapter = AllColorsAdapter();
+TomUIColors.adapter = TomAllColorsAdapter();
 TomUIColors.resolveColor('mRed');      // Colors.red
 TomUIColors.resolveColor('#FF5733');   // Color(0xFFFF5733)
 TomUIColors.resolveColor('rgb(0,128,255)');
 ```
 
-`AllColorsAdapter` resolves, in order: custom registered colours → hex (`#RGB`,
+`TomAllColorsAdapter` resolves, in order: custom registered colours → hex (`#RGB`,
 `#ARGB`, `#RRGGBB`, `#AARRGGBB`) → `rgb()/rgba()` → the generated
 Material/Cupertino palette. With **no adapter installed**,
 `TomUIColors.resolveColor` returns `null` and `colorExists` returns `false` — so
@@ -78,11 +78,11 @@ widgets degrade gracefully rather than throw.
 > through. Reorder the channels when copying a colour in; there is no way for
 > the parser to detect the mistake for you.
 
-`AllColorsAdapter.registerColors` adds or overrides names at runtime;
-`AllColorsAdapter.clearCustomColors` undoes that while keeping the adapter
+`TomAllColorsAdapter.registerColors` adds or overrides names at runtime;
+`TomAllColorsAdapter.clearCustomColors` undoes that while keeping the adapter
 installed.
 
-`MaterialOnlyColorAdapter` / `CupertinoOnlyColorAdapter` trade coverage for
+`TomMaterialOnlyColorAdapter` / `TomCupertinoOnlyColorAdapter` trade coverage for
 bundle size exactly as their icon counterparts do — an app targeting one
 platform stops carrying the other family's table. The second reason matters
 more often: with a single-family adapter installed, a stray `cSystemBlue` in a
@@ -106,7 +106,7 @@ reversible:
 
 ```dart
 final saved = TomUIColors.adapter;
-TomUIColors.adapter = MaterialOnlyColorAdapter();
+TomUIColors.adapter = TomMaterialOnlyColorAdapter();
 // ...
 TomUIColors.adapter = saved;
 ```
@@ -147,13 +147,13 @@ lookup time.
 
 ## Icon resolution
 
-`TomUIIcons` mirrors the colour facade for `IconData`. `AllIconsAdapter` covers
+`TomUIIcons` mirrors the colour facade for `IconData`. `TomAllIconsAdapter` covers
 the full generated Material (`m<PascalCase>`) and Cupertino (`c<PascalCase>`)
-icon sets; `MaterialOnlyIconAdapter` / `CupertinoOnlyIconAdapter` trade coverage for
+icon sets; `TomMaterialOnlyIconAdapter` / `TomCupertinoOnlyIconAdapter` trade coverage for
 bundle size by exposing a single family:
 
 ```dart
-TomUIIcons.adapter = AllIconsAdapter();
+TomUIIcons.adapter = TomAllIconsAdapter();
 TomUIIcons.resolveIcon('mSave');   // Icons.save
 TomUIIcons.resolveIcon('cShare');  // CupertinoIcons.share
 ```
@@ -163,19 +163,19 @@ snake_case names are converted to PascalCase (`arrow_back` → `mArrowBack`,
 `left_chevron` → `cLeftChevron`).
 
 Custom registration is **module-wide**, not per-adapter, and that holds on both
-sides: `AllIconsAdapter.registerIcons` and `AllColorsAdapter.registerColors`
+sides: `TomAllIconsAdapter.registerIcons` and `TomAllColorsAdapter.registerColors`
 each fill one registry that all three adapters of their family consult *before*
 their own table, and `clearCustomIcons` / `clearCustomColors` empty it for all
 three. So an app can register its brand icons and then switch to
-`MaterialOnlyIconAdapter` for bundle size — the one reason to switch — without
+`TomMaterialOnlyIconAdapter` for bundle size — the one reason to switch — without
 losing them, and a registration overriding a built-in name (`mSave` → a house
 icon) overrides it everywhere. What the single-family adapters drop is the
 *other family's generated table*, never a registration.
 
 The registration entry points stay on the `All…` adapters even though the
 registry they fill is module-wide, so that each family has exactly one place to
-register. Reaching for `AllIconsAdapter.registerIcons` while running
-`MaterialOnlyIconAdapter` is therefore correct, not a mistake.
+register. Reaching for `TomAllIconsAdapter.registerIcons` while running
+`TomMaterialOnlyIconAdapter` is therefore correct, not a mistake.
 
 ## Configuration: `TomConfigProvider`
 
@@ -221,7 +221,7 @@ a flag came through must not change what it means.
 
 It stops at spelling. Synonyms — `'yes'`, `'on'`, `'y'` — are **not** enabled,
 because admitting one commits the module to a list of them that nobody agreed
-on. It is the same line `AllColorsAdapter` draws: it folds case in `#FFF` and
+on. It is the same line `TomAllColorsAdapter` draws: it folds case in `#FFF` and
 `rgb(...)` syntax and still does not know what `crimson` means. A value outside
 the vocabulary is not lost, only not a flag — `feature<T>` still reports it.
 

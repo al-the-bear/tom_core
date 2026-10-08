@@ -25,10 +25,10 @@ import '../forms/company_form.dart';
 /// [TomFormStyleScope] feeds the live width into `resolveFieldStyle`.
 TomFormStyle get _responsiveStyle => TomFormStyle(
   defaults: const TomFieldStyle(
-    labelPlacement: LabelPlacement.floating,
+    labelPlacement: TomLabelPlacement.floating,
     labelPlacementBpOverrides: [
-      (400, LabelPlacement.above),
-      (700, LabelPlacement.inline),
+      (400, TomLabelPlacement.above),
+      (700, TomLabelPlacement.inline),
     ],
     labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
     labelStyleBpOverrides: [
@@ -86,10 +86,10 @@ final ShowcaseGroup responsiveAclFormGroup = ShowcaseGroup(
       code:
           'TomFormStyleScope(\n'
           '  style: TomFormStyle(defaults: TomFieldStyle(\n'
-          '    labelPlacement: LabelPlacement.floating,\n'
+          '    labelPlacement: TomLabelPlacement.floating,\n'
           '    labelPlacementBpOverrides: [\n'
-          '      (400, LabelPlacement.above),\n'
-          '      (700, LabelPlacement.inline),\n'
+          '      (400, TomLabelPlacement.above),\n'
+          '      (700, TomLabelPlacement.inline),\n'
           '    ],\n'
           '    // …labelStyle / labelFieldGap overrides…\n'
           '  )),\n'

@@ -45,7 +45,7 @@ abstract class TomUIColorAdapter {
 ///
 /// App startup:
 /// ```dart
-/// TomUIColors.adapter = AllColorsAdapter();
+/// TomUIColors.adapter = TomAllColorsAdapter();
 /// ```
 class TomUIColors {
   TomUIColors._();
@@ -58,7 +58,7 @@ class TomUIColors {
   ///
   /// ```dart
   /// final saved = TomUIColors.adapter;
-  /// TomUIColors.adapter = MaterialOnlyColorAdapter();
+  /// TomUIColors.adapter = TomMaterialOnlyColorAdapter();
   /// // ...
   /// TomUIColors.adapter = saved;
   /// ```
@@ -89,7 +89,7 @@ class TomUIColors {
   /// silently change a colour in every later test rather than failing.
   ///
   /// To drop registrations while keeping the installed adapter, use
-  /// [AllColorsAdapter.clearCustomColors].
+  /// [TomAllColorsAdapter.clearCustomColors].
   static void reset() {
     adapter = null;
     _customColors.clear();
@@ -102,7 +102,7 @@ class TomUIColors {
 /// registration, resolution and [TomUIColors.reset] all have to agree about
 /// where the registry is, and only one of them belongs to any single adapter.
 /// An app that registers its brand colours and then switches to
-/// [MaterialOnlyColorAdapter] for bundle size must not lose them, and losing
+/// [TomMaterialOnlyColorAdapter] for bundle size must not lose them, and losing
 /// them would be silent — every registered name would simply resolve to
 /// `null`.
 final Map<String, Color> _customColors = {};
@@ -240,7 +240,7 @@ abstract class _RegistryFirstColorAdapter implements TomUIColorAdapter {
 /// - Hex: `#RGB`, `#ARGB`, `#RRGGBB` or `#AARRGGBB` — alpha first, see
 ///   [_parseHexColor] for why that matters when copying from a design tool
 /// - RGB: `rgb(r, g, b)` or `rgba(r, g, b, a)`
-class AllColorsAdapter extends _RegistryFirstColorAdapter {
+class TomAllColorsAdapter extends _RegistryFirstColorAdapter {
   @override
   Color? resolveInPalette(String name) => GeneratedColors.resolve(name);
 
@@ -251,7 +251,7 @@ class AllColorsAdapter extends _RegistryFirstColorAdapter {
   ///
   /// Use this to add app-specific colors or override existing ones. The
   /// registry is module-wide, so a name registered here also resolves through
-  /// [MaterialOnlyColorAdapter] and [CupertinoOnlyColorAdapter]; registrations
+  /// [TomMaterialOnlyColorAdapter] and [TomCupertinoOnlyColorAdapter]; registrations
   /// take precedence over hex/rgb parsing and the generated palette in all
   /// three. [TomUIColors.reset] clears them along with the adapter.
   static void registerColors(Map<String, Color> colors) {
@@ -272,9 +272,9 @@ class AllColorsAdapter extends _RegistryFirstColorAdapter {
 /// Use this for smaller bundle size if you don't need the Cupertino palette,
 /// or to make a stray `cSystemBlue` in a resource file resolve to `null` and
 /// be caught rather than quietly working. Colors registered through
-/// [AllColorsAdapter.registerColors] still resolve — the registry is
+/// [TomAllColorsAdapter.registerColors] still resolve — the registry is
 /// module-wide — as do hex and rgb literals; only the Cupertino table is gone.
-class MaterialOnlyColorAdapter extends _RegistryFirstColorAdapter {
+class TomMaterialOnlyColorAdapter extends _RegistryFirstColorAdapter {
   @override
   Color? resolveInPalette(String name) => GeneratedColors.materialColors[name];
 
@@ -285,10 +285,10 @@ class MaterialOnlyColorAdapter extends _RegistryFirstColorAdapter {
 
 /// Adapter that only includes Cupertino colors.
 ///
-/// The iOS-facing counterpart to [MaterialOnlyColorAdapter], with the same
+/// The iOS-facing counterpart to [TomMaterialOnlyColorAdapter], with the same
 /// two reasons to reach for it and the same guarantees: registrations, hex and
 /// rgb all still resolve; only the Material table is gone.
-class CupertinoOnlyColorAdapter extends _RegistryFirstColorAdapter {
+class TomCupertinoOnlyColorAdapter extends _RegistryFirstColorAdapter {
   @override
   Color? resolveInPalette(String name) => GeneratedColors.cupertinoColors[name];
 

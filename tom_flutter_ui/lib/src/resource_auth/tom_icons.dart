@@ -42,7 +42,7 @@ abstract class TomUIIconAdapter {
 ///
 /// App startup:
 /// ```dart
-/// TomUIIcons.adapter = AllIconsAdapter();
+/// TomUIIcons.adapter = TomAllIconsAdapter();
 /// ```
 class TomUIIcons {
   TomUIIcons._();
@@ -55,7 +55,7 @@ class TomUIIcons {
   ///
   /// ```dart
   /// final saved = TomUIIcons.adapter;
-  /// TomUIIcons.adapter = MaterialOnlyIconAdapter();
+  /// TomUIIcons.adapter = TomMaterialOnlyIconAdapter();
   /// // ...
   /// TomUIIcons.adapter = saved;
   /// ```
@@ -86,7 +86,7 @@ class TomUIIcons {
   /// silently change an icon in every later test rather than failing.
   ///
   /// To drop registrations while keeping the installed adapter, use
-  /// [AllIconsAdapter.clearCustomIcons].
+  /// [TomAllIconsAdapter.clearCustomIcons].
   static void reset() {
     adapter = null;
     _customIcons.clear();
@@ -97,7 +97,7 @@ class TomUIIcons {
 ///
 /// Module-level rather than a static on one adapter: registration and
 /// resolution have to agree no matter which adapter is installed. An app that
-/// registers its brand icons and then switches to [MaterialOnlyIconAdapter] for
+/// registers its brand icons and then switches to [TomMaterialOnlyIconAdapter] for
 /// bundle size — the one documented reason to switch — must not lose them,
 /// and losing them would be silent: every registered name would simply
 /// resolve to `null` and render nothing.
@@ -132,7 +132,7 @@ abstract class _RegistryFirstIconAdapter implements TomUIIconAdapter {
 /// Icon naming:
 /// - Material: `m<PascalCase>` (e.g., `mAdd`, `mArrowBack`, `mSettings`)
 /// - Cupertino: `c<PascalCase>` (e.g., `cShare`, `cBook`, `cLeftChevron`)
-class AllIconsAdapter extends _RegistryFirstIconAdapter {
+class TomAllIconsAdapter extends _RegistryFirstIconAdapter {
   @override
   IconData? resolveInFamily(String name) => GeneratedIcons.resolve(name);
 
@@ -143,7 +143,7 @@ class AllIconsAdapter extends _RegistryFirstIconAdapter {
   ///
   /// Use this to add app-specific icons or override existing ones. The
   /// registry is module-wide, so a name registered here also resolves through
-  /// [MaterialOnlyIconAdapter] and [CupertinoOnlyIconAdapter]; registrations take
+  /// [TomMaterialOnlyIconAdapter] and [TomCupertinoOnlyIconAdapter]; registrations take
   /// precedence over the built-in tables in all three.
   /// [TomUIIcons.reset] clears them along with the adapter.
   static void registerIcons(Map<String, IconData> icons) {
@@ -162,9 +162,9 @@ class AllIconsAdapter extends _RegistryFirstIconAdapter {
 /// Adapter that only includes Material icons.
 ///
 /// Use this for smaller bundle size if you don't need Cupertino icons.
-/// Icons registered through [AllIconsAdapter.registerIcons] still resolve —
+/// Icons registered through [TomAllIconsAdapter.registerIcons] still resolve —
 /// the registry is module-wide — but the Cupertino table stays out.
-class MaterialOnlyIconAdapter extends _RegistryFirstIconAdapter {
+class TomMaterialOnlyIconAdapter extends _RegistryFirstIconAdapter {
   @override
   IconData? resolveInFamily(String name) => GeneratedIcons.materialIcons[name];
 
@@ -176,9 +176,9 @@ class MaterialOnlyIconAdapter extends _RegistryFirstIconAdapter {
 /// Adapter that only includes Cupertino icons.
 ///
 /// Use this for iOS-focused apps that only need Cupertino icons.
-/// Icons registered through [AllIconsAdapter.registerIcons] still resolve —
+/// Icons registered through [TomAllIconsAdapter.registerIcons] still resolve —
 /// the registry is module-wide — but the Material table stays out.
-class CupertinoOnlyIconAdapter extends _RegistryFirstIconAdapter {
+class TomCupertinoOnlyIconAdapter extends _RegistryFirstIconAdapter {
   @override
   IconData? resolveInFamily(String name) => GeneratedIcons.cupertinoIcons[name];
 

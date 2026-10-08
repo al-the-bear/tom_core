@@ -87,8 +87,8 @@ abstract class TomFormStringListField extends TomField<List<String>> {
 
 mixin _SourceBackedStringListWidgetStateMixin<TWidget extends StatefulWidget>
     on State<TWidget> {
-  StreamSubscription<List<SelectableItem<String>>>? _subscription;
-  List<SelectableItem<String>> items = const [];
+  StreamSubscription<List<TomSelectableItem<String>>>? _subscription;
+  List<TomSelectableItem<String>> items = const [];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomFormStringListField get field;
@@ -127,7 +127,7 @@ mixin _SourceBackedStringListWidgetStateMixin<TWidget extends StatefulWidget>
     }
   }
 
-  void _pruneVanishedSelections(List<SelectableItem<String>> current) {
+  void _pruneVanishedSelections(List<TomSelectableItem<String>> current) {
     final selected = field.get();
     if (selected.isEmpty) return;
     final availableValues = current.map((i) => i.value).toSet();

@@ -43,12 +43,12 @@ class AdminSecondFactorForm extends TomForm<AdminSecondFactorCode> {
       maxLength: digits,
       keyboardType: TextInputType.number,
       validators: [
-        Validators.required(),
+        TomValidators.required(),
         // Exactly [digits] — the server rejects a wrong-width submission before
         // it hashes anything, and a submission that can never match should not
         // cost the administrator one of their three attempts.
-        Validators.minLength(digits),
-        Validators.maxLength(digits),
+        TomValidators.minLength(digits),
+        TomValidators.maxLength(digits),
       ],
     );
   }

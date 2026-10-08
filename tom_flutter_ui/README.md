@@ -92,14 +92,14 @@ authorization integration.
 
 The declarative form system: the `TomForm` data model, validators, selectable
 sources, the form event bus, the Material+Cupertino style/decoration system, and
-the full field catalogue behind a `FormFieldFamily` factory.
+the full field catalogue behind a `TomFormFieldFamily` factory.
 
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomForm<T>` | The form base — bind / save / discard, validation, authorization |
-| `FormFieldFamily` | Factory selecting the Material or Cupertino concrete per field |
+| `TomFormFieldFamily` | Factory selecting the Material or Cupertino concrete per field |
 | `TomFormStyle`, `TomFormStyleScope` | Presets (`material3`, `compact`, `bordered`) + inherited scoping |
-| `LabelPlacement`, `DescriptionPlacement`, `RequiredIndicator` | Field decoration controls |
+| `TomLabelPlacement`, `TomDescriptionPlacement`, `TomRequiredIndicator` | Field decoration controls |
 | `TomSelectableSource` | Pluggable option sources (sync / async / filtered) |
 | `TomEnumSelectableSource<E>` | Enum options labelled from the text bundle, relabelled on a locale change |
 | `TomFormEvent`, `TomFormEventSource`, `TomFormEventListener` | The form event bus |
@@ -140,7 +140,7 @@ and download with progress, cancel and retry over the kernel's
 | ---- | -------------- |
 | `TomUIColors`, `TomUIIcons` | Resource-resolved colour / icon namespaces |
 | `TomUIColorAdapter`, `TomUIIconAdapter` | The pluggable resource adapter contracts |
-| `AllColorsAdapter`, `AllIconsAdapter`, and the `MaterialOnly…` / `CupertinoOnly…` pairs | Full and single-family adapters for each namespace |
+| `TomAllColorsAdapter`, `TomAllIconsAdapter`, and the `MaterialOnly…` / `CupertinoOnly…` pairs | Full and single-family adapters for each namespace |
 | `TomConfigProvider`, `TomConfigEnvironment`, `TomConfigPlatform` | Config / environment inputs |
 
 ### Kernel types (`kernel_types.dart`)
@@ -205,7 +205,7 @@ void main() {
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(const {}),
   );
-  TomUIColors.adapter = AllColorsAdapter();
+  TomUIColors.adapter = TomAllColorsAdapter();
   runApp(const MaterialApp(home: Scaffold(body: Center(child: _Demo()))));
 }
 
@@ -281,7 +281,7 @@ class AddressForm extends TomForm<AddressData> {
 `TomFormStyle` carries three presets — `material3` (default), `compact`
 (floating labels, tighter gaps), and `bordered` — applied to a subtree via
 `TomFormStyleScope`. Fields below the scope resolve their decoration through it;
-`LabelPlacement`, `DescriptionPlacement`, and `RequiredIndicator` tune individual
+`TomLabelPlacement`, `TomDescriptionPlacement`, and `TomRequiredIndicator` tune individual
 field chrome.
 
 ### The ACL layout engine
@@ -313,7 +313,7 @@ tom_flutter_ui
 ├── groups/                      # TomWidgetMixin — collective-visibility wiring
 ├── actions/                     # TomAction system (transactions, undo/redo, triggers)
 ├── advanced_container_layout/   # AclBuilder fluent row engine + Acl render widgets
-├── forms/                       # TomForm model + FormFieldFamily field catalogue + styles
+├── forms/                       # TomForm model + TomFormFieldFamily field catalogue + styles
 ├── widgets/                     # general widget kit (buttons … trees, animated variants)
 └── custom/                      # non-form composites (auth guard/tree, overlays, skeleton)
 ```
@@ -328,7 +328,7 @@ icons, configuration) and `theme` (appearance). `forms`, `widgets`, and
 | `TomNodeBase` / `TomPolicyNodeBase` | Base widget classes carrying `tomId` + authorization |
 | `TomWidgetFamily` | Material/Cupertino family selection |
 | `TomForm<T>` | The form data model + lifecycle |
-| `FormFieldFamily` | Per-field Material/Cupertino concrete factory |
+| `TomFormFieldFamily` | Per-field Material/Cupertino concrete factory |
 | `AclBuilder` / `Acl` | The fluent layout builder and its rendered widget |
 | `TomAction` / `TomActionController` | The action system entry points |
 | `TomUIColors` / `TomUIIcons` | Resource-resolved colour / icon namespaces |

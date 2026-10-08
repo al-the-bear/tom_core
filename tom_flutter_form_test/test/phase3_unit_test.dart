@@ -1,9 +1,9 @@
 /// Unit tests for Phase 3 review fixes:
-///   - TomFormIntField / TomFormDoubleField auto-prepend Validators.min /
-///     Validators.max to the field's validator list when minValue /
+///   - TomFormIntField / TomFormDoubleField auto-prepend TomValidators.min /
+///     TomValidators.max to the field's validator list when minValue /
 ///     maxValue is set, surfacing out-of-range typed input as a
-///     ValidationError instead of silently clamping.
-///   - TimeRange value type is equatable / hashable.
+///     TomValidationError instead of silently clamping.
+///   - TomTimeOfDayRange value type is equatable / hashable.
 library;
 
 import 'package:flutter/material.dart';
@@ -18,40 +18,47 @@ void main() {
       expect(f.validators.length, 2);
     });
 
-    test('TomFormIntInput surfaces out-of-range as ValidationError', () async {
-      final f = TomFormIntInput('q', 5, minValue: 0, maxValue: 10);
-      f.set(99);
-      await f.validate();
-      expect(f.validationListenable.value, isA<ValidationError>());
-      expect(
-        (f.validationListenable.value as ValidationError).errorKey,
-        'error.max',
-      );
-    });
+    test(
+      'TomFormIntInput surfaces out-of-range as TomValidationError',
+      () async {
+        final f = TomFormIntInput('q', 5, minValue: 0, maxValue: 10);
+        f.set(99);
+        await f.validate();
+        expect(f.validationListenable.value, isA<TomValidationError>());
+        expect(
+          (f.validationListenable.value as TomValidationError).errorKey,
+          'error.max',
+        );
+      },
+    );
 
     test('TomFormIntInput in-range validates clean', () async {
       final f = TomFormIntInput('q', 5, minValue: 0, maxValue: 10);
       f.set(7);
       await f.validate();
-      expect(f.validationListenable.value, isA<ValidationSuccess>());
+      expect(f.validationListenable.value, isA<TomValidationSuccess>());
     });
 
-    test('TomFormDoubleInput surfaces under-min as ValidationError', () async {
-      final f = TomFormDoubleInput('p', 1.0, minValue: 0.0, maxValue: 100.0);
-      f.set(-0.5);
-      await f.validate();
-      expect(f.validationListenable.value, isA<ValidationError>());
-      expect(
-        (f.validationListenable.value as ValidationError).errorKey,
-        'error.min',
-      );
-    });
+    test(
+      'TomFormDoubleInput surfaces under-min as TomValidationError',
+      () async {
+        final f = TomFormDoubleInput('p', 1.0, minValue: 0.0, maxValue: 100.0);
+        f.set(-0.5);
+        await f.validate();
+        expect(f.validationListenable.value, isA<TomValidationError>());
+        expect(
+          (f.validationListenable.value as TomValidationError).errorKey,
+          'error.min',
+        );
+      },
+    );
 
     test('User-supplied validators run after built-in min/max', () async {
       // A custom validator that always errors so we can confirm it's in
       // the chain alongside the built-ins (built-ins go first; custom
       // surfaces only when min/max pass).
-      ValidationResult custom(int v) => const ValidationError('error.custom');
+      TomValidationResult custom(int v) =>
+          const TomValidationError('error.custom');
       final f = TomFormIntInput(
         'q',
         5,
@@ -62,25 +69,25 @@ void main() {
       expect(f.validators.length, 3);
       f.set(7);
       await f.validate();
-      expect(f.validationListenable.value, isA<ValidationError>());
+      expect(f.validationListenable.value, isA<TomValidationError>());
       expect(
-        (f.validationListenable.value as ValidationError).errorKey,
+        (f.validationListenable.value as TomValidationError).errorKey,
         'error.custom',
       );
     });
   });
 
-  group('Phase 3 — TimeRange value type', () {
+  group('Phase 3 — TomTimeOfDayRange value type', () {
     test('equatable + hashable', () {
-      const a = TimeRange(
+      const a = TomTimeOfDayRange(
         TimeOfDay(hour: 9, minute: 0),
         TimeOfDay(hour: 17, minute: 30),
       );
-      const b = TimeRange(
+      const b = TomTimeOfDayRange(
         TimeOfDay(hour: 9, minute: 0),
         TimeOfDay(hour: 17, minute: 30),
       );
-      const c = TimeRange(
+      const c = TomTimeOfDayRange(
         TimeOfDay(hour: 9, minute: 0),
         TimeOfDay(hour: 18, minute: 0),
       );
@@ -92,46 +99,46 @@ void main() {
 
   group('Phase 3 — Percent input no longer silent-clamps', () {
     test(
-      'typed 150% surfaces as ValidationError instead of clamping to 100%',
+      'typed 150% surfaces as TomValidationError instead of clamping to 100%',
       () async {
         final f = TomFormPercentDoubleInput('discount', 0.1);
         // Simulate the _onChanged path: parse "150" → divide by 100 → 1.5.
         f.set(1.5);
         await f.validate();
-        expect(f.validationListenable.value, isA<ValidationError>());
+        expect(f.validationListenable.value, isA<TomValidationError>());
         expect(
-          (f.validationListenable.value as ValidationError).errorKey,
+          (f.validationListenable.value as TomValidationError).errorKey,
           'error.max',
         );
       },
     );
   });
 
-  group('Phase 3 — CurrencyFormatProfile resolves locale', () {
+  group('Phase 3 — TomCurrencyFormatProfile resolves locale', () {
     test('locale-only "de_DE" maps to EUR', () {
-      final p = CurrencyFormatProfile.resolve(locale: 'de_DE');
+      final p = TomCurrencyFormatProfile.resolve(locale: 'de_DE');
       expect(p.symbol, '€');
       expect(p.decimalSeparator, ',');
     });
 
     test('locale "en_US" maps to USD', () {
-      final p = CurrencyFormatProfile.resolve(locale: 'en_US');
+      final p = TomCurrencyFormatProfile.resolve(locale: 'en_US');
       expect(p.symbol, r'$');
     });
 
     test('explicit code wins over locale', () {
-      final p = CurrencyFormatProfile.resolve(locale: 'de_DE', code: 'JPY');
+      final p = TomCurrencyFormatProfile.resolve(locale: 'de_DE', code: 'JPY');
       expect(p.symbol, '¥');
       expect(p.decimals, 0);
     });
 
     test('language-only "ja" maps to JPY when no region present', () {
-      final p = CurrencyFormatProfile.resolve(locale: 'ja');
+      final p = TomCurrencyFormatProfile.resolve(locale: 'ja');
       expect(p.symbol, '¥');
     });
 
     test('unknown locale falls back to USD', () {
-      final p = CurrencyFormatProfile.resolve(locale: 'xx_YY');
+      final p = TomCurrencyFormatProfile.resolve(locale: 'xx_YY');
       expect(p.symbol, r'$');
     });
   });

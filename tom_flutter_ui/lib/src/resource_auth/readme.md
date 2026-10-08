@@ -18,9 +18,9 @@ deliberate mirrors of each other, so every row names both.
 | ---- | -------------- |
 | `TomUIColors` / `TomUIIcons` | Static colour / icon namespaces resolved through an adapter |
 | `TomUIColorAdapter` / `TomUIIconAdapter` | The pluggable adapter contracts |
-| `AllColorsAdapter` / `AllIconsAdapter` | The default adapters: registrations first, then the full Material **and** Cupertino tables. Both families' registration entry points live here |
-| `MaterialOnlyColorAdapter` / `MaterialOnlyIconAdapter` | Material only — for bundle size, or to make a stray `c…` name resolve to `null` and be caught instead of quietly working |
-| `CupertinoOnlyColorAdapter` / `CupertinoOnlyIconAdapter` | Cupertino only; the same two reasons mirrored |
+| `TomAllColorsAdapter` / `TomAllIconsAdapter` | The default adapters: registrations first, then the full Material **and** Cupertino tables. Both families' registration entry points live here |
+| `TomMaterialOnlyColorAdapter` / `TomMaterialOnlyIconAdapter` | Material only — for bundle size, or to make a stray `c…` name resolve to `null` and be caught instead of quietly working |
+| `TomCupertinoOnlyColorAdapter` / `TomCupertinoOnlyIconAdapter` | Cupertino only; the same two reasons mirrored |
 | `TomConfigProvider` | Config / feature-flag provider |
 | `TomConfigEnvironment` / `TomConfigPlatform` | Environment & platform enums feeding config + responsive layout |
 
@@ -32,8 +32,8 @@ deliberate mirrors of each other, so every row names both.
 | Inspect | `TomUIColors.adapter` | `TomUIIcons.adapter` | `TomConfigProvider.current` |
 | Resolve | `TomUIColors.resolveColor` | `TomUIIcons.resolveIcon` | `TomConfigProvider.current`, then `feature<T>` / `isEnabled` / `environment` / `platform` |
 | Probe | `TomUIColors.colorExists` | `TomUIIcons.iconExists` | — |
-| Register | `AllColorsAdapter.registerColors` | `AllIconsAdapter.registerIcons` | flags are fixed at `create` |
-| Unregister | `AllColorsAdapter.clearCustomColors` | `AllIconsAdapter.clearCustomIcons` | — |
+| Register | `TomAllColorsAdapter.registerColors` | `TomAllIconsAdapter.registerIcons` | flags are fixed at `create` |
+| Unregister | `TomAllColorsAdapter.clearCustomColors` | `TomAllIconsAdapter.clearCustomIcons` | — |
 | Tear down | `TomUIColors.reset` | `TomUIIcons.reset` | `TomConfigProvider.reset` |
 
 **Read the last two rows before writing a test.** Each registry is module-wide
@@ -61,12 +61,12 @@ boolean `true`, a number equal to `1` (so `1.0` counts), and a string reading
 flag is spelled differently depending on where it was authored, and
 `--dart-define` and environment variables can carry nothing but text. It stops
 at spelling: `'yes'`, `'on'` and `2` are **not** enabled, in the same way
-`AllColorsAdapter` folds case in `#FFF` syntax without knowing what `crimson`
+`TomAllColorsAdapter` folds case in `#FFF` syntax without knowing what `crimson`
 means. Anything outside the vocabulary is still readable through `feature<T>`.
 
 Registration stays on the `All…` adapters even though the registry it fills is
 module-wide, so that each family has exactly one place to register. Calling
-`AllIconsAdapter.registerIcons` while `MaterialOnlyIconAdapter` is installed is
+`TomAllIconsAdapter.registerIcons` while `TomMaterialOnlyIconAdapter` is installed is
 therefore correct rather than a mistake — the name still resolves.
 
 ## Quick start
@@ -76,10 +76,10 @@ import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 void wireResources() {
-  TomUIColors.adapter = AllColorsAdapter();
-  TomUIIcons.adapter = AllIconsAdapter();
-  AllColorsAdapter.registerColors({'brandPrimary': const Color(0xFF123456)});
-  AllIconsAdapter.registerIcons({'brandMark': Icons.star});
+  TomUIColors.adapter = TomAllColorsAdapter();
+  TomUIIcons.adapter = TomAllIconsAdapter();
+  TomAllColorsAdapter.registerColors({'brandPrimary': const Color(0xFF123456)});
+  TomAllIconsAdapter.registerIcons({'brandMark': Icons.star});
 
   final red = TomUIColors.resolveColor('mRed');   // Material red
   final hex = TomUIColors.resolveColor('#FF5733'); // literal hex

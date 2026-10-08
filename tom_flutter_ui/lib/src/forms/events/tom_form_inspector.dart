@@ -9,7 +9,7 @@ import 'tom_form_event_listener.dart';
 /// form.addListener(inspector);
 /// // ... interact with form ...
 /// print(inspector.events); // all collected events
-/// print(inspector.ofType<FieldValueChangedEvent>()); // filtered
+/// print(inspector.ofType<TomFieldValueChangedEvent>()); // filtered
 /// inspector.clear();
 /// ```
 class TomFormInspector with TomFormEventListener {
@@ -37,38 +37,40 @@ class TomFormInspector with TomFormEventListener {
   // --- Override all handlers to collect events ---
 
   @override
-  void onFieldValueChanged(FieldValueChangedEvent event) => _events.add(event);
+  void onFieldValueChanged(TomFieldValueChangedEvent event) =>
+      _events.add(event);
 
   @override
-  void onFieldValidated(FieldValidatedEvent event) => _events.add(event);
+  void onFieldValidated(TomFieldValidatedEvent event) => _events.add(event);
 
   @override
-  void onFieldAuthChanged(FieldAuthChangedEvent event) => _events.add(event);
+  void onFieldAuthChanged(TomFieldAuthChangedEvent event) => _events.add(event);
 
   @override
-  void onFieldBound(FieldBoundEvent event) => _events.add(event);
+  void onFieldBound(TomFieldBoundEvent event) => _events.add(event);
 
   @override
-  void onFieldCommitted(FieldCommittedEvent event) => _events.add(event);
+  void onFieldCommitted(TomFieldCommittedEvent event) => _events.add(event);
 
   @override
-  void onFormBound(FormBoundEvent event) => _events.add(event);
+  void onFormBound(TomFormBoundEvent event) => _events.add(event);
 
   @override
-  void onFormSaved(FormSavedEvent event) => _events.add(event);
+  void onFormSaved(TomFormSavedEvent event) => _events.add(event);
 
   @override
-  void onFormDiscarded(FormDiscardedEvent event) => _events.add(event);
+  void onFormDiscarded(TomFormDiscardedEvent event) => _events.add(event);
 
   @override
-  void onFormValidated(FormValidatedEvent event) => _events.add(event);
+  void onFormValidated(TomFormValidatedEvent event) => _events.add(event);
 
   @override
-  void onListItemAdded(ListItemAddedEvent event) => _events.add(event);
+  void onListItemAdded(TomListItemAddedEvent event) => _events.add(event);
 
   @override
-  void onListItemRemoved(ListItemRemovedEvent event) => _events.add(event);
+  void onListItemRemoved(TomListItemRemovedEvent event) => _events.add(event);
 
   @override
-  void onListItemReordered(ListItemReorderedEvent event) => _events.add(event);
+  void onListItemReordered(TomListItemReorderedEvent event) =>
+      _events.add(event);
 }

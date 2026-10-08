@@ -139,25 +139,29 @@ String fieldAuthLabel(TomAuthState s) => switch (s) {
 
 /// The short validation label shown in the table's Validation column.
 @visibleForTesting
-String fieldValidationLabel(ValidationResult r) => switch (r) {
-  ValidationPristine() => 'pristine',
-  ValidationSuccess() => 'valid',
-  ValidationPending() => 'pending',
-  ValidationError(:final errorKey) => 'error: $errorKey',
+String fieldValidationLabel(TomValidationResult r) => switch (r) {
+  TomValidationPristine() => 'pristine',
+  TomValidationSuccess() => 'valid',
+  TomValidationPending() => 'pending',
+  TomValidationError(:final errorKey) => 'error: $errorKey',
 };
 
 /// The row background colour: a disabled/none auth state dominates (greyed
 /// out); otherwise the validation state drives the colour.
 @visibleForTesting
-Color fieldRowColour(ThemeData theme, TomAuthState auth, ValidationResult v) {
+Color fieldRowColour(
+  ThemeData theme,
+  TomAuthState auth,
+  TomValidationResult v,
+) {
   if (auth == TomAuthState.disabled) return theme.colorScheme.surfaceContainer;
   if (auth == TomAuthState.none) return theme.colorScheme.surfaceContainerLow;
   return switch (v) {
-    ValidationError() => theme.colorScheme.errorContainer.withValues(
+    TomValidationError() => theme.colorScheme.errorContainer.withValues(
       alpha: 0.4,
     ),
-    ValidationPending() => Colors.amber.withValues(alpha: 0.25),
-    ValidationSuccess() => Colors.green.withValues(alpha: 0.12),
-    ValidationPristine() => theme.colorScheme.surface,
+    TomValidationPending() => Colors.amber.withValues(alpha: 0.25),
+    TomValidationSuccess() => Colors.green.withValues(alpha: 0.12),
+    TomValidationPristine() => theme.colorScheme.surface,
   };
 }

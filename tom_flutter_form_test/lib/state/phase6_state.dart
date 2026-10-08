@@ -36,7 +36,7 @@ class DemoPhase6AuthAdapter extends TomAuthorizationAdapter {
 ///
 ///   * `auth`: state of the guarded `demoQ.profile` resource.
 ///   * `isSaving`: drives [TomLoadingOverlay] while the demo's
-///     `ValidationForm.save()` awaits its async `SlowValidator`.
+///     `ValidationForm.save()` awaits its async `TomSlowValidator`.
 class DemoQController extends ChangeNotifier {
   TomAuthState _auth = TomAuthState.full;
   bool _isSaving = false;

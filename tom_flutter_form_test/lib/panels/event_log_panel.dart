@@ -17,11 +17,11 @@ enum EventCategory { value, validation, auth, lifecycle }
 /// existing demo test would silently pass — can be pinned directly.
 @visibleForTesting
 EventCategory eventCategoryOf(TomFormEvent event) {
-  if (event is FieldValueChangedEvent) return EventCategory.value;
-  if (event is FieldValidatedEvent || event is FormValidatedEvent) {
+  if (event is TomFieldValueChangedEvent) return EventCategory.value;
+  if (event is TomFieldValidatedEvent || event is TomFormValidatedEvent) {
     return EventCategory.validation;
   }
-  if (event is FieldAuthChangedEvent) return EventCategory.auth;
+  if (event is TomFieldAuthChangedEvent) return EventCategory.auth;
   return EventCategory.lifecycle;
 }
 

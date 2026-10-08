@@ -38,7 +38,7 @@
 /// picker that *composes* an image rather than asking the platform for one.
 ///
 /// Everything downstream is the real thing — the same [TomPickedFile] shape a
-/// plugin returns, the same [FileRef] conversion, the same streaming upload,
+/// plugin returns, the same [TomFileRef] conversion, the same streaming upload,
 /// progress, cancel and retry. Only the gallery dialog is missing.
 ///
 /// ## Why the app client has its own
