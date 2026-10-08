@@ -2,6 +2,13 @@
 
 ### Tests
 
+- **`test/package_compiles_test.dart`** fails the suite when `dart analyze`
+  reports an error under `lib/` or `test/`. A suite whose imports stop
+  compiling fails to load rather than to pass — none of its assertions run and
+  the passing count just shrinks, which in a suite of over two thousand tests
+  reads as nothing. The check runs the analyzer in a separate process, through
+  `tom_ai/core/tool/package_compile_guard.dart`.
+
 - **`test/repo_doc_gates_test.dart` reads the gates' self-test verdicts from
   the runner** instead of running each `--self-test` a second time.
   `tool/check_gates.py` now runs every gate's self-test and fails the gate

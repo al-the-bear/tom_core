@@ -2,6 +2,13 @@
 
 ### Tests
 
+- **`test/package_compiles_test.dart`** fails the suite when `dart analyze`
+  reports an error under `lib/` or `test/`. A suite whose imports stop
+  compiling fails to load rather than to pass — none of its assertions run and
+  the passing count just shrinks — so the check runs the analyzer in a separate
+  process, through `tom_ai/core/tool/package_compile_guard.dart`. Errors only:
+  the package's INFO-level findings cannot fail it.
+
 - **`test/ai_citation_test.dart`** fails the suite when an artefact of the
   package cites a document in the AI-state mount. It runs
   `tom_ai/core/tool/check_doc_ai_citations.py` over the package through

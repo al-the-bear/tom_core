@@ -140,6 +140,9 @@ class PackageFormatSweep {
 /// `flutter` tool sets for every command it runs and beneath which the Dart
 /// SDK's location is fixed.
 ///
+/// When `FLUTTER_ROOT` is unset, the checkout is read off the test engine's own
+/// path instead.
+///
 /// The last resort is `dart` on `PATH`, for a run that reaches the guard some
 /// other way. It may belong to a different SDK, so it is the last choice
 /// rather than the first; a guard checking a slightly different formatter
@@ -149,9 +152,18 @@ String dartExecutable() {
   final name = running.split(Platform.pathSeparator).last;
   if (name == 'dart' || name == 'dart.exe') return running;
 
-  final root = Platform.environment['FLUTTER_ROOT'];
-  if (root != null && root.isNotEmpty) {
-    final separator = Platform.pathSeparator;
+  final separator = Platform.pathSeparator;
+  // The Flutter checkout the run came from: FLUTTER_ROOT when the `flutter`
+  // tool set it, otherwise read off the test engine's own path, which sits at
+  // `<root>/bin/cache/artifacts/...` — so a machine that never put `dart` on
+  // PATH, or a runner that dropped the variable, still finds the right SDK.
+  final cacheAt = running.indexOf('${separator}bin${separator}cache$separator');
+  final roots = [
+    Platform.environment['FLUTTER_ROOT'] ?? '',
+    if (cacheAt > 0) running.substring(0, cacheAt),
+  ];
+  for (final root in roots) {
+    if (root.isEmpty) continue;
     final dart = File(
       [root, 'bin', 'cache', 'dart-sdk', 'bin', 'dart'].join(separator),
     );

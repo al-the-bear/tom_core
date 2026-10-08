@@ -87,7 +87,7 @@ flutter test
 
 <!-- test-inventory:counts-begin -->
 
-`flutter test` runs **68** gating suites, every one of them a `*_test.dart`
+`flutter test` runs **69** gating suites, every one of them a `*_test.dart`
 file under [`test/`](test/):
 
 | Kind | Suites | What they cover |
@@ -99,7 +99,7 @@ file under [`test/`](test/):
 | Behaviour matrices | 2 | One case per cell of a matrix documented elsewhere, so the table and the behaviour cannot drift apart |
 | Widget-family coverage | 1 | The list-form widgets driven directly rather than through a demo screen |
 | Golden screenshots | 3 | Rendered pixels against the committed baselines under `test/goldens/` — the five numbered demos, the Examples section, and the ≥1600 px bordered band. These are why `test/fonts/` is checked in |
-| Source invariants | 6 | That every file the package authors is `dart format`-clean and cites nothing in the AI-state mount, that the committed `lib/main.reflection.dart` still covers the sources it mirrors, that every `formId` / `listId` literal in `lib/` is a usable scope id, and that the demo catalogue and this README group the demos exactly as the Demos tab does |
+| Source invariants | 7 | That every file under `lib/` and `test/` compiles — the one check that still runs when they do not, because it shells out to `dart analyze` instead of importing them — that every file the package authors is `dart format`-clean and cites nothing in the AI-state mount, that the committed `lib/main.reflection.dart` still covers the sources it mirrors, that every `formId` / `listId` literal in `lib/` is a usable scope id, and that the demo catalogue and this README group the demos exactly as the Demos tab does |
 | Unit tests | 8 | Arithmetic and mapping, with no widget tree |
 
 <!-- test-inventory:counts-end -->

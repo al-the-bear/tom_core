@@ -301,6 +301,7 @@ one.
 | [`tool/check_module_dependencies.py`](tool/check_module_dependencies.py) | Audits each *module* document's Dependencies table against the imports its module actually has |
 | [`tool/check_dart_format.py`](tool/check_dart_format.py) | Holds every Dart file in the repository to `dart format`, across all 23 packages |
 | [`tool/package_format_guard.dart`](tool/package_format_guard.dart) | The in-suite formatting guard every framework package's `test/formatting_test.dart` delegates to |
+| [`tool/package_compile_guard.dart`](tool/package_compile_guard.dart) | The in-suite compile guard `test/package_compiles_test.dart` delegates to in `tom_flutter_ui`, `tom_flutter_ui_test` and `tom_flutter_form_test`: runs `dart analyze` in a separate process and fails on an error |
 | [`tool/check_doc_error_keys.py`](tool/check_doc_error_keys.py) | Audits the error vocabulary a document states — the completion documents' "Error keys" sections, and the hand-written module guides — against the keys the code raises, and every raised key against the tests that name it |
 | [`tool/check_dartdoc_refs.py`](tool/check_dartdoc_refs.py) | Finds dartdoc references to private names that no longer exist |
 | [`tool/check_dartdoc_build.py`](tool/check_dartdoc_build.py) | Builds each gated package's API documentation, requires `dart doc` to report nothing, and fails a doc-comment link into a package the writer does not depend on |
@@ -525,8 +526,20 @@ exclusion, the coverage floor and the choice of formatter live once in
 `tool/package_format_guard.dart`, imported by relative path, and each package's
 file states only its floor, its landmark directories and whether it commits
 generated output. The formatter is the `dart` running the suite under `dart
-test`, and the SDK's `dart` found through `FLUTTER_ROOT` under `flutter test`,
-whose own executable is the test engine and hangs when handed `format`.
+test`, and the SDK's `dart` found through `FLUTTER_ROOT` — or, failing that,
+read off the test engine's own path — under `flutter test`, whose own
+executable is the test engine and hangs when handed `format`.
+
+The three Flutter packages whose suites import shared demo or widget code —
+`tom_flutter_ui`, `tom_flutter_ui_test` and `tom_flutter_form_test` — also keep
+a `test/package_compiles_test.dart`, delegating to
+`tool/package_compile_guard.dart`. A suite whose imports stop compiling fails
+to *load*, not to pass: none of its assertions run, nothing turns red, and the
+passing count just shrinks — in a package whose suites share demo code, one
+broken file can take several suites with it and read as a smaller suite. The guard runs `dart analyze` in a separate
+process, so it still reports when the package does not compile, fails on
+errors only, and checks its own reading — the parsed diagnostics against the
+analyzer's exit code, and the analyzed paths for Dart files at all.
 
 ```bash
 python3 tool/check_doc_error_keys.py                 # every section and guide

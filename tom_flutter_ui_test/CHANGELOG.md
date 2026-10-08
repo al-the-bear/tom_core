@@ -2,6 +2,12 @@
 
 ### Tests
 
+- **`test/package_compiles_test.dart` now runs through
+  `tom_ai/core/tool/package_compile_guard.dart`**, the shared implementation
+  `tom_flutter_form_test` and `tom_flutter_ui` use too. The file names the paths
+  to analyze; the analyzer run, its errors-only rule and the two checks on its
+  own reading live once in the helper.
+
 - **`test/ai_citation_test.dart`** fails the suite when an artefact of the
   package cites a document in the AI-state mount. It runs
   `tom_ai/core/tool/check_doc_ai_citations.py` over the package through
