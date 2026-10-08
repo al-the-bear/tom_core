@@ -81,6 +81,7 @@ symbol belongs to.
   - [AgentSendFailed](#agentsendfailed)
   - [specSessionLooksLikeError](#specsessionlookslikeerror)
   - [permissionModeForApproval](#permissionmodeforapproval)
+  - [thinkingConfigFor](#thinkingconfigfor)
 - [Placeholders](#placeholders)
   - [EditorPlaceholderBindings](#editorplaceholderbindings)
   - [PlaceholderExpressionsUnsupportedError](#placeholderexpressionsunsupportederror)
@@ -168,10 +169,10 @@ profile is copied into the editor.
 `final class`. The global settings a profile overlays: the bridge target
 (`bridgeHost`, `portScanStart`, `portScanEnd`), the profile selected on launch,
 and defaults that apply where a profile leaves a field unset.
-`AgentSendConfig.fromProfile` applies that overlay to `maxRounds` (the turn cap)
-and `toolApprovalMode` (the permission mode). `maxTokens`, `thinkingEnabled` and
-`promptCachingEnabled` are stored and edited but not sent: the Agent SDK's
-`Options` has no field for them.
+`AgentSendConfig.fromProfile` applies that overlay to `maxRounds` (the turn cap),
+`toolApprovalMode` (the permission mode) and `thinkingEnabled` (the thinking
+configuration). `maxTokens` and `promptCachingEnabled` are stored and edited but
+not sent: the Agent SDK's `Options` has no field for them.
 
 #### Properties and Methods — further members
 
@@ -891,10 +892,10 @@ It retries once with a fresh session under four conditions together, and ends
 
 The editor-assembled inputs to one `query` `Options`, minus the session id the
 engine supplies: model, system prompt (sent additively, never as an override),
-permission mode, turn cap, working directory, and the MCP servers.
-`fromProfile(profile, settings: ...)` overlays the profile on `AgentSettings`:
-for the turn cap and the permission mode, an explicit argument wins, then the
-profile's field, then the settings'.
+permission mode, turn cap, thinking configuration, working directory, and the
+MCP servers. `fromProfile(profile, settings: ...)` overlays the profile on
+`AgentSettings`: for the turn cap, the permission mode and thinking, an explicit
+argument wins, then the profile's field, then the settings'.
 
 #### Properties and Methods — further members
 
@@ -906,6 +907,7 @@ profile's field, then the settings'.
 | `mcpServers` | `final Map<String, McpServerConfig>? mcpServers` | The navigation/mutation MCP servers, or `null` when none are wired. |
 | `permissionMode` | `final PermissionMode? permissionMode` | Permission posture for Claude Code's tool loop, or `null` for the default. |
 | `systemPrompt` | `final String? systemPrompt` | The profile's system prompt, sent as an additive [SystemPromptText] (never an override — Claude Code's own system prompt stays in place). |
+| `thinking` | `final ThinkingConfig? thinking` | Extended-thinking configuration, or `null` for the SDK default. |
 
 ### AgentSendEvent
 
@@ -962,6 +964,17 @@ The SDK permission mode a tool-approval setting asks for: `always` is the SDK's
 default mode, which prompts for dangerous operations; `never` is `acceptEdits`,
 which auto-accepts file edits — not `bypassPermissions`, which would turn every
 check off.
+
+### thinkingConfigFor
+
+```dart
+ThinkingConfig? thinkingConfigFor(bool? enabled, {int? budgetTokens})
+```
+
+The SDK thinking configuration a profile's thinking settings ask for: `false`
+is `ThinkingDisabled`; `true` with a budget is `ThinkingEnabled` with that
+budget; `true` without one is `ThinkingAdaptive`, which lets the model decide;
+`null` sends nothing and leaves the SDK default.
 
 ## Placeholders
 
@@ -1022,6 +1035,7 @@ The highest port scanned, inclusive: 19909.
 | `permissionModeForApproval` | `PermissionMode permissionModeForApproval(ToolApprovalMode mode)` | The SDK permission mode a [ToolApprovalMode] asks for. |
 | `readAgentYamlFile` | `Map<String, dynamic>? readAgentYamlFile(File file)` | Reads and parses the sidecar at [file], or `null` when it is missing, empty, unreadable or malformed. |
 | `specSessionLooksLikeError` | `bool specSessionLooksLikeError(String message)` | True when [message] should be treated as an SDK **session error** under the editor rule: its text contains `session`, `message`, or `msg` (case-insensitive). |
+| `thinkingConfigFor` | `ThinkingConfig? thinkingConfigFor(bool? enabled, {int? budgetTokens})` | The SDK thinking configuration a profile's thinking settings ask for, or `null` when unset. |
 | `yamlEnum` | `T? yamlEnum<T>( Map<String, dynamic> yaml, String key, T Function(String?) fromValue)` | Reads [key] as a string and maps it through [fromValue], or `null` when [key] holds no string. |
 | `yamlStringList` | `List<String>? yamlStringList(Map<String, dynamic> yaml, String key)` | Reads [key] as a list of strings, keeping the elements that are strings, or `null` when [key] does not hold a list. |
 | `yamlValue` | `T? yamlValue<T>(Map<String, dynamic> yaml, String key)` | Reads [key] from [yaml] when it holds a [T], and `null` when it does not — whether the key is absent or present with the wrong type. |

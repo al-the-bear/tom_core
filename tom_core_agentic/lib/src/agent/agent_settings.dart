@@ -14,10 +14,11 @@ import 'bridge_connection.dart';
 ///
 /// `AgentSendConfig.fromProfile` applies the overlay for what a send carries:
 /// for [maxRounds] and [toolApprovalMode], a field the active [AgentProfile]
-/// sets wins, and otherwise the value here applies. [maxTokens],
-/// [thinkingEnabled] and [promptCachingEnabled] are stored and edited but not
-/// sent — the Agent SDK's `Options` has no field for them — and are kept for
-/// the providers that will take them. [defaultProfileId] names the profile
+/// sets wins, and otherwise the value here applies — and likewise for
+/// [thinkingEnabled], sent as the SDK's thinking configuration.
+/// [maxTokens] and [promptCachingEnabled] are stored and edited but not sent —
+/// the Agent SDK's `Options` has no field for them — and are kept for the
+/// providers that will take them. [defaultProfileId] names the profile
 /// selected on launch.
 final class AgentSettings {
   const AgentSettings({
@@ -52,8 +53,9 @@ final class AgentSettings {
   /// when the profile sets none.
   final int? maxRounds;
 
-  /// Global default for extended thinking. Not sent: the Agent SDK's
-  /// `Options` has no thinking flag.
+  /// Global default for extended thinking, sent as the SDK's thinking
+  /// configuration when the profile sets none (see `thinkingConfigFor`);
+  /// `null` leaves the SDK default.
   final bool? thinkingEnabled;
 
   /// Global default for prompt caching. Not sent: the Agent SDK's `Options` has

@@ -117,6 +117,23 @@ PermissionMode permissionModeForApproval(ToolApprovalMode mode) =>
       ToolApprovalMode.never => PermissionMode.acceptEdits,
     };
 
+/// The SDK thinking configuration a profile's thinking settings ask for, or
+/// `null` when [enabled] is unset and the SDK's own default should apply.
+///
+/// * `false` — [ThinkingDisabled];
+/// * `true` with a [budgetTokens] — [ThinkingEnabled] with that fixed budget;
+/// * `true` without one — [ThinkingAdaptive], which lets the model decide how
+///   much to think, since a boolean that asks for thinking names no budget.
+ThinkingConfig? thinkingConfigFor(bool? enabled, {int? budgetTokens}) =>
+    switch (enabled) {
+      null => null,
+      false => const ThinkingDisabled(),
+      true when budgetTokens != null => ThinkingEnabled(
+        budgetTokens: budgetTokens,
+      ),
+      true => const ThinkingAdaptive(),
+    };
+
 /// The editor-assembled inputs to one `query` `Options`, minus the
 /// session id (which the engine supplies from [SpecSessionStore]).
 ///
@@ -131,6 +148,7 @@ final class AgentSendConfig {
     this.systemPrompt,
     this.permissionMode,
     this.maxTurns,
+    this.thinking,
     this.cwd,
     this.mcpServers,
   });
@@ -148,6 +166,9 @@ final class AgentSendConfig {
   /// Claude Code's agentic-loop turn cap, or `null` for the SDK default.
   final int? maxTurns;
 
+  /// Extended-thinking configuration, or `null` for the SDK default.
+  final ThinkingConfig? thinking;
+
   /// The agent working directory — the document/spec folder, or `null`.
   final String? cwd;
 
@@ -164,22 +185,28 @@ final class AgentSendConfig {
   ///   settings;
   /// * the permission mode — [permissionMode], else the profile's
   ///   `toolApprovalMode`, else the settings', mapped by
-  ///   [permissionModeForApproval].
+  ///   [permissionModeForApproval];
+  /// * extended thinking — [thinking], else the profile's `thinkingEnabled`,
+  ///   else the settings', mapped by [thinkingConfigFor] with the profile's
+  ///   `thinkingBudgetTokens`.
   ///
-  /// The profile alone supplies the system prompt. `maxTokens`,
-  /// `thinkingEnabled` and `promptCachingEnabled` are not read: the Agent
-  /// SDK's `Options` has no field for any of them.
+  /// The profile alone supplies the system prompt. `maxTokens` and
+  /// `promptCachingEnabled` are not read: the Agent SDK's `Options` has no
+  /// output-token cap and no caching flag.
   factory AgentSendConfig.fromProfile(
     AgentProfile? profile, {
     AgentSettings? settings,
     String? model,
     PermissionMode? permissionMode,
     int? maxTurns,
+    ThinkingConfig? thinking,
     String? cwd,
     Map<String, McpServerConfig>? mcpServers,
   }) {
     final prompt = profile?.systemPrompt;
     final approval = profile?.toolApprovalMode ?? settings?.toolApprovalMode;
+    final thinkingEnabled =
+        profile?.thinkingEnabled ?? settings?.thinkingEnabled;
     return AgentSendConfig(
       model: model,
       systemPrompt: (prompt != null && prompt.isNotEmpty) ? prompt : null,
@@ -187,6 +214,12 @@ final class AgentSendConfig {
           permissionMode ??
           (approval == null ? null : permissionModeForApproval(approval)),
       maxTurns: maxTurns ?? profile?.maxRounds ?? settings?.maxRounds,
+      thinking:
+          thinking ??
+          thinkingConfigFor(
+            thinkingEnabled,
+            budgetTokens: profile?.thinkingBudgetTokens,
+          ),
       cwd: cwd,
       mcpServers: mcpServers,
     );
@@ -202,6 +235,7 @@ final class AgentSendConfig {
         : SystemPromptText(systemPrompt!),
     permissionMode: permissionMode,
     maxTurns: maxTurns,
+    thinking: thinking,
     cwd: cwd,
     mcpServers: mcpServers,
     resume: resumeSessionId,

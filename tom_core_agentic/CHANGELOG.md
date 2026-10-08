@@ -15,6 +15,15 @@
 
 ### Changed
 
+- **`thinkingEnabled` reaches the Agent SDK** as its thinking configuration,
+  through the new `thinkingConfigFor`: `false` is `ThinkingDisabled`, `true`
+  is `ThinkingEnabled` with the profile's `thinkingBudgetTokens` when it sets
+  one and `ThinkingAdaptive` when it does not, and an unset value sends
+  nothing. `AgentSendConfig` carries it as `thinking`, overlaid like the turn
+  cap and the permission mode — an explicit argument, then the profile, then
+  `AgentSettings`. `Options.thinking` exists in every `tom_vscode_scripting_api`
+  release the package accepts, so it was never a field with no destination.
+  `maxTokens` and `promptCachingEnabled` still have none and are still not sent.
 - **No public class in the package is left without a modifier.** The 29 that
   carried none — the eleven `*Store` classes, the bridge and reconnect services,
   `AgentSendEngine` and `AgentSendConfig`, the value types, the two

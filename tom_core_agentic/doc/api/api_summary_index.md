@@ -1,7 +1,7 @@
 # Tom Core Agentic API Reference: Index
 
-Symbol-level API summaries for this package's larger units, one file per unit,
-under `doc/api/`. Each lists every public type, function and constant its unit's
+Symbol-level API summaries for this package's units, one file per unit, under
+`doc/api/`. Each lists every public type, function and constant its unit's
 barrel exports, with a section per name, and names every public static member.
 Which units get one is a stated rule, below.
 
@@ -30,12 +30,12 @@ three types with one each.
 
 | Unit | Members | Types | Summary |
 | ---- | ------: | ----: | ------- |
-| `agent` | 344 | 52 | yes |
+| `agent` | 345 | 52 | yes |
 | `llm` | 107 | 20 | yes |
 | `isolate_streaming` | 47 | 12 | yes |
 | `placeholders` | 35 | 6 | yes |
-| `bearer_auth` | 5 | 3 | `doc/bearer_auth.md` |
-| `mcp_auth` | 0 | 0 | `doc/mcp_auth.md` |
+| `bearer_auth` | 5 | 3 | yes, and `doc/bearer_auth.md` |
+| `mcp_auth` | 0 | 0 | yes, and `doc/mcp_auth.md` |
 
 Both columns are derived and pinned: `test/api_summary_test.dart` measures each
 unit and fails this table when a figure drifts. A source-line column stood here
@@ -49,7 +49,7 @@ lands beside `isolate_streaming`, which is where its source size puts it too.
 `PlaceholderResolver` and `PlaceholderStack` carry seventeen members between
 them, and a type count cannot see any of them.
 
-The member figure also partitions more decisively: 0, 5 | 35, 47, 107, 344 is a
+The member figure also partitions more decisively: 0, 5 | 35, 47, 107, 345 is a
 sevenfold gap with nothing near the line, where 3, 6 | 12, 20, 52 is a factor of
 two. A threshold is only worth stating rather than deciding case by case when
 it has no borderline, and this one has none.
@@ -62,24 +62,19 @@ disagree because the packages have different shapes, not because one is stale
 — so the number is the same and what it counts is not, and a reader who has met
 one index should not assume the other.
 
-**Below the threshold the unit's prose page is the mirror**, and that is a
+**Below the threshold the unit's prose page is a mirror too**, and that is a
 checked claim rather than a courtesy: the `## Overview` table of
 `doc/<unit>.md` is held to every public type, function and constant the unit
-exports, by the same test. A small unit is mirrored; it is mirrored somewhere
-else.
+exports, by the same test. The threshold is the floor this package's suite sets;
+the repository's `tom_ai/core/tool/check_api_reference.py` asks for a summary
+of every unit, which is why `bearer_auth` and `mcp_auth` have both.
 
-That check exists here rather than only in `tool/check_doc_overview_types.py`
-because the repository gate compares **types**, and a unit that exports none is
-skipped by it — `mcp_auth` is two constants and is named in that gate's source
-as the reason the skip exists. Two constants are exactly the surface a reader
-most expects a document to have got right, so the package's own suite asks the
-question the repository gate cannot.
-
-A summary for `mcp_auth` would be a third document over fifty lines of source,
-restating two constants that `doc/mcp_auth.md` already tabulates, explains on
-the wire, and shows in use — and each of which carries a dartdoc longer than
-the summary entry would be. The threshold is what keeps that document from
-being written to satisfy a rule.
+The Overview check exists here rather than only in
+`tool/check_doc_overview_types.py` because that gate compares **types**, and a
+unit that exports none is skipped by it — `mcp_auth` is two constants and is
+named in that gate's source as the reason the skip exists. Two constants are
+exactly the surface a reader most expects a document to have got right, so the
+package's own suite asks the question the repository gate cannot.
 
 ### Agent (`lib/src/agent/`)
 
@@ -148,6 +143,7 @@ Summary: [api_summary_agent.md](api_summary_agent.md)
 | `deepPlainYaml` | function | Recursively converts a parsed YAML tree ([YamlMap] / [YamlList] / scalar) into plain Dart collections. |
 | `encodeAgentYaml` | function | Serialises [data] to a YAML document string. |
 | `permissionModeForApproval` | function | The SDK permission mode a [ToolApprovalMode] asks for. |
+| `thinkingConfigFor` | function | The SDK thinking configuration a profile's thinking settings ask for, or `null` when unset. |
 | `readAgentYamlFile` | function | Reads and parses the sidecar at [file], or `null` when it is missing, empty, unreadable or malformed. |
 | `specSessionLooksLikeError` | function | True when [message] should be treated as an SDK **session error** under the editor rule: its text contains `session`, `message`, or `msg` (case-insensitive). |
 | `yamlEnum` | function | Reads [key] as a string and maps it through [fromValue], or `null` when [key] holds no string. |

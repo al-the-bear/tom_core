@@ -253,23 +253,98 @@ void main() {
       expect(options.toJson().containsKey('permissionMode'), isFalse);
     });
 
-    test('the three fields the SDK has no destination for are not sent', () {
+    test('the two fields the SDK has no destination for are not sent', () {
       // Kept for the providers that will take them. What is asserted is that
-      // nothing pretends to send them: the wire carries no key for any.
+      // nothing pretends to send them: the wire carries no key for either.
       final wire = AgentSendConfig.fromProfile(
         const AgentProfile(
           id: 'p',
           name: 'P',
           maxTokens: 1000,
-          thinkingEnabled: true,
           promptCachingEnabled: true,
         ),
       ).buildOptions().toJson();
       for (final key in wire.keys) {
         expect(key.toLowerCase(), isNot(contains('token')));
-        expect(key.toLowerCase(), isNot(contains('think')));
         expect(key.toLowerCase(), isNot(contains('cach')));
       }
+    });
+
+    group('thinking', () {
+      Object? wireThinking(AgentProfile profile, [AgentSettings? settings]) =>
+          AgentSendConfig.fromProfile(
+            profile,
+            settings: settings,
+          ).buildOptions().toJson()['thinking'];
+
+      test('unset leaves the SDK default: nothing is sent', () {
+        expect(
+          AgentSendConfig.fromProfile(
+            const AgentProfile(id: 'p', name: 'P'),
+            settings: const AgentSettings(),
+          ).buildOptions().toJson().containsKey('thinking'),
+          isFalse,
+        );
+      });
+
+      test('enabled without a budget is adaptive', () {
+        expect(
+          wireThinking(
+            const AgentProfile(id: 'p', name: 'P', thinkingEnabled: true),
+          ),
+          {'type': 'adaptive'},
+        );
+      });
+
+      test('enabled with a budget is a fixed budget', () {
+        expect(
+          wireThinking(
+            const AgentProfile(
+              id: 'p',
+              name: 'P',
+              thinkingEnabled: true,
+              thinkingBudgetTokens: 4096,
+            ),
+          ),
+          {'type': 'enabled', 'budgetTokens': 4096},
+        );
+      });
+
+      test('disabled is sent as disabled', () {
+        expect(
+          wireThinking(
+            const AgentProfile(id: 'p', name: 'P', thinkingEnabled: false),
+          ),
+          {'type': 'disabled'},
+        );
+      });
+
+      test('the profile overrides the settings, which fill in for it', () {
+        expect(
+          wireThinking(
+            const AgentProfile(id: 'p', name: 'P', thinkingEnabled: false),
+            const AgentSettings(thinkingEnabled: true),
+          ),
+          {'type': 'disabled'},
+        );
+        expect(
+          wireThinking(
+            const AgentProfile(id: 'p', name: 'P'),
+            const AgentSettings(thinkingEnabled: true),
+          ),
+          {'type': 'adaptive'},
+        );
+      });
+
+      test('an explicit argument wins over both', () {
+        expect(
+          AgentSendConfig.fromProfile(
+            const AgentProfile(id: 'p', name: 'P', thinkingEnabled: true),
+            thinking: const ThinkingDisabled(),
+          ).buildOptions().toJson()['thinking'],
+          {'type': 'disabled'},
+        );
+      });
     });
 
     test('omits resume from the wire when no session id is supplied', () {

@@ -33,11 +33,12 @@ enum ToolApprovalMode {
 /// A named persona that supplies the system prompt and per-send behaviour.
 ///
 /// An Agent SDK send (`AgentSendConfig.fromProfile`) reads [systemPrompt],
-/// [maxRounds] (the turn cap) and [toolApprovalMode] (the permission mode),
-/// each overlaid on `AgentSettings`. The ported fields the SDK's `Options` has
-/// no destination for — [maxTokens], [thinkingEnabled],
-/// [thinkingBudgetTokens], [promptCachingEnabled] among them — are persisted
-/// and edited, and kept for the providers that will take them.
+/// [maxRounds] (the turn cap), [toolApprovalMode] (the permission mode) and
+/// [thinkingEnabled] with [thinkingBudgetTokens] (the thinking
+/// configuration), each overlaid on `AgentSettings`. The ported fields the
+/// SDK's `Options` has no destination for — [maxTokens] and
+/// [promptCachingEnabled] among them — are persisted and edited, and kept for
+/// the providers that will take them.
 final class AgentProfile {
   const AgentProfile({
     required this.id,

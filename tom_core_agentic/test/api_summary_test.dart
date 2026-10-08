@@ -159,8 +159,14 @@ void main() {
         // changed directory — would make every case below pass by having
         // nothing to disagree with. That is the failure mode that makes a
         // derived test worthless exactly when it is needed.
+        // The surface, not the types: a unit may export constants alone, as
+        // `mcp_auth` does, and is then no less a unit with something to mirror.
         expect(sources.length, greaterThan(1), reason: 'barrel parse broke');
-        expect(types, isNotEmpty, reason: 'declaration scan broke');
+        expect(
+          {...types, ...functions, ...constants},
+          isNotEmpty,
+          reason: 'declaration scan broke',
+        );
       });
 
       test('every exported type, function and constant has a section', () {
