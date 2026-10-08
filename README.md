@@ -507,6 +507,13 @@ dependency that was never there. It is checked in both directions, and the
 `Imported by` column per dependency — a table can name the right four
 dependencies and still attribute them to the wrong files.
 
+Every import counts, SDK libraries included: a `dart:` import is a row of kind
+`dart`, so `dart:async` is listed exactly as a package is. The table is the
+module's whole import set rather than a judgement about which edges are
+interesting, which is what makes it decidable — and `dart:io`, the import that
+decides whether a module is platform-neutral, cannot be singled out for omission
+by a rule that names none.
+
 That is only possible because there is one shape to parse. These 57 sections
 came in four table layouts plus 51 written as prose, which is why exactly one of
 them had ever been checked: a checker tolerant of five formats can verify only
