@@ -18,6 +18,7 @@ what the module raises.
 | `mergeMapsOneSided(base, override)` | Deep-merge `override` into `base` in place, leaving `override` untouched and unshared. |
 | `deepCopyJsonTree(source)` | Deep-copy a tree so an in-place merge cannot reach the original. |
 | `getObjectFromTree(tree, path)` | Resolve a dotted path (`a.b.c`) to a value, returning `null` for a key that is present and null, and throwing only for one that is absent. |
+| `lookupObjectInTree(tree, path)` | The same lookup without the throw: `(found: false, value: null)` for a path that does not resolve, for a caller to whom a miss is an answer rather than a fault. |
 | `getPathFromTree(tree, path, name)` | Resolve a dotted path to the map at that path, wrapping a non-map terminal (`null` included) under `name`. |
 | `traverseAndProcess(tree, test, processor)` | Visit every string in the tree — through nested maps, lists, and lists inside lists — processing matches. |
 | `traverseAndCreate(tree, nameTest, creator)` | Visit every node, handing each matching *string-valued* key's containing map to a creator that may insert into, remove from, or overwrite it. Only strings reach the creator: a map- or list-valued key is handled by the recursion instead, whatever its name. |

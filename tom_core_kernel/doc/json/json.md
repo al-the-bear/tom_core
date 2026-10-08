@@ -387,6 +387,24 @@ getObjectFromTree(config, 'db.replica');  // null — deliberately cleared
 getObjectFromTree(config, 'db.absent');   // throws
 ```
 
+When a miss is an expected answer rather than a fault — a lenient reader
+probing optional keys — use `lookupObjectInTree`, which walks the same way and
+reports the outcome instead of throwing:
+
+```dart
+lookupObjectInTree(config, 'db.port');    // (found: true, value: 5432)
+lookupObjectInTree(config, 'db.replica'); // (found: true, value: null)
+lookupObjectInTree(config, 'db.absent');  // (found: false, value: null)
+```
+
+The difference is cost. A thrown `TomJsonPathException` renders a stack trace
+when it is constructed, and under a stack-chaining zone — `flutter test`
+installs one — each render parses and folds the whole chain. The resource
+providers probe a key for every optional colour, style and text a widget might
+have, so they resolve through `lookupObjectInTree`; resolving through the
+throwing form costs a two-hundred-widget screen about seventy seconds of build
+under test.
+
 Absence is decided by `containsKey`, which is the same position
 `makeCleanJsonMap` takes when it keeps a present `null` rather than dropping it:
 an absent field and a field that is present and null mean different things, and

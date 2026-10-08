@@ -34,6 +34,14 @@
 /// across releases. This file mounts the demos exactly the same way (both use
 /// `demo_harness.dart`) and turns that finding into a failure.
 ///
+/// **It should take seconds.** Each mount is well under a second, and the file
+/// runs in about twenty. If one demo takes a minute, the cost is not in this
+/// gate. A resource miss that builds an exception costs a parse of
+/// `flutter test`'s whole stack chain, and a two-hundred-widget screen makes
+/// enough misses for that to be a minute per mount; `tom_core_kernel`'s text
+/// provider resolves through `lookupObjectInTree`, which reports a miss without
+/// throwing, so that is the first place to look.
+///
 /// Run with: `flutter test test/demo_overflow_test.dart`
 @Timeout(Duration(minutes: 5))
 library;

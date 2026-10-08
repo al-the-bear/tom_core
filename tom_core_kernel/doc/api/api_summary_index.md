@@ -130,6 +130,7 @@ declarations are omitted.
 | `traverseAndCreate` | function | Traverses a JSON tree, handing each matching key's containing map to a creator that may insert into, remove from, or overwrite it. |
 | `getPathFromTree` | function | Resolves a dotted path from a tree, wrapping a non-map terminal (`null` included) under a supplied name. |
 | `getObjectFromTree` | function | Resolves an object at a dotted path, returning `null` for a present-and-null key and throwing only for an absent one. |
+| `lookupObjectInTree` | function | The same walk as `getObjectFromTree`, reporting a path it cannot resolve as `found: false` instead of throwing — for a lenient caller to whom a miss is an answer. |
 | `processTree` | function | Applies `@`-directive processing to a tree; the key pattern is anchored to exactly three parts, and both a malformed directive key and a `"@"` whose key the provider did not return throw a named `Exception`. |
 | `makeCleanJsonMap` | function | Normalizes a map into a clean JSON map, converting `TomJsonSerializable` values. |
 | `substituteEnvVars` | function | Substitutes `${VAR}` references in a tree; an empty environment value counts as unset. |

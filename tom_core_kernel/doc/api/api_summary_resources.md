@@ -36,8 +36,8 @@ string. Every accessor on both providers collapses it onto absence: `exists` and
 `existsObject` report `false`, the `*OrNull` accessors return `null`, and
 `getText` / `getObject` echo the key. There is no third state to report it with,
 so a caller that needs the distinction reads `provider.resources` directly —
-`containsKey` for a flat key, `getObjectFromTree` for a dotted path (it returns
-`null` for a present null and throws for an absent key).
+`containsKey` for a flat key, `lookupObjectInTree` for a dotted path (it reports
+a present null as `found: true` and an absent key as `found: false`).
 
 A dotted key is tried as a path first and as a literal flat key second; the
 text accessors also fall through to the flat key when the path lands on a

@@ -70,11 +70,21 @@ class TomResourceException extends TomException {
 // =============================================================================
 
 // Both providers resolve a key the same way: attempt a dot-notation tree walk
-// first, then fall back to a flat-key lookup. [getObjectFromTree] *throws* when
-// the path cannot be resolved, so a thrown walk always falls through to the
-// flat lookup. It returns `null` only when the terminal key is present and
-// holds null — a value, not an absence — and that resolves the walk, so the
-// flat leg is not consulted. These two file-private helpers hold that
+// first, then fall back to a flat-key lookup. The walk is [lookupObjectInTree],
+// which reports a path it cannot resolve as `found: false`, and an unresolved
+// walk always falls through to the flat lookup. `found: true` with a `null`
+// value is a terminal key that is present and holds null — a value, not an
+// absence — and that resolves the walk, so the flat leg is not consulted.
+//
+// The walk does not throw for a miss, and that is load-bearing. A widget
+// probes a key for every optional colour, style and text it might have, so a
+// miss is the commonest answer these helpers give. Resolving through
+// [getObjectFromTree] would turn each miss into a [TomJsonPathException], and
+// constructing one renders a stack trace; under `flutter test` — whose zone
+// chains stack traces, so each render parses and folds the whole chain — that
+// costs a two-hundred-widget demo screen about seventy seconds of build,
+// nearly all of it traces for misses nobody reads. `resources_test.dart`
+// times six thousand misses under such a zone to keep it that way. These two file-private helpers hold that
 // resolution rule in one place; every accessor on both providers is expressed
 // in terms of them, differing only in the missing-value fallback each returns.
 //
@@ -107,17 +117,14 @@ class TomResourceException extends TomException {
 // Both remain reachable as *terminal* values — no descent is attempted on the
 // last segment, so `getObject('items')` and `getObject('byCode')` return them
 // intact. Only the path *through* them is closed, and closed silently: the walk
-// throws, the flat leg finds nothing, and the fallback echoes the key, so a
-// mistaken path renders as its own text instead of raising.
+// reports a miss, the flat leg finds nothing, and the fallback echoes the key,
+// so a mistaken path renders as its own text instead of raising.
 //
-// That silence is why the guard around the walk is narrow. It absorbs
-// `Exception` and nothing else, which is precisely the set [getObjectFromTree]
-// raises to report a lookup outcome: a segment naming an absent key, or an
-// interior segment with no subtree to descend into. Both are ordinary results
-// of a lenient lookup and belong on the flat leg.
-//
-// Everything else — every `Error` subtype — travels out of the accessor
-// untouched. An `Error` inside the walk is a programming fault, not a lookup
+// Only the two lookup outcomes are a miss: a segment naming an absent key, and
+// an interior segment with no subtree to descend into. Both are ordinary
+// results of a lenient lookup and belong on the flat leg. Nothing is caught
+// around the walk, so everything else — every `Error` subtype — travels out of
+// the accessor untouched. An `Error` inside the walk is a programming fault, not a lookup
 // outcome, and absorbing one would produce this module's worst failure mode:
 // the fault falls through to the flat leg, misses there too, and renders as the
 // key's own text, with no exception, no log line and nothing to grep for.
@@ -153,17 +160,11 @@ class TomResourceException extends TomException {
 /// flat-key value `resources[path]`, otherwise `null`. Backs the object-family
 /// accessors (any value type is accepted).
 Object? _resolveObjectOrNull(Map<String, dynamic> resources, String path) {
-  final Object? treeValue;
-  try {
-    treeValue = getObjectFromTree(resources, path);
-  } on Exception catch (_) {
-    // Path not resolvable as a tree walk — fall back to a flat-key lookup.
-    return resources[path];
-  }
-  // Outside the guard: nothing the report does may be mistaken for a failed
-  // walk and sent down the flat leg.
+  final tree = lookupObjectInTree(resources, path);
+  // Path not resolvable as a tree walk — fall back to a flat-key lookup.
+  if (!tree.found) return resources[path];
   _reportBothShapes(resources, path);
-  return treeValue;
+  return tree.value;
 }
 
 /// Resolves the String value at [path] in [resources].
@@ -174,16 +175,9 @@ Object? _resolveObjectOrNull(Map<String, dynamic> resources, String path) {
 /// leg is consulted even when the tree walk lands on a non-String value, so a
 /// literal dotted key (e.g. `'a.b'`) still resolves.
 String? _resolveStringOrNull(Map<String, dynamic> resources, String path) {
-  Object? treeValue;
-  var treeResolved = false;
-  try {
-    treeValue = getObjectFromTree(resources, path);
-    treeResolved = true;
-  } on Exception catch (_) {
-    // Path not resolvable as a tree walk — fall back to a flat-key lookup.
-  }
-  if (treeResolved) _reportBothShapes(resources, path);
-  if (treeValue is String) return treeValue;
+  final tree = lookupObjectInTree(resources, path);
+  if (tree.found) _reportBothShapes(resources, path);
+  if (tree.value is String) return tree.value as String;
   final flat = resources[path];
   return flat is String ? flat : null;
 }

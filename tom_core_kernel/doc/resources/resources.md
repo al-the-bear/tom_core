@@ -411,8 +411,8 @@ is the intended fallback, just reached by a route you did not plan for.
 The accessors have nowhere to report a third state: `exists` returns `bool` and
 `getObjectOrNull` returns `Object?`, so "present, but null" has no slot. The
 information is not lost, though — `resources` is public, and the underlying
-`getObjectFromTree` distinguishes the two cases (it returns `null` for a present
-null and throws for an absent key). A caller that needs the distinction reads it
+`lookupObjectInTree` distinguishes the two cases (a present null is
+`found: true` with a `null` value, an absent key `found: false`). A caller that needs the distinction reads it
 directly:
 
 ```dart
@@ -669,7 +669,7 @@ Both providers use the singleton pattern with an explicit bootstrap. `setAppReso
 ### Hierarchical Access
 
 Resources support dot-notation access (e.g., `'app.settings.theme'`) through the
-`getObjectFromTree` function from the JSON utilities module. This allows for
+`lookupObjectInTree` function from the JSON utilities module. This allows for
 organized, nested resource structures.
 
 #### What a segment can descend into
@@ -740,10 +740,14 @@ for the key.
 
 ### What the silence covers
 
-Only lookup outcomes. The guard around the walk absorbs `Exception` — the class
-`getObjectFromTree` raises to report an absent key or an interior segment with
-no subtree — and lets every `Error` subtype travel out of the accessor
-untouched.
+Only lookup outcomes. `lookupObjectInTree` reports an absent key or an interior
+segment with no subtree as `found: false`, and nothing is caught around the
+walk, so every `Error` subtype travels out of the accessor untouched. The walk
+does not throw for a miss because a miss is the commonest answer a provider
+gives — a widget probes a key for every optional colour, style and text — and
+a thrown exception renders a stack trace, which under `flutter test`'s
+stack-chaining zone costs a two-hundred-widget screen about seventy seconds of
+build.
 
 The distinction matters because the lenient fallback is the *designed* answer
 for a genuine miss, so anything folded into it becomes indistinguishable from
@@ -761,6 +765,6 @@ placeholder.
 | ---------- | ---- | ----------- | --- |
 | `meta` | package | every file | `@visibleForTesting` only; no runtime behaviour |
 | `tom_basics` | package | every file | `tomLog`, for the one warning the resolvers emit — a key held in both shapes; see [A literal dotted key](#a-literal-dotted-key-and-the-same-key-in-both-shapes) |
-| [json](../json/json.md) | module | every file | `getObjectFromTree`, the tree walk behind every dotted-path lookup |
+| [json](../json/json.md) | module | every file | `lookupObjectInTree`, the tree walk behind every dotted-path lookup |
 | [little_things](../little_things/little_things.md) | module | every file | `TomException`, the base of `TomResourceException` |
 | [observable](../observable/observable.md) | module | every file | it is what carries a bundle change to everything derived from the bundle, so a locale switch reaches bound widgets at all |

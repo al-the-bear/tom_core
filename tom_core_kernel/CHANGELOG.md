@@ -2,6 +2,10 @@
 
 ### Added
 
+- **`lookupObjectInTree`** in `json/map_merge_and_process.dart`: the walk
+  behind `getObjectFromTree`, reporting a path it cannot resolve as
+  `(found: false, value: null)` instead of throwing. Both now share one walk.
+
 - **Passkey wire types** in `security/webauthn.dart`:
   `TomWebAuthnCreationOptions`, `TomWebAuthnRequestOptions`,
   `TomWebAuthnRegistrationResponse` and `TomWebAuthnAuthenticationResponse`,
@@ -13,6 +17,15 @@
 
 ### Changed
 
+- **A resource miss no longer constructs an exception.** Both resource
+  providers resolve dotted keys through `lookupObjectInTree` instead of catching
+  `getObjectFromTree`'s `TomJsonPathException`. Constructing a `TomException`
+  renders a stack trace, and under `flutter test`'s stack-chaining zone each
+  render parses the whole chain; since a widget probes a key for every optional
+  colour, style and text, misses dominated widget builds under test — one
+  two-hundred-widget demo screen built in seventy seconds, and
+  `tom_flutter_ui_test`'s overflow suite took about twenty-five minutes. It now
+  runs in about twenty seconds. Lookup results are unchanged.
 - **The API summaries moved from `doc/api_reference/` to `doc/api/`**, where
   every other package and the workspace guideline already kept them. The
   folder held only the markdown summaries and their index; the name

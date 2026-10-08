@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:stack_trace/stack_trace.dart';
 import 'package:test/test.dart';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -338,6 +339,47 @@ void main() {
           },
         });
         expect(provider.getText('a.b.c.d'), equals('deeply nested value'));
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // The cost of a miss
+    // -------------------------------------------------------------------------
+    group('a miss', () {
+      // A widget probes a key for every optional colour, style and text it
+      // might have, so a miss is the commonest answer a provider gives. It
+      // must not cost an exception: constructing a TomException renders a
+      // stack trace, and under a stack-chaining zone — which `flutter test`
+      // installs — each render parses the whole chain. Caught from
+      // getObjectFromTree instead, misses cost one demo screen of two hundred
+      // Tom widgets about seventy seconds of build.
+      //
+      // Timed, because no hook observes an exception being constructed. The
+      // margin is two orders of magnitude: the throwing path measured about a
+      // millisecond per miss on this shallow stack (far more inside a widget
+      // build), the current one too little to register.
+      test('costs no stack trace, even under a chaining zone', () async {
+        final provider = TomTextResourceProvider.from({
+          'app': {'title': 'My App', 'empty': null},
+        });
+        late int elapsed;
+        await Chain.capture(() async {
+          await Future<void>.delayed(Duration.zero);
+          final stopwatch = Stopwatch()..start();
+          for (var i = 0; i < 2000; i++) {
+            expect(provider.getTextOrNull('app.missing$i'), isNull);
+            expect(provider.getObjectOrNull('missing$i.deeper'), isNull);
+            expect(provider.exists('app.title.$i'), isFalse);
+          }
+          elapsed = stopwatch.elapsedMilliseconds;
+        });
+        expect(
+          elapsed,
+          lessThan(500),
+          reason:
+              '6000 misses took $elapsed ms; a miss is building an exception '
+              'again',
+        );
       });
     });
 

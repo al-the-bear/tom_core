@@ -1823,6 +1823,77 @@ void main() {
       });
     });
   });
+  group('lookupObjectInTree', () {
+    // The same walk as getObjectFromTree, with a miss reported as a value
+    // instead of an exception: a lenient caller probing optional keys should
+    // not pay a stack trace per absent key.
+    final tree = <String, dynamic>{
+      'db': <String, dynamic>{'port': 5432, 'replica': null},
+      'items': ['a', 'b'],
+      'byCode': <int, String>{1: 'one'},
+      'name': 'tom',
+    };
+
+    test('finds a leaf and a whole subtree', () {
+      expect(lookupObjectInTree(tree, 'db.port'), (found: true, value: 5432));
+      final db = lookupObjectInTree(tree, 'db');
+      expect(db.found, isTrue);
+      expect(db.value, same(tree['db']));
+    });
+
+    test('a present null is found, and holds null', () {
+      expect(lookupObjectInTree(tree, 'db.replica'), (
+        found: true,
+        value: null,
+      ));
+    });
+
+    test('an absent key is not found, at any depth, without throwing', () {
+      for (final path in ['absent', 'db.absent', 'absent.deeper']) {
+        expect(lookupObjectInTree(tree, path), (
+          found: false,
+          value: null,
+        ), reason: path);
+      }
+    });
+
+    test('a path through something with no subtree is not found', () {
+      for (final path in ['name.x', 'db.replica.x', 'items.0', 'byCode.1']) {
+        expect(lookupObjectInTree(tree, path), (
+          found: false,
+          value: null,
+        ), reason: path);
+      }
+    });
+
+    test('agrees with getObjectFromTree on every path', () {
+      const paths = [
+        'db.port',
+        'db.replica',
+        'db',
+        'items',
+        'byCode',
+        'name',
+        'absent',
+        'db.absent',
+        'name.x',
+        'db.replica.x',
+        'items.0',
+      ];
+      for (final path in paths) {
+        final lookup = lookupObjectInTree(tree, path);
+        Object? thrown;
+        Object? value;
+        try {
+          value = getObjectFromTree(tree, path);
+        } on TomJsonPathException catch (e) {
+          thrown = e;
+        }
+        expect(lookup.found, thrown == null, reason: path);
+        if (lookup.found) expect(lookup.value, same(value), reason: path);
+      }
+    });
+  });
 
   group('processTree', () {
     test('should resolve profile-based references', () {

@@ -918,63 +918,109 @@ Map<String, dynamic> getPathFromTree(
 /// getObjectFromTree(config, 'db.absent');   // throws
 /// ```
 Object? getObjectFromTree(Map<String, dynamic> baseTree, String path) {
+  final Object? walked = _walkTree(baseTree, path);
+  if (walked is! _TreeMiss) return walked;
+  final miss = walked;
+  if (miss.holds == null) {
+    throw TomJsonPathException(
+      "json.path.missing_key",
+      "Path $path cannot be resolved. There is no key ${miss.key} at position "
+          "${miss.position}.",
+      parameters: {"path": path, "key": miss.key, "position": miss.position},
+    );
+  }
+  throw TomJsonPathException(
+    "json.path.not_a_subtree",
+    "Path $path cannot be resolved. Key ${miss.key} at position "
+        "${miss.position} holds ${miss.holds}, which has no subtree to descend "
+        "into.",
+    parameters: {
+      "path": path,
+      "key": miss.key,
+      "position": miss.position,
+      "holds": miss.holds,
+    },
+  );
+}
+
+/// Looks [path] up in [baseTree] the way [getObjectFromTree] does, but reports
+/// a path that cannot be resolved as `found: false` instead of throwing.
+///
+/// Same walk, same rules: `found: true` with a `null` value is a key that is
+/// present and holds null, and only a map whose keys are all `String` can be
+/// descended into. What differs is the cost of a miss, and for a lenient
+/// reader that cost is the whole point.
+///
+/// **Why a second entry point.** [getObjectFromTree] reports a miss by
+/// throwing a [TomJsonPathException], and constructing a `TomException`
+/// captures and renders a stack trace. For a caller that expects a miss — the
+/// resource providers, which probe a key for every optional colour, style and
+/// text a widget *might* have — a miss is the ordinary answer, and paying a
+/// stack trace for it is paying for a diagnosis nobody reads. Under
+/// `flutter test` that bill is far larger than it looks: the test zone chains
+/// stack traces, so each render parses and folds the whole chain. Paid per
+/// miss, that is about seventy seconds to build one widget-gallery screen of
+/// two hundred Tom widgets, and twenty-five minutes for a suite that mounts
+/// sixty of them. Use [getObjectFromTree] where a miss is a fault worth a
+/// message, and this where it is an answer.
+///
+/// ```dart
+/// final config = {'db': {'port': 5432, 'replica': null}};
+/// lookupObjectInTree(config, 'db.port');    // (found: true, value: 5432)
+/// lookupObjectInTree(config, 'db.replica'); // (found: true, value: null)
+/// lookupObjectInTree(config, 'db.absent');  // (found: false, value: null)
+/// ```
+({bool found, Object? value}) lookupObjectInTree(
+  Map<String, dynamic> baseTree,
+  String path,
+) {
+  final Object? walked = _walkTree(baseTree, path);
+  return walked is _TreeMiss
+      ? (found: false, value: null)
+      : (found: true, value: walked);
+}
+
+/// Where a walk stopped: the segment [key] at [position], and — when the key
+/// was present but could not be descended into — what it [holds] (`"null"` or
+/// `"a non-map value"`); `null` [holds] means the key was absent.
+///
+/// A private type, so no value stored in a tree can ever be one: that is what
+/// lets [_walkTree] return it in the same slot as a found value.
+class _TreeMiss {
+  const _TreeMiss(this.key, this.position, this.holds);
+
+  final String key;
+  final int position;
+  final String? holds;
+}
+
+/// The one walk behind [getObjectFromTree] and [lookupObjectInTree]: the value
+/// at [path], or a [_TreeMiss] saying where it stopped. It never throws for a
+/// lookup outcome, so each caller chooses what a miss costs.
+///
+/// Interior segments must each resolve to a map, because there is a further
+/// segment to descend into. The terminal segment is returned whatever it
+/// holds — which is where a present `null` differs from an absent key.
+/// Absence is decided by `containsKey`, not by the value being `null`, matching
+/// [makeCleanJsonMap], which keeps a present `null` so that an absent field
+/// stays distinguishable from a field that is present and null.
+Object? _walkTree(Map<String, dynamic> baseTree, String path) {
   final List<String> pathParts = path.split(".");
   Map<String, dynamic> tree = baseTree;
-
-  // Interior segments must each resolve to a map, because there is a further
-  // segment to descend into. The terminal segment is read after the loop and
-  // is returned whatever it holds — which is where a present `null` differs
-  // from an absent key, and why the two are split apart here.
-  for (int i = 0; i < pathParts.length - 1; i++) {
-    final Object? value = _readSegment(tree, pathParts[i], path, i);
+  // `split` never yields an empty list, so there is always a terminal segment.
+  final int last = pathParts.length - 1;
+  for (int i = 0; i < last; i++) {
+    final key = pathParts[i];
+    if (!tree.containsKey(key)) return _TreeMiss(key, i, null);
+    final Object? value = tree[key];
     final Map<String, dynamic>? subtree = _asStringKeyedMap(value);
     if (subtree == null) {
-      throw TomJsonPathException(
-        "json.path.not_a_subtree",
-        "Path $path cannot be resolved. Key ${pathParts[i]} at position $i "
-            "holds ${value == null ? "null" : "a non-map value"}, which has no "
-            "subtree to descend into.",
-        parameters: {
-          "path": path,
-          "key": pathParts[i],
-          "position": i,
-          "holds": value == null ? "null" : "a non-map value",
-        },
-      );
+      return _TreeMiss(key, i, value == null ? "null" : "a non-map value");
     }
     tree = subtree;
   }
-
-  // `split` never yields an empty list, so there is always a terminal segment
-  // and no unreachable tail to guard.
-  final int last = pathParts.length - 1;
-  return _readSegment(tree, pathParts[last], path, last);
-}
-
-/// Reads [key] from [tree], throwing when the key is genuinely absent.
-///
-/// Absence is decided by `containsKey`, not by the value being `null`: a key
-/// present with a `null` value is a value, and is returned as one. Collapsing
-/// the two would contradict [makeCleanJsonMap], which deliberately keeps a
-/// present `null` so that an absent field stays distinguishable from a field
-/// that is present and null.
-///
-/// [path] and [position] are carried only to report where in the original
-/// dotted path the failure happened.
-Object? _readSegment(
-  Map<String, dynamic> tree,
-  String key,
-  String path,
-  int position,
-) {
-  if (!tree.containsKey(key)) {
-    throw TomJsonPathException(
-      "json.path.missing_key",
-      "Path $path cannot be resolved. There is no key $key at position "
-          "$position.",
-      parameters: {"path": path, "key": key, "position": position},
-    );
-  }
+  final key = pathParts[last];
+  if (!tree.containsKey(key)) return _TreeMiss(key, last, null);
   return tree[key];
 }
 
