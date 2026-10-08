@@ -44,7 +44,7 @@
 library;
 
 export 'src/actions/actions.dart';
-export 'src/advanced_container_layout.dart';
+export 'src/advanced_container_layout/advanced_container_layout.dart';
 export 'src/custom/tom_custom_widgets.dart';
 export 'src/forms/tom_forms.dart';
 export 'src/groups/groups.dart';

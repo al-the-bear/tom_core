@@ -26,10 +26,13 @@ heading per type, grouped by the concern it belongs to.
 - [Flow control](#flow-control)
   - [BackpressureTracker](#backpressuretracker)
   - [IsolateStreamCloseSignal](#isolatestreamclosesignal)
+- [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 
-Source: `lib/src/isolate_streaming/`, barrelled by `isolate_streaming.dart`.
+Sources: `lib/src/isolate_streaming/backpressure_tracker.dart`, `lib/src/isolate_streaming/isolate_cancellation.dart`, `lib/src/isolate_streaming/isolate_exception_registry.dart`, `lib/src/isolate_streaming/isolate_request_guard.dart`, `lib/src/isolate_streaming/isolate_stream_close_signal.dart`, `lib/src/isolate_streaming/isolate_streaming.dart`.
+
+The module `lib/src/isolate_streaming/` is barrelled by `isolate_streaming.dart`.
 
 Domain-free infrastructure for any cross-isolate streaming protocol. Nothing
 here knows a message catalogue: the request and response *envelopes* that ferry
@@ -71,6 +74,12 @@ with value equality. Boxed rather than a raw `int` so a signature reads
 carried in the adapter's request envelope, unique per host instance and never
 recycled within a host's lifetime.
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `id` | `final int id` | Monotonic integer assigned by the host. |
+
 ### IsolateCancellationTokenAllocator
 
 `final class`. The host-side counter. `next()` hands out the next token;
@@ -104,6 +113,12 @@ the registry, so an executor that skips it holds one entry per request served
 for its whole life — silently, with `inFlightCount` the only reading that would
 show it. Put it in a `finally`: the cancelled paths are the ones that otherwise
 miss it.
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `token` | `final IsolateCancellationToken token` |  |
 
 ### IsolateCancellationException
 
@@ -200,3 +215,7 @@ to assert that a producer actually parked rather than merely not having sent.
 `closeSignal` future, flipped and completed together by `requestClose()`.
 Separate from cancellation because a clean stop is not a failure — the consumer
 has had enough, which ends the stream without raising anything.
+
+## Global Functions and Constants
+
+None — this module exports types only.

@@ -22,10 +22,13 @@ authorizable objects with optional undo and redo.
   - [TomUndoRedoContext](#tomundoredocontext)
   - [TomCompositeAction](#tomcompositeaction)
   - [TomCompositeStep\<TContext\>](#tomcompositesteptcontext)
+- [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 
-Source: `lib/src/actions/`, barrelled by `lib/src/actions/actions.dart`.
+Sources: `lib/src/actions/actions.dart`, `lib/src/actions/tom_action.dart`, `lib/src/actions/tom_action_context.dart`, `lib/src/actions/tom_action_controller.dart`, `lib/src/actions/tom_action_transaction.dart`, `lib/src/actions/tom_action_trigger.dart`, `lib/src/actions/tom_composite_action.dart`, `lib/src/actions/tom_undo_history.dart`.
+
+The module `lib/src/actions/` is barrelled by `lib/src/actions/actions.dart`.
 
 An action is a **stateless** object that holds no data between invocations:
 everything it operates on arrives through a typed context built per invocation.
@@ -503,3 +506,7 @@ TomCompositeStep({
 | `action` | `TomAction<TContext, TomActionUndo>` | The action this step runs. |
 | `contextBuilder` | `TContext Function()` | Builds the step's context. Called on both the check and the run. |
 | `guard` | `bool Function()?` | Cheap predicate consulted before `contextBuilder`, on both the check and the run. |
+
+## Global Functions and Constants
+
+None — this module exports types only.

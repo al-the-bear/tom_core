@@ -290,6 +290,7 @@ one.
 | [`tool/check_gates.py`](tool/check_gates.py) | Runs every gate below, and every gate's `--self-test`, and holds each to its recorded fault count |
 | [`tool/run_suites.py`](tool/run_suites.py) | Runs every package suite and the gate suite, with a per-suite verdict and one exit status |
 | [`tool/sweep_reflection_seeds.py`](tool/sweep_reflection_seeds.py) | Runs every sample's `reflection_generation.sh --check` and reports each seed FRESH, STALE, FAILED or NOT MEASURED; `--status` names what changed since the last sweep |
+| [`tool/fill_api_reference.py`](tool/fill_api_reference.py) | Writes into a package's `doc/api/` what `check_api_reference.py` finds missing — Source lists, function tables, index rows, member rows and whole summaries — from the source and its dartdoc; it keeps what a person wrote |
 | [`tool/gate_report.py`](tool/gate_report.py) | The contract a gate implements: prints the machine-readable fault total and derives the exit status from it |
 | [`tool/dart_sdk.py`](tool/dart_sdk.py) | Finds the `dart` the gates need when the shell's PATH has none — PATH, the SDKs' own environment variables, `flutter` on PATH, then conventional install locations — so the gate runner can put it on every gate's PATH |
 | [`tool/gate_cache.py`](tool/gate_cache.py) | Remembers a clean analyzer verdict per package until one of its inputs changes; used by `check_reflection_artifacts.py` and `check_doc_dart_blocks.py` |
@@ -1676,17 +1677,33 @@ reference is held to that claim by its own conformance suite; this gate carries
 the generic half of it to every package. Per module directory it checks that
 the summary exists and the index links it; that the summary's `Source:` list
 names every file the barrel exports for the module — following re-exports,
-conditional ones included — and nothing else, written as full paths; that the
+conditional ones and those into the module's sub-folders included — and nothing else, written as full paths; that the
 index and the summary name every exported type and function; that the
 `## Global Functions and Constants` section lists every free function and
 names nothing undeclared; that every exported enum has a section; and that
 every class section names each public member its class declares, or an
-ancestor's section does.
+ancestor's section does. A `part` belongs to the library that names it, so its
+declarations are exported wherever that library is and its file is a Source
+entry like any other.
 
 The parsers are ports of the suite's, including its fixes, which is why the
 gate reads `tom_core_server` at zero. A package with no `doc/api/` at
-all counts as one fault, so the absence is recorded rather than passed over:
-`tom_flutter_ui` and `tom_core_agentic` are that baseline.
+all counts as one fault, so the absence is recorded rather than passed over.
+Every package's reference reads at zero.
+
+When new API leaves a reference short, `fill_api_reference.py` writes the
+missing parts from the source rather than leaving them to be typed:
+
+```bash
+python3 tool/fill_api_reference.py tom_flutter_ui     # one package
+python3 tool/fill_api_reference.py --dry-run tom_core_agentic
+```
+
+Each description it writes is the first sentence of the declaration's own
+dartdoc, and a member the summary never names gets a row in a
+`Properties and Methods — further members` table at the end of its class
+section. It keeps what a person wrote — a `Source:` sentence becomes prose beside the generated list — so its output is a first draft
+to edit where the generated words are not the best ones.
 
 ```bash
 python3 tool/check_field_grade_matrix.py                  # the whole repository

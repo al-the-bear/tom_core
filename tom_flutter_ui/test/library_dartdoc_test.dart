@@ -182,7 +182,7 @@ List<String> _moduleBarrels() {
 /// own basename when it sits directly in `lib/src/`.
 ///
 /// `lib/src/widget_base/widget_base.dart` → `widget_base`;
-/// `lib/src/advanced_container_layout.dart` → `advanced_container_layout`;
+/// `lib/src/kernel_types.dart` → `kernel_types`;
 /// `lib/src/forms/tom_forms.dart` → `forms` (the file name and the unit name
 /// disagree, which is why this reads the directory rather than the basename).
 String _unitName(String barrelPath) {

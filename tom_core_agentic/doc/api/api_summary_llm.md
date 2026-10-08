@@ -35,10 +35,13 @@ for lookup: one heading per symbol, grouped by the concern it belongs to.
   - [BrainSessionStrategy](#brainsessionstrategy)
   - [AgentSdkSessionStore](#agentsdksessionstore)
   - [QuestSessionStrategy](#questsessionstrategy)
+- [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 
-Source: `lib/src/llm/`, barrelled by `llm.dart`.
+Sources: `lib/src/llm/agent_sdk_llm_provider.dart`, `lib/src/llm/agent_sdk_session.dart`, `lib/src/llm/captured_wire.dart`, `lib/src/llm/llm.dart`, `lib/src/llm/llm_call_report.dart`, `lib/src/llm/llm_options.dart`, `lib/src/llm/llm_provider.dart`, `lib/src/llm/llm_stream_event.dart`, `lib/src/llm/wire_prompt.dart`.
+
+The module `lib/src/llm/` is barrelled by `llm.dart`.
 
 Three layers, and the grouping below follows them:
 
@@ -145,15 +148,33 @@ the provider's; chunks arrive in order.
 The stream pauses while the caller's adapter resolves it. The Agent SDK
 provider never emits this — its tool loop runs inside Claude Code.
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `callId` | `final String callId` |  |
+
 ### LlmStreamCompleted
 
 `final class`. Successful completion, carrying the terminal `report` and an
 optional `wire` (the `CapturedWirePrompt` a trail writer records).
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `callId` | `final String callId` |  |
+
 ### LlmStreamFailed
 
 `final class`. Terminal failure, carrying both the typed `failure` and the
 `report` the call had accumulated — so a failed call is still attributable.
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `callId` | `final String callId` |  |
 
 ### LlmFailure
 
@@ -187,6 +208,12 @@ looks session-shaped by `agentSdkLooksLikeSessionError`. Each retry increments
 Two failure classes: a thrown or costed backend error is `unknown`, because the
 provider does not classify what it cannot see; a stream ending with no terminal
 result is `format`, the one failure it can name itself.
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `bridgePort` | `int get bridgePort` | The bridge port the provider currently connects to. |
 
 ### agentSdkLooksLikeSessionError
 
@@ -232,6 +259,12 @@ that writes.
 claudeSessionId)` and `remove(brainSessionId)` over a `File`, with the contents
 cached after first read.
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `file` | `final File file` | The on-disk JSON file backing this store. |
+
 ### QuestSessionStrategy
 
 `final class`. Mode `quest`: **read-only**. Resolves the session id from the VS
@@ -242,3 +275,9 @@ rejected, in memory, for the strategy's lifetime. While the file still names a
 rejected id `resumeIdFor` answers `null`, so a stale quest session costs one
 failed resume rather than one per call; a file rewritten with a new id is
 resumed again.
+
+## Global Functions and Constants
+
+| Name | Declaration | Description |
+| ---- | ----------- | ----------- |
+| `agentSdkLooksLikeSessionError` | `bool agentSdkLooksLikeSessionError(String message)` | True when [message] looks like a Claude-Code rejection of a stale / unknown session id, so the `brain`-mode provider should evict the stored id and retry once with a fresh session. |

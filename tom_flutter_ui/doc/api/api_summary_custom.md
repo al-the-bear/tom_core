@@ -27,10 +27,13 @@ and loading affordances.
   - [TomErrorBoundaryFallbackBuilder](#tomerrorboundaryfallbackbuilder)
   - [TomLoadingOverlay](#tomloadingoverlay)
   - [TomSkeletonLoader](#tomskeletonloader)
+- [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 
-Source: `lib/src/custom/`, barrelled by `tom_custom_widgets.dart`.
+Sources: `lib/src/custom/tom_auth_guard.dart`, `lib/src/custom/tom_auth_tree.dart`, `lib/src/custom/tom_choice_group.dart`, `lib/src/custom/tom_custom_widgets.dart`, `lib/src/custom/tom_empty_state.dart`, `lib/src/custom/tom_error_boundary.dart`, `lib/src/custom/tom_infinite_scroll.dart`, `lib/src/custom/tom_loading_overlay.dart`, `lib/src/custom/tom_skeleton_loader.dart`.
+
+The module `lib/src/custom/` is barrelled by `tom_custom_widgets.dart`.
 
 These extend `StatelessWidget` / `StatefulWidget` directly rather than a
 `TomFamilyBase`, and they reach for the package's systems only where each
@@ -139,6 +142,12 @@ const TomAuthGuard({
 |--------|-------------|
 | `resolveAuthState()` | The decision without a widget tree. `@visibleForTesting`. |
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `build` | `Widget build(BuildContext context)` |  |
+
 ### TomAuthTreeView
 
 A tree in which **every node resolves its own authorization**.
@@ -173,6 +182,12 @@ const TomAuthTreeView({
 Only a `disabled` node caps its subtree; a `read` node leaves descendants to
 their own keys. Expanding is independent of all four states — the chevron sits
 outside the barrier and outside the fade.
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `build` | `Widget build(BuildContext context)` |  |
 
 ### TomAuthTreeNode
 
@@ -452,6 +467,12 @@ const TomLoadingOverlay({
 | `progress` | `double?` | Progress from 0 to 1 for the indicator; `null` keeps it indeterminate. |
 | `blocksPointerEvents` | `bool` | Whether the covered child stops receiving pointers. |
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `build` | `Widget build(BuildContext context)` |  |
+
 ### TomSkeletonLoader
 
 Shimmer placeholder for a surface that is still loading.
@@ -487,3 +508,7 @@ disable-animations flag and an enclosing `TickerMode(enabled: false)` each
 reach the same state without the flag. Either is what lets a test
 `pumpAndSettle` with a skeleton on screen — a repeating animation schedules
 frames forever, so the binding never reaches a quiescent one.
+
+## Global Functions and Constants
+
+None — this module exports types only.

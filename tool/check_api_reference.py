@@ -51,6 +51,11 @@ So is a package listed in `UNWRITTEN`, whose summaries exist but predate the
 gate: the one fault names the detail count, and naming the package on the
 command line (or `--full`) prints the detail.
 
+`fill_api_reference.py` writes what this gate finds missing -- Source lists,
+function tables, index rows, member rows and whole summaries -- from the source
+and its dartdoc, so a reference brought short by new API is completed by one
+command and then edited where the generated words are not the best ones.
+
 The parsers are ports of the server suite's, including its fixes: block
 comments are opened only where Dart would open one, multi-line strings are
 emptied before any scan, wrapped class headers are read whole, and a member
@@ -62,6 +67,7 @@ does.
 
 from __future__ import annotations
 
+import posixpath
 import re
 import sys
 from dataclasses import dataclass, field
@@ -89,7 +95,7 @@ PACKAGES = {
 #: zero; name the package on the command line (or pass `--full`) for the
 #: detail. An entry whose package now audits clean is itself a fault, so the
 #: set cannot outlive what it records.
-UNWRITTEN = {"tom_flutter_ui", "tom_core_agentic"}
+UNWRITTEN: set[str] = set()
 
 #: Members no class section has to name: the `Object` members, as in the
 #: server's suite, and `createState`, which every `StatefulWidget` overrides for
@@ -388,7 +394,7 @@ def source_list_span(summary: str) -> str | None:
 def source_entry(layer: str) -> re.Pattern[str]:
     prefix = f"lib/src/{layer}/" if layer else "lib/src/"
     return re.compile(
-        r"`(?:" + re.escape(prefix) + r"([^/`]+)/)?([^/`]+\.dart)`")
+        r"`(?:" + re.escape(prefix) + r"([^/`]+)/)?((?!lib/)(?:[^/`]+/)*[^/`]+\.dart)`")
 
 
 def source_list_of(summary: str, layer: str) -> list[str] | None:
@@ -526,7 +532,9 @@ class Package:
         A conditional export -- `export 'a.dart' if (dart.library.js)
         'b.dart';` -- reaches every alternative it names, because which one a
         consumer gets is the platform's choice and all of them are the API on
-        some platform.
+        some platform. A file in a sub-folder of the module is reached through
+        its relative path, and a `part` is reached too: its declarations belong to the
+        library that names it, so they are exported wherever that library is.
         """
         if file in seen:
             return []
@@ -536,11 +544,16 @@ class Package:
         if not path.exists():
             return reached
         source = without_block_comments(path.read_text(encoding="utf-8"))
-        for directive in re.finditer(r"^export\s+([^;]*);", source, re.M):
+        for directive in re.finditer(r"^(?:export|part(?!\s+of\b))\s+([^;]*);", source,
+                                     re.M):
             for target in re.findall(r"'([^']+\.dart)'", directive.group(1)):
-                if "/" in target or target.startswith("package:"):
+                if target.startswith(("package:", "dart:")):
                     continue
-                reached.extend(self.reexported(module, target, seen))
+                inside = posixpath.normpath(
+                    posixpath.join(posixpath.dirname(file), target))
+                if inside.startswith("../"):
+                    continue
+                reached.extend(self.reexported(module, inside, seen))
         return reached
 
     def over(self, module: str, files: list[str], scan) -> set[str]:

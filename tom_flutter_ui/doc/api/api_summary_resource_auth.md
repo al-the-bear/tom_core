@@ -25,10 +25,13 @@ environment and platform facts a resolution may depend on.
   - [TomConfigProvider](#tomconfigprovider)
   - [TomConfigEnvironment](#tomconfigenvironment)
   - [TomConfigPlatform](#tomconfigplatform)
+- [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 
-Source: `lib/src/resource_auth/`, barrelled by `resource_auth.dart`.
+Sources: `lib/src/resource_auth/resource_auth.dart`, `lib/src/resource_auth/tom_colors.dart`, `lib/src/resource_auth/tom_config_provider.dart`, `lib/src/resource_auth/tom_icons.dart`.
+
+The module `lib/src/resource_auth/` is barrelled by `resource_auth.dart`.
 
 Tom widgets store *names* in their resources, never live Flutter objects. That
 is what lets a resource bundle be data — loaded from a file, edited without a
@@ -130,6 +133,13 @@ an application that registers its brand colours and then switches to
 `TomMaterialOnlyColorAdapter` for bundle size must not lose them, and losing them
 would be silent — every registered name would simply resolve to `null`.
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `existsInPalette` | `bool existsInPalette(String name)` |  |
+| `resolveInPalette` | `Color? resolveInPalette(String name)` |  |
+
 ### TomMaterialOnlyColorAdapter
 
 The Material palette only. Two reasons to reach for it: bundle size, and making
@@ -137,9 +147,23 @@ a stray `cSystemBlue` in a resource file resolve to `null` and be caught rather
 than quietly working. Registrations, hex and rgb all still resolve; only the
 Cupertino table is gone.
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `existsInPalette` | `bool existsInPalette(String name)` |  |
+| `resolveInPalette` | `Color? resolveInPalette(String name)` |  |
+
 ### TomCupertinoOnlyColorAdapter
 
 The iOS-facing counterpart, with the same two reasons and the same guarantees.
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `existsInPalette` | `bool existsInPalette(String name)` |  |
+| `resolveInPalette` | `Color? resolveInPalette(String name)` |  |
 
 ## Icons
 
@@ -159,13 +183,34 @@ Material and Cupertino together — the recommended adapter — and the owner of
 `TomAllIconsAdapter.registerIcons` and `TomAllIconsAdapter.clearCustomIcons`, which
 are the icon side of the same module-wide registry.
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `existsInFamily` | `bool existsInFamily(String name)` |  |
+| `resolveInFamily` | `IconData? resolveInFamily(String name)` |  |
+
 ### TomMaterialOnlyIconAdapter
 
 The Material table only; registrations still resolve.
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `existsInFamily` | `bool existsInFamily(String name)` |  |
+| `resolveInFamily` | `IconData? resolveInFamily(String name)` |  |
+
 ### TomCupertinoOnlyIconAdapter
 
 The Cupertino table only; registrations still resolve.
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `existsInFamily` | `bool existsInFamily(String name)` |  |
+| `resolveInFamily` | `IconData? resolveInFamily(String name)` |  |
 
 ## Configuration
 
@@ -200,3 +245,7 @@ where anything richer than on/off belongs.
 ### TomConfigPlatform
 
 `mobile`, `web` or `desktop` — the logical platform, not the physical one.
+
+## Global Functions and Constants
+
+None — this module exports types only.

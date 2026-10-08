@@ -58,7 +58,9 @@ components, and the widgets that render the result.
 
 ## Overview
 
-Source: `lib/src/advanced_container_layout/`, barrelled by
+Sources: `lib/src/advanced_container_layout/acl_builder.dart`, `lib/src/advanced_container_layout/acl_builder_alignment.dart`, `lib/src/advanced_container_layout/acl_builder_chrome.dart`, `lib/src/advanced_container_layout/acl_builder_data.dart`, `lib/src/advanced_container_layout/acl_builder_identity.dart`, `lib/src/advanced_container_layout/acl_builder_responsive.dart`, `lib/src/advanced_container_layout/acl_builder_sizing.dart`, `lib/src/advanced_container_layout/acl_container.dart`, `lib/src/advanced_container_layout/acl_container_chrome.dart`, `lib/src/advanced_container_layout/acl_container_content.dart`, `lib/src/advanced_container_layout/acl_container_fitting.dart`, `lib/src/advanced_container_layout/acl_container_geometry.dart`, `lib/src/advanced_container_layout/acl_container_identity.dart`, `lib/src/advanced_container_layout/acl_container_model.dart`, `lib/src/advanced_container_layout/acl_container_passes.dart`, `lib/src/advanced_container_layout/acl_container_row.dart`, `lib/src/advanced_container_layout/acl_container_state_lifecycle.dart`, `lib/src/advanced_container_layout/acl_container_values.dart`, `lib/src/advanced_container_layout/acl_container_widgets.dart`, `lib/src/advanced_container_layout/acl_device_context.dart`, `lib/src/advanced_container_layout/acl_flags.dart`, `lib/src/advanced_container_layout/acl_flow.dart`, `lib/src/advanced_container_layout/acl_group_visibility.dart`, `lib/src/advanced_container_layout/acl_responsive.dart`, `lib/src/advanced_container_layout/acl_scope.dart`, `lib/src/advanced_container_layout/advanced_container_layout.dart`, `lib/src/advanced_container_layout/row_alignment.dart`.
+
+The module `lib/src/advanced_container_layout/` is barrelled by
 `advanced_container_layout.dart`. The container is one library split across
 twelve files; the barrel names it once and the parts come with it, so the
 surface below is unaffected by where a declaration sits.
@@ -177,7 +179,7 @@ AclBuilder({
 Every constructor argument has a `setAcl…` setter equivalent; the constructor
 is there so a container's chrome can be stated before its contents.
 
-#### Static members
+#### Static Members
 
 | Member | Type | Description |
 |--------|------|-------------|
@@ -190,7 +192,7 @@ holds it against the source on every run — a second hand-written copy would be
 a second thing to keep right, and the one nobody checks is the one a reader
 would follow.
 
-#### Structure
+#### Methods — structure
 
 | Method | Description |
 |--------|-------------|
@@ -200,7 +202,7 @@ would follow.
 | `gapRow` | Starts an elastic *row*, optionally drawing a separator in it. |
 | `build` | Pure construction: maps the accumulated data into an `Acl`. Renders nothing. |
 
-#### Sizing the current component
+#### Methods — sizing the current component
 
 | Method | Description |
 |--------|-------------|
@@ -216,7 +218,7 @@ Each of these — and every other per-component method below — throws a
 `StateError` naming the setter when there is no current component: before the
 first `append`, or after `gap`, `newRow` or `gapRow`, each of which clears it.
 
-#### Size references
+#### Methods — size references
 
 | Method | Description |
 |--------|-------------|
@@ -230,7 +232,7 @@ in a **different row**. A widget the builder has no component for — never
 appended, appended later, or a flex wrapper that carries no key — is refused
 where the reference is written.
 
-#### Alignment anchors
+#### Methods — alignment anchors
 
 Eighteen methods, each taking the reference widget and an optional gap, named
 *my point* → *reference's point*:
@@ -244,7 +246,7 @@ Eighteen methods, each taking the reference widget and an optional gap, named
 component, and cannot be combined with an `alignY*` method on the same
 component.
 
-#### Container chrome
+#### Methods — container chrome
 
 | Method | Description |
 |--------|-------------|
@@ -256,7 +258,7 @@ component.
 | `setAclTitle` / `setAclTitleWidget` / `setAclTitleStyle` / `setAclTitlePosition` / `setAclTitleBorderAlign` / `setAclTitleVerticalOffset` | The title band. |
 | `setAclDirection` | Force `ltr` / `rtl` for this container instead of inheriting. |
 
-#### Builder-wide defaults
+#### Methods — builder-wide defaults
 
 | Method | Description |
 |--------|-------------|
@@ -271,7 +273,7 @@ component.
 
 `setRowHorizontalAlignment` and `setRowVerticalAlignment` set the current row's.
 
-#### Identity, groups and visibility
+#### Methods — identity, groups and visibility
 
 | Method | Description |
 |--------|-------------|
@@ -282,7 +284,7 @@ component.
 | `startGroup` / `endGroup` | Tag every component appended between the two. |
 | `setGroupVisibilityController` | Bind a group to a controller that shows, hides or disables it at runtime. |
 
-#### Responsive
+#### Methods — responsive
 
 | Method | Description |
 |--------|-------------|
@@ -292,8 +294,8 @@ component.
 
 ### AclBuilderSizing
 
-The sizing family: the methods under [Sizing the current component](#sizing-the-current-component)
-and [Size references](#size-references), the container size and scrolling
+The sizing family: the methods under [Sizing the current component](#methods--sizing-the-current-component)
+and [Size references](#methods--size-references), the container size and scrolling
 setters, and the growth shorthands. One part of the `acl_builder` library;
 called on an `AclBuilder` like any member.
 
@@ -307,7 +309,7 @@ called on an `AclBuilder` like any member.
 
 ### AclBuilderAlignment
 
-The alignment family: the methods under [Alignment anchors](#alignment-anchors),
+The alignment family: the methods under [Alignment anchors](#methods--alignment-anchors),
 the row-alignment setters and their shorthands.
 
 **Kind:** `extension on AclBuilder`
@@ -320,22 +322,22 @@ the row-alignment setters and their shorthands.
 ### AclBuilderChrome
 
 The container's defaults and chrome: the methods under
-[Builder-wide defaults](#builder-wide-defaults) and the border, padding,
-background and title setters under [Container chrome](#container-chrome).
+[Builder-wide defaults](#methods--builder-wide-defaults) and the border, padding,
+background and title setters under [Container chrome](#methods--container-chrome).
 
 **Kind:** `extension on AclBuilder`
 
 ### AclBuilderIdentity
 
 Ids, groups and group visibility: the methods under
-[Identity, groups and visibility](#identity-groups-and-visibility).
+[Identity, groups and visibility](#methods--identity-groups-and-visibility).
 
 **Kind:** `extension on AclBuilder`
 
 ### AclBuilderResponsive
 
 Variants, row breakpoints and inline variants: the methods under
-[Responsive](#responsive).
+[Responsive](#methods--responsive).
 
 **Kind:** `extension on AclBuilder`
 
@@ -371,7 +373,7 @@ Immutable.
 | `variantDetector` | `AclVariantDetector?` | The detector that selects it when it does. |
 | `hideUnauthorized` | `bool?` | Per-component override of the container default. |
 
-#### Getters
+#### Properties — getters
 
 | Getter | Reads |
 |--------|-------|
@@ -516,6 +518,12 @@ constraints, variants, groups and direction.
 | `direction` | `AclDirection?` | Forced direction; inherits from `AclDirectionScope` or the ambient `TextDirection` when null. |
 | `defaultHideUnauthorized` | `bool` | Whether a withheld component is hidden rather than shown inert. |
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `build` | `Widget build(BuildContext context)` |  |
+
 ### AclContainer
 
 The render stage beneath `AclLayout`: it runs the pre-calculation loop, resolves
@@ -526,6 +534,26 @@ the rows. Stateful because it caches measured natural sizes between frames.
 
 Its properties are `AclLayout`'s, which constructs one. Reach for it directly
 only when the layout is assembled without the builder.
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `aclGroup` | `final String? aclGroup` | Optional group name for the entire container, letting a [AclGroupVisibilityController] act on everything it holds at once. |
+| `aclId` | `final String? aclId` | Optional identifier for this container. |
+| `backgroundColor` | `final Color? backgroundColor` |  |
+| `borderStyle` | `final AclBorderStyle borderStyle` |  |
+| `defaultHideUnauthorized` | `final bool defaultHideUnauthorized` | Default for per-component `hideUnauthorized`. |
+| `direction` | `final AclDirection? direction` | Layout direction: LTR (default) or RTL. |
+| `focusedBorderStyle` | `final AclBorderStyle? focusedBorderStyle` |  |
+| `groupVisibilityControllers` | `final Map<String, AclGroupVisibilityController> groupVisibilityControllers` | Group visibility controllers keyed by group name. |
+| `idScope` | `final bool idScope` | Whether this container contributes its ID to descendant paths. |
+| `maximumContainerSize` | `final Size? maximumContainerSize` | Optional maximum container size. |
+| `minimumContainerSize` | `final Size? minimumContainerSize` | Optional minimum container size. |
+| `padding` | `final EdgeInsetsGeometry padding` |  |
+| `preferredContainerSize` | `final Size? preferredContainerSize` | Optional preferred container size. |
+| `scrollableX` | `final bool scrollableX` | Enables horizontal scrolling; gap slots collapse to 0 on the X axis. |
+| `scrollableY` | `final bool scrollableY` | Enables vertical scrolling; gap rows collapse to 0 on the Y axis. |
 
 ### AclFlowContainer
 
@@ -555,17 +583,23 @@ being told them.
 |--------|-------------|
 | `buildRows(double? availableWidth)` | The rows this container would generate at that width. `null` means unbounded, and each kind answers it: `wrap` never breaks, `grid` gives its cells no width rather than dividing infinity. |
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `build` | `Widget build(BuildContext context)` |  |
+
 ## Global Functions and Constants
 
-| Declaration | Description |
-|-------------|-------------|
-| `const double kAclDefaultFlowItemWidth` | `150.0`. The width a flow item with no hint is assumed to take. |
-| `double aclFlowItemWidth(AclComponent comp, double defaultItemWidth)` | That item's width: preferred, else minimum, else the default. |
-| `List<AclRow> aclWrapRows(List<AclComponent> components, {required double availableWidth, double gutterWidth = 8.0, double runSpacing = 8.0, double defaultItemWidth = kAclDefaultFlowItemWidth, AclRowAlignment alignment = AclRowAlignment.left, String? rowIdPrefix})` | Break the list into rows that fit the width. |
-| `List<AclRow> aclGridRows(List<AclComponent> components, {required int columns, double? availableWidth, double gutterWidth = 8.0, double runSpacing = 8.0, AclRowAlignment alignment = AclRowAlignment.left, String? rowIdPrefix})` | Break it into fixed-width columns. A null or infinite width gives the cells no width instead of an absurd one. |
-| `T aclResolveBreakpointed<T>(T base, List<(double, T)> overrides, double? availableWidth)` | The value in force at a width: the override with the greatest `minWidth` at or below it, else `base`. The one breakpoint rule the row height, the append gap and the flow column count all use. |
-| `double aclEffectiveGapBefore(AclComponent comp, AclRow row, double? availableWidth)` | The gap before a component: its own when declared, otherwise the row's default resolved at this width. |
-| `double? aclResolveRowHeight(AclRow row, double? availableWidth)` | The row's height at this width, breakpoints applied. |
+| Name | Declaration | Description |
+|------|-------------|-------------|
+| `kAclDefaultFlowItemWidth` | `const double kAclDefaultFlowItemWidth` | `150.0`. The width a flow item with no hint is assumed to take. |
+| `aclFlowItemWidth` | `double aclFlowItemWidth(AclComponent comp, double defaultItemWidth)` | That item's width: preferred, else minimum, else the default. |
+| `aclWrapRows` | `List<AclRow> aclWrapRows(List<AclComponent> components, {required double availableWidth, double gutterWidth = 8.0, double runSpacing = 8.0, double defaultItemWidth = kAclDefaultFlowItemWidth, AclRowAlignment alignment = AclRowAlignment.left, String? rowIdPrefix})` | Break the list into rows that fit the width. |
+| `aclGridRows` | `List<AclRow> aclGridRows(List<AclComponent> components, {required int columns, double? availableWidth, double gutterWidth = 8.0, double runSpacing = 8.0, AclRowAlignment alignment = AclRowAlignment.left, String? rowIdPrefix})` | Break it into fixed-width columns. A null or infinite width gives the cells no width instead of an absurd one. |
+| `aclResolveBreakpointed` | `T aclResolveBreakpointed<T>(T base, List<(double, T)> overrides, double? availableWidth)` | The value in force at a width: the override with the greatest `minWidth` at or below it, else `base`. The one breakpoint rule the row height, the append gap and the flow column count all use. |
+| `aclEffectiveGapBefore` | `double aclEffectiveGapBefore(AclComponent comp, AclRow row, double? availableWidth)` | The gap before a component: its own when declared, otherwise the row's default resolved at this width. |
+| `aclResolveRowHeight` | `double? aclResolveRowHeight(AclRow row, double? availableWidth)` | The row's height at this width, breakpoints applied. |
 
 ## Appearance
 
@@ -590,7 +624,7 @@ const AclBorderStyle.none()
 const AclBorderStyle.solid({Color color, double lineWidth, bool rounded, double borderRadius, EdgeInsetsGeometry borderInsets})
 ```
 
-#### Properties and methods
+#### Properties and Methods
 
 | Member | Type | Description |
 |--------|------|-------------|
@@ -703,6 +737,12 @@ const AclDirectionScope({Key? key, required AclDirection direction, required Wid
 | `direction` | The direction in force below this widget. |
 | `static AclDirection? maybeOf(BuildContext context)` | The nearest enclosing direction, or null. A container with no `direction` of its own falls back to this, then to the ambient `TextDirection`. |
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `updateShouldNotify` | `bool updateShouldNotify(AclDirectionScope oldWidget)` |  |
+
 ## Responsive behaviour
 
 ### AclVariant
@@ -780,7 +820,7 @@ factory AclDeviceContext.of(BuildContext context, {required double width, double
 | `textDirection` | `TextDirection` | The ambient direction. |
 | `accessibilityScale` | `double` | The ambient text scale. |
 
-#### Static methods
+#### Static Methods
 
 | Method | Description |
 |--------|-------------|
@@ -895,3 +935,9 @@ const AclScope({
 
 A flex-native child — `Flexible`, `Expanded`, `Spacer` — is **not** wrapped in
 one: those are `ParentDataWidget`s and must be the row's direct child.
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `updateShouldNotify` | `bool updateShouldNotify(AclScope oldWidget)` |  |

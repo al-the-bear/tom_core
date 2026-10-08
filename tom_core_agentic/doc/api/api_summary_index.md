@@ -80,3 +80,152 @@ restating two constants that `doc/mcp_auth.md` already tabulates, explains on
 the wire, and shows in use — and each of which carries a dartdoc longer than
 the summary entry would be. The threshold is what keeps that document from
 being written to satisfy a rule.
+
+### Agent (`lib/src/agent/`)
+
+Summary: [api_summary_agent.md](api_summary_agent.md)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `AgentProfile` | final class | A named persona that supplies the system prompt and per-send behaviour. |
+| `AgentProfileStore` | final class | Loads/saves the agent-profile set (`List<AgentProfile>`) as YAML. |
+| `AgentSdkClientFactory` | typedef | Builds (and connects) an [AgentSdkClient] over the VS Code bridge at [host]:[port] — the editor's transport seam. |
+| `AgentSendChunk` | final class | A streamed chunk of assistant answer text (in order). |
+| `AgentSendCompleted` | final class | Terminal success: the query produced a result message. |
+| `AgentSendConfig` | final class | The editor-assembled inputs to one `query` `Options`, minus the session id (which the engine supplies from [SpecSessionStore]). |
+| `AgentSendEngine` | final class | Streams a single prompt through the Agent SDK and keeps the per-spec session id refreshed. |
+| `AgentSendEvent` | sealed class | One step of an [AgentSendEngine.send] run. |
+| `AgentSendFailed` | final class | Terminal failure: a non-session error, or a stream with no result message. |
+| `AgentSendSessionRefreshed` | final class | Emitted when a session error caused the stored session id to be dropped and the prompt to be retried with a fresh session. |
+| `AgentSendStarted` | final class | Emitted once, first, when a send begins. |
+| `AgentSettings` | final class | Global agent settings: bridge target + the defaults a profile overlays. |
+| `AgentSettingsStore` | final class | Loads/saves the singleton [AgentSettings] as YAML. |
+| `BridgeChoice` | final class | The persisted choice: which host+port the editor last bound to. |
+| `BridgeChoiceStore` | final class | Persists the picked bridge server to a YAML sidecar so the binding is restored on the next launch. |
+| `BridgeConnectionService` | final class | Discovers live VS Code bridge servers. |
+| `BridgePortScanner` | typedef | Scans the bridge port range and returns a `port → workspace` table. |
+| `BridgeServer` | final class | One responsive VS Code bridge: its port, the workspace its window has open, and how it relates to the editor (`available` / `bound`). |
+| `BridgeServerStatus` | enum | How a discovered server relates to the editor right now. |
+| `ChatMessage` | final class | A single message in a chat exchange. |
+| `ChatRole` | enum | Who authored a chat message. |
+| `ChatVariable` | final class | A single placeholder binding identified by its [name]. |
+| `ChatVariableStore` | final class | Loads/saves the custom chat-variable set (`List<ChatVariable>`) as YAML. |
+| `EditorPlaceholderBindings` | final class | Resolves the editor's supported placeholder forms against a fixed set of [bindings] (e.g. |
+| `PlaceholderExpressionsUnsupportedError` | final class | Thrown when a template contains a `${{ … }}` expression form, which the editor deliberately does not support. |
+| `PromptQueueStore` | final class | Loads/saves the editor prompt queue (`List<QueuedPrompt>`) as YAML. |
+| `PromptTemplate` | final class | A reusable prompt body identified by [id]. |
+| `PromptTemplateStore` | final class | Loads/saves the prompt-template set (`List<PromptTemplate>`) as YAML. |
+| `PromptTrailStore` | final class | Loads/saves the editor prompt trail (`List<TrailPair>`) as YAML. |
+| `QueueTemplate` | final class | A named, ordered set of prompt bodies identified by [id]. |
+| `QueueTemplateStore` | final class | Loads/saves the queue-template set (`List<QueueTemplate>`) as YAML. |
+| `QueuedFollowUpPrompt` | final class | A follow-up prompt sent after a queue item's main prompt is answered. |
+| `QueuedPrePrompt` | final class | A pre-prompt sent ahead of a queue item's main prompt. |
+| `QueuedPrePromptStatus` | enum | Status of a pre-prompt — the source uses a narrower set than the main queue item. |
+| `QueuedPrompt` | final class | A prompt queued for dispatch, with optional pre-prompts, follow-ups, reminders, repeats and multi-transport routing. |
+| `QueuedPromptStatus` | enum | Lifecycle of a queued prompt. |
+| `QueuedPromptType` | enum | What kind of queued prompt this is. |
+| `QueuedTransport` | enum | Which backend a queued prompt dispatches through. |
+| `ReconnectCoordinator` | final class | Runs the reconnect back-off: after each delay it rescans the bridge range and, the first time the bound port answers, classifies the result as the same or a different workspace; if the port never answers it resolves [ReconnectResolution.stillGone]. |
+| `ReconnectDelay` | typedef | Delays for [duration] before the next rescan. |
+| `ReconnectResolution` | enum | How a reconnect attempt resolved. |
+| `ReconnectResult` | final class | The outcome of [ReconnectCoordinator.reconnect]. |
+| `ReminderTemplate` | final class | A reusable reminder body identified by [id]. |
+| `ReminderTemplateStore` | final class | Loads/saves the reminder-template set (`List<ReminderTemplate>`) as YAML. |
+| `ScheduleMode` | enum | How a timed request fires: on a fixed interval or at scheduled times. |
+| `ScheduledTime` | final class | A single scheduled slot. |
+| `SpecSessionStore` | final class | The per-specification SDK session id, persisted to a YAML sidecar so the agent can resume the same Claude-Code conversation across sends and launches. |
+| `TimedRequest` | final class | A timed / repeating prompt entry. |
+| `TimedRequestStatus` | enum | Lifecycle of a timed request entry. |
+| `TimedRequestStore` | final class | Loads/saves the timed-request set (`List<TimedRequest>`) as YAML. |
+| `ToolApprovalMode` | enum | Approval gate for write tool calls. |
+| `TrailPair` | final class | One request/answer pair from an SDK exchange, as shown in the trail. |
+| `composeInterruptRetry` | function | Composes the auto-resend body for an interrupted prompt: the active profile's [prefix] followed by the original [prompt]. |
+| `connectAgentSdkClient` | function | The production [AgentSdkClientFactory]: opens a [VSCodeBridgeClient] socket and wraps it in the bridge-backed transport. |
+| `decodeAgentYaml` | function | Parses a YAML document [yaml] into a plain `Map<String, dynamic>`. |
+| `decodeAgentYamlEntries` | function | Builds models from the YAML list [node], skipping the elements it cannot build, or returns `null` when [node] is not a list at all. |
+| `decodeAgentYamlList` | function | Builds the models in the list under [key] of [root], skipping the entries the file cannot supply. |
+| `decodeAgentYamlValue` | function | Builds the single model under [key] of [root], or [orElse] when the file cannot supply it. |
+| `deepPlainYaml` | function | Recursively converts a parsed YAML tree ([YamlMap] / [YamlList] / scalar) into plain Dart collections. |
+| `encodeAgentYaml` | function | Serialises [data] to a YAML document string. |
+| `permissionModeForApproval` | function | The SDK permission mode a [ToolApprovalMode] asks for. |
+| `readAgentYamlFile` | function | Reads and parses the sidecar at [file], or `null` when it is missing, empty, unreadable or malformed. |
+| `specSessionLooksLikeError` | function | True when [message] should be treated as an SDK **session error** under the editor rule: its text contains `session`, `message`, or `msg` (case-insensitive). |
+| `yamlEnum` | function | Reads [key] as a string and maps it through [fromValue], or `null` when [key] holds no string. |
+| `yamlStringList` | function | Reads [key] as a list of strings, keeping the elements that are strings, or `null` when [key] does not hold a list. |
+| `yamlValue` | function | Reads [key] from [yaml] when it holds a [T], and `null` when it does not — whether the key is absent or present with the wrong type. |
+
+### Bearer Auth (`lib/src/bearer_auth/`)
+
+Summary: [api_summary_bearer_auth.md](api_summary_bearer_auth.md)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `BearerAuthFailure` | final class | Raised when a bearer token cannot be accepted. |
+| `BearerAuthFailureReason` | enum | Categories of bearer-token authentication failure. |
+| `BearerTokenAuthenticator` | abstract interface class | Validates a bearer token and resolves it to a principal of type [P]. |
+
+### Isolate Streaming (`lib/src/isolate_streaming/`)
+
+Summary: [api_summary_isolate_streaming.md](api_summary_isolate_streaming.md)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `BackpressureTracker` | final class | Per-stream credit ledger held by a stream producer. |
+| `IsolateCancellationException` | final class | Thrown by the executor when a cancellable request is cancelled at (or after) a checkpoint. |
+| `IsolateCancellationHandle` | final class | Per-request cancellation handle returned by [IsolateCancellationRegistry.register]. |
+| `IsolateCancellationRegistry` | final class | In-isolate registry of cancellation state per token. |
+| `IsolateCancellationToken` | final class | Opaque identifier for a cancellable request, sendable across an isolate boundary. |
+| `IsolateCancellationTokenAllocator` | final class | Host-side counter that hands out unique [IsolateCancellationToken]s. |
+| `IsolateExceptionFactory` | typedef | Rebuilds a typed exception host-side from the flat wire form a worker packed: the original `message` and a sendable `details` map of the exception's structured fields. |
+| `IsolateExceptionRegistry` | final class | Host-side registry that turns the flat wire form of a worker-thrown exception (a type tag + message + sendable details map) back into a typed instance, so consumers `catch` the same type the worker threw instead of an untyped boundary wrapper. |
+| `IsolateRequestFailure` | final class | Typed failure raised in place of an indefinite hang when a guarded isolate request cannot complete. |
+| `IsolateRequestFailureReason` | enum | Why a request crossing an isolate boundary could not complete. |
+| `IsolateRequestGuard` | final class | Bounds each request crossing an isolate boundary so it fails with a typed [IsolateRequestFailure] instead of hanging forever. |
+| `IsolateStreamCloseSignal` | final class | Per-stream close-signal block held by a stream producer. |
+
+### Llm (`lib/src/llm/`)
+
+Summary: [api_summary_llm.md](api_summary_llm.md)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `AgentSdkLlmProvider` | final class | One Anthropic-Agent-SDK backend, exposed as an [LlmProvider]. |
+| `AgentSdkSessionStore` | final class | A small JSON-backed `session id → Claude-Code session id` map, persisted at [file]. |
+| `AgentSdkSessionStrategy` | abstract interface class | Decides, per call, whether the provider resumes a stored Claude-Code session or starts fresh, and records the session id a successful call produced. |
+| `BrainSessionStrategy` | final class | Session mode `brain`: persists the Claude-Code session id keyed by the caller's session id ([LlmOptions.brainSessionId]). |
+| `CapturedWirePrompt` | final class |  |
+| `LlmCallReport` | final class | Report produced when an LLM call completes (successfully or with a failure the caller could classify). |
+| `LlmFailure` | final class | Typed failure envelope. |
+| `LlmOptions` | final class | Per-call provider-tunable knobs. |
+| `LlmProvider` | abstract class | One LLM backend a caller can route a call to. |
+| `LlmStreamChunk` | final class | One chunk of streamed text. |
+| `LlmStreamCompleted` | final class | Successful completion. |
+| `LlmStreamEvent` | sealed class | Events emitted on a `Stream<LlmStreamEvent>` from [LlmProvider.completeStream]. |
+| `LlmStreamFailed` | final class | Terminal failure. |
+| `LlmStreamStarted` | final class | First event on every stream. |
+| `LlmStreamToolCallProposed` | final class | The provider proposed a tool call. |
+| `NoSessionStrategy` | final class | Session mode `none`: every call is a first call. |
+| `QuestSessionStrategy` | final class | Session mode `quest`: resumes the Claude-Code session recorded in the VS Code window's quest history file, read-only. |
+| `ToolCatalogue` | final class | The catalogue of tools a role may invoke during a completion. |
+| `ToolDescriptor` | final class | One tool the LLM may propose calling during a completion. |
+| `WirePrompt` | final class | The post-assembly, post-anchor-injection prompt a provider sees. |
+| `agentSdkLooksLikeSessionError` | function | True when [message] looks like a Claude-Code rejection of a stale / unknown session id, so the `brain`-mode provider should evict the stored id and retry once with a fresh session. |
+
+### Mcp Auth (`lib/src/mcp_auth/`)
+
+Summary: [api_summary_mcp_auth.md](api_summary_mcp_auth.md)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+
+### Placeholders (`lib/src/placeholders/`)
+
+Summary: [api_summary_placeholders.md](api_summary_placeholders.md)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `PlaceholderExpressionException` | final class | Raised when a `${{ … }}` expression throws or fails to parse during evaluation against the expression backing, or when a `${{ … }}` form is encountered by a resolver that has no expression backing (e.g. |
+| `PlaceholderExpressions` | abstract interface class | Evaluates the `${{ … }}` placeholder form against a binding scope. |
+| `PlaceholderRecursionException` | final class | Raised when recursive placeholder expansion does not terminate within the resolver's level cap (default 10). |
+| `PlaceholderUnresolvedException` | final class | Raised when an unknown `${name}` / `${env:NAME}` is encountered while the resolver runs in **strict** mode. |
+| `isSimpleIdentifier` | function | Returns whether [name] is a bare Dart identifier. |

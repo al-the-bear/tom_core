@@ -50,10 +50,13 @@ resource entries into Flutter values.
   - [TomCtr](#tomctr)
 - [Style resolution](#style-resolution)
   - [TomStyleResolvers](#tomstyleresolvers)
+- [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 
-Source: `lib/src/widget_base/`, barrelled by `widget_base.dart`.
+Sources: `lib/src/widget_base/tom_auth_layers.dart`, `lib/src/widget_base/tom_construction_helpers.dart`, `lib/src/widget_base/tom_family_base.dart`, `lib/src/widget_base/tom_node_base.dart`, `lib/src/widget_base/tom_policy_node_base.dart`, `lib/src/widget_base/tom_scope_path.dart`, `lib/src/widget_base/tom_scope_widgets.dart`, `lib/src/widget_base/tom_screen_elements_provider.dart`, `lib/src/widget_base/tom_style_resolvers.dart`, `lib/src/widget_base/tom_widget_family.dart`, `lib/src/widget_base/tom_widget_surface.dart`, `lib/src/widget_base/widget_base.dart`.
+
+The module `lib/src/widget_base/` is barrelled by `widget_base.dart`.
 
 A Tom widget is a Flutter widget plus exactly four things: an identity
 (`tomId`), an optional group membership, a resource path derived from the
@@ -119,6 +122,12 @@ Holds `tomId`, `tomGroup`, `scope`, `authorizer`, `uiStateController`, the
 constructor captures `TomScope.current` if no `scope` is given, which is what
 makes a widget built inside a scope resolve against it even when it is rendered
 elsewhere.
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `debugLabel` | `String get debugLabel` | Debug description for this node. |
 
 ### TomPolicyNodeBase
 
@@ -248,6 +257,12 @@ captured `constructionScope` to its state.
 `abstract class TomState<T extends TomStatefulWidget> extends State<T>`. The
 state half of the pair: implement `buildContent(BuildContext)`.
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `build` | `Widget build(BuildContext context)` |  |
+
 ## Screen elements
 
 ### TomScreenElementsProvider
@@ -262,6 +277,12 @@ The concrete base, which is also a `TomScope`. Its constructor takes an
 optional pass-through scope; `scope` answers that scope when one was given and
 `this` otherwise, so a provider is either its own scope or transparent to an
 enclosing one. `getScopePath()` is the resulting path.
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `runInScope` | `T runInScope<T>(T Function() body)` |  |
 
 ## Authorization
 
@@ -347,6 +368,12 @@ rather than a missing translation.
 `(width, value)` overrides above it, which is what a responsive property is
 stored as.
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `static` | `static` | Resolves a breakpointed `(value, overrides)` pair from resources. |
+
 ## Style resolution
 
 ### TomStyleResolvers
@@ -380,3 +407,7 @@ Two parsers have no `resolve…` twin, because nothing addresses them by their
 own resource path — each is read as part of a larger map: `parseEdgeInsets`
 (reached through `TomCtr.edgeInsets`) and `parseFontWeight` (reached through
 `parseTextStyle`).
+
+## Global Functions and Constants
+
+None — this module exports types only.

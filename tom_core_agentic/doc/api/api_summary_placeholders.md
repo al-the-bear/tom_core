@@ -1,5 +1,7 @@
 # Tom Core Agentic API Summary: `placeholders`
 
+Sources: `lib/src/placeholders/placeholder_errors.dart`, `lib/src/placeholders/placeholder_expressions.dart`, `lib/src/placeholders/placeholder_resolver.dart`, `lib/src/placeholders/placeholder_stack.dart`, `lib/src/placeholders/placeholders.dart`.
+
 Symbol-level mirror of `lib/src/placeholders/`: every type, top-level function
 and constant the unit's barrel exports, one section each. `doc/placeholders.md`
 explains the forms, the scope rule and the two entry points; this page is the
@@ -233,3 +235,9 @@ identifier rather than retyping a literal.
 
 `const String` — `'placeholder.expression.failed'`. Carried by
 `PlaceholderExpressionException.code`.
+
+## Global Functions and Constants
+
+| Name | Declaration | Description |
+| ---- | ----------- | ----------- |
+| `isSimpleIdentifier` | `bool isSimpleIdentifier(String name)` | Returns whether [name] is a bare Dart identifier. |
