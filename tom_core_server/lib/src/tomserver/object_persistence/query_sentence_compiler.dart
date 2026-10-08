@@ -1,9 +1,9 @@
 // ignore_for_file: type_literal_in_constant_pattern
 
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../datasources/types_operator.dart';
 import '../datasources/queries.dart';
 import '../datasources/sql_dialects.dart';
+import 'annotation_analyzer.dart';
 import 'grouped_query.dart';
 import 'operators_expressions.dart';
 import 'paging.dart';
@@ -44,12 +44,13 @@ typedef _UnaryPredicateFactory =
 /// defects in this file were all one dispatch of a set being missed — `double`
 /// was absent from three of them at once.
 ///
-/// Deliberately not [TomSqlTypeFamily]. That answers a neighbouring but
-/// different question — how a value is *stored*, folding in `isJson` and the
-/// `TomDbColumn<,>` type arguments — and it resolves an explicit `columnType:`
-/// naming a bare Dart type differently from this compiler. Sharing the
-/// vocabulary without sharing the resolution would suggest an agreement that
-/// does not hold.
+/// It is derived from [TomSqlTypeFamily], through
+/// `TomAnnotationAnalyzer.familyOf`, rather than resolved here: the compiler,
+/// the schema-convergence check and the export projection all ask "what is
+/// this column stored as?", and one resolver means one answer. This enum is the
+/// subset of families a column node can be built for, which is what keeps the
+/// two dispatches exhaustive without `binary` and `unknown` cases they could
+/// only reject.
 enum _CompiledColumnType {
   text,
   integer,
@@ -1885,57 +1886,16 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     return (options, scanAt);
   }
 
-  /// Every spelling a compiled column type may be written with, on either of
-  /// the two routes into [_compiledColumnType].
+  /// The type [field]'s column is compiled as: its storage family, from
+  /// [TomAnnotationAnalyzer.familyOf].
   ///
-  /// One map for both routes rather than one per route. A field cannot be
-  /// *declared* with a `TomDb…` box — those name SQL types, not Dart values —
-  /// so the declared-type vocabulary is a strict subset of the explicit one,
-  /// and splitting the map would buy nothing but a second thing to keep in
-  /// step. The extra keys are unreachable on the declared route, not wrong on
-  /// it.
-  static const Map<Type, _CompiledColumnType> _compiledColumnTypes = {
-    String: _CompiledColumnType.text,
-    TomDbString: _CompiledColumnType.text,
-    TomString: _CompiledColumnType.text,
-    TomNString: _CompiledColumnType.text,
-    int: _CompiledColumnType.integer,
-    TomDbInt: _CompiledColumnType.integer,
-    TomInt: _CompiledColumnType.integer,
-    TomNInt: _CompiledColumnType.integer,
-    double: _CompiledColumnType.decimal,
-    TomDbDouble: _CompiledColumnType.decimal,
-    TomDouble: _CompiledColumnType.decimal,
-    TomNDouble: _CompiledColumnType.decimal,
-    bool: _CompiledColumnType.boolean,
-    TomDbBool: _CompiledColumnType.boolean,
-    TomBool: _CompiledColumnType.boolean,
-    TomNBool: _CompiledColumnType.boolean,
-    DateTime: _CompiledColumnType.dateTime,
-    TomDbDateTime: _CompiledColumnType.dateTime,
-    TomZonedDateTime: _CompiledColumnType.dateTime,
-    TomNDateTime: _CompiledColumnType.dateTime,
-    TomZonedDate: _CompiledColumnType.date,
-    TomDbDate: _CompiledColumnType.date,
-    TomZonedTime: _CompiledColumnType.time,
-    TomDbTime: _CompiledColumnType.time,
-  };
-
-  /// The type [field]'s column is compiled as.
-  ///
-  /// An explicit `@TomDbColumn(columnType: ...)` wins over the field's declared
-  /// Dart type — being able to say "this Dart value is stored as *that*" is the
-  /// entire purpose of the annotation, and the declared type is only ever a
-  /// fallback inference.
-  ///
-  /// An explicit type this compiler cannot build a column for is **refused**,
-  /// not quietly replaced by the inferred one. Falling back would make the
-  /// escape hatch fail open: the entity states one storage type, the compiler
-  /// builds another, and the disagreement first shows up as a value written to
-  /// the wrong kind of column rather than as a rejection naming the annotation.
-  /// The fall-through that did this was invisible for as long as it was: no
-  /// fixture entity declared `columnType:` at all, so neither the honouring nor
-  /// the refusal had ever run.
+  /// An explicit `@TomDbColumn(columnType: ...)` wins over the field's Dart type
+  /// there, and an explicit type that names no family is **refused** here, not
+  /// quietly replaced by the inferred one. Falling back would make the escape
+  /// hatch fail open: the entity states one storage type, the compiler builds
+  /// another, and the disagreement first shows up as a value written to the
+  /// wrong kind of column rather than as a rejection naming the annotation. A
+  /// JSON column is text, as it is stored.
   ///
   /// Both failures carry `create_column.failed`. A caller that has already
   /// built the column node — [_createParameter] is the only one — cannot reach
@@ -1944,22 +1904,32 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     TomColumnInformation column,
     String field,
   ) {
-    final declaredColumnType = column.column?.columnType;
-    if (declaredColumnType != null) {
-      final explicit = _compiledColumnTypes[declaredColumnType];
-      if (explicit != null) return explicit;
-      throw TomQuerySyntaxException(
-        "query_sentence_compiler.create_column.failed",
-        "The column $field declares columnType: $declaredColumnType, which is "
-            "not a type this compiler can build a column for. @ $column",
-      );
+    switch (TomAnnotationAnalyzer.familyOf(column)) {
+      case TomSqlTypeFamily.text:
+        return _CompiledColumnType.text;
+      case TomSqlTypeFamily.integer:
+        return _CompiledColumnType.integer;
+      case TomSqlTypeFamily.decimal:
+        return _CompiledColumnType.decimal;
+      case TomSqlTypeFamily.boolean:
+        return _CompiledColumnType.boolean;
+      case TomSqlTypeFamily.dateTime:
+        return _CompiledColumnType.dateTime;
+      case TomSqlTypeFamily.date:
+        return _CompiledColumnType.date;
+      case TomSqlTypeFamily.time:
+        return _CompiledColumnType.time;
+      case TomSqlTypeFamily.binary:
+      case TomSqlTypeFamily.unknown:
+        final explicit = column.column?.columnType;
+        throw TomQuerySyntaxException(
+          "query_sentence_compiler.create_column.failed",
+          explicit != null
+              ? "The column $field declares columnType: $explicit, which is "
+                    "not a type this compiler can build a column for. @ $column"
+              : "Could not determine type for column $field @ $column",
+        );
     }
-    final inferred = _compiledColumnTypes[column.declaredType];
-    if (inferred != null) return inferred;
-    throw TomQuerySyntaxException(
-      "query_sentence_compiler.create_column.failed",
-      "Could not determine type for column $field @ $column",
-    );
   }
 
   Parameter<QT> _createParameter<QT>(

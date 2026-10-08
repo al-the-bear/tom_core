@@ -1120,11 +1120,7 @@ class MariaDbDatasource implements TomDataSource {
                 if (col.column!.fromDbConverter != null) {
                   try {
                     Object? value = col.column!.fromDbConverter!(
-                      _getColumnValue(
-                        row,
-                        col.field,
-                        col.column!.declaredColumnType(),
-                      ),
+                      _getColumnValue(row, col.field, col.column!.columnType),
                     );
                     im.invokeSetter(dm.simpleName, value);
                     continue;
@@ -1144,7 +1140,7 @@ class MariaDbDatasource implements TomDataSource {
                     );
                   }
                 }
-                Type t = col.column!.declaredDartType() ?? dm.reflectedType;
+                Type t = col.column!.dartType ?? dm.reflectedType;
                 if (col.column!.isJson && tomReflector.canReflectType(t)) {
                   try {
                     String? stringValue = row.typedColByName<String>(col.field);

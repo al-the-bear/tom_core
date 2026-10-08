@@ -1042,8 +1042,8 @@ void main() {
     });
 
     // The bind boundary is where an entity column meets the instant convention
-    // (`datasources/sql_instant.dart`). A reflected `@TomDbColumn<DateTime?,
-    // TomDbDateTime>` field names no conversion of its own, so the data source
+    // (`datasources/sql_instant.dart`). A reflected `@TomDbColumn` on a
+    // `DateTime?` field names no conversion of its own, so the data source
     // applies the convention on its behalf: what reaches the driver is the UTC
     // `DATETIME(6)` text, identical on every node.
     //
@@ -1139,7 +1139,7 @@ void main() {
     });
 
     test('a TomDbDate box binds what the bare date binds', () {
-      // The path a reflected `@TomDbColumn<..., TomDbDate>` takes: unwrapping
+      // The path a reflected `@TomDbColumn(columnType: TomDbDate)` takes: unwrapping
       // the box must not change which of the three renderers is chosen.
       final date = crossesTheDateLine();
       expect(

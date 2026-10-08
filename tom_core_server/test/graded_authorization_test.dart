@@ -69,7 +69,8 @@ void main() {
       // dynamic)?`. A converter whose parameter is narrowed (e.g. TomDbString /
       // TomAuthState) fails the runtime function-subtype check on that read —
       // this reproduces the erased read without a live database.
-      final TomDbColumn erased = TomDbColumn<TomAuthState, TomDbString>(
+      final TomDbColumn erased = TomDbColumn(
+        columnType: TomDbString,
         columnName: 'access_level',
         fromDbConverter: TomAuthStateCodec.fromDbColumn,
         toDbConverter: TomAuthStateCodec.toDbColumn,

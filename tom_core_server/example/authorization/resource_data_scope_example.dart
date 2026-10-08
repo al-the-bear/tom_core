@@ -37,7 +37,7 @@ TomColumnInformation _resourceKeyColumn() => TomColumnInformation(
   declaredType: String,
   declaredName: 'resourceKey',
   field: 'resourceKey',
-  column: TomDbColumn<String, TomDbString>(columnName: 'resource_key'),
+  column: TomDbColumn(columnName: 'resource_key'),
 );
 
 TomPrincipal _principal(int id) => TomPrincipal(

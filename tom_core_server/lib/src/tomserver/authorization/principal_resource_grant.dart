@@ -30,7 +30,6 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../datasources/types_operator.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../object_persistence/crud_repository.dart';
 
@@ -55,21 +54,21 @@ import '../object_persistence/crud_repository.dart';
 class TomPrincipalResourceGrant {
   /// Surrogate primary key (`-1` until persisted).
   @TomEntityId()
-  @TomDbColumn<int, TomDbInt>(columnName: 'id', isReadOnly: true)
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
 
   /// The principal the grant applies to (the principal's stable identifier,
   /// stringified — e.g. a user id).
-  @TomDbColumn<String, TomDbString>(columnName: 'principal_id')
+  @TomDbColumn(columnName: 'principal_id')
   String principalId;
 
   /// The resource the role is scoped to (a resource key / `tomId`).
-  @TomDbColumn<String, TomDbString>(columnName: 'resource_key')
+  @TomDbColumn(columnName: 'resource_key')
   String resourceKey;
 
   /// The role the principal holds on the resource (an opaque name resolved to a
   /// [TomAuthState] through [TomResourceRoleRegistry]).
-  @TomDbColumn<String, TomDbString>(columnName: 'role')
+  @TomDbColumn(columnName: 'role')
   String role;
 
   /// Creates a grant.

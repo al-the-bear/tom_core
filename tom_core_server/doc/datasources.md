@@ -113,8 +113,8 @@ for both ways this server writes SQL:
 
 - **Hand-written SQL** — the scheduling, OAuth-state, audit and file-storage
   stores build their own statements and call the pair at each seam explicitly.
-- **Reflected entity columns** — a `@TomDbColumn<DateTime?, TomDbDateTime>`
-  field names no conversion at all, so this module applies one on its behalf:
+- **Reflected entity columns** — a `@TomDbColumn` on a `DateTime?` field
+  names no conversion at all, so this module applies one on its behalf:
   the MariaDB bind boundary renders every bound `DateTime` through `sqlInstant`,
   `TomDbDateTime.of` reads a column back through `parseOptionalSqlInstant`, and
   `dateTimeOp` inlines the same text as a literal. An entity therefore stores

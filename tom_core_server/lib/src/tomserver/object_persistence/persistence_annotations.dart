@@ -46,11 +46,19 @@ class TomDbTable {
 
 /// Annotation that maps an entity field to a database column.
 ///
-/// The type parameters carry the Dart-side type ([DART_TYPE]) and the SQL-side
-/// boxed type ([COL_TYPE], a [TomDbType]); [fromDbConverter] / [toDbConverter]
-/// translate between them when reading and writing. [isReadOnly] columns are
+/// The column's storage type is the field's Dart type unless [columnType] says
+/// otherwise: `columnType: TomDbString` on a `TomAuthState` field stores the
+/// enum as text. [dartType] overrides the field's Dart type for the same
+/// purpose. Both are plain fields because an annotation is read back through
+/// reflection, which reconstructs it without type arguments — a type parameter
+/// on this class would be documented API that nothing at run time could see.
+/// One resolver, `TomAnnotationAnalyzer.familyOf`, turns them into a storage
+/// family for every consumer.
+///
+/// [fromDbConverter] / [toDbConverter] translate between the stored boxed value
+/// and the Dart value when reading and writing. [isReadOnly] columns are
 /// skipped on insert/update, [noLoad] columns are not selected, and [isJson]
-/// marks a column whose value is JSON-encoded.
+/// marks a column whose value is JSON-encoded (stored as text).
 ///
 /// [authKey] opts the column into **column-level access rights** (C-4): when
 /// set, the repository resolves the current principal's [TomAuthState] for that
@@ -59,7 +67,7 @@ class TomDbTable {
 /// when the principal cannot see it, and rejecting a write that changes it when
 /// the principal is not `full`. A column with no [authKey] is unrestricted, so
 /// existing entities keep their behaviour unchanged.
-class TomDbColumn<DART_TYPE, COL_TYPE extends TomDbType> {
+class TomDbColumn {
   /// The column name; defaults to the field name when `null`.
   final String? columnName;
 
@@ -79,17 +87,22 @@ class TomDbColumn<DART_TYPE, COL_TYPE extends TomDbType> {
   /// unauthorized write. `null` (the default) leaves the column unrestricted.
   final String? authKey;
 
-  /// The Dart type, when it cannot be inferred from [DART_TYPE].
+  /// The Dart type the column is read as, when it is not the field's own.
   final Type? dartType;
 
-  /// The SQL column type, when it cannot be inferred from [COL_TYPE].
+  /// The type the column is stored as, when it is not the field's Dart type:
+  /// a [TomDbType] box (`TomDbString`), or the Dart type whose storage it shares
+  /// (`bool`).
   final Type? columnType;
 
-  /// Converts a stored [COL_TYPE] value back to the Dart [DART_TYPE].
-  final DART_TYPE Function(COL_TYPE)? fromDbConverter;
+  /// Converts a stored boxed value back to the field's Dart value.
+  ///
+  /// Typed with the widest box because that is the value the datasource holds
+  /// when it calls it; a converter for one column narrows inside, by cast.
+  final Object? Function(TomDbType value)? fromDbConverter;
 
-  /// Converts a Dart [DART_TYPE] value to the stored [COL_TYPE].
-  final COL_TYPE Function(DART_TYPE)? toDbConverter;
+  /// Converts the field's Dart value to the boxed value to store.
+  final TomDbType Function(dynamic value)? toDbConverter;
 
   /// Maps a field to a column.
   const TomDbColumn({
@@ -103,13 +116,6 @@ class TomDbColumn<DART_TYPE, COL_TYPE extends TomDbType> {
     this.toDbConverter,
     this.columnType,
   });
-
-  /// The declared Dart type: [DART_TYPE] when concrete, else [dartType].
-  Type? declaredDartType() => DART_TYPE != dynamic ? DART_TYPE : dartType;
-
-  /// The declared SQL column type: [COL_TYPE] when concrete, else [columnType].
-  Type? declaredColumnType() =>
-      (COL_TYPE != TomDbType<dynamic>) ? COL_TYPE : columnType;
 }
 
 /// Annotation marking the entity field that holds the primary key.

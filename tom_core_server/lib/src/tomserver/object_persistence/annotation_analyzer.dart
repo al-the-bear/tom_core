@@ -394,62 +394,80 @@ mixin TomAnnotationAnalyzer {
     return result;
   }
 
-  /// The [TomDbType] boxes an entity may declare, mapped to their type family.
-  static const Map<Type, TomSqlTypeFamily> _boxFamilies = {
+  /// Every type a column's storage may be named by, mapped to its family.
+  ///
+  /// One table for every route in: an explicit `columnType:` may name a
+  /// [TomDbType] box (`TomDbString`) or a Dart type whose storage it shares
+  /// (`bool`), and a field's own type may be a Dart value type or one of the
+  /// observable `Tom…` wrappers. A box never appears as a field type, so those
+  /// keys are simply unreached on that route — a second table per route would
+  /// only be a second thing to keep in step, which is how this question once
+  /// had three different answers.
+  static const Map<Type, TomSqlTypeFamily> _storageFamilies = {
     TomDbInt: TomSqlTypeFamily.integer,
-    TomDbDouble: TomSqlTypeFamily.decimal,
-    TomDbString: TomSqlTypeFamily.text,
-    TomDbBool: TomSqlTypeFamily.boolean,
-    TomDbDateTime: TomSqlTypeFamily.dateTime,
-    TomDbDate: TomSqlTypeFamily.date,
-    TomDbTime: TomSqlTypeFamily.time,
-  };
-
-  /// The Dart types a mapped field may have when no [TomDbType] box is declared.
-  static const Map<Type, TomSqlTypeFamily> _dartFamilies = {
     int: TomSqlTypeFamily.integer,
+    TomInt: TomSqlTypeFamily.integer,
+    TomNInt: TomSqlTypeFamily.integer,
+    TomDbDouble: TomSqlTypeFamily.decimal,
     double: TomSqlTypeFamily.decimal,
     num: TomSqlTypeFamily.decimal,
+    TomDouble: TomSqlTypeFamily.decimal,
+    TomNDouble: TomSqlTypeFamily.decimal,
+    TomDbString: TomSqlTypeFamily.text,
     String: TomSqlTypeFamily.text,
+    TomString: TomSqlTypeFamily.text,
+    TomNString: TomSqlTypeFamily.text,
+    TomDbBool: TomSqlTypeFamily.boolean,
     bool: TomSqlTypeFamily.boolean,
+    TomBool: TomSqlTypeFamily.boolean,
+    TomNBool: TomSqlTypeFamily.boolean,
+    TomDbDateTime: TomSqlTypeFamily.dateTime,
     DateTime: TomSqlTypeFamily.dateTime,
+    TomZonedDateTime: TomSqlTypeFamily.dateTime,
+    TomNDateTime: TomSqlTypeFamily.dateTime,
+    TomDbDate: TomSqlTypeFamily.date,
     TomZonedDate: TomSqlTypeFamily.date,
+    TomDbTime: TomSqlTypeFamily.time,
     TomZonedTime: TomSqlTypeFamily.time,
   };
 
-  /// The type family [column] is stored in.
+  /// The type family [column] is stored in — the one answer to "what SQL type
+  /// is this column?" that the query compiler, the schema-convergence check
+  /// and the reflected export projection all read.
   ///
   /// A JSON column is text whatever its Dart type — the value is encoded before
-  /// it reaches the database. Otherwise the declared [TomDbType] box decides,
-  /// and only when there is none does the Dart type stand in. An unrecognised
-  /// type (an enum behind a converter, say) yields [TomSqlTypeFamily.unknown],
-  /// which is compatible with everything: a gap in the caller's knowledge must
-  /// not be reported as a defect in the schema.
+  /// it reaches the database. Otherwise an explicit `columnType:` decides, and
+  /// only when there is none does the Dart type (`dartType:`, else the field's
+  /// own) stand in. An explicit type that names no family yields
+  /// [TomSqlTypeFamily.unknown] rather than falling back to the Dart type: the
+  /// entity stated a storage type, and quietly substituting another one is the
+  /// disagreement this resolver exists to prevent. Unknown is compatible with
+  /// everything in the convergence check — a gap in the caller's knowledge is
+  /// not a defect in the schema — and the query compiler refuses it, naming
+  /// the annotation.
   ///
-  /// Homed here rather than with either consumer because both the
-  /// schema-convergence check and the reflected export projection ask the same
-  /// question of the same annotations, and a second answer would be a second
-  /// thing to keep in step. Note what it describes: how a value is *stored*.
-  /// The Dart value a getter returns can differ — a JSON column is a `Map` in
-  /// Dart and text in the database — so a consumer that cares about the Dart
-  /// value must check [TomColumnInformation.declaredType] as well.
+  /// Note what it describes: how a value is *stored*. The Dart value a getter
+  /// returns can differ — a JSON column is a `Map` in Dart and text in the
+  /// database — so a consumer that cares about the Dart value checks
+  /// [dartTypeOf] as well.
   static TomSqlTypeFamily familyOf(TomColumnInformation column) {
     if (column.column?.isJson ?? false) return TomSqlTypeFamily.text;
-    final boxed = column.column?.declaredColumnType();
-    if (boxed != null) {
-      final family = _boxFamilies[boxed];
-      if (family != null) return family;
+    final explicit = column.column?.columnType;
+    if (explicit != null) {
+      return _storageFamilies[explicit] ?? TomSqlTypeFamily.unknown;
     }
-    final dartType = column.column?.declaredDartType() ?? column.declaredType;
-    return _dartFamilies[dartType] ?? TomSqlTypeFamily.unknown;
+    return _storageFamilies[dartTypeOf(column)] ?? TomSqlTypeFamily.unknown;
   }
+
+  /// The Dart type [column] is read as: the annotation's `dartType:` when it
+  /// gives one, otherwise the field's declared type.
+  static Type dartTypeOf(TomColumnInformation column) =>
+      column.column?.dartType ?? column.declaredType;
 
   /// How [column]'s type is spelled on the entity side, for reporting only.
   static String describeDeclaredType(TomColumnInformation column) {
     if (column.column?.isJson ?? false) return 'JSON';
-    final boxed = column.column?.declaredColumnType();
-    if (boxed != null && _boxFamilies.containsKey(boxed)) return '$boxed';
-    return '${column.column?.declaredDartType() ?? column.declaredType}';
+    return '${column.column?.columnType ?? dartTypeOf(column)}';
   }
 
   /// Returns the persistence metadata for every annotated field of [dbType]

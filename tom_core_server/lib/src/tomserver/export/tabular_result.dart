@@ -668,7 +668,7 @@ class _TomEntityProjection {
       TomSqlTypeFamily.binary ||
       TomSqlTypeFamily.unknown => TomColumnType.text,
     };
-    final dartType = column.column?.declaredDartType() ?? column.declaredType;
+    final dartType = TomAnnotationAnalyzer.dartTypeOf(column);
     return candidate.dartType == dartType ? candidate : TomColumnType.text;
   }
 }

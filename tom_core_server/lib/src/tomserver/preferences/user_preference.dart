@@ -28,7 +28,6 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../datasources/types_operator.dart';
 import '../object_persistence/crud_repository.dart';
 import '../object_persistence/persistence_annotations.dart';
 
@@ -43,29 +42,29 @@ import '../object_persistence/persistence_annotations.dart';
 class TomUserPreference {
   /// Surrogate primary key (`-1` until persisted).
   @TomEntityId()
-  @TomDbColumn<int, TomDbInt>(columnName: 'id', isReadOnly: true)
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
 
   /// The principal the preference belongs to ([TomPrincipal.id]) — the scope
   /// column.
-  @TomDbColumn<int, TomDbInt>(columnName: 'principal_id')
+  @TomDbColumn(columnName: 'principal_id')
   int principalId;
 
   /// The preference key (see [TomUserPreferenceKeys] for the framework's own).
-  @TomDbColumn<String, TomDbString>(columnName: 'preference_key')
+  @TomDbColumn(columnName: 'preference_key')
   String preferenceKey;
 
   /// The name of the type [valueJson] was written as
   /// ([TomUserPreferenceDto.valueType]).
-  @TomDbColumn<String, TomDbString>(columnName: 'value_type')
+  @TomDbColumn(columnName: 'value_type')
   String valueType;
 
   /// The value's JSON text.
-  @TomDbColumn<String, TomDbString>(columnName: 'value_json')
+  @TomDbColumn(columnName: 'value_json')
   String valueJson;
 
   /// When the preference was last written (UTC).
-  @TomDbColumn<DateTime?, TomDbDateTime>(columnName: 'updated_at')
+  @TomDbColumn(columnName: 'updated_at')
   DateTime? updatedAt;
 
   /// Creates a row. Every field defaults, because the repository instantiates a

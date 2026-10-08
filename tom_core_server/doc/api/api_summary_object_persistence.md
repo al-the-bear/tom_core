@@ -15,7 +15,7 @@ column-level access rights (C-4).
   - [Annotations & Metadata](#annotations--metadata)
     - [TomDartType](#tomdarttype)
     - [TomDbTable](#tomdbtable)
-    - [TomDbColumn&lt;DART_TYPE, COL_TYPE&gt;](#tomdbcolumndart_type-col_type)
+    - [TomDbColumn](#tomdbcolumn)
     - [TomEntityId](#tomentityid)
     - [TomDbScope](#tomdbscope)
     - [TomReference&lt;TARGET, K, REPO&gt;](#tomreferencetarget-k-repo)
@@ -200,13 +200,18 @@ const TomDbTable({
 | `primaryKeyField` | `String` | The entity field that holds the primary key. |
 | `idColumn` | `String?` | The primary-key column name, when it differs from `primaryKeyField`. |
 
-#### TomDbColumn&lt;DART_TYPE, COL_TYPE&gt;
+#### TomDbColumn
 
 Annotation that maps an entity field to a database column. `authKey` opts the
 column into column-level access rights (C-4); the kernel's `@TomProtectedField`
 on the same field does the same, and also protects the field in JSON output.
 
-- **Type Parameters:** `DART_TYPE` — the Dart-side type; `COL_TYPE extends TomDbType` — the SQL-side boxed type.
+The column's storage type is the field's Dart type unless `columnType` names
+another — a `TomDbType` box (`TomDbString`) or a Dart type whose storage it
+shares (`bool`). The class takes no type parameters: an annotation is read back
+through reflection, which reconstructs it without type arguments, so the storage
+type is stated in fields the reflected copy keeps. `TomAnnotationAnalyzer.familyOf`
+is the one resolver that turns them into a storage family.
 
 ##### Constructors
 
@@ -218,8 +223,8 @@ const TomDbColumn({
   bool isJson = false,
   String? authKey,
   Type? dartType,
-  DART_TYPE Function(COL_TYPE)? fromDbConverter,
-  COL_TYPE Function(DART_TYPE)? toDbConverter,
+  Object? Function(TomDbType value)? fromDbConverter,
+  TomDbType Function(dynamic value)? toDbConverter,
   Type? columnType,
 })
 ```
@@ -231,19 +236,12 @@ const TomDbColumn({
 | `columnName` | `String?` | The column name; defaults to the field name when `null`. |
 | `isReadOnly` | `bool` | Whether the column is excluded from inserts and updates. |
 | `noLoad` | `bool` | Whether the column is excluded from selects. |
-| `isJson` | `bool` | Whether the column holds JSON-encoded data. |
+| `isJson` | `bool` | Whether the column holds JSON-encoded data (stored as text). |
 | `authKey` | `String?` | The resource key that gates this column's read/write access (C-4); `null` leaves it unrestricted. |
-| `dartType` | `Type?` | The Dart type, when it cannot be inferred from `DART_TYPE`. |
-| `columnType` | `Type?` | The SQL column type, when it cannot be inferred from `COL_TYPE`. |
-| `fromDbConverter` | `DART_TYPE Function(COL_TYPE)?` | Converts a stored `COL_TYPE` value back to the Dart `DART_TYPE`. |
-| `toDbConverter` | `COL_TYPE Function(DART_TYPE)?` | Converts a Dart `DART_TYPE` value to the stored `COL_TYPE`. |
-
-##### Methods
-
-| Method | Signature | Description |
-| ------ | --------- | ----------- |
-| `declaredDartType` | `Type? declaredDartType()` | The declared Dart type: `DART_TYPE` when concrete, else `dartType`. |
-| `declaredColumnType` | `Type? declaredColumnType()` | The declared SQL column type: `COL_TYPE` when concrete, else `columnType`. |
+| `dartType` | `Type?` | The Dart type the column is read as, when it is not the field's own. |
+| `columnType` | `Type?` | The type the column is stored as, when it is not the field's Dart type: a `TomDbType` box or a Dart type. |
+| `fromDbConverter` | `Object? Function(TomDbType value)?` | Converts the stored boxed value back to the field's Dart value; typed with the widest box, narrowing inside by cast. |
+| `toDbConverter` | `TomDbType Function(dynamic value)?` | Converts the field's Dart value to the boxed value to store. |
 
 #### TomEntityId
 
@@ -1353,8 +1351,9 @@ scoping the default rather than an annotation anyone has to remember — see
 | `autoScopeFor` | `static TomDbScope? autoScopeFor(List<TomColumnInformation> columns)` | The scope an entity with these `columns` carries *implicitly* — a `TomDbScope(field: …, scope: resourceScope)` when one column is a resource key, `null` otherwise. `null` whenever any column names a `resourceScopeInputTables` table, which is decided for the whole list before the resource key is looked for. |
 | `findAuthColumns` | `static List<TomColumnInformation> findAuthColumns(Type dbType)` | The columns of `dbType` that opt into column-level access rights (C-4), or empty. |
 | `findFileColumns` | `static List<TomColumnInformation> findFileColumns(Type dbType)` | The columns of `dbType` annotated `@TomFileReference`, or empty. Consulted before *any* file work, so an entity that stores no files pays nothing for the feature. |
-| `familyOf` | `static TomSqlTypeFamily familyOf(TomColumnInformation column)` | The type family `column` is **stored** in: JSON is text whatever the Dart type, otherwise the declared `TomDbType` box decides and the Dart type only stands in when there is none. An unrecognised type yields `unknown`, which is compatible with everything. |
-| `describeDeclaredType` | `static String describeDeclaredType(TomColumnInformation column)` | How `column`'s type is spelled on the entity side, for reporting only — `'JSON'`, else the box, else the Dart type. |
+| `familyOf` | `static TomSqlTypeFamily familyOf(TomColumnInformation column)` | The type family `column` is **stored** in — the one answer the query compiler, the schema-convergence check and the export projection all read. JSON is text whatever the types; otherwise an explicit `columnType` (a box or a Dart type) decides, and only when there is none does `dartTypeOf` stand in. An explicit type naming no family yields `unknown` rather than falling back — compatible with everything in the convergence check, refused by the query compiler. |
+| `dartTypeOf` | `static Type dartTypeOf(TomColumnInformation column)` | The Dart type `column` is read as: the annotation's `dartType` when given, else the field's declared type. |
+| `describeDeclaredType` | `static String describeDeclaredType(TomColumnInformation column)` | How `column`'s type is spelled on the entity side, for reporting only — `'JSON'`, else the explicit `columnType`, else the Dart type. |
 | `getPersistentColumns` | `static List<TomColumnInformation>? getPersistentColumns(Type dbType)` | The persistence metadata for every annotated field, or `null` if not reflectable. Throws `TomAnnotationAnalyzerSyntaxException`. The list is unmodifiable and shared with every other caller for the same entity; a caller wanting one of its own copies it. |
 | `determineColumn` | `static TomColumnInformation determineColumn(String name, List<TomTypePersistenceInfo> persistenceInfo)` | Finds the `TomColumnInformation` matching `name`. Throws `TomAnnotationAnalyzerSyntaxException` when nothing matches. |
 | `referenceQuery` | `static ({String sentence, Map<String, Object?> parameters}) referenceQuery(TomReference reference, Type owningType, Object? Function(String field) readOwningField)` | The `FIND BY` sentence resolving a `@TomReference` for one mapped row, and the parameters it binds. Throws `TomAnnotationAnalyzerSyntaxException` for a malformed expression, `TomAnnotationAnalyzerException` for a context value the zone cannot supply. |

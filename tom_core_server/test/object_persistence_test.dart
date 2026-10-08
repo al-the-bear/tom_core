@@ -170,9 +170,90 @@ void main() {
   });
 
   group('persistence annotations', () {
-    test('TomDbColumn.declaredDartType resolves the type argument', () {
-      const col = TomDbColumn<String, TomDbString>(columnName: 'name');
-      expect(col.declaredDartType(), String);
+    group('familyOf is the one answer to "what is this column stored as?"', () {
+      TomColumnInformation info(Type declared, TomDbColumn column) =>
+          TomColumnInformation(
+            tableType: Object,
+            table: TomDbTable(
+              datasource: 'main',
+              table: 't',
+              primaryKeyField: 'id',
+            ),
+            column: column,
+            declaredType: declared,
+            declaredName: 'f',
+            field: 'f',
+          );
+      TomSqlTypeFamily familyOf(Type declared, TomDbColumn column) =>
+          TomAnnotationAnalyzer.familyOf(info(declared, column));
+
+      test('the field type decides when the annotation names none', () {
+        expect(
+          familyOf(int, const TomDbColumn(columnName: 'f')),
+          TomSqlTypeFamily.integer,
+        );
+        expect(
+          familyOf(TomString, const TomDbColumn(columnName: 'f')),
+          TomSqlTypeFamily.text,
+          reason: 'an observable wrapper is stored as what it wraps',
+        );
+      });
+
+      test('an explicit box wins over the field type', () {
+        expect(
+          familyOf(
+            TomAuthState,
+            const TomDbColumn(columnName: 'f', columnType: TomDbString),
+          ),
+          TomSqlTypeFamily.text,
+        );
+      });
+
+      test('an explicit bare Dart type wins too, not only a box', () {
+        // `columnType: bool` on an `int` field: the fixture's `legacyFlag`.
+        // Accepting only boxes here once made this column an integer to the
+        // convergence check and a boolean to the query compiler.
+        expect(
+          familyOf(int, const TomDbColumn(columnName: 'f', columnType: bool)),
+          TomSqlTypeFamily.boolean,
+        );
+      });
+
+      test(
+        'an explicit type with no family is unknown, never the field type',
+        () {
+          expect(
+            familyOf(
+              String,
+              const TomDbColumn(columnName: 'f', columnType: Duration),
+            ),
+            TomSqlTypeFamily.unknown,
+          );
+        },
+      );
+
+      test('dartType: stands in for the field type', () {
+        expect(
+          familyOf(Object, const TomDbColumn(columnName: 'f', dartType: int)),
+          TomSqlTypeFamily.integer,
+        );
+        expect(
+          TomAnnotationAnalyzer.dartTypeOf(
+            info(Object, const TomDbColumn(columnName: 'f', dartType: int)),
+          ),
+          int,
+        );
+      });
+
+      test('a JSON column is text whatever its types', () {
+        expect(
+          familyOf(
+            Map,
+            const TomDbColumn(columnName: 'f', isJson: true, columnType: int),
+          ),
+          TomSqlTypeFamily.text,
+        );
+      });
     });
 
     test('TomColumnInformation.getQueryFieldName prefers the column name', () {

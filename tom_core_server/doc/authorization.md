@@ -487,6 +487,6 @@ whole of what the scope contributes.
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `authorization_cache.dart`, `resource_data_scope.dart` | `Future`, `Timer`, `Zone` |
 | `tom_core_kernel` | package | every file | `TomPrincipal`, `TomClientJwtToken`, `TomWorker`, `TomExecutor`, `TomException`, `TomAuthState`, `TomResourceRoleRegistry`, `TomAccessControlInformation`, `tomReflector`, and the logging helpers |
-| [datasources](datasources.md) | module | `graded_authorization.dart`, `principal_delegation.dart`, `principal_resource_grant.dart` | the `TomDbType` boxes the record columns declare |
+| [datasources](datasources.md) | module | `graded_authorization.dart` | `TomDbType` and `TomDbString`, which the access-level codec converts between and its column declares as `columnType:` |
 | [little_things](little_things.md) | module | `authorization_cache.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `graded_authorization.dart`, `principal_delegation.dart`, `principal_resource_grant.dart`, `resource_data_scope.dart` | the mapping annotations (including `@TomDbScope`), `TomSqlDatasourceRepository` for the record stores, and the `TomResourceScopeSource` hook / `TomDataScope.runUnscoped` bypass the row scope plugs into |

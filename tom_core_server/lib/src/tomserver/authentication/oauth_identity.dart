@@ -45,7 +45,6 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../datasources/types_operator.dart';
 import '../object_persistence/crud_repository.dart';
 import '../object_persistence/persistence_annotations.dart';
 import 'oauth_flow.dart';
@@ -62,16 +61,16 @@ import 'oauth_tokens.dart';
 class TomExternalIdentityLink {
   /// Surrogate primary key (`-1` until persisted).
   @TomEntityId()
-  @TomDbColumn<int, TomDbInt>(columnName: 'id', isReadOnly: true)
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
 
   /// The identity provider's issuer identifier
   /// ([TomOAuthProviderConfig.issuer]).
-  @TomDbColumn<String, TomDbString>(columnName: 'issuer')
+  @TomDbColumn(columnName: 'issuer')
   String issuer;
 
   /// The provider's stable identifier for the user, within [issuer].
-  @TomDbColumn<String, TomDbString>(columnName: 'subject')
+  @TomDbColumn(columnName: 'subject')
   String subject;
 
   /// The local account's username — the value handed to the deployment's
@@ -81,16 +80,16 @@ class TomExternalIdentityLink {
   /// [TomExternalIdentityDirectory] and [TomAuthenticationData] both already
   /// speak, so linking needs no second identifier and no assumption about how a
   /// deployment keys its own user table.
-  @TomDbColumn<String, TomDbString>(columnName: 'local_username')
+  @TomDbColumn(columnName: 'local_username')
   String localUsername;
 
   /// The display name the provider asserted when the link was made, kept for
   /// operator diagnostics ("which Google account is this?").
-  @TomDbColumn<String, TomDbString>(columnName: 'display_name')
+  @TomDbColumn(columnName: 'display_name')
   String displayName;
 
   /// When the link was created (UTC).
-  @TomDbColumn<DateTime?, TomDbDateTime>(columnName: 'linked_at')
+  @TomDbColumn(columnName: 'linked_at')
   DateTime? linkedAt;
 
   /// When the link was last used to sign in (UTC), or `null` if never.
@@ -98,7 +97,7 @@ class TomExternalIdentityLink {
   /// Not decoration: it is what lets an operator answer "is this link still in
   /// use?" before revoking a provider, and what makes an unexpected sign-in
   /// visible.
-  @TomDbColumn<DateTime?, TomDbDateTime>(columnName: 'last_login_at')
+  @TomDbColumn(columnName: 'last_login_at')
   DateTime? lastLoginAt;
 
   /// Creates a link. Every field defaults, because the repository instantiates

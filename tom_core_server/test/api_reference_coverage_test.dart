@@ -1506,7 +1506,7 @@ List<String> _undocumentedFields(String path, String className) {
       overrides = false;
       continue;
     }
-    // An annotation may wrap across lines — `@TomDbColumn<…>(` with one
+    // An annotation may wrap across lines — `@TomDbColumn(` with one
     // argument per line — and its continuation lines sit between a dartdoc and
     // the field it documents. They belong to the annotation, not to the class.
     if (annotationDepth > 0 || trimmed.startsWith('@')) {
@@ -8623,7 +8623,7 @@ class After {}
         initialisersOf([
           '```dart',
           '  @TomEntityId()',
-          '  @TomDbColumn<int, TomDbInt>(columnName: \'id\', isReadOnly: true)',
+          '  @TomDbColumn(columnName: \'id\', isReadOnly: true)',
           '  int id = -1;',
           '```',
         ]),
@@ -9614,7 +9614,7 @@ final RegExp _keyDeclaration = RegExp(
 /// [text] with every leading `@Annotation(...)` removed.
 ///
 /// Written as a paren scan rather than a regular expression because an
-/// annotation's arguments nest — `@TomDbColumn<int, TomDbInt>(columnName: 'id',
+/// annotation's arguments nest — `@TomDbColumn(columnName: 'id',
 /// isReadOnly: true)` — and a non-greedy `\)` stops at the first one, leaving
 /// the rest of the argument list to be read as the field's type.
 String _withoutAnnotations(String text) {

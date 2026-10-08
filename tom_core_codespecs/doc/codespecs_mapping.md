@@ -3085,8 +3085,9 @@ validator check (§5.27); neither side is generated from the other.
 
 An enumerated column is not attribute-free, which is what its `@OneOf` constant
 had assumed. The emitted column's **value type is the generated enum type** —
-`TomDbColumn<DART_TYPE, COL_TYPE>` takes the Dart-side type as a parameter — so a
-column whose attribute names no enum cannot be emitted at all. The SOM feed is
+it is the annotated field's Dart type, stored through `columnType: TomDbString`
+and a converter pair — so a column whose attribute names no enum cannot be
+emitted at all. The SOM feed is
 therefore the promoted case `enumerationTypeOptions` (`DAATT-DTEN`), one required
 field naming a `DomainEnumEntry`.
 

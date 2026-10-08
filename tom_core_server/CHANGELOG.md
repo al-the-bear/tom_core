@@ -77,6 +77,23 @@
 
 ### Changed
 
+- **`TomDbColumn` takes no type parameters, and one resolver answers what a
+  column is stored as.** An annotation reaches the persistence layer through
+  reflection, which reconstructs it without type arguments, so
+  `TomDbColumn<DART_TYPE, COL_TYPE>`'s parameters were never seen at run time —
+  `declaredDartType()` and `declaredColumnType()` always fell back to the
+  fields. Both methods and both parameters are gone; `columnType:` and
+  `dartType:` are the declarations, and the converters are typed
+  `Object? Function(TomDbType)` / `TomDbType Function(dynamic)`. Annotations whose
+  box said more than the field type (an enum or `Duration` stored as text) now
+  say `columnType: TomDbString`. `TomAnnotationAnalyzer.familyOf` is the single
+  resolver — one table for boxes, Dart types and observable `Tom…` wrappers,
+  explicit type first, an explicit type with no family `unknown` rather than
+  the field's type — and the query compiler, the schema-convergence check, the
+  export projection and the MariaDB datasource read it (new
+  `TomAnnotationAnalyzer.dartTypeOf`). `columnType: bool` on an `int` field was
+  boolean to the compiler and integer to the convergence check; it is boolean
+  to both.
 - **The API summaries moved from `doc/api_reference/` to `doc/api/`**, where
   every other package and the workspace guideline already kept them. The
   folder held only the markdown summaries and their index; the name

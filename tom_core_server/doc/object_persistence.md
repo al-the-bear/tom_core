@@ -1560,18 +1560,31 @@ because the branch that makes them correct today is exactly what a later change
 moves.
 
 `familyOf` reduces one column to the `TomSqlTypeFamily` it is **stored** in — a
-JSON column is text whatever its Dart type, an explicit `TomDbType` box decides
-next, and only failing both does the Dart type stand in; anything unrecognised is
-`unknown`, which is compatible with everything, because a gap in the reader's
-knowledge must not be reported as a defect. It is homed here, beside the
-annotations it reads, rather than with either of its callers: the
-schema-convergence check ([`db_migration.md`](db_migration.md#schema-convergence))
-and the reflected export projection ([`export.md`](export.md#columns-derived-from-the-entity))
-ask the same question of the same declaration, and a second answer would be a
-second thing to keep in step. Note what it does *not* describe — the Dart value a
-getter returns; a caller that cares about that must read
-`TomColumnInformation.declaredType` as well, which is what the export projection
-does.
+JSON column is text whatever its types, an explicit `columnType:` decides next
+(a `TomDbType` box such as `TomDbString`, or a Dart type such as `bool`), and
+only failing both does the Dart type (`dartType:`, else the field's own) stand
+in. One table maps every one of those spellings, observable `Tom…` wrappers
+included. An explicit type that names no family is `unknown` rather than the
+field's type: the entity stated a storage type, and substituting another is the
+disagreement this resolver exists to prevent. `unknown` is compatible with
+everything in the convergence check, because a gap in the reader's knowledge
+must not be reported as a defect, and the query compiler refuses it, naming the
+annotation.
+
+It is homed here, beside the annotations it reads, and it is the only answer:
+the query compiler, the schema-convergence check
+([`db_migration.md`](db_migration.md#schema-convergence)) and the reflected
+export projection ([`export.md`](export.md#columns-derived-from-the-entity)) all
+read it, and `test/query_sentence_column_test.dart` holds the compiler to it
+over every reflected column of its fixture. Note what it does *not* describe —
+the Dart value a getter returns; a caller that cares about that reads
+`dartTypeOf` as well, which is what the export projection does.
+
+`@TomDbColumn` takes no type parameters, and that is deliberate. An annotation
+reaches the persistence layer through reflection, which reconstructs it without
+type arguments, so a `TomDbColumn<int, TomDbBool>` would have been read back as
+if neither argument were written. `columnType:` and `dartType:` are fields, and
+survive.
 
 ## SQL Dialects
 
@@ -1713,7 +1726,7 @@ is a string and `>` and `%` are directly writable in one. See
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `blob_migration.dart`, `data_scope.dart` | `Future` |
-| `tom_core_kernel` | package | 8 of 13 files | `tomReflector` (mirrors), the `TomZoned*` date/time types |
+| `tom_core_kernel` | package | 7 of 13 files | `tomReflector` (mirrors), the `TomZoned*` date/time types |
 | `uuid` | package | `file_reference.dart` | `Uuid.v4`, for the file name in a blob key |
 | [audit](audit.md) | module | `crud_repository.dart` | `TomAuditAction`, `TomAuditTrail` |
 | [datasources](datasources.md) | module | 9 of 13 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement` |

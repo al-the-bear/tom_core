@@ -631,7 +631,6 @@ subject of `preferences_db_test.dart` above.
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `user_preferences_service.dart` | `Future` |
 | `tom_core_kernel` | package | every file | `TomUserPreferenceKeys`, the wire DTOs, `TomUserPreferenceCodec`, `tomUserPreferencesApi`, `TomBean`, `TomPrincipal` |
-| [datasources](datasources.md) | module | `user_preference.dart` | `TomDbDateTime`, `TomDbInt`, `TomDbString` |
 | [endpoints](endpoints.md) | module | `user_preferences_endpoints.dart` | `@TomApiImplementation`, `@TomApiEndpointImplementation`, the routing pipeline (see `doc/endpoints.md`) |
 | [little_things](little_things.md) | module | `user_preferences_service.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `user_preference.dart`, `user_preferences_service.dart` | `@TomDbTable`, `@TomDbColumn`, `@TomDbScope`, `TomSqlDatasourceRepository` (see `doc/object_persistence.md`) |

@@ -31,7 +31,6 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../datasources/types_operator.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../object_persistence/crud_repository.dart';
 import 'principal_resource_grant.dart';
@@ -68,31 +67,31 @@ enum TomDelegationMode {
 class TomPrincipalDelegation {
   /// Surrogate primary key (`-1` until persisted).
   @TomEntityId()
-  @TomDbColumn<int, TomDbInt>(columnName: 'id', isReadOnly: true)
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
 
   /// The principal whose roles are lent (A, the delegator).
-  @TomDbColumn<String, TomDbString>(columnName: 'delegator_id')
+  @TomDbColumn(columnName: 'delegator_id')
   String delegatorId;
 
   /// The principal receiving the lent roles (B, the delegate).
-  @TomDbColumn<String, TomDbString>(columnName: 'delegate_id')
+  @TomDbColumn(columnName: 'delegate_id')
   String delegateId;
 
   /// The delegation mode, stored as the [TomDelegationMode] name.
-  @TomDbColumn<String, TomDbString>(columnName: 'mode')
+  @TomDbColumn(columnName: 'mode')
   String mode;
 
   /// For `share` the resource shared; for `absence`/`intentional` an optional
   /// single resource to narrow the inherited roles to (`null` = all of the
   /// delegator's resources).
-  @TomDbColumn<String?, TomDbString>(columnName: 'resource_key')
+  @TomDbColumn(columnName: 'resource_key')
   String? resourceKey;
 
   /// For `share` the role granted on [resourceKey]; for `absence`/`intentional`
   /// an optional override applied to every inherited resource (`null` = inherit
   /// the delegator's own role on each resource).
-  @TomDbColumn<String?, TomDbString>(columnName: 'role')
+  @TomDbColumn(columnName: 'role')
   String? role;
 
   /// Inclusive window start; `null` = unbounded (active from any past time).
@@ -102,16 +101,16 @@ class TomPrincipalDelegation {
   /// moment on every node that read it. The data source applies the convention
   /// (`datasources/sql_instant.dart`); nothing is asked of the caller beyond
   /// passing a `DateTime`, which comes back UTC-flagged.
-  @TomDbColumn<DateTime?, TomDbDateTime>(columnName: 'valid_from')
+  @TomDbColumn(columnName: 'valid_from')
   DateTime? validFrom;
 
   /// Inclusive window end; `null` = unbounded (never expires by time). An
   /// instant on the same terms as [validFrom].
-  @TomDbColumn<DateTime?, TomDbDateTime>(columnName: 'valid_to')
+  @TomDbColumn(columnName: 'valid_to')
   DateTime? validTo;
 
   /// Manual kill-switch: a revoked delegation is inactive at every timestamp.
-  @TomDbColumn<bool, TomDbBool>(columnName: 'revoked')
+  @TomDbColumn(columnName: 'revoked')
   bool revoked;
 
   /// Creates a delegation.

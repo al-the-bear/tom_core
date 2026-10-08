@@ -60,7 +60,6 @@ import 'dart:convert';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../datasources/types_operator.dart';
 import '../object_persistence/crud_repository.dart';
 import '../object_persistence/persistence_annotations.dart';
 import 'oauth_flow.dart';
@@ -355,30 +354,30 @@ class TomMemoryOAuthTokenStore implements TomOAuthTokenStore {
 class TomExternalIdentityToken {
   /// Surrogate primary key (`-1` until persisted).
   @TomEntityId()
-  @TomDbColumn<int, TomDbInt>(columnName: 'id', isReadOnly: true)
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
 
   /// The identity provider's issuer identifier — the first half of the key this
   /// row shares with [TomExternalIdentityLink].
-  @TomDbColumn<String, TomDbString>(columnName: 'issuer')
+  @TomDbColumn(columnName: 'issuer')
   String issuer;
 
   /// The provider's stable identifier for the user, within [issuer].
-  @TomDbColumn<String, TomDbString>(columnName: 'subject')
+  @TomDbColumn(columnName: 'subject')
   String subject;
 
   /// The encrypted [TomOAuthTokenGrant]: base64 of RSA-OAEP over the grant's
   /// JSON. Never readable from the row alone.
-  @TomDbColumn<String, TomDbString>(columnName: 'token_data')
+  @TomDbColumn(columnName: 'token_data')
   String tokenData;
 
   /// The granted scopes, in the clear — an operator's answer to "what does this
   /// grant cover?", which is not a secret and must not need the private key.
-  @TomDbColumn<String, TomDbString>(columnName: 'token_scope')
+  @TomDbColumn(columnName: 'token_scope')
   String tokenScope;
 
   /// When the grant was obtained (UTC), in the clear.
-  @TomDbColumn<DateTime?, TomDbDateTime>(columnName: 'obtained_at')
+  @TomDbColumn(columnName: 'obtained_at')
   DateTime? obtainedAt;
 
   /// When the access token expires (UTC), in the clear.
@@ -386,7 +385,7 @@ class TomExternalIdentityToken {
   /// A **projection**: the authoritative expiry lives inside [tokenData], and
   /// nothing in this library decides anything from this column. It exists so
   /// "which grants have gone stale?" is a query rather than a decryption pass.
-  @TomDbColumn<DateTime?, TomDbDateTime>(columnName: 'expires_at')
+  @TomDbColumn(columnName: 'expires_at')
   DateTime? expiresAt;
 
   /// Creates a row. Every field defaults, because the repository instantiates a

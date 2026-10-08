@@ -104,19 +104,20 @@ class TomAuthStateCodec {
 class TomResourceGrant {
   /// Surrogate primary key (`-1` until persisted).
   @TomEntityId()
-  @TomDbColumn<int, TomDbInt>(columnName: 'id', isReadOnly: true)
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
 
   /// The role the grant applies to.
-  @TomDbColumn<String, TomDbString>(columnName: 'role_name')
+  @TomDbColumn(columnName: 'role_name')
   String roleName;
 
   /// The resource key being graded.
-  @TomDbColumn<String, TomDbString>(columnName: 'resource_key')
+  @TomDbColumn(columnName: 'resource_key')
   String resourceKey;
 
   /// The graded access level for `(roleName, resourceKey)`.
-  @TomDbColumn<TomAuthState, TomDbString>(
+  @TomDbColumn(
+    columnType: TomDbString,
     columnName: 'access_level',
     fromDbConverter: TomAuthStateCodec.fromDbColumn,
     toDbConverter: TomAuthStateCodec.toDbColumn,

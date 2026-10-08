@@ -141,7 +141,8 @@ void main() {
         FixtureTaskRecord,
         'title',
         (real) => AnnotatedFieldMirror(real, [
-          const TomDbColumn<FixtureDisplayPreference, TomDbString>(
+          const TomDbColumn(
+            columnType: TomDbString,
             columnName: 'title',
             isJson: true,
           ),
@@ -157,7 +158,7 @@ void main() {
         FixtureTaskRecord,
         'done',
         (real) => AnnotatedFieldMirror(real, [
-          TomDbColumn<Object?, TomDbType>(
+          TomDbColumn(
             columnName: 'done',
             columnType: Duration,
             fromDbConverter: (value) => value,
@@ -168,7 +169,8 @@ void main() {
         FixtureColumnTypeRecord,
         'label',
         (real) => AnnotatedFieldMirror(real, [
-          TomDbColumn<Duration, TomDbString>(
+          TomDbColumn(
+            columnType: TomDbString,
             columnName: 'label',
             // Typed on the box's base type, as every converter has to be:
             // the mapper reads the converter off a generics-erased column.

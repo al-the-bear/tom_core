@@ -408,6 +408,48 @@ void main() {
       );
     });
 
+    test('the compiler and familyOf give every reflected column one type', () {
+      // Three subsystems ask "what is this column stored as?" — this compiler,
+      // the schema-convergence check and the export projection — and once gave
+      // `legacy_flag` two answers: boolean here, integer to the other two,
+      // whose resolver accepted only `TomDb…` boxes in `columnType:`. All of
+      // them now read TomAnnotationAnalyzer.familyOf; this holds that over
+      // every column the reflected annotations describe, so a column added to
+      // the fixture is held too.
+      final boxOf = {
+        TomSqlTypeFamily.text: TomDbString,
+        TomSqlTypeFamily.integer: TomDbInt,
+        TomSqlTypeFamily.decimal: TomDbDouble,
+        TomSqlTypeFamily.boolean: TomDbBool,
+        TomSqlTypeFamily.dateTime: TomDbDateTime,
+        TomSqlTypeFamily.date: TomDbDate,
+        TomSqlTypeFamily.time: TomDbTime,
+      };
+      final columns = TomAnnotationAnalyzer.getPersistentColumns(
+        FixtureColumnTypeRecord,
+      )!;
+      expect(columns.length, greaterThanOrEqualTo(5));
+      for (final column in columns) {
+        final name = column.getQueryFieldName();
+        final family = TomAnnotationAnalyzer.familyOf(column);
+        final box = boxOf[family];
+        if (box == null) {
+          expect(
+            () => explicit.compileQuerySentence('find by $name = :v'),
+            throwsA(isA<TomQuerySyntaxException>()),
+            reason: '$name is $family, which no column node can hold',
+          );
+          continue;
+        }
+        final query = selectExplicit('find by $name = :v').query as Eq;
+        expect(
+          query.runtimeType.toString(),
+          'Eq<$box>',
+          reason: '$name is $family to familyOf',
+        );
+      }
+    });
+
     test('an unsupported columnType is refused, not silently inferred', () {
       // `span` is declared `String?` and annotated `columnType: Duration`, a
       // type no column can hold. The explicit switch used to have no terminal

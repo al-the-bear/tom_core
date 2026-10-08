@@ -23,7 +23,7 @@
 ///
 ///  * **Bound as a `DateTime`** — the MariaDB bind boundary renders every bound
 ///    `DateTime` through [sqlInstant], whoever built the statement. A reflected
-///    `@TomDbColumn<DateTime?, TomDbDateTime>` field names no conversion at all
+///    `@TomDbColumn` on a `DateTime?` field names no conversion at all
 ///    and gets this on its behalf; so does the file-storage manifest, which
 ///    writes hand-built SQL but binds the value rather than rendering it.
 ///  * **Rendered explicitly before binding** — the scheduling, OAuth-state and

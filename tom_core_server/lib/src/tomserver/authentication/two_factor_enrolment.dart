@@ -47,7 +47,6 @@ import 'dart:convert';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../datasources/types_operator.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/crud_repository.dart';
 import '../object_persistence/persistence_annotations.dart';
@@ -704,38 +703,38 @@ class TomMemory2FAEnrolmentStore implements Tom2FAEnrolmentStore {
 class TomUserTwoFactorEnrolment {
   /// Surrogate primary key (`-1` until persisted).
   @TomEntityId()
-  @TomDbColumn<int, TomDbInt>(columnName: 'id', isReadOnly: true)
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
 
   /// The principal the factor belongs to (`TomPrincipal.id`, stringified —
   /// matching [TomPrincipalResourceGrant.principalId]).
-  @TomDbColumn<String, TomDbString>(columnName: 'principal_id')
+  @TomDbColumn(columnName: 'principal_id')
   String principalId;
 
   /// The enrolment's stable client-facing handle
   /// ([Tom2FAEnrolment.enrolmentId]).
-  @TomDbColumn<String, TomDbString>(columnName: 'enrolment_id')
+  @TomDbColumn(columnName: 'enrolment_id')
   String enrolmentId;
 
   /// The mechanism key ([Tom2FAEnrolment.type]).
-  @TomDbColumn<String, TomDbString>(columnName: 'mechanism')
+  @TomDbColumn(columnName: 'mechanism')
   String mechanism;
 
   /// The displayable hint ([Tom2FAEnrolment.hint]).
-  @TomDbColumn<String, TomDbString>(columnName: 'hint')
+  @TomDbColumn(columnName: 'hint')
   String hint;
 
   /// When the factor was set up (UTC).
-  @TomDbColumn<DateTime?, TomDbDateTime>(columnName: 'enrolled_at')
+  @TomDbColumn(columnName: 'enrolled_at')
   DateTime? enrolledAt;
 
   /// Whether this is the user's default factor.
-  @TomDbColumn<bool, TomDbBool>(columnName: 'is_primary')
+  @TomDbColumn(columnName: 'is_primary')
   bool isPrimary;
 
   /// The encrypted [Tom2FAEnrolment.secretData]: base64 of RSA-OAEP over the
   /// map's JSON. Never readable from the row alone.
-  @TomDbColumn<String, TomDbString>(columnName: 'secret_data')
+  @TomDbColumn(columnName: 'secret_data')
   String secretDataCipher;
 
   /// Creates a row. Every field defaults, because the repository instantiates a
