@@ -26,6 +26,9 @@
 library;
 
 import 'package:flutter/material.dart';
+// import 'package:tom_core_kernel/tom_core_kernel.dart';
+// Not imported: tom_flutter_ui re-exports every kernel type this file uses
+// through its kernel bridge (tom_flutter_ui/lib/src/kernel_types.dart).
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../common/demo_scaffold.dart';

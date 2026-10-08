@@ -19,6 +19,7 @@ signature, and unless they appear in the `show` list below, cannot name them.
 - [The list](#the-list)
 - [Why a list and not a blanket re-export](#why-a-list-and-not-a-blanket-re-export)
 - [How the two directions are guarded](#how-the-two-directions-are-guarded)
+- [Consumers that rely on the list](#consumers-that-rely-on-the-list)
 - [Dependencies](#dependencies)
 
 ---
@@ -109,6 +110,31 @@ A `show` list can fail in two directions, and each has its own guard.
 Neither guard could live inside `lib/`. The ~85 files declaring those
 signatures import the kernel barrel unfiltered, so they compile whether or not
 the bridge carries the type — the omission is only ever visible from outside.
+
+## Consumers that rely on the list
+
+The two harnesses in this repository, `tom_flutter_form_test` and
+`tom_flutter_ui_test`, depend on `tom_flutter_ui` and `tom_core_kernel` and not
+on `tom_core_flutter`. A harness file that uses only bridged kernel types
+imports `tom_flutter_ui` alone, and keeps the kernel import as a comment saying
+why it is absent:
+
+```dart
+import 'package:flutter/material.dart';
+// import 'package:tom_core_kernel/tom_core_kernel.dart';
+// Not imported: tom_flutter_ui re-exports every kernel type this file uses
+// through its kernel bridge (tom_flutter_ui/lib/src/kernel_types.dart).
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
+```
+
+A file that also needs a kernel type outside the list imports the kernel
+itself, as any application doing kernel work does.
+
+So those files depend on the list's contents. Both guards above hold its
+**lower** bound — nothing a signature needs may be missing — and neither stops a
+name being removed. A change that narrows the list is therefore checked by
+running `flutter analyze` in both harnesses, where a demo that never changed is
+the one that stops compiling.
 
 ## Dependencies
 
