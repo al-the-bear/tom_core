@@ -136,16 +136,21 @@ class ShowcaseCell extends TomStatelessWidget {
     final builder = AclBuilder()
         .setAclExpandXDefault(true)
         .append(codeView)
-        .addRowBreakpoint(atWidth: _splitBelow, splitRowDist: 12)
-        .append(preview, dist: _gutter);
-    // Both columns expand, so the slack is shared from their preferred widths
-    // — a preview left at the default preferred width ends up much narrower
-    // than the code column, whose long snippet lines prefer a wide box. A
-    // declared minimum is what makes the split honour the width the preview
-    // actually needs; the breakpoint above guarantees the row is wide enough
-    // to grant it.
-    if (previewMinWidth != null) builder.setPSize(previewMinWidth!);
-    return builder.build();
+        .addRowBreakpoint(atWidth: _splitBelow, splitRowDist: 12);
+    final min = previewMinWidth;
+    if (min == null) {
+      return builder.append(preview, dist: _gutter).build();
+    }
+    // Both columns expand, and each keeps its declared minimum as a floor:
+    // the snippet a readable width, the preview the width it renders
+    // correctly at. Only the space beyond the two floors is shared between
+    // them, so side by side the preview is never narrower than its minimum —
+    // and the breakpoint above stacks the cell before that could not hold.
+    return builder
+        .setMSize(_minCodeWidth)
+        .append(preview, dist: _gutter)
+        .setMSize(min)
+        .build();
   }
 }
 

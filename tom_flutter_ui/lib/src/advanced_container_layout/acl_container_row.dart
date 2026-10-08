@@ -39,6 +39,12 @@ extension _AclRowBuild on _AclContainerState {
               .fold(0.0, (s, c) => s + c.gapWeight)
         : 0.0;
 
+    // Set when the layout computed every expander's width (floor plus surplus
+    // share); the flex weights below are then those widths, so the Row
+    // reproduces them exactly when the estimates are right and spreads any
+    // error proportionally when they are not.
+    final hasTargets = layout.expandXWidths.isNotEmpty;
+
     final children = <Widget>[];
     double plannedX = 0;
     double minHorizontalX = 0;
@@ -55,7 +61,14 @@ extension _AclRowBuild on _AclContainerState {
       // ── Gap slot ──────────────────────────────────────────────────────────
       if (component.isGap) {
         if (!widget.scrollableX && gapWeightSum > 0) {
-          if (rowFillsWidth) {
+          if (rowFillsWidth && hasTargets) {
+            // The layout sized every expander and gap slot in pixels; the
+            // Spacer's flex is its pixel share, on the same scale as the
+            // expanders' (see `_flexForWidth`).
+            children.add(
+              Spacer(flex: _flexForWidth(layout.gapSlotWidths[componentIndex])),
+            );
+          } else if (rowFillsWidth) {
             final totalExpandXFlex = hasExpandX
                 ? row.components.where((c) => c.expandX && !c.isGap).fold(0.0, (
                     s,
@@ -417,7 +430,16 @@ extension _AclRowBuild on _AclContainerState {
       if (component.expandX && canExpandHorizontally && !expandXShrinking) {
         // Use isFlexNativeChild (checked on component.child) since `child`
         // may have been wrapped with AclScope and other widgets by now.
-        if (!isFlexNativeChild) {
+        final target = layout.expandXWidths[componentIndex];
+        if (!isFlexNativeChild && target != null) {
+          child = Flexible(
+            flex: _flexForWidth(target),
+            fit: FlexFit.tight,
+            child: child,
+          );
+        } else if (!isFlexNativeChild) {
+          // Width unknown, so no floors can be computed: weight the
+          // components directly.
           final minW = (component.minimumSize?.width ?? linkedWidth ?? 0).clamp(
             0.0,
             double.maxFinite,
@@ -557,3 +579,11 @@ extension _AclRowBuild on _AclContainerState {
     return rowWidget;
   }
 }
+
+/// A flex weight that divides a Row's free space in proportion to [width].
+///
+/// Hundredths of a pixel, so rounding costs at most half a hundredth per child.
+/// Never below 1, which is the least weight a `Flexible` accepts — a zero-width
+/// share still has to be a valid child.
+int _flexForWidth(double? width) =>
+    ((width ?? 0) * 100).round().clamp(1, 1 << 30);

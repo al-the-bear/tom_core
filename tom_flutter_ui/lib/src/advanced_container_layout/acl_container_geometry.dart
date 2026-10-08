@@ -165,60 +165,17 @@ extension _AclGeometry on _AclContainerState {
     );
     final expandXWidths = <int, double>{};
     if (!rowIsShrinking && availableWidth != null && availableWidth.isFinite) {
-      double fixedWidth = 0;
-      double totalExpandXFlex = 0;
-      final expandXCompIndices = <int>[];
-      final expandXFlexes = <int, double>{};
-      for (int i = 0; i < row.components.length; i++) {
-        final comp = row.components[i];
-        if (comp.isGap) {
-          fixedWidth += gapSlotWidths[i] ?? 0;
-          continue;
-        }
-        if (comp.expandX && !comp.isGap) {
-          // expandX components share the surplus left over after every
-          // non-expandX component has taken its preferred width. Their
-          // flex weight mirrors the non-expandX grow phase: (P/M − 1)
-          // when both M and P are explicitly set with min < pref, or a
-          // small positive fallback so callers who just mark expandX
-          // without also configuring M/P still participate in the row.
-          final minW = (comp.minimumSize?.width ?? linkedWidths[i] ?? 0).clamp(
-            0.0,
-            double.maxFinite,
-          );
-          final prefW = (fittedWidths[i] ?? comp.preferredSize?.width ?? minW)
-              .clamp(minW, double.maxFinite);
-          double flex;
-          if (minW > 0 && prefW > minW) {
-            flex = prefW / minW - 1.0;
-          } else {
-            // Symmetric fallback: when M is unset or M >= P the caller
-            // hasn't asked for proportional growth, so every expandX
-            // component takes an equal share of whatever surplus exists.
-            flex = 1.0;
-          }
-          flex = (flex.isFinite ? flex : 1.0).clamp(1e-3, 10000.0);
-          expandXFlexes[i] = flex;
-          expandXCompIndices.add(i);
-          totalExpandXFlex += flex;
-          // Count the preferred width as the minimum allocation.
-          fixedWidth += aclEffectiveGapBefore(comp, row, availableWidth);
-        } else {
-          final w =
-              fittedWidths[i] ??
-              linkedWidths[i] ??
-              comp.preferredSize?.width ??
-              _naturalWidth(comp) ??
-              0;
-          fixedWidth += w + aclEffectiveGapBefore(comp, row, availableWidth);
-        }
-      }
-      if (expandXCompIndices.isNotEmpty && totalExpandXFlex > 0) {
-        final expandPool = math.max(0.0, availableWidth - fixedWidth);
-        for (final i in expandXCompIndices) {
-          final share = expandPool * (expandXFlexes[i]! / totalExpandXFlex);
-          expandXWidths[i] = share.clamp(0.0, double.maxFinite);
-        }
+      final targets = _expandXTargets(
+        row: row,
+        availableWidth: availableWidth,
+        fittedWidths: fittedWidths,
+        linkedWidths: linkedWidths,
+      );
+      if (targets != null) {
+        expandXWidths.addAll(targets.widths);
+        // Gap slots share the surplus with the expanding components, so their
+        // virtual widths are their share rather than everything left over.
+        gapSlotWidths.addAll(targets.gapWidths);
       }
     }
 
@@ -405,6 +362,7 @@ extension _AclGeometry on _AclContainerState {
       virtualRects: virtualRects,
       estimatedHeight: rowEstimatedHeight,
       minHorizontalX: minHorizontalX,
+      expandXWidths: expandXWidths,
     );
   }
 

@@ -51,7 +51,7 @@ extension _AclContent on _AclContainerState {
           inlineFilteredRows,
           canExpandHorizontally ? effectiveMaxW : null,
         );
-        final effectiveRows = _applyMeasuredDefaultWidths(
+        final effectiveRows = _resolvePreferredWidths(
           _applyAuthHiding(breakpointedRows),
         );
 

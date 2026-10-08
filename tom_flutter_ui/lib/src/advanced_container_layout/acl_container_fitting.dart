@@ -294,4 +294,136 @@ extension _AclFitting on _AclContainerState {
   }
 
   // ── Border rendering ───────────────────────────────────────────────────────
+
+  /// The width every expandX component takes when the row is not shrinking,
+  /// and the width every gap slot takes beside them
+  /// (`doc/acl_design_specification.md` §6 Step 3).
+  ///
+  /// Each expanding component first gets its **floor**: its fitted or linked
+  /// width when the layout decided one, otherwise its preferred width, never
+  /// below its minimum — a minimum is a floor, and a preferred width with no
+  /// minimum doubles as one (`doc/acl_design_specification.md` §5). Only what
+  /// is left once every component has its width (the **surplus**) is shared
+  /// out:
+  ///
+  /// - by the growth weight `(preferred / minimum) − 1` when both are
+  ///   declared and the minimum is below the preferred width, and by an equal
+  ///   weight of 1 otherwise — a component that asked for no proportional
+  ///   growth still takes part;
+  /// - capped by each component's maximum, the excess going on to the others;
+  /// - half of it to the row's gap slots, by slot weight, when there are any.
+  ///
+  /// When the floors do not fit the shrink phase normally runs instead; if it
+  /// did not (its estimate of the neighbours was smaller than the render), the
+  /// floors are scaled down proportionally so the row still fits.
+  ///
+  /// Returns null when the row has no expandX component the layout can size.
+  ({Map<int, double> widths, Map<int, double> gapWidths})? _expandXTargets({
+    required AclRow row,
+    required double availableWidth,
+    required Map<int, double> fittedWidths,
+    required Map<int, double> linkedWidths,
+  }) {
+    double fixed = 0;
+    final floors = <int, double>{};
+    final weights = <int, double>{};
+    final caps = <int, double>{};
+    final gapIndices = <int>[];
+    for (int i = 0; i < row.components.length; i++) {
+      final comp = row.components[i];
+      if (comp.isGap) {
+        gapIndices.add(i);
+        continue;
+      }
+      fixed += aclEffectiveGapBefore(comp, row, availableWidth);
+      final flexNative =
+          comp.child is Flexible ||
+          comp.child is Expanded ||
+          comp.child is Spacer;
+      if (flexNative) continue;
+      if (!comp.expandX) {
+        fixed +=
+            fittedWidths[i] ??
+            linkedWidths[i] ??
+            comp.preferredSize?.width ??
+            _naturalWidth(comp) ??
+            0;
+        continue;
+      }
+      final minW = comp.minimumSize?.width ?? 0;
+      final prefW = comp.preferredSize?.width ?? 0;
+      final maxW = comp.maximumSize?.width ?? double.infinity;
+      final floor = math.min(
+        fittedWidths[i] ?? linkedWidths[i] ?? math.max(prefW, minW),
+        maxW,
+      );
+      floors[i] = math.max(0.0, floor);
+      caps[i] = maxW;
+      final ratio = (minW > 0 && prefW > minW) ? prefW / minW - 1.0 : 1.0;
+      weights[i] = ratio.isFinite && ratio > 0 ? ratio : 1.0;
+    }
+    if (floors.isEmpty) return null;
+
+    final room = math.max(0.0, availableWidth - fixed);
+    final floorSum = floors.values.fold(0.0, (s, w) => s + w);
+    final widths = <int, double>{};
+    final gapWidths = <int, double>{};
+
+    if (floorSum > room) {
+      for (final entry in floors.entries) {
+        widths[entry.key] = floorSum > 0 ? entry.value * room / floorSum : 0;
+      }
+      for (final i in gapIndices) {
+        gapWidths[i] = 0;
+      }
+      return (widths: widths, gapWidths: gapWidths);
+    }
+
+    var surplus = room - floorSum;
+    var gapPool = 0.0;
+    if (gapIndices.isNotEmpty && !widget.scrollableX) {
+      gapPool = surplus / 2;
+      surplus -= gapPool;
+    }
+
+    // Water-fill the surplus: share it by weight, cap anyone it would take
+    // past their maximum, and share what the caps leave over among the rest.
+    widths.addAll(floors);
+    final open = floors.keys.toSet();
+    while (surplus > 1e-9 && open.isNotEmpty) {
+      final total = open.fold(0.0, (s, i) => s + weights[i]!);
+      final capped = <int>[];
+      for (final i in open) {
+        final share = surplus * weights[i]! / total;
+        if (widths[i]! + share >= caps[i]!) capped.add(i);
+      }
+      if (capped.isEmpty) {
+        for (final i in open) {
+          widths[i] = widths[i]! + surplus * weights[i]! / total;
+        }
+        surplus = 0;
+        break;
+      }
+      for (final i in capped) {
+        surplus -= caps[i]! - widths[i]!;
+        widths[i] = caps[i]!;
+        open.remove(i);
+      }
+    }
+    // Whatever every capped component left over belongs to the gap slots.
+    gapPool += math.max(0.0, surplus);
+
+    if (gapIndices.isNotEmpty) {
+      final gapWeightSum = gapIndices.fold(
+        0.0,
+        (s, i) => s + row.components[i].gapWeight,
+      );
+      for (final i in gapIndices) {
+        gapWidths[i] = gapWeightSum > 0
+            ? gapPool * row.components[i].gapWeight / gapWeightSum
+            : 0;
+      }
+    }
+    return (widths: widths, gapWidths: gapWidths);
+  }
 }

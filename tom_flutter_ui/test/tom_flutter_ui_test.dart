@@ -418,9 +418,12 @@ void main() {
           .setPSize(300, 32)
           .build();
 
+      // Each keeps its preferred width as a floor (200 and 300), and only the
+      // 300 px beyond the floors is shared by the growth weights
+      // (P / M) − 1 — 1 and 2 — so 100 and 200 of it.
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(body: SizedBox(width: 500, child: acl)),
+          home: Scaffold(body: SizedBox(width: 800, child: acl)),
         ),
       );
       await tester.pump();
@@ -433,9 +436,8 @@ void main() {
         find.byKey(const ValueKey('expand-right')),
       );
 
-      expect(leftRect.width, closeTo(500 / 3, 1.0));
-      expect(rightRect.width, closeTo((500 * 2) / 3, 1.0));
-      expect((rightRect.width / leftRect.width), closeTo(2.0, 0.05));
+      expect(leftRect.width, closeTo(300, 1.0));
+      expect(rightRect.width, closeTo(500, 1.0));
     });
 
     testWidgets('expandX honors explicit maximum while extra width remains', (

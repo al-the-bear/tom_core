@@ -160,9 +160,9 @@ Sets a default minimum size for components that lack an explicit `setMSize` / `s
 
 Both arguments are stored verbatim, zeros included, and a later call replaces both dimensions. A `0` is therefore a minimum of 0 on that axis, which the layout cannot distinguish from no minimum; that is what makes storing it harmless rather than a case the setter skips.
 
-**Minimum ≤ preferred invariant:** The minimum size can never exceed the preferred size. If a minimum is set that is larger than the current preferred size, the preferred size is automatically raised to match the minimum.
+**Minimum ≤ preferred invariant:** The minimum width can never exceed the preferred width. If a minimum is set that is larger than the current preferred width, the layout reads the preferred width as the minimum — every sizing phase, the shrink check included, plans with the larger of the two. The component keeps the values it was given (`setMSize` does not rewrite the preferred size); the raise happens where the layout reads them. Heights are not raised: a preferred height of 0 means "intrinsic", and raising it would fix a height the author left open.
 
-**Interaction with the sizing phases:** When minimum < preferred (the normal case), space is distributed to **all** components proportionally based on the ratio `(preferred / minimum) − 1` until every non-expandX component has reached its preferred size. After that, remaining space goes **exclusively** to expandX components, again distributed by their `(preferred / minimum) − 1` ratio. If no expandX components exist in the row, all components keep growing proportionally (bounded by their maximum size, if set).
+**Interaction with the sizing phases:** When minimum < preferred (the normal case), space is distributed to **all** components proportionally based on the ratio `(preferred / minimum) − 1` until every non-expandX component has reached its preferred size. After that, remaining space goes **exclusively** to expandX components, again distributed by their `(preferred / minimum) − 1` ratio — each first keeping its own preferred width (never below its minimum) as a floor, so it is only the space beyond the floors that the ratio divides (§6 Step 3). An expandX component that declares no minimum below its preferred width takes an equal share, weight 1. If no expandX components exist in the row, all components keep growing proportionally (bounded by their maximum size, if set).
 
 ### `setAclDefaultUnknownPreferredSize(double width, [double height = 0])`
 
@@ -235,13 +235,30 @@ Step 3 — Fill remaining space beyond preferred
 ────────────────────────────────────────────────
 If Σ fitted < availableWidth AND the row contains gap()/expandX components:
 
-  Option A — gap() slots present:
-    remaining space is divided by slot weights and given to gap() slots
+  Every component first keeps its fitted width. For an expandX component
+  that is its floor: preferred, never below minimum (a preferred width with
+  no minimum doubles as the floor, §5). Only the space left over — the
+  surplus — is shared out:
+
+    surplus = availableWidth − Σ non-expandX widths − Σ gaps − Σ expandX floors
+
+  Option A — gap() slots present, no expandX:
+    the surplus is divided by slot weights and given to the gap() slots
 
   Option B — expandX components present (no gap slots):
-    remaining space is given exclusively to expandX components (via Flutter
-    Flexible). Non-expandX components stay at their preferred width.
-    expandX components grow without bound unless capped by setXSize().
+    the surplus goes exclusively to the expandX components, by the weight
+    (preferred / minimum) − 1 when both are declared and minimum < preferred,
+    and an equal weight of 1 otherwise. A component capped by setXSize()
+    stops at its maximum and its excess goes on to the others.
+    Non-expandX components stay at their preferred width.
+
+  Both present: half the surplus goes to the gap() slots by slot weight,
+    half to the expandX components as in Option B; whatever every capped
+    expandX component leaves over goes to the gap() slots as well.
+
+  If the floors alone do not fit, the shrink phase (Step 1) is what runs;
+  should it not have, the floors are scaled down proportionally so the row
+  still fits.
 
 If Σ fitted < availableWidth AND NO gap() AND NO expandX:
 
@@ -312,6 +329,10 @@ Example — Option B (expandX present, availableWidth = 500):
 Remaining space = availableWidth − Σ component_fitted_widths
 Gap[i] width    = remaining × weight[i] / Σ weights
 ```
+
+When the row also holds expandX components, the gaps' `remaining` is half the
+surplus left after every component has its fitted width — the other half goes
+to the expandX components (§6 Step 3).
 
 In scrollable-X mode, all gaps collapse to 0.
 

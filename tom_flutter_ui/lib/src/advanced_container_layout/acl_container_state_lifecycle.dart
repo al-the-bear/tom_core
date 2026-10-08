@@ -79,31 +79,38 @@ extension _AclStateLifecycle on _AclContainerState {
     });
   }
 
-  /// Widens components whose preferred width was auto-defaulted and whose
-  /// content has been measured as needing more than the default.
+  /// Every component's preferred width as the whole pre-calculation reads it.
   ///
-  /// This is the point at which the default stops being a cap: the widened
-  /// value flows into the *whole* pre-calculation — planned X positions, row
-  /// estimates, the fit/shrink distribution and `getRect()` — so the geometry
-  /// the engine computes in pure Dart stays the geometry that is rendered.
-  /// Widening here rather than at the individual read sites is what keeps that
-  /// true: a component is one declared width to everything downstream.
+  /// Two corrections are applied here, once, rather than at the individual
+  /// read sites:
   ///
-  /// The first frame has no measurement and uses the plain default; the
-  /// measurement arrives from that frame's layout and the container rebuilds
-  /// once. Until it does — and whenever the row is too tight for the widened
-  /// width — [_AclFloorWidthBox] clips rather than overflows.
-  List<AclRow> _applyMeasuredDefaultWidths(List<AclRow> rows) {
-    if (_measuredDefaultWidths.isEmpty) return rows;
+  /// - **A preferred width is never below the minimum.** The specification
+  ///   promises the invariant (`doc/acl_design_specification.md` §5b) and the
+  ///   builder does not enforce it — `setMSize` stores the minimum and leaves
+  ///   the preferred width where it was. A component preferring 150 with a
+  ///   minimum of 734 then reads as 150 to the shrink check, which concludes
+  ///   the row fits and never shrinks its neighbours toward their own floors.
+  ///   Width only: a preferred height of 0 means "intrinsic", which raising it
+  ///   would silently change.
+  /// - **An auto-defaulted preferred width is widened to its measured
+  ///   content.** This is the point at which the default stops being a cap:
+  ///   the widened value flows into planned X positions, row estimates, the
+  ///   fit/shrink distribution and `getRect()`, so the geometry the engine
+  ///   computes in pure Dart stays the geometry that is rendered. The first
+  ///   frame has no measurement and uses the plain default; the measurement
+  ///   arrives from that frame's layout and the container rebuilds once.
+  ///   Until it does — and whenever the row is too tight for the widened
+  ///   width — [_AclFloorWidthBox] clips rather than overflows.
+  List<AclRow> _resolvePreferredWidths(List<AclRow> rows) {
     List<AclRow>? rewritten;
     for (int ri = 0; ri < rows.length; ri++) {
       final row = rows[ri];
       List<AclComponent>? components;
       for (int ci = 0; ci < row.components.length; ci++) {
-        final widened = _widenedByMeasurement(row.components[ci]);
-        if (widened == null) continue;
+        final resolved = _resolvedPreferredWidth(row.components[ci]);
+        if (resolved == null) continue;
         components ??= List<AclComponent>.of(row.components);
-        components[ci] = widened;
+        components[ci] = resolved;
       }
       if (components == null) continue;
       rewritten ??= List<AclRow>.of(rows);
@@ -112,21 +119,25 @@ extension _AclStateLifecycle on _AclContainerState {
     return rewritten ?? rows;
   }
 
-  /// The component with its auto-defaulted preferred width raised to the
-  /// measured minimum, or `null` when nothing needs to change.
-  AclComponent? _widenedByMeasurement(AclComponent component) {
-    if (!component.preferredWidthIsDefault) return null;
-    final key = component.componentKey;
+  /// The component with its preferred width raised to its minimum and, when
+  /// the width was auto-defaulted, to its measured content — or `null` when
+  /// nothing needs to change.
+  AclComponent? _resolvedPreferredWidth(AclComponent component) {
     final declared = component.preferredSize?.width;
-    if (key == null || declared == null) return null;
-    final measured = _measuredDefaultWidths[key];
-    if (measured == null) return null;
-    // An author-declared maximum still caps the widening — the auto-applied
-    // default is the only thing this pass is allowed to overrule.
-    final cap = component.maximumSize?.width;
-    final width = (cap != null && cap.isFinite)
-        ? math.min(measured, cap)
-        : measured;
+    if (declared == null) return null;
+    var width = math.max(declared, component.minimumSize?.width ?? 0);
+
+    final key = component.componentKey;
+    final measured = key == null ? null : _measuredDefaultWidths[key];
+    if (component.preferredWidthIsDefault && measured != null) {
+      // An author-declared maximum still caps the widening — the auto-applied
+      // default is the only thing this pass is allowed to overrule.
+      final cap = component.maximumSize?.width;
+      width = math.max(
+        width,
+        (cap != null && cap.isFinite) ? math.min(measured, cap) : measured,
+      );
+    }
     if (width <= declared + _geometryEpsilon) return null;
     return component.copyWith(
       preferredSize: Size(width, component.preferredSize!.height),

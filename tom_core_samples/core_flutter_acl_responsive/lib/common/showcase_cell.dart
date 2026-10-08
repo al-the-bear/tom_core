@@ -144,18 +144,16 @@ class ShowcaseCell extends TomStatelessWidget {
     if (min == null) {
       return builder.append(preview, dist: _gutter).build();
     }
-    // Both columns expand, and the engine shares a row between expanding
-    // columns in proportion to their preferred widths (a declared minimum
-    // does not hold a column — it lowers its share). So the snippet is given
-    // the readable minimum as its preferred width and the preview its
-    // declared one: side by side the preview's share is
-    // (row - gutter) * preview / (preview + code), which reaches the declared
-    // width exactly when the row is as wide as [_splitBelow] demands. Stacked,
-    // each column is alone in its row and fills it.
+    // Both columns expand, and each keeps its declared minimum as a floor:
+    // the snippet a readable width, the preview the width it was declared to
+    // need. Only the space beyond the two floors is shared between them, so
+    // side by side the preview is never narrower than its minimum — and the
+    // row breaks before that could not hold. Stacked, each column is alone in
+    // its row and fills it.
     return builder
-        .setPSize(_minCodeWidth)
+        .setMSize(_minCodeWidth)
         .append(preview, dist: _gutter)
-        .setPSize(min + _previewFrame)
+        .setMSize(min + _previewFrame)
         .build();
   }
 }

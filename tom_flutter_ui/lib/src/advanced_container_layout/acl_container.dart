@@ -63,6 +63,13 @@ class _AclRowLayout {
   /// Minimum horizontal X position (may be negative for shifted components).
   final double minHorizontalX;
 
+  /// The width each expandX component is to take when the row has room for
+  /// every floor, by component index — its floor plus its share of the
+  /// surplus (see `_expandXTargets`). Empty when the row is shrinking or its
+  /// width is unknown; the build then falls back to weighting the components
+  /// directly.
+  final Map<int, double> expandXWidths;
+
   _AclRowLayout({
     required this.fittedWidths,
     required this.horizontalDeltas,
@@ -73,6 +80,7 @@ class _AclRowLayout {
     required this.virtualRects,
     required this.estimatedHeight,
     this.minHorizontalX = 0.0,
+    this.expandXWidths = const {},
   });
 }
 

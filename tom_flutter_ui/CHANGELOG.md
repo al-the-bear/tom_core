@@ -28,6 +28,22 @@
 
 ### Changed
 
+- **An expandX component keeps its floor.** In a row with room to spare, an
+  expanding component now gets its preferred width (never below its minimum)
+  and only the space left over is shared among the expanding components, by
+  `(preferred / minimum) − 1` (1 when no proportional growth is declared),
+  capped by each one's maximum. It used to be wrapped in
+  `Flexible(flex: preferred − minimum)`, so the whole row was divided by those
+  weights and a declared minimum of 300 px could render 2 px wide. Gap slots in
+  the same row take half the surplus. `doc/acl_design_specification.md` §5b, §6
+  Step 3 and §7 state the rule.
+- **A minimum width above the preferred width raises it**, as §5b promises. The
+  layout used to plan with the preferred width alone, so a component declaring
+  `setMSize(734)` over the default 150 read as 150 to the shrink check: the row
+  looked as if it fitted, its neighbours never shrank toward their own minimums,
+  and the declared floor was squeezed instead. Width only; a preferred height of
+  0 still means intrinsic.
+
 - **`TomWidgetMixin` has one resolution member, `getText`.** The six typed
   wrappers — `resolveColorOrNull`, `resolveDoubleOrNull`, `resolveDoubleOrFail`,
   `resolveIntOrNull`, `resolveBoolOrNull`, `resolveEdgeInsetsOrNull` — are
