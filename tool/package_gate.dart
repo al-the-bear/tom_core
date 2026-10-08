@@ -15,9 +15,34 @@ import 'dart:io';
 
 /// The repository root, `tom_ai/core`, found from the package a suite runs in.
 ///
-/// A suite runs with its package root as the working directory, and every
-/// package sits directly beneath the repository root.
-Directory repositoryRoot() => Directory.current.parent;
+/// A suite runs with its package root as the working directory. The root is
+/// the nearest ancestor holding `tool/check_gates.py`, so a package nested
+/// deeper -- a sample under `tom_core_samples/` -- finds it as well as one
+/// sitting directly beneath it.
+Directory repositoryRoot() {
+  var dir = Directory.current.absolute;
+  while (true) {
+    if (File('${dir.path}/tool/check_gates.py').existsSync()) return dir;
+    final parent = dir.parent;
+    if (parent.path == dir.path) {
+      throw StateError(
+        'no ancestor of ${Directory.current.path} holds tool/check_gates.py, '
+        'so this suite is not running inside tom_ai/core',
+      );
+    }
+    dir = parent;
+  }
+}
+
+/// The package a suite runs in, as a path relative to [repositoryRoot] --
+/// `tom_core_kernel`, or `tom_core_samples/advanced_ops_server`.
+String packagePath() {
+  final root = repositoryRoot().uri.pathSegments.where((s) => s.isNotEmpty);
+  final here = Directory.current.absolute.uri.pathSegments.where(
+    (s) => s.isNotEmpty,
+  );
+  return here.skip(root.length).join('/');
+}
 
 /// The launchers that start Python 3, in the order they are tried.
 ///
@@ -67,15 +92,12 @@ class PackageGateResult {
   final String output;
 }
 
-/// Runs `tool/<gate>.py` with this package's directory name as its argument.
+/// Runs `tool/<gate>.py` with this package's path as its argument.
 ///
 /// Every checker that accepts a subtree takes it as a path relative to the
-/// repository root, so the package's directory name is that path.
+/// repository root, which is what [packagePath] returns.
 PackageGateResult runPackageGate(String gate) {
-  final package = Directory.current.uri.pathSegments
-      .where((segment) => segment.isNotEmpty)
-      .last;
-  final result = runPython(['tool/$gate.py', package]);
+  final result = runPython(['tool/$gate.py', packagePath()]);
   final output = '${result.stdout}${result.stderr}';
   final count = RegExp(
     r'^GATE-FAULTS: (\d+)$',

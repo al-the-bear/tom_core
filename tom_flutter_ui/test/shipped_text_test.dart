@@ -22,10 +22,10 @@
 /// once someone reads the suite to learn a feature.
 ///
 /// **Not the same rule as the read-as-is guards**, and folding it into them
-/// would lose cases. `tom_core_kernel/test/comments_read_as_is_test.dart` and
-/// `tool/check_comments_read_as_is.py` match a *shape* — letters then digits,
-/// in either case — against a closed vocabulary of ordinary and published
-/// words. Two of the three tokens here have no such shape at all: `CE-LO` is
+/// would lose cases. `tool/check_comments_read_as_is.py`, which this
+/// package's `comments_read_as_is_test.dart` runs over it, matches a *shape*
+/// — letters then digits, in either case — against a closed vocabulary of
+/// ordinary and published words. Two of the three tokens here have no such shape at all: `CE-LO` is
 /// hyphenated with no digit run, and `XDS` carries no digits. The third,
 /// `CSEXB1`, the ALL-CAPS shape does now reach, but its lowercase twin
 /// `csexb2` is caught here and only here, because a lowercase run of six

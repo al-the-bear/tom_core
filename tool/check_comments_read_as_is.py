@@ -57,24 +57,20 @@ What is deliberately *not* a fault:
     package's own README stays guarded.
 
 **Why a Python gate rather than a copy of the Dart one per package.**
-``tom_core_kernel/test/comments_read_as_is_test.dart`` enforces this from
-inside that package's suite, which is the fastest possible signal for the
-package it guards. Extending that to the siblings would mean a copy of one
-rule per package -- kept in sync by hand, in two dialects, since
-``tom_core_flutter`` runs on ``flutter_test`` and ``tom_core_samples`` is not a
-package at all. One checker here covers every package including the sample
-suite's orphan markdown, and it is enforced by ``check_gates.py`` from the day
-it lands.
+The rule is one rule, and its id vocabulary is one list. A copy of it per
+package would be kept in sync by hand, in two dialects -- ``tom_core_flutter``
+runs on ``flutter_test`` and ``tom_core_samples`` is not a package at all --
+and copies drift: one detected ids by *shape* after a prefix list had let
+``csexd4`` and ``csexd6`` through, and the fix never travelled to its sibling,
+while a narrower vocabulary in another kept it from being adopted where it
+would have reported hex colours and sample ids as work items.
 
-That is not a prediction any more; the divergence happened. Two copies exist --
-the kernel's and ``advanced_ops_server``'s -- and they no longer implement the
-same rule. The ops_server copy detects ids by *shape* rather than by prefix,
-because the prefix list had let ``csexd4`` and ``csexd6`` through while
-reporting that package clean. The fix was made in the copy and never travelled
-back, so this gate carried the same blind spot for as long as the note
-describing it sat in a sibling file: the ``cs`` family had reached shipped
-``lib/`` dartdoc in three packages. Sixteen copies would not have been sixteen
-guards, only sixteen places for the next fix to fail to leave.
+So a package that wants the fastest signal runs *this* checker over itself:
+``comments_read_as_is_test.dart`` in ``tom_core_kernel``, ``tom_flutter_ui``
+and ``tom_core_samples/advanced_ops_server`` calls ``runPackageGate`` from
+``tool/package_gate.dart`` with its own path, and holds no vocabulary of its
+own. One checker covers every package, the sample suite's orphan markdown
+included, and ``check_gates.py`` enforces it over the whole repository.
 """
 
 from __future__ import annotations

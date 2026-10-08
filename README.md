@@ -1147,10 +1147,14 @@ clean. The fix was made in the copy and never travelled back — so the kernel's
 guard still had the blind spot, and so did this gate, by which time the same
 `cs` family had reached shipped `lib/` dartdoc in three further packages.
 Sixteen copies would not be sixteen guards, only sixteen places for the next fix
-to fail to leave. Coverage lives here, where there is one implementation to fix;
-the two in-suite guards stay as the fastest signal for the packages they guard.
+to fail to leave. Coverage lives here, where there is one implementation to fix.
+A package that wants the fastest signal runs this checker over itself from its
+own suite — `comments_read_as_is_test.dart` in `tom_core_kernel`,
+`tom_flutter_ui` and `advanced_ops_server` is a few lines calling
+`runPackageGate` from `tool/package_gate.dart` — so the in-suite guards hold no
+vocabulary of their own and cannot drift from this one.
 
-All three now match the shape, and the reason is the shape of the two lists
+The gate matches the shape, and the reason is the shape of the two lists
 rather than a preference. A list of quest prefixes is **open**: it grows every
 time anyone mints one, so a guard built on it fails open and in silence — the
 `cs` leak is exactly that failure, and so is the plan-id half, which knew `RCB`,
