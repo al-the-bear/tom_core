@@ -2072,12 +2072,13 @@ def main(argv: list[str]) -> int:
     # Named, not just counted. The count exists so a shrinking numerator cannot
     # pass for a clean tree, but a bare number cannot be acted on: deciding
     # whether a skip is legitimate means knowing which document was skipped.
-    # Four of the five here are legitimate -- the doc-set contract, a document
-    # about *removed* modules, and two whose inventories `check_test_inventories`
-    # owns -- and the fifth, `tom_core_codespecs_package_new.md`, states "8
-    # files" that nothing reads, because its sources sit at `lib/src/` with no
-    # module folder beneath and `MODULE_PATH` wants one. Reading that list off
-    # the run is the difference between a metric and a number.
+    # Both skipped today are legitimate -- the doc-set contract and a document
+    # about *removed* modules -- and a third name appearing here is a document
+    # stating a measurement nothing reads. A flat package's census (a barrel
+    # and gap classes directly in `lib/src/`, no module folder for
+    # `MODULE_PATH` to find) is read by `audit_package_inventory` instead.
+    # Reading that list off the run is the difference between a metric and a
+    # number.
     for name in silent:
         print(f"    measures nothing: {name}")
     if fix:
