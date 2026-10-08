@@ -56,6 +56,7 @@ is cheaper than re-deriving it a third time.
 from __future__ import annotations
 
 import html
+import json
 import re
 import sys
 from collections.abc import Iterable
@@ -98,6 +99,13 @@ CROSS_LINK = re.compile(
 EXTERNAL = re.compile(r"^(?:[a-z][a-z0-9+.-]*:|//)", re.I)
 
 
+#: A markdown link inside heading text; only its label is rendered.
+MARKDOWN_LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+
+#: The heading-anchor cases this gate and the kernel's navigation test share.
+ANCHOR_CASES = REPO_ROOT / "tool" / "heading_anchor_cases.json"
+
+
 def anchor(text: str) -> str:
     """Render a heading the way GitHub does when it builds a fragment id.
 
@@ -109,11 +117,19 @@ def anchor(text: str) -> str:
     - Punctuation is dropped but ``_`` and ``-`` survive.
     - Runs of spaces are **not** collapsed. Dropping the em dash from
       ``A — B`` leaves two spaces and therefore ``a--b``.
+    - A link in a heading contributes only its label: ``See [the
+      guide](guide.md)`` renders as ``See the guide``, so the target's letters
+      must not reach the slug.
+
+    ``tool/heading_anchor_cases.json`` holds the cases, and
+    ``tom_core_kernel/test/doc_navigation_test.dart`` reads the same file, so
+    the two slug implementations in this repository cannot drift apart.
 
     This is the slug *before* disambiguation. A document may head two sections
     identically, and GitHub gives the second ``-1``; see :func:`anchors_of`,
     which is what a whole-document walk has to use.
     """
+    text = MARKDOWN_LINK.sub(r"\1", text)
     text = html.unescape(text).lower()
     text = re.sub(r"[^a-z0-9 _-]", "", text)
     return text.replace(" ", "-")
@@ -425,26 +441,49 @@ def self_test() -> int:
             failures.append("an in-document link to an explicit <a id> was "
                             "reported as dangling")
 
+    # The anchors shared with the kernel's navigation test: one file, so the
+    # two slug implementations are held to one answer rather than each to its
+    # own. A page repeating a section name must pass, and must stop passing
+    # when its second entry names the base slug instead.
+    shared = json.loads(ANCHOR_CASES.read_text(encoding="utf-8"))
+    for case in shared["anchors"]:
+        got = anchors_of(case["headings"])
+        if got != case["anchors"]:
+            failures.append(f"shared anchors for {case['headings']}: "
+                            f"{got} != {case['anchors']}")
+    page = audit_text(shared["page"])
+    if not page.clean:
+        failures.append("the shared repeated-heading page was reported:\n"
+                        + page.render())
+    if audit_text(shared["page"].replace("](#methods-1)", "](#methods)", 1)).clean:
+        failures.append("a contents entry naming the first of two repeated "
+                        "sections twice went unreported")
+
     for failure in failures:
         print(f"self-test: {failure}")
     if failures:
         return 1
     print("self-test: heading slugs, explicit anchors, fences, code spans, "
-          "missing and external targets, and a damaged real link all read as "
-          "expected")
+          "missing and external targets, a damaged real link, and the anchor "
+          "cases shared with doc_navigation_test.dart all read as expected")
     return 0
 
 
-def audit_text_dangling(text: str) -> list[tuple[int, str]]:
-    """The DANGLING findings for [text], audited from a path that holds it."""
+def audit_text(text: str) -> Report:
+    """[text] audited as a document, from a path that holds it in memory."""
     path = REPO_ROOT / "tool" / "zz_self_test_doc.md"
     original = Path.read_text
     Path.read_text = lambda self, *a, **k: (
         text if self == path else original(self, *a, **k))
     try:
-        return audit(path, fragments=lambda _: set()).dangling
+        return audit(path, fragments=lambda _: set())
     finally:
         Path.read_text = original
+
+
+def audit_text_dangling(text: str) -> list[tuple[int, str]]:
+    """The DANGLING findings for [text], audited from a path that holds it."""
+    return audit_text(text).dangling
 
 
 def main(argv: list[str]) -> int:

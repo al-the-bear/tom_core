@@ -424,6 +424,14 @@ link is never reported twice. `--self-test` plants each kind in memory and
 misspells one real cross-document link, so a pattern that stopped matching the
 corpus fails rather than reading as clean.
 
+The anchor a heading defines is computed in two places in this repository —
+here, and in `tom_core_kernel/test/doc_navigation_test.dart` — and both follow
+the renderer: a repeated heading's second occurrence is `#name-1`, and a link in
+a heading contributes only its label. Both read the cases in
+[`tool/heading_anchor_cases.json`](tool/heading_anchor_cases.json), including a
+page that repeats a section name, so a change to either slug rule that the other
+does not share fails one of them rather than leaving them to disagree.
+
 Documents drift from their contents whenever a section is added without the
 list being touched, so the check is worth running after editing any document
 that has one.

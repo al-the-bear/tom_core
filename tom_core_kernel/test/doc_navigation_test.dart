@@ -42,6 +42,7 @@
 /// the anchor, and appears the moment the next page lands wrong.
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:test/test.dart';
@@ -393,4 +394,55 @@ void main() {
       );
     });
   });
+
+  // `tool/check_doc_tocs.py` computes the same anchors in Python, and the two
+  // once disagreed about a repeated heading: the gate reported a page that
+  // renders correctly. Both read one case file, so agreement is asserted on
+  // every run of either rather than assumed.
+  group('anchors agree with check_doc_tocs.py', () {
+    final shared =
+        jsonDecode(File(_sharedAnchorCases).readAsStringSync())
+            as Map<String, dynamic>;
+
+    test('each shared case slugs and disambiguates to the same anchors', () {
+      for (final raw in shared['anchors'] as List) {
+        final case_ = raw as Map<String, dynamic>;
+        final texts = (case_['headings'] as List).cast<String>();
+        final headings = [
+          for (final (index, text) in texts.indexed)
+            _Heading(index + 1, 2, text, _slug(text)),
+        ];
+        expect(
+          _anchorList(headings),
+          (case_['anchors'] as List).cast<String>(),
+          reason: 'headings $texts',
+        );
+      }
+    });
+
+    test('a page that repeats a section name is navigable', () {
+      final dir = Directory.systemTemp.createTempSync('doc_navigation_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final page = File('${dir.path}/repeated.md')
+        ..writeAsStringSync(shared['page'] as String);
+      final parsed = _parse(page);
+
+      final required = _requiredAnchors(
+        parsed.headings,
+        _bodyLinkAnchors(parsed.headings, parsed.links),
+      );
+      final listed = _contentsAnchors(parsed.headings, parsed.links);
+      expect(listed.where(required.contains).toList(), required);
+      expect(required, ['methods', 'details', 'methods-1', 'details-1']);
+
+      final anchors = _anchorsOf(parsed.headings);
+      for (final link in parsed.links) {
+        expect(anchors, contains(link.anchor), reason: '#${link.anchor}');
+      }
+    });
+  });
 }
+
+/// The heading-anchor cases this test shares with `tool/check_doc_tocs.py`,
+/// relative to the package root the suite runs in.
+const _sharedAnchorCases = '../tool/heading_anchor_cases.json';

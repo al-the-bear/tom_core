@@ -1,0 +1,78 @@
+{
+ "about": "Heading-anchor cases shared by tool/check_doc_tocs.py (--self-test) and tom_core_kernel/test/doc_navigation_test.dart. Both tools compute the fragment a heading defines, and both read this file, so they are held to one answer rather than each to its own: 'anchors' lists, per page, the fragments its headings define in order; 'page' is a document with two identically slugged sections that both tools must pass.",
+ "anchors": [
+  {
+   "headings": [
+    "Methods",
+    "Constructors",
+    "Methods",
+    "Methods"
+   ],
+   "anchors": [
+    "methods",
+    "constructors",
+    "methods-1",
+    "methods-2"
+   ]
+  },
+  {
+   "headings": [
+    "TomReflector",
+    "@tomReflector"
+   ],
+   "anchors": [
+    "tomreflector",
+    "tomreflector-1"
+   ]
+  },
+  {
+   "headings": [
+    "`TomSetting&lt;T&gt;`"
+   ],
+   "anchors": [
+    "tomsettingt"
+   ]
+  },
+  {
+   "headings": [
+    "A — B"
+   ],
+   "anchors": [
+    "a--b"
+   ]
+  },
+  {
+   "headings": [
+    "snake_case and kebab-case"
+   ],
+   "anchors": [
+    "snake_case-and-kebab-case"
+   ]
+  },
+  {
+   "headings": [
+    "See [the guide](guide.md)"
+   ],
+   "anchors": [
+    "see-the-guide"
+   ]
+  },
+  {
+   "headings": [
+    "**Bold** heading"
+   ],
+   "anchors": [
+    "bold-heading"
+   ]
+  },
+  {
+   "headings": [
+    "1. Overview"
+   ],
+   "anchors": [
+    "1-overview"
+   ]
+  }
+ ],
+ "page": "# A page that repeats a section name\n\n## Table of Contents\n\n- [Methods](#methods)\n  - [Details](#details)\n- [Methods](#methods-1)\n  - [Details](#details-1)\n\n## Methods\n\nFirst.\n\n### Details\n\nFirst details.\n\n## Methods\n\nSecond, reachable only as [this](#methods-1).\n\n### Details\n\nSecond details.\n"
+}
