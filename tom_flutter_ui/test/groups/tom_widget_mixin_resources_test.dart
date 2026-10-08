@@ -3,23 +3,24 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-// The typed resource resolution block of TomWidgetMixin: `getText` plus the
-// six `resolve*` helpers, each resolving `<basePath>.<suffix>` through TomCtr.
+// Resource resolution for a TomWidgetMixin widget: its `getText`, and the
+// TomCtr statics every widget calls with its `basePath`, each resolving
+// `<basePath>.<suffix>`.
 //
 // What makes this worth pinning is that the family has three different answers
 // for the *same* situation — the resource is not there:
 //
 //   getText              → the key itself, as a development indicator
-//   resolve*OrNull       → null
-//   resolveDoubleOrFail  → throws StateError
+//   TomCtr typed lookups → null
+//   TomCtr.doubleOrFail  → throws StateError
 //
 // Only the second and third are announced by the method name. `getText` looks
 // like the safest of the three and is the one that silently puts a resource
-// path on screen, and `resolveDoubleOrFail` is the only member that can bring
-// a widget build down. Both need to be visible in the contract, so both are
+// path on screen, and `doubleOrFail` is the only lookup that can bring a
+// widget build down. Both need to be visible in the contract, so both are
 // asserted here rather than left to the naming convention.
 
-/// Minimal Tom widget: the mixin's resource helpers need only `tomId`/`scope`.
+/// Minimal Tom widget: its `basePath` needs only `tomId`/`scope`.
 class _ResourceWidget extends StatelessWidget with TomWidgetMixin {
   const _ResourceWidget({this.tomId, this.scope});
 
@@ -43,7 +44,7 @@ void main() {
   tearDown(() => _installResources({}));
 
   group('TomWidgetMixin typed resources: values that are present', () {
-    test('every helper resolves its own type from the widget path', () {
+    test('every lookup resolves its own type from the widget path', () {
       _installResources({
         'w': {
           'label': 'Street',
@@ -57,12 +58,15 @@ void main() {
       const widget = _ResourceWidget(tomId: 'w');
 
       expect(widget.getText('label'), 'Street');
-      expect(widget.resolveColorOrNull('tint'), const Color(0xFFFF5733));
-      expect(widget.resolveDoubleOrNull('size'), 14.5);
-      expect(widget.resolveDoubleOrFail('size'), 14.5);
-      expect(widget.resolveIntOrNull('count'), 7);
-      expect(widget.resolveBoolOrNull('dense'), isTrue);
-      expect(widget.resolveEdgeInsetsOrNull('pad'), const EdgeInsets.all(8));
+      expect(TomCtr.color(widget.basePath, 'tint'), const Color(0xFFFF5733));
+      expect(TomCtr.doubleVal(widget.basePath, 'size'), 14.5);
+      expect(TomCtr.doubleOrFail(widget.basePath, 'size'), 14.5);
+      expect(TomCtr.intVal(widget.basePath, 'count'), 7);
+      expect(TomCtr.boolVal(widget.basePath, 'dense'), isTrue);
+      expect(
+        TomCtr.edgeInsets(widget.basePath, 'pad'),
+        const EdgeInsets.all(8),
+      );
     });
 
     test('resolution is scope-aware, like basePath', () {
@@ -78,11 +82,11 @@ void main() {
       );
 
       expect(scoped.basePath, 'checkout.w');
-      expect(scoped.resolveDoubleOrNull('size'), 20.0);
-      expect(scoped.resolveDoubleOrFail('size'), 20.0);
+      expect(TomCtr.doubleVal(scoped.basePath, 'size'), 20.0);
+      expect(TomCtr.doubleOrFail(scoped.basePath, 'size'), 20.0);
       // The unscoped widget reads the other value entirely.
       expect(
-        const _ResourceWidget(tomId: 'w').resolveDoubleOrNull('size'),
+        TomCtr.doubleVal(const _ResourceWidget(tomId: 'w').basePath, 'size'),
         4.0,
       );
     });
@@ -102,18 +106,18 @@ void main() {
       expect(const _ResourceWidget().getText('label'), '');
     });
 
-    test('every OrNull helper returns null for an absent resource', () {
+    test('every nullable lookup returns null for an absent resource', () {
       _installResources({});
       const widget = _ResourceWidget(tomId: 'w');
 
-      expect(widget.resolveColorOrNull('tint'), isNull);
-      expect(widget.resolveDoubleOrNull('size'), isNull);
-      expect(widget.resolveIntOrNull('count'), isNull);
-      expect(widget.resolveBoolOrNull('dense'), isNull);
-      expect(widget.resolveEdgeInsetsOrNull('pad'), isNull);
+      expect(TomCtr.color(widget.basePath, 'tint'), isNull);
+      expect(TomCtr.doubleVal(widget.basePath, 'size'), isNull);
+      expect(TomCtr.intVal(widget.basePath, 'count'), isNull);
+      expect(TomCtr.boolVal(widget.basePath, 'dense'), isNull);
+      expect(TomCtr.edgeInsets(widget.basePath, 'pad'), isNull);
     });
 
-    test('every OrNull helper returns null for an unparseable value', () {
+    test('every nullable lookup returns null for an unparseable value', () {
       _installResources({
         'w': {
           'tint': 'not-a-colour',
@@ -125,27 +129,30 @@ void main() {
       });
       const widget = _ResourceWidget(tomId: 'w');
 
-      expect(widget.resolveColorOrNull('tint'), isNull);
-      expect(widget.resolveDoubleOrNull('size'), isNull);
-      expect(widget.resolveIntOrNull('count'), isNull);
-      expect(widget.resolveBoolOrNull('dense'), isNull);
-      expect(widget.resolveEdgeInsetsOrNull('pad'), isNull);
+      expect(TomCtr.color(widget.basePath, 'tint'), isNull);
+      expect(TomCtr.doubleVal(widget.basePath, 'size'), isNull);
+      expect(TomCtr.intVal(widget.basePath, 'count'), isNull);
+      expect(TomCtr.boolVal(widget.basePath, 'dense'), isNull);
+      expect(TomCtr.edgeInsets(widget.basePath, 'pad'), isNull);
     });
 
-    test('every OrNull helper returns null when there is no tomId', () {
+    test('every nullable lookup returns null when there is no tomId', () {
       const widget = _ResourceWidget();
 
-      expect(widget.resolveColorOrNull('tint'), isNull);
-      expect(widget.resolveDoubleOrNull('size'), isNull);
-      expect(widget.resolveIntOrNull('count'), isNull);
-      expect(widget.resolveBoolOrNull('dense'), isNull);
-      expect(widget.resolveEdgeInsetsOrNull('pad'), isNull);
+      expect(TomCtr.color(widget.basePath, 'tint'), isNull);
+      expect(TomCtr.doubleVal(widget.basePath, 'size'), isNull);
+      expect(TomCtr.intVal(widget.basePath, 'count'), isNull);
+      expect(TomCtr.boolVal(widget.basePath, 'dense'), isNull);
+      expect(TomCtr.edgeInsets(widget.basePath, 'pad'), isNull);
     });
 
-    test('resolveDoubleOrFail throws, naming the key it wanted', () {
+    test('doubleOrFail throws, naming the key it wanted', () {
       _installResources({});
       expect(
-        () => const _ResourceWidget(tomId: 'w').resolveDoubleOrFail('size'),
+        () => TomCtr.doubleOrFail(
+          const _ResourceWidget(tomId: 'w').basePath,
+          'size',
+        ),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
@@ -156,18 +163,21 @@ void main() {
       );
     });
 
-    test('resolveDoubleOrFail throws on a present but non-numeric value', () {
+    test('doubleOrFail throws on a present but non-numeric value', () {
       // The resource exists, so this is a distinct failure from absence: the
-      // OrNull sibling answers null here, and OrFail still refuses.
+      // nullable doubleVal answers null here, and doubleOrFail still refuses.
       _installResources({
         'w': {'size': 'not-a-number'},
       });
       expect(
-        const _ResourceWidget(tomId: 'w').resolveDoubleOrNull('size'),
+        TomCtr.doubleVal(const _ResourceWidget(tomId: 'w').basePath, 'size'),
         isNull,
       );
       expect(
-        () => const _ResourceWidget(tomId: 'w').resolveDoubleOrFail('size'),
+        () => TomCtr.doubleOrFail(
+          const _ResourceWidget(tomId: 'w').basePath,
+          'size',
+        ),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
@@ -178,11 +188,11 @@ void main() {
       );
     });
 
-    test('resolveDoubleOrFail throws when there is no tomId', () {
+    test('doubleOrFail throws when there is no tomId', () {
       // No basePath means no key to look up at all, so the message asks for a
       // tomId rather than for a value.
       expect(
-        () => const _ResourceWidget().resolveDoubleOrFail('size'),
+        () => TomCtr.doubleOrFail(const _ResourceWidget().basePath, 'size'),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,

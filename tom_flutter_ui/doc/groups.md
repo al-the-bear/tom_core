@@ -190,34 +190,36 @@ enough to make the gate resolve.
 
 ## Typed resource resolution
 
-Seven helpers resolve `<basePath>.<suffix>` through `TomCtr`, so they follow
-the widget's scope exactly as `basePath` does. They differ in what they do when
-the resource is **not** there, and that difference is the thing to know before
-picking one:
+The mixin offers one resource helper, `getText(suffix)`. Typed values are
+resolved through the `TomCtr` statics with the widget's `basePath` — the one
+resolution surface every widget in the kit uses. Each resolves
+`<basePath>.<suffix>`, so it follows the widget's scope exactly as `basePath`
+does. They differ in what they do when the resource is **not** there, and that
+difference is the thing to know before picking one:
 
-| Helper | Returns | If the resource is absent |
-| ------ | ------- | ------------------------- |
+| Call | Returns | If the resource is absent |
+| ---- | ------- | ------------------------- |
 | `getText(suffix)` | `String` | the resolved key itself, e.g. `'w.label'` — or `''` when the widget has no `tomId` |
-| `resolveColorOrNull(suffix)` | `Color?` | `null` |
-| `resolveDoubleOrNull(suffix)` | `double?` | `null` |
-| `resolveIntOrNull(suffix)` | `int?` | `null` |
-| `resolveBoolOrNull(suffix)` | `bool?` | `null` |
-| `resolveEdgeInsetsOrNull(suffix)` | `EdgeInsets?` | `null` |
-| `resolveDoubleOrFail(suffix)` | `double` | **throws `StateError`** |
+| `TomCtr.color(basePath, suffix)` | `Color?` | `null` |
+| `TomCtr.doubleVal(basePath, suffix)` | `double?` | `null` |
+| `TomCtr.intVal(basePath, suffix)` | `int?` | `null` |
+| `TomCtr.boolVal(basePath, suffix)` | `bool?` | `null` |
+| `TomCtr.edgeInsets(basePath, suffix)` | `EdgeInsets?` | `null` |
+| `TomCtr.doubleOrFail(basePath, suffix)` | `double` | **throws `StateError`** |
 
-`resolveDoubleOrFail` is the only member that can bring a build down, so it is
+`doubleOrFail` is the only lookup here that can bring a build down, so it is
 for values a widget genuinely cannot render without — a size it has no default
 for. It throws for three separate reasons, each with its own message: the
 widget has no `tomId` (so there is no key to look up), no resource exists at
-the key, or the value exists but is not numeric. The `OrNull` siblings answer
+the key, or the value exists but is not numeric. The nullable lookups answer
 `null` to all three, including the unparseable case.
 
 ```dart
 // tomId: 'w', with no resource installed
-widget.resolveDoubleOrNull('size');  // null
-widget.resolveDoubleOrFail('size');  // StateError: Tom widget requires either
-                                     // an explicit size or a numeric resource
-                                     // value at w.size.
+TomCtr.doubleVal(widget.basePath, 'size');     // null
+TomCtr.doubleOrFail(widget.basePath, 'size');  // StateError: Tom widget requires
+                                               // either an explicit size or a
+                                               // numeric resource value at w.size.
 ```
 
 `getText` is the member whose behaviour the name does *not* announce. It

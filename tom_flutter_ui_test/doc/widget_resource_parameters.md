@@ -76,15 +76,12 @@ is not told what a caller means to do with a `List`, so it cannot decide what
 "unusable" would be. The rule is stated in `doc/widget_base.md` and enforced by
 `test/widget_base/tom_ctr_helpers_test.dart` in `tom_flutter_ui`.
 
-#### `TomWidgetMixin` — the instance-level wrappers
+#### `TomWidgetMixin` — `getText` only
 
-`TomWidgetMixin` (`lib/src/groups/tom_widget_mixin.dart`) offers `getText`,
-`resolveColorOrNull`, `resolveDoubleOrNull`, `resolveDoubleOrFail`,
-`resolveIntOrNull`, `resolveBoolOrNull` and `resolveEdgeInsetsOrNull` — thin
-forwarders to the `TomCtr` statics above that supply `basePath` from the widget.
-They are **not** what the widgets in this document call: apart from `getText`,
-each has no call site in the package. This document names the `TomCtr` statics
-because that is what the code does.
+`TomWidgetMixin` (`lib/src/groups/tom_widget_mixin.dart`) offers one resolution
+member, `getText(suffix)`, a forwarder to `TomCtr.text` that supplies `basePath`
+from the widget. Every typed value is resolved through the `TomCtr` statics
+above, by mixin widgets and node widgets alike.
 
 `TomNodeBase` declares no resolution methods at all; it contributes the
 `basePath` the resolvers read from.

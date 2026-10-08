@@ -66,7 +66,9 @@ mixin TomWidgetMixin on Widget implements TomWidgetSurface {
 
   /// Gets a text resource for this widget.
   ///
-  /// Resolves `<canonical-path>.<suffix>` from [TomCtr].
+  /// Resolves `<canonical-path>.<suffix>` from [TomCtr]. Typed values (colors,
+  /// numbers, insets) are resolved through the [TomCtr] statics directly, with
+  /// [basePath] as the path — the one resolution surface every widget uses.
   String getText(String suffix) {
     return TomCtr.text(basePath, suffix);
   }
@@ -113,39 +115,5 @@ mixin TomWidgetMixin on Widget implements TomWidgetSurface {
       parts.add('group: ${tomGroup!.groupId}');
     }
     return '${runtimeType.toString()}(${parts.join(', ')})';
-  }
-
-  // ===========================================================================
-  // Typed Resource Resolution
-  // ===========================================================================
-
-  /// Resolves a color from resources relative to this widget's canonical path.
-  Color? resolveColorOrNull(String suffix) {
-    return TomCtr.color(basePath, suffix);
-  }
-
-  /// Resolves a double from resources relative to this widget's canonical path.
-  double? resolveDoubleOrNull(String suffix) {
-    return TomCtr.doubleVal(basePath, suffix);
-  }
-
-  /// Resolves a required double from resources relative to this widget's canonical path.
-  double resolveDoubleOrFail(String suffix) {
-    return TomCtr.doubleOrFail(basePath, suffix);
-  }
-
-  /// Resolves an int from resources relative to this widget's canonical path.
-  int? resolveIntOrNull(String suffix) {
-    return TomCtr.intVal(basePath, suffix);
-  }
-
-  /// Resolves a bool from resources relative to this widget's canonical path.
-  bool? resolveBoolOrNull(String suffix) {
-    return TomCtr.boolVal(basePath, suffix);
-  }
-
-  /// Resolves edge insets from resources relative to this widget's canonical path.
-  EdgeInsets? resolveEdgeInsetsOrNull(String suffix) {
-    return TomCtr.edgeInsets(basePath, suffix);
   }
 }

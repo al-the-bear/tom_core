@@ -28,6 +28,14 @@
 
 ### Changed
 
+- **`TomWidgetMixin` has one resolution member, `getText`.** The six typed
+  wrappers — `resolveColorOrNull`, `resolveDoubleOrNull`, `resolveDoubleOrFail`,
+  `resolveIntOrNull`, `resolveBoolOrNull`, `resolveEdgeInsetsOrNull` — are
+  removed. No widget called them; every widget resolves typed values through
+  the `TomCtr` statics with its `basePath`, which is now the only way. Replace
+  `resolveDoubleOrNull('gap')` with `TomCtr.doubleVal(basePath, 'gap')`, and
+  likewise `color`, `doubleOrFail`, `intVal`, `boolVal`, `edgeInsets`.
+
 - **`TomActionContext` carries no scope.** `TomActionContext.scope` and
   `runInScope` are removed, and the constructor is `const TomActionContext()`;
   `TomUndoRedoContext` likewise. No application context set the field: the
