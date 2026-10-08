@@ -166,8 +166,15 @@ def self_test() -> int:
     }
     checks = [
         (
+            # A todo id in the section that names no todo in the corpus.
+            # Inserted rather than made by renaming an id the section already
+            # carries, so the check does not depend on what the section says.
             "PHANTOM",
-            lambda t: t.replace("tcopen346_ahku", "tcopen9999_zzzz", 1),
+            lambda t: t.replace(
+                "### What is still open\n",
+                "### What is still open\n\nTracked by `tcopen9999_zzzz`.\n",
+                1,
+            ),
             None,
         ),
         ("UNNAMED", lambda t: t, [planted]),
