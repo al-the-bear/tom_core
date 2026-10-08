@@ -152,6 +152,9 @@ endpoint id, its URI, and its access policy.
   folded body — but a caller reading the body as authoritative would be wrong
   without ever being told. The by-id DELETEs keep `/{id}`: their
   `EntityIdRequest` exists solely to receive it and a DELETE carries no body.
+  A nested child write keeps its parent in the path too —
+  `POST /items/{id}/comments` takes an `AddCommentRequest` whose `id` exists
+  only to receive the capture and is never sent in the body.
 - **G-API-3** — Per-endpoint **access policy is declared on the API
   declaration** in contracts and applied on the implementation by referencing it
   — e.g. `@appApi.listItemsAccess` used directly as an annotation on the

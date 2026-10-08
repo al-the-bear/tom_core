@@ -296,14 +296,19 @@ class AppApiClient implements AppApiService {
   Future<void> deleteItem(EntityIdRequest request) async =>
       _call('appDeleteItem', parameters: {'id': request.id});
 
+  // The two nested child writes. The parent item travels in the path only:
+  // the request's `id` is bound into `{id}` and removed from the body, so the
+  // server receives one statement of the parent rather than two that could
+  // disagree.
   @override
-  Future<TodoComment> addComment(TodoComment comment) async => parseComment(
-    (await _call(
-      'appAddComment',
-      parameters: {'itemId': comment.itemId.get()},
-      body: jsonEncode(comment.toJson()),
-    )).jsonObject,
-  );
+  Future<TodoComment> addComment(AddCommentRequest request) async =>
+      parseComment(
+        (await _call(
+          'appAddComment',
+          parameters: {'id': request.id},
+          body: _bodyWithoutAddress(request),
+        )).jsonObject,
+      );
 
   // The two ordered child reads. Both are body-less GETs whose only input is
   // the path capture, so the typed `EntityIdRequest`'s id is bound into the
@@ -328,13 +333,17 @@ class AppApiClient implements AppApiService {
       );
 
   @override
-  Future<Subtask> addSubtask(Subtask subtask) async => parseSubtask(
+  Future<Subtask> addSubtask(AddSubtaskRequest request) async => parseSubtask(
     (await _call(
       'appAddSubtask',
-      parameters: {'itemId': subtask.itemId.get()},
-      body: jsonEncode(subtask.toJson()),
+      parameters: {'id': request.id},
+      body: _bodyWithoutAddress(request),
     )).jsonObject,
   );
+
+  /// [request] serialized without its `id`, which the path already carries.
+  static String _bodyWithoutAddress(Object request) =>
+      jsonEncode(dtoToMap(request)..remove('id'));
 
   @override
   Future<Subtask> updateSubtask(Subtask subtask) async => parseSubtask(

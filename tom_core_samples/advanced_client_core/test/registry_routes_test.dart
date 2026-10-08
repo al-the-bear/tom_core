@@ -188,12 +188,8 @@ _calls = {
     const {'id': '11'},
   ),
   'app/appAddComment': (
-    (c) => c.app.addComment(
-      TodoComment()
-        ..itemId.set('11')
-        ..body.set('b'),
-    ),
-    const {'itemId': '11'},
+    (c) => c.app.addComment(AddCommentRequest(id: '11', body: 'b')),
+    const {'id': '11'},
   ),
   'app/appListComments': (
     (c) => c.app.listComments(EntityIdRequest(id: '11')),
@@ -204,12 +200,8 @@ _calls = {
     const {'id': '11'},
   ),
   'app/appAddSubtask': (
-    (c) => c.app.addSubtask(
-      Subtask()
-        ..itemId.set('11')
-        ..title.set('s'),
-    ),
-    const {'itemId': '11'},
+    (c) => c.app.addSubtask(AddSubtaskRequest(id: '11', title: 's')),
+    const {'id': '11'},
   ),
   'app/appUpdateSubtask': (
     (c) => c.app.updateSubtask(

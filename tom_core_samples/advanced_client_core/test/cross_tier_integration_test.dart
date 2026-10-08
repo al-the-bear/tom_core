@@ -757,9 +757,7 @@ void main() {
           // --- Beat 1: alice owns item 1 and appends to its thread. ---
           await c.auth.login(_aliceLogin);
           final posted = await c.app.addComment(
-            TodoComment()
-              ..itemId.set(_carolItemId)
-              ..body.set(marker),
+            AddCommentRequest(id: _carolItemId, body: marker),
           );
           expect(posted.id.get(), isNotEmpty);
           expect(posted.body.get(), marker);
@@ -788,10 +786,10 @@ void main() {
           final before = await c.app.listSubtasks(item);
           expect(before, isNotEmpty, reason: 'the seed gives item 1 two steps');
           final step = await c.app.addSubtask(
-            Subtask()
-              ..itemId.set(_carolItemId)
-              ..title.set('Verify the cross-tier loop')
-              ..position.set(99), // ignored — the server appends
+            AddSubtaskRequest(
+              id: _carolItemId,
+              title: 'Verify the cross-tier loop',
+            ),
           );
           final after = await c.app.listSubtasks(item);
           expect(after, hasLength(before.length + 1));
@@ -823,9 +821,7 @@ void main() {
 
           await expectLater(
             c.app.addComment(
-              TodoComment()
-                ..itemId.set(_carolItemId)
-                ..body.set('viewer comment'),
+              AddCommentRequest(id: _carolItemId, body: 'viewer comment'),
             ),
             throwsA(
               isA<AppApiException>().having(
@@ -838,9 +834,7 @@ void main() {
           );
           await expectLater(
             c.app.addSubtask(
-              Subtask()
-                ..itemId.set(_carolItemId)
-                ..title.set('viewer step'),
+              AddSubtaskRequest(id: _carolItemId, title: 'viewer step'),
             ),
             throwsA(
               isA<AppApiException>().having(

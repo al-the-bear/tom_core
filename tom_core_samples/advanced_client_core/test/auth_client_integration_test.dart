@@ -217,8 +217,13 @@ void main() {
         // Descriptors, not labels: what crosses the wire is resource *keys*,
         // so the client renders text it looked up rather than text the auth
         // server chose (G-RES-5).
+        // The server also registers a passkey adaptor, so TOTP is one of
+        // several offered methods; its descriptor is looked up, not assumed
+        // to be the only one.
         expect(
-          offer1.availableTwoFactorMethods.single.displayNameKey,
+          offer1.availableTwoFactorMethods
+              .firstWhere((m) => m.type == 'totp')
+              .displayNameKey,
           equals('two_factor.totp.name'),
         );
         expect(offer1.twoFactorEnrolmentSkippable, isTrue);

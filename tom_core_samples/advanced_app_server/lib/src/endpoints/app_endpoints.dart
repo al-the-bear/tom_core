@@ -1715,24 +1715,27 @@ class AdvancedAppApiService implements AppApiService {
   Future<void> deleteItem(EntityIdRequest request) =>
       _writes.deleteItem(_principalId, int.tryParse(request.id) ?? -1);
 
+  // The parent item is the `{id}` path capture, folded onto `request.id` by the
+  // `{'id': 'id'}` mapping; the body carries only the authored fields. So the
+  // item the write is gated on is the one the URL addresses, and there is no
+  // second statement of it to disagree with.
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appAddComment')
   @override
-  Future<TodoComment> addComment(TodoComment comment) => _writes.addComment(
-    _principalId,
-    int.tryParse(comment.itemId.get()) ?? -1,
-    comment,
-  );
+  Future<TodoComment> addComment(AddCommentRequest request) =>
+      _writes.addComment(
+        _principalId,
+        int.tryParse(request.id) ?? -1,
+        TodoComment()..body.set(request.body),
+      );
 
-  // The parent link is read from the payload's `itemId` — which the pipeline
-  // has already populated from the `{id}` path capture (`urlParameterMapping:
-  // {'id': 'itemId'}`), the same shape `appAddComment` uses. So the addressed
-  // item, not a caller-chosen field, is what the write is gated on.
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appAddSubtask')
   @override
-  Future<Subtask> addSubtask(Subtask subtask) => _writes.addSubtask(
+  Future<Subtask> addSubtask(AddSubtaskRequest request) => _writes.addSubtask(
     _principalId,
-    int.tryParse(subtask.itemId.get()) ?? -1,
-    subtask,
+    int.tryParse(request.id) ?? -1,
+    Subtask()
+      ..title.set(request.title)
+      ..done.set(request.done),
   );
 
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appUpdateSubtask')

@@ -155,9 +155,14 @@ class LiveAppBackend implements AppBackend {
 
   @override
   Future<TodoComment> addComment(String itemId, TodoComment comment) =>
-      // The addressed item travels on the comment's `itemId` field, which the
-      // `{id}` → `itemId` mapping binds server-side.
-      _guard(() => _api.addComment(comment..itemId.set(itemId)));
+      // The addressed item travels in the path only (`{id}` →
+      // `AddCommentRequest.id`); the request carries the authored text and
+      // nothing that could name a second parent.
+      _guard(
+        () => _api.addComment(
+          AddCommentRequest(id: itemId, body: comment.body.get()),
+        ),
+      );
 
   @override
   Future<List<TodoComment>> listComments(String itemId) =>
@@ -169,9 +174,17 @@ class LiveAppBackend implements AppBackend {
 
   @override
   Future<Subtask> addSubtask(String itemId, Subtask subtask) =>
-      // As with `addComment`, the addressed item travels on the payload's
-      // `itemId`, which the `{id}` → `itemId` mapping binds server-side.
-      _guard(() => _api.addSubtask(subtask..itemId.set(itemId)));
+      // As with `addComment`, the addressed item travels in the path only; the
+      // request carries the caller-owned title and done flag.
+      _guard(
+        () => _api.addSubtask(
+          AddSubtaskRequest(
+            id: itemId,
+            title: subtask.title.get(),
+            done: subtask.done.get(),
+          ),
+        ),
+      );
 
   @override
   Future<Subtask> updateSubtask(Subtask subtask) =>

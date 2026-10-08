@@ -15,6 +15,7 @@
 /// passwords or bearer tokens.
 library;
 
+export 'add_child_requests.dart';
 export 'admin_dtos.dart';
 export 'dto_reflection.dart';
 export 'entity_id_request.dart';

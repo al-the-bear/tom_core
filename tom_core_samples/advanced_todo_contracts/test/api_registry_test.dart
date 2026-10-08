@@ -148,38 +148,70 @@ void main() {
       expect(endpoint.requestTypes, isEmpty);
     });
 
-    test('no PUT states its subject twice', () {
-      // A PUT carries the whole entity, so its request DTO necessarily names
-      // the subject. Adding a `{id}` capture on top would let one request name
-      // two — `PUT /users/7` with `{"id": 9}` — and the pipeline resolves that
-      // silently, by folding the body first and letting the path overwrite it.
-      // Precedence is the answer to a question the contract should not be
-      // asking, so every PUT here addresses the bare collection. See
+    test('no body-carrying endpoint states its subject twice', () {
+      // A POST, PUT or PATCH carries a request DTO in its body. A `{id}`
+      // capture on top lets one request name its subject twice — `PUT
+      // /users/7` with `{"id": 9}`, or `POST /items/7/comments` with
+      // `{"itemId": "9"}` — and the pipeline resolves that silently, by folding
+      // the body first and letting the path overwrite it. Precedence is the
+      // answer to a question the contract should not be asking; see
       // `TomApiEndpoint.urlParameterMapping`.
       //
-      // Scoped to PUT deliberately. A DELETE or a GET carries no body, so its
-      // capture is the only statement; and whether a POST to a nested
-      // subcollection (`POST /items/{id}/comments`, whose `TodoComment` also
-      // carries `itemId`) should lose its nesting is a separate question about
-      // the sample's REST surface, not about this rule.
+      // So such an endpoint has two legal shapes. Either it addresses the bare
+      // collection and its body is the single statement — every PUT here, and
+      // every POST that creates a top-level row — or its request type is one of
+      // the path-addressed request DTOs below, whose `id` field exists only to
+      // receive the capture and is left out of the body by the client. An
+      // entity DTO (`TodoComment`, `Subtask`, …) carries its links as data, so
+      // binding a capture onto one is the hazard itself.
+      //
+      // A DELETE or a GET carries no body, so its capture is the only
+      // statement and is not judged here.
+      const bodyCarrying = [
+        TomHttpMethod.post,
+        TomHttpMethod.put,
+        TomHttpMethod.patch,
+      ];
+      const pathAddressed = <Type>{AddCommentRequest, AddSubtaskRequest};
       for (final api in [authApi, adminApi, appApi]) {
         for (final endpoint in api.endpoints.values) {
-          if (endpoint.method != TomHttpMethod.put) continue;
+          if (!bodyCarrying.contains(endpoint.method)) continue;
+          final where = '${api.id}.${endpoint.id}';
+          if (!(endpoint.uri ?? '').contains('{')) {
+            expect(
+              endpoint.urlParameterMapping,
+              isEmpty,
+              reason:
+                  '$where: a bare collection declares no URL parameter '
+                  'mapping — there is no capture for one to bind',
+            );
+            continue;
+          }
           expect(
-            endpoint.uri,
-            isNot(contains('{')),
+            endpoint.requestTypes,
+            everyElement(isIn(pathAddressed)),
             reason:
-                '${api.id}.${endpoint.id}: a PUT must address the bare '
-                'collection — its body already names the subject',
+                '$where: a capture on a body-carrying endpoint must bind onto '
+                'a path-addressed request DTO, not onto an entity whose body '
+                'already names the subject',
           );
           expect(
-            endpoint.urlParameterMapping,
-            isEmpty,
-            reason:
-                '${api.id}.${endpoint.id}: a PUT declares no URL parameter '
-                'mapping — there is no capture for one to bind',
+            endpoint.urlParameterMapping.values,
+            everyElement('id'),
+            reason: '$where: the capture binds onto the request\'s `id`',
           );
         }
+      }
+    });
+
+    test('the nested child writes keep the capture that addresses them', () {
+      // The other half, asserted so that dropping the nesting cannot pass for
+      // the repair: the parent is stated in the path, and only there.
+      for (final id in ['appAddComment', 'appAddSubtask']) {
+        final endpoint = appApi.endpoints[id]!;
+        expect(endpoint.method, TomHttpMethod.post, reason: id);
+        expect(endpoint.uri, startsWith('/items/{id}/'), reason: id);
+        expect(endpoint.urlParameterMapping, {'id': 'id'}, reason: id);
       }
     });
 

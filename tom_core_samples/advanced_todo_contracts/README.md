@@ -96,6 +96,11 @@ themselves.
 - **By-id requests** (`entity_id_request.dart`): `EntityIdRequest`, the one
   reusable request type every `/…/{id}` endpoint binds its path capture onto
   (G-API-2).
+- **Child-create requests** (`add_child_requests.dart`): `AddCommentRequest`
+  (`{id, body}`) and `AddSubtaskRequest` (`{id, title, done}`) for the nested
+  `POST /items/{id}/comments` and `POST /items/{id}/subtasks`. `id` is the parent
+  item, bound from the path and left out of the body, so the parent is stated
+  once.
 - **Files** (`file_descriptor_dto.dart`): `FileDescriptorDto`, a lossless
   wrapper around the kernel `TomFileMetadata` a `HEAD` against a slot returns,
   plus `AppFileSlots` — the `<table>/<id>/<column>` slot addresses named once so
@@ -179,10 +184,10 @@ taken once for all fifteen in [the suite map](../README.md).
 | `appCreateItem` | POST | `/items` | `TodoItem` | `TodoItem` | authenticated |
 | `appUpdateItem` | PUT | `/items` | `TodoItem` | `TodoItem` | authenticated |
 | `appDeleteItem` | DELETE | `/items/{id}` | `EntityIdRequest` | `void` | authenticated |
-| `appAddComment` | POST | `/items/{id}/comments` | `TodoComment` | `TodoComment` | authenticated |
+| `appAddComment` | POST | `/items/{id}/comments` | `AddCommentRequest` | `TodoComment` | authenticated |
 | `appListComments` | GET | `/items/{id}/comments` | `EntityIdRequest` | `List<TodoComment>` | authenticated |
 | `appListSubtasks` | GET | `/items/{id}/subtasks` | `EntityIdRequest` | `List<Subtask>` | authenticated |
-| `appAddSubtask` | POST | `/items/{id}/subtasks` | `Subtask` | `Subtask` | authenticated |
+| `appAddSubtask` | POST | `/items/{id}/subtasks` | `AddSubtaskRequest` | `Subtask` | authenticated |
 | `appUpdateSubtask` | PUT | `/subtasks` | `Subtask` | `Subtask` | authenticated |
 | `appShare` | POST | `/share` | `ShareRequest` | `void` | authenticated |
 | `appRevokeShare` | DELETE | `/share/{id}` | — | `void` | authenticated |

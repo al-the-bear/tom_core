@@ -24,8 +24,9 @@ import 'forms/todo_item_form.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 // The reflection-first contract DTOs the live app backend round-trips through
 // the client core (LoginRequest/LoginResult/ShareRequest/GrantMatrixDto/
-// ResourceBundleDto/…): they must be in this one combined seed so
-// `dtoFromJson`/`dtoToJsonString` resolve at runtime.
+// ResourceBundleDto/AddCommentRequest/AddSubtaskRequest/…): they must be in
+// this one combined seed so `dtoFromJson`/`dtoToJsonString` resolve at
+// runtime.
 // ignore: unused_import
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 // `tomReflector` for the contract-DTO capture anchor below.
@@ -67,6 +68,8 @@ class _ContractDtoAnchor {
   UserDto? userDto;
   LoginResult? loginResult;
   ShareRequest? shareRequest;
+  AddCommentRequest? addCommentRequest;
+  AddSubtaskRequest? addSubtaskRequest;
   GrantMatrixDto? grantMatrixDto;
   ResourceBundleDto? resourceBundleDto;
 }

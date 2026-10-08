@@ -350,6 +350,29 @@ void main() {
       },
     );
 
+    test('TC-24-22: addComment POSTs the text and names the item only in '
+        'the path', () async {
+      storeBearer();
+      final transport = _RoutingTransport({
+        '/items/11/comments': [
+          HttpJsonResponse(
+            201,
+            jsonEncode({'id': '4', 'itemId': '11', 'body': 'hello'}),
+          ),
+        ],
+      });
+      final client = clientOver(transport);
+
+      final created = await client.addComment(
+        AddCommentRequest(id: '11', body: 'hello'),
+      );
+
+      expect(created.id.get(), '4');
+      final call = transport.callsTo('/items/11/comments').single;
+      expect(call.method, 'POST');
+      expect(jsonDecode(call.body!), {'body': 'hello'});
+    });
+
     test('TC-24-18: addSubtask POSTs under the parent item', () async {
       storeBearer();
       final transport = _RoutingTransport({
@@ -368,15 +391,17 @@ void main() {
       final client = clientOver(transport);
 
       final created = await client.addSubtask(
-        Subtask()
-          ..itemId.set('11')
-          ..title.set('c'),
+        AddSubtaskRequest(id: '11', title: 'c'),
       );
 
       expect(created.id.get(), '9');
       final call = transport.callsTo('/items/11/subtasks').single;
       expect(call.method, 'POST');
-      expect((jsonDecode(call.body!) as Map)['title'], 'c');
+      final body = jsonDecode(call.body!) as Map;
+      expect(body['title'], 'c');
+      // The parent is stated in the path and nowhere else.
+      expect(body.keys, isNot(contains('id')));
+      expect(body.keys, isNot(contains('itemId')));
     });
 
     test('TC-24-19: updateSubtask addresses the subtask, not the item', () async {

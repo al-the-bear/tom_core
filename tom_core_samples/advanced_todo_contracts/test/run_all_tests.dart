@@ -25,6 +25,9 @@ library;
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 
 void main() {
+  // add_child_requests.dart
+  AddCommentRequest();
+  AddSubtaskRequest();
   // admin_dtos.dart
   CreateUserRequest();
   RoleDto();

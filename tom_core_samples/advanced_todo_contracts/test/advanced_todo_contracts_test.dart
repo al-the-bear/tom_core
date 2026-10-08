@@ -774,6 +774,26 @@ void main() {
       expect(restored.id, '55');
       expect(request.toString(), contains('55'));
     });
+
+    test('the child-create requests assemble from a body and a capture', () {
+      // What the pipeline does for `POST /items/{id}/comments`: the body holds
+      // the authored fields only, and `{id}` is folded on as `id`. The DTO must
+      // instantiate from that merged map, and the body alone names no parent.
+      final comment = dtoFromJson<AddCommentRequest>({
+        ...{'body': 'Looks good'},
+        'id': '7',
+      });
+      expect(comment.id, '7');
+      expect(comment.body, 'Looks good');
+
+      final subtask = dtoFromJson<AddSubtaskRequest>({
+        ...{'title': 'Draft', 'done': true},
+        'id': '7',
+      });
+      expect(subtask.id, '7');
+      expect(subtask.title, 'Draft');
+      expect(subtask.done, isTrue);
+    });
   });
 
   group('FileDescriptorDto', () {

@@ -16,6 +16,7 @@ library;
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 
+import 'add_child_requests.dart';
 import 'admin_dtos.dart';
 import 'entity_id_request.dart';
 import 'file_descriptor_dto.dart';
@@ -228,9 +229,9 @@ abstract class AppApiService {
   Future<void> deleteItem(EntityIdRequest request);
 
   /// `appAddComment` — `POST /items/{id}/comments` (commenter and above). The
-  /// `{id}` path capture binds onto `TodoComment.itemId` (a non-identity
-  /// `{'id': 'itemId'}` `urlParameterMapping`).
-  Future<TodoComment> addComment(TodoComment comment);
+  /// `{id}` path capture binds onto [AddCommentRequest.id], the parent item;
+  /// the body carries only the comment text.
+  Future<TodoComment> addComment(AddCommentRequest request);
 
   /// `appListComments` — `GET /items/{id}/comments`. The item's comment thread,
   /// oldest first, for any principal that may *read* the item (C-3): a viewer
@@ -244,8 +245,10 @@ abstract class AppApiService {
 
   /// `appAddSubtask` — `POST /items/{id}/subtasks` (editor and above, i.e. the
   /// same gate as editing the parent item — a subtask is part of the item, not a
-  /// comment on it). The `{id}` path capture binds onto `Subtask.itemId`.
-  Future<Subtask> addSubtask(Subtask subtask);
+  /// comment on it). The `{id}` path capture binds onto
+  /// [AddSubtaskRequest.id], the parent item; the body carries only the title
+  /// and done flag.
+  Future<Subtask> addSubtask(AddSubtaskRequest request);
 
   /// `appUpdateSubtask` — `PUT /subtasks` (editor and above). Used to toggle
   /// `done`; the gate is resolved from the *parent item*, so a subtask can

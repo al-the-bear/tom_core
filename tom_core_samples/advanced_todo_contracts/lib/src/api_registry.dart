@@ -35,6 +35,7 @@ library;
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'add_child_requests.dart';
 import 'admin_dtos.dart';
 import 'entity_id_request.dart';
 import 'file_descriptor_dto.dart';
@@ -409,13 +410,15 @@ final TomApi appApi = TomApi(
       urlParameterMapping: const {'id': 'id'},
       access: TomAuthenticatedAccess(),
     ),
-    TomApiEndpoint<TodoComment, TodoComment>(
+    TomApiEndpoint<TodoComment, AddCommentRequest>(
       id: 'appAddComment',
       uri: '/items/{id}/comments',
       method: TomHttpMethod.post,
-      // The demonstrative non-identity mapping: the item id lives on the
-      // comment's `itemId` field, so `{id}` → `TodoComment.itemId`.
-      urlParameterMapping: const {'id': 'itemId'},
+      // `{id}` → `AddCommentRequest.id`, the parent item. The request carries
+      // only the authored text besides it, so the path is the one statement of
+      // the parent; a `TodoComment` body would name it a second time in
+      // `itemId`.
+      urlParameterMapping: const {'id': 'id'},
       access: TomAuthenticatedAccess(),
     ),
     // The comment *history* read, the counterpart of `appAddComment`. A
@@ -443,13 +446,14 @@ final TomApi appApi = TomApi(
       urlParameterMapping: const {'id': 'id'},
       access: TomAuthenticatedAccess(),
     ),
-    TomApiEndpoint<Subtask, Subtask>(
+    TomApiEndpoint<Subtask, AddSubtaskRequest>(
       id: 'appAddSubtask',
       uri: '/items/{id}/subtasks',
       method: TomHttpMethod.post,
-      // The same non-identity mapping `appAddComment` uses: the parent item id
-      // lives on the subtask's `itemId` field, so `{id}` → `Subtask.itemId`.
-      urlParameterMapping: const {'id': 'itemId'},
+      // `{id}` → `AddSubtaskRequest.id`, the parent item, as `appAddComment`
+      // binds it: the request carries the caller-owned title and done flag and
+      // nothing else that could name a parent.
+      urlParameterMapping: const {'id': 'id'},
       access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<Subtask, Subtask>(
