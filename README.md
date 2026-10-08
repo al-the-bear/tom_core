@@ -294,6 +294,7 @@ one.
 | [`tool/dart_sdk.py`](tool/dart_sdk.py) | Finds the `dart` the gates need when the shell's PATH has none — PATH, the SDKs' own environment variables, `flutter` on PATH, then conventional install locations — so the gate runner can put it on every gate's PATH |
 | [`tool/gate_cache.py`](tool/gate_cache.py) | Remembers a clean analyzer verdict per package until one of its inputs changes; used by `check_reflection_artifacts.py` and `check_doc_dart_blocks.py` |
 | [`tool/check_tooling_table.py`](tool/check_tooling_table.py) | Pins this table, and the prose sections below it, to the contents of `tool/` |
+| [`tool/check_overview_inventory.py`](tool/check_overview_inventory.py) | Recomputes the quest overview's Package Inventory table and per-package Structure lines from git-tracked files, by the counting rules stated beside the table |
 | [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits a document's navigation: its `## Table of Contents`, every anchor it links to itself, and every `#fragment` it links to in another document |
 | [`tool/check_doc_inventories.py`](tool/check_doc_inventories.py) | Audits the file inventories in the completion documents against the tree |
 | [`tool/check_baseline_claims.py`](tool/check_baseline_claims.py) | Fails a completion document's `What changed` claim about what a `Tom*` symbol did at the baseline when the baseline had no such symbol |
@@ -375,6 +376,20 @@ and their rows say so. Accuracy is not
 checked, only presence: whether a summary is *true* needs judgement, whether a
 row exists does not. That is the same line `check_doc_inventories.py` and
 `check_test_inventories.py` draw.
+
+```bash
+python3 tool/check_overview_inventory.py              # exit 1 on a drifted count
+python3 tool/check_overview_inventory.py --self-test  # the parser and the counter
+```
+
+The quest overview states every package's size twice — the Package Inventory
+table and a Structure line per package — and both are exact facts about the
+tree that nobody recounted: the kernel's test-file count drifted by fifteen.
+This gate recomputes them from `git ls-files` by the rules written beside the
+table (test files are `*_test.dart` anywhere under `test/`, the files the runner
+discovers; source and example counts exclude generated output; doc pages and
+API summaries are counted apart). The test *counts* in parentheses are suite
+results and are not checked.
 
 ```bash
 python3 tool/check_doc_tocs.py                # the whole repository
