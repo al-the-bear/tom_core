@@ -336,6 +336,7 @@ one.
 | [`tool/check_resource_key_namespace.py`](tool/check_resource_key_namespace.py) | Finds resource keys written with the field-grade scope glued to the front of the type |
 | [`tool/check_figure_wellformed.py`](tool/check_figure_wellformed.py) | Finds SVG figures that are not well-formed XML, and so render as nothing |
 | [`tool/check_flutter_platform_step.py`](tool/check_flutter_platform_step.py) | Holds every runnable Flutter sample's README to naming the platform step its first `flutter run` needs |
+| [`tool/check_generated_resource_tables.py`](tool/check_generated_resource_tables.py) | Regenerates `tom_flutter_ui`'s icon and colour tables against the installed Flutter SDK and reports every line that differs from the committed ones |
 | [`tool/check_suite_figures.py`](tool/check_suite_figures.py) | Holds the sample suite's figures, their embed sites and the `assets/README.md` inventory to one another and to the figure convention |
 | [`tool/check_barrel_exports.py`](tool/check_barrel_exports.py) | Finds a Dart file beside a barrel that no barrel reaches and no marker declares |
 | [`tool/check_kernel_bridge.py`](tool/check_kernel_bridge.py) | Audits the kernel bridge registrations against the types the bridge declares |
@@ -1762,6 +1763,28 @@ without `--empty`), `ORDER` (a fenced `flutter run` comes before the step, so a
 reader going top to bottom meets the failing command first), and `IGNORE` (the
 package's `.gitignore` misses one of the six platform folders or `.metadata`,
 which the step writes).
+
+```bash
+python3 tool/check_generated_resource_tables.py
+```
+
+Holds `tom_flutter_ui`'s two generated resource tables —
+`lib/src/resource_auth/tom_icons_generated.dart` and
+`tom_colors_generated.dart` — to the Flutter SDK they are generated from. Both
+generators emit no timestamp and format their output, so a regeneration
+reproduces the committed file byte for byte; the gate runs them into a scratch
+directory under `tool/ztmp/` and counts the lines that differ. The table's own
+header tests cannot do this: they hold a header to the entries below it, and
+pass just as well on a table generated against a Flutter release from months
+ago.
+
+A difference is the SDK moving rather than damage — an icon Flutter removed is a
+resource key that no longer resolves — so the remedy is to regenerate with the
+generators' own command and read the diff for removed keys before committing it.
+The gate needs Flutter's sources, not only a `dart`: it finds the SDK from
+`FLUTTER_ROOT` or from a `dart` inside a Flutter checkout, and exits 2 (not
+measured) on a machine with neither. `--self-test` deletes an entry from a copy
+of each committed table and requires a real regeneration to report it.
 
 ```bash
 python3 tool/check_barrel_exports.py                 # the whole repository

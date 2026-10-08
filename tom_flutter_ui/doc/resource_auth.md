@@ -138,7 +138,12 @@ counts are computed from the maps below it, and each generator runs
 diff at all. That is what makes the checked-in tables checkable: you regenerate
 and look for a diff, and a count that moved means the SDK moved. Two tests in
 `test/resource_auth/resource_auth_test.dart` hold each header to both
-properties.
+properties; they cannot tell a table that is behind the installed SDK, because
+its header still agrees with its own entries. That check is the repository's
+gate `tom_ai/core/tool/check_generated_resource_tables.py`, which regenerates
+both tables into a scratch directory and reports every line that differs. A
+difference is resolved by regenerating and reading the diff for removed keys —
+an icon Flutter dropped is a resource key that no longer resolves.
 
 In the colour table, shades are emitted as literal values rather than
 `Colors.red[500]`, which is not a constant expression; every other entry is an

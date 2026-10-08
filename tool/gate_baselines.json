@@ -140,6 +140,11 @@
    "measured": "2026-09-30",
    "note": "Lands at zero because all seven faults it was written for were repaired in the same pass: every Flutter sample under tom_core_samples/ said `flutter run` and tracked no platform folder, so the documented command could not start. Each README now names `flutter create --empty --platforms=<p> .` before its first fenced `flutter run`, and each .gitignore lists the six platform folders and .metadata. Verified, not assumed: for all seven, the step was run in place and `flutter run -d macos --machine` reached app.started, and the step wrote no file git would track. The two harnesses commit their platform folders and are out of scope by that test, not by name."
   },
+  "check_generated_resource_tables": {
+   "faults": 0,
+   "measured": "2026-10-08",
+   "note": "Both generated resource tables (8825 Material + 1322 Cupertino icons, and the colour table) regenerate byte for byte against Flutter 3.44.6. A count above zero is the SDK moving: regenerate with the generators' own command and read the diff for removed keys before committing it."
+  },
   "check_kernel_bridge": {
    "faults": 0,
    "measured": "2026-09-03"
