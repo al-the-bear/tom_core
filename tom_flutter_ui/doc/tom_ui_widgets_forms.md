@@ -1615,13 +1615,18 @@ resolved auth — `onActionIconPressed` is disabled under `read` /
 `disabled` states, the icon dims with the field, and it disappears
 entirely under `none` alongside the rest of the field.
 
-These options are typically set via `TomFormStyle` for the entire application, but can be overridden per field:
+These options are typically set via `TomFormStyle` for the entire application. A `TomFormStyleScope` overrides them for the subtree beneath it, so wrapping a single field's widget overrides them for that field:
 
 ```dart
-// Per-field override
-name = TomFormStringInput('name', '',
-  labelPlacement: TomLabelPlacement.floating,  // override global setting
-  errorPlacement: TomErrorPlacement.tooltip,
+// Per-field override: a scope around one field's widget
+TomFormStyleScope(
+  style: TomFormStyle(
+    defaults: TomFieldStyle(
+      labelPlacement: TomLabelPlacement.floating,
+      errorPlacement: TomErrorPlacement.tooltip,
+    ),
+  ),
+  child: nameFieldWidget,
 );
 ```
 

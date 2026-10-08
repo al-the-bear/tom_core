@@ -1110,7 +1110,7 @@ Triggers connect actions to the user or to system events. A trigger references a
 
 The button family gains an `actionId` parameter alongside (or instead of) the existing `onPressed` callback:
 
-```dart
+```dart intended
 TomElevatedButton(
   tomId: 'submitBtn',
   actionId: 'submitOrder',  // resolved via action registry

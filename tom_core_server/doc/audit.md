@@ -1198,7 +1198,10 @@ from there:
 
 ```dart
 final section = TomTabularSection.ofMaps(
-  [for (final entry in result.entries) entry.record.toJson()],
+  columns, // the TomTabularColumns to export, in order
+  Stream.fromIterable([
+    for (final entry in result.entries) entry.record.toJson(),
+  ]),
 );
 ```
 

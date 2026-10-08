@@ -106,9 +106,9 @@ late final AppState appState;
 
 @tomReflector
 class AppState extends TomClass {
-  late final username = TomString('username');
-  late final email = TomString('email');
-  late final isAdmin = TomBool('isAdmin', initialValue: false);
+  late final username = TomString('');
+  late final email = TomString('');
+  late final isAdmin = TomBool(false);
 }
 ```
 

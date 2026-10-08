@@ -38,6 +38,21 @@ mistyped `TomBeen` would be stubbed into existence and pass. What is not
 fiction is a name beginning `Tom`/`tom`: that prefix belongs to the framework,
 so a sample using one is *claiming* the framework has it. Those must resolve.
 
+A sample claims the framework has something in two further ways that no
+`Tom` name in the analyzer's message reveals, and both count:
+
+- *An argument to a framework call.* `TomFormCurrencyDoubleInput(..., group: g)`
+  reads only "The named parameter 'group' isn't defined" -- the message names
+  the parameter, never the constructor. An argument-shape error (unknown named
+  parameter, too few or too many positional arguments, a missing required one)
+  counts when the call it sits in has a `Tom*` callee, read from the source.
+- *A member inherited from a framework base.* Inside a class whose `extends`,
+  `with` or `implements` names a `Tom*` type, a lowercase method or getter
+  called through an implicit `this` is claimed to come from that base. A sample
+  calling a helper of its own declares the helper beside the class, so a reader
+  can tell the two apart; a PascalCase call is a constructor of the sample's
+  own fiction and stays allowed, as does any bare undefined *identifier*.
+
 So the check keeps the whole of what the manual pass demonstrated and gives up
 only the part that would need fiction to evaluate.
 
@@ -824,10 +839,168 @@ def partition(
     resolution = [d for d in diagnostics if d.get("type") != "SYNTACTIC_ERROR"]
     if complete:
         return syntax, resolution
-    return syntax, [
-        d for d in resolution
-        if TOM_NAME.search(d.get("problemMessage", ""))
-    ]
+    return syntax, [d for d in resolution if claims_framework(d)]
+
+
+#: Argument-shape errors. Their messages quote the *parameter*, never the
+#: callee, so `TOM_NAME` cannot see that `group:` was passed to a framework
+#: constructor whose parameter is `tomGroup`. The callee is read from the
+#: source instead -- see [enclosing_callee].
+ARGUMENT_CODES = (
+    "undefined_named_parameter",
+    "not_enough_positional_arguments",
+    "extra_positional_arguments",
+    "missing_required_argument",
+)
+
+#: A name that resolves to nothing. With an explicit receiver the message
+#: quotes the receiver's type, which `TOM_NAME` already reads; with an
+#: implicit `this` it quotes the sample's own class, so the claim is read from
+#: that class's supertypes -- see [enclosing_class_header].
+UNDEFINED_CODES = (
+    "undefined_method",
+    "undefined_getter",
+    "undefined_setter",
+    "undefined_identifier",
+    "undefined_function",
+)
+
+#: The subset of [UNDEFINED_CODES] that names a *member*: a method or getter
+#: invoked through an implicit `this`. A bare undefined identifier inside a
+#: framework subclass is far more often the sample's own variable
+#: (`countriesSource`, `_userService`) than a claimed inherited member, and
+#: counting it reported a hundred of those for every real one.
+IMPLICIT_MEMBER_CODES = ("undefined_method", "undefined_getter")
+
+#: An annotation, with its argument list, as it may sit in a class header.
+ANNOTATION = re.compile(r"@\w+(?:\.\w+)*(?:\([^()]*(?:\([^()]*\)[^()]*)*\))?")
+
+#: A framework name anywhere in a stretch of source.
+FRAMEWORK_WORD = re.compile(r"\b[Tt]om[A-Z]\w*")
+CALLEE = re.compile(r"((?:[A-Za-z_]\w*\s*\.\s*)*[A-Za-z_]\w*)\s*(?:<[^()]*>)?\s*$")
+CLASS_HEADER = re.compile(
+    r"\b(?:class|mixin|enum|extension)\b[^;{}]*$", re.S)
+
+
+def claims_framework(diagnostic: dict) -> bool:
+    """Whether a resolution error is a claim about the framework.
+
+    Three ways a sample claims something of the framework, and an error under
+    any of them is a fault rather than the sample's own fiction:
+
+    - the message quotes a `Tom*` name -- a framework type, member or
+      constructor that does not exist, or a member missing on one;
+    - an argument-shape error (`ARGUMENT_CODES`) in a call whose callee is a
+      `Tom*` name -- `TomFormCurrencyDoubleInput(..., group: g)` where the
+      parameter is `tomGroup`;
+    - a name that resolves to nothing through an implicit `this`, inside a
+      class whose `extends` / `with` / `implements` clause names a `Tom*` type:
+      the sample is claiming the framework base gives it that member.
+
+    A bare top-level call to an undefined helper stays fiction: nothing in the
+    source ties it to the framework, and a sample's own helpers are allowed.
+    """
+    if TOM_NAME.search(diagnostic.get("problemMessage", "")):
+        return True
+    code = diagnostic.get("code", "")
+    if not (code.startswith(ARGUMENT_CODES) or code in UNDEFINED_CODES):
+        return False
+    located = _located_source(diagnostic)
+    if located is None:
+        return False
+    source, offset, length = located
+    if code.startswith(ARGUMENT_CODES):
+        span = source[offset:offset + length]
+        callee = enclosing_callee(source, offset)
+        return bool(FRAMEWORK_WORD.search(span)
+                    or (callee and FRAMEWORK_WORD.search(callee)))
+    if code not in IMPLICIT_MEMBER_CODES:
+        return False
+    if source[:offset].rstrip().endswith((".", "?.")):
+        return False  # explicit receiver: the message names its type
+    name = source[offset:offset + length]
+    if not name[:1].islower():
+        # `AddressForm(...)` through an implicit `this` is a constructor call
+        # to the sample's own fictional class, which the analyzer happens to
+        # report as a missing method.
+        return False
+    header = enclosing_class_header(source, offset)
+    # Only the supertypes claim anything: `@TomComponent(...)` above a class
+    # that implements the sample's own interface makes no framework member
+    # available to it.
+    supertypes = ANNOTATION.sub(" ", header) if header else ""
+    return bool(FRAMEWORK_WORD.search(supertypes.split("class", 1)[-1]
+                                      .split("{", 1)[0]
+                                      if supertypes else ""))
+
+
+def _located_source(diagnostic: dict) -> tuple[str, int, int] | None:
+    """The sample's source, and the diagnostic's offset and length in it.
+
+    Read afresh every time: each wrapper pass rewrites the same sample file,
+    so a cached copy would be the previous pass's text. The analyzer counts
+    UTF-16 units and Python code points, which differ only past the Basic
+    Multilingual Plane; the offset is clamped so a sample carrying such a
+    character can misplace a lookup but not crash the gate.
+    """
+    location = diagnostic.get("location", {})
+    path = location.get("file")
+    start = location.get("range", {}).get("start", {}).get("offset")
+    end = location.get("range", {}).get("end", {}).get("offset")
+    if path is None or start is None:
+        return None
+    try:
+        source = Path(path).read_text(encoding="utf-8")
+    except OSError:
+        return None
+    start = min(start, len(source))
+    return source, start, max(0, min(end or start, len(source)) - start)
+
+
+def enclosing_callee(source: str, offset: int) -> str | None:
+    """The callee of the innermost argument list containing `offset`.
+
+    Walks back from `offset` to the unmatched `(` that opens the list, then
+    reads the dotted name in front of it, skipping a type-argument list:
+    `TomFoo<int>.named(` yields `TomFoo<int>.named` read as `TomFoo.named`.
+    """
+    depth = 0
+    for i in range(offset - 1, -1, -1):
+        char = source[i]
+        if char in ")]}":
+            depth += 1
+        elif char in "([{":
+            if depth == 0:
+                if char != "(":
+                    return None
+                match = CALLEE.search(source[:i])
+                return match.group(1) if match else None
+            depth -= 1
+    return None
+
+
+def enclosing_class_header(source: str, offset: int) -> str | None:
+    """The declaration header of the class body containing `offset`, if any.
+
+    Walks back to each unmatched `{` in turn and returns the first whose
+    preceding text reads as a class, mixin, enum or extension header.
+    """
+    depth = 0
+    for i in range(offset - 1, -1, -1):
+        char = source[i]
+        if char == "}":
+            depth += 1
+        elif char == "{":
+            if depth == 0:
+                before = source[:i]
+                start = max(before.rfind(";"), before.rfind("}"),
+                            before.rfind("{")) + 1
+                header = before[start:]
+                if CLASS_HEADER.search(header):
+                    return header
+                continue
+            depth -= 1
+    return None
 
 
 # =============================================================================
@@ -1029,7 +1202,13 @@ def self_test() -> int:
     3. a name the kernel does not have is still reported in the full context --
        the second barrel widens what resolves, not what is forgiven;
     4. a widget sample (`Text`) analyzes clean in that context and fails
-       without the material import -- the Flutter half of the same argument.
+       without the material import -- the Flutter half of the same argument;
+    5. the two claims whose messages quote no framework name still count: a
+       wrong named argument to a framework constructor, and an undefined member
+       called through an implicit `this` inside a framework subclass -- and
+       their fictional twins (a wrong argument to the sample's own class, an
+       undefined call inside a class extending nothing of the framework's, a
+       PascalCase constructor call) do not.
     """
     package = REPO_ROOT / "tom_flutter_ui"
     context = context_packages(package)
@@ -1053,7 +1232,24 @@ def self_test() -> int:
                        "  void noSuchQuotedMember();\n}"),
         context,
         [("TomForm", "TomField")])
+    claims = {
+        "self_test_wrong_argument":
+            "final selfTestTx = TomActionTransaction(lable: 'probe');\n",
+        "self_test_fiction_argument":
+            "class SelfTestFiction { SelfTestFiction(); }\n"
+            "final selfTestFiction = SelfTestFiction(colour: 1);\n",
+        "self_test_inherited_member":
+            "class SelfTestController extends TomActionController {\n"
+            "  SelfTestController() : super(controllerId: 'probe');\n"
+            "  void probe() { resolveResource('label'); }\n}\n",
+        "self_test_own_helper":
+            "class SelfTestPlain {\n  void probe() { resolveResource('x'); }\n}\n"
+            "class SelfTestOther extends TomActionController {\n"
+            "  SelfTestOther() : super(controllerId: 'probe');\n"
+            "  void probe() { SelfTestForm(); }\n}\n",
+    }
     write_scratch(package, [
+        *((name, build(body, "top", context)) for name, body in claims.items()),
         ("self_test_kernel_context", build(probe, "top", context)),
         ("self_test_own_barrel_only", build(probe, "top", [package.name])),
         ("self_test_missing_name", build(missing, "top", context)),
@@ -1063,6 +1259,7 @@ def self_test() -> int:
         ("self_test_quote", quote),
     ])
     found = analyze(scratch)
+    counted = {name: len(partition(found.get(name, []))[1]) for name in claims}
     codes = {name: {d["code"] for d in found.get(name, [])} for name in (
         "self_test_kernel_context", "self_test_own_barrel_only",
         "self_test_missing_name", "self_test_widget_context",
@@ -1092,10 +1289,31 @@ def self_test() -> int:
             print(f"self-test: {name}: {message} ({sorted(codes[name])})",
                   file=sys.stderr)
             return 1
+    claim_expectations = [
+        ("self_test_wrong_argument", counted["self_test_wrong_argument"] >= 1,
+         "a wrong named argument to a framework constructor is not counted"),
+        ("self_test_fiction_argument",
+         counted["self_test_fiction_argument"] == 0,
+         "a wrong argument to the sample's own class is counted"),
+        ("self_test_inherited_member",
+         counted["self_test_inherited_member"] == 1,
+         "an undefined member through `this` in a framework subclass is not "
+         "counted"),
+        ("self_test_own_helper", counted["self_test_own_helper"] == 0,
+         "an undefined call outside a framework subclass, or a constructor "
+         "call to the sample's own class, is counted"),
+    ]
+    for name, ok, message in claim_expectations:
+        if not ok:
+            print(f"self-test: {name}: {message} ({counted[name]} counted)",
+                  file=sys.stderr)
+            return 1
     print("self-test: a kernel-only name resolves in the kernel context, "
           "is missing from the package barrel alone, and a genuinely missing "
           "name is still reported; a widget resolves only with material; a "
-          "quote's missing member and false supertype are reported")
+          "quote's missing member and false supertype are reported; a wrong "
+          "argument to a framework call and an invented inherited member are "
+          "counted, and their fictional twins are not")
     return 0
 
 

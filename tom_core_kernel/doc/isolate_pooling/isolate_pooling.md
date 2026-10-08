@@ -148,6 +148,9 @@ class ComputeCommand extends TomCommand {
   }
 }
 
+// Your own work — not framework API.
+int computeIntensive(int value) => value * value;
+
 final result = await worker.executeCommand(ComputeCommand(42));
 ```
 
@@ -212,6 +215,9 @@ class MyWorkerContext extends TomWorkerContext {
     // Called in the new isolate (static context)
     await setupResources();
   }
+
+  // Your own setup — not framework API.
+  Future<void> setupResources() async {}
 
   @override
   Future<void> initializeWorker(TomWorker worker) async {
@@ -297,6 +303,9 @@ class DataProcessorExecutor extends TomExecutor {
     }
     return TomExecutor.noResult; // Let next executor handle it
   }
+
+  // Your own work — not framework API.
+  Object processData(Object data) => data;
 }
 
 // Register executor

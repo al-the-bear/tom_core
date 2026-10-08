@@ -104,6 +104,9 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 class NightlyReport extends TomJobBase {
   @override
   Future<Object?> execute() async => buildReportFor(run.scheduledFor);
+
+  // Your own work — not framework API.
+  Future<Object?> buildReportFor(DateTime scheduledFor) async => null;
 }
 ```
 
@@ -312,6 +315,9 @@ cannot out-live the class it names; and a rename is just a rename.
 class NightlyReconciliation extends TomJobBase {
   @override
   Future<Object?> execute() async => reconcile(run.scheduledFor);
+
+  // Your own work — not framework API.
+  Future<Object?> reconcile(DateTime scheduledFor) async => null;
 }
 ```
 

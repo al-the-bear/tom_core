@@ -95,7 +95,7 @@ class MyAuthorizationAdapter extends TomAuthorizationAdapter {
 
 ### Per-widget modifiers
 
-Widgets have three optional authorization controls:
+Widgets have two optional authorization controls:
 
 ```dart
 TomTextField(
@@ -104,12 +104,9 @@ TomTextField(
   // Per-widget authorizer — modifies the global auth result
   authorizer: TomAuthorizer.fixed(TomAuthState.read),
 
-  // Strategy — can the authorizer widen or only narrow?
-  authorizerStrategy: TomAuthorizerStrategy.authorizerNarrowsOnly,
-
   // UI state controller — build-time narrowing for business rules
   uiStateController: TomUIStateController(
-    apply: (currentAuth) {
+    resolve: (currentAuth, data) {
       // Example: disable when list is empty
       return employeeList.isEmpty
           ? currentAuth.narrow(TomAuthState.disabled)
@@ -414,7 +411,7 @@ orderMgmt.create
 TomElevatedButton(
   tomId: 'deleteBtn',
   onPressed: () {
-    final tx = TomActionTransaction();
+    final tx = TomActionTransaction(label: 'Delete order');
     orderController.delete.execute(
       OrderActionContext(selectedOrder: selected),
       tx,

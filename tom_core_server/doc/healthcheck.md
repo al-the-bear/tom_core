@@ -160,6 +160,10 @@ class MyHealthAnalyzer extends TomHealthAnalyzer {
   }
 }
 
+// Your own probes — not framework API.
+Future<bool> checkDatabaseConnection() async => true;
+Future<bool> checkCacheService() async => true;
+
 // Install globally before the server starts. A dependency check belongs on
 // readiness: a database being down is a reason to stop receiving traffic and
 // not a reason for the process to be restarted.
