@@ -189,18 +189,16 @@ class OrderLogAction extends TomAction<OrderLogContext, OrderLogUndo> {
 
 /// Records the scope in force at each point it is consulted.
 ///
-/// `TomActionContext.scope` is the only field in the module whose whole effect
-/// is on the *ambient* frame, so nothing about a return value can show it. This
-/// action reports `TomScope.current` instead, which is what any real consumer —
-/// a nested controller, a resource lookup, a widget built in response — would
-/// have read.
+/// An action is gated and executed in whatever frame is current when it is
+/// consulted, so nothing about a return value can show it. This action reports
+/// `TomScope.current` instead, which is what any real consumer — a nested
+/// controller, a resource lookup, a widget built in response — would read.
 class ScopeProbeContext extends TomActionContext {
   final List<String> seenInCanExecute;
   final List<String> seenInExecute;
   ScopeProbeContext({
     required this.seenInCanExecute,
     required this.seenInExecute,
-    super.scope,
   });
 }
 
@@ -657,23 +655,7 @@ void main() {
       expect(tx.isRedoable, isFalse);
     });
 
-    test('run executes the action in the context scope', () {
-      final controller = TomActionController(controllerId: 'c');
-      final probe = ScopeProbeAction(controller: controller);
-      final seen = <String>[];
-      final tx = freshTx();
-      tx.run(
-        probe,
-        ScopeProbeContext(
-          seenInCanExecute: [],
-          seenInExecute: seen,
-          scope: TomScopeBase(scopeId: 'invocation'),
-        ),
-      );
-      expect(seen, ['invocation']);
-    });
-
-    test('run executes in the ambient scope when the context names none', () {
+    test('run executes the action in the ambient scope', () {
       final controller = TomActionController(controllerId: 'c');
       final probe = ScopeProbeAction(controller: controller);
       final seen = <String>[];
@@ -683,45 +665,7 @@ void main() {
           ScopeProbeContext(seenInCanExecute: [], seenInExecute: seen),
         );
       });
-      expect(seen, [
-        'ambient',
-      ], reason: 'a null scope defers, it does not reset');
-    });
-
-    test('the context scope wins over the ambient one', () {
-      final controller = TomActionController(controllerId: 'c');
-      final probe = ScopeProbeAction(controller: controller);
-      final seen = <String>[];
-      TomScope.withScope('ambient', () {
-        freshTx().run(
-          probe,
-          ScopeProbeContext(
-            seenInCanExecute: [],
-            seenInExecute: seen,
-            scope: TomScopeBase(scopeId: 'invocation'),
-          ),
-        );
-      });
-      expect(seen, ['invocation']);
-    });
-  });
-
-  group('TomActionContext.runInScope', () {
-    test('returns the body result and installs the scope', () {
-      final context = TomActionContext(
-        scope: TomScopeBase(scopeId: 'somewhere'),
-      );
-      expect(context.runInScope(() => TomScope.current.id), 'somewhere');
-    });
-
-    test('runs directly when the context carries no scope', () {
-      expect(
-        TomScope.withScope(
-          'ambient',
-          () => TomActionContext().runInScope(() => TomScope.current.id),
-        ),
-        'ambient',
-      );
+      expect(seen, ['ambient']);
     });
   });
 
@@ -1144,7 +1088,7 @@ void main() {
       });
     });
 
-    test('gates and executes in the context scope, not the ambient one', () {
+    test('gates and executes in the ambient scope', () {
       // Both halves, because a guard that read a different frame from the
       // execute it guards would be worse than no guard.
       final controller = TomActionController(controllerId: 'c');
@@ -1154,15 +1098,12 @@ void main() {
       TomScope.withScope('ambient', () {
         TomActionTrigger<ScopeProbeContext, TomActionUndo>(
           action: probe,
-          contextBuilder: () => ScopeProbeContext(
-            seenInCanExecute: gate,
-            seenInExecute: body,
-            scope: TomScopeBase(scopeId: 'invocation'),
-          ),
+          contextBuilder: () =>
+              ScopeProbeContext(seenInCanExecute: gate, seenInExecute: body),
         ).trigger();
       });
-      expect(gate, ['invocation']);
-      expect(body, ['invocation']);
+      expect(gate, ['ambient']);
+      expect(body, ['ambient']);
     });
   });
 
@@ -1254,26 +1195,21 @@ void main() {
       );
     });
 
-    test('gates each step in that step context scope', () {
-      // Steps carry their own contexts, so each is gated in its own frame —
-      // not the composite's, and not the caller's.
+    test('gates and executes each step in the caller scope', () {
       final controller = TomActionController(controllerId: 'c');
       final probe = ScopeProbeAction(controller: controller);
       final gate = <String>[];
       final body = <String>[];
-      TomCompositeStep<ScopeProbeContext> probeStep(String scopeId) =>
+      TomCompositeStep<ScopeProbeContext> probeStep() =>
           TomCompositeStep<ScopeProbeContext>(
             action: probe,
-            contextBuilder: () => ScopeProbeContext(
-              seenInCanExecute: gate,
-              seenInExecute: body,
-              scope: TomScopeBase(scopeId: scopeId),
-            ),
+            contextBuilder: () =>
+                ScopeProbeContext(seenInCanExecute: gate, seenInExecute: body),
           );
       final composite = TomCompositeAction(
         actionId: 'scoped',
         controller: controller,
-        steps: [probeStep('first'), probeStep('second')],
+        steps: [probeStep(), probeStep()],
       );
       TomScope.withScope('ambient', () {
         composite.execute(
@@ -1281,8 +1217,8 @@ void main() {
           TomActionTransaction(label: 'composite'),
         );
       });
-      expect(gate, ['first', 'second']);
-      expect(body, ['first', 'second']);
+      expect(gate, ['ambient', 'ambient']);
+      expect(body, ['ambient', 'ambient']);
     });
 
     test('runs all passing steps and records undo into the transaction', () {

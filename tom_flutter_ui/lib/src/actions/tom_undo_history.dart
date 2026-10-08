@@ -184,5 +184,5 @@ class TomRedoAction extends TomSimpleAction<TomUndoRedoContext> {
 
 /// Context for undo/redo coordinator actions.
 class TomUndoRedoContext extends TomActionContext {
-  TomUndoRedoContext({super.scope});
+  const TomUndoRedoContext();
 }

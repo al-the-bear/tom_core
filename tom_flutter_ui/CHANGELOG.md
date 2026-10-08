@@ -28,6 +28,16 @@
 
 ### Changed
 
+- **`TomActionContext` carries no scope.** `TomActionContext.scope` and
+  `runInScope` are removed, and the constructor is `const TomActionContext()`;
+  `TomUndoRedoContext` likewise. No application context set the field: the
+  frame an action resolves its path, group and resources in is `TomAction.scope`,
+  fixed at construction, and an action is gated and executed in the frame
+  current when it is consulted. `TomActionTrigger`, `TomCompositeAction` and
+  `TomActionTransaction.run` call `canExecute` and `execute` directly. Work
+  dispatched from a callback or timer installs the frame it needs around the
+  trigger itself.
+
 - **Every public type the barrel exports is now `Tom`- or `Acl`-prefixed.** The
   last 42 unprefixed ones were renamed:
   - validation: `TomValidationResult`, `TomValidationSuccess`,

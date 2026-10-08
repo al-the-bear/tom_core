@@ -198,20 +198,12 @@ what keeps the action stateless and one instance reusable across invocations.
 #### Constructors
 
 ```dart
-TomActionContext({TomScope? scope})
+const TomActionContext()
 ```
 
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `scope` | `TomScope?` | The **invocation** frame, or null for the ambient one. Distinct from `TomAction.scope`, which is a construction frame and fixes the canonical path. |
-
-#### Methods
-
-| Method | Return Type | Description |
-|--------|-------------|-------------|
-| `runInScope<T>(T Function() body)` | `T` | Runs `body` in `scope`, or directly when null. The only read of `scope`; every consult of an action with this context goes through it, so the gate and the body share one frame. |
+Carries no scope: an action is gated and executed in whatever frame is current
+when it is consulted. The frame its path, group and resources resolve in is
+`TomAction.scope`, fixed at construction.
 
 ### TomActionController
 
@@ -286,7 +278,7 @@ TomActionTransaction({required String label})
 
 | Method | Return Type | Description |
 |--------|-------------|-------------|
-| `run<TContext, TUndo>(TomAction<TContext, TUndo> action, TContext context)` | `void` | Executes the action in the context's frame and records its undo state when it returned one **and** declares `isUndoable`. The one place that pairs executing with recording. |
+| `run<TContext, TUndo>(TomAction<TContext, TUndo> action, TContext context)` | `void` | Executes the action and records its undo state when it returned one **and** declares `isUndoable`. The one place that pairs executing with recording. |
 | `record<TUndo>(TomAction action, TUndo undoState)` | `void` | Records an undo state obtained elsewhere. Throws `StateError` once committed or rolled back. |
 | `commit()` | `void` | Seals the transaction against further recording. |
 | `rollback()` | `void` | Reverses the entries in reverse order, marking the transaction undone. A second call is a silent no-op — it is the failure path. |
@@ -439,7 +431,7 @@ undoing needs no domain input.
 #### Constructors
 
 ```dart
-TomUndoRedoContext({TomScope? scope})
+const TomUndoRedoContext()
 ```
 
 ### TomCompositeAction

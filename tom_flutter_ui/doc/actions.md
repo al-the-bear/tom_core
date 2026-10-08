@@ -153,10 +153,9 @@ is also what makes an action's authorization answer independent of where it is
 read from. An action is consulted from screens, triggers and group inspection
 alike; only the zone it was built in describes where it actually lives.
 
-That independence is the reason there is a **second**, unrelated scope on the
-context — see [`TomActionContext.scope`](#the-invocation-frame). A construction
-scope says where an action *lives* and must not move; a context scope says where
-one invocation is *happening*.
+A construction scope says where an action *lives* and must not move. Where one
+invocation is *happening* is a different question, and the module does not
+model it — see [The invocation frame](#the-invocation-frame).
 
 ## `TomActionContext` — typed inputs
 
@@ -176,32 +175,21 @@ action stateless and the same action instance reusable across invocations.
 
 ### The invocation frame
 
-`TomActionContext.scope` is the one scope in the module that is **not** a
-construction frame. It names where this particular invocation is happening, and
-it is installed — via `context.runInScope(...)` — around every consult of the
-action with that context:
+A context carries no scope. An action is gated and executed in whatever frame
+is current when it is consulted — `TomActionTrigger.trigger`, a
+`TomCompositeAction` step and `TomActionTransaction.run` all call `canExecute`
+and `execute` directly — so anything they reach that reads `TomScope.current`
+sees the zone the gesture's `contextBuilder` was called in. That is the right
+frame in the ordinary case, because the context is built at the moment of the
+gesture.
 
-| Consulted from | What runs in the frame |
-| -------------- | ---------------------- |
-| `TomActionTrigger.trigger` | `canExecute`, then `execute` via the transaction |
-| `TomCompositeAction` | each step's `canExecute`, then its `execute` |
-| `TomActionTransaction.run` | `execute` |
+The invocation frame does **not** move the action's canonical path or its
+authorization. Those come out of `constructionScope` and are fixed.
 
-The gate and the body go through the same frame deliberately: a `canExecute`
-that read a different scope from the `execute` it guards would be worse than no
-guard.
-
-**Null is the ordinary case**, and it means *the ambient frame* — the context is
-built by a `contextBuilder` called at the moment of the gesture, so the zone in
-force then is usually already right, and capturing it would be redundant.
-Setting the field is for the case where it is not: work dispatched from a
-callback, a timer or an isolate boundary, where the gesture's frame is no longer
-installed.
-
-It does **not** move the action's canonical path or its authorization. Those
-come out of `constructionScope` and are fixed; what the invocation frame reaches
-is everything downstream that reads `TomScope.current` — a nested controller
-built during the action, a resource lookup, a widget shown in response.
+Work dispatched from a callback, a timer or an isolate boundary, where the
+gesture's frame is no longer installed, re-installs the frame it needs itself —
+with `TomScope.withScope` or `scope.runInScope` around the trigger — rather than
+through the context.
 
 ## Undo: `TomActionUndo`, `TomActionTransaction`, `TomUndoHistory`
 
@@ -438,7 +426,7 @@ composite, and that says nothing about what the composite then reaches.
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `flutter` | package | `tom_action_trigger.dart` | `package:flutter/widgets.dart` only — the trigger is a widget, not a Material one |
-| `tom_core_kernel` | package | `tom_action.dart`, `tom_action_context.dart`, `tom_action_controller.dart` | `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthState`, `TomAuthorization`, `TomAuthorizer`, `TomScope` |
+| `tom_core_kernel` | package | `tom_action.dart`, `tom_action_controller.dart` | `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthState`, `TomAuthorization`, `TomAuthorizer`, `TomScope` |
 | [widget_base](widget_base.md) | module | `tom_action.dart`, `tom_action_controller.dart` | `TomCtr` for `label` / `tooltip` / `iconName` resource resolution |
 
 > The action classes themselves are pure logic and need no widget tree. Because

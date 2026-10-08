@@ -29,12 +29,12 @@ import 'actions_example.dart';
 
 /// Reports the scope in force each time it is consulted.
 ///
-/// A context's `scope` affects only the *ambient* frame, so no return value can
-/// show it; this reports `TomScope.current` instead, which is what a nested
-/// controller or a resource lookup inside the action would have read.
+/// The frame an action is consulted in is the *ambient* one, so no return value
+/// can show it; this reports `TomScope.current` instead, which is what a nested
+/// controller or a resource lookup inside the action would read.
 class FrameProbeContext extends TomActionContext {
   final List<String> frames;
-  FrameProbeContext({required this.frames, super.scope});
+  FrameProbeContext({required this.frames});
 }
 
 class FrameProbeAction extends TomSimpleAction<FrameProbeContext> {
@@ -354,21 +354,18 @@ void run() {
   // -------------------------------------------------------------------------
   // 7. The frame an *invocation* happens in — a different scope.
   // -------------------------------------------------------------------------
-  // A context's `scope` is installed around both the gate and the body, so
-  // anything they reach that reads `TomScope.current` sees where this
+  // The gate and the body run in whatever frame is current when the trigger
+  // fires, so anything they reach that reads `TomScope.current` sees where this
   // invocation is happening — while the action's canonical path, fixed at
   // construction, does not move.
   final frames = <String>[];
   final probe = FrameProbeAction(
     controller: TomActionController(controllerId: 'probe'),
   );
-  TomScope.withScope('ambient', () {
+  TomScope.withScope('invocation', () {
     TomActionTrigger<FrameProbeContext, TomActionUndo>(
       action: probe,
-      contextBuilder: () => FrameProbeContext(
-        frames: frames,
-        scope: TomScopeBase(scopeId: 'invocation'),
-      ),
+      contextBuilder: () => FrameProbeContext(frames: frames),
     ).trigger();
   });
   print('invocation frames: $frames (path still ${probe.canonicalPath})');
@@ -472,8 +469,8 @@ void run() {
   assert(scoped.canonicalPrefix == 'checkout.counter');
   assert(detached.canonicalPrefix == 'checkout.counter');
 
-  // 7. The gate and the body both ran in the context's frame, not the ambient
-  // one — and the action's own path is unaffected by where it was invoked.
+  // 7. The gate and the body both ran in the frame the trigger fired in — and
+  // the action's own path is unaffected by where it was invoked.
   assert(frames.length == 2);
   assert(frames.every((frame) => frame == 'invocation'));
   assert(probe.canonicalPath == 'probe.frameProbe');
