@@ -2009,7 +2009,12 @@ writing under `doc/` on one machine costs nobody anything until it is committed.
 ```bash
 python3 tool/check_doc_links.py                  # the whole repository
 python3 tool/check_doc_links.py tom_core_kernel  # one subtree
+python3 tool/check_doc_links.py --repo ../ai_build  # the same rules, another repository
 ```
+
+`--repo` points the same rules at another repository; it is how the
+workspace-level `_bin/check_doc_links_workspace.py` holds every other repository
+to them without a second copy.
 
 Follows every markdown link in the tree. A link is the one part of a document
 that promises to take you somewhere, and it was the part nothing verified: the

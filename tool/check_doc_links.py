@@ -218,7 +218,15 @@ def classify(source: Path, target: str) -> str | None:
 
 
 def main(argv: list[str]) -> int:
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
+    # `--repo PATH` points the same rules at another repository: its tracked
+    # markdown is the inventory and paths are reported relative to it. That is
+    # how the workspace-wide sweep (`_bin/check_doc_links_workspace.py` at the
+    # workspace root) reuses this file instead of a second copy of its rules.
+    repo_root = REPO_ROOT
+    if argv[:1] == ["--repo"] and len(argv) >= 2:
+        repo_root = Path(argv[1]).resolve()
+        argv = argv[2:]
+    root = repo_root / argv[0] if argv else repo_root
     if not root.exists():
         print(f"no such path: {root}", file=sys.stderr)
         return 2
@@ -231,11 +239,11 @@ def main(argv: list[str]) -> int:
             checked += 1
             kind = classify(path, target)
             if kind is not None:
-                name = path.relative_to(REPO_ROOT)
+                name = path.relative_to(repo_root)
                 faults.append(f"{kind:9} {name}:{number}  {target}")
         for number, label in dangling_references(path):
             checked += 1
-            name = path.relative_to(REPO_ROOT)
+            name = path.relative_to(repo_root)
             faults.append(f"{'REFERENCE':9} {name}:{number}  [{label}]")
 
     for fault in faults:
