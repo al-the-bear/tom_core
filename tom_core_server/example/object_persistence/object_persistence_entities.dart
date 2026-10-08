@@ -46,7 +46,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 @TomDbTable(
   datasource: 'unused_by_this_example',
   table: 'example_claim',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class ExampleClaimRecord {
   /// Surrogate primary key, and the tie-breaker the repository appends to a

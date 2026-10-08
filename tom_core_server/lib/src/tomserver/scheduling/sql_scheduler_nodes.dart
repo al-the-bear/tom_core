@@ -335,7 +335,7 @@ class TomSqlSchedulerNodes {
 @TomDbTable(
   datasource: "irrelevant",
   table: "irrelevant",
-  primaryKeyField: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
 )
 class TomSchedulerNodeRow {
   /// The node's identity.

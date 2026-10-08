@@ -17,7 +17,11 @@ class _Builder with TomQueryBuilder {}
 TomColumnInformation _column(String table, String column, Type declaredType) {
   return TomColumnInformation(
     tableType: Object,
-    table: TomDbTable(datasource: 'main', table: table, primaryKeyField: 'id'),
+    table: TomDbTable(
+      datasource: 'main',
+      table: table,
+      primaryKeyFields: ['id'],
+    ),
     declaredType: declaredType,
     declaredName: column,
     field: column,
@@ -253,7 +257,7 @@ void main() {
         table: TomDbTable(
           datasource: 'main',
           table: 'tasks',
-          primaryKeyField: 'id',
+          primaryKeyFields: ['id'],
         ),
         declaredType: int,
         declaredName: 'ownerId',

@@ -34,7 +34,11 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 /// A user row in `todo_users`.
 @tomReflector
-@TomDbTable(datasource: 'todo_db', table: 'todo_users', primaryKeyField: 'id')
+@TomDbTable(
+  datasource: 'todo_db',
+  table: 'todo_users',
+  primaryKeyFields: ['id'],
+)
 class TodoUserRecord {
   /// Surrogate primary key (`null` until first persisted).
   @TomEntityId()
@@ -74,7 +78,7 @@ final todoUserRepository = TodoUserRepository();
 @TomDbTable(
   datasource: 'todo_db',
   table: 'todo_projects',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class TodoProjectRecord {
   /// Surrogate primary key.
@@ -104,7 +108,11 @@ final todoProjectRepository = TodoProjectRepository();
 
 /// A list row in `todo_lists`.
 @tomReflector
-@TomDbTable(datasource: 'todo_db', table: 'todo_lists', primaryKeyField: 'id')
+@TomDbTable(
+  datasource: 'todo_db',
+  table: 'todo_lists',
+  primaryKeyFields: ['id'],
+)
 class TodoListRecord {
   /// Surrogate primary key.
   @TomEntityId()
@@ -129,7 +137,11 @@ final todoListRepository = TodoListRepository();
 
 /// An item row in `todo_items` — the leaf entity the CRUD endpoints edit.
 @tomReflector
-@TomDbTable(datasource: 'todo_db', table: 'todo_items', primaryKeyField: 'id')
+@TomDbTable(
+  datasource: 'todo_db',
+  table: 'todo_items',
+  primaryKeyFields: ['id'],
+)
 class TodoItemRecord {
   /// Surrogate primary key.
   @TomEntityId()

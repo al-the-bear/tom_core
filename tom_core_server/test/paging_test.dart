@@ -169,7 +169,7 @@ void main() {
           final page = TomPageRequest(
             limit: 5,
             sort: const [TomSortField.desc('priority')],
-          ).stableUnder('id');
+          ).stableUnder(const ['id']);
           expect(page.sort, const [
             TomSortField.desc('priority'),
             TomSortField.asc('id'),
@@ -179,9 +179,10 @@ void main() {
       );
 
       test('an unsorted window is ordered by the key alone', () {
-        expect(TomPageRequest.page(2, 10).stableUnder('id').sort, const [
-          TomSortField.asc('id'),
-        ]);
+        expect(
+          TomPageRequest.page(2, 10).stableUnder(const ['id']).sort,
+          const [TomSortField.asc('id')],
+        );
       });
 
       test('a sort that already names the key is left as it is', () {
@@ -191,12 +192,35 @@ void main() {
           limit: 5,
           sort: const [TomSortField.desc('id'), TomSortField.asc('title')],
         );
-        expect(page.stableUnder('id').sort, page.sort);
+        expect(page.stableUnder(const ['id']).sort, page.sort);
       });
 
       test('an ordering with no window is returned unchanged', () {
         final page = TomPageRequest.sorted(const [TomSortField.asc('title')]);
-        expect(page.stableUnder('id').sort, page.sort);
+        expect(page.stableUnder(const ['id']).sort, page.sort);
+      });
+
+      test('a composite key appends every field, in key order', () {
+        expect(
+          TomPageRequest.page(
+            1,
+            10,
+          ).stableUnder(const ['userId', 'roleId']).sort,
+          const [TomSortField.asc('userId'), TomSortField.asc('roleId')],
+        );
+      });
+
+      test('a composite key appends only the fields the sort leaves out', () {
+        // `roleId DESC` alone does not order two rows of the same role; the
+        // missing `userId` does, so it is appended and `roleId` is not.
+        final page = TomPageRequest(
+          limit: 5,
+          sort: const [TomSortField.desc('roleId')],
+        ).stableUnder(const ['userId', 'roleId']);
+        expect(page.sort, const [
+          TomSortField.desc('roleId'),
+          TomSortField.asc('userId'),
+        ]);
       });
     });
   });

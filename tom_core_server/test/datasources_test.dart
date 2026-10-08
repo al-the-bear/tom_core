@@ -762,7 +762,7 @@ void main() {
           table: const TomDbTable(
             datasource: 'demo',
             table: 'demo_task',
-            primaryKeyField: 'id',
+            primaryKeyFields: ['id'],
           ),
           declaredType: type,
           declaredName: name,

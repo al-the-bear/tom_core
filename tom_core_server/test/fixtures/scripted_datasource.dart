@@ -30,8 +30,10 @@ class ScriptedStatement<T extends Object> implements TomPreparedStatement<T> {
   final int affectedRows;
 
   @override
-  Future<List<T>> execute([Map<String, Object?>? params]) async =>
-      source.nextAnswer<T>();
+  Future<List<T>> execute([Map<String, Object?>? params]) async {
+    source.executions.add({...?params});
+    return source.nextAnswer<T>();
+  }
 
   @override
   Future<void> deallocate() async {}
@@ -65,6 +67,12 @@ class ScriptedDataSource implements TomDataSource {
   /// What [TomPreparedStatement.lastGeneratedId] reports after an insert.
   int? generatedId;
 
+  /// The SQL of every statement prepared, in order, as the dialect renders it.
+  final List<String> statements = [];
+
+  /// The bind values of every statement execution, in order.
+  final List<Map<String, Object?>> executions = [];
+
   /// What a `DELETE` statement reports as its affected-row count.
   ///
   /// Only deletes report it. A repository that read the count off the wrong
@@ -92,10 +100,13 @@ class ScriptedDataSource implements TomDataSource {
   Future<TomPreparedStatement<T>> prepareStatement<T extends Object>(
     TomQuery query, [
     Type? resultType,
-  ]) async => ScriptedStatement<T>(
-    this,
-    affectedRows: query is TomDelete ? affectedRows : 0,
-  );
+  ]) async {
+    statements.add(query.generateQuery(sqlDialect));
+    return ScriptedStatement<T>(
+      this,
+      affectedRows: query is TomDelete ? affectedRows : 0,
+    );
+  }
 
   @override
   Future<List<T>> executeQuery<T extends Object>(

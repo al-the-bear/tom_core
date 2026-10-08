@@ -18,7 +18,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 /// demonstrable: a slot appears for the exposed column and no slot appears for
 /// the other, from the same registration, in the same registry.
 ///
-/// The `datasource` and `primaryKeyField` are declared because `@TomDbTable`
+/// The `datasource` and `primaryKeyFields` are declared because `@TomDbTable`
 /// requires them, and are never used — [TomFileSlots.register] reads the table
 /// name and the file columns and calls no repository method, so the example
 /// needs no database to show what registration decides.
@@ -26,7 +26,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 @TomDbTable(
   datasource: 'unused_by_this_example',
   table: 'example_document',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class ExampleDocumentRecord {
   /// Surrogate primary key. The `{id}` of `/files/example_document/{id}/…`.

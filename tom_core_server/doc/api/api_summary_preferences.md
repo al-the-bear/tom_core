@@ -62,7 +62,7 @@ TomErrorHandler
 One preference of one principal — a row of `tom_user_preference`.
 
 - **Annotations:** `@tomReflector`;
-  `@TomDbTable(datasource: 'main', table: 'tom_user_preference', primaryKeyField: 'id')`;
+  `@TomDbTable(datasource: 'main', table: 'tom_user_preference', primaryKeyFields: ['id'])`;
   `@TomDbScope(field: 'principal_id', scope: 'owner')`.
 
 #### Constructors

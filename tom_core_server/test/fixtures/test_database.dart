@@ -288,6 +288,28 @@ CREATE TABLE IF NOT EXISTS fixture_tag_link (
     }
   }
 
+  /// The DDL for `FixtureTaskLabel`, the entity keyed by two columns and no
+  /// surrogate — the shape of a legacy join table.
+  static const String _fixtureTaskLabelDdl = '''
+CREATE TABLE IF NOT EXISTS fixture_task_label (
+  task_id BIGINT       NOT NULL,
+  label   VARCHAR(64)  NOT NULL,
+  note    VARCHAR(255) NULL,
+  PRIMARY KEY (task_id, label)
+)
+''';
+
+  /// Creates the `fixture_task_label` table if it does not already exist.
+  static Future<void> ensureFixtureTaskLabelTable(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand(_fixtureTaskLabelDdl);
+  }
+
+  /// Empties the `fixture_task_label` table so each test starts from a known
+  /// state.
+  static Future<void> truncateFixtureTaskLabel(TomDataSourceInfo dsi) async {
+    await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_task_label');
+  }
+
   /// The DDL for `FixtureSecretRecord`, the entity carrying a column that the
   /// CE-LG audit trail redacts.
   static const String _fixtureSecretDdl = '''

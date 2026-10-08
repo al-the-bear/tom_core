@@ -44,7 +44,7 @@ import '../object_persistence/crud_repository.dart';
 @TomDbTable(
   datasource: 'main',
   table: 'tom_principal_resource_grant',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 // The grant rows are the row scope's *input*, so they cannot themselves be
 // filtered by it: a principal reaches its own grants only by already holding a

@@ -698,7 +698,7 @@ class TomMemory2FAEnrolmentStore implements Tom2FAEnrolmentStore {
 @TomDbTable(
   datasource: 'main',
   table: 'tom_user_two_factor_enrolment',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class TomUserTwoFactorEnrolment {
   /// Surrogate primary key (`-1` until persisted).

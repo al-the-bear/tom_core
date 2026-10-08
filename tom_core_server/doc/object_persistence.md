@@ -9,6 +9,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 
 - [Overview](#overview)
 - [Mapping an Entity](#mapping-an-entity)
+  - [A key of several columns](#a-key-of-several-columns)
   - [Associations (`@TomReference`)](#associations-tomreference)
 - [The Repository Contract](#the-repository-contract)
   - [What a delete returns](#what-a-delete-returns)
@@ -69,7 +70,8 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `TomRepository<T, K>` | abstract class | The CRUD + query contract for entity `T` keyed by `K` |
 | `TomSqlDatasourceRepository<T, K>` | abstract class | SQL implementation of the contract |
 | `MariadbRepository<T, K>` | class | MariaDB binding — constructed directly, and the only thing it adds is `MariadbSqlDialect` |
-| `TomPageRequest` | class | One page of a query. The repository appends the primary key as a final sort term, because "page 2" of an unordered query is otherwise not the complement of "page 1" |
+| `TomCompositeKey` | final class | The `K` of an entity whose primary key spans several fields, keyed by field name |
+| `TomPageRequest` | class | One page of a query. The repository appends the primary-key fields as final sort terms, because "page 2" of an unordered query is otherwise not the complement of "page 1" |
 | `TomSortField` / `TomSortDirection` | class / enum | One sort term — a declared field name where the caller writes it, a rendered column expression by the time SQL is generated |
 | `TomCountResult` | class | The row a `COUNT` projects into; the column alias *is* the binding, and nothing checks it |
 | `TomQuerySentenceCompiler` | class | Parses a query sentence into a `TomQuery` |
@@ -124,7 +126,7 @@ Annotate a `@tomReflector` class with `@TomDbTable` and its fields with
 
 ```dart
 @tomReflector
-@TomDbTable(datasource: 'main', table: 'users', primaryKeyField: 'id')
+@TomDbTable(datasource: 'main', table: 'users', primaryKeyFields: ['id'])
 class User {
   @TomEntityId()
   @TomDbColumn(columnName: 'id')
@@ -151,6 +153,56 @@ issuing an `UPDATE` that matches no row and persisting nothing.
 `noLoad` (skipped on select), or `isJson`, and can carry `fromDbConverter` /
 `toDbConverter` functions to translate between the Dart value and the boxed
 `TomDbType` stored in the column.
+
+### A key of several columns
+
+`primaryKeyFields` is a list because a table may be keyed by the combination of
+several columns, with no surrogate. List every key field, in key order, and mark
+each `@TomEntityId`:
+
+```dart
+@tomReflector
+@TomDbTable(
+  datasource: 'app',
+  table: 'user_role',
+  primaryKeyFields: ['userId', 'roleId'],
+)
+class UserRole {
+  @TomEntityId()
+  @TomDbColumn(columnName: 'user_id')
+  int? userId;
+
+  @TomEntityId()
+  @TomDbColumn(columnName: 'role_id')
+  int? roleId;
+}
+
+class UserRoleRepository
+    extends MariadbRepository<UserRole, TomCompositeKey> {}
+```
+
+The repository's key type is `TomCompositeKey`, a value keyed by field name, and
+every by-key method takes one —
+`findById(TomCompositeKey({'userId': 7, 'roleId': 3}))`. Each method binds
+every key column: `findById`, `deleteById` and `delete` match on all of them
+ANDed; `existsById`, `findAllById` and `deleteAllById` OR one such term per key;
+an update's `WHERE` names them all; and a window is ordered by every key column.
+
+A key must carry **exactly** the entity's key fields. One with a field missing
+would match every row agreeing on the rest, and one with an extra field names
+something the table is not keyed by, so both are refused with
+`crud_repository.key.shape_mismatch` rather than matched on the fields they
+happen to have.
+
+**`save` asks the table.** A single surrogate key says by itself whether the
+entity is stored — the database has assigned it or it has not. A composite key
+is supplied whole by the caller and says nothing of the kind, so `save` counts
+the rows with that key and inserts when there are none, updating otherwise. The
+count is not narrowed by the row scope: a stored row the principal may not write
+takes the update path and is refused there, as `data_scope.write.out_of_scope`,
+rather than colliding as a duplicate insert. A key with a field still `null`
+addresses no row, and `save` refuses it with
+`crud_repository.save.incomplete_key` before any statement runs.
 
 ### Associations (`@TomReference`)
 
@@ -224,7 +276,7 @@ yet is given one `@TomDbTable` class whose fields are its columns:
 
 ```dart
 @tomReflector
-@TomDbTable(datasource: 'app', table: 'user_role', primaryKeyField: 'id')
+@TomDbTable(datasource: 'app', table: 'user_role', primaryKeyFields: ['id'])
 class UserRole {
   @TomEntityId()
   @TomDbColumn(columnName: 'id', isReadOnly: true)
@@ -245,11 +297,10 @@ a row to which none of those guarantees applied, and the repository would need
 a write path for a row with no entity — so the convenience is declined rather
 than missing.
 
-The entity needs **one** primary-key field, so a join table maps unchanged when
-it has a key column of its own. One keyed only by its two foreign keys has no
-single field to name: the module has no composite primary key (see
-[Not Yet Implemented](#not-yet-implemented)), and such a table needs a
-surrogate key column before it can be mapped.
+A join table keyed only by its two foreign keys maps unchanged too: list both
+fields in `primaryKeyFields`, as
+[A key of several columns](#a-key-of-several-columns) shows, and drop the
+surrogate.
 
 **One reference query per owning row.** The association cannot be resolved while
 its row is being mapped, so the mapper stacks the row's pending references and
@@ -321,6 +372,7 @@ Every repository rejection is a keyed `TomServerException`, never a bare
 | Key | Raised when |
 | --- | ----------- |
 | `crud_repository.constructor.datasource_not_registered` | The entity's `@TomDbTable` names a datasource no `TomDataSourceInfo` was registered for. |
+| `crud_repository.constructor.no_primary_key` | The entity's `@TomDbTable` lists no `primaryKeyFields`. |
 | `crud_repository.find_by_id.duplicate_primary_key` | A primary-key lookup matched more than one row. |
 | `crud_repository.count.illegal_count_result` | `count()`'s `COUNT(*)` returned other than exactly one row. |
 | `crud_repository.count_by_query.illegal_count_result` | Ditto for `countByQuery`. |
@@ -329,19 +381,23 @@ Every repository rejection is a keyed `TomServerException`, never a bare
 | `crud_repository.save.insert_not_readable` | An `INSERT` reported success but the new row could not be read back. |
 | `crud_repository.save.update_not_readable` | An `UPDATE` ran but the row could not be re-read. |
 | `crud_repository.delete.unsaved_entity` | `delete(entity)` was handed an entity that was never persisted. |
+| `crud_repository.save.incomplete_key` | `save` was handed a composite-key entity with a key field still `null`. |
+| `crud_repository.key.shape_mismatch` | A composite-key method was handed a key that is not a `TomCompositeKey` of exactly the entity's key fields. |
 
-The first eight are *server* faults — a broken deployment, a table contradicting
+The first nine are *server* faults — a broken deployment, a table contradicting
 its own key, a driver that reported a write it then could not read — so
 `clientThrow` defaults to `false`: the key travels to the caller, the message
 (which names internals) does not.
 
-`crud_repository.delete.unsaved_entity` is the exception, and sets
-`clientThrow: true`. An entity whose primary key is still `null` (a nullable
-surrogate key before its first save) or negative (the `id >= 0` sentinel
-convention) addresses no row, so there is nothing to delete. Refusing it is a
+The last three are the exceptions, and set `clientThrow: true`: each is a
 statement about the caller's own argument, and the message says exactly that —
-where masking it would leave the caller with a generic error for the one
-repository failure it is the only party able to fix.
+where masking it would leave the caller with a generic error for a failure it is
+the only party able to fix. An entity whose primary key is still `null` (a
+nullable surrogate key before its first save), negative (the `id >= 0` sentinel
+convention) or a composite key with a field still `null` addresses no row, so
+`delete` has nothing to delete and `save` has nothing to address; and a
+composite key of the wrong fields addresses some other set of rows than the one
+the method promises.
 
 Before this check existed the two unsaved conventions failed differently and
 neither failed usefully: a `null` key threw a raw `TypeError` naming `Null` and
@@ -394,8 +450,9 @@ not need the total does not pay for a second round trip to get it.
 **A window is ordered.** Rows come back in whatever order the database found
 convenient unless something says otherwise, so "page 2" of an unordered query is
 not the complement of "page 1" — it may repeat rows or skip them. The repository
-therefore appends the entity's primary key ascending as a final sort term
-whenever a window is requested and the caller's sort does not already settle it.
+therefore appends every primary-key field the caller's sort does not already
+name, ascending and in key order, as final sort terms whenever a window is
+requested.
 
 **Paging composes with the security layers.** The window is applied to the query
 *before* the row scope narrows it, so the scope predicate still binds and
@@ -870,7 +927,7 @@ the **scope kind** that resolves the principal into a set of allowed values:
 
 ```dart
 @tomReflector
-@TomDbTable(datasource: 'main', table: 'note', primaryKeyField: 'id')
+@TomDbTable(datasource: 'main', table: 'note', primaryKeyFields: ['id'])
 @TomDbScope(field: 'ownerId')          // scope defaults to 'owner'
 class Note {
   @TomEntityId() @TomDbColumn(columnName: 'id') int? id;
@@ -1691,9 +1748,9 @@ its own result, and `test/examples_test.dart` runs it.
 
 ## Not Yet Implemented
 
-The first and last entries are about the *shape of a predicate*, and both are
-bounded by the same thing: an expression tree over the columns of the tables a
-query already names. The middle one is about how a row is addressed.
+Both entries are about the *shape of a predicate*, and both are bounded by the
+same thing: an expression tree over the columns of the tables a query already
+names.
 
 - **A predicate cannot address an association's columns.** `@TomReference`
   declares an association, and the repository loads the other side with a
@@ -1702,12 +1759,6 @@ query already names. The middle one is about how a row is addressed.
   resolve. Filter on the foreign key, or query the other entity's repository
   and pass the ids to an `IS IN` list.
   <!-- pinned: test/query_sentence_declined_words_test.dart › a predicate cannot address an association's columns -->
-- **There is no composite primary key.** `@TomDbTable.primaryKeyField` names
-  one field, and `findById`, `save` and `delete` address a row by that one
-  value. A table keyed by several columns — the usual shape of a legacy
-  many-to-many join table — is mapped once it has a single key column; until
-  then its rows are reached through `executeQueryString`.
-  <!-- unpinned: absence — TomDbTable takes one primaryKeyField -->
 - **There is no subquery node**, so a predicate that is *about* another result
   set — `EXISTS`, `IN (SELECT …)`, a correlated aggregate — cannot be built.
   `executeQueryString` takes the SQL directly when a query genuinely needs one;
@@ -1726,9 +1777,9 @@ is a string and `>` and `%` are directly writable in one. See
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `blob_migration.dart`, `data_scope.dart` | `Future` |
-| `tom_core_kernel` | package | 7 of 13 files | `tomReflector` (mirrors), the `TomZoned*` date/time types |
+| `tom_core_kernel` | package | 7 of 14 files | `tomReflector` (mirrors), the `TomZoned*` date/time types |
 | `uuid` | package | `file_reference.dart` | `Uuid.v4`, for the file name in a blob key |
 | [audit](audit.md) | module | `crud_repository.dart` | `TomAuditAction`, `TomAuditTrail` |
-| [datasources](datasources.md) | module | 9 of 13 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement` |
+| [datasources](datasources.md) | module | 9 of 14 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement` |
 | [file_storage](file_storage.md) | module | `blob_migration.dart`, `crud_repository.dart`, `file_reference.dart` | `TomBlobStore`, `TomBlobStoreInfo`, `TomStorageException`, `TomStoredBlob` |
 | [little_things](little_things.md) | module | `annotation_analyzer.dart`, `blob_migration.dart`, `column_authorization.dart`, `crud_repository.dart`, `data_scope.dart`, `operators_expressions.dart` | `TomServerException` (base of the module's exceptions) |

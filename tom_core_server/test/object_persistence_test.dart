@@ -44,7 +44,11 @@ class _Builder with TomQueryBuilder {}
 TomColumnInformation _column(String table, String column) {
   return TomColumnInformation(
     tableType: Object,
-    table: TomDbTable(datasource: 'main', table: table, primaryKeyField: 'id'),
+    table: TomDbTable(
+      datasource: 'main',
+      table: table,
+      primaryKeyFields: ['id'],
+    ),
     declaredType: Object,
     declaredName: column,
     field: column,
@@ -177,7 +181,7 @@ void main() {
             table: TomDbTable(
               datasource: 'main',
               table: 't',
-              primaryKeyField: 'id',
+              primaryKeyFields: ['id'],
             ),
             column: column,
             declaredType: declared,
@@ -268,7 +272,7 @@ void main() {
         table: TomDbTable(
           datasource: 'main',
           table: 't',
-          primaryKeyField: 'id',
+          primaryKeyFields: ['id'],
         ),
         declaredType: Object,
         declaredName: 'fieldName',
@@ -475,7 +479,7 @@ void main() {
         table: TomDbTable(
           datasource: 'main',
           table: 'users',
-          primaryKeyField: 'id',
+          primaryKeyFields: ['id'],
         ),
         declaredType: Object,
         declaredName: declaredName,
@@ -514,7 +518,7 @@ void main() {
       final (sql, params) = TomSqlDatasourceRepository.buildUpdateStatement(
         'users',
         cols,
-        pk,
+        [pk],
       );
       expect(
         sql,
@@ -522,6 +526,24 @@ void main() {
         ' WHERE id = :id',
       );
       expect(params, ['userName', 'passwordHash', 'id']);
+    });
+
+    test('buildUpdateStatement ANDs every column of a composite key', () {
+      // A join table keyed only by its two foreign keys: both are written and
+      // both address the row, so each appears in SET and again in WHERE.
+      final userId = namedColumn('user_id', 'userId', isPk: true);
+      final roleId = namedColumn('role_id', 'roleId', isPk: true);
+      final (sql, params) = TomSqlDatasourceRepository.buildUpdateStatement(
+        'user_role',
+        [userId, roleId],
+        [userId, roleId],
+      );
+      expect(
+        sql,
+        'UPDATE user_role SET user_id = :userId,role_id = :roleId'
+        ' WHERE user_id = :userId AND role_id = :roleId',
+      );
+      expect(params, ['userId', 'roleId', 'userId', 'roleId']);
     });
 
     test('isUnsavedKey treats null and negative ints as unsaved', () {
@@ -532,6 +554,24 @@ void main() {
       expect(TomSqlDatasourceRepository.isUnsavedKey(0), isFalse);
       expect(TomSqlDatasourceRepository.isUnsavedKey(7), isFalse);
       expect(TomSqlDatasourceRepository.isUnsavedKey('abc'), isFalse);
+    });
+
+    test('isUnsavedKey treats a composite key with a null field as unsaved', () {
+      // Every field of a composite key is the caller's to supply, so a missing
+      // one means the entity is not yet a row; a complete key may or may not
+      // be stored, which `save` asks the table about.
+      expect(
+        TomSqlDatasourceRepository.isUnsavedKey(
+          TomCompositeKey({'userId': 7, 'roleId': null}),
+        ),
+        isTrue,
+      );
+      expect(
+        TomSqlDatasourceRepository.isUnsavedKey(
+          TomCompositeKey({'userId': 7, 'roleId': 3}),
+        ),
+        isFalse,
+      );
     });
 
     // `save` must read the primary key as *nullable*. An entity with a nullable

@@ -1140,7 +1140,7 @@ predictable rather than durable.
 
 One persisted enrolment row (`@tomReflector`,
 `@TomDbTable(datasource: 'main', table: 'tom_user_two_factor_enrolment',
-primaryKeyField: 'id')`). A `UNIQUE KEY (principal_id, enrolment_id)` makes the
+primaryKeyFields: ['id'])`). A `UNIQUE KEY (principal_id, enrolment_id)` makes the
 upsert the database's rule and not only the store's; without it, which secret
 answers a login would depend on row order. Every field defaults, because the
 repository instantiates a blank entity and fills it column by column.

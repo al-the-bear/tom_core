@@ -56,7 +56,7 @@ import 'oauth_tokens.dart';
 @TomDbTable(
   datasource: 'main',
   table: 'tom_external_identity',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class TomExternalIdentityLink {
   /// Surrogate primary key (`-1` until persisted).

@@ -254,7 +254,7 @@ writes the entry.
 ```dart
 @tomReflector
 @TomAudited(redact: ['passwordHash'])
-@TomDbTable(datasource: 'main', table: 'users', primaryKeyField: 'id')
+@TomDbTable(datasource: 'main', table: 'users', primaryKeyFields: ['id'])
 class User { ... }
 
 @tomReflector

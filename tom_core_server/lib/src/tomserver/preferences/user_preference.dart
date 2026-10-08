@@ -36,7 +36,7 @@ import '../object_persistence/persistence_annotations.dart';
 @TomDbTable(
   datasource: 'main',
   table: 'tom_user_preference',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 @TomDbScope(field: 'principal_id', scope: 'owner')
 class TomUserPreference {

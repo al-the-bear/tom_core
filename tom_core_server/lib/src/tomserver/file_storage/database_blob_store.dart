@@ -618,7 +618,7 @@ class _BlobManifest {
 @TomDbTable(
   datasource: "irrelevant",
   table: "irrelevant",
-  primaryKeyField: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
 )
 class TomBlobManifestRow {
   /// The storage key.
@@ -667,7 +667,7 @@ class TomBlobManifestRow {
 @TomDbTable(
   datasource: "irrelevant",
   table: "irrelevant",
-  primaryKeyField: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
 )
 class TomBlobChunkRow {
   /// The base64-encoded bytes of this chunk.

@@ -349,7 +349,7 @@ class TomMemoryOAuthTokenStore implements TomOAuthTokenStore {
 @TomDbTable(
   datasource: 'main',
   table: 'tom_external_identity_token',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class TomExternalIdentityToken {
   /// Surrogate primary key (`-1` until persisted).

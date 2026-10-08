@@ -96,7 +96,7 @@ class TomAuthStateCodec {
 @TomDbTable(
   datasource: 'main',
   table: 'tom_resource_grant',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 // Authorization metadata: the grade rows feed the row scope and so must not be
 // filtered by it (see [TomPrincipalResourceGrant]).

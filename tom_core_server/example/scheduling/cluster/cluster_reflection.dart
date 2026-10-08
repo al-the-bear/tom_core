@@ -36,7 +36,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 @TomDbTable(
   datasource: "irrelevant",
   table: "irrelevant",
-  primaryKeyField: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
 )
 class ClusterFenceRow {
   /// The resource's name — one row, keyed by it.

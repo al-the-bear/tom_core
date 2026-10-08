@@ -57,7 +57,7 @@ enum TomDelegationMode {
 @TomDbTable(
   datasource: 'main',
   table: 'tom_principal_delegation',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 // Authorization metadata: the delegation rows feed the row scope and so must
 // not be filtered by it (see [TomPrincipalResourceGrant]). A delegation's

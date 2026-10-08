@@ -279,7 +279,7 @@ void run() {
   const taskTable = TomDbTable(
     datasource: 'demo',
     table: 'demo_task',
-    primaryKeyField: 'id',
+    primaryKeyFields: ['id'],
   );
   TomColumnInformation columnInfo(String name, Type type) =>
       TomColumnInformation(

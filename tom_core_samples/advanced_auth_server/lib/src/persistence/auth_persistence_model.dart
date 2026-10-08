@@ -42,7 +42,7 @@ const String authDatasource = 'auth_db';
 @TomDbTable(
   datasource: authDatasource,
   table: AppFileSlots.usersTable,
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class UserRecord {
   /// Surrogate primary key (`null` until first persisted).
@@ -140,7 +140,7 @@ final userRepository = UserRepository();
 @TomDbTable(
   datasource: authDatasource,
   table: 'auth_roles',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class RoleRecord {
   /// Surrogate primary key.
@@ -169,7 +169,7 @@ final roleRepository = RoleRepository();
 @TomDbTable(
   datasource: authDatasource,
   table: 'auth_groups',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class GroupRecord {
   /// Surrogate primary key.
@@ -197,7 +197,7 @@ final groupRepository = GroupRepository();
 @TomDbTable(
   datasource: authDatasource,
   table: 'auth_group_members',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class GroupMemberRecord {
   /// Surrogate primary key.
@@ -228,7 +228,7 @@ final groupMemberRepository = GroupMemberRepository();
 @TomDbTable(
   datasource: authDatasource,
   table: 'auth_user_roles',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class UserRoleRecord {
   /// Surrogate primary key.

@@ -24,7 +24,11 @@ class _Builder with TomQueryBuilder {}
 TomColumnInformation _resourceKeyColumn(String table) {
   return TomColumnInformation(
     tableType: Object,
-    table: TomDbTable(datasource: 'main', table: table, primaryKeyField: 'id'),
+    table: TomDbTable(
+      datasource: 'main',
+      table: table,
+      primaryKeyFields: ['id'],
+    ),
     declaredType: String,
     declaredName: 'resourceKey',
     field: 'resource_key',

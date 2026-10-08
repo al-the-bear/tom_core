@@ -188,22 +188,23 @@ class TomEntitySchemaReader {
   /// The primary-key **column** names [info] declares, in declaration order.
   ///
   /// `@TomEntityId` is the primary signal and supports a composite key. When no
-  /// field carries it, [TomDbTable.idColumn] is used, and failing that
-  /// [TomDbTable.primaryKeyField] — resolved through the column mapping, since
-  /// it names a *field* and the DDL side knows only columns.
+  /// field carries it, [TomDbTable.primaryKeyFields] is used — each field
+  /// resolved through the column mapping, since it names a *field* and the DDL
+  /// side knows only columns.
   static List<String> primaryKeyOf(TomTypePersistenceInfo info) {
     final annotated = [
       for (final column in info.columnInfo)
         if (column.entityId != null) column.getQueryFieldName(),
     ];
     if (annotated.isNotEmpty) return annotated;
-    final idColumn = info.table.idColumn;
-    if (idColumn != null) return [idColumn];
-    final keyField = info.table.primaryKeyField;
-    for (final column in info.columnInfo) {
-      if (column.declaredName == keyField) return [column.getQueryFieldName()];
-    }
-    return [keyField];
+    return [
+      for (final keyField in info.table.primaryKeyFields)
+        info.columnInfo
+                .where((column) => column.declaredName == keyField)
+                .firstOrNull
+                ?.getQueryFieldName() ??
+            keyField,
+    ];
   }
 }
 

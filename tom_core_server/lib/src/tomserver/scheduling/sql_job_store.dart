@@ -815,7 +815,7 @@ class TomSqlJobStore implements TomJobStore {
 @TomDbTable(
   datasource: "irrelevant",
   table: "irrelevant",
-  primaryKeyField: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
 )
 class TomJobRunRow {
   /// The run's stable id.
@@ -887,7 +887,7 @@ class TomJobRunRow {
 @TomDbTable(
   datasource: "irrelevant",
   table: "irrelevant",
-  primaryKeyField: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
 )
 class TomJobRunWindowRow {
   /// The latest window, or `null` when the job has no runs at all.

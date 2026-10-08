@@ -19,7 +19,11 @@ import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
 import 'fixtures/reflection_fixture.dart'
-    show FixtureTaskRecord, FixtureTaskRepository;
+    show
+        FixtureTaskLabel,
+        FixtureTaskLabelRepository,
+        FixtureTaskRecord,
+        FixtureTaskRepository;
 import 'fixtures/reflection_fixture.reflection.dart';
 import 'fixtures/test_database.dart';
 
@@ -245,6 +249,95 @@ void main() async {
           ['50 percent off', '50% off'],
         );
       });
+    });
+  }, skip: skipReason);
+
+  // A table keyed by two columns and no surrogate: every by-key path must bind
+  // both, and `save` must decide insert vs update by asking the table, since a
+  // key the caller supplies says nothing about whether it is stored.
+  group('FixtureTaskLabelRepository (DB-backed composite key)', () {
+    late TomDataSourceInfo dsi;
+    late FixtureTaskLabelRepository repo;
+
+    TomCompositeKey key(int taskId, String label) =>
+        TomCompositeKey({'taskId': taskId, 'label': label});
+
+    FixtureTaskLabel label(int taskId, String text, [String? note]) =>
+        FixtureTaskLabel()
+          ..taskId = taskId
+          ..label = text
+          ..note = note;
+
+    setUpAll(() async {
+      initializeReflection();
+      dsi = await TestDatabase.register();
+      await TestDatabase.ensureFixtureTaskLabelTable(dsi);
+    });
+
+    setUp(() async {
+      await TestDatabase.truncateFixtureTaskLabel(dsi);
+      repo = FixtureTaskLabelRepository();
+    });
+
+    tearDownAll(TestDatabase.reset);
+
+    test('save inserts a new key and returns the stored row', () async {
+      final saved = await repo.save(label(1, 'urgent', 'first'));
+      expect(saved.taskId, 1);
+      expect(saved.label, 'urgent');
+      expect(saved.note, 'first');
+      expect((await repo.count()).get(), 1);
+    });
+
+    test('save of a stored key updates that row only', () async {
+      await repo.save(label(1, 'urgent', 'a'));
+      await repo.save(label(1, 'later', 'b'));
+      await repo.save(label(1, 'urgent', 'changed'));
+      expect((await repo.findById(key(1, 'urgent')))!.note, 'changed');
+      expect((await repo.findById(key(1, 'later')))!.note, 'b');
+      expect((await repo.count()).get(), 2);
+    });
+
+    test('findById distinguishes keys that share one column', () async {
+      await repo.save(label(1, 'x', 'one-x'));
+      await repo.save(label(2, 'x', 'two-x'));
+      expect((await repo.findById(key(2, 'x')))!.note, 'two-x');
+      expect(await repo.findById(key(3, 'x')), isNull);
+    });
+
+    test('deleteById and delete remove exactly the addressed row', () async {
+      await repo.save(label(1, 'x'));
+      await repo.save(label(1, 'y'));
+      await repo.save(label(2, 'x'));
+      expect(await repo.deleteById(key(1, 'x')), 1);
+      await repo.delete(label(2, 'x'));
+      final left = await repo.findAll();
+      expect(left.map((r) => '${r.taskId}/${r.label}'), ['1/y']);
+    });
+
+    test(
+      'existsById, findAllById and deleteAllById take composite keys',
+      () async {
+        await repo.save(label(1, 'x'));
+        await repo.save(label(1, 'y'));
+        await repo.save(label(2, 'x'));
+        expect(await repo.existsById([key(1, 'x'), key(2, 'x')]), isTrue);
+        expect(await repo.existsById([key(1, 'x'), key(2, 'y')]), isFalse);
+        expect(
+          await repo.findAllById([key(1, 'y'), key(2, 'x')]),
+          hasLength(2),
+        );
+        expect(await repo.deleteAllById([key(1, 'x'), key(1, 'y')]), 2);
+        expect((await repo.count()).get(), 1);
+      },
+    );
+
+    test('a page is ordered by both key columns', () async {
+      await repo.save(label(2, 'a'));
+      await repo.save(label(1, 'b'));
+      await repo.save(label(1, 'a'));
+      final page = await repo.findAll(TomPageRequest(limit: 2));
+      expect(page.map((r) => '${r.taskId}/${r.label}'), ['1/a', '1/b']);
     });
   }, skip: skipReason);
 }

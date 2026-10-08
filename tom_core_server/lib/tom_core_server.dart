@@ -121,6 +121,7 @@ export 'src/tomserver/messaging/webhook_transport.dart';
 export 'src/tomserver/object_persistence/annotation_analyzer.dart';
 export 'src/tomserver/object_persistence/blob_migration.dart';
 export 'src/tomserver/object_persistence/column_authorization.dart';
+export 'src/tomserver/object_persistence/composite_key.dart';
 export 'src/tomserver/object_persistence/crud_repository.dart';
 export 'src/tomserver/object_persistence/data_scope.dart';
 export 'src/tomserver/object_persistence/file_reference.dart';

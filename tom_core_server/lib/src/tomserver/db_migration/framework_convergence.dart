@@ -330,7 +330,7 @@ class TomFrameworkSchemaCheck {
 @TomDbTable(
   datasource: "irrelevant",
   table: "irrelevant",
-  primaryKeyField: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
 )
 class TomInformationSchemaColumnRow {
   /// The column's name.

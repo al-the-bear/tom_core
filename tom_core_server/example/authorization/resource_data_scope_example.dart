@@ -32,7 +32,7 @@ TomColumnInformation _resourceKeyColumn() => TomColumnInformation(
   table: TomDbTable(
     datasource: 'main',
     table: 'document',
-    primaryKeyField: 'id',
+    primaryKeyFields: ['id'],
   ),
   declaredType: String,
   declaredName: 'resourceKey',

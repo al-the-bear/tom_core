@@ -16,8 +16,28 @@ class TomDartType {
 ///
 /// Applied to a `@tomReflector` entity, it tells the persistence layer which
 /// [datasource] the table lives in, the [table] name, the [schema] (optional),
-/// the entity field that holds the primary key ([primaryKeyField]), and — if it
-/// differs — the primary-key [idColumn] name.
+/// and the entity fields that hold the primary key ([primaryKeyFields]).
+///
+/// One field is the common case — a surrogate key the database assigns:
+///
+/// ```dart
+/// @TomDbTable(datasource: 'app', table: 'task', primaryKeyFields: ['id'])
+/// ```
+///
+/// Several fields key a table by the combination of their columns, the shape
+/// of a join table keyed only by its two foreign keys:
+///
+/// ```dart
+/// @TomDbTable(
+///   datasource: 'auth',
+///   table: 'user_role',
+///   primaryKeyFields: ['userId', 'roleId'],
+/// )
+/// ```
+///
+/// Such an entity's repository addresses a row by a `TomCompositeKey` of those
+/// fields, and `save` inserts or updates by whether a row with that key exists,
+/// since a key the caller supplies says nothing about whether it is stored yet.
 class TomDbTable {
   /// The name of the registered data source that holds this table.
   final String datasource;
@@ -28,18 +48,14 @@ class TomDbTable {
   /// The schema the table belongs to, if any.
   final String? schema;
 
-  /// The entity field that holds the primary key.
-  final String primaryKeyField;
-
-  /// The primary-key column name, when it differs from [primaryKeyField].
-  final String? idColumn;
+  /// The entity fields that hold the primary key, in key order; never empty.
+  final List<String> primaryKeyFields;
 
   /// Binds an entity to a table.
   const TomDbTable({
     required this.datasource,
     required this.table,
-    required this.primaryKeyField,
-    this.idColumn,
+    required this.primaryKeyFields,
     this.schema,
   });
 }

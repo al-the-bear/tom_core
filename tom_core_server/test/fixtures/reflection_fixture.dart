@@ -1443,7 +1443,7 @@ class FixtureServerConfig {
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_task',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureTaskRecord {
   /// Surrogate primary key — `null` until first persisted, then the
@@ -1476,7 +1476,7 @@ class FixtureTaskRecord {
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_tag',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureTag {
   /// Surrogate primary key.
@@ -1502,7 +1502,7 @@ class FixtureTagRepository
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_tag_link',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureTagLink {
   /// Surrogate primary key.
@@ -1522,6 +1522,58 @@ class FixtureTagLink {
 /// The MariaDB-backed repository for [FixtureTagLink].
 class FixtureTagLinkRepository
     extends TomSqlDatasourceRepository<FixtureTagLink, int> {}
+
+/// An entity keyed by **two** columns and no surrogate: a label attached to a
+/// task, at most once per task.
+///
+/// The shape of a legacy join table, `PRIMARY KEY (task_id, label)`, which an
+/// entity can map unchanged only because `@TomDbTable.primaryKeyFields` lists
+/// both fields. Its repository's key type is [TomCompositeKey]; [note] is the
+/// one column an update can change, so the update path has something to write.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_task_label',
+  primaryKeyFields: ['taskId', 'label'],
+)
+class FixtureTaskLabel {
+  /// The labelled task; the first key column.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'task_id')
+  int? taskId;
+
+  /// The label itself; the second key column.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'label')
+  String? label;
+
+  /// A free-text note — the row's only non-key column.
+  @TomDbColumn(columnName: 'note')
+  String? note;
+}
+
+/// The MariaDB-backed repository for [FixtureTaskLabel], addressed by a
+/// [TomCompositeKey] of `taskId` and `label`.
+class FixtureTaskLabelRepository
+    extends TomSqlDatasourceRepository<FixtureTaskLabel, TomCompositeKey> {}
+
+/// An entity whose `@TomDbTable` lists **no** key field, which no repository
+/// can address a row of; constructing [FixtureKeylessRepository] is refused.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_keyless',
+  primaryKeyFields: [],
+)
+class FixtureKeylessRecord {
+  /// A column, so the entity maps something.
+  @TomDbColumn(columnName: 'label')
+  String? label;
+}
+
+/// The repository whose construction the empty key list refuses.
+class FixtureKeylessRepository
+    extends TomSqlDatasourceRepository<FixtureKeylessRecord, Object> {}
 
 /// The owner of the fixture association: a record carrying a list of tags
 /// resolved through [FixtureTagLink].
@@ -1543,7 +1595,7 @@ class FixtureTagLinkRepository
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_tagged',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureTaggedRecord {
   /// Surrogate primary key.
@@ -1582,7 +1634,7 @@ class FixtureTaggedRepository
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_tagged',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureUntaggedRecord {
   /// Surrogate primary key.
@@ -1636,7 +1688,7 @@ class FixtureTaskRepository
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_secret',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureSecretRecord {
   /// Surrogate primary key, assigned by the database on insert.
@@ -1674,7 +1726,7 @@ class FixtureSecretRepository
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_document',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureDocumentRecord {
   /// Surrogate primary key, assigned by the database on insert.
@@ -1707,7 +1759,7 @@ class FixtureDocumentRecord {
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_protected',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureProtectedRecord {
   /// Surrogate primary key.
@@ -1748,7 +1800,7 @@ class FixtureDocumentRepository
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_scoped_document',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 @TomDbScope(field: 'owner_id', scope: 'owner')
 class FixtureScopedDocumentRecord {
@@ -1788,7 +1840,7 @@ class FixtureScopedDocumentRepository
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_resource_document',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureResourceRecord {
   /// Surrogate primary key, assigned by the database on insert.
@@ -1829,7 +1881,7 @@ class FixtureResourceRepository
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_file_slot',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureFileSlotRecord {
   /// Surrogate primary key.
@@ -1885,7 +1937,7 @@ class FixtureFileSlotRecord {
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_ambiguous_slot',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureAmbiguousSlotRecord {
   /// Surrogate primary key.
@@ -1955,7 +2007,7 @@ class FixtureUnmappedFileRecord {
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_export',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureExportRecord {
   /// Surrogate primary key — derives `TomColumnType.integer`.
@@ -2013,7 +2065,7 @@ class FixtureExportRecord {
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_export_v2',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureExportRecordV2 {
   /// Surrogate primary key.
@@ -2100,7 +2152,7 @@ class FixtureExportRecordV2 {
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_column_type',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureColumnTypeRecord {
   /// Surrogate primary key.
@@ -2173,7 +2225,7 @@ class FixtureUnauditedRecord {
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_amount',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureAmountRecord {
   /// Surrogate primary key, assigned by the database on insert.
@@ -2297,7 +2349,7 @@ class FixtureNullableObservable extends TomClass {
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_nullable',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureNullableRecord extends TomClass {
   /// Surrogate primary key, assigned by the database on insert.
@@ -2371,7 +2423,7 @@ class FixtureNullableRepository
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_nullable',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureOptionalColumnRecord {
   /// Surrogate primary key — `null` until first persisted.
@@ -2416,7 +2468,7 @@ class FixtureOptionalColumnRepository
 /// contradiction rather than silently letting whichever entity is read last
 /// decide.
 ///
-/// The key is declared through [TomDbTable.primaryKeyField] with no
+/// The key is declared through [TomDbTable.primaryKeyFields] with no
 /// `@TomEntityId` on any field, which is deliberate on two counts: it is the
 /// weakest of the three key signals — the one a real entity is most likely to
 /// key a projection by accident — and it exercises the field-to-column
@@ -2430,7 +2482,7 @@ class FixtureOptionalColumnRepository
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_nullable',
-  primaryKeyField: 'name',
+  primaryKeyFields: ['name'],
 )
 class FixtureRekeyedNullableRecord {
   /// The column this projection considers the key.
@@ -2521,7 +2573,7 @@ class FixtureSettingsDatasource extends MariaDbDatasource {
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_temporal',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class FixtureTemporalRecord {
   /// Surrogate primary key.

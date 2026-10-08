@@ -37,7 +37,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 @TomDbTable(
   datasource: 'unused_by_this_example',
   table: 'example_sale',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class ExampleSaleRecord {
   /// Surrogate primary key — a storage detail, and the example excludes it.

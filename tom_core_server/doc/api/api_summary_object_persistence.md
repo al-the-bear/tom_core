@@ -21,6 +21,7 @@ column-level access rights (C-4).
     - [TomReference&lt;TARGET, K, REPO&gt;](#tomreferencetarget-k-repo)
     - [TomColumnInformation](#tomcolumninformation)
   - [Repositories](#repositories)
+    - [TomCompositeKey](#tomcompositekey)
     - [TomCountResult](#tomcountresult)
     - [TomRepository&lt;T, K&gt;](#tomrepositoryt-k)
     - [TomSqlDatasourceRepository&lt;T, K&gt;](#tomsqldatasourcerepositoryt-k)
@@ -69,6 +70,7 @@ Source:
 `lib/src/tomserver/object_persistence/annotation_analyzer.dart`,
 `lib/src/tomserver/object_persistence/blob_migration.dart`,
 `lib/src/tomserver/object_persistence/column_authorization.dart`,
+`lib/src/tomserver/object_persistence/composite_key.dart`,
 `lib/src/tomserver/object_persistence/crud_repository.dart`,
 `lib/src/tomserver/object_persistence/data_scope.dart`,
 `lib/src/tomserver/object_persistence/file_reference.dart`,
@@ -184,8 +186,7 @@ Annotation that maps an entity class to a database table.
 const TomDbTable({
   required String datasource,
   required String table,
-  required String primaryKeyField,
-  String? idColumn,
+  required List<String> primaryKeyFields,
   String? schema,
 })
 ```
@@ -197,8 +198,7 @@ const TomDbTable({
 | `datasource` | `String` | The registered data source that holds this table. |
 | `table` | `String` | The table name. |
 | `schema` | `String?` | The schema the table belongs to, if any. |
-| `primaryKeyField` | `String` | The entity field that holds the primary key. |
-| `idColumn` | `String?` | The primary-key column name, when it differs from `primaryKeyField`. |
+| `primaryKeyFields` | `List<String>` | The entity fields that hold the primary key, in key order; never empty. More than one makes the repository's key a `TomCompositeKey`. |
 
 #### TomDbColumn
 
@@ -406,6 +406,29 @@ editing its metadata in place.
 
 ### Repositories
 
+#### TomCompositeKey
+
+The primary-key value of an entity whose `@TomDbTable.primaryKeyFields` names
+more than one field — the `K` of its repository. Keyed by **field** name, and
+must carry exactly the entity's key fields: a key with a field missing or extra
+is refused with `crud_repository.key.shape_mismatch`. Two keys are equal when
+they hold the same values for the same fields, in any order. `final class`.
+
+##### Constructors
+
+```dart
+TomCompositeKey(Map<String, Object?> values)
+```
+
+##### Properties and Methods
+
+| Member | Signature | Description |
+| ------ | --------- | ----------- |
+| `values` | `final Map<String, Object?> values` | The key's values, keyed by entity field name; unmodifiable. |
+| `fields` | `Iterable<String> get fields` | The field names this key carries. |
+| `operator []` | `Object? operator [](String field)` | The value of `field`, or `null` when the key does not carry it. |
+| `toString` | `String toString()` | `(userId: 7, roleId: 3)` — the form audit records and error messages carry. |
+
 #### TomCountResult
 
 Result holder for a `COUNT(*)` query: a single `count` field populated by the
@@ -475,16 +498,17 @@ TomSqlDatasourceRepository([List<Type>? queryTypes, Type? resultType])
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `isUnsavedKey` | `static bool isUnsavedKey(Object? primaryKey)` | Whether `primaryKey` marks a not-yet-persisted entity (`null` or negative sentinel), so `save` should `INSERT`. |
+| `isUnsavedKey` | `static bool isUnsavedKey(Object? primaryKey)` | Whether `primaryKey` marks a not-yet-persisted entity (`null`, a negative sentinel, or a `TomCompositeKey` with a `null` field). For a single key, `save` then inserts; a complete composite key is looked up instead. |
 | `readPrimaryKey` | `static K2? readPrimaryKey<K2>(Object? raw)` | Reads an entity's primary-key value as a nullable `K2`. |
 | `buildInsertStatement` | `static (String, List<String>) buildInsertStatement(String table, List<TomColumnInformation> columns)` | Builds the `INSERT` SQL and its ordered bind-parameter names. |
-| `buildUpdateStatement` | `static (String, List<String>) buildUpdateStatement(String table, List<TomColumnInformation> columns, TomColumnInformation primaryKey)` | Builds the `UPDATE ... SET ... WHERE pk = :pk` SQL and its ordered bind names. |
+| `buildUpdateStatement` | `static (String, List<String>) buildUpdateStatement(String table, List<TomColumnInformation> columns, List<TomColumnInformation> primaryKey)` | Builds the `UPDATE ... SET ... WHERE pk = :pk` SQL — every key column ANDed — and its ordered bind names. |
 
 ##### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `primaryKeyColumnInfo` | `TomColumnInformation` | Resolved metadata for the primary-key column. |
+| `primaryKeyColumns` | `List<TomColumnInformation>` | Resolved metadata for the primary-key columns, in `primaryKeyFields` order. |
+| `hasCompositeKey` | `bool` | *(getter)* Whether the key spans more than one field, making `K` a `TomCompositeKey`. |
 | `datasourceInfo` | `TomDataSourceInfo` | The resolved data source this repository runs against. |
 | `persistenceInfo` | `TomTypePersistenceInfo` | The resolved persistence metadata of the entity. |
 | `dbTable` | `TomDbTable` | The table the entity maps to. |
@@ -496,6 +520,10 @@ TomSqlDatasourceRepository([List<Type>? queryTypes, Type? resultType])
 
 Overrides every method of `TomRepository<T, K>` (see above), applying C-3 row
 scoping and C-4 column masking/enforcement on the SQL data source.
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `keyOf` | `Object? keyOf(T entity)` | The primary-key value of `entity`: the key field's value, or a `TomCompositeKey` of every key field's. |
 
 #### MariadbRepository&lt;T, K&gt;
 
@@ -810,7 +838,7 @@ a `limit` — MariaDB's grammar is `LIMIT n [OFFSET m]`, so there is no bare
 | `isUnpaged` | `bool` | *(getter)* Whether this request shapes nothing at all. |
 | `needsStableSort` | `bool` | *(getter)* Whether this request cuts a window, and so needs a total ordering to be reproducible across pages. |
 | `withSort` | `TomPageRequest withSort(List<TomSortField> sort)` | This request with `sort` replaced. |
-| `stableUnder` | `TomPageRequest stableUnder(String key)` | This request with `key` appended as its last ascending sort term when it cuts a window and does not already sort on `key`; otherwise itself. |
+| `stableUnder` | `TomPageRequest stableUnder(List<String> keys)` | This request with every field of `keys` it does not already sort on appended as an ascending sort term, in key order, when it cuts a window; otherwise itself. |
 | `assertWindow` | `static void assertWindow({required int limit, required int offset})` | Rejects a row window that is not renderable. |
 
 **The result is the page, not a page object.** A finder given a request returns

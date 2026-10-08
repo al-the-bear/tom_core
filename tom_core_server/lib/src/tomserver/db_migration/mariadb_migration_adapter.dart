@@ -423,7 +423,7 @@ SELECT installedRank, version, description, checksum, installedBy, installedOn, 
 @TomDbTable(
   datasource: "irrelevant",
   table: "irrelevant",
-  primaryKeyField: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
 )
 class TomDbVersion {
   /// Auto-incrementing insertion order (primary key).

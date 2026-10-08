@@ -403,7 +403,7 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
 @TomDbTable(
   datasource: "irrelevant",
   table: "irrelevant",
-  primaryKeyField: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
 )
 class TomOAuthStateRow {
   /// The opaque handle the provider echoes back.

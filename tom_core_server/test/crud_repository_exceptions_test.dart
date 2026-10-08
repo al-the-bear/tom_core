@@ -51,7 +51,7 @@ import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 import 'fixtures/reflection_fixture.dart'
-    show FixtureTaskRecord, FixtureTaskRepository;
+    show FixtureKeylessRepository, FixtureTaskRecord, FixtureTaskRepository;
 import 'fixtures/reflection_fixture.reflection.dart';
 import 'fixtures/scripted_datasource.dart';
 
@@ -96,6 +96,16 @@ void main() {
       isA<TomQuerySyntaxException>().having((e) => e.key, 'key', key);
 
   group('a repository that cannot be built says so with a key', () {
+    test('an entity that lists no key field is refused', () {
+      // Every by-key method addresses a row by its key fields, so an entity
+      // with none could address nothing; it is refused at construction, before
+      // the first method call could fail less clearly.
+      expect(
+        FixtureKeylessRepository.new,
+        throwsA(repositoryError('crud_repository.constructor.no_primary_key')),
+      );
+    });
+
     test('an unregistered datasource is a keyed repository error', () {
       // No `registerDatasource()`: the fixture entity names a data source that
       // only `test_database.dart` registers, so the lookup in the constructor

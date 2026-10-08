@@ -145,7 +145,7 @@ is annotated for reflection and persistence:
 
 ```dart
 @tomReflector
-@TomDbTable(datasource: 'todo_db', table: 'todo_items', primaryKeyField: 'id')
+@TomDbTable(datasource: 'todo_db', table: 'todo_items', primaryKeyFields: ['id'])
 class TodoItemRecord {
   @TomEntityId()
   @TomDbColumn(columnName: 'id', isReadOnly: true)

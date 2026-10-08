@@ -1028,7 +1028,7 @@ SQL.
 
 ```dart
 @tomReflector
-@TomDbTable(datasource: 'main', table: 'document', primaryKeyField: 'id')
+@TomDbTable(datasource: 'main', table: 'document', primaryKeyFields: ['id'])
 class Document {
   @TomEntityId()
   @TomDbColumn(columnName: 'id', isReadOnly: true)

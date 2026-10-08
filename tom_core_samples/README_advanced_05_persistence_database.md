@@ -31,7 +31,7 @@ A record is marked up with two annotations and per-field column mappings:
 
 ```dart
 @tomReflector
-@TomDbTable(datasource: appDatasource, table: 'app_items', primaryKeyField: 'id')
+@TomDbTable(datasource: appDatasource, table: 'app_items', primaryKeyFields: ['id'])
 class ItemRecord {
   @TomEntityId()
   @TomDbColumn(columnName: 'id', isReadOnly: true)

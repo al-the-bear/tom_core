@@ -207,7 +207,7 @@ class TomSqlDeliveryReportStore extends TomDeliveryReportStore {
 @TomDbTable(
   datasource: "irrelevant",
   table: "irrelevant",
-  primaryKeyField: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
 )
 class TomDeliveryReportRow {
   /// The carrier's identifier for the message.

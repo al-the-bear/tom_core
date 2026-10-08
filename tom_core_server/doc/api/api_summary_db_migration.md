@@ -584,7 +584,7 @@ columns, partitioning and stored routines.
 | `discoverEntityTypes` | `static List<Type> discoverEntityTypes()` | Every `@TomDbTable`-annotated type registered with `tomReflector`. The check discovers entities the same way the rest of the persistence layer does, so a type the repository can load is a type the check can see. |
 | `selectFor` | `static List<Type> selectFor(Iterable<Type> entityTypes, String datasource, String schema)` | The entity types that map into `datasource` / `schema`. An entity matches on `TomDbTable.datasource` — the same name the migration engine resolves its directory by; `TomDbTable.schema` narrows further when declared, and an entity that declares none belongs to the datasource's only schema. |
 | `read` | `static ({TomSchemaModel schema, List<TomSchemaDivergence> divergences}) read(Iterable<Type> entityTypes)` | Builds the model `entityTypes` expect. The **first** entity to declare a table fixes its primary key; a later entity that disagrees yields a `conflictingEntityPrimaryKey` divergence and the first key is kept — a contradiction inside the entity model, reported before the migration chain is consulted at all. |
-| `primaryKeyOf` | `static List<String> primaryKeyOf(TomTypePersistenceInfo info)` | The primary-key column names an entity declares, resolved in order of specificity: `@TomEntityId`-annotated columns, else the table's `idColumn`, else its `primaryKeyField`. |
+| `primaryKeyOf` | `static List<String> primaryKeyOf(TomTypePersistenceInfo info)` | The primary-key column names an entity declares: its `@TomEntityId`-annotated columns, else the columns of the table's `primaryKeyFields`, in order. |
 
 ### TomSchemaDivergence
 

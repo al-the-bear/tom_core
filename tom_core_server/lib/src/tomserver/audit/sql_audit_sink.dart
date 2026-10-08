@@ -765,7 +765,7 @@ class TomSqlAuditSink implements TomAuditSink {
 @TomDbTable(
   datasource: "irrelevant",
   table: "irrelevant",
-  primaryKeyField: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
 )
 class TomAuditTrailRow {
   /// The entry's position in its writer's chain, counted from genesis.
@@ -790,7 +790,7 @@ class TomAuditTrailRow {
 @TomDbTable(
   datasource: "irrelevant",
   table: "irrelevant",
-  primaryKeyField: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
 )
 class TomAuditHeadRow {
   /// The newest entry's hash.
@@ -808,7 +808,7 @@ class TomAuditHeadRow {
 @TomDbTable(
   datasource: "irrelevant",
   table: "irrelevant",
-  primaryKeyField: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
 )
 class TomAuditSeqRow {
   /// The sequence number, or `null` when the aggregate matched nothing.
@@ -821,7 +821,7 @@ class TomAuditSeqRow {
 @TomDbTable(
   datasource: "irrelevant",
   table: "irrelevant",
-  primaryKeyField: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
 )
 class TomAuditTriggerRow {
   /// The trigger's name.

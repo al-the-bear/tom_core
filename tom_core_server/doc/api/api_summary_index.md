@@ -516,6 +516,7 @@ surface documented here.
 | `TomRepository<T, K>` | abstract class | Repository contract. |
 | `TomSqlDatasourceRepository<T, K>` | abstract class | SQL-datasource repository base. |
 | `MariadbRepository<T, K>` | class | MariaDB repository. |
+| `TomCompositeKey` | final class | The key value of an entity whose primary key spans several fields. |
 | `TomCountResult` | class | Count query result. |
 | `TomQueryBuilder` | mixin | Fluent query building. |
 | `TomQuerySentenceCompiler` | class | Compiles query sentences to SQL. |
@@ -838,6 +839,7 @@ surface documented here.
 | `TomColumnType` | Export |
 | `TomColumnWriteDecision` | Object Persistence |
 | `TomComponentReference` | Endpoints |
+| `TomCompositeKey` | Object Persistence |
 | `TomConfig` | Configuration |
 | `TomConfigurationException` | Configuration |
 | `tomConsumesForm` | Endpoints |

@@ -124,20 +124,27 @@ class TomPageRequest {
   /// total ordering to be reproducible across pages.
   bool get needsStableSort => offset > 0 || limit > 0;
 
-  /// This request with a *total* ordering, made so by [key] — the entity's
-  /// primary key, which no two rows share.
+  /// This request with a *total* ordering, made so by [keys] — the fields of
+  /// the entity's primary key, whose combination no two rows share.
   ///
-  /// A request that cuts a window gets [key] appended as its final sort term
-  /// unless it already sorts on it. Without that, "page 2" is not the
-  /// complement of "page 1": rows tied under the caller's ordering (or under no
-  /// ordering at all) may appear on both pages or on neither, because nothing
-  /// obliges the database to visit them in the same order twice. A request
-  /// that cuts no window is returned unchanged, since the whole result set
-  /// arrives either way.
-  TomPageRequest stableUnder(String key) {
+  /// A request that cuts a window gets every key field it does not already
+  /// sort on appended as an ascending sort term, in key order. Without that,
+  /// "page 2" is not the complement of "page 1": rows tied under the caller's
+  /// ordering (or under no ordering at all) may appear on both pages or on
+  /// neither, because nothing obliges the database to visit them in the same
+  /// order twice. A request that cuts no window is returned unchanged, since
+  /// the whole result set arrives either way.
+  TomPageRequest stableUnder(List<String> keys) {
     if (!needsStableSort) return this;
-    if (sort.any((term) => term.field == key)) return this;
-    return withSort([...sort, TomSortField.asc(key)]);
+    final missing = [
+      for (final key in keys)
+        if (!sort.any((term) => term.field == key)) key,
+    ];
+    if (missing.isEmpty) return this;
+    return withSort([
+      ...sort,
+      for (final key in missing) TomSortField.asc(key),
+    ]);
   }
 
   /// This request with [sort] replaced.

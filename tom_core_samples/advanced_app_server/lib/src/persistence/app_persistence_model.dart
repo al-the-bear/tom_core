@@ -98,7 +98,7 @@ const String itemVisibilityScope = 'visible:item';
 @TomDbTable(
   datasource: appDatasource,
   table: 'app_workspaces',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 @TomDbScope(field: 'ownerId')
 class WorkspaceRecord {
@@ -139,7 +139,7 @@ final workspaceRepository = WorkspaceRepository();
 @TomDbTable(
   datasource: appDatasource,
   table: 'app_projects',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 @TomDbScope(field: 'id', scope: projectVisibilityScope)
 class ProjectRecord {
@@ -184,7 +184,7 @@ final projectRepository = ProjectRepository();
 @TomDbTable(
   datasource: appDatasource,
   table: 'app_lists',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 @TomDbScope(field: 'id', scope: listVisibilityScope)
 class ListRecord {
@@ -226,7 +226,7 @@ final listRepository = ListRepository();
 @TomDbTable(
   datasource: appDatasource,
   table: appItemsTable,
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 @TomDbScope(field: 'id', scope: itemVisibilityScope)
 class ItemRecord {
@@ -340,7 +340,7 @@ final itemRepository = ItemRepository();
 @TomDbTable(
   datasource: appDatasource,
   table: 'app_comments',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class CommentRecord {
   /// Surrogate primary key.
@@ -377,7 +377,7 @@ final commentRepository = CommentRepository();
 @TomDbTable(
   datasource: appDatasource,
   table: 'app_subtasks',
-  primaryKeyField: 'id',
+  primaryKeyFields: ['id'],
 )
 class SubtaskRecord {
   /// Surrogate primary key.

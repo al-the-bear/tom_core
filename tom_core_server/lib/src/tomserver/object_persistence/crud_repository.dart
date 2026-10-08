@@ -19,6 +19,7 @@ import 'query_sentence_compiler.dart';
 import 'query_builder.dart';
 import 'annotation_analyzer.dart';
 import 'column_authorization.dart';
+import 'composite_key.dart';
 import 'data_scope.dart';
 
 /// Raised when a repository operation cannot complete: the entity's data source
@@ -249,8 +250,13 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     extends TomRepository<T, K>
     with TomQueryBuilder
     implements TomFileRepository<T, K> {
-  /// Resolved metadata for the primary-key column.
-  late TomColumnInformation primaryKeyColumnInfo;
+  /// Resolved metadata for the primary-key columns, in the order
+  /// `@TomDbTable.primaryKeyFields` lists their fields.
+  late List<TomColumnInformation> primaryKeyColumns;
+
+  /// Whether the primary key spans more than one field, in which case the
+  /// repository's `K` is [TomCompositeKey].
+  bool get hasCompositeKey => primaryKeyColumns.length > 1;
 
   /// The resolved data source this repository runs against.
   late TomDataSourceInfo datasourceInfo;
@@ -289,14 +295,24 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
       this.queryTypes[0],
     );
     dbTable = persistenceInfo.table;
-    primaryKeyColumnInfo = TomAnnotationAnalyzer.determineColumn(
-      dbTable.primaryKeyField,
-      [persistenceInfo],
-    );
-    if (primaryKeyColumnInfo.entityId == null) {
-      tomLog.warn(
-        "Primary key field/column ${dbTable.primaryKeyField} is not marked as EntityId",
+    if (dbTable.primaryKeyFields.isEmpty) {
+      throw TomRepositoryException(
+        'crud_repository.constructor.no_primary_key',
+        "@TomDbTable on ${this.queryTypes[0]} names no primary-key field; "
+            "primaryKeyFields must list at least one.",
+        parameters: {'entity': '${this.queryTypes[0]}'},
       );
+    }
+    primaryKeyColumns = [
+      for (final field in dbTable.primaryKeyFields)
+        TomAnnotationAnalyzer.determineColumn(field, [persistenceInfo]),
+    ];
+    for (final column in primaryKeyColumns) {
+      if (column.entityId == null) {
+        tomLog.warn(
+          "Primary key field/column ${column.declaredName} is not marked as EntityId",
+        );
+      }
     }
     var dsInfo = TomDataSourceInfo.getDataSourceInfo(dbTable.datasource);
     if (dsInfo != null) {
@@ -428,7 +444,11 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     final col = TomAnnotationAnalyzer.determineColumn(scope.field, [
       persistenceInfo,
     ]);
-    if (col.getQueryFieldName() == primaryKeyColumnInfo.getQueryFieldName()) {
+    // Only a single generated key is unknown before the insert; every field of
+    // a composite key is supplied by the caller and is checked like any other.
+    if (!hasCompositeKey &&
+        col.getQueryFieldName() ==
+            primaryKeyColumns.single.getQueryFieldName()) {
       return;
     }
     final principal = getFromCurrentZone<TomPrincipal>();
@@ -521,10 +541,10 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// for nothing.
   ///
   /// A request that cuts a window is made stable under the entity's primary
-  /// key — see [TomPageRequest.stableUnder].
+  /// key, every field of it — see [TomPageRequest.stableUnder].
   TomPageRequest? _effectivePage(TomPageRequest? page) {
     if (page == null || page.isUnpaged) return null;
-    return page.stableUnder(dbTable.primaryKeyField);
+    return page.stableUnder(dbTable.primaryKeyFields);
   }
 
   /// Returns [base] narrowed to [page]'s window and ordering, or [base]
@@ -692,9 +712,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     // The primary key is read before the grade rather than after, because a
     // per-row grade needs to know which row is being written; on an insert
     // there is no row yet and the resolver is handed the unsaved key.
-    final primaryKey = readPrimaryKey<K>(
-      primaryKeyColumnInfo.getVariableValue(entity),
-    );
+    final primaryKey = readPrimaryKey<K>(keyOf(entity));
     await _assertColumnWritable(column, primaryKey);
     if (isUnsavedKey(primaryKey)) {
       await _assertInsertWritable(entity);
@@ -792,10 +810,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// could delete it, which is the most destructive of the three writes.
   Future<T> clearFile(T entity, String fieldName) async {
     final column = _fileColumn(fieldName);
-    await _assertColumnWritable(
-      column,
-      readPrimaryKey<K>(primaryKeyColumnInfo.getVariableValue(entity)),
-    );
+    await _assertColumnWritable(column, readPrimaryKey<K>(keyOf(entity)));
     column.setVariableValue(entity, null);
     return save(entity);
   }
@@ -932,9 +947,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     // that was never persisted carries a null or negative key, and a direct
     // `as K` turns that ordinary caller mistake into a `TypeError` naming
     // `Null` and `int` — two types the caller never wrote.
-    final primaryKey = readPrimaryKey<K>(
-      primaryKeyColumnInfo.getVariableValue(entity),
-    );
+    final primaryKey = readPrimaryKey<K>(keyOf(entity));
     if (isUnsavedKey(primaryKey)) {
       throw TomRepositoryException(
         'crud_repository.delete.unsaved_entity',
@@ -964,13 +977,9 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
       if (stored != null) doomed.add(stored);
     }
     _deleteQuery ??= await datasourceInfo.datasource.prepareStatement(
-      _qsc.compileQuerySentence('''
-delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
-      ''')
-          as TomDelete,
+      TomDelete(queryTypes, query: _keyPredicate()),
     );
-    Map<String, Object?> params = {"id": id};
-    await _deleteQuery!.execute(params);
+    await _deleteQuery!.execute(_keyParameters(id));
     await _deleteReferencedFiles(doomed);
     await _audit(TomAuditAction.delete, key: id, before: before);
     return;
@@ -983,7 +992,8 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
   static const String _idListPrefix = '__idlist_';
 
   /// Builds the `<pk> IN (:__idlist_0, …)` predicate for [ids] with one bound
-  /// placeholder per id, ANDed with the current principal's row scope (C-3)
+  /// placeholder per id — for a composite key, one `(<k1> = … AND <k2> = …)`
+  /// term per id, ORed — ANDed with the current principal's row scope (C-3)
   /// when the entity declares one, together with the merged bind-parameter map.
   ///
   /// Centralises the IN-list rendering the three id-list methods share: the
@@ -997,12 +1007,14 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
     bool forWrite = false,
   }) async {
     final scope = await _resolveScope(forWrite: forWrite);
-    final idList = TomDataScope.inList(
-      this,
-      primaryKeyColumnInfo,
-      ids,
-      prefix: _idListPrefix,
-    );
+    final idList = hasCompositeKey
+        ? _compositeKeyList(ids)
+        : TomDataScope.inList(
+            this,
+            primaryKeyColumns.single,
+            ids,
+            prefix: _idListPrefix,
+          );
     final where = scope == null
         ? idList.predicate
         : and([idList.predicate, scope.predicate]);
@@ -1045,13 +1057,9 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
       if (stored != null) doomed.add(stored);
     }
     _deleteByIdQuery ??= await datasourceInfo.datasource.prepareStatement(
-      _qsc.compileQuerySentence('''
-delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
-      ''')
-          as TomDelete,
+      TomDelete(queryTypes, query: _keyPredicate()),
     );
-    Map<String, Object?> params = {"id": id};
-    await _deleteByIdQuery!.execute(params);
+    await _deleteByIdQuery!.execute(_keyParameters(id));
     // Read before anything else runs: the count is per-execution state on the
     // handle, and the file cascade below executes further statements.
     final affected = _deleteByIdQuery!.lastAffectedRows;
@@ -1179,16 +1187,14 @@ SELECT * FROM ${dbTable.table}
     final scope = await _resolveScope(forWrite: forWrite);
     List<T> result;
     if (scope == null) {
-      final params = {"id": id};
+      final params = _keyParameters(id);
       _findByIdQuery =
           _findByIdQuery ??
           await datasourceInfo.datasource.prepareStatement(
             TomLiteralSelect(
               [T],
               query:
-                  '''
-SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
-      ''',
+                  'SELECT * FROM ${dbTable.table} WHERE ${_keyWhereClause()}',
               parameters: params.keys.toList(),
             ),
           );
@@ -1196,11 +1202,11 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     } else {
       // Scoped: the id match is ANDed with the principal's row scope, so a
       // principal cannot read another principal's row by its id.
-      final params = <String, Object?>{"id": id, ...scope.parameters};
-      final where = and([
-        TomDataScope.columnEqualsParam(this, primaryKeyColumnInfo, 'id'),
-        scope.predicate,
-      ]);
+      final params = <String, Object?>{
+        ..._keyParameters(id),
+        ...scope.parameters,
+      };
+      final where = and([_keyPredicate(), scope.predicate]);
       result = await _runPrepared<T>(
         TomSelect(queryTypes, query: where),
         params,
@@ -1261,14 +1267,156 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     return _singleCount(result, 'crud_repository.count.illegal_count_result');
   }
 
+  // ───────────────────────────── Primary key ──────────────────────────────
+
+  /// The primary-key value of [entity]: the key field's value, or for a
+  /// composite key a [TomCompositeKey] of every key field's value.
+  Object? keyOf(T entity) {
+    if (!hasCompositeKey)
+      return primaryKeyColumns.single.getVariableValue(entity);
+    return TomCompositeKey({
+      for (var i = 0; i < primaryKeyColumns.length; i++)
+        dbTable.primaryKeyFields[i]: primaryKeyColumns[i].getVariableValue(
+          entity,
+        ),
+    });
+  }
+
+  /// [id] as the composite key it must be, refused when it is not one or
+  /// carries other fields than the entity's key.
+  ///
+  /// A key with a field missing would match every row that agrees on the rest,
+  /// and every by-key method promises one row; a key with an extra field names
+  /// something the table is not keyed by. Both are the caller's mistake, so the
+  /// message is the caller's to see.
+  TomCompositeKey _compositeKey(Object? id) {
+    final expected = dbTable.primaryKeyFields.toSet();
+    if (id is TomCompositeKey &&
+        id.values.length == expected.length &&
+        expected.every(id.values.containsKey)) {
+      return id;
+    }
+    throw TomRepositoryException(
+      'crud_repository.key.shape_mismatch',
+      '$T is keyed by (${dbTable.primaryKeyFields.join(', ')}), '
+          'which the key $id does not match.',
+      parameters: {
+        'entity': '$T',
+        'fields': dbTable.primaryKeyFields.join(','),
+        'id': '$id',
+      },
+      clientThrow: true,
+    );
+  }
+
+  /// The bind values that address the row keyed by [id], named as
+  /// [_keyPredicate] and [_keyWhereClause] name their placeholders: [prefix]
+  /// for a single key, `<prefix>_0`, `<prefix>_1`, … for a composite one.
+  Map<String, Object?> _keyParameters(Object? id, [String prefix = 'id']) {
+    if (!hasCompositeKey) return {prefix: id};
+    final key = _compositeKey(id);
+    return {
+      for (var i = 0; i < primaryKeyColumns.length; i++)
+        '${prefix}_$i': key[dbTable.primaryKeyFields[i]],
+    };
+  }
+
+  /// The predicate matching the row whose key binds through [prefix] — one
+  /// equality, or one per key column ANDed.
+  TomOperator<TomDbBool> _keyPredicate([String prefix = 'id']) {
+    if (!hasCompositeKey) {
+      return TomDataScope.columnEqualsParam(
+        this,
+        primaryKeyColumns.single,
+        prefix,
+      );
+    }
+    return and([
+      for (var i = 0; i < primaryKeyColumns.length; i++)
+        TomDataScope.columnEqualsParam(
+          this,
+          primaryKeyColumns[i],
+          '${prefix}_$i',
+        ),
+    ]);
+  }
+
+  /// [_keyPredicate] as SQL text, for the literal statements that address a row
+  /// by key without going through the query builder.
+  String _keyWhereClause() {
+    if (!hasCompositeKey) return '${primaryKeyColumns.single.field} = :id';
+    return [
+      for (var i = 0; i < primaryKeyColumns.length; i++)
+        '${primaryKeyColumns[i].field} = :id_$i',
+    ].join(' AND ');
+  }
+
+  /// One `(<k1> = … AND <k2> = …)` term per key in [ids], ORed, with its bind
+  /// values — the composite counterpart of [TomDataScope.inList].
+  TomDataScopePredicate _compositeKeyList(Iterable<K> ids) {
+    final keys = ids.toList();
+    if (keys.isEmpty) return TomDataScopePredicate(boolOp(false), const {});
+    final parameters = <String, Object?>{};
+    final terms = <TomOperator<TomDbBool>>[];
+    for (var n = 0; n < keys.length; n++) {
+      final prefix = '$_idListPrefix$n';
+      parameters.addAll(_keyParameters(keys[n], prefix));
+      terms.add(_keyPredicate(prefix));
+    }
+    return TomDataScopePredicate(or(terms), parameters);
+  }
+
+  /// Whether [save] inserts the entity whose key is [primaryKey].
+  ///
+  /// A single key decides by itself: an unsaved key is one the database has not
+  /// assigned yet. A composite key is supplied whole by the caller and so says
+  /// nothing about whether the row exists — the table is asked, without the
+  /// row scope, because an existing row the principal may not write must take
+  /// the update path and be refused there, not collide as a duplicate insert. A
+  /// composite key with a field missing addresses no row and is refused.
+  Future<bool> _isInsert(Object? primaryKey) async {
+    if (!hasCompositeKey) return isUnsavedKey(primaryKey);
+    if (isUnsavedKey(primaryKey)) {
+      throw TomRepositoryException(
+        'crud_repository.save.incomplete_key',
+        'Every field of the key (${dbTable.primaryKeyFields.join(', ')}) must '
+            'be set before $T can be saved, but the key was $primaryKey.',
+        parameters: {'entity': '$T', 'id': '$primaryKey'},
+        clientThrow: true,
+      );
+    }
+    _keyStoredQuery ??= await datasourceInfo.datasource
+        .prepareStatement<TomCountResult>(
+          TomLiteralSelect(
+            [T],
+            query:
+                'SELECT COUNT(*) AS count FROM ${dbTable.table} '
+                'WHERE ${_keyWhereClause()}',
+            parameters: _keyParameters(primaryKey).keys.toList(),
+          ),
+        );
+    final rows = await _keyStoredQuery!.execute(_keyParameters(primaryKey));
+    return rows.isEmpty || rows[0].count == 0;
+  }
+
+  TomPreparedStatement<TomCountResult>? _keyStoredQuery;
+
   /// Whether [primaryKey] marks an entity that has **not** yet been persisted,
   /// so [save] should `INSERT` rather than `UPDATE`.
   ///
   /// Two unsaved conventions are honoured: a nullable surrogate key is `null`
   /// before its first persist, and a non-nullable `int` key uses a negative
   /// sentinel (the `id >= 0` convention `TomResourceGrant` and friends rely on).
+  ///
+  /// A [TomCompositeKey] is unsaved while any of its fields is `null`: the
+  /// caller supplies every field of such a key, so one left out means the
+  /// entity is not yet a row anything could address. A complete composite key
+  /// does not say whether it is stored — [save] asks the table.
   static bool isUnsavedKey(Object? primaryKey) =>
-      primaryKey == null || (primaryKey is num && primaryKey < 0);
+      primaryKey == null ||
+      (primaryKey is num && primaryKey < 0) ||
+      (primaryKey is TomCompositeKey &&
+          primaryKey.values.values.any((value) => value == null));
 
   /// Reads an entity's primary-key value as a *nullable* [K2].
   ///
@@ -1304,26 +1452,32 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
 
   /// Builds the `UPDATE ... SET ... WHERE pk = :pk` statement and its ordered
   /// bind-parameter names for [table] over the writable [columns], keyed on
-  /// [primaryKey].
+  /// the [primaryKey] columns.
   ///
   /// The `SET` clause assigns each column by its mapped column name; the
-  /// trailing `WHERE` scopes the update to the single row by the primary key
-  /// (its placeholder name and bind name is the pk's declared name, appended
-  /// last). Without that clause the statement would rewrite every row.
+  /// trailing `WHERE` scopes the update to the single row by every primary-key
+  /// column, ANDed (each placeholder and bind name is the key field's declared
+  /// name, appended last in key order). Without that clause the statement would
+  /// rewrite every row.
   static (String, List<String>) buildUpdateStatement(
     String table,
     List<TomColumnInformation> columns,
-    TomColumnInformation primaryKey,
+    List<TomColumnInformation> primaryKey,
   ) {
     final assignments = [
       for (final c in columns) '${c.getQueryFieldName()} = :${c.declaredName}',
     ];
-    final paramNames = [for (final c in columns) c.declaredName];
-    final pkName = primaryKey.declaredName;
-    paramNames.add(pkName);
+    final paramNames = [
+      for (final c in columns) c.declaredName,
+      for (final k in primaryKey) k.declaredName,
+    ];
+    final where = [
+      for (final k in primaryKey)
+        '${k.getQueryFieldName()} = :${k.declaredName}',
+    ];
     final sql =
         'UPDATE $table SET ${assignments.join(',')}'
-        ' WHERE ${primaryKey.getQueryFieldName()} = :$pkName';
+        ' WHERE ${where.join(' AND ')}';
     return (sql, paramNames);
   }
 
@@ -1336,9 +1490,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     // hit the same memo, so the only thing a second lookup could add is the
     // chance to null-assert it.
     final persistentColumns = persistenceInfo.columnInfo;
-    final primaryKey = readPrimaryKey<K>(
-      primaryKeyColumnInfo.getVariableValue(toSave),
-    );
+    final primaryKey = readPrimaryKey<K>(keyOf(toSave));
     // The columns the statement writes: everything except the read-only ones
     // (the auto-increment primary key, audit-managed columns, …).
     final writable = [
@@ -1350,7 +1502,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
       return convert != null ? convert(raw) : raw;
     }
 
-    final insert = isUnsavedKey(primaryKey);
+    final insert = await _isInsert(primaryKey);
 
     // C-3 row-level write enforcement. An insert must carry a scope-field value
     // the principal is allowed (it cannot create a row outside its scope); an
@@ -1421,9 +1573,11 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
         for (final col in writable) col.declaredName: dbValue(col),
       };
       await _saveInsertQuery!.execute(params);
-      // Resolve the row's key. This branch runs exactly when the key was left
-      // unsaved, so the database assigned an auto-increment surrogate and the
-      // insert statement's own result is the only place it can be read from:
+      // Resolve the row's key. A composite key was supplied whole and is the
+      // row's key as written. A single key reaches this branch exactly when it
+      // was left unsaved, so the database assigned an auto-increment surrogate
+      // and the insert statement's own result is the only place it can be read
+      // from:
       // `lastGeneratedId` is connection-correct by construction, where a
       // follow-up query for "the last key" is session-scoped and answers about
       // whichever connection it happens to run on.
@@ -1433,9 +1587,11 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
       // is not a state to carry forward: every later step — the read-back, the
       // audit record, the key returned to the caller — would name a row that is
       // not the one just written. So it is refused by name.
-      final K rowKey =
-          (_saveInsertQuery!.lastGeneratedId ?? _noGeneratedKey(dbTable.table))
-              as K;
+      final K rowKey = hasCompositeKey
+          ? primaryKey as K
+          : (_saveInsertQuery!.lastGeneratedId ??
+                    _noGeneratedKey(dbTable.table))
+                as K;
       final newRow = await findById(rowKey);
       if (newRow != null) {
         // A create has no before-image; the whole stored row is the change.
@@ -1458,14 +1614,15 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
       final (sql, paramNames) = buildUpdateStatement(
         dbTable.table,
         writable,
-        primaryKeyColumnInfo,
+        primaryKeyColumns,
       );
       _saveUpdateQuery ??= await datasourceInfo.datasource.prepareStatement<T>(
         TomLiteralSelect([T], query: sql, parameters: paramNames),
       );
       final params = <String, Object?>{
         for (final col in writable) col.declaredName: dbValue(col),
-        primaryKeyColumnInfo.declaredName: primaryKey,
+        for (final key in primaryKeyColumns)
+          key.declaredName: key.getVariableValue(toSave),
       };
       // Which blobs this update strands, decided from the values about to be
       // written and collected *before* the statement runs — afterwards the

@@ -383,7 +383,7 @@ class _LeaseRecord {
 @TomDbTable(
   datasource: "irrelevant",
   table: "irrelevant",
-  primaryKeyField: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
 )
 class TomLeaseRow {
   /// The resource the lease names.

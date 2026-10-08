@@ -31,7 +31,8 @@ is the explicit opt-out.
 | `TomAnnotationAnalyzer` | Mixin that reads the mapping annotations off an entity. |
 | `TomRepository<T, K>` | CRUD contract: `save`, `findById`, `findAll`, `delete`/`deleteById`, `count`, `existsById`, and `*ByQuery` / `*ByQuerySentence`. |
 | `TomSqlDatasourceRepository<T, K>` | SQL implementation over a `TomDataSource`; subclass and override `sqlDialect`. |
-| `TomPageRequest` · `TomSortField` · `TomSortDirection` | The optional row window (`offset` + `limit`) and per-field sort the finders accept; an unsorted window gets the primary key appended so consecutive pages partition the result. |
+| `TomCompositeKey` | The `K` of an entity whose `primaryKeyFields` lists several fields — a join table keyed by its two foreign keys — keyed by field name. |
+| `TomPageRequest` · `TomSortField` · `TomSortDirection` | The optional row window (`offset` + `limit`) and per-field sort the finders accept; an unsorted window gets every primary-key field appended so consecutive pages partition the result. |
 | `TomQueryBuilder` | Mixin offering `isNull` / `isNotNull` / `isIn` / `between` / `like` plus the `Eq` / `Neq` / `And` / `Or` / `Not` operators and the typed column references (`IntCol`, `StringCol`, …). |
 | `TomDbScope` | Annotation declaring an entity's row scope — its scope field and kind — or, as `TomDbScope.unscoped()`, the deliberate opt-out. |
 | `TomDataScopeRegistry` | The named scope-kind resolvers (`owner`, `group`, `resource`, plus application kinds), sync or async, read and write. |
@@ -52,7 +53,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 // A reflected entity mapped to a table by annotations:
 @tomReflector
-@TomDbTable(datasource: 'todo', table: 'todo_item', primaryKeyField: 'id')
+@TomDbTable(datasource: 'todo', table: 'todo_item', primaryKeyFields: ['id'])
 class TodoItem {
   // Nullable, and null until first persisted: `save` inserts when the key is
   // null or negative and updates otherwise. `0` is a legitimate key value, not
