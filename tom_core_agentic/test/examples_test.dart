@@ -2,7 +2,7 @@
 /// documents.
 ///
 /// **The defect this exists for.** These examples verify themselves with
-/// `assert` — 58 of them across four files — and `dart run` leaves assertions
+/// `assert` — every check in every file — and `dart run` leaves assertions
 /// *disabled*, which is what its `--enable-asserts` flag is for. Under a
 /// flagless run every one of them compiles out, so the example prints a
 /// plausible transcript and exits 0 whether or not anything it claims is true.
