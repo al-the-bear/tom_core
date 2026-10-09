@@ -1656,6 +1656,10 @@ The generated reflection data identifies that class exactly, by declaration, so
 nothing is resolved by name and two annotated classes sharing a simple name do
 not interfere: a collection of each deserializes as itself, in a list or a map,
 and round-trips through `convertToJsonString` and `createInstanceFromJson`.
+The observable model reads the same mirror: a `TomClass` filling a
+`TomList<X>` or `TomMap<String, X>` member in `setValues` takes `X` from the
+member's declaration, and falls back to the two helpers below only for an
+element type the reflector cannot describe.
 
 **From a value — the two helpers below.** Given only a collection, Dart exposes
 its element type as text (`runtimeType.toString()` is `List<Person>`) and never

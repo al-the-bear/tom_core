@@ -1094,6 +1094,11 @@ print(~person.email);    // "bob@example.com"
 print(~person.isActive); // false
 ```
 
+A `TomList<X>` or `TomMap<String, X>` member whose `X` is a `TomClass` is
+filled with new `X` instances, one per map in the input. `X` is read from the
+member's own declaration, so two `TomClass` subclasses that share a simple name
+in different libraries each deserialize as themselves.
+
 #### When a value has the wrong shape
 
 The input is usually decoded JSON, so a mistyped value is an ordinary event,

@@ -11,6 +11,8 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'observable_test.reflection.dart';
+import 'support/observable_clash_first.dart' as clash_first;
+import 'support/observable_clash_second.dart' as clash_second;
 
 // ============================================================================
 // Test Classes
@@ -130,6 +132,18 @@ class TestPrimitiveListState extends TomClass {
 class TestUntypedContainers extends TomClass {
   final anyList = TomList<TomObject>();
   final anyMap = TomMap<String, TomObject>();
+}
+
+/// Holds collections of two [TomClass] subclasses that share a simple name.
+///
+/// The element class of each member is fixed by its declaration, so each
+/// collection must fill with instances of its own `ClashingRecord`.
+@tomReflector
+class TestClashingRecordsHolder extends TomClass {
+  final firstList = TomList<clash_first.ClashingRecord>();
+  final secondList = TomList<clash_second.ClashingRecord>();
+  final firstMap = TomMap<String, clash_first.ClashingRecord>();
+  final secondMap = TomMap<String, clash_second.ClashingRecord>();
 }
 
 /// Test class whose only non-scalar member is a nested [TomClass] carrying
@@ -5729,6 +5743,43 @@ void main() {
       expect(tomNull(), equals('tomNull'));
       expect(tomNull.isNull, isFalse);
       expect(tomNull.toString(), equals('~tomNull'));
+    });
+  });
+  group('same-named element classes', () {
+    // Two TomClass subclasses may share a simple name in different libraries.
+    // A collection member's element class is the one its declaration names,
+    // and deserialization must build that one — a lookup by simple name can
+    // only refuse, since the name alone does not say which class is meant.
+    test('OC-1: a list member of each fills with its own class', () {
+      final holder = TestClashingRecordsHolder()
+        ..setValues({
+          'firstList': [
+            {'label': 'a'},
+          ],
+          'secondList': [
+            {'label': 'b'},
+          ],
+        });
+      expect(holder.firstList.length, 1);
+      expect(holder.firstList[0], isA<clash_first.ClashingRecord>());
+      expect(~holder.firstList[0].label, 'a');
+      expect(holder.secondList[0], isA<clash_second.ClashingRecord>());
+      expect(~holder.secondList[0].origin, 'second');
+    });
+
+    test('OC-2: a map member of each fills with its own class', () {
+      final holder = TestClashingRecordsHolder()
+        ..setValues({
+          'firstMap': {
+            'k': {'label': 'a'},
+          },
+          'secondMap': {
+            'k': {'label': 'b'},
+          },
+        });
+      expect(holder.firstMap['k'], isA<clash_first.ClashingRecord>());
+      expect(holder.secondMap['k'], isA<clash_second.ClashingRecord>());
+      expect(~holder.secondMap['k']!.label, 'b');
     });
   });
 }

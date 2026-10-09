@@ -111,6 +111,15 @@
 
 ### Fixed
 
+- **`TomClass.setValues` deserializes collections of same-named classes.** A
+  `TomList<X>` or `TomMap<String, X>` member resolved `X` through
+  `singleElementType` / `mapValueElementType`, which see only the runtime
+  collection and so look `X` up by simple name. Two `TomClass` subclasses
+  sharing a simple name in different libraries made every such member throw
+  `reflector.classmirror.ambiguous_simple_name`. `X` is now read from the
+  member's declaration, and the name lookup is only the fallback for an element
+  type the reflector cannot describe.
+
 - **The internal file guard no longer lets concurrent breakers in
   together.** Breaking an abandoned guard was check-then-delete, and a release
   deleted whatever guard stood at the path, so several waiters reaching the

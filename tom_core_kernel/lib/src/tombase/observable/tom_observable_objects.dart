@@ -1272,6 +1272,33 @@ class TomClass extends TomObject<Map<String, TomObject>>
     return null;
   }
 
+  /// The element class of the collection member [key], read from the
+  /// member's own declaration — the type argument of `TomList<E>`, or the
+  /// value type of `TomMap<K, V>` when [valueOfMap] — or `null` when the
+  /// declaration does not name a reflected class.
+  ///
+  /// The declaration is asked first because it is exact. The fallback,
+  /// `singleElementType` / `mapValueElementType`, sees only the runtime
+  /// collection, whose type arguments Dart exposes as text, so it resolves by
+  /// simple name and refuses when two annotated classes share one. A member is
+  /// always declared, so for a member the declaration answers and the name
+  /// lookup is reached only for an element type the reflector does not cover.
+  ClassMirror? _declaredElementMirror(String key, {required bool valueOfMap}) {
+    try {
+      final getter = (tomReflector.reflectType(runtimeType) as ClassMirror)
+          .instanceMembers[key];
+      if (getter == null) return null;
+      final arguments = getter.returnType.typeArguments;
+      if (arguments.isEmpty) return null;
+      final element = valueOfMap ? arguments.last : arguments.first;
+      return element is ClassMirror ? element : null;
+    } on Object {
+      // A declaration the reflector cannot describe (no type-relation
+      // capability, an uncovered type) leaves the name lookup to answer.
+      return null;
+    }
+  }
+
   void _setMapMember(
     TomMap<dynamic, TomObject<dynamic>> member,
     value,
@@ -1289,7 +1316,8 @@ class TomClass extends TomObject<Map<String, TomObject>>
       // member shape that means a nested collection.
       final memberMirror = member._hasUntypedValues
           ? null
-          : tomReflectionInfo.mapValueElementType(member);
+          : _declaredElementMirror(key, valueOfMap: true) ??
+                tomReflectionInfo.mapValueElementType(member);
       for (var key in value.keys) {
         var element = value[key];
         // `isSubtypeOf`, not `isAssignableTo`: the latter is deliberately
@@ -1342,7 +1370,8 @@ class TomClass extends TomObject<Map<String, TomObject>>
     // value path.
     final memberMirror = member._hasUntypedElements
         ? null
-        : tomReflectionInfo.singleElementType(member);
+        : _declaredElementMirror(key, valueOfMap: false) ??
+              tomReflectionInfo.singleElementType(member);
     final newElements = <TomObject<dynamic>>[];
     for (var element in value) {
       // See `_setMapMember` for why this asks `isSubtypeOf` rather than
