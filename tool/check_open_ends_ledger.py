@@ -71,8 +71,9 @@ HEADING = re.compile(r"^### What is still open\s*$", re.M)
 NEXT_HEADING = re.compile(r"^#{1,6}\s", re.M)
 
 #: The stem of a todo id -- the part before the date code, which is what prose
-#: cites when it writes `tcopen346_ahku` or bare `tcopen346`.
-STEM = re.compile(r"\b(tc[a-z]+\d+)")
+#: cites when it writes `tcopen346_ahku` or bare `tcopen346`. Both families the
+#: corpus holds count: the `tc…` review todos and the `csex…` CodeSpecs ones.
+STEM = re.compile(r"\b((?:tc|csex)[a-z]*\d+)")
 
 SUFFIXES = ("_new", "_changes")
 

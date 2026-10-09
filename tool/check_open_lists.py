@@ -28,7 +28,9 @@ methods that closed it. Nothing noticed.
 - Every other item is open, and names the todo that tracks it.
 
 A todo id is cited by its stem (``tcopen346``) or in full
-(``tcopen346_ahku``); the stem is what is matched. A todo is *finished* when it
+(``tcopen346_ahku``); the stem is what is matched. Both families the quest's
+corpus holds are stems: the ``tc…`` review todos and the ``csex…`` CodeSpecs
+extension todos that built several of the modules. A todo is *finished* when it
 is ``completed`` or ``cancelled``, or when it sits only in the archived or
 deleted files; anything else is *unfinished*.
 
@@ -89,8 +91,8 @@ NEXT_HEADING = re.compile(r"^#{1,6}\s", re.M)
 #: A list item at the left margin.
 ITEM_START = re.compile(r"^(?:[-*]|\d+\.)\s")
 
-#: The stem of a todo id, as prose cites it.
-STEM = re.compile(r"\b(tc[a-z]+\d+)")
+#: The stem of a todo id, as prose cites it — a ``tc…`` or a ``csex…`` todo.
+STEM = re.compile(r"\b((?:tc|csex)[a-z]*\d+)")
 
 #: The closed marker. Bold, so it reads as a verdict rather than as a word in
 #: a sentence that happens to say "closed".
