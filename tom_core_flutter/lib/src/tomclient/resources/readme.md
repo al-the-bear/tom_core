@@ -16,7 +16,7 @@ it; read it back with `get()` or the `~` operator.
 | `TomIntProperty` | `TomProperty<int>`. |
 | `TomDoubleProperty` | `TomProperty<double>`. A configured whole number widens, since no config file can say "double"; it does not narrow and does not parse. |
 | `TomBoolProperty` | `TomProperty<bool>`. |
-| `TomPropertyException` | Raised from the constructor when resolution fails. One type, two `key` codes: `resources.property.not_configured` (absent, no default) and `resources.property.type_mismatch` (present, uncastable — `rootException` holds the `TypeError`). |
+| `TomPropertyException` | Raised from the constructor when resolution fails. One type, two `key` codes: `resources.property.not_configured` (absent or `null`-valued, no default — the message says which) and `resources.property.type_mismatch` (present, uncastable — `rootException` holds the `TypeError`). |
 
 ## Quick start
 

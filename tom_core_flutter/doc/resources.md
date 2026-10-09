@@ -63,6 +63,8 @@ path as much as the success path:
 4. Otherwise, if a default was supplied via `.withDefault`, the default is used.
 5. Otherwise (absent key, no default) construction throws
    `TomPropertyException` with the key `resources.property.not_configured`.
+   Its message distinguishes a key that is absent from one present with a
+   `null` value.
 
 A failure to read the configuration at all is not one of these: it propagates
 as whatever the provider raised, and is never re-reported as a cast failure.
@@ -281,7 +283,7 @@ raises afterwards.
 
 | `key` | Raised when |
 | ----- | ----------- |
-| `resources.property.not_configured` | The key is absent and no default was supplied. |
+| `resources.property.not_configured` | The key resolves to nothing — absent, or present with a `null` value — and no default was supplied. The message says which. |
 | `resources.property.type_mismatch` | The key holds a value that cannot be cast to `T`. |
 
 `parameters` carries the key, plus `expectedType` and `value` on the mismatch
@@ -292,7 +294,10 @@ value's actual runtime type — the message names only the type that was wanted.
 
 - **Absent key without default throws `TomPropertyException`** naming the
   obligatory key (`Obligatory resource <key> not found in configuration
-  resources`). Default *presence* is tracked separately from the default value,
+  resources`). A key present with a `null` value — `app.region:` in YAML —
+  resolves the same way, and the message says so instead
+  (`Obligatory resource <key> is configured without a value`), so the operator
+  is not sent looking for a line that is already there. Default *presence* is tracked separately from the default value,
   so a `.withDefault(key, null)` over a nullable `T` honours the explicit `null`
   rather than treating it as "no default".
 - **Eager and immutable** — the value is captured at construction and never

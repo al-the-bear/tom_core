@@ -223,6 +223,7 @@ declares.
 | `key` | Condition | Message |
 | ----- | --------- | ------- |
 | `resources.property.not_configured` | The key is absent and no default was supplied | `Obligatory resource <key> not found in configuration resources` |
+| `resources.property.not_configured` | The key is present with a `null` value and no default was supplied | `Obligatory resource <key> is configured without a value` |
 | `resources.property.type_mismatch` | The key is present but its value cannot be cast to `T`, and is not an `int` a `double` would accept | `Could not set property of type <T> from value of property <key> with value <value>` |
 
 `parameters` carries `key` for both, and additionally `expectedType` and

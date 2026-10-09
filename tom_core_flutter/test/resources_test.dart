@@ -410,28 +410,64 @@ void main() {
       },
     );
 
-    test('a key configured as null counts as absent', () {
+    test('a key configured as null counts as absent, and the report says it '
+        'is there', () {
       // `getObjectOrNull` returns null both for a key that was never written
       // and for one configured with no value, and the module treats the two
-      // alike. Worth pinning because they look different in a YAML file and
-      // identical here: `app.region:` with no value does not satisfy an
-      // obligatory property.
+      // alike for *resolution*: `app.region:` with no value does not satisfy an
+      // obligatory property. That collapse is the kernel's settled contract —
+      // there is no third state for a lookup to report.
       //
-      // This is the settled contract, not a defect awaiting a fix. There is no
-      // third state for a lookup to report — `exists` returns a `bool` and
-      // `getObjectOrNull` an `Object?` — and the state the two collapse to is
-      // the one an unconfigured key should get anyway. Every accessor on both
-      // providers behaves this way, for flat and for dotted paths alike. What a
-      // caller who genuinely needs the distinction reaches for is the provider's
-      // own map, pinned two tests below.
+      // The *report* must not repeat it. Telling the operator the key was not
+      // found sends them looking at the one line of their file that is already
+      // there; the failure says the key is configured without a value.
       installConfig({'app.region': null});
       expect(
         () => TomStringProperty('app.region'),
         throwsA(
-          isA<Exception>().having(
+          isA<TomPropertyException>()
+              .having((e) => e.key, 'key', 'resources.property.not_configured')
+              .having(
+                (e) => e.toString(),
+                'message',
+                allOf(
+                  contains('Obligatory'),
+                  contains('app.region'),
+                  contains('configured without a value'),
+                  isNot(contains('not found')),
+                ),
+              ),
+        ),
+      );
+    });
+
+    test('a dotted key configured as null is reported the same way', () {
+      installConfig({
+        'app': {'region': null},
+      });
+      expect(
+        () => TomStringProperty('app.region'),
+        throwsA(
+          isA<TomPropertyException>().having(
             (e) => e.toString(),
             'message',
-            allOf(contains('Obligatory'), contains('app.region')),
+            contains('configured without a value'),
+          ),
+        ),
+      );
+    });
+
+    test('a key that is truly absent is still reported as not found', () {
+      installConfig({
+        'app': {'other': 1},
+      });
+      expect(
+        () => TomStringProperty('app.region'),
+        throwsA(
+          isA<TomPropertyException>().having(
+            (e) => e.toString(),
+            'message',
+            allOf(contains('not found'), isNot(contains('without a value'))),
           ),
         ),
       );

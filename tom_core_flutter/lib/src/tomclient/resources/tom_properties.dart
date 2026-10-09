@@ -10,7 +10,7 @@ import '../little_things/client_exceptions.dart';
 ///
 /// | `key` | Condition |
 /// | ----- | --------- |
-/// | `resources.property.not_configured` | The key is absent and the property declared no default. |
+/// | `resources.property.not_configured` | The key resolves to nothing — absent, or present with a `null` value — and the property declared no default. The message says which. |
 /// | `resources.property.type_mismatch` | The key holds a value that cannot be cast to the property's `T`. |
 ///
 /// Both are raised during construction, so catching them means wrapping the
@@ -237,12 +237,42 @@ class TomProperty<T> {
       }
     } else if (_hasDefault) {
       _value = _defaultValue;
+    } else if (_isConfiguredWithoutValue()) {
+      throw TomPropertyException(
+        'resources.property.not_configured',
+        "Obligatory resource $_propertyKey is configured without a value",
+        parameters: {'key': _propertyKey},
+      );
     } else {
       throw TomPropertyException(
         'resources.property.not_configured',
         "Obligatory resource $_propertyKey not found in configuration resources",
         parameters: {'key': _propertyKey},
       );
+    }
+  }
+
+  /// Whether the key is in the config map with a `null` value — `app.region:`
+  /// in a YAML file — rather than absent.
+  ///
+  /// Resolution treats the two alike, because the kernel's lookup cannot tell
+  /// them apart. The *report* must, or it tells the operator the key was not
+  /// found and sends them to the one line of their file that is already there.
+  ///
+  /// Asked of the provider's own map, on the failure path only, so a
+  /// successful resolution still reads the provider once. It never throws: a
+  /// failure report that threw while describing itself would replace the
+  /// diagnosis with its own exception.
+  bool _isConfiguredWithoutValue() {
+    try {
+      final resources = _config.resources;
+      if (resources.containsKey(_propertyKey)) {
+        return resources[_propertyKey] == null;
+      }
+      final tree = lookupObjectInTree(resources, _propertyKey);
+      return tree.found && tree.value == null;
+    } on Object {
+      return false;
     }
   }
 

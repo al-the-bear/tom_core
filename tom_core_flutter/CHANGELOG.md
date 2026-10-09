@@ -17,6 +17,13 @@
 
 ### Changed
 
+- **A `null`-valued config key is reported as such.** An obligatory
+  `TomProperty` over `app.region:` still fails with
+  `resources.property.not_configured`, but the message now says *"is configured
+  without a value"* instead of *"not found in configuration resources"*, which
+  sent the operator to a line already in the file. The check reads the
+  provider's own map on the failure path only.
+
 - Follows `tom_flutter_ui`'s rename of its last unprefixed public types
   (`TomValidators`, `TomValidationError`, `TomSelectableItem`, `TomFileRef`, the
   `Tom…Event` family, …).
