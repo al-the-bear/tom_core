@@ -77,6 +77,11 @@
 
 ### Changed
 
+- **A health analysis is never started twice.** A timed-out analysis cannot
+  be cancelled, so `TomHealthServer.verdictOf` keeps one analysis in flight per
+  analyzer: a probe arriving while it is pending waits on it under its own
+  deadline. An analyzer that hangs on every probe now leaves one pending future
+  behind instead of one per probe.
 - **A typed `TomConfig` reads the text of its type.** A YAML
   `${VAR:default}` expansion is written back into the tree as text, so
   `port: ${DB_PORT:3306}` threw for `TomIntConfig` while `port: 3306` read.

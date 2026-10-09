@@ -244,6 +244,15 @@ A synchronous throw — an `analyzeHealth` that is not `async` and raises before
 returning a future — is caught too, because the call itself sits inside the
 guarded block rather than only the future it returns.
 
+**A timed-out analysis is not started again while it is still running.** A
+deadline stops the waiting, not the work — Dart cannot abort a future in flight
+— so the analysis a probe gave up on keeps running. The next probe does not
+start a second one beside it: it waits on the one still pending, under its own
+deadline, and only a probe after that analysis has answered asks afresh. An
+analyzer that hangs on every probe therefore leaves one pending future behind,
+not one per probe. The deadline that stops the *work* is still the analyzer's
+own, which is why an analyzer touching anything remote should carry one.
+
 ```dart
 TomHealthServer.installHealthTimeout(const Duration(seconds: 2));
 ```

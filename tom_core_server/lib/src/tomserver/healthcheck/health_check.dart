@@ -397,16 +397,19 @@ class TomHealthServer implements TomHealthService {
   /// [Future.timeout], so the call itself is inside the guarded block.
   ///
   /// A timed-out analyzer is **not** cancelled: `Future.timeout` stops the
-  /// waiting, not the work, and Dart has no way to abort a future in flight. An
-  /// analyzer that hangs on every probe therefore accumulates pending futures
-  /// at probe frequency, which is one more reason for an analyzer that touches
-  /// anything remote to carry its own, shorter deadline.
+  /// waiting, not the work, and Dart has no way to abort a future in flight.
+  /// So an analysis is never started twice: a probe that arrives while the
+  /// analyzer's previous analysis is still pending waits on that one, under
+  /// its own deadline, and only a probe after it has answered asks afresh. An
+  /// analyzer that hangs on every probe therefore costs one pending future, not
+  /// one per probe — and an analyzer that touches anything remote should still
+  /// carry its own, shorter deadline, the only one that stops the work.
   static Future<TomHealthStatus> verdictOf(
     TomHealthAnalyzer analyzer,
     String probe,
   ) async {
     try {
-      return await analyzer.analyzeHealth().timeout(_healthTimeout);
+      return await _analysisOf(analyzer).timeout(_healthTimeout);
     } on TimeoutException {
       return TomHealthStatus.unhealthy(
         'TIMEOUT: the $probe check did not answer within $_healthTimeout',
@@ -414,6 +417,27 @@ class TomHealthServer implements TomHealthService {
     } catch (error) {
       return TomHealthStatus.unhealthy('FAILED: the $probe check threw $error');
     }
+  }
+
+  /// The analysis of [analyzer] still in flight, keyed weakly by the analyzer
+  /// so a replaced one is not kept alive by its last answer.
+  static final Expando<Future<TomHealthStatus>> _pending = Expando(
+    'pending health analysis',
+  );
+
+  /// The analysis [analyzer] is already running, or a new one when none is.
+  ///
+  /// The entry is cleared when the analysis completes, whether it answered or
+  /// threw, and only if it is still the current one.
+  static Future<TomHealthStatus> _analysisOf(TomHealthAnalyzer analyzer) {
+    final running = _pending[analyzer];
+    if (running != null) return running;
+    final analysis = analyzer.analyzeHealth();
+    _pending[analyzer] = analysis;
+    analysis.whenComplete(() {
+      if (identical(_pending[analyzer], analysis)) _pending[analyzer] = null;
+    }).ignore();
+    return analysis;
   }
 
   /// The HTTP response one [status] is served as.

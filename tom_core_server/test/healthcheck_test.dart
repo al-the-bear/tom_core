@@ -488,6 +488,32 @@ void main() {
       );
     });
 
+    test('a hanging analyzer is not started again while it is still '
+        'pending', () async {
+      // A timed-out analysis cannot be cancelled -- `Future.timeout` stops the
+      // waiting, not the work -- so starting a fresh one on every probe would
+      // leave one more pending future behind each time. A probe that arrives
+      // while the previous analysis is still running waits on that one, under
+      // its own deadline, so an analyzer that hangs on every probe costs one
+      // pending future rather than one per probe.
+      TomHealthServer.installHealthTimeout(const Duration(milliseconds: 50));
+      final analyzer = _GatedAnalyzer();
+
+      for (var i = 0; i < 3; i++) {
+        final verdict = await TomHealthServer.verdictOf(analyzer, 'readiness');
+        expect(verdict.message, contains('TIMEOUT'));
+      }
+      expect(analyzer.started, 1, reason: 'one analysis, three probes');
+
+      // Once it answers, the next probe asks afresh.
+      analyzer.release(const TomHealthStatus.healthy());
+      await Future<void>.delayed(Duration.zero);
+      analyzer.answerNow = true;
+      final after = await TomHealthServer.verdictOf(analyzer, 'readiness');
+      expect(after.isHealthy, isTrue);
+      expect(analyzer.started, 2);
+    });
+
     test('verdictOf is the seam a third probe route reuses', () async {
       // Public so a deployment adding its own probe path gets the deadline and
       // the failure handling rather than a second, thinner spelling of them.
@@ -593,4 +619,26 @@ void main() {
       expect(annotation, contains('logRequests: false'));
     });
   });
+}
+
+/// An analyzer whose first analysis stays pending until [release] is called,
+/// and which counts how many analyses were started.
+class _GatedAnalyzer extends TomHealthAnalyzer {
+  final Completer<TomHealthStatus> _gate = Completer();
+
+  /// How many times [analyzeHealth] was called.
+  int started = 0;
+
+  /// When set, an analysis answers healthy at once instead of waiting.
+  bool answerNow = false;
+
+  void release(TomHealthStatus status) => _gate.complete(status);
+
+  @override
+  Future<TomHealthStatus> analyzeHealth() {
+    started++;
+    return answerNow
+        ? Future.value(const TomHealthStatus.healthy())
+        : _gate.future;
+  }
 }
