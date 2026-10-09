@@ -1976,12 +1976,14 @@ class TomExpansionPanel {
         uiStateController: uiStateController,
         child: headerBuilder(context, isExpanded),
       ),
+      // The header gate joins the group for the panel; this one only gates.
       body: TomAuthGate(
         tomId: tomId,
         tomGroup: tomGroup,
         scope: scope,
         authorizer: authorizer,
         uiStateController: uiStateController,
+        joinsGroup: false,
         child: body,
       ),
       isExpanded: isExpanded,

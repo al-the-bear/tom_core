@@ -2048,7 +2048,9 @@ class TomSnackBarAction extends SnackBarAction with TomWidgetMixin {
          disabledTextColor:
              disabledTextColor ??
              TomCtr.color(_p(tomId, scope, 'disabledTextColor')),
-       );
+       ) {
+    tomGroup?.register(this);
+  }
 
   /// Helper to build full path with suffix.
   static String? _p(String? tomId, TomScope? scope, String suffix) {

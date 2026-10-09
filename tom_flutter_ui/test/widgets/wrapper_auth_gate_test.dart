@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
@@ -363,4 +365,138 @@ void main() {
       },
     );
   });
+
+  // Group membership. Every Tom widget joins its `tomGroup` on construction —
+  // the kernel's contract, and what `members`, `memberCount`, `findMember`,
+  // `isUniform` and `mostRestrictive` read. A gated slot's member is its gate:
+  // the plain classes and private-State widgets around it have no lifecycle
+  // of their own to register from.
+  group('a gated wrapper is a member of its group exactly once', () {
+    TomAuthorizationGroup group0() => TomAuthorizationGroup('g');
+
+    setUp(() => TomAuthorization.adapter = _MapAuthAdapter({}));
+
+    test('GM-1: a gate with a group joins it on construction', () {
+      final group = group0();
+      final gate = TomAuthGate(
+        tomId: 'x',
+        tomGroup: group,
+        child: const Text('s'),
+      );
+      expect(group.memberCount, 1);
+      expect(group.findMember('x'), same(gate));
+    });
+
+    test('GM-2: a gate told not to join resolves through the group but is '
+        'not a member', () {
+      TomAuthorization.adapter = _MapAuthAdapter({'g': TomAuthState.read});
+      final group = TomAuthorizationGroup('g', mode: AuthGroupMode.controlsAll);
+      final gate = TomAuthGate(
+        tomId: 'x',
+        tomGroup: group,
+        joinsGroup: false,
+        child: const Text('s'),
+      );
+      expect(group.memberCount, 0);
+      expect(gate.getAuth(), TomAuthState.read);
+    });
+
+    test('GM-3: resolve answers what a gate would and joins nothing', () {
+      TomAuthorization.adapter = _MapAuthAdapter({'g': TomAuthState.read});
+      final group = TomAuthorizationGroup('g', mode: AuthGroupMode.controlsAll);
+      final state = TomAuthGate.resolve(tomId: 'x', tomGroup: group);
+      expect(group.memberCount, 0);
+      expect(
+        state,
+        TomAuthGate(
+          tomId: 'x',
+          tomGroup: group,
+          joinsGroup: false,
+          child: const Text('s'),
+        ).getAuth(),
+      );
+    });
+
+    test('GM-4: the private-State wrappers join once, through their gate', () {
+      final wrappers = <String, Widget Function(TomAuthorizationGroup)>{
+        'TomSnackBar': (g) =>
+            TomSnackBar(tomId: 'w', tomGroup: g, content: const Text('c')),
+        'TomAnimatedPositioned': (g) => TomAnimatedPositioned(
+          tomId: 'w',
+          tomGroup: g,
+          duration: Duration.zero,
+          child: const Text('c'),
+        ),
+        'TomAnimatedPositionedDirectional': (g) =>
+            TomAnimatedPositionedDirectional(
+              tomId: 'w',
+              tomGroup: g,
+              duration: Duration.zero,
+              child: const Text('c'),
+            ),
+        'TomSnackBarAction': (g) => TomSnackBarAction(
+          tomId: 'w',
+          tomGroup: g,
+          label: 'undo',
+          onPressed: () {},
+        ),
+      };
+      for (final entry in wrappers.entries) {
+        final group = group0();
+        entry.value(group);
+        expect(group.memberCount, 1, reason: entry.key);
+        expect(group.findMember('w'), isNotNull, reason: entry.key);
+      }
+    });
+
+    test('GM-5: an expansion panel joins once although it gates two slots', () {
+      final group = group0();
+      final panel = TomExpansionPanel(
+        tomId: 'p',
+        tomGroup: group,
+        headerBuilder: (_, _) => const Text('head'),
+        body: const Text('body'),
+      ).toPanel();
+      expect(group.memberCount, 0, reason: 'the body gate does not join');
+      expect((panel.body as TomAuthGate).joinsGroup, isFalse);
+      // The header gate is built per build; one build is one member.
+      panel.headerBuilder(_FakeContext(), false);
+      expect(group.memberCount, 1);
+    });
+
+    test('GM-6: every TomWidgetMixin widget registers in its constructor or '
+        'gates its slot through a TomAuthGate carrying its group', () {
+      // Read from source because the property is about *where* membership is
+      // established: a widget that joins only from a `State` lifecycle misses
+      // the instance a parent rebuild hands it, and one that joins nowhere is
+      // invisible to every inspection helper while still being narrowed.
+      final classDecl = RegExp(
+        r'^class (\w+)[^{]*\bwith TomWidgetMixin\b[^{]*\{',
+        multiLine: true,
+      );
+      final checked = <String>[];
+      final missing = <String>[];
+      for (final file in Directory('lib').listSync(recursive: true)) {
+        if (file is! File || !file.path.endsWith('.dart')) continue;
+        final source = file.readAsStringSync();
+        for (final match in classDecl.allMatches(source)) {
+          final next = source.indexOf(
+            RegExp(r'^class ', multiLine: true),
+            match.end,
+          );
+          final body = source.substring(match.start, next < 0 ? null : next);
+          checked.add(match.group(1)!);
+          final registers = body.contains('tomGroup?.register(this)');
+          final gates =
+              body.contains('TomAuthGate(') &&
+              body.contains('tomGroup: tomGroup');
+          if (!registers && !gates) missing.add(match.group(1)!);
+        }
+      }
+      expect(checked.length, greaterThanOrEqualTo(18));
+      expect(missing, isEmpty);
+    });
+  });
 }
+
+class _FakeContext extends Fake implements BuildContext {}

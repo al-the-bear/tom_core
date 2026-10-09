@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../widget_base/tom_auth_layers.dart';
+import '../widget_base/tom_scope_path.dart';
 import 'tom_widget_mixin.dart';
 
 /// Applies Tom authorization to a subtree that cannot apply it itself.
@@ -35,6 +37,13 @@ import 'tom_widget_mixin.dart';
 ///   child: Text(employee.salary),
 /// )
 /// ```
+///
+/// A gate with a [tomGroup] joins it on construction, like every other Tom
+/// widget: the gate *is* the group member for the slot it governs, because the
+/// widget or plain class around it has no lifecycle of its own to register
+/// from. A host that gates two slots under one id — `TomExpansionPanel`'s
+/// header and body — lets one gate join and passes [joinsGroup] `false` to the
+/// other, so the group counts the panel once.
 class TomAuthGate extends StatelessWidget with TomWidgetMixin {
   /// Wraps [child] in this widget's authorization.
   ///
@@ -42,15 +51,20 @@ class TomAuthGate extends StatelessWidget with TomWidgetMixin {
   /// [tomGroup], [authorizer] and [uiStateController] say. Only a gate with
   /// none of the four returns [child] untouched — nothing to look up and
   /// nobody to ask means nothing to narrow.
-  const TomAuthGate({
+  ///
+  /// Not `const`: joining [tomGroup] is a side effect of construction.
+  TomAuthGate({
     super.key,
     required this.tomId,
     this.tomGroup,
     this.scope,
     this.authorizer,
     this.uiStateController,
+    this.joinsGroup = true,
     required this.child,
-  });
+  }) {
+    if (joinsGroup) tomGroup?.register(this);
+  }
 
   @override
   final String? tomId;
@@ -70,6 +84,11 @@ class TomAuthGate extends StatelessWidget with TomWidgetMixin {
   /// The subtree this gate governs.
   final Widget child;
 
+  /// Whether this gate registers with [tomGroup]. `false` only for a second
+  /// gate over a host another gate already represents; authorization is
+  /// resolved through the group either way.
+  final bool joinsGroup;
+
   /// Whether any of the four layers has something to say about this slot.
   ///
   /// All four are checked, not just [tomId] and [tomGroup]: an [authorizer] or
@@ -87,22 +106,25 @@ class TomAuthGate extends StatelessWidget with TomWidgetMixin {
   /// `DataRow` and `DataColumn` decide their own visibility *before* the table
   /// is built — a row cannot hide itself once `DataTable` has demanded one
   /// cell per column from it, so the caller filters instead. They still have
-  /// to answer from the same four layers as everything else, and this is how
-  /// they reach them without a place in the tree.
+  /// to answer from the same four layers as everything else, so this resolves
+  /// through [TomAuthLayers.resolve] with the path and scope a gate would
+  /// derive — and, being no widget, joins no group.
   static TomAuthState resolve({
     required String? tomId,
     TomAuthorizationGroup? tomGroup,
     TomScope? scope,
     TomAuthorizer? authorizer,
     TomUIStateController? uiStateController,
-  }) => TomAuthGate(
-    tomId: tomId,
-    tomGroup: tomGroup,
-    scope: scope,
-    authorizer: authorizer,
-    uiStateController: uiStateController,
-    child: const SizedBox.shrink(),
-  ).getAuth();
+  }) {
+    final effectiveScope = scope ?? TomScope.current;
+    return TomAuthLayers.resolve(
+      basePath: TomScopePath.resolve(tomId, effectiveScope),
+      group: tomGroup,
+      groupScope: effectiveScope,
+      authorizer: authorizer,
+      uiStateController: uiStateController,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

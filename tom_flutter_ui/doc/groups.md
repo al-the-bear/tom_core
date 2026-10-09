@@ -50,7 +50,11 @@ final city   = TomTextField(tomId: 'city',   tomGroup: shipping);
 
 Members are tracked as **weak references**, so a group never keeps a disposed
 widget alive; `memberCount`, `members`, and `isEmpty` prune stale entries on
-access. `register` / `unregister` (surfaced on widgets as `registerWithGroup` /
+access. A member joins when it is constructed, and a pruned entry is
+one the garbage collector has already reclaimed — so between a rebuild (which
+constructs a fresh instance) or an unmount and the next collection, the
+inspection helpers can still count the replaced instance. Authorization itself
+is unaffected: every widget resolves its own state. `register` / `unregister` (surfaced on widgets as `registerWithGroup` /
 `unregisterFromGroup`) manage membership, and `findMember(tomId)` looks one up.
 
 ## Group modes
@@ -139,9 +143,20 @@ ExpansionPanel(
     tomId: 'panel',
     child: const Text('Basic info'),
   ),
-  body: const TomAuthGate(tomId: 'panel', child: Text('...')),
+  // One gate joins the group for the panel; the second only gates.
+  body: TomAuthGate(tomId: 'panel', joinsGroup: false, child: Text('...')),
 );
 ```
+
+A gate with a `tomGroup` **joins it on construction**, like every other Tom
+widget, so the slot it governs is a member that `memberCount`, `findMember` and
+the other inspection helpers see. The gate is the member because the wrapper
+around it has no lifecycle to register from — a plain class has none, and a
+private `State` is out of reach. A host that gates two slots under one id
+passes `joinsGroup: false` to the second gate, which is what
+`TomExpansionPanel` does with its body; the gate still resolves through the
+group, it is just not counted twice. For the same reason `TomAuthGate` is not
+`const`: joining the group is a side effect of building one.
 
 It is a widget rather than a helper function because the `read` and `disabled`
 treatments read the ambient `TomTheme`, which only exists once there is a
@@ -179,7 +194,8 @@ resource rule leaves the slot hidden, and a `uiStateController` can never
 widen what the layers before it decided.
 
 `TomAuthGate.resolve(...)` takes the same five inputs and answers the question
-without building anything — it is what `TomDataCell.authState`,
+without building anything — it calls the shared four-layer resolver directly
+with the path and scope a gate would derive, so it joins no group — it is what `TomDataCell.authState`,
 `TomDataRow.authState` and `TomDataColumn.authState` call, including from
 `TomDataCell.empty`, which renders nothing but still reports.
 
@@ -319,7 +335,7 @@ ceiling for both.
 | `flutter` | package | `tom_auth_gate.dart`, `tom_widget_mixin.dart` | `package:flutter/widgets.dart` only |
 | `tom_core_kernel` | package | `tom_auth_gate.dart`, `tom_widget_mixin.dart` | `TomAuthorizationGroup`, `AuthGroupMode`, `TomAuthState`, `TomAuthorization`, `TomAuthorizer`, `TomScope`, `TomCtr` |
 | [theme](theme.md) | module | `tom_widget_mixin.dart` | the read-only style for the `read` treatment |
-| [widget_base](widget_base.md) | module | `tom_widget_mixin.dart` | `TomAuthLayers`, `TomCtr`, `TomScopePath`, `TomWidgetSurface` |
+| [widget_base](widget_base.md) | module | `tom_auth_gate.dart`, `tom_widget_mixin.dart` | `TomAuthLayers`, `TomCtr`, `TomScopePath`, `TomWidgetSurface` |
 
 > The group and mixin resolution logic is pure and needs no widget tree (only
 > `applyAuthState` does), but the package barrel pulls in `flutter/material`

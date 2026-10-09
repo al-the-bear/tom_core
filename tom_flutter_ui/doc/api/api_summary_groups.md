@@ -21,6 +21,7 @@ Applies Tom authorization to a subtree that cannot apply it itself.
 | `authorizer` | `final TomAuthorizer? authorizer` |  |
 | `build` | `Widget build(BuildContext context)` |  |
 | `child` | `final Widget child` | The subtree this gate governs. |
+| `joinsGroup` | `final bool joinsGroup` | Whether this gate registers with [tomGroup]. |
 | `resolve` | `static TomAuthState resolve({ required String? tomId, TomAuthorizationGroup? tomGroup, TomScope? scope, TomAuthorizer? authorizer, TomUIStateController? uiStateController})` | The state a gate with these inputs would apply, without building one. |
 | `scope` | `final TomScope? scope` |  |
 | `tomGroup` | `final TomAuthorizationGroup? tomGroup` |  |
