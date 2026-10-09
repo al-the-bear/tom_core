@@ -776,6 +776,14 @@ the parameter's declared type: a registration made before
 `initializeBeanContext()`, or a component the pass builds first. Construction
 follows the constructors, not the order the components were declared in.
 
+*Exactly* is the rule: a bean registered under a subtype of the parameter's
+type — a concrete component keyed under its own class while the parameter names
+its interface — does not supply it. Register it under the type the parameter
+names. Matching by assignability is declined: the reflector can relate two
+types only when it covers both, so the rule would hold for some parameters and
+not others, and a subtype match could find several beans where the exact key
+finds one.
+
 ```dart
 @tomReflector
 @TomComponent(OrderService)
