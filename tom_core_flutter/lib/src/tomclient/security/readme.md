@@ -73,15 +73,14 @@ registry is the only thing `Tom2FAFlowPanel` consults. There is no annotation
 and no scan: a mechanism the application has not registered does not appear in
 the chooser, whatever else it declares about itself.
 
-There *was* an annotation — a `TomClient2FAAdaptor` marker, exported from the
-barrel and documented as a route a runtime could enumerate, which nothing
-enumerated. It was removed rather than relabelled, because a reader who finds an
-annotation in a barrel reasonably concludes that annotating a class does
-something, ships a mechanism annotated and unregistered, and finds out at the
-chooser. The suite holds the sentence above to the code: one insertion site into
-the catalog, no reflection anywhere in the module, and no generated mirrors for
-it in `build.yaml` — the last being what a scan would need and the half nobody
-would think to check.
+An annotation is not offered on purpose. A reader who finds an annotation in a
+barrel reasonably concludes that annotating a class does something, ships a
+mechanism annotated and unregistered, and finds out at the chooser. The server
+is different: its `@Tom2FAAdaptor` is genuinely enumerated by reflection, so the
+annotation exists exactly where something reads it. The suite holds the
+sentence above to the code: one insertion site into the catalog, no reflection
+anywhere in the module, and no generated mirrors for it in `build.yaml` — the
+last being what a scan would need and the half nobody would think to check.
 
 Registration is a **start-up** call. The registry is not sealed and the flow
 resolves the mechanism on every build, so a registration made during a live flow
