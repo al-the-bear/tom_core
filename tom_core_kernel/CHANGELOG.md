@@ -111,6 +111,15 @@
 
 ### Fixed
 
+- **The internal file guard no longer lets concurrent breakers in
+  together.** Breaking an abandoned guard was check-then-delete, and a release
+  deleted whatever guard stood at the path, so several waiters reaching the
+  staleness boundary at once could each delete a fresh guard and hold the file
+  together. Breakers now take turns through a sibling `<lock>.break` guard
+  (itself cleared once stale), and a writer releases only a guard carrying its
+  own acquisition token. Found by `test/file_primitives_test.dart`, the first
+  tests of `atomic_file.dart` and `file_mutex.dart` on their own.
+
 - **A `TomList<TomString>` now binds to a multi-select field.** `getValues()`
   serializes an observable list as a plain `List<dynamic>`, and a member that
   holds a whole list as one value — `TomObject<List<String>>`, which is what

@@ -633,7 +633,7 @@ between it and the throw site had rewritten.
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `little_things.dart` | `Zone`, behind both zone accessors |
 | `dart:io` | dart | `atomic_file.dart`, `file_mutex.dart` | `File` — the staging file `atomic_file.dart` renames over its target, and the lock file `file_mutex.dart` creates and removes. These two helpers are the module's non-neutral corner: they do not load on web, while everything else here does. They are not the package's only one — `logging`, `scheduling` and `shutdown_cleanup` import `dart:io` as well |
-| `dart:math` | dart | `atomic_file.dart` | `Random.secure()` for the staging file's name suffix, which is paired with the pid so two writers racing on one path cannot choose the same scratch name |
+| `dart:math` | dart | `atomic_file.dart`, `file_mutex.dart` | `Random.secure()` for the staging file's name suffix, which is paired with the pid so two writers racing on one path cannot choose the same scratch name, and for each guard acquisition's token, which is how a writer tells its own guard from the next holder's |
 | `stack_trace` | package | `exception_base.dart`, `little_things.dart` | `Chain.forTrace(...).foldFrames(...)` — flattening an async trace and folding out framework noise |
 | `tom_basics` | package | `exception_base.dart`, `little_things.dart` | `TomBaseException` (the superclass of `TomException`), `TomLoggable` (which it implements), and `tomLog` for `autoLog` and `tomPrintStackTrace` |
 | [http_connection](../http_connection/http_connection.md) | module | `exception_base.dart` | `TomServerCallError`, the type of `TomException`'s optional `serverCallError` field |
