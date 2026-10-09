@@ -40,6 +40,14 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// It is `null` when no subtree was hoisted, which is why [builder]'s second
 /// parameter is nullable: a builder that asks for a child it was not given is a
 /// mistake at the call site, and `child!` says where to look.
+///
+/// **There is no equality check before a rebuild**, as there is none in
+/// [ValueListenableBuilder]: the filter belongs at the source. A `TomObject`
+/// notifies only when its value changes, so the rebuilds left are those of a
+/// builder that renders less than the observable carries — a threshold over a
+/// number, one field of a `TomClass`. Such a builder still re-runs; what it
+/// returns is diffed by Flutter like any other widget, and a part that cannot
+/// change is hoisted through [child].
 class TomObservingWidget<T extends TomObservable> extends StatefulWidget {
   /// Creates a widget that rebuilds [builder] whenever [subState] notifies.
   ///

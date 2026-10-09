@@ -70,6 +70,14 @@ every notification it calls `setState`, re-invoking `builder` with the (current)
 observable. The builder receives the observable itself, so read its value with
 `~state` inside the closure.
 
+There is no equality check before a rebuild, as there is none in
+`ValueListenableBuilder`: the filter belongs at the source. A `TomObject`
+notifies only when its value changes, so the rebuilds that remain are those of
+a builder that renders less than the observable carries — a threshold over a
+number, or one field of a `TomClass`. That builder still re-runs; its output is
+diffed by Flutter like any other widget, and the part that cannot change is
+hoisted through `child`.
+
 | Parameter | Type | Meaning |
 | --------- | ---- | ------- |
 | `key` | `Key?` | Standard widget key — and the lever that selects between the two behaviours below |
