@@ -516,6 +516,11 @@ installs an empty provider —
   server URL. `TomSetting`'s constructor is private, so a validating subclass
   cannot be substituted — range, format and enum checks are the caller's, after
   `load()` or at the point of use.
+- **`load()` adopts the store; it does not merge into it.** Every declared
+  setting ends at the store's override or at its baseline, so a setting the
+  store does not carry is reset — which is what adopting a store means, and
+  what makes `load()` idempotent. There is no operation that layers extra
+  overrides onto the current ones: set each through its setting, then `save()`.
 - **Two saves that genuinely overlap lose one change.** Read-then-write is not
   one operation, so when two holders over one location save at the same moment
   — A reads, B reads, B writes, A writes — A's write carries forward the
