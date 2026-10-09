@@ -840,22 +840,21 @@ would silently drop `port` and `pool`.
 
 Substitution runs *after* the YAML parser has assigned types, and writes its
 expansion back into the tree as text. The placeholder and the literal it stands
-for therefore do not resolve alike:
+for therefore arrive differently in the map — and resolve alike through a typed
+`TomConfig`:
 
 | Written in YAML | Value in the map | `TomIntConfig` |
 | --------------- | ---------------- | -------------- |
-| `port: 3306` | `3306` (`int`) | resolves |
-| `port: ${DB_PORT:3306}` | `'3306'` (`String`) | throws |
+| `port: 3306` | `3306` (`int`) | `3306` |
+| `port: ${DB_PORT:3306}` | `'3306'` (`String`) | `3306` |
 
-This holds even when `DB_PORT` is unset and the default supplies the same
-digits. Substitution is the only configuration source that reaches `TomConfig`
-untyped — the environment, a `.env` file and the command line each pass
-through a converting reader — and `TomConfig` casts rather than parses. So
-read a substituted number as text and parse it:
-
-```dart
-final port = int.parse(~TomStringConfig('database.port'));
-```
+The map keeps the text, because a value a `String` setting reads must not be
+retyped for it — a numeric password substituted from the environment is still a
+password. A typed `TomConfig` whose value is a `String` reads it as the text of
+its type, by the table the environment, a `.env` file and the command line
+already go through (`TomArgs.convertToObjectMap`): `'3306'` for an `int`,
+`'2.5'` for a `double`, `'true'` for a `bool`. Text that is not of the wanted
+type is still `configuration.tom_config.property_type_mismatch`.
 
 ### A missing file throws, unless you ask for the tolerant loader
 
@@ -926,12 +925,6 @@ started with no configuration whose first symptom appears several layers later.
   `TomConfig` built against one provider and read after another was installed,
   which the API cannot distinguish from an intentional snapshot.
   <!-- pinned: test/configuration_test.dart › a TomConfig does not observe a provider installed later -->
-- **A substituted YAML value is text.** `${VAR}` expansion runs after the YAML
-  parser has assigned types, so `port: ${DB_PORT:3306}` yields the `String`
-  `'3306'` where `port: 3306` yields an `int`, and `TomConfig` casts rather
-  than parses. See [A substituted value is a
-  string](#a-substituted-value-is-a-string).
-  <!-- pinned: test/configuration_test.dart › a substituted value is text, where a literal one is typed -->
 - **Nothing refuses to start on the checked-in TLS pair.** `certificateChain`
   and `privateKey` default to a throwaway `localhost` certificate committed to
   this repository — convenient for local development, and worthless as
@@ -956,6 +949,9 @@ started with no configuration whose first symptom appears several layers later.
   merely reported but blocks the boot, and the reason is that the alternative is
   a server signing with a published passphrase and saying nothing. Contrast the
   TLS pair above, which fails open.
+  The configuration carries the key material and nothing else of signing: the
+  algorithm, the issuer, the audience and the expiry are set where a token is
+  minted, by the code that mints it, because they are that code's policy.
   <!-- pinned: test/configuration_test.dart › the JWT key material defaults to nothing at all -->
 
 ## Core Components
@@ -1039,6 +1035,6 @@ falsifiable from the suite, as is each limitation it admits to.
 | `shelf` | package | `base_server_configuration.dart` | the `Middleware` / `Handler` / `Request` / `Response` types used by the configuration's handler fields |
 | `tom_core_kernel` | package | `base_server_configuration.dart`, `runtime_environment.dart`, `yaml_resources.dart` | `tomReflector`, `getObjectFromTree`, `mergeMapsOneSided`, `makeCleanJsonMap`, `substituteEnvVars`, `TomRuntime` |
 | `yaml` | package | `yaml_resources.dart` | YAML parsing for `TomYaml` |
-| [cmdline](cmdline.md) | module | `base_server_configuration.dart`, `runtime_environment.dart` | `TomArgs` and `TomEnvFile` (source parsing/merging) |
+| [cmdline](cmdline.md) | module | `base_server_configuration.dart`, `runtime_environment.dart`, `tom_config.dart` | `TomArgs` and `TomEnvFile` (source parsing/merging); `TomArgs.convertToObjectMap` also reads a text value as the type a `TomConfig` wants |
 | [little_things](little_things.md) | module | `tom_config.dart` | `TomServerException` |
 | [server](server.md) | module | `base_server_configuration.dart` | `tomLoggingMiddleware` |

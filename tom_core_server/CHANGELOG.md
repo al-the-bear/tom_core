@@ -77,6 +77,19 @@
 
 ### Changed
 
+- **A typed `TomConfig` reads the text of its type.** A YAML
+  `${VAR:default}` expansion is written back into the tree as text, so
+  `port: ${DB_PORT:3306}` threw for `TomIntConfig` while `port: 3306` read.
+  After a failed cast, a `String` value is now read by the
+  `TomArgs.convertToObjectMap` table the environment, `.env` and command-line
+  sources already use: `'3306'` resolves for an `int`, `'2.5'` for a `double`,
+  `'true'` for a `bool`. The map keeps the text, and a `TomStringConfig` reads
+  it unchanged; text of the wrong type is still
+  `configuration.tom_config.property_type_mismatch`.
+- **`TomArgs` trims a key and a value** as `TomEnvFile` does, so ` k = v ` is
+  `k` → `v` from either source, quoted whitespace is kept and a whitespace-only
+  key is skipped.
+
 - **`TomDbColumn` takes no type parameters, and one resolver answers what a
   column is stored as.** An annotation reaches the persistence layer through
   reflection, which reconstructs it without type arguments, so

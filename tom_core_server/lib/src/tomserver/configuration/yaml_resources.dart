@@ -13,8 +13,8 @@ import 'package:yaml/yaml.dart';
 /// expansion back into the tree as text, so a substituted value is always a
 /// `String`: `port: 3306` yields the `int` `3306`, `port: ${DB_PORT:3306}` the
 /// `String` `'3306'` — even when `DB_PORT` is unset and the default supplies
-/// the same digits. `TomConfig` casts rather than parses, so read a substituted
-/// number with `TomStringConfig` and parse it.
+/// the same digits. The map keeps the text; a typed `TomConfig` reads it as its
+/// type, so `TomIntConfig` resolves both forms to `3306`.
 class TomYaml {
   /// Loads a YAML file and returns it as a Map, substituting environment
   /// variables.

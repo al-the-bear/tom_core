@@ -380,7 +380,8 @@ Substitution runs after the YAML parser has assigned types and writes its
 expansion back as text, so a substituted value is always a `String`:
 `port: 3306` yields the `int` `3306`, `port: ${DB_PORT:3306}` the `String`
 `'3306'`. This is the only configuration source that reaches `TomConfig<T>`
-untyped, and `TomConfig<T>` casts rather than parses.
+untyped, and a typed `TomConfig<T>` reads such text as its type by the
+`TomArgs.convertToObjectMap` table, so `TomIntConfig` resolves both to `3306`.
 
 `loadYamlFile` is the class's only loader; the other three methods are one line
 over it, so none of them can disagree about how a file is read.

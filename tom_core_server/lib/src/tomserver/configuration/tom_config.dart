@@ -1,3 +1,4 @@
+import '../cmdline/args.dart';
 import '../little_things/server_exception.dart';
 import 'base_server_configuration.dart';
 
@@ -61,6 +62,14 @@ class TomConfigurationException extends TomServerException {
 /// 2. Otherwise, if a default was supplied via [TomConfig.withDefault], the
 ///    default is used.
 /// 3. Otherwise the property is considered obligatory and construction throws.
+///
+/// A `String` value that is not a [T] is read as the text of one, by the
+/// conversion table `TomArgs.convertToObjectMap` applies to the environment,
+/// the `.env` file and the command line: `'3306'` resolves for a
+/// [TomIntConfig], `'true'` for a [TomBoolConfig]. A YAML `${VAR:default}`
+/// expansion is written back into the tree as text, so without this
+/// `port: ${DB_PORT:3306}` would fail where `port: 3306` reads. Text that is
+/// not of the wanted type is still a mismatch.
 ///
 /// One widening applies in branch 1: an `int` resolves as a `double` when [T]
 /// is `double` (or `double?`), so `rate: 2` and `rate: 2.0` mean the same
@@ -181,8 +190,20 @@ class TomConfig<T> {
         // `0.0 is T` is also true for `num`, `Object` and `dynamic`, where
         // `2 as T` already succeeds and the int must survive as an int. Only a
         // cast that has actually failed can have been aimed at a double.
-        if (raw is int && 0.0 is T) {
-          _value = raw.toDouble() as T;
+        //
+        // A String is first read as the text it is, by the table the
+        // environment, the .env file and the command line already go through
+        // (`TomArgs.convertToObjectMap`): a YAML `${VAR:default}` expansion is
+        // the one source that reaches this lookup as text, so `port:
+        // ${DB_PORT:3306}` would otherwise fail where `port: 3306` reads. Only
+        // after the cast has failed, so a String setting keeps its text.
+        final value = raw is String
+            ? TomArgs.convertToObjectMap({'v': raw})['v']
+            : raw;
+        if (value is T) {
+          _value = value;
+        } else if (value is int && 0.0 is T) {
+          _value = value.toDouble() as T;
         } else {
           // The caught error is chained rather than summarised away. The
           // message below names the key, the wanted type and the value, which
