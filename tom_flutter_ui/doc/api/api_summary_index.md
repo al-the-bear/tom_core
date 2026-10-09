@@ -18,23 +18,27 @@ fails rather than misleading.
 | `advanced_container_layout` | [api_summary_advanced_container_layout.md](api_summary_advanced_container_layout.md) | The row-based layout engine: the fluent builder, the row and component model, and the widgets that render them. |
 | `actions` | [api_summary_actions.md](api_summary_actions.md) | Business logic as typed, stateless, authorizable objects with undo and redo. |
 | `custom` | [api_summary_custom.md](api_summary_custom.md) | The eight composites that are not form fields: authorization guards, list states, and loading affordances. |
+| `groups` | [api_summary_groups.md](api_summary_groups.md) | The authorization groups widgets share and the mixin that lets a widget extending Flutter directly take part in them. |
 | `forms` | [api_summary_forms.md](api_summary_forms.md) | The declarative forms framework: form and field bases, the Material and Cupertino field catalogues, styling, validation, events, selection sources, file transfer, and the list containers. |
 | `resource_auth` | [api_summary_resource_auth.md](api_summary_resource_auth.md) | Resource resolution: colour and icon names to Flutter objects, and the environment and platform configuration they resolve against. |
+| `theme` | [api_summary_theme.md](api_summary_theme.md) | Tom's theme extensions over Flutter's `ThemeData`, the scope that provides them, and the serialisable root theme spec. |
+| `widgets` | [api_summary_widgets.md](api_summary_widgets.md) | The 299 Tom wrappers over Material, Cupertino and the widget layer, and the family bases they extend. |
 | `widget_base` | [api_summary_widget_base.md](api_summary_widget_base.md) | The foundation every Tom widget stands on: the node chain carrying identity and authorization, the family taxonomy, and the two static resolvers. |
 
 ## Which modules get one
 
-**A module earns a summary at ten exported public types.** Below that its own
-`lib/src/<module>/readme.md` is the mirror — and not by assertion: an inventory
-readme is held to every public type and every public static by the same test,
-so a small module is checked, just checked somewhere else. A summary for
-`groups` would be a fourth document over 297 lines of code and a fourth copy of
-a two-entry list.
+**Every module has a summary.** The repository's
+`tom_ai/core/tool/check_api_reference.py` asks for one per module, and each is
+held there to its barrel: Source list, index rows, every exported name and
+every public member.
 
-Types, not lines. The two disagree and the type count sorts the package
-correctly: `resource_auth` declares 13 of them across 11,352 lines and wants a
-summary, `theme` declares 4 across 365 and does not. A line threshold would be
-measuring the generated tables inside one of them.
+**A module owes one at ten exported public types**, which is the floor this
+package's own suite enforces. Below it the module's `lib/src/<module>/readme.md`
+is a mirror too — an inventory readme is held to every public type and every
+public static by the same test — so `groups` and `theme` are each checked
+twice. Types, not lines: `resource_auth` declares 13 types across 11,352 lines
+and `theme` 4 across 365, and a line threshold would be measuring the generated
+tables inside one of them.
 
 **`tom_core_agentic` states the same threshold over members**, and
 deliberately so: its units concentrate their surface in a few types with many
@@ -47,9 +51,10 @@ have different shapes, not because one is stale — so the number is the same an
 what it counts is not, and a reader who has met one index should not assume the
 other.
 
-A **catalogue** module is outside the rule, and `widgets` is the reason the
-exemption is not a shortcut. Its 299 public types are kept, checked and
-answerable without a summary, in a form a markdown mirror cannot match:
+A **catalogue** module is outside that floor, and `widgets` shows why the
+exemption is not a shortcut. Its summary is generated from the source; the
+claims a reader most relies on are held by suites a markdown mirror cannot
+match:
 
 - **The names.** `test/widgets/widget_census.dart` derives them from the
   sources; `widget_conformance_test.dart` asserts that
@@ -65,29 +70,10 @@ answerable without a summary, in a form a markdown mirror cannot match:
   census, and checks each catalogue row against the class declarations it
   names.
 
-A 299-section hand-written mirror would restate all of that in a form nothing
-compiles and nothing checks. `forms` is a catalogue too and has a summary
-anyway — a catalogue module may have one, it is simply not owed one.
-
 The threshold is a constant in `test/module_readme_inventory_test.dart`, which
 derives each module's type count from its barrel and fails when a module
 reaches it without a summary. So the rule is enforced rather than described,
 and lowering it is a code change somebody has to make deliberately.
-
-## Modules without a summary
-
-| Module | Types | Why it has none |
-| ------ | ----: | --------------- |
-| `groups` | 2 | Below the threshold — `lib/src/groups/readme.md` is the mirror. |
-| `theme` | 4 | Below the threshold — `lib/src/theme/readme.md` is the mirror. |
-| `widgets` | 299 | Catalogue — names, signatures and counts are all held by the suites named above. |
-
-Nothing is outstanding: every module at or above the threshold has its summary.
-The test still carries the backlog set, now empty and held exactly, so a module
-that reaches the threshold without one fails rather than joining a list nobody
-reads. The difference between "small" and "unwritten" is a fact here rather than
-a reader's guess, which is the whole reason this section is not simply three
-names in a sentence.
 
 ### Actions (`lib/src/actions/`)
 

@@ -379,10 +379,10 @@ const _apiSummaryIndex = 'api_summary_index.md';
 /// Ten is where a readme table stops working. Below it the module's own
 /// `readme.md` **is** the mirror, and not merely by assertion — a
 /// [_Claim.inventory] readme is held to every public type and static by the
-/// group above, so the small modules are checked, they are just checked
-/// somewhere else. `groups` is the case that shows it: two exported types, a
-/// readme that names both plus the two kernel types it bridges, and a summary
-/// would be the fourth document over 297 lines of code.
+/// group above, so the small modules are checked there too. Every module
+/// also has a summary, because the repository's `check_api_reference.py`
+/// asks for one per module; this threshold is the floor the package itself
+/// owes, whatever that gate asks.
 ///
 /// Measured 2026-09-22, exported public types per module: forms 202, widgets
 /// 299, advanced_container_layout 35, widget_base 34, custom 16, actions 13,

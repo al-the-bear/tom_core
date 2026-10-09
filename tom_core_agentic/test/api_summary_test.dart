@@ -400,7 +400,10 @@ void _unitRules() {
         }
       });
 
-      if (hasSummary || !page.existsSync()) return;
+      // A sub-threshold unit's page is held even when it has a summary too:
+      // the summary is the repository gate's demand, the page is the one a
+      // reader of a small unit is sent to.
+      if (members.length >= _summaryThreshold || !page.existsSync()) return;
 
       test('its Overview table names every exported name', () {
         // Below the threshold the prose page's Overview IS the mirror, so it
