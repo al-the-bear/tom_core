@@ -101,14 +101,30 @@ void main() {
       expect(TomEnvFile.parse([line]), expected);
     });
 
-    // Where the two still part company. Both differences come from
-    // `TomEnvFile.parse` trimming and comment-stripping where `_parseArgs`
-    // takes the token as given; they are documented as limitations, and these
-    // tests are what make a change to either one visible.
-    test('differs from TomEnvFile.parse on surrounding whitespace', () {
+    // Whitespace around the key and the value is not part of either. A `.env`
+    // line is indented and padded as a matter of layout, and an argument that
+    // reaches the parser with spaces in it was quoted by the shell as a whole —
+    // in neither case does the padding name anything, and reading it as part
+    // of the key would make ` k ` a setting no field can receive.
+    test('agrees with TomEnvFile.parse on surrounding whitespace', () {
       const line = ' k = v ';
-      expect(TomArgs.parseArgsToMap([line]), {' k ': ' v '});
-      expect(TomEnvFile.parse([line]), {'k': 'v'});
+      const expected = {'k': 'v'};
+      expect(TomArgs.parseArgsToMap([line]), expected);
+      expect(TomEnvFile.parse([line]), expected);
+    });
+
+    test('agrees with TomEnvFile.parse on whitespace inside quotes', () {
+      // Trimming happens outside the quotes; what they enclose is data.
+      const line = ' k = " v " ';
+      const expected = {'k': ' v '};
+      expect(TomArgs.parseArgsToMap([line]), expected);
+      expect(TomEnvFile.parse([line]), expected);
+    });
+
+    test('agrees with TomEnvFile.parse on a whitespace-only key', () {
+      // Empty once trimmed, so both skip it as they skip a literally empty key.
+      expect(TomArgs.parseArgsToMap(['   =x', '   ']), isEmpty);
+      expect(TomEnvFile.parse(['   =x', '   ']), isEmpty);
     });
 
     // A `#` that is part of a value is not a comment to either parser. The

@@ -62,13 +62,17 @@ TomArgs.parseArgsToMap(['url=mysql://h/db?user=root']);
 `TomEnvFile` splits the same way, which is what lets the two sources be
 described as one syntax rather than two that merely resemble each other.
 
+Whitespace around the key and the value is trimmed, by both parsers alike, so
+` k = v ` is the entry `k` → `v` whichever source it came from. The trim
+happens outside the quotes: `k=" v "` keeps the spaces it quotes.
+
 A token with no `=` is a **flag**. Both map paths encode a flag identically as
 the boolean `true` — consistent with how `key=true` is converted — so a flag
 fills a reflected `bool` field directly.
 
 A token whose key is empty is **skipped**: an empty token, one starting with
-`=` so that nothing precedes the separator, and one whose key is nothing but
-dashes, name no field, and are dropped rather than recorded under an empty key.
+`=` so that nothing precedes the separator, one whose key is only whitespace,
+and one whose key is nothing but dashes, name no field, and are dropped rather than recorded under an empty key.
 `TomEnvFile` skips such a line for the same reason. Skipping is per token — the
 tokens around a malformed one are still parsed, so one stray argument does not
 cost the launch line the rest:
@@ -412,13 +416,6 @@ tomReflectionInfo.setValues<AppServerConfiguration>(configuration, merged);
   Requiring a setting*), or call `tomReflectionInfo.missingRequiredFields` on
   the merged map yourself. These two helpers stay pure parsers.
   <!-- unpinned: decision — the parsers stay pure; `@TomRequiredField` answers the question -->
-- **The two parsers still differ on whitespace.** `TomEnvFile.parse` trims
-  around the key and the value; `TomArgs` takes the token as given. So
-  `' k = v '` is `{'k': 'v'}` from a `.env` file and `{' k ': ' v '}` from the
-  command line, and a whitespace-only token is an empty line to one and a key
-  to the other. The two agree on everything else that decides a key — where it
-  ends, what counts as quoted, and that an empty key is skipped.
-  <!-- pinned: test/cmdline_test.dart › differs from TomEnvFile.parse on surrounding whitespace -->
 
 ## Core Components
 

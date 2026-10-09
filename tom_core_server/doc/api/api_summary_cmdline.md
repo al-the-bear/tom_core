@@ -64,7 +64,7 @@ value type.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `fillFromArgs` | `static T fillFromArgs<T extends Object>(List<String> args, T fillIn)` | Fills `fillIn` from `key=value` `args` using reflection and returns it, splitting each argument on its first `=` and naming the key without its leading dashes (`--port=8080` assigns `port`); a bare flag is recorded as the boolean `true`, and an argument whose key is empty, or nothing but dashes, is skipped. `T` must be registered with the reflection system. |
-| `parseArgsToMap` | `static Map<String, dynamic> parseArgsToMap(List<String> args)` | Parses `key=value` `args` into a loose map, splitting on the first `=` and type-converting each value; a key is named without its leading dashes, a bare flag becomes the boolean `true`, and an argument whose key is empty, or nothing but dashes, contributes no entry. |
+| `parseArgsToMap` | `static Map<String, dynamic> parseArgsToMap(List<String> args)` | Parses `key=value` `args` into a loose map, splitting on the first `=` and type-converting each value; key and value are trimmed of surrounding whitespace, a key is named without its leading dashes, a bare flag becomes the boolean `true`, and an argument whose key is empty, only whitespace, or nothing but dashes contributes no entry. |
 | `convertToObjectMap` | `static Map<String, dynamic> convertToObjectMap(Map<String, String> map)` | Converts every value in a string `map` to its natural Dart type (useful for normalising `Platform.environment`). |
 | `unquote` | `static String? unquote(String value)` | Returns the contents of `value` with its surrounding quotes removed, or `null` when `value` is not a quoted literal. Quotes count only as a **matched pair** — at least two characters, opening with `"` or `'` and closing with that same character — so `""` unquotes to the empty string while a lone `"`, an unterminated `"hello` and a mismatched `"hello'` all yield `null` and are used verbatim. `TomEnvFile.parse` decides through this method too, so the two sources cannot disagree. |
 | `fieldNameOf` | `static String? fieldNameOf(String name)` | The `lowerCamelCase` field name a `SCREAMING_SNAKE_CASE` variable spells (`JWT_SHARED_SECRET_KEY` → `jwtSharedSecretKey`), or `null` when `name` is not written in that convention. The underscore is the only separator, so a digit does not open a segment and `OAUTH2_TOKEN_URI` is three segments (`oauth2TokenUri`, not `oAuth2TokenUri`). A field spelled with a capitalised acronym is therefore not reachable — that is an inconsistency in the field's spelling, not a gap here. |
@@ -141,8 +141,8 @@ static.
 `parse` reads a line only when it carries a `=` and a non-empty key, so a blank
 line, a `#` comment line, and a line with no separator are all skipped, as is a
 line beginning with `=`. Key and value are each trimmed of surrounding
-whitespace — `TomArgs` does not trim, which is the other way the two sources
-differ. A skipped line costs only itself; the lines around it are still read.
+whitespace, as `TomArgs` trims an argument, so ` k = v ` means the same in
+either source; quotes are unwrapped after the trim. A skipped line costs only itself; the lines around it are still read.
 
 Value conversion then runs through the `TomArgs` table above. Three further
 rules decide *which* type a value arrives as, and each is what one of the

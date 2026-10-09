@@ -36,8 +36,14 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// `TomEnvFile.parse`, which takes a variable name as it is written — the one
 /// place the two sources part company by design.
 ///
+/// Whitespace around the key and around the value is trimmed, as
+/// `TomEnvFile.parse` trims it, so ` k = v ` is the entry `k` → `v` from
+/// either source. Quotes are unwrapped after the trim, so what they enclose —
+/// spaces included — is kept.
+///
 /// An argument whose key is empty is **skipped**: an empty argument, one that
-/// starts with `=` so that nothing precedes the separator, and one whose key is
+/// starts with `=` so that nothing precedes the separator, one whose key is
+/// only whitespace, and one whose key is
 /// nothing but dashes (`--`, the conventional end-of-options marker) all name
 /// no field and are dropped rather than recorded under an empty key. Apart from
 /// the dashes this is the rule `TomEnvFile.parse` applies. Skipping is per
@@ -288,11 +294,15 @@ class TomArgs {
   /// be documented as one syntax rather than two that merely resemble each
   /// other.
   ///
-  /// The key is then stripped of its leading `-` characters, so the
-  /// conventional `--port=8080` names the field `port`. See [_withoutLeadingDashes].
+  /// The key and the value are trimmed, as `TomEnvFile.parse` trims them:
+  /// padding around either is layout, and what a quote pair encloses is still
+  /// data, because the trim happens outside the quotes. The key is then
+  /// stripped of its leading `-` characters, so the conventional
+  /// `--port=8080` names the field `port`. See [_withoutLeadingDashes].
   ///
-  /// An argument whose key is empty (`""`, `"=orphan"`, `"="`), or is nothing
-  /// but dashes and so empty once they are stripped (`"--"`), is skipped. Apart
+  /// An argument whose key is empty (`""`, `"=orphan"`, `"="`), is only
+  /// whitespace, or is nothing but dashes and so empty once they are stripped
+  /// (`"--"`), is skipped. Apart
   /// from the dashes that is the shape a `.env` file skips too.
   ///
   /// Both public entry points parse through here, so they cannot disagree.
@@ -300,8 +310,9 @@ class TomArgs {
     var argMap = <String, dynamic>{};
     for (String arg in args) {
       var separator = arg.indexOf("=");
+      // Trimmed before the dashes come off, so ` --port = 8080` names `port`.
       final key = _withoutLeadingDashes(
-        separator < 0 ? arg : arg.substring(0, separator),
+        (separator < 0 ? arg : arg.substring(0, separator)).trim(),
       );
       // An empty key names nothing. On the fillFromArgs path it could never
       // match a field, so it would reach setValues as dead weight; and
@@ -317,7 +328,9 @@ class TomArgs {
       if (separator < 0) {
         argMap[key] = true;
       } else {
-        argMap[key] = _convertString(arg.substring(separator + 1));
+        // Trimmed before unquoting, as `TomEnvFile.parse` does, so padding is
+        // layout and whatever a quote pair encloses is data.
+        argMap[key] = _convertString(arg.substring(separator + 1).trim());
       }
     }
     return argMap;
