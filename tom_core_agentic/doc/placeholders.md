@@ -49,7 +49,7 @@ failures (`placeholder_errors`), the `${{ … }}` expression seam
 | `${name?}` | **Optional** simple lookup — an unbound name renders as the empty string *regardless* of strict/lenient mode; a bound name renders its value exactly like `${name}`. Optionality is a property of the call site (the `?`), scoped to the simple form only. |
 | `${{ expr }}` | An arbitrary expression evaluated through the injected `PlaceholderExpressions` backing (d4rt in the engine). Brace-balanced, so an inner map literal does not close it early. |
 | `${env:NAME}` | A process-environment read — the one pure, non-expression form, and the *only* way to reach the environment. |
-| `${file:…}` / `${state:…}` | Reserved prefixes — recognised but not yet resolving. They pass through verbatim and are not re-scanned, so a template author can use them today without collision. |
+| `${file:…}` / `${state:…}` | Reserved prefixes — recognised and never resolved. They pass through verbatim and are not re-scanned, so a template author can write them without collision. The resolver does no I/O: a caller that wants a file's contents or a state value supplies it as a binding. |
 
 The optional marker is scoped deliberately: `${env:NAME?}` and `${{ … ?}}` do
 **not** take the marker — there the `?` is just part of the name or body.

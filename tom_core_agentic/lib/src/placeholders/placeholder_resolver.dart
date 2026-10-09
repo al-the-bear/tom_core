@@ -22,9 +22,11 @@
 //                [PlaceholderExpressions] backing (d4rt in the engine).
 //   ${env:NAME}  process-environment read — the one pure, non-expression
 //                form, and the *only* way to reach the environment.
-//   ${file:…}    reserved prefixes: recognised but not yet resolving, so a
-//   ${state:…}   template author can use them without collision. They pass
-//                through verbatim and are not re-scanned.
+//   ${file:…}    reserved prefixes: recognised and never resolved. They
+//   ${state:…}   pass through verbatim and are not re-scanned, so a template
+//                author can write them without collision. The resolver does
+//                no I/O; a caller that wants a file's contents or a state
+//                value in a template supplies it as a binding.
 //
 // Simple vs expression form. The expression form does not subsume the
 // simple one — `${{ name }}` is a *superset in expressive power only*, and
