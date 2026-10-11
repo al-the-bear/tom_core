@@ -144,7 +144,7 @@ void main() {
     // does not supply is a legitimate no-icon `Icon(null)`, which is why this
     // is not a second `…OrFail` site.
 
-    tearDown(TomAllIconsAdapter.clearCustomIcons);
+    tearDown(TomUIIcons.clearCustomIcons);
 
     testWidgets('tcinc791-09: a resource icon name is resolved', (
       tester,
@@ -167,7 +167,7 @@ void main() {
     testWidgets(
       'tcinc791-11: an icon named like a key is not mistaken for one',
       (tester) async {
-        TomAllIconsAdapter.registerIcons(<String, IconData>{
+        TomUIIcons.registerIcons(<String, IconData>{
           'brand.icon': Icons.star,
         });
         _installResources(<String, dynamic>{

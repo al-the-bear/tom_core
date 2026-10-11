@@ -33,7 +33,7 @@ void run() {
   print('mRed=$named  #FF5733=$hex  rgb=$rgb');
 
   // Example 2: custom colour registration overrides/extends the palette.
-  TomAllColorsAdapter.registerColors({'brandPrimary': const Color(0xFF123456)});
+  TomUIColors.registerColors({'brandPrimary': const Color(0xFF123456)});
   final brand = TomUIColors.resolveColor('brandPrimary');
   print(
     'brandPrimary=$brand  exists=${TomUIColors.colorExists('brandPrimary')}',

@@ -78,8 +78,8 @@ widgets degrade gracefully rather than throw.
 > through. Reorder the channels when copying a colour in; there is no way for
 > the parser to detect the mistake for you.
 
-`TomAllColorsAdapter.registerColors` adds or overrides names at runtime;
-`TomAllColorsAdapter.clearCustomColors` undoes that while keeping the adapter
+`TomUIColors.registerColors` adds or overrides names at runtime;
+`TomUIColors.clearCustomColors` undoes that while keeping the adapter
 installed.
 
 `TomMaterialOnlyColorAdapter` / `TomCupertinoOnlyColorAdapter` trade coverage for
@@ -168,7 +168,7 @@ snake_case names are converted to PascalCase (`arrow_back` → `mArrowBack`,
 `left_chevron` → `cLeftChevron`).
 
 Custom registration is **module-wide**, not per-adapter, and that holds on both
-sides: `TomAllIconsAdapter.registerIcons` and `TomAllColorsAdapter.registerColors`
+sides: `TomUIIcons.registerIcons` and `TomUIColors.registerColors`
 each fill one registry that all three adapters of their family consult *before*
 their own table, and `clearCustomIcons` / `clearCustomColors` empty it for all
 three. So an app can register its brand icons and then switch to
@@ -179,7 +179,7 @@ icon) overrides it everywhere. What the single-family adapters drop is the
 
 The registration entry points stay on the `All…` adapters even though the
 registry they fill is module-wide, so that each family has exactly one place to
-register. Reaching for `TomAllIconsAdapter.registerIcons` while running
+register. Reaching for `TomUIIcons.registerIcons` while running
 `TomMaterialOnlyIconAdapter` is therefore correct, not a mistake.
 
 ## Configuration: `TomConfigProvider`

@@ -123,8 +123,8 @@ one, register.
 
 Material and Cupertino together, plus the hex and rgb syntax. The recommended
 adapter. It owns the module's two registration statics:
-`TomAllColorsAdapter.registerColors` adds or overrides names for **every** adapter
-in the module, and `TomAllColorsAdapter.clearCustomColors` drops them while
+`TomUIColors.registerColors` adds or overrides names for **every** adapter
+in the module, and `TomUIColors.clearCustomColors` drops them while
 leaving the installed adapter alone — the narrower tool `TomUIColors.reset`
 is the blunt version of.
 
@@ -180,7 +180,7 @@ The contract: `resolveIcon(String name)` and `iconExists(String name)`.
 ### TomAllIconsAdapter
 
 Material and Cupertino together — the recommended adapter — and the owner of
-`TomAllIconsAdapter.registerIcons` and `TomAllIconsAdapter.clearCustomIcons`, which
+`TomUIIcons.registerIcons` and `TomUIIcons.clearCustomIcons`, which
 are the icon side of the same module-wide registry.
 
 #### Properties and Methods — further members

@@ -68,16 +68,48 @@ class TomUIColors {
   /// remains the teardown hook for tests; this is the narrower tool.
   static TomUIColorAdapter? adapter;
 
-  /// Resolves a color by [name].
+  /// Resolves the color named [name], or `null` when the installed adapter
+  /// does not know it.
   ///
-  /// Returns `null` if no adapter is set or the color is not found.
-  static Color? resolveColor(String name) {
-    return adapter?.resolveColor(name);
+  /// Throws a [StateError] when no adapter is installed. A missing adapter is
+  /// a start-up mistake, not an unknown name, and answering `null` for it made
+  /// the two indistinguishable: every color name resolved to nothing and
+  /// nothing reported why.
+  static Color? resolveColor(String name) => _installed().resolveColor(name);
+
+  /// Whether the installed adapter knows a color named [name].
+  ///
+  /// Throws a [StateError] when no adapter is installed, for the reason
+  /// [resolveColor] does.
+  static bool colorExists(String name) => _installed().colorExists(name);
+
+  static TomUIColorAdapter _installed() {
+    final installed = adapter;
+    if (installed != null) return installed;
+    throw StateError(
+      'No color adapter is installed, so no color name can be resolved. '
+      'Install one at start-up: TomUIColors.adapter = TomAllColorsAdapter();',
+    );
   }
 
-  /// Whether a color with [name] exists.
-  static bool colorExists(String name) {
-    return adapter?.colorExists(name) ?? false;
+  /// Registers app-specific colors, or overrides built-in ones, for every
+  /// adapter in this module.
+  ///
+  /// The registry belongs to the module rather than to an adapter, so a name
+  /// registered here resolves through [TomAllColorsAdapter], [TomMaterialOnlyColorAdapter] and
+  /// [TomCupertinoOnlyColorAdapter] alike, and survives switching between them. Registrations
+  /// take precedence over everything an adapter knows. [reset] clears them
+  /// along with the adapter.
+  static void registerColors(Map<String, Color> colors) {
+    _customColors.addAll(colors);
+  }
+
+  /// Drops every registration made through [registerColors], keeping the
+  /// installed adapter.
+  ///
+  /// A test tearing down the whole module wants [reset] instead.
+  static void clearCustomColors() {
+    _customColors.clear();
   }
 
   /// Drops the adapter **and** every custom registration.
@@ -89,7 +121,7 @@ class TomUIColors {
   /// silently change a colour in every later test rather than failing.
   ///
   /// To drop registrations while keeping the installed adapter, use
-  /// [TomAllColorsAdapter.clearCustomColors].
+  /// [clearCustomColors].
   static void reset() {
     adapter = null;
     _customColors.clear();
@@ -247,24 +279,6 @@ class TomAllColorsAdapter extends _RegistryFirstColorAdapter {
   @override
   bool existsInPalette(String name) => GeneratedColors.exists(name);
 
-  /// Registers additional custom colors for **every** adapter in this module.
-  ///
-  /// Use this to add app-specific colors or override existing ones. The
-  /// registry is module-wide, so a name registered here also resolves through
-  /// [TomMaterialOnlyColorAdapter] and [TomCupertinoOnlyColorAdapter]; registrations
-  /// take precedence over hex/rgb parsing and the generated palette in all
-  /// three. [TomUIColors.reset] clears them along with the adapter.
-  static void registerColors(Map<String, Color> colors) {
-    _customColors.addAll(colors);
-  }
-
-  /// Clears all custom registered colors, for every adapter in this module,
-  /// keeping the installed adapter.
-  ///
-  /// A test tearing down the whole module wants [TomUIColors.reset] instead.
-  static void clearCustomColors() {
-    _customColors.clear();
-  }
 }
 
 /// Adapter that only includes Material colors.
@@ -272,7 +286,7 @@ class TomAllColorsAdapter extends _RegistryFirstColorAdapter {
 /// Use this for smaller bundle size if you don't need the Cupertino palette,
 /// or to make a stray `cSystemBlue` in a resource file resolve to `null` and
 /// be caught rather than quietly working. Colors registered through
-/// [TomAllColorsAdapter.registerColors] still resolve — the registry is
+/// [TomUIColors.registerColors] still resolve — the registry is
 /// module-wide — as do hex and rgb literals; only the Cupertino table is gone.
 class TomMaterialOnlyColorAdapter extends _RegistryFirstColorAdapter {
   @override

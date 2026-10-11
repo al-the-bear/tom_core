@@ -32,8 +32,8 @@ deliberate mirrors of each other, so every row names both.
 | Inspect | `TomUIColors.adapter` | `TomUIIcons.adapter` | `TomConfigProvider.current` |
 | Resolve | `TomUIColors.resolveColor` | `TomUIIcons.resolveIcon` | `TomConfigProvider.current`, then `feature<T>` / `isEnabled` / `environment` / `platform` |
 | Probe | `TomUIColors.colorExists` | `TomUIIcons.iconExists` | — |
-| Register | `TomAllColorsAdapter.registerColors` | `TomAllIconsAdapter.registerIcons` | flags are fixed at `create` |
-| Unregister | `TomAllColorsAdapter.clearCustomColors` | `TomAllIconsAdapter.clearCustomIcons` | — |
+| Register | `TomUIColors.registerColors` | `TomUIIcons.registerIcons` | flags are fixed at `create` |
+| Unregister | `TomUIColors.clearCustomColors` | `TomUIIcons.clearCustomIcons` | — |
 | Tear down | `TomUIColors.reset` | `TomUIIcons.reset` | `TomConfigProvider.reset` |
 
 **Read the last two rows before writing a test.** Each registry is module-wide
@@ -66,7 +66,7 @@ means. Anything outside the vocabulary is still readable through `feature<T>`.
 
 Registration stays on the `All…` adapters even though the registry it fills is
 module-wide, so that each family has exactly one place to register. Calling
-`TomAllIconsAdapter.registerIcons` while `TomMaterialOnlyIconAdapter` is installed is
+`TomUIIcons.registerIcons` while `TomMaterialOnlyIconAdapter` is installed is
 therefore correct rather than a mistake — the name still resolves.
 
 ## Quick start
@@ -78,8 +78,8 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 void wireResources() {
   TomUIColors.adapter = TomAllColorsAdapter();
   TomUIIcons.adapter = TomAllIconsAdapter();
-  TomAllColorsAdapter.registerColors({'brandPrimary': const Color(0xFF123456)});
-  TomAllIconsAdapter.registerIcons({'brandMark': Icons.star});
+  TomUIColors.registerColors({'brandPrimary': const Color(0xFF123456)});
+  TomUIIcons.registerIcons({'brandMark': Icons.star});
 
   final red = TomUIColors.resolveColor('mRed');   // Material red
   final hex = TomUIColors.resolveColor('#FF5733'); // literal hex

@@ -132,9 +132,9 @@ void main() {
 
     test('custom colours take precedence and can be cleared', () {
       TomUIColors.adapter = TomAllColorsAdapter();
-      TomAllColorsAdapter.registerColors({'mRed': const Color(0xFF000000)});
+      TomUIColors.registerColors({'mRed': const Color(0xFF000000)});
       expect(TomUIColors.resolveColor('mRed'), const Color(0xFF000000));
-      TomAllColorsAdapter.clearCustomColors();
+      TomUIColors.clearCustomColors();
       expect(TomUIColors.resolveColor('mRed'), Colors.red);
     });
 
@@ -209,7 +209,7 @@ void main() {
     // if it were not: registered brand colours would resolve to null after a
     // switch to a single-family adapter, with colorExists denying they exist.
     test('registrations reach the single-family colour adapters too', () {
-      TomAllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      TomUIColors.registerColors({'zBrand': const Color(0xFF112233)});
       for (final adapter in <TomUIColorAdapter>[
         TomAllColorsAdapter(),
         TomMaterialOnlyColorAdapter(),
@@ -229,7 +229,7 @@ void main() {
     });
 
     test('a colour registration overrides a built-in for every adapter', () {
-      TomAllColorsAdapter.registerColors({'mRed': const Color(0xFF112233)});
+      TomUIColors.registerColors({'mRed': const Color(0xFF112233)});
       expect(
         TomMaterialOnlyColorAdapter().resolveColor('mRed'),
         const Color(0xFF112233),
@@ -241,8 +241,8 @@ void main() {
     });
 
     test('clearing drops colour registrations for every adapter', () {
-      TomAllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
-      TomAllColorsAdapter.clearCustomColors();
+      TomUIColors.registerColors({'zBrand': const Color(0xFF112233)});
+      TomUIColors.clearCustomColors();
       for (final adapter in <TomUIColorAdapter>[
         TomAllColorsAdapter(),
         TomMaterialOnlyColorAdapter(),
@@ -257,13 +257,13 @@ void main() {
 
     test('colour registrations do not open the other family to a '
         'single-family adapter', () {
-      TomAllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      TomUIColors.registerColors({'zBrand': const Color(0xFF112233)});
       expect(TomMaterialOnlyColorAdapter().resolveColor('cSystemBlue'), isNull);
       expect(TomCupertinoOnlyColorAdapter().resolveColor('mRed'), isNull);
     });
 
     test('TomUIColors.reset() drops registrations for these adapters too', () {
-      TomAllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      TomUIColors.registerColors({'zBrand': const Color(0xFF112233)});
       TomUIColors.reset();
       expect(TomMaterialOnlyColorAdapter().resolveColor('zBrand'), isNull);
       expect(TomCupertinoOnlyColorAdapter().resolveColor('zBrand'), isNull);
@@ -304,9 +304,9 @@ void main() {
 
     test('custom icons take precedence and can be cleared', () {
       TomUIIcons.adapter = TomAllIconsAdapter();
-      TomAllIconsAdapter.registerIcons({'mSave': Icons.delete});
+      TomUIIcons.registerIcons({'mSave': Icons.delete});
       expect(TomUIIcons.resolveIcon('mSave'), Icons.delete);
-      TomAllIconsAdapter.clearCustomIcons();
+      TomUIIcons.clearCustomIcons();
       expect(TomUIIcons.resolveIcon('mSave'), Icons.save);
     });
 
@@ -334,7 +334,7 @@ void main() {
     // rendering. The two tests above could not see it because they only ever
     // ask for built-in names.
     test('registrations reach the single-family adapters too', () {
-      TomAllIconsAdapter.registerIcons({'zBrandLogo': Icons.abc});
+      TomUIIcons.registerIcons({'zBrandLogo': Icons.abc});
       for (final adapter in <TomUIIconAdapter>[
         TomAllIconsAdapter(),
         TomMaterialOnlyIconAdapter(),
@@ -354,14 +354,14 @@ void main() {
     });
 
     test('a registration overrides a built-in for every adapter', () {
-      TomAllIconsAdapter.registerIcons({'mSave': Icons.delete});
+      TomUIIcons.registerIcons({'mSave': Icons.delete});
       expect(TomMaterialOnlyIconAdapter().resolveIcon('mSave'), Icons.delete);
       expect(TomAllIconsAdapter().resolveIcon('mSave'), Icons.delete);
     });
 
     test('clearing drops registrations for every adapter', () {
-      TomAllIconsAdapter.registerIcons({'zBrandLogo': Icons.abc});
-      TomAllIconsAdapter.clearCustomIcons();
+      TomUIIcons.registerIcons({'zBrandLogo': Icons.abc});
+      TomUIIcons.clearCustomIcons();
       for (final adapter in <TomUIIconAdapter>[
         TomAllIconsAdapter(),
         TomMaterialOnlyIconAdapter(),
@@ -378,7 +378,7 @@ void main() {
         'adapter', () {
       // The point of these adapters is that they carry one family. A shared
       // registry must not become a back door to the other one.
-      TomAllIconsAdapter.registerIcons({'zBrandLogo': Icons.abc});
+      TomUIIcons.registerIcons({'zBrandLogo': Icons.abc});
       expect(TomMaterialOnlyIconAdapter().resolveIcon('cShare'), isNull);
       expect(TomCupertinoOnlyIconAdapter().resolveIcon('mSave'), isNull);
     });
@@ -393,7 +393,7 @@ void main() {
   // calls are gone now, so these tests are load-bearing for the whole file.
   group('reset() is the whole test-hygiene hook', () {
     test('TomUIColors.reset() drops custom colour registrations', () {
-      TomAllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      TomUIColors.registerColors({'zBrand': const Color(0xFF112233)});
       // The registry is process-global, so an adapter constructed before the
       // reset must see the clear too — that instance is what a leak rides on.
       final earlier = TomAllColorsAdapter();
@@ -406,7 +406,7 @@ void main() {
     });
 
     test('TomUIIcons.reset() drops custom icon registrations', () {
-      TomAllIconsAdapter.registerIcons({'zBrand': Icons.abc});
+      TomUIIcons.registerIcons({'zBrand': Icons.abc});
       final earlier = TomAllIconsAdapter();
       TomUIIcons.reset();
       TomUIIcons.adapter = TomAllIconsAdapter();
@@ -420,8 +420,8 @@ void main() {
     });
 
     test('reset() drops an override without disturbing the built-in', () {
-      TomAllColorsAdapter.registerColors({'mRed': const Color(0xFF112233)});
-      TomAllIconsAdapter.registerIcons({'mSave': Icons.delete});
+      TomUIColors.registerColors({'mRed': const Color(0xFF112233)});
+      TomUIIcons.registerIcons({'mSave': Icons.delete});
       TomUIColors.reset();
       TomUIIcons.reset();
       TomUIColors.adapter = TomAllColorsAdapter();
@@ -497,7 +497,7 @@ void main() {
     // one branch a save/restore helper would otherwise need is also the one
     // that silently loses application state.
     test('restoring "nothing installed" keeps the registrations', () {
-      TomAllColorsAdapter.registerColors({'zBrand': const Color(0xFF112233)});
+      TomUIColors.registerColors({'zBrand': const Color(0xFF112233)});
       final saved = TomUIColors.adapter; // nothing installed yet
 
       TomUIColors.adapter = TomMaterialOnlyColorAdapter();
@@ -509,7 +509,7 @@ void main() {
     });
 
     test('restoring "nothing installed" keeps icon registrations', () {
-      TomAllIconsAdapter.registerIcons({'zBrand': Icons.abc});
+      TomUIIcons.registerIcons({'zBrand': Icons.abc});
       final saved = TomUIIcons.adapter;
 
       TomUIIcons.adapter = TomMaterialOnlyIconAdapter();
