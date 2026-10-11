@@ -88,6 +88,13 @@ Widget readOnlyBanner(Widget child) =>
 const style = TomStateStyle(builder: readOnlyBanner);
 ```
 
+A debug build notices when this is missed. `TomThemeScope` counts updates in a
+row whose themes differ in a builder and in nothing else; after
+`TomThemeScope.inlineBuilderThreshold` of them (three) it reports a non-fatal
+`FlutterError` — once per process — naming the cause and the fix. A deliberate
+switch between two named builders is one change and never reaches the count. A
+release build carries neither the counter nor the report.
+
 ## `TomTheme` & `TomThemeScope` — delivery
 
 `TomTheme` is intentionally tiny — it carries only what Flutter doesn't. Place a
@@ -195,12 +202,12 @@ customising a `TomStateStyle` once at the `TomThemeScope` level re-styles that
 state across the whole app, whichever half of the package a widget comes from.
 
 The theme resolves a treatment from the authorization state and nothing else —
-a widget's `TomWidgetFamily` does not enter into it, so every widget under a
+a widget's family (the family base it extends) does not enter into it, so every widget under a
 scope gets that scope's two styles. A family that needs something different
 overrides `buildReadonly` / `buildDisabled`, as above; there is no per-family
 map on the theme to consult. That is deliberate rather than pending: the
 lookups take a `BuildContext` and no family, and two of the enforcement points —
-`TomWidgetMixin` and `TomPolicyNodeBase` itself — carry no family to pass, so a
+`TomWidgetMixin` and `TomPolicyNodeBase` itself — belong to no family, so a
 family-keyed theme would apply in some places and silently not in others.
 
 ## Dependencies

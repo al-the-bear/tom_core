@@ -118,18 +118,13 @@ void main() {
   group('TomTheme', () {
     test('defaults', () {
       const theme = TomTheme.defaultTheme;
-      expect(theme.name, 'default');
       expect(theme.readonlyStyle.opacity, 0.6);
       expect(theme.disabledStyle.opacity, 0.38);
     });
 
-    test('copyWith overrides only given fields', () {
-      const theme = TomTheme(name: 'a');
-      final copy = theme.copyWith(name: 'b');
-      expect(copy.name, 'b');
-      expect(copy.readonlyStyle.opacity, theme.readonlyStyle.opacity);
-      expect(copy.disabledStyle.opacity, theme.disabledStyle.opacity);
-      expect(theme.copyWith().name, 'a');
+    test('copyWith with no overrides is an equal theme', () {
+      const theme = TomTheme(readonlyStyle: TomStateStyle(opacity: 0.5));
+      expect(theme.copyWith(), equals(theme));
     });
 
     // The two styles are independent settings, not one setting read twice.
@@ -249,9 +244,8 @@ void main() {
       expect(base.copyWith().hashCode, equals(base.hashCode));
     });
 
-    test('TomTheme: name and both nested styles count', () {
-      const base = TomTheme(name: 'a');
-      expect(base.copyWith(name: 'b'), isNot(equals(base)));
+    test('TomTheme: both nested styles count', () {
+      const base = TomTheme();
       expect(
         base.copyWith(readonlyStyle: const TomStateStyle(opacity: 0.5)),
         isNot(equals(base)),
@@ -264,8 +258,8 @@ void main() {
       );
       // The nested style is compared by value too, not by identity.
       expect(
-        TomTheme(name: 'a', readonlyStyle: TomStateStyle(opacity: 0.5)),
-        equals(TomTheme(name: 'a', readonlyStyle: TomStateStyle(opacity: 0.5))),
+        TomTheme(readonlyStyle: TomStateStyle(opacity: 0.5)),
+        equals(TomTheme(readonlyStyle: TomStateStyle(opacity: 0.5))),
       );
     });
   });
@@ -354,7 +348,6 @@ void main() {
       late TomStateStyle seenReadonly;
       late TomStateStyle seenDisabled;
       const theme = TomTheme(
-        name: 'scoped',
         readonlyStyle: TomStateStyle(opacity: 0.4),
         disabledStyle: TomStateStyle(opacity: 0.2),
       );
@@ -371,7 +364,7 @@ void main() {
           ),
         ),
       );
-      expect(seen.name, 'scoped');
+      expect(seen, same(theme));
       expect(seenReadonly.opacity, 0.4);
       expect(seenDisabled.opacity, 0.2);
     });
@@ -394,7 +387,7 @@ void main() {
           },
         ),
       );
-      expect(seen.name, TomTheme.defaultTheme.name);
+      expect(seen, TomTheme.defaultTheme);
       expect(seenReadonly, TomStateStyle.readonly);
       expect(seenDisabled, TomStateStyle.disabled);
     });
@@ -509,7 +502,6 @@ void main() {
             // scope receives a freshly allocated instance every time.
             return TomThemeScope(
               theme: TomTheme.defaultTheme.copyWith(
-                name: 'dimmed',
                 readonlyStyle: const TomStateStyle(opacity: 0.5),
               ),
               child: const _DependentProbe(),
@@ -594,9 +586,23 @@ void main() {
       // The premise: these two really are different families. Without this
       // the test would still pass if both nodes reported the same one, and
       // would be asserting nothing.
+      final button = tester.widget<_ButtonNode>(find.byType(_ButtonNode));
+      final input = tester.widget<_InputNode>(find.byType(_InputNode));
       expect(
-        tester.widget<_ButtonNode>(find.byType(_ButtonNode)).family,
-        isNot(tester.widget<_InputNode>(find.byType(_InputNode)).family),
+        button,
+        isA<TomButtonBase>().having(
+          (w) => w is TomInputBase,
+          'is input',
+          isFalse,
+        ),
+      );
+      expect(
+        input,
+        isA<TomInputBase>().having(
+          (w) => w is TomButtonBase,
+          'is button',
+          isFalse,
+        ),
       );
 
       double opacityIn(Type node) => tester
@@ -610,6 +616,67 @@ void main() {
 
       expect(opacityIn(_ButtonNode), closeTo(0.5, 0.001));
       expect(opacityIn(_InputNode), closeTo(0.5, 0.001));
+    });
+  });
+  // A builder is compared by reference, so one written inline in `build` makes
+  // every theme new and rebuilds the scope's dependents every frame. The scope
+  // reports that pattern once, in debug builds, after a few updates in a row
+  // that change nothing but a builder.
+  group('TomThemeScope inline-builder report', () {
+    setUp(TomThemeScope.debugResetInlineBuilderDetection);
+    tearDown(TomThemeScope.debugResetInlineBuilderDetection);
+
+    Widget scopeWith(Widget Function(Widget) builder) => TomThemeScope(
+      theme: TomTheme(readonlyStyle: TomStateStyle(builder: builder)),
+      child: const SizedBox(),
+    );
+
+    testWidgets('a builder allocated per rebuild is reported once', (
+      tester,
+    ) async {
+      var reports = 0;
+      for (var i = 0; i < TomThemeScope.inlineBuilderThreshold + 4; i++) {
+        await tester.pumpWidget(scopeWith((c) => c));
+        if (tester.takeException() != null) reports++;
+      }
+      expect(reports, 1);
+    });
+
+    testWidgets('the report names the cause and the fix', (tester) async {
+      Object? reported;
+      for (var i = 0; i <= TomThemeScope.inlineBuilderThreshold; i++) {
+        await tester.pumpWidget(scopeWith((c) => c));
+        reported ??= tester.takeException();
+      }
+      expect(reported, isA<FlutterError>());
+      final text = reported.toString();
+      expect(text, contains('allocated on every rebuild'));
+      expect(text, contains('Hoist the builder'));
+    });
+
+    testWidgets('a hoisted builder is never reported', (tester) async {
+      for (var i = 0; i < TomThemeScope.inlineBuilderThreshold + 4; i++) {
+        await tester.pumpWidget(scopeWith(_dim));
+        expect(tester.takeException(), isNull);
+      }
+    });
+
+    testWidgets('switching named builders together with a real '
+        'style change is not reported', (tester) async {
+      for (var i = 0; i < TomThemeScope.inlineBuilderThreshold * 3; i++) {
+        await tester.pumpWidget(
+          TomThemeScope(
+            theme: TomTheme(
+              readonlyStyle: TomStateStyle(
+                opacity: i.isEven ? 0.5 : 0.6,
+                builder: i.isEven ? _dim : _brandTreatment,
+              ),
+            ),
+            child: const SizedBox(),
+          ),
+        );
+        expect(tester.takeException(), isNull);
+      }
     });
   });
 }

@@ -37,9 +37,6 @@ import 'tom_state_style.dart';
 /// )
 /// ```
 class TomTheme {
-  /// Human-readable name for this theme.
-  final String name;
-
   /// Treatment for `TomAuthState.read` — visible, but not editable.
   final TomStateStyle readonlyStyle;
 
@@ -47,7 +44,6 @@ class TomTheme {
   final TomStateStyle disabledStyle;
 
   const TomTheme({
-    this.name = 'default',
     this.readonlyStyle = TomStateStyle.readonly,
     this.disabledStyle = TomStateStyle.disabled,
   });
@@ -57,12 +53,10 @@ class TomTheme {
 
   /// Creates a copy of this theme with the given overrides.
   TomTheme copyWith({
-    String? name,
     TomStateStyle? readonlyStyle,
     TomStateStyle? disabledStyle,
   }) {
     return TomTheme(
-      name: name ?? this.name,
       readonlyStyle: readonlyStyle ?? this.readonlyStyle,
       disabledStyle: disabledStyle ?? this.disabledStyle,
     );
@@ -110,13 +104,19 @@ class TomTheme {
     if (identical(this, other)) return true;
     return other is TomTheme &&
         other.runtimeType == runtimeType &&
-        other.name == name &&
         other.readonlyStyle == readonlyStyle &&
         other.disabledStyle == disabledStyle;
   }
 
   @override
-  int get hashCode => Object.hash(name, readonlyStyle, disabledStyle);
+  int get hashCode => Object.hash(readonlyStyle, disabledStyle);
+
+  /// Whether this theme and [other] differ in their [TomStateStyle.builder]s
+  /// and in nothing else.
+  bool _differsOnlyInBuilders(TomTheme other) =>
+      this != other &&
+      readonlyStyle.equalsIgnoringBuilder(other.readonlyStyle) &&
+      disabledStyle.equalsIgnoringBuilder(other.disabledStyle);
 }
 
 /// Provides a [TomTheme] to descendant widgets.
@@ -163,6 +163,75 @@ class TomThemeScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(TomThemeScope oldWidget) {
-    return theme != oldWidget.theme;
+    final changed = theme != oldWidget.theme;
+    assert(() {
+      _watchForInlineBuilders(oldWidget.theme);
+      return true;
+    }());
+    return changed;
+  }
+
+  /// How many updates in a row have changed nothing but a builder. Debug
+  /// only: it is read and written inside an `assert`, so a release build
+  /// carries neither the counter's effect nor the report.
+  static int _builderOnlyChanges = 0;
+
+  /// Whether the inline-builder report has been made. Once per process: a
+  /// report per frame would bury the one line that matters.
+  static bool _reportedInlineBuilder = false;
+
+  /// Consecutive builder-only changes after which a builder is taken to be
+  /// written inline. A deliberate switch between two named builders is one
+  /// change, perhaps two; a closure literal in `build` is one per frame.
+  static const int inlineBuilderThreshold = 3;
+
+  /// Reports a [TomStateStyle.builder] that is allocated on every rebuild.
+  ///
+  /// A builder is compared by reference, so a closure literal written inside
+  /// `build` makes every theme unequal to the last and rebuilds every
+  /// read-only and disabled widget on every ancestor rebuild — a performance
+  /// loss with no failure to point at it. The pattern is visible from here:
+  /// the same scope keeps receiving themes that differ in their builders and
+  /// in nothing else. After [inlineBuilderThreshold] such updates in a row, a
+  /// non-fatal [FlutterError] names the cause and the fix.
+  void _watchForInlineBuilders(TomTheme previous) {
+    if (!theme._differsOnlyInBuilders(previous)) {
+      _builderOnlyChanges = 0;
+      return;
+    }
+    _builderOnlyChanges++;
+    if (_builderOnlyChanges < inlineBuilderThreshold ||
+        _reportedInlineBuilder) {
+      return;
+    }
+    _reportedInlineBuilder = true;
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: FlutterError.fromParts([
+          ErrorSummary(
+            'A TomStateStyle.builder is allocated on every rebuild.',
+          ),
+          ErrorDescription(
+            'TomThemeScope received $_builderOnlyChanges themes in a row that '
+            'differ only in their builders. A builder is compared by '
+            'reference, so a closure written inside build makes every theme '
+            'new and rebuilds every read-only and disabled widget below this '
+            'scope on every frame.',
+          ),
+          ErrorHint(
+            'Hoist the builder into a top-level or static function, or hold '
+            'it in a field, so the same function is passed each time.',
+          ),
+        ]),
+        library: 'tom_flutter_ui theme',
+      ),
+    );
+  }
+
+  /// Clears the inline-builder detector's state. For tests only.
+  @visibleForTesting
+  static void debugResetInlineBuilderDetection() {
+    _builderOnlyChanges = 0;
+    _reportedInlineBuilder = false;
   }
 }

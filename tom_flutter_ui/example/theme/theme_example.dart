@@ -20,12 +20,11 @@ void run() {
   // Example 1: the immutable TomTheme and copyWith.
   const base = TomTheme.defaultTheme;
   final dimmed = base.copyWith(
-    name: 'dimmed',
     readonlyStyle: const TomStateStyle(opacity: 0.5),
   );
   print(
-    'base="${base.name}" dimmed="${dimmed.name}" '
-    'opacity=${dimmed.readonlyStyle.opacity}',
+    'base opacity=${base.readonlyStyle.opacity} '
+    'dimmed opacity=${dimmed.readonlyStyle.opacity}',
   );
 
   // Example 2: the default readonly treatment wraps content in an
@@ -96,7 +95,6 @@ void run() {
   // every ancestor rebuild. copyWith always allocates, so without value
   // equality every rebuild would look like a theme change.
   final rebuiltDimmed = base.copyWith(
-    name: 'dimmed',
     readonlyStyle: const TomStateStyle(opacity: 0.5),
   );
   print('separately built themes equal -> ${rebuiltDimmed == dimmed}');
@@ -114,12 +112,11 @@ void run() {
   );
 
   // Assertions
-  assert(base.name == 'default');
   assert(base.readonlyStyle.opacity == 0.6);
-  assert(dimmed.name == 'dimmed');
   assert(dimmed.readonlyStyle.opacity == 0.5);
   // copyWith leaves untouched fields intact.
-  assert(base.copyWith().name == 'default');
+  assert(dimmed.disabledStyle == base.disabledStyle);
+  assert(base.copyWith() == base);
 
   assert(wrapped is AbsorbPointer);
   assert(identical(unwrapped, content));

@@ -103,4 +103,15 @@ class TomStateStyle {
   @override
   int get hashCode =>
       Object.hash(opacity, absorbPointers, colorOverlay, builder);
+
+  /// Whether this style equals [other] in every field but [builder].
+  ///
+  /// What `TomThemeScope` uses to recognise a builder written inline: two
+  /// styles that agree here and still compare unequal differ only in which
+  /// function they were handed.
+  bool equalsIgnoringBuilder(TomStateStyle other) =>
+      other.runtimeType == runtimeType &&
+      other.opacity == opacity &&
+      other.absorbPointers == absorbPointers &&
+      other.colorOverlay == colorOverlay;
 }

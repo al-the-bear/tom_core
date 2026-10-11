@@ -35,7 +35,6 @@ Widget themedApp(Widget home) {
   // *why* it is inert.
   const base = TomTheme.defaultTheme;
   final dimmed = base.copyWith(
-    name: 'dimmed',
     readonlyStyle: const TomStateStyle(opacity: 0.5),
     disabledStyle: const TomStateStyle(opacity: 0.2),
   );
@@ -50,7 +49,11 @@ Building the theme in place like this is the intended usage even inside a
 scope notifies its dependents only when a field actually changes, not merely
 because `copyWith` allocated. The one field compared by reference is
 `TomStateStyle.builder` — closures cannot be compared any other way — so
-hoist a custom builder into a named function rather than writing it inline.
+hoist a custom builder into a named function rather than writing it inline;
+a debug build reports a builder that is allocated on every rebuild, once
+`TomThemeScope.inlineBuilderThreshold` updates in a row have changed nothing but
+a builder. A test that drives the report resets it with
+`TomThemeScope.debugResetInlineBuilderDetection`.
 
 `TomButtonVariants.fromColorScheme(scheme).primary` yields a ready
 `ButtonStyle` for the primary action; `TomButtonVariants.of(context)` reads the
