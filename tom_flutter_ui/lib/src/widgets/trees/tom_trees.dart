@@ -66,8 +66,7 @@ class TomTreeView extends TomTreeBase {
   }
 
   ScrollPhysics? _resolveScrollPhysics(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveScrollPhysics(basePath!, suffix);
+    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
 }
 

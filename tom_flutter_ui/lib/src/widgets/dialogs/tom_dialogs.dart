@@ -194,18 +194,15 @@ class TomAlertDialog extends TomDialogBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -313,18 +310,15 @@ class TomSimpleDialog extends TomDialogBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -396,13 +390,11 @@ class TomDialog extends TomDialogBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -483,13 +475,11 @@ class TomBottomSheet extends TomDialogBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
   BoxConstraints? _resolveBoxConstraints(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBoxConstraints(basePath!, suffix);
+    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
   }
 }
 
@@ -706,8 +696,7 @@ class TomMaterialBanner extends TomDialogBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -813,13 +802,11 @@ class TomTooltip extends TomDialogBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
   Decoration? _resolveDecoration(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveDecoration(basePath!, suffix);
+    return TomStyleResolvers.resolveDecoration(basePath, suffix);
   }
 }
 

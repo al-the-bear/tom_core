@@ -55,13 +55,12 @@ TomWidgetSurface                   tomId + tomGroup + basePath + effectiveAuthSt
 StatelessWidget
    └── TomNodeBase                 identity + scope + basePath  (implements TomWidgetSurface)
          └── TomPolicyNodeBase     authorization gate (build → buildContent/…)
-               └── TomFamilyBase   family reporting
-                     ├── TomButtonBase      family = button
-                     ├── TomInputBase       family = input
-                     ├── TomSelectBase      family = select
-                     ├── … (20 branch bases, one per Flutter-derived family;
-                     │      the 6 Tom form families have no branch base)
-                     └── TomBuilderBase      family = builder
+               └── TomFamilyBase   common supertype of the family bases
+                     ├── TomButtonBase      the button family
+                     ├── TomInputBase       the input family
+                     ├── TomSelectBase      the select family
+                     ├── … (20 branch bases, one per family)
+                     └── TomBuilderBase     the builder family
 ```
 
 A concrete widget (in `widgets/`, and a handful in `forms/`) extends the branch
@@ -100,8 +99,8 @@ getter on `TomWidgetMixin` — would let a wrapper take a `tomId`, resolve
 nothing, compile, read as gated at the call site and show to everyone. With a
 single supertype naming all four members, the conformance
 suite can enumerate the kit against it: `test/widgets/widget_conformance_test.dart`
-builds all 290 widgets and asserts each one resolves its own path, reports its
-family (or is one of the seventeen), and answers all four authorization states
+builds all 290 widgets and asserts each one resolves its own path, belongs to
+a family (or is one of the seventeen), and answers all four authorization states
 from that path. A wrapper that skips the surface cannot be added to the suite's
 registry — the factory type refuses it — and one that is added to the kit but
 not to the registry fails the suite.
@@ -153,57 +152,39 @@ theme. The two enforcement points share the styling one level down — the same
 
 ## The widget-family taxonomy
 
-`TomWidgetFamily` classifies a widget by behavioural role so cross-cutting tools
-(layout engines, action wiring, ACL builders) can reason about widgets
-generically. A widget reports a primary `family`, fixed by its branch base, and
-`families` allows it to report more than one.
+A widget's behavioural family — what it is *for*, not what it looks like — is
+the branch base it extends, so cross-cutting tools (layout engines, action
+wiring, ACL builders) can reason about widgets generically with a type test:
+`widget is TomButtonBase`. There is no tag or value to read; the type hierarchy
+is the classification.
 
-The three members do not relate the way the names suggest. `isFamily` answers
-from `families` alone and never consults `family`; `families` defaults to
-`{family}`, which is why the two agree until something overrides it. An
-override that omits `family` therefore makes the widget deny its own primary
-family — `isFamily(family)` returns `false` — while `family` keeps returning
-it. The base class does not compose the primary back in, so an override should
-include it, conventionally as `{family, …}`.
+`TomFamilyBase` is the common supertype of the twenty branch bases and declares
+no members of its own. The bases are `TomButtonBase`, `TomInputBase`,
+`TomSelectBase`, `TomToggleBase`, `TomSliderBase`, `TomContainerBase`,
+`TomDialogBase`, `TomTableBase`, `TomLabelBase`, `TomImageBase`,
+`TomNavigationBase`, `TomProgressBase`, `TomChipBase`, `TomListBase`,
+`TomTreeBase`, `TomSliverBase`, `TomAnimatedBase`, `TomEffectBase`,
+`TomInteractionBase` and `TomBuilderBase`, and each has concrete subclasses in
+`widgets/`. No branch base extends another, so every widget that extends one
+belongs to exactly one family; `widget is TomFamilyBase` tells whether a widget
+belongs to a family at all.
 
-The enum has 26 values, but they divide unevenly, and the split is worth
-knowing before you write a tool that switches on it:
+The forms module has no family. Its fields descend from
+`TomField<T> extends TomObject<T>`, a kernel observable rendered through
+`TomFieldWidgetAdapter`, so a form field is not a `TomFamilyBase`.
+(`TomTextFormFieldBase` is on the `TomField` side too, despite the `-Base`
+suffix; the handful of genuine widgets in `forms/`, such as `TomReorderHandle`,
+extend ordinary branch bases like `TomImageBase`.)
+[The ACL/layout design](container_widget_resources_authorization.md) §12.2
+describes a further, form-oriented classification as a design intent; no type
+in the package carries it.
 
-- **Flutter-derived (20) — carried.** `button`, `input`, `select`, `toggle`,
-  `slider`, `container`, `dialog`, `table`, `label`, `image`, `navigation`,
-  `progress`, `chip`, `list`, `tree`, `sliver`, `animated`, `effect`,
-  `interaction`, `builder`. Each has a branch base that fixes `family` to it,
-  and each branch base has concrete subclasses in `widgets/`.
-- **Tom form families (6) — reserved, and claimed by nothing.** `formField`,
-  `dateTimePicker`, `listEditor`, `masterDetail`, `searchField`, `fileUpload`
-  have no branch base, and no widget reports them. The forms module does not
-  use this enum at all — it does not even import it. Its fields descend from
-  `TomField<T> extends TomObject<T>`, a kernel observable rendered through
-  `TomFieldWidgetAdapter`, so a form field carries *no* family rather than one
-  of these six. (`TomTextFormFieldBase` is on the `TomField` side too, despite
-  the `-Base` suffix; the handful of genuine widgets in `forms/`, such as
-  `TomReorderHandle`, extend ordinary Flutter-derived bases like
-  `TomImageBase`.)
-
-Two consequences follow, and both bite in practice:
-
-- **`isFamily(TomWidgetFamily.formField)` is false for every widget in the
-  package.** A tool that dispatches on the form values matches nothing; it will
-  not fail, it will silently do no work.
-- **`families` is never overridden.** The default `{family}` is its only
-  implementation, so today every Tom widget reports exactly one family. The
-  multi-family capability is real but has no users — do not infer from its
-  presence that some widget somewhere reports two.
-
-The six are kept, rather than deleted, because
-[the ACL/layout design](container_widget_resources_authorization.md) §12.2
-specifies them as the intended classification for form fields once those become
-family-reporting widgets. They record an intent; they do not describe the code.
-`test/widget_base/tom_widget_family_coverage_test.dart` pins the 20/6 split so
-this section cannot drift back out of step with the enum, and
+`test/widget_base/tom_family_base_test.dart` pins the twenty bases, that each
+is a `TomFamilyBase`, and that each widget belongs to exactly the one family it
+extends.
 [`example/widget_base/widget_base_nodes_example.dart`](../example/widget_base/widget_base_nodes_example.dart)
-shows both consequences on two concrete widgets — `families.single`, and
-`isFamily(TomWidgetFamily.formField)` coming back false.
+shows the type test on two concrete widgets — `is TomLabelBase` and
+`is TomButtonBase`.
 
 ## Scope propagation
 
@@ -398,7 +379,10 @@ no default falls back to opaque black for the unmatched case.
 
 `TomStyleResolvers` parses complex Material objects from JSON resources. Each
 type has a pure `parse…(value)` form (testable without installed resources) and
-a `resolve…(basePath, suffix)` form that reads the resource first.
+a `resolve…(basePath, suffix)` form that reads the resource first. The path is
+nullable, as a widget's `basePath` is — it is `null` exactly when the widget has
+no `tomId` — and a `null` path resolves to `null`, as it does in `TomCtr`. A
+widget passes its `basePath` straight through, with no guard of its own.
 
 What separates it from `TomCtr` is that input, not the imports: both classes
 require the Material library (see [Dependencies](#dependencies)), so that could
@@ -532,7 +516,7 @@ asserted the same way for every entry in it.
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `flutter` | package | `tom_construction_helpers.dart`, `tom_node_base.dart`, `tom_policy_node_base.dart`, `tom_scope_widgets.dart`, `tom_style_resolvers.dart` | `widgets.dart` and `material.dart` — the base classes every Tom widget extends |
-| `tom_core_kernel` | package | 8 of 12 files | `TomScope`, `TomAuthorization`, `TomAuthState`, `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthorizer`, `TomTextResourceProvider` |
+| `tom_core_kernel` | package | 8 of 11 files | `TomScope`, `TomAuthorization`, `TomAuthState`, `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthorizer`, `TomTextResourceProvider` |
 | [resource_auth](resource_auth.md) | module | `tom_construction_helpers.dart`, `tom_style_resolvers.dart` | `TomUIColors`, `TomUIIcons` |
 | [theme](theme.md) | module | `tom_policy_node_base.dart` | `TomThemeScope` |
 
@@ -546,7 +530,7 @@ asserted the same way for every entry in it.
 >   — resource binding: `TomCtr` lookups and `TomStyleResolvers` parsing.
 > - [`example/widget_base/widget_base_nodes_example.dart`](../example/widget_base/widget_base_nodes_example.dart)
 >   — identity and scope composition, the four-layer authorization gate, and
->   the family a widget reports. None of the three needs a widget tree:
+>   the family a widget belongs to. None of the three needs a widget tree:
 >   `basePath` is computed in the constructor, `resolveEffectiveAuth()` takes
->   no `BuildContext`, and `family` is a plain getter, so the example asserts
+>   no `BuildContext`, and the family is a type test, so the example asserts
 >   on constructed nodes rather than pumping them.

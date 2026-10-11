@@ -150,18 +150,15 @@ class TomDropdownButton<T> extends TomSelectBase {
 
   /// Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
+    return TomStyleResolvers.resolveTextStyle(basePath, 'style');
   }
 
   BorderRadius? _resolveBorderRadius(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -277,18 +274,15 @@ class TomPopupMenuButton<T> extends TomSelectBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
   BoxConstraints? _resolveBoxConstraints(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBoxConstraints(basePath!, suffix);
+    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
   }
 
   Offset? _resolveOffset(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveOffset(basePath!, suffix);
+    return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
 }
 
@@ -430,14 +424,12 @@ class TomDropdownMenu<T> extends TomSelectBase {
 
   /// Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, 'textStyle');
+    return TomStyleResolvers.resolveTextStyle(basePath, 'textStyle');
   }
 
   /// Resolves MenuStyle from resources.
   MenuStyle? _resolveMenuStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveMenuStyle(basePath!, 'menuStyle');
+    return TomStyleResolvers.resolveMenuStyle(basePath, 'menuStyle');
   }
 }
 
@@ -511,13 +503,11 @@ class TomMenuAnchor extends TomSelectBase {
 
   /// Resolves MenuStyle from resources.
   MenuStyle? _resolveMenuStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveMenuStyle(basePath!, 'style');
+    return TomStyleResolvers.resolveMenuStyle(basePath, 'style');
   }
 
   Offset? _resolveOffset(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveOffset(basePath!, suffix);
+    return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
 }
 
@@ -681,24 +671,20 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
 
   /// Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
+    return TomStyleResolvers.resolveTextStyle(basePath, 'style');
   }
 
   /// Resolves InputDecoration from resources.
   InputDecoration? _resolveInputDecoration() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveInputDecoration(basePath!, 'decoration');
+    return TomStyleResolvers.resolveInputDecoration(basePath, 'decoration');
   }
 
   BorderRadius? _resolveBorderRadius(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 

@@ -28,6 +28,19 @@
 
 ### Changed
 
+- **A widget's family is the branch base it extends.** The `TomWidgetFamily`
+  enum (20 Flutter-derived values plus the six reserved form values
+  `formField`, `dateTimePicker`, `listEditor`, `masterDetail`, `searchField`,
+  `fileUpload`) is removed together with `TomFamilyBase.family`, `families`
+  and `isFamily`. Nothing in shipped code read those values; they restated
+  what the type hierarchy already says. `TomFamilyBase` is now the empty
+  common supertype of the 20 branch bases (`TomButtonBase` … `TomBuilderBase`),
+  which remain. Replace `widget.family == TomWidgetFamily.button` and
+  `widget.isFamily(TomWidgetFamily.button)` with `widget is TomButtonBase`.
+  `test/widget_base/tom_family_base_test.dart` replaces
+  `tom_widget_family_coverage_test.dart`: it checks the 20 bases and that
+  every widget belongs to exactly the one family it extends.
+
 - **An expandX component keeps its floor.** In a row with room to spare, an
   expanding component now gets its preferred width (never below its minimum)
   and only the space left over is shared among the expanding components, by

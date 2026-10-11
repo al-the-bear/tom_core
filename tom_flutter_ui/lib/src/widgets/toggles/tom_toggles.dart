@@ -196,18 +196,15 @@ class TomCheckbox extends TomToggleBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
   BorderSide? _resolveBorderSide(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderSide(basePath!, suffix);
+    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 }
 
@@ -315,8 +312,7 @@ class TomRadio<T> extends TomToggleBase {
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 }
 
@@ -452,13 +448,11 @@ class TomSwitchListTile extends TomToggleBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 }
 
@@ -593,18 +587,15 @@ class TomCheckboxListTile extends TomToggleBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
   BorderSide? _resolveBorderSide(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderSide(basePath!, suffix);
+    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 }
 
@@ -732,13 +723,11 @@ class TomRadioListTile<T> extends TomToggleBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 }
 
@@ -1018,13 +1007,11 @@ class TomCupertinoCheckbox extends TomToggleBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
   BorderSide? _resolveBorderSide(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderSide(basePath!, suffix);
+    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 }
 

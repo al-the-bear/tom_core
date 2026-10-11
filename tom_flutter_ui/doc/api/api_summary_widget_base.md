@@ -1,7 +1,7 @@
 # Tom Flutter UI API Reference: Widget Base Module
 
 The foundation every Tom widget stands on: the node chain that carries identity
-and authorization, the family taxonomy, and the two static resolvers that turn
+and authorization, the family bases, and the two static resolvers that turn
 resource entries into Flutter values.
 
 ## Table of Contents
@@ -34,7 +34,6 @@ resource entries into Flutter values.
   - [TomEffectBase](#tomeffectbase)
   - [TomInteractionBase](#tominteractionbase)
   - [TomBuilderBase](#tombuilderbase)
-  - [TomWidgetFamily](#tomwidgetfamily)
 - [Scope-capturing bases](#scope-capturing-bases)
   - [TomStatelessWidget](#tomstatelesswidget)
   - [TomStatefulWidget](#tomstatefulwidget)
@@ -54,7 +53,7 @@ resource entries into Flutter values.
 
 ## Overview
 
-Sources: `lib/src/widget_base/tom_auth_layers.dart`, `lib/src/widget_base/tom_construction_helpers.dart`, `lib/src/widget_base/tom_family_base.dart`, `lib/src/widget_base/tom_node_base.dart`, `lib/src/widget_base/tom_policy_node_base.dart`, `lib/src/widget_base/tom_scope_path.dart`, `lib/src/widget_base/tom_scope_widgets.dart`, `lib/src/widget_base/tom_screen_elements_provider.dart`, `lib/src/widget_base/tom_style_resolvers.dart`, `lib/src/widget_base/tom_widget_family.dart`, `lib/src/widget_base/tom_widget_surface.dart`, `lib/src/widget_base/widget_base.dart`.
+Sources: `lib/src/widget_base/tom_auth_layers.dart`, `lib/src/widget_base/tom_construction_helpers.dart`, `lib/src/widget_base/tom_family_base.dart`, `lib/src/widget_base/tom_node_base.dart`, `lib/src/widget_base/tom_policy_node_base.dart`, `lib/src/widget_base/tom_scope_path.dart`, `lib/src/widget_base/tom_scope_widgets.dart`, `lib/src/widget_base/tom_screen_elements_provider.dart`, `lib/src/widget_base/tom_style_resolvers.dart`, `lib/src/widget_base/tom_widget_surface.dart`, `lib/src/widget_base/widget_base.dart`.
 
 The module `lib/src/widget_base/` is barrelled by `widget_base.dart`.
 
@@ -65,9 +64,9 @@ the widget before it ever builds. This module supplies all four, so neither the
 widget kit nor the form system re-implements identity, resource lookup or the
 authorization gate.
 
-Thirty-four exported types and sixty-two public statics. The bulk of both is
+Thirty-three exported types and sixty-two public statics. The bulk of both is
 two static classes — `TomCtr` (23 statics) and `TomStyleResolvers` (36) — plus
-the twenty family branch bases, which exist to fix one getter each.
+the twenty family branch bases, each of which is a widget family.
 
 `TomAuthorizable` is named throughout and is **not** declared here: it is the
 kernel's, reaching this package through `lib/src/kernel_types.dart`.
@@ -90,7 +89,6 @@ StatefulWidget  → TomStatefulWidget → TomState<T>
 
 TomScreenElementsProvider → TomScreenElementsProviderBase
 
-TomWidgetFamily   — 26 values
 TomAuthLayers     — one static
 TomScopePath      — three statics
 TomCtr            — 23 statics
@@ -140,100 +138,91 @@ renders `SizedBox.shrink()` and never calls a hook.
 
 ### TomFamilyBase
 
-`abstract class TomFamilyBase extends TomPolicyNodeBase`. Adds the family
-report: `TomWidgetFamily get family` (abstract), `Set<TomWidgetFamily> get
-families` (defaulting to `{family}`, overridden where a widget belongs to
-several) and `bool isFamily(TomWidgetFamily type)`.
+`abstract class TomFamilyBase extends TomPolicyNodeBase`. The common supertype
+of the twenty branch bases below; it declares no members of its own. A widget's
+family is the branch base it extends, asked with a type test
+(`widget is TomButtonBase`). No branch base extends another, so a widget
+belongs to exactly one family.
 
 ### TomButtonBase
 
-Fixes `family` to `TomWidgetFamily.button`.
+`abstract class TomButtonBase extends TomFamilyBase`. The button family.
 
 ### TomInputBase
 
-Fixes `family` to `TomWidgetFamily.input`.
+`abstract class TomInputBase extends TomFamilyBase`. The input family — single-line text inputs.
 
 ### TomSelectBase
 
-Fixes `family` to `TomWidgetFamily.select`.
+`abstract class TomSelectBase extends TomFamilyBase`. The select family — dropdowns, popup menus.
 
 ### TomToggleBase
 
-Fixes `family` to `TomWidgetFamily.toggle`.
+`abstract class TomToggleBase extends TomFamilyBase`. The toggle family — switches, checkboxes, radios.
 
 ### TomSliderBase
 
-Fixes `family` to `TomWidgetFamily.slider`.
+`abstract class TomSliderBase extends TomFamilyBase`. The slider family.
 
 ### TomContainerBase
 
-Fixes `family` to `TomWidgetFamily.container`.
+`abstract class TomContainerBase extends TomFamilyBase`. The container family — structural wrapper widgets.
 
 ### TomDialogBase
 
-Fixes `family` to `TomWidgetFamily.dialog`.
+`abstract class TomDialogBase extends TomFamilyBase`. The dialog family.
 
 ### TomTableBase
 
-Fixes `family` to `TomWidgetFamily.table`.
+`abstract class TomTableBase extends TomFamilyBase`. The table family — data tables, paginated tables.
 
 ### TomLabelBase
 
-Fixes `family` to `TomWidgetFamily.label`.
+`abstract class TomLabelBase extends TomFamilyBase`. The label family — text, rich text, selectable text.
 
 ### TomImageBase
 
-Fixes `family` to `TomWidgetFamily.image`.
+`abstract class TomImageBase extends TomFamilyBase`. The image family — icons, avatars, images.
 
 ### TomNavigationBase
 
-Fixes `family` to `TomWidgetFamily.navigation`.
+`abstract class TomNavigationBase extends TomFamilyBase`. The navigation family — tab bars, drawers, rails.
 
 ### TomProgressBase
 
-Fixes `family` to `TomWidgetFamily.progress`.
+`abstract class TomProgressBase extends TomFamilyBase`. The progress family — indicators, spinners.
 
 ### TomChipBase
 
-Fixes `family` to `TomWidgetFamily.chip`.
+`abstract class TomChipBase extends TomFamilyBase`. The chip family — filter, choice, action chips.
 
 ### TomListBase
 
-Fixes `family` to `TomWidgetFamily.list`.
+`abstract class TomListBase extends TomFamilyBase`. The list family — list views, list tiles.
 
 ### TomTreeBase
 
-Fixes `family` to `TomWidgetFamily.tree`.
+`abstract class TomTreeBase extends TomFamilyBase`. The tree family — tree views.
 
 ### TomSliverBase
 
-Fixes `family` to `TomWidgetFamily.sliver`.
+`abstract class TomSliverBase extends TomFamilyBase`. The sliver family — sliver-based scrolling widgets.
 
 ### TomAnimatedBase
 
-Fixes `family` to `TomWidgetFamily.animated`.
+`abstract class TomAnimatedBase extends TomFamilyBase`. The animated family — implicit animations.
 
 ### TomEffectBase
 
-Fixes `family` to `TomWidgetFamily.effect`.
+`abstract class TomEffectBase extends TomFamilyBase`. The effect family — visual effects, filters, backdrops.
 
 ### TomInteractionBase
 
-Fixes `family` to `TomWidgetFamily.interaction`.
+`abstract class TomInteractionBase extends TomFamilyBase`. The interaction family — gesture detectors, drag targets.
 
 ### TomBuilderBase
 
-Fixes `family` to `TomWidgetFamily.builder`.
-
-### TomWidgetFamily
-
-The 26-value taxonomy of what a widget is *for*, not what it looks like. Twenty
-values are fixed by a branch base above — `button`, `input`, `select`,
-`toggle`, `slider`, `container`, `dialog`, `table`, `label`, `image`,
-`navigation`, `progress`, `chip`, `list`, `tree`, `sliver`, `animated`,
-`effect`, `interaction`, `builder` — and six belong to the form system, which
-reports them without a branch base: `formField`, `dateTimePicker`,
-`listEditor`, `masterDetail`, `searchField`, `fileUpload`.
+`abstract class TomBuilderBase extends TomFamilyBase`. The builder family — stream, future, value-listenable builders.
 
 ## Scope-capturing bases
 
@@ -381,7 +370,9 @@ stored as.
 Thirty-six statics in `parse…` / `resolve…` pairs. `parse…` takes a map the
 caller already holds; `resolve…` takes a resource path, reads the map through
 `TomCtr.map`, and parses it. Every `resolve…` returns the same nullable type as
-its `parse…` twin and answers `null` when the path holds nothing.
+its `parse…` twin and answers `null` when the path holds nothing — or is
+itself `null`, which it is for a widget with no `tomId`, so a caller passes a
+widget's `basePath` straight through, as it does to `TomCtr`.
 
 | Pair | Produces |
 | ---- | -------- |

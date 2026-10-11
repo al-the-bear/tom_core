@@ -91,18 +91,15 @@ class TomText extends TomLabelBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
   StrutStyle? _resolveStrutStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveStrutStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
   }
 
   TextHeightBehavior? _resolveTextHeightBehavior(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextHeightBehavior(basePath!, suffix);
+    return TomStyleResolvers.resolveTextHeightBehavior(basePath, suffix);
   }
 
   // ===========================================================================
@@ -292,23 +289,19 @@ class TomSelectableText extends TomLabelBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
   StrutStyle? _resolveStrutStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveStrutStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
   }
 
   TextHeightBehavior? _resolveTextHeightBehavior(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextHeightBehavior(basePath!, suffix);
+    return TomStyleResolvers.resolveTextHeightBehavior(basePath, suffix);
   }
 
   ScrollPhysics? _resolveScrollPhysics(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveScrollPhysics(basePath!, suffix);
+    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
 }
 
@@ -384,13 +377,11 @@ class TomRichText extends TomLabelBase {
   }
 
   StrutStyle? _resolveStrutStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveStrutStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
   }
 
   TextHeightBehavior? _resolveTextHeightBehavior(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextHeightBehavior(basePath!, suffix);
+    return TomStyleResolvers.resolveTextHeightBehavior(basePath, suffix);
   }
 }
 
@@ -478,18 +469,15 @@ class TomBadge extends TomLabelBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 
   Offset? _resolveOffset(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveOffset(basePath!, suffix);
+    return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
 }
 
@@ -686,18 +674,15 @@ class TomListTile extends TomLabelBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -807,8 +792,7 @@ class TomChip extends TomLabelBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 

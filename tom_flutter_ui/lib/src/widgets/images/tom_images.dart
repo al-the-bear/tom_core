@@ -206,8 +206,7 @@ class TomImage extends TomImageBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -390,8 +389,7 @@ class TomFadeInImage extends TomImageBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -502,8 +500,7 @@ class TomInkImage extends TomImageBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -626,8 +623,7 @@ class TomNetworkImage extends TomImageBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 

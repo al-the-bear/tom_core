@@ -95,9 +95,9 @@ const nonWidgetTypes = {
 /// This is the kit's second route to the widget surface, and the reason
 /// `TomWidgetSurface` exists as an interface rather than as a base class: a
 /// `TomExpanded` has to *be* an `Expanded` for `Flex` to accept it, so it
-/// cannot also extend `TomNodeBase`. These seventeen therefore report no
-/// family — `family` lives on `TomFamilyBase` — which is a documented gap and
-/// not a defect.
+/// cannot also extend `TomNodeBase`. These seventeen therefore belong to no
+/// family — a family is a `TomFamilyBase` branch base — which is a documented
+/// gap and not a defect.
 const mixinSurfaceWidgets = {
   'TomAnimatedPositioned',
   'TomAnimatedPositionedDirectional',

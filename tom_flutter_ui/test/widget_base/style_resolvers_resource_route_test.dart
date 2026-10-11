@@ -424,4 +424,54 @@ void main() {
       });
     }
   });
+  // A widget's `basePath` is null exactly when it has no `tomId`, so every
+  // resolver takes a nullable path and answers null for it — the same
+  // contract as the `TomCtr` readers it sits on. Call sites then need no
+  // guard of their own.
+  group('a null basePath', () {
+    test('resolves to null in every resolver', () {
+      // Each resolver is named so a failure says which one. Fails to
+      // compile, rather than fails, if any of them goes back to a
+      // non-nullable path.
+      final resolvers = <String, Object? Function()>{
+        'resolveTextStyle': () =>
+            TomStyleResolvers.resolveTextStyle(null, 'style'),
+        'resolveButtonStyle': () =>
+            TomStyleResolvers.resolveButtonStyle(null, 'style'),
+        'resolveInputDecoration': () =>
+            TomStyleResolvers.resolveInputDecoration(null, 'style'),
+        'resolveMenuStyle': () =>
+            TomStyleResolvers.resolveMenuStyle(null, 'style'),
+        'resolveShapeBorder': () =>
+            TomStyleResolvers.resolveShapeBorder(null, 'style'),
+        'resolveBorderSide': () =>
+            TomStyleResolvers.resolveBorderSide(null, 'style'),
+        'resolveBorderRadius': () =>
+            TomStyleResolvers.resolveBorderRadius(null, 'style'),
+        'resolveDecoration': () =>
+            TomStyleResolvers.resolveDecoration(null, 'style'),
+        'resolveBoxConstraints': () =>
+            TomStyleResolvers.resolveBoxConstraints(null, 'style'),
+        'resolveAlignment': () =>
+            TomStyleResolvers.resolveAlignment(null, 'style'),
+        'resolveOffset': () => TomStyleResolvers.resolveOffset(null, 'style'),
+        'resolveTableBorder': () =>
+            TomStyleResolvers.resolveTableBorder(null, 'style'),
+        'resolveVisualDensity': () =>
+            TomStyleResolvers.resolveVisualDensity(null, 'style'),
+        'resolveIconThemeData': () =>
+            TomStyleResolvers.resolveIconThemeData(null, 'style'),
+        'resolveStrutStyle': () =>
+            TomStyleResolvers.resolveStrutStyle(null, 'style'),
+        'resolveTextHeightBehavior': () =>
+            TomStyleResolvers.resolveTextHeightBehavior(null, 'style'),
+        'resolveScrollPhysics': () =>
+            TomStyleResolvers.resolveScrollPhysics(null, 'style'),
+      };
+      expect(resolvers, hasLength(17));
+      for (final entry in resolvers.entries) {
+        expect(entry.value(), isNull, reason: entry.key);
+      }
+    });
+  });
 }

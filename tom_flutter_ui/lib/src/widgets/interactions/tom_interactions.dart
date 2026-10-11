@@ -253,8 +253,7 @@ class TomGestureDetector extends TomInteractionBase {
   }
 
   Offset? _resolveOffset(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveOffset(basePath!, suffix);
+    return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
 }
 
@@ -421,13 +420,11 @@ class TomInkWell extends TomInteractionBase {
   }
 
   BorderRadius? _resolveBorderRadius(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -587,13 +584,11 @@ class TomInkResponse extends TomInteractionBase {
   }
 
   BorderRadius? _resolveBorderRadius(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -702,8 +697,7 @@ class TomDraggable<T extends Object> extends TomInteractionBase {
   }
 
   Offset? _resolveOffset(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveOffset(basePath!, suffix);
+    return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
 }
 

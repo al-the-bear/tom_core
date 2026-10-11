@@ -1115,17 +1115,13 @@ Family membership is informational (for debug tooling, documentation) — it doe
 
 ### TomFamilyBase (composition pattern base)
 
-`TomFamilyBase` is the primary base class for the **composition pattern** — the default wrapping approach for most Tom widgets. It extends `TomPolicyNodeBase` (which extends `TomNodeBase` → `StatelessWidget`) and provides family metadata plus the authorization-aware build chain:
+`TomFamilyBase` is the primary base class for the **composition pattern** — the default wrapping approach for most Tom widgets. It extends `TomPolicyNodeBase` (which extends `TomNodeBase` → `StatelessWidget`), inheriting the authorization-aware build chain, and is the common supertype of the family bases. It declares no members of its own:
 
 ```dart
-abstract class TomFamilyBase extends TomPolicyNodeBase {
-  TomWidgetFamily get family;
-  Set<TomWidgetFamily> get families => {family};
-  bool isFamily(TomWidgetFamily type) => families.contains(type);
-}
+abstract class TomFamilyBase extends TomPolicyNodeBase {}
 ```
 
-Each family has a specific base class (e.g., `TomButtonBase`, `TomInputBase`) that extends `TomFamilyBase` with family-specific behavior. Concrete widgets extend these family bases and implement `buildContent()`.
+Each family has a specific base class (e.g., `TomButtonBase`, `TomInputBase`) that extends `TomFamilyBase`. A widget's family *is* the base it extends, asked with a type test (`widget is TomButtonBase`); no base extends another, so a widget belongs to exactly one family. Concrete widgets extend these family bases and implement `buildContent()`.
 
 ### Widget family mappings
 
@@ -2390,7 +2386,7 @@ This approach can find non-widget classes and analyze them more thoroughly than 
 
 All data is collected from live instances via the base class hierarchy and reflection. Collection is **pull-based** — no runtime overhead when inactive.
 
-- `TomNodeBase` → ID, path, group, family type.
+- `TomNodeBase` → ID, path, group, family (the family base the runtime type extends).
 - `TomPolicyNodeBase` → authorization state, raw auth result (from global `TomAuthorization`).
 - `TomAction` → action ID, controller, group, authorization, `canExecute()`, undoable flag.
 - `TomActionController` → controller ID, registered actions (via reflection), group.

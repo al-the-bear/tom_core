@@ -181,7 +181,7 @@ atomic transactions, undo/redo history, composites, and widget triggers.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomNodeBase`, `TomPolicyNodeBase`, `TomWidgetFamily` | The widget / family base classes |
+| `TomNodeBase`, `TomPolicyNodeBase`, `TomFamilyBase` | The widget / family base classes |
 | `TomStatelessWidget`, `TomStatefulWidget`, `TomState` | Construction-time helpers |
 | `TomScreenElementsProviderBase`, `TomStyleResolvers`, `TomCtr` | Element provider & resolvers |
 | `TomAuthorizationGroup` | Collective visibility control without an id on every leaf |
@@ -305,7 +305,7 @@ transaction onto the application's `TomUndoHistory`.
 
 ```
 tom_flutter_ui
-├── widget_base/                 # TomNodeBase / TomPolicyNodeBase / TomWidgetFamily,
+├── widget_base/                 # TomNodeBase / TomPolicyNodeBase / TomFamilyBase,
 │                                #   scope widgets, screen-elements provider, resolvers
 ├── theme/                       # TomTheme + style-variant system
 ├── resource_auth/               # TomUIColors / TomUIIcons / TomConfigProvider
@@ -326,7 +326,7 @@ icons, configuration) and `theme` (appearance). `forms`, `widgets`, and
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomNodeBase` / `TomPolicyNodeBase` | Base widget classes carrying `tomId` + authorization |
-| `TomWidgetFamily` | Material/Cupertino family selection |
+| `TomFamilyBase` | Common supertype of the 20 family bases; a widget's family is the base it extends |
 | `TomForm<T>` | The form data model + lifecycle |
 | `TomFormFieldFamily` | Per-field Material/Cupertino concrete factory |
 | `AclBuilder` / `Acl` | The fluent layout builder and its rendered widget |

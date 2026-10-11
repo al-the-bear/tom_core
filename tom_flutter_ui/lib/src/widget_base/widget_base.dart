@@ -12,12 +12,12 @@
 ///   group, and resolves the resource path.
 /// - [TomPolicyNodeBase] — adds the authorization gate. Every Tom widget
 ///   passes through it, which is why authorization cannot be forgotten.
-/// - [TomFamilyBase] — adds the widget's behavioural family, fixed by each
-///   of the 20 branch bases ([TomButtonBase], [TomInputBase], …).
+/// - [TomFamilyBase] — the common supertype of the 20 branch bases
+///   ([TomButtonBase], [TomInputBase], …); the branch a widget extends is its
+///   behavioural family.
 ///
 /// Also here: [TomWidgetSurface], the interface naming those four
-/// contributions; [TomWidgetFamily], the enum of behavioural roles a widget
-/// reports (not a base class — the chain above is); [TomCtr], the single
+/// contributions; [TomCtr], the single
 /// entry point for resource resolution; and [TomScreenElementsProvider], by
 /// which a screen declares its widgets as typed fields.
 ///
@@ -39,5 +39,4 @@ export 'tom_scope_path.dart';
 export 'tom_scope_widgets.dart';
 export 'tom_screen_elements_provider.dart';
 export 'tom_style_resolvers.dart';
-export 'tom_widget_family.dart';
 export 'tom_widget_surface.dart';

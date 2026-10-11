@@ -23,7 +23,7 @@ fails rather than misleading.
 | `resource_auth` | [api_summary_resource_auth.md](api_summary_resource_auth.md) | Resource resolution: colour and icon names to Flutter objects, and the environment and platform configuration they resolve against. |
 | `theme` | [api_summary_theme.md](api_summary_theme.md) | Tom's theme extensions over Flutter's `ThemeData`, the scope that provides them, and the serialisable root theme spec. |
 | `widgets` | [api_summary_widgets.md](api_summary_widgets.md) | The 299 Tom wrappers over Material, Cupertino and the widget layer, and the family bases they extend. |
-| `widget_base` | [api_summary_widget_base.md](api_summary_widget_base.md) | The foundation every Tom widget stands on: the node chain carrying identity and authorization, the family taxonomy, and the two static resolvers. |
+| `widget_base` | [api_summary_widget_base.md](api_summary_widget_base.md) | The foundation every Tom widget stands on: the node chain carrying identity and authorization, the family bases, and the two static resolvers. |
 
 ## Which modules get one
 
@@ -401,7 +401,7 @@ Summary: [api_summary_widget_base.md](api_summary_widget_base.md)
 | `TomCtr` | class | Single entry point for all resource resolution in Tom UI. |
 | `TomDialogBase` | abstract class | Base for the Dialog family. |
 | `TomEffectBase` | abstract class | Base for the Effect family (visual effects, filters, backdrops). |
-| `TomFamilyBase` | abstract class | Base class for all Tom widgets that belong to a widget family. |
+| `TomFamilyBase` | abstract class | Base class for every Tom widget that belongs to a widget family. |
 | `TomImageBase` | abstract class | Base for the Image family (icons, avatars, images). |
 | `TomInputBase` | abstract class | Base for the Input family (single-line text inputs). |
 | `TomInteractionBase` | abstract class | Base for the Interaction family (gesture detectors, drag targets). |
@@ -424,7 +424,6 @@ Summary: [api_summary_widget_base.md](api_summary_widget_base.md)
 | `TomTableBase` | abstract class | Base for the Table family (data tables, paginated tables). |
 | `TomToggleBase` | abstract class | Base for the Toggle family (switches, checkboxes, radios). |
 | `TomTreeBase` | abstract class | Base for the Tree family (tree views). |
-| `TomWidgetFamily` | enum | Widget families categorize Tom widgets by their behavioral role. |
 | `TomWidgetSurface` | abstract interface class | The surface every Tom widget adds on top of the Flutter widget it wraps. |
 
 ### Widgets (`lib/src/widgets/`)

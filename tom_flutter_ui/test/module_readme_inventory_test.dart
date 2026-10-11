@@ -120,7 +120,7 @@ final _fencedBlock = RegExp(r'```.*?```', dotAll: true);
 
 /// An inline code span. A span counts as a type claim only when the whole of
 /// its content is a bare `Tom…` identifier, which is what lets `TomAnimated…`
-/// and `TomAnimated*` (abbreviations), `TomWidgetFamily.button` (a member) and
+/// and `TomAnimated*` (abbreviations), `TomCtr.color` (a member) and
 /// `tomId` (a parameter) fall out without being special-cased.
 final _inlineCode = RegExp(r'`([^`\n]+)`');
 

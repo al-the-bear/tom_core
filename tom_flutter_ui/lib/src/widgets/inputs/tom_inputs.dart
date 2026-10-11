@@ -378,18 +378,15 @@ class TomTextField extends TomInputBase {
 
   /// Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
+    return TomStyleResolvers.resolveTextStyle(basePath, 'style');
   }
 
   StrutStyle? _resolveStrutStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveStrutStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
   }
 
   ScrollPhysics? _resolveScrollPhysics(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveScrollPhysics(basePath!, suffix);
+    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
 }
 
@@ -533,8 +530,7 @@ class TomTextFormField extends TomInputBase {
 
   /// Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
+    return TomStyleResolvers.resolveTextStyle(basePath, 'style');
   }
 }
 
@@ -628,8 +624,7 @@ class TomSearchBar extends TomInputBase {
   }
 
   BoxConstraints? _resolveBoxConstraints(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBoxConstraints(basePath!, suffix);
+    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
   }
 }
 
@@ -806,8 +801,7 @@ class TomSearchAnchor extends TomInputBase {
 
   /// Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -1104,8 +1098,7 @@ class TomCupertinoTextField extends TomInputBase {
 
   /// Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -1341,13 +1334,11 @@ class TomCupertinoSearchTextField extends TomInputBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
   BorderRadius? _resolveBorderRadius(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 }
 
@@ -1786,8 +1777,7 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -1943,8 +1933,7 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 

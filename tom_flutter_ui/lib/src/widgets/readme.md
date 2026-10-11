@@ -6,15 +6,16 @@
 The general-purpose widget kit: every common Flutter widget given a Tom wrapper
 that adds a `tomId`, the kernel's four-state authorization, and resource-resolved
 labels / colours / icons. Each widget exposes `effectiveAuthState`. 273 of the
-290 also expose `family` — the other 17 extend a Flutter widget directly and
-pick the Tom surface up from `TomWidgetMixin`, so they have no family base to
-get `family` from.
+290 also belong to a family by extending one of the family bases — the other 17
+extend a Flutter widget directly and pick the Tom surface up from
+`TomWidgetMixin`, so they belong to no family.
 
 Both routes arrive at the same interface, `TomWidgetSurface`, and every one of
 the 290 is checked against it:
 `test/widgets/widget_conformance_test.dart` constructs the whole kit and
 asserts per widget that it reports the id it was given, resolves its own
-`basePath` bare and under a scope, reports the family its base fixes, and
+`basePath` bare and under a scope, is a `TomFamilyBase` when it extends a
+family base, and
 answers all four authorization states from that path and no other. A wrapper
 added to this folder and not to that suite's registry fails it, so "every
 widget carries the Tom surface" is a checked claim rather than a convention.
@@ -30,9 +31,10 @@ has no equivalent for. Picking a design language is the call site's job, and
 the census is asserted from the sources by
 `test/widgets/widget_family_claims_test.dart`.
 
-`family` has nothing to do with that. It is a `TomWidgetFamily` role tag —
-`button`, `input`, `label`, `dialog` — fixed on the base class at compile time,
-and it says what a widget is *for*, not what it looks like. The kit's one
+A widget's family has nothing to do with that. It is the family base the
+widget extends — `TomButtonBase`, `TomInputBase`, `TomLabelBase`,
+`TomDialogBase` — asked with a type test (`widget is TomButtonBase`), and it
+says what a widget is *for*, not what it looks like. The kit's one
 runtime Material-vs-Cupertino switch lives in [`forms`](../forms/readme.md),
 where `TomFormFieldFamily` builds either concrete from a single declaration; even
 there the caller chooses (by breakpoint, typically), so it is a decision rather
@@ -140,7 +142,7 @@ void buildWidgets() {
     child: TomText(text: 'Save'),
   );
 
-  print(button.family); // TomWidgetFamily.button
+  print(button is TomButtonBase); // true — the button family
 }
 ```
 

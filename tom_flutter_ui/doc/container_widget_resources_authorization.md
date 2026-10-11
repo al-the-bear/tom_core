@@ -595,7 +595,7 @@ This keeps authorization enforcement simple and predictable: four well-defined s
 
 Within a family, we provide one common API and multiple concrete classes.
 
-External logic should usually depend on family type, not concrete widget class.
+External logic should usually depend on the family base (`widget is TomButtonBase`), not the concrete widget class.
 
 ## 6.1 Button family example
 
@@ -1317,9 +1317,9 @@ The debug view provides comprehensive inspection of the widget and action system
 
 All debug information is collected from live widget and action instances through the base class hierarchy:
 
-- **`TomNodeBase`** reports its ID, resolved path, group membership, and family type.
+- **`TomNodeBase`** reports its ID, resolved path, group membership, and family (the family base its runtime type extends).
 - **`TomPolicyNodeBase`** reports its authorization state (visible/hidden/readonly), the raw auth result from the adapter, and any context restrictions applied.
-- **`TomFamilyBase`** reports the family type and resource suffixes it requested.
+- **`TomFamilyBase`** subclasses report the resource suffixes they requested.
 - **`TomAction`** instances report their action ID, resolved path, controller (if any), group membership, authorization state, `canExecute()` state, and whether they are undoable.
 - **`TomActionController`** instances report their controller ID, registered actions, and group membership.
 
@@ -1706,32 +1706,27 @@ Form component behavior:
 
 ### Widget type identification
 
-Rather than declaring widget types externally (via an enum or config), each widget provides its family types through the base class interface:
+Rather than declaring widget types externally (via an enum or config), a
+widget's family is the family base class it extends, and it is identified with
+a type test:
 
 ```dart
-abstract class TomFamilyBase extends TomPolicyNodeBase {
-  /// The primary family type of this widget.
-  TomWidgetFamily get family;
+abstract class TomFamilyBase extends TomPolicyNodeBase {}
 
-  /// All family types this widget belongs to.
-  /// A date-time-picker is both a FormField and a DateTimePicker.
-  /// A search field is both a FormField and a SearchField.
-  Set<TomWidgetFamily> get families => {family};
+abstract class TomButtonBase extends TomFamilyBase { /* … */ }
 
-  /// Check if this widget has a specific nature.
-  bool isFamily(TomWidgetFamily type) => families.contains(type);
-}
+widget is TomButtonBase; // the button family
+widget is TomFamilyBase; // the widget belongs to some family
 ```
 
-This avoids errors from mismatched type declarations and allows for widgets with multiple natures — the design intent being that a `TomFormDateTimePicker` would report both `TomWidgetFamily.formField` and `TomWidgetFamily.dateTimePicker`. Only the widget class itself knows about its natures.
+This avoids errors from mismatched type declarations: there is no tag that
+could disagree with the class, because the class is the classification. No
+family base extends another, so every widget belongs to exactly one family.
 
-> **Status: not yet built.** This part of the design is unrealised. `families`
-> is overridden nowhere in the package, so every Tom widget reports exactly one
-> family; and the six form values named here are claimed by no type at all,
-> because form fields descend from `TomField<T>` rather than from
-> `TomFamilyBase` and so carry no family. The multi-nature machinery above is
-> real and works — it simply has no users yet. See
-> [widget_base.md](widget_base.md#the-widget-family-taxonomy).
+The form-component families of §12.2 are a design classification, not a type
+check: form fields descend from `TomField<T>` rather than from `TomFamilyBase`,
+so `is TomFamilyBase` is false for them. See
+[widget_base.md](widget_base.md#the-widget-family-taxonomy).
 
 ### 12.3 Form field anatomy
 
@@ -2568,7 +2563,6 @@ List views participate in the same authorization model:
 
 - Base class chain: `TomNodeBase` → `TomPolicyNodeBase` → `TomFamilyBase` → 20 family branch bases
 - 290 wrapped Flutter widgets, 273 of them on a family branch base
-- `TomWidgetFamily` enum (26 values: 20 Flutter-derived + 6 custom form families)
 - Authorization: `TomAuthState`, `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthorization` singleton, `TomAuthorizer`, `TomAuthorizerStrategy`, `TomUIStateController`
 - Authorization enforcement in `TomPolicyNodeBase` (4-state switch, `resolveEffectiveAuth()`)
 - `TomStateStyle` via `TomThemeScope` for readonly visual treatment
@@ -2632,7 +2626,7 @@ This architecture intentionally favors clarity over generic abstraction.
 **Widgets:**
 
 - all widgets share one base hierarchy and one policy boundary,
-- widget family types are reported by the widget itself through the base class (not declared externally),
+- a widget's family is the family base class it extends (not declared externally),
 - families provide common behavior,
 - concrete classes can be created one-by-one as needed,
 - screen elements are defined with directly instantiated widgets — no factory, no type enum, no untyped config,

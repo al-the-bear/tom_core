@@ -26,8 +26,7 @@ which the same test holds to the same barrel.
 | ---- | -------------- |
 | `TomWidgetSurface` | The four members every Tom wrapper adds over its Flutter widget — `tomId`, `tomGroup`, `basePath`, `effectiveAuthState` |
 | `TomNodeBase` / `TomPolicyNodeBase` | Base widget classes carrying `tomId` + authorization |
-| `TomFamilyBase` | The root of the family bases below: it fixes a widget's `TomWidgetFamily` at compile time |
-| `TomWidgetFamily` | The role tag a family base fixes — what a widget is *for*, not what it looks like |
+| `TomFamilyBase` | The common supertype of the family bases below; it declares no members of its own |
 | `TomAuthLayers` | Composes the four authorization layers in order; `TomAuthLayers.resolve` is the one place that order lives |
 | `TomStatelessWidget` / `TomStatefulWidget` / `TomState` | Construction-time base helpers |
 | `TomScreenElementsProvider` / `TomScreenElementsProviderBase` | The element-provider contract forms/ACL build against |
@@ -37,10 +36,11 @@ which the same test holds to the same barrel.
 
 ### The family bases
 
-Twenty subclasses of `TomFamilyBase`, one per widget role, whose only job is to
-fix the `family` its widgets report. A wrapper extends exactly one of them,
-which is what lets `widgets/` state a widget's role without any widget
-declaring it:
+Twenty subclasses of `TomFamilyBase`, one per widget role — what a widget is
+*for*, not what it looks like. A widget's family *is* the base it extends, and
+it is asked with a type test (`widget is TomButtonBase`); there is no tag to
+read. A wrapper extends exactly one of them, and no base extends another, so
+every widget belongs to exactly one family without declaring it:
 
 `TomButtonBase`, `TomInputBase`, `TomSelectBase`, `TomToggleBase`,
 `TomSliderBase`, `TomContainerBase`, `TomDialogBase`, `TomTableBase`,

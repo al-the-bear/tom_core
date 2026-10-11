@@ -69,8 +69,7 @@ class TomAnimatedAlign extends TomAnimatedBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -215,18 +214,15 @@ class TomAnimatedContainer extends TomAnimatedBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 
   Decoration? _resolveDecoration(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveDecoration(basePath!, suffix);
+    return TomStyleResolvers.resolveDecoration(basePath, suffix);
   }
 
   BoxConstraints? _resolveBoxConstraints(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBoxConstraints(basePath!, suffix);
+    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
   }
 }
 
@@ -299,8 +295,7 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -372,8 +367,7 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -434,8 +428,7 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -627,8 +620,7 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
   }
 
   BorderRadius? _resolveBorderRadius(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 }
 
@@ -847,8 +839,7 @@ class TomAnimatedRotation extends TomAnimatedBase {
   }
 
   Alignment? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix) as Alignment?;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix) as Alignment?;
   }
 }
 
@@ -905,8 +896,7 @@ class TomAnimatedScale extends TomAnimatedBase {
   }
 
   Alignment? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix) as Alignment?;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix) as Alignment?;
   }
 }
 
@@ -961,8 +951,7 @@ class TomAnimatedSize extends TomAnimatedBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -1011,8 +1000,7 @@ class TomAnimatedSlide extends TomAnimatedBase {
   }
 
   Offset? _resolveOffset(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveOffset(basePath!, suffix);
+    return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
 }
 

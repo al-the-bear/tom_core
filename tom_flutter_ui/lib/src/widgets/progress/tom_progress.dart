@@ -147,8 +147,7 @@ class TomLinearProgressIndicator extends TomProgressBase {
   }
 
   BorderRadiusGeometry? _resolveBorderRadius(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 }
 

@@ -107,18 +107,15 @@ class TomNavigationRail extends TomNavigationBase {
 
   // Resolve TextStyle from resources
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
   IconThemeData? _resolveIconThemeData(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveIconThemeData(basePath!, suffix);
+    return TomStyleResolvers.resolveIconThemeData(basePath, suffix);
   }
 
   @override
@@ -237,8 +234,7 @@ class TomNavigationBar extends TomNavigationBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -358,8 +354,7 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
 
   // Resolve TextStyle from resources
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
   @override
@@ -394,13 +389,11 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
   }
 
   Decoration? _resolveDecoration(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveDecoration(basePath!, suffix);
+    return TomStyleResolvers.resolveDecoration(basePath, suffix);
   }
 
   BorderRadius? _resolveBorderRadius(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 }
 
@@ -483,8 +476,7 @@ class TomNavigationDrawer extends TomNavigationBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -558,8 +550,7 @@ class TomDrawer extends TomNavigationBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -679,13 +670,11 @@ class TomBottomNavigationBar extends TomNavigationBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
   IconThemeData? _resolveIconThemeData(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveIconThemeData(basePath!, suffix);
+    return TomStyleResolvers.resolveIconThemeData(basePath, suffix);
   }
 }
 
@@ -763,8 +752,7 @@ class TomStepper extends TomNavigationBase {
   }
 
   ScrollPhysics? _resolveScrollPhysics(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveScrollPhysics(basePath!, suffix);
+    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
 }
 

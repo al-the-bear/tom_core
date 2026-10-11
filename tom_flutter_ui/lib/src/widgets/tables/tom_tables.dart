@@ -141,18 +141,15 @@ class TomDataTable extends TomTableBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
   Decoration? _resolveDecoration(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveDecoration(basePath!, suffix);
+    return TomStyleResolvers.resolveDecoration(basePath, suffix);
   }
 
   TableBorder? _resolveTableBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTableBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveTableBorder(basePath, suffix);
   }
 }
 
@@ -355,8 +352,7 @@ class TomTable extends TomTableBase {
   }
 
   TableBorder? _resolveTableBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTableBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveTableBorder(basePath, suffix);
   }
 }
 

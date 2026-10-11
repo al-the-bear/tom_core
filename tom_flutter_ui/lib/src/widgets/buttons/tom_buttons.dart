@@ -101,8 +101,7 @@ class TomElevatedButton extends TomButtonBase {
 
   /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 }
 
@@ -196,8 +195,7 @@ class TomTextButton extends TomButtonBase {
 
   /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 }
 
@@ -291,8 +289,7 @@ class TomOutlinedButton extends TomButtonBase {
 
   /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 }
 
@@ -416,8 +413,7 @@ class TomFilledButton extends TomButtonBase {
 
   /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 }
 
@@ -872,8 +868,7 @@ class TomFloatingActionButton extends TomButtonBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -949,8 +944,7 @@ class TomMenuItemButton extends TomButtonBase {
 
   /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 }
 
@@ -1035,20 +1029,17 @@ class TomSubmenuButton extends TomButtonBase {
 
   /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 
   /// Resolves MenuStyle from resources.
   MenuStyle? _resolveMenuStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveMenuStyle(basePath!, 'menuStyle');
+    return TomStyleResolvers.resolveMenuStyle(basePath, 'menuStyle');
   }
 
   /// Resolves Offset from resources.
   Offset? _resolveOffset(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveOffset(basePath!, suffix);
+    return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
 }
 
@@ -1103,8 +1094,7 @@ class TomSegmentedButton<T extends Object> extends TomButtonBase {
 
   /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 }
 
@@ -1417,20 +1407,17 @@ class TomIconButton extends TomButtonBase {
 
   /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 
   /// Resolves AlignmentGeometry from resources.
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 
   /// Resolves BoxConstraints from resources.
   BoxConstraints? _resolveBoxConstraints(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveBoxConstraints(basePath!, suffix);
+    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
   }
 }
 
@@ -1555,8 +1542,7 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
 
   /// Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle() {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 }
 
@@ -1875,8 +1861,7 @@ class TomCupertinoDialogAction extends TomButtonBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 

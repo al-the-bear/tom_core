@@ -62,7 +62,11 @@ import 'tom_construction_helpers.dart';
 /// one returned instead, it would render plausibly — `TextStyle()` inherits
 /// from the ambient theme — and the mistake would go unreported.
 ///
-/// Usage in widgets:
+/// Every `resolve…` takes the widget's `basePath` as it is — nullable, `null`
+/// exactly when the widget has no `tomId` — and answers `null` for a `null`
+/// path, the same contract as the [TomCtr] readers it sits on. A call site
+/// needs no guard of its own:
+///
 /// ```dart
 /// final style =
 ///     this.style ?? TomStyleResolvers.resolveButtonStyle(basePath, 'style');
@@ -142,7 +146,7 @@ class TomStyleResolvers {
   }
 
   /// Resolves a [TextStyle] from resources at [basePath].[suffix].
-  static TextStyle? resolveTextStyle(String basePath, String suffix) {
+  static TextStyle? resolveTextStyle(String? basePath, String suffix) {
     final map = TomCtr.map(basePath, suffix);
     return parseTextStyle(map);
   }
@@ -247,7 +251,7 @@ class TomStyleResolvers {
   }
 
   /// Resolves a [ButtonStyle] from resources at [basePath].[suffix].
-  static ButtonStyle? resolveButtonStyle(String basePath, String suffix) {
+  static ButtonStyle? resolveButtonStyle(String? basePath, String suffix) {
     final map = TomCtr.map(basePath, suffix);
     return parseButtonStyle(map);
   }
@@ -373,7 +377,7 @@ class TomStyleResolvers {
 
   /// Resolves an [InputDecoration] from resources at [basePath].[suffix].
   static InputDecoration? resolveInputDecoration(
-    String basePath,
+    String? basePath,
     String suffix,
   ) {
     final map = TomCtr.map(basePath, suffix);
@@ -424,7 +428,7 @@ class TomStyleResolvers {
   }
 
   /// Resolves a [MenuStyle] from resources at [basePath].[suffix].
-  static MenuStyle? resolveMenuStyle(String basePath, String suffix) {
+  static MenuStyle? resolveMenuStyle(String? basePath, String suffix) {
     final map = TomCtr.map(basePath, suffix);
     return parseMenuStyle(map);
   }
@@ -484,7 +488,7 @@ class TomStyleResolvers {
   }
 
   /// Resolves a [ShapeBorder] from resources at [basePath].[suffix].
-  static ShapeBorder? resolveShapeBorder(String basePath, String suffix) {
+  static ShapeBorder? resolveShapeBorder(String? basePath, String suffix) {
     final map = TomCtr.map(basePath, suffix);
     return parseShapeBorder(map);
   }
@@ -522,7 +526,7 @@ class TomStyleResolvers {
   }
 
   /// Resolves a [BorderSide] from resources at [basePath].[suffix].
-  static BorderSide? resolveBorderSide(String basePath, String suffix) {
+  static BorderSide? resolveBorderSide(String? basePath, String suffix) {
     final map = TomCtr.map(basePath, suffix);
     return parseBorderSide(map);
   }
@@ -575,7 +579,7 @@ class TomStyleResolvers {
   ///
   /// The resource may hold any form [parseBorderRadius] accepts — including a
   /// bare number — or a map carrying one of them under a `radius` key.
-  static BorderRadius? resolveBorderRadius(String basePath, String suffix) {
+  static BorderRadius? resolveBorderRadius(String? basePath, String suffix) {
     final value = TomCtr.value(basePath, suffix);
     // A map may carry the radius under its own name, so that a resource can
     // group it with siblings; anything else goes to the parser as it stands,
@@ -632,7 +636,7 @@ class TomStyleResolvers {
   }
 
   /// Resolves a [Decoration] from resources at [basePath].[suffix].
-  static Decoration? resolveDecoration(String basePath, String suffix) {
+  static Decoration? resolveDecoration(String? basePath, String suffix) {
     final map = TomCtr.map(basePath, suffix);
     return parseDecoration(map);
   }
@@ -672,7 +676,10 @@ class TomStyleResolvers {
   }
 
   /// Resolves [BoxConstraints] from resources at [basePath].[suffix].
-  static BoxConstraints? resolveBoxConstraints(String basePath, String suffix) {
+  static BoxConstraints? resolveBoxConstraints(
+    String? basePath,
+    String suffix,
+  ) {
     final map = TomCtr.map(basePath, suffix);
     return parseBoxConstraints(map);
   }
@@ -737,7 +744,7 @@ class TomStyleResolvers {
   /// The resource may hold any form [parseAlignment] accepts — including a
   /// name such as `topLeft` — or a map carrying one of them under an
   /// `alignment` key.
-  static AlignmentGeometry? resolveAlignment(String basePath, String suffix) {
+  static AlignmentGeometry? resolveAlignment(String? basePath, String suffix) {
     final value = TomCtr.value(basePath, suffix);
     if (value is Map<String, dynamic> && value.containsKey('alignment')) {
       return parseAlignment(value['alignment']);
@@ -781,7 +788,7 @@ class TomStyleResolvers {
   /// two-element list such as `[3, 4]`. Alone among the five raw-value
   /// resolvers it unwraps no key, because `{dx, dy}` is already one of those
   /// forms rather than a wrapper around one.
-  static Offset? resolveOffset(String basePath, String suffix) {
+  static Offset? resolveOffset(String? basePath, String suffix) {
     return parseOffset(TomCtr.value(basePath, suffix));
   }
 
@@ -845,7 +852,7 @@ class TomStyleResolvers {
   }
 
   /// Resolves a [TableBorder] from resources at [basePath].[suffix].
-  static TableBorder? resolveTableBorder(String basePath, String suffix) {
+  static TableBorder? resolveTableBorder(String? basePath, String suffix) {
     final map = TomCtr.map(basePath, suffix);
     return parseTableBorder(map);
   }
@@ -894,7 +901,7 @@ class TomStyleResolvers {
   /// The resource may hold any form [parseVisualDensity] accepts — including a
   /// name such as `compact` — or a map carrying one of them under a
   /// `visualDensity` key.
-  static VisualDensity? resolveVisualDensity(String basePath, String suffix) {
+  static VisualDensity? resolveVisualDensity(String? basePath, String suffix) {
     final value = TomCtr.value(basePath, suffix);
     if (value is Map<String, dynamic> && value.containsKey('visualDensity')) {
       return parseVisualDensity(value['visualDensity']);
@@ -954,7 +961,7 @@ class TomStyleResolvers {
   }
 
   /// Resolves an [IconThemeData] from resources at [basePath].[suffix].
-  static IconThemeData? resolveIconThemeData(String basePath, String suffix) {
+  static IconThemeData? resolveIconThemeData(String? basePath, String suffix) {
     final map = TomCtr.map(basePath, suffix);
     return parseIconThemeData(map);
   }
@@ -1017,7 +1024,7 @@ class TomStyleResolvers {
   }
 
   /// Resolves a [StrutStyle] from resources at [basePath].[suffix].
-  static StrutStyle? resolveStrutStyle(String basePath, String suffix) {
+  static StrutStyle? resolveStrutStyle(String? basePath, String suffix) {
     final map = TomCtr.map(basePath, suffix);
     return parseStrutStyle(map);
   }
@@ -1074,7 +1081,7 @@ class TomStyleResolvers {
 
   /// Resolves a [TextHeightBehavior] from resources at [basePath].[suffix].
   static TextHeightBehavior? resolveTextHeightBehavior(
-    String basePath,
+    String? basePath,
     String suffix,
   ) {
     final map = TomCtr.map(basePath, suffix);
@@ -1133,7 +1140,7 @@ class TomStyleResolvers {
   /// The resource may hold any form [parseScrollPhysics] accepts — including a
   /// name such as `bouncing` — or a map carrying one of them under a `physics`
   /// key.
-  static ScrollPhysics? resolveScrollPhysics(String basePath, String suffix) {
+  static ScrollPhysics? resolveScrollPhysics(String? basePath, String suffix) {
     final value = TomCtr.value(basePath, suffix);
     if (value is Map<String, dynamic> && value.containsKey('physics')) {
       return parseScrollPhysics(value['physics']);

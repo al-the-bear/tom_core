@@ -6,7 +6,8 @@
 /// extend a family base class (`TomButtonBase`, `TomLabelBase`, …) from
 /// `widget_base/` and so share the whole Tom contract:
 ///
-/// - it reports its [TomWidgetFamily] via `family` / `families` / `isFamily`,
+/// - its family is the base it extends — `widget is TomButtonBase` — so it
+///   is fixed by the type and needs no tag to read,
 /// - it carries a `tomId` and a scope-resolved `basePath`,
 /// - it resolves an `effectiveAuthState` from resource auth + authorizer +
 ///   UI-state controller + group, with no `BuildContext`,
@@ -14,7 +15,7 @@
 ///
 /// The other 17 extend a Flutter widget directly (their parent type-checks for
 /// it) and mix in `TomWidgetMixin`: everything above holds for them except the
-/// family tag, which only `TomFamilyBase` supplies. Section 5 uses one of them.
+/// family, which only a `TomFamilyBase` branch has. Section 5 uses one of them.
 ///
 /// ## The shape of this example
 ///
@@ -58,7 +59,7 @@ class _PathAuthAdapter extends TomAuthorizationAdapter {
 }
 
 /// One representative widget from each of the kit's 20 families, keyed by the
-/// family it reports and ordered the way `widget_base/` declares the bases.
+/// family's name and ordered the way `widget_base/` declares the bases.
 ///
 /// Each is given its family's name as its `tomId`, so the resource path a
 /// widget resolves is legible in the output below: the button addresses
@@ -68,36 +69,55 @@ class _PathAuthAdapter extends TomAuthorizationAdapter {
 /// container-family wrappers and nothing distinguishes it here beyond being
 /// short to construct. The point of the map is coverage of the *families*,
 /// which is what the kit is organised by.
-Map<TomWidgetFamily, TomFamilyBase> oneWidgetPerFamily() => {
-  TomWidgetFamily.button: TomElevatedButton(tomId: 'button'),
-  TomWidgetFamily.input: TomTextField(tomId: 'input'),
-  TomWidgetFamily.select: TomDropdownButton<int>(tomId: 'select'),
-  TomWidgetFamily.toggle: TomCheckbox(tomId: 'toggle', value: false),
-  TomWidgetFamily.slider: TomSlider(tomId: 'slider', value: 0),
-  TomWidgetFamily.container: TomCard(tomId: 'container'),
-  TomWidgetFamily.dialog: TomAlertDialog(tomId: 'dialog'),
-  TomWidgetFamily.table: TomTable(tomId: 'table'),
-  TomWidgetFamily.label: TomText(tomId: 'label', text: 'Hello'),
-  TomWidgetFamily.image: TomIcon(tomId: 'image'),
-  TomWidgetFamily.navigation: TomDrawer(tomId: 'navigation'),
-  TomWidgetFamily.progress: TomCircularProgressIndicator(tomId: 'progress'),
-  TomWidgetFamily.chip: TomActionChip(tomId: 'chip'),
-  TomWidgetFamily.list: TomListView(tomId: 'list'),
-  TomWidgetFamily.tree: TomTreeView(tomId: 'tree', nodes: const []),
-  TomWidgetFamily.sliver: TomSliverPadding(
-    tomId: 'sliver',
-    sliver: const SizedBox(),
-  ),
-  TomWidgetFamily.animated: TomAnimatedContainer(tomId: 'animated'),
-  TomWidgetFamily.effect: TomSelectionArea(
-    tomId: 'effect',
-    child: const SizedBox(),
-  ),
-  TomWidgetFamily.interaction: TomInkWell(tomId: 'interaction'),
-  TomWidgetFamily.builder: TomLayoutBuilder(
+Map<String, TomFamilyBase> oneWidgetPerFamily() => {
+  'button': TomElevatedButton(tomId: 'button'),
+  'input': TomTextField(tomId: 'input'),
+  'select': TomDropdownButton<int>(tomId: 'select'),
+  'toggle': TomCheckbox(tomId: 'toggle', value: false),
+  'slider': TomSlider(tomId: 'slider', value: 0),
+  'container': TomCard(tomId: 'container'),
+  'dialog': TomAlertDialog(tomId: 'dialog'),
+  'table': TomTable(tomId: 'table'),
+  'label': TomText(tomId: 'label', text: 'Hello'),
+  'image': TomIcon(tomId: 'image'),
+  'navigation': TomDrawer(tomId: 'navigation'),
+  'progress': TomCircularProgressIndicator(tomId: 'progress'),
+  'chip': TomActionChip(tomId: 'chip'),
+  'list': TomListView(tomId: 'list'),
+  'tree': TomTreeView(tomId: 'tree', nodes: const []),
+  'sliver': TomSliverPadding(tomId: 'sliver', sliver: const SizedBox()),
+  'animated': TomAnimatedContainer(tomId: 'animated'),
+  'effect': TomSelectionArea(tomId: 'effect', child: const SizedBox()),
+  'interaction': TomInkWell(tomId: 'interaction'),
+  'builder': TomLayoutBuilder(
     tomId: 'builder',
     builder: (_, _) => const SizedBox(),
   ),
+};
+
+/// How to ask whether a widget belongs to a family: an `is` test against the
+/// family's branch base. The family is the type; there is no tag to compare.
+final Map<String, bool Function(TomFamilyBase)> familyTest = {
+  'button': (w) => w is TomButtonBase,
+  'input': (w) => w is TomInputBase,
+  'select': (w) => w is TomSelectBase,
+  'toggle': (w) => w is TomToggleBase,
+  'slider': (w) => w is TomSliderBase,
+  'container': (w) => w is TomContainerBase,
+  'dialog': (w) => w is TomDialogBase,
+  'table': (w) => w is TomTableBase,
+  'label': (w) => w is TomLabelBase,
+  'image': (w) => w is TomImageBase,
+  'navigation': (w) => w is TomNavigationBase,
+  'progress': (w) => w is TomProgressBase,
+  'chip': (w) => w is TomChipBase,
+  'list': (w) => w is TomListBase,
+  'tree': (w) => w is TomTreeBase,
+  'sliver': (w) => w is TomSliverBase,
+  'animated': (w) => w is TomAnimatedBase,
+  'effect': (w) => w is TomEffectBase,
+  'interaction': (w) => w is TomInteractionBase,
+  'builder': (w) => w is TomBuilderBase,
 };
 
 void run() {
@@ -110,27 +130,28 @@ void run() {
   TomAuthorization.reset();
 
   // ---------------------------------------------------------------------------
-  // 1. Every family reports its own tag — the Tom-specific part of a wrapper.
+  // 1. A widget's family is the branch base it extends.
   //
-  //    `family` is fixed by the base class at compile time, so this is a
-  //    property of the type rather than of the instance: no configuration
-  //    below can make a TomCard report anything but `container`.
+  //    It is a property of the type rather than of the instance: no
+  //    configuration below can make a TomCard anything but a container. And
+  //    each widget belongs to exactly one family, because no branch base
+  //    extends another.
   // ---------------------------------------------------------------------------
   final kit = oneWidgetPerFamily();
 
   for (final MapEntry(key: family, value: widget) in kit.entries) {
-    print('${family.name.padRight(12)} ${widget.runtimeType}');
-    assert(widget.family == family);
-    assert(widget.isFamily(family));
-    assert(widget.families.contains(family));
+    print('${family.padRight(12)} ${widget.runtimeType}');
+    final belongsTo = [
+      for (final test in familyTest.entries)
+        if (test.value(widget)) test.key,
+    ];
+    assert(belongsTo.length == 1 && belongsTo.single == family);
   }
 
-  // `families` is a set because the base leaves room for a widget that belongs
-  // to more than one; every wrapper in the kit today reports exactly its own.
-  final button = kit[TomWidgetFamily.button]!;
-  print('button.families:        ${button.families}');
-  print('button.isFamily(label): ${button.isFamily(TomWidgetFamily.label)}');
-  assert(!button.isFamily(TomWidgetFamily.label));
+  final button = kit['button']!;
+  print('button is TomButtonBase: ${button is TomButtonBase}');
+  print('button is TomLabelBase:  ${button is TomLabelBase}');
+  assert(button is! TomLabelBase);
 
   // ---------------------------------------------------------------------------
   // 2. The same identity and path machinery, for all twenty.
@@ -142,19 +163,19 @@ void run() {
     assert(widget.basePath == widget.tomId);
   }
   print(
-    'label.tomId / basePath: ${kit[TomWidgetFamily.label]!.tomId} / '
-    '${kit[TomWidgetFamily.label]!.basePath}',
+    'label.tomId / basePath: ${kit['label']!.tomId} / '
+    '${kit['label']!.basePath}',
   );
 
   // Inside a scope, the same construction addresses a different resource.
   TomScope.withScope('settings', () {
     final scoped = oneWidgetPerFamily();
     for (final MapEntry(key: family, value: widget) in scoped.entries) {
-      assert(widget.basePath == 'settings.${family.name}');
+      assert(widget.basePath == 'settings.$family');
     }
     print(
       'scoped label basePath:  '
-      '${scoped[TomWidgetFamily.label]!.basePath}',
+      '${scoped['label']!.basePath}',
     );
   });
 
@@ -173,20 +194,20 @@ void run() {
   for (final MapEntry(key: family, value: widget)
       in oneWidgetPerFamily().entries) {
     final expected = switch (family) {
-      TomWidgetFamily.button => TomAuthState.read,
-      TomWidgetFamily.dialog => TomAuthState.none,
-      TomWidgetFamily.input => TomAuthState.disabled,
+      'button' => TomAuthState.read,
+      'dialog' => TomAuthState.none,
+      'input' => TomAuthState.disabled,
       _ => TomAuthState.full, // no rule for this path
     };
     assert(widget.effectiveAuthState == expected);
   }
   print(
     'button auth (rule: read):     '
-    '${oneWidgetPerFamily()[TomWidgetFamily.button]!.effectiveAuthState}',
+    '${oneWidgetPerFamily()['button']!.effectiveAuthState}',
   );
   print(
     'label auth (no rule → full):  '
-    '${oneWidgetPerFamily()[TomWidgetFamily.label]!.effectiveAuthState}',
+    '${oneWidgetPerFamily()['label']!.effectiveAuthState}',
   );
 
   // ---------------------------------------------------------------------------
@@ -203,8 +224,8 @@ void run() {
   //    A `TomExpanded` has to *be* an `Expanded` for `Flex` to accept it, so it
   //    cannot also extend `TomNodeBase`; it mixes in `TomWidgetMixin` instead.
   //    Both routes implement `TomWidgetSurface`, so identity, path and
-  //    authorization work identically — only `family` is missing, because
-  //    `family` lives on `TomFamilyBase`.
+  //    authorization work identically — only the family is missing, because a
+  //    family is a `TomFamilyBase` branch and an `Expanded` cannot be one.
   // ---------------------------------------------------------------------------
   final expanded = TomExpanded(tomId: 'button');
   print(

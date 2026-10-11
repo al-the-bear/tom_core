@@ -22,8 +22,8 @@ The kit spans **20 sub-folders**, one per widget family, behind the
 (`TomButtonBase`, `TomLabelBase`, …) from `widget_base/`; the other 17 mix in
 `TomWidgetMixin` because their Flutter original must stay a specific subtype
 (see [Family catalogue](#family-catalogue)). Both routes give the same `tomId`,
-`basePath` and authorization contract — only the family tag is exclusive to the
-base classes. See [`doc/widget_base.md`](widget_base.md) for the node hierarchy
+`basePath` and authorization contract — only family membership is exclusive to
+the base classes. See [`doc/widget_base.md`](widget_base.md) for the node hierarchy
 and the four-state authorization gate that underpins it.
 
 The remaining nine types are *not* widgets: seven are plain classes that hold
@@ -48,7 +48,7 @@ the family table.
 
 | Concern | Where it comes from | Pure-logic? |
 | ------- | ------------------- | ----------- |
-| Widget family tag (`family` / `families` / `isFamily`) | `TomFamilyBase` (one base per family) | yes |
+| Widget family (`widget is TomButtonBase`, …) | the family base the widget extends (one per family, all `TomFamilyBase`) | yes |
 | `tomId` → `basePath` (scope-prefixed) | `TomNodeBase` | yes |
 | `effectiveAuthState` (resource + authorizer + UI-state + group) | `TomPolicyNodeBase` | yes |
 | Resource-resolved display values | `TomCtr` (construction-time) | yes (no `BuildContext`) |
@@ -56,19 +56,19 @@ the family table.
 
 ## The shared family contract
 
-273 of the kit's 290 widgets are `TomFamilyBase` subclasses and therefore
-report the family they belong to:
+273 of the kit's 290 widgets are `TomFamilyBase` subclasses, and each belongs
+to the family whose base it extends. The family is asked with a type test:
 
 ```dart
 final button = TomElevatedButton(tomId: 'save', onPressed: save, child: TomText(text: 'Save'));
-button.family;                          // TomWidgetFamily.button
-button.isFamily(TomWidgetFamily.button); // true
-button.families;                         // {TomWidgetFamily.button}
+button is TomButtonBase; // true — the button family
+button is TomLabelBase;  // false
+button is TomFamilyBase; // true — it belongs to a family
 ```
 
-`family` is the primary family; `families` (defaulting to `{family}`) supports
-multi-family membership, and `isFamily(type)` tests membership. These are plain
-getters — no widget tree required.
+No family base extends another, so a widget belongs to exactly one family.
+There is no family value to read — the type hierarchy is the classification —
+and no widget tree is required.
 
 Through `TomNodeBase` the widget also exposes a `tomId` and a `basePath`
 (`<scopePath>.<tomId>`, computed at construction time), and through
@@ -77,17 +77,16 @@ Through `TomNodeBase` the widget also exposes a `tomId` and a `basePath`
 without `testWidgets`.
 
 The 17 wrappers that mix in `TomWidgetMixin` instead expose the same `tomId`,
-`basePath` and `effectiveAuthState` — the mixin declares them — so only
-`family`, `families` and `isFamily` are exclusive to the base classes. Code
-that must handle any wrapper should therefore test for `TomFamilyBase` rather
-than assume it; the counts here are pinned by
+`basePath` and `effectiveAuthState` — the mixin declares them — but belong to
+no family. Code that must handle any wrapper should therefore test for
+`TomFamilyBase` rather than assume it; the counts here are pinned by
 `test/widgets/widget_family_claims_test.dart`, which reads them out of the
 sources so this paragraph cannot drift from them.
 
 ## Family catalogue
 
-| Family (`TomWidgetFamily`) | Base | Representative widgets |
-| -------------------------- | ---- | ---------------------- |
+| Family | Base | Representative widgets |
+| ------ | ---- | ---------------------- |
 | `button` | `TomButtonBase` | `TomElevatedButton`, `TomTextButton`, `TomOutlinedButton`, `TomFilledButton`, `TomIconButton`, `TomFloatingActionButton`, `TomSegmentedButton`, `TomMenuBar` |
 | `input` | `TomInputBase` | `TomTextField`, `TomTextFormField`, `TomSearchBar`, `TomAutocomplete`, `TomSearchAnchor`, `TomCupertinoTextField` |
 | `select` | `TomSelectBase` | `TomDropdownButton`, `TomPopupMenuButton`, `TomDropdownMenu`, `TomMenuAnchor`, `TomCupertinoPicker` |
@@ -112,11 +111,8 @@ sources so this paragraph cannot drift from them.
 Twenty rows, twenty sub-folders. The `containers/acl/` subfolder additionally
 hosts `TomAclBuilder<T>`, the widget-side bridge to the
 [advanced container layout](advanced_container_layout.md) engine.
-`TomWidgetFamily` declares six further values — `formField`, `dateTimePicker`,
-`listEditor`, `masterDetail`, `searchField`, `fileUpload` — which have no row
-here because they have no branch base and no widget reports them, in this kit
-or anywhere else. They are reserved for the [forms](forms.md) module, but
-forms does not use the enum today; see
+The [forms](forms.md) module has no row: its fields are not `TomFamilyBase`
+subclasses; see
 [widget_base.md](widget_base.md#the-widget-family-taxonomy).
 
 **Seventeen wrappers have no row here**, because they extend a Flutter widget
@@ -132,7 +128,7 @@ inserted above them. In full: `TomAnimatedPositioned`,
 `TomSnackBar`, `TomSnackBarAction`, `TomSpacer`, `TomTab`, `TomTableCell`.
 
 **A further nine types under `widgets/` are not widgets at all** and so cannot
-report a family either: `TomDialogs` and `TomMessenger` are static facades,
+belong to a family either: `TomDialogs` and `TomMessenger` are static facades,
 `TomPageRoute` is a route, and `TomAclBuilder`, `TomDataCell`, `TomDataColumn`,
 `TomDataRow`, `TomExpansionPanel` and `TomTreeNode` are plain classes that hold
 widgets without being one. Four of the nine — `TomDataCell`, `TomDataColumn`,
@@ -281,7 +277,7 @@ narrowing layers.
 | [theme](theme.md) | module | `containers/acl/tom_acl.dart` | `TomThemeScope` |
 | [widget_base](widget_base.md) | module | 21 of 24 files | the family base classes, `TomCtr`, and the style resolvers; `../groups/...` for `TomWidgetMixin`; `../theme/...` for the read-only style used by the readonly treatment |
 
-> The family tags, `basePath`, `effectiveAuthState`, and resource resolution
+> Family membership, `basePath`, `effectiveAuthState`, and resource resolution
 > are all pure (no widget tree), but the package barrel pulls in
 > `flutter/material` (→ `dart:ui`), so run the example under the Flutter
 > toolchain — see [`example/widgets/widgets_example.dart`](../example/widgets/widgets_example.dart),

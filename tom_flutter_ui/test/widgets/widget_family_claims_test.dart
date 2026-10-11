@@ -9,13 +9,13 @@ import 'widget_census.dart';
 // What the kit's documents may claim about widget families.
 //
 // Four documents said, without qualification, that *every* widget in the kit
-// extends a family base and therefore reports its family. It was never true:
+// extends a family base and therefore belongs to a family. It was never true:
 // seventeen wrappers extend a Flutter widget directly and mix in
 // `TomWidgetMixin`, and nine types under `widgets/` are not widgets at all.
 // The claim rotted the way unqualified claims do — silently, and in the one
 // place where it was checkable: `doc/widgets.md` listed `TomAppBar` as a
-// representative of the `container` family while `TomAppBar` had no `family`
-// getter, and listed `TomSliverList` under `sliver` while it extends
+// representative of the `container` family while `TomAppBar` extended no
+// family base, and listed `TomSliverList` under `sliver` while it extends
 // `TomContainerBase`.
 //
 // The counts below are therefore asserted from the source rather than trusted
@@ -102,7 +102,7 @@ void main() {
       'tccf1-05: every family-base extender reaches TomFamilyBase directly',
       () {
         // No widget extends `TomFamilyBase`, `TomPolicyNodeBase` or
-        // `TomNodeBase` itself: the family tag always comes from a branch base,
+        // `TomNodeBase` itself: a widget's family is always a branch base,
         // which is what makes "the row's base" a complete answer.
         final direct = classes.keys.where(
           (n) => const [
@@ -151,11 +151,9 @@ void main() {
   group('tccf1: TomAppBar is a container-family policy node', () {
     tearDown(TomAuthorization.reset);
 
-    test('tccf1-08: it reports the family its catalogue row claims', () {
+    test('tccf1-08: it extends the family base its catalogue row claims', () {
       final bar = TomAppBar(tomId: 'bar', titleText: 'Title');
-      expect(bar.family, TomWidgetFamily.container);
-      expect(bar.isFamily(TomWidgetFamily.container), isTrue);
-      expect(bar.families, {TomWidgetFamily.container});
+      expect(bar, isA<TomContainerBase>());
     });
 
     testWidgets('tccf1-09: a none TomAppBar renders nothing', (tester) async {
@@ -186,9 +184,9 @@ void main() {
   // answer "what does it look like", which the module readme spent a release
   // getting wrong: it told the reader each widget "renders Material or
   // Cupertino per the ambient family". Nothing in the kit has ever done that,
-  // and `family` is not a design language — so the sentence was false twice
-  // over, in a document a reader consults precisely because they do not yet
-  // know which of the two they get.
+  // and a widget's family is not a design language — so the sentence was
+  // false twice over, in a document a reader consults precisely because they
+  // do not yet know which of the two they get.
   group('tccf1: the kit does not choose a design language', () {
     test('tccf1-11: no wrapper reads the platform to decide how to render', () {
       // These four are the ways a Flutter widget picks a design language at

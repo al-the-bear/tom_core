@@ -12,7 +12,7 @@ import 'widget_conformance_registry.dart';
 // 225 more `testWidgets` — a wrapper's rendering *is* the Flutter widget it
 // delegates to, and asserting that `TomPadding` pads would be asserting
 // Flutter. What was genuinely unchecked is the part that is Tom's: the
-// identity, the resource path, the family tag and the authorization state
+// identity, the resource path, the family base and the authorization state
 // that `TomWidgetSurface` names.
 //
 // That part is decided entirely at construction, from two arguments — a
@@ -185,14 +185,13 @@ void main() {
   });
 
   group(
-    'tccm1: every widget reports a family, or is a documented exception',
+    'tccm1: every widget belongs to a family, or is a documented exception',
     () {
-      test('tccm1-07: the family reported is the one its base fixes', () {
-        // `family` is abstract on `TomFamilyBase` and given a single value by
-        // each of the twenty branch bases, so the source's `extends` clause
-        // predicts the runtime answer. Checking that it does is what makes the
-        // catalogue in `doc/widgets.md` — which is keyed by base — a true
-        // statement about instances rather than about text.
+      test('tccm1-07: a widget whose source extends a family base is one', () {
+        // A widget's family is the branch base it extends, so the source's
+        // `extends` clause predicts the runtime type. Checking that it does is
+        // what makes the catalogue in `doc/widgets.md` — which is keyed by
+        // base — a true statement about instances rather than about text.
         final faults = <String>[];
         widgetConformanceRegistry.forEach((name, build) {
           final widget = build('save', null);
@@ -200,16 +199,12 @@ void main() {
           if (!bases.contains(parent)) return;
           if (widget is! TomFamilyBase) {
             faults.add('$name: extends $parent but is no TomFamilyBase');
-            return;
-          }
-          if (!widget.isFamily(widget.family)) {
-            faults.add('$name: denies its own primary family ${widget.family}');
           }
         });
         expect(faults, isEmpty, reason: faults.join('\n'));
       });
 
-      test('tccm1-08: exactly the 17 mixin users report no family', () {
+      test('tccm1-08: exactly the 17 mixin users belong to no family', () {
         final familyless = widgetConformanceRegistry.entries
             .where((e) => e.value('save', null) is! TomFamilyBase)
             .map((e) => e.key)

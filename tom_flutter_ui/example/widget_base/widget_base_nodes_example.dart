@@ -12,12 +12,12 @@
 ///
 /// plus the classification the rest of the framework dispatches on:
 ///
-/// 3. **Family** — a widget reports the `TomWidgetFamily` fixed by its branch
-///    base.
+/// 3. **Family** — a widget belongs to the family whose branch base it
+///    extends, and a caller asks with an `is` test.
 ///
 /// None of the three needs a widget tree. `basePath` is computed in the
 /// `TomNodeBase` constructor, `resolveEffectiveAuth()` is public and takes no
-/// `BuildContext`, and `family` is a plain getter — so all three are readable
+/// `BuildContext`, and the family is the widget's type — so all three are readable
 /// on a constructed node, and this example asserts them directly rather than
 /// pumping. Because it imports `flutter/material` (which pulls in `dart:ui`),
 /// bare `dart run` cannot execute it. Run `flutter test
@@ -220,21 +220,16 @@ void run() {
   // Pillar 3 — the family taxonomy
   // ───────────────────────────────────────────────────────────────────────
 
-  print('total  family      -> ${order.total.family}');
-  print('save   family      -> ${order.save.family}');
-  assert(order.total.family == TomWidgetFamily.label);
-  assert(order.save.family == TomWidgetFamily.button);
-
-  // `families` defaults to the single primary family. The multi-family door is
-  // open — override `families` — but no widget in the package walks through it.
-  assert(order.save.families.single == TomWidgetFamily.button);
-  assert(order.save.isFamily(TomWidgetFamily.button));
-  assert(!order.save.isFamily(TomWidgetFamily.label));
-
-  // The six Tom form families are reserved and claimed by nothing: a tool that
-  // dispatches on them matches no widget, and does so silently.
-  assert(!order.total.isFamily(TomWidgetFamily.formField));
-  assert(!order.save.isFamily(TomWidgetFamily.formField));
+  // A widget's family is the branch base it extends, so asking is an `is`
+  // test — here on the common supertype, the way a tool holding "some Tom
+  // widget" would ask. It is fixed by the type: no configuration makes the
+  // total a button.
+  final TomFamilyBase total = order.total;
+  final TomFamilyBase save = order.save;
+  print('total  is TomLabelBase  -> ${total is TomLabelBase}');
+  print('save   is TomButtonBase -> ${save is TomButtonBase}');
+  assert(total is TomLabelBase && total is! TomButtonBase);
+  assert(save is TomButtonBase && save is! TomLabelBase);
 
   // Leave no global state behind: both the resource provider and the
   // authorization adapter are process-wide singletons.

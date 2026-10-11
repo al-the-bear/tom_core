@@ -41,23 +41,21 @@ void main() {
           .map((b) => b.substring('Tom'.length, b.length - 'Base'.length))
           .map((n) => n.toLowerCase())
           .toSet();
-      final demonstrated = example
-          .oneWidgetPerFamily()
-          .keys
-          .map((f) => f.name)
-          .toSet();
+      final demonstrated = example.oneWidgetPerFamily().keys.toSet();
       expect(demonstrated, declared);
     });
 
-    test('every entry is keyed by the family its widget actually reports', () {
+    test('every entry is keyed by the family its widget actually extends', () {
       // The trap this catches is a representative picked by name rather than
       // by base: `TomSliverList` and `TomOpacity` both read like one family
       // and extend the base of another.
       for (final MapEntry(key: family, value: widget)
           in example.oneWidgetPerFamily().entries) {
-        expect(widget.family, family, reason: '${widget.runtimeType}');
-        expect(widget.isFamily(family), isTrue);
-        expect(widget.families, contains(family));
+        final belongsTo = [
+          for (final test in example.familyTest.entries)
+            if (test.value(widget)) test.key,
+        ];
+        expect(belongsTo, [family], reason: '${widget.runtimeType}');
       }
     });
 
@@ -66,19 +64,20 @@ void main() {
       // the family names are the same string; keep them so.
       for (final MapEntry(key: family, value: widget)
           in example.oneWidgetPerFamily().entries) {
-        expect(widget.tomId, family.name);
-        expect(widget.basePath, family.name);
+        expect(widget.tomId, family);
+        expect(widget.basePath, family);
       }
     });
 
-    test('isFamily / families reflect the primary family', () {
-      final btn = TomElevatedButton(
-        onPressed: () {},
-        child: TomText(text: 'x'),
-      );
-      expect(btn.isFamily(TomWidgetFamily.button), isTrue);
-      expect(btn.isFamily(TomWidgetFamily.label), isFalse);
-      expect(btn.families, contains(TomWidgetFamily.button));
+    test('the family test names every family base exactly once', () {
+      // `familyTest` is how the example asks about a family; one with a
+      // family missing would make the "exactly one family" check vacuous for
+      // every widget of it.
+      final declared = familyBases()
+          .map((b) => b.substring('Tom'.length, b.length - 'Base'.length))
+          .map((n) => n.toLowerCase())
+          .toSet();
+      expect(example.familyTest.keys.toSet(), declared);
     });
   });
 
