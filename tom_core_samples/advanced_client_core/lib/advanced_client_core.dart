@@ -1,5 +1,5 @@
-/// Flutter-free `dart:io` client core for the advanced Tom Core full-stack
-/// sample.
+/// Flutter-free client core for the advanced Tom Core full-stack sample,
+/// running on every target `package:http` does — the web included.
 ///
 /// The authenticated HTTP layer shared by both Flutter clients: login + token
 /// storage, bearer-header injection with refresh-on-401, and typed JSON↔DTO

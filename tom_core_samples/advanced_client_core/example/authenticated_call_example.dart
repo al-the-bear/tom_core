@@ -30,7 +30,7 @@
 /// status 2 rather than printing a socket stack trace.
 ///
 /// The work is in [listWorkspacesAs], which takes the transport as a parameter:
-/// `main` hands it the real [IoJsonTransport], and
+/// `main` hands it the real [HttpJsonTransport], and
 /// `test/examples_test.dart` hands it a fake one, so the sequence this example
 /// teaches is exercised by the suite without a server.
 library;
@@ -49,7 +49,7 @@ Future<void> main() async {
   initializeReflection();
   final config = AdvancedClientConfig.registerDefault();
 
-  final transport = IoJsonTransport();
+  final transport = HttpJsonTransport();
   try {
     final names = await listWorkspacesAs(
       config,

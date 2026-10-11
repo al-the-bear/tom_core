@@ -1,6 +1,6 @@
 # advanced_client_core
 
-Flutter-free `dart:io` client core for the **advanced Tom Core full-stack
+Flutter-free client core for the **advanced Tom Core full-stack
 sample** (see [`../README_advanced_sample.md`](../README_advanced_sample.md)).
 
 The authenticated HTTP layer shared by `advanced_app_client` and
@@ -38,8 +38,10 @@ of the eight carry an `example/`, and why.
 Every client talks to the servers through one seam, `JsonTransport`
 (`lib/src/http/json_transport.dart`) — a request reduced to *method, URI,
 headers, JSON body* → `HttpJsonResponse(statusCode, body)`. The live
-`IoJsonTransport` backs it with `dart:io`; tests pass a fake, so the whole client
-core unit-tests with no sockets.
+`HttpJsonTransport` backs it with `package:http`, whose client is the platform's
+own — `dart:io` natively, `fetch` in a browser — so the same core serves the
+Flutter clients on every target, the web included; tests pass a fake, so the
+whole client core unit-tests with no sockets.
 
 ## Addressing a call: by registry endpoint
 
@@ -138,7 +140,7 @@ for the call and a `TomAuthRefresher` backed by `AuthClient.refresh` for recover
   refresh that itself fails surfaces its own `AuthClientException`.
 
 ```dart
-final transport = IoJsonTransport();
+final transport = HttpJsonTransport();
 final auth = AuthClient(Uri.parse('http://localhost:8081'), transport: transport);
 final http = AuthorizedHttp(transport, auth);
 // After login, every send carries the bearer and self-heals one expiry:
@@ -176,7 +178,7 @@ app client installs in the framework registry to grade fields locally.
   bootstrap does it once at startup; tests do it in `setUpAll`.
 
 ```dart
-final transport = IoJsonTransport();
+final transport = HttpJsonTransport();
 final auth = AuthClient(Uri.parse('http://localhost:8081'), transport: transport);
 final api = AppApiClient(
     Uri.parse('http://localhost:8080'), AuthorizedHttp(transport, auth));
@@ -227,7 +229,7 @@ each Flutter client's own combined seed at runtime).
   does not exist sees.
 
 ```dart
-final transport = IoJsonTransport();
+final transport = HttpJsonTransport();
 final authBase = Uri.parse('http://localhost:8081');
 final auth = AuthClient(authBase, transport: transport);
 final admin = AdminApiClient(authBase, AuthorizedHttp(transport, auth));
@@ -242,11 +244,12 @@ payload worth storing is a payload not worth holding in memory as a string.
 `lib/src/http/file_transfer.dart` supplies the two halves and their one correct
 composition:
 
-- `ioFileTransferClient(serverBaseUri)` — the transport: a `dart:io` client
-  pointed at the server's `/files` endpoint whose `headerProvider` is
-  `AuthorizedHttp.authorizationHeader`, the *same* function the JSON clients
-  send. (It supplies its own `dart:io` client rather than resolving the kernel's
-  platform seam, which this deliberately Flutter-free package never registers.)
+- `httpFileTransferClient(serverBaseUri)` — the transport: the platform's
+  `package:http` client pointed at the server's `/files` endpoint whose
+  `headerProvider` is `AuthorizedHttp.authorizationHeader`, the *same* function
+  the JSON clients send. (It supplies its own client rather than resolving the
+  kernel's platform seam, which this deliberately Flutter-free package never
+  registers.)
 - `AuthorizedFileTransferClient(delegate, refresher)` — the policy: it runs
   `upload`/`download`/`describe`/`remove` under the same
   `tomRunWithAuthRetry` recovery the JSON half uses, translating the transfer
@@ -307,8 +310,8 @@ class HttpJsonResponse
   List<Object?> get jsonArray
 abstract class JsonTransport
   Future<HttpJsonResponse> send({required String method, required Uri uri, Map<String, String> headers, String? body})
-class IoJsonTransport implements JsonTransport
-  IoJsonTransport({HttpClient? client})
+class HttpJsonTransport implements JsonTransport
+  HttpJsonTransport({http.Client? client})
   Future<HttpJsonResponse> send({required String method, required Uri uri, Map<String, String> headers = const {}, String? body})
   void close()
 ```
@@ -358,7 +361,7 @@ The byte half: the kernel's streaming file client, with the same bearer and the 
 
 ```dart
 const String fileEndpointBasePath
-TomFileTransferClient ioFileTransferClient(Uri serverBaseUri)
+TomFileTransferClient httpFileTransferClient(Uri serverBaseUri)
 TomFileTransferClient authenticatedFileTransferClient(Uri serverBaseUri, AuthorizedHttp http)
 class AuthorizedFileTransferClient extends TomFileTransferClient
   AuthorizedFileTransferClient(this.delegate, this.refresher)

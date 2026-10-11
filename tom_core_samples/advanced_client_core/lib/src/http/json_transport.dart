@@ -3,11 +3,12 @@
 /// Reducing a request/response to "a method, a URI, some headers and a JSON
 /// string" keeps every client (`AuthClient`, `AuthorizedHttp`, `AppApiClient`
 /// and `AdminApiClient`) unit-testable against a fake transport — no sockets in
-/// tests — while the live [IoJsonTransport] backs them at runtime.
+/// tests — while the live [HttpJsonTransport] backs them at runtime.
 library;
 
 import 'dart:convert';
-import 'dart:io';
+
+import 'package:http/http.dart' as http;
 
 /// One HTTP response reduced to what the clients need: the [statusCode] and the
 /// raw UTF-8 [body]. A test can hand back a canned instance without a socket.
@@ -41,7 +42,7 @@ class HttpJsonResponse {
   }
 }
 
-/// A single JSON-over-HTTP round trip, decoupled from `dart:io`.
+/// A single JSON-over-HTTP round trip, decoupled from any one HTTP stack.
 abstract class JsonTransport {
   /// Sends [method] to [uri] with [headers] and an optional JSON [body], and
   /// completes with the response. Implementations set the JSON content type
@@ -54,16 +55,21 @@ abstract class JsonTransport {
   });
 }
 
-/// The live `dart:io` transport backing the clients at runtime.
+/// The live transport backing the clients at runtime, over `package:http`.
 ///
-/// Wraps a single [HttpClient]; remember to [close] it when the owning client
+/// `package:http`'s [http.Client] is the platform's own: a `dart:io` client on
+/// the desktop, mobile and server, the browser's `fetch` on the web. So the
+/// same transport serves the Flutter clients on every target, and the client
+/// core imports no platform library of its own.
+///
+/// Wraps a single [http.Client]; remember to [close] it when the owning client
 /// is disposed.
-class IoJsonTransport implements JsonTransport {
-  final HttpClient _client;
+class HttpJsonTransport implements JsonTransport {
+  final http.Client _client;
 
   /// Builds the transport over an optional pre-configured [client] (the default
-  /// is a fresh [HttpClient]).
-  IoJsonTransport({HttpClient? client}) : _client = client ?? HttpClient();
+  /// is the platform's [http.Client]).
+  HttpJsonTransport({http.Client? client}) : _client = client ?? http.Client();
 
   @override
   Future<HttpJsonResponse> send({
@@ -72,17 +78,20 @@ class IoJsonTransport implements JsonTransport {
     Map<String, String> headers = const {},
     String? body,
   }) async {
-    final request = await _client.openUrl(method, uri);
-    headers.forEach((name, value) => request.headers.set(name, value));
+    final request = http.Request(method, uri)..headers.addAll(headers);
     if (body != null) {
-      request.headers.contentType = ContentType.json;
-      request.write(body);
+      request.headers['content-type'] = 'application/json; charset=utf-8';
+      request.body = body;
     }
-    final response = await request.close();
-    final text = await response.transform(utf8.decoder).join();
-    return HttpJsonResponse(response.statusCode, text);
+    final response = await http.Response.fromStream(
+      await _client.send(request),
+    );
+    return HttpJsonResponse(
+      response.statusCode,
+      utf8.decode(response.bodyBytes),
+    );
   }
 
-  /// Closes the underlying [HttpClient] and its idle connections.
-  void close() => _client.close(force: true);
+  /// Closes the underlying [http.Client] and its idle connections.
+  void close() => _client.close();
 }

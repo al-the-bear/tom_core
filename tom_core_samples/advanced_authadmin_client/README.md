@@ -50,8 +50,10 @@ flutter create --empty --platforms=macos .   # or linux, or windows
 `test/widget_test.dart` that pumps a `MyApp` this package does not have, and the
 suite stops compiling. The command leaves `lib/`, `pubspec.yaml` and this README
 alone, and what it adds — the platform folder, `.metadata`, IDE files — is
-gitignored. Web is not a target: the HTTP client in `advanced_client_core` is
-built on `dart:io`.
+gitignored. The client core it shares with the end-user app talks HTTP through
+`package:http`, so nothing in it rules the web out; the end-user app is the one
+built and checked in a browser (`README_advanced_sample.md`, "A real passkey
+from a browser"), and this console has not been.
 
 On macOS the app is sandboxed, and the generated
 `macos/Runner/DebugProfile.entitlements` allows incoming connections only. The

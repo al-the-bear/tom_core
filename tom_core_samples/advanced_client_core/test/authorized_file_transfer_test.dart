@@ -11,7 +11,7 @@
 /// attachments 401. So the stand-in server here does not simply fail the first
 /// attempt and pass the second. It honours exactly one bearer, and the fake asks
 /// for the presented credential through [AuthorizedHttp.authorizationHeader] —
-/// the very function [ioFileTransferClient] hands the kernel transfer client as
+/// the very function [httpFileTransferClient] hands the kernel transfer client as
 /// its `headerProvider`. A second token path in the client would therefore show
 /// up here as a refusal that no refresh can fix, not as a silent pass.
 ///
@@ -356,7 +356,7 @@ _Fixture _assemble({
 /// A stand-in file server that honours exactly one bearer.
 ///
 /// It reads the presented credential through [headerProvider] — bound to the
-/// same [AuthorizedHttp.authorizationHeader] that [ioFileTransferClient] gives
+/// same [AuthorizedHttp.authorizationHeader] that [httpFileTransferClient] gives
 /// the kernel transfer client, so "the file client uses exactly one token path"
 /// is what these tests measure, not what they assume.
 class _ScriptedFiles extends TomFileTransferClient {

@@ -126,7 +126,7 @@ void main() {
     test('TC-FT-01: the app server stores, describes, serves and clears an item '
         'attachment', () async {
       final c = _liveClients();
-      final files = ioFileTransferClient(Uri.parse(_appBaseUri));
+      final files = httpFileTransferClient(Uri.parse(_appBaseUri));
       try {
         expect((await c.app.health())['status'], equals('ok'));
         await c.auth.login(_aliceLogin);
@@ -192,7 +192,7 @@ void main() {
     test('TC-FT-02: the auth server stores and serves a user avatar from its own '
         'database and blob store', () async {
       final c = _liveClients();
-      final files = ioFileTransferClient(Uri.parse(_authBaseUri));
+      final files = httpFileTransferClient(Uri.parse(_authBaseUri));
       try {
         expect((await c.app.health())['status'], equals('ok'));
         await c.auth.login(_aliceLogin);
@@ -228,7 +228,7 @@ void main() {
     test('TC-FT-03: a file column that never said `exposed` is not addressable, '
         'while its neighbour on the same row is', () async {
       final c = _liveClients();
-      final files = ioFileTransferClient(Uri.parse(_appBaseUri));
+      final files = httpFileTransferClient(Uri.parse(_appBaseUri));
       var uploaded = false;
       try {
         expect((await c.app.health())['status'], equals('ok'));
@@ -307,8 +307,8 @@ void main() {
     test('TC-FT-04: an unauthenticated caller is refused at the gate, on both '
         'servers', () async {
       final c = _liveClients();
-      final appFiles = ioFileTransferClient(Uri.parse(_appBaseUri));
-      final authFiles = ioFileTransferClient(Uri.parse(_authBaseUri));
+      final appFiles = httpFileTransferClient(Uri.parse(_appBaseUri));
+      final authFiles = httpFileTransferClient(Uri.parse(_authBaseUri));
       final avatar = utf8.encode('alice avatar');
       try {
         expect(
@@ -418,7 +418,7 @@ void main() {
     test('TC-FT-05: a read-only column grade serves the download and refuses the '
         'upload', () async {
       final c = _liveClients();
-      final files = ioFileTransferClient(Uri.parse(_appBaseUri));
+      final files = httpFileTransferClient(Uri.parse(_appBaseUri));
       var uploaded = false;
       try {
         expect((await c.app.health())['status'], equals('ok'));
@@ -555,9 +555,9 @@ String _skipMessage(SocketException e) =>
 /// The app client is here only for its health check — the file transfers go
 /// through [TomHttpFileTransferClient], which speaks the byte contract rather
 /// than the JSON one and therefore carries its own connection.
-({IoJsonTransport transport, AuthClient auth, AppApiClient app})
+({HttpJsonTransport transport, AuthClient auth, AppApiClient app})
 _liveClients() {
-  final transport = IoJsonTransport();
+  final transport = HttpJsonTransport();
   final auth = AuthClient(Uri.parse(_authBaseUri), transport: transport);
   return (
     transport: transport,

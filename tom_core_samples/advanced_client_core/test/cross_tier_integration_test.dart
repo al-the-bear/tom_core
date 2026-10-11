@@ -193,7 +193,7 @@ void main() {
           'a share reveals a project to a second user', () async {
         // One live transport, shared by the AuthClient and both API clients (the
         // runtime wiring), closed regardless of outcome.
-        final transport = IoJsonTransport();
+        final transport = HttpJsonTransport();
         final authBase = Uri.parse(_authBaseUri);
         final appBase = Uri.parse(_appBaseUri);
         final auth = AuthClient(authBase, transport: transport);
@@ -645,7 +645,7 @@ void main() {
         // administrator narrowing one cell changes what an *owner* may do with her
         // own attachment — without a redeploy, a restart, or a line of code.
         final c = _liveClients();
-        final files = ioFileTransferClient(Uri.parse(_appBaseUri));
+        final files = httpFileTransferClient(Uri.parse(_appBaseUri));
         var uploaded = false;
         try {
           expect((await c.app.health())['status'], equals('ok'));
@@ -876,13 +876,13 @@ Future<List<int>?> _downloadAll(
 /// One live transport plus the auth/admin/app clients that share it — the
 /// runtime wiring each authorization check builds (and closes) independently.
 ({
-  IoJsonTransport transport,
+  HttpJsonTransport transport,
   AuthClient auth,
   AdminApiClient admin,
   AppApiClient app,
 })
 _liveClients() {
-  final transport = IoJsonTransport();
+  final transport = HttpJsonTransport();
   final authBase = Uri.parse(_authBaseUri);
   final appBase = Uri.parse(_appBaseUri);
   final auth = AuthClient(authBase, transport: transport);

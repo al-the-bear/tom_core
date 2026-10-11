@@ -1,7 +1,7 @@
 /// The byte half of the client core's HTTP layer — uploads and downloads
 /// against a server's framework file endpoint.
 ///
-/// The JSON half ([JsonTransport] / `IoJsonTransport`) reduces a call to "a
+/// The JSON half ([JsonTransport] / `HttpJsonTransport`) reduces a call to "a
 /// method, a URI, some headers and a string", which is exactly wrong for a file:
 /// a payload worth storing is a payload not worth holding in memory. So files
 /// travel over the kernel's [TomFileTransferClient] instead, which streams in
@@ -9,8 +9,9 @@
 ///
 /// ## Two pieces, one session
 ///
-/// [ioFileTransferClient] is the transport: a `dart:io` client pointed at a
-/// server's file endpoint, sending the credential [AuthorizedHttp] defines.
+/// [httpFileTransferClient] is the transport: the platform's `package:http`
+/// client pointed at a server's file endpoint, sending the credential
+/// [AuthorizedHttp] defines.
 /// [AuthorizedFileTransferClient] is the policy: it wraps any transfer client
 /// so an expired token is refreshed and the operation replayed, through the
 /// same [TomAuthRefresher] the JSON half uses. Composed, they give a transfer
@@ -23,17 +24,19 @@
 /// [TomHttpFileTransferClient] would otherwise resolve its HTTP client through
 /// the kernel's platform seam (`TomPlatformUtils.current.httpClient()`), which
 /// throws until an application registers a platform at startup. This package is
-/// deliberately Flutter-free and owns its own `dart:io` transport — that is
-/// already true of `IoJsonTransport`, which builds an [HttpClient] directly —
-/// so it supplies the byte transport the same way rather than making every
-/// consumer remember a startup call. Both Flutter clients then get working file
-/// transfer from the same wiring that gives them working JSON.
+/// deliberately Flutter-free and owns its own transport — that is already true
+/// of `HttpJsonTransport`, which builds a `package:http` client directly — so it
+/// supplies the byte transport the same way rather than making every consumer
+/// remember a startup call. `package:http` picks the platform's own stack, a
+/// `dart:io` client natively and `fetch` in a browser, so both Flutter clients
+/// get working file transfer on every target from the same wiring that gives
+/// them working JSON.
 ///
 /// ## Example
 ///
 /// ```dart
 /// final files = AuthorizedFileTransferClient(
-///   ioFileTransferClient(Uri.parse('http://localhost:8080')),
+///   httpFileTransferClient(Uri.parse('http://localhost:8080')),
 ///   authorizedHttp.refresher,
 /// );
 /// try {
@@ -49,10 +52,8 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:http/http.dart';
-import 'package:http/io_client.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'authorized_http.dart';
@@ -72,13 +73,13 @@ const String fileEndpointBasePath = '/files';
 ///
 /// The returned client owns a connection pool; [TomFileTransferClient.close] it
 /// when done.
-TomFileTransferClient ioFileTransferClient(Uri serverBaseUri) {
+TomFileTransferClient httpFileTransferClient(Uri serverBaseUri) {
   return TomHttpFileTransferClient(
     baseUri: serverBaseUri.replace(path: fileEndpointBasePath),
     channel: TomServerChannel(
       serverBaseUri.host,
       serverBaseUri.port,
-      clientFactory: _IoHttpClientFactory(),
+      clientFactory: _HttpClientFactory(),
     ),
     // The one place this client's credential is defined, shared verbatim with
     // the JSON half. Read per request, so a refresh that lands between attempts
@@ -91,7 +92,7 @@ TomFileTransferClient ioFileTransferClient(Uri serverBaseUri) {
 /// under the session [http] already maintains.
 ///
 /// The composition exists as a function so a call site cannot get it half right.
-/// Building [ioFileTransferClient] alone gives a client that sends the current
+/// Building [httpFileTransferClient] alone gives a client that sends the current
 /// token but cannot recover a stale one; wrapping it over a *fresh*
 /// [AuthClientRefresher] would give it a second refresh path racing the JSON
 /// half's. Passing `http.refresher` is the only correct wiring, so it is the
@@ -103,20 +104,20 @@ TomFileTransferClient authenticatedFileTransferClient(
   Uri serverBaseUri,
   AuthorizedHttp http,
 ) => AuthorizedFileTransferClient(
-  ioFileTransferClient(serverBaseUri),
+  httpFileTransferClient(serverBaseUri),
   http.refresher,
 );
 
 /// The authenticated file client both Flutter clients transfer bytes through.
 ///
-/// [delegate] carries the bytes (in production [ioFileTransferClient], in a test
+/// [delegate] carries the bytes (in production [httpFileTransferClient], in a test
 /// the kernel's in-memory client); this decorator adds the one thing an
 /// authenticated transfer needs and a raw transfer client cannot know about:
 /// recovery from an expired token.
 ///
 /// ## One token path, not two
 ///
-/// The credential itself is *not* re-implemented here. [ioFileTransferClient]
+/// The credential itself is *not* re-implemented here. [httpFileTransferClient]
 /// reads it from [AuthorizedHttp.authorizationHeader] — the same function the
 /// JSON clients send — and this decorator refreshes it through the same
 /// [TomAuthRefresher] instance [AuthorizedHttp] holds. A second, subtly
@@ -276,11 +277,12 @@ class _TransferAttempt<R> {
   }
 }
 
-/// Supplies a `dart:io`-backed client, bypassing the kernel's platform seam.
+/// Supplies the platform's `package:http` client, bypassing the kernel's
+/// platform seam.
 ///
 /// See the library doc for why this package answers the question itself instead
 /// of requiring a `TomPlatformUtils.setCurrentPlatform` call at startup.
-class _IoHttpClientFactory implements TomHttpClientAbstractFactory {
+class _HttpClientFactory implements TomHttpClientAbstractFactory {
   @override
-  Client getClient() => IOClient(HttpClient());
+  Client getClient() => Client();
 }

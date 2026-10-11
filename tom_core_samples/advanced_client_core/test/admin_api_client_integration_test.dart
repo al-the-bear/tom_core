@@ -43,7 +43,7 @@ void main() {
     test('TC-25-14: admin logs in, then lists users', () async {
       // One live transport, shared by AuthClient and AdminApiClient (the
       // runtime wiring), closed regardless of outcome.
-      final transport = IoJsonTransport();
+      final transport = HttpJsonTransport();
       final authBase = Uri.parse(_authBaseUri);
       final auth = AuthClient(authBase, transport: transport);
       final client = AdminApiClient(authBase, AuthorizedHttp(transport, auth));
@@ -74,7 +74,7 @@ void main() {
     // handler is declared on the `@TomApiImplementation` *and* survives
     // reflection generation, so this asserts it over a real socket.
     test('TC-25-15: a malformed member id is a 400, not a 500', () async {
-      final transport = IoJsonTransport();
+      final transport = HttpJsonTransport();
       final authBase = Uri.parse(_authBaseUri);
       final auth = AuthClient(authBase, transport: transport);
       final client = AdminApiClient(authBase, AuthorizedHttp(transport, auth));

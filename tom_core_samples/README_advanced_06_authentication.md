@@ -480,7 +480,7 @@ local pair (even if the server call fails) by replacing the singleton. It maps a
 non-success status to a typed `AuthClientException` carrying the HTTP status and
 the server's stable error key — so a UI can branch on the key without parsing a
 message, and a rejected login still never says *which* credential was wrong. It
-talks through a `JsonTransport` seam (live `IoJsonTransport`, or a fake under
+talks through a `JsonTransport` seam (live `HttpJsonTransport`, or a fake under
 test).
 
 > **Opaque token, by design.** `AuthClient` defaults `decryptTokens: false`: this

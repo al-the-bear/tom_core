@@ -1,6 +1,6 @@
 name: advanced_client_core
 description: >-
-  Flutter-free dart:io client core for the advanced Tom Core full-stack sample —
+  Flutter-free client core for the advanced Tom Core full-stack sample —
   the authenticated HTTP layer (AuthClient login/refresh/logout, AuthorizedHttp
   bearer injection + refresh-on-401, and the AppApiClient / AdminApiClient typed
   parsers) shared by both Flutter clients.
@@ -22,9 +22,9 @@ dependencies:
   # lets the client name the types without an implicit-dependency lint.
   advanced_todo_domain:
     path: ../advanced_todo_domain
-  # The `Client` the file-transfer seam hands the kernel's transfer client
-  # (src/http/file_transfer.dart). Transitive through tom_core_kernel, but named
-  # here because this package's own source imports it.
+  # The platform's HTTP client: both the JSON transport and the file-transfer
+  # seam (src/http/). `package:http` is `dart:io` natively and `fetch` in a
+  # browser, which is what lets the client core run on the web.
   http: ^1.6.0
 
 dev_dependencies:

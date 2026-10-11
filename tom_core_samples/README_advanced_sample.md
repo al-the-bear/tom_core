@@ -216,8 +216,8 @@ the macOS network entitlement the live stack needs:
 
 ```sh
 # End-user app — from advanced_app_client/
-flutter create --empty --platforms=macos .   # once; or linux, windows
-flutter run
+flutter create --empty --platforms=macos .   # once; or linux, windows, web
+flutter run                                  # or: flutter run -d chrome --web-port 8090
 
 # Admin console — from advanced_authadmin_client/
 flutter create --empty --platforms=macos .   # once; or linux, windows
@@ -280,6 +280,39 @@ app chain, and runs both the live and the connection-free suites.
 ```sh
 tom_core_samples/advanced_ops_server/tool/run_ops_integration.sh
 ```
+
+### A real passkey from a browser
+
+The end-user app builds for the web, and in a browser `erin`'s enrolment offer
+includes a **passkey** the browser itself creates. One run exercises everything
+the suites prove only in parts — the web build, the browser's WebAuthn, the
+live auth server's relying party (`localhost`, origin `http://localhost:8090`)
+and its CORS:
+
+```sh
+# from advanced_auth_server/ and advanced_app_server/: fresh databases, both servers
+docker compose down -v && docker compose up -d auth-db   # (app-db likewise)
+dart run bin/auth_server_start.dart env=dev               # and app_server_start.dart
+
+# from advanced_app_client/
+flutter create --empty --platforms=web .                  # once
+flutter build web
+dart run tool/drive_passkey_web.dart
+```
+
+`tool/drive_passkey_web.dart` is a manual check, never scheduled. It serves the
+build on port 8090, starts headless Chrome with a CDP virtual authenticator —
+a platform authenticator as far as the page and the server can tell — and
+drives the canvas-rendered page through Flutter's semantics tree: sign in as
+`erin`, choose **Passkey**, **Create passkey**, sign out, sign in again, **Use
+passkey**. It asserts the credential was made for relying party `localhost`,
+that the second sign-in was challenged with it, and that the authenticator's
+signature counter moved. A person can run the same steps by hand in Chrome at
+`http://localhost:8090` with `flutter run -d chrome --web-port 8090`.
+
+Run on 2026-10-11 against the live stack: `PASS` — credential created for
+`localhost`, the board loaded, the second sign-in challenged with the passkey,
+and the signature counter went from 1 to 2.
 
 ### Checking the generated API pages
 

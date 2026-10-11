@@ -296,15 +296,16 @@ platform it has no folder for, so generate the one you run on, once, from this
 directory:
 
 ```sh
-flutter create --empty --platforms=macos .   # or linux, or windows
+flutter create --empty --platforms=macos .   # or linux, windows, or web
 ```
 
 `--empty` matters. Without it `flutter create` also writes a counter-app
 `test/widget_test.dart` that pumps a `MyApp` this package does not have, and the
 suite stops compiling. The command leaves `lib/`, `pubspec.yaml` and this README
 alone, and what it adds — the platform folder, `.metadata`, IDE files — is
-gitignored. Web is not a target: the HTTP client in `advanced_client_core` is
-built on `dart:io`.
+gitignored. The web is a target like the others: `advanced_client_core` talks
+HTTP through `package:http`, which is `fetch` in a browser, and the servers
+answer the browser's CORS with the allowed origin on every response.
 
 On macOS the app is sandboxed, and the generated
 `macos/Runner/DebugProfile.entitlements` allows incoming connections only. The
@@ -330,6 +331,9 @@ dart run bin/app_server_start.dart       # binds http://localhost:8080
 # 3. This client — from advanced_app_client/; no dart-defines, it targets
 #    the local servers above (URLs from the AdvancedClientConfig config bean)
 flutter run
+#    …or in a browser, on the origin the auth server's passkey relying party
+#    allows by default
+flutter run -d chrome --web-port 8090
 ```
 
 Sign in with a seeded account — `alice` / `alice-pass`, `bob` / `bob-pass`,
@@ -343,6 +347,32 @@ boots on the seeded `InMemoryAppBackend`, whose accounts, board, item-detail
 field grades, second-factor state and share rights follow the same model the
 live servers enforce (offline any non-empty password is accepted). That is the
 backend the whole widget suite binds, so nothing in it touches a socket.
+
+### A passkey from a browser
+
+In the browser build, `erin`'s offer lists **Passkey** beside the authenticator
+app: choose it, **Create passkey**, and the browser asks for the device's
+fingerprint, face or PIN. Sign out and back in, and the server challenges with
+the passkey instead of a code. The relying party is `localhost` and the allowed
+origin `http://localhost:8090`, which is why the web port is fixed; browsers
+allow WebAuthn on `localhost` without TLS.
+
+`tool/drive_passkey_web.dart` runs that round trip unattended — a manual check,
+run when you want it, never scheduled. It serves `build/web` on port 8090 itself,
+starts headless Chrome with a CDP virtual authenticator, and drives the page
+through Flutter's semantics tree: sign in as `erin`, create a passkey, sign out,
+sign in with it. It needs the two servers up over a **fresh** `auth_db`
+(`docker compose down -v` first — `erin` must not already hold a passkey) and a
+`flutter build web`:
+
+```sh
+flutter build web
+dart run tool/drive_passkey_web.dart   # CHROME=<binary> if not at the default path
+```
+
+It exits 0 with `PASS` when the passkey was created for relying party
+`localhost`, the server then challenged with it, and the authenticator's
+signature counter moved on the second sign-in.
 
 ## Tests
 

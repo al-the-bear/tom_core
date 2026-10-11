@@ -69,7 +69,7 @@ void main() {
     test('TC-22-11: logs in alice and stores the bearer', () async {
       // The live transport is owned here so it can be closed regardless of
       // outcome (and so a connection refusal is observable as a SocketException).
-      final transport = IoJsonTransport();
+      final transport = HttpJsonTransport();
       final client = AuthClient(Uri.parse(_authBaseUri), transport: transport);
 
       final LoginResult result;
@@ -108,7 +108,7 @@ void main() {
     test(
       'TC-22-12: completes dave\'s two-pass login and ends up authenticated',
       () async {
-        final transport = IoJsonTransport();
+        final transport = HttpJsonTransport();
         final client = AuthClient(
           Uri.parse(_authBaseUri),
           transport: transport,
@@ -193,7 +193,7 @@ void main() {
     // own [TomTotp], exactly as the Flutter panel's user derives one by hand.
     test('TC-22-13: erin declines the offer, then enrols a TOTP factor and is '
         'challenged on it', () async {
-      final transport = IoJsonTransport();
+      final transport = HttpJsonTransport();
       final client = AuthClient(Uri.parse(_authBaseUri), transport: transport);
 
       try {

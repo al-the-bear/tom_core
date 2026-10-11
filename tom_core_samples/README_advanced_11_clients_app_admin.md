@@ -138,7 +138,7 @@ never a concrete class. That single seam is what lets the widget tests run
   bind them and never touch a socket (deterministic by construction).
 - **`LiveAppBackend` / `LiveAdminBackend`** — thin adapters over
   `advanced_client_core`: an `AuthClient` (login + token storage) and an API
-  client (`AppApiClient` / `AdminApiClient`) **sharing one `IoJsonTransport`** via
+  client (`AppApiClient` / `AdminApiClient`) **sharing one `HttpJsonTransport`** via
   `AuthorizedHttp`, so the bearer the login stores is the one every subsequent
   call presents (`main.dart` `_installBackend`). They normalise the client core's
   transport exceptions (`AuthClientException` / `AppApiException` /

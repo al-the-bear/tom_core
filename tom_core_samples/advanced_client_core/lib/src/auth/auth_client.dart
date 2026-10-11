@@ -61,7 +61,7 @@ class AuthClient {
 
   /// Builds the client against [baseUri].
   ///
-  /// [transport] defaults to the live [IoJsonTransport]; tests pass a fake.
+  /// [transport] defaults to the live [HttpJsonTransport]; tests pass a fake.
   /// [decryptTokens] controls whether the stored authorization token's encrypted
   /// payload is decrypted locally — `false` for this Flutter-free sample, which
   /// treats the authorization token as an opaque bearer and reads identity from
@@ -71,7 +71,7 @@ class AuthClient {
     this.baseUri, {
     JsonTransport? transport,
     bool decryptTokens = false,
-  }) : _transport = transport ?? IoJsonTransport(),
+  }) : _transport = transport ?? HttpJsonTransport(),
        _decryptTokens = decryptTokens;
 
   /// Exchanges [request] credentials for the token pair, stores it, and returns

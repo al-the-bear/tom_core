@@ -38,7 +38,7 @@ void main() {
     test('TC-24-14: health is ok, then alice lists her workspaces', () async {
       // One live transport, shared by AuthClient and AppApiClient (the
       // runtime wiring), closed regardless of outcome.
-      final transport = IoJsonTransport();
+      final transport = HttpJsonTransport();
       final auth = AuthClient(Uri.parse(_authBaseUri), transport: transport);
       final client = AppApiClient(
         Uri.parse(_appBaseUri),
