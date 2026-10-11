@@ -36,7 +36,7 @@ they are observable, writable, persistent, and addressable as a set.
 | `TomOverridableBy` | enum | Which narrower client scope, if any, may shadow a setting — `none` / `user` / `device`. |
 | `TomEffectiveSettings` | class | Reads a setting together with the preference scopes it opens itself to. |
 | `TomPreferenceLookup` | typedef | `Future<T?> Function<T extends Object>(String key)` — the one-key read both preference stores carry. |
-| `TomClientConfigurationStore` | abstract class | Two-method (`read`/`write`) interface for persisting overrides. |
+| `TomClientConfigurationStore` | abstract class | Two-method (`read`/`update`) interface for persisting overrides. |
 | `TomMemoryClientConfigurationStore` | class | Process-lifetime override store. |
 | `TomFileClientConfigurationStore` | class | JSON file store (io variant; neutral variant throws). |
 | `TomClientConfigurationException` | class | Module failures, keyed by stable dotted codes. |
@@ -365,13 +365,31 @@ Object>(String key)`, the shape both shipped stores' `get` already has. See
 ### Stores
 
 `TomClientConfigurationStore` is deliberately two methods — `read()` and
-`write(values)`. There is no `clear` (writing an empty map *is* clearing) and no
-per-key accessor, so adapting a new backend (`shared_preferences`, browser local
-storage, a keychain) costs two methods.
+`update(change)`. There is no `clear` and no plain `write` (an update that
+returns an empty map *is* clearing, and one that ignores its argument *is*
+replacing) and no per-key accessor, so adapting a new backend
+(`shared_preferences`, browser local storage, a keychain) costs two methods.
 
-`TomFileClientConfigurationStore` writes JSON via write-then-rename, so a
-failure part-way through leaves the previous content readable rather than a
-truncated override map. An empty write deletes the file. It is selected by
+**`update` is one step.** It hands `change` the content as it stands, writes
+what `change` returns, and lets no other update of the same location run in
+between — that is the store's half of overlapping saves being safe (see
+[Persistence](#persistence)). `change` is synchronous, because the store holds
+its exclusion while it runs; one that throws writes nothing.
+
+`TomMemoryClientConfigurationStore` gets the step for free: its update has no
+await between reading and writing, and its content exists in one isolate only.
+`TomFileClientConfigurationStore` runs each update under the kernel's file guard
+on the sibling `<path>.lock` (`tomWithFileLockAsync`, from
+`package:tom_core_kernel/tom_core_kernel_io.dart`). The guard is a file created
+exclusively, so it excludes another task on this isolate, another isolate and
+another process alike — an operating-system file lock would not, because it
+belongs to the process and two isolates of one process are both granted it — and
+it waits without blocking, so a UI isolate stays responsive while another save
+finishes. The guard file is removed when the update ends.
+
+The file store writes JSON via write-then-rename, so a failure part-way through
+leaves the previous content readable rather than a truncated override map. An
+update to an empty map deletes the file. It is selected by
 conditional export: on a target without `dart:io` the same name resolves to a
 variant that **throws on construction** with
 `client_configuration.store.unsupported_platform` rather than silently
@@ -415,16 +433,20 @@ moment of the first save.
 setting has changed when its override differs from the snapshot the last
 `load()` or `save()` took — an override added, a value altered, an override
 dropped. Those keys are written, or removed. Every other key is carried forward
-exactly as the store holds it at the moment of the write, read immediately
-before it: keys the running build does not declare — a build that has dropped a
+exactly as the store holds it at the moment of the write — the merge runs inside
+the store's `update`, on its current content: keys the running build does not declare — a build that has dropped a
 setting, or an older build during a staged rollout, must not destroy an
 install's value for a key it does not know — and declared keys this holder did
 not touch.
 
-So **two holders may share a store location.** A holder that never touched
-`client.retries` keeps the value another holder saved there, whether or not it
-reloaded in between, and a key both changed goes to whichever saved last. An
-external edit to the file survives the next save for the same reason.
+So **two holders may share a store location** — in one isolate, in two, or in
+two processes over one file. A holder that never touched `client.retries` keeps
+the value another holder saved there, whether or not it reloaded in between, and
+a key both changed goes to whichever saved last. Saves that **overlap** are no
+exception: each merge runs inside the store's `update`, so the second applies
+its change on top of the first rather than over a stale read. An external edit
+to the file survives the next save for the same reason, provided it is made
+through the store or between saves.
 
 **After a save the holder matches the store.** Every declared setting the
 holder did not change adopts the stored value, or its baseline when there is
@@ -521,12 +543,11 @@ installs an empty provider —
   store does not carry is reset — which is what adopting a store means, and
   what makes `load()` idempotent. There is no operation that layers extra
   overrides onto the current ones: set each through its setting, then `save()`.
-- **Two saves that genuinely overlap lose one change.** Read-then-write is not
-  one operation, so when two holders over one location save at the same moment
-  — A reads, B reads, B writes, A writes — A's write carries forward the
-  document it read, without B's change, and nothing notices: the persisted
-  document carries no version stamp and `save()` cannot fail on a conflict.
-  Sequential saves do not have this problem; only the overlap does.
+- **An edit outside the store is not excluded.** The file store's guard holds
+  off every other `update`, but a person or a program writing the JSON file
+  directly does not take it. Such an edit made in the instant between an
+  update's read and its write is overwritten; one made at any other time is
+  carried forward like any other key.
 
 ---
 
@@ -536,5 +557,5 @@ installs an empty provider —
 | ---------- | ---- | ----------- | --- |
 | `dart:convert` | dart | `file_configuration_store_io.dart` | `jsonDecode`, `jsonEncode` |
 | `dart:io` | dart | `environment_reader_io.dart`, `file_configuration_store_io.dart` | `File`, `Platform` |
-| `tom_core_kernel` | package | `client_configuration.dart`, `client_configuration_store.dart` | `TomObservable` / `TomObject` (the observation substrate), `TomConfigResourceProvider` (the shipped config layer), `TomException` |
+| `tom_core_kernel` | package | `client_configuration.dart`, `client_configuration_store.dart`, `file_configuration_store_io.dart` | `TomObservable` / `TomObject` (the observation substrate), `TomConfigResourceProvider` (the shipped config layer), `TomException`, and — through the native-only `tom_core_kernel_io.dart` — `tomWithFileLockAsync` / `tomFileLockPath`, the guard the file store's `update` runs under |
 | [little_things](little_things.md) | module | `client_configuration_store.dart` | `TomClientException` |

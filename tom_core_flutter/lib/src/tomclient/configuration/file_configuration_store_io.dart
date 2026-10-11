@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:tom_core_kernel/tom_core_kernel_io.dart';
+
 import 'client_configuration_store.dart';
 
 /// A [TomClientConfigurationStore] backed by a JSON file on the local
@@ -14,13 +16,23 @@ import 'client_configuration_store.dart';
 /// **deleted** when the override map becomes empty — an install that resets
 /// everything should leave no file behind, and "no file" and "empty object"
 /// must not be two ways to say the same thing.
+///
+/// **An [update] is one step against every other update of the same file.**
+/// It runs under the kernel's file guard (`tomWithFileLockAsync`) on the
+/// sibling `<path>.lock`, which excludes every other holder — another holder in
+/// this isolate, another isolate, another process — and waits without blocking
+/// the isolate, so a UI isolate stays responsive while another save finishes.
+/// An operating-system file lock would not do: it belongs to the process, so
+/// two isolates of one process are both granted it. The guard is a sibling
+/// rather than the configuration file itself because a write replaces that file
+/// by rename, and it is removed again when the update ends.
 class TomFileClientConfigurationStore extends TomClientConfigurationStore {
   /// Creates a store over the file at [path].
   ///
   /// The path is the caller's choice because only the app knows where its
   /// machine-local state belongs (`path_provider`'s application-support
   /// directory on a Flutter client, a temp directory in a test). Missing
-  /// parent directories are created on the first [write].
+  /// parent directories are created on the first [update].
   ///
   /// Deliberately **not** `const`, even though this variant could be. The
   /// neutral variant cannot be — it throws from its constructor body — and a
@@ -68,7 +80,15 @@ class TomFileClientConfigurationStore extends TomClientConfigurationStore {
   }
 
   @override
-  Future<void> write(Map<String, Object?> values) async {
+  Future<Map<String, Object?>> update(
+    Map<String, Object?> Function(Map<String, Object?> current) change,
+  ) => tomWithFileLockAsync(File(tomFileLockPath(path)), () async {
+    final next = {...change(await read())};
+    await _write(next);
+    return next;
+  });
+
+  Future<void> _write(Map<String, Object?> values) async {
     final file = File(path);
     if (values.isEmpty) {
       if (await file.exists()) await file.delete();

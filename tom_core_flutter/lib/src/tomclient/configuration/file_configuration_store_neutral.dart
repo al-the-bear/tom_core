@@ -32,5 +32,7 @@ class TomFileClientConfigurationStore extends TomClientConfigurationStore {
   Future<Map<String, Object?>> read() async => {};
 
   @override
-  Future<void> write(Map<String, Object?> values) async {}
+  Future<Map<String, Object?>> update(
+    Map<String, Object?> Function(Map<String, Object?> current) change,
+  ) async => {};
 }

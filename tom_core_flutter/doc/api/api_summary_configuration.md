@@ -239,7 +239,7 @@ be.)
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `read` | `Future<Map<String, Object?>> read()` | The persisted override map; empty when nothing was persisted. |
-| `write` | `Future<void> write(Map<String, Object?> values)` | Replaces the persisted map, all-or-nothing. An empty map clears. |
+| `update` | `Future<Map<String, Object?>> update(Map<String, Object?> Function(Map<String, Object?> current) change)` | Replaces the persisted map with what `change` makes of its current content, as one step no other update of the location interleaves with; returns what was persisted. All-or-nothing; a throwing `change` writes nothing; an empty result clears. |
 
 ### TomMemoryClientConfigurationStore
 

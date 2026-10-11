@@ -2,6 +2,13 @@
 
 ### Added
 
+- **`package:tom_core_kernel/tom_core_kernel_io.dart`**, the native-only entry
+  library, exporting the file guard the kernel's file-backed stores use:
+  `tomWithFileLock`, the new **`tomWithFileLockAsync`** — the same guard,
+  waiting with `Future.delayed` so a UI isolate is not blocked — and
+  `tomFileLockPath` / `tomFileLockStaleAfter`. The two waiters share one
+  non-blocking acquisition attempt, so they are one lock.
+
 - **`lookupObjectInTree`** in `json/map_merge_and_process.dart`: the walk
   behind `getObjectFromTree`, reporting a path it cannot resolve as
   `(found: false, value: null)` instead of throwing. Both now share one walk.

@@ -117,10 +117,9 @@ Future<void> run() async {
   // other key forward from the store as it is at save time — so a build that
   // has dropped a setting cannot destroy an install's value for it, and a key
   // another writer added since load() survives too.
-  await store.write({
-    ...await store.read(),
-    'client.legacy.key': 'written-by-someone-else',
-  });
+  await store.update(
+    (current) => {...current, 'client.legacy.key': 'written-by-someone-else'},
+  );
   config.refreshSeconds | 15;
   await config.save();
   final carried = await store.read();

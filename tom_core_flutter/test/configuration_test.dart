@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,37 +16,29 @@ import 'package:tom_core_flutter/src/tomclient/configuration/file_configuration_
 import '../example/configuration/configuration_example.dart' as example;
 import 'support/conditional_export_variants.dart';
 
-/// A store that lets a test run somebody else's whole save *inside* one
-/// holder's `read()`.
+/// A memory store that counts how it is called.
 ///
-/// `save()` is read-then-write, and the two are separate awaits — but from a
-/// test's side the pair is atomic unless the store can be interrupted between
-/// them. This one can: [onNextRead] fires after the snapshot is taken and
-/// before it is returned, so the second holder's save completes while the first
-/// is still holding a snapshot that predates it. That is the interleaving the
-/// module documents as undetected, reproduced deterministically rather than by
-/// racing two futures and hoping.
-class _InterleavingStore extends TomClientConfigurationStore {
-  _InterleavingStore([Map<String, Object?>? initialValues])
-    : _values = {...?initialValues};
+/// `save()` must hand its merge to [update] rather than reading and writing in
+/// two steps — the two-step form is what let an overlapping save erase another
+/// one. Counting is how a test sees which form was used.
+class _CountingStore extends TomMemoryClientConfigurationStore {
+  _CountingStore([super.initialValues]);
 
-  Map<String, Object?> _values;
-
-  /// Run once, inside the next [read], after its snapshot is taken.
-  Future<void> Function()? onNextRead;
+  int reads = 0;
+  int updates = 0;
 
   @override
-  Future<Map<String, Object?>> read() async {
-    final snapshot = {..._values};
-    final hook = onNextRead;
-    onNextRead = null;
-    if (hook != null) await hook();
-    return snapshot;
+  Future<Map<String, Object?>> read() {
+    reads++;
+    return super.read();
   }
 
   @override
-  Future<void> write(Map<String, Object?> values) async {
-    _values = {...values};
+  Future<Map<String, Object?>> update(
+    Map<String, Object?> Function(Map<String, Object?> current) change,
+  ) {
+    updates++;
+    return super.update(change);
   }
 }
 
@@ -444,10 +437,12 @@ void main() {
       });
       final config = _TestConfiguration(store: store);
       await config.load();
-      await store.write({
-        'client.fromNewerBuild': 'keep',
-        'client.writtenLater': 'also-keep',
-      });
+      await store.update(
+        (_) => {
+          'client.fromNewerBuild': 'keep',
+          'client.writtenLater': 'also-keep',
+        },
+      );
       config.retries | 9;
       await config.save();
       expect(await store.read(), {
@@ -775,7 +770,7 @@ void main() {
         final store = TomMemoryClientConfigurationStore();
         final config = _TestConfiguration(store: store);
         await config.load();
-        await store.write({'client.fromAnotherBuild': 'keep'});
+        await store.update((_) => {'client.fromAnotherBuild': 'keep'});
 
         config.retries | 9;
         await config.save();
@@ -869,7 +864,7 @@ void main() {
       final store = TomMemoryClientConfigurationStore();
       final config = _TestConfiguration(store: store);
       await config.load();
-      await store.write({'client.ratio': 0.5});
+      await store.update((_) => {'client.ratio': 0.5});
 
       config.darkMode | true;
       await config.save();
@@ -888,7 +883,7 @@ void main() {
         final config = _TestConfiguration(store: store);
         await config.load();
         await config.save();
-        await store.write({'client.retries': 7, 'client.legacy': 'x'});
+        await store.update((_) => {'client.retries': 7, 'client.legacy': 'x'});
 
         await config.save();
 
@@ -918,36 +913,45 @@ void main() {
       });
     });
 
+    test('overlapping saves both land', () async {
+      // Both saves start before either finishes. Each merge runs inside the
+      // store's update, on the content as it stands then, so the second
+      // applies its change on top of the first instead of over a stale read.
+      final store = TomMemoryClientConfigurationStore({
+        'client.fromAnotherBuild': 'keep',
+      });
+      final a = _TestConfiguration(store: store);
+      final b = _TestConfiguration(store: store);
+      await a.load();
+      await b.load();
+
+      a.retries | 9;
+      b.darkMode | true;
+      await Future.wait([a.save(), b.save()]);
+
+      expect(await store.read(), {
+        'client.fromAnotherBuild': 'keep',
+        'client.retries': 9,
+        'client.darkMode': true,
+      });
+    });
+
     test(
-      'an interleaved save loses the earlier reader\'s change silently',
+      'save merges inside one update and reads nothing on its own',
       () async {
-        // read-A, read-B, write-B, write-A. Even a holder that did reload cannot
-        // help itself here: A's snapshot predates B's write. Nothing throws —
-        // there is no version stamp to compare and `save()` cannot fail on a
-        // conflict — which is the property that makes the loss silent.
-        final store = _InterleavingStore({'client.fromAnotherBuild': 'keep'});
-        final a = _TestConfiguration(store: store);
-        final b = _TestConfiguration(store: store);
-        await a.load();
-        await b.load();
+        final store = _CountingStore({'client.retries': 7});
+        final config = _TestConfiguration(store: store);
+        await config.load();
+        store.reads = 0;
 
-        a.retries | 9;
-        b.darkMode | true;
-        store.onNextRead = b.save;
+        config.darkMode | true;
+        await config.save();
 
-        await a.save();
-
-        final persisted = await store.read();
+        expect(store.updates, 1);
         expect(
-          persisted['client.darkMode'],
-          isNull,
-          reason: 'B\'s change is lost',
-        );
-        expect(persisted['client.retries'], 9);
-        expect(
-          persisted['client.fromAnotherBuild'],
-          'keep',
-          reason: 'a key neither holder declares is never at risk, race or not',
+          store.reads,
+          0,
+          reason: 'a separate read would reopen the overlap update closes',
         );
       },
     );
@@ -1703,12 +1707,12 @@ void main() {
   });
 
   group('TomMemoryClientConfigurationStore', () {
-    test('reads back what was written, and copies in and out', () async {
+    test('reads back what was updated, and copies in and out', () async {
       final store = TomMemoryClientConfigurationStore();
       expect(await store.read(), isEmpty);
 
       final written = <String, Object?>{'a': 1};
-      await store.write(written);
+      await store.update((_) => written);
       written['b'] = 2; // must not leak into the store
 
       final read = await store.read();
@@ -1717,11 +1721,30 @@ void main() {
       expect(await store.read(), {'a': 1});
     });
 
-    test('an empty write clears the store', () async {
+    test('an empty update clears the store', () async {
       final store = TomMemoryClientConfigurationStore({'a': 1});
-      await store.write({});
+      await store.update((_) => {});
       expect(await store.read(), isEmpty);
     });
+
+    test('an update whose change throws writes nothing', () async {
+      final store = TomMemoryClientConfigurationStore({'a': 1});
+      await expectLater(
+        store.update((_) => throw StateError('no')),
+        throwsStateError,
+      );
+      expect(await store.read(), {'a': 1});
+    });
+
+    test(
+      'update hands change the current content and returns the result',
+      () async {
+        final store = TomMemoryClientConfigurationStore({'a': 1});
+        final written = await store.update((current) => {...current, 'b': 2});
+        expect(written, {'a': 1, 'b': 2});
+        expect(await store.read(), {'a': 1, 'b': 2});
+      },
+    );
   });
 
   group('TomFileClientConfigurationStore', () {
@@ -1741,7 +1764,7 @@ void main() {
 
     test('round-trips the override map, creating parent directories', () async {
       final store = TomFileClientConfigurationStore(path);
-      await store.write({'client.retries': 9, 'client.darkMode': true});
+      await store.update((_) => {'client.retries': 9, 'client.darkMode': true});
       expect(File(path).existsSync(), isTrue);
       expect(await store.read(), {
         'client.retries': 9,
@@ -1749,18 +1772,79 @@ void main() {
       });
     });
 
-    test('an empty write deletes the file', () async {
+    test('an empty update deletes the file', () async {
       final store = TomFileClientConfigurationStore(path);
-      await store.write({'client.retries': 9});
-      await store.write({});
+      await store.update((_) => {'client.retries': 9});
+      await store.update((_) => {});
       expect(File(path).existsSync(), isFalse);
       expect(await store.read(), isEmpty);
     });
 
-    test('leaves no temporary file behind', () async {
+    test('leaves no temporary or lock file behind', () async {
       final store = TomFileClientConfigurationStore(path);
-      await store.write({'client.retries': 9});
+      await store.update((_) => {'client.retries': 9});
       expect(File('$path.part').existsSync(), isFalse);
+      expect(File('$path.lock').existsSync(), isFalse);
+    });
+
+    test(
+      'an update whose change throws writes nothing and releases the lock',
+      () async {
+        final store = TomFileClientConfigurationStore(path);
+        await store.update((_) => {'client.retries': 9});
+        await expectLater(
+          store.update((_) => throw StateError('no')),
+          throwsStateError,
+        );
+        expect(await store.read(), {'client.retries': 9});
+        expect(File('$path.lock').existsSync(), isFalse);
+        // Released, so the next update is not kept waiting.
+        await store.update((current) => {...current, 'client.darkMode': true});
+        expect(await store.read(), {
+          'client.retries': 9,
+          'client.darkMode': true,
+        });
+      },
+    );
+
+    test(
+      'overlapping updates through separate stores over one file all land',
+      () async {
+        // Two holders that each construct their own store over the same path
+        // must still take turns: the exclusion is the file's, not the instance's.
+        Future<void> bump(String key) =>
+            TomFileClientConfigurationStore(path).update(
+              (current) => {...current, key: ((current[key] as int?) ?? 0) + 1},
+            );
+        await Future.wait([
+          for (var i = 0; i < 10; i++) ...[bump('client.a'), bump('client.b')],
+        ]);
+        expect(await TomFileClientConfigurationStore(path).read(), {
+          'client.a': 10,
+          'client.b': 10,
+        });
+      },
+    );
+
+    test('overlapping updates from separate isolates all land', () async {
+      // The case an operating-system file lock misses: it belongs to the
+      // process, so two isolates of one process would both be granted it.
+      final target = path;
+      Future<void> worker() => Isolate.run(() async {
+        final store = TomFileClientConfigurationStore(target);
+        for (var i = 0; i < 10; i++) {
+          await store.update(
+            (current) => {
+              ...current,
+              'client.count': ((current['client.count'] as int?) ?? 0) + 1,
+            },
+          );
+        }
+      });
+      await Future.wait([worker(), worker(), worker()]);
+      expect(await TomFileClientConfigurationStore(path).read(), {
+        'client.count': 30,
+      });
     });
 
     test('a zero-length file reads as empty', () async {

@@ -58,6 +58,15 @@ Then import the single barrel:
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 ```
 
+The barrel is platform-neutral and compiles for the web. What needs a
+filesystem — the cross-isolate, cross-process file guard (`tomWithFileLock`,
+`tomWithFileLockAsync`) — is in a second entry library that only native code may
+import:
+
+```dart
+import 'package:tom_core_kernel/tom_core_kernel_io.dart';
+```
+
 The barrel re-exports [`tom_basics`](../../basics/tom_basics/README.md),
 [`tom_crypto`](../../basics/tom_crypto/README.md) and
 [`tom_reflection`](../../reflection/tom_reflection/README.md), so one import

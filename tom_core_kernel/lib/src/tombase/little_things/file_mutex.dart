@@ -47,9 +47,12 @@
 /// a guard that has stood unchanged for ten seconds is not slow, it is
 /// abandoned.
 ///
-/// The library is internal — how a store reaches the disk is not something a
-/// caller should reach for — and imports `dart:io`, so nothing web-facing may
-/// import it.
+/// It imports `dart:io`, so it is not part of the platform-neutral package
+/// barrel. A framework store outside the kernel that needs the same guard —
+/// `tom_core_flutter`'s file-backed client configuration — reaches the public
+/// half, [tomWithFileLock], [tomWithFileLockAsync], [tomFileLockPath] and
+/// [tomFileLockStaleAfter], through `package:tom_core_kernel/tom_core_kernel_io.dart`,
+/// which only native code may import.
 library;
 
 // =============================================================================
@@ -94,6 +97,11 @@ String tomFileLockPath(String path) => '$path.lock';
 /// Runs [body] with exclusive access to [lockFile] among every isolate and
 /// process using this guard, and releases it however [body] ends.
 ///
+/// Waits synchronously, sleeping between attempts. That suits the kernel's
+/// own file-backed stores, which present a synchronous contract; code running
+/// on an isolate that must stay responsive while it waits — a UI isolate —
+/// wants [tomWithFileLockAsync].
+///
 /// [onBrokenLock] is called when an abandoned guard had to be broken, since
 /// that means some other writer died mid-mutation and its last write may not
 /// have landed — worth saying out loud rather than silently recovering from.
@@ -110,7 +118,12 @@ T tomWithFileLock<T>(
   Duration timeout = const Duration(seconds: 30),
   void Function(String warning)? onBrokenLock,
 }) {
-  final token = _acquire(lockFile, staleAfter, timeout, onBrokenLock);
+  final token = _newToken();
+  final deadline = DateTime.now().add(timeout);
+  while (!_attempt(lockFile, token, staleAfter, onBrokenLock)) {
+    _failIfPast(deadline, lockFile, timeout);
+    sleep(_retryInterval);
+  }
   try {
     return body();
   } finally {
@@ -118,27 +131,67 @@ T tomWithFileLock<T>(
   }
 }
 
-/// Blocks until this writer holds [lockFile], returning the token written into
-/// it.
+/// [tomWithFileLock] for a caller that must not block its isolate while it
+/// waits: the waits between attempts are [Future.delayed], and [body] may be
+/// asynchronous.
 ///
-/// The token names this one acquisition — the writer and a random suffix —
-/// and is what lets [_release] and [_breakIfAbandoned] tell this guard from a
+/// The exclusion is the same guard file, so it holds against every other
+/// holder of [lockFile] — another asynchronous task on this isolate as much as
+/// another isolate or process: the second task's exclusive create fails while
+/// the first holds the guard, exactly as a foreign process's would. Between
+/// the awaits of [body] the isolate runs other code, and that is the price of
+/// not blocking: code that must not run inside the critical section has to
+/// take the same guard to be kept out.
+Future<T> tomWithFileLockAsync<T>(
+  File lockFile,
+  Future<T> Function() body, {
+  Duration staleAfter = tomFileLockStaleAfter,
+  Duration timeout = const Duration(seconds: 30),
+  void Function(String warning)? onBrokenLock,
+}) async {
+  final token = _newToken();
+  final deadline = DateTime.now().add(timeout);
+  while (!_attempt(lockFile, token, staleAfter, onBrokenLock)) {
+    _failIfPast(deadline, lockFile, timeout);
+    await Future<void>.delayed(_retryInterval);
+  }
+  try {
+    return await body();
+  } finally {
+    _release(lockFile, token);
+  }
+}
+
+/// A token naming one acquisition: the writer and a random suffix.
+///
+/// It is what lets [_release] and [_breakIfAbandoned] tell this guard from a
 /// later one standing at the same path. Without it, a guard file is just a
 /// name, and deleting "the guard" can delete somebody else's.
+String _newToken() =>
+    '$tomFileWriterId#${_tokenRandom.nextInt(1 << 32).toRadixString(36)}';
+
+/// Throws the timeout failure once [deadline] has passed.
+void _failIfPast(DateTime deadline, File lockFile, Duration timeout) {
+  if (!DateTime.now().isAfter(deadline)) return;
+  throw FileSystemException(
+    'Could not acquire the lock on ${lockFile.path} within '
+    '${timeout.inSeconds}s — another writer is holding it and is not '
+    'making progress. Nothing was written.',
+    lockFile.path,
+  );
+}
+
+/// One attempt to take [lockFile] for [token], never waiting: `true` when this
+/// writer now holds it.
 ///
-/// Synchronous on purpose. The stores this guards present a synchronous
-/// contract and already block on flushed writes; an asynchronous acquire would
-/// let the isolate run other code inside a critical section that exists
-/// precisely to keep other code out.
-String _acquire(
+/// Both waiters share it, so the synchronous and the asynchronous lock are one
+/// lock with two ways of passing the time between attempts.
+bool _attempt(
   File lockFile,
+  String token,
   Duration staleAfter,
-  Duration timeout,
   void Function(String warning)? onBrokenLock,
 ) {
-  final token =
-      '$tomFileWriterId#${_tokenRandom.nextInt(1 << 32).toRadixString(36)}';
-  final deadline = DateTime.now().add(timeout);
   while (true) {
     try {
       lockFile.parent.createSync(recursive: true);
@@ -153,20 +206,11 @@ String _acquire(
       } catch (_) {
         // The token is a safeguard, not the lock.
       }
-      return token;
+      return true;
     } on FileSystemException {
       // Someone holds it. Break it if it has been abandoned, then race for it
-      // on equal terms with everyone else that was waiting.
-      if (_breakIfAbandoned(lockFile, staleAfter, onBrokenLock)) continue;
-      if (DateTime.now().isAfter(deadline)) {
-        throw FileSystemException(
-          'Could not acquire the lock on ${lockFile.path} within '
-          '${timeout.inSeconds}s — another writer is holding it and is not '
-          'making progress. Nothing was written.',
-          lockFile.path,
-        );
-      }
-      sleep(_retryInterval);
+      // again at once on equal terms with everyone else that was waiting.
+      if (!_breakIfAbandoned(lockFile, staleAfter, onBrokenLock)) return false;
     }
   }
 }
@@ -280,7 +324,7 @@ _GuardReading? _read(File guard) {
 ///
 /// A failure here is swallowed deliberately: the body has already run, and
 /// throwing would report the *work* as failed when only the cleanup was. The
-/// staleness recovery in [_acquire] is what covers a guard that outlives its
+/// staleness recovery in [_attempt] is what covers a guard that outlives its
 /// holder, whether through a crash or through this.
 void _release(File lockFile, String token) {
   try {

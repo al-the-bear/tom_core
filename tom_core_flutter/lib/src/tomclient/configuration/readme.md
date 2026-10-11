@@ -167,10 +167,12 @@ operator must win is declared `none`.
   does this change belong" is the question the scopes exist to answer; and a
   preference is a stored document with no change notification, so an effective
   value has nothing to fire on when the narrower scope moves.
-- **No concurrency control.** `save()` re-reads the store and writes only what
-  this holder changed, so sequential saves by several holders are safe; but
-  read-then-write is not atomic, so two holders saving at genuinely the same
-  moment can still lose one another's change. Nothing detects that.
+- **Exclusion covers stores, not hand edits.** `save()` merges inside the
+  store's one-step `update`, so overlapping saves by several holders — across
+  isolates and processes, for the file store — are applied one after the other
+  and none is lost. A program writing the JSON file directly does not take the
+  store's guard, and an edit it makes in the instant between an update's read
+  and its write is overwritten.
 
 ## Choosing a store
 

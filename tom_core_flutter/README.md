@@ -106,7 +106,7 @@ import 'package:tom_core_flutter/tom_core_flutter.dart';
 | ---- | ---------- |
 | `TomBaseClientConfiguration` | Base class for a client app's **machine-scoped** settings holder — declare, load, observe, persist |
 | `TomSetting<T>` | One observable setting: a `TomObject<T>` plus its dotted key and its baseline |
-| `TomClientConfigurationStore` | Two-method interface (`read` / `write`) for where overrides are persisted |
+| `TomClientConfigurationStore` | Two-method interface (`read` / `update`) for where overrides are persisted |
 | `TomMemoryClientConfigurationStore` / `TomFileClientConfigurationStore` | Process-lifetime and JSON-file stores |
 | `TomClientConfigurationException` | Module failures, with stable dotted keys |
 

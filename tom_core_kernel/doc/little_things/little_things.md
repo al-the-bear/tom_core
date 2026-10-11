@@ -14,6 +14,7 @@ Core utility functions for exception handling, zone management, stack trace proc
   - [Checked Execution](#checked-execution)
   - [Stack Trace Processing](#stack-trace-processing)
   - [Time Zone Formatting](#time-zone-formatting)
+  - [Guarding a file against a second writer](#guarding-a-file-against-a-second-writer)
 - [Usage Examples](#usage-examples)
   - [Complete Error Handling Pattern](#complete-error-handling-pattern)
   - [Request Context with Zones](#request-context-with-zones)
@@ -44,7 +45,7 @@ The `little_things` module provides a collection of small but essential utilitie
 | `little_things.dart` | Zone utilities and stack trace processing |
 | `formatting.dart` | Data formatting helpers — UTC-offset rendering, bounded to the ±14:00 range real zones use |
 | `atomic_file.dart` | Write-to-staging-file-then-rename, so a reader never sees a half-written file |
-| `file_mutex.dart` | A lock-file mutex across isolates and processes, used where `dart:io`'s own advisory locks cannot help |
+| `file_mutex.dart` | A lock-file mutex across isolates and processes, used where `dart:io`'s own advisory locks cannot help; public through `package:tom_core_kernel/tom_core_kernel_io.dart` |
 
 ## Quick Start
 
@@ -482,6 +483,50 @@ deliberate rather than an inconsistency: the trace formatters stay silent
 because they run *while reporting some other failure*, which they would lose by
 raising. Formatting a timezone offset is ordinary work, and a value that no
 timezone could have produced is a caller bug better surfaced than papered over.
+
+### Guarding a file against a second writer
+
+A file rewritten whole — read, change, write — loses a change whenever two
+writers overlap: each reads before the other writes, and the later write erases
+what the earlier one added. `file_mutex.dart` makes the three steps one, against
+every other holder of the same guard. It is reached through a separate entry
+library, because it imports `dart:io` and the package barrel stays
+platform-neutral:
+
+```dart
+import 'dart:io';
+
+import 'package:tom_core_kernel/tom_core_kernel_io.dart';
+
+Future<void> addEntry(String path, String entry) =>
+    tomWithFileLockAsync(File(tomFileLockPath(path)), () async {
+      final file = File(path);
+      final lines = file.existsSync() ? await file.readAsLines() : <String>[];
+      await file.writeAsString([...lines, entry].join('\n'));
+    });
+```
+
+| Symbol | Waits by | For |
+| ------ | -------- | --- |
+| `tomWithFileLock(lockFile, body)` | sleeping, so its isolate is blocked | a synchronous store — the kernel's file job store and log replay store |
+| `tomWithFileLockAsync(lockFile, body)` | `Future.delayed`, so its isolate runs on | code on an isolate that must stay responsive — a Flutter UI isolate; `tom_core_flutter`'s file configuration store |
+| `tomFileLockPath(path)` | — | the guard's path: the sibling `<path>.lock` |
+| `tomFileLockStaleAfter` | — | how long a guard may stand unchanged before it is presumed abandoned and broken |
+
+The guard is a file created exclusively, one `O_CREAT | O_EXCL` that exactly
+one caller wins. That is what makes it exclude **another task on the same
+isolate, another isolate and another process** alike; `dart:io`'s
+`RandomAccessFile.lock` would not do, because an operating-system lock belongs
+to the process and two isolates of one process are both granted it. The guard
+sits beside the file rather than on it, because a write that replaces the file
+by rename would leave a lock on an inode that no longer has the name, and it is
+removed when the body ends, however it ends.
+
+A guard left by a writer that died inside its body is broken once it has stood
+unchanged for `tomFileLockStaleAfter`, and the break is reported through
+`onBrokenLock`, since the dead writer's last change may not have landed. A
+caller that cannot take the guard within `timeout` gets a `FileSystemException`
+saying nothing was written.
 
 ## Usage Examples
 

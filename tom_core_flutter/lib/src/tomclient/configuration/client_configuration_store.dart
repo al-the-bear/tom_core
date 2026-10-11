@@ -30,11 +30,21 @@ class TomClientConfigurationException extends TomClientException {
 /// Where a client install's configuration **overrides** are persisted.
 ///
 /// Deliberately the narrowest interface the holder needs: read the override
-/// map back, write it. There is no `exists`, no per-key accessor and no
-/// `clear` — writing an empty map *is* clearing, so a third method would be a
-/// second way to say the same thing. Two methods is also the whole cost of
-/// adapting a new backend (`shared_preferences`, browser local storage, a
-/// platform keychain): implement them and pass the instance to the holder.
+/// map back, and change it in one step. There is no `exists`, no per-key
+/// accessor, no `clear` and no plain `write` — an [update] that returns an
+/// empty map *is* clearing, and one that ignores what it is given *is*
+/// replacing, so a third method would be a second way to say the same thing.
+/// Two methods is also the whole cost of adapting a new backend
+/// (`shared_preferences`, browser local storage, a platform keychain):
+/// implement them and pass the instance to the holder.
+///
+/// **Why the write half is a read-modify-write.** Two holders over one store
+/// location each save only what they changed and carry everything else
+/// forward. Were reading and writing two calls, a save that read before
+/// another save wrote would write back the document it read and erase the
+/// other's change. [update] runs the merge on the content as it stands inside
+/// the store's own exclusion, so overlapping saves are serialised there and
+/// neither is lost.
 ///
 /// **Only overrides are stored, never the full value set.** A value the install
 /// never changed is resolved from the shipped config resources at every start,
@@ -57,12 +67,26 @@ abstract class TomClientConfigurationStore {
   /// overwritten by the next [write] and lose the install's settings.
   Future<Map<String, Object?>> read();
 
-  /// Replaces the persisted override map with [values].
+  /// Replaces the persisted override map with what [change] makes of it, as
+  /// one step, and returns the map that was persisted.
   ///
-  /// A write must be **all-or-nothing**: a failure part-way through must leave
-  /// the previously readable content intact rather than a truncated map. An
-  /// empty [values] clears the store.
-  Future<void> write(Map<String, Object?> values);
+  /// [change] receives a copy of the content as it stands at that moment and
+  /// returns the new content. It is synchronous on purpose: the store holds its
+  /// exclusion while it runs, and a callback that could await would hold it
+  /// across arbitrary work.
+  ///
+  /// **One step** means no other [update] on the same location runs between
+  /// the read [change] sees and the write of its result — within the process
+  /// and, for a store whose location other processes can reach, across them.
+  /// That is the whole reason this method exists rather than a plain write.
+  ///
+  /// The write must be **all-or-nothing**: a failure part-way through must
+  /// leave the previously readable content intact rather than a truncated map.
+  /// A [change] that throws writes nothing and the error reaches the caller.
+  /// An empty result clears the store.
+  Future<Map<String, Object?>> update(
+    Map<String, Object?> Function(Map<String, Object?> current) change,
+  );
 }
 
 /// An in-memory [TomClientConfigurationStore].
@@ -82,8 +106,17 @@ class TomMemoryClientConfigurationStore extends TomClientConfigurationStore {
   @override
   Future<Map<String, Object?>> read() async => {..._values};
 
+  /// Runs [change] with no await between reading and writing, so within the
+  /// isolate — the only place this store's content exists — no other update
+  /// can come between them.
   @override
-  Future<void> write(Map<String, Object?> values) async {
-    _values = {...values};
-  }
+  Future<Map<String, Object?>> update(
+    Map<String, Object?> Function(Map<String, Object?> current) change,
+  ) => Future.sync(() {
+    final next = {
+      ...change({..._values}),
+    };
+    _values = next;
+    return {...next};
+  });
 }

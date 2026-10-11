@@ -697,25 +697,30 @@ abstract class TomBaseClientConfiguration extends TomObservable
   /// equals the baseline — written by another build, or by hand — is not a
   /// change of this holder's and is carried forward like any other.
   ///
-  /// What stays open is concurrency. Read-then-write is not one operation, so
-  /// two saves that genuinely overlap lose the change of whichever wrote first;
-  /// nothing detects it, because the persisted document carries no version
-  /// stamp. See the module documentation.
+  /// **Overlapping saves.** The merge runs inside
+  /// [TomClientConfigurationStore.update], on the store's content as it stands
+  /// at that moment and under the store's own exclusion, so two saves that
+  /// overlap — two holders in one isolate, or two processes over one file —
+  /// are applied one after the other and neither change is lost. A save only
+  /// ever writes the keys its holder changed, so the later of two saves that
+  /// changed the *same* key wins it, as it would had they not overlapped.
   ///
   /// Throws `client_configuration.store.not_configured` when no [store] is
   /// wired.
   Future<void> save() async {
     final store = _requireStore('save');
     final changed = _changedOverrides;
-    final document = <String, Object?>{...await store.read()};
-    for (final entry in changed.entries) {
-      if (entry.value.$1) {
-        document[entry.key] = entry.value.$2;
-      } else {
-        document.remove(entry.key);
+    final document = await store.update((current) {
+      final next = {...current};
+      for (final entry in changed.entries) {
+        if (entry.value.$1) {
+          next[entry.key] = entry.value.$2;
+        } else {
+          next.remove(entry.key);
+        }
       }
-    }
-    await store.write(document);
+      return next;
+    });
     _persisted = document;
     _adopt(document, except: changed.keys.toSet());
   }

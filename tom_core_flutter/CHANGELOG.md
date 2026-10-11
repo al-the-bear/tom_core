@@ -17,6 +17,14 @@
 
 ### Changed
 
+- **`TomClientConfigurationStore.write` is replaced by `update(change)`**, a
+  read-modify-write the store performs as one step. `save()` merges inside it,
+  so two saves that overlap — two holders in one isolate, two isolates, or two
+  processes over one file — no longer lose the earlier one's change. The memory
+  store runs the change with no await between read and write; the file store
+  runs it under the kernel's `tomWithFileLockAsync` guard on `<path>.lock`.
+  Seed a store with `store.update((_) => {...})`.
+
 - **A `null`-valued config key is reported as such.** An obligatory
   `TomProperty` over `app.region:` still fails with
   `resources.property.not_configured`, but the message now says *"is configured

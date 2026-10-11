@@ -17,6 +17,7 @@ import 'dart:isolate';
 import 'package:test/test.dart';
 import 'package:tom_core_kernel/src/tombase/little_things/atomic_file.dart';
 import 'package:tom_core_kernel/src/tombase/little_things/file_mutex.dart';
+import 'package:tom_core_kernel/tom_core_kernel_io.dart' as io;
 
 void main() {
   late Directory dir;
@@ -198,6 +199,99 @@ void main() {
       final results = await Future.wait(List.generate(8, (_) => waiter()));
       expect(results, everyElement(isTrue), reason: 'every body ran alone');
       expect(File(guardPath).existsSync(), isFalse);
+    });
+  });
+  group('tomWithFileLockAsync', () {
+    test('FP-13: runs an asynchronous body, returns its value and releases '
+        'the guard', () async {
+      final guard = File(tomFileLockPath('${dir.path}/store.json'));
+      final value = await tomWithFileLockAsync(guard, () async {
+        expect(guard.existsSync(), isTrue, reason: 'held while the body runs');
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        return 42;
+      });
+      expect(value, 42);
+      expect(guard.existsSync(), isFalse);
+    });
+
+    test('FP-14: releases the guard when the body throws', () async {
+      final guard = File(tomFileLockPath('${dir.path}/store.json'));
+      await expectLater(
+        tomWithFileLockAsync<void>(guard, () async => throw StateError('b')),
+        throwsStateError,
+      );
+      expect(guard.existsSync(), isFalse);
+    });
+
+    test(
+      'FP-15: two tasks on one isolate never hold the guard at once',
+      () async {
+        // The case an operating-system lock cannot see: both tasks belong to
+        // one isolate of one process. Each body yields while it holds the
+        // guard, which is exactly when the other task would get in.
+        final guard = File(tomFileLockPath('${dir.path}/store.json'));
+        var inside = 0;
+        var overlapped = false;
+        Future<void> task() => tomWithFileLockAsync(guard, () async {
+          inside++;
+          if (inside > 1) overlapped = true;
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          inside--;
+        });
+        await Future.wait(List.generate(6, (_) => task()));
+        expect(overlapped, isFalse);
+        expect(guard.existsSync(), isFalse);
+      },
+    );
+
+    test('FP-16: a fresh guard held by someone else times out, and the body '
+        'never runs', () async {
+      final guard = File(tomFileLockPath('${dir.path}/store.json'))
+        ..writeAsStringSync('other-writer');
+      var ran = false;
+      await expectLater(
+        tomWithFileLockAsync(
+          guard,
+          () async => ran = true,
+          staleAfter: const Duration(minutes: 1),
+          timeout: const Duration(milliseconds: 50),
+        ),
+        throwsA(isA<FileSystemException>()),
+      );
+      expect(ran, isFalse);
+      expect(guard.existsSync(), isTrue);
+    });
+
+    test(
+      'FP-17: isolates waiting asynchronously never hold the guard at once',
+      () async {
+        final guardPath = tomFileLockPath('${dir.path}/store.json');
+        final markerPath = '${dir.path}/inside';
+        Future<bool> waiter() => Isolate.run(() {
+          return tomWithFileLockAsync(File(guardPath), () async {
+            final marker = File(markerPath);
+            try {
+              marker.createSync(exclusive: true);
+            } on FileSystemException {
+              return false; // someone else is inside
+            }
+            await Future<void>.delayed(const Duration(milliseconds: 50));
+            marker.deleteSync();
+            return true;
+          }, timeout: const Duration(seconds: 10));
+        });
+        final results = await Future.wait(List.generate(6, (_) => waiter()));
+        expect(results, everyElement(isTrue));
+      },
+    );
+
+    test('FP-18: the io entry library exports both waiters', () {
+      // The guard is reached from outside the kernel through this library
+      // alone; the platform-neutral barrel cannot carry `dart:io`.
+      expect(io.tomWithFileLock, same(tomWithFileLock));
+      expect(io.tomFileLockPath('/x/a.json'), '/x/a.json.lock');
+      expect(io.tomFileLockStaleAfter, tomFileLockStaleAfter);
+      expect(io.tomWithFileLockAsync, isNotNull);
     });
   });
 }

@@ -345,7 +345,7 @@ void main() {
           'toString',
           'path',
           'read',
-          'write',
+          'update',
           'load',
           'save',
           'TomClientConfigurationStore',
