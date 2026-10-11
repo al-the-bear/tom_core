@@ -365,7 +365,7 @@ throw TomLoginException(
 | `accountProblem` | the account cannot authenticate — no such account, wrong credentials, or locked |
 | `secondFactorRequired` | a second factor is needed and has not been supplied or enrolled |
 | `secondFactorInvalid` | the factor supplied is not usable: wrong code, expired, already answered |
-| `rateLimited` | the attempts for this challenge or enrolment are spent; start the login over |
+| `rateLimited` | the attempts for this challenge or enrolment are spent, so start the login over — or, for `login.error.2fa.send-limit`, a code was sent to this address too recently, so wait the `retryAfterSeconds` its parameters carry |
 | `providerError` | the deployment's side failed — a provider refused, a code could not be delivered, a mechanism has no adaptor |
 
 **There is no `badCredentials`, no `unknownUser` and no `accountLocked`.** All
@@ -381,9 +381,16 @@ the remedies differ. Trying the same factor again can succeed after an invalid
 code and cannot after the attempts are spent, so a client that cannot tell them
 apart shows the wrong instruction in one of the two cases.
 
+**The one wait the framework imposes travels as a parameter.** A refusal under
+the send pace for delivered codes carries `retryAfterSeconds` in its
+`parameters`; every other `rateLimited` refusal means a spent challenge, whose
+remedy is a new login rather than a wait. A field on `TomLoginException` would
+be empty at every other site, so the number rides with the one key that has
+it.
+
 ### Consistency is enforced, not reviewed
 
-Thirty-five throw sites across five files classify themselves.
+Thirty-nine throw sites across six files classify themselves.
 `test/server_exception_family_test.dart` scans them from source and holds three
 rules: every `TomLoginFailure` value has at least one producer (a value nothing
 raises is a client branch that is dead code), a given key maps to one reason

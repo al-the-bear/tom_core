@@ -118,6 +118,9 @@ surface documented here.
 | `Tom2FAAttemptStore` | abstract class | Records that an interim token has been answered, so a replay cannot mint a fresh allowance. |
 | `Tom2FAAttempt` | class | One presentation of an interim token, as an attempt store is told about it. |
 | `Tom2FAMemoryAttemptStore` | class | The default attempt store — a map in this process. |
+| `Tom2FASend` | class | One request to send a delivered code, with the pace the service asks for. |
+| `Tom2FASendLimiter` | abstract class | Paces the codes sent to one address: each later code waits twice as long, up to a cap; proof ends the run. |
+| `Tom2FAMemorySendLimiter` | class | The default send limiter — a map in this process. |
 | `TomMemory2FAEnrolmentStore` | class | In-memory enrolment store, for tests and dev servers. |
 | `TomPersistent2FAEnrolmentStore` | class | Enrolment store over a repository, with `secretData` encrypted at rest. |
 | `TomUserTwoFactorEnrolment` | class | The persisted row behind `TomPersistent2FAEnrolmentStore`. |
@@ -738,10 +741,13 @@ surface documented here.
 | `Tom2FAGraceAccounting` | Authentication |
 | `Tom2FAGraceStore` | Authentication |
 | `Tom2FAMemoryAttemptStore` | Authentication |
+| `Tom2FAMemorySendLimiter` | Authentication |
 | `Tom2FAPolicy` | Authentication |
 | `Tom2FAPrerequisite` | Authentication |
 | `Tom2FARegistry` | Authentication |
 | `Tom2FARequirement` | Authentication |
+| `Tom2FASend` | Authentication |
+| `Tom2FASendLimiter` | Authentication |
 | `Tom2FAService` | Authentication |
 | `Tom2FASubmission` | Authentication |
 | `tom2FATokenFingerprint` | Authentication |

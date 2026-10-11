@@ -115,6 +115,9 @@ principal into an authentication token and an authorization token.
 | `Tom2FAAttemptStore` | abstract class | Records that an interim token has been answered, so a replay cannot mint a fresh allowance. `Tom2FAMemoryAttemptStore` is the per-process default |
 | `Tom2FAAttempt` | class | One presentation of an interim token: its fingerprint, whose it is, the mechanism, and when the challenge lapses |
 | `Tom2FAMemoryAttemptStore` | class | The default attempt store — a map in this process, pruned as it is written |
+| `Tom2FASendLimiter` | abstract class | Paces the codes a delivered second factor sends to one address — each later code waits twice as long, up to 30 days; a correct code ends the run. `Tom2FAMemorySendLimiter` is the per-process default |
+| `Tom2FASend` | class | One request to send a code: channel, address, and the pace the service asks for |
+| `Tom2FAMemorySendLimiter` | class | The default send limiter — a map in this process, pruned as it is written |
 | `tom2FATokenFingerprint` | function | The SHA-256 an attempt store keys on, so the log holds a digest rather than a usable token |
 | `TomMemory2FAEnrolmentStore` | class | In-memory store, for tests and single-process development |
 | `TomPersistent2FAEnrolmentStore` | class | Store over `TomUserTwoFactorEnrolment`, secrets encrypted at rest |
@@ -1099,6 +1102,37 @@ The confirmed destination is stored under a stable `enrolmentId` (the mechanism
 type), which makes re-confirmation an upsert — what changing your phone number
 should do.
 
+**Sending is paced.** Guessing a code is bounded by the attempt counter;
+*asking* for codes is bounded here. Every login that passes the first factor
+issues a fresh challenge, and so a fresh mail or a fresh paid text — so without
+a pace, one stolen password could flood a phone and run up the deployment's SMS
+bill. Before a code is generated, at a challenge and at enrolment alike, the
+adaptor claims a send from the `Tom2FASendLimiter`:
+
+- the first code to an address goes out at once;
+- each later one in the run must wait twice as long as the one before —
+  30 seconds, 1 minute, 2 minutes, … — so a user who lost a text asks again
+  half a minute later, while a script asking without pause meets an hour's wait
+  after eight sends;
+- the wait never exceeds 30 days, and a run that reaches it stays there: one
+  code a month to an address nobody is answering;
+- **a correct code ends the run** — at login (`verifySubmission`) or at
+  enrolment (`confirmEnrolment`) — so a legitimate user's next login starts
+  afresh rather than inheriting the wait earlier logins built up. A run also
+  lapses after twice the cap with no send.
+
+A send too soon fails the login with `login.error.2fa.send-limit`
+(`TomLoginFailure.rateLimited`), carrying `retryAfterSeconds` — the pace is a
+fact about the address, so a client may show the wait. The claim is made before
+delivery and stands whether delivery succeeds or not: a failed send may still
+have been charged, and a free retry would let a failing relay be hammered.
+Addresses are paced per channel, and compare without case or surrounding
+whitespace. The pace is `sendInterval` (30 s) and `maxSendInterval` (30 days) on
+`TomDeliveredCode2FAService`, overridable per adaptor; the record is the
+installed `Tom2FASendLimiter`, by default `Tom2FAMemorySendLimiter` — per
+process, like the attempt store, so a cluster that wants one pace across its
+nodes installs a limiter they share.
+
 **Tuning.** Static settings, per adaptor: `globalSettingCodeDigits` (6),
 `globalSettingAttemptsAllowed` (3), `globalSettingChallengeValidity`
 (10 minutes for mail, 5 for SMS — a mail may be greylisted; a text is not),
@@ -1365,6 +1399,7 @@ Expiry, the attempt counter and adaptor dispatch are generic and handled once in
 | `login.error.2fa.unsupported-mechanism` | No adaptor registered for the mechanism | None |
 | `login.error.2fa.not-enrolled` | Nothing to challenge against: no TOTP secret resolves, or no address is on record for a delivered code | None |
 | `login.error.2fa.delivery-failed` | A delivered code could not be handed to its transport, so no challenge was issued | None |
+| `login.error.2fa.send-limit` | A code was sent to this address too recently; `retryAfterSeconds` says how long to wait. Nothing was sent | None |
 | `login.error.2fa.no-destination` | Enrolment was begun for a delivered code with no address on record to confirm | None |
 | `login.error.2fa.enrolment-code-invalid` | The confirmation code did not match the one just sent; nothing is stored | A re-issued offer, until attempts run out |
 | `login.error.2fa.enrolment-offer-invalid` | The enrolment offer is unusable — no destination for a delivered code, a confirmation on a token on which nothing was begun, or a begun offer whose `enrolmentExpiresAt` claim is absent or unreadable | None |
@@ -2357,7 +2392,9 @@ recognise it again with a constant-time compare. It also implements
 is sent to the destination. Its type parameter is the delivery service the
 channel sends through, which also makes it a `Tom2FAPrerequisite`: a code
 mechanism with nothing to send through is left out of the registry rather than
-discovered at the challenge. A subclass supplies six things: `type`,
+discovered at the challenge. Every code it sends is paced by the
+`Tom2FASendLimiter` — see [Codes delivered by email or SMS](#codes-delivered-by-email-or-sms).
+A subclass supplies six things: `type`,
 `destinationOnRecord`, `maskDestination`, `deliver`, `resolveDeliveryService`
 and `deliveryServiceType`; `requireDeliveryService` is what `deliver` sends
 through. The statics
@@ -2491,13 +2528,13 @@ resolves the pending record for its context and calls
   factor and the dearest to run, so registering its panel is the deployment's
   explicit step, on top of installing an SMS service.
   <!-- unpinned: decision — no SMS or email client panel ships; the deployment registers one -->
-- **Nothing limits how often a code is sent.** Guesses are bounded per
-  challenge (see [the attempt counter](#the-attempt-counter-and-what-makes-it-a-bound)),
-  but every login that passes the first factor issues a fresh challenge, and so
-  a fresh mail or a fresh paid SMS, with no cap per principal, per destination or
-  per time window. A deployment offering SMS codes bounds sends at its gateway or
-  in its own login front until a send limit exists here.
-  <!-- unpinned: absence — no per-principal or per-destination send limit -->
+- **The send pace is per address, not per principal.** A user is limited by
+  each address they have, one run per channel — so a principal with both email
+  and SMS enrolled can receive one escalating run on each. The pace bounds what
+  any one inbox or phone receives, which is what flooding and SMS pumping cost;
+  a per-principal budget across channels is not kept. And the default limiter
+  is per process, so a cluster without a shared one paces per node.
+  <!-- unpinned: decision — send pace keyed by channel and address -->
 - **Passkey attestation is not verified.** The server requests attestation
   `none` and does not check a statement that arrives anyway, so it cannot admit
   only certified hardware keys. That is the trust model consumer passkeys

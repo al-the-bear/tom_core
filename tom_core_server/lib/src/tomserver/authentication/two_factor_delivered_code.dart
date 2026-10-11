@@ -76,6 +76,7 @@ import '../messaging/sms_service.dart';
 import '../resources/localized_text_resources.dart';
 import 'two_factor.dart';
 import 'two_factor_enrolment.dart';
+import 'two_factor_send_limit.dart';
 
 // =============================================================================
 // SHARED BASE
@@ -155,6 +156,17 @@ abstract class TomDeliveredCode2FAService<S extends Object>
 
   /// How long an enrolment offer stays confirmable.
   Duration get enrolmentValidity;
+
+  /// The gap required after the first code of a run to one address; each later
+  /// code in the run waits twice as long as the one before. See
+  /// [Tom2FASendLimiter] for the pace and what ends a run.
+  ///
+  /// Thirty seconds by default: long enough to stop a flood, short enough that
+  /// a user who lost a text asks again without noticing a limit.
+  Duration get sendInterval => const Duration(seconds: 30);
+
+  /// The longest gap a run of codes to one address can require.
+  Duration get maxSendInterval => const Duration(days: 30);
 
   /// The destination this channel would reach [context]'s user at according to
   /// the **user record** — the mail address, the mobile number — or `null` when
@@ -258,6 +270,7 @@ abstract class TomDeliveredCode2FAService<S extends Object>
       );
     }
 
+    await requireSendAllowed(destination);
     final code = generateNumericCode(codeDigits);
     // Before the spec is built, not after: a spec returned for a code that was
     // never sent is a prompt the user cannot answer, and the login flow has no
@@ -286,8 +299,21 @@ abstract class TomDeliveredCode2FAService<S extends Object>
   Future<bool> verifySubmission(
     Tom2FAContext context,
     Tom2FASubmission submission,
-  ) async =>
-      matchesSealedCode(submission.verificationData, submission.submitted);
+  ) async {
+    final matched = matchesSealedCode(
+      submission.verificationData,
+      submission.submitted,
+    );
+    if (matched) {
+      // Proof that the person asking reads the address: their next login starts
+      // a fresh run rather than waiting out the one their earlier logins built.
+      final destination = await resolveDestination(context);
+      if (destination != null) {
+        await Tom2FASendLimiter.resolve().reset(type, destination);
+      }
+    }
+    return matched;
+  }
 
   /// The destination a challenge should be sent to: the **confirmed** one from
   /// the enrolment store, else the one on the user record.
@@ -341,6 +367,7 @@ abstract class TomDeliveredCode2FAService<S extends Object>
       );
     }
 
+    await requireSendAllowed(destination);
     final code = generateNumericCode(codeDigits);
     await deliverOrFail(
       context,
@@ -392,6 +419,7 @@ abstract class TomDeliveredCode2FAService<S extends Object>
       );
     }
 
+    await Tom2FASendLimiter.resolve().reset(type, destination.trim());
     return Tom2FAEnrolment(
       type: type,
       // One destination per channel per user, for the reason TOTP keeps one
@@ -408,6 +436,38 @@ abstract class TomDeliveredCode2FAService<S extends Object>
   // ---------------------------------------------------------------------------
   // DELIVERY
   // ---------------------------------------------------------------------------
+
+  /// Claims a send to [destination] from the [Tom2FASendLimiter], or refuses
+  /// the login with `login.error.2fa.send-limit` when the last code there was
+  /// too recent.
+  ///
+  /// Claimed **before** delivery, and kept whether delivery then succeeds or
+  /// not: a send that failed may still have been charged, and a refusal that
+  /// cost nothing would let a failing relay be retried as fast as the client
+  /// can ask. The refusal carries `retryAfterSeconds`, which the user can be
+  /// shown — the pace is a fact about the address, not a secret.
+  Future<void> requireSendAllowed(String destination) async {
+    final wait = await Tom2FASendLimiter.resolve().claim(
+      Tom2FASend(
+        channel: type,
+        destination: destination,
+        baseInterval: sendInterval,
+        maxInterval: maxSendInterval,
+      ),
+    );
+    if (wait == null) return;
+    // Whole seconds, rounded up: a client told "wait 0 s" would ask at once and
+    // be refused again.
+    final seconds = (wait.inMicroseconds / Duration.microsecondsPerSecond)
+        .ceil();
+    throw TomLoginException(
+      'login.error.2fa.send-limit',
+      'A code was sent to this address recently; please wait before asking '
+          'for another',
+      parameters: {'mechanism': type, 'retryAfterSeconds': seconds},
+      reason: TomLoginFailure.rateLimited,
+    );
+  }
 
   /// Calls [deliver] and turns any failure into a login the user can understand.
   ///

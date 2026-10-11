@@ -37,6 +37,9 @@ server's own self-login against an auth server.
   - [Tom2FAAttempt](#tom2faattempt)
   - [Tom2FAAttemptStore](#tom2faattemptstore)
   - [Tom2FAMemoryAttemptStore](#tom2famemoryattemptstore)
+  - [Tom2FASend](#tom2fasend)
+  - [Tom2FASendLimiter](#tom2fasendlimiter)
+  - [Tom2FAMemorySendLimiter](#tom2famemorysendlimiter)
   - [Tom2FAEnrolmentStore](#tom2faenrolmentstore)
   - [TomMemory2FAEnrolmentStore](#tommemory2faenrolmentstore)
   - [TomUserTwoFactorEnrolment](#tomusertwofactorenrolment)
@@ -103,6 +106,7 @@ Sources: `lib/src/tomserver/authentication/authentication_server.dart`,
 `lib/src/tomserver/authentication/two_factor_policy.dart`,
 `lib/src/tomserver/authentication/two_factor_enrolment.dart`,
 `lib/src/tomserver/authentication/two_factor_attempts.dart`,
+`lib/src/tomserver/authentication/two_factor_send_limit.dart`,
 `lib/src/tomserver/authentication/two_factor_delivered_code.dart`,
 `lib/src/tomserver/authentication/two_factor_webauthn.dart`,
 `lib/src/tomserver/authentication/webauthn_software_authenticator.dart`,
@@ -1087,6 +1091,95 @@ Tom2FAMemoryAttemptStore()
 | `spend` | `Future<bool> spend(Tom2FAAttempt attempt)` | *(override)* Prunes lapsed records, then records the fingerprint if it is new. |
 | `clear` | `void clear()` | Discards every record. Test-support only. |
 
+### Tom2FASend
+
+One request to send a delivered code, as a send limiter is told about it: the
+channel and address it would go to, and the pace the sending service asks for.
+
+#### Constructors
+
+```dart
+const Tom2FASend({
+  required String channel,
+  required String destination,
+  required Duration baseInterval,
+  required Duration maxInterval,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `channel` | `String` | The mechanism sending (`'email'`, `'sms'`, …). Part of the key, so a user's email and phone are paced separately. |
+| `destination` | `String` | The address the code would go to. |
+| `baseInterval` | `Duration` | The gap required after the first send of a run, doubled for each send after it. |
+| `maxInterval` | `Duration` | The longest gap a run can require. |
+| `lapse` | `Duration` | *(getter)* Twice `maxInterval` — how long an address must go unsent to before its run lapses, so a run at the cap stays at the cap. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `intervalAfter` | `Duration intervalAfter(int sends)` | The gap required after a run of `sends` sends: `baseInterval × 2^(sends−1)`, capped at `maxInterval`; zero before the first. |
+| `toString` | `String toString()` | *(override)* `Tom2FASend(<channel>)` — the address is deliberately left out of a string that ends up in logs. |
+
+### Tom2FASendLimiter
+
+Records the codes sent to each address and refuses one sent too soon. The first
+code to an address goes out at once; each later one in a run waits twice as
+long as the one before, up to `maxInterval`. A run is ended by proof — a code
+sent to the address coming back correctly, at login or at enrolment — and lapses
+after `Tom2FASend.lapse` without a send. Resolved like `Tom2FAAttemptStore`: a
+missing installation is the in-process default, never "no pace".
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `claim` | `Future<Duration?> claim(Tom2FASend send)` | *(abstract)* Records the send and answers `null` if it is allowed now; otherwise records nothing and answers how long until it is. One call, so two racing logins cannot both be told they are early enough. |
+| `reset` | `Future<void> reset(String channel, String destination)` | *(abstract)* Ends the run for the address; called when a code sent there came back correctly. |
+| `resolve` | `static Tom2FASendLimiter resolve()` | The installed bean, or the process-wide `Tom2FAMemorySendLimiter.shared`. |
+
+### Tom2FAMemorySendLimiter
+
+The default send limiter: a map in this process. **Per process, and says so** —
+on a cluster each node paces the sends that pass through it, so an address can
+receive one run per node; a deployment wanting one pace installs a limiter its
+nodes share. Runs are pruned as they are written once their address has gone
+unsent to for their lapse. Addresses compare without case and surrounding
+whitespace.
+
+- **Implements:** `Tom2FASendLimiter`
+
+#### Constructors
+
+```dart
+Tom2FAMemorySendLimiter({DateTime Function()? clock})
+```
+
+`clock` is injectable because the pace is measured in seconds to days.
+
+#### Static Members
+
+| Member | Type | Description |
+| ------ | ---- | ----------- |
+| `shared` | `Tom2FAMemorySendLimiter` | The process-wide instance `Tom2FASendLimiter.resolve()` falls back to. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `size` | `int` | *(getter)* How many addresses have a run — test-support, and a size to assert on. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `claim` | `Future<Duration?> claim(Tom2FASend send)` | *(override)* Prunes lapsed runs, then allows and records the send, or answers the wait left. |
+| `reset` | `Future<void> reset(String channel, String destination)` | *(override)* Drops the address's run. |
+| `clear` | `void clear()` | Discards every run. Test-support only. |
+
 ### Tom2FAEnrolmentStore
 
 Where a principal's set-up factors live. Deployment-supplied: the framework
@@ -1334,6 +1427,8 @@ answerable at registration rather than discovered at the challenge.
 | `enrolmentTemplateKey` | `String` | *(abstract)* Resource key prefix of the message carrying an enrolment code. |
 | `enrolmentAttemptsAllowed` | `int` | *(abstract)* How many confirmation attempts one enrolment offer tolerates. |
 | `enrolmentValidity` | `Duration` | *(abstract)* How long an enrolment offer stays confirmable. |
+| `sendInterval` | `Duration` | The gap required after the first code of a run to one address, doubling for each later code: 30 seconds by default. |
+| `maxSendInterval` | `Duration` | The longest gap a run of codes to one address can require: 30 days by default. |
 | `deliveryServiceType` | `Type` | *(abstract)* The bean type `resolveDeliveryService` looks for. A `Type` rather than a string so the "install this" diagnostics survive a rename: every message that has to name what is missing interpolates it. |
 | `unmetPrerequisite` | `String?` | *(override)* `null`, unless this deployment installed no `deliveryServiceType` — in which case the adaptor could accept a challenge and send no code, so the scan leaves the mechanism out of the registry and logs this line. |
 | `descriptor` | `Tom2FAMethodDescriptor` | *(override)* `Tom2FAMethodDescriptor.scoped(type)` — resource keys only, no literal text. |
@@ -1348,10 +1443,11 @@ answerable at registration rather than discovered at the challenge.
 | `maskDestination` | `String maskDestination(String destination)` | *(abstract)* `destination` reduced to what is safe to show a caller who has not yet proved anything. |
 | `deliver` | `Future<void> deliver(Tom2FAContext context, {required String destination, required String code, required String templateKey, required Duration validity})` | *(abstract)* Sends `code` through this adaptor's channel. Must complete only once a transport has accepted the message, and must throw otherwise. |
 | `issueChallenge` | `Future<Tom2FAChallengeSpec> issueChallenge(Tom2FAContext context)` | *(override)* Resolves the destination (throwing `login.error.2fa.not-enrolled` when there is none), delivers a fresh code, then returns a spec whose `clientData` holds the masked destination and the digit count and whose `verificationData` holds the sealed code. |
-| `verifySubmission` | `Future<bool> verifySubmission(Tom2FAContext context, Tom2FASubmission submission)` | *(override)* Re-hashes the trimmed submission against the seal, in constant time. |
+| `verifySubmission` | `Future<bool> verifySubmission(Tom2FAContext context, Tom2FASubmission submission)` | *(override)* Re-hashes the trimmed submission against the seal, in constant time; a match ends the address's send run. |
 | `resolveDestination` | `Future<String?> resolveDestination(Tom2FAContext context)` | The destination a challenge goes to: the **confirmed** enrolment first, then the record — so an attacker who can edit a profile field cannot redirect the second factor. A malformed enrolment row is skipped rather than treated as an answer. |
 | `beginEnrolment` | `Future<Tom2FAEnrolmentOffer> beginEnrolment(Tom2FAContext context)` | *(override)* Sends a code to the destination **on record** (not the confirmed one — that would be a tautology) and returns an offer carrying the sealed code and the destination in its encrypted half. Throws `login.error.2fa.no-destination` when the record names none. |
 | `confirmEnrolment` | `Future<Tom2FAEnrolment> confirmEnrolment(Tom2FAContext context, Tom2FAEnrolmentOffer offer, String submitted)` | *(override)* Yields an enrolment only when `submitted` matches; throws `login.error.2fa.enrolment-code-invalid` (or `.enrolment-offer-invalid` for an offer with no destination) rather than returning a nullable, so an unproven destination cannot be stored by forgetting a check. `enrolmentId` is the mechanism type, making re-confirmation an upsert. |
+| `requireSendAllowed` | `Future<void> requireSendAllowed(String destination)` | Claims a send from the `Tom2FASendLimiter`, or refuses with `TomLoginException('login.error.2fa.send-limit')` (`TomLoginFailure.rateLimited`, `retryAfterSeconds` in its parameters). Called before every challenge and enrolment code is generated; the claim stands whether delivery then succeeds or not. |
 | `deliverOrFail` | `Future<void> deliverOrFail(Tom2FAContext context, {required String destination, required String code, required String templateKey, required Duration validity})` | Calls `deliver` and turns an unclassified failure into `TomLoginException('login.error.2fa.delivery-failed')`, logged, with the cause attached. `TomLoginException` and `Tom2FAException` pass through unchanged — both are already classified, and a wiring fault has a different owner from a relay that is down. |
 | `localeFor` | `TomTextLocale? localeFor(Tom2FAContext context)` | The principal's stored language first, then the login attempt's client locale, then `null` so the bundle set applies its own default. |
 | `templateParameters` | `Map<String, Object?> templateParameters(Tom2FAContext context, {required String code, required Duration validity})` | `code`, `minutes`, `username`, `firstname`, `lastname`, `application` — supplied whether or not a template mentions them. |

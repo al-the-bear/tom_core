@@ -150,6 +150,11 @@ String _deliveredCode(TomMemoryMessageTransport transport) {
 }
 
 void main() {
+  // Every test starts with no send recorded: the default limiter is
+  // process-wide, and a code one test sent must not pace the next test's.
+  // The send pace itself is asserted in its own group.
+  setUp(Tom2FAMemorySendLimiter.shared.clear);
+  tearDown(Tom2FAMemorySendLimiter.shared.clear);
   // ===========================================================================
   // CODE HANDLING
   // ===========================================================================
@@ -379,6 +384,9 @@ void main() {
       () async {
         await email.issueChallenge(_context());
         final first = _deliveredCode(mail);
+        // The send pace would refuse a second code this soon; it is not what
+        // this test is about, so the run is cleared between the two.
+        Tom2FAMemorySendLimiter.shared.clear();
         final second = await email.issueChallenge(_context());
 
         expect(await _verify(email, second, first), isFalse);
@@ -837,6 +845,105 @@ void main() {
   /// The same assertions again, but driven through the real two-pass server —
   /// because the property that matters is about the *token*, and only the
   /// server builds one.
+  group('the send pace', () {
+    late TomMemoryMessageTransport mail;
+    late TomMemoryMessageTransport sms;
+    late TomMessageOutbox outbox;
+    late TomEmailCode2FAService email;
+    late TomSmsCode2FAService text;
+    late DateTime now;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      final clock = _FakeClock(DateTime.utc(2026, 8, 2, 10));
+      mail = TomMemoryMessageTransport(channel: TomMessageChannel.email);
+      sms = TomMemoryMessageTransport(channel: TomMessageChannel.sms);
+      outbox = TomMessageOutbox(
+        router: TomMessageRouter([mail, sms]),
+        clock: clock.call,
+      );
+      addTearDown(outbox.close);
+      TomBean.withType<TomEmailService>(
+        TomEmailService(outbox: outbox, texts: _texts()),
+      );
+      TomBean.withType<TomSmsService>(
+        TomSmsService(outbox: outbox, texts: _texts()),
+      );
+      TomBean.withType<Tom2FAEnrolmentStore>(TomMemory2FAEnrolmentStore());
+      now = DateTime.utc(2026, 8, 2, 10);
+      TomBean.withType<Tom2FASendLimiter>(
+        Tom2FAMemorySendLimiter(clock: () => now),
+      );
+      email = TomEmailCode2FAService();
+      text = TomSmsCode2FAService();
+    });
+
+    tearDown(TomBean.resetBeanContext);
+
+    Matcher sendLimit({required int retryAfterSeconds}) =>
+        isA<TomLoginException>()
+            .having((e) => e.key, 'key', 'login.error.2fa.send-limit')
+            .having((e) => e.reason, 'reason', TomLoginFailure.rateLimited)
+            .having(
+              (e) => e.parameters?['retryAfterSeconds'],
+              'retryAfterSeconds',
+              retryAfterSeconds,
+            );
+
+    test('a second code to one address inside the interval is refused, and '
+        'nothing is sent', () async {
+      await email.issueChallenge(_context());
+      now = now.add(const Duration(seconds: 10));
+      await expectLater(
+        email.issueChallenge(_context()),
+        throwsA(sendLimit(retryAfterSeconds: 20)),
+      );
+      expect(mail.count, 1);
+    });
+
+    test('the code may be sent again once the interval has passed', () async {
+      await email.issueChallenge(_context());
+      now = now.add(const Duration(seconds: 30));
+      await email.issueChallenge(_context());
+      expect(mail.count, 2);
+    });
+
+    test('a correct code ends the run, a wrong one does not', () async {
+      final spec = await email.issueChallenge(_context());
+      final code = _deliveredCode(mail);
+
+      expect(await _verify(email, spec, '000000'), isFalse);
+      await expectLater(
+        email.issueChallenge(_context()),
+        throwsA(sendLimit(retryAfterSeconds: 30)),
+      );
+
+      expect(await _verify(email, spec, code), isTrue);
+      await email.issueChallenge(_context());
+      expect(mail.count, 2, reason: 'proof restarts the pace');
+    });
+
+    test('enrolment is paced too, and its confirmation ends the run', () async {
+      final offer = await email.beginEnrolment(_context());
+      final code = _deliveredCode(mail);
+      await expectLater(
+        email.beginEnrolment(_context()),
+        throwsA(sendLimit(retryAfterSeconds: 30)),
+      );
+
+      await email.confirmEnrolment(_context(), offer, code);
+      await email.issueChallenge(_context());
+      expect(mail.count, 2);
+    });
+
+    test('email and SMS to one user are paced separately', () async {
+      await email.issueChallenge(_context());
+      await text.issueChallenge(_context());
+      expect(mail.count, 1);
+      expect(sms.count, 1);
+    });
+  });
+
   group('delivered codes through the login flow', () {
     late TomAuthenticationService savedUserService;
     late bool savedProtectionDefault;

@@ -395,6 +395,11 @@ Map<String, dynamic> _identityClaims(String jwt) {
 // =============================================================================
 
 void main() {
+  // Every test starts with no send recorded: the default limiter is
+  // process-wide, and a code one test sent must not pace the next test's.
+  // The send pace itself is asserted in its own group.
+  setUp(Tom2FAMemorySendLimiter.shared.clear);
+  tearDown(Tom2FAMemorySendLimiter.shared.clear);
   group('Tom2FARegistry', () {
     tearDown(Tom2FARegistry.reset);
 

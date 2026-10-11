@@ -2,6 +2,16 @@
 
 ### Added
 
+- **A send pace for delivered second-factor codes**: `Tom2FASendLimiter`,
+  `Tom2FASend` and the per-process default `Tom2FAMemorySendLimiter`
+  (`authentication/two_factor_send_limit.dart`). `TomDeliveredCode2FAService`
+  claims every challenge and enrolment code from it: the first code to an
+  address goes out at once, each later one in a run waits twice as long
+  (`sendInterval`, 30 s, doubling up to `maxSendInterval`, 30 days), and a
+  correct code ends the run. A send too soon fails with
+  `login.error.2fa.send-limit` (`TomLoginFailure.rateLimited`,
+  `retryAfterSeconds`).
+
 - **Passkeys: `TomWebAuthn2FAService`.** The fourth shipped second factor,
   registered as `@Tom2FAAdaptor('webauthn')` and offered once
   `globalSettingRelyingPartyId` is set. It issues WebAuthn creation and request
