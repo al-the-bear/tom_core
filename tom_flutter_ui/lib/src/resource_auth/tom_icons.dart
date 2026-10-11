@@ -170,7 +170,6 @@ class TomAllIconsAdapter extends _RegistryFirstIconAdapter {
 
   @override
   bool existsInFamily(String name) => GeneratedIcons.exists(name);
-
 }
 
 /// Adapter that only includes Material icons.

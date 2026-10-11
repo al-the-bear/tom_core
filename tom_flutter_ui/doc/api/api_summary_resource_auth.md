@@ -104,9 +104,18 @@ TomConfigProvider
 The static entry point. `TomUIColors.adapter` is the installed
 `TomUIColorAdapter` and is readable as well as writable — a diagnostics screen
 can ask what is wired, and code installing an adapter for one operation can put
-the previous one back. `TomUIColors.resolveColor` returns the `Color` or `null`
-(including when no adapter is installed), and `TomUIColors.colorExists`
-answers `false` in that case rather than throwing.
+the previous one back. `TomUIColors.resolveColor` returns the `Color`, or `null`
+when the installed adapter does not know the name; `TomUIColors.colorExists`
+answers whether it does. Both throw a `StateError` when **no** adapter is
+installed, so a start-up that forgot to install one fails at the first colour
+name rather than presenting as a typo in a resource file.
+
+The module's registry is on this class too: `TomUIColors.registerColors` adds or
+overrides names for **every** adapter, and `TomUIColors.clearCustomColors` drops
+them while leaving the installed adapter alone — the narrower tool
+`TomUIColors.reset` is the blunt version of. The registry belongs to the module
+rather than to an adapter, so an application that registers its brand colours
+and then switches to `TomMaterialOnlyColorAdapter` for bundle size keeps them.
 
 `TomUIColors.reset` drops the adapter **and** every registration. It is the
 whole teardown hook: after it the module holds no state, which is what a suite
@@ -122,16 +131,8 @@ one, register.
 ### TomAllColorsAdapter
 
 Material and Cupertino together, plus the hex and rgb syntax. The recommended
-adapter. It owns the module's two registration statics:
-`TomUIColors.registerColors` adds or overrides names for **every** adapter
-in the module, and `TomUIColors.clearCustomColors` drops them while
-leaving the installed adapter alone — the narrower tool `TomUIColors.reset`
-is the blunt version of.
-
-They are static on this class and module-wide in effect, which is deliberate:
-an application that registers its brand colours and then switches to
-`TomMaterialOnlyColorAdapter` for bundle size must not lose them, and losing them
-would be silent — every registered name would simply resolve to `null`.
+adapter. Names registered through `TomUIColors.registerColors` take precedence
+over everything it knows.
 
 #### Properties and Methods — further members
 
@@ -170,8 +171,10 @@ The iOS-facing counterpart, with the same two reasons and the same guarantees.
 ### TomUIIcons
 
 The static entry point, mirroring `TomUIColors` member for member:
-`TomUIIcons.adapter`, `TomUIIcons.resolveIcon`, `TomUIIcons.iconExists` and
-`TomUIIcons.reset`, with the same nullability and the same teardown contract.
+`TomUIIcons.adapter`, `TomUIIcons.resolveIcon`, `TomUIIcons.iconExists`,
+`TomUIIcons.registerIcons`, `TomUIIcons.clearCustomIcons` and `TomUIIcons.reset`,
+with the same `StateError` for a missing adapter, the same module-wide registry
+and the same teardown contract.
 
 ### TomUIIconAdapter
 
@@ -179,9 +182,8 @@ The contract: `resolveIcon(String name)` and `iconExists(String name)`.
 
 ### TomAllIconsAdapter
 
-Material and Cupertino together — the recommended adapter — and the owner of
-`TomUIIcons.registerIcons` and `TomUIIcons.clearCustomIcons`, which
-are the icon side of the same module-wide registry.
+Material and Cupertino together — the recommended adapter. Names registered
+through `TomUIIcons.registerIcons` take precedence over both tables.
 
 #### Properties and Methods — further members
 

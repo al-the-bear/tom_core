@@ -167,9 +167,7 @@ void main() {
     testWidgets(
       'tcinc791-11: an icon named like a key is not mistaken for one',
       (tester) async {
-        TomUIIcons.registerIcons(<String, IconData>{
-          'brand.icon': Icons.star,
-        });
+        TomUIIcons.registerIcons(<String, IconData>{'brand.icon': Icons.star});
         _installResources(<String, dynamic>{
           'logo': {'icon': 'brand.icon'},
         });

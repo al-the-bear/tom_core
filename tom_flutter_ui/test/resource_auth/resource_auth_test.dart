@@ -30,9 +30,22 @@ void main() {
   });
 
   group('TomUIColors / TomAllColorsAdapter', () {
-    test('returns null and false when no adapter installed', () {
-      expect(TomUIColors.resolveColor('mRed'), isNull);
-      expect(TomUIColors.colorExists('mRed'), isFalse);
+    test('throws, naming the fix, when no adapter is installed', () {
+      // A missing adapter is a start-up mistake. Answering null for it made
+      // every name look like a typo in a resource file.
+      final namesTheFix = isA<StateError>().having(
+        (e) => e.message,
+        'message',
+        contains('TomUIColors.adapter = TomAllColorsAdapter()'),
+      );
+      expect(() => TomUIColors.resolveColor('mRed'), throwsA(namesTheFix));
+      expect(() => TomUIColors.colorExists('mRed'), throwsA(namesTheFix));
+    });
+
+    test('an unknown name is null and absent, not an error', () {
+      TomUIColors.adapter = TomAllColorsAdapter();
+      expect(TomUIColors.resolveColor('zNoSuchColor'), isNull);
+      expect(TomUIColors.colorExists('zNoSuchColor'), isFalse);
     });
 
     test('resolves named, hex (3/4/6/8) and rgb colours', () {
@@ -289,9 +302,22 @@ void main() {
   );
 
   group('TomUIIcons / icon adapters', () {
-    test('returns null and false when no adapter installed', () {
-      expect(TomUIIcons.resolveIcon('mSave'), isNull);
-      expect(TomUIIcons.iconExists('mSave'), isFalse);
+    test('throws, naming the fix, when no adapter is installed', () {
+      // A missing adapter is a start-up mistake. Answering null for it made
+      // every name look like a typo in a resource file.
+      final namesTheFix = isA<StateError>().having(
+        (e) => e.message,
+        'message',
+        contains('TomUIIcons.adapter = TomAllIconsAdapter()'),
+      );
+      expect(() => TomUIIcons.resolveIcon('mSave'), throwsA(namesTheFix));
+      expect(() => TomUIIcons.iconExists('mSave'), throwsA(namesTheFix));
+    });
+
+    test('an unknown name is null and absent, not an error', () {
+      TomUIIcons.adapter = TomAllIconsAdapter();
+      expect(TomUIIcons.resolveIcon('zNoSuchIcon'), isNull);
+      expect(TomUIIcons.iconExists('zNoSuchIcon'), isFalse);
     });
 
     test('TomAllIconsAdapter resolves Material and Cupertino', () {

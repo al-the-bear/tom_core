@@ -64,9 +64,15 @@ TomUIColors.resolveColor('rgb(0,128,255)');
 
 `TomAllColorsAdapter` resolves, in order: custom registered colours → hex (`#RGB`,
 `#ARGB`, `#RRGGBB`, `#AARRGGBB`) → `rgb()/rgba()` → the generated
-Material/Cupertino palette. With **no adapter installed**,
-`TomUIColors.resolveColor` returns `null` and `colorExists` returns `false` — so
-widgets degrade gracefully rather than throw.
+Material/Cupertino palette. A name the installed adapter does not know resolves
+to `null`, and `colorExists` answers `false`. With **no adapter installed**, both
+throw a `StateError` naming the line that installs one: a missing adapter is a
+start-up mistake, and answering `null` for it would make every colour name in
+the application look like a typo in a resource file. An application that never
+resolves a colour *name* never meets the error. Code for which the colour is optional decoration
+— a framework widget an application may use without installing anything — reads
+through the installed adapter instead: `TomUIColors.adapter?.resolveColor(name)`
+answers `null` either way, and says at the call site that it means to.
 
 > **Hex alpha comes first.** The two alpha-carrying forms are `#AARRGGBB` and
 > `#ARGB`, matching Dart's `Color(0xAARRGGBB)`. CSS, Figma, Sketch and web
@@ -78,9 +84,9 @@ widgets degrade gracefully rather than throw.
 > through. Reorder the channels when copying a colour in; there is no way for
 > the parser to detect the mistake for you.
 
-`TomUIColors.registerColors` adds or overrides names at runtime;
-`TomUIColors.clearCustomColors` undoes that while keeping the adapter
-installed.
+`TomUIColors.registerColors` adds or overrides names at runtime, for whichever
+adapter is installed; `TomUIColors.clearCustomColors` undoes that while keeping
+the adapter installed.
 
 `TomMaterialOnlyColorAdapter` / `TomCupertinoOnlyColorAdapter` trade coverage for
 bundle size exactly as their icon counterparts do — an app targeting one
@@ -163,7 +169,8 @@ TomUIIcons.resolveIcon('mSave');   // Icons.save
 TomUIIcons.resolveIcon('cShare');  // CupertinoIcons.share
 ```
 
-The same graceful-degradation semantics as colours apply. The original Flutter
+The same semantics as colours apply: an unknown name is `null`, and no adapter
+at all is a `StateError`. The original Flutter
 snake_case names are converted to PascalCase (`arrow_back` → `mArrowBack`,
 `left_chevron` → `cLeftChevron`).
 
@@ -177,10 +184,9 @@ losing them, and a registration overriding a built-in name (`mSave` → a house
 icon) overrides it everywhere. What the single-family adapters drop is the
 *other family's generated table*, never a registration.
 
-The registration entry points stay on the `All…` adapters even though the
-registry they fill is module-wide, so that each family has exactly one place to
-register. Reaching for `TomUIIcons.registerIcons` while running
-`TomMaterialOnlyIconAdapter` is therefore correct, not a mistake.
+The registration entry points are on `TomUIColors` and `TomUIIcons` — beside
+the registry they fill, not on any one adapter — so the call site names what it
+affects: every adapter of the family, installed now or later.
 
 ## Configuration: `TomConfigProvider`
 

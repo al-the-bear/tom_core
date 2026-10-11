@@ -50,10 +50,11 @@ single operation and then put the previous one back (`final saved =
 TomUIColors.adapter; … TomUIColors.adapter = saved;`). The setter accepts
 `null` precisely so that restore is total: when nothing was installed, `saved`
 is `null`, and the only other way back would be `reset()`, which would drop the
-application's registrations as collateral. The configuration column differs on
-one point — `TomConfigProvider.current` **throws** before `initialize` rather
-than returning `null`, because a missing config is a startup bug while a
-missing adapter is a supported degraded mode.
+application's registrations as collateral. All three columns treat a missing
+installation as a start-up bug: `TomConfigProvider.current` throws before
+`initialize`, and `resolveColor` / `colorExists` / `resolveIcon` / `iconExists`
+throw a `StateError` while no adapter is installed — reading `adapter` itself
+never throws, which is what keeps the save-and-restore idiom total.
 
 **A flag is enabled when it spells `true` or `1`.** `isEnabled` accepts the
 boolean `true`, a number equal to `1` (so `1.0` counts), and a string reading
@@ -64,10 +65,10 @@ at spelling: `'yes'`, `'on'` and `2` are **not** enabled, in the same way
 `TomAllColorsAdapter` folds case in `#FFF` syntax without knowing what `crimson`
 means. Anything outside the vocabulary is still readable through `feature<T>`.
 
-Registration stays on the `All…` adapters even though the registry it fills is
-module-wide, so that each family has exactly one place to register. Calling
-`TomUIIcons.registerIcons` while `TomMaterialOnlyIconAdapter` is installed is
-therefore correct rather than a mistake — the name still resolves.
+Registration is on `TomUIColors` / `TomUIIcons`, beside the module-wide registry
+it fills, so the call site names what it affects. A name registered while
+`TomMaterialOnlyIconAdapter` is installed — or before any adapter is — resolves
+through whichever adapter is installed when it is asked for.
 
 ## Quick start
 

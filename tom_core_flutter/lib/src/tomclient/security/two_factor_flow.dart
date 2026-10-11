@@ -277,8 +277,16 @@ class _Tom2FAFlowPanelState extends State<Tom2FAFlowPanel> {
   /// [TomTextResourceProvider] answers an unknown key with the key itself,
   /// which is deliberately conspicuous on a label — but `two_factor.sms.icon`
   /// is not an icon name, so it resolves to null and shows nothing at all.
+  ///
+  /// The installed adapter is read directly rather than through
+  /// [TomUIIcons.resolveIcon], which throws when none is installed: for an
+  /// application's own icon names a missing adapter is a start-up mistake, but
+  /// this icon is the framework's optional decoration, and an application that
+  /// never asked for icons must not be made to install an adapter for it.
   Widget? _methodIcon(Tom2FAMethodDescriptor descriptor) {
-    final icon = TomUIIcons.resolveIcon(Tom2FATexts.text(descriptor.iconKey));
+    final icon = TomUIIcons.adapter?.resolveIcon(
+      Tom2FATexts.text(descriptor.iconKey),
+    );
     return icon == null ? null : Icon(icon);
   }
 

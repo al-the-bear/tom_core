@@ -278,7 +278,6 @@ class TomAllColorsAdapter extends _RegistryFirstColorAdapter {
 
   @override
   bool existsInPalette(String name) => GeneratedColors.exists(name);
-
 }
 
 /// Adapter that only includes Material colors.
