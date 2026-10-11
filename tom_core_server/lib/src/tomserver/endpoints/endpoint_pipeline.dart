@@ -849,8 +849,13 @@ class TomEndpointHandler {
                 jsonBodyData,
               );
               positionalArguments.add(parameterObject);
+              // The bound object, never the raw body: a body carries whatever
+              // the client sent — a password, a one-time code — and the DTO's
+              // own `toString` is what decides which of its fields may be
+              // written down. `LoginRequest` masks its password; the JSON it
+              // was built from does not.
               tomLog.trace(
-                "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from jsonbody $body to $parameterObject ${req.params}",
+                "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from the JSON body to $parameterObject ${req.params}",
               );
               continue;
             } on TomEndpointHandlerException {
@@ -1010,12 +1015,35 @@ class TomEndpointHandler {
     // guard rather than a second mechanism: a transactional endpoint makes sure
     // a scope exists instead of trusting the chain in front of it, because the
     // failure it prevents — one request committing another's work — is silent.
-    if (metadata.transactionInfo == null ||
-        TomTransactionManager.hasTransactionScope) {
-      return _handleMethodCallInScope(req);
+    final Future<Response> response =
+        metadata.transactionInfo == null ||
+            TomTransactionManager.hasTransactionScope
+        ? _handleMethodCallInScope(req)
+        : TomTransactionManager.runInTransactionScope(
+            () => _handleMethodCallInScope(req),
+          );
+    return response.then(withAllowedOrigin);
+  }
+
+  /// [response] carrying this endpoint's `Access-Control-Allow-Origin`, unless
+  /// a handler set one itself.
+  ///
+  /// The preflight is only half of CORS: it tells a browser it may *send* the
+  /// request, and the response to the request itself must carry the allowed
+  /// origin too, or the browser withholds it from the page — a login that
+  /// succeeded on the server reads, in the browser, as a network error. So
+  /// every response an endpoint returns, an error included, carries the same
+  /// origin [handlePreflight] announced.
+  Response withAllowedOrigin(Response response) {
+    if (response.headers.containsKey('access-control-allow-origin')) {
+      return response;
     }
-    return TomTransactionManager.runInTransactionScope(
-      () => _handleMethodCallInScope(req),
+    return response.change(
+      headers: {
+        'Access-Control-Allow-Origin':
+            metadata.endpoint.corsAllowedOrigins ??
+            globalSettingCorsAllowedOriginsDefault,
+      },
     );
   }
 

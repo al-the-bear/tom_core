@@ -597,6 +597,75 @@ void main() {
   // endpoints sharing a path lost one of themselves outright. The router was
   // never wrong (each method was registered before the overwrite), so nothing
   // 404s and no request-level assertion can see any of this. Only the table can.
+
+  // The preflight only tells a browser it may send the request; the response to
+  // the request itself must name the allowed origin too, or the browser keeps it
+  // from the page. These assert the second half.
+  group('CORS on the response itself', () {
+    late Router router;
+    late String originalOrigin;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
+      router = TomEndpointRouting().initializeRouter();
+      originalOrigin =
+          TomEndpointHandler.globalSettingCorsAllowedOriginsDefault;
+    });
+
+    tearDown(() {
+      TomEndpointHandler.globalSettingCorsAllowedOriginsDefault =
+          originalOrigin;
+      TomBean.resetBeanContext();
+    });
+
+    test('a successful call carries the default allowed origin', () async {
+      final response = await router.call(_get('/fixture/health'));
+      expect(response.statusCode, 200);
+      expect(
+        response.headers['access-control-allow-origin'],
+        TomEndpointHandler.globalSettingCorsAllowedOriginsDefault,
+      );
+    });
+
+    test('an endpoint override reaches its responses as well as its '
+        'preflight', () async {
+      final response = await router.call(_get('/fixture/cors_origin'));
+      expect(
+        response.headers['access-control-allow-origin'],
+        'https://origin.example.com',
+      );
+    });
+
+    test('a refused call carries it too, so the browser can read the '
+        'refusal', () async {
+      // An error the page cannot read is a network error to the user: a
+      // login refused with a reason would surface as "could not connect".
+      final response = await router.call(
+        _get('/fixture-access/contract-gated'),
+      );
+      expect(response.statusCode, 404);
+      expect(
+        response.headers['access-control-allow-origin'],
+        TomEndpointHandler.globalSettingCorsAllowedOriginsDefault,
+      );
+    });
+
+    test(
+      'a changed default reaches the responses of a mounted route',
+      () async {
+        TomEndpointHandler.globalSettingCorsAllowedOriginsDefault =
+            'http://localhost:8090';
+        final response = await router.call(_get('/fixture/health'));
+        expect(
+          response.headers['access-control-allow-origin'],
+          'http://localhost:8090',
+        );
+      },
+    );
+  });
   group('routingInfo is keyed by route and method', () {
     setUp(() {
       TomBean.resetBeanContext();
@@ -2291,6 +2360,29 @@ void main() {
       );
       expect(bound, hasLength(1));
       expect((bound.single as FixtureParseRequest).label, 'x');
+    });
+
+    test('the raw JSON body is never written to the log', () async {
+      // A body carries whatever the client sent — a password, a one-time code.
+      // The binder's trace line names the bound object, whose `toString`
+      // decides what may be written down; the raw text would bypass that.
+      final previousOutput = tomLog.logOutput;
+      final captured = _CapturingLogOutput();
+      tomLog.logOutput = captured;
+      addTearDown(() => tomLog.logOutput = previousOutput);
+
+      const body = '{"label":"raw-body-marker","when":"2026-08-25T00:00:00Z"}';
+      await parseHandler.bindParameters(_post('/fixture/parse', body));
+      expect(
+        captured.lines.where((l) => l.contains('Setting parameter')),
+        isNotEmpty,
+        reason: 'the binder still says what it bound',
+      );
+      expect(
+        captured.lines.where((l) => l.contains(body)),
+        isEmpty,
+        reason: 'the request body itself must not reach the log',
+      );
     });
 
     test('a value the DTO refuses surfaces parameter_instantiation_failed', () {

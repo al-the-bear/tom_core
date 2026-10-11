@@ -1,5 +1,17 @@
 ## Unreleased
 
+### Fixed
+
+- **CORS reaches the response, not only the preflight.** Every response an
+  endpoint returns — an error included — now carries the endpoint's
+  `Access-Control-Allow-Origin` (`corsAllowedOrigins`, else
+  `globalSettingCorsAllowedOriginsDefault`), the same value its preflight
+  announces; before, a browser passed the preflight and was then refused every
+  response body. New `TomEndpointHandler.withAllowedOrigin`.
+- **The request body no longer reaches the trace log.** The binder's trace line
+  named the raw JSON body, so a login's password was written down in clear; it
+  now names only the bound object, whose `toString` masks its secrets.
+
 ### Added
 
 - **A send pace for delivered second-factor codes**: `Tom2FASendLimiter`,

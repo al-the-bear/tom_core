@@ -264,7 +264,16 @@ rather than failing a null check.
 3. [bind the method parameters](#parameter-binding) by reflection;
 4. optionally [start a transaction](#transactions);
 5. invoke the method (awaiting a `Future` result);
-6. commit (or roll back on error) and convert the result to a `Response`.
+6. commit (or roll back on error) and convert the result to a `Response`;
+7. add the endpoint's `Access-Control-Allow-Origin` to that response, unless the
+   handler set one itself.
+
+Step 7 is the half of CORS a preflight cannot do. A preflight tells the browser
+it may *send* the request; the browser then hands the response to the page only
+if that response names the allowed origin too. So every response an endpoint
+returns carries the same origin its preflight announced — an error response
+included, since a refusal the page cannot read reaches the user as a network
+error rather than as the reason.
 
 ## Parameter Binding
 
