@@ -342,7 +342,7 @@ SELF_TESTS = [
     ("an empty reason", CACHE, lambda t: re.sub(r"(?m)^(\| `dart:async` \| dart \| [^|]*\| )[^|]*(\|)",
                                          r"\1\2", t, count=1), "FOR"),
     ("a row missing a cell", CACHE, lambda t: re.sub(
-        r"(?m)^(\| `dart:isolate` \| dart \| every file \| )([^|]*)\|",
+        r"(?m)^(\| `dart:isolate` \| dart \| `server_cache\.dart` \| )([^|]*)\|",
         r"\1\2", t, count=1), "CELLS"),
     ("rows out of order", CACHE, lambda t: _swap_rows(t), "ORDER"),
     ("a wrong count", FORMS, lambda t: re.sub(
