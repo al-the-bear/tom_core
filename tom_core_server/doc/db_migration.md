@@ -749,8 +749,8 @@ entry.
 ### The Framework's Own Tables
 
 The framework's tables — `tom_job_run`, `tom_lease`, `tom_scheduler_node`,
-`tom_blob`, `tom_blob_chunk`, `tom_audit_trail`, `tom_oauth_state` — are not
-application entities
+`tom_blob`, `tom_blob_chunk`, `tom_audit_trail`, `tom_oauth_state`,
+`tom_delivery_report`, `tom_cache_invalidation` — are not application entities
 and deliberately stay that way: making them entities would pull them into the
 application's reflection build and have `discoverEntityTypes()` report them
 against every application schema. So they sit outside the guard above, and used
@@ -1083,6 +1083,7 @@ here it cannot drift silently.
 | `tom_core_kernel` | package | `db_migration.dart`, `framework_convergence.dart`, `mariadb_migration_adapter.dart`, `schema_convergence.dart` | `tomReflector` (adaptor discovery, row mapping), `tomLog` |
 | [audit](audit.md) | module | `framework_convergence.dart` | `auditTrailTable`, `defaultAuditTrailTable` |
 | [authentication](authentication.md) | module | `framework_convergence.dart` | `defaultOAuthStateTable`, `oauthStateTable` |
+| [cache](cache.md) | module | `framework_convergence.dart` | `defaultInvalidationTable`, `invalidationTable` |
 | [datasources](datasources.md) | module | `db_migration.dart`, `framework_convergence.dart`, `mariadb_migration_adapter.dart`, `schema_convergence.dart`, `schema_ddl_reader.dart`, `schema_model.dart` | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery`; `TomSqlLexer`, the statement splitter and quote scanner |
 | [file_storage](file_storage.md) | module | `framework_convergence.dart` | `blobChunkTable`, `blobManifestTable`, `defaultBlobChunkTable`, `defaultBlobManifestTable` |
 | [little_things](little_things.md) | module | `db_migration.dart`, `mariadb_migration_adapter.dart` | `TomServerException` |

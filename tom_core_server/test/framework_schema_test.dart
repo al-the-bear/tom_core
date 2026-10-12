@@ -159,6 +159,12 @@ void main() {
       ]);
     });
 
+    test('the cache chain builds the invalidation-log descriptor', () {
+      converges('example/cache/migrations/main/tomcore', [
+        invalidationTable(defaultInvalidationTable),
+      ]);
+    });
+
     test('a chain that omits a column is reported, not tolerated', () {
       // The guard's own proof. Without it, all three tests above would still
       // pass against a comparison that reported nothing whatsoever.
@@ -458,6 +464,21 @@ void main() {
         await _issuing(() => store.get('key').drain<void>());
         await _issuing(() => store.delete('key'));
       });
+    });
+
+    test('the cache-invalidation channel', () async {
+      final datasource = _RecordingDataSource();
+      final channel = TomSqlInvalidationChannel(datasource);
+      await audit(
+        datasource,
+        [invalidationTable(defaultInvalidationTable)],
+        () async {
+          await channel.start((_) async {});
+          await channel.poll();
+          await channel.publish(TomCacheInvalidation.principal('alice'));
+          await channel.stop();
+        },
+      );
     });
   });
 }

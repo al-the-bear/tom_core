@@ -216,6 +216,17 @@ surface documented here.
 | `TomCacheRemoveMessage` | class | Remove command (extends `TomCommand`). |
 | `TomCacheRetrieveMessage` | class | Retrieve command (extends `TomCommand`). |
 | `TomCacheException` | class | Cache error (extends `TomServerException`). |
+| `TomCacheInvalidation` | class | One invalidation as it travels between nodes: kind, target, key, instant, origin. |
+| `TomInvalidationKind` | enum | `principal`, `cacheEntry`, `cache`. |
+| `TomInvalidationChannel` | abstract interface class | How invalidations reach the other nodes; states its `stalenessBound`. |
+| `TomLocalInvalidationChannel` | class | The default single-process channel; staleness bound zero. |
+| `TomSqlInvalidationChannel` | class | Channel over a polled database table; staleness bound is the poll interval. |
+| `TomCacheInvalidator` | abstract final class | Cluster-wide entry point: `revokePrincipal`, `invalidateCacheEntry`, `invalidateCache`, `install`. |
+| `TomCacheInvalidateMessage` | class | Cross-isolate invalidation command (extends `TomCommand`). |
+| `TomCacheInvalidationRow` | class | One row of the invalidation log, as the SQL channel reads it. |
+| `invalidationTable` | function | The invalidation log, declared once as a framework-owned table. |
+| `invalidationTableDdl` | function | The `CREATE TABLE` for it, for a deployment that applies DDL by hand. |
+| `defaultInvalidationTable` | constant | `tom_cache_invalidation`. |
 
 ### Command Line (`lib/src/tomserver/cmdline/`)
 
@@ -653,6 +664,7 @@ surface documented here.
 | `defaultBlobChunkTable` | File Storage |
 | `defaultBlobManifestTable` | File Storage |
 | `defaultDeliveryReportTable` | Messaging |
+| `defaultInvalidationTable` | Cache |
 | `defaultJobRunTable` | Scheduling |
 | `defaultLeaseTable` | Scheduling |
 | `defaultNodeFailureSlack` | Scheduling |
@@ -675,6 +687,8 @@ surface documented here.
 | `installJwtSigning` | Authentication |
 | `IntCol` | Object Persistence |
 | `IntegerLiteral` | Object Persistence |
+| `invalidationTable` | Cache |
+| `invalidationTableDdl` | Cache |
 | `isDevelopmentOrTestRuntime` | Configuration |
 | `isLostConnectionFailure` | Datasources |
 | `IsNotNull` | Object Persistence |
@@ -838,6 +852,10 @@ surface documented here.
 | `TomCache` | Cache |
 | `TomCacheEntry` | Cache |
 | `TomCacheException` | Cache |
+| `TomCacheInvalidateMessage` | Cache |
+| `TomCacheInvalidation` | Cache |
+| `TomCacheInvalidationRow` | Cache |
+| `TomCacheInvalidator` | Cache |
 | `TomCacheManager` | Cache |
 | `TomCacheRemoveMessage` | Cache |
 | `TomCacheRetrieveMessage` | Cache |
@@ -988,10 +1006,13 @@ surface documented here.
 | `TomHttpServiceLoginTransport` | Authentication |
 | `TomInformationSchemaColumnRow` | Database Migration |
 | `TomIntConfig` | Configuration |
+| `TomInvalidationChannel` | Cache |
+| `TomInvalidationKind` | Cache |
 | `TomJobRunRow` | Scheduling |
 | `TomJobRunWindowRow` | Scheduling |
 | `TomLeaseRow` | Scheduling |
 | `TomLiteralSelect` | Datasources |
+| `TomLocalInvalidationChannel` | Cache |
 | `TomLocalizedTextResources` | Resources |
 | `tomLoggingMiddleware` | Server |
 | `TomLoginException` | Authentication |
@@ -1136,6 +1157,7 @@ surface documented here.
 | `TomSqlDatasourceRepository` | Object Persistence |
 | `TomSqlDeliveryReportStore` | Messaging |
 | `TomSqlFailureMode` | Datasources |
+| `TomSqlInvalidationChannel` | Cache |
 | `TomSqlJobStore` | Scheduling |
 | `TomSqlLeaseLock` | Scheduling |
 | `TomSqlLexer` | Datasources |

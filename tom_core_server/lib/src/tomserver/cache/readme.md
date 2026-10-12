@@ -9,6 +9,18 @@ clear/deletion timers. `TomCacheManager` owns the named caches per isolate and
 forwards operations from worker isolates to the main isolate (where caches
 physically live). Static helpers key a cache by Dart type or by name.
 
+**Invalidation reaches every node.** Caches — these and the authorization
+cache — live in one process each, so on a cluster `TomCacheInvalidator` carries
+an invalidation to the other nodes through an installed
+`TomInvalidationChannel`: `revokePrincipal(username)` refuses every token the
+user holds so far on every node, and `invalidateCacheEntry` / `invalidateCache` remove
+an entry or empty a cache everywhere. The default `TomLocalInvalidationChannel`
+reaches no other node, for a single process; `TomSqlInvalidationChannel` writes
+each invalidation to the `tom_cache_invalidation` table — declared once by
+`invalidationTable` — and every node polls it,
+so its poll interval (two seconds by default) is the staleness bound. Install
+the channel once at start-up, before serving requests.
+
 **Forwarding is one crossing per operation.** There is no batch command and no
 worker-side copy, so ten cached lookups from a worker are ten round trips and
 asking twice for the same key costs twice. That stands deliberately: a batch
@@ -26,7 +38,11 @@ being the deployment's decision rather than the framework's.
 | ---- | -------------- |
 | `TomCache` | A named cache; constructor takes `cacheName` plus `deleteEntriesAfterSeconds`, `maximumEntries`, and clear/deletion intervals — each positive or `null`, since `null` is how a feature is switched off and a non-positive value would give a black-hole cache or a busy-loop sweep. **`maximumEntries` defaults to `TomCache.defaultMaximumEntries` (100)**: a cache is LRU-bounded unless the caller passes `null`, because whether growing without a bound is a leak depends on the shape of the key and the cache cannot see it. `TomCache.forType(Type)` names it after a type. Its clear and deletion timers run in `Zone.root` rather than the zone that constructed the cache, and stop through `stopTimers()`. |
 | `TomCacheEntry` | One cached value (`value`) with an optional `deletionTime`. The value is non-nullable: a read answers `null` for a miss and for an expiry, so an entry holding `null` would be one no read could surface. |
+| Static helpers | `TomCache.toTypeCache<T>` / `fromTypeCache<T>` / `removeFromTypeCache<T>` and the `*NameCache` variants store/retrieve/remove by type or name. |
 | `TomCacheManager` | Per-isolate registry; `getCache(name)` / `addCache` / `removeCache(name)`, `dispose()`, and the cross-isolate forwarding decision (`useInThisIsolate`). A cache installs its timers in its constructor, so leaving the registry has to stop them too — `removeCache` and `dispose` do, while `setCurrent` stays a pure swap and hands back the displaced manager for the caller to `dispose` when the swap is final. |
+| `TomCacheInvalidator` | The cluster-wide entry point: `install(channel)` at start-up, then `revokePrincipal`, `invalidateCacheEntry` and `invalidateCache`. Applies each invalidation here first, then publishes it; a publish failure propagates. Callable from any isolate. |
+| `TomInvalidationChannel` · `TomLocalInvalidationChannel` · `TomSqlInvalidationChannel` | How invalidations reach the other nodes, each stating its `stalenessBound`: zero for the local channel, the poll interval for the SQL one, which also applies the revocations still in force when it starts. |
+| `TomCacheInvalidation` · `TomInvalidationKind` | One invalidation — `principal`, `cacheEntry` or `cache` — with its target, instant and originating node. |
 
 **Two reads, and only one of them expires.** `TomCache.fromNameCache` is the
 *value*-level read: it applies the expiry rule, dropping an entry whose
@@ -39,7 +55,6 @@ the entry `getEntry` hands back carries its own `deletionTime` for a caller that
 wants to apply it. Read values through the static helpers; reach for
 `getEntry` / `putEntry` when the question is about the structure — storing an
 entry with a lifetime of its own, or inspecting what is actually held.
-| Static helpers | `TomCache.toTypeCache<T>` / `fromTypeCache<T>` / `removeFromTypeCache<T>` and the `*NameCache` variants store/retrieve/remove by type or name. |
 
 ## Quick start
 
@@ -64,8 +79,8 @@ Future<void> main() async {
 ```
 
 See [`doc/cache.md`](../../../../doc/cache.md) for expiry and bounds, the
-isolate model, and what the module does not yet do, and
-`example/cache/cache_example.dart` for a runnable nine-step walkthrough that
+isolate model, cross-node invalidation, and what the module does not yet do, and
+`example/cache/cache_example.dart` for a runnable ten-step walkthrough that
 checks its own results. `test/cache_test.dart` covers the module and also runs
 the example; `test/readme_quick_start_test.dart` runs the snippet above, so
 neither can drift unnoticed.

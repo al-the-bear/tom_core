@@ -559,14 +559,21 @@ class TomCache {
         tomLog.debug(
           "Clearing cache $cacheName, deleting ${_cache.length} entries",
         );
-        // Reset the MRU chain along with the backing map so a bounded cache is
-        // left in a consistent empty state, not with dangling head/tail
-        // pointers.
-        _cache.clear();
-        _first = null;
-        _last = null;
+        clear();
       },
     );
+  }
+
+  /// Removes every entry.
+  ///
+  /// Resets the most-recently-used chain along with the backing map, so a
+  /// bounded cache is left in a consistent empty state rather than with
+  /// dangling head and tail pointers. The clearance timer and a cross-node
+  /// invalidation (`TomCacheInvalidator.invalidateCache`) both come here.
+  void clear() {
+    _cache.clear();
+    _first = null;
+    _last = null;
   }
 
   /// Reads the value of type [T] keyed by [key] from the cache named after [T].

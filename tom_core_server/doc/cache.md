@@ -4,7 +4,9 @@ A lightweight in-memory cache for the server. Caches are registered by name in a
 `TomCacheManager`, physically held in the main isolate, and reached from any
 isolate through a small set of static helpers. A cache is LRU-bounded by default
 and unbounded on request, and can expire entries by age or clear itself on a
-schedule.
+schedule. On a cluster, `TomCacheInvalidator` carries an invalidation — of an
+entry, of a whole cache, or of a user's tokens in the authorization cache — to
+every node through an installed channel.
 
 ## Table of Contents
 
@@ -29,6 +31,12 @@ schedule.
 - [Isolate Model](#isolate-model)
   - [One crossing per operation](#one-crossing-per-operation)
 - [Failures Are Internal](#failures-are-internal)
+- [Cross-Node Invalidation](#cross-node-invalidation)
+  - [Channels and their staleness bound](#channels-and-their-staleness-bound)
+  - [Installing a channel at start-up](#installing-a-channel-at-start-up)
+  - [What each kind does](#what-each-kind-does)
+  - [The SQL channel](#the-sql-channel)
+  - [Failures](#failures)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
@@ -47,6 +55,15 @@ schedule.
 | `TomCacheStoreMessage` | class | Cross-isolate store, run in the main isolate |
 | `TomCacheRemoveMessage` | class | Cross-isolate remove, run in the main isolate |
 | `TomCacheRetrieveMessage` | class | Cross-isolate read, run in the main isolate |
+| `TomCacheInvalidator` | abstract final class | Cluster-wide entry point: revoke a principal, invalidate an entry or a cache on every node |
+| `TomCacheInvalidation` | class | One invalidation as it travels between nodes |
+| `TomInvalidationKind` | enum | `principal`, `cacheEntry`, `cache` |
+| `TomInvalidationChannel` | abstract interface class | How invalidations reach the other nodes, and how fast (`stalenessBound`) |
+| `TomLocalInvalidationChannel` | class | The default channel for a single process; bound zero |
+| `TomSqlInvalidationChannel` | class | A channel over a table every node polls; bound is the poll interval |
+| `TomCacheInvalidateMessage` | class | Cross-isolate invalidation, run in the main isolate |
+| `TomCacheInvalidationRow` | class | One row of the invalidation log, as the SQL channel reads it |
+| `invalidationTable` / `invalidationTableDdl` / `defaultInvalidationTable` | functions / const String | The invalidation log, declared once as a framework-owned table |
 
 ## Walkthrough
 
@@ -624,13 +641,164 @@ cache can pass `clientThrow: true`. It survives the isolate boundary intact, so
 a forwarded failure carries the same `key` **and** the same `clientThrow` as a
 local one.
 
+## Cross-Node Invalidation
+
+Every cache in this module lives in one process, and so does the
+`TomAuthorizationCache`. On one node, removing an entry or revoking a principal
+there is the whole job. On a cluster it is not: the other nodes keep serving
+what they hold, and for the authorization cache that is a security problem — a
+withdrawn grant would stay usable on every node but the one that withdrew it.
+
+`TomCacheInvalidator` is the cluster-wide entry point. Each call applies the
+invalidation on this node first and then publishes it through the installed
+`TomInvalidationChannel`, which delivers it to the other nodes, where the
+invalidator applies it in turn:
+
+| Call | On every node |
+| ---- | ------------- |
+| `TomCacheInvalidator.revokePrincipal(username)` | refuses every token `username` holds that was issued now or earlier, and drops the principals cached for them |
+| `TomCacheInvalidator.invalidateCacheEntry(cacheName, key)` | removes `key` from the cache named `cacheName` |
+| `TomCacheInvalidator.invalidateCache(cacheName)` | empties the cache named `cacheName` |
+
+**A grant change calls `revokePrincipal`** — a role removed, a resource grant
+withdrawn, an account disabled. The user's tokens then stop yielding a principal
+on every node within the channel's staleness bound, and the client
+re-authorizes and receives a token carrying the current grants. What a revoked
+token does on arrival is described in the authorization guide, under
+"Revoking a principal".
+
+The calls work from any isolate: a worker forwards the invalidation to the main
+isolate as a `TomCacheInvalidateMessage`, because the caches and the channel
+live there. `TomCacheInvalidator.raise(invalidation)` takes a prepared
+`TomCacheInvalidation`, and `apply(invalidation)` applies one to this process
+only — it is the callback a channel delivers to.
+
+### Channels and their staleness bound
+
+A channel states how stale another node can be, as
+`TomInvalidationChannel.stalenessBound`: the longest time from `publish` on one
+node to delivery on another.
+
+| Channel | Reaches | `stalenessBound` |
+| ------- | ------- | ---------------- |
+| `TomLocalInvalidationChannel` — the default | no other node | zero: on one node an invalidation applied here is applied everywhere there is |
+| `TomSqlInvalidationChannel` | every node polling the same table | the poll interval (default two seconds), plus one query |
+
+A deployment of one process needs nothing. A deployment of several installs the
+SQL channel on every node, over a data source they all share.
+
+A channel never delivers a node's own invalidations back to it: each carries
+its `origin`, the `TomCacheInvalidator.nodeId` of the process that raised it,
+which is random per process.
+
+### Installing a channel at start-up
+
+`TomCacheInvalidator.install(channel)` stops the channel it replaces and starts
+the new one with `apply` as its delivery callback. Call it once at start-up,
+after the data sources are registered and **before the server answers
+requests**: a channel that keeps history delivers the revocations still in
+force from `start`, so a node that joins the cluster, or restarts, does not
+serve a token another node revoked before it was there.
+
+```dart
+// After the data sources are initialised, before the server starts serving.
+await TomCacheInvalidator.install(TomSqlInvalidationChannel.named('main'));
+
+// Wherever a user's grants change:
+await TomCacheInvalidator.revokePrincipal('alice');
+```
+
+`TomSqlInvalidationChannel.named(datasourceName)` looks the data source up in
+the registry; `TomSqlInvalidationChannel(datasource)` takes one directly. Both
+accept `table`, `pollInterval`, `retention` and `createSchema`.
+`TomCacheInvalidator.channel` answers which channel is installed, and
+`TomCacheInvalidator.reset()` puts the local channel back — test support.
+
+### What each kind does
+
+An invalidation is a `TomCacheInvalidation`: a `TomInvalidationKind`, a
+`target`, an optional entry `key`, the UTC instant `at` it was raised and its
+`origin`. `apply` maps each kind onto this process's caches:
+
+| `TomInvalidationKind` | `target` | Applied as |
+| --------------------- | -------- | ---------- |
+| `principal` | the username | `TomAuthorizationCache.revokeLocally(target, at)` — tokens issued at or before `at` are refused, and the user's cached principals are dropped |
+| `cacheEntry` | the cache name | `removeEntry(key)` on the cache registered under that name |
+| `cache` | the cache name | `clear()` on the cache registered under that name |
+
+A cache name nothing registered on this node is nothing to invalidate, and is
+skipped. `TomCache.clear()` is the same reset the clearance timer performs: the
+map and the most-recently-used chain together.
+
+### The SQL channel
+
+`TomSqlInvalidationChannel` needs no infrastructure a deployment does not
+already have. `publish` inserts one row into the invalidation log; every node
+polls the log every `pollInterval` for the rows above the highest id it has
+seen and applies the ones other nodes wrote.
+
+The log is a framework-owned table, `tom_cache_invalidation` by default,
+declared once by `invalidationTable(table)` and listed by
+`frameworkOwnedTables`:
+
+| Column | Type | Carries |
+| ------ | ---- | ------- |
+| `id` | `BIGINT` auto-increment, primary key | the order every node reads by — an instant could not, since two nodes' clocks disagree |
+| `kind` | `VARCHAR(16)` | the `TomInvalidationKind` name |
+| `target` | `VARCHAR(191)` | the username or cache name |
+| `entry_key` | `VARCHAR(512)`, nullable | the key of a single-entry invalidation |
+| `origin` | `VARCHAR(32)` | the node that wrote the row |
+| `raised_at` | `DATETIME(6)`, indexed, UTC | the retention sweep and the start-up catch-up |
+
+With `createSchema` left `true` the channel creates the table on first use.
+Where the application's database user may not run DDL, apply the reference
+migration `example/cache/migrations/main/tomcore/[1]-create_tom_cache_invalidation.sql`
+and pass `createSchema: false`; for a renamed table, apply what
+`invalidationTableDdl(name)` returns.
+
+What the channel does, in order:
+
+- **`start`** creates the table if asked, takes the log's highest id as its
+  watermark, delivers every `principal` row raised within `retention` and at or
+  below the watermark — the revocations still in force — and then starts a
+  periodic poll timer in `Zone.root`, so the flow that installed the channel
+  does not own process-lifetime work.
+- **`poll`** reads up to a thousand rows above the last id seen, delivers each
+  one whose `origin` is not this node, and advances. A poll still running when
+  the next is due is not overlapped. At most once per `retention` / 24 it also
+  deletes the rows older than `retention`. `poll` runs on the timer and is
+  callable directly.
+- **`publish`** inserts the row.
+- **`stop`** cancels the timer; `isRunning` answers whether it is polling.
+
+`retention` defaults to `TomAuthorizationCache.revocationRetention`, one day: a
+revocation has to be remembered as long as a token issued before it can still
+be live, so a node starting up must see every revocation that young.
+
+### Failures
+
+**A publish failure propagates.** The invalidation has already been applied on
+this node — that happens first, so the node raising it is consistent whatever
+the database does — and then the exception reaches the caller of
+`revokePrincipal`, who learns that the other nodes did not hear of it.
+
+**A poll failure is logged and retried.** The failure is logged at warning
+level and the next poll reads again from the same row, so no invalidation is
+skipped by a transient database error; the cost is staleness for as long as
+the database is unreachable.
+
+| Key | Raised when |
+| --- | ----------- |
+| `cache.invalidation.unknown_datasource` | `TomSqlInvalidationChannel.named` names a data source that is not registered. A `TomCacheException` (`clientThrow: false`), carrying the name as `datasource` — a configuration error, best caught at start-up. |
+
 ## Core Components
 
 - **`TomCache`** — the cache and its static accessor helpers. Instance methods
   `getEntry` / `putEntry` / `removeEntry` implement the MRU bookkeeping and are
   *structural* — see [Two reads, and only one of them
-  expires](#two-reads-and-only-one-of-them-expires); `createTimers` /
-  `stopTimers` manage the background timers.
+  expires](#two-reads-and-only-one-of-them-expires); `clear` empties the map
+  and the chain together; `createTimers` / `stopTimers` manage the background
+  timers.
 - **`TomCacheEntry`** — value object: the cached `value`, which is non-nullable,
   and its `deletionTime`.
 - **`TomCacheManager`** — the per-isolate registry and the `useInThisIsolate`
@@ -639,12 +807,27 @@ local one.
   `clientThrow: false` by default, since neither is the caller's business.
 - **`TomCacheStoreMessage` / `TomCacheRemoveMessage` / `TomCacheRetrieveMessage`**
   — the cross-isolate commands.
+- **`TomCacheInvalidator`** — the cluster-wide entry point: `install`,
+  `revokePrincipal`, `invalidateCacheEntry`, `invalidateCache`, `raise`,
+  `apply`, `reset`, `channel` and `nodeId`.
+- **`TomCacheInvalidation` + `TomInvalidationKind`** — one invalidation and what
+  it invalidates; `TomCacheInvalidateMessage` carries one from a worker.
+- **`TomInvalidationChannel`** — the transport seam, with
+  `TomLocalInvalidationChannel` (the default) and `TomSqlInvalidationChannel`
+  (the polled log, read through `TomCacheInvalidationRow`).
+- **`invalidationTable` / `invalidationTableDdl` / `defaultInvalidationTable`**
+  — the log's single declaration.
 
 ## Not Yet Implemented
 
-Nothing. The module's two standing decisions — what `getEntry` answers, and the
-cost of a crossing — are stated where the behaviour is, under [Expiry and
+The module's two standing decisions — what `getEntry` answers, and the cost of
+a crossing — are stated where the behaviour is, under [Expiry and
 Bounds](#expiry-and-bounds) and [Isolate Model](#isolate-model) respectively.
+
+- **No channel over a message bus.** Invalidations travel between nodes by
+  polling a table, so a cluster is as stale as its poll interval. A channel that
+  delivers them as messages, for near-immediate eviction, is not offered.
+  <!-- unpinned: absence — no message-bus channel exists -->
 
 ## Verification
 
@@ -671,6 +854,17 @@ the only way to establish that an argument survives the crossing. It needs no
 external server and carries no tag, so all of it runs in the default
 `testkit :test`.
 
+Cross-node invalidation has two suites. `test/cache_invalidation_test.dart`
+needs no database: a fake channel plays the other node, recording what this
+node publishes and delivering "remote" invalidations through the callback the
+invalidator gave it — revocation and its second-granularity comparison, a
+publish failure that still revokes here, entry and cache invalidations, channel
+replacement and the retention sweep. `test/cache_invalidation_db_test.dart`,
+tagged `db`, runs `TomSqlInvalidationChannel` against MariaDB: own-origin rows
+skipped, the start-up catch-up of revocations in force, retention pruning, and
+a grant revoked on one node refused on a second — a spawned isolate, whose
+static caches are its own — within the poll interval.
+
 The two are linked in both directions — the example's header names the suite,
 and the suite runs the example, under exactly the command that header documents,
 requiring exit 0. The suite also holds the [Walkthrough](#walkthrough) to the
@@ -692,7 +886,11 @@ itself accounts for. None of them can drift quietly while nobody is reading.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | every file | `Future`, `Timer`, `Zone` |
-| `dart:isolate` | dart | every file | `Isolate` |
-| `tom_core_kernel` | package | every file | `TomWorker`, `TomCommand`, and the logging helpers |
-| [little_things](little_things.md) | module | every file | `TomServerException`, the base of `TomCacheException` |
+| `dart:async` | dart | `cache_invalidation.dart`, `server_cache.dart`, `sql_invalidation_channel.dart` | `Future`, `Timer`, `Zone` |
+| `dart:isolate` | dart | `server_cache.dart` | `Isolate` |
+| `dart:math` | dart | `cache_invalidation.dart` | `Random.secure`, for the per-process `nodeId` |
+| `tom_core_kernel` | package | `cache_invalidation.dart`, `server_cache.dart`, `sql_invalidation_channel.dart` | `TomWorker`, `TomCommand`, and the logging helpers |
+| [authorization](authorization.md) | module | `cache_invalidation.dart`, `sql_invalidation_channel.dart` | `TomAuthorizationCache` — `revokeLocally`, which a principal invalidation applies, and `revocationRetention`, the SQL channel's default retention |
+| [datasources](datasources.md) | module | `invalidation_sql.dart`, `sql_invalidation_channel.dart` | `TomFrameworkTable` (the log's declaration), `TomDataSource` and `TomDataSourceInfo` (named data sources), `parseSqlInstant` |
+| [little_things](little_things.md) | module | `server_cache.dart` | `TomServerException`, the base of `TomCacheException` |
+| [object_persistence](object_persistence.md) | module | `sql_invalidation_channel.dart` | `TomDbTable` / `TomDbColumn` on `TomCacheInvalidationRow` |

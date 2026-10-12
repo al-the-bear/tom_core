@@ -13,9 +13,10 @@ import '../little_things/server_exception.dart';
 /// | `authorization.cache.expired_principal` | A matching entry existed but its expiry had passed; it has been dropped, so the next read of the same token is a miss. The client should re-authorize. |
 /// | `authorization.cache.missing_expiry` | The token carries no `exp` claim, or one that is not an integer, so nothing was cached. |
 /// | `authorization.cache.invalid_expiry` | The token's `exp` claim is an integer no instant can be built from, so nothing was cached. |
+/// | `authorization.cache.revoked_principal` | The principal's grants were revoked after the presented token was issued; any cached principal for it has been dropped. The client should re-authorize. |
 ///
-/// The distinct type lets a caller catch these specifically: an expired
-/// principal is a signal to re-authorize, as opposed to a cache miss (which
+/// The distinct type lets a caller catch these specifically: an expired or
+/// revoked principal is a signal to re-authorize, as opposed to a cache miss (which
 /// simply returns `null`), and the two expiry keys report a malformed
 /// token rather than anything about the principal.
 ///
@@ -110,6 +111,22 @@ class TomAuthorizationCache implements TomDisposable {
 
   final Map<String, TomAuthorizationCacheEntry> _cache = {};
 
+  /// When each user's grants were last revoked, by username.
+  ///
+  /// A token issued at or before that instant no longer yields a principal —
+  /// neither one cached for it nor the one its own claims carry, since those
+  /// claims still list the revoked grants until the token expires. Kept for
+  /// [revocationRetention], which must therefore outlast the longest token
+  /// lifetime a deployment issues.
+  final Map<String, DateTime> _revokedAt = {};
+
+  /// How long a revocation is remembered. Default one day.
+  ///
+  /// A token that outlives this after a revocation is served with the grants it
+  /// was issued with, so it must be at least the longest lifetime of a token
+  /// this deployment issues.
+  static Duration revocationRetention = const Duration(hours: 24);
+
   /// The running eviction sweep, or `null` when none is running.
   ///
   /// Held in a field for two reasons: a periodic timer nothing references can
@@ -190,6 +207,7 @@ class TomAuthorizationCache implements TomDisposable {
   /// iterating [_cache] would invalidate the iteration.
   void _evictExpired() {
     final DateTime now = DateTime.now();
+    _revokedAt.removeWhere((_, at) => now.difference(at) > revocationRetention);
     final List<String> entriesToDelete = [
       for (final entry in _cache.entries)
         if (entry.value.deletionTime.isBefore(now)) entry.key,
@@ -213,13 +231,63 @@ class TomAuthorizationCache implements TomDisposable {
   void dispose() {
     _stopEviction();
     _cache.clear();
+    _revokedAt.clear();
+  }
+
+  /// Revokes every token [username] holds that was issued at or before [at],
+  /// in this process: drops the user's cached principals and makes
+  /// [getPrincipal] refuse such a token from now on.
+  ///
+  /// This process only. Revoking across a cluster is
+  /// `TomCacheInvalidator.revokePrincipal`, which calls this here and carries
+  /// the revocation to every other node; that is what a grant change should
+  /// call. Of two revocations of one user the later instant is kept.
+  ///
+  /// Main isolate only: the invalidator applies revocations there, where the
+  /// cache lives.
+  static void revokeLocally(String username, DateTime at) {
+    final cache = _current;
+    final previous = cache._revokedAt[username];
+    if (previous == null || at.isAfter(previous)) {
+      cache._revokedAt[username] = at.toUtc();
+    }
+    cache._cache.removeWhere(
+      (_, entry) => entry.authorizedPrincipal.username == username,
+    );
+    // The sweep is what eventually forgets the revocation.
+    cache._ensureEviction();
+  }
+
+  /// When [username]'s grants were last revoked in this process, or `null`.
+  static DateTime? revokedAt(String username) => _current._revokedAt[username];
+
+  /// Whether [token] was issued at or before its user's last revocation.
+  ///
+  /// Compared in whole seconds, the precision of the token's `iat` claim: a
+  /// token issued within the second of a revocation counts as issued before
+  /// it, so a client that re-authorizes in that second is refused once and
+  /// succeeds a second later — the safe direction to round. A token carrying
+  /// no `iat` falls back to `nbf`, and one carrying neither cannot show it
+  /// was issued afterwards and counts as revoked. A token naming no user is
+  /// never revoked by user.
+  static bool isRevoked(TomClientJwtToken token) {
+    final payload = token.payload;
+    final username = payload?['username'];
+    if (username is! String) return false;
+    final revoked = _current._revokedAt[username];
+    if (revoked == null) return false;
+    final issued = payload?['iat'] ?? payload?['nbf'];
+    if (issued is! int) return true;
+    return issued <= revoked.millisecondsSinceEpoch ~/ 1000;
   }
 
   /// Returns the cached principal for [authenticationToken], or `null` if no
   /// entry exists (a cache miss).
   ///
   /// Throws [TomAuthorizationCacheException] when an entry exists but has
-  /// expired — the caller should treat that as a prompt to re-authorize.
+  /// expired, or when the token was issued at or before its user's last
+  /// revocation ([isRevoked]) — whether or not anything was cached for it. The
+  /// caller should treat either as a prompt to re-authorize.
   ///
   /// That read also removes the entry it rejected, so the expiry is reported
   /// once: a second read of the same token is an ordinary miss. A caller that
@@ -239,6 +307,15 @@ class TomAuthorizationCache implements TomDisposable {
     TomClientJwtToken authenticationToken,
   ) async {
     if (TomWorker.isMainIsolate) {
+      if (isRevoked(authenticationToken)) {
+        _current._cache.remove(authenticationToken.tokenString);
+        throw TomAuthorizationCacheException(
+          "authorization.cache.revoked_principal",
+          "The principal's grants were revoked after the presented token was "
+              "issued",
+          parameters: {'username': authenticationToken.payload?['username']},
+        );
+      }
       TomAuthorizationCacheEntry? entry =
           _current._cache[authenticationToken.tokenString];
       if (entry != null) {

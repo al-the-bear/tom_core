@@ -697,7 +697,8 @@ TomSchemaConvergenceCheck({
 ### TomFrameworkSchemaCheck
 
 The convergence check for the tables the **framework itself** owns
-(`frameworkOwnedTables`): scheduling, file storage, audit and OAuth state. A
+(`frameworkOwnedTables`): scheduling, file storage, audit, OAuth state,
+messaging delivery reports and the cache-invalidation log. A
 sibling of `TomSchemaConvergenceCheck` rather than the same class, because the
 application check can only run where an application's entities and migrations
 exist, while this one holds for the framework and is meaningful in an empty
@@ -838,7 +839,7 @@ here rather than on the dialect.
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
-| `frameworkOwnedTables` | `List<TomFrameworkTable> frameworkOwnedTables({String jobRun = defaultJobRunTable, String lease = defaultLeaseTable, String schedulerNode = defaultSchedulerNodeTable, String blobManifest = defaultBlobManifestTable, String blobChunk = defaultBlobChunkTable, String auditTrail = defaultAuditTrailTable, String oauthState = defaultOAuthStateTable})` | Every table the framework owns, at the names it uses when nothing overrides them — so that "all of them" is a thing a caller can name rather than a list each caller assembles and each forgets to extend. A deployment that renames a table passes the corresponding argument. The dependency runs one way: this module reads the descriptors of `scheduling/`, `file_storage/`, `audit/` and `authentication/`, and none of them reads back, so the scheduler runs without loading a migration. |
+| `frameworkOwnedTables` | `List<TomFrameworkTable> frameworkOwnedTables({String jobRun = defaultJobRunTable, String lease = defaultLeaseTable, String schedulerNode = defaultSchedulerNodeTable, String blobManifest = defaultBlobManifestTable, String blobChunk = defaultBlobChunkTable, String auditTrail = defaultAuditTrailTable, String oauthState = defaultOAuthStateTable, String deliveryReport = defaultDeliveryReportTable, String invalidation = defaultInvalidationTable})` | Every table the framework owns, at the names it uses when nothing overrides them — so that "all of them" is a thing a caller can name rather than a list each caller assembles and each forgets to extend. A deployment that renames a table passes the corresponding argument. The dependency runs one way: this module reads the descriptors of `scheduling/`, `file_storage/`, `audit/`, `authentication/`, `messaging/` and `cache/`, and none of them reads back, so the scheduler runs without loading a migration. |
 
 The signature names the defaulting constants rather than their values, and each
 is declared by the module that owns the table — so the seven names the check

@@ -248,12 +248,12 @@ Future<TomPrincipal?> _resolveRequestPrincipal(
     return await TomAuthorizationCache.getPrincipal(clientToken) ??
         tokenPrincipal;
   } on TomAuthorizationCacheException catch (e) {
-    // Logged at info, not warning: an aged-out session is the cache working,
-    // not a fault. It is worth a line because the request that follows will be
-    // refused for a reason the endpoint cannot name — from there it looks like
-    // an unauthenticated caller, which is exactly what it now is.
+    // Logged at info, not warning: an aged-out or revoked session is the cache
+    // working, not a fault. It is worth a line because the request that follows
+    // will be refused for a reason the endpoint cannot name — from there it
+    // looks like an unauthenticated caller, which is exactly what it now is.
     tomLog.info(
-      "Cached principal for the presented token has expired (${e.key}); "
+      "The presented token no longer yields a principal (${e.key}); "
       "the request proceeds unauthenticated",
     );
     return null;
@@ -267,7 +267,8 @@ Future<TomPrincipal?> _resolveRequestPrincipal(
 /// 2. resolves the effective [TomPrincipal] — preferring a principal cached for
 ///    the client token by [TomAuthorizationCache], falling back to the one
 ///    derived directly from the token, and resolving to *no* principal when the
-///    cache reports the entry expired (see [_resolveRequestPrincipal]);
+///    cache reports the entry expired or the token revoked (see
+///    [_resolveRequestPrincipal]);
 /// 3. runs the inner handler inside a [runZoned] scope whose [TomZoneValues]
 ///    expose the shelf [Request], the ambient [TomExecutionContext], the
 ///    resolved [TomPrincipal], the [TomClientJwtToken], and a fresh

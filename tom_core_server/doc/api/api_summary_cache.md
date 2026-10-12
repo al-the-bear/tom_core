@@ -15,11 +15,20 @@ from the main isolate and transparently forwarded to from worker isolates.
   - [TomCacheStoreMessage](#tomcachestoremessage)
   - [TomCacheRemoveMessage](#tomcacheremovemessage)
   - [TomCacheRetrieveMessage](#tomcacheretrievemessage)
+  - [TomCacheInvalidation](#tomcacheinvalidation)
+  - [TomInvalidationChannel](#tominvalidationchannel)
+  - [TomLocalInvalidationChannel](#tomlocalinvalidationchannel)
+  - [TomCacheInvalidator](#tomcacheinvalidator)
+  - [TomCacheInvalidateMessage](#tomcacheinvalidatemessage)
+  - [TomSqlInvalidationChannel](#tomsqlinvalidationchannel)
+  - [TomCacheInvalidationRow](#tomcacheinvalidationrow)
+- [Enums](#enums)
+  - [TomInvalidationKind](#tominvalidationkind)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 
-Source: `lib/src/tomserver/cache/server_cache.dart`.
+Sources: `lib/src/tomserver/cache/cache_invalidation.dart`, `lib/src/tomserver/cache/invalidation_sql.dart`, `lib/src/tomserver/cache/server_cache.dart`, `lib/src/tomserver/cache/sql_invalidation_channel.dart`.
 
 `TomCache` is a named in-memory cache of `TomCacheEntry` values keyed by string.
 A cache is **bounded by default** (`maximumEntries`, LRU eviction) and unbounded
@@ -53,6 +62,16 @@ when an operation cannot complete. `TomCacheStoreMessage`,
 `TomCacheRemoveMessage`, and `TomCacheRetrieveMessage` are cross-isolate commands
 that carry store/remove/read operations to the main isolate.
 
+**Invalidation reaches every node through a channel.** The caches — these and
+the authorization cache — live in each process, so on a cluster removing an
+entry or revoking a principal on one node leaves the others serving what they
+hold. `TomCacheInvalidator` is the cluster-wide entry point: each call applies
+the invalidation here and hands it to the installed `TomInvalidationChannel`,
+which delivers it to the other nodes. `TomLocalInvalidationChannel`, the
+default, reaches no other node and has a staleness bound of zero;
+`TomSqlInvalidationChannel` writes each invalidation to a table every node polls,
+and its poll interval is the bound.
+
 ## Class Hierarchy
 
 ```
@@ -68,7 +87,18 @@ TomCache
 TomCommand  (kernel)
     ├── TomCacheStoreMessage
     ├── TomCacheRemoveMessage
-    └── TomCacheRetrieveMessage
+    ├── TomCacheRetrieveMessage
+    └── TomCacheInvalidateMessage
+
+TomCacheInvalidation
+
+TomInvalidationChannel  (interface)
+    ├── TomLocalInvalidationChannel
+    └── TomSqlInvalidationChannel
+
+TomCacheInvalidator  (static only)
+
+TomCacheInvalidationRow
 ```
 
 ## Classes
@@ -246,6 +276,7 @@ factory TomCache.forType(
 | `stopTimers` | `void stopTimers()` | Cancels the deletion and clearance timers if they are running and clears both fields; the intervals are untouched, so `createTimers` restarts the cache. |
 | `createDeletionTimer` | `Timer createDeletionTimer()` | Builds the periodic timer that removes entries past their `deletionTime`, in `Zone.root`. |
 | `createClearanceTimer` | `Timer createClearanceTimer()` | Builds the periodic timer that empties the entire cache, in `Zone.root`. |
+| `clear` | `void clear()` | Removes every entry, resetting the MRU chain along with the backing map so a bounded cache is left consistently empty. The clearance timer and a cross-node `cache` invalidation (`TomCacheInvalidator.invalidateCache`) both come here. |
 
 ### TomCacheStoreMessage
 
@@ -329,6 +360,254 @@ TomCacheRetrieveMessage(String cacheName, String key)
 | ------ | --------- | ----------- |
 | `execute` | `Future<Object?> execute()` | *(override)* Reads the entry from the main-isolate cache and returns its value. |
 
+### TomCacheInvalidation
+
+One invalidation, as it travels between nodes: what is invalidated (`kind`),
+the username or cache name it names (`target`), the entry key of a single-entry
+invalidation (`key`), when it was raised (`at`, in UTC) and the node that raised
+it (`origin`). The constructor is private; an invalidation is built by one of
+the four factories.
+
+#### Constructors
+
+```dart
+factory TomCacheInvalidation.principal(String username, {DateTime? at, String? origin})
+factory TomCacheInvalidation.cacheEntry(String cacheName, String key, {DateTime? at, String? origin})
+factory TomCacheInvalidation.cache(String cacheName, {DateTime? at, String? origin})
+factory TomCacheInvalidation.fromParts({required String kind, required String target, String? key, required DateTime at, required String origin})
+```
+
+`at` defaults to now and `origin` to `TomCacheInvalidator.nodeId`; both are
+stored in UTC. `fromParts` rebuilds an invalidation from its stored parts and
+throws `ArgumentError` for a `kind` name no `TomInvalidationKind` carries.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `kind` | `TomInvalidationKind` | What is invalidated. |
+| `target` | `String` | The username, or the cache name. |
+| `key` | `String?` | The entry key of a `cacheEntry` invalidation; `null` otherwise. |
+| `at` | `DateTime` | When the invalidation was raised, in UTC. For a principal, tokens issued at or before it are revoked. |
+| `origin` | `String` | The node that raised it — `TomCacheInvalidator.nodeId` there. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* The kind, target, key, instant and origin, for a log line. |
+
+### TomInvalidationChannel
+
+How invalidations reach the other nodes of a cluster — an `abstract interface
+class`, implemented rather than extended. An implementation
+delivers what other nodes published to the callback given to `start`, and never
+delivers a node's own invalidations back to it.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `stalenessBound` | `Duration` | The longest time from `publish` on one node to delivery on another. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `start` | `Future<void> start(Future<void> Function(TomCacheInvalidation invalidation) deliver)` | Starts delivering other nodes' invalidations to `deliver`. Completes once the channel is ready — for a channel that keeps history, after delivering the revocations still in force, so a node joining a cluster does not serve a token another node has revoked. |
+| `publish` | `Future<void> publish(TomCacheInvalidation invalidation)` | Sends `invalidation` to every other node. Throws when it could not be sent, so a caller revoking a grant learns that the revocation did not leave this node. |
+| `stop` | `Future<void> stop()` | Stops delivering. Idempotent. |
+
+### TomLocalInvalidationChannel
+
+The single-process channel: nothing to send, nothing to receive. The default,
+and the right channel for a deployment of one node — an invalidation applied
+here is applied everywhere there is.
+
+- **Implements:** `TomInvalidationChannel`
+
+#### Constructors
+
+```dart
+const TomLocalInvalidationChannel()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `stalenessBound` | `Duration` | *(override)* `Duration.zero`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `start` | `Future<void> start(Future<void> Function(TomCacheInvalidation invalidation) deliver)` | *(override)* Does nothing. |
+| `publish` | `Future<void> publish(TomCacheInvalidation invalidation)` | *(override)* Does nothing. |
+| `stop` | `Future<void> stop()` | *(override)* Does nothing. |
+
+### TomCacheInvalidator
+
+The cluster-wide entry point for invalidating caches and revoking principals.
+An `abstract final class`: every member is static. Each call applies the invalidation on this node first
+and then publishes it through the installed channel; a publish failure
+propagates after the local apply, so this node is consistent and the caller
+learns that the other nodes did not hear of it.
+
+A grant change — a role removed, a resource grant withdrawn, an account
+disabled — calls `revokePrincipal`. Every token the user holds is then refused
+on every node within the channel's `stalenessBound`, and the client
+re-authorizes and receives a token carrying the current grants.
+
+Callable from any isolate: a worker forwards the call to the main isolate as a
+`TomCacheInvalidateMessage`, since the caches and the channel live there.
+
+#### Static Members
+
+| Member | Type | Description |
+| ------ | ---- | ----------- |
+| `nodeId` | `String` | Identifies this process to the other nodes, so a channel can skip the invalidations it published itself. Random per process (16 hex digits from `Random.secure()`). |
+| `channel` | `TomInvalidationChannel` | The installed channel; `TomLocalInvalidationChannel` until `install`. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `install` | `static Future<void> install(TomInvalidationChannel channel)` | Installs `channel`, stops the one it replaces and starts the new one with `apply` as its delivery callback. Called once at start-up, before serving requests, so the revocations still in force reach this node before it answers anyone. |
+| `revokePrincipal` | `static Future<void> revokePrincipal(String username)` | Revokes, on every node, the tokens `username` holds that were issued now or earlier, and drops the principals cached for them. |
+| `invalidateCacheEntry` | `static Future<void> invalidateCacheEntry(String cacheName, String key)` | Removes `key` from the cache named `cacheName` on every node. |
+| `invalidateCache` | `static Future<void> invalidateCache(String cacheName)` | Empties the cache named `cacheName` on every node. |
+| `raise` | `static Future<void> raise(TomCacheInvalidation invalidation)` | Applies `invalidation` here, then publishes it — on the main isolate; a worker forwards it there. |
+| `apply` | `static Future<void> apply(TomCacheInvalidation invalidation)` | Applies `invalidation` to this process's caches, whichever node raised it: a principal through `TomAuthorizationCache.revokeLocally`, an entry through `TomCache.removeEntry`, a cache through `TomCache.clear`. A cache name nothing registered here is nothing to invalidate. |
+| `reset` | `static Future<void> reset()` | Puts back the local channel, stopping the installed one. Test support. |
+
+### TomCacheInvalidateMessage
+
+Cross-isolate command raising `invalidation` on the main isolate, where the
+caches and the channel live.
+
+- **Extends:** `TomCommand`
+
+#### Constructors
+
+```dart
+TomCacheInvalidateMessage(TomCacheInvalidation invalidation)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `invalidation` | `TomCacheInvalidation` | The invalidation to raise (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `execute` | `Future<bool> execute()` | *(override)* Calls `TomCacheInvalidator.raise` in the main isolate and returns `true`. |
+
+### TomSqlInvalidationChannel
+
+A `TomInvalidationChannel` over a database every node already has. `publish`
+inserts a row into the invalidation log; every node polls the log every
+`pollInterval` for rows above the highest id it has seen, and applies the ones
+other nodes wrote. The staleness bound is the poll interval: a revocation raised
+on one node is applied on every other within `pollInterval` plus one query.
+
+On `start` the channel takes the log's highest id as its watermark and first
+delivers every principal revocation raised within `retention` — the revocations
+still in force — so a node that joins or restarts does not serve a token another
+node revoked before it was there. Polling then runs on a periodic timer in
+`Zone.root`.
+
+- **Implements:** `TomInvalidationChannel`
+
+#### Constructors
+
+```dart
+TomSqlInvalidationChannel(
+  TomDataSource datasource, {
+  String table = defaultInvalidationTable,
+  Duration pollInterval = const Duration(seconds: 2),
+  Duration? retention,
+  bool createSchema = true,
+})
+
+factory TomSqlInvalidationChannel.named(
+  String datasourceName, {
+  String table = defaultInvalidationTable,
+  Duration pollInterval = const Duration(seconds: 2),
+  Duration? retention,
+  bool createSchema = true,
+})
+```
+
+`retention` defaults to `TomAuthorizationCache.revocationRetention`. `named`
+looks the data source up in the registry and throws a `TomCacheException`
+keyed `cache.invalidation.unknown_datasource` (`clientThrow: false`) when none
+is registered under that name.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `datasource` | `TomDataSource` | The data source the log lives in (final). |
+| `table` | `String` | The log table (final). |
+| `pollInterval` | `Duration` | How often the log is read; also the `stalenessBound` (final). |
+| `retention` | `Duration` | How long a row is kept, and how far back `start` looks for revocations (final). |
+| `createSchema` | `bool` | Whether to create the log table on first use; `false` when the migration module owns the schema (final). |
+| `stalenessBound` | `Duration` | *(override)* `pollInterval`. |
+| `isRunning` | `bool` | Whether the channel is polling. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `ensureSchema` | `Future<void> ensureSchema()` | Creates the log table if it does not exist, when `createSchema` is set. Idempotent. |
+| `start` | `Future<void> start(Future<void> Function(TomCacheInvalidation invalidation) deliver)` | *(override)* Ensures the schema, records the watermark, delivers the principal revocations within `retention`, then starts the poll timer. |
+| `poll` | `Future<void> poll()` | Reads up to 1000 rows above the last one seen and delivers those whose `origin` is not this node; prunes rows older than `retention` at most once per `retention / 24`. A poll still running when the next is due is not overlapped; a failure is logged at warning level and the next poll retries from the same row. Runs on the timer, and is callable directly. |
+| `publish` | `Future<void> publish(TomCacheInvalidation invalidation)` | *(override)* Inserts the invalidation as a row; a failure propagates. |
+| `stop` | `Future<void> stop()` | *(override)* Cancels the poll timer and drops the delivery callback. |
+
+### TomCacheInvalidationRow
+
+One row of the invalidation log, as `TomSqlInvalidationChannel` reads it — a
+reflected row class (`@tomReflector`, `@TomDbTable` with placeholder names, as
+every raw-query row type carries).
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `id` | `int` | The row's place in the log (`id`). |
+| `kind` | `String` | The `TomInvalidationKind` name (`kind`). |
+| `target` | `String` | The username or cache name (`target`). |
+| `entryKey` | `String?` | The entry key of a single-entry invalidation (`entry_key`). |
+| `origin` | `String` | The node that wrote it (`origin`). |
+| `raisedAt` | `String` | When it was raised, as the stored `DATETIME(6)` text (`raised_at`). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toInvalidation` | `TomCacheInvalidation toInvalidation()` | The invalidation this row records. |
+
+## Enums
+
+### TomInvalidationKind
+
+What a `TomCacheInvalidation` invalidates.
+
+| Value | Meaning |
+| ----- | ------- |
+| `principal` | Every token a user holds that was issued at or before the invalidation; `target` is the username. |
+| `cacheEntry` | One entry of a named cache; `target` is the cache name and `key` the entry key. |
+| `cache` | Every entry of a named cache; `target` is the cache name. |
+
 ## Global Functions and Constants
 
-None — this module exposes no top-level functions or constants.
+| Name | Declaration | Description |
+| ---- | ----------- | ----------- |
+| `defaultInvalidationTable` | `const String defaultInvalidationTable = 'tom_cache_invalidation'` | The default name of the cache-invalidation log. |
+| `invalidationTable` | `TomFrameworkTable invalidationTable(String table)` | The cache-invalidation log `table`, declared once as a framework-owned table: `id` (`BIGINT` auto-increment, primary key), `kind`, `target`, `entry_key` (nullable), `origin`, `raised_at` (`DATETIME(6)`, indexed). Listed by `frameworkOwnedTables`. |
+| `invalidationTableDdl` | `String invalidationTableDdl(String table)` | The `CREATE TABLE` for the log `table`, for a deployment that applies DDL by hand. |

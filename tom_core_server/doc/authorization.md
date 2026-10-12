@@ -15,6 +15,7 @@ row scope.
   - [The cache does not decide access](#the-cache-does-not-decide-access)
 - [Isolate Model](#isolate-model)
 - [Lifetime and Expiry](#lifetime-and-expiry)
+- [Revoking a Principal](#revoking-a-principal)
 - [Grants, Grades and Delegations](#grants-grades-and-delegations)
 - [The Grant-Driven Row Scope](#the-grant-driven-row-scope)
   - [The grades are the design](#the-grades-are-the-design)
@@ -31,9 +32,9 @@ row scope.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomAuthorizationCache` | class | The main-isolate cache: `getPrincipal` / `storePrincipal` keyed by JWT token string, plus the eviction sweep's lifecycle |
+| `TomAuthorizationCache` | class | The main-isolate cache: `getPrincipal` / `storePrincipal` keyed by JWT token string, the per-user revocations (`revokeLocally`, `isRevoked`), plus the eviction sweep's lifecycle |
 | `TomAuthorizationCacheEntry` | class | One cached principal paired with its expiry (`deletionTime`) |
-| `TomAuthorizationCacheException` | class | Thrown when a cached entry has expired, when a token's `exp` claim is unreadable so nothing was cached, or when a worker forwards to a creator with no cache executor registered |
+| `TomAuthorizationCacheException` | class | Thrown when a cached entry has expired, when the token was issued before its user's grants were revoked, when a token's `exp` claim is unreadable so nothing was cached, or when a worker forwards to a creator with no cache executor registered |
 | `TomAuthorizationCacheStoreMessage` | class | Cross-isolate command: store a principal in the main isolate |
 | `TomAuthorizationCacheRetrieveMessage` | class | Cross-isolate command: read a principal from the main isolate |
 | `TomAuthorizationCacheExecutor` | class | Services the two messages in the main isolate |
@@ -74,8 +75,8 @@ var (
   TomCredentialOutcome outcome,
 ) = extractAuthentication(request);
 
-// A cache hit wins; a miss falls back to callPrincipal; an *expired* entry
-// resolves to no principal at all.
+// A cache hit wins; a miss falls back to callPrincipal; an *expired* entry or
+// a *revoked* token resolves to no principal at all.
 var principal = await _resolveRequestPrincipal(clientToken, callPrincipal);
 ```
 
@@ -90,6 +91,10 @@ two. `getPrincipal` reports an expired entry by throwing (see
 [Lifetime and Expiry](#lifetime-and-expiry)), and the middleware catches that,
 logs it, and resolves the request's principal to `null` — the same answer a
 request bearing no credentials gets.
+
+A revoked token takes the same path: `getPrincipal` refuses it with
+`authorization.cache.revoked_principal`, and the request proceeds
+unauthenticated — see [Revoking a Principal](#revoking-a-principal).
 
 It does **not** fall back to `callPrincipal`, even though one is sitting right
 there. An entry's expiry *is* the token's `exp`, so an expired entry
@@ -233,6 +238,65 @@ boot, because the sweep wants nothing a zone can give it — it walks a plain ma
 needs no principal and no transaction, and a failure in it belongs to the
 process rather than to any request. Nothing therefore has to call
 `startEviction` at start-up to get the zone right.
+
+## Revoking a Principal
+
+A token carries the grants it was issued with until it expires, and so does the
+principal cached for it. When a user's grants change — a role removed, a
+resource grant withdrawn, an account disabled — the server **revokes the
+principal**: every token the user holds that was issued at or before the
+revocation stops yielding a principal, the client re-authorizes, and the new
+token carries the current grants.
+
+```dart
+await TomCacheInvalidator.revokePrincipal('alice');
+```
+
+`TomCacheInvalidator.revokePrincipal` lives in the [cache](cache.md) module,
+because a revocation has to reach every node: it applies the revocation here
+and publishes it through the installed invalidation channel, and every other
+node applies it on delivery. How quickly is the channel's staleness bound —
+zero with the default single-process channel, the poll interval (default two
+seconds) plus one query with `TomSqlInvalidationChannel`. See the cache
+guide's "Cross-Node Invalidation".
+
+On each node the revocation lands in `TomAuthorizationCache.revokeLocally(username,
+at)`, which records the instant per username — of two revocations of one user
+the later is kept — and drops every principal cached for that user. It is the
+process-local half and is called on the main isolate, where the cache lives;
+application code calls the invalidator instead.
+
+**What counts as revoked.** `TomAuthorizationCache.isRevoked(token)` compares
+the token's `iat` claim — falling back to `nbf` — with its user's revocation
+instant, in whole seconds, the precision of `iat`:
+
+| The token | Is |
+| --------- | -- |
+| issued in a second before the revocation's | revoked |
+| issued within the revocation's second | revoked — the safe direction to round: a client re-authorizing in that second is refused once and succeeds a second later |
+| issued in a later second | served |
+| carrying neither `iat` nor `nbf` | revoked — it cannot show it was issued afterwards |
+| carrying no `username` claim | never revoked by user |
+
+`TomAuthorizationCache.revokedAt(username)` answers the recorded instant, or
+`null`.
+
+**A revoked token is refused whether or not anything is cached for it.**
+`getPrincipal` checks `isRevoked` first and throws
+`authorization.cache.revoked_principal`, dropping any entry cached under the
+token. Refusing only the cached entry would not be enough: the token's own
+claims still list the revoked grants, and the request pipeline would fall back
+to the principal they describe. The server's authentication middleware treats
+the refusal exactly like an expired entry — logged at info, and the request
+proceeds unauthenticated.
+
+**How long a revocation is remembered.** `TomAuthorizationCache.revocationRetention`
+— one day by default, and settable — is how long a revocation is kept; the
+eviction sweep forgets older ones, and `dispose` forgets them all. A token that
+outlives the retention after a revocation is served with the grants it was
+issued with, so the retention must be at least the longest lifetime of a token
+the deployment issues. `TomSqlInvalidationChannel` keeps its log rows, and
+looks back on start-up, over the same span by default.
 
 ## Grants, Grades and Delegations
 
@@ -392,19 +456,6 @@ against MariaDB.
 
 ## Not Yet Implemented
 
-- **A cached principal outlives a revoked grant.** An entry's lifetime is its
-  token's `exp` and nothing else — see
-  [Lifetime and Expiry](#lifetime-and-expiry) — and the cache exposes no removal
-  or invalidation. So editing a grant, a delegation or a role takes effect for a
-  principal only when its token expires and the next request re-resolves it. A
-  deployment that needs a revocation to bite immediately has to shorten token
-  lifetimes; the framework offers no push.
-  <!-- unpinned: absence — the cache offers no removal or invalidation -->
-- **The cache is per process.** `TomAuthorizationCache` is a static singleton
-  and the worker-isolate route forwards to *this* process's main isolate, so
-  every server node keeps its own copy and nothing coordinates them. Two nodes
-  can hold different answers for one token until both expire.
-  <!-- unpinned: absence — nothing coordinates the per-node caches -->
 - **An entry's lifetime has one-second resolution.** `exp` is encoded in whole
   seconds, so a token good for 300 ms cannot be expressed and reads as already
   expired.
@@ -430,6 +481,15 @@ asserted through the same API the main-isolate ones use, which is the claim
 worth making: a hit, a miss and an expiry are reported identically on either
 side, so a caller cannot tell where it runs.
 
+Revocation is covered by `test/cache_invalidation_test.dart` — the cached
+principal dropped, a revoked token refused with nothing cached, a token issued
+after the revocation served, a token issued within the revocation's second and
+one carrying no issue instant both refused, other users untouched, the later of
+two revocations kept, and the retention sweep — and
+across two nodes over MariaDB by `test/cache_invalidation_db_test.dart`.
+`test/server_test.dart` asserts that the middleware serves a revoked token's
+request unauthenticated.
+
 The graded model and the grant-driven row scope are covered by suites named
 after the types rather than the module — `graded_authorization_test.dart`,
 `principal_resource_grant_test.dart`, `principal_delegation_test.dart`,
@@ -450,14 +510,15 @@ whole of what the scope contributes.
 ## Core Components
 
 - **`TomAuthorizationCache`** — the cache itself. Public surface is
-  `getPrincipal` / `storePrincipal` plus the eviction lifecycle
+  `getPrincipal` / `storePrincipal`, the revocations (`revokeLocally`,
+  `revokedAt`, `isRevoked`, `revocationRetention`) and the eviction lifecycle
   (`startEviction`, `stopEviction`, `isEvicting`, and `dispose` via
-  `instance`); the backing map is private, and so is the constructor.
+  `instance`); the backing maps are private, and so is the constructor.
 - **`TomAuthorizationCacheEntry`** — value object pairing the
   `authorizedPrincipal` with its `deletionTime`.
 - **`TomAuthorizationCacheException`** — signals an entry that was found
-  expired (and dropped by the read that found it), or a token whose
-  `exp` claim could not be read.
+  expired (and dropped by the read that found it), a token issued before its
+  user's last revocation, or a token whose `exp` claim could not be read.
 - **`TomAuthorizationCacheStoreMessage` / `TomAuthorizationCacheRetrieveMessage`**
   — the commands worker isolates send to the main isolate.
 - **`TomAuthorizationCacheExecutor`** — the `TomExecutor` registered in the

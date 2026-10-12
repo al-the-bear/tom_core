@@ -86,8 +86,45 @@
 - **`TomWebAuthnSoftwareAuthenticator`**, a passkey authenticator in software
   (real P-256 keys, CBOR and signatures in memory) for tests and bring-up.
 
+- **Cross-node cache invalidation** (`cache/cache_invalidation.dart`):
+  `TomCacheInvalidator` — `install(channel)`, `revokePrincipal(username)`,
+  `invalidateCacheEntry(cacheName, key)`, `invalidateCache(cacheName)`,
+  `raise`, `apply`, `reset`, `channel`, `nodeId` — applies an invalidation on
+  this node and publishes it through the installed `TomInvalidationChannel`
+  (`stalenessBound`, `start`, `publish`, `stop`); a publish failure propagates
+  after the local apply. `TomCacheInvalidation` (`principal`, `cacheEntry`,
+  `cache`, `fromParts` factories), `TomInvalidationKind`, and
+  `TomCacheInvalidateMessage`, which carries a worker's call to the main
+  isolate. `TomLocalInvalidationChannel` is the default: no other node, a bound
+  of zero.
+- **`TomSqlInvalidationChannel`** (`cache/sql_invalidation_channel.dart`), a
+  channel over a table every node polls: `publish` inserts a row, each node
+  reads the rows above the last id it saw every `pollInterval` (2 s; also the
+  staleness bound) and skips its own, `start` first applies the principal
+  revocations raised within `retention`, and rows older than `retention` are
+  pruned. `TomSqlInvalidationChannel.named(datasourceName)` resolves a
+  registered data source and throws `cache.invalidation.unknown_datasource`
+  otherwise. `TomCacheInvalidationRow` is the reflected row.
+- **The invalidation log table**, `tom_cache_invalidation`: `invalidationTable`,
+  `invalidationTableDdl` and `defaultInvalidationTable`
+  (`cache/invalidation_sql.dart`), listed by `frameworkOwnedTables` (new
+  parameter `invalidation`), with the reference migration
+  `example/cache/migrations/main/tomcore/[1]-create_tom_cache_invalidation.sql`.
+- **Principal revocation in `TomAuthorizationCache`**: `revokeLocally(username,
+  at)`, `revokedAt(username)`, `isRevoked(token)` and `revocationRetention`
+  (24 h). `getPrincipal` refuses a token issued at or before its user's last
+  revocation — compared on `iat`, else `nbf`, in whole seconds — with
+  `authorization.cache.revoked_principal`, whether or not a principal is cached
+  for it; the server's authentication middleware serves such a request
+  unauthenticated, as it does an expired entry.
+- **`TomCache.clear()`**, which empties the map and the most-recently-used chain
+  together; the clearance timer and a cache invalidation both use it.
+
 ### Changed
 
+- **`TomAuthorizationCache.dispose` forgets every revocation** as well as
+  dropping the cached principals, and the eviction sweep forgets revocations
+  older than `revocationRetention`.
 - **Breaking: every participant hook is handed the transaction.**
   `TomTransactionParticipant.prepare`, `commit`, `rollback` and
   `endTransaction` take `(TomTransaction transaction)`, like

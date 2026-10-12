@@ -644,6 +644,43 @@ void main() {
     // expired" and "this token has expired" are one fact, not two. A fixture
     // pairing a dead entry with a live token would be testing a state the cache
     // cannot reach.
+    group('when the principal\'s grants were revoked', () {
+      // A revocation raised on any node reaches this one through the
+      // invalidation channel; from then on a token issued before it must not
+      // produce the principal it was issued with — neither one cached for it,
+      // nor the one its own claims still describe.
+      test(
+        'a live token issued before the revocation yields no principal',
+        () async {
+          final token = TomClientJwtToken(
+            TomServerJwtToken({
+              'userId': 'u',
+              'username': 'alice',
+            }, expiresIn: const Duration(hours: 1)).getJWT('tom'),
+          );
+          TomAuthorizationCache.revokeLocally(
+            'alice',
+            DateTime.now().add(const Duration(seconds: 1)),
+          );
+          addTearDown(TomAuthorizationCache.instance.dispose);
+
+          TomPrincipal? zonePrincipal;
+          var handlerRan = false;
+          final handler = tomDefaultAuthenticationMiddleware('auth')((req) {
+            handlerRan = true;
+            zonePrincipal = getFromCurrentZone<TomPrincipal>();
+            return Response.ok('ok');
+          });
+          final response = await handler(
+            _get({'authorization': 'Bearer ${token.tokenString}'}),
+          );
+          expect(handlerRan, isTrue, reason: 'served, unauthenticated');
+          expect(response.statusCode, 200);
+          expect(zonePrincipal, isNull);
+        },
+      );
+    });
+
     group('when the cached principal has expired', () {
       /// The bearer header for a token that expired an hour ago, with a
       /// principal cached under it. `username` is set so that

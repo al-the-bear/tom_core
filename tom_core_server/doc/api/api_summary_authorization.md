@@ -46,6 +46,10 @@ lives in the main isolate and worker isolates forward store/retrieve commands to
 it via cross-isolate messages serviced by `TomAuthorizationCacheExecutor`. The
 forwarding is transparent: a hit, a miss and an expiry are reported the same way
 on either side of the isolate boundary, so a caller cannot tell where it runs.
+The cache also remembers, per username, when that user's grants were last
+revoked, and refuses a token issued at or before that instant whether or not it
+holds a principal for it; `TomCacheInvalidator.revokePrincipal` in the cache
+module raises a revocation on every node.
 
 `graded_authorization.dart` adds the four-state authorization model
 (`TomAuthState.none`/`disabled`/`read`/`full`): `TomResourceGrant` persists a
@@ -104,7 +108,7 @@ Enum: TomDelegationMode
 ### TomAuthorizationCacheException
 
 Raised by `TomAuthorizationCache` when a principal cannot be returned or cached.
-Three conditions carry three keys, because they call for three different
+Each condition carries its own key, because they call for different
 responses.
 
 - **Extends:** `TomServerException`
@@ -114,6 +118,7 @@ responses.
 | Key | Meaning |
 | --- | ------- |
 | `authorization.cache.expired_principal` | A matching entry existed but its expiry had passed; it has been dropped, so the next read of the same token is a miss. The client should re-authorize. |
+| `authorization.cache.revoked_principal` | The principal's grants were revoked after the presented token was issued; any principal cached for it has been dropped. Raised whether or not anything was cached. The client should re-authorize. |
 | `authorization.cache.missing_expiry` | The token carries no readable `exp` claim -- absent, or not an integer -- so nothing was cached. |
 | `authorization.cache.invalid_expiry` | The token's `exp` claim is an integer no clock can represent, so nothing was cached. |
 | `authorization.cache.executor_not_registered` | A worker forwarded to a creator where nothing claimed the command, which means `TomAuthorizationCacheExecutor` was never registered. |
@@ -138,7 +143,7 @@ TomAuthorizationCacheException(
 ```
 
 `clientThrow` defaults to `true`, which is the opposite of most of the package
-and is the point: all three conditions above are about the token the caller
+and is the point: all but the executor key are about the token the caller
 presented, and two of them tell the caller what to do next. An answer the
 caller cannot read leaves it retrying a token that will never be accepted.
 
@@ -188,21 +193,25 @@ can populate, so there is exactly one.
 | `instance` | `TomAuthorizationCache` | The one cache the static API reads and writes; register it with `tomShutdownCleanup` for orderly shutdown. |
 | `evictionInterval` | `Duration` | How often the sweep runs when no other interval is asked for -- one hour. |
 | `isEvicting` | `bool` | Whether a sweep is currently running. |
+| `revocationRetention` | `Duration` | How long a revocation is remembered — one day by default, settable. A token that outlives it after a revocation is served with the grants it was issued with, so it must be at least the longest lifetime of a token the deployment issues. `TomSqlInvalidationChannel` keeps its log rows for the same span by default. |
 
 #### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `getPrincipal` | `static Future<TomPrincipal?> getPrincipal(TomClientJwtToken authenticationToken)` | Returns the cached principal, or `null` on a cache miss. Throws `TomAuthorizationCacheException` when the entry has expired, and removes that entry as part of the same read -- so the expiry is reported once and a second read of the same token is an ordinary miss. Called from a worker isolate the lookup is forwarded to the main isolate, and all three answers survive the trip -- a hit returns the principal, a miss returns `null`, an expiry rethrows -- so callers need no isolate-dependent handling. |
+| `getPrincipal` | `static Future<TomPrincipal?> getPrincipal(TomClientJwtToken authenticationToken)` | Returns the cached principal, or `null` on a cache miss. Throws `TomAuthorizationCacheException` keyed `revoked_principal` when `isRevoked(authenticationToken)` holds — whether or not anything is cached for the token, since its own claims still list the revoked grants — dropping any entry cached for it. Throws `expired_principal` when the entry has expired, and removes that entry as part of the same read -- so the expiry is reported once and a second read of the same token is an ordinary miss. Called from a worker isolate the lookup is forwarded to the main isolate, and all three answers survive the trip -- a hit returns the principal, a miss returns `null`, an expiry rethrows -- so callers need no isolate-dependent handling. |
 | `storePrincipal` | `static Future<void> storePrincipal(TomClientJwtToken authenticationToken, TomPrincipal authorizedPrincipal)` | Stores the principal under the token, using the token's standard `exp` claim as expiry, and starts the eviction sweep if it is not already running. Throws `TomAuthorizationCacheException` (`missing_expiry` / `invalid_expiry`) when that claim is absent, is not an integer, or is an integer no clock can represent -- there is no fallback lifetime, because an invented one would keep a principal cached past the expiry of the token authorizing it. Nothing is cached in that case and the caller keeps resolving the principal per request. The future carries completion and failure only: a store either happens or throws, so there is nothing to branch on. |
 | `startEviction` | `static void startEviction({Duration interval = evictionInterval})` | Starts the sweep at `interval`, replacing any sweep already running -- so the postcondition "a sweep is running at this interval" holds whenever it returns. Rarely needed: a store starts one at the hourly default. For a server that wants a different interval, and for tests that cannot wait an hour. Not needed to control the sweep's zone: it is created in `Zone.root` whichever path starts it. |
+| `revokeLocally` | `static void revokeLocally(String username, DateTime at)` | Revokes, in this process, every token `username` holds that was issued at or before `at`: drops the user's cached principals and makes `getPrincipal` refuse such a token from now on. Of two revocations of one user the later instant is kept. Starts the sweep, which forgets a revocation once it is older than `revocationRetention`. This process only — a grant change calls `TomCacheInvalidator.revokePrincipal`, which calls this here and carries the revocation to every other node. Main isolate only. |
+| `revokedAt` | `static DateTime? revokedAt(String username)` | When `username`'s grants were last revoked in this process, or `null`. |
+| `isRevoked` | `static bool isRevoked(TomClientJwtToken token)` | Whether `token` was issued at or before its user's last revocation. Compared in whole seconds, the precision of the token's `iat` claim, falling back to `nbf`: a token issued within the revocation's second counts as revoked — the safe direction to round — and a token carrying neither claim cannot show it was issued afterwards and counts as revoked too. A token with no `username` claim is never revoked by user. |
 | `stopEviction` | `static void stopEviction()` | Cancels the sweep; a no-op when none is running. Cached entries are left in place -- stopping the sweep suspends the bounding of the map, it does not invalidate its contents. Reads still reject expired entries and still drop the ones they reject, so a stopped cache sheds the tokens anyone asks about, just not the ones nobody does. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `dispose` | `void dispose()` | *(override)* Stops the sweep and drops every cached principal. Synchronous: cancelling a timer and clearing a map need nothing more. |
+| `dispose` | `void dispose()` | *(override)* Stops the sweep, drops every cached principal and forgets every revocation. Synchronous: cancelling a timer and clearing a map need nothing more. |
 
 ### TomAuthorizationCacheStoreMessage
 
