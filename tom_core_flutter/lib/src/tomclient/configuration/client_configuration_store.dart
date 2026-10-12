@@ -64,7 +64,7 @@ abstract class TomClientConfigurationStore {
   /// an error. Implementations that find unreadable content throw
   /// `client_configuration.store.invalid_content` rather than silently
   /// returning empty, because a corrupt store that looks empty would be
-  /// overwritten by the next [write] and lose the install's settings.
+  /// overwritten by the next [update] and lose the install's settings.
   Future<Map<String, Object?>> read();
 
   /// Replaces the persisted override map with what [change] makes of it, as

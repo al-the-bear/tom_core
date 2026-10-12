@@ -129,8 +129,8 @@ class TomBlobMigrationReport {
 ///
 /// ```dart
 /// final report = await TomBlobMigration(
-///   source: TomBlobStoreInfo.storeNamed('files-on-disk').store,
-///   target: TomBlobStoreInfo.storeNamed('files-on-s3').store,
+///   source: TomBlobStoreInfo.storeNamed('files-on-disk'),
+///   target: TomBlobStoreInfo.storeNamed('files-on-s3'),
 /// ).migrate(documentRepository);
 /// if (!report.complete) { /* report.absent names the dangling references */ }
 /// ```

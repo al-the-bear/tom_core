@@ -14,7 +14,7 @@
 ///
 /// The server's `TomTotp2FAService` writes four keys — `secret`, `otpauthUri`,
 /// `digits` and `periodSeconds` on an enrolment offer, `digits` and
-/// `periodSeconds` on a challenge. The shipped panels read three of them:
+/// `periodSeconds` on a challenge. The shipped panels read all four:
 ///
 /// | key | written on | read here | meaning |
 /// | --- | --- | --- | --- |
