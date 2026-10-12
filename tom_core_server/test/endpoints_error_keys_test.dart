@@ -133,16 +133,16 @@ class _VetoingParticipant implements TomTransactionParticipant {
   Future<bool> startTransaction(TomTransaction transaction) async => true;
 
   @override
-  Future<bool> prepare() async => false;
+  Future<bool> prepare(TomTransaction transaction) async => false;
 
   @override
-  Future<bool> commit() async => true;
+  Future<bool> commit(TomTransaction transaction) async => true;
 
   @override
-  Future<bool> rollback() async => true;
+  Future<bool> rollback(TomTransaction transaction) async => true;
 
   @override
-  Future<bool> endTransaction() async => true;
+  Future<bool> endTransaction(TomTransaction transaction) async => true;
 }
 
 /// A reflected class mirror with extra class-level annotations.

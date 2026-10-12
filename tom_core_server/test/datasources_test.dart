@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -125,31 +126,31 @@ void _describe(MariaDbDatasource ds) {
 /// The lifecycle rule is about what must *not* happen: an entry point reached
 /// before the data source was opened has to refuse, not open a connection of
 /// its own. Catching the exception alone cannot tell those two apart, because
-/// an implicit connect against the unconfigured `:-1` throws as well — so
-/// [connect] is overridden to count the attempts and fail loudly rather than
-/// touch the network.
+/// an implicit open against the unconfigured `:-1` throws as well — so
+/// [openConnection] is overridden to count the attempts and fail loudly rather
+/// than touch the network.
 class _NeverOpenedDatasource extends MariaDbDatasource {
   /// How many times something asked this data source to open a connection.
   int connectCalls = 0;
 
   @override
-  Future<void> connect() async {
+  Future<MySQLConnection> openConnection() async {
     connectCalls++;
     throw StateError('the data source dialled out');
   }
 }
 
-/// A stand-in [MySQLConnection] that reports a fixed link state and records
-/// every statement it is asked to run.
+/// A stand-in [MySQLConnection] that reports a link state and records every
+/// statement it is asked to run.
 ///
 /// `MySQLConnection` cannot be constructed without a server — its constructor
 /// is private and `createConnection` opens a socket — but it is a plain class,
-/// so its interface can be implemented. That is what makes the *other* half of
-/// the lifecycle rule reachable in a unit test: a data source can be handed a
-/// link that claims to be down, and the reconnect observed.
+/// so its interface can be implemented. That is what makes the pool's handling
+/// of a dropped link reachable in a unit test: a connection can be told it is
+/// down, and what the data source does next observed.
 class _FakeConnection implements MySQLConnection {
   @override
-  final bool connected;
+  bool connected;
 
   /// Every query this link was asked to run, in order.
   final List<String> executed = [];
@@ -167,11 +168,15 @@ class _FakeConnection implements MySQLConnection {
   final Object? closeFailure;
 
   /// What a statement compiled by [prepare] reports as its affected-row count.
-  ///
-  /// Distinct from [affectedRows], which belongs to the unprepared [execute]
-  /// path: a reconnect-and-retry re-prepares on *this* link, so this is the
-  /// count the retry branch has to pick up.
   BigInt preparedAffectedRows = BigInt.zero;
+
+  /// When set, the next prepared statement executed on this link finds the
+  /// link gone: it takes the link down and fails the way the driver does.
+  bool dropOnNextPreparedExecution = false;
+
+  /// Completes the next [execute] only when this completes, when set — so a
+  /// test can hold a statement in flight.
+  Completer<void>? hold;
 
   _FakeConnection({
     required this.connected,
@@ -182,6 +187,7 @@ class _FakeConnection implements MySQLConnection {
   @override
   Future<void> close() async {
     closeCalls++;
+    connected = false;
     if (closeFailure != null) throw closeFailure!;
   }
 
@@ -192,24 +198,34 @@ class _FakeConnection implements MySQLConnection {
     bool iterable = false,
   ]) async {
     executed.add(query);
+    final waitFor = hold;
+    if (waitFor != null) {
+      hold = null;
+      await waitFor.future;
+    }
     return _FakeResultSet(affectedRows);
   }
+
+  /// Every statement handle this link handed out, in order.
+  final List<_FakePreparedStmt> statements = [];
 
   @override
   Future<PreparedStmt> prepare(String query, [bool iterable = false]) async {
     prepared.add(query);
-    return _FakePreparedStmt(affectedRows: preparedAffectedRows);
+    final stmt = _FakePreparedStmt(this, affectedRows: preparedAffectedRows);
+    statements.add(stmt);
+    return stmt;
   }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-/// A prepared-statement handle that runs, or fails the way one does when the
-/// link beneath it has gone.
+/// A prepared-statement handle that runs on its [link], or fails the way one
+/// does when the link beneath it has gone.
 class _FakePreparedStmt implements PreparedStmt {
-  /// Thrown by [execute] when set; `null` makes the statement succeed.
-  final Object? failure;
+  /// The connection that prepared this handle.
+  final _FakeConnection link;
 
   /// What the result set this handle produces reports as its row count.
   final BigInt affectedRows;
@@ -217,7 +233,10 @@ class _FakePreparedStmt implements PreparedStmt {
   /// How many times this handle was executed.
   int executions = 0;
 
-  _FakePreparedStmt({this.failure, BigInt? affectedRows})
+  /// How many times this handle was deallocated.
+  int deallocations = 0;
+
+  _FakePreparedStmt(this.link, {BigInt? affectedRows})
     : affectedRows = affectedRows ?? BigInt.zero;
 
   @override
@@ -226,8 +245,19 @@ class _FakePreparedStmt implements PreparedStmt {
   @override
   Future<IResultSet> execute(List<dynamic> params) async {
     executions++;
-    if (failure != null) throw failure!;
+    if (link.dropOnNextPreparedExecution) {
+      link.dropOnNextPreparedExecution = false;
+      link.connected = false;
+      throw MySQLClientException(
+        'Can not execute prepared stmt: connection closed',
+      );
+    }
     return _FakeResultSet(affectedRows);
+  }
+
+  @override
+  Future<void> deallocate() async {
+    deallocations++;
   }
 
   @override
@@ -252,56 +282,54 @@ class _FakeResultSet implements IResultSet {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-/// A data source holding a link that reports itself down, which [connect]
-/// replaces with a live one — the shape of a dropped connection being restored.
-class _DroppedLinkDatasource extends MariaDbDatasource {
-  /// The link that was open before the drop, and must not be used again.
-  final _FakeConnection dropped = _FakeConnection(connected: false);
+/// A data source whose pool opens stand-in connections, so which connection a
+/// statement ran on is observable.
+///
+/// Connections are handed out from [queued] first, then made fresh and live.
+class _PooledFakeDatasource extends MariaDbDatasource {
+  /// Connections the pool receives next, in order.
+  final List<_FakeConnection> queued;
 
-  /// The link [connect] installs.
-  final _FakeConnection reopened = _FakeConnection(
-    connected: true,
-    affectedRows: BigInt.two,
-  );
+  /// Every connection the pool opened, in order.
+  final List<_FakeConnection> opened = [];
 
-  /// How many times the data source was asked to reconnect.
-  int connectCalls = 0;
-
-  _DroppedLinkDatasource() {
-    connection = dropped;
+  _PooledFakeDatasource({List<_FakeConnection>? queued, int maxSize = 10})
+    : queued = queued ?? [] {
+    host = 'db';
+    port = 3306;
+    databaseName = 'app';
+    poolMaxSize = maxSize;
   }
 
   @override
-  Future<void> connect() async {
-    connectCalls++;
-    connection = reopened;
+  Future<MySQLConnection> openConnection() async {
+    final link = queued.isNotEmpty
+        ? queued.removeAt(0)
+        : _FakeConnection(connected: true, affectedRows: BigInt.two);
+    opened.add(link);
+    return link;
   }
+
+  /// The connection opened first — the one [connect] opens.
+  _FakeConnection get first => opened.first;
 }
 
-/// A data source holding a link that can be closed, so that what [close] leaves
-/// behind can be observed.
-///
-/// [connect] is overridden to count re-opens rather than dial: the point of
-/// these tests is that a closed data source does *not* reach it.
-class _ClosableDatasource extends MariaDbDatasource {
-  /// The link this data source starts with, and must let go of on [close].
-  final _FakeConnection link;
+/// The XA driver over stand-in connections, as [_PooledFakeDatasource] is for
+/// the plain one.
+class _PooledXADatasource extends MariaDbXADatasource {
+  final List<_FakeConnection> opened = [];
 
-  /// How many times something asked this data source to open a connection.
-  int connectCalls = 0;
-
-  _ClosableDatasource({_FakeConnection? link})
-    : link = link ?? _FakeConnection(connected: true) {
-    connection = this.link;
+  _PooledXADatasource() {
     host = 'db';
     port = 3306;
     databaseName = 'app';
   }
 
   @override
-  Future<void> connect() async {
-    connectCalls++;
-    connection = _FakeConnection(connected: true);
+  Future<MySQLConnection> openConnection() async {
+    final link = _FakeConnection(connected: true);
+    opened.add(link);
+    return link;
   }
 }
 
@@ -1752,164 +1780,379 @@ void main() {
   });
 
   // The other half of the rule, and the half that must not be lost while
-  // enforcing the first: a link that *was* opened and has since dropped is
-  // re-opened, because the settings are known and reconnecting is what the
+  // enforcing the first: a connection that *was* opened and has since dropped
+  // is replaced, because the settings are known and reconnecting is what the
   // caller wants. Refusing here instead would make every restarted database a
   // permanent outage for the process.
-  group('MariaDbDatasource lifecycle: a link that dropped', () {
-    test('is re-opened, and the statement runs on the new link', () async {
-      final ds = _DroppedLinkDatasource();
+  group('MariaDbDatasource lifecycle: a connection that dropped', () {
+    test('is replaced, and the statement runs on the new one', () async {
+      final ds = _PooledFakeDatasource();
+      await ds.connect();
+      ds.first.connected = false;
       expect(await ds.executeCommand('DELETE FROM t'), BigInt.two);
-      expect(ds.connectCalls, 1);
-      // Which link ran it is the assertion that matters. Reconnecting and then
-      // issuing the statement on the connection captured before the reconnect
-      // would leave the caller with the same dead link and a confusing error.
-      expect(ds.reopened.executed, ['DELETE FROM t']);
-      expect(ds.dropped.executed, isEmpty);
+      // Which connection ran it is the assertion that matters: the dead one
+      // must not be handed out again.
+      expect(ds.opened, hasLength(2));
+      expect(ds.opened[1].executed, ['DELETE FROM t']);
+      expect(ds.first.executed, isEmpty);
     });
 
-    test('a live link is used as it stands, with no reconnect', () async {
-      // The counterweight: reconnecting is conditional, not something every
-      // statement pays for. Driven through executeCommand because executeQuery
-      // maps its rows through reflection, which this suite does not bootstrap —
-      // and the two share the one helper, so the state under test is the same.
-      final live = _FakeConnection(connected: true);
-      final ds = _DroppedLinkDatasource()..connection = live;
+    test('a live connection is used as it stands, with no reconnect', () async {
+      final ds = _PooledFakeDatasource();
+      await ds.connect();
       await ds.executeCommand('DELETE FROM t');
-      expect(ds.connectCalls, 0);
-      expect(live.executed, ['DELETE FROM t']);
+      expect(ds.opened, hasLength(1));
+      expect(ds.first.executed, ['DELETE FROM t']);
     });
 
-    test('the prepared-statement retry re-prepares on the new link', () async {
-      // The fourth site the rule governs, and the only one that is not an entry
-      // point: a statement whose execute failed on a dead link reconnects and
-      // compiles itself again. It goes through the same helper, so a rule that
-      // held only for the entry points would leave the path that most needs it
-      // — the one reached *because* the link went away — on its own guard.
+    test('the prepared-statement retry re-prepares on a new connection', () async {
+      // The path reached *because* the connection went away: a statement whose
+      // execute failed on a dead link runs again on another connection, which
+      // prepares it for itself.
       //
       // Mapped as a grouped row with an empty projection so the assertion stays
       // on the retry: that route returns the mapped rows without reflecting a
       // result type, which this suite cannot bootstrap.
-      final ds = _DroppedLinkDatasource();
-      final stale = _FakePreparedStmt(
-        failure: MySQLClientException(
-          'Can not execute prepared stmt: connection closed',
-        ),
-      );
+      final ds = _PooledFakeDatasource();
+      await ds.connect();
       final statement = MariadbPreparedStatement<TomGroupedRow>(
-        stale,
         const [],
         ds,
         null,
         'SELECT 1',
         groupedProjection: const {},
       );
+      ds.first.dropOnNextPreparedExecution = true;
 
       expect(await statement.execute(), isEmpty);
-      expect(stale.executions, 1);
-      expect(ds.connectCalls, 1);
-      expect(ds.reopened.prepared, ['SELECT 1']);
-      expect(ds.dropped.prepared, isEmpty);
+      expect(ds.opened, hasLength(2));
+      expect(ds.first.prepared, ['SELECT 1']);
+      expect(ds.opened[1].prepared, ['SELECT 1']);
     });
 
     test('the retry refuses when the data source has been torn down', () async {
-      // A dropped link and a data source that no longer has one are different
-      // situations, and the retry is where confusing them costs most: reopening
-      // here would resurrect a data source the application let go, on a
-      // statement it still happened to hold. The rule says refuse, and this is
-      // the case that separates it from the guard it replaced — which reads
-      // only `connected`, and so cannot tell the two apart.
-      final ds = _DroppedLinkDatasource();
-      final stale = _FakePreparedStmt(
-        failure: MySQLClientException(
-          'Can not execute prepared stmt: connection closed',
-        ),
-      );
+      // A dropped connection and a data source that no longer exists are
+      // different situations: reopening here would resurrect a data source the
+      // application let go, on a statement it still happened to hold.
+      final ds = _PooledFakeDatasource();
+      await ds.connect();
       final statement = MariadbPreparedStatement<TomGroupedRow>(
-        stale,
         const [],
         ds,
         null,
         'SELECT 1',
         groupedProjection: const {},
       );
-      ds.connection = null;
+      await ds.close();
 
       await expectLater(
         statement.execute(),
-        throwsA(isA<MariadbDatasourceException>()),
+        throwsA(
+          isA<MariadbDatasourceException>().having(
+            (e) => e.key,
+            'key',
+            'error.datasource.not_opened',
+          ),
+        ),
       );
-      expect(ds.connectCalls, 0);
+      expect(ds.opened, hasLength(1));
+    });
+
+    test('inside a transaction a lost connection is not retried', () async {
+      // The transaction lived on the connection that was lost; running the
+      // statement again on another connection would run it outside the
+      // transaction the caller asked for.
+      final ds = _PooledFakeDatasource();
+      await ds.connect();
+      await TomTransactionManager.runInTransactionScope(() async {
+        final (txn, _) = TomTransactionManager.startTransaction();
+        await txn.registerParticipant(ds);
+        final statement = MariadbPreparedStatement<TomGroupedRow>(
+          const [],
+          ds,
+          null,
+          'SELECT 1',
+          groupedProjection: const {},
+        );
+        ds.first.dropOnNextPreparedExecution = true;
+        await expectLater(
+          statement.execute(),
+          throwsA(
+            isA<MariadbDatasourceException>().having(
+              (e) => e.key,
+              'key',
+              'error.failed-to-execute.transaction_connection_lost',
+            ),
+          ),
+        );
+        await txn.rollbackTransaction();
+      });
+      expect(ds.opened, hasLength(1));
+    });
+  });
+
+  // The reason the pool exists. With one connection, a transaction held it from
+  // its first statement to its conclusion, so a second transaction on the same
+  // data source waited — and one slow request stalled every other request on
+  // that database. Each transaction now takes a connection of its own.
+  group('MariaDbDatasource: concurrent transactions', () {
+    /// Runs [body] as its own request: a transaction scope of its own, with a
+    /// transaction this data source enlists in on its first statement.
+    Future<void> inTransaction(
+      Future<void> Function(TomTransaction txn) body,
+    ) => TomTransactionManager.runInTransactionScope(() async {
+      final (txn, _) = TomTransactionManager.startTransaction();
+      await body(txn);
+      await txn.commitTransaction();
+    });
+
+    test('a slow transaction does not block another', () async {
+      final ds = _PooledFakeDatasource();
+      await ds.connect();
+      final slow = Completer<void>();
+      final slowRunning = inTransaction((txn) async {
+        // Held inside its transaction until the other has finished.
+        ds.first.hold = slow;
+        await ds.executeCommand('UPDATE t SET a = 1');
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      var fastDone = false;
+      await inTransaction((txn) async {
+        await ds.executeCommand('UPDATE t SET b = 2');
+      }).timeout(const Duration(seconds: 5));
+      fastDone = true;
+
+      expect(fastDone, isTrue);
+      expect(slow.isCompleted, isFalse, reason: 'the slow one is still open');
+      slow.complete();
+      await slowRunning;
+
+      expect(ds.opened, hasLength(2));
+      expect(ds.opened[0].executed, [
+        'START TRANSACTION;',
+        'UPDATE t SET a = 1',
+        'COMMIT;',
+      ]);
+      expect(ds.opened[1].executed, [
+        'START TRANSACTION;',
+        'UPDATE t SET b = 2',
+        'COMMIT;',
+      ]);
+      expect(ds.lentConnectionCount, 0, reason: 'both handed back');
+    });
+
+    test(
+      'every statement of a transaction runs on its one connection',
+      () async {
+        final ds = _PooledFakeDatasource();
+        await ds.connect();
+        await inTransaction((txn) async {
+          await ds.executeCommand('UPDATE t SET a = 1');
+          await ds.executeCommand('UPDATE t SET a = 2');
+          expect(ds.lentConnectionCount, 1);
+        });
+        expect(ds.opened, hasLength(1));
+        expect(ds.first.executed, [
+          'START TRANSACTION;',
+          'UPDATE t SET a = 1',
+          'UPDATE t SET a = 2',
+          'COMMIT;',
+        ]);
+      },
+    );
+
+    test(
+      'a statement outside any transaction borrows another connection',
+      () async {
+        final ds = _PooledFakeDatasource();
+        await ds.connect();
+        final held = Completer<void>();
+        final txnRunning = inTransaction((txn) async {
+          await ds.executeCommand('UPDATE t SET a = 1');
+          await held.future;
+        });
+        await Future<void>.delayed(Duration.zero);
+        await ds.executeCommand('SELECT 1');
+        expect(ds.opened[1].executed, ['SELECT 1']);
+        held.complete();
+        await txnRunning;
+        expect(ds.first.executed, isNot(contains('SELECT 1')));
+      },
+    );
+
+    test(
+      'with every connection in use, a transaction waits its turn',
+      () async {
+        final ds = _PooledFakeDatasource(maxSize: 1);
+        await ds.connect();
+        final held = Completer<void>();
+        final order = <String>[];
+        final first = inTransaction((txn) async {
+          await ds.executeCommand('UPDATE t SET a = 1');
+          await held.future;
+          order.add('first done');
+        });
+        await Future<void>.delayed(Duration.zero);
+        final second = inTransaction((txn) async {
+          await ds.executeCommand('UPDATE t SET b = 2');
+          order.add('second ran');
+        });
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect(order, isEmpty, reason: 'the only connection is taken');
+        held.complete();
+        await Future.wait([first, second]);
+        expect(order, ['first done', 'second ran']);
+        expect(ds.opened, hasLength(1));
+      },
+    );
+
+    test('concurrent statements of one transaction start it once', () async {
+      // Both race to enlist the data source; the second has to wait for the
+      // first's START rather than start the transaction again.
+      final ds = _PooledFakeDatasource();
+      await ds.connect();
+      await inTransaction((txn) async {
+        await Future.wait([
+          ds.executeCommand('UPDATE t SET a = 1'),
+          ds.executeCommand('UPDATE t SET b = 2'),
+        ]);
+      });
+      expect(
+        ds.first.executed.where((c) => c.startsWith('START')),
+        hasLength(1),
+      );
+      expect(ds.opened, hasLength(1));
+    });
+
+    test('XA transactions side by side are separate branches', () async {
+      final ds = _PooledXADatasource();
+      await ds.connect();
+      final held = Completer<void>();
+      final first = inTransaction((txn) async {
+        await ds.executeCommand('UPDATE t SET a = 1');
+        await held.future;
+      });
+      await Future<void>.delayed(Duration.zero);
+      await inTransaction((txn) async {
+        await ds.executeCommand('UPDATE t SET b = 2');
+      });
+      held.complete();
+      await first;
+
+      String branchOn(_FakeConnection link) => link.executed
+          .firstWhere((c) => c.startsWith('XA START '))
+          .substring('XA START '.length);
+      expect(ds.opened, hasLength(2));
+      expect(branchOn(ds.opened[0]), isNot(branchOn(ds.opened[1])));
+      for (final link in ds.opened) {
+        final branch = branchOn(link);
+        expect(link.executed.where((c) => c.startsWith('XA')), [
+          'XA START $branch',
+          'XA END $branch',
+          'XA PREPARE $branch',
+          'XA COMMIT $branch',
+        ]);
+      }
     });
   });
 
   // A `DELETE` returns no rows, so the only thing an execute of one hands back
-  // is metadata on the result set. `lastGeneratedId` was already read from
-  // there; the row count was not read at all, and the CRUD repository's delete
-  // methods returned constants in its place. Both are per-execution state on
-  // the handle, and the two are captured together precisely so that the retry
-  // branch below cannot pick up one and forget the other.
+  // is metadata on the result set. Both are per-execution state on the handle,
+  // and the two are captured together precisely so that the retry branch below
+  // cannot pick up one and forget the other.
   group('MariadbPreparedStatement.lastAffectedRows', () {
-    /// A statement over [stmt], on a data source whose link is live.
-    MariadbPreparedStatement<TomGroupedRow> statementOver(
-      _FakePreparedStmt stmt,
-      MariaDbDatasource ds,
-    ) => MariadbPreparedStatement<TomGroupedRow>(
-      stmt,
-      const [],
-      ds,
-      null,
-      'DELETE FROM t',
-      groupedProjection: const {},
-    );
+    MariadbPreparedStatement<TomGroupedRow> statementOn(MariaDbDatasource ds) =>
+        MariadbPreparedStatement<TomGroupedRow>(
+          const [],
+          ds,
+          null,
+          'DELETE FROM t',
+          groupedProjection: const {},
+        );
 
     test('is zero before the statement has run', () {
-      final statement = statementOver(
-        _FakePreparedStmt(affectedRows: BigInt.from(9)),
-        _DroppedLinkDatasource(),
-      );
-      expect(statement.lastAffectedRows, 0);
+      expect(statementOn(_PooledFakeDatasource()).lastAffectedRows, 0);
     });
 
     test('reports the row count the execute returned', () async {
-      final ds = _DroppedLinkDatasource()
-        ..connection = _FakeConnection(connected: true);
-      final statement = statementOver(
-        _FakePreparedStmt(affectedRows: BigInt.from(3)),
-        ds,
-      );
+      final link = _FakeConnection(connected: true)
+        ..preparedAffectedRows = BigInt.from(3);
+      final ds = _PooledFakeDatasource(queued: [link]);
+      await ds.connect();
+      final statement = statementOn(ds);
       await statement.execute();
       expect(statement.lastAffectedRows, 3);
     });
 
     test('a delete that matched nothing reports zero', () async {
-      // Distinguishable from "never ran" only by the caller's own sequencing,
-      // which is why the count is documented as read-immediately-after-execute
-      // rather than as durable state.
-      final ds = _DroppedLinkDatasource()
-        ..connection = _FakeConnection(connected: true);
-      final statement = statementOver(_FakePreparedStmt(), ds);
+      final ds = _PooledFakeDatasource(
+        queued: [_FakeConnection(connected: true)],
+      );
+      await ds.connect();
+      final statement = statementOn(ds);
       await statement.execute();
       expect(statement.lastAffectedRows, 0);
     });
 
-    test('the reconnect-and-retry captures the count too', () async {
-      // The branch that is easy to miss: a retry runs a *different* handle, on
-      // a link re-opened after the first attempt found the connection gone. A
-      // capture written only into the happy path leaves every retried delete
-      // reporting zero rows — silently, since zero is a legal answer.
-      final ds = _DroppedLinkDatasource();
-      ds.reopened.preparedAffectedRows = BigInt.from(5);
-      final stale = _FakePreparedStmt(
-        failure: MySQLClientException(
-          'Can not execute prepared stmt: connection closed',
-        ),
+    test('the retry captures the count too', () async {
+      // A retry runs on a different connection, opened after the first attempt
+      // found its connection gone. A capture written only into the happy path
+      // leaves every retried delete reporting zero rows — silently, since zero
+      // is a legal answer.
+      final second = _FakeConnection(connected: true)
+        ..preparedAffectedRows = BigInt.from(5);
+      final ds = _PooledFakeDatasource(
+        queued: [_FakeConnection(connected: true), second],
       );
-      final statement = statementOver(stale, ds);
-
+      await ds.connect();
+      ds.first.dropOnNextPreparedExecution = true;
+      final statement = statementOn(ds);
       await statement.execute();
-      expect(ds.connectCalls, 1);
+      expect(ds.opened, hasLength(2));
       expect(statement.lastAffectedRows, 5);
+    });
+  });
+
+  // A pooled data source prepares a statement on each connection that runs
+  // it, so a statement a repository keeps for the life of the process runs on
+  // whichever connection it is given — and forgetting it reaches every one.
+  group('MariadbPreparedStatement on a pool', () {
+    test('a connection prepares a statement once and reuses it', () async {
+      final ds = _PooledFakeDatasource();
+      await ds.connect();
+      final statement = MariadbPreparedStatement<TomGroupedRow>(
+        const [],
+        ds,
+        null,
+        'SELECT 1',
+        groupedProjection: const {},
+      );
+      await statement.execute();
+      await statement.execute();
+      expect(ds.first.prepared, ['SELECT 1']);
+    });
+
+    test('deallocate reaches every connection that prepared it, once it is '
+        'handed back', () async {
+      final ds = _PooledFakeDatasource();
+      await ds.connect();
+      final prepared = MariadbPreparedStatement<TomGroupedRow>(
+        const [],
+        ds,
+        null,
+        'SELECT 1',
+        groupedProjection: const {},
+      );
+      await prepared.execute();
+      await prepared.deallocate();
+      // The connection is idle, so the deallocation waits for its next use.
+      expect(ds.first.statements.single.deallocations, 0);
+      await ds.executeCommand('DELETE FROM t');
+      expect(ds.first.statements.single.deallocations, 1);
+      // Prepared again on demand afterwards.
+      await prepared.execute();
+      expect(ds.first.prepared, ['SELECT 1', 'SELECT 1']);
     });
   });
 
@@ -2007,36 +2250,36 @@ void main() {
   // source the application let go, which on the shutdown path opens a socket
   // nothing will ever close.
   group('MariaDbDatasource lifecycle: a data source that was closed', () {
-    test('close releases the link and lets go of it', () async {
-      final ds = _ClosableDatasource();
+    test('close closes the pool and lets go of it', () async {
+      final ds = _PooledFakeDatasource();
+      await ds.connect();
       await ds.close();
-      expect(ds.link.closeCalls, 1);
-      expect(ds.connection, isNull);
+      expect(ds.first.closeCalls, 1);
+      expect(ds.openConnectionCount, 0);
       expect(ds.connected, isFalse);
       expect(ds.isOperational(), isFalse);
     });
 
     test('a closed data source refuses statements, and does not '
         're-open one', () async {
-      // The half that matters beyond reporting. Before, `connection` was still
-      // set and merely disconnected — indistinguishable from a dropped link —
-      // so this call reconnected instead of failing.
-      final ds = _ClosableDatasource();
+      final ds = _PooledFakeDatasource();
+      await ds.connect();
       await ds.close();
       await expectLater(
         ds.executeCommand('DELETE FROM t'),
         throwsA(isA<MariadbDatasourceException>()),
       );
-      expect(ds.connectCalls, 0);
+      expect(ds.opened, hasLength(1));
     });
 
     test('the refusal says which of the two states it is', () async {
       // Both refusals share a key, because a caller matching on "this data
-      // source has no connection" should not have to match twice. Which state
-      // it is rides in the parameters, because it points at a different bug:
-      // never opened is a configuration or start-up ordering fault, closed is a
+      // source is not open" should not have to match twice. Which state it is
+      // rides in the parameters, because it points at a different bug: never
+      // opened is a configuration or start-up ordering fault, closed is a
       // shutdown ordering one.
-      final closed = _ClosableDatasource();
+      final closed = _PooledFakeDatasource();
+      await closed.connect();
       await closed.close();
       final states = <Object?>[];
       final keys = <String>{};
@@ -2053,41 +2296,60 @@ void main() {
       expect(states, ['closed', 'never_opened']);
     });
 
-    test('toString stops describing a connection that is gone', () async {
-      final ds = _ClosableDatasource();
-      expect(ds.toString(), contains('connected: true'));
+    test('toString stops describing a pool that is gone', () async {
+      final ds = _PooledFakeDatasource();
+      await ds.connect();
+      expect(ds.toString(), contains('open (0 lent, 1 idle)'));
       await ds.close();
       expect(ds.toString(), contains('closed'));
-      expect(ds.toString(), isNot(contains('connected:')));
+      expect(ds.toString(), isNot(contains('open (')));
     });
 
-    test('a link that had already dropped is released, not closed', () async {
-      // close is reached this way whenever the database went away first, and it
-      // is exactly the case the old guard fell through: it logged that it was
-      // not closing anything and left the dead link in place.
-      final ds = _ClosableDatasource(link: _FakeConnection(connected: false));
-      await ds.close();
-      expect(ds.link.closeCalls, 0);
-      expect(ds.connection, isNull);
-    });
+    test(
+      'a connection that had already dropped is let go, not closed',
+      () async {
+        final ds = _PooledFakeDatasource();
+        await ds.connect();
+        ds.first.connected = false;
+        await ds.close();
+        expect(ds.first.closeCalls, 0);
+        expect(ds.openConnectionCount, 0);
+      },
+    );
 
-    test('the link is let go of even when closing it fails', () async {
-      // A close that throws still means the caller is done with the link.
-      // Keeping the handle would leave the data source claiming a connection
-      // that nothing can use, and the failure is still reported.
-      final ds = _ClosableDatasource(
-        link: _FakeConnection(
-          connected: true,
-          closeFailure: StateError('the socket was already gone'),
-        ),
+    test('a connection that fails to close is logged and let go', () async {
+      // A close that throws still means the caller is done with the
+      // connection, and with several connections one failure must not stop the
+      // others being closed.
+      final ds = _PooledFakeDatasource(
+        queued: [
+          _FakeConnection(
+            connected: true,
+            closeFailure: StateError('the socket was already gone'),
+          ),
+        ],
       );
-      await expectLater(ds.close(), throwsA(isA<StateError>()));
-      expect(ds.connection, isNull);
+      await ds.connect();
+      await ds.close();
+      expect(ds.first.closeCalls, 1);
+      expect(ds.toString(), contains('closed'));
+    });
+
+    test('a lent connection is closed when it is handed back', () async {
+      final ds = _PooledFakeDatasource();
+      await ds.connect();
+      final release = Completer<void>();
+      final link = ds.first..hold = release;
+      final running = ds.executeCommand('SELECT SLEEP(1)');
+      await Future<void>.delayed(Duration.zero);
+      await ds.close();
+      expect(link.closeCalls, 0, reason: 'still running its statement');
+      release.complete();
+      await running;
+      expect(link.closeCalls, 1);
     });
 
     test('closing one that was never opened leaves it never opened', () async {
-      // Nothing was let go of, so nothing changed. Reporting "closed" here
-      // would send the reader looking for a teardown that never happened.
       final ds = _NeverOpenedDatasource();
       await ds.close();
       expect(ds.toString(), contains('never opened'));
@@ -2099,14 +2361,6 @@ void main() {
       }
     });
   });
-
-  // Driver discovery (createDatasourceOf resolving mariadb/mariadb_xa, and the
-  // unknown-type and duplicate-driver guards) is covered by the `driver
-  // discovery` group in `datasources_db_test.dart`, not here: the scan reads
-  // tomReflector.annotatedClasses, which raises "Reflection has not been
-  // initialized" in this suite because no generated reflection is bootstrapped.
-  // That file bootstraps one, so the scan is a real scan there rather than a
-  // stand-in for it.
 
   group('TomDataSourceInfo.initializeDatasourceInfo config guard', () {
     setUp(() => TomDataSourceInfo.datasources.clear());
@@ -2153,11 +2407,11 @@ void main() {
     });
   });
 
-  group('MariaDbDatasource.parsePort / normalizePort (G-DB-3)', () {
+  group('MariaDbDatasource.parsePort / normalizeIntegerSettings (G-DB-3)', () {
     // The datasource binds `port` to an int field, but application config may
     // express it either way — an env substitution (`port: ${DB_PORT:3306}`)
     // always yields a string. parsePort folds a string port to an int so both
-    // forms work; normalizePort applies it at the config-binding boundary.
+    // forms work; normalizeIntegerSettings applies it at the config-binding boundary.
     test('an int port passes through verbatim', () {
       expect(MariaDbDatasource.parsePort(3306), 3306);
     });
@@ -2191,25 +2445,56 @@ void main() {
       );
     });
 
-    test('normalizePort folds a string port to an int, leaving other keys', () {
-      final normalized = MariaDbDatasource.normalizePort(<String, dynamic>{
-        'host': 'localhost',
-        'port': '3308',
-      });
-      expect(normalized['port'], 3308);
-      expect(normalized['host'], 'localhost');
-    });
+    test(
+      'normalizeIntegerSettings folds a string port to an int, leaving other keys',
+      () {
+        final normalized = MariaDbDatasource.normalizeIntegerSettings(
+          <String, dynamic>{'host': 'localhost', 'port': '3308'},
+        );
+        expect(normalized['port'], 3308);
+        expect(normalized['host'], 'localhost');
+      },
+    );
 
-    test('normalizePort leaves an int port unchanged', () {
+    test('normalizeIntegerSettings leaves an int port unchanged', () {
       final settings = <String, dynamic>{'port': 3306};
-      final normalized = MariaDbDatasource.normalizePort(settings);
+      final normalized = MariaDbDatasource.normalizeIntegerSettings(settings);
       expect(normalized['port'], 3306);
     });
 
-    test('normalizePort leaves an absent port unchanged', () {
+    test('normalizeIntegerSettings leaves an absent port unchanged', () {
       final settings = <String, dynamic>{'host': 'localhost'};
-      final normalized = MariaDbDatasource.normalizePort(settings);
+      final normalized = MariaDbDatasource.normalizeIntegerSettings(settings);
       expect(normalized.containsKey('port'), isFalse);
+    });
+
+    test('normalizeIntegerSettings folds string pool settings too', () {
+      // An environment substitution yields a string for every key, so a pool
+      // size configured as `\${DB_POOL:20}` must bind like the port does.
+      final normalized = MariaDbDatasource.normalizeIntegerSettings({
+        'poolMaxSize': '20',
+        'poolAcquireTimeoutMs': ' 5000 ',
+        'timeOut': '15000',
+      });
+      expect(normalized['poolMaxSize'], 20);
+      expect(normalized['poolAcquireTimeoutMs'], 5000);
+      expect(normalized['timeOut'], 15000);
+    });
+
+    test('a pool setting that is not an integer is refused by name', () {
+      expect(
+        () =>
+            MariaDbDatasource.normalizeIntegerSettings({'poolMaxSize': 'ten'}),
+        throwsA(
+          isA<MariadbDatasourceException>()
+              .having((e) => e.key, 'key', 'error.initialize.invalid_integer')
+              .having(
+                (e) => e.parameters?['setting'],
+                'setting',
+                'poolMaxSize',
+              ),
+        ),
+      );
     });
   });
 
@@ -2460,7 +2745,7 @@ void main() {
       for (var i = 0; i < 50; i++) {
         expect(await ds.startTransaction(_aTransaction()), isTrue);
         ids.add(branchOf(ds));
-        expect(await ds.rollback(), isTrue);
+        expect(await ds.rollback(_aTransaction()), isTrue);
       }
       expect(ids, hasLength(50));
     });
@@ -2483,7 +2768,7 @@ void main() {
       final ds = _ScriptedXADatasource(failing: {'XA ROLLBACK'});
       expect(await ds.startTransaction(_aTransaction()), isTrue);
       final branch = _branchOf(ds);
-      await ds.rollback();
+      await ds.rollback(_aTransaction());
       expect(await ds.startTransaction(_aTransaction()), isTrue);
       expect(ds.commands.sublist(1, 3), [
         'XA END $branch;',
@@ -2500,9 +2785,9 @@ void main() {
       final ds = _ScriptedXADatasource(failing: {'XA END'});
       expect(await ds.startTransaction(_aTransaction()), isTrue);
       final branch = _branchOf(ds);
-      expect(await ds.prepare(), isFalse);
+      expect(await ds.prepare(_aTransaction()), isFalse);
       expect(ds.commands.last, 'XA END $branch;');
-      await ds.rollback();
+      await ds.rollback(_aTransaction());
       // The prepare failed at its `XA END`, so the branch is still ACTIVE and
       // the rollback has to end it first — naming the branch, not `null`.
       expect(ds.commands.last, 'XA END $branch;');
@@ -2520,9 +2805,9 @@ void main() {
       final ds = _ScriptedXADatasource(failing: {'XA COMMIT'});
       expect(await ds.startTransaction(_aTransaction()), isTrue);
       final branch = _branchOf(ds);
-      expect(await ds.prepare(), isTrue);
-      expect(await ds.commit(), isFalse);
-      await ds.rollback();
+      expect(await ds.prepare(_aTransaction()), isTrue);
+      expect(await ds.commit(_aTransaction()), isFalse);
+      await ds.rollback(_aTransaction());
       expect(ds.commands.last, 'XA ROLLBACK $branch;');
       expect(await ds.startTransaction(_aTransaction()), isTrue);
     });
@@ -2537,15 +2822,15 @@ void main() {
       expect(await ds.startTransaction(_aTransaction()), isTrue);
       final branch = _branchOf(ds);
       expect(branch, isNot(contains('null')));
-      expect(await ds.prepare(), isTrue);
+      expect(await ds.prepare(_aTransaction()), isTrue);
       expect(ds.commands, [
         'XA START $branch;',
         'XA END $branch;',
         'XA PREPARE $branch;',
       ]);
-      expect(await ds.commit(), isTrue);
+      expect(await ds.commit(_aTransaction()), isTrue);
       expect(ds.commands.last, 'XA COMMIT $branch;');
-      expect(await ds.endTransaction(), isTrue);
+      expect(await ds.endTransaction(_aTransaction()), isTrue);
     });
 
     test('the non-XA sibling is not wedged by a failed start either', () async {
@@ -2573,9 +2858,9 @@ void main() {
       // statement appearing here would show up immediately.
       final ds = _ScriptedDatasource();
       expect(await ds.startTransaction(_aTransaction()), isTrue);
-      expect(await ds.endTransaction(), isTrue);
+      expect(await ds.endTransaction(_aTransaction()), isTrue);
       expect(ds.commands, ['START TRANSACTION;']);
-      expect(await ds.commit(), isTrue);
+      expect(await ds.commit(_aTransaction()), isTrue);
       expect(ds.commands, ['START TRANSACTION;', 'COMMIT;']);
     });
 
@@ -2587,7 +2872,7 @@ void main() {
       // start returned `false`, and that participant still gets ended.
       final ds = _ScriptedDatasource(failing: {'START TRANSACTION'});
       expect(await ds.startTransaction(_aTransaction()), isFalse);
-      expect(await ds.endTransaction(), isTrue);
+      expect(await ds.endTransaction(_aTransaction()), isTrue);
       expect(ds.commands, ['START TRANSACTION;']);
     });
   });

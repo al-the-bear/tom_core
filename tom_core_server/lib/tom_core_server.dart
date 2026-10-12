@@ -60,6 +60,7 @@ export 'src/tomserver/configuration/runtime_environment.dart';
 export 'src/tomserver/configuration/tom_config.dart';
 export 'src/tomserver/configuration/yaml_resources.dart';
 export 'src/tomserver/cache/server_cache.dart';
+export 'src/tomserver/datasources/connection_pool.dart';
 export 'src/tomserver/datasources/datasource_initialization.dart';
 export 'src/tomserver/datasources/framework_table.dart';
 export 'src/tomserver/datasources/mariadb_datasource.dart';

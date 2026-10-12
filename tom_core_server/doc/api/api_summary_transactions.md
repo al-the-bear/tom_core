@@ -84,7 +84,9 @@ A resource that can enlist in a `TomTransaction`. Implemented by
 `TomDataSource`, so any data source used during a transaction joins it. The
 coordinator drives the lifecycle: `startTransaction` on enlistment, then
 `prepare`/`commit`/`endTransaction` on success or `rollback`/`endTransaction` on
-failure.
+failure. Every hook is handed the transaction it concerns, so a participant
+serving several transactions at once — a pooled data source holds a connection
+per transaction — knows which of them each call concludes.
 
 **This is two-phase commit.** `prepare` runs on every participant before
 `commit` runs on any of them, so a veto — a `false` from `prepare`, or a throw —
@@ -109,10 +111,10 @@ mapping `prepare` onto `XA END` + `XA PREPARE` and `commit` onto `XA COMMIT`.
 | ------ | --------- | ----------- |
 | `getParticipantId` | `String getParticipantId()` | A stable id naming the **resource** this participant speaks for, not the object — `MariaDbDatasource` answers `"MariaDb-<database>@<host>:@<port>"`. Registering the same participant twice enlists once; a *different* object claiming an enlisted id is refused with `…duplicate_id`. A participant needing its own enlistment returns an id nothing else answers. |
 | `startTransaction` | `Future<bool> startTransaction(TomTransaction transaction)` | Begins the participant's part of `transaction`; called once on enlist. The transaction is handed over rather than looked up, which is how `isReadOnly` reaches the resource that can act on it — `MariaDbDatasource` opens `START TRANSACTION READ ONLY` for one. |
-| `prepare` | `Future<bool> prepare()` | Phase one: promises that `commit` will succeed. Returning `false` — or throwing — vetoes the transaction, while nothing is durable. A participant with nothing to prepare returns `true`. |
-| `commit` | `Future<bool> commit()` | Phase two: makes the work durable. Reached only after every participant prepared, so a `false` is not a veto — it reports a broken promise and leaves the transaction partially committed. |
-| `rollback` | `Future<bool> rollback()` | Undoes the participant's work when the transaction is rolled back. Reachable after a successful `prepare`, never after this participant's own `commit`. `false` is the one outcome needing a human — the work was neither committed nor undone — and puts this participant in `TomTransactionResult.failed` with the transaction reported as `rolledBackWithFailures`. |
-| `endTransaction` | `Future<bool> endTransaction()` | Releases per-transaction resources after commit or rollback. Decides nothing. |
+| `prepare` | `Future<bool> prepare(TomTransaction transaction)` | Phase one: promises that `commit` will succeed. Returning `false` — or throwing — vetoes the transaction, while nothing is durable. A participant with nothing to prepare returns `true`. |
+| `commit` | `Future<bool> commit(TomTransaction transaction)` | Phase two: makes the work durable. Reached only after every participant prepared, so a `false` is not a veto — it reports a broken promise and leaves the transaction partially committed. |
+| `rollback` | `Future<bool> rollback(TomTransaction transaction)` | Undoes the participant's work when the transaction is rolled back. Reachable after a successful `prepare`, never after this participant's own `commit`. `false` is the one outcome needing a human — the work was neither committed nor undone — and puts this participant in `TomTransactionResult.failed` with the transaction reported as `rolledBackWithFailures`. |
+| `endTransaction` | `Future<bool> endTransaction(TomTransaction transaction)` | Releases per-transaction resources after commit or rollback — for a pooled data source, handing the transaction's connection back to the pool. Decides nothing. |
 
 ### TomTransactionResult
 
@@ -139,7 +141,7 @@ responses, since the second must not be retried.
 | -------- | ---- | ----------- |
 | `outcome` | `TomTransactionOutcome` | What became of the work (final). |
 | `failed` | `List<String>` | The participants whose commit or rollback did not do what it said — names rather than a count, because repairing a partial commit or a failed rollback means going to those resources (final). |
-| `notReleased` | `List<String>` | The participants whose `endTransaction()` did not release. Separate because it is a separate fact: the work may be perfectly durable and a pooled connection still lost (final). |
+| `notReleased` | `List<String>` | The participants whose `endTransaction` did not release. Separate because it is a separate fact: the work may be perfectly durable and a pooled connection still lost (final). |
 | `isCommitted` | `bool` | *(getter)* Whether the work committed — `outcome == committed`. The question most callers are asking. |
 | `isClean` | `bool` | *(getter)* Whether the conclusion left nothing outstanding at all. Stronger than `isCommitted`: a transaction whose work committed and whose connection leaked is committed and not clean. |
 
@@ -172,12 +174,12 @@ None — the constructor is private; obtain instances via
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `registerParticipant` | `Future<void> registerParticipant(TomTransactionParticipant ttp)` | Enlists `ttp`, calling its `startTransaction()` once; registering the same participant again is a no-op. A **different** object claiming an enlisted id is refused with `…duplicate_id` rather than dropped — a dropped resource's work is neither committed with the transaction nor rolled back with it. Enlistment is all or nothing: the participant is recorded only after a `true`, and a `false` or a throw leaves it unenlisted and raises `TomTransactionException` naming it (`…start_failed` / `…start_threw`, the latter carrying the original as `rootException`). Also throws when the transaction is no longer running. |
+| `registerParticipant` | `Future<void> registerParticipant(TomTransactionParticipant ttp)` | Enlists `ttp`, calling its `startTransaction(transaction)` once; registering the same participant again is a no-op. A **different** object claiming an enlisted id is refused with `…duplicate_id` rather than dropped — a dropped resource's work is neither committed with the transaction nor rolled back with it. Enlistment is all or nothing: the participant is recorded only after a `true`, and a `false` or a throw leaves it unenlisted and raises `TomTransactionException` naming it (`…start_failed` / `…start_threw`, the latter carrying the original as `rootException`). Also throws when the transaction is no longer running. |
 | `commitTransaction` | `Future<TomTransactionResult> commitTransaction()` | Prepares every participant, then — only if all promised — commits every participant, then ends them all. A veto or a throw during prepare rolls the transaction back instead; a `commit` that fails after a successful prepare does not, and is logged as a partial commit. Clears the transaction from its scope (in a `finally`, so a transaction that is not running is never the current one) and returns a `TomTransactionResult` — a vetoed transaction returns the rollback's own result rather than claiming a commit that did not happen. Participants are driven **one at a time**: the order is what makes a veto's meaning knowable, and a transaction spanning *n* resources pays *n* round trips per phase. |
 | `rollbackTransaction` | `Future<TomTransactionResult> rollbackTransaction()` | Rolls back every participant then ends them; clears the transaction from its scope (in a `finally`). Returns `rolledBack` when every participant undid its work and `rolledBackWithFailures` when one did not, naming it. |
 
 "Ends them" is unconditional on both paths: a participant whose
-`endTransaction()` returns `false` does not stop the ones behind it from being
+`endTransaction` returns `false` does not stop the ones behind it from being
 ended, and the returned boolean is the conjunction of all the end calls rather
 than the last one. An implementer can therefore rely on their release running
 even after a peer's has failed — which matters because nothing runs afterwards
@@ -226,7 +228,7 @@ four into "did something go wrong".
 | Value | Meaning |
 | ----- | ------- |
 | `committed` | Every participant committed. The work is durable. |
-| `partiallyCommitted` | Every participant promised in `prepare()` and at least one then failed to commit. Some of the work is durable and some is not, and no coordinator can repair that. |
+| `partiallyCommitted` | Every participant promised in `prepare` and at least one then failed to commit. Some of the work is durable and some is not, and no coordinator can repair that. |
 | `rolledBack` | The transaction was rolled back — a veto during prepare, or an explicit `rollbackTransaction()` — and every participant undid its work. Nothing is durable and nothing is outstanding. |
 | `rolledBackWithFailures` | Rolled back, and at least one participant could not undo its work. The outcome a caller most needs told, because it is the one that requires a human: the work was neither committed nor undone. |
 

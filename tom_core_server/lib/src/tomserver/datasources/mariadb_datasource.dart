@@ -1,5 +1,6 @@
 // ignore_for_file: type_literal_in_constant_pattern
 import 'dart:async';
+import 'dart:collection';
 import 'dart:math';
 
 import 'package:mysql_client/mysql_client.dart';
@@ -10,6 +11,7 @@ import '../object_persistence/grouped_query.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../object_persistence/query_sentence_compiler.dart';
 import '../object_persistence/annotation_analyzer.dart';
+import 'connection_pool.dart';
 import 'sql_lexer.dart';
 import '../transactions/transaction_manager.dart';
 
@@ -55,16 +57,21 @@ class MariadbPreparedStatementException extends TomServerException {
   });
 }
 
-/// A MariaDB-backed [TomPreparedStatement]: wraps a server-side `PreparedStmt`,
-/// the ordered [parameterList] its placeholders expect, the owning
-/// [datasource], and the optional [resultType] used to map result rows.
+/// A MariaDB-backed [TomPreparedStatement]: the compiled [command], the ordered
+/// [parameterList] its placeholders expect, the owning [datasource], and the
+/// optional [resultType] used to map result rows.
+///
+/// The handle belongs to no connection. A server-side prepared statement lives
+/// on one connection, while a pooled data source runs each execution on
+/// whichever connection it is given — the transaction's, or one lent for the
+/// statement — so every pooled connection prepares [command] the first time it
+/// runs it and keeps the server-side statement for the next. That is what lets
+/// a repository prepare a statement once and keep it for the life of the
+/// process.
 class MariadbPreparedStatement<T extends Object>
     extends TomPreparedStatement<T> {
   /// The data source that prepared and runs this statement.
   final MariaDbDatasource datasource;
-
-  /// The live server-side prepared statement handle (replaced on reconnect).
-  PreparedStmt preparedStmt;
 
   /// The placeholder names in positional order, mapping `params` to `?` slots.
   final List<String> parameterList;
@@ -72,7 +79,7 @@ class MariadbPreparedStatement<T extends Object>
   /// The type result rows are mapped to (defaults to `T`).
   final Type? resultType;
 
-  /// The compiled SQL command (kept so the statement can be re-prepared).
+  /// The compiled SQL command, prepared on each connection that runs it.
   final String command;
 
   /// For a grouped query, the Dart type of each projected result column keyed
@@ -98,10 +105,9 @@ class MariadbPreparedStatement<T extends Object>
   @override
   int get lastAffectedRows => _lastAffectedRows;
 
-  /// Wraps the prepared [preparedStmt] with its [parameterList], owning
-  /// [datasource], [resultType] and original [command].
+  /// A statement running [command] on [datasource], binding [parameterList]
+  /// and mapping rows to [resultType].
   MariadbPreparedStatement(
-    this.preparedStmt,
     this.parameterList,
     this.datasource,
     this.resultType,
@@ -154,71 +160,144 @@ class MariadbPreparedStatement<T extends Object>
     return [for (final p in parameterList) _toBindValue(params[p])];
   }
 
+  /// Runs the statement and maps its rows.
+  ///
+  /// A connection that turns out to be gone is retried once, on another
+  /// connection, when the statement runs outside a transaction: the failed
+  /// connection is discarded and the pool lends a working one. Inside a
+  /// transaction there is nothing to retry on — the transaction lived on the
+  /// connection that was lost — so the failure is reported as
+  /// `error.failed-to-execute.transaction_connection_lost`.
   @override
   Future<List<T>> execute([Map<String, Object?>? params]) async {
     final List<Object?> parameters = buildPositionalParameters(
       parameterList,
       params,
     );
-    // Admitted per execution, not only at prepare time: the statement may run
-    // later, inside a transaction the prepare was not, or while another
-    // transaction holds the connection.
-    await datasource._admit();
+    IResultSet result;
     try {
-      IResultSet result = await _execute(parameters, params);
-      _captureExecuteResult(result);
-      return datasource.mapResultSet<T>(result, resultType, groupedProjection);
-    } on MariadbPreparedStatementException {
-      // One retry, on the link the data source re-opens. Routed through the
-      // same helper as the entry points so the lifecycle rule has a single
-      // implementation — a statement whose data source has since been torn down
-      // is refused here for the same reason and with the same error.
-      final link = await datasource._openConnection("prepared-statement retry");
-      preparedStmt = await link.prepare(command);
-      IResultSet result = await _execute(parameters, params);
-      _captureExecuteResult(result);
-      return datasource.mapResultSet<T>(result, resultType, groupedProjection);
+      result = await datasource._runPrepared(
+        command,
+        parameters,
+        params,
+        resultType,
+      );
+    } on MariadbPreparedStatementException catch (lost) {
+      if (datasource._isInTransactionHere()) {
+        throw MariadbDatasourceException(
+          "error.failed-to-execute.transaction_connection_lost",
+          "MariadbPreparedStatement: the connection of the running transaction "
+              "was lost; the transaction cannot continue.",
+          parameters: {...?params, "type": resultType},
+          rootException: lost,
+        );
+      }
+      result = await datasource._runPrepared(
+        command,
+        parameters,
+        params,
+        resultType,
+      );
+    }
+    _captureExecuteResult(result);
+    return datasource.mapResultSet<T>(result, resultType, groupedProjection);
+  }
+
+  /// Forgets the statement on every connection that prepared it.
+  ///
+  /// A connection in use keeps its server-side statement until it is handed
+  /// back, so nothing is deallocated under a statement that is running.
+  @override
+  Future<void> deallocate() => datasource._forgetStatement(command);
+}
+
+/// One pooled MariaDB connection and the statements prepared on it.
+class _MariaDbLink {
+  _MariaDbLink(this.connection);
+
+  /// The driver connection.
+  final MySQLConnection connection;
+
+  /// Server-side prepared statements, by SQL text.
+  final Map<String, PreparedStmt> statements = {};
+
+  /// Statements to deallocate the next time the link is handed back — the ones
+  /// forgotten while the link was lent or idle.
+  final List<PreparedStmt> pendingDeallocation = [];
+
+  bool get connected => connection.connected;
+
+  /// The server-side statement for [command] on this link, prepared on first
+  /// use.
+  Future<PreparedStmt> statement(String command) async =>
+      statements[command] ??= await connection.prepare(command);
+}
+
+/// Tells the pool how to open, close and check a MariaDB connection.
+class _MariaDbLinkFactory implements TomConnectionFactory<_MariaDbLink> {
+  _MariaDbLinkFactory(this.datasource);
+
+  final MariaDbDatasource datasource;
+
+  @override
+  Future<_MariaDbLink> open() async =>
+      _MariaDbLink(await datasource.openConnection());
+
+  @override
+  Future<void> close(_MariaDbLink link) async {
+    if (!link.connected) return;
+    try {
+      await link.connection.close();
+    } catch (error) {
+      tomLog.warn(
+        "MariadbDatasource ${datasource.getParticipantId()}: closing a pooled "
+        "connection failed: $error",
+      );
     }
   }
 
-  Future<IResultSet> _execute(
-    List<Object?> parameters,
-    Map<String, Object?>? params,
-  ) async {
-    return await runChecked<IResultSet>(
-      () async => await preparedStmt.execute(parameters),
-      (e, StackTrace s) {
-        tomLog.warn("Error when executing SQL: $e");
-        // The exception type this returns *is* the retry signal: [execute]
-        // catches MariadbPreparedStatementException and nothing else.
-        if (isLostConnectionFailure(e, connected: datasource.connected)) {
-          return MariadbPreparedStatementException(
-            "error.failed-to-execute.connection_closed",
-            "MariadbPreparedStatement: connection closed",
-            parameters: {...?params, "type": resultType},
-            rootException: e,
-            stack: s,
-          );
-        }
-        return MariadbDatasourceException(
-          "error.failed-to-execute.exception",
-          "MariadbPreparedStatement: execution with $params failed. $e",
-          parameters: {
-            ...?params,
-            "type": resultType,
-            "connected": datasource.connected,
-          },
-          rootException: e,
-          stack: s,
-        );
-      },
-    );
-  }
+  @override
+  bool isUsable(_MariaDbLink link) => link.connected;
 
   @override
-  Future<void> deallocate() async {
-    await preparedStmt.deallocate();
+  Future<bool> validate(_MariaDbLink link) async {
+    try {
+      await link.connection.execute("SELECT 1");
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
+}
+
+/// Marks the zone in which a data source issues one of a transaction's own
+/// lifecycle statements (`START TRANSACTION`, `COMMIT`, the `XA` verbs).
+class _LifecycleKey {
+  const _LifecycleKey(this.datasource, this.transaction);
+  final MariaDbDatasource datasource;
+  final TomTransaction transaction;
+}
+
+/// One transaction's share of a data source: the pooled connection pinned to
+/// it, and — for XA — the branch it opened.
+class _Branch {
+  /// The connection, acquired by the transaction's first statement and held
+  /// until [MariaDbDatasource.endTransaction].
+  Future<_MariaDbLink>? link;
+
+  /// Completes with whether the transaction's start succeeded; a statement
+  /// racing the start waits for it.
+  Completer<bool> started = Completer<bool>();
+
+  /// Whether the transaction is open on the connection: started, and not yet
+  /// committed or rolled back. A second start is refused only while it is.
+  bool active = false;
+
+  /// The XA branch id, quoted; `null` on the plain driver.
+  String? xaId;
+
+  /// Whether the XA branch has been `XA END`ed.
+  bool ended = false;
 }
 
 /// One association read that a mapped row still owes: the `@TomReference`
@@ -304,38 +383,52 @@ Map<String, dynamic>? _toBindParams(Map<String, dynamic>? params) =>
 /// type).
 ///
 /// Connection settings ([username], [password], [host], [port],
-/// [databaseName], [timeOut]) are filled from the configuration map by
-/// reflection in [initialize], which then opens the [connection]. The driver
+/// [databaseName], [timeOut]) and pool settings ([poolMaxSize], [poolMinIdle],
+/// [poolAcquireTimeoutMs], [poolIdleTimeoutMs], [poolMaxLifetimeMs],
+/// [poolValidateAfterIdleMs]) are filled from the configuration map by
+/// reflection in [initialize], which then opens the data source. The driver
 /// implements the full data-source surface — [prepareStatement], [executeQuery]
 /// (with reflection-based row→object mapping), [executeCommand] — and
 /// participates in transactions via plain `START TRANSACTION` / `COMMIT` /
 /// `ROLLBACK` (see [MariaDbXADatasource] for the XA variant).
 ///
-/// ## Connection lifecycle
+/// ## Connections
+///
+/// The data source holds a [TomConnectionPool] of connections, at most
+/// [poolMaxSize] of them. **A transaction gets a connection of its own**: its
+/// first statement on this data source takes one from the pool, every later
+/// statement of the transaction runs on it, and [endTransaction] hands it back.
+/// A statement outside any transaction borrows a connection for that statement
+/// alone. So concurrent transactions run side by side, each on its own
+/// connection, and wait only when all [poolMaxSize] are in use — for at most
+/// [poolAcquireTimeoutMs], after which the statement fails with
+/// `error.datasource.pool.acquire_timeout`.
+///
+/// ## Lifecycle
 ///
 /// **A data source is opened explicitly, and never by the statement that wants
 /// to run.** Opening it means either [initialize], which binds the settings and
-/// connects, or setting the connection fields and calling [connect] — the two
-/// forms the package documents. Every execution entry point
-/// ([prepareStatement], [executeQuery], [executeCommand]) then requires an open
-/// connection and throws a [MariadbDatasourceException] if it is reached before
-/// one exists, so all three behave the same way on the same data source.
+/// opens, or setting the fields and calling [connect]. Opening creates the pool
+/// and opens one connection, so a data source that cannot reach its database
+/// fails when it is opened rather than on its first request. Every execution
+/// entry point ([prepareStatement], [executeQuery], [executeCommand]) requires
+/// an open data source and throws a [MariadbDatasourceException]
+/// (`error.datasource.not_opened`) if it is reached before one exists.
 ///
-/// Opening on demand is not offered because it could not work: [connect] binds
-/// [host], [port] and the credentials, and until they are configured it would
-/// dial `:-1` — turning "never opened" into "the database is unreachable".
+/// Opening on demand is not offered because it could not work: the pool opens
+/// connections with [host], [port] and the credentials, and until they are
+/// configured it would dial `:-1` — turning "never opened" into "the database
+/// is unreachable".
 ///
-/// A link that *was* opened and has since dropped is a separate case, and is
-/// re-opened automatically: the settings are known, so every entry point
-/// reconnects and carries on.
+/// A connection that drops is replaced: the pool checks a connection before it
+/// lends it, discards one that is down, and opens a new one.
 ///
-/// [close] releases the link **and lets go of it**, which puts the data source
+/// [close] closes the pool **and lets go of it**, which puts the data source
 /// back to not-open: a closed data source refuses statements exactly as one
 /// that was never opened does, rather than being silently re-opened by the next
-/// one to arrive. Deliberate teardown is not a dropped link. [isOperational]
-/// and [connected] report the current state, and [toString] distinguishes the
-/// two ways of holding no connection — `closed` from `never opened` — because
-/// they point at different faults.
+/// one to arrive. [isOperational] and [connected] report the current state, and
+/// [toString] distinguishes the two ways of holding no pool — `closed` from
+/// `never opened` — because they point at different faults.
 @tomReflector
 @TomDatasourceDriver("mariadb")
 class MariaDbDatasource implements TomDataSource {
@@ -362,65 +455,100 @@ class MariaDbDatasource implements TomDataSource {
   /// The connect timeout in milliseconds.
   int timeOut = 10000;
 
-  /// The live MySQL connection (`null` until [connect] succeeds, and again once
-  /// [close] has let go of it).
-  MySQLConnection? connection;
+  /// The most connections the pool opens at once.
+  int poolMaxSize = 10;
 
-  /// Whether [connection] is `null` because [close] released it, rather than
-  /// because the data source was never opened.
-  ///
-  /// Only meaningful while [connection] is `null` — every reader checks that
-  /// first — so re-opening does not clear it; it is simply not consulted again
-  /// until the next [close] sets it anew.
+  /// How many idle connections the pool keeps open ahead of demand.
+  int poolMinIdle = 0;
+
+  /// How long a statement waits for a free connection, in milliseconds.
+  int poolAcquireTimeoutMs = 30000;
+
+  /// How long a connection may sit idle before it is closed, in milliseconds.
+  int poolIdleTimeoutMs = 600000;
+
+  /// How long a connection is used at all before it is replaced, in
+  /// milliseconds.
+  int poolMaxLifetimeMs = 1800000;
+
+  /// How long a connection may sit idle and still be lent without a
+  /// `SELECT 1` check, in milliseconds.
+  int poolValidateAfterIdleMs = 30000;
+
+  /// The pool settings the fields above describe.
+  TomConnectionPoolSettings get poolSettings => TomConnectionPoolSettings(
+    maxSize: poolMaxSize,
+    minIdle: poolMinIdle,
+    acquireTimeout: Duration(milliseconds: poolAcquireTimeoutMs),
+    idleTimeout: Duration(milliseconds: poolIdleTimeoutMs),
+    maxLifetime: Duration(milliseconds: poolMaxLifetimeMs),
+    validateAfterIdle: Duration(milliseconds: poolValidateAfterIdleMs),
+  );
+
+  /// The pool (`null` until the data source is opened, and again once [close]
+  /// has let go of it).
+  TomConnectionPool<_MariaDbLink>? _pool;
+
+  /// Whether [_pool] is `null` because [close] released it, rather than because
+  /// the data source was never opened.
   bool _wasClosed = false;
 
-  /// Opens a connection using the configured settings.
+  /// Whether the most recent attempt to open a connection failed.
+  bool _lastOpenFailed = false;
+
+  /// Opens the data source with the configured settings: creates the pool and
+  /// opens its first connection.
   ///
   /// A server that cannot be reached or refuses the session fails the call
-  /// with the driver's own error; a call that returns has a connected session.
+  /// with the driver's own error, and leaves the data source unopened. Calling
+  /// it on an open data source does nothing.
   Future<void> connect() async {
-    final opened = await MySQLConnection.createConnection(
-      host: host,
-      port: port,
-      userName: username,
-      password: password,
-      databaseName: (databaseName).isEmpty ? null : databaseName,
+    if (_pool != null) return;
+    final pool = TomConnectionPool<_MariaDbLink>(
+      _MariaDbLinkFactory(this),
+      settings: poolSettings,
     );
-    connection = opened;
-    // `connect` completes only once the server has accepted the session, and
-    // fails otherwise, so a connection it returns from is connected.
-    await opened.connect(timeoutMs: timeOut);
+    // The first connection is opened now so a misconfigured data source fails
+    // here, where it was opened, and not on its first request.
+    final first = await pool.acquire();
+    await pool.release(first);
+    _pool = pool;
   }
 
-  /// Whether the underlying connection is currently established.
-  bool get connected => connection != null ? connection!.connected : false;
+  /// Opens one new connection with the configured settings. The pool calls it
+  /// whenever it needs a connection; a driver test overrides it to hand out
+  /// stand-in connections.
+  Future<MySQLConnection> openConnection() async {
+    try {
+      final opened = await MySQLConnection.createConnection(
+        host: host,
+        port: port,
+        userName: username,
+        password: password,
+        databaseName: (databaseName).isEmpty ? null : databaseName,
+      );
+      // `connect` completes only once the server has accepted the session, and
+      // fails otherwise, so a connection it returns from is connected.
+      await opened.connect(timeoutMs: timeOut);
+      _lastOpenFailed = false;
+      return opened;
+    } catch (_) {
+      _lastOpenFailed = true;
+      rethrow;
+    }
+  }
 
-  /// The open connection to run [operation] on, re-opening a dropped link
-  /// first.
-  ///
-  /// This is the one place the lifecycle rule stated in the class dartdoc is
-  /// implemented, so that every execution entry point observes the same rule
-  /// rather than each carrying its own guard.
-  ///
-  /// A [connection] of `null` means the data source is not open — never opened,
-  /// or closed — and that is refused rather than repaired. Neither case is one
-  /// a statement should quietly fix. Opening a never-opened data source here
-  /// could not even work: [connect] binds [host], [port] and the credentials,
-  /// which arrive only from [initialize] or a direct assignment, so before
-  /// either it would dial `:-1` — reporting an unreachable database where the
-  /// truth is an unconfigured one, and sending the reader to the network for a
-  /// configuration bug. Re-opening a *closed* one could work, and that is
-  /// precisely why it must not happen by accident: it would resurrect a data
-  /// source the application deliberately let go.
-  ///
-  /// A link that *was* opened and has since dropped is the one case that is
-  /// repaired: the settings are known, the caller never asked for the loss, and
-  /// reconnecting is exactly what it wants.
-  ///
-  /// [operation] names the calling entry point and is carried in the thrown
-  /// exception's parameters alongside the `state` that refused it, so a log
-  /// identifies both which call ran too early and which of the two faults it
-  /// met.
+  /// Whether the data source is open and at least one of its connections is
+  /// established.
+  bool get connected =>
+      _pool != null && _pool!.connections.any((link) => link.connected);
+
+  /// How many connections the pool holds, lent or idle; `0` when not open.
+  int get openConnectionCount => _pool?.connections.length ?? 0;
+
+  /// How many connections are lent out — to transactions or statements.
+  int get lentConnectionCount => _pool?.lentCount ?? 0;
+
   /// Refuses [command] when it holds more than one statement.
   ///
   /// `mysql_client` completes a call on the first reply it reads and never
@@ -452,25 +580,206 @@ class MariaDbDatasource implements TomDataSource {
     );
   }
 
-  Future<MySQLConnection> _openConnection(String operation) async {
-    await _admit();
-    if (connection == null) {
-      throw MariadbDatasourceException(
-        "error.datasource.not_opened",
-        "MariadbDatasource: $operation needs an open connection, but this data "
-            "source ${_wasClosed ? "has been closed" : "has never been opened"}"
-            ". Call initialize() with the connection settings, or set them and "
-            "call connect().",
+  /// Runs [body] with a driver connection, chosen the way every statement's
+  /// is: the running transaction's when this data source is enlisted in one,
+  /// otherwise one lent for the call and handed back when [body] completes.
+  ///
+  /// For work that needs the driver's own API — its typed row accessors, or a
+  /// session-scoped lock that must be taken and released on one connection.
+  /// The connection must not be kept beyond [body].
+  Future<R> withDriverConnection<R>(
+    Future<R> Function(MySQLConnection connection) body,
+  ) => _withLink("withDriverConnection", (link) => body(link.connection));
+
+  /// The pool, or the refusal for a data source that is not open.
+  ///
+  /// A `null` pool means the data source is not open — never opened, or
+  /// closed — and that is refused rather than repaired. Opening a never-opened
+  /// data source here could not even work: the settings arrive only from
+  /// [initialize] or a direct assignment, so before either the pool would dial
+  /// `:-1` — reporting an unreachable database where the truth is an
+  /// unconfigured one. Re-opening a *closed* one could work, and that is
+  /// precisely why it must not happen by accident: it would resurrect a data
+  /// source the application deliberately let go.
+  ///
+  /// [operation] names the calling entry point and is carried in the thrown
+  /// exception's parameters alongside the `state` that refused it, so a log
+  /// identifies both which call ran too early and which of the two faults it
+  /// met.
+  TomConnectionPool<_MariaDbLink> _requirePool(String operation) {
+    final pool = _pool;
+    if (pool != null) return pool;
+    throw MariadbDatasourceException(
+      "error.datasource.not_opened",
+      "MariadbDatasource: $operation needs an open data source, but this one "
+          "${_wasClosed ? "has been closed" : "has never been opened"}. Call "
+          "initialize() with the connection settings, or set them and call "
+          "connect().",
+      parameters: {
+        "operation": operation,
+        "state": _wasClosed ? "closed" : "never_opened",
+      },
+    );
+  }
+
+  /// Runs [body] on the connection [operation] belongs on.
+  ///
+  /// This is the one place connections are chosen, so every execution path
+  /// observes the same rule:
+  ///
+  /// * a transaction's own lifecycle statement runs on the connection pinned
+  ///   to that transaction, taking one from the pool if it has none yet;
+  /// * a statement inside a running transaction enlists this data source in it
+  ///   first, if it is not enlisted — that is what makes `@TomTransactional`
+  ///   mean anything, since the pipeline cannot know which data sources an
+  ///   endpoint will touch — and then runs on the transaction's connection;
+  /// * any other statement borrows a connection for itself and hands it back,
+  ///   discarding it if it went down while in use.
+  Future<R> _withLink<R>(
+    String operation,
+    Future<R> Function(_MariaDbLink link) body,
+  ) async {
+    final pool = _requirePool(operation);
+    final branch = await _branchForThisZone();
+    if (branch != null) {
+      return body(await _pinnedLink(pool, branch));
+    }
+    final link = await pool.acquire();
+    var lost = false;
+    try {
+      return await body(link);
+    } catch (_) {
+      lost = !link.connected;
+      rethrow;
+    } finally {
+      await _handBack(pool, link, discard: lost);
+    }
+  }
+
+  /// The connection pinned to [branch], taking it from [pool] on first use.
+  Future<_MariaDbLink> _pinnedLink(
+    TomConnectionPool<_MariaDbLink> pool,
+    _Branch branch,
+  ) {
+    final pinned = branch.link;
+    if (pinned != null) return pinned;
+    // A failed acquire leaves the branch without a connection, so the next
+    // statement tries again rather than inheriting the failure.
+    late final Future<_MariaDbLink> acquiring;
+    acquiring = pool.acquire().catchError((Object error, StackTrace stack) {
+      if (identical(branch.link, acquiring)) branch.link = null;
+      Error.throwWithStackTrace(error, stack);
+    });
+    branch.link = acquiring;
+    return acquiring;
+  }
+
+  /// Returns [link] to [pool], first deallocating the statements forgotten
+  /// while it was out.
+  Future<void> _handBack(
+    TomConnectionPool<_MariaDbLink> pool,
+    _MariaDbLink link, {
+    bool discard = false,
+  }) async {
+    if (link.connected && link.pendingDeallocation.isNotEmpty) {
+      final pending = List.of(link.pendingDeallocation);
+      link.pendingDeallocation.clear();
+      for (final stmt in pending) {
+        try {
+          await stmt.deallocate();
+        } catch (error) {
+          tomLog.warn(
+            "MariadbDatasource: deallocating a statement failed: $error",
+          );
+        }
+      }
+    }
+    if (pool.isLent(link)) {
+      await pool.release(link, discard: discard || !link.connected);
+    }
+  }
+
+  /// The transaction branch statements in the current zone belong to, or
+  /// `null` when they belong to none — enlisting this data source in the
+  /// running transaction first if it is not enlisted yet.
+  Future<_Branch?> _branchForThisZone() async {
+    final key = Zone.current[_LifecycleKey];
+    if (key is _LifecycleKey && identical(key.datasource, this)) {
+      return _branches[key.transaction];
+    }
+    final current = TomTransactionManager.getCurrentTransaction();
+    if (current == null || !current.isRunning) return null;
+    final branch = _branches[current];
+    if (branch != null) {
+      // Another statement of this transaction is starting it; wait, and try
+      // the enlistment again if that start failed.
+      if (await branch.started.future) return branch;
+      return _branchForThisZone();
+    }
+    await current.registerParticipant(this);
+    return _branches[current];
+  }
+
+  /// Whether statements in the current zone run inside a transaction this data
+  /// source is enlisted in.
+  bool _isInTransactionHere() {
+    final key = Zone.current[_LifecycleKey];
+    if (key is _LifecycleKey && identical(key.datasource, this)) return true;
+    final current = TomTransactionManager.getCurrentTransaction();
+    return current != null && _branches.containsKey(current);
+  }
+
+  /// Runs the prepared [command] with [parameters] on the connection the zone
+  /// selects, preparing it there on first use.
+  Future<IResultSet> _runPrepared(
+    String command,
+    List<Object?> parameters,
+    Map<String, Object?>? params,
+    Type? resultType,
+  ) => _withLink("prepared statement", (link) async {
+    final stmt = await link.statement(command);
+    return runChecked<IResultSet>(() async => await stmt.execute(parameters), (
+      e,
+      StackTrace s,
+    ) {
+      tomLog.warn("Error when executing SQL: $e");
+      // The exception type this returns *is* the retry signal: the statement
+      // catches MariadbPreparedStatementException and nothing else.
+      if (isLostConnectionFailure(e, connected: link.connected)) {
+        link.statements.remove(command);
+        return MariadbPreparedStatementException(
+          "error.failed-to-execute.connection_closed",
+          "MariadbPreparedStatement: connection closed",
+          parameters: {...?params, "type": resultType},
+          rootException: e,
+          stack: s,
+        );
+      }
+      return MariadbDatasourceException(
+        "error.failed-to-execute.exception",
+        "MariadbPreparedStatement: execution with $params failed. $e",
         parameters: {
-          "operation": operation,
-          "state": _wasClosed ? "closed" : "never_opened",
+          ...?params,
+          "type": resultType,
+          "connected": link.connected,
         },
+        rootException: e,
+        stack: s,
       );
+    });
+  });
+
+  /// Forgets the server-side statements for [command] on every connection.
+  ///
+  /// Each is deallocated when its connection is next handed back, so a
+  /// statement is never deallocated under a connection someone is using.
+  Future<void> _forgetStatement(String command) async {
+    final pool = _pool;
+    if (pool == null) return;
+    for (final link in pool.connections) {
+      final stmt = link.statements.remove(command);
+      if (stmt != null) link.pendingDeallocation.add(stmt);
     }
-    if (!connection!.connected) {
-      await connect();
-    }
-    return connection!;
   }
 
   @override
@@ -478,11 +787,13 @@ class MariaDbDatasource implements TomDataSource {
     TomQuery query, [
     Type? resultType,
   ]) async {
-    final link = await _openConnection("prepareStatement");
+    _requirePool("prepareStatement");
     final (q, params) = toPositionalStatement(query.generateQuery(sqlDialect));
-    var preparedStmt = await link.prepare(q);
+    // Prepared now, on the connection this zone selects, so a statement the
+    // server cannot compile fails here rather than at its first execution.
+    // Every other connection prepares it when it first runs it.
+    await _withLink("prepareStatement", (link) => link.statement(q));
     return MariadbPreparedStatement<T>(
-      preparedStmt,
       params,
       this,
       resultType,
@@ -819,21 +1130,25 @@ class MariaDbDatasource implements TomDataSource {
   ]) async {
     tomLog.trace("MariaDbDatasourceExecuting SQL: $T $resultType $command");
     _refuseMultipleStatements(command, "executeQuery");
-    final link = await _openConnection("executeQuery");
-    IResultSet qResult = await runChecked<IResultSet>(
-      () async {
-        return await link.execute(command, _toBindParams(params));
-      },
-      (e, StackTrace s) {
-        tomLog.warn("Error when executing SQL: $e");
-        return MariadbDatasourceException(
-          "error.failed-to-execute.exception",
-          "MariadbDatasource: execution of $command with $params failed. $e",
-          parameters: {...?params, "command": command, "type": resultType},
-          rootException: e,
-          stack: s,
-        );
-      },
+    // The rows are mapped after the connection is handed back: mapping a
+    // `@TomReference` column runs a query of its own, which must not need a
+    // second connection while this one is still held.
+    final IResultSet qResult = await _withLink(
+      "executeQuery",
+      (link) => runChecked<IResultSet>(
+        () async =>
+            await link.connection.execute(command, _toBindParams(params)),
+        (e, StackTrace s) {
+          tomLog.warn("Error when executing SQL: $e");
+          return MariadbDatasourceException(
+            "error.failed-to-execute.exception",
+            "MariadbDatasource: execution of $command with $params failed. $e",
+            parameters: {...?params, "command": command, "type": resultType},
+            rootException: e,
+            stack: s,
+          );
+        },
+      ),
     );
     return mapResultSet<T>(qResult, resultType);
   }
@@ -1444,23 +1759,46 @@ class MariaDbDatasource implements TomDataSource {
   Future<void> initialize(Map<String, dynamic> settings) async {
     tomReflectionInfo.setValues<MariaDbDatasource>(
       this,
-      normalizePort(settings),
+      normalizeIntegerSettings(settings),
     );
     await connect();
   }
 
-  /// Returns [settings] with its `port` value normalized to an `int` (G-DB-3).
+  /// The settings this driver binds to `int` fields: the port, the connect
+  /// timeout and the six pool settings.
+  static const Set<String> integerSettings = {
+    'port',
+    'timeOut',
+    'poolMaxSize',
+    'poolMinIdle',
+    'poolAcquireTimeoutMs',
+    'poolIdleTimeoutMs',
+    'poolMaxLifetimeMs',
+    'poolValidateAfterIdleMs',
+  };
+
+  /// Returns [settings] with every [integerSettings] value given as a string
+  /// folded to an `int` (G-DB-3).
   ///
-  /// The datasource binds `port` to an `int` field, but application config may
-  /// express the port either as an int or as a string — e.g. an environment
-  /// substitution (`port: ${DB_PORT:3306}`) always yields a string. This folds
-  /// a string port to an int before reflection binding so both forms work. When
-  /// `port` is absent or already an int the map is returned unchanged; when it
-  /// is a string it is parsed via [parsePort].
-  static Map<String, dynamic> normalizePort(Map<String, dynamic> settings) {
-    final raw = settings['port'];
-    if (raw is! String) return settings;
-    return <String, dynamic>{...settings, 'port': parsePort(raw)};
+  /// The driver binds these to `int` fields, but application config may
+  /// express them either as ints or as strings — an environment substitution
+  /// (`port: ${DB_PORT:3306}`, `poolMaxSize: ${DB_POOL:10}`) always yields a
+  /// string. Folding before reflection binding lets both forms work. A map with
+  /// no string-valued integer setting is returned unchanged. The port is parsed
+  /// by [parsePort] and keeps its own error key; every other value that is not
+  /// an integer throws `error.initialize.invalid_integer` naming its key.
+  static Map<String, dynamic> normalizeIntegerSettings(
+    Map<String, dynamic> settings,
+  ) {
+    final folded = <String, dynamic>{};
+    for (final key in integerSettings) {
+      final raw = settings[key];
+      if (raw is! String) continue;
+      folded[key] = key == 'port' ? parsePort(raw) : _parseInteger(key, raw);
+    }
+    return folded.isEmpty
+        ? settings
+        : <String, dynamic>{...settings, ...folded};
   }
 
   /// Parses a configured port value into the `int` the driver binds (G-DB-3).
@@ -1481,9 +1819,26 @@ class MariaDbDatasource implements TomDataSource {
     );
   }
 
+  static int _parseInteger(String key, String raw) {
+    final parsed = int.tryParse(raw.trim());
+    if (parsed != null) return parsed;
+    throw MariadbDatasourceException(
+      "error.initialize.invalid_integer",
+      "MariadbDatasource: configured $key '$raw' is not a valid integer.",
+      parameters: {"setting": key, "value": raw},
+    );
+  }
+
+  /// Whether the data source is open and can reach its database: open, and
+  /// either holding a live connection or — holding none — having opened the
+  /// last one it tried.
   @override
   bool isOperational() {
-    return connection != null && connection!.connected;
+    final pool = _pool;
+    if (pool == null || pool.isClosed) return false;
+    final links = pool.connections;
+    if (links.isEmpty) return !_lastOpenFailed;
+    return links.any((link) => link.connected);
   }
 
   @override
@@ -1492,72 +1847,66 @@ class MariaDbDatasource implements TomDataSource {
     Map<String, dynamic>? params,
   ]) async {
     _refuseMultipleStatements(command, "executeCommand");
-    final link = await _openConnection("executeCommand");
-    var qResult = await runChecked<IResultSet>(
-      () async => await link.execute(command, _toBindParams(params)),
-      (e, s) {
-        return MariadbDatasourceException(
-          "error.result_processing.executecommand_failed",
-          "ExecuteCommand $command failed: $e",
-          parameters: {...?params, "command": command},
-          rootException: e,
-          stack: s,
-          autoLog: true,
-        );
-      },
+    final qResult = await _withLink(
+      "executeCommand",
+      (link) => runChecked<IResultSet>(
+        () async =>
+            await link.connection.execute(command, _toBindParams(params)),
+        (e, s) {
+          return MariadbDatasourceException(
+            "error.result_processing.executecommand_failed",
+            "ExecuteCommand $command failed: $e",
+            parameters: {...?params, "command": command},
+            rootException: e,
+            stack: s,
+            autoLog: true,
+          );
+        },
+      ),
     );
     return qResult.affectedRows;
   }
 
-  /// Closes the connection and lets go of it.
+  /// Closes the pool and lets go of it.
   ///
-  /// [connection] is cleared whatever the link's state was, so that a closed
-  /// data source reads as closed rather than as one holding a dead connection.
-  /// That distinction is load-bearing: [_openConnection] repairs a *dropped*
-  /// link, and a closed data source that still carried one would be silently
-  /// re-opened by the next statement — resurrecting, on the shutdown path, a
-  /// connection nothing would ever close again.
+  /// Idle connections are closed at once; a connection still lent — to a
+  /// transaction or a running statement — is closed when it is handed back.
+  /// A connection that fails to close is logged and dropped: the caller is done
+  /// with it either way.
+  ///
+  /// The pool is cleared so that a closed data source reads as closed, and
+  /// refuses statements, rather than reopening on the next one — on the
+  /// shutdown path that would open connections nothing would ever close.
   ///
   /// A data source that was never opened has nothing to release, so closing it
   /// changes nothing and leaves it reading as never opened.
   @override
   Future<void> close() async {
-    final link = connection;
-    if (link == null) {
+    final pool = _pool;
+    if (pool == null) {
       tomLog.warn(
-        "MariadbDatasource NOT closing $host:$port/$databaseName: it has no "
-        "connection to release.",
+        "MariadbDatasource NOT closing $host:$port/$databaseName: it is not "
+        "open.",
       );
       return;
     }
-    try {
-      if (link.connected) {
-        tomLog.info("MariadbDatasource closing $host:$port/$databaseName");
-        await link.close();
-      } else {
-        tomLog.warn(
-          "MariadbDatasource $host:$port/$databaseName had already lost its "
-          "connection; releasing it without closing.",
-        );
-      }
-    } finally {
-      // In a finally because a close that failed still means the caller is done
-      // with this link. Keeping the handle would leave the data source claiming
-      // a connection that nothing can use.
-      connection = null;
-      _wasClosed = true;
-    }
+    tomLog.info("MariadbDatasource closing $host:$port/$databaseName");
+    _pool = null;
+    _wasClosed = true;
+    await pool.close();
   }
 
   @override
   String toString() =>
       "MariadbDatasource $host:$port/$databaseName ${_stateDescription()}";
 
-  /// How this data source describes its connection state: the link's own state
-  /// while it holds one, and otherwise which of the two ways it came to hold
-  /// none.
+  /// How this data source describes its state: its pool while it is open, and
+  /// otherwise which of the two ways it came to hold none.
   String _stateDescription() {
-    if (connection != null) return "connected: ${connection!.connected}";
+    final pool = _pool;
+    if (pool != null) {
+      return "open (${pool.lentCount} lent, ${pool.idleCount} idle)";
+    }
     return _wasClosed ? "closed" : "never opened";
   }
 
@@ -1578,121 +1927,68 @@ class MariaDbDatasource implements TomDataSource {
   @override
   String getParticipantId() => "MariaDb-$databaseName@$host:@$port";
 
-  /// The transaction this data source's connection is enlisted in, or `null`.
+  /// Each running transaction's share of this data source, by transaction.
   ///
-  /// There is one connection and no pool, and a transaction is a property of
-  /// the *connection*: every statement on it between `START TRANSACTION` and
-  /// `COMMIT` belongs to that transaction, whoever issued it. So while a
-  /// transaction holds the connection, a statement from anywhere else — another
-  /// request's transaction, or a request with none — waits for it to be
-  /// released rather than running inside a transaction that is not its own.
-  TomTransaction? _owner;
+  /// A transaction is a property of a *connection* — every statement on it
+  /// between `START TRANSACTION` and `COMMIT` belongs to that transaction — so
+  /// each transaction this data source is enlisted in has a connection of its
+  /// own, pinned here from its first statement to [endTransaction].
+  final Map<TomTransaction, _Branch> _branches = HashMap.identity();
 
-  /// Completes when [_owner] lets go of the connection.
-  Completer<void>? _released;
+  /// Issues one of [transaction]'s own lifecycle statements —
+  /// `START TRANSACTION`, `COMMIT`, `ROLLBACK`, the `XA` verbs — on its pinned
+  /// connection, without enlisting anything.
+  ///
+  /// Routed through [executeCommand] rather than around it, so there stays one
+  /// way a command reaches a connection.
+  Future<BigInt> _lifecycle(TomTransaction transaction, String command) =>
+      runZoned(
+        () => executeCommand(command),
+        zoneValues: {_LifecycleKey: _LifecycleKey(this, transaction)},
+      );
 
-  /// Marks a zone in which this data source issues one of its transaction's
-  /// own statements.
-  static final Object _lifecycleZone = Object();
-
-  /// Issues one of the transaction's own statements — `START TRANSACTION`,
-  /// `COMMIT`, `ROLLBACK`, the `XA` verbs — without passing admission.
-  ///
-  /// They belong to the connection's owner by definition, and admission would
-  /// either enlist them in the very transaction they are starting or make them
-  /// wait for a release only they can bring about. Routed through
-  /// [executeCommand] rather than around it, so there stays one way a command
-  /// reaches the connection.
-  Future<BigInt> _lifecycle(String command) => runZoned(
-    () => executeCommand(command),
-    zoneValues: {_lifecycleZone: this},
-  );
-
-  /// Enlists this data source in the current transaction, at the point of use.
-  ///
-  /// Called before every statement — [_openConnection] and a prepared
-  /// statement's execute both route through here — so a data source used
-  /// inside a running transaction joins it without any call site asking.
-  /// That is what makes `@TomTransactional` mean anything: the pipeline opens
-  /// and concludes the transaction, and it cannot know which data sources the
-  /// endpoint will touch.
-  ///
-  /// Three cases, in order:
-  ///
-  /// * the connection already belongs to the current transaction — admitted;
-  /// * it belongs to another — wait for [_released], then look again;
-  /// * it is free, and a transaction is running — take it and enlist. A
-  ///   participant that cannot start its transaction fails the statement that
-  ///   triggered the enlistment (`registerParticipant` raises): a statement
-  ///   that ran outside the transaction it was meant to join is the defect
-  ///   this exists to remove.
-  ///
-  /// Enlisting runs [startTransaction], which claims the connection
-  /// (`_claimConnection`) and issues its statement without coming back here.
-  ///
-  /// The waiting has a cost worth naming: work that the owning transaction
-  /// itself waits on, issued from a zone that does not carry it (a
-  /// `TomTransactionManager.runInTransactionScope` nested inside it), waits on
-  /// its own transaction for good. Nothing in the framework does that.
-  Future<void> _admit() async {
-    if (identical(Zone.current[_lifecycleZone], this)) return;
-    final current = TomTransactionManager.getCurrentTransaction();
-    while (_owner != null && !identical(_owner, current)) {
-      await _released!.future;
+  /// Hands [transaction]'s connection back to the pool and forgets its branch.
+  Future<void> _endBranch(TomTransaction transaction) async {
+    final branch = _branches.remove(transaction);
+    if (branch == null) return;
+    if (!branch.started.isCompleted) branch.started.complete(false);
+    final pinned = branch.link;
+    final pool = _pool;
+    if (pinned == null) return;
+    _MariaDbLink link;
+    try {
+      link = await pinned;
+    } catch (_) {
+      return; // Never acquired, so nothing to hand back.
     }
-    if (_owner != null || current == null || !current.isRunning) return;
-    await current.registerParticipant(this);
-  }
-
-  /// Takes the connection for [transaction], waiting while another holds it.
-  ///
-  /// Called by [startTransaction] — whoever enlisted this data source, the
-  /// point of use or an explicit `registerParticipant` — so the connection
-  /// has exactly one owner from its `START TRANSACTION` to its release. A
-  /// second transaction reaching a busy data source therefore waits its turn
-  /// rather than being refused: two requests that each open a transaction are
-  /// ordinary traffic, not a programming error.
-  Future<void> _claimConnection(TomTransaction transaction) async {
-    while (_owner != null && !identical(_owner, transaction)) {
-      await _released!.future;
+    if (pool != null) {
+      await _handBack(pool, link);
+    } else {
+      // Closed while the transaction ran: the connection goes with it.
+      try {
+        if (link.connected) await link.connection.close();
+      } catch (_) {}
     }
-    if (_owner != null) return;
-    _owner = transaction;
-    _released = Completer<void>();
   }
 
-  /// Hands the connection back, waking every statement waiting in [_admit].
-  void _releaseConnection() {
-    final released = _released;
-    _owner = null;
-    _released = null;
-    released?.complete();
-  }
-
-  bool _transactional = false;
-
-  /// Refuses a transaction that would nest inside one already running.
+  /// Refuses a second start of a transaction this data source is already in.
   ///
-  /// Shared by both lifecycles so the refusal cannot drift apart again — it is
-  /// one programming error, reported one way, whichever data source hits it.
-  /// [transactionId] names the branch already open where there is one; the
-  /// plain lifecycle tracks a flag rather than an id, so it has nothing to
-  /// name and omits the parameter.
+  /// Shared by both lifecycles so the refusal cannot drift apart — it is one
+  /// programming error, reported one way, whichever data source hits it.
+  /// [transactionId] names the XA branch already open where there is one.
   ///
   /// Thrown rather than reported as `false`, and *in front of* the `try` that
   /// turns a failed statement into `false`, because the two are not the same
   /// kind of event. A `START TRANSACTION` the database refuses is a failure
-  /// the caller may retry or route around; a second start on a busy data
-  /// source is the caller's own mistake, and no retry fixes it. Carrying that
-  /// distinction is the whole reason for the module's own exception type: a
-  /// caller that catches `Exception` to handle connection trouble would
-  /// otherwise swallow this too, and never learn it has a bug.
+  /// the caller may retry or route around; starting the same transaction twice
+  /// is the caller's own mistake, and no retry fixes it. Another transaction
+  /// is not refused: it gets a connection of its own.
   Never _refuseNestedTransaction([String? transactionId]) {
     throw MariadbDatasourceException(
       "error.transaction.already_active",
-      "MariadbDatasource ${getParticipantId()} already has an active "
-          "transaction${transactionId == null ? "" : " $transactionId"}. "
-          "Conclude it with commit() or rollback() before starting another.",
+      "MariadbDatasource ${getParticipantId()} is already in this "
+          "transaction${transactionId == null ? "" : " ($transactionId)"}. "
+          "Conclude it with commit() or rollback() before starting it again.",
       parameters: {
         "participant": getParticipantId(),
         if (transactionId != null) "transactionId": transactionId,
@@ -1700,54 +1996,73 @@ class MariaDbDatasource implements TomDataSource {
     );
   }
 
-  /// Opens the connection's transaction, read-only when [transaction] is.
+  /// Opens [transaction] on a connection of its own, read-only when it is.
   ///
   /// `START TRANSACTION READ ONLY` is what makes the flag mean something: the
   /// server refuses every write on this connection until the transaction ends,
   /// with `ER_CANT_EXECUTE_IN_READ_ONLY_TRANSACTION`. The coordinator cannot
   /// enforce it — it has no idea what a write is — so the resource that can is
-  /// the only place it can be enforced, and a flag declared on an endpoint and
-  /// enforced nowhere is a statement of intent a reader will take for a
-  /// guarantee.
+  /// the only place it can be enforced.
   @override
   Future<bool> startTransaction(TomTransaction transaction) async {
-    await _claimConnection(transaction);
-    if (_transactional) _refuseNestedTransaction();
+    final existing = _branches[transaction];
+    if (existing != null && existing.active) _refuseNestedTransaction();
+    final branch = _openBranch(transaction, existing);
     try {
       await _lifecycle(
+        transaction,
         transaction.isReadOnly
             ? "START TRANSACTION READ ONLY;"
             : "START TRANSACTION;",
       );
-      _transactional = true;
+      branch.active = true;
+      branch.started.complete(true);
       return true;
     } catch (error) {
       tomLog.error(
         "Starting database transaction of ${getParticipantId()} failed $error",
       );
-      // Not enlisted, so no conclusion will ever release it.
-      _releaseConnection();
+      await _abandonStart(transaction, branch, existing);
       return false;
     }
   }
 
-  /// Ends this participant's part of a transaction by releasing the
-  /// connection to whatever is waiting for it; always succeeds.
+  /// The branch [transaction] starts on: [existing], when the transaction ran
+  /// on this data source before and was concluded, keeping its connection —
+  /// otherwise a new one.
+  _Branch _openBranch(TomTransaction transaction, _Branch? existing) {
+    final branch = existing ?? _Branch();
+    if (existing != null) branch.started = Completer<bool>();
+    _branches[transaction] = branch;
+    return branch;
+  }
+
+  /// Undoes a start that failed: a new branch is forgotten with its connection,
+  /// since no conclusion will ever release it; a reused one is left as it was.
+  Future<void> _abandonStart(
+    TomTransaction transaction,
+    _Branch branch,
+    _Branch? existing,
+  ) async {
+    branch.active = false;
+    if (!branch.started.isCompleted) branch.started.complete(false);
+    if (existing == null) await _endBranch(transaction);
+  }
+
+  /// Ends this participant's part of [transaction] by handing its connection
+  /// back to the pool; always succeeds.
   ///
   /// A one-phase `START TRANSACTION` / `COMMIT` has no prepare step, so there
-  /// is no statement to issue — the XA lifecycle's `XA END` + `XA PREPARE` has
-  /// no plain equivalent (see [MariaDbXADatasource.endTransaction]). [commit]
-  /// and [rollback] clear the in-transaction flag themselves; what is left is
-  /// the connection's ownership (see `_admit`), and this is where it ends,
-  /// because the coordinator calls this on every participant after either
-  /// conclusion.
+  /// is no statement to issue. The coordinator calls this on every participant
+  /// after either conclusion, which is what makes it the place a transaction's
+  /// connection is returned.
   ///
   /// Reporting `true` is not a formality. The coordinator ands every
   /// participant's result into the outcome, so a `false` here would fail a
   /// transaction that had in fact completed.
   @override
-  Future<bool> endTransaction() async {
-    _releaseConnection();
+  Future<bool> endTransaction(TomTransaction transaction) async {
+    await _endBranch(transaction);
     return true;
   }
 
@@ -1764,43 +2079,41 @@ class MariaDbDatasource implements TomDataSource {
   /// deployment that needs the full guarantee across two databases uses
   /// [MariaDbXADatasource] for both.
   @override
-  Future<bool> prepare() async => true;
+  Future<bool> prepare(TomTransaction transaction) async => true;
 
   @override
-  Future<bool> commit() async {
+  Future<bool> commit(TomTransaction transaction) async {
     try {
-      await _lifecycle("COMMIT;");
-      _transactional = false;
+      await _lifecycle(transaction, "COMMIT;");
       return true;
     } catch (error) {
       tomLog.error(
         "Committing database transaction of ${getParticipantId()} failed $error",
       );
-      _transactional = false;
       return false;
+    } finally {
+      _branches[transaction]?.active = false;
     }
   }
 
-  /// Undoes the connection's transaction, reporting whether it was undone.
+  /// Undoes [transaction] on its connection, reporting whether it was undone.
   ///
-  /// A `false` here is the outcome that needs a human: the statements this
+  /// A `false` here is the outcome that needs a human: the statements the
   /// connection issued are neither committed nor rolled back. The coordinator
   /// puts this data source in [TomTransactionResult.failed] and reports the
-  /// transaction as [TomTransactionOutcome.rolledBackWithFailures]; before the
-  /// result carried it, a failed rollback returned the same `true` as a clean
-  /// one and the error log was the entire record.
+  /// transaction as [TomTransactionOutcome.rolledBackWithFailures].
   @override
-  Future<bool> rollback() async {
+  Future<bool> rollback(TomTransaction transaction) async {
     try {
-      await _lifecycle("ROLLBACK;");
-      _transactional = false;
+      await _lifecycle(transaction, "ROLLBACK;");
       return true;
     } catch (error) {
       tomLog.error(
         "Rolling back database transaction of ${getParticipantId()} failed $error",
       );
-      _transactional = false;
       return false;
+    } finally {
+      _branches[transaction]?.active = false;
     }
   }
 }
@@ -1831,8 +2144,6 @@ class MariaDbDatasource implements TomDataSource {
 @tomReflector
 @TomDatasourceDriver("mariadb_xa")
 class MariaDbXADatasource extends MariaDbDatasource {
-  String? _txId;
-
   /// The most bytes an XA `gtrid` may hold; `XA START` refuses a longer one.
   static const int maxBranchIdBytes = 64;
 
@@ -1869,18 +2180,6 @@ class MariaDbXADatasource extends MariaDbDatasource {
     return (head.length > room ? head.substring(0, room) : head) + tail;
   }
 
-  /// Whether the branch has been `XA END`ed — it is IDLE or PREPARED rather
-  /// than ACTIVE.
-  ///
-  /// `XA END` is legal exactly once, on an ACTIVE branch, and a rollback has to
-  /// know which side of it the branch is on: `XA ROLLBACK` is refused on an
-  /// ACTIVE branch — `XAER_RMFAIL: The command cannot be executed when global
-  /// transaction is in the ACTIVE state` — and `XA END` is refused on an IDLE
-  /// or PREPARED one. A rollback can arrive in any of the three states: before
-  /// [prepare] ran, after its `XA END` succeeded and its `XA PREPARE` did not,
-  /// or after a prepare succeeded and the commit did not.
-  bool _ended = false;
-
   /// Opens an XA branch. A read-only [transaction] cannot be honoured here.
   ///
   /// `XA START` has no `READ ONLY` form in MariaDB or MySQL, so this data
@@ -1888,38 +2187,52 @@ class MariaDbXADatasource extends MariaDbDatasource {
   /// sibling does. Reported rather than ignored: a deployment that declared
   /// `@TomTransactional(isReadOnly: true)` and reads nothing anywhere would
   /// otherwise believe the branch was protected.
+  ///
+  /// Each transaction gets its own branch id and its own connection; the
+  /// branch state lives with the transaction, so concurrent transactions on
+  /// this data source are separate branches.
+  ///
+  /// A branch tracks whether it has been `XA END`ed. `XA END` is legal exactly
+  /// once, on an ACTIVE branch, and a rollback has to know which side of it the
+  /// branch is on: `XA ROLLBACK` is refused on an ACTIVE branch —
+  /// `XAER_RMFAIL: The command cannot be executed when global transaction is in
+  /// the ACTIVE state` — and `XA END` is refused on an IDLE or PREPARED one.
   @override
   Future<bool> startTransaction(TomTransaction transaction) async {
-    await _claimConnection(transaction);
-    if (_txId != null) _refuseNestedTransaction(_txId);
+    final existing = _branches[transaction];
+    if (existing != null && existing.xaId != null) {
+      _refuseNestedTransaction(existing.xaId);
+    }
     if (transaction.isReadOnly) {
       tomLog.warn(
         "${getParticipantId()} joined a read-only transaction, but XA has no "
         "read-only branch: writes on this connection are not prevented.",
       );
     }
-    _txId = "'${_newBranchId()}'";
-    _ended = false;
+    final branch = _openBranch(transaction, existing)
+      ..xaId = "'${_newBranchId()}'"
+      ..ended = false;
     try {
-      await _lifecycle("XA START $_txId;");
+      await _lifecycle(transaction, "XA START ${branch.xaId};");
+      branch.active = true;
+      branch.started.complete(true);
       return true;
     } catch (error) {
       tomLog.error(
         "Starting XA database transaction of ${getParticipantId()} failed $error",
       );
-      // The id is assigned before the command is issued, so a failure here
-      // leaves a branch that exists only in this field — the database never
-      // opened it. Holding it wedges the data source: the guard above refuses
-      // every later transaction, and the caller cannot clear it by rolling
-      // back, because it was just told the transaction did not begin.
-      _txId = null;
-      _releaseConnection();
+      // The database never opened the branch, so its id is cleared. Keeping it
+      // would refuse the transaction's every later start, and the caller
+      // cannot clear it by rolling back, because it was just told the
+      // transaction did not begin.
+      branch.xaId = null;
+      await _abandonStart(transaction, branch, existing);
       return false;
     }
   }
 
-  /// Ends this participant's part of the transaction: it issues no statement
-  /// and releases the connection, exactly as its one-phase sibling's does.
+  /// Ends this participant's part of [transaction]: it issues no statement and
+  /// hands the connection back, exactly as its one-phase sibling's does.
   ///
   /// Every XA statement belongs to a phase the coordinator decides something
   /// with, and this method is called after the decision — so a statement placed
@@ -1930,7 +2243,8 @@ class MariaDbXADatasource extends MariaDbDatasource {
   /// participant's result into the outcome, so a `false` here would fail a
   /// transaction that had in fact completed.
   @override
-  Future<bool> endTransaction() => super.endTransaction();
+  Future<bool> endTransaction(TomTransaction transaction) =>
+      super.endTransaction(transaction);
 
   /// Phase one: `XA END` then `XA PREPARE` against this branch, as two calls.
   ///
@@ -1944,24 +2258,25 @@ class MariaDbXADatasource extends MariaDbDatasource {
   /// but `XA COMMIT` or `XA ROLLBACK` can resolve it — which is exactly the
   /// promise the coordinator's prepare phase asks every participant for.
   ///
-  /// A failure here keeps `_txId`, and that is the opposite of every other
+  /// A failure here keeps the branch, and that is the opposite of every other
   /// exit. The coordinator answers a veto by rolling *every* participant back,
   /// this one included, and [rollback] needs the branch to name; clearing it
   /// would send `XA ROLLBACK null` and leave the real branch behind.
   /// [rollback] clears it in its `finally`, so the data source is not wedged
   /// either way.
   @override
-  Future<bool> prepare() async {
-    final branch = _txId;
+  Future<bool> prepare(TomTransaction transaction) async {
+    final branch = _branches[transaction];
+    if (branch == null) return false;
     try {
-      await _lifecycle("XA END $branch;");
-      _ended = true;
-      await _lifecycle("XA PREPARE $branch;");
+      await _lifecycle(transaction, "XA END ${branch.xaId};");
+      branch.ended = true;
+      await _lifecycle(transaction, "XA PREPARE ${branch.xaId};");
       return true;
     } catch (error) {
       tomLog.error(
-        "Preparing XA database transaction $branch of ${getParticipantId()} "
-        "failed $error",
+        "Preparing XA database transaction ${branch.xaId} of "
+        "${getParticipantId()} failed $error",
       );
       return false;
     }
@@ -1976,16 +2291,18 @@ class MariaDbXADatasource extends MariaDbDatasource {
   /// peers have already committed. The branch is left set and prepared so that
   /// an operator — or a later `XA RECOVER` — has something to name.
   @override
-  Future<bool> commit() async {
-    final branch = _txId;
+  Future<bool> commit(TomTransaction transaction) async {
+    final branch = _branches[transaction];
+    if (branch == null || branch.xaId == null) return false;
+    final xaId = branch.xaId;
     try {
-      await _lifecycle("XA COMMIT $branch;");
-      _txId = null;
-      _ended = false;
+      await _lifecycle(transaction, "XA COMMIT $xaId;");
+      branch.xaId = null;
+      branch.ended = false;
       return true;
     } catch (error) {
       tomLog.error(
-        "Committing prepared XA database transaction $branch of "
+        "Committing prepared XA database transaction $xaId of "
         "${getParticipantId()} failed $error — the branch is in doubt and is "
         "left for XA RECOVER",
       );
@@ -1994,13 +2311,15 @@ class MariaDbXADatasource extends MariaDbDatasource {
   }
 
   @override
-  Future<bool> rollback() async {
+  Future<bool> rollback(TomTransaction transaction) async {
     // A participant that never opened a branch — its `startTransaction` failed
     // — is still rolled back with everyone else, and so is one whose branch a
     // successful commit has already cleared, which happens when a later
     // participant's commit fails. There is nothing to undo in either case, and
     // issuing the statement anyway would send `XA ROLLBACK null`.
-    if (_txId == null) return true;
+    final branch = _branches[transaction];
+    final xaId = branch?.xaId;
+    if (branch == null || xaId == null) return true;
     var undone = true;
     try {
       // An ACTIVE branch has to be ended before it can be rolled back; an IDLE
@@ -2009,8 +2328,8 @@ class MariaDbXADatasource extends MariaDbDatasource {
       // where it was — holding its locks, with nothing issuing `XA RECOVER` to
       // find it. A refused `XA END` ends the attempt: the branch is still
       // ACTIVE, and `XA ROLLBACK` would be refused for the same reason.
-      if (!_ended) await _lifecycle("XA END $_txId;");
-      await _lifecycle("XA ROLLBACK $_txId;");
+      if (!branch.ended) await _lifecycle(transaction, "XA END $xaId;");
+      await _lifecycle(transaction, "XA ROLLBACK $xaId;");
     } catch (error) {
       tomLog.error(
         "Rolling back XA database transaction of ${getParticipantId()} failed $error",
@@ -2019,11 +2338,10 @@ class MariaDbXADatasource extends MariaDbDatasource {
       // there, holding its locks, and the log line was the entire record of it.
       undone = false;
     } finally {
-      // Always clear the branch id — even on a failed rollback — so the next
-      // startTransaction is allowed. Leaving it set wedges the data source after
-      // its first rolled-back transaction.
-      _txId = null;
-      _ended = false;
+      // Always clear the branch id — even on a failed rollback — so nothing
+      // later names a branch this transaction has finished with.
+      branch.xaId = null;
+      branch.ended = false;
     }
     return undone;
   }

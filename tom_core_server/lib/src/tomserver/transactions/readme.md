@@ -5,9 +5,9 @@
 
 Commit/rollback coordination across participants (datasources and other
 resources). A `TomTransaction` collects `TomTransactionParticipant`s and
-concludes them with a **two-phase commit**: `prepare()` on every participant
-first, and only if all of them promise does `commit()` run on any of them. A
-`false` from `prepare()` is the veto, and it arrives while nothing is durable,
+concludes them with a **two-phase commit**: `prepare` on every participant
+first, and only if all of them promise does `commit` run on any of them. A
+`false` from `prepare` is the veto, and it arrives while nothing is durable,
 so the transaction aborts by rolling everyone back. The `TomTransactionManager`
 binds a transaction to a `@TomTransactional` endpoint call and commits or rolls
 it back when the call returns.
@@ -27,7 +27,7 @@ fifth — whether every participant released its connection.
 | ---- | -------------- |
 | `TomTransactionManager` | Zone-scoped coordinator; `runInTransaction(body)` opens a transaction, commits it on return and rolls it back on a throw. Also `startTransaction([isReadOnly])` returning `(transaction, isNew)`, `getCurrentTransaction()`, `transactional`, plus `runInTransactionScope(body)` / `hasTransactionScope` for isolating one flow of work from another. Binds the transaction to a `@TomTransactional` endpoint call. |
 | `TomTransaction` | The running transaction (created via the manager); `registerParticipant` (all or nothing — a participant whose `startTransaction` refuses or throws is not enlisted, and the failure is raised naming it), `commitTransaction()` (prepare-all then commit-all, rolling back on any veto), `rollbackTransaction()`. Both answer a `TomTransactionResult` naming what became of the work and which participants did not do what they said. |
-| `TomTransactionParticipant` | Abstract resource that enlists in a transaction (`startTransaction(transaction)`, `prepare`, `commit`, `rollback`, `endTransaction`). `rollback` answers whether the work was undone; `false` is the outcome needing a human. The transaction is handed over on enlistment, which is how `isReadOnly` reaches the resource — `MariaDbDatasource` opens `START TRANSACTION READ ONLY` for one. Datasources implement this; `MariaDbXADatasource` maps `prepare` onto `XA END` + `XA PREPARE` and `commit` onto `XA COMMIT`. |
+| `TomTransactionParticipant` | Abstract resource that enlists in a transaction (`startTransaction`, `prepare`, `commit`, `rollback`, `endTransaction`, each handed the transaction it concerns — a data source serving several transactions at once holds a connection per transaction). `rollback` answers whether the work was undone; `false` is the outcome needing a human. The transaction is handed over on enlistment, which is how `isReadOnly` reaches the resource — `MariaDbDatasource` opens `START TRANSACTION READ ONLY` for one. Datasources implement this; `MariaDbXADatasource` maps `prepare` onto `XA END` + `XA PREPARE` and `commit` onto `XA COMMIT`. |
 
 ## Quick start
 

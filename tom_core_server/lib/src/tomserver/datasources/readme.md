@@ -7,15 +7,17 @@ The SQL datasource layer: a database-neutral `TomDataSource` contract plus the
 MariaDB/MySQL driver, a typed SQL-dialect renderer, and typed query objects.
 `TomStandardSqlDialect` (specialised by `MariadbSqlDialect`) renders `TomSelect`
 / `TomCount` / `TomDelete` and the `TomDbType` column family into SQL strings;
-`MariaDbDatasource` opens the connection and runs prepared statements.
-`MariaDbXADatasource` adds XA (two-phase) participation.
+`MariaDbDatasource` draws its connections from a `TomConnectionPool` — one per
+transaction, one per statement outside a transaction — and runs prepared
+statements on them. `MariaDbXADatasource` adds XA (two-phase) participation.
 
 ## Key types
 
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomDataSource` | Abstract datasource contract (a `TomTransactionParticipant`); `TomDatasourceDriver` / `TomDataSourceInfo` describe a driver. |
-| `MariaDbDatasource` | MariaDB/MySQL driver: settable `host`/`port`/`username`/`password`/`databaseName`/`timeOut`, then `connect()`. |
+| `MariaDbDatasource` | MariaDB/MySQL driver: settable `host`/`port`/`username`/`password`/`databaseName`/`timeOut` and the `pool…` settings, then `connect()`. Concurrent transactions run side by side, each on a pooled connection of its own; `withDriverConnection` hands a body the connection a statement would use. |
+| `TomConnectionPool<C>` · `TomConnectionPoolSettings` · `TomConnectionFactory<C>` | The driver-neutral bounded pool: lends a connection per caller up to `maxSize`, makes callers wait in line up to `acquireTimeout`, and retires idle and old connections lazily, on use. `TomConnectionPoolException` reports a closed pool, a wait that timed out, or unusable settings. |
 | `MariaDbXADatasource` | XA (two-phase-commit) variant of the MariaDB driver. |
 | `TomStandardSqlDialect` · `MariadbSqlDialect` | Render queries and types into SQL. |
 | `TomSelect` · `TomCount` · `TomDelete` · `TomLiteralSelect` | Typed generated queries. |
@@ -68,7 +70,7 @@ Future<void> main() async {
 
   await db.connect();
   try {
-    print(db.connected); // true once the connection is established
+    print(db.connected); // true once a pooled connection is established
   } finally {
     // An open connection holds a socket, and a live socket holds the isolate
     // open. A server closes its datasources at shutdown (or through
@@ -79,14 +81,16 @@ Future<void> main() async {
 }
 ```
 
-> **Needs a live database.** `connect()` opens a real socket to the MariaDB
+> **Needs a live database.** `connect()` opens the pool's first connection, a
+> real socket to the MariaDB
 > named above, so this is a program to run against your own server rather than
 > one to paste and expect to work — without a listener on `localhost:3306` it
 > fails at the `connect()` line. Everything after that line, including the
 > close, is what a script that *does* reach a database must do.
 
 See [`doc/datasources.md`](../../../../doc/datasources.md) for the driver
-registry, the connection lifecycle and the transaction seam, and
+registry, the connection pool, the connection lifecycle and the transaction
+seam, and
 `example/datasources/datasources_example.dart` for a walkthrough of ten
 surfaces in order — SQL value boxing and parsing, literal rendering, bound
 parameters, the instant encoding, the clause builders, the classification of a
@@ -95,6 +99,7 @@ snippet above the example runs green as it stands; the drivers and the registry
 are the part that needs a server, and the example says so rather than
 pretending otherwise. `test/datasources_test.dart` covers the module and also
 runs the example, requiring it to print every numbered step and no others;
+`test/connection_pool_test.dart` covers the pool over a fake factory and clock;
 `test/mariadb_row_mapping_test.dart` covers the row mapper's five shapes, its
 refusal of an unreflected result type and the text spellings its numeric readers
 decide on, over a result set that carries what the protocol carries and hands

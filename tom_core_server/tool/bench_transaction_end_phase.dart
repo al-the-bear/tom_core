@@ -33,13 +33,13 @@ class _Releasing extends TomTransactionParticipant {
   }
 
   @override
-  Future<bool> prepare() async => true;
+  Future<bool> prepare(TomTransaction transaction) async => true;
   @override
-  Future<bool> commit() async => true;
+  Future<bool> commit(TomTransaction transaction) async => true;
   @override
-  Future<bool> rollback() async => true;
+  Future<bool> rollback(TomTransaction transaction) async => true;
   @override
-  Future<bool> endTransaction() async {
+  Future<bool> endTransaction(TomTransaction transaction) async {
     final r = _released;
     _released = null;
     r?.complete();
@@ -61,10 +61,13 @@ Future<void> main() async {
     for (var i = 0; i < 2000; i++) {
       await arm();
       for (final p in ps) {
-        await p.endTransaction();
+        await p.endTransaction(TomTransactionManager.startTransaction().$1);
       }
       await arm();
-      await Future.wait([for (final p in ps) p.endTransaction()]);
+      await Future.wait([
+        for (final p in ps)
+          p.endTransaction(TomTransactionManager.startTransaction().$1),
+      ]);
     }
 
     var seq = Duration.zero, par = Duration.zero;
@@ -75,7 +78,7 @@ Future<void> main() async {
         ..reset()
         ..start();
       for (final p in ps) {
-        await p.endTransaction();
+        await p.endTransaction(TomTransactionManager.startTransaction().$1);
       }
       sw.stop();
       seq += sw.elapsed;
@@ -83,7 +86,10 @@ Future<void> main() async {
       sw
         ..reset()
         ..start();
-      await Future.wait([for (final p in ps) p.endTransaction()]);
+      await Future.wait([
+        for (final p in ps)
+          p.endTransaction(TomTransactionManager.startTransaction().$1),
+      ]);
       sw.stop();
       par += sw.elapsed;
     }

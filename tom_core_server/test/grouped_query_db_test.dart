@@ -418,9 +418,11 @@ void main() async {
         // which is the point: the special-case in `mapGroupedRow` then becomes
         // a choice to re-justify rather than a silent no-op.
         final datasource = dsi.datasource as MariaDbDatasource;
-        final result = await datasource.connection!.execute(
-          'SELECT SUM(priority) AS total FROM fixture_task '
-          'WHERE title = "alpha"',
+        final result = await datasource.withDriverConnection(
+          (connection) => connection.execute(
+            'SELECT SUM(priority) AS total FROM fixture_task '
+            'WHERE title = "alpha"',
+          ),
         );
         final driverRow = result.rows.first;
 

@@ -22,9 +22,11 @@
 @Tags(['db'])
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:tom_core_server/tom_core_server.dart';
+
 import 'package:test/test.dart';
 
 // The reflection root (which now also captures FixtureTaskRecord) and its
@@ -156,7 +158,7 @@ void main() async {
       await ds.executeCommand(
         "INSERT INTO fixture_task (title) VALUES ('temporary')",
       );
-      await ds.rollback();
+      await ds.rollback(_aTransaction());
       expect(await _allTasks(ds), isEmpty);
     });
 
@@ -165,13 +167,57 @@ void main() async {
       await ds.executeCommand(
         "INSERT INTO fixture_task (title) VALUES ('kept')",
       );
-      expect(await ds.commit(), isTrue);
+      expect(await ds.commit(_aTransaction()), isTrue);
       final rows = await _allTasks(ds);
       expect(rows, hasLength(1));
       expect(rows.single.title, 'kept');
     });
 
-    test('startTransaction rejects a second concurrent transaction', () async {
+    test('a transaction runs while another one sleeps', () async {
+      // The pool's purpose, against a real server. The first transaction holds
+      // its connection for a second inside `SELECT SLEEP(1)`; the second
+      // inserts and commits on a connection of its own while that runs. With a
+      // single connection the second would have waited the full second for the
+      // first to conclude.
+      Future<void> inTransaction(Future<void> Function() body) =>
+          TomTransactionManager.runInTransactionScope(() async {
+            final (txn, _) = TomTransactionManager.startTransaction();
+            await body();
+            await txn.commitTransaction();
+          });
+
+      final slowStarted = Completer<void>();
+      final sleeper = Stopwatch()..start();
+      final slow = inTransaction(() async {
+        await ds.executeCommand(
+          "INSERT INTO fixture_task (title) VALUES ('slow')",
+        );
+        slowStarted.complete();
+        await ds.executeQuery<Object>('SELECT SLEEP(1)');
+      });
+      await slowStarted.future;
+
+      final fast = Stopwatch()..start();
+      await inTransaction(() async {
+        await ds.executeCommand(
+          "INSERT INTO fixture_task (title) VALUES ('fast')",
+        );
+      });
+      fast.stop();
+      await slow;
+      sleeper.stop();
+
+      expect(
+        fast.elapsed,
+        lessThan(const Duration(milliseconds: 800)),
+        reason: 'the fast transaction did not wait for the sleeping one',
+      );
+      expect(sleeper.elapsed, greaterThanOrEqualTo(const Duration(seconds: 1)));
+      final titles = (await _allTasks(ds)).map((t) => t.title).toSet();
+      expect(titles, {'slow', 'fast'});
+    });
+
+    test('starting the same transaction twice is refused', () async {
       expect(await ds.startTransaction(_aTransaction()), isTrue);
       // Against a real server, because this is the one place where the guard
       // and a genuine database refusal are both reachable through the same
@@ -189,7 +235,7 @@ void main() async {
         ),
       );
       // Leave the fixture clean for the next test.
-      await ds.rollback();
+      await ds.rollback(_aTransaction());
     });
 
     // Driver discovery scans `tomReflector.annotatedClasses` for

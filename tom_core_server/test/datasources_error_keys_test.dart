@@ -27,7 +27,11 @@ import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 import 'fixtures/reflection_fixture.dart'
-    show FixtureTag, FixtureTaggedRecord, FixtureUntaggedRecord;
+    show
+        FixtureTag,
+        FixtureTaggedRecord,
+        FixtureUnreadableFieldHolder,
+        FixtureUntaggedRecord;
 import 'fixtures/reflection_fixture.reflection.dart';
 import 'fixtures/text_result_set.dart';
 
@@ -86,16 +90,11 @@ class _DeadConnection implements MySQLConnection {
   );
 }
 
-/// A data source that was opened and whose link has since dropped, and whose
-/// reconnect does not bring it back — so the statement's single retry fails
-/// the same way the first attempt did.
+/// A data source whose every connection is dead on arrival, so a statement's
+/// single retry fails the same way the first attempt did.
 class _UnrecoverableLink extends MariaDbDatasource {
-  _UnrecoverableLink() {
-    connection = _DeadConnection();
-  }
-
   @override
-  Future<void> connect() async {}
+  Future<MySQLConnection> openConnection() async => _DeadConnection();
 }
 
 void main() {
@@ -156,9 +155,9 @@ void main() {
       });
     }
 
-    test('refuses a string port through normalizePort', () {
+    test('refuses a string port through normalizeIntegerSettings', () {
       expect(
-        () => MariaDbDatasource.normalizePort({'port': 'db'}),
+        () => MariaDbDatasource.normalizeIntegerSettings({'port': 'db'}),
         _throwsKey('error.initialize.invalid_port'),
       );
     });
@@ -169,8 +168,8 @@ void main() {
       'a link still dropped after the retry surfaces as connection_closed',
       () async {
         final datasource = _UnrecoverableLink();
+        await datasource.connect();
         final statement = MariadbPreparedStatement<Object>(
-          _DeadStatement(),
           const [],
           datasource,
           null,
@@ -186,14 +185,14 @@ void main() {
 
   group('mapResultSet on a plain reflected holder', () {
     test('a field of a type the mapper cannot read is refused', () async {
-      // MariaDbDatasource is reflected, carries no @TomDbTable and is not a
-      // TomClass, so it is mapped by declared field name — and its
-      // `connection` field is a MySQLConnection, which no column can become.
+      // The holder is reflected, carries no @TomDbTable and is not a TomClass,
+      // so it is mapped by declared field name — and its `window` field is a
+      // Duration, which no column can become.
       final datasource = MariaDbDatasource();
       await expectLater(
         datasource.mapResultSet<Object>(
-          OneTextRow({'connection': 'anything'}),
-          MariaDbDatasource,
+          OneTextRow({'window': 'anything'}),
+          FixtureUnreadableFieldHolder,
         ),
         _throwsKey('error.result_processing_field.unknown_type'),
       );

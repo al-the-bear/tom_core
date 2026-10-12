@@ -16,8 +16,46 @@
   same object; the first request marked it logged, and the access log fell
   silent for every request after it. The pipeline now seeds a new record per
   request.
+- **Concurrent transactions on one data source no longer wait for each other.**
+  `MariaDbDatasource` held a single connection, so a transaction held the whole
+  data source from its first statement to its conclusion and every other
+  transaction — and every statement outside one — waited behind it. Each
+  transaction now runs on a pooled connection of its own, and a statement
+  outside a transaction borrows one for itself.
+- **A lost connection inside a transaction is no longer retried elsewhere.** A
+  prepared statement whose connection is found gone is retried once on another
+  connection only outside a transaction; inside one the transaction lived on the
+  lost connection, so the failure is reported as
+  `error.failed-to-execute.transaction_connection_lost` instead of running the
+  statement outside the transaction it belongs to.
+- **`MariaDbDatasource.close` no longer throws when a connection fails to
+  close.** The failure is logged and the connection dropped; idle connections
+  are closed at once and lent ones when they are handed back.
 
 ### Added
+
+- **A connection pool for data sources: `TomConnectionPool<C>`**
+  (`datasources/connection_pool.dart`), with `TomConnectionPoolSettings`
+  (`maxSize` 10, `minIdle` 0, `acquireTimeout` 30 s, `idleTimeout` 10 min,
+  `maxLifetime` 30 min, `validateAfterIdle` 30 s; `validate()`), the driver
+  interface `TomConnectionFactory<C>` (`open`, `close`, `isUsable`, `validate`)
+  and `TomConnectionPoolException` (`clientThrow: false`) with the keys
+  `error.datasource.pool.closed`, `error.datasource.pool.acquire_timeout` and
+  `error.datasource.pool.invalid_settings`. Waiters are served first come,
+  first served, a released connection is handed straight to the longest
+  waiter, and idle and old connections are retired when the pool is next used
+  rather than by a timer.
+- **Pool settings on `MariaDbDatasource`**: `poolMaxSize`, `poolMinIdle`,
+  `poolAcquireTimeoutMs`, `poolIdleTimeoutMs`, `poolMaxLifetimeMs` and
+  `poolValidateAfterIdleMs`, bound from the configuration keys of the same
+  names, with the `poolSettings` getter; `openConnection()` (overridable; opens
+  one `MySQLConnection`), `openConnectionCount` and `lentConnectionCount`.
+  `toString` reads `open (N lent, M idle)` while the data source is open.
+- **`MariaDbDatasource.withDriverConnection(body)`** runs `body` with the
+  `MySQLConnection` a statement would use — the running transaction's, or one
+  lent for the call — for work that needs the driver's own API.
+- **`error.initialize.invalid_integer`**: an integer setting other than `port`
+  given as a string that is no integer, naming the `setting` and the `value`.
 
 - **`tomRequestLogInfoMiddleware()`**, the middleware that seeds a new
   `TomRequestLogInfo` under `TomRequestLogInfo.contextName` into every
@@ -48,8 +86,40 @@
 - **`TomWebAuthnSoftwareAuthenticator`**, a passkey authenticator in software
   (real P-256 keys, CBOR and signatures in memory) for tests and bring-up.
 
+### Changed
+
+- **Breaking: every participant hook is handed the transaction.**
+  `TomTransactionParticipant.prepare`, `commit`, `rollback` and
+  `endTransaction` take `(TomTransaction transaction)`, like
+  `startTransaction`, and the coordinator passes the transaction it is
+  concluding. A participant serving several transactions at once — a pooled
+  data source — needs it to know which one a call concludes.
+- **Breaking: `MariadbPreparedStatement` holds no `PreparedStmt`.** The
+  constructor is `MariadbPreparedStatement(parameterList, datasource,
+  resultType, command, {groupedProjection})` and the `preparedStmt` field is
+  gone. Each pooled connection prepares the statement on first use and keeps
+  it; `deallocate()` forgets it on every connection, each deallocating it when
+  it is next handed back.
+- **Breaking: `MariaDbDatasource.normalizePort` is replaced by
+  `normalizeIntegerSettings`**, which folds every setting in `integerSettings`
+  — `port`, `timeOut` and the six pool settings — from a string to an `int`.
+- **Breaking: `MariaDbDatasource.connection` is gone.** The data source holds a
+  pool: `connect()` opens it and its first connection, `connected` answers
+  whether it is open with at least one established connection, and
+  `isOperational()` whether it can reach its database. A transaction gets its
+  own connection, pinned from its first statement to `endTransaction`; a second
+  start of the same transaction is refused with
+  `error.transaction.already_active`, another transaction is not. XA
+  transactions get per-transaction branch ids, so concurrent ones are separate
+  branches.
+
 ### Tests
 
+- **`test/connection_pool_test.dart`** covers `TomConnectionPool` over a fake
+  factory and an injectable clock — lending, waiting in order, the typed
+  timeout, retirement and closing. `datasources_test.dart` runs concurrent
+  transactions over stand-in connections, and `datasources_db_test.dart`
+  commits one transaction while another sleeps on a live server.
 - **Every error key the package raises is named by a test.** New
   `*_error_keys_test.dart` files for object persistence, data sources, database
   migration, audit, endpoints, export and messaging pin over 150 keys, each

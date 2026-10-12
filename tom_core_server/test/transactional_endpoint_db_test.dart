@@ -102,9 +102,9 @@ void main() async {
     test(
       'the data source is released once the transaction concludes',
       () async {
-        // A statement outside any transaction waits while one holds the
-        // connection. After a conclusion it must run at once, or every request
-        // after the first transactional one would hang.
+        // A transaction hands its pooled connection back when it concludes. A
+        // connection that stayed pinned would leave the pool one short after
+        // every transactional request, until no request could run at all.
         await router.call(
           _get('/fixture/transactional_write?title=txe-first&fail=true'),
         );
@@ -118,12 +118,13 @@ void main() async {
     );
 
     test(
-      'a request arriving while a transaction holds the connection waits',
+      'a request arriving while a transaction is open runs outside it',
       () async {
-        // The first call writes and parks inside its transaction, so its
-        // statements hold the one connection. The second arrives then. Were it
-        // admitted, its INSERT would run inside the first call's transaction and
-        // the first call's rollback would take it too.
+        // The first call writes and parks inside its transaction, holding its
+        // pooled connection. The second arrives then and runs on a connection
+        // of its own. Had it shared the first call's connection, its INSERT
+        // would have run inside that transaction and the first call's rollback
+        // would have taken it too.
         final parked = Completer<void>();
         final release = Completer<void>();
         FixtureApiServer.transactionalWriteParked = parked;
@@ -143,7 +144,7 @@ void main() async {
         final passing = router.call(
           _get('/fixture/transactional_write?title=txe-kept-too&fail=false'),
         );
-        // Give the second call every chance to run into the held connection.
+        // Give the second call every chance to run into the open transaction.
         await Future<void>.delayed(const Duration(milliseconds: 200));
         release.complete();
 

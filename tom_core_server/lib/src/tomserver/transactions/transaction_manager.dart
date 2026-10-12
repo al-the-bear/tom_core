@@ -157,6 +157,11 @@ abstract class TomTransactionParticipant {
   /// transaction made it — and it answers from whatever zone the call happens
   /// to be running in, which is the case the scoping exists to separate.
   ///
+  /// The same transaction is handed to [prepare], [commit], [rollback] and
+  /// [endTransaction], so a participant serving several transactions at once —
+  /// a pooled data source holds one connection per transaction — knows which
+  /// of them each call concludes.
+  ///
   /// What a participant reads from it today is
   /// [TomTransaction.isReadOnly]: `MariaDbDatasource` opens
   /// `START TRANSACTION READ ONLY` for one, which is what turns the flag from a
@@ -175,7 +180,7 @@ abstract class TomTransactionParticipant {
   /// coordinator has no way to repair it.
   ///
   /// A participant with nothing to prepare returns `true`.
-  Future<bool> prepare();
+  Future<bool> prepare(TomTransaction transaction);
 
   /// Phase two: makes the work durable.
   ///
@@ -185,7 +190,7 @@ abstract class TomTransactionParticipant {
   /// its promise, leaving the transaction partially committed. The coordinator
   /// logs that and commits the remaining participants anyway, because the
   /// alternative is to abandon work peers have already made durable.
-  Future<bool> commit();
+  Future<bool> commit(TomTransaction transaction);
 
   /// Undoes the participant's work when the transaction is rolled back.
   ///
@@ -198,7 +203,7 @@ abstract class TomTransactionParticipant {
   /// coordinator reports the transaction as
   /// [TomTransactionOutcome.rolledBackWithFailures] naming this participant.
   /// A participant with nothing to undo returns `true`.
-  Future<bool> rollback();
+  Future<bool> rollback(TomTransaction transaction);
 
   /// Releases per-transaction resources after commit or rollback.
   ///
@@ -207,7 +212,7 @@ abstract class TomTransactionParticipant {
   /// in this method runs after the decision it would have informed. Returning
   /// `false` reports a failure to release, not a veto — the transaction has
   /// already happened.
-  Future<bool> endTransaction();
+  Future<bool> endTransaction(TomTransaction transaction);
 }
 
 /// A single unit of work coordinating one or more [TomTransactionParticipant]s.
@@ -404,7 +409,7 @@ class TomTransaction {
       for (final entry in _participants.entries) {
         final bool prepared;
         try {
-          prepared = await entry.value.prepare();
+          prepared = await entry.value.prepare(this);
         } catch (error, stack) {
           // Deliberately wide, and for the same reason `registerParticipant`
           // catches: a participant is a driver or a client, and whatever it
@@ -432,7 +437,7 @@ class TomTransaction {
       for (final entry in _participants.entries) {
         bool committed;
         try {
-          committed = await entry.value.commit();
+          committed = await entry.value.commit(this);
         } catch (error) {
           tomLog.error(
             "Participant '${entry.key}' threw while committing a prepared "
@@ -484,7 +489,7 @@ class TomTransaction {
     for (final entry in _participants.entries) {
       bool ended;
       try {
-        ended = await entry.value.endTransaction();
+        ended = await entry.value.endTransaction(this);
       } catch (error) {
         tomLog.error(
           "Participant '${entry.key}' threw while releasing its transaction "
@@ -526,7 +531,7 @@ class TomTransaction {
       for (final entry in _participants.entries) {
         bool undone;
         try {
-          undone = await entry.value.rollback();
+          undone = await entry.value.rollback(this);
         } catch (error) {
           tomLog.error(
             "Participant '${entry.key}' threw while rolling back: $error",

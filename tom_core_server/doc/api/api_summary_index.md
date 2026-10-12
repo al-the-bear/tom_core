@@ -258,9 +258,12 @@ surface documented here.
 | `TomPreparedStatement<T>` | abstract class | Prepared-statement contract. |
 | `TomDataSourceInfo` | class | Datasource descriptor. |
 | `TomDatasourceDriver` | class | Annotation tagging a driver. |
-| `MariaDbDatasource` | class | MariaDB datasource. |
+| `MariaDbDatasource` | class | MariaDB datasource over a connection pool. |
 | `MariaDbXADatasource` | class | XA-capable MariaDB datasource. |
-| `MariadbPreparedStatement<T>` | class | MariaDB prepared statement. |
+| `MariadbPreparedStatement<T>` | class | MariaDB prepared statement, prepared on each pooled connection that runs it. |
+| `TomConnectionPool<C>` | class | A bounded pool of connections of any driver's type; a connection per transaction. |
+| `TomConnectionPoolSettings` | class | How a pool sizes itself and when it retires a connection. |
+| `TomConnectionFactory<C>` | abstract interface class | What a driver tells the pool about its connection type: open, close, check, validate. |
 | `SqlPlaceholderScan` | class | SQL placeholder scanner. |
 | `TomSqlLexer` | class | The package's one quote/comment scanner and statement splitter. |
 | `TomFrameworkTable` | class | The single declaration of a table the framework itself owns. |
@@ -269,6 +272,7 @@ surface documented here.
 | `TomDatasourceInitException` | class | Init error (extends `TomServerException`). |
 | `MariadbDatasourceException` | class | MariaDB error (extends `TomServerException`). |
 | `MariadbPreparedStatementException` | class | Prepared-statement error. |
+| `TomConnectionPoolException` | class | The pool is closed, timed out waiting, or misconfigured (extends `TomServerException`). |
 | `TomAggregateFunction` | enum | The aggregate functions the typed query layer can express. |
 | `TomSqlTypeFamily` | enum | The coarse type class a stored column belongs to. |
 | `TomSqlFailureMode` | enum | Whether a failed write definitely did not apply, or may have. |
@@ -849,6 +853,10 @@ surface documented here.
 | `TomCompositeKey` | Object Persistence |
 | `TomConfig` | Configuration |
 | `TomConfigurationException` | Configuration |
+| `TomConnectionFactory` | Datasources |
+| `TomConnectionPool` | Datasources |
+| `TomConnectionPoolException` | Datasources |
+| `TomConnectionPoolSettings` | Datasources |
 | `tomConsumesForm` | Endpoints |
 | `tomConsumesMultipartForm` | Endpoints |
 | `TomCount` | Datasources |

@@ -5,7 +5,8 @@ The data-access foundation of the server: **SQL-typed values**
 that renders that tree to SQL fragments (`TomStandardSqlDialect`), reusable
 **query objects** (`TomSelect`, `TomCount`, `TomDelete`, `TomLiteralSelect`),
 and the **data-source / driver** abstraction (`TomDataSource`,
-`TomDatasourceDriver`, `TomDataSourceInfo`) with a MariaDB implementation. The
+`TomDatasourceDriver`, `TomDataSourceInfo`) with a MariaDB implementation
+that runs over a bounded **connection pool** (`TomConnectionPool`). The
 object-persistence module builds its query DSL and repositories on top of this
 layer.
 
@@ -37,7 +38,9 @@ declared.
   - [Why the test recognises the *definite* side](#why-the-test-recognises-the-definite-side)
   - [Walking the chain](#walking-the-chain)
   - [Deciding whether to retry](#deciding-whether-to-retry)
+- [The Connection Pool](#the-connection-pool)
 - [The MariaDB Driver](#the-mariadb-driver)
+  - [Connections](#connections)
   - [The connection lifecycle](#the-connection-lifecycle)
   - [One statement per call](#one-statement-per-call)
 - [Framework-Owned Tables](#framework-owned-tables)
@@ -63,20 +66,24 @@ declared.
 | `TomSqlTypeFamily` | enum | The coarse type classes a stored column can belong to — what a dialect reduces a SQL type name *to* |
 | `TomSqlFailureMode` | enum | Whether a failed write is known not to have happened (`definite`) or unknown (`ambiguous`) |
 | `classifySqlFailure` / `sqlFailureCauses` | function | Classifies a write failure, and walks the `rootException` chain it reads |
-| `isLostConnectionFailure` | function | Whether a failure left no live link to have run on, so one reconnect-and-retry is worth it |
+| `isLostConnectionFailure` | function | Whether a failure left no live link to have run on, so one retry on another connection is worth it |
 | `TomQuery` / `TomGeneratedQuery` | abstract class | A query over a set of entity types |
 | `TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect` | class | Concrete statements |
 | `TomTypePersistenceInfo` | class | Per-type persistence metadata (table + columns) |
 | `TomTypedPersistenceBase` | abstract class | Base for anything scoped to a set of entity types; analyses their annotations once and exposes the flattened column information |
 | `SqlPlaceholderScan` | class | Finds `:name` placeholders in generated SQL without mistaking one inside a quoted literal for a bind |
 | `TomSqlLexer` | class | The package's one quote/comment scanner and statement splitter — shared by this driver's one-statement check and by `db_migration`'s applier and DDL reader |
-| `TomDataSource` | abstract class | A connection to one data source (lifecycle + execution) |
+| `TomDataSource` | abstract class | One configured data source (lifecycle + execution) |
 | `TomPreparedStatement<T>` | abstract class | A reusable compiled statement |
 | `TomDatasourceDriver` | class | Marks a `TomDataSource` as the driver for a named type |
 | `TomDataSourceInfo` | class | The process-wide registry of named, configured data sources |
 | `TomDatasourceInitException` | class | A data source could not be discovered, instantiated or initialised |
 | `MariaDbDatasource` / `MariaDbXADatasource` / `MariadbSqlDialect` | class | The MariaDB implementation (plain + XA transactions) |
-| `MariadbPreparedStatement<T>` | class | A MariaDB-backed `TomPreparedStatement` — the server-side statement, the ordered parameter list, and the type its rows map onto |
+| `MariadbPreparedStatement<T>` | class | A MariaDB-backed `TomPreparedStatement` — the compiled command, the ordered parameter list, and the type its rows map onto; each pooled connection prepares it on first use |
+| `TomConnectionPool<C>` | class | A bounded pool of connections of any driver's type: lends them, takes them back, retires idle and old ones |
+| `TomConnectionPoolSettings` | class | How a pool sizes itself and when it retires a connection, with the common JDBC-pool defaults |
+| `TomConnectionFactory<C>` | abstract interface class | What a driver tells the pool about its connection type: open, close, check, validate |
+| `TomConnectionPoolException` | class | The pool cannot hand out a connection: closed, timed out waiting, or misconfigured |
 | `MariadbDatasourceException` | class | A MariaDB connect, execute or result-mapping failure |
 | `MariadbPreparedStatementException` | class | A statement failed with no live link to have run on; raising it *is* the decision to retry once |
 | `TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey` | class | The single declaration of a table the framework itself owns, from which its DDL, column lists and inserts are derived |
@@ -639,9 +646,10 @@ Both steps refuse a registry they cannot trust, with a
 
 `TomDataSourceInfo` is the process-wide registry of *named, configured* data
 sources. `initializeDatasourceInfo(config)` builds an entry per map-valued
-configuration key and opens each connection; `getDataSourceInfo(name)` looks one
+configuration key and opens each data source; `getDataSourceInfo(name)` looks one
 up; `closeAll()` shuts them down. A `delegateTo` setting aliases one name onto
-another already-registered data source instead of opening a second connection:
+another already-registered data source instead of opening a second one, so the
+two names share its pool:
 
 ```dart
 await TomDataSourceInfo.initializeDatasourceInfo({
@@ -764,13 +772,13 @@ claim path that consumes it.
 `isLostConnectionFailure(Object? error, {required bool connected})` answers a
 neighbouring but distinct question: not *did the write happen*, but *is there
 any point trying again*. `MariadbPreparedStatement.execute` uses it for its one
-reconnect-and-retry.
+retry on another connection.
 
 It is `true` when both halves hold:
 
 | Half | Reads | Why it is needed |
 | ---- | ----- | ---------------- |
-| `!connected` | The driver's own `MySQLConnection.connected` at the moment the failure was caught | The exception alone cannot say. The driver reports a link it knows is gone as a bare `MySQLClientException` carrying no error code, and raises that *same type* for a protocol desync, a second `BEGIN` and a failed handshake — so the type would retry failures a second attempt cannot fix. Every "connection closed" the driver throws sits behind its own `!connected` guard, so the flag recognises exactly those. |
+| `!connected` | The driver's own `MySQLConnection.connected` of the connection the statement ran on, at the moment the failure was caught | The exception alone cannot say. The driver reports a link it knows is gone as a bare `MySQLClientException` carrying no error code, and raises that *same type* for a protocol desync, a second `BEGIN` and a failed handshake — so the type would retry failures a second attempt cannot fix. Every "connection closed" the driver throws sits behind its own `!connected` guard, so the flag recognises exactly those. |
 | `classifySqlFailure(error) == ambiguous` | The `rootException` chain | A `MySQLServerException` anywhere beneath means the server received the statement and rejected it. That verdict stands however the link looks afterwards, and retrying would re-run a statement the server has already judged — for a write, one whose effect is unknown. |
 
 Neither half is matched against message text. Binding a retry to the wording of
@@ -785,26 +793,182 @@ failure is a `MariadbDatasourceException` keyed
 mapper attach the driver exception as `rootException`. Without it the chain ends
 at this layer and `classifySqlFailure` can never reach the server's own verdict.
 
+The retry happens only **outside a transaction**. There the lost connection is
+discarded, the pool lends a working one, and the statement runs again on it. A
+statement inside a transaction has nothing to retry on: the transaction lived on
+the connection that was lost, and running the statement on another would run it
+outside the transaction it belongs to. So inside one the failure is a
+`MariadbDatasourceException` keyed
+`error.failed-to-execute.transaction_connection_lost`, carrying the
+`connection_closed` exception as its `rootException`, and the transaction is
+concluded by its owner as any failed transaction is.
+
+## The Connection Pool
+
+A connection carries one transaction at a time: every statement on it between
+`START TRANSACTION` and `COMMIT` belongs to that transaction, whoever issued
+it. So a data source serves concurrent transactions only by giving each one a
+connection of its own. `TomConnectionPool<C>` is where those connections come
+from: it lends one per caller, up to a bound, and takes it back for reuse.
+
+The pool knows nothing about any database. A driver supplies a
+`TomConnectionFactory<C>` for its own connection type and decides what a lease
+is held for:
+
+| Factory member | What the pool uses it for |
+| -------------- | ------------------------- |
+| `open()` | Opening a connection when none is idle and there is room. A failure propagates to the `acquire` that needed it, and frees the slot it had reserved |
+| `close(connection)` | Retiring a connection. Called once per connection; a failure is the driver's to log and never reaches the pool's caller |
+| `isUsable(connection)` | The driver's own record of whether the link is up, asked without a round trip before a connection is lent and when it is handed back |
+| `validate(connection)` | Asking the server whether the connection still works (a `SELECT 1`), for a connection that sat idle past `validateAfterIdle` |
+
+`acquire()` lends a connection and `release(connection)` takes it back. A
+released connection goes to the caller that has waited longest, so a later
+caller cannot overtake an earlier one; with nobody waiting it joins the idle
+connections, and the most recently released idle connection is lent first, so
+the rest age out. Releasing a connection the pool did not lend is a
+bookkeeping bug in the caller and throws `StateError`. `release(connection,
+discard: true)` closes the connection instead of keeping it.
+
+`TomConnectionPoolSettings` sizes the pool and decides when a connection is
+retired. The defaults are those common to JDBC pools, HikariCP among them:
+
+| Setting | Default | Meaning |
+| ------- | ------- | ------- |
+| `maxSize` | `10` | The most connections open at once, lent or idle. At least 1 |
+| `minIdle` | `0` | Idle connections kept open past the idle timeout, and refilled in the background when a connection is discarded on its return. At most `maxSize`; `0` opens connections only when they are asked for |
+| `acquireTimeout` | 30 s | How long `acquire` waits when all `maxSize` connections are lent |
+| `idleTimeout` | 10 min | How long a connection may sit idle before it is closed, while more than `minIdle` are idle |
+| `maxLifetime` | 30 min | How long a connection is used at all before it is replaced, bounding what a long-lived session accumulates and staying clear of the server's own idle disconnect |
+| `validateAfterIdle` | 30 s | A connection idle longer than this is validated before it is lent, and replaced if the check fails; a shorter idle period is trusted |
+
+The pool calls `validate()` on its settings when it is built, and settings it
+cannot use — `maxSize` below 1, `minIdle` outside `0..maxSize`, a timeout that
+is not positive, a negative `validateAfterIdle` — are refused with
+`error.datasource.pool.invalid_settings`, its `fault` parameter naming which.
+
+**Retirement is lazy.** A connection past its idle timeout or its lifetime is
+closed the next time the pool is used — on an `acquire` or a `release` — not by
+a timer. A pool with no traffic closes its idle connections when traffic
+resumes. A timer would keep a process that never closes its data source from
+exiting. A connection that is no longer usable or past its lifetime is closed
+when it is handed back, and one found that way among the idle connections is
+skipped and closed rather than lent.
+
+**Waiting is bounded.** With every connection lent, `acquire` waits in line.
+When a connection is released it is handed straight to the first waiter; when
+one is discarded, or an open fails, the first waiter is woken to try again with
+the slot that freed up. A waiter still without a connection after
+`acquireTimeout` fails with `error.datasource.pool.acquire_timeout`, carrying
+`maxSize` and `timeoutMs`.
+
+**Closing** closes the idle connections at once and every lent one when it is
+handed back, and fails every waiter with `error.datasource.pool.closed`; an
+`acquire` after `close` is refused with the same key. Closing twice does
+nothing.
+
+Every refusal is a `TomConnectionPoolException`, a `TomServerException` raised
+with `clientThrow: false`: the condition is the server's, and its key is what an
+operator matches on. `size`, `lentCount`, `idleCount`, `waitingCount`,
+`connections`, `idleConnections`, `isLent(connection)` and `isClosed` describe
+the pool's state, and `toString` summarises it.
+
 ## The MariaDB Driver
 
 `MariaDbDatasource` (`@TomDatasourceDriver("mariadb")`) connects to MariaDB /
 MySQL. Connection settings (`username`, `password`, `host`, `port`,
-`databaseName`, `timeOut`) are filled from the configuration map by reflection
-in `initialize`, which then opens the connection. A `port` that is neither an
-integer nor a string holding one is refused by `parsePort` with
-`error.initialize.invalid_port`. A server that cannot be reached or refuses the
-session fails `connect` with the client library's own error; a `connect` that
-returns has a connected session. `executeQuery` maps result
+`databaseName`, `timeOut`) and pool settings (see [Connections](#connections))
+are filled from the configuration map by reflection in `initialize`, which then
+opens the data source. Every setting bound to an `int` may also be given as a
+string holding one — an environment substitution such as
+`port: ${DB_PORT:3306}` always yields a string — and
+`normalizeIntegerSettings` folds those before binding; the keys it folds are
+`integerSettings`. A `port` that is neither an integer nor a string holding one
+is refused by `parsePort` with `error.initialize.invalid_port`; any other
+integer setting that is not is refused with `error.initialize.invalid_integer`,
+whose `setting` and `value` parameters name it. Opening creates the pool and
+opens its first connection, so a server that cannot be reached or refuses the
+session fails `connect` with the client library's own error, and a `connect`
+that returns has reached its database. `executeQuery` maps result
 rows back onto annotated `@tomReflector` entity classes (including JSON columns,
 custom converters, and reference-field dereferencing). Transactions use plain
 `START TRANSACTION` / `COMMIT` / `ROLLBACK`.
+
+### Connections
+
+The data source holds a `TomConnectionPool` of `MySQLConnection`s, and one
+private method chooses the connection for every statement, whichever entry point
+it arrives through:
+
+| The statement | Runs on |
+| ------------- | ------- |
+| Inside a running transaction | The connection pinned to that transaction. Its first statement on this data source enlists the data source in the transaction, which takes a connection from the pool; every later statement of the transaction runs on the same one; `endTransaction` hands it back |
+| Outside any transaction | A connection lent for that statement alone and handed back when it completes — discarded instead when it went down while in use |
+
+So **concurrent transactions run side by side**, each on its own connection,
+and a statement outside a transaction never runs inside somebody else's. A
+caller waits only when all `poolMaxSize` connections are lent, for at most
+`poolAcquireTimeoutMs`, after which the statement fails with
+`error.datasource.pool.acquire_timeout`. Statements of one transaction issued
+concurrently start it once: the ones that arrive while the first is still
+issuing `START TRANSACTION` wait for it rather than start it again.
+
+The pool is configured through six fields, bound like every other setting:
+
+| Key | Default | Pool setting |
+| --- | ------- | ------------ |
+| `poolMaxSize` | `10` | `maxSize` |
+| `poolMinIdle` | `0` | `minIdle` |
+| `poolAcquireTimeoutMs` | `30000` | `acquireTimeout` |
+| `poolIdleTimeoutMs` | `600000` | `idleTimeout` |
+| `poolMaxLifetimeMs` | `1800000` | `maxLifetime` |
+| `poolValidateAfterIdleMs` | `30000` | `validateAfterIdle` |
+
+```yaml
+datasources:
+  main:
+    type: mariadb
+    host: db
+    port: ${DB_PORT:3306}
+    databaseName: app
+    username: app
+    password: secret
+    poolMaxSize: 20
+    poolAcquireTimeoutMs: 5000
+```
+
+`poolSettings` is the `TomConnectionPoolSettings` those fields describe, and is
+read when the data source is opened. `openConnectionCount` and
+`lentConnectionCount` report how many connections the pool holds and how many
+are lent; `toString` reads `open (N lent, M idle)` while the data source is
+open. `openConnection()` opens one `MySQLConnection` from the configured
+settings; the pool calls it whenever it needs a connection, and a test
+overrides it to hand out stand-in connections.
+
+**A prepared statement belongs to no connection.** A server-side prepared
+statement lives on one connection, while a `MariadbPreparedStatement` runs on
+whichever connection the rule above selects. Each pooled connection therefore
+prepares the statement's `command` the first time it runs it and keeps the
+server-side statement for the next run, so a repository prepares a statement
+once and keeps it for the life of the process. `prepareStatement` prepares it
+on the connection its own zone selects, so a statement the server cannot compile
+fails there rather than at its first execution. `deallocate` forgets the
+statement on every connection; each connection deallocates it the next time it
+is handed back, so nothing is deallocated under a statement that is running.
+
+**`withDriverConnection(body)`** runs `body` with the `MySQLConnection` the same
+rule selects — the transaction's when the data source is enlisted in one,
+otherwise one lent for the call. It is for work that needs the driver's own API:
+its typed row accessors, or a session-scoped lock that must be taken and
+released on one connection. The connection must not be kept beyond `body`.
 
 ### The connection lifecycle
 
 **A data source is opened explicitly, and never by the statement that wants to
 run.** Opening it means one of the two forms the package documents:
-`initialize(settings)`, which binds the configuration and connects, or setting
-the connection fields directly and calling `connect()`.
+`initialize(settings)`, which binds the configuration and opens the data source,
+or setting the fields directly and calling `connect()`. Calling `connect()` on
+an open data source does nothing.
 
 Every execution entry point then observes the same rule:
 
@@ -812,8 +976,8 @@ Every execution entry point then observes the same rule:
 | ------------------------ | ------------------------ |
 | Never opened | Throws `error.datasource.not_opened`, with `state: "never_opened"`. Nothing dials out |
 | Closed | Throws the same `error.datasource.not_opened`, with `state: "closed"`. Nothing dials out |
-| Opened, but the link has since dropped | Re-opens it and runs the statement on the new link |
-| Opened and live | Runs the statement on the link as it stands |
+| Open, and a connection has dropped | The pool discards it and lends a working connection, opening one if need be |
+| Open | Runs the statement on the connection [Connections](#connections) selects |
 
 Both refusals also name the calling entry point in the exception's `operation`
 parameter, so a log says which call ran too early.
@@ -822,7 +986,7 @@ parameter, so a log says which call ran too early.
 
 `executeQuery` and `executeCommand` take **one SQL statement** and refuse more
 with `error.datasource.multiple_statements`, carrying the `operation`, the
-`statements` count and the `command`. The check runs before the connection is
+`statements` count and the `command`. The check runs before a connection is
 touched, and it is quote- and comment-aware (`TomSqlLexer.splitStatements`): a
 terminating `;`, and a `;` inside a literal, a quoted identifier or a comment,
 do not count.
@@ -836,10 +1000,10 @@ returns before the server has committed, and an error in any statement after
 the first is never raised at all. A script is split first; the migration
 adaptor does exactly that.
 
-Opening on demand is not offered because it could not work. `connect()` binds
-`host`, `port` and the credentials, and those arrive only from `initialize` or a
-direct assignment; before either, `host` is `""` and `port` is `-1`. An implicit
-connect could therefore never succeed — it could only turn "this data source was
+Opening on demand is not offered because it could not work. The pool opens
+connections with `host`, `port` and the credentials, and those arrive only from
+`initialize` or a direct assignment; before either, `host` is `""` and `port` is
+`-1`. An implicit connect could therefore never succeed — it could only turn "this data source was
 never opened" into "the database at `:-1` is unreachable", sending the reader to
 the network for what is a configuration bug.
 
@@ -847,8 +1011,11 @@ Re-opening a *closed* data source, by contrast, would work — and that is exact
 why it must not happen by itself. `close()` is the application saying it is done
 with this data source; a statement that quietly re-opened it would resurrect
 something deliberately let go, and on the shutdown path would open a socket that
-nothing is left to close. So `close()` releases the link **and lets go of it**,
-putting the data source back to not-open.
+nothing is left to close. So `close()` closes the pool **and lets go of it**,
+putting the data source back to not-open. Idle connections are closed at once; a
+connection still lent — to a transaction, or to a running statement — is closed
+when it is handed back. A connection that fails to close is logged and dropped,
+and `close()` completes normally: the caller is done with it either way.
 
 Which of the two not-open states it is rides in the `state` parameter and in
 `toString`, rather than in the key: a caller matching "this data source has no
@@ -858,19 +1025,26 @@ configuration or start-up ordering, `closed` at shutdown ordering. Closing a
 data source that was never opened releases nothing and leaves it reading as
 never opened.
 
-The dropped-link row is the half that must survive all of this. It is the one
-case the driver repairs, because the caller never asked for the loss: the
-settings are known, so reconnecting is exactly what it wants and it happens
-without being asked.
+The dropped-connection row is the half that must survive all of this. It is
+the one case the driver repairs, because the caller never asked for the loss:
+the settings are known, so a fresh connection is exactly what it wants and it
+arrives without being asked. Only outside a transaction, though — a transaction
+whose connection dropped has lost its work, and is reported as
+`error.failed-to-execute.transaction_connection_lost` (see
+[Deciding whether to retry](#deciding-whether-to-retry)).
 
-One private helper, `_openConnection(operation)`, is the only implementation of
-this rule, and all four sites that need a link go through it:
-`prepareStatement`, `executeQuery`, `executeCommand`, and the retry inside
-`MariadbPreparedStatement.execute`. They previously carried a guard each, and
-had drifted — `prepareStatement` connected on demand while the other two threw,
-so the same data source was usable or unusable depending on which method a
-caller reached for first. With a single implementation the rule cannot drift
-again.
+`isOperational()` answers whether the data source is open and can reach its
+database: open, and either holding a live connection or — holding none, because
+the pool retired them all — having opened the last one it tried. `connected` answers the narrower
+question of whether it is open and at least one of its connections is
+established.
+
+One private helper, `_requirePool(operation)`, is the only implementation of
+the refusal, and one, `_withLink`, the only place a connection is chosen. Every
+site that needs a connection goes through both — `prepareStatement`,
+`executeQuery`, `executeCommand`, `withDriverConnection` and a prepared
+statement's `execute` — so the same data source is usable or unusable the same
+way whichever method a caller reaches for first.
 
 A grouped query takes a different path through the same driver. A grouped row
 has no entity class and no column metadata — its shape is decided by the query —
@@ -985,28 +1159,33 @@ listening.
 > field initialiser put there — presents a stale value as if it had been read.
 
 As a transaction participant the plain driver is one-phase: `START
-TRANSACTION`, then `COMMIT` or `ROLLBACK`, each of which lowers the
-in-transaction flag itself. `endTransaction` is therefore **a no-op that always
-succeeds** — there is no prepare step to issue, and by the time the coordinator
-calls it, commit or rollback has already released everything there was to
-release. It still reports `true` rather than nothing, because the coordinator
-ands the participants' results together and a `false` would fail a transaction
-that had in fact completed.
+TRANSACTION`, then `COMMIT` or `ROLLBACK`, each issued on the transaction's own
+connection. Every hook is handed the transaction it concludes, which is how a
+data source serving several transactions at once knows which connection a
+`commit` belongs to. `endTransaction` issues no statement — a one-phase
+transaction has nothing to prepare — and **hands the transaction's connection
+back to the pool**; the coordinator calls it on every participant after either
+conclusion, which is what makes it the place the connection returns. It always
+reports `true`, because the coordinator ands the participants' results together
+and a `false` would fail a transaction that had in fact completed.
 
 `MariaDbXADatasource` (`@TomDatasourceDriver("mariadb_xa")`) inherits all of
 that but overrides the transaction lifecycle to use **XA** (`XA START` / `XA
 END` + `XA PREPARE` / `XA COMMIT` / `XA ROLLBACK`), so it can take part in a
 two-phase commit across multiple resources.
 
-Each transaction runs against a branch id the data source mints in
-`startTransaction`, and that id doubles as the guard: a second start while one
+Each transaction runs on its own connection against its own branch id, which
+the data source mints in `startTransaction` and keeps with that transaction, so
+concurrent XA transactions on one data source are separate branches. The id
+doubles as the guard: a second start of the same transaction while its branch
 is set throws rather than opening a nested branch. **Every exit clears the id
 except a failing `prepare` and a failing `commit`.** A failing prepare hands it
 on to `rollback`, which the coordinator issues in answer to the veto and which
 has to name the branch; a failing commit leaves a prepared branch in doubt, and
-the id is kept so it has a name. An exit that forgets locks the data source out
-of all later transactions permanently, and the caller cannot recover by rolling
-back — the branch it would have to name never began.
+the id is kept so it has a name. A start the database refused clears it too:
+the branch never began, and a kept id would refuse every later start of that
+transaction — which its caller cannot clear by rolling back, having just been
+told the transaction did not begin.
 
 The branch id is `<database>@<host>:<port>_<process>_<time>_<counter>`, and it
 is **bounded to 64 bytes**, the most an XA `gtrid` may hold — MariaDB refuses a
@@ -1024,8 +1203,8 @@ the id single-byte and safe to quote.
 [One statement per call](#one-statement-per-call)); `commit` issues
 `XA COMMIT`; `endTransaction` is the same no-op that reports success as its
 one-phase sibling's. It has to be this way round because
-`TomTransaction.commitTransaction` drains its `commit()` loop before it calls
-`endTransaction()` on anyone, so a prepare placed in `endTransaction` would run
+`TomTransaction.commitTransaction` drains its `commit` loop before it calls
+`endTransaction` on anyone, so a prepare placed in `endTransaction` would run
 *after* the commit it is a precondition of: the server refuses `XA COMMIT` on a
 branch that was never ended, the `false` reads as a veto, and the transaction
 becomes a rollback with the branch left ACTIVE holding its locks.
@@ -1043,16 +1222,17 @@ than sending a statement and ignoring the failure — a rollback the server
 refuses leaves the branch exactly where it was, and is reported as a failed
 rollback.
 
-Both lifecycles refuse a nested start the same way, through one shared helper:
-a **`MariadbDatasourceException` keyed `error.transaction.already_active`**,
-naming the participant and — for XA, which has one — the branch already open.
-The type is the point. Starting a transaction has two ways of not happening,
+Both lifecycles refuse a second start of the same transaction the same way,
+through one shared helper: a **`MariadbDatasourceException` keyed
+`error.transaction.already_active`**, naming the participant and — for XA,
+which has one — the branch already open. Another transaction is not refused: it
+gets a connection of its own. The type is the point. Starting a transaction has two ways of not happening,
 and they are not the same kind of event:
 
 | What happened | How the caller hears it | What the caller can do |
 | ------------- | ----------------------- | ---------------------- |
 | The database refused `START TRANSACTION` | `startTransaction` returns `false` | Retry, route around it, or give up |
-| The data source is already in a transaction | Throws `error.transaction.already_active` | Nothing — fix the code |
+| The data source is already in this transaction | Throws `error.transaction.already_active` | Nothing — fix the code |
 
 Which is why the guard sits **in front of** the `try`, not inside it. Inside,
 the catch-all that turns a failed statement into `false` would swallow the
@@ -1144,8 +1324,18 @@ column reference is the production failure the whole file exists to prevent.
 ## Verification
 
 Three suites cover the driver, split by what needs a server rather than by what
-is interesting. Two more cover the framework-table declarations, split the same
-way, and three pin the module's error vocabulary.
+is interesting, and one covers the connection pool. Two more cover the
+framework-table declarations, split the same way, and three pin the module's
+error vocabulary.
+
+`test/connection_pool_test.dart` drives `TomConnectionPool` over a fake factory
+and an injectable clock, so every timeout is asserted without waiting for it:
+the default settings and the refusal of unusable ones, lending (nothing opened
+until asked, a released connection reused, never more than `maxSize`, a failed
+open freeing its slot), waiting (a waiter served by the next release, waiters in
+arrival order, the typed timeout), retiring (a connection gone down replaced,
+validation only after `validateAfterIdle`, the idle timeout and its `minIdle`
+exemption, the lifetime) and closing.
 
 `test/datasources_error_keys_test.dart`, `test/datasources_driver_scan_error_keys_test.dart`, `test/datasources_row_mapping_error_keys_test.dart` pin the module's error vocabulary: each case reaches a raise with a real input and asserts the exact key, so a key the module stops raising, or raises for a different condition, fails by name. None needs a database.
 
@@ -1157,7 +1347,7 @@ than "no connection" suggests. Beyond the dialect's SQL generation and the
 with `crud_repository`, `sqlInstant` / `parseSqlInstant` /
 `parseOptionalSqlInstant` — including the local-reading trap that
 [Instants Are UTC](#instants-are-utc) exists to close — `parsePort` /
-`normalizePort`, the `initializeDatasourceInfo` configuration guard,
+`normalizeIntegerSettings`, the `initializeDatasourceInfo` configuration guard,
 `isLostConnectionFailure` — the retry decision described in
 [When a Write Fails](#when-a-write-fails) — and the rule that a driver owns its
 dialect. `escapeLikePattern` is covered here too, including the ordering that
@@ -1169,9 +1359,18 @@ match is settled where it has to be, against a live server, by
 Two things there are worth knowing about, because they are what let a
 connection-free suite assert connection behaviour at all. The **connection
 lifecycle** table above is asserted state by state: never-opened, closed, and a
-link that dropped, each against every execution entry point. And the
-**transaction state machine** is driven by overriding `executeCommand` to
-script each command's outcome and record the SQL it was given, which is how a
+connection that dropped, each against every execution entry point, with
+`openConnection` overridden to hand the pool stand-in connections. Over the same
+stand-ins the suite runs **concurrent transactions**: a slow transaction does
+not block another, every statement of a transaction runs on its one connection,
+a statement outside any transaction borrows another, a transaction waits its
+turn only when every connection is lent, concurrent statements of one
+transaction start it once, and XA transactions side by side are separate
+branches. It also covers a prepared statement on a pool — prepared once per
+connection and reused, deallocated on every connection that prepared it once it
+is handed back — and a lost connection inside a transaction not being retried.
+And the **transaction state machine** is driven by overriding `executeCommand`
+to script each command's outcome and record the SQL it was given, which is how a
 failed `XA START` / `XA END` / `XA ROLLBACK` can be shown to clear the branch
 id — a cleared id surfaces as the literal `XA COMMIT null`, so the recording is
 the assertion.
@@ -1201,14 +1400,16 @@ variants over real columns. The two halves are complementary: those files
 establish what arrives, this one establishes what the mapper does with it.
 
 `test/datasources_db_test.dart` covers what only a real server can settle:
-`connect` opening a live link, `executeCommand` reporting an affected-row
+`connect` opening a live connection, `executeCommand` reporting an affected-row
 count, `executeQuery` mapping result rows onto a reflected entity and binding
 named parameters, `prepareStatement` binding positional parameters, and the
-plain transaction lifecycle actually committing or discarding rows. It also
-re-asserts the second-concurrent-transaction refusal that the scripted suite
-covers, because on a real server the guard and a genuine database failure are
-both reachable through the same call — which is the only place the module's own
-exception type is doing work that `isA<Exception>()` could not.
+plain transaction lifecycle actually committing or discarding rows. It runs a
+transaction that commits while another sleeps inside `SELECT SLEEP(1)`, and
+requires it to finish well inside that second. It also re-asserts that
+starting the same transaction twice is refused, because on a real server the
+guard and a genuine database failure are both reachable through the same call —
+which is the only place the module's own exception type is doing work that
+`isA<Exception>()` could not.
 
 `test/datasources_xa_db_test.dart` covers the one thing neither of those can:
 that the XA lifecycle, driven by the real coordinator, is a sequence MariaDB
@@ -1338,8 +1539,8 @@ test here requires this file in particular to keep using it.
   a failed write is known not to have happened or merely unknown. Ambiguous is
   the default because the set of transport failures is open-ended and the set of
   "the server answered" is not.
-- **`isLostConnectionFailure`** — whether a reconnect-and-retry is worth one
-  attempt, from the link state plus the cause chain. Deliberately not from the
+- **`isLostConnectionFailure`** — whether a retry on another connection is worth
+  one attempt, from the link state plus the cause chain. Deliberately not from the
   exception's message text, and deliberately not from its type alone: the driver
   raises one un-coded type for both a dropped link and a protocol desync.
 - **`TomAggregateFunction`** and the aggregate fragments (`aggregate`,
@@ -1360,7 +1561,11 @@ test here requires this file in particular to keep using it.
 - **`TomDataSource`** (+ `TomPreparedStatement`, `TomDatasourceDriver`,
   `TomDataSourceInfo`) — the data-source/driver abstraction and registry.
 - **`MariaDbDatasource` / `MariaDbXADatasource` / `MariadbSqlDialect`** — the
-  MariaDB implementation.
+  MariaDB implementation, a connection per transaction.
+- **`TomConnectionPool`** (+ `TomConnectionPoolSettings`,
+  `TomConnectionFactory`, `TomConnectionPoolException`) — the driver-neutral
+  bounded pool the MariaDB driver draws its connections from. See
+  [The Connection Pool](#the-connection-pool).
 - **`TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey`** (+
   `unknownFrameworkColumns`) — the single declaration of a table the *framework*
   owns (the scheduler's queue and lease, the blob store's pair, the audit
@@ -1396,20 +1601,6 @@ test here requires this file in particular to keep using it.
   wrapping would turn a modelling mistake into a plausible wrong answer. Store a
   duration as an integer count of its unit.
   <!-- pinned: test/mariadb_row_mapping_test.dart › a TIME column holding an interval is not a time of day -->
-- **One connection per data source, and no pool.** `MariaDbDatasource` holds a
-  single `MySQLConnection`, and a transaction belongs to the connection, so a
-  transaction *holds* the data source from its first statement until the
-  coordinator ends it: a statement from anywhere else — another request's
-  transaction, or a request with none — waits for the release rather than
-  running inside a transaction that is not its own. Concurrent transactions on
-  one data source therefore take turns, and a long transaction stalls every
-  other user of that data source. `delegateTo` gives two logical names the same
-  physical link, so they share this too. Configure a separate data source for
-  each unit of work that has to commit independently, rather than two names over
-  one connection. Work the owning transaction waits on must run in its zone: a
-  statement issued from a `runInTransactionScope` nested inside it waits on its
-  own transaction for good.
-  <!-- unpinned: absence — no pool ships -->
 - **`lastGeneratedId` is yours to answer, and only you can.**
   `TomPreparedStatement.lastGeneratedId` is abstract. The key belongs to the
   connection the insert ran on, and the driver is the only layer that knows
@@ -1430,8 +1621,7 @@ test here requires this file in particular to keep using it.
   is state on the handle, replaced by the next `execute` and meaningless after
   `deallocate`, so read it immediately after the execute that produced it. Both
   this and `lastGeneratedId` are captured in one place in the MariaDB statement,
-  so that its reconnect-and-retry branch cannot pick up one and drop the
-  other.
+  so that its retry branch cannot pick up one and drop the other.
 
   Every member of the contract is abstract, and `datasources_test.dart` holds it
   there: a member that grows a body is one a driver can leave unanswered while
@@ -1450,11 +1640,12 @@ test here requires this file in particular to keep using it.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `mariadb_datasource.dart` | `Completer` and `Zone`: a transaction's hold on the connection, and the zone marking its own statements |
+| `dart:async` | dart | `connection_pool.dart`, `mariadb_datasource.dart` | `Completer` and `Timer`: a caller waiting for a connection and its acquire timeout; `Zone`: the zone marking a transaction's own lifecycle statements |
+| `dart:collection` | dart | `connection_pool.dart`, `mariadb_datasource.dart` | `Queue` for the pool's waiters, and identity-keyed `HashMap`s for lent connections and each transaction's branch |
 | `dart:math` | dart | `mariadb_datasource.dart` | `Random`, the per-process tag in an XA branch id |
 | `mysql_client` | package | `mariadb_datasource.dart`, `sql_failure_mode.dart` | the MariaDB / MySQL driver used by `MariaDbDatasource` |
 | `tom_basics` | package | `sql_failure_mode.dart` | `TomBaseException`, walked to find the driver exception at the root of a failure chain |
 | `tom_core_kernel` | package | `datasource_initialization.dart`, `mariadb_datasource.dart`, `sql_dialects.dart`, `sql_instant.dart`, `types_operator.dart` | `TomObject`, `tomReflector` / `ClassMirror` / `InstanceMirror`, `TomException`, `TomZonedDate` / `TomZonedTime`, `TomExecutionContext`, `runChecked` / `runCheckedSync`, `tomLog` |
-| [little_things](little_things.md) | module | `datasource_initialization.dart`, `mariadb_datasource.dart` | `TomServerException` |
+| [little_things](little_things.md) | module | `connection_pool.dart`, `datasource_initialization.dart`, `mariadb_datasource.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `mariadb_datasource.dart`, `sql_dialects.dart` | `TomAnnotationAnalyzer`, `TomColumnInformation`, `TomDbTable`, `DbCol`, `TomQuerySentenceCompiler`, `TomGroupedSelect` / `TomGroupedRow` |
 | [transactions](transactions.md) | module | `datasource_initialization.dart`, `mariadb_datasource.dart` | `TomTransactionParticipant` for the contract `TomDataSource` implements, and `TomTransaction` for the one the driver is handed on enlistment — which is where `isReadOnly` becomes `START TRANSACTION READ ONLY` |

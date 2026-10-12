@@ -45,12 +45,18 @@ A participant is keyed by a stable id and exposes five lifecycle hooks:
 abstract class TomTransactionParticipant {
   String getParticipantId();
   Future<bool> startTransaction(TomTransaction transaction); // on enlistment
-  Future<bool> prepare();          // phase one; returning false vetoes
-  Future<bool> commit();           // phase two; the promise being kept
-  Future<bool> rollback();         // undo on failure; false = it did not
-  Future<bool> endTransaction();   // release resources, after commit or rollback
+  Future<bool> prepare(TomTransaction transaction);  // phase one; false vetoes
+  Future<bool> commit(TomTransaction transaction);   // phase two; the promise kept
+  Future<bool> rollback(TomTransaction transaction); // undo; false = it did not
+  Future<bool> endTransaction(TomTransaction transaction); // release, after either
 }
 ```
+
+Every hook is handed the transaction it concerns, the same one
+`startTransaction` received. A participant serving several transactions at
+once needs that to know which of them a call concludes: `MariaDbDatasource`
+holds a connection per transaction, and `commit(transaction)` is what tells it
+which connection to issue `COMMIT` on.
 
 `TomDataSource` implements this contract, and `MariaDbDatasource` enlists
 itself **at the point of use**: the first statement it runs while a transaction
@@ -66,32 +72,32 @@ to join is exactly the defect enlistment exists to prevent.
 A driver of your own honours the same contract: enlist before issuing a
 statement inside a running transaction.
 
-**This is two-phase commit.** `prepare()` runs on every participant before
-`commit()` runs on any of them, so a veto arrives while nothing is durable and
+**This is two-phase commit.** `prepare` runs on every participant before
+`commit` runs on any of them, so a veto arrives while nothing is durable and
 aborting costs nothing: the coordinator rolls everyone back and no participant
 has to undo committed work. That is the whole reason for the phase, and it is
 what makes a transaction spanning two resources atomic.
 
 Two things follow for anyone implementing a participant. **Everything that can
-fail belongs in `prepare()`** — it is the last point at which failing is free,
-and it is the only place a refusal is a veto. And `commit()` is a promise being
+fail belongs in `prepare`** — it is the last point at which failing is free,
+and it is the only place a refusal is a veto. And `commit` is a promise being
 kept rather than a decision: a `false` there is not acted on as a refusal,
 because peers may already be durable.
 
 The residue is the outcome two phases cannot rule out. A participant that
-promises and then fails in `commit()` leaves the transaction **partially
+promises and then fails in `commit` leaves the transaction **partially
 committed** — the coordinator logs it at error level naming the participants
 that failed, commits the rest anyway, and rolls nobody back, because rolling
 back a peer whose commit succeeded would discard work the transaction decided to
 keep. No coordinator can repair that; the repair is at the named resources.
 
 A participant with nothing to prepare returns `true` and does its work in
-`commit()`. `MariaDbDatasource` is that participant — a plain
+`commit`. `MariaDbDatasource` is that participant — a plain
 `START TRANSACTION` / `COMMIT` has no statement that makes a commit certain
 without performing it — so enlisting one beside an XA data source weakens the
 guarantee to "atomic unless the one-phase participant's commit fails". Use
 `MariaDbXADatasource` for every resource in a transaction that has to be atomic
-across them: it maps `prepare()` onto `XA END` + `XA PREPARE` and `commit()`
+across them: it maps `prepare` onto `XA END` + `XA PREPARE` and `commit`
 onto `XA COMMIT`, and a prepared XA branch is one the server has undertaken to
 be able to commit.
 
@@ -99,7 +105,7 @@ be able to commit.
 
 A `TomTransaction` is created only through `TomTransactionManager.startTransaction`
 (its constructor is private). Participants enlist with `registerParticipant`,
-which calls their `startTransaction()` exactly once — registering the *same
+which calls their `startTransaction(transaction)` exactly once — registering the *same
 participant* again is a no-op, so callers never have to track membership.
 Enlisting after the transaction has concluded throws `TomTransactionException`.
 
@@ -108,8 +114,8 @@ than an object — `MariaDbDatasource` answers
 `"MariaDb-<database>@<host>:@<port>"` — so two instances configured for one
 database share an id by construction. Registering the second is not a
 re-registration and is refused with `…duplicate_id`, because the two are two
-connections with two transactions of their own and only one of them can be the
-transaction's. Collapsing the second to the first is the one failure here that
+data sources, each with its own connection and transaction, and only one of them
+can be the transaction's. Collapsing the second to the first is the one failure here that
 says nothing at all: the caller's `await` completes, the resource is never
 started, prepared, committed, rolled back or ended, and the work issued against
 it is neither committed with the transaction nor rolled back with it — the first
@@ -117,7 +123,7 @@ sign being data that should have been undone and was not. A participant that
 needs an enlistment of its own returns an id nothing else answers.
 
 **Enlistment is all or nothing.** A participant is recorded only after its
-`startTransaction()` returns `true`. One that returns `false` or throws is not
+`startTransaction` returns `true`. One that returns `false` or throws is not
 enlisted, and either way `registerParticipant` raises a
 `TomTransactionException` naming it —
 `transaction_manager.register_participant.start_failed` for the refusal,
@@ -156,27 +162,27 @@ coherent to drive.
 | --- | ------- |
 | `transaction_manager.register_participant.transaction_not_running` | The transaction has already committed or rolled back. Nothing was enlisted. |
 | `transaction_manager.register_participant.duplicate_id` | A *different* object claimed an id already enlisted. `parameters['participant']` names the id; the newcomer is not enlisted and was never started, and the participant already holding the id is untouched. Registering the same object again is a no-op and raises nothing. |
-| `transaction_manager.register_participant.start_failed` | The participant's `startTransaction()` returned `false`. `parameters['participant']` names it; it is not enlisted. |
-| `transaction_manager.register_participant.start_threw` | The participant's `startTransaction()` threw. `parameters['participant']` names it and `rootException` carries what it raised; it is not enlisted. |
+| `transaction_manager.register_participant.start_failed` | The participant's `startTransaction` returned `false`. `parameters['participant']` names it; it is not enlisted. |
+| `transaction_manager.register_participant.start_threw` | The participant's `startTransaction` threw. `parameters['participant']` names it and `rootException` carries what it raised; it is not enlisted. |
 
 The work is concluded one of two ways:
 
 - **`commitTransaction()`** — marks the transaction not-running, then runs the
-  two phases in registration order: `prepare()` on every participant, and only
-  if all of them answered `true`, `commit()` on every participant. A participant
+  two phases in registration order: `prepare` on every participant, and only
+  if all of them answered `true`, `commit` on every participant. A participant
   that vetoes — or throws — during prepare turns the whole thing into a
-  `rollbackTransaction()`. A `commit()` that fails after a successful prepare
+  `rollbackTransaction()`. A `commit` that fails after a successful prepare
   does **not**: the remaining participants are committed anyway and the partial
-  commit is logged by name. Either way `endTransaction()` is called on every
+  commit is logged by name. Either way `endTransaction` is called on every
   participant and the current transaction is cleared.
-- **`rollbackTransaction()`** — marks not-running, calls `rollback()` then
-  `endTransaction()` on every participant, and clears the current transaction.
+- **`rollbackTransaction()`** — marks not-running, calls `rollback` then
+  `endTransaction` on every participant, and clears the current transaction.
 
 Both return a **`TomTransactionResult`** rather than a boolean — see
 [The Result](#the-result).
 
 "Every participant" is unconditional on both paths: a participant whose
-`endTransaction()` returns `false` does not stop the participants behind it from
+`endTransaction` returns `false` does not stop the participants behind it from
 being ended, so when implementing one you can count on your release running even
 when a peer's has already failed. Nothing calls back afterwards to release what a
 skipped participant still holds — the transaction is over — which for a data
@@ -196,7 +202,7 @@ result.isClean;       // failed.isEmpty && notReleased.isEmpty
 | Outcome | Meaning |
 | ------- | ------- |
 | `committed` | Every participant committed. The work is durable. |
-| `partiallyCommitted` | Every participant promised in `prepare()` and at least one then failed to commit. Some of the work is durable and some is not, and no coordinator can repair that. |
+| `partiallyCommitted` | Every participant promised in `prepare` and at least one then failed to commit. Some of the work is durable and some is not, and no coordinator can repair that. |
 | `rolledBack` | The transaction was rolled back — a veto, or an explicit `rollbackTransaction()` — and every participant undid its work. Nothing is durable and nothing is outstanding. |
 | `rolledBackWithFailures` | Rolled back, and at least one participant could not undo its work. **The outcome that requires a human**: the work was neither committed nor undone. |
 
@@ -207,9 +213,9 @@ gone" from "your work is durable and a connection leaked" — and those call for
 opposite responses, since the second must not be retried. `notReleased` is
 therefore a separate list, and `outcome` describes the *work* alone.
 
-`rollback()` returning `bool` is what makes `rolledBackWithFailures` reachable.
+`rollback` returning `bool` is what makes `rolledBackWithFailures` reachable.
 While it returned `void`, the coordinator never learned that an undo had failed,
-and the value it returned was built only from the subsequent `endTransaction()`
+and the value it returned was built only from the subsequent `endTransaction`
 calls — so a rollback in which every participant failed to undo its work and
 every participant released cleanly reported success.
 
@@ -376,7 +382,7 @@ differ in what that costs:
 | ----- | ------------------------- | --------------- |
 | prepare | `XA END` then `XA PREPARE` for an XA source, as two calls; nothing for a one-phase one | two round trips per XA participant |
 | commit / rollback | `COMMIT` / `ROLLBACK`, or the XA forms | a round trip per participant |
-| end | releases the connection — completes a completer, issues no statement | microseconds, measured below |
+| end | hands the connection back to the pool — issues no statement, unless the connection has a forgotten prepared statement to deallocate or is due to be retired | microseconds, measured below |
 
 So a transaction spanning *n* resources pays *n* sequential round trips on the
 deciding phases, at the point in a request where the client is waiting and the
@@ -399,7 +405,9 @@ improvement, is the wrong trade.
 **The end phase is sequential for a different reason: it is free.** Releasing a
 connection is ordered by nothing, so the order argument does not reach it; what
 keeps it a loop is that there is nothing to win. `tool/bench_transaction_end_phase.dart`
-drives participants that release exactly as `MariaDbDatasource` does, and on
+drives participants whose release completes a completer and does no I/O — the
+cost of a pooled data source's hand-back when it neither deallocates nor retires
+anything — and on
 2026-10-07 it measured the whole sequential end phase at 0.01–0.04 µs for one
 to four participants and about 2 µs for sixteen, with `Future.wait` *slower* at
 every size — it allocates a list and a future per participant to save awaits
@@ -424,6 +432,14 @@ can enlist in, commit, or roll back the other's work, and an `await` inside a
 transactional block cannot let a second request conclude the first one's
 transaction.
 
+Concurrent transactions do not wait for each other on a shared data source.
+`MariaDbDatasource` gives each transaction it is enlisted in a connection of
+its own from its pool, pinned from the transaction's first statement on it to
+`endTransaction`, so two requests' transactions on one database run side by side
+and one slow transaction stalls nobody else. A transaction waits only when every
+pooled connection is lent — see
+[The Connection Pool](datasources.md#the-connection-pool).
+
 A transaction may conclude in a different zone from the one that opened it (after
 an `await`, or from a callback scheduled elsewhere), so each `TomTransaction`
 holds a reference to the scope it is current in and clears *that* scope —
@@ -433,7 +449,7 @@ a `finally`, so it clears it whatever happens on the way.
 ## Not Yet Implemented
 
 - **A participant that breaks its promise leaves the transaction partially
-  committed.** A `commit()` that fails after a successful `prepare()` is not a
+  committed.** A `commit` that fails after a successful `prepare` is not a
   veto and cannot be answered with a rollback — peers are already durable. The
   coordinator logs the failure at error level naming every participant that
   broke its promise and commits the rest, and repair is at those resources. Two

@@ -609,6 +609,19 @@ abstract class FixtureApiService {
 /// Reflected and default-constructible, because that is how the pipeline builds
 /// a request DTO — text form parts are folded into a map and the instance is
 /// created from it, exactly as for a JSON body.
+/// A reflected holder with no `@TomDbTable` whose one field has a type no
+/// column can become, so the row mapper's refusal of an unreadable field is
+/// reachable without a database.
+@tomReflector
+class FixtureUnreadableFieldHolder {
+  /// A [Duration]: the plain-holder mapper reads text, numbers, booleans and
+  /// instants, and nothing else.
+  Duration window = Duration.zero;
+
+  /// Creates an empty holder; the mapper fills it by reflection.
+  FixtureUnreadableFieldHolder();
+}
+
 @tomReflector
 class FixtureUploadRequest {
   /// The document title, from the `title` form field.
@@ -2551,7 +2564,7 @@ class FixtureSettingsDatasource extends MariaDbDatasource {
   Future<void> initialize(Map<String, dynamic> settings) async {
     tomReflectionInfo.setValues<FixtureSettingsDatasource>(
       this,
-      MariaDbDatasource.normalizePort(settings),
+      MariaDbDatasource.normalizeIntegerSettings(settings),
     );
   }
 }

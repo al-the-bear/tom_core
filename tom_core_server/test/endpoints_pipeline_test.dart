@@ -2969,25 +2969,25 @@ class _VetoingParticipant implements TomTransactionParticipant {
   }
 
   @override
-  Future<bool> prepare() async {
+  Future<bool> prepare(TomTransaction transaction) async {
     calls.add('prepare');
     return !veto;
   }
 
   @override
-  Future<bool> commit() async {
+  Future<bool> commit(TomTransaction transaction) async {
     calls.add('commit');
     return true;
   }
 
   @override
-  Future<bool> rollback() async {
+  Future<bool> rollback(TomTransaction transaction) async {
     calls.add('rollback');
     return true;
   }
 
   @override
-  Future<bool> endTransaction() async {
+  Future<bool> endTransaction(TomTransaction transaction) async {
     calls.add('end');
     return true;
   }

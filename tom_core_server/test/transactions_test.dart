@@ -91,26 +91,26 @@ class _RecordingParticipant extends TomTransactionParticipant {
   }
 
   @override
-  Future<bool> prepare() async {
+  Future<bool> prepare(TomTransaction transaction) async {
     _record('prepare');
     if (prepareThrows) throw StateError('the resource cannot promise');
     return !vetoPrepare;
   }
 
   @override
-  Future<bool> commit() async {
+  Future<bool> commit(TomTransaction transaction) async {
     _record('commit');
     return !vetoCommit;
   }
 
   @override
-  Future<bool> rollback() async {
+  Future<bool> rollback(TomTransaction transaction) async {
     _record('rollback');
     return !failRollback;
   }
 
   @override
-  Future<bool> endTransaction() async {
+  Future<bool> endTransaction(TomTransaction transaction) async {
     _record('end');
     return endResult;
   }
@@ -149,25 +149,25 @@ class _SuspendingParticipant extends TomTransactionParticipant {
   }
 
   @override
-  Future<bool> prepare() async {
+  Future<bool> prepare(TomTransaction transaction) async {
     await _span('prepare');
     return true;
   }
 
   @override
-  Future<bool> commit() async {
+  Future<bool> commit(TomTransaction transaction) async {
     await _span('commit');
     return true;
   }
 
   @override
-  Future<bool> rollback() async {
+  Future<bool> rollback(TomTransaction transaction) async {
     await _span('rollback');
     return true;
   }
 
   @override
-  Future<bool> endTransaction() async {
+  Future<bool> endTransaction(TomTransaction transaction) async {
     await _span('end');
     return true;
   }
@@ -201,25 +201,25 @@ class _ThrowingParticipant extends TomTransactionParticipant {
   Future<bool> startTransaction(TomTransaction transaction) async => true;
 
   @override
-  Future<bool> prepare() async {
+  Future<bool> prepare(TomTransaction transaction) async {
     _maybeThrow('prepare');
     return true;
   }
 
   @override
-  Future<bool> commit() async {
+  Future<bool> commit(TomTransaction transaction) async {
     _maybeThrow('commit');
     return true;
   }
 
   @override
-  Future<bool> rollback() async {
+  Future<bool> rollback(TomTransaction transaction) async {
     _maybeThrow('rollback');
     return true;
   }
 
   @override
-  Future<bool> endTransaction() async {
+  Future<bool> endTransaction(TomTransaction transaction) async {
     _maybeThrow('end');
     return true;
   }
@@ -250,25 +250,25 @@ class _UnstartableParticipant extends TomTransactionParticipant {
   }
 
   @override
-  Future<bool> prepare() async {
+  Future<bool> prepare(TomTransaction transaction) async {
     calls.add('prepare');
     return true;
   }
 
   @override
-  Future<bool> commit() async {
+  Future<bool> commit(TomTransaction transaction) async {
     calls.add('commit');
     return true;
   }
 
   @override
-  Future<bool> rollback() async {
+  Future<bool> rollback(TomTransaction transaction) async {
     calls.add('rollback');
     return true;
   }
 
   @override
-  Future<bool> endTransaction() async {
+  Future<bool> endTransaction(TomTransaction transaction) async {
     calls.add('end');
     return true;
   }
@@ -859,8 +859,9 @@ void main() {
       final log = <String>[];
       final a = _SuspendingParticipant('a', log);
       final b = _SuspendingParticipant('b', log);
+      final txn = TomTransactionManager.startTransaction().$1;
 
-      await Future.wait([a.prepare(), b.prepare()]);
+      await Future.wait([a.prepare(txn), b.prepare(txn)]);
 
       expect(
         phaseOf(log, 'prepare'),
