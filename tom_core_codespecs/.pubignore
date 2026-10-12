@@ -1,0 +1,11 @@
+# Kept in the repository, NOT shipped in the published archive.
+#
+# These two tests are tom_ai/core's repository gates run per package: they
+# import `../../tool/package_gate.dart` and `../../tool/package_format_guard.dart`,
+# which live at the repository root, outside the package, so in an installed
+# archive they cannot even load (`tool/verify_published_tests.sh` in
+# tom_specs_clitool found them failing from the 0.12.1 archive). They hold this
+# repository's rules, not the package's behaviour, so the honest answer is not
+# to ship them.
+test/ai_citation_test.dart
+test/formatting_test.dart

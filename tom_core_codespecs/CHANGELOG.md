@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.12.2
+
+- The archive no longer ships `test/ai_citation_test.dart` and
+  `test/formatting_test.dart`. Both import tom_ai/core's repository-root
+  `tool/` and so failed to load from an installed 0.12.1; they keep running
+  in the repository, where that `tool/` exists. No library change.
+
 ## 0.12.1
 
 ### Tests
