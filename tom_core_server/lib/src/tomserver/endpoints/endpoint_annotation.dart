@@ -79,7 +79,7 @@ abstract class TomErrorHandler {
 /// A [TomErrorHandler] that answers with the framework's error envelope, and
 /// with the status an error key is declared to mean.
 ///
-/// Two things every handler in this framework was writing for itself. The
+/// It supplies two things a handler would otherwise write for itself. The
 /// **body** is [tomErrorEnvelope] — the package's single definition of the wire
 /// error shape — under `x-tom-error: true` and declared `application/json`, so
 /// a client decodes one shape whichever endpoint answered and branches on
@@ -88,9 +88,8 @@ abstract class TomErrorHandler {
 ///
 /// The envelope is what makes this safe to use as a default. It reports
 /// `errorKey` for a client to resolve against its own resources and never
-/// `defaultUserMessage`, so no exception's text escapes through it — the
-/// property the plain-text `"Internal server error"` body used to buy by saying
-/// nothing at all, at the price of saying nothing at all.
+/// `defaultUserMessage`, so no exception's text escapes through it, while the
+/// client still learns which error occurred.
 ///
 /// A deployment that wants a miss to read as a miss therefore writes a map
 /// rather than a handler:

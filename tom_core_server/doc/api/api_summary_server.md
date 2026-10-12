@@ -24,14 +24,14 @@ first logs the deployment in as itself — `TomServerSelfLogin.loginAndInstall`,
 which installs the `TomServerPrincipal` that caps every user's grants, and which
 aborts the start with no socket bound when a configured credential is refused —
 then initialises the endpoint `Router` (via `TomEndpointRouting`), composes a
-shelf `Pipeline` — `contextSetupMiddleware` (seeds a `TomRequestLogInfo`), an
-outer error layer, `tomDefaultAuthenticationMiddleware`, an inner error layer,
-and `tomLoggingMiddleware` — optionally wraps the router in a `Cascade` with
+shelf `Pipeline` — `tomRequestLogInfoMiddleware` (seeds a new
+`TomRequestLogInfo` per request), `tomLoggingMiddleware`, an outer error layer,
+`tomDefaultAuthenticationMiddleware` and an inner error layer — optionally wraps the router in a `Cascade` with
 pre/post handlers, and binds the socket (with TLS unless `noSsl`).
 
 The module exposes the composable middleware as top-level functions
-(`contextSetupMiddleware`, `tomDefaultAuthenticationMiddleware`,
-`tomLoggingMiddleware`), a credential helper (`extractAuthentication`) with the
+(`contextSetupMiddleware`, `tomRequestLogInfoMiddleware`,
+`tomDefaultAuthenticationMiddleware`, `tomLoggingMiddleware`), a credential helper (`extractAuthentication`) with the
 `TomCredentialOutcome` it reports, and a `noopHandler`. Per-request state travels in the request context
 (`TomRequestLogInfo`), the request zone, and — because the authentication
 middleware also opens a `TomTransactionManager.runInTransactionScope` — the
@@ -57,8 +57,9 @@ Both classes are standalone (no Tom base class).
 ### TomRequestLogInfo
 
 Per-request logging state carried in the shelf request context.
-`contextSetupMiddleware` seeds one under `contextName`; `tomLoggingMiddleware`
-reads it to decide whether to emit the access-log line and mark it logged.
+`tomRequestLogInfoMiddleware` seeds a new one under `contextName` for every
+request; `tomLoggingMiddleware` reads it to decide whether to emit the
+access-log line and mark it logged.
 
 #### Constructors
 
@@ -131,14 +132,15 @@ tell whether they guessed.
 | `noCredentials` | No `Authorization` header. An ordinary anonymous caller. |
 | `unsupportedScheme` | The header named a scheme other than `Bearer`, or none at all. Nothing was read from it. |
 | `unreadableToken` | A bearer token `verifyBearerToken` refused: a wrong signature, a key this deployment cannot check against, a body that would not decode, or an empty one. |
-| `noPrincipal` | The token verified but yielded no principal, so the claims are malformed rather than forged; the token is handed back with the outcome. No request can currently produce this — `TomClientJwtToken` refuses every payload shape that would defeat the converter first — and the guard is kept because the alternative to catching is a 500 for a token this deployment signed. |
+| `noPrincipal` | The token verified but yielded no principal — ordinarily because it is not live (expired, without a readable `exp`, or with a `validUntil` that disagrees with its `exp`), which `TomBearerAuthentication.convertTokenPayloadToPrincipal` refuses. The token is handed back with the outcome, so a refresh endpoint is reached with exactly it. |
 | `authenticated` | The token verified and yielded a principal. |
 
 ## Global Functions and Constants
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
-| `contextSetupMiddleware` | `Middleware contextSetupMiddleware(String id, [Map<String, Object>? context])` | A pass-through shelf `Middleware` that merges `context` into a copy of the request context before the inner handler runs (`id` labels it for tracing). |
+| `contextSetupMiddleware` | `Middleware contextSetupMiddleware(String id, [Map<String, Object>? context])` | A pass-through shelf `Middleware` that merges `context` into a copy of the request context before the inner handler runs (`id` labels it for tracing). The entries are the same objects for every request, so a value a request mutates — a `TomRequestLogInfo` — is seeded by `tomRequestLogInfoMiddleware` instead. |
+| `tomRequestLogInfoMiddleware` | `Middleware tomRequestLogInfoMiddleware()` | Seeds a new `TomRequestLogInfo` under `TomRequestLogInfo.contextName` into every request's context — one instance per request, because `tomLoggingMiddleware` marks it logged and the endpoint pipeline sets whether it should be. `TomServer.start` installs it outermost. |
 | `extractAuthentication` | `(TomPrincipal?, TomClientJwtToken?, TomCredentialOutcome) extractAuthentication(Request req)` | Extracts bearer credentials from the `Authorization` header, returning `(principal, token, outcome)`. The first two elements are `null` whenever the request is not authenticated; [`TomCredentialOutcome`](#tomcredentialoutcome) says which of the four ways that happened, because `(null, null)` is the answer to all four and an operator cannot act on it. Never raises and never refuses — a public endpoint is served through this same pipeline — but every refusal is recorded at warning level, and never with the credential in it. The scheme is matched case-insensitively, as RFC 7235 requires. |
 | `tomDefaultAuthenticationMiddleware` | `Middleware tomDefaultAuthenticationMiddleware(String id, [Map<String, Object>? context])` | The default authentication middleware: resolves the effective `TomPrincipal` and runs the inner handler in a zone exposing the request, execution context, principal, token, and a fresh `TomRequestId` — and inside a `TomTransactionManager.runInTransactionScope`, so the current transaction is per-request rather than per-isolate. A replacement must establish both. |
 | `tomLoggingMiddleware` | `Middleware tomLoggingMiddleware()` | The default request-logging middleware: emits one access-log line per request, guarded by the request's `TomRequestLogInfo`. Both guards are the reason shelf's `logRequests()` is not the default — it reads no request context, so it can honour neither. |

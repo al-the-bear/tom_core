@@ -1335,7 +1335,9 @@ class TomServerEndpoint<T extends Object, R extends Object> {
     TomServerChannel? channel,
     Uri? baseUri,
   }) {
-    if (apiEndpoint is! TomApiEndpoint<requestType, responseType>) {
+    // TomApiEndpoint declares its types response first:
+    // <ReturnType, RequestType>.
+    if (apiEndpoint is! TomApiEndpoint<responseType, requestType>) {
       throw TomEndpointException(
         "apis.endpoint.invalid_type_parameters",
         "The provided endpoint does not match the required type parameters for response and request types.",

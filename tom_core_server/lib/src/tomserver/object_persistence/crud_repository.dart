@@ -25,19 +25,20 @@ import 'data_scope.dart';
 /// Raised when a repository operation cannot complete: the entity's data source
 /// was never registered, a primary-key lookup matched more than one row, a
 /// `COUNT(*)` returned other than one row, a row written by
-/// [TomRepository.save] could not be read back, or
-/// [TomRepository.delete] was handed an entity that was never persisted.
+/// [TomRepository.save] could not be read back, [TomRepository.delete] was
+/// handed an entity that was never persisted, a key did not match the entity's
+/// key fields, or a composite key was saved with a field unset.
 ///
-/// All but the last are *server* faults — a broken registration or a database
+/// The first three are *server* faults — a broken registration or a database
 /// that contradicts its own schema — so [TomServerException.clientThrow]
 /// defaults to `false` and the message is kept off the wire; the `key` is what a
 /// caller matches on and what the endpoints pipeline logs.
 ///
-/// The delete of an unsaved entity is the exception, and sets `clientThrow`
-/// explicitly. It is raised for something the caller did rather than something
-/// the deployment did, and its message describes only the argument it was
-/// handed — so masking it would tell a caller nothing about a mistake it is the
-/// only party able to fix.
+/// The other three (`delete.unsaved_entity`, `key.shape_mismatch`,
+/// `save.incomplete_key`) set `clientThrow` explicitly. Each is raised for
+/// something the caller did rather than something the deployment did, and its
+/// message describes only the argument it was handed — so masking it would tell
+/// a caller nothing about a mistake it is the only party able to fix.
 ///
 /// It sits beside the repository rather than in the module's other exception
 /// files because those describe *inputs* the repository rejects

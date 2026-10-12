@@ -11,18 +11,18 @@ import '../little_things/server_exception.dart';
 /// | Key | Meaning |
 /// | --- | ------- |
 /// | `authorization.cache.expired_principal` | A matching entry existed but its expiry had passed; it has been dropped, so the next read of the same token is a miss. The client should re-authorize. |
-/// | `authorization.cache.missing_valid_until` | The token carries no readable `validUntil` claim, so nothing was cached. |
-/// | `authorization.cache.invalid_valid_until` | The token's `validUntil` claim is not an ISO 8601 instant, so nothing was cached. |
+/// | `authorization.cache.missing_expiry` | The token carries no `exp` claim, or one that is not an integer, so nothing was cached. |
+/// | `authorization.cache.invalid_expiry` | The token's `exp` claim is an integer no instant can be built from, so nothing was cached. |
 ///
 /// The distinct type lets a caller catch these specifically: an expired
 /// principal is a signal to re-authorize, as opposed to a cache miss (which
-/// simply returns `null`), and the two `validUntil` keys report a malformed
+/// simply returns `null`), and the two expiry keys report a malformed
 /// token rather than anything about the principal.
 ///
 /// `clientThrow` defaults to `true`, which is the opposite of most of the
 /// package and is the point: all three conditions are about the token the
 /// caller presented, and two of them tell the caller what to do next
-/// (re-authorize; send a well-formed `validUntil`). An answer the caller
+/// (re-authorize; send a well-formed `exp`). An answer the caller
 /// cannot read leaves it retrying a token that will never be accepted. A raise
 /// site whose message came to describe the server's own state would pass
 /// `clientThrow: false` — none does.
@@ -45,7 +45,7 @@ class TomAuthorizationCacheException extends TomServerException {
 /// Both are required, and neither changes afterwards. An entry's lifetime is
 /// not its own — it is the lifetime of the token the principal was authorized
 /// under, which is why [TomAuthorizationCache.storePrincipal] takes the instant
-/// off the token's `validUntil` claim and refuses to cache a token it cannot
+/// off the token's `exp` claim and refuses to cache a token it cannot
 /// read one from. There is therefore no instant this class could default to
 /// that would be right: a default would be an invented lifetime, the one thing
 /// that refusal exists to avoid, and it would apply exactly to the callers who
@@ -54,14 +54,14 @@ class TomAuthorizationCacheException extends TomServerException {
 /// later entrance.
 class TomAuthorizationCacheEntry {
   /// The instant after which this entry is expired and may be evicted. Set to
-  /// the token's `validUntil` when stored via [TomAuthorizationCache.storePrincipal].
+  /// the token's `exp` when stored via [TomAuthorizationCache.storePrincipal].
   final DateTime deletionTime;
 
   /// The principal resolved for the associated authentication token.
   final TomPrincipal authorizedPrincipal;
 
   /// Creates an entry for [authorizedPrincipal] that expires at [deletionTime]
-  /// — normally the `validUntil` of the token it was authorized under.
+  /// — normally the `exp` of the token it was authorized under.
   TomAuthorizationCacheEntry(this.authorizedPrincipal, this.deletionTime);
 }
 
@@ -276,10 +276,9 @@ class TomAuthorizationCache implements TomDisposable {
       // TomExecutor.notHandled is the third answer and is neither. It means
       // the creator received the message and nothing claimed it, which for
       // this command has exactly one cause: the process never registered
-      // TomAuthorizationCacheExecutor. Read as a miss -- which it was until
-      // the transport learned to tell the two apart -- it made every lookup in
-      // such a process re-resolve its principal for ever, plausibly and
-      // silently, with the only evidence a warning on the creator that this
+      // TomAuthorizationCacheExecutor. Read as a miss, it would make every
+      // lookup in such a process re-resolve its principal for ever, plausibly
+      // and silently, with the only evidence a warning on the creator that this
       // side cannot see.
       Object? cachedResult = await TomWorker.executeInCreator(
         TomAuthorizationCacheRetrieveMessage(authenticationToken),
@@ -337,7 +336,7 @@ class TomAuthorizationCache implements TomDisposable {
   /// string is only absolute if it carries an offset, and one written without
   /// means whatever the *reader's* zone says it means: [DateTime.tryParse]
   /// answers with a local `DateTime`, so a token minted in one zone and cached
-  /// by a server in another was off by the difference between them.
+  /// by a server in another would be off by the difference between them.
   ///
   /// `validUntil` remains in the payload as the human-readable form of the same
   /// instant — see `TomServerJwtToken`, which derives both from one clock read
@@ -442,7 +441,7 @@ class TomAuthorizationCache implements TomDisposable {
 /// [TomAuthorizationCacheExecutor].
 class TomAuthorizationCacheStoreMessage {
   /// The token the principal is cached under. Its token string is the key,
-  /// and its `validUntil` claim is when the entry expires; a token without a
+  /// and its `exp` claim is when the entry expires; a token without a
   /// readable one is refused on the creator side, and the refusal reaches the
   /// storing worker as a throw.
   TomClientJwtToken authenticationToken;
@@ -477,7 +476,7 @@ class TomAuthorizationCacheRetrieveMessage {
 ///
 /// Both handled commands return the delegate's future rather than awaiting it
 /// here, so a creator-side failure — an expired entry on a retrieve, an
-/// unreadable `validUntil` on a store — reaches the asking worker as a throw
+/// unreadable `exp` on a store — reaches the asking worker as a throw
 /// instead of being swallowed on this side.
 class TomAuthorizationCacheExecutor extends TomExecutor {
   @override

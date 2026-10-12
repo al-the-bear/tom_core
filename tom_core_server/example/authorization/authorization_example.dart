@@ -7,7 +7,7 @@
 /// together with the removal that read performs, which turns the next read of
 /// the same dead token back into an ordinary miss. It
 /// also shows the cross-isolate command objects and the executor that services
-/// them, the refusal to cache a token whose `validUntil` claim is unreadable,
+/// them, the refusal to cache a token whose `exp` claim is missing,
 /// and the eviction sweep that bounds the map -- started with the first stored
 /// principal and stopped again at the end, which is what lets this program
 /// terminate on its own.
@@ -24,7 +24,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 import '../_support/check.dart';
 
-/// Builds a client JWT token whose `validUntil` claim is [validFor] from now.
+/// Builds a client JWT token whose `exp` claim is [validFor] from now.
 /// Pass a negative duration to obtain an already-expired token.
 TomClientJwtToken _token(
   String userId, {
@@ -63,7 +63,7 @@ Future<void> run() async {
     'caller has to handle',
   );
 
-  // 3. A token whose validUntil is already in the past yields an expired entry.
+  // 3. A token whose exp is already in the past yields an expired entry.
   //    Reading it throws TomAuthorizationCacheException so the caller can
   //    distinguish "expired, please re-authorize" from a plain cache miss.
   //    That read also drops the entry it rejected -- it holds the map and has
@@ -127,7 +127,7 @@ Future<void> run() async {
     'pair and gets the principal held there',
   );
 
-  // 5. A token whose validUntil claim is unreadable is refused rather than
+  // 5. A token with no readable exp claim is refused rather than
   //    cached under an invented expiry: the entry's lifetime IS the token's,
   //    so a default here would outlive the token authorizing it. The refusal
   //    names the claim and the token, so the log says what was wrong.

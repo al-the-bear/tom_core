@@ -21,6 +21,7 @@ consumes it.
 | ---- | -------------- |
 | `TomServer` | The server: `TomServer(configuration)`; builds the `TomEndpointRouting` and starts listening. |
 | `TomRequestLogInfo` | Captured per-request log metadata. |
+| `tomRequestLogInfoMiddleware` | Seeds a new `TomRequestLogInfo` into every request's context; `start` installs it outermost. |
 
 ## Quick start
 

@@ -65,8 +65,9 @@ final RegExp _zonedDateTimeForm = _serializedForm(
 /// [typeName] Names the expected type in the exception, so a failure says
 /// which format the string failed to be.
 ///
-/// Throws [FormatException] if the string is not in the form, or names a zone
-/// the timezone database does not know.
+/// Throws [FormatException] if the string is not in the form, and
+/// `TomFormattingException` when it names a zone the timezone database does not
+/// know beside an offset beyond ±14:00 (see [TomTimezone.fixedOffset]).
 ({DateTime instant, TomTimezone timezone}) _readSerializedForm(
   RegExp pattern,
   String formattedString,
@@ -119,8 +120,9 @@ int _offsetMinutesOf(String offsetSection) {
 /// - ISO 8601 datetime (always in UTC)
 /// - UTC offset the zone had at that instant — the one the value's local
 ///   fields are computed with, so it does not depend on when the string was
-///   written. It is informational: parsing reads the instant and the zone
-///   name, never the offset
+///   written. Parsing reads the instant and the zone name, and reads the
+///   offset only for a zone name this runtime's timezone database does not
+///   hold
 /// - Timezone name
 ///
 /// Format: `ISO8601_OFFSET_TIMEZONE`
@@ -448,8 +450,9 @@ class TomTimezoned extends DateTime {
   /// Checks if a string is in valid [TomTimezoned] format.
   ///
   /// Returns `true` if the string matches the expected serialization format.
-  /// This judges shape only; a well-formed string may still name a zone the
-  /// timezone database does not know, which [parseFromString] rejects.
+  /// This judges shape only. [parseFromString] reads a zone the timezone
+  /// database does not know at the offset stored beside it, and throws
+  /// `TomFormattingException` when that offset lies beyond ±14:00.
   static bool isTomTimezonedString(String s) {
     return _timezonedForm.hasMatch(s.trim());
   }
@@ -719,9 +722,10 @@ class TomZonedDate extends TomTimezoned {
   /// Checks if a string is in valid [TomZonedDate] format.
   ///
   /// Returns `true` if the string starts with `@D@` and matches
-  /// the expected serialization format. This judges shape only; a well-formed
-  /// string may still name a zone the timezone database does not know, which
-  /// [parseFromString] rejects.
+  /// the expected serialization format. This judges shape only.
+  /// [parseFromString] reads a zone the timezone database does not know at the
+  /// offset stored beside it, and throws `TomFormattingException` when that
+  /// offset lies beyond ±14:00.
   static bool isTomZonedDateString(String s) {
     return _zonedDateForm.hasMatch(s.trim());
   }
@@ -1020,8 +1024,9 @@ class TomZonedTime extends TomTimezoned {
 
   /// Checks if a string is in valid [TomZonedTime] format.
   ///
-  /// This judges shape only; a well-formed string may still name a zone the
-  /// timezone database does not know, which [parseFromString] rejects.
+  /// This judges shape only. [parseFromString] reads a zone the timezone
+  /// database does not know at the offset stored beside it, and throws
+  /// `TomFormattingException` when that offset lies beyond ±14:00.
   static bool isTomZonedTimeString(String s) {
     return _zonedTimeForm.hasMatch(s.trim());
   }
@@ -1353,8 +1358,9 @@ class TomZonedDateTime extends TomTimezoned {
 
   /// Checks if a string is in valid [TomZonedDateTime] format.
   ///
-  /// This judges shape only; a well-formed string may still name a zone the
-  /// timezone database does not know, which [parseFromString] rejects.
+  /// This judges shape only. [parseFromString] reads a zone the timezone
+  /// database does not know at the offset stored beside it, and throws
+  /// `TomFormattingException` when that offset lies beyond ±14:00.
   static bool isTomZonedDateTimeString(String s) {
     return _zonedDateTimeForm.hasMatch(s.trim());
   }

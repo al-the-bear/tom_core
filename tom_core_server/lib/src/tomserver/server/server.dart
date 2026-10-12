@@ -20,9 +20,11 @@ import '../transactions/transaction_manager.dart';
 ///
 /// If [context] is supplied, its entries are merged into a copy of the
 /// incoming request's context before the inner handler runs; otherwise the
-/// request is forwarded unchanged. [id] is a label for tracing. The default
-/// pipeline uses it to attach a fresh [TomRequestLogInfo] under
-/// [TomRequestLogInfo.contextName] (see [TomServer.start]).
+/// request is forwarded unchanged. [id] is a label for tracing.
+///
+/// The entries are the same objects for every request, so a value a request
+/// mutates — a [TomRequestLogInfo] — is seeded by [tomRequestLogInfoMiddleware]
+/// instead.
 Middleware contextSetupMiddleware(String id, [Map<String, Object>? context]) =>
     (innerHandler) {
       // FutureOr<Response> Function(Request request)
@@ -38,6 +40,24 @@ Middleware contextSetupMiddleware(String id, [Map<String, Object>? context]) =>
         });
       };
     };
+
+/// A [Middleware] that seeds a new [TomRequestLogInfo] under
+/// [TomRequestLogInfo.contextName] into every request's context.
+///
+/// One instance per request, because the record is mutated per request:
+/// [tomLoggingMiddleware] marks it logged, and the endpoint pipeline sets
+/// whether it should be. The default pipeline installs it outermost (see
+/// [TomServer.start]).
+Middleware tomRequestLogInfoMiddleware() => (innerHandler) {
+  return (request) => innerHandler(
+    request.change(
+      context: {
+        ...request.context,
+        TomRequestLogInfo.contextName: TomRequestLogInfo(),
+      },
+    ),
+  );
+};
 
 /// Why a request carries the credentials it does — the third element of
 /// [extractAuthentication]'s result.
@@ -177,9 +197,10 @@ String _forTheLog(String value) =>
       TomCredentialOutcome.authenticated,
     );
   } catch (e) {
-    // A verified token whose payload will not yield a principal is a genuine
-    // oddity — the token is ours, so the claims are malformed rather than
-    // forged — and the request proceeds anonymously either way. Reported for
+    // A verified token that yields no principal is usually one that is no
+    // longer live; otherwise its claims are malformed rather than forged, since
+    // the signature is ours. The request proceeds anonymously either way.
+    // Reported for
     // the same reason the signature rejection is: a credential that was
     // refused and said nothing is the one an operator cannot investigate. The
     // token itself is kept: it is still this deployment's, and a refresh
@@ -400,8 +421,8 @@ Middleware _handleError(
 
 /// Per-request logging state carried in the shelf request context.
 ///
-/// [contextSetupMiddleware] seeds one instance under [contextName] at the start
-/// of the pipeline; [tomLoggingMiddleware] reads it to decide whether to emit
+/// [tomRequestLogInfoMiddleware] seeds a new instance under [contextName] into
+/// every request at the start of the pipeline; [tomLoggingMiddleware] reads it to decide whether to emit
 /// the access-log line and to mark it as logged. Set [shouldBeLogged] to
 /// `false` (e.g. for health checks) to suppress the line.
 class TomRequestLogInfo {
@@ -589,11 +610,7 @@ class TomServer {
     // about, while `_handleError`'s own error line named neither method, path,
     // status nor protocol version and so could be correlated with nothing.
     final handler = Pipeline()
-        .addMiddleware(
-          contextSetupMiddleware("Setup context", {
-            TomRequestLogInfo.contextName: TomRequestLogInfo(),
-          }),
-        )
+        .addMiddleware(tomRequestLogInfoMiddleware())
         .addMiddleware(loggingMiddleware)
         .addMiddleware(
           _handleError(

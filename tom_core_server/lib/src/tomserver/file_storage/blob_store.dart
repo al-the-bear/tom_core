@@ -381,11 +381,11 @@ class TomBlobRange {
 ///   catches one type rather than a socket exception here and a database
 ///   exception there.
 ///
-/// Both properties were previously left to each backend to honour, and each
-/// backend honoured a different subset of them: three of the four validated on
-/// `put` alone, so `get('../escape')` answered `invalid_key` on a directory
-/// store and `not_found` on a memory one — the wrong error, and for a caller
-/// branching on the two, the wrong branch.
+/// Left to each backend to honour, the two properties would hold only as far
+/// as each backend remembered them: a backend that validated on `put` alone
+/// would answer `get('../escape')` with `not_found` where another answered
+/// `invalid_key` — the wrong error, and for a caller branching on the two, the
+/// wrong branch.
 abstract class TomBlobStore {
   /// Creates a store.
   const TomBlobStore();

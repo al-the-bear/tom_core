@@ -463,9 +463,9 @@ class TomRemoteLogOutput extends TomLogOutput {
   /// [output] returns before its record has been sent — deliberately, since a
   /// logging call must never block the code that made it — so at any moment
   /// there may be records in flight and records buffered from an earlier
-  /// outage. A process that exits straight after logging loses both, and had
-  /// no supported way to wait. This is that way: call it once, at shutdown,
-  /// after the code that logs has stopped.
+  /// outage. A process that exits straight after logging without waiting
+  /// loses both. This is the way to wait: call it once, at shutdown, after the
+  /// code that logs has stopped.
   ///
   /// It deliberately does **not** make an individual [output] call awaitable.
   /// A sink that a caller can await per record invites exactly the coupling

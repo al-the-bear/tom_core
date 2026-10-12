@@ -3,7 +3,7 @@
 > **Cross-references.**
 > [`doc/codespecs_mapping.md`](doc/codespecs_mapping.md)
 > owns the **parts catalogue** (`codespecs_mapping.md` §4.1), the
-> **five-package `tom_core`-family basis** every CodeSpec is built on
+> **four-package `tom_core`-family basis** every CodeSpec is built on
 > (`codespecs_mapping.md` §1.1) and the per-part **spec-authorable attribute
 > surfaces** (`codespecs_mapping.md` §5).
 > [`doc/codespecs_derivation_contract.md`](doc/codespecs_derivation_contract.md)
@@ -352,7 +352,7 @@ an essential type.
 | Document | Authority for |
 |----------|---------------|
 | [index.md](../../ai_build/tom_specs_model/doc/index.md) | The catalogue of the whole TomSpecs document set, and the `§` citation convention |
-| [codespecs_mapping.md](doc/codespecs_mapping.md) | The parts catalogue, the five-package `tom_core`-family basis, the attribute surfaces, the three-project trio, the deferred candidates |
+| [codespecs_mapping.md](doc/codespecs_mapping.md) | The parts catalogue, the four-package `tom_core`-family basis, the attribute surfaces, the three-project trio, the deferred candidates |
 | [codespecs_derivation_contract.md](doc/codespecs_derivation_contract.md) | What code comes out per marker — inputs, emitted Dart, superclass, naming rules, validator checks |
 | [codespecs_prompt.md](../../ai_build/tom_specs_model/doc/codespecs_prompt.md) | When a Phase-4 run may begin at all — the mechanical gate and the per-area judgment |
 | [tom_specs_project_flow.md](../../ai_build/tom_specs_model/doc/tom_specs_project_flow.md) | The phase model Phase 4 sits in, and the quality gate it must pass |

@@ -118,6 +118,21 @@
 
 ### Fixed
 
+- **`TomBearerAuthentication.setTokens` checks the authentication token's
+  lifetime as well as the authorization token's.** It passed only the
+  authorization token to `convertTokenPayloadToPrincipal`, so an expired
+  authentication token beside a live authorization token was accepted. Both
+  tokens are now passed, and an expired authentication token throws
+  `TomTokenLifetimeException` and leaves the session as it was.
+
+- **`TomServerEndpoint.createApiServerEndpoint<requestType, responseType>`
+  accepts a declaration written in `TomApiEndpoint`'s own order.** The class
+  declares `<ReturnType, RequestType>`, but the factory tested for
+  `TomApiEndpoint<requestType, responseType>`, so every declaration whose two
+  types differed was refused with `apis.endpoint.invalid_type_parameters`
+  unless it was written backwards. A declaration written backwards to get past
+  the check is now refused; reverse its type arguments.
+
 - **`TomClass.setValues` deserializes collections of same-named classes.** A
   `TomList<X>` or `TomMap<String, X>` member resolved `X` through
   `singleElementType` / `mapValueElementType`, which see only the runtime

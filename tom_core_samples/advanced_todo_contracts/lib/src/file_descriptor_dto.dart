@@ -13,9 +13,9 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// have created a second, drifting definition of the same thing.
 ///
 /// A reflection-first wire DTO (G-DTO): `@tomReflector`, plain non-`final`
-/// fields, no hand-written serializer. The two optional members of
+/// fields, no hand-written serializer. The three optional members of
 /// [TomFileMetadata] travel as the empty string rather than `null` ([fileName],
-/// [storedAt]) because that is the reflection path's natural shape for an
+/// [storedAt], [digest]) because that is the reflection path's natural shape for an
 /// absent `String`; [toMetadata] maps empty back to `null`, so a descriptor
 /// that went out without a file name comes back without one.
 @tomReflector
@@ -40,6 +40,10 @@ class FileDescriptorDto {
   /// When the file was stored, as an ISO-8601 string; empty when unreported.
   String storedAt;
 
+  /// The content digest the server reported for the stored bytes, or empty
+  /// when it reported none — what a client compares a download against.
+  String digest;
+
   /// Creates a descriptor. The defaults describe an *empty* slot, so an unset
   /// descriptor reads as "no file" rather than as a zero-byte one.
   FileDescriptorDto({
@@ -49,6 +53,7 @@ class FileDescriptorDto {
     this.byteCount = 0,
     this.fileName = '',
     this.storedAt = '',
+    this.digest = '',
   });
 
   /// Wraps the kernel descriptor [metadata] for the slot it came from.
@@ -62,6 +67,7 @@ class FileDescriptorDto {
     byteCount: metadata.byteCount,
     fileName: metadata.fileName ?? '',
     storedAt: metadata.storedAt?.toIso8601String() ?? '',
+    digest: metadata.digest ?? '',
   );
 
   /// Composes the slot address for a file column of one row.
@@ -86,6 +92,7 @@ class FileDescriptorDto {
     byteCount: byteCount,
     fileName: fileName.isEmpty ? null : fileName,
     storedAt: storedAt.isEmpty ? null : DateTime.tryParse(storedAt),
+    digest: digest.isEmpty ? null : digest,
   );
 
   @override

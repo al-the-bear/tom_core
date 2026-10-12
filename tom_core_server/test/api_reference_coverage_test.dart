@@ -8988,19 +8988,18 @@ class After {}
   // `extractAuthentication` answers with a named outcome as well as with a
   // principal and a token, because `(null, null)` is the answer to four
   // different requests and an operator cannot act on a value that cannot tell
-  // them apart. Three of the four can be produced by sending a header, and
-  // `test/server_test.dart` sends one for each. The fourth cannot: a verified
-  // token whose claims yield no principal is refused by `TomClientJwtToken`
-  // before the converter is reached, so the guard that answers
-  // `noPrincipal` is defensive and no request reaches it.
+  // them apart. Each of the four is produced by sending a header, and
+  // `test/server_test.dart` sends one for each — `noPrincipal` with a token
+  // that verifies but has expired, which the converter refuses to turn into a
+  // principal.
   //
-  // An unreachable branch can still be pinned by the shape of the function,
-  // and that is what this group does — every value the enum declares is
-  // answered somewhere in the extractor, and nothing else is. It fails when a
-  // value is added that nothing returns (a name with no meaning), and when a
-  // branch is changed to answer with the wrong one (the defensive guard
-  // quietly folded into `unreadableToken`, say, which would put a non-null
-  // token behind an outcome that says there is none).
+  // This group pins the same contract by the shape of the function — every
+  // value the enum declares is answered somewhere in the extractor, and
+  // nothing else is. It fails when a value is added that nothing returns (a
+  // name with no meaning), and when a branch is changed to answer with the
+  // wrong one (the `noPrincipal` branch quietly folded into
+  // `unreadableToken`, say, which would put a non-null token behind an
+  // outcome that says there is none).
   group('extractAuthentication answers every outcome it declares', () {
     const source = 'lib/src/tomserver/server/server.dart';
 

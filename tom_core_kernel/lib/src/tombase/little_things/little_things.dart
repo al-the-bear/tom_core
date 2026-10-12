@@ -482,14 +482,14 @@ List<String> _processStackFrames([StackTrace? s, int depth = -1]) {
   // A Chain holds one trace *segment* per `await` boundary, newest first.
   // Flattening all of them is what makes an asynchronous trace complete: the
   // throw site is in the newest segment, but the caller that started the work
-  // is in an older one. Keeping only the newest segment reported where an
+  // is in an older one. Keeping only the newest segment would report where an
   // async failure surfaced and never where it began. Concatenating preserves
   // the newest-first order the depth limit below relies on, and a synchronous
   // trace is a single-segment chain, so it is unaffected.
   //
-  // Flattening is also what makes an *empty* trace safe, so do not reintroduce
-  // indexing here. `Chain.forTrace(StackTrace.empty).traces` is itself empty,
-  // so the `.traces[0]` this replaced threw a RangeError — the reporting
+  // Flattening is also what makes an *empty* trace safe, so do not index
+  // into the segments here. `Chain.forTrace(StackTrace.empty).traces` is
+  // itself empty, so `.traces[0]` would throw a RangeError — the reporting
   // machinery crashing while reporting a crash. Dart supplies that exact
   // object for any error created without a trace (`Future.error`,
   // `Completer.completeError`), so it reaches this function through ordinary
@@ -520,8 +520,7 @@ List<String> _processStackFrames([StackTrace? s, int depth = -1]) {
   // ones — leaving only the outermost `main`-side frames.
   for (final f in frames) {
     // Enforce the limit before appending so depth == 0 yields no frames
-    // (and depth == n yields exactly n). Checking after appending caused an
-    // off-by-one where depth == 0 returned every frame.
+    // (and depth == n yields exactly n).
     //
     // `depth >= 0` rather than the equivalent `depth > -1`: it says what the
     // condition means. A non-negative depth is a bound; *every* negative one
@@ -531,9 +530,7 @@ List<String> _processStackFrames([StackTrace? s, int depth = -1]) {
     //
     // Deliberately not rejected. These functions run while reporting some
     // other failure, and throwing here would lose that failure to complain
-    // about the depth used to describe it — the same trade already settled
-    // for the trace parameter above and for a non-StackTrace `stack` in
-    // TomException.printStackTrace.
+    // about the depth used to describe it.
     if (depth >= 0 && remaining-- == 0) break;
     final line =
         "${f.location} l:${f.line} c:${f.column} ${f.member} ${f.library}";

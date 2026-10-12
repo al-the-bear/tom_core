@@ -174,7 +174,10 @@ class TomBearerAuthentication {
   ]) {
     final ct = TomClientJwtToken(authenticationToken, decrypt: decrypt);
     final cat = TomClientJwtToken(authorizationToken, decrypt: decrypt);
-    final principal = convertTokenPayloadToPrincipal(cat);
+    // Both tokens, so the authentication token's lifetime is checked too: a
+    // session whose authentication has lapsed is over whatever the
+    // authorization token says.
+    final principal = convertTokenPayloadToPrincipal(ct, cat);
 
     final b = bearerAuthentication;
     b._token = authenticationToken;

@@ -805,6 +805,8 @@ void main() {
       'byteCount': 34,
       'fileName': 'notes.txt',
       'storedAt': '2026-07-28T09:15:00.000Z',
+      'digest':
+          'sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
     };
 
     test('an unset descriptor reads as "no file", not a zero-byte one', () {
@@ -830,8 +832,8 @@ void main() {
       expect(dto.hasFile, isTrue);
     });
 
-    test('the two optional members survive being absent', () {
-      // `fileName`/`storedAt` travel as the empty string (the reflection path's
+    test('the optional members survive being absent', () {
+      // `fileName`/`storedAt`/`digest` travel as the empty string (the reflection path's
       // shape for an absent String); mapping empty back to null is what keeps
       // the round trip equal for a server that reported neither.
       final metadata = TomFileMetadata.fromJson(const {
@@ -846,6 +848,7 @@ void main() {
 
       expect(dto.fileName, isEmpty);
       expect(dto.storedAt, isEmpty);
+      expect(dto.digest, isEmpty);
       expect(dto.toMetadata(), equals(metadata));
     });
 

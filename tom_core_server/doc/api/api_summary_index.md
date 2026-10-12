@@ -597,10 +597,11 @@ surface documented here.
 | `TomServer` | class | The HTTP server. |
 | `TomRequestLogInfo` | class | Per-request log record. |
 | `TomCredentialOutcome` | enum | Why a request carries the credentials it does. |
-| `contextSetupMiddleware` | function | Establishes the execution context per request. |
+| `contextSetupMiddleware` | function | Seeds the same entries into every request's context. |
 | `extractAuthentication` | function | Extracts principal + JWT from a request. |
 | `tomDefaultAuthenticationMiddleware` | function | Default auth middleware. |
 | `tomLoggingMiddleware` | function | Request-logging middleware. |
+| `tomRequestLogInfoMiddleware` | function | Seeds a new `TomRequestLogInfo` into every request's context. |
 | `noopHandler` | function | A handler returning a fixed status. |
 
 ### Transactions (`lib/src/tomserver/transactions/`)
@@ -1066,6 +1067,7 @@ surface documented here.
 | `TomRepositoryException` | Object Persistence |
 | `TomRequestId` | Little Things |
 | `TomRequestLogInfo` | Server |
+| `tomRequestLogInfoMiddleware` | Server |
 | `TomResourceDataScope` | Authorization |
 | `TomResourceGrant` | Authorization |
 | `TomResourceLocaleException` | Resources |

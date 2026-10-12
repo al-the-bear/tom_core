@@ -90,8 +90,8 @@ class TomEmptyState extends StatelessWidget {
     // all three strings share the base path.
     final basePath = TomCtr.resolvePath(tomId, scope);
 
-    /// Resources first, explicit second — the precedence this widget has
-    /// always documented at [tomId], and the reverse of the button family's.
+    /// Resources first, explicit second — the precedence documented at
+    /// [tomId], and the reverse of the button family's.
     ///
     /// One closure rather than the rule written out three times: the three
     /// strings differ only in their key and their fallback, and a precedence

@@ -52,7 +52,9 @@ const _password = 'erin-pass';
 Future<void> main() async {
   final webRoot = Directory('build/web');
   if (!File('${webRoot.path}/index.html').existsSync()) {
-    _fail('build/web is missing — run `flutter build web` in this package first.');
+    _fail(
+      'build/web is missing — run `flutter build web` in this package first.',
+    );
   }
   await _requireServer('http://localhost:8081/auth', 'auth server');
   await _requireServer('http://localhost:8080/health', 'app server');
@@ -71,8 +73,10 @@ Future<void> main() async {
   try {
     final page = await _Cdp.connect();
     await _run(page);
-    stdout.writeln('\nPASS — a passkey was enrolled and used from a browser '
-        'against the live auth server.');
+    stdout.writeln(
+      '\nPASS — a passkey was enrolled and used from a browser '
+      'against the live auth server.',
+    );
   } on _Failure catch (failure) {
     stderr.writeln('\nFAIL — ${failure.message}');
     exitCode = 1;
@@ -272,8 +276,7 @@ class _Cdp {
             Uri.parse('http://127.0.0.1:$_debugPort/json/list'),
           )).close();
           final targets =
-              jsonDecode(await response.transform(utf8.decoder).join())
-                  as List;
+              jsonDecode(await response.transform(utf8.decoder).join()) as List;
           final page = targets.cast<Map<String, Object?>>().firstWhere(
             (t) => t['type'] == 'page',
           );

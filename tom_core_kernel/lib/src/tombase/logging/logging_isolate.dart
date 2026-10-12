@@ -278,9 +278,9 @@ class TomCreatorLogOutput extends TomLogOutput {
   /// than the sink contract. Typing it concretely would mean a worker whose
   /// creator channel is missing could only ever fall back to the console —
   /// exactly when its records are least likely to be watched. The default is
-  /// still a [TomConsoleLogOutput], so unconfigured behaviour is unchanged;
-  /// this mirrors `TomRemoteLogOutput.globalSettingFallbackOutput`, which was
-  /// already declared this way.
+  /// a [TomConsoleLogOutput], so an unconfigured worker falls back to the
+  /// console; `TomRemoteLogOutput.globalSettingFallbackOutput` is declared the
+  /// same way.
   static TomLogOutput fallbackOutput = TomConsoleLogOutput();
 
   @override
@@ -388,9 +388,7 @@ class TomIsolateLogging {
   /// ## Failure
   /// Returns nothing. Completing is the success signal: there is no partial
   /// outcome to report, because the pool is either spawned and installed or the
-  /// call throws on the way. A `bool` here promised a failure report that no
-  /// path ever produced — every return was `true` — so
-  /// `if (!await startIsolatedLogging(args))` was dead code at every call site.
+  /// call throws on the way.
   ///
   /// Throws [TomException] (`logging.isolate.runtime_not_initialized`) when the
   /// runtime platform has not been registered and no [workerContext] was

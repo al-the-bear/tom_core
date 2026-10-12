@@ -11,8 +11,19 @@
 - **The request body no longer reaches the trace log.** The binder's trace line
   named the raw JSON body, so a login's password was written down in clear; it
   now names only the bound object, whose `toString` masks its secrets.
+- **Every request gets its own `TomRequestLogInfo`.** `TomServer.start` seeded
+  the record through `contextSetupMiddleware`, which hands every request the
+  same object; the first request marked it logged, and the access log fell
+  silent for every request after it. The pipeline now seeds a new record per
+  request.
 
 ### Added
+
+- **`tomRequestLogInfoMiddleware()`**, the middleware that seeds a new
+  `TomRequestLogInfo` under `TomRequestLogInfo.contextName` into every
+  request's context. `TomServer.start` installs it outermost; a deployment that
+  composes its own pipeline with `tomLoggingMiddleware` installs it the same
+  way.
 
 - **A send pace for delivered second-factor codes**: `Tom2FASendLimiter`,
   `Tom2FASend` and the per-process default `Tom2FAMemorySendLimiter`

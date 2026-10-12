@@ -139,6 +139,24 @@ void main() {
       );
     });
 
+    test('setTokens refuses an expired authentication token beside a live '
+        'authorization token, and keeps the session it had', () {
+      TomBearerAuthentication.clearTokens();
+      String raw(Duration expiresIn) => TomServerJwtToken({
+        'username': 'ada',
+        'userId': 7,
+      }, expiresIn: expiresIn).getJWT('tom');
+      expect(
+        () => TomBearerAuthentication.setTokens(
+          raw(const Duration(minutes: -1)),
+          raw(const Duration(hours: 1)),
+          false,
+        ),
+        refusedWith('security.token.expired'),
+      );
+      expect(TomBearerAuthentication.token, isNull);
+    });
+
     test('exp is exclusive: a token is dead at its expiry instant', () {
       final exp = _epochSeconds(now);
       expect(

@@ -34,7 +34,8 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
 | `TomServer` | class | Composes the pipeline and binds the socket |
 | `TomRequestLogInfo` | class | Per-request logging state in the request context |
 | `TomCredentialOutcome` | enum | Why a request carries the credentials it does |
-| `contextSetupMiddleware` | function | Seeds entries into the request context |
+| `contextSetupMiddleware` | function | Seeds entries into the request context — the same objects for every request |
+| `tomRequestLogInfoMiddleware` | function | Seeds a new `TomRequestLogInfo` into every request's context |
 | `tomDefaultAuthenticationMiddleware` | function | Extracts credentials and publishes request zone values |
 | `tomLoggingMiddleware` | function | Emits the one-shot access-log line, prefixed with the application id |
 | `extractAuthentication` | function | Reads bearer credentials from a request |
@@ -99,8 +100,12 @@ and the login flow itself.
 `start()` composes a shelf `Pipeline` in front of the endpoint `Router`, in this
 order:
 
-1. **`contextSetupMiddleware`** — seeds a fresh `TomRequestLogInfo` into the
-   request context under `TomRequestLogInfo.contextName`.
+1. **`tomRequestLogInfoMiddleware`** — seeds a new `TomRequestLogInfo` into
+   each request's context under `TomRequestLogInfo.contextName`. One instance
+   per request, because the record is mutated per request: the logging
+   middleware marks it logged and the endpoint pipeline sets whether it should
+   be. `contextSetupMiddleware` is not used for it — the entries it seeds are
+   the same objects for every request.
 2. **Logging middleware** — `loggingMiddleware` (defaults to
    `tomLoggingMiddleware`), which emits one line per served request:
 
@@ -176,7 +181,7 @@ requests:
 | `noCredentials` | Sent no `Authorization` header. An ordinary anonymous caller. |
 | `unsupportedScheme` | Sent a scheme other than `Bearer`, or a header with no scheme at all. |
 | `unreadableToken` | Sent a bearer token `verifyBearerToken` refused — a wrong signature, a key this deployment cannot check against, a body that would not decode, or an empty one. |
-| `noPrincipal` | Sent a token that verified but yielded no principal, so the claims are malformed rather than forged. The token is handed back with the outcome; no request can currently produce this, because `TomClientJwtToken` refuses every payload shape that would defeat the converter first. |
+| `noPrincipal` | Sent a token that verified but yielded no principal. The ordinary cause is a token that is not live — expired, without a readable `exp`, or with a `validUntil` that disagrees with its `exp` — which `TomBearerAuthentication.convertTokenPayloadToPrincipal` refuses. The token is handed back with the outcome, so a refresh endpoint is reached with exactly it. |
 | `authenticated` | Sent a token that verified and yielded a principal. |
 
 An anonymous caller and a client whose signing key this deployment stopped
@@ -260,7 +265,8 @@ Three suites cover this module.
 — naming each `TomCredentialOutcome`, and holding the battery that requires no
 refused token to appear in any line the module writes —
 `verifyBearerToken` refusing a token this deployment did not sign,
-`contextSetupMiddleware` and `tomLoggingMiddleware`,
+`contextSetupMiddleware`, `tomRequestLogInfoMiddleware` (a new record per
+request) and `tomLoggingMiddleware`,
 `tomDefaultAuthenticationMiddleware` — including the case where the cached
 principal has expired and the credentials survive it — and `TomServer`'s
 constructor wiring and error handler. None of that needs a bound port, because

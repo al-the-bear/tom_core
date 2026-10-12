@@ -43,9 +43,9 @@ classes. The framework is owned by the **`tom_specs` quest** (§12).
 
 **(b) Every class a CodeSpec builds on is a `tom_core`-family class.** The
 concrete types a CodeSpec is built from (data models, endpoints, repositories,
-widgets, forms, …) come from the `tom_core` family under `tom_ai/core/` — **five**
-packages: `tom_core_kernel` / `tom_core_flutter` / `tom_core_server` /
-`tom_core_d4rt` **and `tom_flutter_ui`**. `tom_flutter_ui` is the
+widgets, forms, …) come from the `tom_core` family under `tom_ai/core/` — **four**
+packages: `tom_core_kernel` / `tom_core_flutter` / `tom_core_server` **and
+`tom_flutter_ui`**. `tom_flutter_ui` is the
 code basis for the entire client-side UI substrate — forms
 (CE-FM), actions (CE-AC), the ScreenElementsProvider / input-element / widget
 family (CE-EL), layout (CE-LO), text/i18n (CE-TX), validation (CE-VA), navigation
@@ -56,13 +56,11 @@ Only the concrete structures `tom_core` genuinely lacks go into the new
 **`tom_core_codespecs`** project — and those are **concrete classes, not abstract
 `Cs*` bases**. `tom_core` stays clean of CodeSpecs-only concerns.
 
-Two consequences of the survey that grounded this pillar are worth stating once:
+One consequence of the survey that grounded this pillar is worth stating once:
 `tom_core_flutter` carries only observing / resources / runtime / security — the
 real form, field, action, validation, layout and navigation classes live in
 `tom_flutter_ui`, which depends **directly** on `tom_core_kernel` and not through
-`tom_core_flutter`. And **`tom_core_d4rt` contributes no substrate at all**: it is
-a bridge aggregator re-exposing the other packages to the interpreter, so no part
-maps to it and later waves need not re-survey it.
+`tom_core_flutter`.
 
 **Where a gap class lands** follows from *who else could use it*: a structure
 `tom_core` is simply missing and that is **generally useful** goes into the
@@ -581,7 +579,7 @@ being closed, and they constrain the whole design:
 | `tom_specs_project_flow.md` §PF-PHA-P4 | The Phase 4 CodeSpec **components**, the traceability requirement, the fixed Tom Architecture (Flutter/CLI client → server interface → Dart server → SQL), the Phase 3→CodeSpec requirement-mapping table, and the Phase 4 exit criterion (compiles but does not execute). |
 | **`code_spec` architecture principles** (§12) | The multi-project separation (shared spec / client impl / server impl), the three-layer UI split (semantic / widget-behaviour / layout), analyzer-driven validation beyond the compiler, `//$` production stripping, test-generation-from-specs, and the auth-server/stateless-API/SQL target architecture. |
 | `tom_ai/ai_build/tom_specs_model/` | The **SOM**: 12 Phase 3 document roots `D01…D12` under the `D00SolutionBlueprint` master, plus the `D13CodeSpecsProjection` generation projection. The derivation *inputs*. |
-| `tom_core_kernel` / `_server` / `_flutter` / `_d4rt` / `tom_flutter_ui` | Direct source survey of the five core-family packages — the exact constructor/field/annotation signatures behind every §5 attribute-surface row. |
+| `tom_core_kernel` / `_server` / `_flutter` / `tom_flutter_ui` | Direct source survey of the four core-family packages — the exact constructor/field/annotation signatures behind every §5 attribute-surface row. |
 
 **This document is the CodeSpecs *grounding* document.** The per-part code
 basis, attribute surfaces, section→part coverage, closed-choice inventory,
@@ -991,15 +989,15 @@ which fixes the slice order, the per-slice readiness gate and the blocking mode
 #### 4.1.2 Built-on resolution + closed-catalogue verification
 
 Every `tom_core`-family symbol this document names is **resolved against the real
-sources** of the five built-on packages (`tom_core_kernel`, `tom_core_flutter`,
-`tom_core_server`, `tom_core_d4rt`, `tom_flutter_ui`) — the pillar-(b) claim that
+sources** of the four built-on packages (`tom_core_kernel`, `tom_core_flutter`,
+`tom_core_server`, `tom_flutter_ui`) — the pillar-(b) claim that
 every class a CodeSpec instantiates is a shipped framework class is only worth
 what its symbols actually resolve to. The sweep collects every `class` / `enum` /
 `mixin` / `extension` / `typedef` declaration in those packages' `lib/` trees and
 matches it against the backticked type names in this document.
 
 **Resolution result — every named type resolves.** The bulk are declared
-directly in one of the five built-on packages, so the built-on claim holds
+directly in one of the four built-on packages, so the built-on claim holds
 verbatim. Exactly three resolve somewhere else, and they are listed by name
 rather than counted, because *which* names they are is the whole content:
 
@@ -1014,7 +1012,7 @@ shipped API is the authority, so the cure is always to fix the citation here.
 `package:tom_crypto` wholesale in its barrel's export list. A CodeSpec that names
 `TomRuntime` or `TomClientJwtToken` therefore imports **only**
 `tom_core_kernel` — the symbol arrives through the kernel's public surface. So
-pillar (b)'s legitimate built-on surface is **the five packages *plus* whatever
+pillar (b)'s legitimate built-on surface is **the four packages *plus* whatever
 they re-export**, and these three names are conformant, not drift. What they are
 *not* is kernel-declared: any change to them is a change to `tom_basics` /
 `tom_crypto` and must be scoped there.

@@ -423,7 +423,7 @@ against MariaDB.
 sides of the isolate boundary: storing and reading a resolved principal in the
 main isolate, the miss, the expiry — and the removal that read performs, which
 turns the next read of the same dead token back into an ordinary miss — the
-refusal to cache a token whose `validUntil` claim is unreadable, the eviction
+refusal to cache a token whose `exp` claim is missing or unreadable, the eviction
 sweep that bounds the map, the cross-isolate command objects, and
 `TomAuthorizationCacheExecutor` servicing them. The worker-isolate cases are
 asserted through the same API the main-isolate ones use, which is the claim

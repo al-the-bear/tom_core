@@ -88,7 +88,7 @@ TomApi buildTrackApi() => TomApi(
   id: 'trackApi',
   uri: '/api/v1/tracks',
   endpoints: [
-    TomApiEndpoint<TrackRequest, TrackResponse>(
+    TomApiEndpoint<TrackResponse, TrackRequest>(
       id: 'store',
       uri: '/{id}',
       method: TomHttpMethod.post,

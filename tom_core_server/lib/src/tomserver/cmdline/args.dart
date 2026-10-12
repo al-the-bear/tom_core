@@ -242,10 +242,10 @@ class TomArgs {
   ///
   /// This is what lets a deployment write `JWT_SHARED_SECRET_KEY` — the
   /// spelling every `.env` file, container platform and CI secret store uses —
-  /// and reach the `jwtSharedSecretKey` field, which before this was settable
-  /// only by a variable literally named `jwtSharedSecretKey`. The mapping is
-  /// mechanical and total in one direction, so a reader can predict the
-  /// variable for any field without consulting a table of special cases.
+  /// and reach the `jwtSharedSecretKey` field, which a verbatim reader would
+  /// fill only from a variable literally named `jwtSharedSecretKey`. The
+  /// mapping is mechanical and total in one direction, so a reader can predict
+  /// the variable for any field without consulting a table of special cases.
   ///
   /// Two rules keep it from taking anything away:
   ///

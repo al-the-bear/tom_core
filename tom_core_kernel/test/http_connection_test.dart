@@ -3564,6 +3564,32 @@ void main() {
       );
     });
 
+    test('accepts an endpoint declared in the class\'s own order', () {
+      // TomApiEndpoint is <ReturnType, RequestType>; the factory takes
+      // <requestType, responseType>. With the two types different, matching
+      // them in the wrong order refuses every correct declaration.
+      final endpoint = TomApi(
+        id: 'orderedApi',
+        uri: '/api',
+        endpoints: [
+          TomApiEndpoint<String, int>(
+            id: 'ordered',
+            method: TomHttpMethod.post,
+            uri: '/ordered',
+          ),
+        ],
+      )['ordered'];
+      final call = TomServerEndpoint.createApiServerEndpoint<int, String>(
+        endpoint,
+        baseUri: Uri.parse('https://api.example.com'),
+      );
+      expect(call, isA<TomServerEndpoint<int, String>>());
+      expect(
+        () => TomServerEndpoint.createApiServerEndpoint<String, int>(endpoint),
+        throwsA(isA<TomEndpointException>()),
+      );
+    });
+
     test('an API endpoint with no baseUri addresses the API server, not the '
         'authentication server', () {
       // The two URIs coincide in a single-host deployment, so a default that
@@ -4137,7 +4163,7 @@ void main() {
           id: 'sendCaptureApi',
           uri: '/api/items',
           endpoints: [
-            TomApiEndpoint<EndpointRequest, EndpointResponse>(
+            TomApiEndpoint<EndpointResponse, EndpointRequest>(
               id: 'byId',
               uri: '/{id}',
               method: TomHttpMethod.post,

@@ -612,13 +612,21 @@ class TomEndpointHandler {
 
   /// Materialises the endpoint method's positional arguments from [req].
   ///
-  /// Each parameter is resolved by the first binding strategy that succeeds:
-  /// a value supplied by the caller in [extraByType], the zone's
-  /// [TomPrincipal] / [TomClientJwtToken], the request object itself, the
-  /// request context (by type or by name), a primitive path or query value,
-  /// the execution context, the decoded `multipart/form-data` body (whole form
-  /// or a single file part), and finally the request DTO built from the JSON
-  /// or form body folded together with the URL parameters.
+  /// Each parameter is resolved by the first binding strategy that succeeds,
+  /// tried in this order:
+  ///
+  /// 1. a value supplied by the caller in [extraByType];
+  /// 2. the decoded `multipart/form-data` body — the whole [TomMultipartForm],
+  ///    or the single [TomFormFile] part named like the parameter;
+  /// 3. the zone's [TomPrincipal], then its [TomClientJwtToken];
+  /// 4. the request object itself;
+  /// 5. the request context, by type and then by name;
+  /// 6. a primitive path variable, then a primitive query value;
+  /// 7. the execution context, by name;
+  /// 8. the request DTO built from the JSON or form body folded together with
+  ///    the URL parameters;
+  /// 9. finally, a DTO built from a JSON map the request context holds under
+  ///    the parameter type's name.
   ///
   /// [extraByType] is how an endpoint *kind* contributes a value the generic
   /// strategies cannot know about — a WebSocket endpoint passes the

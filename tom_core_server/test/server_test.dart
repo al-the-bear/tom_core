@@ -437,6 +437,41 @@ void main() {
     );
   });
 
+  group('tomRequestLogInfoMiddleware', () {
+    test('seeds a separate TomRequestLogInfo into every request', () async {
+      final seen = <TomRequestLogInfo>[];
+      final handler = tomRequestLogInfoMiddleware()((req) {
+        seen.add(
+          req.context[TomRequestLogInfo.contextName] as TomRequestLogInfo,
+        );
+        return Response.ok('ok');
+      });
+      await handler(_get());
+      await handler(_get());
+      expect(seen, hasLength(2));
+      expect(identical(seen[0], seen[1]), isFalse);
+    });
+
+    test('every request through one pipeline gets its access line', () async {
+      // One instance shared by every request would be marked logged by the
+      // first, and the access log would fall silent after one line.
+      _AppIdConfig('');
+      final output = _CapturingLogOutput();
+      final previous = tomLog.logOutput;
+      addTearDown(() => tomLog.logOutput = previous);
+      tomLog.logOutput = output;
+
+      final handler = const Pipeline()
+          .addMiddleware(tomRequestLogInfoMiddleware())
+          .addMiddleware(tomLoggingMiddleware())
+          .addHandler((req) => Response.ok('ok'));
+      await handler(_get());
+      await handler(_get());
+
+      expect(output.messages.where((m) => m.startsWith('HTTP/')), hasLength(2));
+    });
+  });
+
   group('tomLoggingMiddleware', () {
     test('emits at most once and marks the log info', () async {
       final info = TomRequestLogInfo();

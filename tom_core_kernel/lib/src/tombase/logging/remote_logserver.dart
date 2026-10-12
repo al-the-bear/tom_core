@@ -60,7 +60,7 @@ import 'remote_logoutput.dart';
 /// Server-side handler for receiving remote log messages.
 ///
 /// This class processes incoming [TomRemoteLogMessage] objects from clients
-/// and outputs them through the configured [localOutput].
+/// and outputs them through [effectiveOutput].
 ///
 /// ## Configuration
 ///
@@ -98,8 +98,8 @@ import 'remote_logoutput.dart';
 /// by a `…[truncated]` suffix inside that limit rather than past it.
 ///
 /// The cap is per field, and deliberately so: a record's bound follows from it
-/// — four sanitized fields, so at most four times the cap reaches [localOutput]
-/// from one [receive] call — and a second, whole-record budget would have to
+/// — four sanitized fields, so at most four times the cap reaches
+/// [effectiveOutput] from one [receive] call — and a second, whole-record budget would have to
 /// choose which field to sacrifice when the record as a whole is too large, a
 /// choice no rule here can make better than the per-field one. What is *not*
 /// bounded here is how many records a client may send; that is a property of
@@ -109,7 +109,7 @@ import 'remote_logoutput.dart';
 /// ## Refusals
 ///
 /// A record can be refused for two independent reasons — the message is
-/// undecodable, or [localOutput] is broken. [receive] names which in the
+/// undecodable, or [effectiveOutput] is broken. [receive] names which in the
 /// [TomRemoteLogResult] it returns *and* logs it locally at error level; see
 /// [receive] for why both are needed and why the local half ignores the
 /// sender's own logger level.
@@ -146,14 +146,15 @@ class TomRemoteLogServer {
 
   /// Processes an incoming remote log message.
   ///
-  /// Reconstructs the log entry from [m] and outputs it through [localOutput].
+  /// Reconstructs the log entry from [m] and outputs it through
+  /// [effectiveOutput].
   /// The isolate name is prefixed with the sender ID for identification.
   ///
   /// Returns a [TomRemoteLogResult] indicating success or failure. On failure
   /// the caught error is folded into [TomRemoteLogResult.errorMessage] and the
   /// refusal is recorded locally by [_reportRefusal]. Two independent things
   /// can fail here — the message can be undecodable (a malformed
-  /// [TomRemoteLogMessage.timeStamp]) or [localOutput] can be broken — and the
+  /// [TomRemoteLogMessage.timeStamp]) or [effectiveOutput] can be broken — and the
   /// caller is a remote process with nothing else to inspect, so a generic
   /// "failed" tells it neither what went wrong nor whether retrying could
   /// help.
