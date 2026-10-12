@@ -5891,7 +5891,7 @@ rule is stated here.
 Anything outstanding against this document is tracked as a **quest todo** of the
 TomSpecs quest — `csrb` and `csre` for the
 CodeSpecs follow-up series, `qr` for findings raised by a quest-refresh pass,
-`qrc` for the work one of those findings opened, `tscomp`/`tscompc`/`tscompd`
+`qrc` and `qrb` for the work those findings opened, `tscomp`/`tscompc`/`tscompd`
 for a completeness pass and its two generations of follow-ups, and `tspuba` for
 the findings of the Phase-4 dogfood run. Each todo is self-contained, so this
 section is an index rather than a specification.
@@ -5908,8 +5908,14 @@ run, and no named validator check is unable to run. Nothing here waits on a
 rather than against shipped source.
 
 **§8.5** carries the standing per-part coverage verdict, and it records every
-active part COVERED. Nothing is currently open against this document's mapping
-surfaces.
+active part COVERED. One item is open against that verdict:
+
+- `qrb6_ajlx-required-arguments-without-a-som-source` — two required marker
+  arguments have no stored SOM source: `@CsTrigger.kind` (CE-AC) and
+  `@CsNotification.body` (CE-NT). Stage A's A4 therefore cannot hold a document
+  to them (`codespecs_prompt.md` §4.4.2), and an agent authoring either part
+  reads prose for a required argument. Until it closes, CE-AC's and CE-NT's
+  COVERED verdicts hold for every argument but these two.
 
 An open todo in those series whose subject is **not** a mapping question does
 not belong here even when the index is non-empty — a SOM validator capability
