@@ -2320,7 +2320,8 @@ writes the trio, and this program decides whether what it wrote is admissible.
 
 **Where they run.** All thirty-seven are implemented in
 `tom_ai/ai_build/tom_specs_clitool/lib/src/codespecs/` (`cs_reader` reads the generated trio via
-the analyzer, `cs_model` resolves it, `cs_extract` reads the per-area extracts,
+the analyzer, `cs_model` resolves it, `cs_extract` reads the per-area extracts
+(through the SOM runtime's `CodeSpecsExtractSet`, the reader every runtime shares),
 `cs_checks` holds the checks, `codespecs_validator` drives them) and are invoked
 by
 `dart run bin/validate_codespecs.dart --shared … --client … --server … [--extracts …]`,
