@@ -2325,7 +2325,12 @@ the analyzer, `cs_model` resolves it, `cs_extract` reads the per-area extracts
 `cs_checks` holds the checks, `codespecs_validator` drives them) and are invoked
 by
 `dart run bin/validate_codespecs.dart --shared … --client … --server … [--extracts …]`,
-which exits non-zero on any violation. The fourth column names each check's class
+which exits non-zero on any violation. `--json` writes the same result as one
+versioned JSON document — per violation its check, defining section, file, line
+and, where the check knows them, the token and area — and `--backlinks` writes
+the trio's `@CodeSpec`/`@DocSpec` back-link index for tracing code to spec
+values. The reader parses source text only, so the command compiles into a
+standalone executable. The fourth column names each check's class
 in `cs_checks.dart`, so the correspondence is stated rather than inferred: a
 check numbered below with no class, or a class in the registry with no row, is a
 defect in one of the two.
