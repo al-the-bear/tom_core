@@ -14,6 +14,11 @@ class _GroupedField extends StatelessWidget with TomWidgetMixin {
 
   const _GroupedField(this.tomId, {this.tomGroup, this.scope});
 
+  /// A Tom widget joins its group from its element, which knows when the
+  /// widget is mounted — see [TomGroupMemberElement].
+  @override
+  StatelessElement createElement() => TomStatelessGroupMemberElement(this);
+
   @override
   Widget build(BuildContext context) => const SizedBox.shrink();
 }
@@ -97,11 +102,11 @@ void main() {
       final g = TomAuthorizationGroup('g');
       final a = _GroupedField('a', tomGroup: g);
       final b = _GroupedField('b', tomGroup: g);
-      a.registerWithGroup();
-      b.registerWithGroup();
+      g.register(a);
+      g.register(b);
       expect(g.memberCount, 2);
       expect(g.findMember('b'), b);
-      a.unregisterFromGroup();
+      g.unregister(a);
       expect(g.memberCount, 1);
       expect(g.findMember('a'), isNull);
     });

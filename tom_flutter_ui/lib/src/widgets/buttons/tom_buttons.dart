@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../groups/tom_group_membership.dart';
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
@@ -2033,9 +2034,11 @@ class TomSnackBarAction extends SnackBarAction with TomWidgetMixin {
          disabledTextColor:
              disabledTextColor ??
              TomCtr.color(_p(tomId, scope, 'disabledTextColor')),
-       ) {
-    tomGroup?.register(this);
-  }
+       );
+
+  /// Joins [tomGroup] while mounted — see [TomGroupMemberElement].
+  @override
+  StatefulElement createElement() => TomStatefulGroupMemberElement(this);
 
   /// Helper to build full path with suffix.
   static String? _p(String? tomId, TomScope? scope, String suffix) {
@@ -2048,18 +2051,6 @@ class TomSnackBarAction extends SnackBarAction with TomWidgetMixin {
 }
 
 class _TomSnackBarActionState extends State<TomSnackBarAction> {
-  @override
-  void initState() {
-    super.initState();
-    widget.registerWithGroup();
-  }
-
-  @override
-  void dispose() {
-    widget.unregisterFromGroup();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final hidden = widget.checkHidden();

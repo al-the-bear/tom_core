@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../groups/tom_auth_gate.dart';
+import '../../groups/tom_group_membership.dart';
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
@@ -2157,9 +2158,12 @@ class TomExpanded extends Expanded with TomWidgetMixin {
                scope,
                tomGroup,
              ),
-       ) {
-    tomGroup?.register(this);
-  }
+       );
+
+  /// Joins [tomGroup] while mounted — see [TomGroupMemberElement].
+  @override
+  ParentDataElement<FlexParentData> createElement() =>
+      TomParentDataGroupMemberElement<FlexParentData>(this);
 }
 
 /// Tom widget that EXTENDS [Flexible] with authorization and resource resolution.
@@ -2217,9 +2221,12 @@ class TomFlexible extends Flexible with TomWidgetMixin {
                scope,
                tomGroup,
              ),
-       ) {
-    tomGroup?.register(this);
-  }
+       );
+
+  /// Joins [tomGroup] while mounted — see [TomGroupMemberElement].
+  @override
+  ParentDataElement<FlexParentData> createElement() =>
+      TomParentDataGroupMemberElement<FlexParentData>(this);
 }
 
 /// Tom widget that EXTENDS [Spacer] with authorization.
@@ -2262,9 +2269,11 @@ class TomSpacer extends Spacer with TomWidgetMixin {
     this.uiStateController,
     super.key,
     super.flex,
-  }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    tomGroup?.register(this);
-  }
+  }) : basePath = TomCtr.resolvePath(tomId, scope);
+
+  /// Joins [tomGroup] while mounted — see [TomGroupMemberElement].
+  @override
+  StatelessElement createElement() => TomStatelessGroupMemberElement(this);
 }
 
 /// Tom wrapper for [Positioned] with authorization and resource resolution.
@@ -2459,9 +2468,11 @@ class TomTableCell extends TableCell with TomWidgetMixin {
                scope,
                tomGroup,
              ),
-       ) {
-    tomGroup?.register(this);
-  }
+       );
+
+  /// Joins [tomGroup] while mounted — see [TomGroupMemberElement].
+  @override
+  StatelessElement createElement() => TomStatelessGroupMemberElement(this);
 }
 
 // ============================================================================
@@ -4262,7 +4273,9 @@ class TomCupertinoTabView extends CupertinoTabView with TomWidgetMixin {
     super.onUnknownRoute,
     super.navigatorObservers,
     super.restorationScopeId,
-  }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    tomGroup?.register(this);
-  }
+  }) : basePath = TomCtr.resolvePath(tomId, scope);
+
+  /// Joins [tomGroup] while mounted — see [TomGroupMemberElement].
+  @override
+  StatefulElement createElement() => TomStatefulGroupMemberElement(this);
 }

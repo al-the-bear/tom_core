@@ -127,6 +127,12 @@ elsewhere.
 | ------ | ----------- | ----------- |
 | `debugLabel` | `String get debugLabel` | Debug description for this node. |
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `createElement` | `StatelessElement createElement()` | Joins [tomGroup] while mounted rather than on construction, so the group counts the node in the tree and not every instance a rebuild produced. |
+
 ### TomPolicyNodeBase
 
 `abstract class TomPolicyNodeBase extends TomNodeBase`. Adds the gate: `build`

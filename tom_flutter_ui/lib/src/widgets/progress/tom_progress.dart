@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart' hide RefreshCallback;
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../groups/tom_group_membership.dart';
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
@@ -439,9 +440,11 @@ class TomRefreshProgressIndicator extends RefreshProgressIndicator
          semanticsValue:
              semanticsValue ??
              TomCtr.textOrNull(_p(tomId, scope, 'semanticsValue')),
-       ) {
-    tomGroup?.register(this);
-  }
+       );
+
+  /// Joins [tomGroup] while mounted — see [TomGroupMemberElement].
+  @override
+  StatefulElement createElement() => TomStatefulGroupMemberElement(this);
 
   /// Helper to build full path with suffix.
   static String? _p(String? tomId, TomScope? scope, String suffix) {

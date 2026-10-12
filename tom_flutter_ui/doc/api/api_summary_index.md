@@ -354,6 +354,10 @@ Summary: [api_summary_groups.md](api_summary_groups.md)
 | ---- | ---- | ----------- |
 | `TomAuthGate` | class | Applies Tom authorization to a subtree that cannot apply it itself. |
 | `TomWidgetMixin` | mixin | Mixin for Tom widgets that extend Flutter widgets directly. |
+| `TomGroupMemberElement` | mixin | Keeps the element's widget registered with its [TomAuthorizable.tomGroup] for exactly as long as the element is active. |
+| `TomParentDataGroupMemberElement` | class | The element of a parent-data Tom widget (`TomExpanded`, `TomFlexible`): a [ParentDataElement] that keeps its widget's group membership — see [TomGroupMemberElement]. |
+| `TomStatefulGroupMemberElement` | class | The element of a stateful Tom widget: a [StatefulElement] that keeps its widget's group membership — see [TomGroupMemberElement]. |
+| `TomStatelessGroupMemberElement` | class | The element of a stateless Tom widget: a [StatelessElement] that keeps its widget's group membership — see [TomGroupMemberElement]. |
 
 ### Resource Auth (`lib/src/resource_auth/`)
 

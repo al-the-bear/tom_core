@@ -122,6 +122,15 @@ abstract class TomAction<
   @override
   String? get tomId => actionId;
 
+  /// Leaves [tomGroup].
+  ///
+  /// An action is a long-lived object its controller owns, so it is a group
+  /// member from construction until the controller is disposed —
+  /// [TomActionController.dispose] calls this for every action it owns.
+  void dispose() {
+    tomGroup?.unregister(this);
+  }
+
   /// The canonical authorization path for this action.
   ///
   /// Format: `<scopePath>.<controllerId>.<actionId>`, dropping the scope

@@ -28,6 +28,28 @@
 
 ### Changed
 
+- **Group membership follows the element tree.** A Tom widget is a member of
+  its `tomGroup` while it is mounted, not from construction. Its element
+  (`TomGroupMemberElement`, mixed into `TomStatelessGroupMemberElement`,
+  `TomStatefulGroupMemberElement` and `TomParentDataGroupMemberElement`) joins
+  on mount, moves the registration to the new instance on every update and
+  leaves on deactivate. Before, every rebuild added a registration and a
+  removed widget stayed registered until garbage collection, so `memberCount`,
+  `members`, `findMember`, `isUniform` and `mostRestrictive` counted instances
+  no longer in the tree. `TomNodeBase`, `TomAuthGate` and the fourteen wrappers
+  that registered in their constructors return a member element from
+  `createElement`; the four private `State`s that also registered in
+  `initState` no longer do. `TomAuthGate`'s constructor is `const`.
+  **Breaking:** a widget constructed but never mounted is no longer a member,
+  and `TomWidgetMixin.registerWithGroup` / `unregisterFromGroup` are removed —
+  register by hand with `TomAuthorizationGroup.register`, or have a custom
+  widget return a member element.
+
+- **Fields and actions leave their group on dispose.** `TomField.dispose`
+  unregisters the field; the new `TomAction.dispose` unregisters the action,
+  and the new `TomActionController.dispose` — implemented by `TomForm.dispose`
+  as well — disposes every action it owns.
+
 - **A widget's family is the branch base it extends.** The `TomWidgetFamily`
   enum (20 Flutter-derived values plus the six reserved form values
   `formField`, `dateTimePicker`, `listEditor`, `masterDetail`, `searchField`,

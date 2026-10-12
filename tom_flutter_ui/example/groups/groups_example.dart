@@ -12,7 +12,8 @@
 ///
 /// 1. creating a group, and the default `controlsWidest` mode,
 /// 2. registering members (weak-reference tracking) and looking one up with
-///    `findMember`,
+///    `findMember` — by hand here, which is what a mounted Tom widget's
+///    element does for it (`TomGroupMemberElement`),
 /// 3. a `TomWidgetMixin` widget resolving its effective auth through the group,
 /// 4. the three `AuthGroupMode`s (`controlsAll` / `controlsWidest` /
 ///    `controlsNarrowest`) via `applyMode`,
@@ -49,6 +50,11 @@ class _GroupedField extends StatelessWidget with TomWidgetMixin {
 
   const _GroupedField(this.tomId, {this.tomGroup, this.scope});
 
+  /// A Tom widget joins its group from its element, which knows when the
+  /// widget is mounted — see [TomGroupMemberElement].
+  @override
+  StatelessElement createElement() => TomStatelessGroupMemberElement(this);
+
   @override
   Widget build(BuildContext context) => const SizedBox.shrink();
 }
@@ -82,11 +88,13 @@ void run() {
 
   // ---------------------------------------------------------------------------
   // 2. Members + weak-reference tracking, and looking a member up by id.
+  //    These widgets are never mounted, so they are registered by hand; in a
+  //    tree, each one's element joins the group on mount and leaves on unmount.
   // ---------------------------------------------------------------------------
   final street = _GroupedField('street', tomGroup: shipping);
   final city = _GroupedField('city', tomGroup: shipping);
-  street.registerWithGroup();
-  city.registerWithGroup();
+  shipping.register(street);
+  shipping.register(city);
   print('shipping members: ${shipping.memberCount}');
   print('findMember(city): ${shipping.findMember('city')?.tomId}');
 
@@ -132,7 +140,8 @@ void run() {
   // No rule for 'audit', so the *group* resolves to full — and its one member
   // is still invisible. That is the pair the old `full` answer conflated.
   final audit = TomAuthorizationGroup('audit');
-  final ghost = _GroupedField('ghost', tomGroup: audit)..registerWithGroup();
+  final ghost = _GroupedField('ghost', tomGroup: audit);
+  audit.register(ghost);
   print('audit group authState: ${audit.authState}');
   print('audit member auth: ${ghost.getAuth()}');
   print('audit memberCount: ${audit.memberCount}');
@@ -197,7 +206,7 @@ void run() {
   assert(TomAuthorizationGroup('empty').mostRestrictive == TomAuthState.none);
 
   // Unregister prunes membership.
-  street.unregisterFromGroup();
+  shipping.unregister(street);
   assert(shipping.memberCount == 1);
 
   // Inside the 'checkout' scope, paths are prefixed.

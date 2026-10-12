@@ -366,29 +366,33 @@ void main() {
     );
   });
 
-  // Group membership. Every Tom widget joins its `tomGroup` on construction —
-  // the kernel's contract, and what `members`, `memberCount`, `findMember`,
-  // `isUniform` and `mostRestrictive` read. A gated slot's member is its gate:
-  // the plain classes and private-State widgets around it have no lifecycle
-  // of their own to register from.
+  // Group membership. Every Tom widget is a member of its `tomGroup` while it
+  // is mounted — what `members`, `memberCount`, `findMember`, `isUniform` and
+  // `mostRestrictive` read. A gated slot's member is its gate: the plain
+  // classes and private-State widgets around it have no element of their own
+  // to register from.
   group('a gated wrapper is a member of its group exactly once', () {
     TomAuthorizationGroup group0() => TomAuthorizationGroup('g');
 
     setUp(() => TomAuthorization.adapter = _MapAuthAdapter({}));
 
-    test('GM-1: a gate with a group joins it on construction', () {
+    testWidgets('GM-1: a mounted gate with a group is a member of it', (
+      tester,
+    ) async {
       final group = group0();
       final gate = TomAuthGate(
         tomId: 'x',
         tomGroup: group,
         child: const Text('s'),
       );
+      expect(group.memberCount, 0, reason: 'constructing joins nothing');
+      await tester.pumpWidget(_host(gate));
       expect(group.memberCount, 1);
       expect(group.findMember('x'), same(gate));
     });
 
-    test('GM-2: a gate told not to join resolves through the group but is '
-        'not a member', () {
+    testWidgets('GM-2: a gate told not to join resolves through the group but '
+        'is not a member', (tester) async {
       TomAuthorization.adapter = _MapAuthAdapter({'g': TomAuthState.read});
       final group = TomAuthorizationGroup('g', mode: AuthGroupMode.controlsAll);
       final gate = TomAuthGate(
@@ -397,6 +401,7 @@ void main() {
         joinsGroup: false,
         child: const Text('s'),
       );
+      await tester.pumpWidget(_host(gate));
       expect(group.memberCount, 0);
       expect(gate.getAuth(), TomAuthState.read);
     });
@@ -417,23 +422,29 @@ void main() {
       );
     });
 
-    test('GM-4: the private-State wrappers join once, through their gate', () {
-      final wrappers = <String, Widget Function(TomAuthorizationGroup)>{
-        'TomSnackBar': (g) =>
-            TomSnackBar(tomId: 'w', tomGroup: g, content: const Text('c')),
-        'TomAnimatedPositioned': (g) => TomAnimatedPositioned(
-          tomId: 'w',
-          tomGroup: g,
-          duration: Duration.zero,
-          child: const Text('c'),
+    testWidgets('GM-4: the private-State wrappers join once, through their '
+        'gate', (tester) async {
+      final hosted = <String, Widget Function(TomAuthorizationGroup)>{
+        'TomAnimatedPositioned': (g) => Stack(
+          children: [
+            TomAnimatedPositioned(
+              tomId: 'w',
+              tomGroup: g,
+              duration: Duration.zero,
+              child: const Text('c'),
+            ),
+          ],
         ),
-        'TomAnimatedPositionedDirectional': (g) =>
+        'TomAnimatedPositionedDirectional': (g) => Stack(
+          children: [
             TomAnimatedPositionedDirectional(
               tomId: 'w',
               tomGroup: g,
               duration: Duration.zero,
               child: const Text('c'),
             ),
+          ],
+        ),
         'TomSnackBarAction': (g) => TomSnackBarAction(
           tomId: 'w',
           tomGroup: g,
@@ -441,31 +452,48 @@ void main() {
           onPressed: () {},
         ),
       };
-      for (final entry in wrappers.entries) {
+      for (final entry in hosted.entries) {
         final group = group0();
-        entry.value(group);
+        await tester.pumpWidget(_host(entry.value(group)));
+        await tester.pumpWidget(_host(entry.value(group)));
         expect(group.memberCount, 1, reason: entry.key);
         expect(group.findMember('w'), isNotNull, reason: entry.key);
+        await tester.pumpWidget(_host(const SizedBox()));
+        expect(group.memberCount, 0, reason: entry.key);
       }
+
+      // A snack bar is mounted by the messenger, not by its caller.
+      final group = group0();
+      await _showSnackBar(
+        tester,
+        TomSnackBar(tomId: 'w', tomGroup: group, content: const Text('c')),
+      );
+      expect(group.memberCount, 1, reason: 'TomSnackBar');
+      expect(group.findMember('w'), isNotNull, reason: 'TomSnackBar');
     });
 
-    test('GM-5: an expansion panel joins once although it gates two slots', () {
+    testWidgets('GM-5: an expansion panel is one member although it gates two '
+        'slots', (tester) async {
       final group = group0();
       final panel = TomExpansionPanel(
         tomId: 'p',
         tomGroup: group,
+        isExpanded: true,
         headerBuilder: (_, _) => const Text('head'),
         body: const Text('body'),
       ).toPanel();
-      expect(group.memberCount, 0, reason: 'the body gate does not join');
       expect((panel.body as TomAuthGate).joinsGroup, isFalse);
-      // The header gate is built per build; one build is one member.
-      panel.headerBuilder(_FakeContext(), false);
-      expect(group.memberCount, 1);
+      await tester.pumpWidget(
+        _host(
+          SingleChildScrollView(child: ExpansionPanelList(children: [panel])),
+        ),
+      );
+      expect(find.text('body'), findsOneWidget);
+      expect(group.memberCount, 1, reason: 'the header gate, not the body');
     });
 
-    test('GM-6: every TomWidgetMixin widget registers in its constructor or '
-        'gates its slot through a TomAuthGate carrying its group', () {
+    test('GM-6: every TomWidgetMixin widget joins from a group-member element '
+        'or gates its slot through a TomAuthGate carrying its group', () {
       // Read from source because the property is about *where* membership is
       // established: a widget that joins only from a `State` lifecycle misses
       // the instance a parent rebuild hands it, and one that joins nowhere is
@@ -486,7 +514,9 @@ void main() {
           );
           final body = source.substring(match.start, next < 0 ? null : next);
           checked.add(match.group(1)!);
-          final registers = body.contains('tomGroup?.register(this)');
+          final registers =
+              body.contains('createElement()') &&
+              body.contains('GroupMemberElement');
           final gates =
               body.contains('TomAuthGate(') &&
               body.contains('tomGroup: tomGroup');
@@ -498,5 +528,3 @@ void main() {
     });
   });
 }
-
-class _FakeContext extends Fake implements BuildContext {}

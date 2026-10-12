@@ -574,9 +574,7 @@ install their own in `setUp`.
 
 ### Global State Extension Pattern
 
-**Source:** `tom_uam/tom_uam_client/lib/uam/sample_app_state.dart`
-
-The UAM client demonstrates a global state pattern:
+A global state pattern, as an application's client might declare it:
 
 ```dart
 @tomReflector

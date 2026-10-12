@@ -517,6 +517,7 @@ asserted the same way for every entry in it.
 | ---------- | ---- | ----------- | --- |
 | `flutter` | package | `tom_construction_helpers.dart`, `tom_node_base.dart`, `tom_policy_node_base.dart`, `tom_scope_widgets.dart`, `tom_style_resolvers.dart` | `widgets.dart` and `material.dart` — the base classes every Tom widget extends |
 | `tom_core_kernel` | package | 8 of 11 files | `TomScope`, `TomAuthorization`, `TomAuthState`, `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthorizer`, `TomTextResourceProvider` |
+| [groups](groups.md) | module | `tom_node_base.dart` | `TomStatelessGroupMemberElement`, which holds a node's group membership while it is mounted |
 | [resource_auth](resource_auth.md) | module | `tom_construction_helpers.dart`, `tom_style_resolvers.dart` | `TomUIColors`, `TomUIIcons` |
 | [theme](theme.md) | module | `tom_policy_node_base.dart` | `TomThemeScope` |
 

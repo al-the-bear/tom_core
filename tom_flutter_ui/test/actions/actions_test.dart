@@ -1506,6 +1506,22 @@ void main() {
       expect(action.effectiveAuthState, TomAuthState.read);
     });
 
+    test('an action is a member of its group until its controller is '
+        'disposed', () {
+      final group = TomAuthorizationGroup('billing');
+      final controller = TomActionController(controllerId: 'sec');
+      final first = _GroupedIncrement(
+        controller: controller,
+        id: 'a',
+        group: group,
+      );
+      _GroupedIncrement(controller: controller, id: 'b', group: group);
+      expect(group.memberCount, 2);
+      expect(group.findMember('a'), same(first));
+      controller.dispose();
+      expect(group.memberCount, 0);
+    });
+
     test('effectiveAuthState narrows under a controlsWidest group', () {
       TomAuthorization.adapter = _PathAuthAdapter({
         'sec.edit': TomAuthState.full,

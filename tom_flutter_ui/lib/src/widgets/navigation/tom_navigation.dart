@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../groups/tom_group_membership.dart';
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
@@ -1102,9 +1103,11 @@ class TomTab extends Tab with TomWidgetMixin {
     super.iconMargin,
     super.height,
     super.child,
-  }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    tomGroup?.register(this);
-  }
+  }) : basePath = TomCtr.resolvePath(tomId, scope);
+
+  /// Joins [tomGroup] while mounted — see [TomGroupMemberElement].
+  @override
+  StatelessElement createElement() => TomStatelessGroupMemberElement(this);
 
   @override
   final String? tomId;
@@ -1173,9 +1176,11 @@ class TomNavigationDestination extends NavigationDestination
     required super.label,
     super.tooltip,
     super.enabled,
-  }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    tomGroup?.register(this);
-  }
+  }) : basePath = TomCtr.resolvePath(tomId, scope);
+
+  /// Joins [tomGroup] while mounted — see [TomGroupMemberElement].
+  @override
+  StatelessElement createElement() => TomStatelessGroupMemberElement(this);
 
   @override
   final String? tomId;
@@ -1247,9 +1252,11 @@ class TomNavigationDrawerDestination extends NavigationDrawerDestination
     required super.label,
     super.backgroundColor,
     super.enabled,
-  }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    tomGroup?.register(this);
-  }
+  }) : basePath = TomCtr.resolvePath(tomId, scope);
+
+  /// Joins [tomGroup] while mounted — see [TomGroupMemberElement].
+  @override
+  StatelessElement createElement() => TomStatelessGroupMemberElement(this);
 
   @override
   final String? tomId;

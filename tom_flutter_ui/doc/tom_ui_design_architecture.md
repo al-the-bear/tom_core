@@ -484,42 +484,51 @@ class TomAuthorizationGroup {
 
 ### Widget registration
 
-Widgets with an `tomGroup` register on mount and unregister on dispose. The mixin provides the registration hook:
+A widget with a `tomGroup` is a member of it while it is mounted. A widget
+instance is replaced on every rebuild of its parent and is never told when it
+leaves the tree, so it cannot hold the registration itself: its element does.
+Every Tom widget returns an element that mixes in `TomGroupMemberElement`:
 
 ```dart quote
-mixin TomWidgetMixin on Widget implements TomAuthorizable {
-  String? get tomId;
-  TomAuthorizationGroup? get tomGroup => null;
+mixin TomGroupMemberElement on Element {
+  TomAuthorizable? groupMemberFor(Widget widget) => switch (widget) {
+    final TomAuthorizable member => member,
+    _ => null,
+  };
 
-  void registerWithGroup() {
-    tomGroup?.register(this);
+  @override
+  void mount(Element? parent, Object? newSlot) {
+    super.mount(parent, newSlot);
+    _join(widget);
   }
 
-  /// Called by State.dispose() or StatelessWidget unmount.
-  void unregisterFromGroup() {
-    tomGroup?.unregister(this);
+  @override
+  void update(covariant Widget newWidget) {
+    final previous = widget;
+    super.update(newWidget);
+    _leave(previous);
+    _join(widget);
   }
 }
 ```
 
-For **StatefulWidgets**, registration happens in `initState()`:
+`activate` rejoins and `deactivate` leaves, so a widget moved by its
+`GlobalKey` stays one member and a removed one stops being a member at once.
+`TomNodeBase` returns a `TomStatelessGroupMemberElement`; the wrappers that
+extend a Flutter widget return the stateless, stateful or parent-data member
+element of their kind:
 
 ```dart
-class _TomPopupMenuItemState<T>
-    extends PopupMenuItemState<T, TomPopupMenuItem<T>> {
+class TomExpanded extends Expanded with TomWidgetMixin {
+  // ...
   @override
-  void initState() {
-    super.initState();
-    widget.registerWithGroup();
-  }
-
-  @override
-  void dispose() {
-    widget.unregisterFromGroup();
-    super.dispose();
-  }
+  ParentDataElement<FlexParentData> createElement() =>
+      TomParentDataGroupMemberElement<FlexParentData>(this);
 }
 ```
+
+Fields and actions are not widgets. They are long-lived objects their form or
+controller owns, so they are members from construction until `dispose`.
 
 ### Why groups matter
 

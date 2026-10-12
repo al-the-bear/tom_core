@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../groups/tom_group_membership.dart';
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
@@ -792,9 +793,11 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
     super.labelTextStyle,
     super.mouseCursor,
     required super.child,
-  }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    tomGroup?.register(this);
-  }
+  }) : basePath = TomCtr.resolvePath(tomId, scope);
+
+  /// Joins [tomGroup] while mounted — see [TomGroupMemberElement].
+  @override
+  StatefulElement createElement() => TomStatefulGroupMemberElement(this);
 
   @override
   final String? tomId;
@@ -822,18 +825,6 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
 class _TomPopupMenuItemState<T>
     extends PopupMenuItemState<T, TomPopupMenuItem<T>> {
   @override
-  void initState() {
-    super.initState();
-    widget.registerWithGroup();
-  }
-
-  @override
-  void dispose() {
-    widget.unregisterFromGroup();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final hidden = widget.checkHidden();
     if (hidden != null) return hidden;
@@ -856,9 +847,11 @@ class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
     this.uiStateController,
     super.key,
     super.height,
-  }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    tomGroup?.register(this);
-  }
+  }) : basePath = TomCtr.resolvePath(tomId, scope);
+
+  /// Joins [tomGroup] while mounted — see [TomGroupMemberElement].
+  @override
+  StatefulElement createElement() => TomStatefulGroupMemberElement(this);
 
   @override
   final String? tomId;
@@ -883,18 +876,6 @@ class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
 }
 
 class _TomPopupMenuDividerState extends State<TomPopupMenuDivider> {
-  @override
-  void initState() {
-    super.initState();
-    (widget as TomWidgetMixin).registerWithGroup();
-  }
-
-  @override
-  void dispose() {
-    (widget as TomWidgetMixin).unregisterFromGroup();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final widgetMixin = widget as TomWidgetMixin;
@@ -933,9 +914,11 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
     super.labelTextStyle,
     super.mouseCursor,
     super.child,
-  }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    tomGroup?.register(this);
-  }
+  }) : basePath = TomCtr.resolvePath(tomId, scope);
+
+  /// Joins [tomGroup] while mounted — see [TomGroupMemberElement].
+  @override
+  StatefulElement createElement() => TomStatefulGroupMemberElement(this);
 
   @override
   final String? tomId;
@@ -962,18 +945,6 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
 
 class _TomCheckedPopupMenuItemState<T>
     extends PopupMenuItemState<T, CheckedPopupMenuItem<T>> {
-  @override
-  void initState() {
-    super.initState();
-    (widget as TomWidgetMixin).registerWithGroup();
-  }
-
-  @override
-  void dispose() {
-    (widget as TomWidgetMixin).unregisterFromGroup();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final widgetMixin = widget as TomWidgetMixin;
@@ -1152,9 +1123,11 @@ class TomDropdownMenuItem<T> extends DropdownMenuItem<T> with TomWidgetMixin {
     super.enabled,
     super.alignment,
     required super.child,
-  }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    tomGroup?.register(this);
-  }
+  }) : basePath = TomCtr.resolvePath(tomId, scope);
+
+  /// Joins [tomGroup] while mounted — see [TomGroupMemberElement].
+  @override
+  StatelessElement createElement() => TomStatelessGroupMemberElement(this);
 
   @override
   final String? tomId;

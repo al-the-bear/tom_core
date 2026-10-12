@@ -21,7 +21,12 @@
 /// - [TomAuthGate] — wraps a slot belonging to a wrapper that cannot resolve
 ///   its own authorization, because the Flutter original is not a widget or
 ///   keeps its `State` private
+/// - [TomGroupMemberElement] — keeps a widget a member of its group exactly
+///   while it is mounted; [TomStatelessGroupMemberElement],
+///   [TomStatefulGroupMemberElement] and [TomParentDataGroupMemberElement] are
+///   the elements Tom widgets return from `createElement`
 library;
 
 export 'tom_auth_gate.dart';
+export 'tom_group_membership.dart';
 export 'tom_widget_mixin.dart';

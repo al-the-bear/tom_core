@@ -36,6 +36,10 @@ resources) into widgets that extend Flutter widgets directly.
 | `AuthGroupMode` | enum | `controlsAll` / `controlsWidest` / `controlsNarrowest` — how the group's state applies to members. Re-exported alongside the group. |
 | `TomWidgetMixin` | mixin | Gives a Flutter-widget subclass the Tom id/group/auth/resource API; implements `TomAuthorizable`. |
 | `TomAuthGate` | class | A one-slot widget that resolves an id/group through the mixin and applies the result to its `child`. For wrappers that cannot resolve their own. |
+| `TomGroupMemberElement` | mixin | Element mixin that keeps a widget a member of its `tomGroup` exactly while the element is active. |
+| `TomStatelessGroupMemberElement` | class | The `StatelessElement` a stateless Tom widget returns from `createElement`. |
+| `TomStatefulGroupMemberElement` | class | The `StatefulElement` a stateful Tom widget returns from `createElement`. |
+| `TomParentDataGroupMemberElement` | class | The `ParentDataElement` a parent-data Tom widget returns from `createElement`. |
 
 ## `TomAuthorizationGroup`
 
@@ -48,14 +52,32 @@ final street = TomTextField(tomId: 'street', tomGroup: shipping);
 final city   = TomTextField(tomId: 'city',   tomGroup: shipping);
 ```
 
-Members are tracked as **weak references**, so a group never keeps a disposed
-widget alive; `memberCount`, `members`, and `isEmpty` prune stale entries on
-access. A member joins when it is constructed, and a pruned entry is
-one the garbage collector has already reclaimed — so between a rebuild (which
-constructs a fresh instance) or an unmount and the next collection, the
-inspection helpers can still count the replaced instance. Authorization itself
-is unaffected: every widget resolves its own state. `register` / `unregister` (surfaced on widgets as `registerWithGroup` /
-`unregisterFromGroup`) manage membership, and `findMember(tomId)` looks one up.
+A widget is a member of its group **while it is mounted**. A widget instance
+is replaced on every rebuild of its parent and is never told when it leaves the
+tree, so the registration is held by its element: every Tom widget returns a
+`TomGroupMemberElement` from `createElement`, which joins the group on mount,
+moves the registration to the new instance on every update and leaves on
+deactivate. A widget that has been constructed but not mounted is not a member,
+a rebuilt one is counted once, and a removed one is gone at once — so
+`memberCount`, `members`, `findMember`, `isUniform` and `mostRestrictive` report
+exactly what is in the tree. Fields and actions are not widgets: they are
+members from construction until their form or controller is disposed.
+
+The group still holds its members as **weak references**, so it never keeps a
+member alive by itself. `register` / `unregister` manage membership by hand,
+for a member outside any tree, and `findMember(tomId)` looks one up.
+
+A Tom widget of your own that mixes in `TomWidgetMixin` joins the same way by
+returning the member element of its kind — `TomStatelessGroupMemberElement`,
+`TomStatefulGroupMemberElement` or `TomParentDataGroupMemberElement`:
+
+```dart
+class MyField extends StatelessWidget with TomWidgetMixin {
+  // ... tomId, tomGroup ...
+  @override
+  StatelessElement createElement() => TomStatelessGroupMemberElement(this);
+}
+```
 
 ## Group modes
 
@@ -148,15 +170,15 @@ ExpansionPanel(
 );
 ```
 
-A gate with a `tomGroup` **joins it on construction**, like every other Tom
-widget, so the slot it governs is a member that `memberCount`, `findMember` and
-the other inspection helpers see. The gate is the member because the wrapper
-around it has no lifecycle to register from — a plain class has none, and a
-private `State` is out of reach. A host that gates two slots under one id
+A gate with a `tomGroup` is **a member of it while mounted**, like every other
+Tom widget, so the slot it governs is a member that `memberCount`, `findMember`
+and the other inspection helpers see. The gate is the member because the
+wrapper around it has no element to register from — a plain class has none,
+and a private `State` is out of reach. A host that gates two slots under one id
 passes `joinsGroup: false` to the second gate, which is what
 `TomExpansionPanel` does with its body; the gate still resolves through the
-group, it is just not counted twice. For the same reason `TomAuthGate` is not
-`const`: joining the group is a side effect of building one.
+group, it is just not counted twice. Constructing a gate has no side effect, so
+its constructor is `const`.
 
 It is a widget rather than a helper function because the `read` and `disabled`
 treatments read the ambient `TomTheme`, which only exists once there is a
@@ -332,8 +354,8 @@ ceiling for both.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `flutter` | package | `tom_auth_gate.dart`, `tom_widget_mixin.dart` | `package:flutter/widgets.dart` only |
-| `tom_core_kernel` | package | `tom_auth_gate.dart`, `tom_widget_mixin.dart` | `TomAuthorizationGroup`, `AuthGroupMode`, `TomAuthState`, `TomAuthorization`, `TomAuthorizer`, `TomScope`, `TomCtr` |
+| `flutter` | package | `tom_auth_gate.dart`, `tom_group_membership.dart`, `tom_widget_mixin.dart` | `package:flutter/widgets.dart`, and `ParentData` from `rendering.dart` |
+| `tom_core_kernel` | package | `tom_auth_gate.dart`, `tom_group_membership.dart`, `tom_widget_mixin.dart` | `TomAuthorizationGroup`, `AuthGroupMode`, `TomAuthState`, `TomAuthorization`, `TomAuthorizer`, `TomScope`, `TomCtr` |
 | [theme](theme.md) | module | `tom_widget_mixin.dart` | the read-only style for the `read` treatment |
 | [widget_base](widget_base.md) | module | `tom_auth_gate.dart`, `tom_widget_mixin.dart` | `TomAuthLayers`, `TomCtr`, `TomScopePath`, `TomWidgetSurface` |
 

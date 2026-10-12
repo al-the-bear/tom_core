@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../groups/tom_group_membership.dart';
 import 'tom_scope_path.dart';
 import 'tom_widget_surface.dart';
 
@@ -8,7 +9,8 @@ import 'tom_widget_surface.dart';
 ///
 /// Provides:
 /// - [tomId] — unique ID within its scope.
-/// - [tomGroup] — optional group membership.
+/// - [tomGroup] — optional group membership, held while the node is mounted
+///   (see [TomGroupMemberElement]).
 /// - [scope] — optional explicit scope (defaults to [TomScope.current]).
 /// - [authorizer] — optional per-widget authorizer.
 /// - [uiStateController] — build-time state narrowing callback.
@@ -65,9 +67,12 @@ abstract class TomNodeBase extends StatelessWidget implements TomWidgetSurface {
     this.authorizer,
     this.uiStateController,
   }) : constructionScope = scope ?? TomScope.current,
-       basePath = TomScopePath.resolve(tomId, scope) {
-    tomGroup?.register(this);
-  }
+       basePath = TomScopePath.resolve(tomId, scope);
+
+  /// Joins [tomGroup] while mounted rather than on construction, so the group
+  /// counts the node in the tree and not every instance a rebuild produced.
+  @override
+  StatelessElement createElement() => TomStatelessGroupMemberElement(this);
 
   /// Debug description for this node.
   String get debugLabel {

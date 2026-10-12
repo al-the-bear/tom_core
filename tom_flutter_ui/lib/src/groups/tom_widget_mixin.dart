@@ -16,6 +16,12 @@ import '../theme/tom_theme.dart';
 /// which is the point: these two are the kit's only two routes to a Tom widget,
 /// and naming one contract for both is what lets the conformance suite treat
 /// them uniformly instead of maintaining a second list of who has what.
+///
+/// Group membership is not established here: a widget is replaced on every
+/// rebuild and never told when it leaves the tree, so a class using this mixin
+/// joins [tomGroup] from its element. It overrides `createElement` to return a
+/// [TomGroupMemberElement] of its kind, or gates its slot through a
+/// `TomAuthGate` carrying its group.
 mixin TomWidgetMixin on Widget implements TomWidgetSurface {
   @override
   String? get tomId;
@@ -91,14 +97,6 @@ mixin TomWidgetMixin on Widget implements TomWidgetSurface {
   /// affords is spent here; it still matters for the other enforcement point.
   Widget applyAuthState(BuildContext context, Widget child) {
     return TomThemeScope.applyAuthState(context, getAuth(), () => child);
-  }
-
-  void registerWithGroup() {
-    tomGroup?.register(this);
-  }
-
-  void unregisterFromGroup() {
-    tomGroup?.unregister(this);
   }
 
   /// Debug description for this widget.

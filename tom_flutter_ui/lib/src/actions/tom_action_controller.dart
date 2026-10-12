@@ -69,6 +69,15 @@ class TomActionController {
     addUniquely(_actions, action);
   }
 
+  /// Disposes every action this controller owns, which takes each out of its
+  /// group. The owner of a controller calls this when it is done with it, as
+  /// it would for any other controller.
+  void dispose() {
+    for (final action in _actions) {
+      action.dispose();
+    }
+  }
+
   /// Appends [action] to [registered], refusing an id already present.
   ///
   /// The single definition of the rule. Called from [registerAction] here and

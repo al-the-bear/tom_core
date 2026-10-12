@@ -404,6 +404,15 @@ void main() {
   });
 
   group('TomField — dispose', () {
+    test('a field is a member of its group until it is disposed', () {
+      final group = TomAuthorizationGroup('shipping');
+      final field = _TestField<String>('street', '', tomGroup: group);
+      expect(group.memberCount, 1);
+      expect(group.findMember('street'), same(field));
+      field.dispose();
+      expect(group.memberCount, 0);
+    });
+
     test('dispose completes without error', () {
       final field = _TestField<String>('name', 'Alice');
       expect(() => field.dispose(), returnsNormally);

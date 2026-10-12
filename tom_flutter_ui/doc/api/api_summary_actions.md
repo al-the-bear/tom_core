@@ -252,6 +252,12 @@ TomActionController({
 | `findAction(String actionId)` | `TomAction?` | The action with that id, or null. At most one can match. |
 | `toString()` | `String` | `TomActionController(<controllerId>)`. |
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `dispose` | `void dispose()` | Disposes every action this controller owns, which takes each out of its group. |
+
 ### TomActionTransaction
 
 The atomic unit the undo history reverses. One user gesture that fans out to

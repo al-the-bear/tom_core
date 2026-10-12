@@ -3,6 +3,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../widget_base/tom_auth_layers.dart';
 import '../widget_base/tom_scope_path.dart';
+import 'tom_group_membership.dart';
 import 'tom_widget_mixin.dart';
 
 /// Applies Tom authorization to a subtree that cannot apply it itself.
@@ -38,10 +39,10 @@ import 'tom_widget_mixin.dart';
 /// )
 /// ```
 ///
-/// A gate with a [tomGroup] joins it on construction, like every other Tom
-/// widget: the gate *is* the group member for the slot it governs, because the
-/// widget or plain class around it has no lifecycle of its own to register
-/// from. A host that gates two slots under one id — `TomExpansionPanel`'s
+/// A gate with a [tomGroup] is a member of it while it is mounted, like every
+/// other Tom widget (see [TomGroupMemberElement]): the gate *is* the group
+/// member for the slot it governs, because the widget or plain class around it
+/// has no element of its own to register from. A host that gates two slots under one id — `TomExpansionPanel`'s
 /// header and body — lets one gate join and passes [joinsGroup] `false` to the
 /// other, so the group counts the panel once.
 class TomAuthGate extends StatelessWidget with TomWidgetMixin {
@@ -51,9 +52,7 @@ class TomAuthGate extends StatelessWidget with TomWidgetMixin {
   /// [tomGroup], [authorizer] and [uiStateController] say. Only a gate with
   /// none of the four returns [child] untouched — nothing to look up and
   /// nobody to ask means nothing to narrow.
-  ///
-  /// Not `const`: joining [tomGroup] is a side effect of construction.
-  TomAuthGate({
+  const TomAuthGate({
     super.key,
     required this.tomId,
     this.tomGroup,
@@ -62,9 +61,10 @@ class TomAuthGate extends StatelessWidget with TomWidgetMixin {
     this.uiStateController,
     this.joinsGroup = true,
     required this.child,
-  }) {
-    if (joinsGroup) tomGroup?.register(this);
-  }
+  });
+
+  @override
+  StatelessElement createElement() => _TomAuthGateGroupMemberElement(this);
 
   @override
   final String? tomId;
@@ -84,9 +84,9 @@ class TomAuthGate extends StatelessWidget with TomWidgetMixin {
   /// The subtree this gate governs.
   final Widget child;
 
-  /// Whether this gate registers with [tomGroup]. `false` only for a second
-  /// gate over a host another gate already represents; authorization is
-  /// resolved through the group either way.
+  /// Whether this gate is a member of [tomGroup] while mounted. `false` only
+  /// for a second gate over a host another gate already represents;
+  /// authorization is resolved through the group either way.
   final bool joinsGroup;
 
   /// Whether any of the four layers has something to say about this slot.
@@ -135,4 +135,14 @@ class TomAuthGate extends StatelessWidget with TomWidgetMixin {
     if (hidden != null) return hidden;
     return applyAuthState(context, child);
   }
+}
+
+/// A gate's element: a member of the gate's group unless the gate was told not
+/// to join it.
+class _TomAuthGateGroupMemberElement extends TomStatelessGroupMemberElement {
+  _TomAuthGateGroupMemberElement(TomAuthGate super.widget);
+
+  @override
+  TomAuthorizable? groupMemberFor(Widget widget) =>
+      widget is TomAuthGate && widget.joinsGroup ? widget : null;
 }

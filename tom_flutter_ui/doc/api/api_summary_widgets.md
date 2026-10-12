@@ -1070,6 +1070,12 @@ Tom widget that EXTENDS [CheckedPopupMenuItem] with authorization.
 | `tomId` | `final String? tomId` |  |
 | `uiStateController` | `final TomUIStateController? uiStateController` |  |
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `createElement` | `StatefulElement createElement()` | Joins [tomGroup] while mounted — see [TomGroupMemberElement]. |
+
 ### TomChip
 
 **Kind:** `class`
@@ -2016,6 +2022,12 @@ Tom wrapper for [CupertinoTabView] (extension pattern).
 | `tomId` | `final String? tomId` |  |
 | `uiStateController` | `final TomUIStateController? uiStateController` |  |
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `createElement` | `StatefulElement createElement()` | Joins [tomGroup] while mounted — see [TomGroupMemberElement]. |
+
 ### TomCupertinoTextField
 
 **Kind:** `class`
@@ -2803,6 +2815,12 @@ Tom widget that EXTENDS [DropdownMenuItem] with authorization.
 | `tomId` | `final String? tomId` |  |
 | `uiStateController` | `final TomUIStateController? uiStateController` |  |
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `createElement` | `StatelessElement createElement()` | Joins [tomGroup] while mounted — see [TomGroupMemberElement]. |
+
 ### TomEditableText
 
 **Kind:** `class`
@@ -2911,6 +2929,12 @@ Tom widget that EXTENDS [Expanded] with authorization and resource resolution.
 | `tomGroup` | `final TomAuthorizationGroup? tomGroup` |  |
 | `tomId` | `final String? tomId` |  |
 | `uiStateController` | `final TomUIStateController? uiStateController` |  |
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `createElement` | `ParentDataElement<FlexParentData> createElement()` | Joins [tomGroup] while mounted — see [TomGroupMemberElement]. |
 
 ### TomExpansionPanel
 
@@ -3161,6 +3185,12 @@ Tom widget that EXTENDS [Flexible] with authorization and resource resolution.
 | `tomGroup` | `final TomAuthorizationGroup? tomGroup` |  |
 | `tomId` | `final String? tomId` |  |
 | `uiStateController` | `final TomUIStateController? uiStateController` |  |
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `createElement` | `ParentDataElement<FlexParentData> createElement()` | Joins [tomGroup] while mounted — see [TomGroupMemberElement]. |
 
 ### TomFlexibleSpaceBar
 
@@ -4290,6 +4320,12 @@ Tom widget that EXTENDS [NavigationDestination] with authorization and resources
 | `tomId` | `final String? tomId` |  |
 | `uiStateController` | `final TomUIStateController? uiStateController` |  |
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `createElement` | `StatelessElement createElement()` | Joins [tomGroup] while mounted — see [TomGroupMemberElement]. |
+
 ### TomNavigationDrawer
 
 **Kind:** `class`
@@ -4329,6 +4365,12 @@ Tom widget that EXTENDS [NavigationDrawerDestination] with authorization.
 | `tomGroup` | `final TomAuthorizationGroup? tomGroup` |  |
 | `tomId` | `final String? tomId` |  |
 | `uiStateController` | `final TomUIStateController? uiStateController` |  |
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `createElement` | `StatelessElement createElement()` | Joins [tomGroup] while mounted — see [TomGroupMemberElement]. |
 
 ### TomNavigationRail
 
@@ -4699,6 +4741,12 @@ Tom widget that EXTENDS [PopupMenuDivider] with authorization.
 | `tomId` | `final String? tomId` |  |
 | `uiStateController` | `final TomUIStateController? uiStateController` |  |
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `createElement` | `StatefulElement createElement()` | Joins [tomGroup] while mounted — see [TomGroupMemberElement]. |
+
 ### TomPopupMenuItem
 
 **Kind:** `class`
@@ -4715,6 +4763,12 @@ Tom widget that EXTENDS [PopupMenuItem] with authorization and resources.
 | `tomGroup` | `final TomAuthorizationGroup? tomGroup` |  |
 | `tomId` | `final String? tomId` |  |
 | `uiStateController` | `final TomUIStateController? uiStateController` |  |
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `createElement` | `StatefulElement createElement()` | Joins [tomGroup] while mounted — see [TomGroupMemberElement]. |
 
 ### TomPositioned
 
@@ -4938,6 +4992,12 @@ Tom wrapper for [RefreshProgressIndicator] with construction-time resource resol
 | `tomGroup` | `final TomAuthorizationGroup? tomGroup` |  |
 | `tomId` | `final String? tomId` |  |
 | `uiStateController` | `final TomUIStateController? uiStateController` |  |
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `createElement` | `StatefulElement createElement()` | Joins [tomGroup] while mounted — see [TomGroupMemberElement]. |
 
 ### TomReorderableList
 
@@ -5863,6 +5923,12 @@ Tom wrapper for [SnackBarAction] with construction-time resource resolution.
 | `tomId` | `final String? tomId` | Tom ID for resource resolution. |
 | `uiStateController` | `final TomUIStateController? uiStateController` | Optional build-time UI-state controller, applied last. |
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `createElement` | `StatefulElement createElement()` | Joins [tomGroup] while mounted — see [TomGroupMemberElement]. |
+
 ### TomSpacer
 
 **Kind:** `class`
@@ -5879,6 +5945,12 @@ Tom widget that EXTENDS [Spacer] with authorization.
 | `tomGroup` | `final TomAuthorizationGroup? tomGroup` |  |
 | `tomId` | `final String? tomId` |  |
 | `uiStateController` | `final TomUIStateController? uiStateController` |  |
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `createElement` | `StatelessElement createElement()` | Joins [tomGroup] while mounted — see [TomGroupMemberElement]. |
 
 ### TomStack
 
@@ -6057,6 +6129,12 @@ Tom widget that EXTENDS [Tab] with authorization and resources.
 | `tomId` | `final String? tomId` |  |
 | `uiStateController` | `final TomUIStateController? uiStateController` |  |
 
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `createElement` | `StatelessElement createElement()` | Joins [tomGroup] while mounted — see [TomGroupMemberElement]. |
+
 ### TomTabBar
 
 **Kind:** `class`
@@ -6165,6 +6243,12 @@ Tom widget that EXTENDS [TableCell] with authorization and resource resolution.
 | `tomGroup` | `final TomAuthorizationGroup? tomGroup` |  |
 | `tomId` | `final String? tomId` |  |
 | `uiStateController` | `final TomUIStateController? uiStateController` |  |
+
+#### Properties and Methods — further members
+
+| Member | Declaration | Description |
+| ------ | ----------- | ----------- |
+| `createElement` | `StatelessElement createElement()` | Joins [tomGroup] while mounted — see [TomGroupMemberElement]. |
 
 ### TomText
 

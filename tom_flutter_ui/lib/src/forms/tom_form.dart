@@ -579,6 +579,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
 
   // --- Dispose ---
 
+  @override
   void dispose() {
     // Detach from the bound TomClass so post-dispose mutations driven by
     // a sibling form (e.g. a master-detail scaffold's standalone detail
@@ -598,6 +599,9 @@ abstract class TomForm<T extends TomClass> extends TomClass
     }
     for (final field in fields.values) {
       field.dispose();
+    }
+    for (final action in _actions) {
+      action.dispose();
     }
     _listeners.clear();
     _changes.dispose();
@@ -1039,9 +1043,13 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   // --- Lifecycle ---
 
-  /// Dispose resources (timers, controllers, listeners).
+  /// Dispose resources (timers, controllers, listeners) and leave [tomGroup].
+  ///
+  /// A field is a long-lived object its form owns, so it is a group member
+  /// from construction until it is disposed.
   void dispose() {
     _disposed = true;
+    tomGroup?.unregister(this);
     _debounceTimer?.cancel();
     _slowDebounceTimer?.cancel();
     _validationNotifier.dispose();
