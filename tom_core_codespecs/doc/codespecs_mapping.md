@@ -5908,13 +5908,9 @@ run, and no named validator check is unable to run. Nothing here waits on a
 rather than against shipped source.
 
 **§8.5** carries the standing per-part coverage verdict, and it records every
-active part COVERED. One item is open against that verdict:
-
-- Two required marker arguments have no stored SOM source: `@CsTrigger.kind` (CE-AC) and
-  `@CsNotification.body` (CE-NT). Stage A's A4 therefore cannot hold a document
-  to them (`codespecs_prompt.md` §4.4.2), and an agent authoring either part
-  reads prose for a required argument. Until it closes, CE-AC's and CE-NT's
-  COVERED verdicts hold for every argument but these two.
+active part COVERED. Nothing is open against that verdict: every required marker
+argument either has a stored SOM source that Stage A's A4 holds a document to
+(`codespecs_prompt.md` §4.4.2) or is listed there with the reason it has none.
 
 An open todo in those series whose subject is **not** a mapping question does
 not belong here even when the index is non-empty — a SOM validator capability
