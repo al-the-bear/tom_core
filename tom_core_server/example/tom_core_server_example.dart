@@ -88,6 +88,10 @@ const List<TourStop> tour = [
     'Typed configuration from arguments, environment and YAML resources',
   ),
   TourStop(
+    'example/configuration/secrets_example.dart',
+    'Secret references in configuration: precedence, rotation, providers',
+  ),
+  TourStop(
     'example/cache/cache_example.dart',
     'The isolate-backed cache, its lifetimes, and what "cache forever" means',
   ),

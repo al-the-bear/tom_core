@@ -73,6 +73,7 @@ export 'src/tomserver/cmdline/args.dart';
 export 'src/tomserver/cmdline/env_file.dart';
 export 'src/tomserver/configuration/base_server_configuration.dart';
 export 'src/tomserver/configuration/runtime_environment.dart';
+export 'src/tomserver/configuration/secrets.dart';
 export 'src/tomserver/configuration/tom_config.dart';
 export 'src/tomserver/configuration/yaml_resources.dart';
 export 'src/tomserver/cache/cache_invalidation.dart';

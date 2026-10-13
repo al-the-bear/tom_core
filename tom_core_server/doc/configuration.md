@@ -5,7 +5,9 @@ resolved configuration tree, **typed accessors** (`TomConfig<T>`) for individual
 properties, and a reflected **configuration base class**
 (`TomBaseServerConfiguration`) that a server subclasses and that is filled from
 all configuration sources at startup. `TomYaml` loads YAML files with
-environment-variable substitution.
+environment-variable substitution, and `TomSecrets` resolves values written as
+**secret references** — `secret:<provider>:<path>[#<field>]` — from a secret
+store before the configuration is built.
 
 ## Table of Contents
 
@@ -30,6 +32,14 @@ environment-variable substitution.
 - [Publishing the OpenAPI Document](#publishing-the-openapi-document)
 - [Source Precedence](#source-precedence)
   - [A `SCREAMING_SNAKE_CASE` variable names a `lowerCamelCase` field](#a-screaming_snake_case-variable-names-a-lowercamelcase-field)
+- [Secret References](#secret-references)
+  - [Where a reference may appear](#where-a-reference-may-appear)
+  - [Precedence is the source's](#precedence-is-the-sources)
+  - [Boot order: load, then build](#boot-order-load-then-build)
+  - [Rotation: refresh and watch](#rotation-refresh-and-watch)
+  - [Writing a provider](#writing-a-provider)
+  - [The provider packages](#the-provider-packages)
+  - [Error keys](#error-keys)
 - [Loading YAML](#loading-yaml)
   - [Where the variables come from — and how a `.env` reaches them](#where-the-variables-come-from--and-how-a-env-reaches-them)
   - [An overlay is a patch, not a replacement](#an-overlay-is-a-patch-not-a-replacement)
@@ -55,6 +65,14 @@ environment-variable substitution.
 | `tomAppId` | getter | Process-wide application id, read from the active configuration's `appId` |
 | `selectedRuntimeEnvironmentName` | function | Which runtime environment this deployment selected, read before any configuration exists: command line, then `.env`, then the OS environment |
 | `isDevelopmentOrTestRuntime` | function | Whether the current runtime environment is development or test; a boot that declared none is neither |
+| `TomSecrets` | abstract final class | The registered secrets providers and the secrets resolved through them: `load` before the configuration is built, `substitute` in the merge, `refresh` / `watch` / `startRefresh` for rotation |
+| `TomSecretsProvider` | abstract class | A secret store, registered under the name references use |
+| `TomMapSecretsProvider` | class | A provider answering from a map — tests and local development |
+| `TomSecretReference` | class | A parsed `secret:<provider>:<path>[#<field>]` reference |
+| `TomSecretPayload` | class | What a provider read for one path, and the field a reference picks from it |
+| `TomSecretSubscription` | class | A watcher's registration, ended by `cancel` |
+| `TomSecretsRefresh` | class | What one refresh found: the references that changed and the ones that failed |
+| `TomSecretsException` | class | A secret that could not be read or resolved, keyed `secrets.*` (extends `TomServerException`) |
 
 ## The Resource Provider
 
@@ -754,7 +772,9 @@ openApiDocument: "openapi/openapi.json"
 
 ## Source Precedence
 
-`getDefaultValues(args)` merges sources with later ones overriding earlier:
+`getDefaultValues(args)` merges sources with later ones overriding earlier —
+the merge itself is `collectSources(args)`, and `getDefaultValues` is that map
+with its [secret references](#secret-references) replaced by their secrets:
 
 ```text
 configuration resources  ─┐
@@ -831,6 +851,227 @@ TomServerConfigResourceProvider.setServerConfigProvider(
 Without it an obligatory `TomConfig` throws, and — the case worth watching —
 `TomConfig.withDefault` does not: it answers its default as though the
 environment had said nothing, because an unmerged key is simply an absent one.
+
+## Secret References
+
+A configuration value may be written as a **reference** to a secret store
+instead of the value itself. The boot reads every reference once, before it
+builds the configuration object, and the merge puts the secret where the
+reference was — so a database password, a JWT key or an API token is never
+written into a resource file, an environment variable or a command line, only
+where to find it.
+
+```text
+secret:<provider>:<path>[#<field>]
+```
+
+| Part | Meaning |
+| ---- | ------- |
+| `secret:` | The prefix that makes a string a reference. A value is a reference only when it **starts** with it; a string that merely contains `secret:` is a plain value. |
+| `<provider>` | The name a `TomSecretsProvider` was registered under — `vault`, `aws`, `azure`, or a third party's. Up to the first colon. |
+| `<path>` | Where the secret lives in the provider's own terms — a Vault API path, a Secrets Manager name or ARN, a Key Vault secret name. Everything after the provider's colon, so a path may hold colons (an ARN does). |
+| `#<field>` | One member of a secret that holds several — a Vault KV entry, a JSON secret. After the **last** `#`. Without it the secret must be a single value. |
+
+```yaml
+# assets/config-resources_default.yaml
+jwtSharedSecretKey: "secret:vault:secret/data/billing#jwt"
+smtpPassword: "secret:azure:smtp-password"
+databases:
+  - name: billing
+    password: "secret:aws:prod/billing#password"
+```
+
+### Where a reference may appear
+
+In **any of the four sources** — the configuration resources, the OS
+environment, the `.env` file, the command line — and at **any depth**: a
+reference nested in a map or a list is found and replaced like a top-level one.
+The environment spellings apply unchanged, so
+`JWT_SHARED_SECRET_KEY=secret:vault:secret/data/billing#jwt` reaches
+`jwtSharedSecretKey` as a reference and then as the secret.
+
+The substitution happens in `TomBaseServerConfiguration.getDefaultValues`, the
+map the configuration object is built from. `TomConfig` reads the provider, and
+the provider holds the resources as written — a reference there reads back as
+its own text through `TomConfig`. A server that reads secrets through
+`TomConfig` installs the substituted map as the provider, the one line shown at
+the end of [Source Precedence](#source-precedence).
+
+### Precedence is the source's
+
+A reference is replaced **in place**, so the secret has the precedence of the
+source the reference was written in. Secrets are not a layer with a rank of
+their own; the order of [Source Precedence](#source-precedence) decides,
+unchanged. Two consequences, both from `example/configuration/secrets_example.dart`:
+
+```dart
+TomSecrets.register(TomMapSecretsProvider('vault', {
+  'secret/data/billing': {'password': 'pw-1'},
+  'secret/data/jwt': 'signing-key-1',
+}));
+
+// A plain command-line value beats a resource that names a secret.
+TomServerConfigResourceProvider.setServerConfigProvider(
+  TomServerConfigResourceProvider.from({
+    'dbPassword': 'secret:vault:secret/data/billing#password',
+  }),
+);
+var args = ['dbPassword=from-the-command-line'];
+await TomSecrets.load(TomBaseServerConfiguration.collectSources(args));
+print(TomBaseServerConfiguration.getDefaultValues(args)['dbPassword']);
+// from-the-command-line
+
+// A reference on the command line beats a plain resource value.
+TomServerConfigResourceProvider.setServerConfigProvider(
+  TomServerConfigResourceProvider.from({'jwtKey': 'from-the-resource'}),
+);
+args = ['jwtKey=secret:vault:secret/data/jwt'];
+await TomSecrets.load(TomBaseServerConfiguration.collectSources(args));
+print(TomBaseServerConfiguration.getDefaultValues(args)['jwtKey']);
+// signing-key-1
+```
+
+In the first case the resource's reference is overwritten in the merge before
+anything is loaded, so that secret is never fetched at all.
+
+### Boot order: load, then build
+
+`TomBaseServerConfiguration.collectSources(args)` is the merge of the four
+sources with the references still in it — the input `getDefaultValues`
+substitutes. A boot hands it to `TomSecrets.load` after registering its
+providers and **before** it constructs the configuration:
+
+```dart
+Future<void> main(List<String> args) async {
+  TomSecrets.register(TomMapSecretsProvider('local', {'db': 'dev-password'}));
+  await TomSecrets.load(TomBaseServerConfiguration.collectSources(args));
+  final configuration = MyServerConfig(args); // receives the secrets
+  TomSecrets.startRefresh(const Duration(minutes: 5));
+  await TomServer(configuration).start();
+}
+```
+
+`load` collects every reference in the tree, groups them by provider and path,
+and fetches **each path once** however many fields of it are named. It is
+**fatal**: the first reference that cannot be resolved — an unknown provider, a
+path the store does not hold, an unreachable store, a missing field — throws a
+`TomSecretsException`, because a server that cannot read its secrets at start
+must not start. A configuration built without the load is refused rather than
+started on reference text: `getDefaultValues` throws
+`secrets.reference.unresolved` for a reference `load` did not resolve, so a
+server cannot come up with `secret:vault:…` as its database password.
+
+`TomSecrets.resolve(reference)` resolves one reference on demand, with the same
+fatal behaviour, and `TomSecrets.current(reference)` answers a resolved value.
+
+### Rotation: refresh and watch
+
+The configuration object is built once, so a rotated secret does not change a
+field already read. Code holding a credential that rotates — a connection pool,
+an outgoing API client — watches its reference instead:
+
+```dart
+final subscription = TomSecrets.watch(
+  'secret:vault:secret/data/jwt',
+  (value) => signer.rekey(value),
+);
+// ...
+subscription.cancel();
+```
+
+`TomSecrets.refresh()` fetches every resolved reference again and calls the
+watchers of the references whose value changed, with the new value; a watcher
+that throws is logged and the others still run. `startRefresh(every)` refreshes
+on a timer until `stopRefresh()`. The outcome is a `TomSecretsRefresh`:
+`changed` lists the references whose value changed, `failed` the ones that
+could not be fetched.
+
+A refresh is **fail-soft** where the load is fatal: a reference whose store
+cannot be reached, or no longer holds it, **keeps its last value**, is logged
+as a warning and is listed in `failed`. A store outage must not take a running
+server's credentials away; a server that could not read them at start never
+started.
+
+`TomSecrets.reset()` stops the timer, closes every provider and forgets the
+values and watchers — a server's shutdown, and a test's tear-down.
+
+### Writing a provider
+
+A store is reached through a `TomSecretsProvider`:
+
+```dart quote
+abstract class TomSecretsProvider {
+  String get name;
+  Future<TomSecretPayload> fetch(String path);
+  Future<void> close() async {}
+}
+```
+
+`fetch` answers a `TomSecretPayload` — the secret as a `String`, or a
+`Map<String, Object?>` for one with several members, and the store's version
+when it reports one. The payload, not the provider, picks the field: a map is
+read by key, and a string that holds a JSON object is decoded for a field, the
+shape a store that keeps one JSON string needs; a member that is not a string
+is handed on JSON-encoded. `fetch` throws `TomSecretsException` —
+`secrets.fetch.not_found` for a path the store does not hold,
+`secrets.fetch.failed` for anything else — and never puts a secret's value in a
+message. `TomSecrets.register` installs it under its `name`, replacing one of
+that name. Step 9 of the example is a complete third-party provider:
+
+```dart
+class PrefixProvider implements TomSecretsProvider {
+  @override
+  String get name => 'prefix';
+
+  @override
+  Future<TomSecretPayload> fetch(String path) async =>
+      TomSecretPayload('hello $path', version: '1');
+
+  @override
+  Future<void> close() async {}
+}
+```
+
+`TomMapSecretsProvider(name, secrets)` answers from a map — for tests, and for
+local development where a deployment's secrets come from a file nobody commits.
+Changing its `secrets` map simulates a rotation.
+
+### The provider packages
+
+The three stores have one package each, so a deployment pulls in only the
+store it uses and no cloud SDK; each talks to its store's HTTP API with
+`package:http` and builds itself from configuration with `fromConfiguration`.
+
+| Package | Provider | Reference | Authentication | Settings |
+| ------- | -------- | --------- | -------------- | -------- |
+| [`tom_core_secrets_vault`](../../tom_core_secrets_vault/README.md) | `TomVaultSecretsProvider` | `secret:vault:secret/data/billing#jwt` — the API path after `/v1/`, KV version 1 or 2 | a token, or AppRole; Vault Enterprise namespaces | `secrets.vault`, `VAULT_*` |
+| [`tom_core_secrets_aws`](../../tom_core_secrets_aws/README.md) | `TomAwsSecretsProvider` | `secret:aws:prod/billing#password` — a secret name or ARN | static keys, or a credentials source for a role; signed with `TomAwsV4Signer` | `secrets.aws`, `AWS_*` |
+| [`tom_core_secrets_azure`](../../tom_core_secrets_azure/README.md) | `TomAzureKeyVaultSecretsProvider` | `secret:azure:db-password[/<version>]` | a service principal, the host's managed identity, or a static token | `secrets.azure`, `AZURE_*` |
+
+A provider's settings live under `secrets.<store>` in the configuration
+resources and are read as written — they are the credentials that open the
+store, so a reference inside them is not resolved. `secrets` is a top-level key
+no configuration field declares, so the startup warning about [unknown
+keys](#unknown-keys-in-the-configuration-resources) names it.
+
+### Error keys
+
+Every failure is a `TomSecretsException`, a `TomServerException` with
+`clientThrow` `false`. A message names the reference or the path, never a
+secret's value.
+
+| Key | Raised by | When |
+| --- | --------- | ---- |
+| `secrets.reference.malformed` | `TomSecretReference.parse` | A reference without the `secret:` prefix, without a provider or path, or with an empty path or field. |
+| `secrets.reference.unresolved` | `TomSecrets.current`, `TomSecrets.substitute`, `getDefaultValues` | A reference that `load` or `resolve` never resolved. |
+| `secrets.provider.unknown` | `load`, `resolve` | No provider is registered under the reference's provider name. |
+| `secrets.field.required` | `load`, `resolve` | The secret holds several values and the reference names no field. |
+| `secrets.field.missing` | `load`, `resolve` | The secret has no member of the field's name. |
+| `secrets.fetch.not_found` | a provider's `fetch` | The store holds nothing at the path. |
+| `secrets.fetch.failed` | a provider's `fetch`; `load`, `resolve` | Anything else a fetch fails with — a provider exception that is not a `TomSecretsException` is wrapped in this key, with the original as `rootException`. |
+
+The provider packages add their own `secrets.<store>.*` keys for their
+configuration and login failures; each lists them in its guide.
 
 ## Loading YAML
 
@@ -1029,8 +1270,14 @@ started with no configuration whose first symptom appears several layers later.
 - **`TomConfig<T>`** (+ `TomStringConfig` / `TomIntConfig` / `TomDoubleConfig` /
   `TomBoolConfig`) — typed, eagerly-resolved property views; `get()` / `~`.
 - **`TomBaseServerConfiguration`** — the reflected settings base;
-  `getDefaultValues` (the source merge) and the reflected `setValues`.
+  `collectSources` (the source merge), `getDefaultValues` (the merge with its
+  secret references substituted) and the reflected `setValues`.
 - **`TomYaml`** — YAML loading with environment substitution.
+- **`TomSecrets`** (+ `TomSecretsProvider`, `TomMapSecretsProvider`,
+  `TomSecretReference`, `TomSecretPayload`, `TomSecretSubscription`,
+  `TomSecretsRefresh`, `TomSecretsException`) — secret references: the
+  provider registry, the fatal load before the configuration is built, the
+  in-place substitution, and the fail-soft refresh with its watchers.
 
 ## Verification
 
@@ -1083,6 +1330,21 @@ the provider, `TomYaml`, the example, and the limitations listed under [Not Yet
 Implemented](#not-yet-implemented). Nothing here is tagged and nothing needs an
 external server, so all of it runs in the default `testkit :test`.
 
+`example/configuration/secrets_example.dart` walks [Secret
+References](#secret-references) in nine steps against a `TomMapSecretsProvider`:
+loading three references from a resource with each provider path read once, the
+substituted merge, a command-line value beating a resource reference and a
+command-line reference beating a resource value, an unloaded reference refused
+(`secrets.reference.unresolved`), an unknown provider failing the load
+(`secrets.provider.unknown`), a rotation reaching a watcher, a refresh that
+cannot fetch keeping the last value, and a third-party provider. Run it with
+`dart run example/configuration/secrets_example.dart`; `test/examples_test.dart`
+runs it and requires all nine steps. `test/secrets_test.dart` covers the same
+surface in four groups — parsing references, reading a payload's fields,
+resolving configuration (precedence, unloaded and unknown references, one fetch
+per path) and rotation (watchers, fail-soft refresh, `startRefresh`) — with no
+external store.
+
 The two are linked in both directions — the example's header names this
 document and the suite, and the suite runs the example, under exactly the
 command above, requiring exit 0 and requiring every numbered step to have
@@ -1098,10 +1360,12 @@ falsifiable from the suite, as is each limitation it admits to.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `secrets.dart` | `Timer`, for `startRefresh` |
+| `dart:convert` | dart | `secrets.dart` | `jsonDecode` / `jsonEncode`, for a field of a JSON secret |
 | `dart:io` | dart | `base_server_configuration.dart`, `runtime_environment.dart`, `yaml_resources.dart` | `File`, `Platform` |
 | `shelf` | package | `base_server_configuration.dart` | the `Middleware` / `Handler` / `Request` / `Response` types used by the configuration's handler fields |
-| `tom_core_kernel` | package | `base_server_configuration.dart`, `runtime_environment.dart`, `yaml_resources.dart` | `tomReflector`, `getObjectFromTree`, `mergeMapsOneSided`, `makeCleanJsonMap`, `substituteEnvVars`, `TomRuntime` |
+| `tom_core_kernel` | package | `base_server_configuration.dart`, `runtime_environment.dart`, `secrets.dart`, `yaml_resources.dart` | `tomReflector`, `getObjectFromTree`, `mergeMapsOneSided`, `makeCleanJsonMap`, `substituteEnvVars`, `TomRuntime`, `tomLog` |
 | `yaml` | package | `yaml_resources.dart` | YAML parsing for `TomYaml` |
 | [cmdline](cmdline.md) | module | `base_server_configuration.dart`, `runtime_environment.dart`, `tom_config.dart` | `TomArgs` and `TomEnvFile` (source parsing/merging); `TomArgs.convertToObjectMap` also reads a text value as the type a `TomConfig` wants |
-| [little_things](little_things.md) | module | `tom_config.dart` | `TomServerException` |
+| [little_things](little_things.md) | module | `secrets.dart`, `tom_config.dart` | `TomServerException`, the base of `TomConfigurationException` and `TomSecretsException` |
 | [server](server.md) | module | `base_server_configuration.dart` | `tomLoggingMiddleware` |

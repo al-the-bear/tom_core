@@ -2,7 +2,8 @@
 
 The server configuration surface: a process-wide resource provider, a reflected
 base configuration class merged from all sources, typed single-property views,
-and YAML loading with environment-variable substitution.
+YAML loading with environment-variable substitution, and secret references
+resolved from a secret store before the configuration is built.
 
 ## Table of Contents
 
@@ -18,6 +19,14 @@ and YAML loading with environment-variable substitution.
   - [TomBoolConfig](#tomboolconfig)
   - [TomConfigurationException](#tomconfigurationexception)
   - [TomYaml](#tomyaml)
+  - [TomSecretsException](#tomsecretsexception)
+  - [TomSecretReference](#tomsecretreference)
+  - [TomSecretPayload](#tomsecretpayload)
+  - [TomSecretsProvider](#tomsecretsprovider)
+  - [TomMapSecretsProvider](#tommapsecretsprovider)
+  - [TomSecretSubscription](#tomsecretsubscription)
+  - [TomSecretsRefresh](#tomsecretsrefresh)
+  - [TomSecrets](#tomsecrets)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -25,7 +34,8 @@ and YAML loading with environment-variable substitution.
 Source: `lib/src/tomserver/configuration/base_server_configuration.dart`,
 `lib/src/tomserver/configuration/tom_config.dart`,
 `lib/src/tomserver/configuration/yaml_resources.dart`,
-`lib/src/tomserver/configuration/runtime_environment.dart`.
+`lib/src/tomserver/configuration/runtime_environment.dart`,
+`lib/src/tomserver/configuration/secrets.dart`.
 
 `TomServerConfigResourceProvider` holds the resolved configuration tree and
 answers dotted-path property lookups; a single provider is shared process-wide
@@ -39,6 +49,17 @@ specialised subclasses `TomStringConfig`, `TomIntConfig`, `TomDoubleConfig`, and
 `TomBoolConfig`; every way resolution fails raises `TomConfigurationException`,
 one type told apart by `key`, and a failed cast chains the `TypeError`. `TomYaml` loads YAML
 files with `${VAR}` / `${VAR:default}` environment-variable substitution.
+
+`TomSecrets` resolves configuration values written as
+`secret:<provider>:<path>[#<field>]` through the `TomSecretsProvider` registered
+under the provider name. A boot calls `TomSecrets.load` with
+`TomBaseServerConfiguration.collectSources(args)` before it builds its
+configuration; `getDefaultValues` then substitutes each reference in place, so
+a secret has the precedence of the source it was written in.
+`TomSecretReference` parses a reference, `TomSecretPayload` is what a provider
+read, `TomMapSecretsProvider` answers from a map, `watch` / `refresh` /
+`startRefresh` carry rotation (`TomSecretSubscription`, `TomSecretsRefresh`),
+and every failure is a `TomSecretsException`.
 
 ## Class Hierarchy
 
@@ -55,9 +76,18 @@ TomConfig<T>
 
 TomException  (tom_core_kernel)
     └── TomServerException
-            └── TomConfigurationException
+            ├── TomConfigurationException
+            └── TomSecretsException
 
 TomYaml
+
+TomSecrets  (abstract final)
+TomSecretsProvider  (abstract)
+    └── TomMapSecretsProvider  (implements)
+TomSecretReference
+TomSecretPayload
+TomSecretSubscription
+TomSecretsRefresh
 ```
 
 ## Classes
@@ -133,7 +163,8 @@ last so a merged key spelled `args` cannot displace the invocation.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `getDefaultValues` | `static Map<String, Object?> getDefaultValues(List<String> args)` | Builds the merged value map used to populate a configuration instance, starting from a deep copy of the provider's resources and overlaying the OS environment, a `.env` file, then the parsed `args` (which win). |
+| `getDefaultValues` | `static Map<String, Object?> getDefaultValues(List<String> args)` | The merged value map used to populate a configuration instance: `collectSources(args)` with every secret reference replaced by the secret `TomSecrets.load` resolved for it (`TomSecrets.substitute`), in place and so with its source's precedence. Throws `TomSecretsException` `secrets.reference.unresolved` for a reference that was not loaded. |
+| `collectSources` | `static Map<String, Object?> collectSources(List<String> args)` | The configuration sources merged in precedence order — a deep copy of the provider's resources, then the OS environment, a `.env` file, then the parsed `args` (which win) — with secret references still unresolved. What a boot hands to `TomSecrets.load` before it builds its configuration. |
 
 #### Properties
 
@@ -416,6 +447,251 @@ operator hunting a setting with no effect needs to be told.
 | `mergeInYamlFile` | `static void mergeInYamlFile(Map<String, Object?> result, String filename, {Map<String, String>? environment})` | Loads a YAML file with `loadYamlFile` and merges it one-sided into `result`, passing `environment` through. The load is an argument to the merge, so it completes first and a throw leaves `result` untouched. The merge recurses into subtrees, so the overwrite is per leaf: a file naming `db.host` alone leaves the `db` branch's other keys standing. | `PathNotFoundException` if `filename` is absent |
 | `loadYamlFileIfPresent` | `static Map<String, Object?>? loadYamlFileIfPresent(String filename, {Map<String, String>? environment})` | `loadYamlFile`, returning `null` when there is no such file. Absence is the only forgiven condition: a file that exists and does not parse still throws. `null` rather than `{}`, so an absent overlay is distinguishable from an empty one. | anything but `PathNotFoundException` — a `YamlException` for a malformed file above all |
 | `mergeInYamlFileIfPresent` | `static bool mergeInYamlFileIfPresent(Map<String, Object?> result, String filename, {Map<String, String>? environment})` | `mergeInYamlFile` over `loadYamlFileIfPresent`: an absent `filename` leaves `result` untouched and returns `false`, a present one merges and returns `true`. The shape the layered-overlay pattern needs, where most of the candidate files are expected not to exist. | anything but `PathNotFoundException` |
+
+### TomSecretsException
+
+A failure to read or resolve a secret, keyed `secrets.<area>.<condition>`.
+Never names a secret's value — only its reference or path.
+
+- **Extends:** `TomServerException`
+
+| `key` | Condition |
+| ----- | --------- |
+| `secrets.reference.malformed` | A reference that is not `secret:<provider>:<path>[#<field>]`, or names an empty path or field. |
+| `secrets.reference.unresolved` | A reference `TomSecrets.load` or `resolve` never resolved, read through `current` or `substitute`. |
+| `secrets.provider.unknown` | No provider is registered under the reference's provider name. |
+| `secrets.field.required` | The secret holds several values and the reference names no field. |
+| `secrets.field.missing` | The secret has no member of the field's name. |
+| `secrets.fetch.not_found` | The provider's store holds nothing at the path. |
+| `secrets.fetch.failed` | Any other fetch failure; a provider exception that is not a `TomSecretsException` is wrapped in it as `rootException`. |
+
+`parameters` carries the `reference`, or the `provider` and `path`.
+`clientThrow` defaults to `false`: a message names an internal reference.
+
+#### Constructors
+
+```dart
+TomSecretsException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  Object? rootException,
+  bool clientThrow = false,
+})
+```
+
+### TomSecretReference
+
+A parsed `secret:<provider>:<path>[#<field>]` reference. The provider runs to
+the first colon after the prefix, so a path may hold colons; the field follows
+the last `#`. Two references are equal when their text is.
+
+#### Constructors
+
+```dart
+const TomSecretReference(this.provider, this.path, [this.field])
+```
+
+#### Factory Constructors
+
+```dart
+factory TomSecretReference.parse(String text)
+```
+
+| Factory | Description |
+| ------- | ----------- |
+| `parse` | Parses `text`. Throws `TomSecretsException` `secrets.reference.malformed` for text without the prefix, without a provider or path, or with an empty path or field. |
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `prefix` | `String` | The prefix every reference starts with, `secret:` (a `const`). |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `provider` | `String` | The provider's registered name. |
+| `path` | `String` | Where the secret lives in the provider's own terms — a Vault API path, a secret id or ARN, a Key Vault secret name. |
+| `field` | `String?` | The member of a multi-valued secret to take, or `null` for the whole. |
+| `hashCode` | `int` | *(getter)* *(override)* Derived from the reference's text, so equal references hash alike. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `isReference` | `static bool isReference(Object? value)` | Whether `value` is a `String` starting with `prefix`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | The reference as written: `secret:<provider>:<path>[#<field>]`. The key `TomSecrets` stores values and watchers under. |
+
+#### Operators
+
+| Operator | Signature | Description |
+| -------- | --------- | ----------- |
+| `==` | `bool operator ==(Object other)` | Equal when `other` is a `TomSecretReference` with the same text. |
+
+### TomSecretPayload
+
+What a provider read for one path.
+
+#### Constructors
+
+```dart
+const TomSecretPayload(this.data, {this.version})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `data` | `Object` | The secret: a `String`, or a `Map<String, Object?>` for a secret with several members. |
+| `version` | `String?` | The store's version of the secret, when it reports one. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `valueOf` | `String valueOf(TomSecretReference reference)` | The value `reference` names. Without a field, `data` must be a `String` (`secrets.field.required` otherwise). With a field, the member of a map — or of the JSON object a string decodes to — is taken; a member that is not a string is JSON-encoded; an absent one is `secrets.field.missing`. |
+
+### TomSecretsProvider
+
+A secret store. Implemented once per store and registered with
+`TomSecrets.register` under `name`, the middle part of the references that
+address it.
+
+```dart
+abstract class TomSecretsProvider {
+  String get name;
+  Future<TomSecretPayload> fetch(String path);
+  Future<void> close() async {}
+}
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `name` | `String` | *(getter)* The name references use for this store (`vault`, `aws`, `azure`). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `fetch` | `Future<TomSecretPayload> fetch(String path)` | Reads the secret at `path`. Throws `TomSecretsException` — `secrets.fetch.not_found` for a path the store does not hold, `secrets.fetch.failed` for anything else — and never puts the value in a message. |
+| `close` | `Future<void> close()` | Releases anything the provider holds open; the default holds nothing. Called by `TomSecrets.reset`. |
+
+### TomMapSecretsProvider
+
+A provider over a map — for tests, and for local development where a
+deployment's secrets come from a file nobody commits.
+
+- **Implements:** `TomSecretsProvider`
+
+#### Constructors
+
+```dart
+TomMapSecretsProvider(this.name, Map<String, Object> secrets)
+```
+
+`secrets` is copied.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `name` | `String` | The provider name references use. |
+| `secrets` | `Map<String, Object>` | The secrets, by path — a `String` or a map of members. Change them to simulate a rotation. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `fetch` | `Future<TomSecretPayload> fetch(String path)` | The entry at `path`; `secrets.fetch.not_found` when there is none. |
+| `close` | `Future<void> close()` | Does nothing. |
+
+### TomSecretSubscription
+
+A watcher's registration, returned by `TomSecrets.watch`. It has no public
+constructor.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `cancel` | `void cancel()` | Stops the watcher being called. |
+
+### TomSecretsRefresh
+
+What one `TomSecrets.refresh` found.
+
+#### Constructors
+
+```dart
+const TomSecretsRefresh({this.changed = const [], this.failed = const []})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `changed` | `List<String>` | The references whose value changed. |
+| `failed` | `List<String>` | The references that could not be fetched, kept at their last value. |
+
+### TomSecrets
+
+The registered providers and the secrets resolved through them. All members
+are static. A boot registers its providers, calls `load` with
+`TomBaseServerConfiguration.collectSources(args)`, and then builds its
+configuration, whose `getDefaultValues` calls `substitute`. The first load is
+fatal on any failure; a `refresh` keeps the last value of a reference it
+cannot fetch.
+
+```dart
+abstract final class TomSecrets {
+  static void register(TomSecretsProvider provider);
+  static Map<String, TomSecretsProvider> get providers;
+  static Set<String> get references;
+  static Future<void> load(Object? values);
+  static Future<String> resolve(String reference);
+  static String current(String reference);
+  static Object? substitute(Object? values);
+  static TomSecretSubscription watch(
+    String reference,
+    void Function(String value) onChange,
+  );
+  static Future<TomSecretsRefresh> refresh();
+  static void startRefresh(Duration every);
+  static void stopRefresh();
+  static Future<void> reset();
+}
+```
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `providers` | `Map<String, TomSecretsProvider>` | *(getter)* The registered providers, by name (unmodifiable). |
+| `references` | `Set<String>` | *(getter)* The references resolved so far (unmodifiable). |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `register` | `static void register(TomSecretsProvider provider)` | Registers `provider` under its name, replacing one of that name. |
+| `load` | `static Future<void> load(Object? values)` | Resolves every reference `values` holds — strings anywhere in the tree — fetching each provider path once however many fields of it are named, and remembers the values. Throws `TomSecretsException` on the first reference it cannot resolve. |
+| `resolve` | `static Future<String> resolve(String reference)` | Resolves `reference` now and answers its value; fails as `load` does. |
+| `current` | `static String current(String reference)` | The resolved value of `reference`; `secrets.reference.unresolved` when it was never loaded. |
+| `substitute` | `static Object? substitute(Object? values)` | `values` with every reference replaced by its resolved value, maps and lists walked; `secrets.reference.unresolved` for a reference not loaded, never its text left in place. |
+| `watch` | `static TomSecretSubscription watch(String reference, void Function(String value) onChange)` | Calls `onChange` with the new value whenever a `refresh` finds `reference` changed. |
+| `refresh` | `static Future<TomSecretsRefresh> refresh()` | Fetches every resolved reference again and calls the watchers of those that changed; a watcher that throws is logged. A reference that cannot be fetched keeps its value and is listed in `failed`. |
+| `startRefresh` | `static void startRefresh(Duration every)` | Refreshes every `every` until `stopRefresh`, replacing a running timer. |
+| `stopRefresh` | `static void stopRefresh()` | Stops the periodic refresh. |
+| `reset` | `static Future<void> reset()` | Stops the timer, closes every provider and forgets every provider, value and watcher — a server's shutdown, and test support. |
 
 ## Global Functions and Constants
 

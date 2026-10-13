@@ -101,6 +101,7 @@ const _stepCounts = <String, int>{
   'example/cache/cache_example.dart': 10,
   'example/cmdline/cmdline_example.dart': 9,
   'example/configuration/configuration_example.dart': 12,
+  'example/configuration/secrets_example.dart': 9,
   'example/datasources/datasources_example.dart': 10,
   'example/db_migration/db_migration_example.dart': 10,
   'example/endpoints/endpoints_example.dart': 11,

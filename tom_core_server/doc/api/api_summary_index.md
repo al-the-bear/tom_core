@@ -14,7 +14,7 @@ surface documented here.
 | Authorization | [api_summary_authorization.md](api_summary_authorization.md) | Authorization cache, graded access, principal delegation and resource grants. |
 | Cache | [api_summary_cache.md](api_summary_cache.md) | Isolate-backed server cache and its command messages. |
 | Command Line | [api_summary_cmdline.md](api_summary_cmdline.md) | CLI argument parsing (`TomArgs`) and `.env` file loading (`TomEnvFile`). |
-| Configuration | [api_summary_configuration.md](api_summary_configuration.md) | Server config provider, typed config values, YAML resources. |
+| Configuration | [api_summary_configuration.md](api_summary_configuration.md) | Server config provider, typed config values, YAML resources, and secret references resolved from a secret store. |
 | Datasources | [api_summary_datasources.md](api_summary_datasources.md) | DB type system, SQL dialects, queries, MariaDB datasource/prepared statements. |
 | Database Migration | [api_summary_db_migration.md](api_summary_db_migration.md) | Migration runner, versioning, and the MariaDB migration adaptor. |
 | Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling, and the three transports over it: HTML form bodies, redirects and WebSockets — plus the HTTP surface of file columns. |
@@ -310,6 +310,14 @@ surface documented here.
 | `tomAppId` | top-level getter | The current application id, read from the active configuration's `appId`. |
 | `selectedRuntimeEnvironmentName` | top-level function | Which runtime environment the deployment selected, read before the configuration exists: command line, then `.env`, then the OS environment. |
 | `isDevelopmentOrTestRuntime` | top-level function | Whether the current runtime environment is a development or test one; a boot that declared none is neither. |
+| `TomSecrets` | abstract final class | The registered secrets providers and the secrets resolved through them: load, substitute, refresh, watch. |
+| `TomSecretsProvider` | abstract class | A secret store, registered under the name `secret:<provider>:…` references use. |
+| `TomMapSecretsProvider` | class | A provider answering from a map, for tests and local development. |
+| `TomSecretReference` | class | A parsed `secret:<provider>:<path>[#<field>]` reference. |
+| `TomSecretPayload` | class | What a provider read for one path. |
+| `TomSecretSubscription` | class | A watcher's registration, ended by `cancel`. |
+| `TomSecretsRefresh` | class | What one refresh found: changed and failed references. |
+| `TomSecretsException` | class | A secret that could not be read or resolved (extends `TomServerException`). |
 
 ### Datasources (`lib/src/tomserver/datasources/`)
 
@@ -1147,6 +1155,7 @@ surface documented here.
 | `TomLocalizedTextResources` | Resources |
 | `tomLoggingMiddleware` | Server |
 | `TomLoginException` | Authentication |
+| `TomMapSecretsProvider` | Configuration |
 | `TomMemory2FAEnrolmentStore` | Authentication |
 | `TomMemory2FAGraceStore` | Authentication |
 | `TomMemoryApiKeyStore` | Authentication |
@@ -1293,6 +1302,13 @@ surface documented here.
 | `TomScimService` | Authentication |
 | `TomScimStore` | Authentication |
 | `TomScimValuePath` | Authentication |
+| `TomSecretPayload` | Configuration |
+| `TomSecretReference` | Configuration |
+| `TomSecrets` | Configuration |
+| `TomSecretsException` | Configuration |
+| `TomSecretsProvider` | Configuration |
+| `TomSecretsRefresh` | Configuration |
+| `TomSecretSubscription` | Configuration |
 | `TomSelect` | Datasources |
 | `TomServer` | Server |
 | `TomServerConfigResourceProvider` | Configuration |

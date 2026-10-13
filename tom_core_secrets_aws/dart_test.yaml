@@ -1,0 +1,5 @@
+tags:
+  emulator:
+    # Needs LocalStack: tool/run_emulator_tests.sh starts one. Without
+    # it the tests skip themselves.
+    timeout: 2x

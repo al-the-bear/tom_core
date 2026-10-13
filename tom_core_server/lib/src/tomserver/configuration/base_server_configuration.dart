@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:shelf/shelf.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'secrets.dart';
+
 import '../cmdline/args.dart';
 import '../cmdline/env_file.dart';
 import '../server/server.dart';
@@ -980,7 +982,23 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// key's leading dashes (see `doc/cmdline.md`) — so there is no naming
   /// convention to reconcile, and accepting a `SCREAMING_SNAKE_CASE` argument
   /// as well would widen the surface without gaining a source.
-  static Map<String, Object?> getDefaultValues(List<String> args) {
+  ///
+  /// ## Secrets
+  ///
+  /// A value written as a `secret:<provider>:<path>[#<field>]` reference is
+  /// replaced by the secret [TomSecrets.load] resolved for it — in the place,
+  /// and so with the precedence, of the source it was written in. A reference
+  /// that was not loaded is refused (`secrets.reference.unresolved`).
+  static Map<String, Object?> getDefaultValues(List<String> args) =>
+      (TomSecrets.substitute(collectSources(args)) as Map)
+          .cast<String, Object?>();
+
+  /// The configuration sources merged in precedence order — resources, OS
+  /// environment, `.env`, [args] — with secret references still unresolved.
+  ///
+  /// What a boot hands to [TomSecrets.load] before it builds its
+  /// configuration, so every reference any source holds is fetched.
+  static Map<String, Object?> collectSources(List<String> args) {
     Map<String, Object?> values = deepCopyJsonTree(
       TomServerConfigResourceProvider.getServerConfig().resources,
     );

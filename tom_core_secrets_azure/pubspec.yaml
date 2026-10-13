@@ -1,0 +1,21 @@
+name: tom_core_secrets_azure
+description: Azure Key Vault as a secrets provider for Tom servers — configuration values written as secret:azure:<name>[/<version>]#<field> references, resolved and refreshed through the Key Vault REST API with an Entra ID token.
+version: 0.1.0
+publish_to: none
+
+repository: https://github.com/al-the-bear/tom_core
+homepage: https://github.com/al-the-bear/tom_core/tree/main/tom_core_secrets_azure
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  http: ^1.6.0
+  tom_core_kernel:
+    path: ../tom_core_kernel
+  tom_core_server:
+    path: ../tom_core_server
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

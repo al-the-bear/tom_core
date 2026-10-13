@@ -2,6 +2,31 @@
 
 ### Added
 
+- **Secret references in configuration** — `configuration/secrets.dart`. A
+  value in any configuration source may be written
+  `secret:<provider>:<path>[#<field>]`. `TomSecrets` holds the registered
+  providers and the resolved values: `register`, `providers`, `references`,
+  `load` (every reference in a tree, each provider path fetched once, fatal on
+  the first failure), `resolve`, `current`, `substitute`, `watch`, `refresh`
+  (fail-soft: a reference that cannot be fetched keeps its last value and is
+  reported), `startRefresh`, `stopRefresh` and `reset`.
+  `TomSecretsProvider` (`name`, `fetch`, `close`) is the store interface,
+  `TomMapSecretsProvider` a map-backed one for tests and local development;
+  `TomSecretReference` (`parse`, `isReference`, `prefix`), `TomSecretPayload`
+  (`data`, `version`, `valueOf` — a field of a map or of a JSON object
+  string), `TomSecretSubscription` and `TomSecretsRefresh` (`changed`,
+  `failed`). `TomSecretsException` raises `secrets.reference.malformed`,
+  `secrets.reference.unresolved`, `secrets.provider.unknown`,
+  `secrets.field.required`, `secrets.field.missing`, `secrets.fetch.not_found`
+  and `secrets.fetch.failed`.
+- **`TomBaseServerConfiguration.collectSources`**: the four configuration
+  sources merged in precedence order with secret references unresolved — what a
+  boot hands to `TomSecrets.load`. `getDefaultValues` is `collectSources` with
+  every reference substituted in place, so a secret takes the precedence of the
+  source it was written in; a reference that was not loaded is refused
+  (`secrets.reference.unresolved`).
+- `example/configuration/secrets_example.dart` (nine steps, in the tour) and
+  `test/secrets_test.dart`.
 - **Service accounts and API keys** — `authentication/api_keys.dart` and
   `authentication/sql_api_key_store.dart`. `TomServiceAccount` (`id`, `name`,
   `roles`, `tenant`, `organization`, `disabled`; `withDisabled`, `withRoles`),

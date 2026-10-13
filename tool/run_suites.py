@@ -3,7 +3,7 @@
 
 Run from anywhere::
 
-    python3 tool/run_suites.py                      # all nine suites + the gates
+    python3 tool/run_suites.py                      # all twelve suites + the gates
     python3 tool/run_suites.py kernel server        # a subset, by name or prefix
     python3 tool/run_suites.py --no-gates flutter_ui
     python3 tool/run_suites.py --gates-only         # the gate suite alone
@@ -22,8 +22,9 @@ is the step that failed; this runs all of them, so nobody has to.
 
 **What "green" means here** is what the quest overview says it means: every
 package that carries a suite passes it, and the gates hold. That is the five
-framework packages, `tom_core_codespecs`, `tom_core_openapi`, and the two
-`tom_flutter_ui` harnesses -- nine suites -- plus `check_gates.py`.
+framework packages, `tom_core_codespecs`, `tom_core_openapi`, the three
+`tom_core_secrets_*` providers, and the two
+`tom_flutter_ui` harnesses -- twelve suites -- plus `check_gates.py`.
 
 **How each suite runs.** Flutter packages run under `flutter test`, the rest
 under `dart test`, each in its own package directory with its own
@@ -71,6 +72,9 @@ PACKAGES = (
     "tom_core_agentic",
     "tom_core_codespecs",
     "tom_core_openapi",
+    "tom_core_secrets_vault",
+    "tom_core_secrets_aws",
+    "tom_core_secrets_azure",
     "tom_flutter_ui",
     "tom_core_flutter",
     "tom_flutter_ui_test",

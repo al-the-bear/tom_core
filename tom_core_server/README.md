@@ -33,7 +33,9 @@ observable state, security, resources) and adds everything a service needs:
   **tabular export** to CSV/XLSX/PDF,
   **streaming blob storage** behind one contract, and relational **job
   scheduling** for a cluster that shares no filesystem;
-- server **configuration** (typed config + YAML resources), an isolate-backed
+- server **configuration** (typed config + YAML resources, with **secret
+  references** resolved from HashiCorp Vault, AWS Secrets Manager or Azure Key
+  Vault and refreshed when the store rotates them), an isolate-backed
   **cache**, **authentication/authorization** services, and **health** endpoints;
 - first-class **multi-tenancy** — each tenant's data in a shared table, a schema
   of its own or a database of its own, chosen per tenant, with repositories,
@@ -114,7 +116,7 @@ abstract, so other backends can be added.
 
 | Module | Key types | What it does |
 | ------ | --------- | ------------ |
-| `configuration` | `TomBaseServerConfiguration`, `TomServerConfigResourceProvider`, `TomConfig<T>`, `TomYaml` | Typed config + YAML resources |
+| `configuration` | `TomBaseServerConfiguration`, `TomServerConfigResourceProvider`, `TomConfig<T>`, `TomYaml`, `TomSecrets`, `TomSecretsProvider` | Typed config + YAML resources; any value may be a `secret:<provider>:<path>[#<field>]` reference, loaded from a secret store before the configuration is built, substituted with the precedence of the source it was written in, and refreshed fail-soft with watchers for rotation. The Vault, AWS Secrets Manager and Azure Key Vault providers are the `tom_core_secrets_vault`, `tom_core_secrets_aws` and `tom_core_secrets_azure` packages |
 | `cache` | `TomCache`, `TomCacheManager` | Isolate-backed server-side cache |
 | `authentication` | `TomAuthenticationService`, `TomAuthenticationData`, `TomAuthenticationAdaptor`, `Tom2FAAdaptor`, `Tom2FAService`, `Tom2FARegistry`, `TomTotp2FAService`, `TomServerSelfLogin`, `TomOAuthAuthenticationService`, `TomOAuthFlow`, `TomOAuthProviders`, `TomSamlProviders`, `TomSamlFlow`, `TomExternalRoleMapping`, `TomExternalIdentityStore`, `TomScimService`, `TomScimProvisioning`, `TomScimIdentityDirectory`, `TomJwtSigning`, `TomJwksService`, `TomApiKeys`, `TomServiceAccount`, `TomSqlApiKeyStore` | Authentication service and adaptor annotations; tokens signed RS256 (default), ES256 or HS256 from configured key files, verified by key id through a rotation, and published as a JSON Web Key Set at `/.well-known/jwks.json`; second-factor challenges behind one service contract, with a TOTP implementation and a registry that picks the factor per principal; a server's own login when it calls another service as itself; and external identity — an OAuth 2.0 / OIDC authorization-code + PKCE login written as *another implementation of the same service contract*, so it reaches the unchanged token and 2FA path instead of a second one; and enterprise single sign-on over OpenID Connect (endpoints read from the issuer's discovery document, nonce-bound `id_token`) or SAML 2.0 (signed responses verified against the identity provider's metadata), with group claims mapped onto roles on every login and just-in-time provisioning; and user provisioning over SCIM 2.0 — the `/scim/v2` endpoints Entra ID and Okta provision users and groups through, with deactivation and group changes revoking the sessions they affect on every node, and single sign-on resolving to the provisioned account; and service accounts authenticating with API keys in `X-API-Key` — shown once as `tomk.<keyId>.<secret>`, stored as a SHA-256 hash, scoped to a subset of the account's roles, rotated with an optional overlap and revoked on every node that shares the cache invalidation channel |
 | `authorization` | `TomAuthorizationCache`, `TomResourceGrant`, `TomGradedAccessControlInformation`, `TomPrincipalResourceGrant`, `TomPrincipalDelegation`, `TomDelegationResolver`, `TomResourceDataScope` | Isolate-backed authorization cache; graded per-key grants that add the middle states the kernel's granted/denied list cannot express; per-principal-per-resource roles; delegation of those roles by explicit share, out-of-office window, or revocable hand-over; and the row scope that filters an entity's rows by those grants — `read` to list, `full` to write — with no application-side resolver |
@@ -193,7 +195,7 @@ there, or excluded with a stated reason.
 | [`example/datasources/`](example/datasources/) | SQL-typed values and dialect rendering |
 | [`example/db_migration/`](example/db_migration/) | Versioned schema migrations |
 | [`example/transactions/`](example/transactions/) | Local/XA transaction coordination |
-| [`example/configuration/`](example/configuration/) | Typed config + YAML resources |
+| [`example/configuration/`](example/configuration/) | Typed config + YAML resources; `secrets_example.dart` walks secret references — precedence, an unloaded reference refused, rotation and a third-party provider |
 | [`example/cache/`](example/cache/) | Isolate-backed cache |
 | [`example/authentication/`](example/authentication/) · [`example/authorization/`](example/authorization/) | Login and second factors, external identity and SCIM provisioning; the authorization cache, graded grants, resource roles and delegation, and the grant-driven row scope those grants filter the database with |
 | [`example/audit/`](example/audit/) | Audit records, the declared/automatic split, the hash chain, the relational trail's schema and its write-once check, and signed anchors published outside the server |
