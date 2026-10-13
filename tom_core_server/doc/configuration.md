@@ -613,6 +613,12 @@ provider's `spSigningKeyFile` is secret-bearing one step removed, like
 [authentication.md](authentication.md#provider-configuration-is-data) and its
 [single sign-on part](authentication.md#single-sign-on-with-enterprise-identity-providers).
 
+**SCIM provisioning is configured in the tree too.** `scim.bearerTokens` (a list,
+or one string — one secret per identity provider, and two during a rotation) and
+the optional `scim.baseUrl` are read by `TomScimProvisioning.fromConfiguration`.
+Every bearer token is secret-bearing and written as a `${...}` placeholder. See
+[authentication.md](authentication.md#enabling-scim).
+
 ### JWT Signing Keys
 
 What the server signs an issued token with, what it verifies an incoming one

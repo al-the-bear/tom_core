@@ -29,9 +29,10 @@ the body a client receives.
 server exception type (e.g. `TomEndpointHandlerException`, `TomCacheException`,
 `MariadbMigrationException`, and `TomLoginException`) subtypes it, so a single
 `on TomServerException catch (e)` clause reaches all of them. It is raised
-directly at five sites and no others — the `.named(...)` constructors of the
-audit sink, the OAuth state store, the job store, the lease lock and the
-scheduler roll call, each refusing a data source the registry does not hold.
+directly at seven sites and no others — the `.named(...)` constructors of the
+audit sink, the OAuth state store, the SCIM store, the delivery-report store,
+the job store, the lease lock and the scheduler roll call, each refusing a data
+source the registry does not hold.
 Those fail at construction, where no `catch` clause is running for a subtype to
 serve; everywhere else a subtype is named. Over the kernel's
 `TomException` it adds two server-specific concerns: **isolate attribution** —

@@ -93,6 +93,7 @@ const _stepCounts = <String, int>{
   'example/audit/audit_example.dart': 11,
   'example/authentication/authentication_example.dart': 0,
   'example/authentication/oauth_login_example.dart': 0,
+  'example/authentication/scim_provisioning_example.dart': 8,
   'example/authentication/two_factor_enrolment_example.dart': 0,
   'example/authentication/two_factor_login_example.dart': 0,
   'example/authorization/authorization_example.dart': 6,

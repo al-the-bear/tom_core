@@ -22,6 +22,7 @@ consumes it.
 | `TomServer` | The server: `TomServer(configuration)`; builds the `TomEndpointRouting` and starts listening. |
 | `TomRequestLogInfo` | Captured per-request log metadata. |
 | `tomRequestLogInfoMiddleware` | Seeds a new `TomRequestLogInfo` into every request's context; `start` installs it outermost. |
+| `TomEndpointCredentials` | The path prefixes whose `Authorization` header belongs to the endpoint rather than the framework — the SCIM endpoints, whose identity provider presents a static secret. `extractAuthentication` leaves such a header unread and reports `TomCredentialOutcome.endpointCredential`; the endpoint checks it. |
 
 ## Quick start
 
@@ -64,6 +65,7 @@ fragment above it is a program that runs and terminates.
 `test/server_test.dart` covers the module and
 `test/server_self_login_test.dart` the credentialled boot described above,
 replacing the one JSON POST rather than running an auth server;
+`test/scim_test.dart` reads a claimed path as `endpointCredential`;
 `test/examples_test.dart` runs the example.
 
 ---

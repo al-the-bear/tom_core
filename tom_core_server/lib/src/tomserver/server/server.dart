@@ -108,6 +108,39 @@ enum TomCredentialOutcome {
 
   /// The token verified and yielded a principal.
   authenticated,
+
+  /// The request's path belongs to an endpoint that authenticates its callers
+  /// itself ([TomEndpointCredentials]); the header was left for it, unread.
+  endpointCredential,
+}
+
+/// The paths whose `Authorization` header belongs to the endpoint, not to the
+/// framework.
+///
+/// Some callers present a credential that is not a token of this deployment:
+/// an identity provider calling the SCIM endpoints presents the static bearer
+/// secret it was configured with. Read by [extractAuthentication], such a
+/// header would be verified as a JWT, refused, and logged as a refused
+/// credential on every call. A claimed path is skipped instead: the request
+/// proceeds with no principal, and the endpoint checks the header itself.
+///
+/// Claim a prefix only for endpoints that do check it — a claimed path is
+/// unauthenticated as far as the framework knows.
+abstract final class TomEndpointCredentials {
+  static final Set<String> _prefixes = {};
+
+  /// Claims every path that starts with [pathPrefix].
+  static void claim(String pathPrefix) => _prefixes.add(pathPrefix);
+
+  /// Withdraws the claim on [pathPrefix].
+  static void release(String pathPrefix) => _prefixes.remove(pathPrefix);
+
+  /// Whether [request]'s path is claimed.
+  static bool claims(Request request) {
+    if (_prefixes.isEmpty) return false;
+    final path = request.requestedUri.path;
+    return _prefixes.any(path.startsWith);
+  }
 }
 
 /// [value] shortened to a length an access log can carry.
@@ -165,6 +198,9 @@ String _forTheLog(String value) =>
 ) {
   final String? header = req.headers["authorization"];
   if (header == null) return (null, null, TomCredentialOutcome.noCredentials);
+  if (TomEndpointCredentials.claims(req)) {
+    return (null, null, TomCredentialOutcome.endpointCredential);
+  }
 
   // RFC 7235 §2.1: the scheme is a token, separated from the credentials by a
   // space, and matched **case-insensitively**. Reading it case-sensitively

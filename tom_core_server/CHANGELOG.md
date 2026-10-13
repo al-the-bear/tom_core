@@ -2,6 +2,48 @@
 
 ### Added
 
+- **User provisioning over SCIM 2.0** (RFC 7643 / RFC 7644), for Microsoft
+  Entra ID, Okta and any other SCIM client. `TomScimService`
+  (`authentication/scim_service.dart`) creates, reads, queries, replaces,
+  patches and deletes users and groups over a `TomScimStore` —
+  `TomMemoryScimStore`, or `TomSqlScimStore` (`authentication/sql_scim_store.dart`)
+  over the new framework table `tom_scim_resource` (`scimResourceTable`,
+  `scimResourceTableDdl`, `defaultScimResourceTable` in
+  `authentication/scim_sql.dart`; reference migration
+  `example/authentication/migrations/main/tomcore/[5]-create_tom_scim_resource.sql`).
+  Filtering (`eq` `ne` `co` `sw` `ew` `gt` `ge` `lt` `le` `pr`, `and` / `or` /
+  `not`, value filters), paging, `attributes` / `excludedAttributes`, and PATCH
+  in the forms Entra ID and Okta send (`TomScimFilter`, `TomScimPath`,
+  `scimValues` / `scimLookup` / `scimKeyOf` in `authentication/scim_filter.dart`).
+  Bulk, sorting, ETags, `/Me`, `.search` and password changes are not supported
+  and `ServiceProviderConfig` says so. `TomScimResource`, `TomScimResourceType`,
+  `TomScimSchemas` and `TomScimException` (`scim.not_found`, `scim.uniqueness`,
+  `scim.invalid_filter`, `scim.invalid_path`, `scim.invalid_value`,
+  `scim.invalid_syntax`, `scim.no_target`, `scim.mutability`,
+  `scim.unauthorized`, `scim.not_enabled`; `clientThrow: true`) in
+  `authentication/scim_resource.dart`.
+- **The SCIM endpoints** (`TomScimApi` / `TomScimServer`,
+  `authentication/scim_endpoints.dart`): seventeen routes under `/scim/v2` —
+  `ServiceProviderConfig`, `ResourceTypes`, `Schemas`, and `Users` / `Groups`
+  with GET, POST, PUT, PATCH and DELETE — in `application/scim+json`, enabled by
+  installing a `TomScimProvisioning` at start-up, read from `scim.bearerTokens`
+  and `scim.baseUrl` by `fromConfiguration`. The identity provider's bearer
+  secrets are held as SHA-256 digests and compared in constant time.
+- **Deprovisioning revokes access.** Deactivating, deleting or renaming a user,
+  and changing, renaming or deleting a group, calls `TomScimService.revoke` —
+  `TomCacheInvalidator.revokePrincipal` by default — for every affected user,
+  so the sessions they hold are refused on every node.
+- **`TomScimIdentityDirectory`** (`authentication/scim_directory.dart`): single
+  sign-on resolves to the provisioned account under `provisioning:
+  linkExisting`, with roles mapped from the account's groups, and refuses a
+  deactivated account with `login.error.scim.inactive`.
+- **`TomEndpointCredentials`** (`server/server.dart`): paths whose
+  `Authorization` header belongs to the endpoint. `extractAuthentication`
+  leaves such a header unread and reports the new
+  `TomCredentialOutcome.endpointCredential`. `TomScimProvisioning.install`
+  claims `/scim/v2/`.
+- `example/authentication/scim_provisioning_example.dart` runs provisioning,
+  single sign-on and deprovisioning end to end through the server's router.
 - **Asymmetric token signing, key rotation and a JSON Web Key Set.** Tokens are
   signed RS256 by default, ES256 or HS256 by `jwtAlgorithm`, with the private
   key read from the PEM file at `jwtSigningKeyFile` (PKCS#8; EC keys on the
@@ -77,6 +119,8 @@
 
 ### Changed
 
+- `frameworkOwnedTables` lists `scimResourceTable` and takes a `scimResource`
+  parameter, so the framework schema check covers `tom_scim_resource`.
 - **`verifyBearerToken` checks whose token it is**: the algorithm is the
   configured one and never the token's `alg` header (no algorithm confusion),
   the `kid` must name a held key, and `iss` and `aud` must match the
@@ -115,6 +159,13 @@
 
 ### Tests
 
+- **`test/scim_test.dart`** covers the filter and path language, a conformance
+  subset over HTTP in the request shapes Entra ID and Okta send — discovery, the
+  bearer secret, users, groups, every PATCH form — and that each
+  deprovisioning change refuses the session it should;
+  **`test/scim_store_db_test.dart`** (tag `db`) runs the relational store and
+  the service over it. `framework_schema_test.dart` converges and audits
+  `tom_scim_resource`; `reference_migrations_test.dart` records its migration.
 - **`test/jwt_keys_test.dart`** covers key ids, RS256 and ES256 key files,
   rotation, what a verifier refuses, a verify-only server and the published set
   — verified by `package:jose` (a dev dependency), which shares no code with

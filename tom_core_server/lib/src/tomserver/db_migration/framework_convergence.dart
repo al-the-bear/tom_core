@@ -40,6 +40,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../audit/sql_audit_sql.dart';
 import '../authentication/oauth_state_sql.dart';
+import '../authentication/scim_sql.dart';
 import '../cache/invalidation_sql.dart';
 import '../datasources/datasource_initialization.dart';
 import '../datasources/framework_table.dart';
@@ -77,6 +78,7 @@ List<TomFrameworkTable> frameworkOwnedTables({
   String oauthState = defaultOAuthStateTable,
   String deliveryReport = defaultDeliveryReportTable,
   String invalidation = defaultInvalidationTable,
+  String scimResource = defaultScimResourceTable,
 }) => [
   jobRunTable(jobRun),
   leaseTable(lease),
@@ -87,6 +89,7 @@ List<TomFrameworkTable> frameworkOwnedTables({
   oauthStateTable(oauthState),
   deliveryReportTable(deliveryReport),
   invalidationTable(invalidation),
+  scimResourceTable(scimResource),
 ];
 
 /// Compares framework-owned table descriptors against everything else that

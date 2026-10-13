@@ -31,24 +31,24 @@ import 'request_id.dart';
 /// report [clientThrow] through `tomErrorEnvelope`, and arrives naming neither
 /// its isolate nor its request.
 ///
-/// **This class is also raised directly, and only for one thing.** Six
+/// **This class is also raised directly, and only for one thing.** Seven
 /// `.named(...)` constructors — the audit sink, the OAuth state store, the
-/// delivery-report index, the job store, the lease lock and the scheduler roll
+/// SCIM store, the delivery-report index, the job store, the lease lock and the scheduler roll
 /// call — resolve a data source out of `TomDataSourceInfo` and refuse when the
 /// registry has no such name. Each throws this class with a key ending
 /// `.unknown_datasource` and the offending name in `parameters['datasource']`.
 ///
 /// They are the exception to "name a subtype", and the reason they are is that
-/// there is nothing for a subtype to add. All six happen at construction,
+/// there is nothing for a subtype to add. All seven happen at construction,
 /// before a connection is opened and before any request is served, so a
 /// deployment meets them as a failed start-up rather than as something a
 /// `catch` clause discriminates: the operator's next act is to fix one name in
 /// one configuration file, which the key and the parameter already say. A type
 /// declared so a `catch` clause could name it, in a place no `catch` clause
-/// runs, would be five declarations differing only in spelling.
+/// runs, would be six declarations differing only in spelling.
 ///
 /// The set is closed rather than open-ended. `server_exception_family_test`
-/// pins these six sites by file and key, so a seventh direct raise has to be
+/// pins these seven sites by file and key, so an eighth direct raise has to be
 /// argued for rather than merely written — which is what keeps the rule from
 /// eroding into "the base class is fine anywhere". Anywhere else, name a
 /// subtype.

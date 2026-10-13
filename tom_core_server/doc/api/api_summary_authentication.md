@@ -6,7 +6,7 @@ two-pass second-factor flow, the JWT-issuing `TomAuthenticationServer`, the
 token signing and verification keys with the JSON Web Key Set that publishes
 them, the server's own self-login against an auth server, and single sign-on
 against external identity providers over OAuth 2.0 / OpenID Connect and SAML
-2.0.
+2.0, and user provisioning over SCIM 2.0.
 
 ## Table of Contents
 
@@ -122,6 +122,26 @@ against external identity providers over OAuth 2.0 / OpenID Connect and SAML
   - [TomJwtSigning](#tomjwtsigning)
   - [TomJwksService](#tomjwksservice)
   - [TomJwksServer](#tomjwksserver)
+  - [TomScimSchemas](#tomscimschemas)
+  - [TomScimResourceType](#tomscimresourcetype)
+  - [TomScimException](#tomscimexception)
+  - [TomScimResource](#tomscimresource)
+  - [TomScimStore](#tomscimstore)
+  - [TomMemoryScimStore](#tommemoryscimstore)
+  - [TomSqlScimStore](#tomsqlscimstore)
+  - [TomScimResourceRow](#tomscimresourcerow)
+  - [TomScimPath](#tomscimpath)
+  - [TomScimFilter](#tomscimfilter)
+  - [TomScimAnd](#tomscimand)
+  - [TomScimOr](#tomscimor)
+  - [TomScimNot](#tomscimnot)
+  - [TomScimValuePath](#tomscimvaluepath)
+  - [TomScimComparison](#tomscimcomparison)
+  - [TomScimService](#tomscimservice)
+  - [TomScimProvisioning](#tomscimprovisioning)
+  - [TomScimApi](#tomscimapi)
+  - [TomScimServer](#tomscimserver)
+  - [TomScimIdentityDirectory](#tomscimidentitydirectory)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -151,7 +171,14 @@ Sources: `lib/src/tomserver/authentication/authentication_server.dart`,
 `lib/src/tomserver/authentication/saml_endpoints.dart`,
 `lib/src/tomserver/authentication/jwt_signing.dart`,
 `lib/src/tomserver/authentication/jwt_keys.dart`,
-`lib/src/tomserver/authentication/jwks_endpoint.dart`.
+`lib/src/tomserver/authentication/jwks_endpoint.dart`,
+`lib/src/tomserver/authentication/scim_resource.dart`,
+`lib/src/tomserver/authentication/scim_filter.dart`,
+`lib/src/tomserver/authentication/scim_service.dart`,
+`lib/src/tomserver/authentication/scim_sql.dart`,
+`lib/src/tomserver/authentication/sql_scim_store.dart`,
+`lib/src/tomserver/authentication/scim_endpoints.dart`,
+`lib/src/tomserver/authentication/scim_directory.dart`.
 
 The module orchestrates the server-side login flow. `TomAuthenticationServer`
 receives a `TomAuthenticationMessage`, builds a `TomAuthenticationData` from it,
@@ -260,6 +287,18 @@ verified by `TomSamlResponseValidator` over `TomXmlSignatureVerifier` and
 `TomExclusiveCanonicalizer`; `TomSamlService` is its assertion consumer service
 and metadata endpoint. Failures are `TomOAuthException` and `TomSamlException`.
 
+User provisioning is SCIM 2.0 (RFC 7643 and RFC 7644). `TomScimService` creates,
+reads, queries, replaces, patches and deletes users and groups over a
+`TomScimStore` — `TomMemoryScimStore`, or `TomSqlScimStore` over the
+`tom_scim_resource` table `scimResourceTable` declares — and calls its `revoke`
+hook (`TomCacheInvalidator.revokePrincipal` by default) for every user a
+deprovisioning change takes access from. `TomScimFilter` and `TomScimPath` are
+the filter and PATCH-path language. `TomScimApi` declares the seventeen
+endpoints under `/scim/v2` and `TomScimServer` answers them, once a
+`TomScimProvisioning` read from `scim.bearerTokens` is installed;
+`TomScimIdentityDirectory` resolves a single sign-on login to the provisioned
+account, with roles from its groups. Failures are `TomScimException`.
+
 ## Class Hierarchy
 
 ```text
@@ -269,6 +308,7 @@ TomServerException  (little_things)
     ├── TomServerSelfLoginException
     ├── TomOAuthException
     ├── TomSamlException
+    ├── TomScimException
     ├── TomSigningKeyException
     └── TomJwtKeyException
 
@@ -302,6 +342,21 @@ TomOAuthTokenStore  (abstract, no default — unregistered means nothing is kept
     └── TomPersistentOAuthTokenStore  (implements, encrypted at rest)
 
 TomExternalIdentityDirectory  (abstract, deployment-supplied)
+    └── TomScimIdentityDirectory  (extends, over the SCIM-provisioned users)
+
+TomScimApi  (@tomService, abstract)
+    └── TomScimServer  (@tomComponent, implements)
+
+TomScimStore  (abstract interface)
+    ├── TomMemoryScimStore  (implements, per-process)
+    └── TomSqlScimStore     (implements, over tom_scim_resource, shared)
+
+TomScimFilter  (sealed)
+    ├── TomScimAnd         (extends)
+    ├── TomScimOr          (extends)
+    ├── TomScimNot         (extends)
+    ├── TomScimValuePath   (extends)
+    └── TomScimComparison  (extends)
 
 TomSqlDatasourceRepository<TomExternalIdentityLink, int>
     └── TomExternalIdentityLinkRepository  (extends)
@@ -399,6 +454,13 @@ TomJwtAlgorithm            (enum)
 TomJwtKey                  (standalone, immutable)
 TomJwtSigningKey           (standalone, immutable)
 TomJwtSigning              (standalone, statics hold the installed one)
+TomScimSchemas             (abstract final, constants)
+TomScimResourceType        (enum)
+TomScimResource            (standalone, immutable)
+TomScimResourceRow         (@tomReflector, @TomDbTable row type)
+TomScimPath                (standalone, immutable)
+TomScimService             (standalone)
+TomScimProvisioning        (standalone, statics hold the installed one)
 ```
 
 ## Classes
@@ -3492,6 +3554,663 @@ endpoints pipeline like every component endpoint. Answers from
 | ------ | --------- | ----------- |
 | `jwks` | `Future<Response> jwks()` | *(override)* `responseFor(TomJwtSigning.current)`. |
 
+### TomScimSchemas
+
+The SCIM schema and message identifiers the service uses. `abstract final`,
+constants only. In `authentication/scim_resource.dart`.
+
+#### Static Properties
+
+| Property | Value | Description |
+| -------- | ----- | ----------- |
+| `user` | `urn:ietf:params:scim:schemas:core:2.0:User` | The core User schema. |
+| `group` | `urn:ietf:params:scim:schemas:core:2.0:Group` | The core Group schema. |
+| `enterpriseUser` | `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User` | The enterprise User extension. |
+| `listResponse` | `urn:ietf:params:scim:api:messages:2.0:ListResponse` | A list response. |
+| `patchOp` | `urn:ietf:params:scim:api:messages:2.0:PatchOp` | A PATCH request. |
+| `error` | `urn:ietf:params:scim:api:messages:2.0:Error` | An error response. |
+| `serviceProviderConfig` | `urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig` | The service provider configuration. |
+| `resourceType` | `urn:ietf:params:scim:schemas:core:2.0:ResourceType` | A resource type description. |
+| `schema` | `urn:ietf:params:scim:schemas:core:2.0:Schema` | A schema description. |
+
+### TomScimResourceType
+
+The two resource types the service provisions.
+
+| Value | Meaning |
+| ----- | ------- |
+| `user` | A user account — `User`, at `/Users`, named by `userName`. |
+| `group` | A group of users — `Group`, at `/Groups`, named by `displayName`. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `resourceName` | `String` | The resource type's name — `meta.resourceType`. |
+| `endpoint` | `String` | The path segment under the SCIM base — `Users` or `Groups`. |
+| `schema` | `String` | The core schema URN. |
+| `nameAttribute` | `String` | The attribute that names a resource uniquely within its type, compared case-insensitively: `userName` for a user, `displayName` for a group. |
+
+### TomScimException
+
+A SCIM request that cannot be served, carrying the HTTP status and the SCIM
+error type (RFC 7644, section 3.12) it is answered with. `clientThrow` is
+`true`: the message describes the caller's own request, and the identity
+provider shows it to the administrator who configured it.
+
+- **Extends:** `TomServerException`
+
+#### Constructors
+
+```dart
+TomScimException(
+  String key,
+  String defaultUserMessage, {
+  required int status,
+  String? scimType,
+  Map<String, Object?>? parameters,
+})
+```
+
+| Key | Status | `scimType` |
+| --- | ------ | ---------- |
+| `scim.not_found` | 404 | — |
+| `scim.uniqueness` | 409 | `uniqueness` |
+| `scim.invalid_filter` | 400 | `invalidFilter` |
+| `scim.invalid_path` | 400 | `invalidPath` |
+| `scim.invalid_value` | 400 | `invalidValue` |
+| `scim.invalid_syntax` | 400 | `invalidSyntax` |
+| `scim.no_target` | 400 | `noTarget` |
+| `scim.mutability` | 400 | `mutability` |
+| `scim.unauthorized` | 401 | — |
+| `scim.not_enabled` | 404 | — |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `status` | `int` | The HTTP status the request is answered with. |
+| `scimType` | `String?` | The SCIM error type, or `null` for none. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | The SCIM error body: `schemas` (`TomScimSchemas.error`), `status` as a string, `scimType` when set, and `detail` — the client message. |
+
+### TomScimResource
+
+One stored resource: its id, the document, and its lifecycle instants. The
+document is the JSON the identity provider sent minus the attributes the
+service owns — `id`, `meta`, and a user's `groups`, which are derived from the
+groups — so every attribute an identity provider maps survives a round trip.
+
+#### Constructors
+
+```dart
+const TomScimResource({
+  required String id,
+  required TomScimResourceType type,
+  required Map<String, Object?> document,
+  required DateTime created,
+  required DateTime lastModified,
+  required int version,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `id` | `String` | The service provider's id for the resource — stable, never reused. |
+| `type` | `TomScimResourceType` | Whether this is a user or a group. |
+| `document` | `Map<String, Object?>` | The attributes the client manages, as JSON; never `id`, `meta`, or a user's `groups`. |
+| `created` | `DateTime` | When the resource was created. |
+| `lastModified` | `DateTime` | When it last changed. |
+| `version` | `int` | Increments with every change; published as `meta.version`. |
+| `name` | `String` | *(getter)* The resource's name attribute — `userName` or `displayName`. |
+| `nameKey` | `String` | *(getter)* `name` as uniqueness compares it — lower-cased. |
+| `externalId` | `String?` | *(getter)* The `externalId` the identity provider assigned, or `null`. |
+| `active` | `bool` | *(getter)* Whether a user is active. A user with no `active` attribute is active; a group always is. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `attribute` | `Object? attribute(String name)` | The top-level attribute `name`, looked up case-insensitively, as SCIM attribute names are. |
+| `toString` | `String toString()` | *(override)* `TomScimResource(<type> <id> <name>)`. |
+
+### TomScimStore
+
+Where provisioned resources are kept. Uniqueness of the name attribute is the
+service's to check, through `findByName`, before it writes; a store may enforce
+it as well.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `create` | `Future<TomScimResource> create(TomScimResourceType type, Map<String, Object?> document)` | Stores `document` as a new resource of `type` and answers it with its assigned id. |
+| `read` | `Future<TomScimResource?> read(TomScimResourceType type, String id)` | The resource `id` of `type`, or `null`. |
+| `findByName` | `Future<TomScimResource?> findByName(TomScimResourceType type, String name)` | The resource of `type` whose name attribute equals `name` case-insensitively, or `null`. |
+| `list` | `Future<List<TomScimResource>> list(TomScimResourceType type)` | Every resource of `type`, in id order. |
+| `replace` | `Future<TomScimResource?> replace(TomScimResourceType type, String id, Map<String, Object?> document)` | Replaces the document of resource `id` and answers the result, or `null` when there is no such resource. |
+| `delete` | `Future<bool> delete(TomScimResourceType type, String id)` | Deletes resource `id`; answers whether it existed. |
+
+### TomMemoryScimStore
+
+A `TomScimStore` in one process's memory — for a single node, a test, or a
+deployment that mirrors the resources into its own user table through the
+service's `revoke` hook. Ids are a counter starting at `1`; everything is lost
+on restart.
+
+- **Implements:** `TomScimStore`
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `create` | `Future<TomScimResource> create(TomScimResourceType type, Map<String, Object?> document)` | *(override)* |
+| `read` | `Future<TomScimResource?> read(TomScimResourceType type, String id)` | *(override)* |
+| `findByName` | `Future<TomScimResource?> findByName(TomScimResourceType type, String name)` | *(override)* |
+| `list` | `Future<List<TomScimResource>> list(TomScimResourceType type)` | *(override)* |
+| `replace` | `Future<TomScimResource?> replace(TomScimResourceType type, String id, Map<String, Object?> document)` | *(override)* |
+| `delete` | `Future<bool> delete(TomScimResourceType type, String id)` | *(override)* |
+
+### TomSqlScimStore
+
+A `TomScimStore` whose resources are rows in a `TomDataSource` — the store for
+a deployment with more than one node, or with provisioned users that must
+outlive a restart. Every resource is one row of the table `scimResourceTable`
+declares. The unique `(resource_type, name_key)` key arbitrates the one race
+the store has: two identity-provider requests creating the same user at once
+both pass the service's uniqueness check, and only one of them writes.
+
+- **Implements:** `TomScimStore`
+
+#### Constructors
+
+```dart
+TomSqlScimStore(
+  TomDataSource datasource, {
+  String table = defaultScimResourceTable,
+  bool createSchema = true,
+})
+
+factory TomSqlScimStore.named(
+  String datasourceName, {
+  String table = defaultScimResourceTable,
+  bool createSchema = true,
+})
+```
+
+`named` resolves a registered data source, and throws a `TomServerException`
+keyed `scim.store.unknown_datasource` when none is registered under that name.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `datasource` | `TomDataSource` | The data source the table lives in. |
+| `table` | `String` | The SCIM resource table. |
+| `createSchema` | `bool` | Whether to create the table on first use; `false` when the schema is owned by the migration module. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `ensureSchema` | `Future<void> ensureSchema()` | Creates the table if it does not exist. Idempotent; called by every operation. |
+| `create` | `Future<TomScimResource> create(TomScimResourceType type, Map<String, Object?> document)` | *(override)* One `INSERT … RETURNING`. |
+| `read` | `Future<TomScimResource?> read(TomScimResourceType type, String id)` | *(override)* `null` for an id that is not a number. |
+| `findByName` | `Future<TomScimResource?> findByName(TomScimResourceType type, String name)` | *(override)* By the lower-cased `name_key`. |
+| `list` | `Future<List<TomScimResource>> list(TomScimResourceType type)` | *(override)* |
+| `replace` | `Future<TomScimResource?> replace(TomScimResourceType type, String id, Map<String, Object?> document)` | *(override)* Increments `version`. |
+| `delete` | `Future<bool> delete(TomScimResourceType type, String id)` | *(override)* |
+| `deleteAll` | `Future<void> deleteAll()` | Empties the table — for provisioning and tests. |
+
+### TomScimResourceRow
+
+One `tom_scim_resource` row, as `TomSqlScimStore` reads it back — reflected,
+`@TomDbTable`-mapped, and internal to the store. The instants are `String`
+fields because the driver reads a `DATETIME` as a local `DateTime`;
+`parseSqlInstant` turns the text back into UTC exactly.
+
+#### Properties
+
+| Property | Type | Column | Description |
+| -------- | ---- | ------ | ----------- |
+| `id` | `int` | `id` | The resource's SCIM id. |
+| `resourceType` | `String` | `resource_type` | `User` or `Group`. |
+| `nameKey` | `String` | `name_key` | The lower-cased name attribute. |
+| `externalId` | `String?` | `external_id` | The identity provider's `externalId`, or `null`. |
+| `document` | `String` | `document` | The resource's JSON document. |
+| `createdAt` | `String` | `created_at` | When the resource was created, as the stored text. |
+| `lastModified` | `String` | `last_modified` | When it last changed, as the stored text. |
+| `version` | `int` | `version` | The change counter. |
+
+### TomScimPath
+
+An attribute path: an optional schema URN, an attribute, an optional value
+filter and an optional sub-attribute — the PATCH `path` grammar, as in
+`emails[type eq "work"].value`. In `authentication/scim_filter.dart`.
+
+#### Constructors
+
+```dart
+const TomScimPath(
+  String attribute, {
+  String? schema,
+  TomScimFilter? filter,
+  String? subAttribute,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `schema` | `String?` | The schema URN the path was qualified with, or `null`. |
+| `attribute` | `String` | The attribute, as written. |
+| `filter` | `TomScimFilter?` | The value filter in brackets, or `null`. |
+| `subAttribute` | `String?` | The sub-attribute after the attribute (or after the filter), or `null`. |
+| `inExtension` | `bool` | *(getter)* Whether this path names an attribute inside an extension schema. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `parse` | `static TomScimPath parse(String text, TomScimResourceType type)` | Parses `text` for a resource of `type`. Throws `scim.invalid_path`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* The path as written. |
+
+### TomScimFilter
+
+A filter expression (RFC 7644, section 3.4.2.2), evaluated against a resource's
+JSON representation. Sealed: an expression is a `TomScimAnd`, `TomScimOr`,
+`TomScimNot`, `TomScimValuePath` or `TomScimComparison`.
+
+| Part | Supported |
+| ---- | --------- |
+| Operators | `eq` `ne` `co` `sw` `ew` `gt` `ge` `lt` `le` `pr` |
+| Logic | `and`, `or`, `not ( … )`, parentheses — `and` binds tighter |
+| Paths | `attr`, `attr.sub`, a schema-URN prefix, `attr[filter]` |
+| Values | strings, numbers, `true`, `false`, `null` |
+
+Attribute names are case-insensitive. String comparison is too, except for the
+attributes SCIM defines as case-exact — `id`, `externalId` and the `value` of a
+member or group reference.
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `parse` | `static TomScimFilter parse(String text, TomScimResourceType type)` | Parses `text` for a resource of `type`. Throws `scim.invalid_filter`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `matches` | `bool matches(Map<String, Object?> json)` | Whether `json` — a resource, or one element of a multi-valued attribute inside a value filter — matches. |
+
+### TomScimAnd
+
+`a and b`.
+
+- **Extends:** `TomScimFilter`
+
+#### Constructors
+
+```dart
+const TomScimAnd(this.left, this.right)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `left` | `TomScimFilter` | The first operand. |
+| `right` | `TomScimFilter` | The second operand. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `matches` | `bool matches(Map<String, Object?> json)` | *(override)* Both operands match. |
+
+### TomScimOr
+
+`a or b`.
+
+- **Extends:** `TomScimFilter`
+
+#### Constructors
+
+```dart
+const TomScimOr(this.left, this.right)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `left` | `TomScimFilter` | The first operand. |
+| `right` | `TomScimFilter` | The second operand. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `matches` | `bool matches(Map<String, Object?> json)` | *(override)* Either operand matches. |
+
+### TomScimNot
+
+`not (a)`.
+
+- **Extends:** `TomScimFilter`
+
+#### Constructors
+
+```dart
+const TomScimNot(TomScimFilter operand)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `operand` | `TomScimFilter` | The negated expression. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `matches` | `bool matches(Map<String, Object?> json)` | *(override)* The operand does not match. |
+
+### TomScimValuePath
+
+`attr[filter]` — some element of the multi-valued `attr` matches.
+
+- **Extends:** `TomScimFilter`
+
+#### Constructors
+
+```dart
+const TomScimValuePath(String attribute, TomScimFilter filter)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `attribute` | `String` | The multi-valued attribute. |
+| `filter` | `TomScimFilter` | What an element must match. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `matches` | `bool matches(Map<String, Object?> json)` | *(override)* Some element of `attribute` matches `filter`. |
+
+### TomScimComparison
+
+`attr op value`, or `attr pr`.
+
+- **Extends:** `TomScimFilter`
+
+#### Constructors
+
+```dart
+const TomScimComparison(
+  String attribute,
+  String operator,
+  Object? value, {
+  bool caseExact = false,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `attribute` | `String` | The attribute, dotted when it names a sub-attribute. |
+| `operator` | `String` | The operator, lower case. |
+| `value` | `Object?` | The literal compared with; `null` for `pr`, or the literal `null`. |
+| `caseExact` | `bool` | Whether strings compare case-sensitively. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `matches` | `bool matches(Map<String, Object?> json)` | *(override)* Some value at `attribute` compares true; `ne` is true when none equals, `pr` when some value is present and not empty. |
+
+### TomScimService
+
+The SCIM 2.0 service provider (RFC 7643 and RFC 7644) over a `TomScimStore`,
+independent of HTTP: users and groups created, read, queried, replaced, patched
+and deleted by an identity provider, and the access consequences of each
+change. In `authentication/scim_service.dart`.
+
+A change that takes access away calls `revoke` for each affected username:
+
+| Change | Revoked |
+| ------ | ------- |
+| a user is deactivated (`active` becomes `false`) | that user |
+| a user is deleted | that user |
+| a user's `userName` changes | the old name |
+| a group's membership changes | every member added or removed |
+| a group is renamed or deleted | every member |
+
+Not supported, and said so in `serviceProviderConfig`: bulk operations,
+sorting, ETags, `/Me`, `.search`, and changing passwords.
+
+#### Constructors
+
+```dart
+TomScimService(TomScimStore store, {Future<void> Function(String username)? revoke})
+```
+
+`revoke` defaults to `TomCacheInvalidator.revokePrincipal`.
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `defaultCount` | `int` | `100` — the page size when a query names none. |
+| `maxCount` | `int` | `200` — the largest page served; published as `filter.maxResults`. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `store` | `TomScimStore` | Where the resources are kept. |
+| `revoke` | `Future<void> Function(String username)` | What a deprovisioning change calls for each affected username. |
+
+#### Methods
+
+Every resource method takes `base`, the SCIM base address resources are
+published under (`meta.location`, `$ref`).
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `create` | `Future<Map<String, Object?>> create(TomScimResourceType type, Object? body, String base)` | Creates a resource of `type` from the request `body`; answers its representation. `scim.uniqueness` for a name in use, `scim.invalid_value` / `scim.invalid_syntax` for a body that is not a resource. |
+| `get` | `Future<Map<String, Object?>> get(TomScimResourceType type, String id, String base, {String? attributes, String? excludedAttributes})` | The resource `id` of `type`; throws `scim.not_found`. |
+| `list` | `Future<Map<String, Object?>> list(TomScimResourceType type, String base, {String? filter, int? startIndex, int? count, String? attributes, String? excludedAttributes})` | A page of the resources of `type` matching `filter`, as a list response. `userName eq "…"` (or `displayName eq "…"`) is one lookup in the store. |
+| `replace` | `Future<Map<String, Object?>> replace(TomScimResourceType type, String id, Object? body, String base)` | Replaces the resource `id` of `type` with the request `body` (PUT). |
+| `patch` | `Future<Map<String, Object?>> patch(TomScimResourceType type, String id, Object? body, String base)` | Applies the PATCH request `body` — operation names in any case, paths with value filters and sub-attributes, extension attributes, and the member forms Entra ID and Okta send. Applied to a copy and validated whole. |
+| `delete` | `Future<void> delete(TomScimResourceType type, String id)` | Deletes the resource `id` of `type`, and a deleted user from every group; throws `scim.not_found`. |
+| `serviceProviderConfig` | `Map<String, Object?> serviceProviderConfig(String base)` | The service provider configuration (RFC 7643, section 5). |
+| `resourceTypes` | `List<Map<String, Object?>> resourceTypes(String base)` | The resource type descriptions (RFC 7643, section 6). |
+| `resourceType` | `Map<String, Object?> resourceType(TomScimResourceType type, String base)` | The description of `type`; `User` names the enterprise extension. |
+| `schemas` | `List<Map<String, Object?>> schemas(String base)` | The schema descriptions (RFC 7643, section 7). |
+
+### TomScimProvisioning
+
+The installed SCIM service and the secrets that may call it. Nothing is served
+until a deployment installs one; installing claims `pathPrefix` in
+`TomEndpointCredentials`, so the framework's bearer middleware leaves the
+identity provider's header to the SCIM endpoints. In
+`authentication/scim_endpoints.dart`.
+
+#### Constructors
+
+```dart
+TomScimProvisioning({
+  required TomScimService service,
+  required List<String> bearerTokens,
+  String? baseUrl,
+})
+
+factory TomScimProvisioning.fromConfiguration(
+  TomScimService service, [
+  TomServerConfigResourceProvider? config,
+])
+```
+
+The constructor holds `bearerTokens` as SHA-256 digests and throws
+`scim.not_enabled` when none is non-empty. `fromConfiguration` reads
+`scim.bearerTokens` (a list, or one string) and `scim.baseUrl` from `config`,
+or from the server configuration when none is given.
+
+#### Static Members
+
+| Member | Signature | Description |
+| ------ | --------- | ----------- |
+| `configurationKey` | `static const String configurationKey = 'scim'` | The configuration path of the SCIM settings. |
+| `pathPrefix` | `static const String pathPrefix = '/scim/v2/'` | The path every SCIM endpoint lives under. |
+| `current` | `static TomScimProvisioning? get current` | The installed configuration, or `null` when SCIM is not enabled. |
+| `install` | `static void install(TomScimProvisioning provisioning)` | Enables SCIM with `provisioning` and claims `pathPrefix`. |
+| `reset` | `static void reset()` | Disables SCIM and releases the claim. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `service` | `TomScimService` | The SCIM service. |
+| `baseUrl` | `String?` | The published base address, or `null` for the address the request arrived at. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `requireAuthorized` | `void requireAuthorized(String? header)` | Throws `scim.unauthorized` (401) unless `authorizes(header)`; what `TomScimServer` calls on every request. |
+| `authorizes` | `bool authorizes(String? header)` | Whether the `Authorization` header `header` is `Bearer <secret>` with a configured secret, compared against every digest in constant time. |
+
+### TomScimApi
+
+The SCIM 2.0 endpoints (RFC 7644). `@tomReflector @tomService`; every endpoint
+is `@TomPublicAccess` — the identity provider holds no token of this
+deployment — and authenticated by `TomScimServer` against the installed
+`TomScimProvisioning`.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `serviceProviderConfig` | `Future<Response> serviceProviderConfig(Request request)` | `GET /scim/v2/ServiceProviderConfig`. |
+| `resourceTypes` | `Future<Response> resourceTypes(Request request)` | `GET /scim/v2/ResourceTypes`. |
+| `resourceType` | `Future<Response> resourceType(Request request, String name)` | `GET /scim/v2/ResourceTypes/<name>`. |
+| `schemas` | `Future<Response> schemas(Request request)` | `GET /scim/v2/Schemas`. |
+| `schema` | `Future<Response> schema(Request request, String schemaId)` | `GET /scim/v2/Schemas/<schemaId>`. |
+| `listUsers` | `Future<Response> listUsers(Request request)` | `GET /scim/v2/Users` — query. |
+| `createUser` | `Future<Response> createUser(Request request)` | `POST /scim/v2/Users` — create. |
+| `getUser` | `Future<Response> getUser(Request request, String id)` | `GET /scim/v2/Users/<id>`. |
+| `replaceUser` | `Future<Response> replaceUser(Request request, String id)` | `PUT /scim/v2/Users/<id>` — replace. |
+| `patchUser` | `Future<Response> patchUser(Request request, String id)` | `PATCH /scim/v2/Users/<id>`. |
+| `deleteUser` | `Future<Response> deleteUser(Request request, String id)` | `DELETE /scim/v2/Users/<id>`. |
+| `listGroups` | `Future<Response> listGroups(Request request)` | `GET /scim/v2/Groups` — query. |
+| `createGroup` | `Future<Response> createGroup(Request request)` | `POST /scim/v2/Groups` — create. |
+| `getGroup` | `Future<Response> getGroup(Request request, String id)` | `GET /scim/v2/Groups/<id>`. |
+| `replaceGroup` | `Future<Response> replaceGroup(Request request, String id)` | `PUT /scim/v2/Groups/<id>` — replace. |
+| `patchGroup` | `Future<Response> patchGroup(Request request, String id)` | `PATCH /scim/v2/Groups/<id>`. |
+| `deleteGroup` | `Future<Response> deleteGroup(Request request, String id)` | `DELETE /scim/v2/Groups/<id>`. |
+
+### TomScimServer
+
+The default `TomScimApi` (`@tomReflector @tomComponent`): authenticates the
+caller and answers from the installed `TomScimService`, in
+`application/scim+json`. `404` (`scim.not_enabled`) when no
+`TomScimProvisioning` is installed; `401` (`scim.unauthorized`) with
+`WWW-Authenticate: Bearer realm="scim"` without a configured secret; `201` with
+a `Location` header for a create, `204` for a delete; a `TomScimException` as
+its status and SCIM error body.
+
+- **Implements:** `TomScimApi`
+
+#### Constructors
+
+```dart
+const TomScimServer()
+```
+
+#### Static Members
+
+| Member | Signature | Description |
+| ------ | --------- | ----------- |
+| `mediaType` | `static const String mediaType = 'application/scim+json'` | The SCIM media type. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `serviceProviderConfig` | `Future<Response> serviceProviderConfig(Request request)` | *(override)* |
+| `resourceTypes` | `Future<Response> resourceTypes(Request request)` | *(override)* |
+| `resourceType` | `Future<Response> resourceType(Request request, String name)` | *(override)* |
+| `schemas` | `Future<Response> schemas(Request request)` | *(override)* |
+| `schema` | `Future<Response> schema(Request request, String schemaId)` | *(override)* |
+| `listUsers` | `Future<Response> listUsers(Request request)` | *(override)* |
+| `createUser` | `Future<Response> createUser(Request request)` | *(override)* |
+| `getUser` | `Future<Response> getUser(Request request, String id)` | *(override)* |
+| `replaceUser` | `Future<Response> replaceUser(Request request, String id)` | *(override)* |
+| `patchUser` | `Future<Response> patchUser(Request request, String id)` | *(override)* |
+| `deleteUser` | `Future<Response> deleteUser(Request request, String id)` | *(override)* |
+| `listGroups` | `Future<Response> listGroups(Request request)` | *(override)* |
+| `createGroup` | `Future<Response> createGroup(Request request)` | *(override)* |
+| `getGroup` | `Future<Response> getGroup(Request request, String id)` | *(override)* |
+| `replaceGroup` | `Future<Response> replaceGroup(Request request, String id)` | *(override)* |
+| `patchGroup` | `Future<Response> patchGroup(Request request, String id)` | *(override)* |
+| `deleteGroup` | `Future<Response> deleteGroup(Request request, String id)` | *(override)* |
+
+### TomScimIdentityDirectory
+
+A `TomExternalIdentityDirectory` over the SCIM-provisioned users, so single
+sign-on and provisioning meet in one place. Used with the identity provider
+configured `provisioning: linkExisting` — the login links to the provisioned
+account and never creates one. In `authentication/scim_directory.dart`.
+
+| Account | Answer |
+| ------- | ------ |
+| not provisioned | `null` — the login takes its provider's provisioning branch |
+| provisioned and active | a principal whose roles come from its groups |
+| provisioned and inactive | refused, `login.error.scim.inactive` (`TomLoginFailure.accountProblem`) |
+
+- **Extends:** `TomExternalIdentityDirectory`
+
+#### Constructors
+
+```dart
+TomScimIdentityDirectory(
+  TomScimStore store, {
+  TomExternalRoleMapping roleMapping = TomExternalRoleMapping.none,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `store` | `TomScimStore` | Where the provisioned users and groups are. |
+| `roleMapping` | `TomExternalRoleMapping` | Group display name → Tom roles; its `groupsClaim` is not consulted. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `authenticatedPrincipalFor` | `Future<TomAuthenticationInfo?> authenticatedPrincipalFor(String username, TomAuthenticationData authData)` | *(override)* The provisioned user named `username`, as a principal carrying the user's name, given and family name, primary email, `scimId` and `externalId` attributes, its groups' display names in `aci.groups` and the roles `roleMapping` maps them to — derived on every login. |
+
 ## Global Functions and Constants
 
 | Name | Type | Description |
@@ -3499,6 +4218,12 @@ endpoints pipeline like every component endpoint. Answers from
 | `defaultOAuthStateTable` | `String` | `'tom_oauth_state'` — the pending-authorization table's default name |
 | `oauthStateTable(String table)` | `TomFrameworkTable` | The table's single column declaration; everything else — the DDL, the `SELECT` column lists, the `INSERT` — is derived from it |
 | `oauthStateTableDdl(String table)` | `String` | That declaration rendered as `CREATE TABLE IF NOT EXISTS`, for a start-up sequence that provisions without the store |
+| `defaultScimResourceTable` | `String` | `'tom_scim_resource'` — the SCIM resource table's default name |
+| `scimResourceTable(String table)` | `TomFrameworkTable` | The SCIM resource table's single declaration — `id` (`BIGINT` auto-increment, primary key, the SCIM id), `resource_type`, `name_key` (unique per type), `external_id` (nullable, indexed), `document` (`LONGTEXT`), `created_at`, `last_modified`, `version` — from which the store's DDL and statements and the convergence guard's schema model all derive |
+| `scimResourceTableDdl(String table)` | `String` | That declaration rendered as `CREATE TABLE IF NOT EXISTS`, for a deployment that applies DDL by hand |
+| `scimValues(Map<String, Object?> json, String path)` | `List<Object?>` | The values at `path` — `attr` or `attr.sub`, optionally prefixed with an extension schema URN and a colon — in `json`, flattening multi-valued attributes, with attribute names compared case-insensitively |
+| `scimLookup(Map<String, Object?> json, String name)` | `Object?` | The value of `name` in `json`, matched case-insensitively |
+| `scimKeyOf(Map<String, Object?> json, String name)` | `String?` | The key of `json` that equals `name` case-insensitively, or `null` |
 | `applyExternalRoles(TomPrincipal principal, List<String> roles)` | `void` | Adds `roles` to `principal`'s access-control information for this session, keeping its own roles and adding none twice. Applied before the access-control definition completes the principal's rights, so a mapped role brings everything the definition derives from it. Lives in `authentication/external_provider.dart`. |
 | `installJwtSigning(TomBaseServerConfiguration configuration)` | `TomJwtConfiguration` | Builds this process's token signing from the configuration and installs it — as `TomJwtSigning.current` and as `TomJwtConfiguration.defaultSignConfiguration` — returning the latter. Reads `jwtAlgorithm` (RS256 when unset), the signing key (`jwtSigningKeyFile` for RS256/ES256, `jwtSharedSecretKey` for HS256), the retired keys in `jwtVerificationKeyFiles`, `jwtIssuer` (`tom` when unset), `jwtAudience` (none when unset), and the payload-encryption pair `jwtRsaPrivKey` / `jwtRsaPubKey`. Verification key files without a signing key make a verify-only server. Key material left unset falls back to the bundled sample keys — the RSA pair for RS256, the passphrase for HS256 — with a warning under a development or test environment, and is refused with `TomSigningKeyException` anywhere else, including a boot that never declared an environment. ES256 has no sample key and is refused unconfigured in every environment. A boot calls it once, after the runtime environment is selected and before anything mints or verifies a token. |
 | `readPemFile(String path, TomJwtAlgorithm algorithm)` | `String` | Reads the PEM at `path`; a file that cannot be read raises `jwt.keys.unreadable_key_file` naming it. |
@@ -3514,7 +4239,9 @@ are `authentication/jwt_keys.dart`'s; the endpoint publishing them is
 
 The first three live in `oauth_state_sql.dart` rather than beside the store so
 `db_migration/framework_convergence.dart` can name the table without importing
-the store — the same split the scheduling module uses.
+the store — the same split the scheduling module uses. The SCIM table's three
+are in `scim_sql.dart` for the same reason, and the three `scim*` readers in
+`scim_filter.dart`.
 
 The one top-level type alias, `TomTotpSecretResolver`, is documented above with
 the adaptor that reads it. The OAuth contract's ids (`tomOAuthApiId` and the

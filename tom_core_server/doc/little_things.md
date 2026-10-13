@@ -97,12 +97,12 @@ both are checked.
 and a caller that wants to handle a declined payment differently from a failed
 query needs the type to say which it has. Throwing `TomServerException` itself
 leaves it with the key string and nothing else. The package raises the base
-class directly at exactly six sites, all `.named(...)` constructors refusing an
+class directly at exactly seven sites, all `.named(...)` constructors refusing an
 unregistered data source, and the exemption is narrow on purpose: they fail at
 construction, before any request is served, so no `catch` clause is running to
 discriminate and a subtype would add nothing but a declaration.
-`test/server_exception_family_test.dart` pins those six by file and key, so a
-seventh has to make the same argument rather than inherit it.
+`test/server_exception_family_test.dart` pins those seven by file and key, so an
+eighth has to make the same argument rather than inherit it.
 
 **The key reads `<area>.<operation>.<condition>`**, dotted-lowercase — the shape
 `TomException`'s own dartdoc fixes. The first segment names the module, so keys

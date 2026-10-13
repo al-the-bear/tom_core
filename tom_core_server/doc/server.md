@@ -18,6 +18,7 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
   - [The Deployment Logs Itself In First](#the-deployment-logs-itself-in-first)
 - [The Pipeline](#the-pipeline)
 - [Request Context and Zone Values](#request-context-and-zone-values)
+  - [Endpoint-owned credentials](#endpoint-owned-credentials)
 - [Error Mapping](#error-mapping)
 - [Extending the Pipeline](#extending-the-pipeline)
 - [Verification](#verification)
@@ -34,6 +35,7 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
 | `TomServer` | class | Composes the pipeline and binds the socket |
 | `TomRequestLogInfo` | class | Per-request logging state in the request context |
 | `TomCredentialOutcome` | enum | Why a request carries the credentials it does |
+| `TomEndpointCredentials` | abstract final class | The path prefixes whose `Authorization` header belongs to the endpoint, which `extractAuthentication` leaves unread. Statics only |
 | `contextSetupMiddleware` | function | Seeds entries into the request context — the same objects for every request |
 | `tomRequestLogInfoMiddleware` | function | Seeds a new `TomRequestLogInfo` into every request's context |
 | `tomDefaultAuthenticationMiddleware` | function | Extracts credentials and publishes request zone values |
@@ -173,7 +175,7 @@ this same pipeline. The scheme is matched case-insensitively, as RFC 7235
 requires.
 
 `TomCredentialOutcome` is the third element, and it exists because the first two
-cannot say what happened. `(null, null)` is the answer to four different
+cannot say what happened. `(null, null)` is the answer to five different
 requests:
 
 | Outcome | The request |
@@ -183,6 +185,7 @@ requests:
 | `unreadableToken` | Sent a bearer token `verifyBearerToken` refused — a wrong signature, a key this deployment cannot check against, a body that would not decode, or an empty one. |
 | `noPrincipal` | Sent a token that verified but yielded no principal. The ordinary cause is a token that is not live — expired, without a readable `exp`, or with a `validUntil` that disagrees with its `exp` — which `TomBearerAuthentication.convertTokenPayloadToPrincipal` refuses. The token is handed back with the outcome, so a refresh endpoint is reached with exactly it. |
 | `authenticated` | Sent a token that verified and yielded a principal. |
+| `endpointCredential` | Sent a header to a path claimed in `TomEndpointCredentials`. The header was left for the endpoint, unread — see [Endpoint-owned credentials](#endpoint-owned-credentials). |
 
 An anonymous caller and a client whose signing key this deployment stopped
 recognising are the two worth separating. Rotate a key, miss an issuer, and
@@ -207,6 +210,32 @@ request downstream, and a refresh or re-login endpoint stays reachable with the
 token still in the zone. See
 [authorization.md](authorization.md#an-expired-entry-resolves-to-no-principal)
 for why the token-derived principal is not used as the fallback there.
+
+### Endpoint-owned credentials
+
+Some callers present a credential that is not a token of this deployment. An
+identity provider calling the SCIM endpoints presents the static bearer secret
+it was configured with; read by `extractAuthentication`, that header would be
+verified as a JWT, refused as `unreadableToken`, and logged as a refused
+credential on every call. `TomEndpointCredentials` names the paths whose header
+belongs to the endpoint instead:
+
+| Member | Effect |
+| ------ | ------ |
+| `claim(String pathPrefix)` | Claims every path that starts with `pathPrefix` |
+| `release(String pathPrefix)` | Withdraws the claim |
+| `claims(Request request)` | Whether the request's path is claimed |
+
+For a claimed path that carries an `Authorization` header,
+`extractAuthentication` answers `(null, null, endpointCredential)` without
+reading the header: the request proceeds with no principal, and the endpoint
+checks the header itself. A request with no header is still `noCredentials`.
+`TomScimProvisioning.install` claims `/scim/v2/` and `reset` releases it (see
+[authentication.md](authentication.md#enabling-scim)).
+
+Claim a prefix only for endpoints that do check the header — a claimed path is
+unauthenticated as far as the framework knows, so an endpoint under it that
+relies on the framework's principal sees none.
 
 ## Error Mapping
 
@@ -258,7 +287,8 @@ to guess from and an intermediary free to sniff it as anything it likes.
 
 ## Verification
 
-Three suites cover this module.
+Three suites cover this module, and a fourth covers its endpoint-owned
+credentials.
 
 `test/server_test.dart` covers the pipeline as composed functions:
 `TomRequestLogInfo`, `extractAuthentication` reading a credential off a request
@@ -292,6 +322,12 @@ point — the installed principal capping what a user's grants can reach.
 than of behaviour: every exception class in the package is a
 `TomServerException`, so one `on TomServerException` in the pipeline reaches all
 of them.
+
+`TomEndpointCredentials` is exercised where it is used: `test/scim_test.dart`'s
+test `the framework leaves the claimed header to the endpoint` reads a SCIM
+request as `endpointCredential` and the same header on an unclaimed path as
+`unreadableToken`, and the rest of that suite reaches the SCIM endpoints
+through the pipeline with the identity provider's secret.
 
 ```bash
 dart run example/server/server_example.dart

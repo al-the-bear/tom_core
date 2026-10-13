@@ -150,6 +150,7 @@ void main() {
       // tables drops them.
       converges('example/authentication/migrations/main/tomcore', [
         oauthStateTable(defaultOAuthStateTable),
+        scimResourceTable(defaultScimResourceTable),
       ]);
     });
 
@@ -248,6 +249,10 @@ void main() {
 
     test('the OAuth state table', () {
       maps(oauthStateTable(defaultOAuthStateTable), [TomOAuthStateRow]);
+    });
+
+    test('the SCIM resource table', () {
+      maps(scimResourceTable(defaultScimResourceTable), [TomScimResourceRow]);
     });
 
     test('a rename in the descriptor that the mapper did not follow fails', () {
@@ -410,6 +415,29 @@ void main() {
           await _issuing(
             () => store.purgeExpired(DateTime.utc(2026, 7, 28, 12)),
           );
+          await _issuing(() => store.deleteAll());
+        },
+      );
+    });
+
+    test('the SCIM store', () async {
+      final datasource = _RecordingDataSource();
+      final store = TomSqlScimStore(datasource);
+      await audit(
+        datasource,
+        [scimResourceTable(defaultScimResourceTable)],
+        () async {
+          await _issuing(
+            () => store.create(TomScimResourceType.user, {'userName': 'a'}),
+          );
+          await _issuing(() => store.read(TomScimResourceType.user, '1'));
+          await _issuing(() => store.findByName(TomScimResourceType.user, 'a'));
+          await _issuing(() => store.list(TomScimResourceType.group));
+          await _issuing(
+            () =>
+                store.replace(TomScimResourceType.user, '1', {'userName': 'b'}),
+          );
+          await _issuing(() => store.delete(TomScimResourceType.user, '1'));
           await _issuing(() => store.deleteAll());
         },
       );

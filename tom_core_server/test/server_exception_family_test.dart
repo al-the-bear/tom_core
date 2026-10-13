@@ -197,16 +197,16 @@ void main() {
     // that point. A caller wanting to handle a wiring fault differently from a
     // query fault has only the key string to match on.
     //
-    // Six sites do exactly that, and they are meant to. Each is a `.named(...)`
+    // Seven sites do exactly that, and they are meant to. Each is a `.named(...)`
     // constructor resolving a data source out of `TomDataSourceInfo` and
     // refusing before it opens a connection. There is nothing for a subtype to
-    // add: all six happen at construction, before any request is served, so a
+    // add: all seven happen at construction, before any request is served, so a
     // deployment meets them as a failed start-up in a log rather than as
     // something a `catch` clause discriminates — and the operator's next act is
     // to fix one name in one configuration file, which the key and the
     // `datasource` parameter already say.
     //
-    // What this group buys is that the six stay six. The argument above is
+    // What this group buys is that the seven stay seven. The argument above is
     // about a construction-time wiring fault and does not carry to anything
     // else, but nothing in the source distinguishes a seventh direct raise from
     // these; without a pin, "the base class is fine here" erodes into "the base
@@ -238,11 +238,13 @@ void main() {
       }
     }
 
-    /// The six sites, and the key each raises.
+    /// The seven sites, and the key each raises.
     const expected = {
       '$_sourceRoot/audit/sql_audit_sink.dart': 'audit.sink.unknown_datasource',
       '$_sourceRoot/authentication/sql_oauth_state_store.dart':
           'oauth.state_store.unknown_datasource',
+      '$_sourceRoot/authentication/sql_scim_store.dart':
+          'scim.store.unknown_datasource',
       '$_sourceRoot/messaging/sql_delivery_report_store.dart':
           'messaging.delivery_report.unknown_datasource',
       '$_sourceRoot/scheduling/sql_job_store.dart':
@@ -253,13 +255,13 @@ void main() {
           'scheduling.nodes.unknown_datasource',
     };
 
-    test('the six sites are exactly the six that are documented', () {
+    test('the seven sites are exactly the seven that are documented', () {
       expect(
         directRaises,
         expected,
         reason:
             'a site throwing TomServerException directly gives a caller '
-            'nothing but the key to match on. The six listed are '
+            'nothing but the key to match on. The seven listed are '
             'construction-time data-source guards, where a subtype would add '
             'nothing because no catch clause runs; see TomServerException. '
             'A new one needs that argument to hold for it too — otherwise '

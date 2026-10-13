@@ -10,7 +10,7 @@ surface documented here.
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
 | Audit | [api_summary_audit.md](api_summary_audit.md) | Attributable, tamper-evident records: the hash-chained trail, its sinks, and signed anchors. |
-| Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login and two-factor services, adaptors, the policy deciding who owes a factor, enrolment and its stores, the authentication server, the server's own self-login, and external identity: the OAuth / OpenID Connect handshake and SAML 2.0 single sign-on, their pending-authorization stores, role mapping, and the linking table. |
+| Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login and two-factor services, adaptors, the policy deciding who owes a factor, enrolment and its stores, the authentication server, the server's own self-login, and external identity: the OAuth / OpenID Connect handshake and SAML 2.0 single sign-on, their pending-authorization stores, role mapping, and the linking table; and user provisioning over SCIM 2.0 — the service, its stores and endpoints, and the directory that resolves single sign-on to provisioned accounts. |
 | Authorization | [api_summary_authorization.md](api_summary_authorization.md) | Authorization cache, graded access, principal delegation and resource grants. |
 | Cache | [api_summary_cache.md](api_summary_cache.md) | Isolate-backed server cache and its command messages. |
 | Command Line | [api_summary_cmdline.md](api_summary_cmdline.md) | CLI argument parsing (`TomArgs`) and `.env` file loading (`TomEnvFile`). |
@@ -27,7 +27,7 @@ surface documented here.
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, and the `/preferences/*` endpoints. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call. |
-| Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, per-request logging state, and middleware. |
+| Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, per-request logging state, middleware, and the paths whose credentials belong to the endpoint. |
 | Transactions | [api_summary_transactions.md](api_summary_transactions.md) | Distributed transaction manager and participants. |
 
 ## Modules
@@ -198,6 +198,27 @@ surface documented here.
 | `TomJwtKey` | class | One key a token can be verified with, under its `kid` — the RFC 7638 thumbprint of its public JWK. |
 | `TomJwtSigningKey` | class | A signing key and the public key it publishes. |
 | `TomJwtSigning` | class | How this process signs and verifies tokens: algorithm, keys, signing key id, issuer, audience. |
+| `TomScimSchemas` | abstract final class | The SCIM schema and message URNs. |
+| `TomScimResourceType` | enum | `user` or `group`: name, endpoint, schema and name attribute. |
+| `TomScimException` | class | A SCIM request that cannot be served, with its HTTP status and `scimType` (extends `TomServerException`). |
+| `TomScimResource` | class | One provisioned user or group: id, JSON document, lifecycle instants, change counter. |
+| `TomScimStore` | abstract interface class | Where provisioned resources are kept. |
+| `TomMemoryScimStore` | class | In-memory SCIM store, per process. |
+| `TomSqlScimStore` | class | SCIM store over `tom_scim_resource`, shared by every node. |
+| `TomScimResourceRow` | class | One `tom_scim_resource` row, as the SQL store reads it back. |
+| `scimResourceTable` / `scimResourceTableDdl` | top-level function | The `tom_scim_resource` declaration, and its `CREATE TABLE`. |
+| `defaultScimResourceTable` | constant | `tom_scim_resource`. |
+| `TomScimPath` | class | A PATCH attribute path: schema URN, attribute, value filter, sub-attribute. |
+| `TomScimFilter` | sealed class | A parsed SCIM filter expression. |
+| `TomScimAnd` / `TomScimOr` / `TomScimNot` | class | The logical filter operators. |
+| `TomScimValuePath` | class | `attr[filter]` — some element of a multi-valued attribute matches. |
+| `TomScimComparison` | class | `attr op value`, or `attr pr`. |
+| `scimValues` / `scimLookup` / `scimKeyOf` | top-level function | Case-insensitive reads of a SCIM JSON document. |
+| `TomScimService` | class | The SCIM service provider over a store, and the revocations deprovisioning makes. |
+| `TomScimProvisioning` | class | The installed SCIM service and the bearer secrets that may call it, read from `scim`. |
+| `TomScimApi` | abstract class | The SCIM 2.0 endpoints under `/scim/v2` (`@tomService`). |
+| `TomScimServer` | class | The default SCIM endpoint component, in `application/scim+json`. |
+| `TomScimIdentityDirectory` | class | Single sign-on over the provisioned users, with roles from their groups. |
 | `TomJwtKeyException` | class | A key or signing setting that cannot be used (extends `TomServerException`). |
 | `readPemFile` | top-level function | Reads a configured PEM key file, naming it in the error a missing file raises. |
 | `TomJwksService` | abstract class | The `GET /.well-known/jwks.json` endpoint (`@tomService`). |
@@ -636,6 +657,7 @@ surface documented here.
 | `TomServer` | class | The HTTP server. |
 | `TomRequestLogInfo` | class | Per-request log record. |
 | `TomCredentialOutcome` | enum | Why a request carries the credentials it does. |
+| `TomEndpointCredentials` | abstract final class | The path prefixes whose `Authorization` header belongs to the endpoint; `extractAuthentication` leaves it unread. |
 | `contextSetupMiddleware` | function | Seeds the same entries into every request's context. |
 | `extractAuthentication` | function | Extracts principal + JWT from a request. |
 | `tomDefaultAuthenticationMiddleware` | function | Default auth middleware. |
@@ -695,6 +717,7 @@ surface documented here.
 | `defaultNodeFailureSlack` | Scheduling |
 | `defaultOAuthStateTable` | Authentication |
 | `defaultSchedulerNodeTable` | Scheduling |
+| `defaultScimResourceTable` | Authentication |
 | `deliveryReportTable` | Messaging |
 | `deliveryReportTableDdl` | Messaging |
 | `DoubleCol` | Object Persistence |
@@ -759,6 +782,11 @@ surface documented here.
 | `schedulerNodeFailedAfter` | Scheduling |
 | `schedulerNodeTable` | Scheduling |
 | `schedulerNodeTableDdl` | Scheduling |
+| `scimKeyOf` | Authentication |
+| `scimLookup` | Authentication |
+| `scimResourceTable` | Authentication |
+| `scimResourceTableDdl` | Authentication |
+| `scimValues` | Authentication |
 | `selectedRuntimeEnvironmentName` | Configuration |
 | `sqlDate` | Datasources |
 | `sqlFailureCauses` | Datasources |
@@ -969,6 +997,7 @@ surface documented here.
 | `TomEmailService` | Messaging |
 | `TomEndpoint` | Endpoints |
 | `TomEndpointBase` | Endpoints |
+| `TomEndpointCredentials` | Server |
 | `TomEndpointHandler` | Endpoints |
 | `TomEndpointHandlerException` | Endpoints |
 | `TomEndpointPipelineException` | Endpoints |
@@ -1063,6 +1092,7 @@ surface documented here.
 | `TomMemoryExternalIdentityStore` | Authentication |
 | `TomMemoryMessageTransport` | Messaging |
 | `TomMemoryOAuthTokenStore` | Authentication |
+| `TomMemoryScimStore` | Authentication |
 | `TomMessage` | Messaging |
 | `TomMessageBody` | Messaging |
 | `TomMessageChannel` | Messaging |
@@ -1165,6 +1195,24 @@ surface documented here.
 | `TomSchemaDivergenceKind` | Database Migration |
 | `TomSchemaModel` | Database Migration |
 | `TomSchemaTable` | Database Migration |
+| `TomScimAnd` | Authentication |
+| `TomScimApi` | Authentication |
+| `TomScimComparison` | Authentication |
+| `TomScimException` | Authentication |
+| `TomScimFilter` | Authentication |
+| `TomScimIdentityDirectory` | Authentication |
+| `TomScimNot` | Authentication |
+| `TomScimOr` | Authentication |
+| `TomScimPath` | Authentication |
+| `TomScimProvisioning` | Authentication |
+| `TomScimResource` | Authentication |
+| `TomScimResourceRow` | Authentication |
+| `TomScimResourceType` | Authentication |
+| `TomScimSchemas` | Authentication |
+| `TomScimServer` | Authentication |
+| `TomScimService` | Authentication |
+| `TomScimStore` | Authentication |
+| `TomScimValuePath` | Authentication |
 | `TomSelect` | Datasources |
 | `TomServer` | Server |
 | `TomServerConfigResourceProvider` | Configuration |
@@ -1209,6 +1257,7 @@ surface documented here.
 | `TomSqlLexer` | Datasources |
 | `TomSqlOAuthStateStore` | Authentication |
 | `TomSqlSchedulerNodes` | Scheduling |
+| `TomSqlScimStore` | Authentication |
 | `TomSqlTypeFamily` | Datasources |
 | `TomSqlTypeFamilyCompatibility` | Database Migration |
 | `TomStandardSqlDialect` | Datasources |

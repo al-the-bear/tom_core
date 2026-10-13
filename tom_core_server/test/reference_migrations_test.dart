@@ -120,6 +120,9 @@ final Map<String, String> _guardedElsewhere = {
   _migration('authentication', '[2]-create_tom_oauth_state.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'oauth_state_store_test.dart compares the file to oauthStateTableDdl',
+  _migration('authentication', '[5]-create_tom_scim_resource.sql'):
+      'descriptor table — framework_schema_test.dart converges the chain '
+      'against scimResourceTable',
   _migration('audit', '[1]-create_tom_audit_trail.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'audit_sql_test.dart compares the file to auditTrailTableDdl',

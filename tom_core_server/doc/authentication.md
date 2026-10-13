@@ -6,7 +6,9 @@ application-supplied `TomAuthenticationService`, then encoding the resulting
 principal into an authentication token and an authorization token. External
 identity — "Sign in with …" over OAuth 2.0 / OpenID Connect, and enterprise
 single sign-on over OpenID Connect or SAML 2.0 — is one more implementation of
-that service contract.
+that service contract. User provisioning over SCIM 2.0 lets the identity
+provider keep the accounts themselves: it creates, updates and deactivates
+users and groups, and a deactivation revokes the sessions the user holds.
 
 ## Table of Contents
 
@@ -69,6 +71,16 @@ that service contract.
   - [Security notes](#security-notes)
   - [The interoperability suite](#the-interoperability-suite)
   - [SAML failure keys](#saml-failure-keys)
+- [User provisioning with SCIM 2.0](#user-provisioning-with-scim-20)
+  - [Enabling SCIM](#enabling-scim)
+  - [Configuring Entra ID and Okta](#configuring-entra-id-and-okta)
+  - [The SCIM endpoints](#the-scim-endpoints)
+  - [What is supported](#what-is-supported)
+  - [PATCH forms accepted](#patch-forms-accepted)
+  - [Deprovisioning revokes access](#deprovisioning-revokes-access)
+  - [Single sign-on over provisioned accounts](#single-sign-on-over-provisioned-accounts)
+  - [Where provisioned resources are kept](#where-provisioned-resources-are-kept)
+  - [SCIM error keys](#scim-error-keys)
 - [Verification](#verification)
 - [Core Components](#core-components)
   - [`TomAuthenticationServer`](#tomauthenticationserver)
@@ -102,6 +114,13 @@ that service contract.
   - [`TomSamlException`](#tomsamlexception)
   - [`TomJwtSigning` / `TomJwtKey` / `TomJwtSigningKey` / `TomJwtAlgorithm`](#tomjwtsigning--tomjwtkey--tomjwtsigningkey--tomjwtalgorithm)
   - [`TomJwksService` / `TomJwksServer`](#tomjwksservice--tomjwksserver)
+  - [`TomScimProvisioning` / `TomScimApi` / `TomScimServer`](#tomscimprovisioning--tomscimapi--tomscimserver)
+  - [`TomScimService`](#tomscimservice)
+  - [`TomScimResource` / `TomScimResourceType` / `TomScimSchemas`](#tomscimresource--tomscimresourcetype--tomscimschemas)
+  - [`TomScimStore` / `TomMemoryScimStore` / `TomSqlScimStore`](#tomscimstore--tommemoryscimstore--tomsqlscimstore)
+  - [`TomScimFilter` / `TomScimPath`](#tomscimfilter--tomscimpath)
+  - [`TomScimIdentityDirectory`](#tomscimidentitydirectory)
+  - [`TomScimException`](#tomscimexception)
 - [Status and Limitations](#status-and-limitations)
 - [Dependencies](#dependencies)
 
@@ -225,6 +244,29 @@ that service contract.
 | `readPemFile` | function | Reads a configured key file, naming it in the error a missing file raises |
 | `TomJwksService` | abstract class | The `GET /.well-known/jwks.json` endpoint; reflected (`@tomReflector`) |
 | `TomJwksServer` | class | The default JSON Web Key Set component, publishing `TomJwtSigning.current`'s keys; reflected (`@tomReflector`) |
+| `TomScimSchemas` | abstract final class | The SCIM schema and message URNs the service uses — core `User` and `Group`, the enterprise extension, list response, PATCH, error and the discovery schemas |
+| `TomScimResourceType` | enum | `user` and `group`: resource name, endpoint, core schema and name attribute (`userName` / `displayName`) |
+| `TomScimException` | class | A SCIM request that cannot be served, with the HTTP status and SCIM `scimType` it is answered with |
+| `TomScimResource` | class | One stored user or group: its id, the client-managed JSON document, its lifecycle instants and change counter |
+| `TomScimStore` | abstract interface class | Where provisioned resources are kept: create, read, find by name, list, replace, delete |
+| `TomMemoryScimStore` | class | A store in one process's memory — a single node, a test, or a deployment that mirrors resources into its own table |
+| `TomSqlScimStore` | class | A store over the `tom_scim_resource` table, shared by every node |
+| `TomScimResourceRow` | class | One `tom_scim_resource` row, as the store reads it back; reflected (`@tomReflector`) |
+| `scimResourceTable` | function | The `tom_scim_resource` declaration, from which its DDL, its statements and the convergence guard's schema model all derive |
+| `scimResourceTableDdl` | function | The `CREATE TABLE` text of that declaration, for a deployment that applies schema by hand |
+| `TomScimPath` | class | A PATCH attribute path: optional schema URN, attribute, optional value filter, optional sub-attribute |
+| `TomScimFilter` | sealed class | A parsed SCIM filter expression, evaluated against a resource's JSON representation |
+| `TomScimAnd` / `TomScimOr` / `TomScimNot` | classes | The logical filter operators |
+| `TomScimValuePath` | class | `attr[filter]` — some element of a multi-valued attribute matches |
+| `TomScimComparison` | class | `attr op value`, or `attr pr` |
+| `scimValues` | function | The values at an attribute path in a JSON document, multi-valued attributes flattened |
+| `scimLookup` | function | A JSON value by attribute name, matched case-insensitively |
+| `scimKeyOf` | function | The key of a JSON object that equals an attribute name case-insensitively |
+| `TomScimService` | class | The SCIM service provider over a `TomScimStore`, independent of HTTP — and the revocations a deprovisioning change makes |
+| `TomScimProvisioning` | class | The installed SCIM service and the bearer secrets that may call it, read from `scim` |
+| `TomScimApi` | abstract class | The SCIM 2.0 endpoints under `/scim/v2`; reflected (`@tomReflector`) |
+| `TomScimServer` | class | The default SCIM endpoint component, answering in `application/scim+json`; reflected (`@tomReflector`) |
+| `TomScimIdentityDirectory` | class | The `TomExternalIdentityDirectory` over the provisioned users: single sign-on resolves the provisioned account, with roles from its groups |
 
 One type every service in the list throws lives in `little_things`, with the
 rest of the package's exception hierarchy:
@@ -2880,6 +2922,352 @@ tool/run_sso_tests.sh
 | `saml.response.malformed` · `saml.response.doctype` · `saml.response.wrong_destination` · `saml.response.wrong_request` · `saml.response.wrong_issuer` · `saml.response.status_not_success` · `saml.response.encrypted_unsupported` · `saml.response.assertion_count` | The response itself was refused. |
 | `saml.assertion.unsigned` · `saml.assertion.missing_subject` · `saml.assertion.no_bearer_confirmation` · `saml.assertion.not_yet_valid` · `saml.assertion.expired` · `saml.assertion.wrong_audience` | The assertion was refused. |
 
+## User provisioning with SCIM 2.0
+
+Single sign-on answers *who is signing in*; provisioning answers *who has an
+account at all*. Over SCIM 2.0 (RFC 7643 and RFC 7644) the identity provider
+becomes the register of accounts: it creates users before their owners first
+sign in, keeps their attributes and group memberships current, and deactivates
+or deletes them when they leave. The module is the service-provider side —
+the endpoints Microsoft Entra ID, Okta and any other SCIM client call — in
+three layers:
+
+| Layer | Types | What it does |
+| ----- | ----- | ------------ |
+| Resources and store | `TomScimResource`, `TomScimStore`, `TomMemoryScimStore`, `TomSqlScimStore` | Users and groups kept as the JSON document the identity provider sent, minus what the service owns (`id`, `meta`, a user's `groups`) |
+| Service | `TomScimService`, `TomScimFilter`, `TomScimPath` | Create, read, query, replace, patch and delete, independent of HTTP — and the access consequences of every change |
+| HTTP | `TomScimProvisioning`, `TomScimApi`, `TomScimServer` | The endpoints under `/scim/v2/`, the bearer secret that admits the identity provider, and the `application/scim+json` wire format |
+
+`TomScimIdentityDirectory` joins provisioning to single sign-on: a login
+resolves to the provisioned account, with roles taken from its groups.
+
+### Enabling SCIM
+
+Nothing is served until a deployment installs a `TomScimProvisioning` at
+start-up — before that every SCIM path answers `404` with
+`scim.not_enabled`. `TomScimServer` is a component, so its endpoints are
+mounted by the endpoints pipeline like every other; installing the
+provisioning is what switches them on:
+
+```dart
+final store = TomSqlScimStore.named('main', createSchema: false);
+
+TomScimProvisioning.install(
+  TomScimProvisioning.fromConfiguration(TomScimService(store)),
+);
+```
+
+`fromConfiguration` reads the `scim` block of the server configuration:
+
+```yaml
+scim:
+  bearerTokens:
+    - ${SCIM_TOKEN_ENTRA}     # one per identity provider; several during a rotation
+  baseUrl: https://app.example.com/scim/v2   # behind a proxy; optional
+```
+
+| Key | Meaning |
+| --- | ------- |
+| `scim.bearerTokens` | The secrets an identity provider may present — a list, or a single string. At least one is required: `fromConfiguration` throws `scim.not_enabled` when none is configured, because an endpoint that admits nobody is a configuration mistake worth stopping the start for. |
+| `scim.baseUrl` | The address resources are published under (`meta.location`, `$ref`, the `Location` header). By default, the address the request arrived at — set it when a proxy rewrites the host or path. |
+
+The secrets are held only as SHA-256 digests and a presented secret is
+compared against every one of them in constant time, so a rotation is two
+entries for as long as the identity provider takes to switch. A request
+without a configured secret is answered `401` with
+`WWW-Authenticate: Bearer realm="scim"` and `scim.unauthorized`.
+
+Installing also claims `/scim/v2/` in `TomEndpointCredentials` (see
+[server](server.md#endpoint-owned-credentials)). The identity provider's
+secret is not a token of this deployment, and the framework's bearer
+middleware would otherwise verify it as a JWT, refuse it, and log a refused
+credential on every call; for a claimed path it leaves the header to the
+endpoint. `TomScimProvisioning.reset()` uninstalls and releases the claim.
+
+### Configuring Entra ID and Okta
+
+At the identity provider, provisioning is configured with two values and a set
+of attribute mappings:
+
+| Setting | Value |
+| ------- | ----- |
+| Tenant URL (Entra ID) / SCIM connector base URL (Okta) | `https://<host>/scim/v2` |
+| Secret token (Entra ID) / API token, authentication mode *HTTP Header* (Okta) | One of the `scim.bearerTokens` |
+| Unique identifier field (Okta) | `userName` |
+
+The attribute mappings the service relies on:
+
+| SCIM attribute | Typical source | Used for |
+| -------------- | -------------- | -------- |
+| `userName` | Entra ID `userPrincipalName`; Okta username | The account's name — unique, compared case-insensitively, and the username a login resolves |
+| `active` | Entra ID `Switch([IsSoftDeleted], …)`; Okta's deactivation | Deactivation — see [Deprovisioning revokes access](#deprovisioning-revokes-access) |
+| `emails[type eq "work"].value` | `mail` / primary email | The account's email; the `primary` one, or the first |
+| `name.givenName` · `name.familyName` | `givenName` · `surname` | The account's first and last name |
+| `externalId` | Entra ID `objectId`; Okta's user id | The identity provider's own id, kept for its reconciliation |
+| `displayName` (groups) | The group's name | The name a role mapping is keyed on |
+| `members` (groups) | Group membership | The roles a login receives |
+
+Every other attribute an identity provider maps — `title`, `phoneNumbers`,
+the enterprise extension's `department` or `manager` — is kept in the
+resource's document and returned as sent, which is what the identity
+provider's own reconciliation reads back. For groups, enable group
+provisioning (Entra ID: *Provision Microsoft Entra ID Groups*; Okta: *Push
+Groups*): a group's membership is what the roles of its members come from.
+
+Before creating a user, both identity providers query for it —
+`GET /scim/v2/Users?filter=userName eq "…"` — and create it only when the
+query finds nothing. That query is answered by one lookup in the store rather
+than a scan.
+
+### The SCIM endpoints
+
+All under `/scim/v2`, all `@TomPublicAccess` to the framework and
+authenticated by `TomScimServer` against the installed secrets, all answered
+in `application/scim+json`:
+
+| Method | Path | Answer |
+| ------ | ---- | ------ |
+| `GET` | `/ServiceProviderConfig` | What is supported — see below |
+| `GET` | `/ResourceTypes` | `User` and `Group`, as a list response |
+| `GET` | `/ResourceTypes/<name>` | One resource type |
+| `GET` | `/Schemas` | The `User` and `Group` schemas, as a list response |
+| `GET` | `/Schemas/<schemaId>` | One schema, by its URN |
+| `GET` | `/Users` | A page of users matching `filter` |
+| `POST` | `/Users` | `201` with the created user and a `Location` header |
+| `GET` | `/Users/<id>` | One user; `404` for an unknown id |
+| `PUT` | `/Users/<id>` | The user, replaced |
+| `PATCH` | `/Users/<id>` | The user, with the operations applied |
+| `DELETE` | `/Users/<id>` | `204` |
+| `GET` | `/Groups` | A page of groups matching `filter` |
+| `POST` | `/Groups` | `201` with the created group and a `Location` header |
+| `GET` | `/Groups/<id>` | One group |
+| `PUT` | `/Groups/<id>` | The group, replaced |
+| `PATCH` | `/Groups/<id>` | The group, with the operations applied |
+| `DELETE` | `/Groups/<id>` | `204` |
+
+A user's representation carries `groups` — every group it is a member of, as
+`value`, `display`, `$ref` and `type: direct` — derived from the groups and
+read-only. A group's `members` carry a `$ref` to the member. Every resource
+carries `meta` with `resourceType`, `created`, `lastModified`, `location` and
+`version` (`W/"<n>"`, counting the changes).
+
+### What is supported
+
+The subset identity providers use, which is what their own validators exercise:
+
+| Feature | Supported |
+| ------- | --------- |
+| Users and groups | Create, read, query, replace (`PUT`), patch, delete |
+| Filtering | `eq` `ne` `co` `sw` `ew` `gt` `ge` `lt` `le` `pr`; `and`, `or`, `not ( … )`, parentheses; `attr.sub`, a schema-URN prefix, and value filters `attr[filter]` |
+| Paging | `startIndex` (1-based) and `count` — `100` when a query names none, at most `200` (`filter.maxResults`) |
+| Projection | `attributes` and `excludedAttributes`; `schemas`, `id` and `meta` are always returned |
+| Discovery | `ServiceProviderConfig`, `ResourceTypes`, `Schemas` |
+| Uniqueness | `userName` among users and `displayName` among groups, case-insensitively — a second one is `409` `uniqueness` |
+| Enterprise extension | Kept and patched; advertised as an optional extension of `User` |
+
+Attribute names are case-insensitive, and so is string comparison, except for
+the attributes SCIM defines as case-exact — `id`, `externalId` and the `value`
+of a member or group reference.
+
+**Not supported, and said so in `ServiceProviderConfig`:** bulk operations,
+sorting, ETags (`meta.version` is published, `If-Match` is not honoured),
+`/Me`, `POST …/.search`, and changing passwords. The identity providers that
+are the target do not use them; a client that does reads the configuration and
+does not ask.
+
+### PATCH forms accepted
+
+RFC 7644 PATCH is written loosely by identity providers, and the service
+accepts the forms they send:
+
+- **Operation names in any case** — `Add`, `Replace`, `Remove` as Entra ID
+  writes them, `add` as Okta does.
+- **`active` as the string `"False"` or `"True"`** — Entra ID has sent the
+  boolean as a string; any other non-boolean `active` is `scim.invalid_value`.
+- **An operation without a `path`**, whose value is an object of attributes —
+  including an extension object keyed by its schema URN, whose attributes are
+  applied under the extension.
+- **Sub-attribute paths** — `name.givenName`.
+- **Schema-qualified paths** —
+  `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:department`.
+- **Value-filtered paths** — `emails[type eq "work"].value`. When no element
+  matches an `eq` filter on `add` or `replace`, the element the filter
+  describes is created, which is what an identity provider sending this form
+  for a user with no work email expects; for any other filter that matches
+  nothing the operation is `scim.no_target`.
+- **Membership changes** in all three shapes: `add` on `members` with a list of
+  `{value}`, `remove` on `members` with a list of `{value}` (Entra ID), and
+  `remove` on `members[value eq "<id>"]` (Okta). Adding a member already present
+  adds nothing.
+
+```json
+{
+  "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+  "Operations": [
+    {"op": "Replace", "path": "active", "value": "False"},
+    {"op": "Add", "path": "emails[type eq \"work\"].value", "value": "ada@example.com"},
+    {"op": "Remove", "path": "members", "value": [{"value": "17"}]}
+  ]
+}
+```
+
+What is refused: an attribute the service owns (`id`, `meta`, `schemas`, a
+user's `groups`) is `scim.mutability`; a `remove` without a path is
+`scim.no_target`; a body without an `Operations` list, or an unknown operation,
+is `scim.invalid_syntax`; a member that is neither a user nor a group is
+`scim.invalid_value`. A PATCH is applied to a copy and validated whole, so a
+request with one bad operation changes nothing.
+
+### Deprovisioning revokes access
+
+A provisioning change that takes access away is applied to the sessions the
+user already holds, not only to the next login. `TomScimService.revoke` —
+`TomCacheInvalidator.revokePrincipal` by default — is called for every
+affected username:
+
+| Change | Revoked |
+| ------ | ------- |
+| a user is deactivated (`active` becomes `false`) | that user |
+| a user is deleted | that user |
+| a user's `userName` changes | the old name |
+| a group's membership changes | every member added or removed |
+| a group is renamed or deleted | every member |
+
+`revokePrincipal` refuses every token the user holds that was issued at or
+before the revocation, and drops the principals cached for them. Through the
+cross-node invalidation channel (see
+[cache](cache.md#cross-node-invalidation)) that reaches every node within the
+channel's staleness bound — so a user removed at the identity provider is
+refused everywhere in the time an invalidation takes, not when their token
+expires.
+
+A group change revokes because the roles a session carries are derived from
+its groups: the client re-authenticates and receives a token with the roles the
+groups now grant — fewer after a removal, more after an addition. A
+deactivated user's next login is refused by `TomScimIdentityDirectory` with
+`login.error.scim.inactive`; a deleted user's next login finds no account.
+Deleting a user also takes it out of every group it was a member of.
+
+A deployment that mirrors the provisioned accounts into a user table of its
+own passes its own `revoke` to `TomScimService` and calls
+`revokePrincipal` from it, so the mirror and the revocation happen together.
+
+### Single sign-on over provisioned accounts
+
+`TomScimIdentityDirectory` is the `TomExternalIdentityDirectory` over the
+provisioned users. Installed under `TomOAuthAuthenticationService`, it makes
+single sign-on and provisioning meet in one place:
+
+```dart
+TomAuthenticationServer.globalSettingUserAuthenticationService =
+    TomOAuthAuthenticationService(
+      directory: TomScimIdentityDirectory(
+        store,
+        roleMapping: const TomExternalRoleMapping(
+          roles: {
+            'Admins': ['tom.admin'],
+          },
+        ),
+      ),
+    );
+```
+
+with the identity provider configured `provisioning: linkExisting` (see
+[Provisioning modes](#provisioning-modes)) — the login links to the
+provisioned account and never creates one:
+
+```yaml
+oauth:
+  providers:
+    entra:
+      discovery: true
+      issuer: https://login.microsoftonline.com/<tenant-id>/v2.0
+      clientId: ${ENTRA_CLIENT_ID}
+      clientSecret: ${ENTRA_CLIENT_SECRET}
+      redirectUri: https://app.example.com/sso/callback
+      usernameClaim: preferred_username   # the value provisioned as userName
+      provisioning: linkExisting
+```
+
+The provider's username claim must carry the value the identity provider
+provisions as `userName` — for Entra ID, `preferred_username` against a
+`userName` mapped from `userPrincipalName` — because that is the name the
+directory looks the account up by.
+
+| Account | Answer |
+| ------- | ------ |
+| not provisioned | `null` — the login takes its provider's provisioning branch, which under `linkExisting` refuses it with `login.error.oauth.no-local-account` |
+| provisioned and active | a principal whose roles come from its groups |
+| provisioned and inactive | refused, `login.error.scim.inactive` (`TomLoginFailure.accountProblem`) |
+
+The principal's user carries `userName`, the given and family name, the primary
+email (or the first), and `scimId` and `externalId` in its attributes; the
+names of the groups it is a member of are in `aci.groups`. Roles are derived on
+every login, through the directory's `roleMapping` applied to the groups'
+**display names** — its `groupsClaim` is not consulted, because the groups come
+from the store, not from a claim. A group change at the identity provider
+therefore reaches the next session, and, because the service revokes the
+members of a changed group, the current one too.
+
+### Where provisioned resources are kept
+
+| Store | For |
+| ----- | --- |
+| `TomMemoryScimStore` | A single node, a test, or a deployment that mirrors the resources into its own user table through `revoke`. Ids are a counter; everything is lost on restart. |
+| `TomSqlScimStore` | A deployment with more than one node, or with provisioned users that must outlive a restart. |
+
+`TomSqlScimStore` keeps one row per resource in `tom_scim_resource`
+(`defaultScimResourceTable`), declared once by `scimResourceTable(table)` and
+listed by `frameworkOwnedTables` (see
+[db_migration](db_migration.md)):
+
+| Column | Type | Meaning |
+| ------ | ---- | ------- |
+| `id` | `BIGINT` auto-increment, primary key | The resource's SCIM `id`, in decimal — never reused |
+| `resource_type` | `VARCHAR(16)` | `User` or `Group` |
+| `name_key` | `VARCHAR(191)` | The name attribute, lower-cased; unique per `resource_type` |
+| `external_id` | `VARCHAR(191)`, nullable | The identity provider's `externalId`; indexed with `resource_type` |
+| `document` | `LONGTEXT` | The resource's JSON without `id` and `meta` |
+| `created_at` · `last_modified` | `DATETIME(6)`, UTC | The lifecycle instants |
+| `version` | `BIGINT` | The change counter, published as `meta.version` |
+
+The unique `(resource_type, name_key)` key arbitrates the one race the store
+has: two identity-provider requests creating the same user at once both pass
+the service's uniqueness check, and only one of them writes. The reference
+migration is
+`example/authentication/migrations/main/tomcore/[5]-create_tom_scim_resource.sql`;
+`scimResourceTableDdl(table)` returns the same `CREATE TABLE`, and
+`test/framework_schema_test.dart` fails if the two drift apart. With
+`createSchema: true` (the default) the store creates the table on first use; a
+deployment whose schema is owned by the migration module passes `false`.
+
+### SCIM error keys
+
+Every refusal is a `TomScimException` (`clientThrow: true` — the message
+describes the caller's own request, and the identity provider shows it to the
+administrator who configured it), answered with its status and the SCIM error
+body (RFC 7644, section 3.12): `schemas`, `status`, `scimType` and `detail`.
+
+| Key | Status | `scimType` | Meaning |
+| --- | ------ | ---------- | ------- |
+| `scim.not_found` | 404 | — | No resource, resource type or schema has that id. |
+| `scim.uniqueness` | 409 | `uniqueness` | Another user has the `userName`, or another group the `displayName`, in any case. |
+| `scim.invalid_filter` | 400 | `invalidFilter` | The `filter` parameter cannot be read. |
+| `scim.invalid_path` | 400 | `invalidPath` | A PATCH `path` cannot be read. |
+| `scim.invalid_value` | 400 | `invalidValue` | A resource without its name attribute, a non-boolean `active`, a `members` that is not a list, or a member that is neither a user nor a group. |
+| `scim.invalid_syntax` | 400 | `invalidSyntax` | The body is not a JSON object, or a PATCH has no `Operations` list or an unknown operation. |
+| `scim.no_target` | 400 | `noTarget` | A `remove` without a path, or a value filter that matches nothing. |
+| `scim.mutability` | 400 | `mutability` | A PATCH of `id`, `meta`, `schemas` or a user's `groups`. |
+| `scim.unauthorized` | 401 | — | The request carries no configured bearer secret. |
+| `scim.not_enabled` | 404 | — | No `TomScimProvisioning` is installed; or, at start-up, no `scim.bearerTokens` is configured. |
+| `scim.store.unknown_datasource` | — | — | `TomSqlScimStore.named` names a data source that is not registered; raised at start-up as a `TomServerException`. |
+
+The one key raised to a login rather than to the identity provider:
+
+| Key | Exception | Meaning |
+| --- | --------- | ------- |
+| `login.error.scim.inactive` | `TomLoginException` (`accountProblem`) | The account has been deactivated by its identity provider. |
+
 ## Verification
 
 `test/authentication_test.dart` covers the module's own contract:
@@ -2909,21 +3297,33 @@ the two endpoints against a scripted identity provider.
 `sso_keycloak_test.dart` repeats the logins against a real Keycloak; it is
 tagged `sso`, skips when none is listening, and `tool/run_sso_tests.sh` starts
 one.
+[User provisioning](#user-provisioning-with-scim-20) is `scim_test.dart` — the
+filter and path language, a conformance subset driven over HTTP through the
+endpoint pipeline in the request shapes Entra ID and Okta send (discovery, the
+bearer secret, users, groups, every PATCH form above), and the group
+`deprovisioning revokes access`, which signs a provisioned user in through
+`TomScimIdentityDirectory` and shows each deprovisioning change refusing the
+session it should. `scim_store_db_test.dart` runs the relational store and the
+service over it; it is tagged `db` and skips when no server is reachable.
 
 ```bash
 dart run example/authentication/authentication_example.dart
 dart run example/authentication/two_factor_login_example.dart
 dart run example/authentication/two_factor_enrolment_example.dart
 dart run example/authentication/oauth_login_example.dart
+dart run example/authentication/scim_provisioning_example.dart
 ```
 
-Four examples, because the module has four flows and one program showing all of
+Five examples, because the module has five flows and one program showing all of
 them would show none of them clearly. The first configures the seams; the other
-three run a flow end to end against a scripted seam — the two-pass login, the
+four run a flow end to end against a scripted seam — the two-pass login, the
 enrolment round trip that turns "you must use 2FA" from a lockout into an
-onboarding step, and the OAuth handshake against a scripted provider, so no
-network and no browser is involved. Each checks every step through the package's
-throwing `check` helper, and `test/examples_test.dart` runs all four.
+onboarding step, the OAuth handshake against a scripted provider, so no
+network and no browser is involved, and SCIM provisioning from the identity
+provider's first call to the deactivation that ends a session, in eight
+numbered steps through the server's own router. Each checks every step through
+the package's throwing `check` helper, and `test/examples_test.dart` runs all
+five.
 
 ## Core Components
 
@@ -3198,6 +3598,62 @@ The JSON Web Key Set at `GET /.well-known/jwks.json`, public, cacheable for
 `TomJwksServer.cacheFor` (five minutes), and `404` under HS256. See
 [The JSON Web Key Set](#the-json-web-key-set).
 
+### `TomScimProvisioning` / `TomScimApi` / `TomScimServer`
+
+`TomScimProvisioning` is the installed SCIM service, the secrets that may call
+it (held as SHA-256 digests, compared in constant time) and the published
+`baseUrl`. `install` enables SCIM and claims `pathPrefix` (`/scim/v2/`) in
+`TomEndpointCredentials`; `reset` undoes both; `current` is the installed one;
+`fromConfiguration` reads `scim.bearerTokens` and `scim.baseUrl`.
+`TomScimApi` declares the seventeen endpoints and `TomScimServer` answers them.
+See [Enabling SCIM](#enabling-scim) and [The SCIM endpoints](#the-scim-endpoints).
+
+### `TomScimService`
+
+The SCIM service provider independent of HTTP: `create`, `get`, `list`,
+`replace`, `patch` and `delete` over users and groups, the discovery
+documents `serviceProviderConfig`, `resourceTypes`, `resourceType` and
+`schemas`, and the `revoke` hook a deprovisioning change calls. Pages are
+`defaultCount` (100) by default and at most `maxCount` (200). See
+[Deprovisioning revokes access](#deprovisioning-revokes-access).
+
+### `TomScimResource` / `TomScimResourceType` / `TomScimSchemas`
+
+One stored resource — `id`, `type`, the client-managed `document`, `created`,
+`lastModified`, `version` — with `name`, `nameKey`, `externalId`, `active` and
+the case-insensitive `attribute` lookup. `TomScimResourceType` is `user` or
+`group`; `TomScimSchemas` the URNs.
+
+### `TomScimStore` / `TomMemoryScimStore` / `TomSqlScimStore`
+
+Where resources are kept. The memory store is per process; the SQL store keeps
+them in `tom_scim_resource`, declared by `scimResourceTable(table)` and named
+by default from `defaultScimResourceTable`, with `scimResourceTableDdl(table)`
+its `CREATE TABLE`. See
+[Where provisioned resources are kept](#where-provisioned-resources-are-kept).
+
+### `TomScimFilter` / `TomScimPath`
+
+The filter language and the PATCH attribute path, one grammar for both:
+`TomScimFilter.parse` (`scim.invalid_filter`) yields a `TomScimAnd`,
+`TomScimOr`, `TomScimNot`, `TomScimValuePath` or `TomScimComparison`, and
+`TomScimPath.parse` (`scim.invalid_path`) a path. `scimValues`, `scimLookup`
+and `scimKeyOf` read a JSON document the case-insensitive way SCIM attributes
+are read. See [What is supported](#what-is-supported).
+
+### `TomScimIdentityDirectory`
+
+Single sign-on over the provisioned users: `null` for an account not
+provisioned, a principal with roles from its groups for an active one, and
+`login.error.scim.inactive` for a deactivated one. See
+[Single sign-on over provisioned accounts](#single-sign-on-over-provisioned-accounts).
+
+### `TomScimException`
+
+A SCIM request that cannot be served, carrying its `status` and `scimType`;
+`toJson` is the SCIM error body. `clientThrow` is `true`. See
+[SCIM error keys](#scim-error-keys).
+
 ## Status and Limitations
 
 - **`TomDummyAuthenticationService` is for scaffolding only** — it grants any
@@ -3347,31 +3803,41 @@ The JSON Web Key Set at `GET /.well-known/jwks.json`, public, cacheable for
   provider stays their authority. A deployment that wants them stored reads
   `TomExternalIdentity.roles` in its directory.
   <!-- unpinned: decision — the framework owns no user store to write them to -->
+- **SCIM is the subset identity providers use.** Bulk operations, sorting,
+  ETags, `/Me`, `.search` and changing passwords are not implemented, and
+  `ServiceProviderConfig` says so. See [What is supported](#what-is-supported).
+  <!-- pinned: test/scim_test.dart › the service provider configuration states what is supported -->
+- **SCIM is the only directory protocol.** LDAP and Active Directory are not
+  provided: an on-premises directory reaches this server through an identity
+  provider that speaks SCIM, OpenID Connect or SAML.
+  <!-- unpinned: absence — no LDAP or Active Directory connector ships -->
 
 ## Dependencies
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `server_self_login.dart`, `two_factor.dart` | `Future`, `FutureOr`, and the `Timer` the server principal's renewal is scheduled on |
-| `dart:convert` | dart | 16 of 26 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
+| `dart:convert` | dart | 20 of 33 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
 | `dart:io` | dart | `jwt_keys.dart`, `saml_flow.dart`, `saml_provider.dart` | `File`, reading the configured key and certificate files; `ZLibCodec`, deflating a SAML `AuthnRequest` for the redirect binding |
 | `dart:math` | dart | `jwt_signing.dart`, `oauth_flow.dart`, `two_factor_send_limit.dart`, `webauthn_software_authenticator.dart` | `Random`, `exp`, and `pow` / `min` for the send pace's doubling interval; `Random.secure` for the unusable signing key a verify-only server holds |
 | `dart:typed_data` | dart | `saml_xml_signature.dart`, `two_factor_delivered_code.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | `Uint8List`, `ByteData`, `BytesBuilder` |
-| `crypto` | package | 8 of 26 files | `sha256` and `sha512`, for the JWK thumbprint a key id is, the PKCE code challenge, the SAML handoff-code digest and XML Signature digests, the interim-token fingerprint an attempt store keys on, the delivered-code digest, and the WebAuthn RP id hash, client-data hash and user handle |
+| `crypto` | package | 9 of 33 files | `sha256` and `sha512`, for the JWK thumbprint a key id is, the SCIM bearer-secret digests, the PKCE code challenge, the SAML handoff-code digest and XML Signature digests, the interim-token fingerprint an attempt store keys on, the delivered-code digest, and the WebAuthn RP id hash, client-data hash and user handle |
 | `dart_jsonwebtoken` | package | `jwt_keys.dart`, `jwt_signing.dart`, `saml_provider.dart` | `jwt.JWT.verify`, `jwt.JWTAlgorithm`, `jwt.RSAPrivateKey` / `jwt.RSAPublicKey`, `jwt.ECPrivateKey` / `jwt.ECPublicKey`, `jwt.SecretKey`, and `toJWK` for the published set |
 | `http` | package | `oauth_flow.dart` | `http.dart`, `http.get`, `http.post` |
 | `pointycastle` | package | `jwt_keys.dart`, `saml_provider.dart`, `saml_xml_signature.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | RSA PKCS#1 v1.5 signing and verification for XML Signature, ECDSA P-256 and RSA PKCS#1 v1.5 signature verification for passkeys, and the software authenticator's key generation and signing; deriving a signing key's public half |
-| `shelf` | package | `jwks_endpoint.dart`, `saml_endpoints.dart` | `Response`, which the JSON Web Key Set and SAML metadata endpoints answer with directly to set their content type — and, for the key set, its cache header |
-| `tom_core_kernel` | package | 24 of 26 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
+| `shelf` | package | `jwks_endpoint.dart`, `saml_endpoints.dart`, `scim_endpoints.dart` | `Request` and `Response` — the SCIM endpoints read the raw request and answer in `application/scim+json`; `Response`, which the JSON Web Key Set and SAML metadata endpoints answer with directly to set their content type — and, for the key set, its cache header |
+| `tom_core_kernel` | package | 27 of 33 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
 | `xml` | package | `saml_flow.dart`, `saml_provider.dart`, `saml_xml_signature.dart` | `XmlDocument`, `XmlElement`, parsing SAML responses and metadata, and the node walk exclusive canonicalization is written over |
-| [configuration](configuration.md) | module | `jwt_signing.dart`, `oauth_provider.dart`, `saml_provider.dart`, `server_self_login.dart`, `sql_oauth_state_store.dart` | `TomBaseServerConfiguration` supplies the JWT fields `installJwtSigning` reads and the service-account fields `TomServiceCredential.fromConfiguration` reads; `isDevelopmentOrTestRuntime` decides whether the sample-key fallback is permitted |
-| [datasources](datasources.md) | module | `oauth_state_sql.dart`, `sql_oauth_state_store.dart` | `TomDataSource`, `TomDataSourceInfo` |
-| [endpoints](endpoints.md) | module | `jwks_endpoint.dart`, `oauth_endpoints.dart`, `saml_endpoints.dart` | `TomSamlService` binds the identity provider's form post as a `TomMultipartForm` and answers it with a `TomRedirect`; `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract; `TomJwksService` declares its route with `@TomEndpoint` and `@TomPublicAccess` |
-| [little_things](little_things.md) | module | 12 of 26 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSamlException`, `TomSigningKeyException` and `TomJwtKeyException` |
+| [cache](cache.md) | module | `scim_service.dart` | `TomCacheInvalidator.revokePrincipal`, the default revocation a SCIM deprovisioning change calls |
+| [configuration](configuration.md) | module | `jwt_signing.dart`, `oauth_provider.dart`, `saml_provider.dart`, `scim_endpoints.dart`, `server_self_login.dart`, `sql_oauth_state_store.dart` | `TomBaseServerConfiguration` supplies the JWT fields `installJwtSigning` reads and the service-account fields `TomServiceCredential.fromConfiguration` reads; `isDevelopmentOrTestRuntime` decides whether the sample-key fallback is permitted |
+| [datasources](datasources.md) | module | `oauth_state_sql.dart`, `scim_sql.dart`, `sql_oauth_state_store.dart`, `sql_scim_store.dart` | `TomDataSource`, `TomDataSourceInfo`, `TomFrameworkTable` (the single declaration of `tom_oauth_state` and `tom_scim_resource`) and `sqlInstant` / `parseSqlInstant` |
+| [endpoints](endpoints.md) | module | `jwks_endpoint.dart`, `oauth_endpoints.dart`, `saml_endpoints.dart`, `scim_endpoints.dart` | `TomScimApi` declares its seventeen routes with `@TomEndpoint` and `@TomPublicAccess`; `TomSamlService` binds the identity provider's form post as a `TomMultipartForm` and answers it with a `TomRedirect`; `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract; `TomJwksService` declares its route with `@TomEndpoint` and `@TomPublicAccess` |
+| [little_things](little_things.md) | module | 15 of 33 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSamlException`, `TomScimException`, `TomSigningKeyException` and `TomJwtKeyException` |
 | [messaging](messaging.md) | module | `two_factor_delivered_code.dart` | `TomEmailService` and `TomSmsService` deliver the one-time codes, through `TomTemplatedMessageService.deliverNow` rather than the outbox. A deployment that registers neither can still run TOTP |
-| [object_persistence](object_persistence.md) | module | `oauth_identity.dart`, `oauth_tokens.dart`, `sql_oauth_state_store.dart`, `two_factor_enrolment.dart` | `TomExternalIdentityLink` and `TomUserTwoFactorEnrolment` are ordinary entities over `TomSqlDatasourceRepository`. Neither table is created by the framework; each entity carries its own `createTableSql` for a deployment's migration to run |
+| [object_persistence](object_persistence.md) | module | `oauth_identity.dart`, `oauth_tokens.dart`, `sql_oauth_state_store.dart`, `sql_scim_store.dart`, `two_factor_enrolment.dart` | `TomExternalIdentityLink` and `TomUserTwoFactorEnrolment` are ordinary entities over `TomSqlDatasourceRepository`. Neither table is created by the framework; each entity carries its own `createTableSql` for a deployment's migration to run |
 | [preferences](preferences.md) | module | `authentication_server.dart` | `TomUserPreferences` |
 | [resources](resources.md) | module | `two_factor_delivered_code.dart` | no user-facing text originates in this module |
+| [server](server.md) | module | `scim_endpoints.dart` | `TomEndpointCredentials`, which `TomScimProvisioning.install` claims `/scim/v2/` in |
 
 - **Server** (this package): `TomServerChannel` carries the default self-login
   transport, and `TomServer` calls `loginAndInstall` before binding its socket.

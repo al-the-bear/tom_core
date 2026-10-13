@@ -88,6 +88,10 @@ const List<TourStop> tour = [
     'The OAuth 2.0 / OIDC handshake: signing in through an external provider',
   ),
   TourStop(
+    'example/authentication/scim_provisioning_example.dart',
+    'SCIM 2.0 provisioning, and deprovisioning that ends the sessions held',
+  ),
+  TourStop(
     'example/authentication/two_factor_enrolment_example.dart',
     'The first time a policy demands a factor the user has not set up yet',
   ),

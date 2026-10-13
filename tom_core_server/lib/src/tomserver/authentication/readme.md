@@ -219,6 +219,36 @@ Which store a deployment gets is configuration, read from `oauth.stateStore`
 beside `oauth.providers` and defaulting to memory — a single-node deployment and
 a test suite keep the in-memory store and need no database at all.
 
+### Provisioning: the identity provider keeps the accounts
+
+Over SCIM 2.0 the identity provider creates users and groups before anyone
+signs in, keeps them current, and deactivates or deletes them. That is not a
+second login path either: it is a register the login reads.
+`TomScimService` (`scim_service.dart`) serves the identity provider's requests
+over a `TomScimStore` — `TomMemoryScimStore`, or `TomSqlScimStore`
+(`sql_scim_store.dart`) over the `tom_scim_resource` framework table
+`scimResourceTable` declares (`scim_sql.dart`) — with the filter and
+PATCH-path language in `scim_filter.dart`. `TomScimServer`
+(`scim_endpoints.dart`) mounts it under `/scim/v2` once a `TomScimProvisioning`
+read from `scim.bearerTokens` is installed, and installing claims `/scim/v2/` in
+`TomEndpointCredentials`, so the framework leaves the identity provider's static
+secret to the endpoint instead of refusing it as a token.
+
+* **Deprovisioning revokes.** A deactivated, deleted or renamed user, and every
+  member a group change touches, is passed to `TomScimService.revoke` —
+  `TomCacheInvalidator.revokePrincipal` by default — so the sessions they
+  already hold are refused on every node, not only their next login.
+* **The login reads the register.** `TomScimIdentityDirectory`
+  (`scim_directory.dart`) is the `TomExternalIdentityDirectory` over the
+  provisioned users: under `provisioning: linkExisting` a single sign-on login
+  resolves to the provisioned account, a deactivated one is refused with
+  `login.error.scim.inactive`, and the roles come from the account's groups
+  through a `TomExternalRoleMapping` — so the login still ends in the one
+  `_completeLogin`.
+* **LDAP and Active Directory are not provided.** An on-premises directory
+  reaches this server through an identity provider that speaks SCIM, OpenID
+  Connect or SAML.
+
 ## Key types
 
 | Type | Responsibility |
@@ -264,6 +294,13 @@ a test suite keep the in-memory store and need no database at all.
 | `TomJwtAlgorithm` · `TomJwtKey` · `TomJwtSigningKey` · `readPemFile` | The three algorithms; a verification key under its `kid`, the RFC 7638 thumbprint of its public JWK, so every server derives the same id from the same key; a private key with its public half; and the PEM file reader. In `jwt_keys.dart`. |
 | `TomJwtKeyException` | A key or signing setting that cannot be used. `clientThrow: false`. |
 | `TomJwksService` · `TomJwksServer` | `GET /.well-known/jwks.json`: the public half of every verification key, public, cacheable for five minutes, `404` under HS256. Mounted by the endpoints pipeline like every component. In `jwks_endpoint.dart`. |
+| `TomScimService` | The SCIM 2.0 service provider over a store, independent of HTTP: users and groups created, read, queried, replaced, patched and deleted, and `revoke` called for every user a change takes access from. In `scim_service.dart`. |
+| `TomScimStore` · `TomMemoryScimStore` · `TomSqlScimStore` · `TomScimResourceRow` | Where provisioned resources are kept: per process, or rows of `tom_scim_resource` every node shares. In `scim_resource.dart` and `sql_scim_store.dart`. |
+| `TomScimResource` · `TomScimResourceType` · `TomScimSchemas` · `TomScimException` | One provisioned user or group, the two resource types, the SCIM URNs, and the exception carrying a status and `scimType`. In `scim_resource.dart`. |
+| `scimResourceTable` · `scimResourceTableDdl` · `defaultScimResourceTable` | The single declaration of `tom_scim_resource`. In `scim_sql.dart`. |
+| `TomScimFilter` · `TomScimPath` · `TomScimAnd` · `TomScimOr` · `TomScimNot` · `TomScimValuePath` · `TomScimComparison` · `scimValues` · `scimLookup` · `scimKeyOf` | The SCIM filter and PATCH-path language, and the case-insensitive JSON reads it is written over. In `scim_filter.dart`. |
+| `TomScimProvisioning` · `TomScimApi` · `TomScimServer` | The installed service and its bearer secrets (SHA-256 digests, compared in constant time), and the seventeen endpoints under `/scim/v2` in `application/scim+json`. In `scim_endpoints.dart`. |
+| `TomScimIdentityDirectory` | Single sign-on over the provisioned users, with roles from their groups. In `scim_directory.dart`. |
 
 ### Error keys raised by the token signing
 
@@ -286,6 +323,20 @@ a test suite keep the in-memory store and need no database at all.
 | `saml.config.*` | `TomSamlException` | The `saml.providers` block, a provider's metadata, certificates or key files cannot be used. |
 | `saml.acs.unknown_state` · `saml.flow.not_asserted` · `saml.flow.handoff_mismatch` | `TomSamlException` | A response or a completion that does not belong to a pending SAML login. |
 | `saml.response.*` · `saml.assertion.*` · `saml.signature.*` · `saml.xml.unbound_prefix` | `TomSamlException` | A refused response; the key reaches the application's page as `error_description`. |
+
+### Error keys raised by SCIM provisioning
+
+| Key | Exception | Meaning |
+| --- | --------- | ------- |
+| `scim.not_found` | `TomScimException` (404) | No resource, resource type or schema has that id. |
+| `scim.uniqueness` | `TomScimException` (409) | Another user has the `userName`, or another group the `displayName`, in any case. |
+| `scim.invalid_filter` · `scim.invalid_path` | `TomScimException` (400) | A `filter` or a PATCH `path` cannot be read. |
+| `scim.invalid_value` · `scim.invalid_syntax` | `TomScimException` (400) | A body that is not a resource, or a PATCH that is not a PATCH. |
+| `scim.no_target` · `scim.mutability` | `TomScimException` (400) | A PATCH with nothing to act on, or of an attribute the service owns. |
+| `scim.unauthorized` | `TomScimException` (401) | The request carries no configured bearer secret. |
+| `scim.not_enabled` | `TomScimException` (404) | No `TomScimProvisioning` is installed, or none could be configured. |
+| `scim.store.unknown_datasource` | `TomServerException` | `TomSqlScimStore.named` names a data source that is not registered. |
+| `login.error.scim.inactive` | `TomLoginException` | A single sign-on login to an account its identity provider deactivated. |
 
 ## Quick start
 
@@ -316,17 +367,21 @@ Future<void> main() async {
 ```
 
 See [`doc/authentication.md`](../../../../doc/authentication.md) for the two
-authentication passes, the 2FA handshake and the external-identity path. Four
-examples split the module along the seam described above:
+authentication passes, the 2FA handshake, the external-identity path and SCIM
+provisioning. Five examples split the module along the seam described above:
 `example/authentication/authentication_example.dart` is the local login,
 `two_factor_enrolment_example.dart` and `two_factor_login_example.dart` the
-second factor either side of enrolment, and `oauth_login_example.dart` the
-external path — all four connection-free and checking their own results.
+second factor either side of enrolment, `oauth_login_example.dart` the
+external path, and `scim_provisioning_example.dart` provisioning from the
+identity provider's first call to the deactivation that ends a session — all
+five connection-free and checking their own results.
 `test/authentication_test.dart`, `test/two_factor_test.dart`,
-`test/oauth_test.dart`, `test/saml_test.dart`, `test/jwt_signing_test.dart` and
-`test/jwt_keys_test.dart` cover the module, and `test/sso_keycloak_test.dart`
-(tag `sso`, started by `tool/run_sso_tests.sh`) logs in against a real Keycloak;
-`test/examples_test.dart` runs the four examples and
+`test/oauth_test.dart`, `test/saml_test.dart`, `test/scim_test.dart`,
+`test/jwt_signing_test.dart` and `test/jwt_keys_test.dart` cover the module,
+`test/scim_store_db_test.dart` (tag `db`) runs the relational SCIM store, and
+`test/sso_keycloak_test.dart` (tag `sso`, started by `tool/run_sso_tests.sh`)
+logs in against a real Keycloak; `test/examples_test.dart` runs the five
+examples and
 `test/readme_quick_start_test.dart` runs the snippet above, so none of them can
 drift away from the code.
 

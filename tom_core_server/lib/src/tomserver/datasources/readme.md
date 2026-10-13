@@ -39,7 +39,8 @@ rows off by the difference in their offsets.
 
 `sql_instant.dart` settles it once, for both ways of writing SQL in this server:
 
-- **Hand-written SQL** (scheduling, OAuth state, audit, file storage) calls
+- **Hand-written SQL** (scheduling, OAuth state, SCIM resources, audit, file
+  storage) calls
   `sqlInstant` / `parseSqlInstant` at each seam explicitly.
 - **Reflected entity columns** name no conversion at all, so this module applies
   it on their behalf: the MariaDB bind boundary renders every bound `DateTime`
