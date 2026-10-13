@@ -10,12 +10,11 @@
 /// those numbers was reading a literal.
 ///
 /// Two things had to change for the number to become real. The count is
-/// per-execution state the driver reports on the statement handle, and
-/// `TomPreparedStatement` carried no member for it — only
-/// `MariaDbDatasource.executeCommand` (a different, non-prepared path) ever
-/// looked at `IResultSet.affectedRows`. So the contract gained
-/// [TomPreparedStatement.lastAffectedRows], and the repository reads it while
-/// the statement is still allocated.
+/// something the driver reports per execution, and `TomPreparedStatement`
+/// carried no member for it — only `MariaDbDatasource.executeCommand` (a
+/// different, non-prepared path) ever looked at `IResultSet.affectedRows`. So
+/// the contract gained [TomPreparedStatement.run], whose
+/// [TomStatementOutcome.affectedRows] is the count of that execution.
 ///
 /// **Connection-free**, driven against `fixtures/scripted_datasource.dart`.
 /// The number under test is one the database hands over; scripting it is what

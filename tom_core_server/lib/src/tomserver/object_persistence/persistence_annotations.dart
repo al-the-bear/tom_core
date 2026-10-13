@@ -140,6 +140,61 @@ class TomEntityId {
   const TomEntityId();
 }
 
+/// Marks the field that holds the row's **version**, turning on optimistic
+/// locking for the entity.
+///
+/// Two people who load the same row and both save it would otherwise each
+/// overwrite the other without either noticing — the second save simply wins.
+/// With a version field the repository refuses the second one instead:
+///
+/// - an insert writes version `1`, whatever the field held;
+/// - an update writes `version + 1` **only where the stored version is still
+///   the one the entity was loaded with** (`… WHERE id = ? AND version = ?`).
+///   When another save got there first the statement matches no row, nothing
+///   is written, and the save throws a `TomOptimisticLockException` keyed
+///   `crud_repository.save.version_conflict`, carrying the version the caller
+///   held and the one now stored;
+/// - an update whose version field is `null` is refused
+///   (`crud_repository.save.version_missing`): a client that dropped the field
+///   would otherwise skip the check it exists for;
+/// - `delete(entity)` checks the version the same way; `deleteById` names no
+///   version and does not.
+///
+/// The saved entity the repository returns carries the new version, so a
+/// caller that keeps editing saves the object it got back.
+///
+/// The field is an `int` and its column must be `NOT NULL`. A table that gains
+/// the column later adds it with a default, which every existing row then
+/// holds as the version it was loaded with:
+///
+/// ```sql
+/// ALTER TABLE invoice ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+/// ```
+///
+/// The schema-convergence check reports a version column the migration chain
+/// leaves nullable (`nullableVersionColumn`), because a `NULL` version never
+/// equals the one a save presents and every update of such a row would be
+/// refused as a conflict.
+///
+/// ```dart
+/// @tomReflector
+/// @TomDbTable(datasource: 'main', table: 'invoice', primaryKeyFields: ['id'])
+/// class Invoice {
+///   @TomEntityId()
+///   @TomDbColumn(columnName: 'id', isReadOnly: true)
+///   int? id;
+///
+///   @TomVersion()
+///   @TomDbColumn(columnName: 'version')
+///   int? version;
+///   // …
+/// }
+/// ```
+class TomVersion {
+  /// Marks the field as the entity's version.
+  const TomVersion();
+}
+
 /// Marks an entity as owned by a tenant: every row carries its tenant in
 /// [field], and a repository reads and writes only the rows of the tenant in
 /// context (`TomTenantContext`).
@@ -412,6 +467,9 @@ class TomColumnInformation {
   /// The kernel's field-protection annotation, if the field carries one.
   final TomProtectedField? protectedField;
 
+  /// The optimistic-locking annotation, if this field is the row's version.
+  final TomVersion? version;
+
   /// The resource key that gates this column (C-4): the column's own
   /// [TomDbColumn.authKey], else the field's [TomProtectedField] key, else
   /// `null` for an unrestricted column.
@@ -434,10 +492,10 @@ class TomColumnInformation {
   ///
   /// The five required parameters are the ones every mapped field has: the
   /// owning entity type ([tableType]) and its table ([table]), and the field's
-  /// own [declaredType], [declaredName] and mapped [field] name. The five
+  /// own [declaredType], [declaredName] and mapped [field] name. The six
   /// optional ones each correspond to an annotation the field may or may not
   /// carry — [column], [entityId], [reference], [fileReference],
-  /// [protectedField] — and are `null` when it does not.
+  /// [protectedField], [version] — and are `null` when it does not.
   ///
   /// All are named. Two pairs are the reason: [declaredName] and [field] are
   /// both `String`, and passing them the wrong way round type-checks — it maps
@@ -457,6 +515,7 @@ class TomColumnInformation {
     this.reference,
     this.fileReference,
     this.protectedField,
+    this.version,
   });
 
   /// The owning entity type ([tableType]).

@@ -171,6 +171,37 @@
   (`oauth.config.duplicate_provider_id`).
 - `TomOAuthAuthorizationState.assertedIdentity` holds a verified SAML identity
   between the assertion consumer service and the completion.
+- **Optimistic locking: `@TomVersion`**
+  (`object_persistence/persistence_annotations.dart`) on an `int` field, read
+  as `TomColumnInformation.version` and found by
+  `TomAnnotationAnalyzer.findVersionColumn`. An insert writes version `1`; an
+  update writes `version + 1` only `WHERE … AND version =
+  :__tomversion_expected` (`TomSqlDatasourceRepository.versionParameter`;
+  `buildUpdateStatement` takes the column as `version:`), and `delete(entity)`
+  checks the version the same way. A write that changes no row raises
+  **`TomOptimisticLockException`** (extends `TomRepositoryException`,
+  `clientThrow: true`, `heldVersion`, `storedVersion` — `null` when the row is
+  gone) with `crud_repository.save.version_conflict` /
+  `crud_repository.delete.version_conflict`, writing nothing, discarding no blob
+  and auditing nothing. A versioned save or delete with a `null` version is
+  refused with `crud_repository.save.version_missing` /
+  `crud_repository.delete.version_missing`. The analyzer refuses a second
+  version field (`annotation_analyzer.version.more_than_one`) and one that is
+  not an `int`, is the entity id, an association or read-only
+  (`annotation_analyzer.version.invalid_field`). `deleteById` and the query
+  deletes are not version-checked. Example:
+  `example/object_persistence/optimistic_locking_example.dart`.
+- **`TomPreparedStatement.run`** and **`TomStatementOutcome<T>`**
+  (`datasources/datasource_initialization.dart`): `run` returns the rows, the
+  affected-row count (`affectedRows`) and the generated key (`generatedId`) of
+  that one execution. `MariadbPreparedStatement.run` reads all three from the
+  execution's own result set, retry included; `execute` returns its rows.
+- **`TomSchemaDivergenceKind.nullableVersionColumn`** (error): the
+  schema-convergence check reports a `@TomVersion` column the migration chain
+  leaves nullable, since a `NULL` version matches no versioned save.
+  `TomEntitySchemaReader` reads a version column as `nullable: false`. A table
+  gains the column with `ALTER TABLE t ADD COLUMN version BIGINT NOT NULL
+  DEFAULT 0;`, and its existing rows load at version `0`.
 
 ### Changed
 
@@ -225,9 +256,31 @@
   refused with `login.error.oauth.unverified-email`.
 - `randomUrlToken`, shared by the OAuth and SAML flows, is hidden from the
   barrel.
+- **Breaking: a prepared statement keeps no per-execution state.** A
+  repository runs one statement handle from every request at once, so a count
+  or key left on the handle belonged to whichever execution finished last; two
+  overlapping saves could read each other's. The repository's insert key,
+  `deleteById` count, query-delete counts and versioned writes read the
+  `TomStatementOutcome` of their own `run`. A driver implements `run`.
+
+### Removed
+
+- **Breaking: `TomPreparedStatement.lastGeneratedId` and
+  `TomPreparedStatement.lastAffectedRows`** (and their `MariadbPreparedStatement`
+  overrides). Read `TomStatementOutcome.generatedId` and
+  `TomStatementOutcome.affectedRows` from `run` instead.
 
 ### Tests
 
+- **`test/optimistic_locking_test.dart`** covers which fields may be the version,
+  the versioned `UPDATE`, the values a versioned save and delete bind, the
+  refusals against a scripted data source, and the migration shapes the
+  convergence check accepts and reports; **`test/optimistic_locking_db_test.dart`**
+  (tag `db`) refuses the second of two saves of one row against MariaDB, lets
+  exactly one of six simultaneous saves win, and turns versioning on for a table
+  that already holds rows. `test/datasources_test.dart`'s group
+  `MariadbPreparedStatement.run` asserts the count of an execution, of its retry,
+  and of two overlapping executions of one handle.
 - **`test/scim_test.dart`** covers the filter and path language, a conformance
   subset over HTTP in the request shapes Entra ID and Okta send — discovery, the
   bearer secret, users, groups, every PATCH form — and that each

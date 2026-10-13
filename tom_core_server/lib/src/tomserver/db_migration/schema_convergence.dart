@@ -59,17 +59,17 @@ bool _sameKey(List<String> a, List<String> b) {
 /// that boundary is deliberate rather than provisional:
 ///
 /// * **Compared** — table existence, column existence, column *type family*
-///   ([TomSqlTypeFamily]), and the primary key.
+///   ([TomSqlTypeFamily]), the primary key, and that a `@TomVersion` column is
+///   `NOT NULL`.
 /// * **Not compared, because the entity model does not declare it** — column
 ///   length and precision (`VARCHAR(255)` vs `VARCHAR(64)`), defaults,
 ///   `AUTO_INCREMENT`, unique keys, secondary indexes, foreign keys, charset,
 ///   collation and engine.
 /// * **Not compared, because the entity side carries no usable signal** —
-///   nullability. Every mapped Dart field is nullable so an unsaved record can
-///   exist, and [TomColumnInformation.declaredType] erases nullability anyway
-///   (`int?` arrives as `int`). The DDL side still *parses* nullability into
-///   [TomSchemaColumn.nullable], so a future entity-side declaration can switch
-///   the comparison on without re-parsing anything.
+///   the nullability of any other column. Every mapped Dart field is nullable
+///   so an unsaved record can exist, and [TomColumnInformation.declaredType]
+///   erases nullability anyway (`int?` arrives as `int`). `@TomVersion` is the
+///   one declaration that says a column must hold a value.
 /// * **Out of scope entirely** — seed data, generated columns, partitioning and
 ///   stored routines.
 class TomEntitySchemaReader {
@@ -178,6 +178,9 @@ class TomEntitySchemaReader {
             family: TomAnnotationAnalyzer.familyOf(column),
             declaredType: TomAnnotationAnalyzer.describeDeclaredType(column),
             origin: origin,
+            // The one nullability the entity model declares: a version column
+            // must hold a value, or no versioned save of its row can match.
+            nullable: column.version == null,
           ),
         );
       }
@@ -232,6 +235,14 @@ enum TomSchemaDivergenceKind {
 
   /// The two sides disagree on which columns form the primary key.
   primaryKeyMismatch,
+
+  /// An entity's `@TomVersion` column is nullable in the chain.
+  ///
+  /// An error rather than a warning: a versioned update matches its row by
+  /// `version = ?`, and `NULL` equals nothing, so every save of a row whose
+  /// version is `NULL` would be refused as a conflict. The column is added
+  /// `NOT NULL` with a default.
+  nullableVersionColumn,
 
   /// Two entities map to the same table but declare different primary keys.
   ///
@@ -652,6 +663,21 @@ class TomSchemaConvergenceCheck {
           ),
         );
         continue;
+      }
+      if (!expectedColumn.nullable && actualColumn.nullable) {
+        divergences.add(
+          TomSchemaDivergence(
+            kind: TomSchemaDivergenceKind.nullableVersionColumn,
+            table: expected.name,
+            column: expectedColumn.name,
+            origin: '${expectedColumn.origin} vs ${actualColumn.origin}',
+            message:
+                '${expectedColumn.origin} keeps its @TomVersion in '
+                '"${expectedColumn.name}", which ${actualColumn.origin} creates '
+                'nullable; a NULL version matches no versioned save, so the '
+                'column must be NOT NULL (with a DEFAULT for existing rows)',
+          ),
+        );
       }
       if (expectedColumn.family.accepts(actualColumn.family)) continue;
       divergences.add(

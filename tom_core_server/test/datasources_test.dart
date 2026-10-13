@@ -178,6 +178,9 @@ class _FakeConnection implements MySQLConnection {
   /// test can hold a statement in flight.
   Completer<void>? hold;
 
+  /// As [hold], for the next prepared statement executed on this link.
+  Completer<void>? holdPrepared;
+
   _FakeConnection({
     required this.connected,
     BigInt? affectedRows,
@@ -245,6 +248,11 @@ class _FakePreparedStmt implements PreparedStmt {
   @override
   Future<IResultSet> execute(List<dynamic> params) async {
     executions++;
+    final waitFor = link.holdPrepared;
+    if (waitFor != null) {
+      link.holdPrepared = null;
+      await waitFor.future;
+    }
     if (link.dropOnNextPreparedExecution) {
       link.dropOnNextPreparedExecution = false;
       link.connected = false;
@@ -2057,11 +2065,11 @@ void main() {
     });
   });
 
-  // A `DELETE` returns no rows, so the only thing an execute of one hands back
-  // is metadata on the result set. Both are per-execution state on the handle,
-  // and the two are captured together precisely so that the retry branch below
-  // cannot pick up one and forget the other.
-  group('MariadbPreparedStatement.lastAffectedRows', () {
+  // A `DELETE` returns no rows, so the only thing an execution of one hands
+  // back is metadata on the result set — and it is handed back by the
+  // execution it describes, never left on the handle, because a repository
+  // runs one handle from every request at once.
+  group('MariadbPreparedStatement.run', () {
     MariadbPreparedStatement<TomGroupedRow> statementOn(MariaDbDatasource ds) =>
         MariadbPreparedStatement<TomGroupedRow>(
           const [],
@@ -2071,18 +2079,14 @@ void main() {
           groupedProjection: const {},
         );
 
-    test('is zero before the statement has run', () {
-      expect(statementOn(_PooledFakeDatasource()).lastAffectedRows, 0);
-    });
-
-    test('reports the row count the execute returned', () async {
+    test('reports the row count the execution returned', () async {
       final link = _FakeConnection(connected: true)
         ..preparedAffectedRows = BigInt.from(3);
       final ds = _PooledFakeDatasource(queued: [link]);
       await ds.connect();
-      final statement = statementOn(ds);
-      await statement.execute();
-      expect(statement.lastAffectedRows, 3);
+      final outcome = await statementOn(ds).run();
+      expect(outcome.affectedRows, 3);
+      expect(outcome.generatedId, isNull);
     });
 
     test('a delete that matched nothing reports zero', () async {
@@ -2090,16 +2094,14 @@ void main() {
         queued: [_FakeConnection(connected: true)],
       );
       await ds.connect();
-      final statement = statementOn(ds);
-      await statement.execute();
-      expect(statement.lastAffectedRows, 0);
+      expect((await statementOn(ds).run()).affectedRows, 0);
     });
 
-    test('the retry captures the count too', () async {
+    test('the retry reports the count too', () async {
       // A retry runs on a different connection, opened after the first attempt
-      // found its connection gone. A capture written only into the happy path
-      // leaves every retried delete reporting zero rows — silently, since zero
-      // is a legal answer.
+      // found its connection gone. A count read only on the happy path leaves
+      // every retried delete reporting zero rows — silently, since zero is a
+      // legal answer.
       final second = _FakeConnection(connected: true)
         ..preparedAffectedRows = BigInt.from(5);
       final ds = _PooledFakeDatasource(
@@ -2107,10 +2109,32 @@ void main() {
       );
       await ds.connect();
       ds.first.dropOnNextPreparedExecution = true;
-      final statement = statementOn(ds);
-      await statement.execute();
+      final outcome = await statementOn(ds).run();
       expect(ds.opened, hasLength(2));
-      expect(statement.lastAffectedRows, 5);
+      expect(outcome.affectedRows, 5);
+    });
+
+    test('two overlapping executions of one handle each report their own '
+        'count', () async {
+      // The shape of two saves of one row racing: the first is still in
+      // flight on its connection when the second completes on another. A
+      // count kept on the handle belongs to whichever finished last, so a
+      // versioned update that changed nothing could read "1" from the other
+      // one and report a refused save as a success.
+      final held = Completer<void>();
+      final slow = _FakeConnection(connected: true)
+        ..preparedAffectedRows = BigInt.one
+        ..holdPrepared = held;
+      final fast = _FakeConnection(connected: true);
+      final ds = _PooledFakeDatasource(queued: [slow, fast]);
+      await ds.connect();
+      final statement = statementOn(ds);
+      final first = statement.run();
+      await pumpEventQueue();
+      final second = await statement.run();
+      held.complete();
+      expect((await first).affectedRows, 1);
+      expect(second.affectedRows, 0);
     });
   });
 
@@ -2178,8 +2202,8 @@ void main() {
     test('every member is abstract', () {
       // The rule, and the reason it is worth a test rather than a convention:
       // each member of this contract carries a value the layers above act on —
-      // `save` returns a row under the key `lastGeneratedId` reports, `delete`
-      // returns `lastAffectedRows` as *the* number of rows removed. A default
+      // `save` returns a row under the key `run` reports, `delete` returns its
+      // affected-row count as *the* number of rows removed. A default
       // lets a driver that never implemented the member answer anyway, and the
       // answer is indistinguishable from a real one, so nothing at any layer
       // can notice. A member body is exactly what that looks like in source:
@@ -2195,12 +2219,11 @@ void main() {
       );
     });
 
-    test('it declares the three members the layers above read', () {
+    test('it declares the members the layers above read', () {
       // Named individually so a member *removed* fails here too: the check
       // above passes trivially on an empty contract.
       final body = declarations(statementContract()).join('\n');
-      expect(body, contains('int? get lastGeneratedId;'));
-      expect(body, contains('int get lastAffectedRows;'));
+      expect(body, contains('Future<TomStatementOutcome<T>> run('));
       expect(body, contains('Future<List<T>> execute('));
     });
 

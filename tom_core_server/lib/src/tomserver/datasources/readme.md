@@ -19,6 +19,7 @@ statements on them. `MariaDbXADatasource` adds XA (two-phase) participation.
 | `MariaDbDatasource` | MariaDB/MySQL driver: settable `host`/`port`/`username`/`password`/`databaseName`/`timeOut` and the `pool…` settings, then `connect()`. Concurrent transactions run side by side, each on a pooled connection of its own; `withDriverConnection` hands a body the connection a statement would use. |
 | `TomConnectionPool<C>` · `TomConnectionPoolSettings` · `TomConnectionFactory<C>` | The driver-neutral bounded pool: lends a connection per caller up to `maxSize`, makes callers wait in line up to `acquireTimeout`, and retires idle and old connections lazily, on use. `TomConnectionPoolException` reports a closed pool, a wait that timed out, or unusable settings. |
 | `MariaDbXADatasource` | XA (two-phase-commit) variant of the MariaDB driver. |
+| `TomPreparedStatement<T>` · `TomStatementOutcome<T>` | A compiled statement shared by every request that runs it; `run` returns what that one execution reported — rows, affected-row count, generated key — rather than leaving it on the shared handle, where an overlapping execution would overwrite it. |
 | `TomStandardSqlDialect` · `MariadbSqlDialect` | Render queries and types into SQL. |
 | `TomSelect` · `TomCount` · `TomDelete` · `TomLiteralSelect` | Typed generated queries. |
 | `TomDbType<T>` family | Column types: `TomDbInt`, `TomDbDouble`, `TomDbString`, `TomDbBool`, `TomDbDateTime`, `TomDbDate`, `TomDbTime`. |

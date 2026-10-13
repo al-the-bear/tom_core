@@ -66,12 +66,11 @@ class TomSchemaColumn {
 
   /// Whether the column accepts `NULL`.
   ///
-  /// Parsed from the DDL and carried here, but **not** part of the comparison:
-  /// the entity model has no nullability declaration to compare it against
-  /// (every mapped field is Dart-nullable so an unsaved record can exist). It
-  /// is modelled anyway so that a future entity-side declaration can turn the
-  /// comparison on without re-parsing anything. Defaults to `true` on the
-  /// entity side, where it is unknown.
+  /// Parsed from the DDL. The entity model declares nullability for one kind
+  /// of column only — a `@TomVersion` column, which must hold a value — so it
+  /// is compared only there (`nullableVersionColumn`): every other mapped field
+  /// is Dart-nullable so an unsaved record can exist, and says nothing about
+  /// the column. Defaults to `true` on the entity side, where it is unknown.
   final bool nullable;
 
   /// Where this column came from — the migration artifact basename that last

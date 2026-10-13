@@ -1719,6 +1719,101 @@ class FixtureTenantNote {
 class FixtureTenantNoteRepository
     extends TomSqlDatasourceRepository<FixtureTenantNote, int> {}
 
+/// A reflected entity with a `@TomVersion` column, for optimistic locking.
+///
+/// The second of two saves of one loaded row is refused rather than silently
+/// overwriting the first.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_versioned_doc',
+  primaryKeyFields: ['id'],
+)
+class FixtureVersionedDoc {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The row's version, maintained by the repository.
+  @TomVersion()
+  @TomDbColumn(columnName: 'version')
+  int? version;
+
+  /// The document's title.
+  @TomDbColumn(columnName: 'title')
+  String? title;
+}
+
+/// The MariaDB-backed repository for [FixtureVersionedDoc].
+class FixtureVersionedDocRepository
+    extends TomSqlDatasourceRepository<FixtureVersionedDoc, int> {}
+
+/// An entity with two `@TomVersion` fields — refused by the analyzer, because
+/// a row has one version.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_two_versions',
+  primaryKeyFields: ['id'],
+)
+class FixtureTwoVersionsRecord {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// One version.
+  @TomVersion()
+  @TomDbColumn(columnName: 'version')
+  int? version;
+
+  /// Another version.
+  @TomVersion()
+  @TomDbColumn(columnName: 'revision')
+  int? revision;
+}
+
+/// An entity whose `@TomVersion` field is a `String` — refused by the
+/// analyzer, because the repository increments it.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_text_version',
+  primaryKeyFields: ['id'],
+)
+class FixtureTextVersionRecord {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// A version the repository could not increment.
+  @TomVersion()
+  @TomDbColumn(columnName: 'version')
+  String? version;
+}
+
+/// An entity whose `@TomVersion` column is read-only — refused by the
+/// analyzer, because a column left out of every write never moves.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_read_only_version',
+  primaryKeyFields: ['id'],
+)
+class FixtureReadOnlyVersionRecord {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// A version the repository would never write.
+  @TomVersion()
+  @TomDbColumn(columnName: 'version', isReadOnly: true)
+  int? version;
+}
+
 /// A reflected entity carrying a **redacted** column, for the CE-LG audit
 /// surface.
 ///

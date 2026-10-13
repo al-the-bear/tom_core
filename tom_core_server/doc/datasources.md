@@ -35,6 +35,7 @@ declared.
 - [Data Sources and Drivers](#data-sources-and-drivers)
   - [Every settings key has to bind](#every-settings-key-has-to-bind)
   - [Routing per tenant](#routing-per-tenant)
+  - [What one execution reports](#what-one-execution-reports)
 - [When a Write Fails](#when-a-write-fails)
   - [Why the test recognises the *definite* side](#why-the-test-recognises-the-definite-side)
   - [Walking the chain](#walking-the-chain)
@@ -76,7 +77,8 @@ declared.
 | `SqlPlaceholderScan` | class | Finds `:name` placeholders in generated SQL without mistaking one inside a quoted literal for a bind |
 | `TomSqlLexer` | class | The package's one quote/comment scanner and statement splitter — shared by this driver's one-statement check and by `db_migration`'s applier and DDL reader |
 | `TomDataSource` | abstract class | One configured data source (lifecycle + execution) |
-| `TomPreparedStatement<T>` | abstract class | A reusable compiled statement |
+| `TomPreparedStatement<T>` | abstract class | A reusable compiled statement, run any number of times — concurrently — through `execute` (rows) or `run` (rows, affected-row count, generated key) |
+| `TomStatementOutcome<T>` | class | What one execution of a prepared statement reported: its `rows`, its `affectedRows` and its `generatedId` |
 | `TomDatasourceDriver` | class | Marks a `TomDataSource` as the driver for a named type |
 | `TomDataSourceInfo` | class | The process-wide registry of named, configured data sources |
 | `TomDatasourceInitException` | class | A data source could not be discovered, instantiated or initialised |
@@ -726,6 +728,42 @@ the invalidation log — is built once over a data source and keeps it, which is
 what keeps the framework's tables deployment-wide. With no router installed,
 `getDataSourceInfo` and `getBaseDataSourceInfo` answer the same. See
 [tenancy.md](tenancy.md#how-a-data-source-is-routed) for the routing rules.
+
+### What one execution reports
+
+A `TomPreparedStatement` is run two ways. `execute(params)` returns the mapped
+rows and nothing else. `run(params)` returns a `TomStatementOutcome` carrying
+everything that one execution reported:
+
+| Member | Type | What it is |
+| ------ | ---- | ---------- |
+| `rows` | `List<T>` | The mapped result rows; empty for a statement that returns none. |
+| `affectedRows` | `int` | The rows the execution changed — the count an `UPDATE` or `DELETE` reports, `0` for one that changed nothing. MariaDB counts rows *changed*, not matched, so an `UPDATE` writing the values already present reports `0`. |
+| `generatedId` | `int?` | The auto-increment / identity key the execution produced, or `null` when it produced none. |
+
+The outcome is returned **by the execution it describes** rather than kept on
+the statement, because a statement is shared. A repository prepares each of its
+statements once for the life of the process and runs it from every request at
+once, so state on the handle would belong to whichever execution finished last:
+two saves overlapping on one handle would each read the other's count or key.
+For a versioned update that is not a cosmetic slip — a refused save that read
+"one row changed" from somebody else's update would report success (see
+[Optimistic Locking](object_persistence.md#optimistic-locking)).
+
+The layers above act on each member. `TomSqlDatasourceRepository.save` takes a
+freshly inserted row's surrogate key from `generatedId`, and refuses the insert
+by name (`crud_repository.save.no_generated_key`) when there is none rather than
+store a row under a key that is not its own; the delete methods return
+`affectedRows` as *the* number of rows removed; and a versioned update or
+`delete(entity)` reads `0` there as a conflict.
+
+`generatedId` has to come from the driver, read from the insert's own result. A
+follow-up `SELECT LAST_INSERT_ID()` from any layer above reads the *session's*
+last value and answers `0` on another connection, and only the driver knows which
+connection the insert ran on. `MariadbPreparedStatement.run` reads all three from
+the one result set its execution produced — including on the retry after a lost
+connection — and maps the driver's `0` ("no generated key") to `null`, since a
+real `AUTO_INCREMENT` value is never `0` (`normalizeGeneratedId`).
 
 ## When a Write Fails
 
@@ -1400,7 +1438,9 @@ exemption, the lifetime) and closing.
 `test/datasources_test.dart` always runs, and reaches further into the driver
 than "no connection" suggests. Beyond the dialect's SQL generation and the
 `TomDbInt.of` / `TomDbBool.of` conversions it covers `MariadbPreparedStatement`'s
-`buildPositionalParameters` and `normalizeGeneratedId`,
+`buildPositionalParameters` and `normalizeGeneratedId`, its `run` — the count an
+execution returned, the count on the retry after a lost connection, and two
+overlapping executions of one handle each reporting their own —
 `MariaDbDatasource.toPositionalStatement` and the placeholder scan it shares
 with `crud_repository`, `sqlInstant` / `parseSqlInstant` /
 `parseOptionalSqlInstant` — including the local-reading trap that
@@ -1618,6 +1658,9 @@ test here requires this file in particular to keep using it.
   and DDL reader are written on it.
 - **`TomDataSource`** (+ `TomPreparedStatement`, `TomDatasourceDriver`,
   `TomDataSourceInfo`) — the data-source/driver abstraction and registry.
+- **`TomStatementOutcome`** — what one execution of a prepared statement
+  reported, returned by `TomPreparedStatement.run` rather than kept on the
+  shared handle. See [What one execution reports](#what-one-execution-reports).
 - **`MariaDbDatasource` / `MariaDbXADatasource` / `MariadbSqlDialect`** — the
   MariaDB implementation, a connection per transaction.
 - **`TomConnectionPool`** (+ `TomConnectionPoolSettings`,
@@ -1662,32 +1705,20 @@ test here requires this file in particular to keep using it.
   wrapping would turn a modelling mistake into a plausible wrong answer. Store a
   duration as an integer count of its unit.
   <!-- pinned: test/mariadb_row_mapping_test.dart › a TIME column holding an interval is not a time of day -->
-- **`lastGeneratedId` is yours to answer, and only you can.**
-  `TomPreparedStatement.lastGeneratedId` is abstract. The key belongs to the
-  connection the insert ran on, and the driver is the only layer that knows
-  which connection that was — a follow-up `SELECT LAST_INSERT_ID()` from any
-  layer above reads the *session's* last value and answers 0 on another
-  connection, which is the defect reading it from the insert's own result
-  exists to remove. Return what the insert reported;
-  `TomSqlDatasourceRepository.save` takes a freshly inserted row's surrogate key
-  from it and refuses the insert by name
-  (`crud_repository.save.no_generated_key`) when there is none, rather than
-  storing a row under a key that is not its own.
-  <!-- unpinned: decision — abstract by design: only the driver knows the connection -->
-- **`lastAffectedRows` is per-execution.** `TomPreparedStatement.lastAffectedRows`
-  is abstract and non-nullable for the same reason — a driver that ran a write
-  knows how many rows it touched, and callers (the CRUD repository's delete
-  methods) return the number as *the* answer to "how many rows went". A default
-  would let a driver stay silent and have the silence read as a real count. It
-  is state on the handle, replaced by the next `execute` and meaningless after
-  `deallocate`, so read it immediately after the execute that produced it. Both
-  this and `lastGeneratedId` are captured in one place in the MariaDB statement,
-  so that its retry branch cannot pick up one and drop the other.
+- **`run` is yours to answer, and only you can.** `TomPreparedStatement.run`
+  is abstract, and the `TomStatementOutcome` it returns has no defaults. The
+  generated key belongs to the connection the insert ran on, and the driver is
+  the only layer that knows which connection that was; the affected-row count
+  is what callers return as *the* answer to "how many rows went", and what a
+  versioned update reads as a conflict. A default would let a driver stay
+  silent and have the silence read as a real answer. Return what the
+  execution's own result reported, on every path including a retry — see
+  [What one execution reports](#what-one-execution-reports).
 
   Every member of the contract is abstract, and `datasources_test.dart` holds it
   there: a member that grows a body is one a driver can leave unanswered while
   the layers above read the default as its answer.
-  <!-- unpinned: decision — abstract by design, like lastGeneratedId -->
+  <!-- unpinned: decision — abstract by design: only the driver knows the connection -->
 - **XA has no recovery.** `MariaDbXADatasource` mints its branch id in
   memory and keeps it only there, and nothing ever issues `XA RECOVER`,
   so a process that dies between `XA PREPARE` and `XA COMMIT` leaves a prepared

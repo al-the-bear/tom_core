@@ -30,19 +30,21 @@ class ScriptedStatement<T extends Object> implements TomPreparedStatement<T> {
   final int affectedRows;
 
   @override
-  Future<List<T>> execute([Map<String, Object?>? params]) async {
+  Future<List<T>> execute([Map<String, Object?>? params]) async =>
+      (await run(params)).rows;
+
+  @override
+  Future<TomStatementOutcome<T>> run([Map<String, Object?>? params]) async {
     source.executions.add({...?params});
-    return source.nextAnswer<T>();
+    return TomStatementOutcome<T>(
+      rows: source.nextAnswer<T>(),
+      affectedRows: affectedRows,
+      generatedId: source.generatedId,
+    );
   }
 
   @override
   Future<void> deallocate() async {}
-
-  @override
-  int? get lastGeneratedId => source.generatedId;
-
-  @override
-  int get lastAffectedRows => affectedRows;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
@@ -64,7 +66,7 @@ class ScriptedDataSource implements TomDataSource {
   /// What each successive execution does, in order.
   final Queue<Object> answers = Queue();
 
-  /// What [TomPreparedStatement.lastGeneratedId] reports after an insert.
+  /// What [TomStatementOutcome.generatedId] reports after an insert.
   int? generatedId;
 
   /// The SQL of every statement prepared, in order, as the dialect renders it.

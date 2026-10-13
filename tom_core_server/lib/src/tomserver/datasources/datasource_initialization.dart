@@ -34,7 +34,8 @@ class TomDatasourceInitException extends TomServerException {
 /// contracts. Every member of [TomPreparedStatement] is abstract, deliberately:
 /// each carries a value the layers above act on, so there is none a driver can
 /// leave unanswered and have the silence read as an answer. The one that costs
-/// most is [TomPreparedStatement.lastGeneratedId] —
+/// most is [TomStatementOutcome.generatedId], which [TomPreparedStatement.run]
+/// reports —
 /// `TomSqlDatasourceRepository.save` takes a freshly inserted row's surrogate
 /// key from it, and a driver is the only layer that can supply it, because the
 /// key belongs to the connection the insert ran on and only the driver knows
@@ -50,18 +51,29 @@ class TomDatasourceDriver {
   const TomDatasourceDriver(this.type);
 }
 
-/// A reusable, server-side compiled statement that can be [execute]d (with
-/// optional named [params]) any number of times and then [deallocate]d.
-abstract class TomPreparedStatement<T extends Object> {
-  /// Runs the statement and returns the mapped result rows.
-  Future<List<T>> execute([Map<String, Object?>? params]);
+/// What one execution of a [TomPreparedStatement] reported: the mapped
+/// [rows], the number of rows it changed, and the key it generated.
+///
+/// It is returned by the execution it describes rather than kept on the
+/// statement, because a repository keeps one statement for the life of the
+/// process and runs it from every request at once. State on the handle belongs
+/// to whichever execution finished last; two saves overlapping on one handle
+/// would each read the other's count — and a version check that reads "one row
+/// changed" from somebody else's update lets a refused save report success.
+class TomStatementOutcome<T extends Object> {
+  /// The mapped result rows; empty for a statement that returns none.
+  final List<T> rows;
 
-  /// Releases the statement's server-side resources.
-  Future<void> deallocate();
+  /// The number of rows the execution changed — the count an `UPDATE` or
+  /// `DELETE` reports, and `0` for one that changed nothing.
+  ///
+  /// MariaDB counts rows *changed*, not rows matched: an `UPDATE` that writes
+  /// the values already present reports `0`. A versioned update always moves
+  /// the version, so for it the two are the same.
+  final int affectedRows;
 
-  /// The database-assigned auto-increment / identity key produced by the most
-  /// recent [execute] that inserted a row, or `null` when the last execute
-  /// produced no generated key.
+  /// The database-assigned auto-increment / identity key the execution
+  /// produced, or `null` when it produced none.
   ///
   /// Read from the insert's *own* result, this is the authoritative source for
   /// a freshly inserted row's surrogate key — unlike a follow-up
@@ -69,33 +81,40 @@ abstract class TomPreparedStatement<T extends Object> {
   /// happens to run on a different connection than the insert. A driver is the
   /// only layer that can answer it for the same reason: the key belongs to the
   /// connection the insert ran on, and only the driver knows which connection
-  /// that was.
-  ///
-  /// Abstract, and without a default, for the reason [lastAffectedRows] is:
-  /// `null` is a real answer — every `SELECT`, `UPDATE` and `DELETE` gives it,
-  /// and so does an insert into a table that assigns no key — and
+  /// that was. `null` is a real answer — every `SELECT`, `UPDATE` and `DELETE`
+  /// gives it, and so does an insert into a table that assigns no key — and
   /// `TomSqlDatasourceRepository.save` acts on it, refusing an insert whose
-  /// surrogate key it asked the database to assign and did not get back. A
-  /// default returning `null` would let a driver that never implemented this
-  /// give that answer to every insert, and be believed.
-  ///
-  /// It is per-execution state on the handle, so read it immediately after
-  /// [execute] and before [deallocate].
-  int? get lastGeneratedId;
+  /// surrogate key it asked the database to assign and did not get back.
+  final int? generatedId;
 
-  /// The number of rows the most recent [execute] changed — the count a
-  /// `DELETE` or `UPDATE` reports, and `0` for a statement that changed
-  /// nothing or has not run yet.
+  /// The outcome of one execution.
+  const TomStatementOutcome({
+    required this.rows,
+    required this.affectedRows,
+    required this.generatedId,
+  });
+}
+
+/// A reusable, server-side compiled statement that can be run (with optional
+/// named params) any number of times — concurrently, by any number of
+/// requests — and then [deallocate]d.
+abstract class TomPreparedStatement<T extends Object> {
+  /// Runs the statement and returns the mapped result rows.
+  Future<List<T>> execute([Map<String, Object?>? params]);
+
+  /// Runs the statement and returns everything that execution reported: its
+  /// rows, the rows it changed and the key it generated.
   ///
-  /// Deliberately non-nullable, and abstract as [lastGeneratedId] is: a driver
-  /// that ran a write knows how many rows it touched, and callers return this
-  /// number as *the* answer to "how many rows were deleted". A default would
-  /// let a driver stay silent and have the silence read as a real count —
-  /// which is exactly the defect this member exists to remove.
-  ///
-  /// It is per-execution state on the handle, so read it immediately after
-  /// [execute] and before [deallocate].
-  int get lastAffectedRows;
+  /// Abstract, and without a default, because each of the three is acted on: a
+  /// save returns the row stored under [TomStatementOutcome.generatedId], a
+  /// delete returns [TomStatementOutcome.affectedRows] as *the* number of rows
+  /// removed, and a versioned update reads `0` there as a conflict. A default
+  /// would let a driver stay silent and have the silence read as a real
+  /// answer.
+  Future<TomStatementOutcome<T>> run([Map<String, Object?>? params]);
+
+  /// Releases the statement's server-side resources.
+  Future<void> deallocate();
 }
 
 /// A connection to one data source — the abstract contract a driver implements.

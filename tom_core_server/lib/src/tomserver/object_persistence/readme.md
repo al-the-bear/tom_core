@@ -23,6 +23,11 @@ outside it. An entity with a `resource_key` column is scoped by the principal's
 resource grants automatically, without an annotation — `@TomDbScope.unscoped()`
 is the explicit opt-out.
 
+A `@TomVersion` field turns on **optimistic locking**: every update and
+`delete(entity)` matches the row only at the version the caller loaded, so of
+two saves of one loaded row the second raises `TomOptimisticLockException`
+instead of silently overwriting the first.
+
 ## Key types
 
 | Type | Responsibility |
@@ -31,6 +36,7 @@ is the explicit opt-out.
 | `TomAnnotationAnalyzer` | Mixin that reads the mapping annotations off an entity. |
 | `TomRepository<T, K>` | CRUD contract: `save`, `findById`, `findAll`, `delete`/`deleteById`, `count`, `existsById`, and `*ByQuery` / `*ByQuerySentence`. |
 | `TomSqlDatasourceRepository<T, K>` | SQL implementation over a `TomDataSource`; subclass and override `sqlDialect`. |
+| `TomVersion` · `TomOptimisticLockException` | The `int` field holding a row's version, which the repository writes and checks on every update and `delete(entity)`; and the refusal of a write whose version moved, carrying the version held and the one stored. |
 | `TomCompositeKey` | The `K` of an entity whose `primaryKeyFields` lists several fields — a join table keyed by its two foreign keys — keyed by field name. |
 | `TomPageRequest` · `TomSortField` · `TomSortDirection` | The optional row window (`offset` + `limit`) and per-field sort the finders accept; an unsorted window gets every primary-key field appended so consecutive pages partition the result. |
 | `TomQueryBuilder` | Mixin offering `isNull` / `isNotNull` / `isIn` / `between` / `like` plus the `Eq` / `Neq` / `And` / `Or` / `Not` operators and the typed column references (`IntCol`, `StringCol`, …). |
@@ -78,9 +84,12 @@ void main() {
 
 See [`doc/object_persistence.md`](../../../../doc/object_persistence.md) for the
 mapping annotations, the repository contract, the query builder and paging, and
-`example/object_persistence/object_persistence_example.dart` for a sixteen-step
+`example/object_persistence/object_persistence_example.dart` for a seventeen-step
 walkthrough that checks its own results, with its entities beside it in
 `example/object_persistence/object_persistence_entities.dart`.
+`example/object_persistence/optimistic_locking_example.dart` walks optimistic
+locking the same way, and `test/optimistic_locking_test.dart` and
+`test/optimistic_locking_db_test.dart` cover it without and with a server.
 `test/object_persistence_test.dart` covers the module and
 `test/object_persistence_db_test.dart` adds what only a live MariaDB can answer;
 `test/examples_test.dart` runs the example and

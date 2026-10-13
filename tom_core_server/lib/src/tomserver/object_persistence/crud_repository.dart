@@ -63,6 +63,43 @@ class TomRepositoryException extends TomServerException {
   });
 }
 
+/// A save or delete refused because the row's `@TomVersion` moved since the
+/// entity was loaded — somebody else saved it first.
+///
+/// The caller's own write is what was refused, so the exception is the
+/// caller's to see ([clientThrow] is `true`): the usual answer is to reload
+/// the row, show the user what changed, and let them decide again. Its key is
+/// `crud_repository.save.version_conflict` or
+/// `crud_repository.delete.version_conflict`; [heldVersion] is the version the
+/// caller presented and [storedVersion] the one the row carries now, `null`
+/// when the row is gone or no longer visible.
+class TomOptimisticLockException extends TomRepositoryException {
+  /// The version the refused write presented.
+  final int heldVersion;
+
+  /// The version stored now, or `null` when the row no longer exists or is no
+  /// longer visible to the caller.
+  final int? storedVersion;
+
+  /// A refused versioned write of [entity] with key [id].
+  TomOptimisticLockException(
+    super.key,
+    super.defaultUserMessage, {
+    required String entity,
+    required Object? id,
+    required this.heldVersion,
+    required this.storedVersion,
+  }) : super(
+         parameters: {
+           'entity': entity,
+           'id': '$id',
+           'heldVersion': heldVersion,
+           'storedVersion': storedVersion,
+         },
+         clientThrow: true,
+       );
+}
+
 /// Result holder for a `COUNT(*)` query: a single [count] field populated by
 /// the row mapper. Reflectable so the data source can materialise it.
 ///
@@ -710,6 +747,58 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   List<TomColumnInformation> get _fileColumns =>
       TomAnnotationAnalyzer.findFileColumns(queryTypes[0]);
 
+  /// The entity's `@TomVersion` column, or `null` when it is not versioned —
+  /// in which case saves and deletes run unchecked.
+  TomColumnInformation? get _versionColumn =>
+      TomAnnotationAnalyzer.findVersionColumn(queryTypes[0]);
+
+  /// The bind name of the version a versioned update or delete expects to find
+  /// stored. Prefixed like the scope and tenant parameters so it cannot collide
+  /// with a column's declared name.
+  static const String versionParameter = '__tomversion_expected';
+
+  /// The version [entity] was loaded with, refusing one that carries none.
+  ///
+  /// A `null` version on an existing row means the caller dropped the field —
+  /// a client that round-tripped the entity without it — and treating that as
+  /// "skip the check" would make the check optional for anyone who omits it.
+  int _heldVersion(T entity, TomColumnInformation column, String operation) {
+    final held = column.getVariableValue(entity);
+    if (held is int) return held;
+    throw TomRepositoryException(
+      'crud_repository.$operation.version_missing',
+      'The record carries no version, so it cannot be checked against the '
+          'stored one. Reload it and try again.',
+      parameters: {'entity': '$T', 'field': column.declaredName},
+      clientThrow: true,
+    );
+  }
+
+  /// Refuses a versioned write that changed no row: the stored version is no
+  /// longer [held], or the row is gone.
+  Future<Never> _versionConflict(
+    String operation,
+    K id,
+    TomColumnInformation column,
+    int held,
+  ) async {
+    final stored = await _selectById(id);
+    final storedVersion = stored == null
+        ? null
+        : column.getVariableValue(stored) as int?;
+    throw TomOptimisticLockException(
+      'crud_repository.$operation.version_conflict',
+      stored == null
+          ? 'The record was deleted after you loaded it.'
+          : 'The record was changed by someone else after you loaded it. '
+                'Reload it to see the change, then try again.',
+      entity: '$T',
+      id: id,
+      heldVersion: held,
+      storedVersion: storedVersion,
+    );
+  }
+
   /// Resolves the `@TomFileReference` column named [fieldName] (by declared
   /// name or column name), throwing when the entity has no such file column.
   TomColumnInformation _fileColumn(String fieldName) {
@@ -1084,10 +1173,31 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
       final stored = await _selectById(id);
       if (stored != null) doomed.add(stored);
     }
+    // A versioned entity is deleted only while the stored version is still
+    // the one the caller loaded: deleting a row somebody has since changed
+    // would destroy an edit the caller never saw.
+    final version = _versionColumn;
+    final held = version == null
+        ? null
+        : _heldVersion(entity, version, 'delete');
     _deleteQuery ??= await datasourceInfo.datasource.prepareStatement(
-      TomDelete(queryTypes, query: _keyPredicate()),
+      TomDelete(
+        queryTypes,
+        query: version == null
+            ? _keyPredicate()
+            : and([
+                _keyPredicate(),
+                TomDataScope.columnEqualsParam(this, version, versionParameter),
+              ]),
+      ),
     );
-    await _deleteQuery!.execute(_keyParameters(id));
+    final outcome = await _deleteQuery!.run({
+      ..._keyParameters(id),
+      if (held != null) versionParameter: held,
+    });
+    if (version != null && outcome.affectedRows == 0) {
+      await _versionConflict('delete', id, version, held!);
+    }
     await _deleteReferencedFiles(doomed);
     await _audit(TomAuditAction.delete, key: id, before: before);
     return;
@@ -1170,10 +1280,9 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     _deleteByIdQuery ??= await datasourceInfo.datasource.prepareStatement(
       TomDelete(queryTypes, query: _keyPredicate()),
     );
-    await _deleteByIdQuery!.execute(_keyParameters(id));
-    // Read before anything else runs: the count is per-execution state on the
-    // handle, and the file cascade below executes further statements.
-    final affected = _deleteByIdQuery!.lastAffectedRows;
+    final affected = (await _deleteByIdQuery!.run(
+      _keyParameters(id),
+    )).affectedRows;
     await _deleteReferencedFiles(doomed);
     // Key only, no before-image. Reading the row first would put an extra
     // SELECT on every delete in every deployment, to recover data the trail is
@@ -1582,21 +1691,29 @@ SELECT * FROM ${dbTable.table}
   /// column, ANDed (each placeholder and bind name is the key field's declared
   /// name, appended last in key order). Without that clause the statement would
   /// rewrite every row.
+  ///
+  /// With a [version] column the clause also requires the stored version to be
+  /// the one bound as [versionParameter], so the statement matches no row once
+  /// another save has moved it.
   static (String, List<String>) buildUpdateStatement(
     String table,
     List<TomColumnInformation> columns,
-    List<TomColumnInformation> primaryKey,
-  ) {
+    List<TomColumnInformation> primaryKey, {
+    TomColumnInformation? version,
+  }) {
     final assignments = [
       for (final c in columns) '${c.getQueryFieldName()} = :${c.declaredName}',
     ];
     final paramNames = [
       for (final c in columns) c.declaredName,
       for (final k in primaryKey) k.declaredName,
+      if (version != null) versionParameter,
     ];
     final where = [
       for (final k in primaryKey)
         '${k.getQueryFieldName()} = :${k.declaredName}',
+      if (version != null)
+        '${version.getQueryFieldName()} = :$versionParameter',
     ];
     final sql =
         'UPDATE $table SET ${assignments.join(',')}'
@@ -1701,14 +1818,16 @@ SELECT * FROM ${dbTable.table}
       );
       final params = <String, Object?>{
         for (final col in writable) col.declaredName: dbValue(col),
+        // A row starts at version 1, whatever the caller's object held.
+        if (_versionColumn case final version?) version.declaredName: 1,
       };
-      await _saveInsertQuery!.execute(params);
+      final inserted = await _saveInsertQuery!.run(params);
       // Resolve the row's key. A composite key was supplied whole and is the
       // row's key as written. A single key reaches this branch exactly when it
       // was left unsaved, so the database assigned an auto-increment surrogate
       // and the insert statement's own result is the only place it can be read
       // from:
-      // `lastGeneratedId` is connection-correct by construction, where a
+      // `generatedId` is connection-correct by construction, where a
       // follow-up query for "the last key" is session-scoped and answers about
       // whichever connection it happens to run on.
       //
@@ -1719,9 +1838,7 @@ SELECT * FROM ${dbTable.table}
       // not the one just written. So it is refused by name.
       final K rowKey = hasCompositeKey
           ? primaryKey as K
-          : (_saveInsertQuery!.lastGeneratedId ??
-                    _noGeneratedKey(dbTable.table))
-                as K;
+          : (inserted.generatedId ?? _noGeneratedKey(dbTable.table)) as K;
       final newRow = await findById(rowKey);
       if (newRow != null) {
         // A create has no before-image; the whole stored row is the change.
@@ -1741,10 +1858,15 @@ SELECT * FROM ${dbTable.table}
       );
     } else {
       // UPDATE
+      final version = _versionColumn;
+      final held = version == null
+          ? null
+          : _heldVersion(toSave, version, 'save');
       final (sql, paramNames) = buildUpdateStatement(
         dbTable.table,
         writable,
         primaryKeyColumns,
+        version: version,
       );
       _saveUpdateQuery ??= await datasourceInfo.datasource.prepareStatement<T>(
         TomLiteralSelect([T], query: sql, parameters: paramNames),
@@ -1753,12 +1875,22 @@ SELECT * FROM ${dbTable.table}
         for (final col in writable) col.declaredName: dbValue(col),
         for (final key in primaryKeyColumns)
           key.declaredName: key.getVariableValue(toSave),
+        // The version moves on every save, and only from the one held.
+        if (version != null) ...{
+          version.declaredName: held! + 1,
+          versionParameter: held,
+        },
       };
       // Which blobs this update strands, decided from the values about to be
       // written and collected *before* the statement runs — afterwards the
       // baseline key is no longer anywhere to be read.
       final superseded = _supersededFiles(baseline, params);
-      await _saveUpdateQuery!.execute(params);
+      final updated = await _saveUpdateQuery!.run(params);
+      // No row matched: another save moved the version first, or the row is
+      // gone. Nothing was written, so nothing is discarded or audited.
+      if (version != null && updated.affectedRows == 0) {
+        await _versionConflict('save', primaryKey as K, version, held!);
+      }
       // Discarded only once the row no longer points at them.
       for (final (column, key) in superseded) {
         await _discardBlob(_fileStore(column), key);
@@ -1804,7 +1936,7 @@ SELECT * FROM ${dbTable.table}
           "key was left for the database to assign. Either the table assigns "
           "no auto-increment key for its primary key, or the driver "
           "(${datasourceInfo.datasource.runtimeType}) does not report one from "
-          "the insert's result — see TomPreparedStatement.lastGeneratedId.",
+          "the insert's result — see TomStatementOutcome.generatedId.",
       parameters: {
         'table': table,
         'type': '$T',
@@ -1850,17 +1982,14 @@ SELECT * FROM ${dbTable.table}
   ///
   /// The write counterpart of [_runPrepared], which returns rows and therefore
   /// cannot answer "how many did that touch": a `DELETE` returns no rows, and
-  /// its count is per-execution state on the statement handle. Reading it here
-  /// — inside the `try`, before the `finally` deallocates — is the only place
-  /// it is still available.
+  /// its count is part of the execution's [TomStatementOutcome].
   Future<int> _runPreparedAffecting(
     TomQuery query,
     Map<String, Object?> params,
   ) async {
     final stmt = await datasourceInfo.datasource.prepareStatement<T>(query);
     try {
-      await stmt.execute(params);
-      return stmt.lastAffectedRows;
+      return (await stmt.run(params)).affectedRows;
     } finally {
       await stmt.deallocate();
     }

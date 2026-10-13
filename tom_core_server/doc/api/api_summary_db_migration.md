@@ -306,7 +306,7 @@ const TomSchemaColumn({
 | `name` | `String` | The column name as written on the side it was read from. Lookups are case-insensitive (`TomSchemaTable.column`); this field keeps the original spelling so a report names the column the way its author wrote it. |
 | `family` | `TomSqlTypeFamily` | The type class this column is compared in — the only type information the diff looks at. |
 | `declaredType` | `String` | The type as declared on the source side: a SQL type (`VARCHAR(255)`) for a column read from DDL, a Dart or `TomDbType` name for one derived from an entity. **Reported, never compared** — the two sides spell the same type differently by nature. |
-| `nullable` | `bool` | Whether the column accepts `NULL`. Parsed from DDL and carried, but **not** part of the comparison: the entity side has no nullability declaration to compare against (every mapped field is Dart-nullable so an unsaved record can exist). Modelled anyway so a future entity-side declaration can turn the comparison on without re-parsing anything; defaults to `true` on the entity side, where it is unknown. |
+| `nullable` | `bool` | Whether the column accepts `NULL`. Parsed from DDL. The entity model declares nullability for one kind of column only — a `@TomVersion` column, which must hold a value and is read as `false` — so it is compared only there (`nullableVersionColumn`): every other mapped field is Dart-nullable so an unsaved record can exist, and says nothing about the column. Defaults to `true` on the entity side, where it is unknown. |
 | `origin` | `String` | Where this column came from — the migration artifact basename that last defined it, or the entity type name that declares it. This is the locality a divergence points at: "column `x` is missing from `app_items`" is only actionable together with "and `UserRecord` expects it". |
 
 #### Methods
@@ -570,11 +570,12 @@ classes describe, read straight out of the reflection metadata.
 
 The comparison scope is bounded by what the annotations actually declare, and the
 boundary is deliberate rather than provisional. **Compared** — table existence,
-column existence, column type family, and the primary key. **Not compared,
+column existence, column type family, the primary key, and that a `@TomVersion`
+column is `NOT NULL`. **Not compared,
 because the entity model does not declare it** — length and precision, defaults,
 `AUTO_INCREMENT`, unique keys, secondary indexes, foreign keys, charset,
 collation and engine. **Not compared, because the entity side carries no usable
-signal** — nullability. **Out of scope entirely** — seed data, generated
+signal** — the nullability of any other column. **Out of scope entirely** — seed data, generated
 columns, partitioning and stored routines.
 
 #### Static Methods
@@ -813,6 +814,7 @@ graded by severity — each names a *different culprit*, and so a different fix.
 | `unmappedColumn` | warning | The chain creates a column the entity does not map. An entity may deliberately project a subset of its table. |
 | `columnTypeMismatch` | error | Both sides have the column, in incompatible type families (see `TomSqlTypeFamilyCompatibility.accepts`). |
 | `primaryKeyMismatch` | error | The two sides disagree on which columns form the primary key. |
+| `nullableVersionColumn` | error | An entity's `@TomVersion` column is nullable in the chain. A versioned update matches its row by `version = ?` and `NULL` equals nothing, so every save of such a row would be refused as a conflict; the column is added `NOT NULL` with a default. |
 | `conflictingEntityPrimaryKey` | error | Two entities map to the same table but declare different primary keys — a contradiction *within* the entity model, reported before the chain is consulted at all. Distinct from `primaryKeyMismatch`, which is the entity model disagreeing with the chain: reporting this one as that would send the reader to the migration scripts to correct something no migration script did. |
 | `chainError` | error | A statement in the chain could not be replayed, so the actual side is incomplete and everything downstream of it is unreliable. |
 | `ambiguousEntitySchema` | error | An entity declares no `TomDbTable.schema` in a datasource that has more than one schema directory, so which schema it belongs to is unknowable. |

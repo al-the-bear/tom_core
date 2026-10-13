@@ -244,7 +244,7 @@ void main() {
 
     test('a driver that reports no generated key is refused by name', () async {
       // The scripted source leaves `generatedId` null, which is what a driver
-      // that never implemented `lastGeneratedId` answers for every insert.
+      // that never implemented `generatedId` answers for every insert.
       // `save` asked the database to assign the key, so there is no key to
       // return and nothing later in the method can be about the right row.
       expect(scripted.generatedId, isNull);
@@ -257,7 +257,7 @@ void main() {
     test('the refusal names the table and the driver', () async {
       // Both halves are the diagnosis: the table is where an author looks for a
       // missing AUTO_INCREMENT, the driver is where they look for an
-      // unimplemented `lastGeneratedId`, and the message cannot say which of
+      // unimplemented `generatedId`, and the message cannot say which of
       // the two it is.
       await expectLater(
         FixtureTaskRepository().save(FixtureTaskRecord()..title = 'x'),
@@ -268,7 +268,7 @@ void main() {
             allOf(
               contains('fixture_task'),
               contains('ScriptedDataSource'),
-              contains('lastGeneratedId'),
+              contains('generatedId'),
             ),
           ),
         ),

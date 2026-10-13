@@ -90,21 +90,6 @@ class MariadbPreparedStatement<T extends Object>
   /// being read off reflected column metadata at mapping time.
   final Map<String, Type>? groupedProjection;
 
-  int? _lastGeneratedId;
-
-  int _lastAffectedRows = 0;
-
-  /// The auto-increment key the most recent [execute] generated, taken from the
-  /// insert's own result set (`0` from the driver means "no generated key" and
-  /// surfaces here as `null`, since a real AUTO_INCREMENT value is never 0).
-  @override
-  int? get lastGeneratedId => _lastGeneratedId;
-
-  /// The row count the most recent [execute] reported, taken from that
-  /// execute's own result set. `0` until the statement has run.
-  @override
-  int get lastAffectedRows => _lastAffectedRows;
-
   /// A statement running [command] on [datasource], binding [parameterList]
   /// and mapping rows to [resultType].
   MariadbPreparedStatement(
@@ -114,16 +99,6 @@ class MariadbPreparedStatement<T extends Object>
     this.command, {
     this.groupedProjection,
   });
-
-  /// Records the per-execution metadata carried by an execute's [result]: the
-  /// generated key and the affected-row count.
-  ///
-  /// Both are captured in one place so that the retry branch of [execute]
-  /// cannot pick up one and forget the other.
-  void _captureExecuteResult(IResultSet result) {
-    _lastGeneratedId = normalizeGeneratedId(result.lastInsertID);
-    _lastAffectedRows = result.affectedRows.toInt();
-  }
 
   /// Normalises a driver-reported last-insert id into a generated key: the
   /// driver reports `0` when a statement generated no AUTO_INCREMENT value
@@ -161,6 +136,12 @@ class MariadbPreparedStatement<T extends Object>
   }
 
   /// Runs the statement and maps its rows.
+  @override
+  Future<List<T>> execute([Map<String, Object?>? params]) async =>
+      (await run(params)).rows;
+
+  /// Runs the statement and reports its rows, the rows it changed and the key
+  /// it generated — all three read from this execution's own result set.
   ///
   /// A connection that turns out to be gone is retried once, on another
   /// connection, when the statement runs outside a transaction: the failed
@@ -169,7 +150,7 @@ class MariadbPreparedStatement<T extends Object>
   /// connection that was lost — so the failure is reported as
   /// `error.failed-to-execute.transaction_connection_lost`.
   @override
-  Future<List<T>> execute([Map<String, Object?>? params]) async {
+  Future<TomStatementOutcome<T>> run([Map<String, Object?>? params]) async {
     final List<Object?> parameters = buildPositionalParameters(
       parameterList,
       params,
@@ -199,8 +180,15 @@ class MariadbPreparedStatement<T extends Object>
         resultType,
       );
     }
-    _captureExecuteResult(result);
-    return datasource.mapResultSet<T>(result, resultType, groupedProjection);
+    return TomStatementOutcome<T>(
+      rows: await datasource.mapResultSet<T>(
+        result,
+        resultType,
+        groupedProjection,
+      ),
+      affectedRows: result.affectedRows.toInt(),
+      generatedId: normalizeGeneratedId(result.lastInsertID),
+    );
   }
 
   /// Forgets the statement on every connection that prepared it.

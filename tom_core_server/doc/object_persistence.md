@@ -16,6 +16,12 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
   - [How a repository fails](#how-a-repository-fails)
   - [Paging and Sorting](#paging-and-sorting)
   - [Lifecycle work](#lifecycle-work)
+- [Optimistic Locking](#optimistic-locking)
+  - [Declaring a version](#declaring-a-version)
+  - [What a save and a delete check](#what-a-save-and-a-delete-check)
+  - [Handling a conflict](#handling-a-conflict)
+  - [Adding a version to an existing table](#adding-a-version-to-an-existing-table)
+  - [What is not checked](#what-is-not-checked)
 - [Query Sentences](#query-sentences)
   - [Which kind takes which option](#which-kind-takes-which-option)
   - [`IS IN` lists](#is-in-lists)
@@ -69,6 +75,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
 | `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomReference` | classes | The annotations that map an entity class and its fields to a table and columns |
+| `TomVersion` | class | Marks the `int` field holding the row's version, turning on optimistic locking for the entity |
 | `TomDartType` | class | Wraps a `Type` so it can be carried as a value, where a bare `Type` literal is awkward to pass |
 | `TomRepository<T, K>` | abstract class | The CRUD + query contract for entity `T` keyed by `K` |
 | `TomSqlDatasourceRepository<T, K>` | abstract class | SQL implementation of the contract |
@@ -103,6 +110,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `TomBlobMigrationException` | class | Raised when a migration cannot proceed, or cannot be trusted |
 | `TomFileRepository<T, K>` | abstract class | The five-method file surface the HTTP file endpoint depends on |
 | `TomRepositoryException` / `TomQuerySyntaxException` | class | A failed operation / a query sentence that will not parse |
+| `TomOptimisticLockException` | class | A save or delete of a versioned entity refused because the row's version moved since it was loaded; carries the version held and the one stored |
 | `TomAnnotationAnalyzerException` / `TomAnnotationAnalyzerSyntaxException` | class | An entity the analyzer cannot resolve / annotation arguments it cannot read |
 | `TomDataScopeException` / `TomDataScopeAuthorizationException` / `TomColumnAuthorizationException` | class | A mis-wired scope or column grade / a read or write the scope refused / a write to a column the caller may not write |
 
@@ -360,9 +368,9 @@ into the predicate (see [Row Scopes](#row-scopes)), so a delete never reports
 rows the principal may not see, and `deleteAllById` can legitimately answer
 lower than the number of ids it was given.
 
-The number comes from the statement's own result
-(`TomPreparedStatement.lastAffectedRows`), read while the statement is still
-allocated. It is not derived from a follow-up `SELECT`, so it is exactly what
+The number comes from the execution's own result
+(`TomStatementOutcome.affectedRows`, which `TomPreparedStatement.run` returns).
+It is not derived from a follow-up `SELECT`, so it is exactly what
 the server did — including `0` for a predicate that matched nothing.
 
 ### How a repository fails
@@ -387,13 +395,17 @@ Every repository rejection is a keyed `TomServerException`, never a bare
 | `crud_repository.delete.unsaved_entity` | `delete(entity)` was handed an entity that was never persisted. |
 | `crud_repository.save.incomplete_key` | `save` was handed a composite-key entity with a key field still `null`. |
 | `crud_repository.key.shape_mismatch` | A composite-key method was handed a key that is not a `TomCompositeKey` of exactly the entity's key fields. |
+| `crud_repository.save.version_missing` | `save` was handed a stored `@TomVersion` entity whose version field is `null`. |
+| `crud_repository.delete.version_missing` | `delete(entity)` was handed a `@TomVersion` entity whose version field is `null`. |
+| `crud_repository.save.version_conflict` | A versioned update changed no row: the stored version is no longer the one the entity carries, or the row is gone. Raised as `TomOptimisticLockException`. |
+| `crud_repository.delete.version_conflict` | A versioned `delete(entity)` changed no row, for the same reasons. Raised as `TomOptimisticLockException`. |
 
 The first nine are *server* faults — a broken deployment, a table contradicting
 its own key, a driver that reported a write it then could not read — so
 `clientThrow` defaults to `false`: the key travels to the caller, the message
 (which names internals) does not.
 
-The last three are the exceptions, and set `clientThrow: true`: each is a
+The last seven are the exceptions, and set `clientThrow: true`: each is a
 statement about the caller's own argument, and the message says exactly that —
 where masking it would leave the caller with a generic error for a failure it is
 the only party able to fix. An entity whose primary key is still `null` (a
@@ -401,7 +413,9 @@ nullable surrogate key before its first save), negative (the `id >= 0` sentinel
 convention) or a composite key with a field still `null` addresses no row, so
 `delete` has nothing to delete and `save` has nothing to address; and a
 composite key of the wrong fields addresses some other set of rows than the one
-the method promises.
+the method promises. A versioned entity that arrives without its version is the
+caller's argument too, and a version conflict refuses the caller's own write —
+see [Optimistic Locking](#optimistic-locking).
 
 Before this check existed the two unsaved conventions failed differently and
 neither failed usefully: a `null` key threw a raw `TypeError` naming `Null` and
@@ -524,6 +538,147 @@ The write side has one seam, because the other writers route through it:
 `saveAll` calls `save` per entity, and `saveFile` and `clearFile` end in `save`.
 `openFile` and `describeFile` read the row through `findById`, so they reach a
 `findById` override as well.
+
+## Optimistic Locking
+
+Two people who load the same row and both save it would otherwise overwrite each
+other without either noticing — the second save simply wins. A field annotated
+`@TomVersion` makes the repository refuse the second save instead, without
+holding a database lock between the read and the write.
+
+### Declaring a version
+
+Mark one `int` field `@TomVersion`, beside its `@TomDbColumn`:
+
+```dart
+@tomReflector
+@TomDbTable(datasource: 'main', table: 'invoice', primaryKeyFields: ['id'])
+class Invoice {
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  @TomVersion()
+  @TomDbColumn(columnName: 'version')
+  int? version;
+
+  @TomDbColumn(columnName: 'amount')
+  int? amount;
+}
+```
+
+The repository maintains the field itself, so it must be one it can write.
+`TomAnnotationAnalyzer` refuses anything else when it resolves the entity's
+columns — before any statement runs:
+
+| Refused | Key |
+| ------- | --- |
+| a field that is not an `int` | `annotation_analyzer.version.invalid_field` |
+| the entity id, an association, or an `isReadOnly` column — a read-only column is left out of the `SET` clause, so its version would never move | `annotation_analyzer.version.invalid_field` |
+| a second `@TomVersion` field — a row has one version | `annotation_analyzer.version.more_than_one` |
+
+`TomAnnotationAnalyzer.findVersionColumn(type)` answers which column is the
+version, or `null` for an entity that is not versioned. An entity without the
+annotation is saved and deleted unchecked.
+
+### What a save and a delete check
+
+| Operation | What the repository does |
+| --------- | ------------------------ |
+| `save` of a new row | Writes version `1`, whatever the field held. |
+| `save` of a stored row | Writes `version + 1` with `… WHERE id = :id AND version = :__tomversion_expected`, binding the version the entity carries. |
+| `delete(entity)` | Deletes with the same `AND version = :__tomversion_expected` clause. |
+| a `save` or `delete(entity)` whose version field is `null` | Refused with `crud_repository.save.version_missing` / `crud_repository.delete.version_missing` before any statement runs. |
+
+The bind name is `TomSqlDatasourceRepository.versionParameter`, prefixed like the
+scope and tenant parameters so it cannot collide with a column's declared name;
+`TomSqlDatasourceRepository.buildUpdateStatement(..., version: column)` renders
+the clause.
+
+When another save has moved the version since the entity was loaded, the
+statement matches no row. The repository reads that from the execution's own
+affected-row count (`TomStatementOutcome.affectedRows`, see
+[datasources](datasources.md#what-one-execution-reports)) and raises
+`TomOptimisticLockException` — `crud_repository.save.version_conflict` or
+`crud_repository.delete.version_conflict`. The refused write changes nothing
+else: no blob is discarded, no file reference is cascaded and no audit record is
+written. The same holds when the row has been deleted meanwhile, since that
+statement matches no row either. On an entity with a row scope or a tenant,
+the scope check that runs before every update and `delete(entity)` sees the
+missing row first and refuses it as `data_scope.write.out_of_scope`.
+
+A refused `null` version is deliberate. A client that round-tripped the entity
+without the field would otherwise skip the check it exists for, so leaving the
+version out cannot be a way to turn locking off.
+
+The entity `save` returns is the stored row, so it carries the new version; a
+caller that keeps editing saves the object it got back, not the one it passed
+in. `saveAll` saves each entity through `save`, and `saveFile` and `clearFile`
+end in `save`, so all of them are checked. On a refused `saveFile` the blob just
+uploaded is discarded and the row keeps the file it referenced.
+
+### Handling a conflict
+
+`TomOptimisticLockException` extends `TomRepositoryException` and is always
+client-visible (`clientThrow: true`): the refused write is the caller's own.
+`heldVersion` is the version the caller presented and `storedVersion` the one the
+row carries now — `null` when the row is gone or no longer visible to the
+caller. Both travel in `parameters` beside `entity` and `id`.
+
+The usual answer is to reload the row, show the user what changed, and let them
+decide again. A caller that applies a change which does not depend on the old
+values can reload and re-apply it itself:
+
+```dart
+Future<Invoice> raiseAmount(
+  TomSqlDatasourceRepository<Invoice, int> invoices,
+  int id,
+  int by,
+) async {
+  for (var attempt = 0; attempt < 3; attempt++) {
+    final current = (await invoices.findById(id))!;
+    try {
+      return await invoices.save(current..amount = (current.amount ?? 0) + by);
+    } on TomOptimisticLockException catch (conflict) {
+      if (conflict.storedVersion == null) rethrow; // the row is gone
+    }
+  }
+  throw StateError('invoice $id keeps changing under us');
+}
+```
+
+Re-applying is right only where the edit is a function of the current row, as
+an increment is. An edit the user made by looking at the old values — a new
+title, a changed address — must not be re-applied blindly: that is the lost
+update the version exists to prevent, moved one step later.
+
+### Adding a version to an existing table
+
+The column must be `NOT NULL`: a versioned update matches by `version = ?`, and
+`NULL` equals nothing, so every save of a row whose version is `NULL` would be
+refused as a conflict. A table that gains the column later adds it with a
+default:
+
+```sql
+ALTER TABLE invoice ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+```
+
+Existing rows then load at version `0`, and their first save moves them to `1`.
+The schema-convergence check reports a version column the migration chain
+leaves nullable as `nullableVersionColumn`, an error (see
+[db_migration](db_migration.md#schema-convergence)).
+
+### What is not checked
+
+- **`deleteById(id)`** names a key and no version, so it deletes whatever the
+  row holds. Use `delete(entity)` when the deletion should depend on what the
+  caller saw.
+- **`deleteAllById`, `deleteByQuery` and `deleteByQuerySentence`** address a set
+  of rows, not entities the caller loaded, and run unchecked.
+- **`executeQueryString`** and any statement a caller writes itself bypass the
+  repository, so nothing moves the version for them; an `UPDATE` written by hand
+  should set `version = version + 1` itself, or the next versioned save of that
+  row will overwrite it unknowingly.
 
 ## Query Sentences
 
@@ -1780,6 +1935,25 @@ is where it stops you. Its entities live in
 `example/object_persistence/object_persistence_entities.dart`. Every step checks
 its own result, and `test/examples_test.dart` runs it.
 
+[Optimistic Locking](#optimistic-locking) is covered twice.
+`test/optimistic_locking_test.dart` needs no database: which fields may be the
+version, the versioned `UPDATE` and its bind names, the values a save binds and
+the refusals a scripted data source's `0`-row answer produces, and the
+migration shapes the convergence check accepts and reports.
+`test/optimistic_locking_db_test.dart`, tagged `db`, runs it against MariaDB —
+two saves of one loaded row with the second refused, six saves of one row at
+the same instant with exactly one winning, a refused editor reloading and
+saving on top of the winner, a versioned delete, and a table that gains the
+column through a migration, its existing row loading at version `0`.
+
+```bash
+dart run example/object_persistence/optimistic_locking_example.dart
+```
+
+`example/object_persistence/optimistic_locking_example.dart` walks the same
+decisions without a database, checking each result, and
+`test/examples_test.dart` runs it.
+
 [Tenant-Owned Rows](#tenant-owned-rows) is asserted by
 `test/tenancy_db_test.dart`, tagged `db`: two tenants writing and reading
 through one repository under each of the three isolation models, the tenant
@@ -1790,6 +1964,9 @@ table, in each tenant's schema or in each tenant's database.
 
 - **Annotations** — `TomDbTable`, `TomDbColumn`, `TomEntityId`, `TomReference`,
   plus `TomDartType`.
+- **`TomVersion` + `TomOptimisticLockException`** — the version field that turns
+  on optimistic locking, and the refusal of a save or delete whose version has
+  moved. See [Optimistic Locking](#optimistic-locking).
 - **`TomColumnInformation`** — resolved per-field metadata + reflection accessors.
 - **`TomRepository` / `TomSqlDatasourceRepository` / `MariadbRepository`** — the
   CRUD/query contract and its SQL/MariaDB implementations.

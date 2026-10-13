@@ -17,6 +17,7 @@ column-level access rights (C-4).
     - [TomDbTable](#tomdbtable)
     - [TomDbColumn](#tomdbcolumn)
     - [TomEntityId](#tomentityid)
+    - [TomVersion](#tomversion)
     - [TomDbScope](#tomdbscope)
     - [TomTenantOwned](#tomtenantowned)
     - [TomReference&lt;TARGET, K, REPO&gt;](#tomreferencetarget-k-repo)
@@ -100,6 +101,10 @@ server-authoritative access control enforced by `TomDataScope` /
 (C-7). A column annotated `@TomFileReference` holds a blob *key* rather than the
 file's bytes, so the row stays small enough to read, diff, audit and mask like
 any other while the payload moves as a stream through `TomFileRepository`.
+A field annotated `@TomVersion` turns on optimistic locking: every update and
+`delete(entity)` matches the row only at the version the caller loaded, and a
+write that finds it moved raises `TomOptimisticLockException` instead of
+overwriting somebody else's change.
 
 ## Class Hierarchy
 
@@ -112,6 +117,7 @@ TomServerException  (little_things)
     ├── TomDataScopeAuthorizationException
     ├── TomQuerySyntaxException
     └── TomRepositoryException
+            └── TomOptimisticLockException
 
 TomRepository<T, K>
     └── TomSqlDatasourceRepository<T, K>  (with TomQueryBuilder,
@@ -254,6 +260,35 @@ Annotation marking the entity field that holds the primary key.
 const TomEntityId()
 ```
 
+#### TomVersion
+
+Annotation marking the `int` field that holds the row's **version**, turning on
+optimistic locking for the entity. The repository maintains the field itself:
+
+- an insert writes version `1`, whatever the field held;
+- an update writes `version + 1` only where the stored version is still the one
+  the entity was loaded with (`… WHERE id = :id AND version =
+  :__tomversion_expected`), and raises `TomOptimisticLockException`
+  (`crud_repository.save.version_conflict`) when that matches no row;
+- `delete(entity)` checks the version the same way
+  (`crud_repository.delete.version_conflict`); `deleteById` and the query
+  deletes name no version and are not checked;
+- an update or `delete(entity)` whose version field is `null` is refused with
+  `crud_repository.save.version_missing` /
+  `crud_repository.delete.version_missing` before any statement runs.
+
+At most one field may carry it (`annotation_analyzer.version.more_than_one`),
+and that field must be an `int` the repository can write — not the entity id,
+not an association, not `isReadOnly`
+(`annotation_analyzer.version.invalid_field`). Its column must be `NOT NULL`;
+the schema-convergence check reports a nullable one as `nullableVersionColumn`.
+
+##### Constructors
+
+```dart
+const TomVersion()
+```
+
 #### TomDbScope
 
 Annotation declaring the row-level data scope of an entity (C-3): it restricts
@@ -393,10 +428,11 @@ TomColumnInformation({
   TomReference? reference,
   TomFileReference? fileReference,
   TomProtectedField? protectedField,
+  TomVersion? version,
 })
 ```
 
-The five required parameters are the ones every mapped field has; the five
+The five required parameters are the ones every mapped field has; the six
 optional ones each correspond to an annotation the field may or may not carry,
 and are `null` when it does not.
 
@@ -425,6 +461,7 @@ editing its metadata in place.
 | `reference` | `TomReference?` | The reference annotation, if this field is an association. |
 | `fileReference` | `TomFileReference?` | The file-reference annotation, if this column holds a blob storage key. |
 | `protectedField` | `TomProtectedField?` | The kernel's field-protection annotation, if the field carries one. |
+| `version` | `TomVersion?` | The optimistic-locking annotation, if this field is the row's version. |
 | `authKey` | `String?` | *(getter)* The resource key gating this column (C-4): `column.authKey`, else `protectedField.resourceKey`, else `null`. One `@TomProtectedField` therefore protects the field in the JSON tier and here. |
 | `declaredType` | `Type` | The declared Dart type of the field. |
 | `declaredName` | `String` | The field's name on the entity. |
@@ -492,7 +529,7 @@ Data's `CrudRepository`.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `delete` | `Future<void> delete(T entity)` | Deletes `entity` by its primary key. The one delete that returns nothing: it addresses a row the caller already holds, so the count could only be `1` or `0`. An entity that was never persisted addresses no row and raises `crud_repository.delete.unsaved_entity`. |
+| `delete` | `Future<void> delete(T entity)` | Deletes `entity` by its primary key. The one delete that returns nothing: it addresses a row the caller already holds, so the count could only be `1` or `0`. An entity that was never persisted addresses no row and raises `crud_repository.delete.unsaved_entity`. For a `@TomVersion` entity it deletes only at the version `entity` carries, and raises `TomOptimisticLockException` (`crud_repository.delete.version_conflict`) when the row has moved or is gone. |
 | `deleteAllById` | `Future<int> deleteAllById(Iterable<K> ids)` | Deletes every entity whose id is in `ids` and returns how many rows were deleted — which can be lower than `ids.length` when an id names no row, or one outside the principal's data scope. |
 | `deleteById` | `Future<int> deleteById(K id)` | Deletes the entity with the given `id` and returns how many rows were deleted: `1`, or `0` when no row matched. |
 | `existsById` | `Future<bool> existsById(Iterable<K> ids)` | Whether every id in `ids` exists. |
@@ -500,7 +537,7 @@ Data's `CrudRepository`.
 | `findAllById` | `Future<List<T>> findAllById(Iterable<K> ids, [TomPageRequest? page])` | Loads every entity whose id is in `ids`, optionally windowed. |
 | `findById` | `Future<T?> findById(K id)` | Loads the entity with the given `id`, or `null` if absent. |
 | `count` | `Future<TomDbInt> count()` | Counts all entities. |
-| `save` | `Future<T> save(T toSave)` | Inserts (no primary key) or updates (primary key set) and returns the stored entity. |
+| `save` | `Future<T> save(T toSave)` | Inserts (no primary key) or updates (primary key set) and returns the stored entity. For a `@TomVersion` entity an insert stores version `1` and an update stores the next version only where the stored one is still the one `toSave` carries, raising `TomOptimisticLockException` (`crud_repository.save.version_conflict`) otherwise; the returned entity carries the new version. |
 | `saveAll` | `Future<Iterable<T>> saveAll(Iterable<T> entities)` | Saves every entity and returns the stored entities. |
 | `findByQuerySentence` | `Future<Iterable<T>> findByQuerySentence(String querySentence, Map<String, Object?> params, [Type? resultType, TomPageRequest? page])` | Runs a parsed query sentence as a `SELECT`, binding `params`, optionally windowed. |
 | `deleteByQuerySentence` | `Future<int> deleteByQuerySentence(String querySentence, Map<String, Object?> params)` | Runs a parsed query sentence as a `DELETE` and returns how many rows were deleted — counted *after* the principal's data scope is ANDed in, so it never reports rows the principal may not see. |
@@ -536,13 +573,14 @@ TomSqlDatasourceRepository([List<Type>? queryTypes, Type? resultType])
 | `isUnsavedKey` | `static bool isUnsavedKey(Object? primaryKey)` | Whether `primaryKey` marks a not-yet-persisted entity (`null`, a negative sentinel, or a `TomCompositeKey` with a `null` field). For a single key, `save` then inserts; a complete composite key is looked up instead. |
 | `readPrimaryKey` | `static K2? readPrimaryKey<K2>(Object? raw)` | Reads an entity's primary-key value as a nullable `K2`. |
 | `buildInsertStatement` | `static (String, List<String>) buildInsertStatement(String table, List<TomColumnInformation> columns)` | Builds the `INSERT` SQL and its ordered bind-parameter names. |
-| `buildUpdateStatement` | `static (String, List<String>) buildUpdateStatement(String table, List<TomColumnInformation> columns, List<TomColumnInformation> primaryKey)` | Builds the `UPDATE ... SET ... WHERE pk = :pk` SQL — every key column ANDed — and its ordered bind names. |
+| `buildUpdateStatement` | `static (String, List<String>) buildUpdateStatement(String table, List<TomColumnInformation> columns, List<TomColumnInformation> primaryKey, {TomColumnInformation? version})` | Builds the `UPDATE ... SET ... WHERE pk = :pk` SQL — every key column ANDed — and its ordered bind names. With a `version` column the `WHERE` also requires `version = :__tomversion_expected` (`versionParameter`, bound last), so the statement matches no row once another save has moved the version. |
 
 ##### Static Constants
 
 | Constant | Type | Value | Description |
 | -------- | ---- | ----- | ----------- |
 | `tenantParameterPrefix` | `String` | `'__tomtenant_'` | The parameter prefix of the `@TomTenantOwned` predicate, apart from the data scope's, so the two bind in one statement. |
+| `versionParameter` | `String` | `'__tomversion_expected'` | The bind name of the version a versioned update or `delete(entity)` expects to find stored. Prefixed like the scope and tenant parameters so it cannot collide with a column's declared name. |
 
 ##### Properties
 
@@ -1420,6 +1458,7 @@ scoping the default rather than an annotation anyone has to remember — see
 | `findDataScope` | `static TomDbScope? findDataScope(Type dbType)` | The row scope of `dbType`, or `null` when unscoped. An explicit `@TomDbScope` wins — including `@TomDbScope.unscoped()`, for which this returns `null`; failing that, `autoScopeFor` decides. |
 | `autoScopeFor` | `static TomDbScope? autoScopeFor(List<TomColumnInformation> columns)` | The scope an entity with these `columns` carries *implicitly* — a `TomDbScope(field: …, scope: resourceScope)` when one column is a resource key, `null` otherwise. `null` whenever any column names a `resourceScopeInputTables` table, which is decided for the whole list before the resource key is looked for. |
 | `findAuthColumns` | `static List<TomColumnInformation> findAuthColumns(Type dbType)` | The columns of `dbType` that opt into column-level access rights (C-4), or empty. |
+| `findVersionColumn` | `static TomColumnInformation? findVersionColumn(Type dbType)` | The column of `dbType` annotated `@TomVersion`, or `null` when the entity is not versioned. Read from the memoised column list, which is also where a second `@TomVersion` field is refused, so there is never more than one. |
 | `findFileColumns` | `static List<TomColumnInformation> findFileColumns(Type dbType)` | The columns of `dbType` annotated `@TomFileReference`, or empty. Consulted before *any* file work, so an entity that stores no files pays nothing for the feature. |
 | `familyOf` | `static TomSqlTypeFamily familyOf(TomColumnInformation column)` | The type family `column` is **stored** in — the one answer the query compiler, the schema-convergence check and the export projection all read. JSON is text whatever the types; otherwise an explicit `columnType` (a box or a Dart type) decides, and only when there is none does `dartTypeOf` stand in. An explicit type naming no family yields `unknown` rather than falling back — compatible with everything in the convergence check, refused by the query compiler. |
 | `dartTypeOf` | `static Type dartTypeOf(TomColumnInformation column)` | The Dart type `column` is read as: the annotation's `dartType` when given, else the field's declared type. |
@@ -1608,7 +1647,8 @@ All extend the server `TomServerException`.
 | `TomDataScopeException` | `data_scope.dart` | A `@TomDbScope` names a scope kind no resolver is registered for. |
 | `TomDataScopeAuthorizationException` | `data_scope.dart` | A write targets a row outside the current principal's `@TomDbScope` (C-3). |
 | `TomQuerySyntaxException` | `operators_expressions.dart` | A query expression is malformed (e.g. `BETWEEN` without exactly two bounds; also raised by the query-sentence compiler, and by the repository when a sentence's verb does not match the method it was handed to). |
-| `TomRepositoryException` | `crud_repository.dart` | A repository precondition fails: the entity's datasource is not registered, a primary-key lookup matched more than one row, a `COUNT(*)` returned other than one row, a row `save` wrote could not be read back, or `delete` was handed an entity that was never persisted. |
+| `TomRepositoryException` | `crud_repository.dart` | A repository precondition fails: the entity's datasource is not registered, a primary-key lookup matched more than one row, a `COUNT(*)` returned other than one row, a row `save` wrote could not be read back, `delete` was handed an entity that was never persisted, or a versioned entity carries no version (`crud_repository.save.version_missing` / `crud_repository.delete.version_missing`). |
+| `TomOptimisticLockException` | `crud_repository.dart` | A save or `delete(entity)` of a `@TomVersion` entity changed no row because the stored version is no longer the one the caller held, or the row is gone (`crud_repository.save.version_conflict` / `crud_repository.delete.version_conflict`). Extends `TomRepositoryException`; `clientThrow` is always `true`. Carries `heldVersion` (`int`, the version the refused write presented) and `storedVersion` (`int?`, the version stored now — `null` when the row no longer exists or is no longer visible to the caller), both also in `parameters` beside `entity` and `id`. |
 
 Each exception constructor forwards the standard `TomServerException` positional
 `key` and `defaultUserMessage` plus the optional named `parameters`, `stack`,
@@ -1633,11 +1673,18 @@ that contradicts its own key, a driver that reported a write it then could not
 read — and each message names internals, so the key travels to the caller and
 the message does not.
 
-The single cause that is *not* a server fault overrides that default:
-`crud_repository.delete.unsaved_entity`, raised when `delete(entity)` is handed
-an entity whose primary key is still `null` or negative, sets
-`clientThrow: true`. Its message describes the argument the caller passed and
-nothing else, so it is the caller's to read.
+The causes that are *not* server faults override that default and set
+`clientThrow: true`: `crud_repository.delete.unsaved_entity`, raised when
+`delete(entity)` is handed an entity whose primary key is still `null` or
+negative; `crud_repository.save.incomplete_key` and
+`crud_repository.key.shape_mismatch`, for a composite key that addresses no row
+or the wrong fields; and `crud_repository.save.version_missing` /
+`crud_repository.delete.version_missing`, for a versioned entity that arrived
+without its version. Each message describes the argument the caller passed and
+nothing else, so it is the caller's to read. `TomOptimisticLockException` is
+always client-visible for the same reason: the refused write is the caller's
+own, and the usual answer — reload the row, show what changed, decide again — is
+one only the caller can give.
 
 Its keys follow `crud_repository.<method>.<condition>`, for example
 `crud_repository.save.insert_not_readable` or

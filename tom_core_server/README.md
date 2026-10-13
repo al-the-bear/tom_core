@@ -92,6 +92,7 @@ abstract, so other backends can be added.
 | `TomAggregate` + `countAll` / `sum` / `avg` / `min` / `max`, `TomGroupedSelect`, `TomGroupedRow` | Grouping and aggregation — results come back as group keys plus aggregate values, not entities |
 | `TomQuerySentenceCompiler` | Compiles a readable query sentence (`find first 25 skip 50 by name = :name order by age desc name asc`) into the same query objects the builder produces |
 | `TomPageRequest` / `TomSortField` / `TomSortDirection` | The row window and the per-field sort a caller passes to `findAll`, `findAllById`, `findByQuery` and `findByQuerySentence` — cut out of the *scoped* rows, so `count()` reports the scoped total beside it |
+| `TomVersion` / `TomOptimisticLockException` | Optimistic locking — a versioned entity's update and `delete(entity)` match the row only at the version the caller loaded, so a second save of one loaded row is refused rather than silently overwriting the first |
 | `TomDataScope` / `TomDataScopeRegistry` / `TomColumnAuthorization` | Row scoping ANDed into every query — `owner`, `group` and the grant-driven `resource` kind, the last applied automatically to any entity with a `resource_key` column — and per-column read/write rights enforced by the repository |
 | `TomDataSource` / `MariaDbDatasource` / `MariaDbXADatasource` | Connection drivers (MariaDB/MySQL) |
 | `TomDbType` family / `TomStandardSqlDialect` | Typed columns and SQL rendering |

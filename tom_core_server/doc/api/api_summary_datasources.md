@@ -43,6 +43,7 @@ module builds its query DSL and repositories on top of this layer.
   - [Data Sources and Drivers](#data-sources-and-drivers)
     - [TomDataSource](#tomdatasource)
     - [TomPreparedStatement&lt;T&gt;](#tompreparedstatementt)
+    - [TomStatementOutcome&lt;T&gt;](#tomstatementoutcomet)
     - [TomDatasourceDriver](#tomdatasourcedriver)
     - [TomDataSourceInfo](#tomdatasourceinfo)
   - [The Connection Pool](#the-connection-pool)
@@ -154,6 +155,8 @@ TomTypePersistenceInfo
 
 TomPreparedStatement<T>
     └── MariadbPreparedStatement<T>
+
+TomStatementOutcome<T>  (value — what one run reported)
 
 TomTransactionParticipant  (transactions)
     └── TomDataSource
@@ -821,24 +824,50 @@ exposes its `sqlDialect`, lifecycle, and execution surface, and is a
 
 #### TomPreparedStatement&lt;T&gt;
 
-A reusable, server-side compiled statement that can be executed any number of
-times and then deallocated.
+A reusable, server-side compiled statement that can be run any number of times —
+concurrently, by any number of requests — and then deallocated. It keeps no
+per-execution state: what one execution reported comes back from `run` as a
+`TomStatementOutcome`, because a repository shares one statement across every
+request and state on the handle would belong to whichever execution finished
+last.
 
 - **Type Parameters:** `T extends Object` — the mapped result row type.
-
-##### Properties
-
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `lastGeneratedId` | `int?` | The auto-increment / identity key from the most recent `execute` that inserted a row, or `null` when it produced none. Abstract: the key belongs to the connection the insert ran on and only the driver knows which connection that was, so a default would let a driver that never implemented it answer "no key" for every insert and be believed. Per-execution state, so read it before `deallocate`. |
-| `lastAffectedRows` | `int` | The number of rows the most recent `execute` changed — the count a `DELETE` or `UPDATE` reports, `0` for a statement that changed nothing or has not run. Abstract and non-nullable, as `lastGeneratedId` is: a driver that ran a write knows how many rows it touched, and a default would let silence read as a real count. Per-execution state, so read it before `deallocate`. |
 
 ##### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `execute` | `Future<List<T>> execute([Map<String, Object?>? params])` | Runs the statement and returns the mapped result rows. |
+| `run` | `Future<TomStatementOutcome<T>> run([Map<String, Object?>? params])` | Runs the statement and returns everything that execution reported: its rows, the rows it changed and the key it generated. Abstract and without a default, because each is acted on — a save returns the row stored under `generatedId`, a delete returns `affectedRows` as the number of rows removed, and a versioned update reads `0` there as a conflict — so a default would let a driver's silence read as a real answer. |
 | `deallocate` | `Future<void> deallocate()` | Releases the statement's server-side resources. |
+
+#### TomStatementOutcome&lt;T&gt;
+
+What one execution of a `TomPreparedStatement` reported, returned by `run` — the
+execution it describes — rather than kept on the statement. Two saves
+overlapping on one shared handle would otherwise each read the other's count,
+and a versioned update that read "one row changed" from somebody else's update
+would report a refused save as a success.
+
+- **Type Parameters:** `T extends Object` — the mapped result row type.
+
+##### Constructors
+
+```dart
+const TomStatementOutcome({
+  required List<T> rows,
+  required int affectedRows,
+  required int? generatedId,
+})
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `rows` | `List<T>` | The mapped result rows; empty for a statement that returns none. |
+| `affectedRows` | `int` | The number of rows the execution changed — the count an `UPDATE` or `DELETE` reports, `0` for one that changed nothing. MariaDB counts rows changed, not matched; a versioned update always moves the version, so for it the two are the same. |
+| `generatedId` | `int?` | The auto-increment / identity key the execution produced, or `null` when it produced none. Read from the insert's own result, so it is connection-correct where a follow-up `SELECT LAST_INSERT_ID()` is not; `TomSqlDatasourceRepository.save` refuses an insert whose key it asked the database to assign and did not get back (`crud_repository.save.no_generated_key`). |
 
 #### TomDatasourceDriver
 
@@ -1231,14 +1260,13 @@ MariadbPreparedStatement(
 | `resultType` | `Type?` | The type result rows are mapped to (defaults to `T`). |
 | `command` | `String` | The compiled SQL command, prepared on each connection that runs it. |
 | `groupedProjection` | `Map<String, Type>?` | For a grouped query, the Dart type of each projected result column keyed by its alias; `null` for every other statement. The types travel with the statement because a grouped row is not an entity. |
-| `lastGeneratedId` | `int?` | *(override)* The auto-increment key the most recent `execute` generated. |
-| `lastAffectedRows` | `int` | *(override)* The row count the most recent `execute` reported, taken from that execute's own result set (`IResultSet.affectedRows`). `0` until the statement has run. |
 
 ##### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `execute` | `Future<List<T>> execute([Map<String, Object?>? params])` | *(override)* Runs the statement on the connection the current zone selects, preparing it there on first use. A connection found gone is retried once, on another connection, outside a transaction; inside one there is nothing to retry on, and the failure is `MariadbDatasourceException` (`error.failed-to-execute.transaction_connection_lost`). |
+| `execute` | `Future<List<T>> execute([Map<String, Object?>? params])` | *(override)* The rows of `run(params)`. |
+| `run` | `Future<TomStatementOutcome<T>> run([Map<String, Object?>? params])` | *(override)* Runs the statement on the connection the current zone selects, preparing it there on first use, and reports the rows, the affected-row count (`IResultSet.affectedRows`) and the generated key (`normalizeGeneratedId` of `IResultSet.lastInsertID`) — all three from this execution's own result set. A connection found gone is retried once, on another connection, outside a transaction, and the outcome is the retry's; inside a transaction there is nothing to retry on, and the failure is `MariadbDatasourceException` (`error.failed-to-execute.transaction_connection_lost`). |
 | `deallocate` | `Future<void> deallocate()` | *(override)* Forgets the statement on every connection that prepared it; each deallocates its server-side statement the next time it is handed back, so nothing is deallocated under a statement that is running. |
 
 ### Placeholder Scanning

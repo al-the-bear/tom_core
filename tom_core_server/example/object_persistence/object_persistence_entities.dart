@@ -82,3 +82,31 @@ class ExampleClaimRecord {
   @TomDbColumn(columnName: 'fraud_score', authKey: 'example.claim.fraud_score')
   double? fraudScore;
 }
+
+/// A wiki article two people may edit at once: the entity the
+/// optimistic-locking example maps.
+///
+/// [version] is maintained by the repository — `1` on insert, one more on
+/// every save — and an update or delete presenting a version the row no longer
+/// holds is refused instead of overwriting the other person's edit.
+@tomReflector
+@TomDbTable(
+  datasource: 'unused_by_this_example',
+  table: 'example_article',
+  primaryKeyFields: ['id'],
+)
+class ExampleArticle {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The row's version.
+  @TomVersion()
+  @TomDbColumn(columnName: 'version')
+  int? version;
+
+  /// The article's body.
+  @TomDbColumn(columnName: 'body')
+  String? body;
+}

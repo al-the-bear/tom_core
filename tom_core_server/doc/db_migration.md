@@ -31,6 +31,7 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 - [Schema Convergence](#schema-convergence)
   - [The Application's Entities](#the-applications-entities)
   - [When the Entity Model Contradicts Itself](#when-the-entity-model-contradicts-itself)
+  - [A Version Column Must Hold a Value](#a-version-column-must-hold-a-value)
   - [Replaying the Chain: What the Guards Mean](#replaying-the-chain-what-the-guards-mean)
   - [What the Reader Refuses to Guess At](#what-the-reader-refuses-to-guess-at)
   - [The Framework's Own Tables](#the-frameworks-own-tables)
@@ -81,7 +82,7 @@ them run against a live server.
 | `TomEntitySchemaReader` | class | Reads the schema the `@TomDbTable` entity classes expect |
 | `TomSchemaConvergenceReport` | class | What one `<datasource>/<schema>` pair was checked against, and how it disagreed |
 | `TomSchemaDivergence` | class | One disagreement: kind, table, column, origin, message |
-| `TomSchemaDivergenceKind` | enum | Which of the nine disagreements it is — each a different culprit |
+| `TomSchemaDivergenceKind` | enum | Which of the ten disagreements it is — each a different culprit |
 | `TomFrameworkSchemaCheck` | class | The same comparison for the tables the framework itself owns |
 | `TomInformationSchemaColumnRow` | class | One `information_schema.COLUMNS` row, as the live check reads it |
 | `frameworkOwnedTables` | function | Every framework-owned table, at its default name |
@@ -718,6 +719,30 @@ report a second, invented mismatch against DDL that is in fact correct. The
 verdict is order-independent — the contradiction is reported whichever entity is
 read first — while which key survives follows the origin.
 
+### A Version Column Must Hold a Value
+
+Nullability is compared for one kind of column only. Every other mapped field
+is Dart-nullable so that an unsaved record can exist, which says nothing about
+the column; a `@TomVersion` field is the one declaration that says its column
+must hold a value. `TomEntitySchemaReader` therefore reads a version column as
+`nullable: false`, and when the chain leaves that column nullable the check
+reports `nullableVersionColumn`, an error.
+
+It is an error rather than a warning because the feature cannot work over such a
+column: a versioned update matches its row by `version = ?`, and `NULL` equals
+nothing, so every save of a row whose version is `NULL` would be refused as a
+conflict (see
+[Optimistic Locking](object_persistence.md#optimistic-locking)). A table that
+gains a version column adds it `NOT NULL` with a default, so the rows already
+there take a value:
+
+```sql
+ALTER TABLE invoice ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+```
+
+Those rows load at version `0` and move to `1` on their first save. A chain that
+never adds the column at all reports the ordinary `missingColumn`.
+
 ### Replaying the Chain: What the Guards Mean
 
 `TomSchemaDdlReader` applies each artifact's DDL to an in-memory model in the
@@ -1008,6 +1033,13 @@ and `TomSchemaConvergenceCheck` end to end, including the duplicate-basename and
 missing-directory refusals. Two of its groups check the *document* rather than
 the code — that the tolerance the summary states is the tolerance the code
 applies, and that the builder documents the contract it actually has.
+
+`test/optimistic_locking_test.dart` covers [A Version Column Must Hold a
+Value](#a-version-column-must-hold-a-value): an `ADD COLUMN … NOT NULL DEFAULT`
+migration converges, a nullable one is reported as `nullableVersionColumn`, and
+a chain that never adds the column is a `missingColumn`.
+`test/optimistic_locking_db_test.dart` applies that migration through the
+MariaDB adaptor to a table that already holds a row.
 
 `test/framework_schema_test.dart` covers the framework-table check against the
 shipped migrations, the reflected row types and the statements the stores issue,

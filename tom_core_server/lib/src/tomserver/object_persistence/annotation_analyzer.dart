@@ -411,6 +411,49 @@ mixin TomAnnotationAnalyzer {
     return result;
   }
 
+  /// Returns the column of [dbType] that holds the row's version — the field
+  /// annotated `@TomVersion` — or `null` when the entity is not versioned.
+  ///
+  /// Read from the cached column list, which is also where a second
+  /// `@TomVersion` field is refused, so there is never more than one.
+  static TomColumnInformation? findVersionColumn(Type dbType) =>
+      (getPersistentColumns(dbType) ?? const <TomColumnInformation>[])
+          .where((column) => column.version != null)
+          .firstOrNull;
+
+  /// Refuses a `@TomVersion` field the repository could not maintain.
+  ///
+  /// The repository writes the version itself and compares it in the `WHERE`
+  /// clause of every update, so the field must be an `int` it can increment
+  /// and a column it may write: not the key, not an association, not
+  /// read-only — a read-only column is left out of the `SET` clause, and a
+  /// version that is never written never moves.
+  static void _checkVersionField(
+    Type dbType,
+    String declaredName,
+    Type declaredType,
+    TomDbColumn column, {
+    TomEntityId? entityId,
+    TomReference? reference,
+  }) {
+    String? problem;
+    final typeName = '$declaredType';
+    if (typeName != 'int' && typeName != 'int?') {
+      problem = 'is a $typeName, and a version is an int';
+    } else if (entityId != null) {
+      problem = 'is the entity id, and a key is not a version';
+    } else if (reference != null) {
+      problem = 'is an association';
+    } else if (column.isReadOnly) {
+      problem = 'is read-only, so the repository could never write it';
+    }
+    if (problem == null) return;
+    throw TomAnnotationAnalyzerSyntaxException(
+      "annotation_analyzer.version.invalid_field",
+      "$dbType.$declaredName carries @TomVersion but $problem.",
+    );
+  }
+
   /// Every type a column's storage may be named by, mapped to its family.
   ///
   /// One table for every route in: an explicit `columnType:` may name a
@@ -547,6 +590,17 @@ mixin TomAnnotationAnalyzer {
           }
         }
       }
+      final versions = [
+        for (final column in result)
+          if (column.version != null) column.declaredName,
+      ];
+      if (versions.length > 1) {
+        throw TomAnnotationAnalyzerSyntaxException(
+          "annotation_analyzer.version.more_than_one",
+          "$dbType marks ${versions.join(', ')} with @TomVersion; a row has "
+              "one version, so at most one field may carry it.",
+        );
+      }
       final columns = List<TomColumnInformation>.unmodifiable(result);
       _columnInfoCache[dbType] = columns;
       return columns;
@@ -567,6 +621,7 @@ mixin TomAnnotationAnalyzer {
     TomReference? reference;
     TomFileReference? fileReference;
     TomProtectedField? protectedField;
+    TomVersion? version;
     for (var md in decl.metadata) {
       if (md is TomDbColumn) {
         column = md;
@@ -578,9 +633,21 @@ mixin TomAnnotationAnalyzer {
         fileReference = md;
       } else if (md is TomProtectedField) {
         protectedField = md;
+      } else if (md is TomVersion) {
+        version = md;
       }
     }
     column ??= TomDbColumn(columnName: field);
+    if (version != null) {
+      _checkVersionField(
+        dbType,
+        declaredName,
+        decl.reflectedType,
+        column,
+        entityId: entityId,
+        reference: reference,
+      );
+    }
     TomDbTable? table = findTable(dbType);
     if (table != null) {
       return TomColumnInformation(
@@ -594,6 +661,7 @@ mixin TomAnnotationAnalyzer {
         reference: reference,
         fileReference: fileReference,
         protectedField: protectedField,
+        version: version,
       );
     } else {
       throw TomAnnotationAnalyzerException(

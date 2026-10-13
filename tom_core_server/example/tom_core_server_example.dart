@@ -60,6 +60,10 @@ const List<TourStop> tour = [
     'Repositories, the persistence annotations, and the query builder',
   ),
   TourStop(
+    'example/object_persistence/optimistic_locking_example.dart',
+    'Optimistic locking: the version field, the update it guards, the migration',
+  ),
+  TourStop(
     'example/datasources/datasources_example.dart',
     'SQL-typed values and how each dialect renders them',
   ),

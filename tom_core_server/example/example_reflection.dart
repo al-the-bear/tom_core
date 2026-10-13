@@ -1,6 +1,6 @@
 /// The example suite's single reflection root.
 ///
-/// Six of the examples need a live reflector and none can borrow the test
+/// Seven of the examples need a live reflector and none can borrow the test
 /// fixture's, because an example is not a test and cannot import from `test/`:
 ///
 ///  * the two-node cluster demonstration, whose SQL scheduler stores read every
@@ -14,6 +14,8 @@
 ///    from;
 ///  * the object-persistence example, whose query sentences, grouped select and
 ///    column grades are all resolved from one entity's annotations;
+///  * the optimistic-locking example, whose version column, guarded update and
+///    migration check are resolved from `ExampleArticle`'s annotations;
 ///  * the preferences example, whose object preference is encoded and rebuilt
 ///    through the registry rather than through the type's own name;
 ///  * the file-storage example, whose configured stores are built by backends
@@ -48,6 +50,7 @@ void main() {}
 const List<Type> exampleReflectedTypes = <Type>[
   // Declared by the demos themselves.
   ClusterFenceRow,
+  ExampleArticle,
   ExampleClaimRecord,
   ExampleDashboardPreference,
   ExampleDocumentRecord,

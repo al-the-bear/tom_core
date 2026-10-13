@@ -313,6 +313,7 @@ surface documented here.
 | `TomTypedPersistenceBase` | abstract class | Base for typed persistence. |
 | `TomDataSource` | abstract class | Datasource contract (a transaction participant). |
 | `TomPreparedStatement<T>` | abstract class | Prepared-statement contract. |
+| `TomStatementOutcome<T>` | class | What one execution of a prepared statement reported — its rows, the rows it changed and the key it generated — returned by that execution rather than kept on the shared handle. |
 | `TomDataSourceInfo` | class | Datasource descriptor. |
 | `TomDatasourceDriver` | class | Annotation tagging a driver. |
 | `MariaDbDatasource` | class | MariaDB datasource over a connection pool. |
@@ -576,6 +577,7 @@ surface documented here.
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
 | `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomDbScope` / `TomReference` | class | Persistence annotations. |
+| `TomVersion` | class | Marks the `int` field holding a row's version, turning on optimistic locking for the entity. |
 | `TomTenantOwned` | class | Marks an entity whose every row belongs to a tenant; the repository reads and writes only the current tenant's rows. |
 | `TomDartType` | class | Dart-type descriptor for persistence. |
 | `TomColumnInformation` | class | Column metadata. |
@@ -596,6 +598,7 @@ surface documented here.
 | `TomSortDirection` | enum | `ascending` / `descending`, rendering `ASC` / `DESC`. |
 | `TomQuerySyntaxException` | class | Query syntax error. |
 | `TomRepositoryException` | class | A repository precondition fails — unregistered datasource, a key lookup matching more than one row, a row that could not be read back. |
+| `TomOptimisticLockException` | class | A save or delete of a versioned entity refused because the row's version moved since it was loaded (extends `TomRepositoryException`). |
 | `TomResourceScopeSource` | abstract class | The grant-driven source behind the built-in `resource` scope kind. |
 | `TomFileReference` | class | Annotation marking a `String` column as holding a blob storage key rather than the bytes. |
 | `TomFileReferenceKeys` | class | Resolves the store and mints the keys for a `@TomFileReference` column (static). |
@@ -1144,6 +1147,7 @@ surface documented here.
 | `TomOAuthTokenStore` | Authentication |
 | `TomOAuthTokenTransport` | Authentication |
 | `TomOperator` | Datasources |
+| `TomOptimisticLockException` | Object Persistence |
 | `tomOutboxJobName` | Messaging |
 | `TomPageRequest` | Object Persistence |
 | `TomPdfRenderer` | Export |
@@ -1278,6 +1282,7 @@ surface documented here.
 | `TomSqlTypeFamily` | Datasources |
 | `TomSqlTypeFamilyCompatibility` | Database Migration |
 | `TomStandardSqlDialect` | Datasources |
+| `TomStatementOutcome` | Datasources |
 | `TomStaticPushCredential` | Messaging |
 | `TomStatusMappingErrorHandler` | Endpoints |
 | `TomStorageException` | File Storage |
@@ -1322,6 +1327,7 @@ surface documented here.
 | `TomUserTwoFactorEnrolment` | Authentication |
 | `TomUserTwoFactorEnrolmentRepository` | Authentication |
 | `tomVendorValueAt` | Messaging |
+| `TomVersion` | Object Persistence |
 | `TomWebAuthn2FAService` | Authentication |
 | `TomWebAuthnRegisteredCredential` | Authentication |
 | `TomWebAuthnSoftwareAuthenticator` | Authentication |
