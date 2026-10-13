@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.12.3
+
+- Documentation only. `codespecs_derivation_contract.md` names the validator's
+  `--json` report and back-link index and says the extract reader is the SOM
+  runtime's `CodeSpecsExtractSet`; `codespecs_mapping.md` §10 indexes the open
+  work on two required arguments with no SOM source.
+
 ## 0.12.2
 
 - The archive no longer ships `test/ai_citation_test.dart` and
