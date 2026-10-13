@@ -26,7 +26,7 @@ dependencies:
   # Floor 1.1.0: earlier versions drew secure random bytes with an exclusive
   # bound of 255, so no byte could be 0xFF — a bias inherited by every RSA key
   # pair and every password salt, both of which this package re-exports.
-  tom_crypto: ">=1.2.2"
+  tom_crypto: ">=1.3.0"
   # HMAC-SHA1 for the RFC 4226 / 6238 one-time-password primitives (TomTotp),
   # which both tiers need: the server to verify a code, an enrolment tool or an
   # authenticator to produce one.

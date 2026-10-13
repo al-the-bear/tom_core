@@ -276,8 +276,9 @@ every
 shape — fifteen of the package's twenty-eight subtypes inherit the `true`
 default the same way — but the neighbourhood makes it a decision rather than an
 omission. Every other exception the authentication subsystem raises is hidden:
-`Tom2FAException` and `TomServerSelfLoginException` hard-wire
-`clientThrow: false`, and `TomOAuthException` re-defaults it to `false`. The
+`Tom2FAException`, `TomServerSelfLoginException`, `TomSigningKeyException` and
+`TomJwtKeyException` hard-wire `clientThrow: false`, and `TomOAuthException`
+re-defaults it to `false`. The
 login failure is the exception whose message is written for the person who
 mistyped a password, so it is the one that may reach them.
 

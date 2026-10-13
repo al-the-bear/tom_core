@@ -13,7 +13,14 @@ principal into an authentication token and an authorization token.
   - [Your service is the source of what the principal asserts](#your-service-is-the-source-of-what-the-principal-asserts)
 - [Wiring the Server](#wiring-the-server)
   - [The signing keys](#the-signing-keys)
+  - [Key ids](#key-ids)
+  - [The JSON Web Key Set](#the-json-web-key-set)
+  - [Rotating the signing key](#rotating-the-signing-key)
+  - [Verify-only servers](#verify-only-servers)
   - [Verifying an inbound token](#verifying-an-inbound-token)
+  - [What a verifier refuses](#what-a-verifier-refuses)
+  - [Third-party verification](#third-party-verification)
+  - [Signing failure keys](#signing-failure-keys)
 - [Two-Factor Authentication](#two-factor-authentication)
   - [The whole path, across both packages](#the-whole-path-across-both-packages)
   - [The interim token is not a session](#the-interim-token-is-not-a-session)
@@ -72,6 +79,8 @@ principal into an authentication token and an authorization token.
   - [`TomOAuthTokenGrant`](#tomoauthtokengrant)
   - [`TomOAuthTokenStore` / `TomPersistentOAuthTokenStore` / `TomExternalIdentityToken`](#tomoauthtokenstore--tompersistentoauthtokenstore--tomexternalidentitytoken)
   - [`TomOAuthServer`](#tomoauthserver)
+  - [`TomJwtSigning` / `TomJwtKey` / `TomJwtSigningKey` / `TomJwtAlgorithm`](#tomjwtsigning--tomjwtkey--tomjwtsigningkey--tomjwtalgorithm)
+  - [`TomJwksService` / `TomJwksServer`](#tomjwksservice--tomjwksserver)
 - [Status and Limitations](#status-and-limitations)
 - [Dependencies](#dependencies)
 
@@ -169,8 +178,16 @@ principal into an authentication token and an authorization token.
 | `TomOAuthServer` | class | The three `/oauth/*` endpoints, exposed via `@TomApiImplementation` |
 | `TomOAuthException` | class | A mis-configured provider set or a refused handshake |
 | `installJwtSigning` | function | Installs the configured JWT key material at boot, and refuses the bundled sample keys outside development |
-| `verifyBearerToken` | function | Checks an inbound bearer token's signature against the installed key, returning it decoded or `null` |
+| `verifyBearerToken` | function | Checks an inbound bearer token's algorithm, key id, signature, issuer and audience against the installed signing, returning it decoded or `null` |
 | `TomSigningKeyException` | class | Raised by that refusal; names the unset fields and the environment variables that would fill them |
+| `TomJwtSigning` | class | How this process signs and verifies tokens: algorithm, keys, signing key id, issuer, audience; `current` is the installed one |
+| `TomJwtAlgorithm` | enum | `rs256` (the default), `es256`, `hs256` |
+| `TomJwtKey` | class | One key a token can be verified with, under its `kid` — the RFC 7638 thumbprint of its public JWK |
+| `TomJwtSigningKey` | class | A private key tokens are signed with, and the public key it publishes |
+| `TomJwtKeyException` | class | A key or signing setting that cannot be used: an unknown algorithm, an unreadable key file, or a verify-only server asked to issue |
+| `readPemFile` | function | Reads a configured key file, naming it in the error a missing file raises |
+| `TomJwksService` | abstract class | The `GET /.well-known/jwks.json` endpoint; reflected (`@tomReflector`) |
+| `TomJwksServer` | class | The default JSON Web Key Set component, publishing `TomJwtSigning.current`'s keys; reflected (`@tomReflector`) |
 
 One type every service in the list throws lives in `little_things`, with the
 rest of the package's exception hierarchy:
@@ -292,13 +309,12 @@ read it is the whole of what the kernel does.
 
 ## Wiring the Server
 
-Register the service(s) and (optionally) the JWT issuer through the static
-settings, then expose a subclass of `TomAuthenticationServer` as endpoints:
+Register the service(s) through the static settings, then expose a subclass of
+`TomAuthenticationServer` as endpoints:
 
 ```dart
 TomAuthenticationServer.globalSettingUserAuthenticationService = MyAuthService();
 TomAuthenticationServer.globalSettingGuestAuthenticationService = MyGuestService();
-TomAuthenticationServer.globalSettingJwtOrganization = 'acme';
 
 // A @tomComponent subclass exposes authenticateGuest / authenticatePass1 as
 // HTTP endpoints (see tom_uam_server for a full example).
@@ -309,25 +325,74 @@ Until a real service is registered, the default
 `TomDummyAuthenticationService` authenticates any non-`"GUEST"` user and logs an
 error on every call — acceptable only while scaffolding.
 
+The issued tokens' issuer, audience and signing key are not settings of
+`TomAuthenticationServer`: they are the server configuration's, read once at
+boot by `installJwtSigning` into `TomJwtSigning.current`, and the same values
+the inbound check requires.
+
 ### The signing keys
 
 A token is only worth what its signing key is worth, so a server that mints or
 verifies one calls `installJwtSigning(configuration)` **once at boot** — after
 the runtime environment is selected, before anything touches a token. It reads
-three fields off the `TomBaseServerConfiguration` and installs the result as
-`TomJwtConfiguration.defaultSignConfiguration`:
+the fields below off the `TomBaseServerConfiguration`, installs the result as
+`TomJwtSigning.current` and as `TomJwtConfiguration.defaultSignConfiguration`,
+and returns the latter.
+
+**Three algorithms** are configurable, by `jwtAlgorithm`:
+
+| Algorithm | Signs with | Verifies with | Published |
+| --------- | ---------- | ------------- | --------- |
+| `RS256` (the default) | The RSA private key in `jwtSigningKeyFile` | Its public half, and every key in `jwtVerificationKeyFiles` | Yes, as a JSON Web Key Set |
+| `ES256` | The EC (P-256) private key in `jwtSigningKeyFile` | Its public half, and every key in `jwtVerificationKeyFiles` | Yes, as a JSON Web Key Set |
+| `HS256` | The secret `jwtSharedSecretKey` | The same secret | Never |
+
+The asymmetric algorithms separate the two halves: the private key stays on the
+server that issues tokens, and the public key verifies them anywhere — on
+another Tom server, in an API gateway, in any JWT library. HS256 remains for a
+single service, where one secret both signs and verifies; whoever holds it can
+mint a token, so it is never published.
 
 | Field | Environment spelling | Role |
 | ----- | -------------------- | ---- |
-| `jwtSharedSecretKey` | `JWT_SHARED_SECRET_KEY` | The HMAC passphrase the token is signed and verified with |
-| `jwtRsaPrivKey` | `JWT_RSA_PRIV_KEY` | Encrypts the access-control payload carried inside the token |
-| `jwtRsaPubKey` | `JWT_RSA_PUB_KEY` | Decrypts it again |
+| `jwtAlgorithm` | `JWT_ALGORITHM` | `RS256` (when unset), `ES256` or `HS256`, in any case. Anything else is refused with `jwt.keys.unknown_algorithm` |
+| `jwtSigningKeyFile` | `JWT_SIGNING_KEY_FILE` | Path of the PEM file holding the private key RS256 or ES256 tokens are signed with |
+| `jwtVerificationKeyFiles` | `JWT_VERIFICATION_KEY_FILES` | Comma-separated paths of PEM files holding public keys that still verify: retired keys on the issuing server, the issuer's keys on a verify-only server |
+| `jwtIssuer` | `JWT_ISSUER` | The `iss` every issued token carries and every verified token must carry; `tom` when unset |
+| `jwtAudience` | `JWT_AUDIENCE` | The `aud` every issued token carries and every verified token must carry; none when unset |
+| `jwtSharedSecretKey` | `JWT_SHARED_SECRET_KEY` | The HMAC secret, read only under `HS256` |
+| `jwtRsaPrivKey` | `JWT_RSA_PRIV_KEY` | Decrypts the access-control payload carried inside the token |
+| `jwtRsaPubKey` | `JWT_RSA_PUB_KEY` | Encrypts it |
 
-All three default to `null` — the framework ships no key of its own, because a
-default key is a key everyone has. A field left unset falls back to the sample
-key bundled in `tom_crypto`, which is published in its sources and therefore
-secret from nobody. That fallback is a scaffolding convenience and is treated as
-one:
+The last two are not signing keys. The authorization token carries its
+access-control definition in an `encrypted` section, and this RSA pair encrypts
+and decrypts it under every algorithm; a server that reads that section — the
+issuer and every server verifying its tokens — holds the pair.
+
+**Key files are PEM**: a private key in PKCS#8 (`-----BEGIN PRIVATE KEY-----`),
+a public key in SPKI (`-----BEGIN PUBLIC KEY-----`). An EC key must name the
+curve P-256 (`prime256v1`) rather than spell out explicit parameters:
+
+```bash
+# RS256
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt_signing.pem
+openssl pkey -in jwt_signing.pem -pubout -out jwt_signing.pub.pem
+
+# ES256 — a PKCS#8 key on the named curve P-256 (prime256v1)
+openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 \
+  -pkeyopt ec_param_enc:named_curve -out jwt_signing.pem
+openssl pkey -in jwt_signing.pem -pubout -out jwt_signing.pub.pem
+```
+
+A file that cannot be read, or holds no key of the configured algorithm's kind,
+stops the boot with `jwt.keys.unreadable_key_file`, naming the file.
+
+Every field defaults to `null` — the framework ships no key of its own, because
+a default key is a key everyone has. Key material left unset falls back to the
+sample material bundled in `tom_crypto`, which is published in its sources and
+therefore secret from nobody: the RSA pair as the RS256 signing key, the
+passphrase as the HS256 secret, and the RSA pair as the payload-encryption
+pair. That fallback is a scaffolding convenience and is treated as one:
 
 - **Outside a development or test environment it is refused.** Any unset field
   makes the boot throw `TomSigningKeyException`, naming the fields and the
@@ -336,13 +401,94 @@ one:
 - **Inside one it warns**, once at boot and again on every sign and verify —
   `installJwtSigning` passes `isDummy: true` when anything was left unset, which
   is what keeps the per-operation warning coming.
+- **ES256 has no fallback.** No sample EC key ships, so an ES256 server without
+  a `jwtSigningKeyFile` (and without verification keys) is refused in every
+  environment.
 
-Two servers trust each other's tokens exactly when they resolve the *same*
-values for these fields; nothing else establishes the trust. The fields are
+Two servers trust each other's tokens when the verifier holds the issuer's
+public key — in `jwtVerificationKeyFiles`, or under HS256 the same
+`jwtSharedSecretKey` — and both name the same issuer and audience. The fields are
 ordinary configuration, so they can come from a YAML resource, the process
 environment, a `.env` file, or the command line, in that order of increasing
 precedence — see [configuration.md](configuration.md#source-precedence) for the
 merge and for how the `SCREAMING_SNAKE_CASE` spellings above reach the fields.
+
+### Key ids
+
+Every token signed with an asymmetric key carries a `kid` header naming the key,
+and the id is not configured: it is the **RFC 7638 JWK thumbprint** of the
+public key — the base64url SHA-256 of its required members (`e`, `kty`, `n` for
+RSA; `crv`, `kty`, `x`, `y` for EC) in lexicographic order. A private key and its
+public half yield the same id, and every server derives the same id from the
+same key without being told it, so the issuer's `kid` and the verifier's key
+list agree by construction. `TomJwtKey.thumbprint` computes it.
+
+An HS256 secret has no id. Its tokens carry no `kid`, and the one secret
+answers for every token.
+
+### The JSON Web Key Set
+
+`TomJwksService` serves `GET /.well-known/jwks.json` — the path OpenID Connect
+discovery points to — and `TomJwksServer`, its default component, is mounted by
+the endpoints pipeline like every other component endpoint, with nothing to
+register. The set holds the public half of every key a token of this
+deployment may be verified with: the signing key first, then the retired keys
+still verifying. Each entry carries `kty`, its key members, `kid`, `use: sig` and
+`alg`; the private part is never in it.
+
+| Property | Value |
+| -------- | ----- |
+| Access | `@TomPublicAccess` — a verifier fetching the set holds no token yet, and the set holds public keys only |
+| `content-type` | `application/jwk-set+json` |
+| `cache-control` | `public, max-age=300` (`TomJwksServer.cacheFor`, five minutes) |
+| Under HS256 | `404`: there is no public key, and the secret is never published |
+
+```json
+{
+  "keys": [
+    {"e": "AQAB", "kty": "RSA", "n": "…", "kid": "…", "use": "sig", "alg": "RS256"}
+  ]
+}
+```
+
+### Rotating the signing key
+
+A new key signs as soon as it is configured; the key it replaces moves to the
+verification keys, so the tokens it signed keep verifying until they expire, and
+is removed afterwards. The steps:
+
+1. **Generate the new key** pair (see [The signing keys](#the-signing-keys)).
+2. **Reconfigure every server.** On the issuing server, set `jwtSigningKeyFile`
+   to the new private key and add the **old key's public PEM** to
+   `jwtVerificationKeyFiles`. On every verify-only server, add the new key's
+   public PEM to `jwtVerificationKeyFiles` beside the old one. Restart them.
+3. **The new key signs immediately**, and tokens signed with the old key keep
+   verifying everywhere, because every server still holds it.
+4. **The JSON Web Key Set publishes both keys**, the signing key first. A
+   verifier that reads the set picks up the new key within the five-minute cache
+   window. Update the verify-only servers, and let caches of the set refresh,
+   before relying on new tokens being accepted elsewhere.
+5. **After the longest token lifetime has passed**, remove the old key from
+   `jwtVerificationKeyFiles` on every server. Its tokens have expired, and once
+   it is gone they stop verifying.
+
+The `kid` is what carries a token through this: it names the key that signed it,
+and the verifier looks that key up rather than trying each one.
+
+### Verify-only servers
+
+A server configured with `jwtVerificationKeyFiles` and no `jwtSigningKeyFile`
+only verifies. It holds the issuer's public keys, accepts the issuer's tokens,
+and refuses to mint one: `TomJwtSigning.canSign` is `false`, and
+`requireSigning()` — which `TomAuthenticationServer` calls before issuing —
+throws `jwt.keys.verify_only`. An application server beside an auth server is
+the typical case; it needs no private signing key at all, so the one that exists
+lives on one machine.
+
+A verify-only server falls back to no sample key: its verification keys are its
+configuration. It still holds the payload-encryption pair, `jwtRsaPrivKey` /
+`jwtRsaPubKey`, because it decrypts the access-control section of the tokens it
+accepts.
 
 ### Verifying an inbound token
 
@@ -361,7 +507,8 @@ nothing gets. That is deliberate — throwing would turn a hostile request into 
 HTTP 500 and tell the sender the difference between a rejected signature and an
 accepted one. Every rejection is logged at warning level, because a bad
 signature on a live server is either two deployments configured with different
-secrets or somebody probing, and an operator wants to see both.
+keys or somebody probing, and an operator wants to see both. The warning names
+the reason and never the token.
 
 The check is unconditional and has no opt-out. A flag permitting an unverified
 token would be the same exposure with a name on it, and the deployment shape
@@ -386,6 +533,46 @@ the server, next to the configuration that installs the key it checks against.
 What the value class does offer is that `payload` hands back an **unmodifiable
 view**: a reader of a token cannot quietly become a writer of it, so the
 signature check keeps meaning something after the moment it was made.
+
+### What a verifier refuses
+
+`verifyBearerToken` checks a token against `TomJwtSigning.current`, and answers
+`null` for any of these:
+
+| The token | Why it is refused |
+| --------- | ----------------- |
+| Names another algorithm in its `alg` header | The algorithm is this deployment's, never the token's. A verifier that took `alg` from the header could be told to check an RS256 public key as an HMAC secret — and the public key is public, so anyone could compute that HMAC |
+| Names no `kid`, or a `kid` this deployment does not hold | Under RS256 or ES256 the key is looked up by id among the signing key and the retired keys still verifying; there is no "try each key" |
+| Carries a signature that does not verify against that key | It was not signed by the key it names |
+| Carries another `iss` | The issuer is the configured `jwtIssuer` (`tom` when unset) |
+| Carries another `aud`, or none, when an audience is configured | A token minted for one service is not accepted by another |
+| Does not decode, or its signed body does not decrypt | It is not a token this deployment can read |
+
+### Third-party verification
+
+Under RS256 and ES256 nothing about verifying a token is specific to this
+framework. A verifier fetches `/.well-known/jwks.json`, picks the key whose
+`kid` the token names, and checks the signature with any JWT library — an API
+gateway, a service in another language, or `package:jose` in Dart. It then
+checks `iss` and `aud` against the deployment's `jwtIssuer` and `jwtAudience`,
+and `exp` by its own policy. `test/jwt_keys_test.dart` holds this to a library
+that shares no code with the framework: `package:jose` fetches the set over HTTP
+and verifies RS256 and ES256 tokens through it.
+
+What a third party cannot read is the authorization token's `encrypted`
+section, which is encrypted to the payload-encryption pair; the public claims
+are readable by any verifier.
+
+### Signing failure keys
+
+All raised at boot or on issue, never by a request, and all `clientThrow: false`.
+
+| Key | Exception | Raised when |
+| --- | --------- | ----------- |
+| `jwt.signing.key.unconfigured` | `TomSigningKeyException` | Key material would fall back to the bundled sample keys outside a development or test environment, or an ES256 server has no key. `parameters`: `fields` |
+| `jwt.keys.unknown_algorithm` | `TomJwtKeyException` | `jwtAlgorithm` names no supported algorithm. `parameters`: `algorithm` |
+| `jwt.keys.unreadable_key_file` | `TomJwtKeyException` | A configured key file cannot be read or holds no key of the configured algorithm's kind. `parameters`: `source`, `algorithm` |
+| `jwt.keys.verify_only` | `TomJwtKeyException` | A token was to be issued by a server configured with verification keys only |
 
 ## Two-Factor Authentication
 
@@ -2277,7 +2464,11 @@ The surfaces this module grew later are covered by suites named after the
 mechanism rather than the module: `two_factor_test.dart`,
 `two_factor_delivered_code_test.dart` and `two_factor_enrolment_db_test.dart`
 for [Two-Factor Authentication](#two-factor-authentication);
-`server_self_login_test.dart` for [Server Self-Login](#server-self-login); and
+`server_self_login_test.dart` for [Server Self-Login](#server-self-login);
+`jwt_signing_test.dart` and `jwt_keys_test.dart` for the signing keys, key ids,
+rotation, verify-only servers, what a verifier refuses and the JSON Web Key Set,
+whose mounted route `endpoints_pipeline_test.dart` asserts in the group
+`JSON Web Key Set GET /.well-known/jwks.json route`; and
 `oauth_test.dart`, `oauth_state_store_test.dart`,
 `oauth_state_store_db_test.dart` and `oauth_tokens_db_test.dart` for
 [External Identity](#external-identity-oauth-20--oidc). The three `_db` suites
@@ -2304,8 +2495,10 @@ throwing `check` helper, and `test/examples_test.dart` runs all four.
 
 The orchestrator. `authenticateGuest` and `authenticatePass1` run the flow
 above (guest vs. user service); `authenticatePass2` completes a second-factor
-login against the challenge the interim token carries. The three static settings
-select the services and JWT issuer process-wide.
+login against the challenge the interim token carries. The two static settings
+select the services process-wide; the issued tokens' issuer, audience and
+signing key are `TomJwtSigning.current`'s, and a verify-only server refuses to
+issue (`jwt.keys.verify_only`).
 
 ### `TomAuthenticationService` / `TomAuthenticationInfo`
 
@@ -2508,6 +2701,25 @@ The `/oauth/*` endpoints. It carries no login logic of its own: the callback
 resolves the pending record for its context and calls
 `TomAuthenticationServer.authenticateExternal`.
 
+### `TomJwtSigning` / `TomJwtKey` / `TomJwtSigningKey` / `TomJwtAlgorithm`
+
+`TomJwtSigning` is the process's token signing: `algorithm`, `keys` (the
+signing key's public half first, then the retired keys), `signingKeyId`,
+`canSign`, `issuer` and `audience`, with `keyFor(kid)` for the verifier,
+`jwks` for the published set and `requireSigning()` for the issuer.
+`TomJwtSigning.current` is what `installJwtSigning` installed — or, in a
+process that never ran a server boot, HS256 with the `TomJwtConfiguration`
+default secret and issuer `tom`. `TomJwtKey` is one verification key under its
+thumbprint id, `TomJwtSigningKey` a private key with its public half, and
+`TomJwtAlgorithm` the three algorithms. `TomJwtKeyException` reports a key or
+setting that cannot be used. See [The signing keys](#the-signing-keys).
+
+### `TomJwksService` / `TomJwksServer`
+
+The JSON Web Key Set at `GET /.well-known/jwks.json`, public, cacheable for
+`TomJwksServer.cacheFor` (five minutes), and `404` under HS256. See
+[The JSON Web Key Set](#the-json-web-key-set).
+
 ## Status and Limitations
 
 - **`TomDummyAuthenticationService` is for scaffolding only** — it grants any
@@ -2642,18 +2854,20 @@ resolves the pending record for its context and calls
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `server_self_login.dart`, `two_factor.dart` | `Future`, `FutureOr`, and the `Timer` the server principal's renewal is scheduled on |
-| `dart:convert` | dart | 9 of 19 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
-| `dart:math` | dart | `oauth_flow.dart`, `two_factor_send_limit.dart`, `webauthn_software_authenticator.dart` | `Random`, `exp`, and `pow` / `min` for the send pace's doubling interval |
+| `dart:convert` | dart | 12 of 21 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
+| `dart:io` | dart | `jwt_keys.dart` | `File`, reading the configured key files |
+| `dart:math` | dart | `jwt_signing.dart`, `oauth_flow.dart`, `two_factor_send_limit.dart`, `webauthn_software_authenticator.dart` | `Random`, `exp`, and `pow` / `min` for the send pace's doubling interval; `Random.secure` for the unusable signing key a verify-only server holds |
 | `dart:typed_data` | dart | `two_factor_delivered_code.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | `Uint8List`, `ByteData`, `BytesBuilder` |
-| `crypto` | package | `oauth_flow.dart`, `two_factor_attempts.dart`, `two_factor_delivered_code.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | `sha256`, for the PKCE code challenge, the interim-token fingerprint an attempt store keys on, the delivered-code digest, and the WebAuthn RP id hash, client-data hash and user handle |
-| `dart_jsonwebtoken` | package | `jwt_signing.dart` | `jwt.SecretKey`, `jwt.signing` |
+| `crypto` | package | `jwt_keys.dart`, `oauth_flow.dart`, `two_factor_attempts.dart`, `two_factor_delivered_code.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | `sha256`, for the JWK thumbprint a key id is, the PKCE code challenge, the interim-token fingerprint an attempt store keys on, the delivered-code digest, and the WebAuthn RP id hash, client-data hash and user handle |
+| `dart_jsonwebtoken` | package | `jwt_keys.dart`, `jwt_signing.dart` | `jwt.JWT.verify`, `jwt.JWTAlgorithm`, `jwt.RSAPrivateKey` / `jwt.RSAPublicKey`, `jwt.ECPrivateKey` / `jwt.ECPublicKey`, `jwt.SecretKey`, and `toJWK` for the published set |
 | `http` | package | `oauth_flow.dart` | `http.dart`, `http.get`, `http.post` |
-| `pointycastle` | package | `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | ECDSA P-256 and RSA PKCS#1 v1.5 signature verification for passkeys, and the software authenticator's key generation and signing |
-| `tom_core_kernel` | package | 18 of 19 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
-| [configuration](configuration.md) | module | `jwt_signing.dart`, `oauth_provider.dart`, `server_self_login.dart`, `sql_oauth_state_store.dart` | `TomBaseServerConfiguration` supplies the service-account fields `TomServiceCredential.fromConfiguration` reads |
+| `pointycastle` | package | `jwt_keys.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | ECDSA P-256 and RSA PKCS#1 v1.5 signature verification for passkeys, and the software authenticator's key generation and signing; deriving a signing key's public half |
+| `shelf` | package | `jwks_endpoint.dart` | `Response`, which the JSON Web Key Set endpoint answers with directly to set its content type and cache header |
+| `tom_core_kernel` | package | 20 of 21 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
+| [configuration](configuration.md) | module | `jwt_signing.dart`, `oauth_provider.dart`, `server_self_login.dart`, `sql_oauth_state_store.dart` | `TomBaseServerConfiguration` supplies the JWT fields `installJwtSigning` reads and the service-account fields `TomServiceCredential.fromConfiguration` reads; `isDevelopmentOrTestRuntime` decides whether the sample-key fallback is permitted |
 | [datasources](datasources.md) | module | `oauth_state_sql.dart`, `sql_oauth_state_store.dart` | `TomDataSource`, `TomDataSourceInfo` |
-| [endpoints](endpoints.md) | module | `oauth_endpoints.dart` | `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract |
-| [little_things](little_things.md) | module | 10 of 19 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException` and `TomOAuthException` |
+| [endpoints](endpoints.md) | module | `jwks_endpoint.dart`, `oauth_endpoints.dart` | `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract; `TomJwksService` declares its route with `@TomEndpoint` and `@TomPublicAccess` |
+| [little_things](little_things.md) | module | 11 of 21 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSigningKeyException` and `TomJwtKeyException` |
 | [messaging](messaging.md) | module | `two_factor_delivered_code.dart` | `TomEmailService` and `TomSmsService` deliver the one-time codes, through `TomTemplatedMessageService.deliverNow` rather than the outbox. A deployment that registers neither can still run TOTP |
 | [object_persistence](object_persistence.md) | module | `oauth_identity.dart`, `oauth_tokens.dart`, `sql_oauth_state_store.dart`, `two_factor_enrolment.dart` | `TomExternalIdentityLink` and `TomUserTwoFactorEnrolment` are ordinary entities over `TomSqlDatasourceRepository`. Neither table is created by the framework; each entity carries its own `createTableSql` for a deployment's migration to run |
 | [preferences](preferences.md) | module | `authentication_server.dart` | `TomUserPreferences` |

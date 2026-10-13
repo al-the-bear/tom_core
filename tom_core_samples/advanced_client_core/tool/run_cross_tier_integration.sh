@@ -179,8 +179,10 @@ log "Resolving Dart dependencies"
 #    neither package ships one — a reader copies `.env.example` when they want
 #    one, and this runner must work whether or not they did. It is not
 #    cosmetic: under `prod` both servers refuse to boot, because neither
-#    configures `jwtSharedSecretKey` and `installJwtSigning` will not sign with
-#    the framework's bundled sample key outside a development environment.
+#    configures its JWT key material — the auth server's `jwtSigningKeyFile`,
+#    the app server's `jwtVerificationKeyFiles`, the payload pair both hold —
+#    and `installJwtSigning` will not use the framework's bundled sample keys
+#    outside a development environment.
 log "Starting auth server"
 (cd "$AUTH_DIR" && exec dart run bin/auth_server_start.dart env=dev >"$LOG_DIR/auth.log" 2>&1) &
 SERVER_PIDS+=($!)

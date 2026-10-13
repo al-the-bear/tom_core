@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart' as jwt;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:tom_core_server/tom_core_server.dart';
@@ -1601,6 +1602,56 @@ void main() {
         contains('the pool is closed'),
         reason: 'the cause reaches the operator on the wire',
       );
+    });
+  });
+
+  group('JSON Web Key Set GET /.well-known/jwks.json route', () {
+    late Router router;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomJwksServer>(TomJwksServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
+      router = TomEndpointRouting().initializeRouter();
+    });
+
+    tearDown(() {
+      TomJwtSigning.reset();
+      TomBean.resetBeanContext();
+    });
+
+    test('publishes the keys to an anonymous caller, even when the deployment '
+        'protects by default', () async {
+      // A verifier fetching the set holds no token of this deployment yet —
+      // the set is what it needs to verify one.
+      final signing = TomJwtSigningKey.rsa(
+        jwt.RSAPrivateKey.raw(TomJwtConfiguration.rsaPrivKey),
+      );
+      TomJwtSigning.install(
+        TomJwtSigning(
+          algorithm: TomJwtAlgorithm.rs256,
+          keys: [signing.publicKey],
+          signingKeyId: signing.keyId,
+        ),
+      );
+      TomResourceKeyProtection.globalSettingProtectionDefault = true;
+      addTearDown(
+        () => TomResourceKeyProtection.globalSettingProtectionDefault = false,
+      );
+      final response = await router.call(_get('/.well-known/jwks.json'));
+      expect(response.statusCode, 200);
+      expect(
+        response.headers[TomHeader.contentType],
+        'application/jwk-set+json',
+      );
+      final set = jsonDecode(await response.readAsString()) as Map;
+      expect(((set['keys'] as List).single as Map)['kid'], signing.keyId);
+    });
+
+    test('answers 404 under HS256, which has nothing to publish', () async {
+      final response = await router.call(_get('/.well-known/jwks.json'));
+      expect(response.statusCode, 404);
     });
   });
 

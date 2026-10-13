@@ -261,19 +261,38 @@ software authenticator, since a test has no browser.
 
 ## JWT signing
 
-The server signs the token pair (HS256) and RSA-encrypts the authorization
-payload with the key material `installJwtSigning(configuration)` reads off the
-merged configuration — `jwtSharedSecretKey`, `jwtRsaPrivKey`, `jwtRsaPubKey`,
-reachable as the environment variables `JWT_SHARED_SECRET_KEY`,
-`JWT_RSA_PRIV_KEY`, `JWT_RSA_PUB_KEY`. The app server (`advanced_app_server`)
-must hold the identical values for a token minted here to verify there; that is
-the standard "resource server trusts the authorization server" split.
+The server signs the token pair **RS256** with the private key
+`installJwtSigning(configuration)` reads from the file `jwtSigningKeyFile`
+names, and RSA-encrypts the authorization payload with the `jwtRsaPrivKey` /
+`jwtRsaPubKey` pair. Every token names its key in a `kid` header — the RFC 7638
+thumbprint of the public key — and carries the configured `jwtIssuer` and
+`jwtAudience`. The public half is published at `GET /.well-known/jwks.json`
+(public, cacheable for five minutes), mounted by the framework with nothing to
+register here:
 
-This sample sets none of them, so all three fall back to the framework's bundled
-sample keys — which is the *only* reason the two servers currently agree.
-Uncomment `JWT_SHARED_SECRET_KEY` in **both** servers' `.env` (see
-`.env.example`) and the agreement becomes a deliberate one; set it in one only
-and the app server rejects this server's tokens.
+```sh
+curl -s http://localhost:8081/.well-known/jwks.json
+```
+
+| Variable | Here |
+| --- | --- |
+| `JWT_SIGNING_KEY_FILE` | the PEM (PKCS#8) private key tokens are signed with |
+| `JWT_VERIFICATION_KEY_FILES` | public keys this server rotated away from, kept until their tokens expire |
+| `JWT_ISSUER` / `JWT_AUDIENCE` | written into every token; the app server must expect the same values |
+| `JWT_ALGORITHM` | `RS256` by default; `ES256`, or `HS256` with `JWT_SHARED_SECRET_KEY` |
+| `JWT_RSA_PRIV_KEY` / `JWT_RSA_PUB_KEY` | the payload-encryption pair, which the app server holds too |
+
+The app server (`advanced_app_server`) lists this server's public key in its
+`JWT_VERIFICATION_KEY_FILES` and holds no signing key, so it verifies a token
+minted here and can mint none; that is the standard "resource server trusts the
+authorization server" split.
+
+This sample sets none of them, so the key material falls back to the
+framework's bundled sample RSA pair — which is the *only* reason the two servers
+currently agree. Set `JWT_SIGNING_KEY_FILE` here and the matching public key in
+the app server's `JWT_VERIFICATION_KEY_FILES` (see `.env.example`) and the
+agreement becomes a deliberate one; a mismatched key, issuer or audience and the
+app server rejects this server's tokens.
 
 The fallback is not quiet. `installJwtSigning` **refuses to boot** on it outside
 a development or test environment (`TomSigningKeyException`, naming the
@@ -281,6 +300,6 @@ unconfigured fields), which is why the sample is started with `env=dev`; where i
 is permitted it warns once at boot, and because the resulting
 `TomJwtConfiguration` stays marked as a development ("dummy") certificate the
 framework repeats the warning on **every** sign and verify — intentionally not
-suppressed (G-AUTH-2). Configure all three fields and the certificate is no
+suppressed (G-AUTH-2). Configure the key material and the certificate is no
 longer a dummy one and the warnings stop. **Do that before any real
 deployment.**

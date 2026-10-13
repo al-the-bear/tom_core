@@ -33,7 +33,6 @@ AuthTokenService _service() => AuthTokenService(
       },
     ),
   ),
-  issuer: 'tom',
 );
 
 LoginRequest _login() => LoginRequest(

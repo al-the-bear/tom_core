@@ -49,14 +49,13 @@ InMemoryAuthUserStore _storeWith({List<UserRecord> extraUsers = const []}) {
   );
 }
 
-/// A token service over a freshly seeded store, signing with a fixed issuer.
+/// A token service over a freshly seeded store, signing under the process's token signing.
 ///
 /// The login does not fold per-resource roles into the token, so the service is
 /// built over the store alone.
 AuthTokenService _service({List<UserRecord> extraUsers = const []}) =>
     AuthTokenService(
       AdvancedAuthenticationService(_storeWith(extraUsers: extraUsers)),
-      issuer: 'tom',
     );
 
 void main() {

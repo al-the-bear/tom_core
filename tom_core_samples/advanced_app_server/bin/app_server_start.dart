@@ -14,15 +14,16 @@
 /// entry, and it avoids `/health` because that path is not a contract
 /// endpoint at all but the plain-text liveness probe `TomHealthService`
 /// auto-mounts in every server. Because the rest are authenticated, the boot
-/// trusts the **same JWT signing key as the auth server**: `installJwtSigning`
-/// builds the signing configuration from the three `jwt*` configuration fields,
-/// which both servers leave unset, so both fall back to the identical framework
-/// sample keypair — which is what lets a token minted by `advanced_auth_server`
-/// verify here, the standard "resource server trusts the authorization server"
-/// split. Configure `jwtSharedSecretKey` in both and that shared trust becomes
-/// a deliberate one; configure it in one only and this server rejects the auth
-/// server's tokens. The fallback warns at boot and is refused outright outside a
-/// development or test environment.
+/// trusts the **auth server's signing key**: `installJwtSigning` builds the
+/// signing configuration from the `jwt*` configuration fields, which both
+/// servers leave unset, so both fall back to the identical framework sample
+/// keypair — which is what lets a token minted by `advanced_auth_server` verify
+/// here, the standard "resource server trusts the authorization server" split.
+/// In a deployment the auth server names its private key in
+/// `jwtSigningKeyFile` and this server names the matching public key in
+/// `jwtVerificationKeyFiles`, so it can verify the auth server's tokens and
+/// cannot mint its own. The fallback warns at boot and is refused outright
+/// outside a development or test environment.
 /// The authentication middleware itself is left null so `TomServer.start()`
 /// installs the framework default (`tomDefaultAuthenticationMiddleware`),
 /// which verifies the bearer token and places the resulting `TomPrincipal` in
@@ -307,9 +308,6 @@ Future<void> main(List<String> args) async {
   TomPlatformUtils.setCurrentPlatform(standalonePlatformUtils);
 
   registerAdvancedTodoApis();
-  // The issuer the auth server signs with; the app server must match it to
-  // verify a minted token.
-  TomAuthenticationServer.globalSettingJwtOrganization = 'tom';
 
   initializeReflection();
   // Establishes the shared ProjectRole → TomAuthState grade vocabulary the
@@ -321,12 +319,14 @@ Future<void> main(List<String> args) async {
 
   final configuration = AppServerConfiguration(args);
 
-  // Verifies with `jwtSharedSecretKey` and decrypts the access-control payload
-  // with the configured RSA pair. This server is the *verifier* of the pair, so
-  // the three values must match `advanced_auth_server`'s exactly; both leave
-  // them unset here, so both fall back to the framework's bundled sample keys
-  // with a warning — which the framework permits only because `env=dev`
-  // selected a development environment.
+  // Verifies with the auth server's public key (`jwtVerificationKeyFiles`,
+  // with no `jwtSigningKeyFile`: this server verifies tokens and never issues
+  // them), expects the same `jwtIssuer`/`jwtAudience`, and decrypts the
+  // access-control payload with the `jwtRsaPrivKey`/`jwtRsaPubKey` pair the
+  // auth server encrypts it with. Both servers leave them unset here, so both
+  // fall back to the framework's bundled sample keys with a warning — which
+  // the framework permits only because `env=dev` selected a development
+  // environment.
   //
   // It runs here, immediately after the configuration and before any datasource
   // is opened, because outside a development environment it *refuses* the

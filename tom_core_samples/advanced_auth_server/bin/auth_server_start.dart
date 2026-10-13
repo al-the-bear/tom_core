@@ -397,8 +397,6 @@ Future<void> main(List<String> args) async {
   TomPlatformUtils.setCurrentPlatform(standalonePlatformUtils);
 
   registerAdvancedTodoApis();
-  // The issuer the token service signs with; the app server must match it.
-  TomAuthenticationServer.globalSettingJwtOrganization = 'tom';
 
   initializeReflection();
   // Establishes the shared ProjectRole → TomAuthState grade vocabulary the
@@ -410,13 +408,14 @@ Future<void> main(List<String> args) async {
 
   final configuration = AuthServerConfiguration(args);
 
-  // Signs (HS256) with `jwtSharedSecretKey` and encrypts the access-control
-  // payload with the configured RSA pair — the same three values
-  // `advanced_app_server` configures, which is what lets it verify a token
-  // minted here. Configure them differently in the two servers and the app
-  // server rejects this one's tokens; leave them unset, as this sample does,
-  // and the framework's bundled sample keys are used with a warning — which it
-  // permits only because `env=dev` selected a development environment.
+  // Signs (RS256) with the private key `jwtSigningKeyFile` names, under the
+  // configured `jwtIssuer`/`jwtAudience`, and publishes the public half at
+  // `GET /.well-known/jwks.json`; `advanced_app_server` verifies with that
+  // public half (`jwtVerificationKeyFiles`). The access-control payload is
+  // encrypted with the `jwtRsaPrivKey`/`jwtRsaPubKey` pair, which both servers
+  // hold. Leave them unset, as this sample does, and both servers fall back to
+  // the framework's bundled sample keys with a warning — which it permits only
+  // because `env=dev` selected a development environment.
   //
   // It runs here, immediately after the configuration and before any datasource
   // is opened, because outside a development environment it *refuses* the

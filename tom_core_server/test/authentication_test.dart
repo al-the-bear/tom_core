@@ -226,7 +226,8 @@ void main() {
 
   group('TomAuthenticationServer', () {
     test('defaults the JWT issuer to "tom"', () {
-      expect(TomAuthenticationServer.globalSettingJwtOrganization, 'tom');
+      TomJwtSigning.reset();
+      expect(TomJwtSigning.current.issuer, 'tom');
     });
 
     test('defaults both services to the dummy service', () {
@@ -268,7 +269,6 @@ void main() {
   group('TomAuthenticationServer login flow', () {
     late TomAuthenticationService savedUserService;
     late TomAuthenticationService savedGuestService;
-    late String savedIssuer;
     late bool savedProtectionDefault;
 
     setUp(() {
@@ -276,7 +276,6 @@ void main() {
           TomAuthenticationServer.globalSettingUserAuthenticationService;
       savedGuestService =
           TomAuthenticationServer.globalSettingGuestAuthenticationService;
-      savedIssuer = TomAuthenticationServer.globalSettingJwtOrganization;
       savedProtectionDefault =
           TomResourceKeyProtection.globalSettingProtectionDefault;
       // Deterministic token payloads: no resource-key redaction of public claims.
@@ -288,7 +287,7 @@ void main() {
           savedUserService;
       TomAuthenticationServer.globalSettingGuestAuthenticationService =
           savedGuestService;
-      TomAuthenticationServer.globalSettingJwtOrganization = savedIssuer;
+      TomJwtSigning.reset();
       TomResourceKeyProtection.globalSettingProtectionDefault =
           savedProtectionDefault;
     });
@@ -316,10 +315,7 @@ void main() {
           result.authenticationToken,
           decrypt: false,
         );
-        expect(
-          auth.issuer,
-          TomAuthenticationServer.globalSettingJwtOrganization,
-        );
+        expect(auth.issuer, TomJwtSigning.current.issuer);
         expect(auth.payload?['username'], 'alice');
         expect(auth.payload?['organization'], 'acme');
       },
@@ -579,7 +575,17 @@ void main() {
     );
 
     test('the issued token stamps the configured JWT issuer', () async {
-      TomAuthenticationServer.globalSettingJwtOrganization = 'acme-corp';
+      TomJwtSigning.install(
+        TomJwtSigning(
+          algorithm: TomJwtAlgorithm.hs256,
+          keys: [
+            TomJwtKey.hmac(
+              TomJwtConfiguration.defaultSignConfiguration.key as SecretKey,
+            ),
+          ],
+          issuer: 'acme-corp',
+        ),
+      );
       TomAuthenticationServer
           .globalSettingUserAuthenticationService = _RecordingAuthService(
         build: (a) =>

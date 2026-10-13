@@ -42,7 +42,7 @@ files with `${VAR}` / `${VAR:default}` environment-variable substitution.
 
 ## Class Hierarchy
 
-```
+```text
 TomServerConfigResourceProvider
 
 TomBaseServerConfiguration  (abstract, @tomReflector)
@@ -151,9 +151,14 @@ last so a merged key spelled `args` cannot displace the invocation.
 | `developmentPrivateKey` | `String` | The PEM key `privateKey` defaults to (static, const). Published, which is what `usesDevelopmentTlsMaterial` exists to detect. |
 | `certificateChain` | `String` | TLS certificate chain; defaults to `developmentCertificateChain`, a throwaway self-signed `localhost` pair that MUST be overridden in production. |
 | `privateKey` | `String` | TLS private key; defaults to `developmentPrivateKey`, whose value is **published in this repository**. MUST be overridden in production. |
-| `jwtRsaPubKey` | `String?` | PEM of the JWT RSA public key, which encrypts the token payload. Read by `installJwtSigning`; `null` means "not configured" and falls back to the framework's bundled sample key — permitted in a development or test environment, refused anywhere else. Environment name `JWT_RSA_PUB_KEY` (default `null`). |
-| `jwtRsaPrivKey` | `String?` | PEM of the JWT RSA private key, under the same rule; secret-bearing. Environment name `JWT_RSA_PRIV_KEY` (default `null`). |
-| `jwtSharedSecretKey` | `String?` | Passphrase of the HMAC key that signs the token, and the one value two servers must agree on to trust each other's tokens; secret-bearing. Same rule and same fallback. Environment name `JWT_SHARED_SECRET_KEY` (default `null`). |
+| `jwtRsaPubKey` | `String?` | PEM of the RSA public key that encrypts the token's access-control payload. Read by `installJwtSigning`; `null` means "not configured" and falls back to the framework's bundled sample key — permitted in a development or test environment, refused anywhere else. Environment name `JWT_RSA_PUB_KEY` (default `null`). |
+| `jwtRsaPrivKey` | `String?` | PEM of the RSA private key that decrypts that payload, under the same rule; secret-bearing. Environment name `JWT_RSA_PRIV_KEY` (default `null`). |
+| `jwtSharedSecretKey` | `String?` | Passphrase of the HMAC key that signs and verifies tokens when `jwtAlgorithm` is `HS256`; read under no other algorithm. Secret-bearing. Same rule and same fallback. Environment name `JWT_SHARED_SECRET_KEY` (default `null`). |
+| `jwtAlgorithm` | `String?` | The token signing algorithm: `RS256` (when unset), `ES256` or `HS256`. Any other name is refused with `jwt.keys.unknown_algorithm`. Environment name `JWT_ALGORITHM` (default `null`). |
+| `jwtSigningKeyFile` | `String?` | Path of the PEM file (PKCS#8) holding the private key RS256 or ES256 tokens are signed with; the file is secret-bearing. Unset with no verification keys falls back to the bundled RSA pair under RS256 — in development or test only — and is refused under ES256 everywhere. Environment name `JWT_SIGNING_KEY_FILE` (default `null`). |
+| `jwtVerificationKeyFiles` | `String?` | Comma-separated paths of PEM files (SPKI) holding public keys that still verify tokens: on an issuing server the keys it rotated away from, on a verify-only server the issuer's current and retired keys. Environment name `JWT_VERIFICATION_KEY_FILES` (default `null`). |
+| `jwtIssuer` | `String?` | The `iss` every issued token carries and every verified token must carry; `tom` when unset. Environment name `JWT_ISSUER` (default `null`). |
+| `jwtAudience` | `String?` | The `aud` every issued token carries and every verified token must carry; unset issues and requires none. Environment name `JWT_AUDIENCE` (default `null`). |
 | `authServerLoginUri` | `String?` | Absolute URI of the auth server's login endpoint, e.g. `https://auth.example.com/auth/login`; `null` or blank disables server self-login (default `null`). |
 | `serviceAccountName` | `String?` | Login name of this deployment's service account; `null` or blank disables server self-login (default `null`). |
 | `serviceAccountCredential` | `String?` | The service account's secret — **secret-bearing**: declared here so the shape and source key are known, but never authored; supplied out-of-band at deploy time (default `null`). |

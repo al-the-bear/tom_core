@@ -1,5 +1,58 @@
 ## Unreleased
 
+### Added
+
+- **Asymmetric token signing, key rotation and a JSON Web Key Set.** Tokens are
+  signed RS256 by default, ES256 or HS256 by `jwtAlgorithm`, with the private
+  key read from the PEM file at `jwtSigningKeyFile` (PKCS#8; EC keys on the
+  named curve P-256). Every token carries a `kid` header: the RFC 7638
+  thumbprint of the key's public JWK, so every server derives the same id from
+  the same key without configuring it. `jwtVerificationKeyFiles` lists public
+  keys (SPKI) that still verify — the keys an issuer rotated away from, or the
+  issuer's keys on a server that only verifies. `jwtIssuer` (default `tom`) and
+  `jwtAudience` (default none) are written into every token and required of
+  every token verified. New in `authentication/jwt_keys.dart`: `TomJwtSigning`
+  (`current` / `install` / `reset`, `keys`, `signingKeyId`, `canSign`, `issuer`,
+  `audience`, `keyFor`, `jwks`, `requireSigning`), `TomJwtAlgorithm`,
+  `TomJwtKey`, `TomJwtSigningKey`, `readPemFile` and `TomJwtKeyException`
+  (`jwt.keys.unknown_algorithm`, `jwt.keys.unreadable_key_file`,
+  `jwt.keys.verify_only`; `clientThrow: false`).
+- **`GET /.well-known/jwks.json`** (`TomJwksService` / `TomJwksServer`,
+  `authentication/jwks_endpoint.dart`), mounted like every component endpoint:
+  the public half of every verification key, signing key first, as
+  `application/jwk-set+json` with `cache-control: public, max-age=300`;
+  `@TomPublicAccess`; `404` under HS256. Any JWT library or gateway verifies
+  this deployment's tokens through it.
+- **A verify-only server.** Verification key files and no signing key: tokens
+  are verified, and issuing one is refused with `jwt.keys.verify_only`.
+- `doc/authentication.md` documents the rotation procedure.
+
+### Changed
+
+- **`verifyBearerToken` checks whose token it is**: the algorithm is the
+  configured one and never the token's `alg` header (no algorithm confusion),
+  the `kid` must name a held key, and `iss` and `aud` must match the
+  configuration.
+- **`installJwtSigning` defaults to RS256.** Unconfigured, it signs with the
+  bundled `tom_crypto` RSA pair, in a development or test environment only, with
+  a warning; ES256 has no sample key and is refused unconfigured everywhere.
+  `jwtSharedSecretKey` is the HS256 secret and is read under no other algorithm.
+  `jwtRsaPrivKey` / `jwtRsaPubKey` remain the pair that encrypts the token's
+  access-control payload, under every algorithm.
+- **Breaking: `TomAuthenticationServer.globalSettingJwtOrganization` is gone.**
+  Issued tokens carry `TomJwtSigning.current`'s issuer and audience — the
+  configured `jwtIssuer` and `jwtAudience`.
+- Requires `tom_crypto` 1.3.0 (`TomJwtConfiguration.keyId`, written as the `kid`
+  header, and `TomServerJwtToken(audience:)`).
+
+### Tests
+
+- **`test/jwt_keys_test.dart`** covers key ids, RS256 and ES256 key files,
+  rotation, what a verifier refuses, a verify-only server and the published set
+  — verified by `package:jose` (a dev dependency), which shares no code with
+  the framework. `endpoints_pipeline_test.dart` asserts the mounted
+  `/.well-known/jwks.json` route.
+
 ### Fixed
 
 - **CORS reaches the response, not only the preflight.** Every response an
@@ -4008,7 +4061,7 @@
   nor the credentials the driver was never given, and never mentioned the key
   that caused it, because nothing ever looked at it.
 
-  ```
+  ```text
   Datasource 'app_db' (type 'mariadb') is configured with a setting 'database'
   that names no field of MariaDbDatasource. Check the spelling in the datasource
   configuration for 'app_db'.

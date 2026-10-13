@@ -344,12 +344,12 @@ individual fields rather than this list.
 > `localhost` pair for local development and **must be overridden in
 > production**; a boot that serves TLS with either half still at its default
 > [says so in the log](#the-development-tls-pair-announces-itself). The JWT
-> fields are the server's signing key material, read by `installJwtSigning`
-> (see [JWT Signing Keys](#jwt-signing-keys)); all three default to `null`, and
-> a field left unset falls back to the framework's bundled sample key, which is
-> permitted in a development or test environment and refused anywhere else. The
-> rest of a signing configuration — algorithm, issuer, audience, expiry — is
-> supplied in code, because there are no configuration keys for those.
+> fields are the server's token signing configuration — algorithm, key files,
+> issuer, audience and the payload-encryption pair — read by `installJwtSigning`
+> (see [JWT Signing Keys](#jwt-signing-keys)); all of them default to `null`,
+> and key material left unset falls back to the framework's bundled sample key,
+> which is permitted in a development or test environment and refused anywhere
+> else. A token's expiry is supplied in code, by the code that mints it.
 
 ### Unknown keys in the configuration resources
 
@@ -582,8 +582,8 @@ built, because someone meant to send.
 
 **The JWT block is the exception, and it is the dangerous one.** There is nothing
 to disable: a server that issues or accepts tokens signs and verifies whatever
-its configuration left it holding. Unset, that is the sample key pair bundled in
-`tom_crypto` — published in its sources, and therefore no secret at all. So the
+its configuration left it holding. Unset, that is the sample key material bundled
+in `tom_crypto` — published in its sources, and therefore no secret at all. So the
 block does not fail open the way the other three do. `installJwtSigning` refuses
 to start a server on the bundled keys outside a development or test environment,
 and warns loudly inside one. See
@@ -597,30 +597,49 @@ supplied out of band at deploy time through the precedence chain below — the O
 environment, `.env`, or the command line — and must never be written into a spec
 or a checked-in configuration tree.
 
+`jwtSigningKeyFile` is secret-bearing one step removed: its value is a path,
+which may be authored, and the file it names holds the private signing key,
+which never is.
+
 ### JWT Signing Keys
 
-What the server signs an issued token with, and what it verifies an incoming one
-against. Two servers trust each other's tokens exactly when they resolve the
-same values here; nothing else establishes that trust, so the auth server that
-issues and the application server that accepts are configured as a pair.
+What the server signs an issued token with, what it verifies an incoming one
+against, and which issuer and audience both must name. `installJwtSigning`
+reads these fields at boot; see
+[authentication.md](authentication.md#the-signing-keys) for the algorithms, the
+key ids, the published JSON Web Key Set and the rotation procedure.
 
-All three default to `null`, meaning *not configured* — the framework ships no
-key of its own, because a key everyone can read is not a key. A field left unset
-falls back to the sample material in `tom_crypto`, which `installJwtSigning`
-permits only in a development or test environment and refuses elsewhere with
-`TomSigningKeyException`.
+An auth server that issues and an application server that accepts are
+configured as a pair: under RS256 or ES256 the application server lists the
+auth server's public key in `jwtVerificationKeyFiles` and holds no signing key;
+under HS256 both hold the same `jwtSharedSecretKey`. In both cases they name the
+same `jwtIssuer` and `jwtAudience`.
 
-| Setting | Type | What it decides |
-| ------- | ---- | --------------- |
-| `jwtRsaPubKey` | `String?` | PEM of the RSA public key that encrypts the access-control payload carried inside a token. Deployment-specific but not secret. |
-| `jwtRsaPrivKey` | `String?` | PEM of its private counterpart, which decrypts that payload. **Secret-bearing** — supplied out of band, never authored. |
-| `jwtSharedSecretKey` | `String?` | Passphrase of the HMAC key the token is signed and verified with, and the one value the issuing and accepting servers must agree on. **Secret-bearing** — whoever holds it can mint a token this deployment accepts. |
+All of them default to `null`, meaning *not configured* — the framework ships no
+key of its own, because a key everyone can read is not a key. Key material left
+unset falls back to the sample material in `tom_crypto`, which
+`installJwtSigning` permits only in a development or test environment and
+refuses elsewhere with `TomSigningKeyException`. ES256 has no sample key, so an
+unconfigured ES256 server is refused everywhere.
+
+| Setting | Environment name | Type | What it decides |
+| ------- | ---------------- | ---- | --------------- |
+| `jwtRsaPubKey` | `JWT_RSA_PUB_KEY` | `String?` | PEM of the RSA public key that encrypts the access-control payload carried inside a token, under every algorithm. Deployment-specific but not secret. |
+| `jwtRsaPrivKey` | `JWT_RSA_PRIV_KEY` | `String?` | PEM of its private counterpart, which decrypts that payload. Held by the issuer and every server reading its tokens. **Secret-bearing** — supplied out of band, never authored. |
+| `jwtSharedSecretKey` | `JWT_SHARED_SECRET_KEY` | `String?` | Passphrase of the HMAC key that signs and verifies tokens under `HS256`, and read under no other algorithm. **Secret-bearing** — whoever holds it can mint a token this deployment accepts. |
+| `jwtAlgorithm` | `JWT_ALGORITHM` | `String?` | The signing algorithm: `RS256` when unset, `ES256` or `HS256`. Anything else is refused with `jwt.keys.unknown_algorithm`. |
+| `jwtSigningKeyFile` | `JWT_SIGNING_KEY_FILE` | `String?` | Path of the PEM file (PKCS#8) holding the private key RS256 or ES256 tokens are signed with. The file is **secret-bearing**; the path is not. A verify-only server leaves it unset. |
+| `jwtVerificationKeyFiles` | `JWT_VERIFICATION_KEY_FILES` | `String?` | Comma-separated paths of PEM files (SPKI) holding public keys that still verify tokens: on the issuing server, the keys it rotated away from; on a verify-only server, the issuer's current and retired keys. |
+| `jwtIssuer` | `JWT_ISSUER` | `String?` | The `iss` every issued token carries and every verified token must carry; `tom` when unset. |
+| `jwtAudience` | `JWT_AUDIENCE` | `String?` | The `aud` every issued token carries and every verified token must carry; unset issues and requires none. |
 
 A `.env` file is read a line at a time, so a PEM supplied through one goes on a
 single line with its newlines written as spaces; the parser strips spaces and
-newlines alike before decoding, so the value is the same key either way.
+newlines alike before decoding, so the value is the same key either way. The
+signing and verification keys are read from files instead, and need no such
+care.
 
-See `authentication/jwt_signing.dart`.
+See `authentication/jwt_signing.dart` and `authentication/jwt_keys.dart`.
 
 ### Server Self-Login
 
@@ -937,9 +956,10 @@ started with no configuration whose first symptom appears several layers later.
   refuse.
   <!-- pinned: test/configuration_test.dart › the default TLS material is the checked-in self-signed pair -->
 - **The JWT key material defaults to nothing, deliberately.**
-  `jwtSharedSecretKey`, `jwtRsaPrivKey` and `jwtRsaPubKey` are all `null` out of
-  the box, and `installJwtSigning` reads that nullness as "not configured": it
-  then falls back to the framework's bundled sample keys, which are written into
+  `jwtSigningKeyFile`, `jwtVerificationKeyFiles`, `jwtSharedSecretKey`,
+  `jwtRsaPrivKey` and `jwtRsaPubKey` are all `null` out of the box, and
+  `installJwtSigning` reads that nullness as "not configured": it then falls
+  back to the framework's bundled sample keys, which are written into
   the `tom_crypto` sources and therefore secret from nobody. That fallback warns
   at boot, marks the resulting `TomJwtConfiguration` as a dummy certificate — so
   the framework warns again on every sign and verify — and is **refused
@@ -948,10 +968,11 @@ started with no configuration whose first symptom appears several layers later.
   not-development. This is the one place where the "unconfigured" state is not
   merely reported but blocks the boot, and the reason is that the alternative is
   a server signing with a published passphrase and saying nothing. Contrast the
-  TLS pair above, which fails open.
-  The configuration carries the key material and nothing else of signing: the
-  algorithm, the issuer, the audience and the expiry are set where a token is
-  minted, by the code that mints it, because they are that code's policy.
+  TLS pair above, which fails open. ES256 has no sample key, so an unconfigured
+  ES256 server is refused in every environment.
+  The configuration carries the key material, the algorithm, the issuer and the
+  audience; a token's expiry is set where it is minted, by the code that mints
+  it, because it is that code's policy.
   <!-- pinned: test/configuration_test.dart › the JWT key material defaults to nothing at all -->
 
 ## Core Components

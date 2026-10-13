@@ -12,7 +12,7 @@ system locally.
 
 All eight packages live side by side under `tom_core_samples/`:
 
-```
+```text
 tom_core_samples/
   README_advanced_sample.md      the hub: suite map + quickstart
   advanced_todo_domain/          shared reflected model (User, Project, TodoList, TodoItem)
@@ -178,19 +178,23 @@ so both servers — and a host-local MariaDB — coexist. The auth server's
 `assets/config-resources_<env>.yaml` overlay **and** the runtime environment,
 both resolved from the same value). Each file declares only what something
 reads: the HTTP port is a `_defaultPort` constant in the boot file, applied only
-where the configuration merge left the field at `0`, and the JWT key material is
-three commented-out variables — `JWT_SHARED_SECRET_KEY`, `JWT_RSA_PRIV_KEY`,
-`JWT_RSA_PUB_KEY`, the environment spellings of the `jwtSharedSecretKey`,
-`jwtRsaPrivKey` and `jwtRsaPubKey` configuration fields. Left commented, both
-servers fall back to the framework's **bundled sample keys**, which is what makes
-them trust each other out of the box; set `JWT_SHARED_SECRET_KEY` to the same
-value in both and the trust rests on a secret you chose, set it in one only and
-the app server rejects the auth server's tokens. The fallback is refused outright
+where the configuration merge left the field at `0`, and the JWT configuration
+is commented-out variables — `JWT_SIGNING_KEY_FILE` in the auth server,
+`JWT_VERIFICATION_KEY_FILES` in the app server, and `JWT_ISSUER`,
+`JWT_AUDIENCE`, `JWT_ALGORITHM`, `JWT_SHARED_SECRET_KEY`, `JWT_RSA_PRIV_KEY` and
+`JWT_RSA_PUB_KEY` in both, the environment spellings of the `jwt*`
+configuration fields. Left commented, both servers fall back to the framework's
+**bundled sample keys**, which is what makes them trust each other out of the
+box; point the auth server's `JWT_SIGNING_KEY_FILE` at a private key and the app
+server's `JWT_VERIFICATION_KEY_FILES` at its public half and the trust rests on
+a key you made, while a mismatched key, issuer or audience makes the app server
+reject the auth server's tokens. `JWT_SHARED_SECRET_KEY` is read only with
+`JWT_ALGORITHM=HS256`. The fallback is refused outright
 outside a development or test environment — which is why `env=dev` is not
 optional here (part [06](README_advanced_06_authentication.md)).
 
 **A `SCREAMING_SNAKE_CASE` variable reaches the `lowerCamelCase` configuration
-field of the same name**, so `JWT_SHARED_SECRET_KEY` and `jwtSharedSecretKey` are
+field of the same name**, so `JWT_SIGNING_KEY_FILE` and `jwtSigningKeyFile` are
 two spellings of one key. That is a general rule of the merge, not something
 these servers wire up.
 

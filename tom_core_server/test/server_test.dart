@@ -49,7 +49,7 @@ import 'fixtures/reflection_fixture.reflection.dart';
 
 /// A JWT signed with the configuration this deployment has installed.
 String _signed(Map<String, dynamic> claims) =>
-    TomServerJwtToken(claims).getJWT('issuer');
+    TomServerJwtToken(claims).getJWT(TomJwtSigning.current.issuer);
 
 /// [token] with its public claims edited by [edit] and its original signature
 /// left in place — what a client can produce with three lines and a base64
@@ -212,9 +212,10 @@ void main() {
       // builds no principal from a dead token; the token itself survives. See
       // the middleware groups below, which assert both halves with a warm
       // cache and a cold one.
-      final expired = TomServerJwtToken({
-        'userId': 'u',
-      }, expiresIn: const Duration(hours: -1)).getJWT('issuer');
+      final expired = TomServerJwtToken(
+        {'userId': 'u'},
+        expiresIn: const Duration(hours: -1),
+      ).getJWT(TomJwtSigning.current.issuer);
       final (_, token, _) = extractAuthentication(
         _get({'authorization': 'Bearer $expired'}),
       );

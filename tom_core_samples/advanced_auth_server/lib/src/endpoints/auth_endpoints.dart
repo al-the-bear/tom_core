@@ -36,7 +36,8 @@ import '../resources/auth_resource_bundles.dart';
 /// including the two-pass second-factor flow.
 ///
 /// Pure over its two inputs — the [AdvancedAuthenticationService] that verifies
-/// credentials and the JWT [issuer] — so it runs in a unit test with a seeded
+/// credentials and the process's `TomJwtSigning.current`, which carries the
+/// signing key, issuer and audience — so it runs in a unit test with a seeded
 /// in-memory store and no live server.
 ///
 /// [login] and [submitSecondFactor] delegate to the framework's
@@ -54,23 +55,21 @@ class AuthTokenService {
   static const Duration tokenLifetime = Duration(hours: 2);
 
   final AdvancedAuthenticationService _authentication;
-  final String _issuer;
   final TomAuthenticationServer _server = TomAuthenticationServer();
 
   /// Builds the token service over the credential-checking
-  /// [AdvancedAuthenticationService]. [issuer] defaults to the server-wide JWT organization
-  /// (`TomAuthenticationServer.globalSettingJwtOrganization`).
+  /// [AdvancedAuthenticationService]. Tokens are signed, and carry the issuer
+  /// and audience, of the process's `TomJwtSigning.current` — what
+  /// `installJwtSigning` built from the server configuration at boot.
   ///
-  /// The framework selects both the credential service and the issuer through
-  /// statics, so the constructor installs them. Doing it here rather than
+  /// The framework selects the credential service through a static, so the
+  /// constructor installs it. Doing it here rather than
   /// leaving it to each caller is deliberate: the default
   /// `TomDummyAuthenticationService` *accepts every login*, so forgetting the
   /// wiring would not fail loudly — it would authenticate everyone.
-  AuthTokenService(this._authentication, {String? issuer})
-    : _issuer = issuer ?? TomAuthenticationServer.globalSettingJwtOrganization {
+  AuthTokenService(this._authentication) {
     TomAuthenticationServer.globalSettingUserAuthenticationService =
         _authentication;
-    TomAuthenticationServer.globalSettingJwtOrganization = _issuer;
     installTotpSecretResolver(_authentication.store);
   }
 
@@ -231,15 +230,18 @@ class AuthTokenService {
       clientCountry,
       clientLanguage,
     );
+    final signing = TomJwtSigning.current..requireSigning();
     final authToken = TomServerJwtToken(
       publicInfo,
       expiresIn: tokenLifetime,
-    ).getJWT(_issuer);
+      audience: signing.audience,
+    ).getJWT(signing.issuer);
     final authzToken = TomServerJwtToken(
       publicInfo,
       encryptedData: privateInfo,
       expiresIn: tokenLifetime,
-    ).getJWT(_issuer);
+      audience: signing.audience,
+    ).getJWT(signing.issuer);
     return LoginResult(
       user: userDtoOf(principal),
       authToken: authToken,
@@ -409,7 +411,7 @@ const LoginUnauthorizedErrorHandler _loginErrorHandler =
 @TomApiImplementation(apiId: 'auth')
 class AdvancedAuthApiService implements AuthApiService {
   /// Production token logic: verifies credentials through the repository-backed
-  /// store and signs with the server-wide JWT issuer.
+  /// store and signs under the process's `TomJwtSigning.current`.
   ///
   /// The login does not fold effective per-resource roles into the token: the
   /// token is an opaque bearer, enforcement re-resolves the

@@ -19,9 +19,10 @@ parts.
 Two servers, one model. `advanced_auth_server` (port **8081**, `auth_db` on
 3307) serves `/auth/*` and `/admin/*`; `advanced_app_server` (port **8080**,
 `app_db` on 3308) serves the todo board. They are separate `TomServer` boots that
-trust each other only through a **shared JWT signing configuration** — neither
-calls the other, but a token minted by one verifies in the other because both
-install the identical keys (see [Boot order](#server-boot-order) below).
+trust each other only through a **matching JWT signing configuration** —
+neither calls the other, but a token minted by one verifies in the other because
+the app server holds the auth server's public key and expects its issuer and
+audience (see [Boot order](#server-boot-order) below).
 
 ## The endpoint pipeline and annotations
 
@@ -303,7 +304,7 @@ endpoint).
 Both `bin/*_server_start.dart` follow the same sequence, and the order is not
 incidental — each step depends on the prior ones being in place:
 
-```
+```text
 platform → registry → reflection → runtime → config → JWT signing → datasource →
 blob stores → bean context → migrations → [seed] → file slots → TomServer.start()
 ```
@@ -315,11 +316,10 @@ bar the demo-password seed):
 | ---- | ---- | -------- |
 | platform | `setCurrentPlatform(standalonePlatformUtils)` | establishes the standalone runtime before anything reads it |
 | registry | `registerAdvancedTodoApis()` | the endpoint router needs the API definitions to resolve URIs |
-| issuer | `globalSettingJwtOrganization = 'tom'` | the issuer the token is signed with; **the app server must set the same value** |
 | reflection | `initializeReflection()` | populates the reflected shapes the config, records and components use |
 | runtime | `initializeRuntime(args)` | resolves the active environment (`prod`/`dev`) from `selectedRuntimeEnvironmentName` — command line, then `.env`, then the OS environment, the same three sources the configuration merge reads |
 | config | `AuthServerConfiguration(args)` | merges YAML/env/args; sets port, error handler |
-| JWT signing | `installJwtSigning(configuration)` | builds the signing configuration from the three `jwt*` configuration fields — **identical on both servers**, which is what lets the app server verify a token the auth server minted. It sits **immediately after the config and before any datasource**, because outside a development environment it *refuses* the bundled keys: a refusal is only useful if it arrives before the boot has opened database connections and run their migrations |
+| JWT signing | `installJwtSigning(configuration)` | builds the signing configuration from the `jwt*` configuration fields — the auth server's signing key, the app server's verification key (its public half), and the **same issuer and audience on both**, which is what lets the app server verify a token the auth server minted. It sits **immediately after the config and before any datasource**, because outside a development environment it *refuses* the bundled keys: a refusal is only useful if it arrives before the boot has opened database connections and run their migrations |
 | datasource | `initializeDatasourceInfo(...)` | opens the DB connections the repositories and migrations use |
 | blob stores | `initializeBlobStores(...)` | **must follow the datasource init** — a `type: database` store resolves its named data source eagerly, so a store pointing at an unregistered name fails at start-up rather than at the first upload |
 | bean context | `initializeBeanContext()` | instantiates the `@tomComponent` services |
@@ -329,14 +329,18 @@ bar the demo-password seed):
 | file slots | `TomFileSlots.register(...)` | publishes the exposed file columns; needs reflection and the store registry in place, and must precede serving |
 | serve | `TomServer.start()` | binds the socket; installs the default auth middleware |
 
-The cross-server trust hinges on two of these matching exactly: the **issuer**
-(`globalSettingJwtOrganization = 'tom'`) and the **JWT signing configuration**.
-Both boots call the framework's `installJwtSigning(configuration)`, which reads
-`jwtSharedSecretKey`, `jwtRsaPrivKey` and `jwtRsaPubKey` off the merged
-configuration. Neither sample sets them, so both fall back to the framework's
-bundled sample keys — and *that* is what makes a token issued at 8081 verify at
-8080. Set `JWT_SHARED_SECRET_KEY` in both servers' `.env` and the same trust
-rests on a secret you chose; set it in one only and the app server rejects the
+The cross-server trust hinges on the **JWT signing configuration** matching.
+Both boots call the framework's `installJwtSigning(configuration)`. The auth
+server signs RS256 with the private key in `JWT_SIGNING_KEY_FILE` and publishes
+its public half at `GET /.well-known/jwks.json`; the app server lists that
+public key in `JWT_VERIFICATION_KEY_FILES`, holds no signing key, and is
+therefore verify-only. Both name the same `JWT_ISSUER` and `JWT_AUDIENCE`, and
+both hold the `JWT_RSA_PRIV_KEY` / `JWT_RSA_PUB_KEY` pair that encrypts the
+access-control payload; `JWT_SHARED_SECRET_KEY` applies only with
+`JWT_ALGORITHM=HS256`. Neither sample sets any of them, so both fall back to the
+framework's bundled sample RSA pair — and *that* is what makes a token issued at
+8081 verify at 8080. Configure the key files and the same trust rests on a key
+you made; give the app server another key, or another issuer, and it rejects the
 auth server's tokens. The fallback is refused outright outside a development or
 test environment (see part 06), which is why both boots are given `env=dev`.
 

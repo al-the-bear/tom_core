@@ -212,8 +212,22 @@ a test suite keep the in-memory store and need no database at all.
 | `TomServiceCredential` | The deployment's own credential and where to present it, read from the configuration; `null` when none was configured, which is what makes the whole feature opt-in. |
 | `TomServiceLoginTransport` | The one JSON POST the self-login makes — the seam a test replaces instead of running an auth server. |
 | `TomServerSelfLoginException` | Raised when a *configured* self-login cannot complete; it aborts `TomServer.start()` rather than degrading to uncapped. |
-| `installJwtSigning` | Builds the process-wide JWT signing configuration from the server configuration's `jwtSharedSecretKey` / `jwtRsaPrivKey` / `jwtRsaPubKey`, and installs it. An unset field falls back to the framework's bundled sample key — permitted in a development or test environment, refused anywhere else. |
+| `installJwtSigning` | Builds the process-wide token signing from the server configuration — `jwtAlgorithm` (RS256 by default, ES256, HS256), the signing key in `jwtSigningKeyFile` (or `jwtSharedSecretKey` under HS256), the retired keys in `jwtVerificationKeyFiles`, `jwtIssuer`, `jwtAudience` and the payload-encryption pair `jwtRsaPrivKey` / `jwtRsaPubKey` — and installs it as `TomJwtSigning.current`. Key material left unset falls back to the framework's bundled sample key — permitted in a development or test environment, refused anywhere else; ES256 has no sample key. |
+| `verifyBearerToken` | The inbound check: the configured algorithm (never the token's `alg`), a `kid` naming a held key, the signature, the issuer and the audience. A failure is `null` — no credentials — and a warning. |
 | `TomSigningKeyException` | Raised by `installJwtSigning` when a server outside development would have signed with the bundled sample keys; names the fields that were not configured. `clientThrow: false` — it is a deployment fault, not a request's. |
+| `TomJwtSigning` | How this process signs and verifies tokens: the algorithm, every verification key, the signing key id, whether it can sign at all, the issuer and the audience. `requireSigning()` refuses to issue on a verify-only server. |
+| `TomJwtAlgorithm` · `TomJwtKey` · `TomJwtSigningKey` · `readPemFile` | The three algorithms; a verification key under its `kid`, the RFC 7638 thumbprint of its public JWK, so every server derives the same id from the same key; a private key with its public half; and the PEM file reader. In `jwt_keys.dart`. |
+| `TomJwtKeyException` | A key or signing setting that cannot be used. `clientThrow: false`. |
+| `TomJwksService` · `TomJwksServer` | `GET /.well-known/jwks.json`: the public half of every verification key, public, cacheable for five minutes, `404` under HS256. Mounted by the endpoints pipeline like every component. In `jwks_endpoint.dart`. |
+
+### Error keys raised by the token signing
+
+| Key | Exception | Meaning |
+| --- | --------- | ------- |
+| `jwt.signing.key.unconfigured` | `TomSigningKeyException` | Key material would fall back to the bundled sample keys outside development or test, or an ES256 server has no key. |
+| `jwt.keys.unknown_algorithm` | `TomJwtKeyException` | `jwtAlgorithm` names no supported algorithm. |
+| `jwt.keys.unreadable_key_file` | `TomJwtKeyException` | A configured key file cannot be read or holds no key of the configured algorithm's kind. |
+| `jwt.keys.verify_only` | `TomJwtKeyException` | A token was to be issued by a server configured with verification keys only. |
 
 ## Quick start
 
@@ -251,7 +265,8 @@ examples split the module along the seam described above:
 second factor either side of enrolment, and `oauth_login_example.dart` the
 external path — all four connection-free and checking their own results.
 `test/authentication_test.dart`, `test/two_factor_test.dart`,
-`test/oauth_test.dart` and `test/jwt_signing_test.dart` cover the module;
+`test/oauth_test.dart`, `test/jwt_signing_test.dart` and
+`test/jwt_keys_test.dart` cover the module;
 `test/examples_test.dart` runs the four examples and
 `test/readme_quick_start_test.dart` runs the snippet above, so none of them can
 drift away from the code.

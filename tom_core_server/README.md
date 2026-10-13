@@ -108,7 +108,7 @@ abstract, so other backends can be added.
 | ------ | --------- | ------------ |
 | `configuration` | `TomBaseServerConfiguration`, `TomServerConfigResourceProvider`, `TomConfig<T>`, `TomYaml` | Typed config + YAML resources |
 | `cache` | `TomCache`, `TomCacheManager` | Isolate-backed server-side cache |
-| `authentication` | `TomAuthenticationService`, `TomAuthenticationData`, `TomAuthenticationAdaptor`, `Tom2FAAdaptor`, `Tom2FAService`, `Tom2FARegistry`, `TomTotp2FAService`, `TomServerSelfLogin`, `TomOAuthAuthenticationService`, `TomOAuthFlow`, `TomOAuthProviders`, `TomExternalIdentityStore` | Authentication service and adaptor annotations; second-factor challenges behind one service contract, with a TOTP implementation and a registry that picks the factor per principal; a server's own login when it calls another service as itself; and external identity — an OAuth 2.0 / OIDC authorization-code + PKCE login written as *another implementation of the same service contract*, so it reaches the unchanged token and 2FA path instead of a second one |
+| `authentication` | `TomAuthenticationService`, `TomAuthenticationData`, `TomAuthenticationAdaptor`, `Tom2FAAdaptor`, `Tom2FAService`, `Tom2FARegistry`, `TomTotp2FAService`, `TomServerSelfLogin`, `TomOAuthAuthenticationService`, `TomOAuthFlow`, `TomOAuthProviders`, `TomExternalIdentityStore`, `TomJwtSigning`, `TomJwksService` | Authentication service and adaptor annotations; tokens signed RS256 (default), ES256 or HS256 from configured key files, verified by key id through a rotation, and published as a JSON Web Key Set at `/.well-known/jwks.json`; second-factor challenges behind one service contract, with a TOTP implementation and a registry that picks the factor per principal; a server's own login when it calls another service as itself; and external identity — an OAuth 2.0 / OIDC authorization-code + PKCE login written as *another implementation of the same service contract*, so it reaches the unchanged token and 2FA path instead of a second one |
 | `authorization` | `TomAuthorizationCache`, `TomResourceGrant`, `TomGradedAccessControlInformation`, `TomPrincipalResourceGrant`, `TomPrincipalDelegation`, `TomDelegationResolver`, `TomResourceDataScope` | Isolate-backed authorization cache; graded per-key grants that add the middle states the kernel's granted/denied list cannot express; per-principal-per-resource roles; delegation of those roles by explicit share, out-of-office window, or revocable hand-over; and the row scope that filters an entity's rows by those grants — `read` to list, `full` to write — with no application-side resolver |
 | `audit` | `TomAuditTrail`, `TomAudited`, `TomAuditRecord`, `TomAuditSink`, `TomSqlAuditSink`, `TomAuditAnchor`, `TomAuditAnchorStore`, `TomAuditAnchorPublisher` | Attributable, tamper-evident trail written at the endpoint and repository chokepoints, stored in memory, in append-only files, or in a table whose write-once guarantee is the grant it is served with — and anchors, published outside the server, that turn a wholesale rewrite or a truncation from invisible into provable |
 | `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler |
@@ -270,7 +270,11 @@ print(dialect.p('userId'));     // :userId
 
 `TomAuthenticationService` (with `TomAuthenticationAdaptor` / `Tom2FAAdaptor`
 annotations) drives login, and `Tom2FARegistry` picks the second factor for a
-principal — `TomTotp2FAService` ships as one. `TomAuthorizationCache` caches
+principal — `TomTotp2FAService` ships as one. `installJwtSigning` reads the
+token signing from the configuration into `TomJwtSigning`: RS256 by default,
+ES256 or HS256, with each key named by its RFC 7638 thumbprint, so a rotation
+keeps old tokens verifying, and `TomJwksService` publishes the public keys at
+`GET /.well-known/jwks.json` for any verifier. `TomAuthorizationCache` caches
 authorization decisions on an isolate, over grants that are graded per key
 (`TomResourceGrant`), held per resource (`TomPrincipalResourceGrant`), and
 lendable to another principal (`TomPrincipalDelegation`).
@@ -315,7 +319,7 @@ is per-provider configuration too. See [`doc/authentication.md`](doc/authenticat
 
 ## Architecture
 
-```
+```text
                        TomServer (shelf host)
                             │
          middleware: context · request-id · auth · logging · JSON errors
@@ -344,7 +348,7 @@ is per-provider configuration too. See [`doc/authentication.md`](doc/authenticat
 
 ## Ecosystem
 
-```
+```text
 tom_basics · tom_crypto · tom_reflection
                  │
           tom_core_kernel

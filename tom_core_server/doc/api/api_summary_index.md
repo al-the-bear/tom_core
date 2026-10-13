@@ -178,6 +178,14 @@ surface documented here.
 | `installJwtSigning` | top-level function | Installs the configured JWT key material at boot; refuses the bundled sample keys outside development. |
 | `verifyBearerToken` | top-level function | Checks an inbound token's signature against the deployment's own key and returns it decoded, or `null` when this deployment did not issue it. |
 | `TomSigningKeyException` | class | The refusal: names the unset key fields and their environment variables (extends `TomServerException`). |
+| `TomJwtAlgorithm` | enum | The token signing algorithms a deployment may configure: `rs256` (the default), `es256`, `hs256`. |
+| `TomJwtKey` | class | One key a token can be verified with, under its `kid` — the RFC 7638 thumbprint of its public JWK. |
+| `TomJwtSigningKey` | class | A signing key and the public key it publishes. |
+| `TomJwtSigning` | class | How this process signs and verifies tokens: algorithm, keys, signing key id, issuer, audience. |
+| `TomJwtKeyException` | class | A key or signing setting that cannot be used (extends `TomServerException`). |
+| `readPemFile` | top-level function | Reads a configured PEM key file, naming it in the error a missing file raises. |
+| `TomJwksService` | abstract class | The `GET /.well-known/jwks.json` endpoint (`@tomService`). |
+| `TomJwksServer` | class | The default JSON Web Key Set component; publishes `TomJwtSigning.current`'s keys. |
 
 ### Authorization (`lib/src/tomserver/authorization/`)
 
@@ -727,6 +735,7 @@ surface documented here.
 | `parseSqlTimeOfDay` | Datasources |
 | `PrincipalDelegationStore` | Authorization |
 | `PrincipalResourceGrantStore` | Authorization |
+| `readPemFile` | Authentication |
 | `Regexp` | Object Persistence |
 | `RepositoryPrincipalDelegationStore` | Authorization |
 | `RepositoryPrincipalResourceGrantStore` | Authorization |
@@ -1010,6 +1019,13 @@ surface documented here.
 | `TomInvalidationKind` | Cache |
 | `TomJobRunRow` | Scheduling |
 | `TomJobRunWindowRow` | Scheduling |
+| `TomJwksServer` | Authentication |
+| `TomJwksService` | Authentication |
+| `TomJwtAlgorithm` | Authentication |
+| `TomJwtKey` | Authentication |
+| `TomJwtKeyException` | Authentication |
+| `TomJwtSigning` | Authentication |
+| `TomJwtSigningKey` | Authentication |
 | `TomLeaseRow` | Scheduling |
 | `TomLiteralSelect` | Datasources |
 | `TomLocalInvalidationChannel` | Cache |

@@ -73,7 +73,6 @@ AuthTokenService _service() => AuthTokenService(
       },
     ),
   ),
-  issuer: 'tom',
 );
 
 /// The TOTP code the verifier expects right now, derived with the adaptor's own

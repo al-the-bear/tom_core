@@ -196,14 +196,16 @@ String get tomAppId => _activeConfiguration?.appId ?? "";
 /// earlier ones: configuration resources, then the OS environment, then a
 /// `.env` file, then command-line arguments (which win).
 ///
-/// The JWT fields ([jwtRsaPubKey] / [jwtRsaPrivKey] / [jwtSharedSecretKey]) are
-/// the server's signing key material, read by [installJwtSigning] — which a
-/// boot calls once, after the runtime environment is selected and before
-/// anything mints or verifies a token. A field left null falls back to the
-/// framework's bundled sample key, which is permitted in a development or test
-/// environment and refused anywhere else. The rest of a signing configuration —
-/// algorithm, issuer, audience, expiry — is supplied in code, because there are
-/// no configuration keys for those.
+/// The JWT fields are the server's signing configuration, read by
+/// [installJwtSigning] — which a boot calls once, after the runtime environment
+/// is selected and before anything mints or verifies a token: the algorithm
+/// ([jwtAlgorithm]), the signing key ([jwtSigningKeyFile], or
+/// [jwtSharedSecretKey] for HS256), the retired keys still verifying
+/// ([jwtVerificationKeyFiles]), the issuer and audience ([jwtIssuer],
+/// [jwtAudience]) and the payload-encryption pair ([jwtRsaPubKey] /
+/// [jwtRsaPrivKey]). Key material left unset falls back to the framework's
+/// bundled sample key, which is permitted in a development or test environment
+/// and refused anywhere else. Token lifetime is supplied in code.
 @tomReflector
 abstract class TomBaseServerConfiguration {
   /// The application's own name — what this server calls itself in a log, a
@@ -476,7 +478,7 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// PEM of the RSA public key that encrypts the payload section of an issued
   /// token; read by [installJwtSigning].
   ///
-  /// Null means "not configured", and every one of the three JWT fields means
+  /// Null means "not configured", and every one of the JWT fields means
   /// that by being null rather than by holding a sentinel: a default that
   /// looked like a key could not be told apart from a key, which is how a
   /// server came to sign with a published passphrase and report nothing.
@@ -490,16 +492,54 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// Environment name: `JWT_RSA_PRIV_KEY`.
   String? jwtRsaPrivKey;
 
-  /// Passphrase of the HMAC key that *signs* an issued token, and the one
-  /// setting two servers must agree on to trust each other's tokens.
+  /// Passphrase of the HMAC key that signs and verifies tokens when
+  /// [jwtAlgorithm] is `HS256`; unused under RS256 and ES256.
   ///
-  /// The auth server that issues and the application server that verifies share
-  /// this value and nothing else; set it in one only and the second rejects the
-  /// first's tokens. Secret-bearing: whoever holds it can mint a token this
-  /// deployment accepts.
+  /// Under HS256 the server that issues and every server that verifies share
+  /// this value; set it in one only and the second rejects the first's tokens.
+  /// Secret-bearing: whoever holds it can mint a token this deployment accepts.
   ///
   /// Environment name: `JWT_SHARED_SECRET_KEY`.
   String? jwtSharedSecretKey;
+
+  /// The token signing algorithm: `RS256` (the default when unset), `ES256`
+  /// or `HS256`.
+  ///
+  /// RS256 and ES256 sign with [jwtSigningKeyFile]'s private key and publish
+  /// the public half as a JSON Web Key Set; HS256 signs and verifies with
+  /// [jwtSharedSecretKey] and publishes nothing.
+  ///
+  /// Environment name: `JWT_ALGORITHM`.
+  String? jwtAlgorithm;
+
+  /// Path of the PEM file holding the private key tokens are signed with
+  /// (RS256 or ES256). Secret-bearing file.
+  ///
+  /// A server that only verifies tokens — an application server beside an
+  /// auth server — leaves it unset and lists the issuer's public key in
+  /// [jwtVerificationKeyFiles] instead.
+  ///
+  /// Environment name: `JWT_SIGNING_KEY_FILE`.
+  String? jwtSigningKeyFile;
+
+  /// Comma-separated paths of PEM files holding public keys that still verify
+  /// tokens: on an issuing server, the keys it has rotated away from; on a
+  /// verify-only server, the issuer's current and retired keys.
+  ///
+  /// Environment name: `JWT_VERIFICATION_KEY_FILES`.
+  String? jwtVerificationKeyFiles;
+
+  /// The `iss` every issued token carries and every verified token must
+  /// carry. Defaults to `tom`.
+  ///
+  /// Environment name: `JWT_ISSUER`.
+  String? jwtIssuer;
+
+  /// The `aud` every issued token carries and every verified token must
+  /// carry; unset issues and requires none.
+  ///
+  /// Environment name: `JWT_AUDIENCE`.
+  String? jwtAudience;
 
   // ---------------------------------------------------------------------------
   // Server self-login (server-as-principal)

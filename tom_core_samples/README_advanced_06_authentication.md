@@ -6,12 +6,13 @@
 
 Authentication is where the two servers meet a single principal: the **auth
 server issues** a signed JWT pair on a verified login, and the **app server
-verifies** it — without ever calling back to the auth server — because both load
-the *same* signing key. This part covers the `/auth/*` endpoints and the token
-service that backs them, password hashing, the bearer-token pair and the shared
-key that makes cross-server trust work, the **two-factor second pass** (TOTP),
-the Flutter-free client auth layer (`auth_client.dart` + `authorized_http.dart`)
-and its refresh-once-on-401, and the pre-login vs authenticated request paths.
+verifies** it — without ever calling back to the auth server — because it holds
+the auth server's *public* signing key. This part covers the `/auth/*` endpoints
+and the token service that backs them, password hashing, the bearer-token pair
+and the key configuration that makes cross-server trust work, the **two-factor
+second pass** (TOTP), the Flutter-free client auth layer (`auth_client.dart` +
+`authorized_http.dart`) and its refresh-once-on-401, and the pre-login vs
+authenticated request paths.
 
 ## Token issuance at the auth server
 
@@ -84,7 +85,7 @@ that still has none (<!-- account-roster: auth-db -->`admin`/`alice`/`bob`/`caro
 the README `curl`s authenticate on first run; a user that already carries a hash
 is left untouched, so a real credential is never clobbered.
 
-## The bearer token and the shared signing key
+## The bearer token and the signing keys
 
 A successful login mints **two** JWTs, mirroring what
 `TomAuthenticationServer.authenticateUser` produces:
@@ -125,38 +126,46 @@ that must be kept consistent with it. `AdvancedAuthenticationService` therefore
 leaves `aci.resourceRoles` empty at issue time.
 
 Both are built by `TomBearerAuthentication.convertPrincipalToTokenPayload` +
-`TomServerJwtToken(...).getJWT(issuer)`, signed under the issuer `'tom'`
-(`TomAuthenticationServer.globalSettingJwtOrganization`), and expire after a
-**2-hour** `tokenLifetime` — also the `LoginResult.expiresAt` horizon. The
-`LoginResult` carries the `UserDto`, both tokens, and that expiry.
+`TomServerJwtToken(...).getJWT(issuer)`, signed with the key and under the
+issuer and audience of `TomJwtSigning.current` — what `installJwtSigning` built
+from the configuration at boot — and expire after a **2-hour** `tokenLifetime`,
+also the `LoginResult.expiresAt` horizon. The `LoginResult` carries the
+`UserDto`, both tokens, and that expiry.
 
-Cross-server trust rests on **one shared key, configured identically at both
-boots**. Each server calls the framework's
-`installJwtSigning(configuration)`, which builds the default sign configuration
-out of three fields on the merged server configuration:
+Cross-server trust rests on **the auth server's public key**. Each server calls
+the framework's `installJwtSigning(configuration)`, which reads its signing
+configuration off the merged server configuration:
 
-| Field | Environment name | Role |
-| --- | --- | --- |
-| `jwtSharedSecretKey` | `JWT_SHARED_SECRET_KEY` | the HMAC passphrase the token is **signed** with — the one value the two servers must agree on |
-| `jwtRsaPrivKey` | `JWT_RSA_PRIV_KEY` | private half of the pair that **decrypts** the access-control payload |
-| `jwtRsaPubKey` | `JWT_RSA_PUB_KEY` | public half, which **encrypts** it |
+| Field | Environment name | Auth server | App server |
+| --- | --- | --- | --- |
+| `jwtAlgorithm` | `JWT_ALGORITHM` | `RS256` (the default) | the same |
+| `jwtSigningKeyFile` | `JWT_SIGNING_KEY_FILE` | the PEM private key tokens are **signed** with | unset — it issues no tokens |
+| `jwtVerificationKeyFiles` | `JWT_VERIFICATION_KEY_FILES` | the keys it rotated away from, during a rotation | the auth server's **public** key(s) |
+| `jwtIssuer` / `jwtAudience` | `JWT_ISSUER` / `JWT_AUDIENCE` | written into every token | required of every token — **the same values** |
+| `jwtRsaPrivKey` / `jwtRsaPubKey` | `JWT_RSA_PRIV_KEY` / `JWT_RSA_PUB_KEY` | the pair that encrypts the access-control payload | the same pair, which decrypts it |
+| `jwtSharedSecretKey` | `JWT_SHARED_SECRET_KEY` | read only with `JWT_ALGORITHM=HS256` | the same secret, then |
 
-The auth server signs with them; the app server, configured with the identical
-values, verifies a token the auth server issued **without a network call back**.
-This is the standard "resource server trusts the auth server's key" pattern:
-sharing one key rather than minting per-server keys is exactly what makes a
-minted token verify on the other side. Both boots also set the same issuer
-(`'tom'`), which the app server must match to accept a token.
+The auth server signs RS256 with its private key; every token names that key
+in its `kid` header (the RFC 7638 thumbprint of the public key, which both
+servers derive from the key itself). The app server, given the public key in
+`JWT_VERIFICATION_KEY_FILES` and no signing key, is **verify-only**: it checks a
+token the auth server issued **without a network call back**, and could not mint
+one. This is the standard "resource server trusts the auth server's key"
+pattern, with the private key on one machine only. The auth server also
+publishes its public keys at `GET /.well-known/jwks.json`, so a gateway or a
+service in another language verifies the same tokens without being handed a
+file.
 
 ### Sample keys, the boot refusal, and the development-key warning (G-AUTH-2)
 
-**Neither sample sets any of the three fields.** A field left unset falls back to
-the *framework's bundled sample key* (`TomJwtConfiguration.hmacKey` /
-`rsaPrivKey` / `rsaPubKey`), and that is the only reason the two servers trust
-each other out of the box — not a configured secret, but a shared default. Those
-keys are a **development convenience, not a certificate**: they are written into
-the `tom_crypto` sources, shipped with the framework and shared by every sample,
-so they are public knowledge and useless for real trust.
+**Neither sample sets any of the JWT fields.** Key material left unset falls
+back to the *framework's bundled sample keys* (`TomJwtConfiguration.rsaPrivKey`
+/ `rsaPubKey`, and `TomJwtConfiguration.hmacKey` under HS256): the RSA pair
+becomes the RS256 signing key on both servers, and that is the only reason the
+two servers trust each other out of the box — not a configured key, but a shared
+default. Those keys are a **development convenience, not a certificate**: they
+are written into the `tom_crypto` sources, shipped with the framework and shared
+by every sample, so they are public knowledge and useless for real trust.
 
 The framework says so three times over, in increasing severity:
 
@@ -174,28 +183,38 @@ The framework says so three times over, in increasing severity:
    and the framework repeats the development-key warning each time it is used.
    The sample does **not** suppress it, and there is no flag to: hiding this
    deployment hazard behind a convenience toggle is exactly the failure mode the
-   warning exists to prevent. Configure all three fields and `isDummy` is
+   warning exists to prevent. Configure the key material and `isDummy` is
    `false`, so the warning stops on its own.
 
-**Watching it work.** In `advanced_auth_server/.env` and
-`advanced_app_server/.env` (copy each from `.env.example`), uncomment
+**Watching it work.** Generate a key pair:
 
+```bash
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt.pem
+openssl pkey -in jwt.pem -pubout -out jwt.pub.pem
 ```
-JWT_SHARED_SECRET_KEY=a-secret-i-chose
+
+In `advanced_auth_server/.env` and `advanced_app_server/.env` (copy each from
+`.env.example`), set
+
+```bash
+# advanced_auth_server/.env
+JWT_SIGNING_KEY_FILE=/path/to/jwt.pem
+# advanced_app_server/.env
+JWT_VERIFICATION_KEY_FILES=/path/to/jwt.pub.pem
 ```
 
-in **both** and log in again: the servers still trust each other, but now on a
-secret you picked, and the boot warning is gone for that field. Change the value
-in **one** server only and the app server rejects the auth server's tokens —
-which is the shared secret being observably load-bearing rather than
-asserted. Under `env=prod` with the line still commented out, the boot refuses to
-start at all.
+and log in again: the servers still trust each other, now on a key you made, and
+the app server holds only its public half. Give the app server another public
+key and it rejects the auth server's tokens; set `JWT_ISSUER` or `JWT_AUDIENCE`
+in one server only and it rejects them too — the configuration observably
+load-bearing rather than asserted. Under `env=prod` with the lines still
+commented out, the boot refuses to start at all.
 
-The same three values can equally come from the process environment (what a
-container sets), from the command line (`jwtSharedSecretKey=…`, undashed), or
-from a `config-resources_*.yaml` overlay — they are ordinary configuration keys
-and the usual precedence applies: config resources, then OS environment, then
-`.env`, then the command line.
+The same values can equally come from the process environment (what a container
+sets), from the command line (`jwtSigningKeyFile=…`, undashed), or from a
+`config-resources_*.yaml` overlay — they are ordinary configuration keys and the
+usual precedence applies: config resources, then OS environment, then `.env`,
+then the command line.
 
 ## Two-factor login: the second pass
 

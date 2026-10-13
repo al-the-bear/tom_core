@@ -4,7 +4,8 @@ App server for the **advanced Tom Core full-stack sample** (see
 [`../README_advanced_sample.md`](../README_advanced_sample.md)).
 
 A secured task-manager API on `tom_core_server`. It trusts the JWT signing key
-shared with `advanced_auth_server`, validates the bearer token on every request,
+of `advanced_auth_server` through its public half, validates the bearer token on
+every request,
 resolves the principal's resource access (ownership + shares) and four-state
 field grades, persists the `app_db`, and lets an owner share a resource with
 another user so the grant takes effect on the grantee's next request.
@@ -221,19 +222,30 @@ A non-owner sharing is rejected with **403**; revoking the share
 ## JWT signing
 
 The app server calls the **same** `installJwtSigning(configuration)` as the auth
-server, which reads the three `jwt*` configuration fields —
-`jwtSharedSecretKey`, `jwtRsaPrivKey`, `jwtRsaPubKey`, reachable as the
-environment variables `JWT_SHARED_SECRET_KEY`, `JWT_RSA_PRIV_KEY`,
-`JWT_RSA_PUB_KEY`. Hold the identical values in both servers and a token the auth
-server mints (HS256 + RSA-encrypted authorization payload) verifies here. It also
-sets the same `globalSettingJwtOrganization = 'tom'` issuer. This is the standard
+server, reading the `jwt*` configuration fields. Configured for a deployment, it
+is **verify-only**:
+
+| Variable | Here |
+| --- | --- |
+| `JWT_VERIFICATION_KEY_FILES` | the auth server's **public** key (comma-separated, to keep a retired key through a rotation) |
+| `JWT_SIGNING_KEY_FILE` | unset — this server issues no tokens, and refuses to |
+| `JWT_ISSUER` / `JWT_AUDIENCE` | the auth server's values; a token naming others is rejected |
+| `JWT_ALGORITHM` | the auth server's — `RS256` by default |
+| `JWT_RSA_PRIV_KEY` / `JWT_RSA_PUB_KEY` | the pair the auth server encrypts the access-control payload with, which this server decrypts |
+| `JWT_SHARED_SECRET_KEY` | read only with `JWT_ALGORITHM=HS256`, when both servers hold the same secret instead of key files |
+
+A token the auth server mints (RS256, its `kid` naming the auth server's key,
+the authorization payload RSA-encrypted) verifies here without a call back and
+without this server holding anything that could mint one. This is the standard
 "resource server trusts the authorization server" split.
 
 Neither sample sets any of them, so both fall back to the framework's bundled
-sample keys — which is the *only* reason the two servers currently agree.
-Uncomment `JWT_SHARED_SECRET_KEY` in **both** servers' `.env` (see
-`.env.example`) and the agreement becomes a deliberate one; set it in one only
-and this server rejects the auth server's tokens with `invalid token`.
+sample RSA pair — which is the *only* reason the two servers currently agree.
+Point the auth server's `JWT_SIGNING_KEY_FILE` at a private key and this
+server's `JWT_VERIFICATION_KEY_FILES` at its public half (see `.env.example`)
+and the agreement becomes a deliberate one; give this server another key, or
+another issuer or audience, and it rejects the auth server's tokens with
+`invalid token`.
 
 The fallback is not quiet. `installJwtSigning` **refuses to boot** on it outside
 a development or test environment (`TomSigningKeyException`, naming the
@@ -241,6 +253,6 @@ unconfigured fields), which is why the sample is started with `env=dev`; where i
 is permitted it warns once at boot, and because the resulting
 `TomJwtConfiguration` stays marked as a development ("dummy") certificate the
 framework repeats the warning on **every** sign and verify — intentionally not
-suppressed (G-AUTH-2). Configure all three fields and the certificate is no
+suppressed (G-AUTH-2). Configure the key material and the certificate is no
 longer a dummy one and the warnings stop. **Do that before any real
 deployment.**

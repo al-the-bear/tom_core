@@ -39,7 +39,7 @@ bottom; each links to the next.
 | 03 | [Domain model & reflection](README_advanced_03_domain_reflection.md) | The reflected `TomClass` entities; `@tomReflector`; the single reflection seed; enums; scope + `tomId`/`formId` addressing resolved by convention (no key catalogue). |
 | 04 | [Wire contracts & DTOs](README_advanced_04_wire_contracts_dtos.md) | The contracts package: DTOs, the typed service interfaces, the api registry, the domain↔wire boundary. |
 | 05 | [Persistence & the two databases](README_advanced_05_persistence_database.md) | Persistence mapping; CRUD repositories; the two-database design; datasources config; the schema vs sample-data migration split. |
-| 06 | [Authentication (JWT)](README_advanced_06_authentication.md) | Token issuance; password hashing; the bearer token and shared signing key; **two-factor login (TOTP)**; the client auth layer and token refresh. |
+| 06 | [Authentication (JWT)](README_advanced_06_authentication.md) | Token issuance; password hashing; the bearer token and signing keys; **two-factor login (TOTP)**; the client auth layer and token refresh. |
 | 07 | [Authorization](README_advanced_07_authorization.md) | The four-state field authorization model; scope/form/field → `basePath` → grade; the per-field `TomAuthorizer.fixed` stamping (no installed adapter); closed-safe default; route gating. |
 | 08 | [Resources & text externalization](README_advanced_08_resources_texts.md) | The no-hard-coded-labels rule; server-delivered resources; `<basePath>.<suffix>` keying; the scope/form/field JSON files; bundle bootstrap. |
 | 09 | [Forms & UI](README_advanced_09_forms_ui.md) | `TomForm`/`TomField`; `basePath` derivation; bound reflected forms; scoped vs unscoped; the `tom_flutter_ui` components and screens. |
@@ -374,7 +374,7 @@ clean and the suite at 18/18, and `--check` still failed.
 
 ## Repository layout
 
-```
+```text
 tom_core_samples/
   README_advanced_sample.md      this map (the secured, full-stack suite)
   advanced_todo_domain/          shared reflected model (User, Project, TodoList, TodoItem)

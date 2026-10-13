@@ -30,6 +30,8 @@ export 'src/tomserver/audit/audit_trail.dart';
 export 'src/tomserver/audit/sql_audit_sink.dart';
 export 'src/tomserver/audit/sql_audit_sql.dart';
 export 'src/tomserver/authentication/authentication_server.dart';
+export 'src/tomserver/authentication/jwks_endpoint.dart';
+export 'src/tomserver/authentication/jwt_keys.dart';
 export 'src/tomserver/authentication/jwt_signing.dart';
 export 'src/tomserver/authentication/oauth_authentication_service.dart';
 export 'src/tomserver/authentication/oauth_endpoints.dart';

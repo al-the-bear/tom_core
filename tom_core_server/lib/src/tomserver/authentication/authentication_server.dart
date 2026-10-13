@@ -2,6 +2,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../little_things/server_exception.dart';
 import '../preferences/user_preferences_service.dart';
+import 'jwt_keys.dart';
 import 'two_factor.dart';
 import 'two_factor_attempts.dart';
 import 'two_factor_enrolment.dart';
@@ -198,8 +199,8 @@ class TomDummyAuthenticationService implements TomAuthenticationService {
 ///
 /// Which service is used is selected per flow via the static
 /// [globalSettingGuestAuthenticationService] /
-/// [globalSettingUserAuthenticationService]; the JWT issuer is
-/// [globalSettingJwtOrganization].
+/// [globalSettingUserAuthenticationService]; the tokens' issuer, audience and
+/// key are [TomJwtSigning.current]'s.
 @tomReflector
 class TomAuthenticationServer {
   /// The service used for authenticated-user logins (pass 1).
@@ -209,9 +210,6 @@ class TomAuthenticationServer {
   /// The service used for guest logins.
   static TomAuthenticationService globalSettingGuestAuthenticationService =
       TomDummyAuthenticationService();
-
-  /// The `iss` (issuer) organization stamped onto issued JWTs.
-  static String globalSettingJwtOrganization = "tom";
 
   /// Authenticates a guest login via [globalSettingGuestAuthenticationService].
   Future<TomAuthenticationResult> authenticateGuest(
@@ -992,13 +990,18 @@ class TomAuthenticationServer {
     }
 
     var result = TomAuthenticationResult();
+    // Issuer and audience are the configured ones (`installJwtSigning`), the
+    // same the inbound check requires; a verify-only server refuses here.
+    final signing = TomJwtSigning.current..requireSigning();
     result.authenticationToken = TomServerJwtToken(
       publicInfo,
-    ).getJWT(globalSettingJwtOrganization);
+      audience: signing.audience,
+    ).getJWT(signing.issuer);
     result.authorizationToken = TomServerJwtToken(
       publicInfo,
       encryptedData: privateInfo,
-    ).getJWT(globalSettingJwtOrganization);
+      audience: signing.audience,
+    ).getJWT(signing.issuer);
     if (challenge != null) {
       result.requires2FA = true;
       result.twoFactorType = challenge.type;

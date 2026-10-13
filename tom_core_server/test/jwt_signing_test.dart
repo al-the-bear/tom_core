@@ -36,8 +36,9 @@ MIIFowIBAAKCAQEApobMwJj9SxpZbk0fcG8Awv9PCiO4/GsPimeH398D+Qt1kUrrMqvm5+AYLh1PcIgE
 -----END PRIVATE KEY-----
 ''';
 
-/// A configuration with every JWT field supplied, so nothing falls back.
+/// An HS256 configuration with every field supplied, so nothing falls back.
 _JwtConfig _fullyConfigured() => _JwtConfig()
+  ..jwtAlgorithm = 'HS256'
   ..jwtSharedSecretKey = 'a-secret-nobody-published'
   ..jwtRsaPrivKey = _privPem
   ..jwtRsaPubKey = _pubPem;
@@ -56,6 +57,7 @@ void main() {
 
   tearDown(() {
     TomJwtConfiguration.defaultSignConfiguration = originalSigning;
+    TomJwtSigning.reset();
     TomRuntime.reset();
   });
 
@@ -171,9 +173,20 @@ void main() {
 
   group('installJwtSigning refuses bundled keys outside development', () {
     test('an unconfigured server boots in development on the bundled keys', () {
+      // RS256 by default, so the fallback is the bundled RSA pair — named by
+      // its thumbprint like any configured key.
       selectEnvironment(development: true);
       final installed = installJwtSigning(_JwtConfig());
       expect(installed.isDummy, isTrue);
+      expect(installed.key, isNot(isA<SecretKey>()));
+      expect(installed.keyId, isNotNull);
+      expect(TomJwtSigning.current.algorithm, TomJwtAlgorithm.rs256);
+    });
+
+    test('an unconfigured HS256 server boots in development on the bundled '
+        'secret', () {
+      selectEnvironment(development: true);
+      final installed = installJwtSigning(_JwtConfig()..jwtAlgorithm = 'HS256');
       expect(installed.key, same(TomJwtConfiguration.hmacKey));
     });
 
@@ -194,7 +207,7 @@ void main() {
             (e) => e.toString(),
             'message',
             allOf(
-              contains('jwtSharedSecretKey'),
+              contains('jwtSigningKeyFile'),
               contains('jwtRsaPrivKey'),
               contains('jwtRsaPubKey'),
             ),
@@ -219,6 +232,7 @@ void main() {
       // one published one is a published signing key.
       selectEnvironment(development: false);
       final partial = _JwtConfig()
+        ..jwtAlgorithm = 'HS256'
         ..jwtRsaPrivKey = _privPem
         ..jwtRsaPubKey = _pubPem;
       expect(
@@ -238,7 +252,9 @@ void main() {
 
     test('a configured secret alone does not clear the bundled RSA pair', () {
       selectEnvironment(development: false);
-      final partial = _JwtConfig()..jwtSharedSecretKey = 'a-secret';
+      final partial = _JwtConfig()
+        ..jwtAlgorithm = 'HS256'
+        ..jwtSharedSecretKey = 'a-secret';
       expect(
         () => installJwtSigning(partial),
         throwsA(isA<TomSigningKeyException>()),
