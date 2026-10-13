@@ -20,3 +20,8 @@ tags:
     # A DB round-trip (connect + schema setup + CRUD) is slower than the
     # in-memory suites; give it headroom over the default 30s.
     timeout: 2x
+  # Single sign-on interoperability against Keycloak (sso_keycloak_test.dart).
+  # Self-skipping when no Keycloak is listening on 127.0.0.1:8089; run with
+  # `tool/run_sso_tests.sh`, which starts one from docker-compose.sso.yaml.
+  sso:
+    timeout: 2x

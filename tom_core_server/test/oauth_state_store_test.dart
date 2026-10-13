@@ -277,18 +277,26 @@ void main() {
       );
     });
 
-    test('the PKCE pair are the only nullable columns', () {
-      // A provider may be configured without PKCE, so those two may be absent.
-      // Every other column is written on every insert — the login-context
-      // columns hold `''` for "not supplied", matching the Dart record whose
-      // fields default to the empty string. A nullable one there would be a
-      // second spelling of absence that every read would have to collapse.
+    test('the PKCE pair and the asserted identity are the only nullable '
+        'columns', () {
+      // A provider may be configured without PKCE, so those two may be absent;
+      // only a SAML record waiting for its completion holds an asserted
+      // identity, and every other record holds none — an absent value, not an
+      // empty one. Every other column is written on every insert — the
+      // login-context columns and the nonce hold `''` for "not supplied",
+      // matching the Dart record whose fields default to the empty string. A
+      // nullable one there would be a second spelling of absence that every
+      // read would have to collapse.
       final nullable = ddl
           .split('\n')
           .map((line) => line.trim())
           .where((line) => line.endsWith('NULL,') && !line.contains('NOT NULL'))
           .map((line) => line.split(RegExp(r'\s+')).first);
-      expect(nullable, ['pkce_verifier', 'pkce_challenge']);
+      expect(nullable, [
+        'pkce_verifier',
+        'pkce_challenge',
+        'asserted_identity',
+      ]);
     });
 
     test('both instants are DATETIME(6), the width sqlInstant writes', () {
@@ -298,8 +306,8 @@ void main() {
       // than rejecting it. A plain `DATETIME` would therefore store a different
       // moment, up to half a second away — and `expires_at` is a deadline the
       // completion predicate compares against.
-      expect(ddl, contains('created_at      DATETIME(6)  NOT NULL'));
-      expect(ddl, contains('expires_at      DATETIME(6)  NOT NULL'));
+      expect(ddl, contains(RegExp(r'created_at\s+DATETIME\(6\)\s+NOT NULL')));
+      expect(ddl, contains(RegExp(r'expires_at\s+DATETIME\(6\)\s+NOT NULL')));
     });
   });
 }

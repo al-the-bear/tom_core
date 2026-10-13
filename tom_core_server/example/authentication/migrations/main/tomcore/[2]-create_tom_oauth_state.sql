@@ -38,6 +38,13 @@
 --    column encryption; see the library dartdoc of
 --    `sql_oauth_state_store.dart` for why, and encrypt the tablespace if your
 --    deployment is regulated.
+--  * `nonce` is what the flow's next leg must echo: the OpenID Connect nonce,
+--    or a SAML `AuthnRequest` id and then the digest of the handoff code. It
+--    holds `''` when the flow sent none.
+--  * `asserted_identity` holds a verified SAML identity, as JSON, between the
+--    identity provider's form post and the application's completion. `TEXT`
+--    because a SAML assertion's attributes have no fixed size, and `NULL` on
+--    every record that is not waiting to be completed.
 --  * the login-context columns (`client` … `client_timezone`) exist because the
 --    callback is a bare browser navigation carrying none of it. They are
 --    `NOT NULL` and hold `''` for "not supplied", matching the Dart record
@@ -61,6 +68,8 @@ CREATE TABLE IF NOT EXISTS tom_oauth_state (
   client_language VARCHAR(16)  NOT NULL,
   client_country  VARCHAR(16)  NOT NULL,
   client_timezone VARCHAR(64)  NOT NULL,
+  nonce           VARCHAR(191) NOT NULL,
+  asserted_identity TEXT       NULL,
   PRIMARY KEY (state),
   KEY ix_tom_oauth_state_expiry (expires_at)
 );

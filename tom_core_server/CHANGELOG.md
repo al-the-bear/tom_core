@@ -26,6 +26,54 @@
 - **A verify-only server.** Verification key files and no signing key: tokens
   are verified, and issuing one is refused with `jwt.keys.verify_only`.
 - `doc/authentication.md` documents the rotation procedure.
+- **Enterprise single sign-on over SAML 2.0.** SAML identity providers are
+  configured under `saml.providers` (`TomSamlProviders`,
+  `TomSamlProviderConfig`, `authentication/saml_provider.dart`), from the
+  identity provider's metadata (`metadataUrl`, fetched by
+  `TomSamlProviders.load`) or directly (`issuer`, `ssoUrl`, `idpCertificates`).
+  `TomSamlFlow` (`authentication/saml_flow.dart`) runs service-provider-initiated
+  Web Browser SSO in three legs: the `AuthnRequest` over the HTTP-Redirect
+  binding (signed when `spSigningKeyFile` is set), the response to
+  `POST /saml/acs`, answered with a `303` to the application's `redirectUri`
+  carrying a one-time handoff code, and the completion through the existing
+  `POST /oauth/complete`. `GET /saml/metadata/<providerId>` publishes this
+  server's metadata (`TomSamlService` / `TomSamlServer`,
+  `authentication/saml_endpoints.dart`). `TomSamlResponseValidator` checks
+  destination, `InResponseTo`, issuer, status, a single unencrypted assertion,
+  signatures, bearer confirmation, validity window and audience, each with its
+  own `saml.*` key. `TomXmlSignatureVerifier` and `TomExclusiveCanonicalizer`
+  (`authentication/saml_xml_signature.dart`) verify RSA-SHA256/512 enveloped
+  signatures under exclusive canonicalization, refuse SHA-1, ignore `KeyInfo`,
+  and defeat signature wrapping. New `TomSamlException`, `TomSamlNames`,
+  `TomXmlDsig`, `TomSamlCertificates`, `TomSamlIdpMetadata`. New dependency
+  `xml`.
+- **OpenID Connect discovery.** A provider with `discovery: true` (and an
+  optional `discoveryUrl`) takes `authorizationEndpoint`, `tokenEndpoint`,
+  `userInfoEndpoint` and `revocationEndpoint` from the issuer's discovery
+  document, read at start-up by `TomOAuthProviders.load` / `discover`; explicit
+  values win, and the document's issuer must match exactly
+  (`oauth.config.discovery_issuer_mismatch`, `oauth.config.discovery_failed`,
+  `oauth.config.discovery_not_loaded`). `TomOAuthProviderConfig.isDiscovered`.
+- **Group-to-role mapping.** `TomExternalRoleMapping`
+  (`authentication/external_provider.dart`) reads `groupsClaim` (dotted paths
+  supported), `roleMapping` and `defaultRoles` per provider, for both protocols
+  (`oauth.config.invalid_role_mapping`). The mapped roles are applied to the
+  session's principal on every login by `applyExternalRoles`, beside the
+  account's own. `TomExternalIdentity` gained `groups`, `roles`, `toJson` and
+  `fromJson`; `TomOAuthProviderConfig` gained `roleMapping`.
+- **`TomExternalProvider`**, the interface `TomOAuthProviderConfig` and
+  `TomSamlProviderConfig` implement.
+- **`TomOAuthProvisioning.linkExisting`**: link a pre-provisioned account by the
+  asserted username, provision none.
+- **The OpenID Connect nonce.** Every flow whose scopes include `openid` sends a
+  nonce, stored on `TomOAuthAuthorizationState.nonce`, and refuses an
+  `id_token` that does not return it (`oauth.flow.nonce_mismatch`).
+- **`TomOAuthFlow.saml`** and **`TomOAuthFlow.descriptors`**: the flow dispatches
+  SAML provider ids to `TomSamlFlow`, and `GET /oauth/providers` lists OAuth and
+  SAML providers together. Provider ids are unique across both protocols
+  (`oauth.config.duplicate_provider_id`).
+- `TomOAuthAuthorizationState.assertedIdentity` holds a verified SAML identity
+  between the assertion consumer service and the completion.
 
 ### Changed
 
@@ -44,6 +92,26 @@
   configured `jwtIssuer` and `jwtAudience`.
 - Requires `tom_crypto` 1.3.0 (`TomJwtConfiguration.keyId`, written as the `kid`
   header, and `TomServerJwtToken(audience:)`).
+- **Breaking: external logins provision just in time by default.**
+  `TomOAuthProvisioning.autoProvision` is the default of `TomOAuthProviderConfig`
+  and `TomSamlProviderConfig`. A deployment offering a public provider sets
+  `provisioning: refuse` for it.
+- **Breaking: `TomOAuthExchange.provider` is a `TomExternalProvider`**, so it
+  carries a SAML provider as well; code reading OAuth-only fields from it checks
+  for `TomOAuthProviderConfig`.
+- **Breaking: `tom_oauth_state` has two more columns**, `nonce VARCHAR(191) NOT
+  NULL` and `asserted_identity TEXT NULL`
+  (`example/authentication/migrations/main/tomcore/[2]-create_tom_oauth_state.sql`).
+  `CREATE TABLE IF NOT EXISTS` leaves an existing table as it is, so a
+  deployment holding one adds the two columns itself, or drops the table —
+  it holds only ten-minute pending records. `TomOAuthStateRow` maps both.
+- `TomOAuthFlow`'s constructor is no longer `const`: it checks that no provider
+  id is configured under both protocols.
+- **An existing account is not linked on an unverified address.** When the
+  provider states `email_verified: false`, linking by the asserted username is
+  refused with `login.error.oauth.unverified-email`.
+- `randomUrlToken`, shared by the OAuth and SAML flows, is hidden from the
+  barrel.
 
 ### Tests
 
@@ -52,6 +120,21 @@
   — verified by `package:jose` (a dev dependency), which shares no code with
   the framework. `endpoints_pipeline_test.dart` asserts the mounted
   `/.well-known/jwks.json` route.
+- **`test/saml_test.dart`** covers exclusive canonicalization, every refusal of
+  the SAML response validator (signature wrapping, SHA-1, another key, another
+  request, audience, issuer, recipient, validity window, status, DOCTYPE,
+  encryption), the three legs of the flow, identity-provider metadata and the
+  two endpoints against a scripted identity provider
+  (`test/fixtures/saml_test_idp.dart`, keys in `test/fixtures/saml/`).
+- **`test/sso_keycloak_test.dart`** (tag `sso`) logs in over OpenID Connect and
+  over SAML 2.0 against Keycloak 26, started by `tool/run_sso_tests.sh` from
+  `docker-compose.sso.yaml` with the realm in
+  `test/fixtures/keycloak/tom-realm.json`; it skips when no Keycloak is
+  listening.
+- `test/oauth_test.dart`'s group `single sign-on over OpenID Connect` covers the
+  nonce, discovery, role mapping and the provisioning modes;
+  `test/oauth_state_store_db_test.dart` round-trips the nonce and a verified
+  SAML identity through `tom_oauth_state`.
 
 ### Fixed
 

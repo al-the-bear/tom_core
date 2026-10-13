@@ -1,0 +1,30 @@
+# Ephemeral Keycloak for the `tom_core_server` single sign-on interoperability
+# suite (`test/sso_keycloak_test.dart`).
+#
+# One container plays both identity providers the suite logs in against: an
+# OpenID Connect provider (client `tom-oidc`) and a SAML 2.0 identity provider
+# (two service providers, one whose responses are signed, one whose assertions
+# are). The realm, its users and its groups are imported from
+# `test/fixtures/keycloak/tom-realm.json` at start-up.
+#
+# The suite probes Keycloak first and `skip:`s when nothing is listening, so the
+# default `testkit :test` run stays green without this. Use
+# `tool/run_sso_tests.sh`, which drives this file, or:
+#
+#   docker compose -f docker-compose.sso.yaml up -d
+#   testkit :test --test-args="--tags sso"
+#   docker compose -f docker-compose.sso.yaml down -v
+#
+# Host port 8089, clear of the test database's 3309 and the samples' 8080/8081.
+services:
+  keycloak:
+    image: ${TOM_CORE_SERVER_SSO_IMAGE:-quay.io/keycloak/keycloak:26.0}
+    container_name: tom-core-server-sso
+    command: ["start-dev", "--import-realm"]
+    ports:
+      - "${TOM_CORE_SERVER_SSO_PORT:-8089}:8080"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    volumes:
+      - ./test/fixtures/keycloak/tom-realm.json:/opt/keycloak/data/import/tom-realm.json:ro

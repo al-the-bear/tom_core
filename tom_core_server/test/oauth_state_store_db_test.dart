@@ -55,7 +55,7 @@ TomOAuthProviderConfig _provider() => TomOAuthProviderConfig(
 /// expires. A fixture that omits it is not modelling "a well-behaved provider"
 /// at all, and the tests below are about the *state store*, not about freshness
 /// — they should reach it.
-String _idToken() {
+String _idToken(String? nonce) {
   String segment(Map<String, Object?> value) =>
       base64Url.encode(utf8.encode(jsonEncode(value))).replaceAll('=', '');
   final expires =
@@ -65,7 +65,7 @@ String _idToken() {
           .millisecondsSinceEpoch ~/
       1000;
   return '${segment({'alg': 'none', 'typ': 'JWT'})}'
-      '.${segment({'iss': 'https://idp.example.test', 'aud': 'tom-core-server-test', 'sub': 'sub-1', 'email': 'alice@example.test', 'exp': expires})}'
+      '.${segment({'iss': 'https://idp.example.test', 'aud': 'tom-core-server-test', 'sub': 'sub-1', 'email': 'alice@example.test', 'exp': expires, 'nonce': ?nonce})}'
       '.';
 }
 
@@ -75,6 +75,10 @@ String _idToken() {
 class _StubTransport implements TomOAuthTokenTransport {
   /// The form the last code exchange posted.
   Map<String, String>? postedForm;
+
+  /// The nonce of the authorization request the user followed, which a
+  /// provider returns in the `id_token`.
+  String? nonce;
 
   @override
   Future<String> postForm(
@@ -86,7 +90,7 @@ class _StubTransport implements TomOAuthTokenTransport {
     return jsonEncode({
       'access_token': 'at-1',
       'token_type': 'Bearer',
-      'id_token': _idToken(),
+      'id_token': _idToken(nonce),
     });
   }
 
@@ -187,6 +191,42 @@ void main() async {
       expect(read.createdAt.isUtc, isTrue);
     });
 
+    test(
+      'the nonce and a verified SAML identity survive the round trip',
+      () async {
+        // The SAML handoff: the assertion consumer service stores the verified
+        // identity, and the application's completion may land on another node.
+        const identity = TomExternalIdentity(
+          issuer: 'https://idp.example.test/saml',
+          subject: 'alice',
+          username: 'alice@example.test',
+          displayName: 'Alice',
+          claims: {
+            'email': 'alice@example.test',
+            'groups': ['admins', 'staff'],
+          },
+          groups: ['admins', 'staff'],
+          roles: ['tom.admin'],
+        );
+        await node().store(
+          TomOAuthAuthorizationState(
+            state: 's-saml',
+            providerId: 'corporate',
+            createdAt: DateTime.now().toUtc(),
+            nonce: 'digest-of-the-code',
+            assertedIdentity: identity,
+          ),
+        );
+        final read = await node().consume('s-saml');
+        expect(read!.nonce, 'digest-of-the-code');
+        expect(read.assertedIdentity!.toJson(), identity.toJson());
+        await node().store(pending('s-plain'));
+        final plain = await node().peek('s-plain');
+        expect(plain!.nonce, isEmpty);
+        expect(plain.assertedIdentity, isNull);
+      },
+    );
+
     test('a provider configured without PKCE stores neither half', () async {
       await node().store(pending('s-nopkce'));
       expect((await node().peek('s-nopkce'))?.pkce, isNull);
@@ -286,6 +326,10 @@ void main() async {
       final begun = await flowOn(
         node(),
       ).beginAuthorization(_authorizationRequest());
+      // The user signs in at the provider, which keeps the request's nonce.
+      transport.nonce = Uri.parse(
+        begun.authorizationUri,
+      ).queryParameters['nonce'];
       final exchange = await flowOn(
         node(),
       ).completeAuthorization(code: 'code-1', state: begun.state);

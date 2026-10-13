@@ -121,6 +121,8 @@
 /// necessary.
 library;
 
+import 'dart:convert';
+
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../configuration/base_server_configuration.dart';
@@ -234,6 +236,8 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
     'client_language': ':clientLanguage',
     'client_country': ':clientCountry',
     'client_timezone': ':clientTimezone',
+    'nonce': ':nonce',
+    'asserted_identity': ':assertedIdentity',
   };
 
   /// Creates the pending-authorization table if it does not exist.
@@ -358,6 +362,10 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
     'clientLanguage': pending.clientLanguage,
     'clientCountry': pending.clientCountry,
     'clientTimezone': pending.clientTimezone,
+    'nonce': pending.nonce,
+    'assertedIdentity': pending.assertedIdentity == null
+        ? null
+        : jsonEncode(pending.assertedIdentity!.toJson()),
   };
 
   /// [row] as the record the contract answers with.
@@ -384,6 +392,13 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
         clientLanguage: row.clientLanguage,
         clientCountry: row.clientCountry,
         clientTimezone: row.clientTimezone,
+        nonce: row.nonce,
+        assertedIdentity: row.assertedIdentity == null
+            ? null
+            : TomExternalIdentity.fromJson(
+                (jsonDecode(row.assertedIdentity!) as Map)
+                    .cast<String, Object?>(),
+              ),
       );
 }
 
@@ -457,6 +472,14 @@ class TomOAuthStateRow {
   /// The client's IANA timezone name.
   @TomDbColumn(columnName: "client_timezone")
   String clientTimezone = "";
+
+  /// What the flow's next leg must echo, or `''`.
+  @TomDbColumn(columnName: "nonce")
+  String nonce = "";
+
+  /// A verified SAML identity as JSON, or `null`.
+  @TomDbColumn(columnName: "asserted_identity")
+  String? assertedIdentity;
 }
 
 /// Which pending-authorization store a deployment runs.

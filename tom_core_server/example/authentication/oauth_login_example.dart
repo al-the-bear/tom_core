@@ -124,13 +124,29 @@ class _ScriptedProvider implements TomOAuthTokenTransport {
   /// would let the deployment call the provider's own API on the user's behalf
   /// — retained only if the provider is configured to (see
   /// `authentication_example.dart`).
-  final Map<String, Object?> tokenResponse = {
+  Map<String, Object?> tokenResponse(String nonce) => {
     'access_token': 'at-1',
     'refresh_token': 'rt-1',
     'token_type': 'Bearer',
     'expires_in': 3600,
-    'id_token': _idToken(_claims()),
+    'id_token': _idToken({..._claims(), 'nonce': nonce}),
   };
+
+  /// The nonce of each authorization request, by the code it was answered
+  /// with — what lets the provider put the right nonce into the `id_token`.
+  final Map<String, String> _nonces = {};
+
+  /// The user signs in at [authorizationUri] and the provider redirects back
+  /// with a code; this answers that code.
+  ///
+  /// The provider remembers the authorization request's `nonce` and returns it
+  /// in the `id_token` the code is exchanged for, which is how the flow knows
+  /// the token was minted for *this* login.
+  String signIn(String authorizationUri) {
+    final code = 'code-${_nonces.length + 1}';
+    _nonces[code] = Uri.parse(authorizationUri).queryParameters['nonce'] ?? '';
+    return code;
+  }
 
   /// The form and headers the last code exchange sent.
   Map<String, String>? postedForm;
@@ -144,7 +160,7 @@ class _ScriptedProvider implements TomOAuthTokenTransport {
   ) async {
     postedForm = form;
     postedHeaders = headers;
-    return jsonEncode(tokenResponse);
+    return jsonEncode(tokenResponse(_nonces[form['code']] ?? ''));
   }
 
   @override
@@ -316,8 +332,9 @@ Future<void> run() async {
   // Example 3: the provider redirects back, and the code is exchanged. What the
   // deployment presents at the token endpoint is worth reading: the verifier,
   // the configured redirect URI, and the client secret as HTTP Basic.
+  final code = provider.signIn(started.authorizationUri);
   final exchange = await flow.completeAuthorization(
-    code: 'the-code',
+    code: code,
     state: started.state,
   );
   final basic = utf8.decode(
@@ -345,7 +362,7 @@ Future<void> run() async {
   // stolen code arrives as -- finds nothing pending and is refused.
   var replayKey = '';
   try {
-    await flow.completeAuthorization(code: 'the-code', state: started.state);
+    await flow.completeAuthorization(code: code, state: started.state);
   } on TomOAuthException catch (e) {
     replayKey = e.key;
   }
@@ -364,10 +381,11 @@ Future<void> run() async {
   // pointing at an account that does not exist.
   final directory = _AccountDirectory(canProvision: true);
   final identities = TomMemoryExternalIdentityStore();
+  final idp = _ScriptedProvider();
   final provisioningFlow = TomOAuthFlow(
     providers: _providers(provisioning: 'autoProvision'),
     stateStore: TomOAuthMemoryStateStore(),
-    transport: _ScriptedProvider(),
+    transport: idp,
   );
   final service = TomOAuthAuthenticationService(
     directory: directory,
@@ -379,7 +397,11 @@ Future<void> run() async {
     _authorizationRequest(),
   );
   final info = await service.authenticateUser(
-    _authData()..key = TomOAuthCredential(code: 'c', state: begun.state),
+    _authData()
+      ..key = TomOAuthCredential(
+        code: idp.signIn(begun.authorizationUri),
+        state: begun.state,
+      ),
   );
   print('provisioned as:            ${info.principal.user.username}');
   print('provisioned from subject:  ${directory.provisioned.single.subject}');
@@ -405,7 +427,11 @@ Future<void> run() async {
     _authorizationRequest(),
   );
   final returning = await service.authenticateUser(
-    _authData()..key = TomOAuthCredential(code: 'c', state: again.state),
+    _authData()
+      ..key = TomOAuthCredential(
+        code: idp.signIn(again.authorizationUri),
+        state: again.state,
+      ),
   );
   final link = (await identities.identitiesOf('ext_alice@example.test')).single;
   print('returning user:            ${returning.principal.user.username}');
@@ -425,7 +451,8 @@ Future<void> run() async {
     _providers(provisioning: 'autoProvision'),
   );
   TomBean.withType<TomOAuthStateStore>(TomOAuthMemoryStateStore());
-  TomBean.withType<TomOAuthTokenTransport>(_ScriptedProvider());
+  final endpointIdp = _ScriptedProvider();
+  TomBean.withType<TomOAuthTokenTransport>(endpointIdp);
   final savedService =
       TomAuthenticationServer.globalSettingUserAuthenticationService;
   TomAuthenticationServer.globalSettingUserAuthenticationService =
@@ -443,7 +470,8 @@ Future<void> run() async {
   // the application's page does with its own location.
   final redirected = Uri.parse(
     'https://console.example.test/oauth/callback'
-    '?code=the-code&state=${authorization.state}',
+    '?code=${endpointIdp.signIn(authorization.authorizationUri)}'
+    '&state=${authorization.state}',
   );
   final completed = await endpoints.completeOAuthAuthorization(
     TomOAuthCallbackRequest(
@@ -610,10 +638,11 @@ Future<void> run() async {
 /// *key*, and a login that unexpectedly succeeded should fail the example
 /// rather than quietly print an empty string.
 Future<String> _loginKey(TomOAuthProviders providers) async {
+  final idp = _ScriptedProvider();
   final flow = TomOAuthFlow(
     providers: providers,
     stateStore: TomOAuthMemoryStateStore(),
-    transport: _ScriptedProvider(),
+    transport: idp,
   );
   final service = TomOAuthAuthenticationService(
     directory: _AccountDirectory(),
@@ -623,7 +652,11 @@ Future<String> _loginKey(TomOAuthProviders providers) async {
   final begun = await flow.beginAuthorization(_authorizationRequest());
   try {
     await service.authenticateUser(
-      _authData()..key = TomOAuthCredential(code: 'c', state: begun.state),
+      _authData()
+        ..key = TomOAuthCredential(
+          code: idp.signIn(begun.authorizationUri),
+          state: begun.state,
+        ),
     );
     throw StateError('the login was expected to fail');
   } on TomLoginException catch (e) {

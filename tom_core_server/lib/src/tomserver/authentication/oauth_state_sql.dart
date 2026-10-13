@@ -39,6 +39,13 @@ const String defaultOAuthStateTable = 'tom_oauth_state';
 ///  * `pkce_verifier` is the flow's secret and is nullable, because a provider
 ///    may be configured without PKCE. See `TomSqlOAuthStateStore` for why it is
 ///    stored as written rather than under column encryption.
+///  * `nonce` is what the flow's next leg must echo: the OpenID Connect nonce,
+///    or a SAML `AuthnRequest` id and then the digest of the handoff code. `''`
+///    when the flow sent none, like the context columns below.
+///  * `asserted_identity` holds a verified SAML identity, as JSON, between the
+///    identity provider's form post and the application's completion. `TEXT`
+///    because a SAML assertion's attributes have no fixed size, and `NULL` on
+///    every record that is not waiting to be completed.
 ///  * the login-context columns (`client` … `client_timezone`) exist because the
 ///    callback is a bare browser navigation carrying none of it. They are `NOT
 ///    NULL` and hold `''` for "not supplied", matching the Dart record whose
@@ -65,6 +72,8 @@ TomFrameworkTable oauthStateTable(String table) => TomFrameworkTable(
     TomFrameworkColumn('client_language', 'VARCHAR(16)'),
     TomFrameworkColumn('client_country', 'VARCHAR(16)'),
     TomFrameworkColumn('client_timezone', 'VARCHAR(64)'),
+    TomFrameworkColumn('nonce', 'VARCHAR(191)'),
+    TomFrameworkColumn('asserted_identity', 'TEXT', nullable: true),
   ],
   primaryKey: const ['state'],
   keys: const [

@@ -1,0 +1,226 @@
+{
+  "realm": "tom",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "groups": [
+    {
+      "name": "admins",
+      "path": "/admins"
+    },
+    {
+      "name": "staff",
+      "path": "/staff"
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "enabled": true,
+      "email": "alice@example.test",
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Example",
+      "groups": [
+        "/admins",
+        "/staff"
+      ],
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alice-password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "bob",
+      "enabled": true,
+      "email": "bob@example.test",
+      "emailVerified": true,
+      "firstName": "Bob",
+      "lastName": "Example",
+      "groups": [
+        "/staff"
+      ],
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "bob-password",
+          "temporary": false
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "tom-oidc",
+      "name": "tom-oidc",
+      "protocol": "openid-connect",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "tom-oidc-secret",
+      "clientAuthenticatorType": "client-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "redirectUris": [
+        "http://127.0.0.1:18089/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "http://127.0.0.1:18089/saml/response-signed",
+      "name": "http://127.0.0.1:18089/saml/response-signed",
+      "protocol": "saml",
+      "enabled": true,
+      "frontchannelLogout": true,
+      "redirectUris": [
+        "http://127.0.0.1:18089/*"
+      ],
+      "attributes": {
+        "saml.server.signature": "true",
+        "saml.assertion.signature": "false",
+        "saml.client.signature": "true",
+        "saml.signature.algorithm": "RSA_SHA256",
+        "saml_signature_canonicalization_method": "http://www.w3.org/2001/10/xml-exc-c14n#",
+        "saml_force_name_id_format": "true",
+        "saml_name_id_format": "username",
+        "saml.authnstatement": "true",
+        "saml.encrypt": "false",
+        "saml.force.post.binding": "true",
+        "saml_assertion_consumer_url_post": "http://127.0.0.1:18089/saml/acs",
+        "saml.server.signature.keyinfo.ext": "false",
+        "saml.signing.certificate": "MIICqjCCAZICCQCqloQyV4bx+DANBgkqhkiG9w0BAQsFADAWMRQwEgYDVQQDDAt0b20tdGVzdC1zcDAgFw0yNjEwMTMwMTIxMzdaGA8yMTI2MDkxOTAxMjEzN1owFjEUMBIGA1UEAwwLdG9tLXRlc3Qtc3AwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCzqZKWxqB+qnWihjLBOrHVyMlNwu+K27C6cZQPLY0mz2AXXnrL4veOyawvFGBigT/lwhvb8+UOmbRFhGbnyBVXoX8ePs2ed3rYKnrmKt8wG+o+sQNtTCjW4QWe/bOLiW9kfqPCW2DetlRdZDMI+7KY1HNKI9q38GKwbSx/oG2O9QjoyU3kVk9l1Hvcc7ShTwisnuUq90BVMmAOoqR2yYexyv8DfzQwi4KxKHFqfoHfSUEXL5lk/ML4IYdzka5k7e6mFK3xm4RJRaViFBE+tm829uREXnbsAEFZfnfuwdAlrutE7l6qTCC99o7EjPiPKt4I6ByQkGwhbKyEe5SAcZZzAgMBAAEwDQYJKoZIhvcNAQELBQADggEBAGKhcrdEU377TeUc5OvsDXLvARFeX7+8cAusegq9OT7Yc6ZPL8GeMT3O49dN6uRU1Afrx0j/UuYh15utbowyBZXn9KmIGP2SPSikgR5KtQZRQx/6/Ifhx99HeHt7Dq9cFhFLdVmAR/PP0qyZswZas9bFiG6czJgecjdlkqA0/gQpycUVWpfVVKz1MrB1alOpWDZgyJ0psiakBJVLhy6FRGQKIW2mpAvmQOz8CSu1u+m9ykK/5lJuq8XvX1iguGc1BncCIyeCZc6YrWIx0ft6h65GTvSNY3DuTV0qk+o6nvAhsBqe4TQ0XmW0YrXocmNXqYUrxZh1BUGYUfTDbO5JEdQ="
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "saml",
+          "protocolMapper": "saml-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.name": "groups",
+            "full.path": "false",
+            "single": "false",
+            "attribute.nameformat": "Basic",
+            "friendly.name": ""
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "email",
+            "attribute.name": "email",
+            "attribute.nameformat": "Basic",
+            "friendly.name": ""
+          }
+        },
+        {
+          "name": "firstName",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "firstName",
+            "attribute.name": "firstName",
+            "attribute.nameformat": "Basic",
+            "friendly.name": ""
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "http://127.0.0.1:18089/saml/assertion-signed",
+      "name": "http://127.0.0.1:18089/saml/assertion-signed",
+      "protocol": "saml",
+      "enabled": true,
+      "frontchannelLogout": true,
+      "redirectUris": [
+        "http://127.0.0.1:18089/*"
+      ],
+      "attributes": {
+        "saml.server.signature": "false",
+        "saml.assertion.signature": "true",
+        "saml.client.signature": "false",
+        "saml.signature.algorithm": "RSA_SHA256",
+        "saml_signature_canonicalization_method": "http://www.w3.org/2001/10/xml-exc-c14n#",
+        "saml_force_name_id_format": "true",
+        "saml_name_id_format": "username",
+        "saml.authnstatement": "true",
+        "saml.encrypt": "false",
+        "saml.force.post.binding": "true",
+        "saml_assertion_consumer_url_post": "http://127.0.0.1:18089/saml/acs",
+        "saml.server.signature.keyinfo.ext": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "saml",
+          "protocolMapper": "saml-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.name": "groups",
+            "full.path": "false",
+            "single": "false",
+            "attribute.nameformat": "Basic",
+            "friendly.name": ""
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "email",
+            "attribute.name": "email",
+            "attribute.nameformat": "Basic",
+            "friendly.name": ""
+          }
+        },
+        {
+          "name": "firstName",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "firstName",
+            "attribute.name": "firstName",
+            "attribute.nameformat": "Basic",
+            "friendly.name": ""
+          }
+        }
+      ]
+    }
+  ]
+}

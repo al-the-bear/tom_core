@@ -171,6 +171,14 @@ class _StubTransport implements TomOAuthTokenTransport {
   /// The URI the last user-info call fetched.
   Uri? fetchedUri;
 
+  /// The nonce of the last flow begun, which a real provider echoes in the
+  /// `id_token` it issues — set by [_NonceEchoingStore].
+  String? nonce;
+
+  /// Whether to echo [nonce] into the scripted `id_token`. On, as a
+  /// conforming provider does; the nonce tests turn it off.
+  bool echoNonce = true;
+
   @override
   Future<String> postForm(
     Uri uri,
@@ -182,7 +190,21 @@ class _StubTransport implements TomOAuthTokenTransport {
     postedForm = form;
     postedHeaders = headers;
     if (formResponse != null) return formResponse!;
-    return rawTokenBody ?? jsonEncode(tokenResponse);
+    return rawTokenBody ?? jsonEncode(_echoingNonce(tokenResponse));
+  }
+
+  /// [response] with the flow's nonce added to its `id_token`, when the
+  /// token carries none of its own.
+  Map<String, Object?> _echoingNonce(Map<String, Object?> response) {
+    final idToken = response['id_token'];
+    final flowNonce = nonce;
+    if (!echoNonce || flowNonce == null || idToken is! String) return response;
+    final claims = TomOAuthFlow.decodeIdTokenClaims(idToken);
+    if (claims.containsKey('nonce')) return response;
+    return {
+      ...response,
+      'id_token': _idToken({...claims, 'nonce': flowNonce}),
+    };
   }
 
   @override
@@ -192,6 +214,39 @@ class _StubTransport implements TomOAuthTokenTransport {
   }
 }
 
+/// A state store that tells the stub provider the nonce of each flow begun,
+/// so the stub can echo it the way a real provider does.
+class _NonceEchoingStore implements TomOAuthStateStore {
+  _NonceEchoingStore(this.inner, this.transport);
+
+  final TomOAuthStateStore inner;
+  final _StubTransport transport;
+
+  @override
+  Future<void> store(TomOAuthAuthorizationState pending) {
+    transport.nonce = pending.nonce;
+    return inner.store(pending);
+  }
+
+  @override
+  Future<TomOAuthAuthorizationState?> peek(String state) => inner.peek(state);
+
+  @override
+  Future<TomOAuthAuthorizationState?> consume(String state) =>
+      inner.consume(state);
+}
+
+/// [stateStore], wrapped so a stub [transport] learns each flow's nonce.
+TomOAuthStateStore _echoing(
+  TomOAuthStateStore? stateStore,
+  TomOAuthTokenTransport transport,
+) {
+  final store = stateStore ?? TomOAuthMemoryStateStore();
+  return transport is _StubTransport
+      ? _NonceEchoingStore(store, transport)
+      : store;
+}
+
 /// A flow over the stub, with everything else real.
 TomOAuthFlow _flow(
   TomOAuthProviderConfig provider,
@@ -199,7 +254,7 @@ TomOAuthFlow _flow(
   TomOAuthStateStore? stateStore,
 }) => TomOAuthFlow(
   providers: TomOAuthProviders({provider.id: provider}),
-  stateStore: stateStore ?? TomOAuthMemoryStateStore(),
+  stateStore: _echoing(stateStore, transport),
   transport: transport,
 );
 
@@ -217,7 +272,7 @@ TomOAuthFlow _multiProviderFlow(
   providers: TomOAuthProviders({
     for (final provider in providers) provider.id: provider,
   }),
-  stateStore: stateStore ?? TomOAuthMemoryStateStore(),
+  stateStore: _echoing(stateStore, transport),
   transport: transport,
 );
 
@@ -1104,7 +1159,7 @@ void main() {
         exchange.provider.provisioning,
         TomOAuthProvisioning.autoProvision,
       );
-      expect(exchange.provider.storeTokens, isTrue);
+      expect((exchange.provider as TomOAuthProviderConfig).storeTokens, isTrue);
       // The twin it is not, asserting identically.
       expect(exchange.identity.issuer, _issuer);
     });
@@ -3357,6 +3412,402 @@ void main() {
   // THE ENDPOINTS
   // ===========================================================================
 
+  // ===========================================================================
+  // ENTERPRISE SINGLE SIGN-ON: NONCE, DISCOVERY, ROLE MAPPING, PROVISIONING
+  // ===========================================================================
+
+  group('single sign-on over OpenID Connect', () {
+    /// A provider mapping the `groups` claim onto Tom roles.
+    TomOAuthProviderConfig mappingProvider({
+      TomOAuthProvisioning provisioning = TomOAuthProvisioning.autoProvision,
+    }) => TomOAuthProviderConfig(
+      id: 'stub',
+      issuer: _issuer,
+      authorizationEndpoint: '$_issuer/authorize',
+      tokenEndpoint: '$_issuer/token',
+      clientId: _clientId,
+      redirectUri: 'https://app.example.test/oauth/callback',
+      provisioning: provisioning,
+      roleMapping: const TomExternalRoleMapping(
+        roles: {
+          'admins': ['tom.admin'],
+          'staff': ['tom.user', 'tom.reporting'],
+        },
+        defaultRoles: ['employee'],
+      ),
+    );
+
+    /// Logs in through [provider] with a token carrying [extraClaims].
+    Future<TomAuthenticationInfo> login({
+      required TomOAuthProviderConfig provider,
+      required _StubDirectory directory,
+      TomExternalIdentityStore? store,
+      Map<String, Object?> extraClaims = const {},
+    }) async {
+      final transport = _StubTransport(
+        tokenResponse: {
+          'access_token': 'at-1',
+          'token_type': 'Bearer',
+          'id_token': _idToken({..._claims(), ...extraClaims}),
+        },
+      );
+      final flow = _flow(provider, transport);
+      final begun = await flow.beginAuthorization(_authorizationRequest());
+      final data = _authData()
+        ..key = TomOAuthCredential(code: 'c', state: begun.state);
+      return TomOAuthAuthenticationService(
+        directory: directory,
+        flow: flow,
+        identityStore: store ?? TomMemoryExternalIdentityStore(),
+      ).authenticateUser(data);
+    }
+
+    group('the nonce', () {
+      test('travels in the authorization request of an openid flow', () async {
+        final flow = _flow(_oidcProvider(), _StubTransport());
+        final begun = await flow.beginAuthorization(_authorizationRequest());
+        final nonce = Uri.parse(
+          begun.authorizationUri,
+        ).queryParameters['nonce'];
+        expect(nonce, isNotNull);
+        expect(nonce, hasLength(greaterThanOrEqualTo(32)));
+      });
+
+      test('is not sent when no id_token can come back', () async {
+        // A plain OAuth 2.0 provider, GitHub-style: no `openid` scope.
+        final provider = TomOAuthProviderConfig(
+          id: 'legacy',
+          issuer: 'https://legacy.example.test',
+          authorizationEndpoint: 'https://legacy.example.test/authorize',
+          tokenEndpoint: 'https://legacy.example.test/token',
+          userInfoEndpoint: 'https://legacy.example.test/user',
+          clientId: _clientId,
+          redirectUri: 'https://app.example.test/oauth/callback',
+          scopes: const ['read:user'],
+        );
+        final flow = _flow(provider, _StubTransport());
+        final begun = await flow.beginAuthorization(
+          _authorizationRequest(providerId: 'legacy'),
+        );
+        expect(
+          Uri.parse(begun.authorizationUri).queryParameters,
+          isNot(contains('nonce')),
+        );
+      });
+
+      for (final (name, claims) in [
+        ('carries none', <String, Object?>{}),
+        ('carries another flow\'s', <String, Object?>{'nonce': 'not-mine'}),
+      ]) {
+        test('an id_token that $name is refused', () async {
+          final transport = _StubTransport(
+            tokenResponse: {
+              'access_token': 'at-1',
+              'id_token': _idToken({..._claims(), ...claims}),
+            },
+          )..echoNonce = false;
+          final flow = _flow(_oidcProvider(), transport);
+          final begun = await flow.beginAuthorization(_authorizationRequest());
+          await expectLater(
+            flow.completeAuthorization(code: 'c', state: begun.state),
+            throwsA(
+              isA<TomOAuthException>().having(
+                (e) => e.key,
+                'key',
+                'oauth.flow.nonce_mismatch',
+              ),
+            ),
+          );
+        });
+      }
+    });
+
+    group('discovery', () {
+      Map<String, Object?> configured({
+        Map<String, Object?> extra = const {},
+      }) => {
+        'corporate': {
+          'issuer': _issuer,
+          'discovery': true,
+          'clientId': _clientId,
+          'redirectUri': 'https://app.example.test/sso/callback',
+          ...extra,
+        },
+      };
+
+      _StubTransport publishing(Map<String, Object?> document) =>
+          _StubTransport(userInfo: document);
+
+      final document = {
+        'issuer': _issuer,
+        'authorization_endpoint': '$_issuer/protocol/auth',
+        'token_endpoint': '$_issuer/protocol/token',
+        'userinfo_endpoint': '$_issuer/protocol/userinfo',
+        'revocation_endpoint': '$_issuer/protocol/revoke',
+      };
+
+      test(
+        'reads the endpoints from the issuer\'s discovery document',
+        () async {
+          final transport = publishing(document);
+          final providers = await TomOAuthProviders.discover(
+            configured(),
+            transport: transport,
+          );
+          final provider = providers['corporate'];
+          expect(
+            transport.fetchedUri.toString(),
+            '$_issuer/.well-known/openid-configuration',
+          );
+          expect(provider.authorizationEndpoint, '$_issuer/protocol/auth');
+          expect(provider.tokenEndpoint, '$_issuer/protocol/token');
+          expect(provider.userInfoEndpoint, '$_issuer/protocol/userinfo');
+          expect(provider.revocationEndpoint, '$_issuer/protocol/revoke');
+        },
+      );
+
+      test(
+        'an endpoint configured explicitly wins over the document',
+        () async {
+          final providers = await TomOAuthProviders.discover(
+            configured(
+              extra: {'tokenEndpoint': 'https://proxy.example.test/t'},
+            ),
+            transport: publishing(document),
+          );
+          expect(
+            providers['corporate'].tokenEndpoint,
+            'https://proxy.example.test/t',
+          );
+        },
+      );
+
+      test('a document published for another issuer is refused', () async {
+        await expectLater(
+          TomOAuthProviders.discover(
+            configured(),
+            transport: publishing({...document, 'issuer': 'https://evil.test'}),
+          ),
+          throwsA(
+            isA<TomOAuthException>().having(
+              (e) => e.key,
+              'key',
+              'oauth.config.discovery_issuer_mismatch',
+            ),
+          ),
+        );
+      });
+
+      test('a document that cannot be read fails the start-up', () async {
+        await expectLater(
+          TomOAuthProviders.discover(
+            configured(),
+            transport: _StubTransport(rawUserInfoBody: '<html>down</html>'),
+          ),
+          throwsA(
+            isA<TomOAuthException>().having(
+              (e) => e.key,
+              'key',
+              'oauth.config.discovery_failed',
+            ),
+          ),
+        );
+      });
+
+      test('the synchronous reader names the loader it needs', () {
+        expect(
+          () => TomOAuthProviders.fromConfiguration(
+            TomServerConfigResourceProvider.from({
+              'oauth': {'providers': configured()},
+            }),
+          ),
+          throwsA(
+            isA<TomOAuthException>().having(
+              (e) => e.key,
+              'key',
+              'oauth.config.discovery_not_loaded',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('role mapping', () {
+      test('reads the mapping and the default roles from configuration', () {
+        final mapping = TomExternalRoleMapping.fromMap('p', {
+          'groupsClaim': 'realm_access.roles',
+          'defaultRoles': ['employee'],
+          'roleMapping': {
+            'admins': ['tom.admin'],
+            'auditors': 'tom.audit',
+          },
+        });
+        expect(mapping.groupsClaim, 'realm_access.roles');
+        expect(
+          mapping.rolesFor({
+            'realm_access': {
+              'roles': ['admins', 'auditors', 'unmapped'],
+            },
+          }),
+          ['employee', 'tom.admin', 'tom.audit'],
+        );
+      });
+
+      test('a single group arrives unwrapped and is one group', () {
+        const mapping = TomExternalRoleMapping(
+          roles: {
+            'a,b': ['tom.ab'],
+          },
+        );
+        expect(mapping.groupsIn({'groups': 'a,b'}), ['a,b']);
+        expect(mapping.rolesFor({'groups': 'a,b'}), ['tom.ab']);
+      });
+
+      test('a claim whose own name has a dot is found before the path', () {
+        expect(
+          TomExternalRoleMapping.claimAt({
+            'https://example.test/groups': ['x'],
+          }, 'https://example.test/groups'),
+          ['x'],
+        );
+      });
+
+      test('a mistyped mapping stops the start', () {
+        expect(
+          () => TomExternalRoleMapping.fromMap('p', {'roleMapping': 'admins'}),
+          throwsA(
+            isA<TomOAuthException>().having(
+              (e) => e.key,
+              'key',
+              'oauth.config.invalid_role_mapping',
+            ),
+          ),
+        );
+      });
+
+      test(
+        'the mapped roles join the account\'s own on a linked login',
+        () async {
+          final store = TomMemoryExternalIdentityStore();
+          await store.link(
+            const TomExternalIdentity(issuer: _issuer, subject: 'sub-1'),
+            'alice',
+          );
+          final info = await login(
+            provider: mappingProvider(),
+            directory: _StubDirectory(accounts: {'alice'}),
+            store: store,
+            extraClaims: {
+              'groups': ['admins', 'mailing-list'],
+            },
+          );
+          expect(info.principal.aci.roles, ['user', 'employee', 'tom.admin']);
+        },
+      );
+
+      test('a provisioned identity carries its roles to the directory and '
+          'into the session', () async {
+        final directory = _StubDirectory(canProvision: true);
+        final info = await login(
+          provider: mappingProvider(),
+          directory: directory,
+          extraClaims: {
+            'groups': ['staff'],
+          },
+        );
+        expect(directory.provisioned.single.groups, ['staff']);
+        expect(directory.provisioned.single.roles, [
+          'employee',
+          'tom.user',
+          'tom.reporting',
+        ]);
+        expect(
+          info.principal.aci.roles,
+          containsAll(['employee', 'tom.user', 'tom.reporting']),
+        );
+      });
+    });
+
+    group('provisioning', () {
+      test('is just-in-time by default', () {
+        final provider = TomOAuthProviderConfig.fromMap('corporate', {
+          'issuer': _issuer,
+          'authorizationEndpoint': '$_issuer/authorize',
+          'tokenEndpoint': '$_issuer/token',
+          'clientId': _clientId,
+          'redirectUri': 'https://app.example.test/sso/callback',
+        });
+        expect(provider.provisioning, TomOAuthProvisioning.autoProvision);
+      });
+
+      test('linkExisting links a pre-provisioned account', () async {
+        final store = TomMemoryExternalIdentityStore();
+        final info = await login(
+          provider: mappingProvider(
+            provisioning: TomOAuthProvisioning.linkExisting,
+          ),
+          directory: _StubDirectory(accounts: {'alice@example.test'}),
+          store: store,
+        );
+        expect(info.principal.user.username, 'alice@example.test');
+        expect(
+          await store.localUsernameFor(
+            const TomExternalIdentity(issuer: _issuer, subject: 'sub-1'),
+          ),
+          'alice@example.test',
+        );
+      });
+
+      test('linkExisting creates no account', () async {
+        final directory = _StubDirectory(canProvision: true);
+        await expectLater(
+          login(
+            provider: mappingProvider(
+              provisioning: TomOAuthProvisioning.linkExisting,
+            ),
+            directory: directory,
+          ),
+          throwsA(
+            isA<TomLoginException>().having(
+              (e) => e.key,
+              'key',
+              'login.error.oauth.no-local-account',
+            ),
+          ),
+        );
+        expect(directory.provisioned, isEmpty);
+      });
+
+      test(
+        'an address the provider reports unverified links no account',
+        () async {
+          final store = TomMemoryExternalIdentityStore();
+          await expectLater(
+            login(
+              provider: mappingProvider(),
+              directory: _StubDirectory(accounts: {'alice@example.test'}),
+              store: store,
+              extraClaims: {'email_verified': false},
+            ),
+            throwsA(
+              isA<TomLoginException>().having(
+                (e) => e.key,
+                'key',
+                'login.error.oauth.unverified-email',
+              ),
+            ),
+          );
+          expect(
+            await store.localUsernameFor(
+              const TomExternalIdentity(issuer: _issuer, subject: 'sub-1'),
+            ),
+            isNull,
+          );
+        },
+      );
+    });
+  });
+
   group('TomOAuthServer endpoints', () {
     late TomAuthenticationService savedUserService;
     const endpoints = TomOAuthServer();
@@ -3490,7 +3941,8 @@ void main() {
     });
 
     test('the callback completes the login the flow started', () async {
-      final store = TomOAuthMemoryStateStore();
+      final transport = _StubTransport();
+      final store = _echoing(TomOAuthMemoryStateStore(), transport);
       TomBean.withType<TomOAuthProviders>(
         TomOAuthProviders({
           'stub': _oidcProvider(
@@ -3499,7 +3951,7 @@ void main() {
         }),
       );
       TomBean.withType<TomOAuthStateStore>(store);
-      TomBean.withType<TomOAuthTokenTransport>(_StubTransport());
+      TomBean.withType<TomOAuthTokenTransport>(transport);
       TomAuthenticationServer.globalSettingUserAuthenticationService =
           TomOAuthAuthenticationService(
             directory: _StubDirectory(canProvision: true),

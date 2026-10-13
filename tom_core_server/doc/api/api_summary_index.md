@@ -10,7 +10,7 @@ surface documented here.
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
 | Audit | [api_summary_audit.md](api_summary_audit.md) | Attributable, tamper-evident records: the hash-chained trail, its sinks, and signed anchors. |
-| Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login and two-factor services, adaptors, the policy deciding who owes a factor, enrolment and its stores, the authentication server, the server's own self-login, and external identity: the OAuth handshake, its pending-authorization stores, and the linking table. |
+| Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login and two-factor services, adaptors, the policy deciding who owes a factor, enrolment and its stores, the authentication server, the server's own self-login, and external identity: the OAuth / OpenID Connect handshake and SAML 2.0 single sign-on, their pending-authorization stores, role mapping, and the linking table. |
 | Authorization | [api_summary_authorization.md](api_summary_authorization.md) | Authorization cache, graded access, principal delegation and resource grants. |
 | Cache | [api_summary_cache.md](api_summary_cache.md) | Isolate-backed server cache and its command messages. |
 | Command Line | [api_summary_cmdline.md](api_summary_cmdline.md) | CLI argument parsing (`TomArgs`) and `.env` file loading (`TomEnvFile`). |
@@ -145,10 +145,10 @@ surface documented here.
 | `TomOAuthAuthenticationService` | class | An authentication service for authorization-code logins; delegates every other credential. |
 | `TomOAuthCredential` | class | The code + state pair carried in `TomAuthenticationData.key`. |
 | `TomExternalIdentityDirectory` | abstract class | What the deployment supplies: local account lookup and first-login provisioning. |
-| `TomOAuthProviderConfig` | class | One provider as data: endpoints, client credentials, claim names, provisioning, clock-skew tolerance. |
+| `TomOAuthProviderConfig` | class | One provider as data: endpoints (or discovery), client credentials, claim names, provisioning, role mapping, clock-skew tolerance. |
 | `TomOAuthProviders` | class | The configured provider set, read from `oauth.providers`. |
-| `TomOAuthProvisioning` | enum | What a first external login with no local account does: `refuse` or `autoProvision`. |
-| `TomOAuthFlow` | class | The authorization-code + PKCE handshake. |
+| `TomOAuthProvisioning` | enum | What a first external login with no local account does: `refuse`, `linkExisting` or `autoProvision` (the default). |
+| `TomOAuthFlow` | class | The authorization-code + PKCE handshake with an OpenID Connect nonce; dispatches SAML provider ids to `TomSamlFlow`. |
 | `TomOAuthPkce` | class | A verifier / `S256` challenge pair. |
 | `TomOAuthExchange` | class | What a completed handshake yields: the provider it was against, the asserted identity and its login context. |
 | `TomOAuthAuthorizationState` | class | One pending authorization: handle, verifier, and the context it started in. |
@@ -160,7 +160,7 @@ surface documented here.
 | `TomOAuthStateStoreSettings` | class | The `oauth.stateStore` block as data, and `createStore()` for what it names. |
 | `TomOAuthTokenTransport` | abstract class | The provider HTTP calls, so a test can stub the provider. |
 | `TomHttpOAuthTokenTransport` | class | The live transport to a provider's token and userinfo endpoints. |
-| `TomExternalIdentity` | class | What the provider asserted: issuer, subject, username, display name, claims. |
+| `TomExternalIdentity` | class | What the provider asserted: issuer, subject, username, display name, claims, groups and mapped roles. |
 | `TomExternalIdentityStore` | abstract class | The linking table: (issuer, subject) → local account. |
 | `TomPersistentExternalIdentityStore` | class | Linking table over a repository. |
 | `TomMemoryExternalIdentityStore` | class | In-memory linking table, for tests and dev servers. |
@@ -173,6 +173,22 @@ surface documented here.
 | `TomExternalIdentityToken` | class | One persisted grant row: the encrypted grant plus its operator projection. |
 | `TomExternalIdentityTokenRepository` | class | SQL repository for `TomExternalIdentityToken`. |
 | `TomOAuthServer` | class | The three `/oauth/*` endpoints. |
+| `TomExternalProvider` | abstract interface class | What every external identity provider has in common: id, issuer, provisioning, role mapping, clock skew. |
+| `TomExternalRoleMapping` | class | How a provider's group claim becomes Tom roles, recomputed on every login. |
+| `applyExternalRoles` | top-level function | Adds mapped roles to a principal for this session, beside its own. |
+| `TomSamlProviderConfig` | class | One SAML 2.0 identity provider and this server's side of the trust. |
+| `TomSamlProviders` | class | The configured SAML providers, read from `saml.providers`; `load` fetches their metadata. |
+| `TomSamlIdpMetadata` | class | What an identity provider's metadata document says: entity id, SSO address, signing certificates. |
+| `TomSamlCertificates` | abstract final class | Reads the certificates and keys a SAML configuration names. |
+| `TomSamlNames` | abstract final class | SAML 2.0 namespace and binding identifiers. |
+| `TomSamlFlow` | class | SAML 2.0 Web Browser SSO: the request out, the response in, the handoff to the application. |
+| `TomSamlResponseValidator` | class | Verifies a SAML response for one provider and answers the identity it asserts. |
+| `TomXmlSignatureVerifier` | class | Verifies an enveloped XML signature against the configured keys only. |
+| `TomExclusiveCanonicalizer` | abstract final class | Exclusive XML Canonicalization 1.0, without comments. |
+| `TomXmlDsig` | abstract final class | XML Signature namespace and algorithm identifiers. |
+| `TomSamlService` | abstract class | The `POST /saml/acs` and `GET /saml/metadata/<providerId>` endpoints (`@tomService`). |
+| `TomSamlServer` | class | The default SAML endpoint component. |
+| `TomSamlException` | class | A SAML message, configuration value or signature that cannot be used (extends `TomServerException`). |
 | `TomOAuthException` | class | A mis-configured provider set or a refused handshake (extends `TomServerException`). |
 | `Tom2FAPrerequisite` | abstract class | What an adaptor implements when it works only if something else was installed — a mail service, an SMS gateway, a push credential. |
 | `installJwtSigning` | top-level function | Installs the configured JWT key material at boot; refuses the bundled sample keys outside development. |
@@ -643,6 +659,7 @@ surface documented here.
 | Type | Module |
 | ---- | ------ |
 | `And` | Object Persistence |
+| `applyExternalRoles` | Authentication |
 | `auditDiff` | Audit |
 | `auditProjectionPrefix` | Audit |
 | `auditTrailNoDeleteTriggerDdl` | Audit |
@@ -963,6 +980,7 @@ surface documented here.
 | `TomEnvFile` | Command Line |
 | `tomErrorEnvelope` | Little Things |
 | `TomErrorHandler` | Endpoints |
+| `TomExclusiveCanonicalizer` | Authentication |
 | `TomExportException` | Export |
 | `TomExportFormats` | Export |
 | `TomExportService` | Export |
@@ -975,6 +993,8 @@ surface documented here.
 | `TomExternalIdentityStore` | Authentication |
 | `TomExternalIdentityToken` | Authentication |
 | `TomExternalIdentityTokenRepository` | Authentication |
+| `TomExternalProvider` | Authentication |
+| `TomExternalRoleMapping` | Authentication |
 | `TomFcmPushProtocol` | Messaging |
 | `TomFcmServiceAccountCredential` | Messaging |
 | `TomFieldMappedDeliveryReportProtocol` | Messaging |
@@ -1124,6 +1144,16 @@ surface documented here.
 | `TomRsaAuditAnchorVerifier` | Audit |
 | `TomS3BlobStore` | File Storage |
 | `TomS3BlobStoreBackend` | File Storage |
+| `TomSamlCertificates` | Authentication |
+| `TomSamlException` | Authentication |
+| `TomSamlFlow` | Authentication |
+| `TomSamlIdpMetadata` | Authentication |
+| `TomSamlNames` | Authentication |
+| `TomSamlProviderConfig` | Authentication |
+| `TomSamlProviders` | Authentication |
+| `TomSamlResponseValidator` | Authentication |
+| `TomSamlServer` | Authentication |
+| `TomSamlService` | Authentication |
 | `TomSchedulerNode` | Scheduling |
 | `TomSchedulerNodeRow` | Scheduling |
 | `TomSchemaBuilder` | Database Migration |
@@ -1228,6 +1258,8 @@ surface documented here.
 | `TomWebSocketEndpoint` | Endpoints |
 | `TomWebSocketException` | Endpoints |
 | `TomXlsxRenderer` | Export |
+| `TomXmlDsig` | Authentication |
+| `TomXmlSignatureVerifier` | Authentication |
 | `TomYaml` | Configuration |
 | `unknownFrameworkColumns` | Datasources |
 | `verifyAgainstAnchor` | Audit |

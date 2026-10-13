@@ -601,6 +601,18 @@ or a checked-in configuration tree.
 which may be authored, and the file it names holds the private signing key,
 which never is.
 
+**External identity providers are configured in the tree, not on the base.**
+`oauth.providers` (OAuth 2.0 / OpenID Connect, with `discovery: true` reading a
+provider's endpoints from its issuer), `oauth.stateStore` and `saml.providers`
+(SAML 2.0, with `metadataUrl` reading the identity provider's side) are nested
+maps read through `TomServerConfigResourceProvider` by the authentication module,
+one entry per provider. A provider's `clientSecret` is secret-bearing and is
+written as a `${...}` placeholder resolved from the environment; a SAML
+provider's `spSigningKeyFile` is secret-bearing one step removed, like
+`jwtSigningKeyFile`. The keys are documented in
+[authentication.md](authentication.md#provider-configuration-is-data) and its
+[single sign-on part](authentication.md#single-sign-on-with-enterprise-identity-providers).
+
 ### JWT Signing Keys
 
 What the server signs an issued token with, what it verifies an incoming one

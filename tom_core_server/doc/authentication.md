@@ -3,7 +3,10 @@
 Server-side login orchestration. The module turns an incoming authentication
 request into JWT tokens by delegating credential checking to an
 application-supplied `TomAuthenticationService`, then encoding the resulting
-principal into an authentication token and an authorization token.
+principal into an authentication token and an authorization token. External
+identity — "Sign in with …" over OAuth 2.0 / OpenID Connect, and enterprise
+single sign-on over OpenID Connect or SAML 2.0 — is one more implementation of
+that service contract.
 
 ## Table of Contents
 
@@ -46,7 +49,7 @@ principal into an authentication token and an authorization token.
   - [Wiring it up](#wiring-it-up)
   - [Provider configuration is data](#provider-configuration-is-data)
   - [Two registrations against one IdP](#two-registrations-against-one-idp)
-  - [First login with no local account: `refuse` or `autoProvision`](#first-login-with-no-local-account-refuse-or-autoprovision)
+  - [First login with no local account: `refuse`, `linkExisting` or `autoProvision`](#first-login-with-no-local-account-refuse-linkexisting-or-autoprovision)
   - [The linking table](#the-linking-table)
   - [The handshake](#the-handshake)
   - [Delegated access: the provider's tokens](#delegated-access-the-providers-tokens)
@@ -54,6 +57,18 @@ principal into an authentication token and an authorization token.
   - [The endpoints](#the-endpoints)
   - [The completion is your call, not the provider's redirect](#the-completion-is-your-call-not-the-providers-redirect)
   - [Failure keys](#failure-keys-1)
+- [Single sign-on with enterprise identity providers](#single-sign-on-with-enterprise-identity-providers)
+  - [Wiring it up at start-up](#wiring-it-up-at-start-up)
+  - [OpenID Connect: Entra ID, Okta, Keycloak](#openid-connect-entra-id-okta-keycloak)
+  - [SAML 2.0 identity providers](#saml-20-identity-providers)
+  - [What to register at the identity provider](#what-to-register-at-the-identity-provider)
+  - [Claim mapping: groups to roles](#claim-mapping-groups-to-roles)
+  - [Provisioning modes](#provisioning-modes)
+  - [The SAML flow has three legs](#the-saml-flow-has-three-legs)
+  - [What a SAML response must be](#what-a-saml-response-must-be)
+  - [Security notes](#security-notes)
+  - [The interoperability suite](#the-interoperability-suite)
+  - [SAML failure keys](#saml-failure-keys)
 - [Verification](#verification)
 - [Core Components](#core-components)
   - [`TomAuthenticationServer`](#tomauthenticationserver)
@@ -79,6 +94,12 @@ principal into an authentication token and an authorization token.
   - [`TomOAuthTokenGrant`](#tomoauthtokengrant)
   - [`TomOAuthTokenStore` / `TomPersistentOAuthTokenStore` / `TomExternalIdentityToken`](#tomoauthtokenstore--tompersistentoauthtokenstore--tomexternalidentitytoken)
   - [`TomOAuthServer`](#tomoauthserver)
+  - [`TomExternalProvider` / `TomExternalRoleMapping` / `applyExternalRoles`](#tomexternalprovider--tomexternalrolemapping--applyexternalroles)
+  - [`TomSamlProviders` / `TomSamlProviderConfig` / `TomSamlIdpMetadata` / `TomSamlCertificates`](#tomsamlproviders--tomsamlproviderconfig--tomsamlidpmetadata--tomsamlcertificates)
+  - [`TomSamlFlow` / `TomSamlResponseValidator`](#tomsamlflow--tomsamlresponsevalidator)
+  - [`TomXmlSignatureVerifier` / `TomExclusiveCanonicalizer` / `TomXmlDsig` / `TomSamlNames`](#tomxmlsignatureverifier--tomexclusivecanonicalizer--tomxmldsig--tomsamlnames)
+  - [`TomSamlService` / `TomSamlServer`](#tomsamlservice--tomsamlserver)
+  - [`TomSamlException`](#tomsamlexception)
   - [`TomJwtSigning` / `TomJwtKey` / `TomJwtSigningKey` / `TomJwtAlgorithm`](#tomjwtsigning--tomjwtkey--tomjwtsigningkey--tomjwtalgorithm)
   - [`TomJwksService` / `TomJwksServer`](#tomjwksservice--tomjwksserver)
 - [Status and Limitations](#status-and-limitations)
@@ -146,10 +167,10 @@ principal into an authentication token and an authorization token.
 | `TomOAuthAuthenticationService` | class | A `TomAuthenticationService` that authenticates an authorization code |
 | `TomOAuthCredential` | class | The code + state pair carried in `TomAuthenticationData.key` |
 | `TomExternalIdentityDirectory` | abstract class | What the deployment supplies: local account lookup and first-login provisioning |
-| `TomOAuthProviderConfig` | class | One provider, as data: endpoints, client credentials, claim names, provisioning |
-| `TomOAuthProviders` | class | The configured provider set, read from `oauth.providers` |
-| `TomOAuthProvisioning` | enum | What a first external login with no local account does: `refuse` or `autoProvision` |
-| `TomOAuthFlow` | class | The authorization-code + PKCE handshake |
+| `TomOAuthProviderConfig` | class | One provider, as data: endpoints (or `discovery: true`), client credentials, claim names, provisioning, role mapping |
+| `TomOAuthProviders` | class | The configured provider set, read from `oauth.providers`; `load` reads each discovery document |
+| `TomOAuthProvisioning` | enum | What a first external login with no local account does: `refuse`, `linkExisting` or `autoProvision` (the default) |
+| `TomOAuthFlow` | class | The authorization-code + PKCE handshake with an OpenID Connect nonce, and the dispatch to `TomSamlFlow` for a SAML provider id |
 | `TomOAuthPkce` | class | A verifier / `S256` challenge pair |
 | `TomOAuthAuthorizationState` | class | One pending authorization: state handle, verifier, and the login context it started in |
 | `TomOAuthExchange` | class | A completed code exchange: which provider it was against, who that provider says this is, and which pending flow it completes |
@@ -163,7 +184,7 @@ principal into an authentication token and an authorization token.
 | `TomOAuthStateStoreSettings` | class | The `oauth.stateStore` block as data, and `createStore()` for what it names |
 | `TomOAuthTokenTransport` | abstract class | The provider HTTP calls, so a test can stub the provider |
 | `TomHttpOAuthTokenTransport` | class | The live transport, over `package:http` |
-| `TomExternalIdentity` | class | What the provider asserted: issuer, subject, username, display name, raw claims |
+| `TomExternalIdentity` | class | What the provider asserted: issuer, subject, username, display name, raw claims, groups, and the roles its mapping grants |
 | `TomExternalIdentityStore` | abstract class | The linking table: (issuer, subject) → local account |
 | `TomMemoryExternalIdentityStore` | class | Links in a map, for tests and bring-up **only** — links that vanish on restart cost a user their account |
 | `TomPersistentExternalIdentityStore` | class | The store over `tom_external_identity` |
@@ -177,6 +198,22 @@ principal into an authentication token and an authorization token.
 | `TomExternalIdentityTokenRepository` | class | The repository over that table |
 | `TomOAuthServer` | class | The three `/oauth/*` endpoints, exposed via `@TomApiImplementation` |
 | `TomOAuthException` | class | A mis-configured provider set or a refused handshake |
+| `TomExternalProvider` | abstract interface class | What every external identity provider has in common, whatever its protocol: id, issuer, provisioning, role mapping, clock skew |
+| `TomExternalRoleMapping` | class | How a provider's group claim becomes Tom roles: `groupsClaim`, `roleMapping`, `defaultRoles` |
+| `applyExternalRoles` | function | Adds the mapped roles to a principal for this session, beside the account's own |
+| `TomSamlProviderConfig` | class | One SAML 2.0 identity provider and this server's side of the trust |
+| `TomSamlProviders` | class | The configured SAML providers, read from `saml.providers`; `load` fetches their metadata |
+| `TomSamlIdpMetadata` | class | What an identity provider's metadata says: entity id, single sign-on address, signing certificates |
+| `TomSamlCertificates` | abstract final class | Reads the certificates and keys a SAML configuration names |
+| `TomSamlNames` | abstract final class | SAML 2.0 namespace and binding identifiers |
+| `TomSamlFlow` | class | SAML 2.0 Web Browser SSO: the request out, the response in, the handoff to the application |
+| `TomSamlResponseValidator` | class | Verifies a SAML response for one provider and answers the identity it asserts |
+| `TomXmlSignatureVerifier` | class | Verifies an enveloped XML signature against the configured keys, in the profile identity providers use |
+| `TomExclusiveCanonicalizer` | abstract final class | Exclusive XML Canonicalization 1.0, without comments |
+| `TomXmlDsig` | abstract final class | XML Signature namespace and algorithm identifiers |
+| `TomSamlService` | abstract class | `POST /saml/acs` and `GET /saml/metadata/<providerId>`; reflected (`@tomReflector`) |
+| `TomSamlServer` | class | The default SAML endpoint component; reflected (`@tomReflector`) |
+| `TomSamlException` | class | A SAML message, configuration value or signature that cannot be used |
 | `installJwtSigning` | function | Installs the configured JWT key material at boot, and refuses the bundled sample keys outside development |
 | `verifyBearerToken` | function | Checks an inbound bearer token's algorithm, key id, signature, issuer and audience against the installed signing, returning it decoded or `null` |
 | `TomSigningKeyException` | class | Raised by that refusal; names the unset fields and the environment variables that would fill them |
@@ -1958,7 +1995,7 @@ oauth:
       clientSecret: ${GOOGLE_CLIENT_SECRET}
       redirectUri: https://app.example.com/oauth/callback
       scopes: openid email profile      # a list or a space-separated string
-      provisioning: autoProvision       # or: refuse (the default)
+      provisioning: refuse              # a public provider; the default is autoProvision
     github:
       issuer: https://github.com
       authorizationEndpoint: https://github.com/login/oauth/authorize
@@ -2017,23 +2054,30 @@ in the linking table and one slot in the token store. That is the intended
 reading — it is one Google account either way, and a user who consented through
 `google-calendar` has not acquired a second local account by doing so.
 
-### First login with no local account: `refuse` or `autoProvision`
+### First login with no local account: `refuse`, `linkExisting` or `autoProvision`
 
 This is a **configuration choice per provider**, never a hardcoded policy,
-because the two answers are both correct for different deployments:
+because each answer is correct for a different deployment:
 
 | `provisioning` | A first external login with no linked account |
 | -------------- | --------------------------------------------- |
-| `refuse` (default) | Rejected with `login.error.oauth.no-local-account`. The right answer for an enterprise deployment where accounts are created by an administrator. |
-| `autoProvision` | `TomExternalIdentityDirectory.provisionFromExternalIdentity` creates the account, and the link is written to the username the *directory* settled on — not to the asserted claim, which a deployment may normalise, prefix or de-duplicate. |
+| `autoProvision` (default) | `TomExternalIdentityDirectory.provisionFromExternalIdentity` creates the account, and the link is written to the username the *directory* settled on — not to the asserted claim, which a deployment may normalise, prefix or de-duplicate. Just-in-time provisioning, the right answer behind an enterprise identity provider. |
+| `linkExisting` | Linked to an existing local account carrying the asserted username; rejected with `login.error.oauth.no-local-account` when there is none. For accounts an administrator, or SCIM, created before their owners first sign in. |
+| `refuse` | Rejected with `login.error.oauth.no-local-account`. Only identities already linked are admitted — the setting for a public provider. |
 
-`autoProvision` additionally **links an existing local account** that already
-carries the asserted username, which is how a user who signed up with a password
-later adds "Sign in with …". That behaviour is deliberately gated on
-`autoProvision`: on a provider configured to `refuse`, an unlinked local account
-under the asserted name is precisely the case being refused — an attacker who
-can make *any* provider assert an address must not thereby acquire the local
-account that already uses it.
+`autoProvision` and `linkExisting` **link an existing local account** that
+already carries the asserted username, which is how a user who signed up with a
+password later adds "Sign in with …". That behaviour is deliberately gated on
+the mode: on a provider configured to `refuse`, an unlinked local account under
+the asserted name is precisely the case being refused — an attacker who can make
+*any* provider assert an address must not thereby acquire the local account that
+already uses it. For the same reason a provider that states `email_verified:
+false` links no existing account (`login.error.oauth.unverified-email`).
+
+The default is `autoProvision` because single sign-on against an enterprise
+identity provider is the case this module is built for — see
+[Provisioning modes](#provisioning-modes). A provider anyone can hold an account
+at, such as Google or GitHub, is configured with `provisioning: refuse`.
 
 The default `provisionFromExternalIdentity` throws
 `login.error.oauth.provisioning-unsupported`, so a deployment that turns
@@ -2126,6 +2170,7 @@ and why each check is not optional:
 | The claims carry `aud` containing the configured client id | `oauth.flow.audience_mismatch` |
 | The `id_token` carries an `exp`, and has not passed it | `oauth.flow.missing_expiry` · `oauth.flow.id_token_expired` |
 | The `id_token`'s `nbf`, when it sends one, has arrived | `oauth.flow.id_token_not_yet_valid` |
+| The `id_token` carries the `nonce` the authorization request sent (whenever the scopes include `openid`) | `oauth.flow.nonce_mismatch` |
 | The claims carry a subject | `oauth.flow.missing_subject` |
 
 An unknown, expired and already-spent state are deliberately **indistinguishable
@@ -2383,7 +2428,7 @@ handle is what ties a callback to an authorization this server started.
 
 | Method | URI | Purpose |
 | ------ | --- | ------- |
-| `GET` | `/oauth/providers` | The configured providers as resource keys only — no endpoint, client id or secret reaches a client |
+| `GET` | `/oauth/providers` | The configured providers — OAuth and SAML alike — as resource keys only; no endpoint, client id or secret reaches a client |
 | `POST` | `/oauth/authorize` | Begins an authorization; returns the provider URL to send the browser to, and the `state` handle |
 | `POST` | `/oauth/complete` | Completes the login from the `code` and `state` the application received |
 
@@ -2429,11 +2474,17 @@ from it.
 `registerFrameworkApis()` registers the contract, so a router resolves it
 without the application registering anything.
 
+A SAML provider adds two endpoints of its own, `POST /saml/acs` and
+`GET /saml/metadata/<providerId>` — see
+[Single sign-on with enterprise identity providers](#single-sign-on-with-enterprise-identity-providers).
+
 ### Failure keys
 
 | Key | Meaning |
 | --- | ------- |
-| `oauth.config.missing_value` · `oauth.config.not_a_map` · `oauth.config.provider_not_a_map` · `oauth.config.unknown_provisioning` · `oauth.config.invalid_clock_skew` | The `oauth.providers` block is malformed. Startup-time. |
+| `oauth.config.missing_value` · `oauth.config.not_a_map` · `oauth.config.provider_not_a_map` · `oauth.config.unknown_provisioning` · `oauth.config.invalid_clock_skew` · `oauth.config.invalid_role_mapping` | The `oauth.providers` block is malformed. Startup-time. |
+| `oauth.config.discovery_not_loaded` · `oauth.config.discovery_failed` · `oauth.config.discovery_issuer_mismatch` | A `discovery: true` provider was read without fetching its document, the document could not be read, or it names another issuer. Startup-time. |
+| `oauth.config.duplicate_provider_id` | One id is configured as both an OAuth and a SAML provider. |
 | `oauth.config.parameters_not_a_map` · `oauth.config.parameter_not_a_scalar` | A provider's `authorizationParameters` is not a map, or one of its values is a map or list where a query parameter can only carry a scalar. Startup-time — stringifying `{a: b}` into the redirect would surface later as a provider error whose text says nothing about the YAML that caused it. |
 | `oauth.config.unknown_provider` | A request named a provider that is not configured. |
 | `oauth.config.state_store_not_a_map` · `oauth.config.unknown_state_store` · `oauth.config.missing_state_store_datasource` · `oauth.config.invalid_state_store_ttl` | The `oauth.stateStore` block is malformed. Startup-time, and never defaulted away. |
@@ -2444,14 +2495,390 @@ without the application registering anything.
 | `oauth.flow.revocation_rejected` | The provider refused to revoke a grant. Raised by `TomOAuthFlow.revokeGrant`; `unlink` catches it, logs it and deletes anyway. |
 | `oauth.flow.issuer_mismatch` · `oauth.flow.audience_mismatch` · `oauth.flow.missing_subject` · `oauth.flow.malformed_id_token` | The claims failed verification. |
 | `oauth.flow.missing_expiry` · `oauth.flow.id_token_expired` · `oauth.flow.id_token_not_yet_valid` | The `id_token` is outside its own validity window, or carries none. Read against the provider's `clockSkewSeconds`. |
+| `oauth.flow.nonce_mismatch` | The `id_token` does not carry the nonce this flow sent. |
 | `oauth.flow.no_claims_source` · `oauth.flow.no_access_token` | The provider returned neither an `id_token` nor a usable `userInfoEndpoint` call. |
 | `oauth.flow.no_refresh_token` | `refreshGrant` was given a grant that carries none. Not a login failure at all: the caller cannot recover by retrying, and must send the user through consent again — a different action, not a slower one. |
 | `oauth.provider.http_error` · `oauth.provider.malformed_json` | The provider's HTTP call failed or answered with something that is not a JSON object. |
-| `login.error.oauth.no-local-account` | Authenticated, but unlinked, and the provider is configured to refuse. |
+| `login.error.oauth.no-local-account` | Authenticated, but unlinked, and the provider's mode provisions no account (`refuse`, or `linkExisting` with no account under the asserted username). |
+| `login.error.oauth.unverified-email` | The asserted username names an existing account, and the provider reports the address unverified, so the account is not linked. |
 | `login.error.oauth.linked-account-missing` | The link outlived the account it pointed at. |
 | `login.error.oauth.provisioning-unsupported` | `autoProvision` is configured but the directory does not implement it. |
 | `login.error.oauth.no-identity-store` | No `TomExternalIdentityStore` is installed. |
 | `login.error.oauth.credential-not-supported` | A non-OAuth credential arrived and there is no `delegate`. |
+
+## Single sign-on with enterprise identity providers
+
+An enterprise identity provider — Microsoft Entra ID, Okta, Keycloak, ADFS,
+Google Workspace — is reached over one of two protocols: OpenID Connect, which is
+the OAuth flow above with an `id_token`, or SAML 2.0. Both end in the same place.
+`TomOAuthProviderConfig` and `TomSamlProviderConfig` both implement
+`TomExternalProvider` — an id, an issuer, a provisioning mode, a role mapping and
+a clock skew — and everything from "the provider has said who this is" onwards
+is written against that type: the linking table, provisioning, the mapped roles,
+the second factor and the token pair. A login page lists both kinds from
+`GET /oauth/providers` and drives both through `POST /oauth/authorize` and
+`POST /oauth/complete`; provider ids are one namespace across the two protocols,
+and an id configured under both fails with `oauth.config.duplicate_provider_id`.
+
+### Wiring it up at start-up
+
+An OpenID Connect provider that names only its issuer, and a SAML provider that
+names only its metadata address, are completed from documents the identity
+provider publishes. Reading those is network I/O, so it happens once, at
+start-up, through the asynchronous loaders, and the result is installed as a
+bean:
+
+```dart
+TomBean.withType<TomOAuthProviders>(await TomOAuthProviders.load());
+TomBean.withType<TomSamlProviders>(await TomSamlProviders.load());
+
+TomAuthenticationServer.globalSettingUserAuthenticationService =
+    TomOAuthAuthenticationService(
+      directory: MyExternalIdentityDirectory(),
+      delegate: TomAuthenticationServer.globalSettingUserAuthenticationService,
+    );
+TomBean.withType<TomExternalIdentityStore>(
+  TomPersistentExternalIdentityStore(TomExternalIdentityLinkRepository()),
+);
+```
+
+A document that cannot be fetched, or that describes another issuer than the one
+configured, stops the start — that is when an operator is watching. The
+synchronous readers (`TomOAuthProviders.fromConfiguration`,
+`TomSamlProviders.fromConfiguration`) fetch nothing, and refuse a provider that
+depends on a document with `oauth.config.discovery_not_loaded` or
+`saml.config.metadata_not_loaded`, naming the loader to use.
+
+`TomOAuthFlow.fromBeans` picks both sets up and shares one pending-authorization
+store between them, so a cluster that set `oauth.stateStore.type: sql` (see
+[Where pending authorizations live](#where-pending-authorizations-live)) shares
+SAML logins across nodes too. `TomSamlServer` is a component, so its two
+endpoints are mounted without registration.
+
+### OpenID Connect: Entra ID, Okta, Keycloak
+
+With `discovery: true` a provider names its issuer and its client, and the
+endpoints are read from `<issuer>/.well-known/openid-configuration`, the
+address OpenID Connect Discovery 1.0 defines — or from `discoveryUrl` when the
+provider publishes the document elsewhere. The document supplies
+`authorizationEndpoint`, `tokenEndpoint`, `userInfoEndpoint` and
+`revocationEndpoint`; any of them
+configured explicitly wins.
+
+```yaml
+oauth:
+  providers:
+    entra:
+      issuer: https://login.microsoftonline.com/<tenant-id>/v2.0
+      discovery: true
+      clientId: ${ENTRA_CLIENT_ID}
+      clientSecret: ${ENTRA_CLIENT_SECRET}
+      redirectUri: https://app.example.com/sso/callback
+      usernameClaim: preferred_username
+      groupsClaim: roles               # app roles; see below
+      roleMapping:
+        Tom.Admin: [tom.admin]
+    okta:
+      issuer: https://<org>.okta.com/oauth2/default
+      discovery: true
+      clientId: ${OKTA_CLIENT_ID}
+      clientSecret: ${OKTA_CLIENT_SECRET}
+      redirectUri: https://app.example.com/sso/callback
+      scopes: openid email profile groups
+      roleMapping:
+        tom-admins: [tom.admin]
+    keycloak:
+      issuer: https://login.example.com/realms/<realm>
+      discovery: true
+      clientId: tom-console
+      clientSecret: ${KEYCLOAK_CLIENT_SECRET}
+      redirectUri: https://app.example.com/sso/callback
+      defaultRoles: [employee]
+      roleMapping:
+        admins: [tom.admin]
+        staff: [tom.user, tom.reporting]
+```
+
+The document's `issuer` must equal the configured one exactly, as OpenID
+Connect Discovery 1.0 requires.
+A document published for a different issuer would send this deployment's users,
+and its client secret, to endpoints nobody configured, so a mismatch fails the
+start with `oauth.config.discovery_issuer_mismatch`.
+
+What each provider needs on its own side:
+
+| Provider | Issuer | Groups |
+| -------- | ------ | ------ |
+| Microsoft Entra ID | `https://login.microsoftonline.com/<tenant>/v2.0`. Name the tenant by its id: the discovery document states the issuer with the tenant id, and a tenant *domain* in the configured issuer does not match it. | The `groups` claim carries group **object ids** (GUIDs), not names, unless the app registration is configured otherwise — so a `roleMapping` keyed by names matches nothing. App roles, assigned in the enterprise application and sent in the `roles` claim, are names the deployment chooses; `groupsClaim: roles` reads them. Entra sends no `email_verified`. |
+| Okta | `https://<org>.okta.com/oauth2/default` — the issuer of the authorization server, not the bare org URL. | Add a `groups` claim to the authorization server, with the filter that selects the groups to send. |
+| Keycloak | `https://<host>/realms/<realm>`. | A *Group Membership* mapper on the client, claim `groups`, with *Full group path* off so the claim carries `admins` rather than `/admins`. Realm roles need no mapper: `groupsClaim: realm_access.roles`. |
+
+Register `redirectUri` — your application's page — as the client's redirect URI,
+and request the `openid` scope, which is in the default scope set.
+
+### SAML 2.0 identity providers
+
+SAML providers are read from `saml.providers`, one map per identity provider.
+Most identity providers publish their entity id, single sign-on address and
+signing certificates as a metadata document, so the shortest configuration names
+that document and this server's own side:
+
+```yaml
+saml:
+  providers:
+    corporate-saml:
+      metadataUrl: https://login.example.com/realms/staff/protocol/saml/descriptor
+      spEntityId: https://app.example.com/saml
+      acsUrl: https://app.example.com/saml/acs
+      redirectUri: https://app.example.com/sso/callback
+      nameIdFormat: urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
+      usernameAttribute: email
+      displayNameAttribute: displayName
+      spSigningKeyFile: /etc/tom/saml-sp.key.pem
+      spCertificateFile: /etc/tom/saml-sp.cert.pem
+      groupsClaim: groups
+      roleMapping:
+        admins: [tom.admin]
+```
+
+Without metadata, the identity provider's side is configured directly — `issuer`
+(its entity id), `ssoUrl` (its HTTP-Redirect single sign-on service) and
+`idpCertificates` (its signing certificates, PEM or bare base64, one or a list)
+or `idpCertificateFiles`. A value configured explicitly wins over the metadata's;
+an `issuer` that disagrees with the metadata's entity id fails with
+`saml.config.metadata_issuer_mismatch`. The metadata is trusted because of where
+it was fetched from, so `metadataUrl` must be an `https` address.
+
+| Key | Meaning |
+| --- | ------- |
+| `metadataUrl` | The identity provider's metadata document, fetched by `TomSamlProviders.load`. |
+| `issuer` · `ssoUrl` · `idpCertificates` · `idpCertificateFiles` | The identity provider's side, when there is no metadata or to override it. Several certificates verify side by side, for a key rotation. |
+| `spEntityId` | This server's entity id: the audience every assertion must name. Required. |
+| `acsUrl` | The public address of this server's `POST /saml/acs`. Required. |
+| `redirectUri` | The application's page the browser is sent to afterwards. Required. |
+| `nameIdFormat` | The `NameIDPolicy` format requested; omitted, the identity provider chooses. |
+| `subjectAttribute` | An attribute holding the stable subject, instead of the `NameID`. |
+| `usernameAttribute` · `displayNameAttribute` | Attributes the local username and the display name are read from; without `usernameAttribute` the username is the subject. |
+| `requireSignedAssertion` | `true` to refuse a response whose assertion is not itself signed. |
+| `spSigningKeyFile` · `spCertificateFile` | This server's RSA key (PEM) to sign `AuthnRequest`s with, and its certificate, published in its metadata. Both optional. |
+| `provisioning` · `groupsClaim` · `defaultRoles` · `roleMapping` · `clockSkewSeconds` · `displayNameKey` · `iconKey` | As for an OpenID Connect provider. |
+
+**Choose the `NameID` format deliberately.** The subject — the `NameID`, or
+`subjectAttribute` — is half of the key the identity is linked under, so it must
+be stable. Ask for a persistent format, or for an email address or username the
+directory does not reuse. A transient `NameID` changes on every login, and an
+identity whose subject changes is a new identity each time: under
+`autoProvision` it provisions a new account on every login.
+
+### What to register at the identity provider
+
+The identity provider is configured from this server's metadata, served for each
+provider at `GET /saml/metadata/<providerId>` as `application/samlmetadata+xml`.
+Most identity providers import it from the URL; what it carries is:
+
+| Item | Value |
+| ---- | ----- |
+| Entity id (audience) | `spEntityId` |
+| Assertion consumer service | `acsUrl`, HTTP-POST binding |
+| Signing certificate | `spCertificateFile`, when configured — and the metadata states `AuthnRequestsSigned="true"` when `spSigningKeyFile` is |
+| `NameID` format | `nameIdFormat`, when configured |
+| Assertions signed | `WantAssertionsSigned` follows `requireSignedAssertion` |
+
+At the identity provider, sign the response or the assertion (or both) with
+RSA-SHA256 or RSA-SHA512 and exclusive canonicalization — the defaults of every
+current identity provider — and send the groups as an attribute. Do **not**
+enable assertion encryption: an encrypted assertion is refused.
+
+### Claim mapping: groups to roles
+
+Every provider of either protocol carries a `TomExternalRoleMapping`:
+
+```yaml
+groupsClaim: groups            # a claim, attribute or dotted path
+defaultRoles: [employee]       # every login from this provider
+roleMapping:
+  admins: [tom.admin]          # external group -> Tom roles
+  staff: [tom.user, tom.reporting]
+```
+
+| Key | Meaning |
+| --- | ------- |
+| `groupsClaim` | The claim (OIDC) or attribute (SAML) carrying the user's groups; `groups` when unset. A dotted path reaches into a nested claim (`realm_access.roles`); a claim whose own name contains a dot (`https://example.com/groups`) is found before the path is split. |
+| `roleMapping` | External group → the Tom roles it grants; a single role may be written without a list. |
+| `defaultRoles` | Roles every login from this provider receives. |
+
+The groups are read as the provider sends them: a list, a single string — which
+is one group and is never split on commas — or nothing. A SAML attribute that
+arrives as several `Attribute` elements, one per value, as Keycloak sends it,
+contributes every value. Groups the mapping does not name grant nothing: an
+identity provider asserts dozens of groups, most about mailing lists, and a group
+nobody mapped is not a permission. A `roleMapping` that is not a map of group to
+role list fails the start with `oauth.config.invalid_role_mapping`, because a
+mistyped security setting must not grant nothing quietly.
+
+**The mapping is applied per login and persisted nowhere.** The roles are
+recomputed from the claims on every login and added to that session's principal
+beside the roles the local account holds (`applyExternalRoles`), before the
+access-control definition completes the principal's rights — so a mapped role
+brings everything the definition derives from it. The provider is the authority
+for the roles it maps: a user removed from a group at the identity provider loses
+the mapped role at their next login. The framework does not write to the
+deployment's user store, which it does not own; a deployment that wants the
+mapped roles stored reads them off `TomExternalIdentity.roles` in
+`provisionFromExternalIdentity`.
+
+### Provisioning modes
+
+`provisioning` decides what a successful login does when no local account is
+linked to the identity. The same three modes apply to both protocols:
+
+| `provisioning` | An identity with no linked account |
+| -------------- | ---------------------------------- |
+| `autoProvision` (default) | Linked to the existing account carrying the asserted username, or provisioned through `TomExternalIdentityDirectory.provisionFromExternalIdentity`. Just-in-time provisioning: the identity provider is the account register. |
+| `linkExisting` | Linked to the existing account carrying the asserted username; refused with `login.error.oauth.no-local-account` when there is none. For accounts created elsewhere — by an administrator, or pushed by SCIM — before their owners first sign in. |
+| `refuse` | Refused with `login.error.oauth.no-local-account`. Only identities already linked are admitted. |
+
+`autoProvision` is the default because single sign-on against an enterprise
+identity provider is the case this module is built for, and there an employee
+the identity provider authenticates is an employee. **A deployment offering a
+public provider** — anyone with a Google or GitHub account can authenticate —
+**sets `provisioning: refuse` for it**, or `linkExisting` where the asserted
+address is trustworthy.
+
+### The SAML flow has three legs
+
+A SAML login is service-provider initiated and runs through the same two calls
+as an OpenID Connect login, with one leg the protocol adds in between:
+
+```text
+POST /oauth/authorize { providerId }   →  TomSamlFlow.beginAuthorization
+        │   stores a pending record whose nonce is the AuthnRequest's ID;
+        │   answers the IdP's SSO address + SAMLRequest + RelayState (+ Signature)
+        ▼
+   (browser at the identity provider; the user signs in)
+        │
+POST /saml/acs  SAMLResponse, RelayState  →  TomSamlFlow.acceptResponse
+        │   spends the pending record, verifies the response, stores the
+        │   verified identity under the same handle with the digest of a
+        │   fresh one-time code
+        ▼
+303  https://app.example.com/sso/callback?code&state
+        │   (your page, exactly as for an OpenID Connect provider)
+        ▼
+POST /oauth/complete { code, state }   →  TomSamlFlow.completeAuthorization
+        │   checks the code, hands the verified identity to the login
+        ▼
+TomOAuthAuthenticationService → _completeLogin → the token pair
+```
+
+The third leg exists because the identity provider's response arrives as a
+**browser form post**, and the answer to a browser form post can only be a page:
+a token pair returned there would land in the browser's history and the access
+log. The handoff keeps the rule [the OAuth completion](#the-completion-is-your-call-not-the-providers-redirect)
+follows — tokens travel only in the body of the application's own call — and lets
+a login page treat every provider alike. The code is single-use, its digest is
+what is stored, and it is compared in constant time.
+
+A response the validator refuses sends the browser to the same page with
+`error=access_denied`, `error_description=<key>` and `state` — the shape an
+OAuth provider's refusal takes — and the reason is logged on the server. A post
+whose `RelayState` names no pending SAML login answers `400`
+(`saml.acs.unknown_state`): there is no page to send the browser to.
+
+Only service-provider-initiated login is supported. An **unsolicited
+(identity-provider-initiated) response** carries no `InResponseTo` linking it to
+a request this server sent, and is refused; a deployment that offers the login
+from the identity provider's portal configures the portal tile to start at the
+application's login page instead.
+
+### What a SAML response must be
+
+`TomSamlResponseValidator` refuses a response, with its own key, unless every
+one of these holds:
+
+| Requirement | Refused with |
+| ----------- | ------------ |
+| Base64, at most a megabyte decoded, XML, and a `samlp:Response` | `saml.response.malformed` |
+| No document type declaration | `saml.response.doctype` |
+| `Destination`, when present, is this server's `acsUrl` | `saml.response.wrong_destination` |
+| `InResponseTo` names the request this login sent | `saml.response.wrong_request` |
+| The response and the assertion are issued by the configured entity | `saml.response.wrong_issuer` |
+| The status is `Success` | `saml.response.status_not_success` |
+| The assertion is not encrypted | `saml.response.encrypted_unsupported` |
+| Exactly one assertion | `saml.response.assertion_count` |
+| The response or the assertion is signed, and every signature present verifies | `saml.signature.*` |
+| The assertion is signed, when `requireSignedAssertion` | `saml.assertion.unsigned` |
+| A subject — the `NameID` or `subjectAttribute` | `saml.assertion.missing_subject` |
+| A bearer `SubjectConfirmation` for `acsUrl`, this request, and the present moment | `saml.assertion.no_bearer_confirmation` |
+| Inside the `Conditions` validity window, within the clock skew | `saml.assertion.not_yet_valid` · `saml.assertion.expired` |
+| An `AudienceRestriction` admitting `spEntityId` | `saml.assertion.wrong_audience` |
+
+The pending record is spent when the response arrives, so a response posted twice
+finds nothing the second time, and `InResponseTo` binds the response to this
+user's request, so a response captured from another user's flow cannot complete
+this one.
+
+### Security notes
+
+* **The OpenID Connect nonce.** Whenever the scopes include `openid`, the
+  authorization request carries a fresh `nonce`, stored with the pending record,
+  and the `id_token` must carry it back (OIDC Core §3.1.3.7) or the login fails
+  with `oauth.flow.nonce_mismatch`. `state` protects the redirect; the nonce binds
+  the token to this flow rather than to any flow at this client.
+* **`email_verified`.** Linking an identity to an *existing* account by its
+  asserted address is refused with `login.error.oauth.unverified-email` when the
+  provider states `email_verified: false`: linking on it would hand the account
+  to whoever typed that address into the provider's sign-up form. An absent claim
+  is not `false` — SAML identity providers and Entra ID send none, and their
+  directories are the organisation's own.
+* **The signature profile.** Exactly what identity providers use and nothing
+  wider: exclusive canonicalization, RSA PKCS#1 v1.5 with SHA-256 or SHA-512, one
+  reference to the signed element's `ID`, the enveloped-signature transform, a
+  SHA-256 or SHA-512 digest. SHA-1 is refused for the signature and the digest.
+* **`KeyInfo` is ignored.** A signature verifies against the identity provider's
+  certificates as configured, never against a key the document encloses —
+  otherwise anyone could sign a response with their own key and attach it.
+* **Signature wrapping.** A signature is checked on the element it is a direct
+  child of; its one reference must name that element's `ID`, which must be unique
+  in the document; and the assertion is read only from the element that was
+  verified, never found by searching the document. Moving a validly signed
+  assertion aside and planting an unsigned one where a careless reader looks
+  therefore fails.
+* **No document type declarations.** A response or a metadata document that
+  declares one is refused before it is parsed — the vector for entity expansion,
+  and never part of SAML.
+
+### The interoperability suite
+
+`test/sso_keycloak_test.dart` (tag `sso`) logs in against a real Keycloak 26
+over OpenID Connect and over SAML 2.0 — once with a signed response to a signed
+request, once with a signed assertion — driving the browser's part the way a
+browser does, and completes each login through the framework's own path. It
+skips itself when no Keycloak is listening, so the default run stays green.
+`tool/run_sso_tests.sh` starts one from `docker-compose.sso.yaml` on host port
+8089, with the realm in `test/fixtures/keycloak/tom-realm.json`, runs the tagged
+tests, and tears it down:
+
+```bash
+tool/run_sso_tests.sh
+```
+
+### SAML failure keys
+
+| Key | Meaning |
+| --- | ------- |
+| `saml.config.not_a_map` · `saml.config.provider_not_a_map` · `saml.config.missing_value` | The `saml.providers` block is malformed. Startup-time. |
+| `saml.config.metadata_not_loaded` | A provider takes a value from its metadata and was read without fetching it; use `TomSamlProviders.load`. |
+| `saml.config.metadata_failed` · `saml.config.malformed_metadata` · `saml.config.metadata_issuer_mismatch` | The metadata could not be fetched, is not an identity-provider `EntityDescriptor`, or describes another entity. Startup-time. |
+| `saml.config.no_idp_certificate` · `saml.config.unreadable_certificate` · `saml.config.unreadable_key` · `saml.config.unreadable_file` | No signing certificate is configured, or a certificate, key or file cannot be read. Startup-time. |
+| `saml.config.unknown_provider` | A request named a SAML provider that is not configured. |
+| `saml.acs.unknown_state` | A response's `RelayState` names no pending SAML login — unknown, expired or already used. |
+| `saml.flow.not_asserted` · `saml.flow.handoff_mismatch` | The application completed before the identity provider answered, or with another code than the one issued. |
+| `saml.response.*` · `saml.assertion.*` | The response was refused — see [What a SAML response must be](#what-a-saml-response-must-be). Reported to the application's page as `error_description`. |
+| `saml.signature.missing` · `saml.signature.ambiguous` · `saml.signature.malformed` · `saml.signature.unsupported_algorithm` · `saml.signature.wrong_reference` · `saml.signature.digest_mismatch` · `saml.signature.invalid` | A signature is absent, doubled, malformed, outside the accepted profile, referencing another element, over changed content, or not by a configured key. |
+| `saml.xml.unbound_prefix` | The XML uses a namespace prefix it never declares, so it cannot be canonicalised. |
+| `saml.response.malformed` · `saml.response.doctype` · `saml.response.wrong_destination` · `saml.response.wrong_request` · `saml.response.wrong_issuer` · `saml.response.status_not_success` · `saml.response.encrypted_unsupported` · `saml.response.assertion_count` | The response itself was refused. |
+| `saml.assertion.unsigned` · `saml.assertion.missing_subject` · `saml.assertion.no_bearer_confirmation` · `saml.assertion.not_yet_valid` · `saml.assertion.expired` · `saml.assertion.wrong_audience` | The assertion was refused. |
 
 ## Verification
 
@@ -2473,6 +2900,15 @@ whose mounted route `endpoints_pipeline_test.dart` asserts in the group
 `oauth_state_store_db_test.dart` and `oauth_tokens_db_test.dart` for
 [External Identity](#external-identity-oauth-20--oidc). The three `_db` suites
 there are tagged `db` and skip when no server is reachable.
+[Single sign-on](#single-sign-on-with-enterprise-identity-providers) is
+`oauth_test.dart`'s group `single sign-on over OpenID Connect` — the nonce,
+discovery, role mapping and the provisioning modes — and `saml_test.dart`, which
+covers canonicalization, every refusal of the response validator including
+signature wrapping, the three legs of the flow, identity-provider metadata and
+the two endpoints against a scripted identity provider.
+`sso_keycloak_test.dart` repeats the logins against a real Keycloak; it is
+tagged `sso`, skips when none is listening, and `tool/run_sso_tests.sh` starts
+one.
 
 ```bash
 dart run example/authentication/authentication_example.dart
@@ -2647,8 +3083,9 @@ and deciding whether to create one, are both the deployment's.
 
 ### `TomOAuthProviders` / `TomOAuthProviderConfig` / `TomOAuthProvisioning`
 
-Provider configuration as data, read from `oauth.providers`.
-`TomOAuthProvisioning` is the per-provider first-login choice.
+Provider configuration as data, read from `oauth.providers` — by `load` when a
+provider's endpoints come from its discovery document. `TomOAuthProvisioning` is
+the per-provider first-login choice.
 
 ### `TomOAuthFlow` / `TomOAuthPkce` / `TomOAuthStateStore` / `TomOAuthTokenTransport`
 
@@ -2700,6 +3137,47 @@ the grant encrypted into `tom_external_identity_token`;
 The `/oauth/*` endpoints. It carries no login logic of its own: the callback
 resolves the pending record for its context and calls
 `TomAuthenticationServer.authenticateExternal`.
+
+### `TomExternalProvider` / `TomExternalRoleMapping` / `applyExternalRoles`
+
+The protocol-neutral half of external identity. `TomExternalProvider` is what
+`TomOAuthProviderConfig` and `TomSamlProviderConfig` share, and what
+`TomOAuthExchange.provider` is typed by. `TomExternalRoleMapping` reads
+`groupsClaim`, `roleMapping` and `defaultRoles`, and `applyExternalRoles` adds
+the roles it grants to the session's principal on every login. See
+[Claim mapping: groups to roles](#claim-mapping-groups-to-roles).
+
+### `TomSamlProviders` / `TomSamlProviderConfig` / `TomSamlIdpMetadata` / `TomSamlCertificates`
+
+SAML provider configuration as data, read from `saml.providers`. `load` fetches
+each `metadataUrl` and parses it into `TomSamlIdpMetadata`; `TomSamlCertificates`
+reads the certificates and keys the configuration names. See
+[SAML 2.0 identity providers](#saml-20-identity-providers).
+
+### `TomSamlFlow` / `TomSamlResponseValidator`
+
+The three legs of a SAML login — `beginAuthorization`, `acceptResponse`,
+`completeAuthorization` — over the pending-authorization store the OAuth flow
+uses, and `metadataFor`, this server's metadata. The validator holds every check
+a response must pass. See [The SAML flow has three legs](#the-saml-flow-has-three-legs).
+
+### `TomXmlSignatureVerifier` / `TomExclusiveCanonicalizer` / `TomXmlDsig` / `TomSamlNames`
+
+XML Signature verification in exactly the profile identity providers use, over
+Exclusive XML Canonicalization, and the identifiers both protocols' XML is
+written in. See [Security notes](#security-notes).
+
+### `TomSamlService` / `TomSamlServer`
+
+`POST /saml/acs` — the identity provider's form post, answered with a `303` to
+the application's page — and `GET /saml/metadata/<providerId>`. Both public: the
+signed response is the credential, and metadata is published by design.
+
+### `TomSamlException`
+
+A SAML message, configuration value or signature that cannot be used.
+`clientThrow` is `false` unless the key is one a client acts on; what failed in a
+response is the operator's business. See [SAML failure keys](#saml-failure-keys).
 
 ### `TomJwtSigning` / `TomJwtKey` / `TomJwtSigningKey` / `TomJwtAlgorithm`
 
@@ -2848,26 +3326,48 @@ The JSON Web Key Set at `GET /.well-known/jwks.json`, public, cacheable for
   withdraws consent there. Nothing can be done about that from here — there is
   no address to call.
   <!-- pinned: test/oauth_test.dart › a provider with no revocation endpoint is not called -->
+- **SAML assertions must be signed, not encrypted.** An `EncryptedAssertion`
+  is refused with `saml.response.encrypted_unsupported`. Over TLS the assertion
+  is already confidential in transit, and decrypting would put this server's
+  private key on the path of every login; an identity provider is configured to
+  sign instead.
+  <!-- pinned: test/saml_test.dart › carrying an encrypted assertion is refused -->
+- **SAML login is service-provider initiated only.** A response must answer a
+  request this server sent, so an unsolicited, identity-provider-initiated
+  response is refused with `saml.response.wrong_request`. A portal tile starts at
+  the application's login page instead.
+  <!-- pinned: test/saml_test.dart › answering another request is refused -->
+- **Single logout is not implemented**, for either protocol. Signing out of the
+  application ends the framework session; it does not end the identity
+  provider's, and the identity provider ending its session does not reach this
+  server.
+  <!-- unpinned: absence — no SAML SingleLogout or OIDC logout endpoint ships -->
+- **Mapped roles are not persisted.** The roles a provider's `roleMapping`
+  grants are applied to each session and written nowhere, so the identity
+  provider stays their authority. A deployment that wants them stored reads
+  `TomExternalIdentity.roles` in its directory.
+  <!-- unpinned: decision — the framework owns no user store to write them to -->
 
 ## Dependencies
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `server_self_login.dart`, `two_factor.dart` | `Future`, `FutureOr`, and the `Timer` the server principal's renewal is scheduled on |
-| `dart:convert` | dart | 12 of 21 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
-| `dart:io` | dart | `jwt_keys.dart` | `File`, reading the configured key files |
+| `dart:convert` | dart | 16 of 26 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
+| `dart:io` | dart | `jwt_keys.dart`, `saml_flow.dart`, `saml_provider.dart` | `File`, reading the configured key and certificate files; `ZLibCodec`, deflating a SAML `AuthnRequest` for the redirect binding |
 | `dart:math` | dart | `jwt_signing.dart`, `oauth_flow.dart`, `two_factor_send_limit.dart`, `webauthn_software_authenticator.dart` | `Random`, `exp`, and `pow` / `min` for the send pace's doubling interval; `Random.secure` for the unusable signing key a verify-only server holds |
-| `dart:typed_data` | dart | `two_factor_delivered_code.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | `Uint8List`, `ByteData`, `BytesBuilder` |
-| `crypto` | package | `jwt_keys.dart`, `oauth_flow.dart`, `two_factor_attempts.dart`, `two_factor_delivered_code.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | `sha256`, for the JWK thumbprint a key id is, the PKCE code challenge, the interim-token fingerprint an attempt store keys on, the delivered-code digest, and the WebAuthn RP id hash, client-data hash and user handle |
-| `dart_jsonwebtoken` | package | `jwt_keys.dart`, `jwt_signing.dart` | `jwt.JWT.verify`, `jwt.JWTAlgorithm`, `jwt.RSAPrivateKey` / `jwt.RSAPublicKey`, `jwt.ECPrivateKey` / `jwt.ECPublicKey`, `jwt.SecretKey`, and `toJWK` for the published set |
+| `dart:typed_data` | dart | `saml_xml_signature.dart`, `two_factor_delivered_code.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | `Uint8List`, `ByteData`, `BytesBuilder` |
+| `crypto` | package | 8 of 26 files | `sha256` and `sha512`, for the JWK thumbprint a key id is, the PKCE code challenge, the SAML handoff-code digest and XML Signature digests, the interim-token fingerprint an attempt store keys on, the delivered-code digest, and the WebAuthn RP id hash, client-data hash and user handle |
+| `dart_jsonwebtoken` | package | `jwt_keys.dart`, `jwt_signing.dart`, `saml_provider.dart` | `jwt.JWT.verify`, `jwt.JWTAlgorithm`, `jwt.RSAPrivateKey` / `jwt.RSAPublicKey`, `jwt.ECPrivateKey` / `jwt.ECPublicKey`, `jwt.SecretKey`, and `toJWK` for the published set |
 | `http` | package | `oauth_flow.dart` | `http.dart`, `http.get`, `http.post` |
-| `pointycastle` | package | `jwt_keys.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | ECDSA P-256 and RSA PKCS#1 v1.5 signature verification for passkeys, and the software authenticator's key generation and signing; deriving a signing key's public half |
-| `shelf` | package | `jwks_endpoint.dart` | `Response`, which the JSON Web Key Set endpoint answers with directly to set its content type and cache header |
-| `tom_core_kernel` | package | 20 of 21 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
-| [configuration](configuration.md) | module | `jwt_signing.dart`, `oauth_provider.dart`, `server_self_login.dart`, `sql_oauth_state_store.dart` | `TomBaseServerConfiguration` supplies the JWT fields `installJwtSigning` reads and the service-account fields `TomServiceCredential.fromConfiguration` reads; `isDevelopmentOrTestRuntime` decides whether the sample-key fallback is permitted |
+| `pointycastle` | package | `jwt_keys.dart`, `saml_provider.dart`, `saml_xml_signature.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | RSA PKCS#1 v1.5 signing and verification for XML Signature, ECDSA P-256 and RSA PKCS#1 v1.5 signature verification for passkeys, and the software authenticator's key generation and signing; deriving a signing key's public half |
+| `shelf` | package | `jwks_endpoint.dart`, `saml_endpoints.dart` | `Response`, which the JSON Web Key Set and SAML metadata endpoints answer with directly to set their content type — and, for the key set, its cache header |
+| `tom_core_kernel` | package | 24 of 26 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
+| `xml` | package | `saml_flow.dart`, `saml_provider.dart`, `saml_xml_signature.dart` | `XmlDocument`, `XmlElement`, parsing SAML responses and metadata, and the node walk exclusive canonicalization is written over |
+| [configuration](configuration.md) | module | `jwt_signing.dart`, `oauth_provider.dart`, `saml_provider.dart`, `server_self_login.dart`, `sql_oauth_state_store.dart` | `TomBaseServerConfiguration` supplies the JWT fields `installJwtSigning` reads and the service-account fields `TomServiceCredential.fromConfiguration` reads; `isDevelopmentOrTestRuntime` decides whether the sample-key fallback is permitted |
 | [datasources](datasources.md) | module | `oauth_state_sql.dart`, `sql_oauth_state_store.dart` | `TomDataSource`, `TomDataSourceInfo` |
-| [endpoints](endpoints.md) | module | `jwks_endpoint.dart`, `oauth_endpoints.dart` | `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract; `TomJwksService` declares its route with `@TomEndpoint` and `@TomPublicAccess` |
-| [little_things](little_things.md) | module | 11 of 21 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSigningKeyException` and `TomJwtKeyException` |
+| [endpoints](endpoints.md) | module | `jwks_endpoint.dart`, `oauth_endpoints.dart`, `saml_endpoints.dart` | `TomSamlService` binds the identity provider's form post as a `TomMultipartForm` and answers it with a `TomRedirect`; `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract; `TomJwksService` declares its route with `@TomEndpoint` and `@TomPublicAccess` |
+| [little_things](little_things.md) | module | 12 of 26 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSamlException`, `TomSigningKeyException` and `TomJwtKeyException` |
 | [messaging](messaging.md) | module | `two_factor_delivered_code.dart` | `TomEmailService` and `TomSmsService` deliver the one-time codes, through `TomTemplatedMessageService.deliverNow` rather than the outbox. A deployment that registers neither can still run TOTP |
 | [object_persistence](object_persistence.md) | module | `oauth_identity.dart`, `oauth_tokens.dart`, `sql_oauth_state_store.dart`, `two_factor_enrolment.dart` | `TomExternalIdentityLink` and `TomUserTwoFactorEnrolment` are ordinary entities over `TomSqlDatasourceRepository`. Neither table is created by the framework; each entity carries its own `createTableSql` for a deployment's migration to run |
 | [preferences](preferences.md) | module | `authentication_server.dart` | `TomUserPreferences` |

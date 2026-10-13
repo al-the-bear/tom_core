@@ -65,6 +65,46 @@ or its own principal-to-claims projection is a regression of this design even if
 every test still passes, because the two copies will drift and the copy that
 drifts is the one that stops asking for a second factor.
 
+### Single sign-on: one login over two protocols
+
+An enterprise identity provider speaks OpenID Connect or SAML 2.0, and both are
+the *same* external login. `TomOAuthProviderConfig` and `TomSamlProviderConfig`
+both implement `TomExternalProvider` (`external_provider.dart`) — id, issuer,
+provisioning mode, role mapping, clock skew — and `TomOAuthAuthenticationService`
+links, provisions and maps roles against that type alone. `TomOAuthFlow` is the
+one entry point: a provider id naming a SAML identity provider is begun and
+completed through its `saml` field, a `TomSamlFlow` sharing the same
+pending-authorization store, so a login page drives both through `/oauth/*`.
+
+* **OpenID Connect** providers (Entra ID, Okta, Keycloak) set `discovery: true`
+  and name their issuer; `TomOAuthProviders.load` reads the endpoints from the
+  issuer's discovery document at start-up and refuses a document published for
+  another issuer. Every `openid` flow sends a nonce the `id_token` must return.
+* **SAML 2.0** providers live under `saml.providers` (`saml_provider.dart`);
+  `TomSamlProviders.load` fetches their metadata. The login has three legs
+  (`saml_flow.dart`): the `AuthnRequest` out over the redirect binding, the
+  identity provider's form post to `POST /saml/acs` (`saml_endpoints.dart`),
+  which `TomSamlResponseValidator` verifies and answers with a `303` carrying a
+  one-time handoff code, and the application's own `POST /oauth/complete` with
+  that code. The third leg is what keeps the rule above: tokens travel only in
+  the body of the application's call, never in a page answering a browser post.
+* **Signatures** are verified by `TomXmlSignatureVerifier` over
+  `TomExclusiveCanonicalizer` (`saml_xml_signature.dart`), in exactly the
+  profile identity providers use — RSA-SHA256/512, exclusive canonicalization,
+  one reference to the signed element's unique `ID`. SHA-1 is refused, the
+  signature's `KeyInfo` is ignored in favour of the configured certificates, and
+  the assertion read is always the one verified, which is what defeats signature
+  wrapping.
+* **Roles.** `TomExternalRoleMapping` (`groupsClaim`, `roleMapping`,
+  `defaultRoles`) turns the provider's groups into Tom roles, recomputed on every
+  login and added to the session's principal by `applyExternalRoles` before the
+  access-control definition completes it. Nothing is written to a user store.
+* **Provisioning** is `autoProvision` by default (just-in-time: behind an
+  enterprise identity provider the provider is the account register),
+  `linkExisting` for pre-provisioned accounts, `refuse` for a public provider.
+  An existing account is never linked on an address the provider reports
+  unverified.
+
 ### The provider's tokens: kept only when a provider is told to keep them
 
 A provider's token response carries more than the claims a login needs. It
@@ -202,6 +242,11 @@ a test suite keep the in-memory store and need no database at all.
 | `TomOAuthTokenStore` · `TomMemoryOAuthTokenStore` | Where a grant lives, keyed `(issuer, subject)`. Unregistered means nothing is ever stored. |
 | `TomPersistentOAuthTokenStore` · `TomExternalIdentityToken` | The grant over `tom_external_identity_token`, encrypted at rest. |
 | `TomOAuthServer` | The three `/oauth/*` endpoints the handshake is driven through — list the providers, begin an authorization, complete one. |
+| `TomExternalProvider` · `TomExternalRoleMapping` · `applyExternalRoles` | What an OIDC and a SAML provider share, and the group-to-role mapping applied to every login's principal. In `external_provider.dart`. |
+| `TomSamlProviders` · `TomSamlProviderConfig` · `TomSamlIdpMetadata` · `TomSamlCertificates` · `TomSamlNames` | SAML 2.0 identity providers as data, read from `saml.providers`, with their metadata fetched by `load`. In `saml_provider.dart`. |
+| `TomSamlFlow` · `TomSamlResponseValidator` | The three-leg SAML login and every check a response must pass. In `saml_flow.dart`. |
+| `TomXmlSignatureVerifier` · `TomExclusiveCanonicalizer` · `TomXmlDsig` · `TomSamlException` | XML Signature verification in the identity-provider profile, its canonicalization, and the SAML exception. In `saml_xml_signature.dart`. |
+| `TomSamlService` · `TomSamlServer` | `POST /saml/acs` and `GET /saml/metadata/<providerId>`. In `saml_endpoints.dart`. |
 | `oauthStateTable` · `oauthStateTableDdl` | The single declaration of `tom_oauth_state`, from which its DDL and the convergence check are derived; `defaultOAuthStateTable` is the name a deployment gets when it chooses none. |
 | `Tom2FASendLimiter` · `Tom2FASend` · `Tom2FAMemorySendLimiter` | The bound on *sending*: the first email or SMS code to an address goes out at once, each later one waits twice as long, up to 30 days, and a correct code ends the run. Refused sends fail with `login.error.2fa.send-limit` (`rateLimited`). On by default, per process; a cluster installs one its nodes share. |
 | `Tom2FAAttemptStore` · `Tom2FAAttempt` · `tom2FATokenFingerprint` | What makes the attempt counter a bound rather than a hint: a record that an interim token has been answered, so replaying an earlier token in the chain cannot mint a fresh allowance. `Tom2FAMemoryAttemptStore` is the default and is per process; a cluster installs one its nodes share. The store is keyed on a SHA-256 of the token, never the token. |
@@ -228,6 +273,19 @@ a test suite keep the in-memory store and need no database at all.
 | `jwt.keys.unknown_algorithm` | `TomJwtKeyException` | `jwtAlgorithm` names no supported algorithm. |
 | `jwt.keys.unreadable_key_file` | `TomJwtKeyException` | A configured key file cannot be read or holds no key of the configured algorithm's kind. |
 | `jwt.keys.verify_only` | `TomJwtKeyException` | A token was to be issued by a server configured with verification keys only. |
+
+### Error keys raised by single sign-on
+
+| Key | Exception | Meaning |
+| --- | --------- | ------- |
+| `oauth.config.discovery_not_loaded` · `oauth.config.discovery_failed` · `oauth.config.discovery_issuer_mismatch` | `TomOAuthException` | A `discovery: true` provider read without its document, a document that cannot be read, or one naming another issuer. |
+| `oauth.config.invalid_role_mapping` | `TomOAuthException` | `roleMapping` or `defaultRoles` has the wrong shape. |
+| `oauth.config.duplicate_provider_id` | `TomOAuthException` | One id configured as both an OAuth and a SAML provider. |
+| `oauth.flow.nonce_mismatch` | `TomOAuthException` | The `id_token` does not carry the flow's nonce. |
+| `login.error.oauth.unverified-email` | `TomLoginException` | An existing account would be linked on an address the provider reports unverified. |
+| `saml.config.*` | `TomSamlException` | The `saml.providers` block, a provider's metadata, certificates or key files cannot be used. |
+| `saml.acs.unknown_state` · `saml.flow.not_asserted` · `saml.flow.handoff_mismatch` | `TomSamlException` | A response or a completion that does not belong to a pending SAML login. |
+| `saml.response.*` · `saml.assertion.*` · `saml.signature.*` · `saml.xml.unbound_prefix` | `TomSamlException` | A refused response; the key reaches the application's page as `error_description`. |
 
 ## Quick start
 
@@ -265,8 +323,9 @@ examples split the module along the seam described above:
 second factor either side of enrolment, and `oauth_login_example.dart` the
 external path — all four connection-free and checking their own results.
 `test/authentication_test.dart`, `test/two_factor_test.dart`,
-`test/oauth_test.dart`, `test/jwt_signing_test.dart` and
-`test/jwt_keys_test.dart` cover the module;
+`test/oauth_test.dart`, `test/saml_test.dart`, `test/jwt_signing_test.dart` and
+`test/jwt_keys_test.dart` cover the module, and `test/sso_keycloak_test.dart`
+(tag `sso`, started by `tool/run_sso_tests.sh`) logs in against a real Keycloak;
 `test/examples_test.dart` runs the four examples and
 `test/readme_quick_start_test.dart` runs the snippet above, so none of them can
 drift away from the code.

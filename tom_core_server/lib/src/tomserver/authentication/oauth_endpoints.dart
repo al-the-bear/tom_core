@@ -72,7 +72,7 @@ class TomOAuthServer implements TomOAuthApiService {
   )
   @override
   Future<List<TomOAuthProviderDto>> listOAuthProviders() async =>
-      _flow().providers.descriptors;
+      _flow().descriptors;
 
   @TomApiEndpointImplementation(
     apiId: tomOAuthApiId,

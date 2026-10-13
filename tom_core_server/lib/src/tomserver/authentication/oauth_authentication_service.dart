@@ -38,6 +38,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../little_things/server_exception.dart';
 import 'authentication_server.dart';
+import 'external_provider.dart';
 import 'oauth_flow.dart';
 import 'oauth_identity.dart';
 import 'oauth_provider.dart';
@@ -209,10 +210,23 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
       }
       await store.recordLogin(identity);
       await _retainTokens(exchange);
-      return info;
+      return _withMappedRoles(info, identity);
     }
 
-    return _firstLogin(authData, store, exchange);
+    return _withMappedRoles(
+      await _firstLogin(authData, store, exchange),
+      identity,
+    );
+  }
+
+  /// [info] with the roles the provider's mapping grants [identity] applied
+  /// to its principal — see [TomExternalRoleMapping] for why on every login.
+  TomAuthenticationInfo _withMappedRoles(
+    TomAuthenticationInfo info,
+    TomExternalIdentity identity,
+  ) {
+    applyExternalRoles(info.principal, identity.roles);
+    return info;
   }
 
   /// Hands the provider's grant to the token store, when this provider asks for
@@ -226,7 +240,7 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
     final grant = exchange.tokens;
     if (grant == null) return;
     final provider = exchange.provider;
-    if (!provider.storeTokens) return;
+    if (provider is! TomOAuthProviderConfig || !provider.storeTokens) return;
     final store = tokenStore ?? TomOAuthTokenStore.resolve();
     if (store == null) {
       // Configuration asked for tokens and the wiring cannot honour it. Loud,
@@ -264,18 +278,31 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
 
     // An existing local account under the asserted username is linked rather
     // than duplicated — this is how a user who signed up with a password later
-    // adds "Sign in with …". It is gated on the provider being configured to
-    // link (auto-provisioning), because on a provider configured to refuse, an
-    // unlinked account is exactly the case being refused: an attacker who can
-    // make *any* provider assert an address must not thereby acquire the local
-    // account that already uses it.
+    // adds "Sign in with …", and how a pre-provisioned account meets its owner.
+    // It is gated on the provider being configured to link (`linkExisting` or
+    // `autoProvision`), because on a provider configured to refuse, an unlinked
+    // account is exactly the case being refused: an attacker who can make *any*
+    // provider assert an address must not thereby acquire the local account
+    // that already uses it.
     if (identity.username.isNotEmpty &&
-        provider.provisioning == TomOAuthProvisioning.autoProvision) {
+        provider.provisioning != TomOAuthProvisioning.refuse) {
       authData.username = identity.username;
       final existing = await directory.authenticatedPrincipalFor(
         identity.username,
         authData,
       );
+      if (existing != null && _assertsUnverifiedEmail(identity)) {
+        // The provider says outright that it has not verified the address it
+        // asserts. Linking on it would hand the existing account to whoever
+        // typed that address into the provider's sign-up form.
+        throw TomLoginException(
+          'login.error.oauth.unverified-email',
+          'The external identity $identity asserts the username '
+              "'${identity.username}' of an existing account, but the provider "
+              'reports the address as unverified, so the account is not linked.',
+          reason: TomLoginFailure.accountProblem,
+        );
+      }
       if (existing != null) {
         await store.link(identity, identity.username);
         await store.recordLogin(identity);
@@ -284,12 +311,13 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
       }
     }
 
-    if (provider.provisioning == TomOAuthProvisioning.refuse) {
+    if (provider.provisioning != TomOAuthProvisioning.autoProvision) {
       throw TomLoginException(
         'login.error.oauth.no-local-account',
         'The external identity $identity authenticated successfully, but no '
             'local account is linked to it and provider '
-            "'${provider.id}' is configured to refuse provisioning.",
+            "'${provider.id}' is configured not to provision one "
+            '(${provider.provisioning.name}).',
         reason: TomLoginFailure.accountProblem,
       );
     }
@@ -307,6 +335,16 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
     await store.recordLogin(identity);
     await _retainTokens(exchange);
     return provisioned;
+  }
+
+  /// Whether [identity]'s provider states that it has not verified the email
+  /// address it asserts (the OIDC `email_verified` claim, false).
+  ///
+  /// Absent is not false: most SAML identity providers and Entra ID send no
+  /// such claim, and their directories are the organisation's own.
+  static bool _assertsUnverifiedEmail(TomExternalIdentity identity) {
+    final verified = identity.claims['email_verified'];
+    return verified == false || '$verified' == 'false';
   }
 
   /// Replays the login context captured when the flow started.

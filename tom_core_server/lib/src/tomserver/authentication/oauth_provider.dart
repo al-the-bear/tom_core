@@ -33,6 +33,32 @@
 /// environment before the tree is handed over, so a client secret never has to
 /// be written into a file that is checked in.
 ///
+/// ## An enterprise identity provider: discovery and role mapping
+///
+/// Entra ID, Okta and Keycloak publish their endpoints in an OpenID Connect
+/// discovery document, so a provider that sets `discovery: true` names only its
+/// issuer and its client, and [TomOAuthProviders.load] reads the rest from
+/// `<issuer>/.well-known/openid-configuration` at start-up:
+///
+/// ```yaml
+/// oauth:
+///   providers:
+///     corporate:
+///       issuer: https://login.example.com/realms/staff
+///       discovery: true
+///       clientId: tom-console
+///       clientSecret: ${CORPORATE_CLIENT_SECRET}
+///       redirectUri: https://app.example.com/sso/callback
+///       groupsClaim: groups
+///       defaultRoles: [employee]
+///       roleMapping:
+///         admins: [tom.admin]
+/// ```
+///
+/// The group claim is mapped onto Tom roles on every login — see
+/// [TomExternalRoleMapping] — and the login is just-in-time provisioned by
+/// default ([TomOAuthProvisioning]).
+///
 /// ## Delegated access is two more keys, and both are opt-in
 ///
 /// A deployment that only wants "Sign in with …" writes nothing further: the
@@ -73,10 +99,14 @@
 /// because the attacker holds the code before any of it runs.
 library;
 
+import 'dart:convert';
+
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../configuration/base_server_configuration.dart';
 import '../little_things/server_exception.dart';
+import 'external_provider.dart';
+import 'oauth_flow.dart';
 
 /// Raised when external-identity configuration or a provider exchange is
 /// unusable.
@@ -100,20 +130,32 @@ class TomOAuthException extends TomServerException {
 /// What happens on a successful external login for which no local account
 /// exists.
 ///
-/// A **configuration choice** rather than framework policy, because the right
-/// answer is a property of the deployment and not of the code: an internal tool
-/// behind a corporate identity provider wants every authenticated employee to
-/// get an account, while a paid product wants a purchase before a login. A
-/// framework that picked one would be wrong for the other half of its users,
-/// and a framework that picked "provision" would be wrong in the direction that
-/// creates accounts.
+/// A configuration choice per provider, because the right answer is a property
+/// of the deployment: an internal tool behind a corporate identity provider
+/// wants every authenticated employee to get an account the first time they
+/// sign in, while a product whose accounts are created elsewhere — by an
+/// administrator, or pushed by SCIM — wants the identity provider to
+/// authenticate only the users it already has.
+///
+/// **Just-in-time provisioning is the default.** Single sign-on against an
+/// enterprise identity provider is the case this module is built for, and
+/// there the identity provider *is* the account register: an employee it
+/// authenticates is an employee. A deployment offering a public provider —
+/// anyone with a Google account can authenticate — sets `provisioning: refuse`
+/// for it.
 enum TomOAuthProvisioning {
-  /// Refuse the login. The default: creating an account is a decision, and a
-  /// default that silently makes decisions is a default that surprises.
+  /// Admit only identities that are already linked to a local account.
   refuse,
 
+  /// Pre-provisioned users only: link an identity whose asserted username names
+  /// an existing local account, and refuse one that names none. The mode for
+  /// accounts that are created elsewhere — by an administrator, or pushed by
+  /// SCIM — before their owners first sign in.
+  linkExisting,
+
   /// Create a local account from the external claims, via
-  /// `TomExternalIdentityDirectory.provisionFromExternalIdentity`.
+  /// `TomExternalIdentityDirectory.provisionFromExternalIdentity`, and link an
+  /// existing account whose username the provider asserts. The default.
   autoProvision;
 
   /// Parses a configured value (`refuse`, `autoProvision`, `auto_provision`).
@@ -142,9 +184,10 @@ enum TomOAuthProvisioning {
 /// Immutable: it is read from configuration at startup and consulted on every
 /// login, so a mutable instance would be shared state that a request could
 /// alter for every later request.
-class TomOAuthProviderConfig {
+class TomOAuthProviderConfig implements TomExternalProvider {
   /// The provider key — the map key under `oauth.providers`, and what a client
   /// posts back as [TomOAuthAuthorizationRequest.providerId].
+  @override
   final String id;
 
   /// The identity provider's issuer identifier (the OIDC `iss` claim).
@@ -154,6 +197,7 @@ class TomOAuthProviderConfig {
   /// `subject` alone is not. Two providers that shared an issuer string would
   /// therefore share accounts, which is why this is configured per provider and
   /// not derived from [id].
+  @override
   final String issuer;
 
   /// Where the user is sent to approve the request.
@@ -221,7 +265,12 @@ class TomOAuthProviderConfig {
   final String displayNameClaim;
 
   /// What a first external login does when no local account exists.
+  @override
   final TomOAuthProvisioning provisioning;
+
+  /// How the provider's group claim becomes Tom roles.
+  @override
+  final TomExternalRoleMapping roleMapping;
 
   /// Resource key of the provider's label, as a client renders it.
   final String displayNameKey;
@@ -274,6 +323,7 @@ class TomOAuthProviderConfig {
   /// specific provider's: a deployment must be able to widen the tolerance for
   /// the one badly-synchronised IdP without loosening every other. `Duration.zero`
   /// is a legitimate setting for a deployment confident in its own clocks.
+  @override
   final Duration clockSkew;
 
   /// Creates a provider configuration.
@@ -292,7 +342,8 @@ class TomOAuthProviderConfig {
     this.subjectClaim = 'sub',
     this.usernameClaim = 'email',
     this.displayNameClaim = 'name',
-    this.provisioning = TomOAuthProvisioning.refuse,
+    this.provisioning = TomOAuthProvisioning.autoProvision,
+    this.roleMapping = TomExternalRoleMapping.none,
     this.displayNameKey = '',
     this.iconKey = '',
     this.storeTokens = false,
@@ -313,6 +364,15 @@ class TomOAuthProviderConfig {
     String required(String key) {
       final value = map[key];
       if (value == null || '$value'.isEmpty) {
+        if (isDiscovered(map)) {
+          throw TomOAuthException(
+            'oauth.config.discovery_not_loaded',
+            "OAuth provider '$id' is configured with 'discovery: true' and "
+                "names no '$key', so its endpoints come from the discovery "
+                'document; read the providers with TomOAuthProviders.load, '
+                'which fetches it.',
+          );
+        }
         throw TomOAuthException(
           'oauth.config.missing_value',
           "OAuth provider '$id' is missing the required setting '$key'.",
@@ -346,8 +406,9 @@ class TomOAuthProviderConfig {
       usernameClaim: optional('usernameClaim') ?? 'email',
       displayNameClaim: optional('displayNameClaim') ?? 'name',
       provisioning: map['provisioning'] == null
-          ? TomOAuthProvisioning.refuse
+          ? TomOAuthProvisioning.autoProvision
           : TomOAuthProvisioning.parse('${map['provisioning']}'),
+      roleMapping: TomExternalRoleMapping.fromMap(id, map),
       displayNameKey:
           optional('displayNameKey') ??
           '${TomOAuthProviderDto.resourceScope}.$id.name',
@@ -362,6 +423,11 @@ class TomOAuthProviderConfig {
       clockSkew: _clockSkewOf(id, map['clockSkewSeconds']),
     );
   }
+
+  /// Whether the provider's configuration [map] asks for its endpoints to be
+  /// read from its discovery document.
+  static bool isDiscovered(Map<Object?, Object?> map) =>
+      '${map['discovery']}' == 'true';
 
   /// Reads `clockSkewSeconds`, which must be a whole number of seconds and not
   /// negative.
@@ -426,6 +492,7 @@ class TomOAuthProviderConfig {
 
   /// This provider as the client-facing DTO — id and resource keys, nothing
   /// else. Endpoints, client ids and secrets stay on the server.
+  @override
   TomOAuthProviderDto toDto() => TomOAuthProviderDto(
     id: id,
     displayNameKey: displayNameKey,
@@ -474,13 +541,143 @@ class TomOAuthProviders {
   /// unconditionally at startup is safe: a deployment with no `oauth:` block
   /// gets a set that offers nothing rather than an exception. A *malformed*
   /// block still throws — absent and wrong are different states.
+  ///
+  /// Synchronous, so it reads no discovery document: a provider configured with
+  /// `discovery: true` and no explicit endpoints is refused here with
+  /// `oauth.config.discovery_not_loaded`. Use [load] for those.
   factory TomOAuthProviders.fromConfiguration([
     TomServerConfigResourceProvider? config,
   ]) {
     final provider =
         config ?? TomServerConfigResourceProvider.getServerConfig();
     if (!provider.exists(configurationKey)) return TomOAuthProviders(const {});
-    final raw = provider.get(configurationKey);
+    final parsed = <String, TomOAuthProviderConfig>{};
+    _providerMaps(provider.get(configurationKey)).forEach((id, map) {
+      parsed[id] = TomOAuthProviderConfig.fromMap(id, map);
+    });
+    return TomOAuthProviders(parsed);
+  }
+
+  /// Reads the provider set from the configuration tree, fetching the OpenID
+  /// Connect discovery document of every provider that sets `discovery: true`.
+  ///
+  /// The start-up call for a deployment with enterprise identity providers;
+  /// see [discover] for what is read and what is checked.
+  static Future<TomOAuthProviders> load({
+    TomServerConfigResourceProvider? config,
+    TomOAuthTokenTransport? transport,
+  }) async {
+    final provider =
+        config ?? TomServerConfigResourceProvider.getServerConfig();
+    if (!provider.exists(configurationKey)) return TomOAuthProviders(const {});
+    return discover(provider.get(configurationKey), transport: transport);
+  }
+
+  /// The provider set configured by [raw] — the map under [configurationKey] —
+  /// with each `discovery: true` provider's endpoints read from its discovery
+  /// document.
+  ///
+  /// The document is fetched from `discoveryUrl` when the provider names one,
+  /// and otherwise from `<issuer>/.well-known/openid-configuration` (OpenID
+  /// Connect Discovery 1.0, section 4). It supplies `authorizationEndpoint`,
+  /// `tokenEndpoint`, `userInfoEndpoint` and `revocationEndpoint`; a value the
+  /// provider configures explicitly wins over the document's.
+  ///
+  /// The document's `issuer` must equal the configured one exactly (Discovery,
+  /// section 4.3): a document published for a different issuer would send this
+  /// deployment's users, and its client secret, to endpoints nobody configured.
+  /// A mismatch fails with `oauth.config.discovery_issuer_mismatch`, and a
+  /// document that cannot be fetched or read with `oauth.config.discovery_failed`
+  /// — both at start-up, which is when an operator is watching.
+  static Future<TomOAuthProviders> discover(
+    Object? raw, {
+    TomOAuthTokenTransport? transport,
+  }) async {
+    final http = transport ?? TomOAuthTokenTransport.resolve();
+    final parsed = <String, TomOAuthProviderConfig>{};
+    for (final entry in _providerMaps(raw).entries) {
+      final map = entry.value;
+      parsed[entry.key] = TomOAuthProviderConfig.fromMap(
+        entry.key,
+        TomOAuthProviderConfig.isDiscovered(map)
+            ? {
+                ..._discoveredEndpoints(
+                  entry.key,
+                  map,
+                  await _document(entry.key, map, http),
+                ),
+                ...map,
+              }
+            : map,
+      );
+    }
+    return TomOAuthProviders(parsed);
+  }
+
+  static Future<Map<String, Object?>> _document(
+    String id,
+    Map<Object?, Object?> map,
+    TomOAuthTokenTransport http,
+  ) async {
+    final issuer = '${map['issuer'] ?? ''}';
+    final url = map['discoveryUrl'] == null
+        ? '${issuer.endsWith('/') ? issuer.substring(0, issuer.length - 1) : issuer}'
+              '/.well-known/openid-configuration'
+        : '${map['discoveryUrl']}';
+    Object? decoded;
+    try {
+      decoded = jsonDecode(
+        await http.getJson(Uri.parse(url), const {
+          'Accept': 'application/json',
+        }),
+      );
+    } catch (error) {
+      throw TomOAuthException(
+        'oauth.config.discovery_failed',
+        "The discovery document of OAuth provider '$id' could not be read "
+            'from $url: $error',
+        parameters: {'provider': id, 'url': url},
+        rootException: error,
+      );
+    }
+    if (decoded is! Map) {
+      throw TomOAuthException(
+        'oauth.config.discovery_failed',
+        "The discovery document of OAuth provider '$id' at $url is not a JSON "
+            'object.',
+        parameters: {'provider': id, 'url': url},
+      );
+    }
+    return decoded.map((key, value) => MapEntry('$key', value));
+  }
+
+  static Map<String, Object?> _discoveredEndpoints(
+    String id,
+    Map<Object?, Object?> map,
+    Map<String, Object?> document,
+  ) {
+    if ('${document['issuer']}' != '${map['issuer']}') {
+      throw TomOAuthException(
+        'oauth.config.discovery_issuer_mismatch',
+        "The discovery document of OAuth provider '$id' names the issuer "
+            "'${document['issuer']}', but the provider is configured for "
+            "'${map['issuer']}'.",
+        parameters: {'provider': id},
+      );
+    }
+    return {
+      for (final (configured, published) in const [
+        ('authorizationEndpoint', 'authorization_endpoint'),
+        ('tokenEndpoint', 'token_endpoint'),
+        ('userInfoEndpoint', 'userinfo_endpoint'),
+        ('revocationEndpoint', 'revocation_endpoint'),
+      ])
+        if (document[published] != null) configured: document[published],
+    };
+  }
+
+  /// The provider maps under [raw], keyed by provider id.
+  static Map<String, Map<Object?, Object?>> _providerMaps(Object? raw) {
     if (raw is! Map) {
       throw TomOAuthException(
         'oauth.config.not_a_map',
@@ -488,7 +685,7 @@ class TomOAuthProviders {
             'provider settings, but was a ${raw.runtimeType}.',
       );
     }
-    final parsed = <String, TomOAuthProviderConfig>{};
+    final maps = <String, Map<Object?, Object?>>{};
     raw.forEach((key, value) {
       final id = '$key';
       if (value is! Map) {
@@ -498,9 +695,9 @@ class TomOAuthProviders {
               '${value.runtimeType}.',
         );
       }
-      parsed[id] = TomOAuthProviderConfig.fromMap(id, value);
+      maps[id] = value;
     });
-    return TomOAuthProviders(parsed);
+    return maps;
   }
 
   /// Whether any provider is configured.

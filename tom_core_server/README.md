@@ -108,7 +108,7 @@ abstract, so other backends can be added.
 | ------ | --------- | ------------ |
 | `configuration` | `TomBaseServerConfiguration`, `TomServerConfigResourceProvider`, `TomConfig<T>`, `TomYaml` | Typed config + YAML resources |
 | `cache` | `TomCache`, `TomCacheManager` | Isolate-backed server-side cache |
-| `authentication` | `TomAuthenticationService`, `TomAuthenticationData`, `TomAuthenticationAdaptor`, `Tom2FAAdaptor`, `Tom2FAService`, `Tom2FARegistry`, `TomTotp2FAService`, `TomServerSelfLogin`, `TomOAuthAuthenticationService`, `TomOAuthFlow`, `TomOAuthProviders`, `TomExternalIdentityStore`, `TomJwtSigning`, `TomJwksService` | Authentication service and adaptor annotations; tokens signed RS256 (default), ES256 or HS256 from configured key files, verified by key id through a rotation, and published as a JSON Web Key Set at `/.well-known/jwks.json`; second-factor challenges behind one service contract, with a TOTP implementation and a registry that picks the factor per principal; a server's own login when it calls another service as itself; and external identity — an OAuth 2.0 / OIDC authorization-code + PKCE login written as *another implementation of the same service contract*, so it reaches the unchanged token and 2FA path instead of a second one |
+| `authentication` | `TomAuthenticationService`, `TomAuthenticationData`, `TomAuthenticationAdaptor`, `Tom2FAAdaptor`, `Tom2FAService`, `Tom2FARegistry`, `TomTotp2FAService`, `TomServerSelfLogin`, `TomOAuthAuthenticationService`, `TomOAuthFlow`, `TomOAuthProviders`, `TomSamlProviders`, `TomSamlFlow`, `TomExternalRoleMapping`, `TomExternalIdentityStore`, `TomJwtSigning`, `TomJwksService` | Authentication service and adaptor annotations; tokens signed RS256 (default), ES256 or HS256 from configured key files, verified by key id through a rotation, and published as a JSON Web Key Set at `/.well-known/jwks.json`; second-factor challenges behind one service contract, with a TOTP implementation and a registry that picks the factor per principal; a server's own login when it calls another service as itself; and external identity — an OAuth 2.0 / OIDC authorization-code + PKCE login written as *another implementation of the same service contract*, so it reaches the unchanged token and 2FA path instead of a second one; and enterprise single sign-on over OpenID Connect (endpoints read from the issuer's discovery document, nonce-bound `id_token`) or SAML 2.0 (signed responses verified against the identity provider's metadata), with group claims mapped onto roles on every login and just-in-time provisioning |
 | `authorization` | `TomAuthorizationCache`, `TomResourceGrant`, `TomGradedAccessControlInformation`, `TomPrincipalResourceGrant`, `TomPrincipalDelegation`, `TomDelegationResolver`, `TomResourceDataScope` | Isolate-backed authorization cache; graded per-key grants that add the middle states the kernel's granted/denied list cannot express; per-principal-per-resource roles; delegation of those roles by explicit share, out-of-office window, or revocable hand-over; and the row scope that filters an entity's rows by those grants — `read` to list, `full` to write — with no application-side resolver |
 | `audit` | `TomAuditTrail`, `TomAudited`, `TomAuditRecord`, `TomAuditSink`, `TomSqlAuditSink`, `TomAuditAnchor`, `TomAuditAnchorStore`, `TomAuditAnchorPublisher` | Attributable, tamper-evident trail written at the endpoint and repository chokepoints, stored in memory, in append-only files, or in a table whose write-once guarantee is the grant it is served with — and anchors, published outside the server, that turn a wholesale rewrite or a truncation from invisible into provable |
 | `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler |
@@ -314,8 +314,25 @@ not a `TomOAuthCredential` passes through to the `delegate`, so an account may
 hold a password *and* several external identities at once.
 
 Providers are configuration data (`oauth.providers`), never code, and what a
-first external login with no local account does — `refuse` or `autoProvision` —
-is per-provider configuration too. See [`doc/authentication.md`](doc/authentication.md).
+first external login with no local account does — `autoProvision` (the
+default), `linkExisting` or `refuse` — is per-provider configuration too.
+
+Enterprise single sign-on is the same login. An OpenID Connect provider —
+Entra ID, Okta, Keycloak — sets `discovery: true` and names its issuer, and
+`TomOAuthProviders.load()` reads its endpoints at start-up; a SAML 2.0 identity
+provider is configured under `saml.providers` from its metadata, and
+`TomSamlProviders.load()` fetches it. Both kinds are listed, begun and completed
+through `/oauth/*`, with SAML adding its assertion consumer service
+(`POST /saml/acs`) and metadata (`GET /saml/metadata/<providerId>`).
+`groupsClaim` / `roleMapping` turn the provider's groups into Tom roles on every
+login:
+
+```dart
+TomBean.withType<TomOAuthProviders>(await TomOAuthProviders.load());
+TomBean.withType<TomSamlProviders>(await TomSamlProviders.load());
+```
+
+See [`doc/authentication.md`](doc/authentication.md).
 
 ## Architecture
 
@@ -382,7 +399,9 @@ apps get the full kernel API through one dependency. See the
 - **Version:** 1.3.0
 - **Tests:** run with `testkit :test` or `dart test`. Part of the suite is
   tagged `db` and skips unless a live MySQL is reachable — bring one up with
-  `tool/run_db_tests.sh`, and the tagged tests then run too.
+  `tool/run_db_tests.sh`, and the tagged tests then run too. The single sign-on
+  interoperability suite is tagged `sso` and skips unless a Keycloak is
+  reachable; `tool/run_sso_tests.sh` starts one and runs it.
 
   No count is given, and that is deliberate. A count here is a claim nothing
   checks, and this package's whole position is that an unchecked claim about

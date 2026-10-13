@@ -83,8 +83,11 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'external_provider.dart';
 import 'oauth_provider.dart';
 import 'oauth_tokens.dart';
+import 'saml_flow.dart';
+import 'saml_provider.dart';
 
 /// A PKCE verifier / challenge pair (RFC 7636).
 ///
@@ -112,7 +115,7 @@ class TomOAuthPkce {
   /// 32 bytes, which is the RFC's recommendation and lands inside the mandated
   /// 43–128 character range once base64url-encoded.
   factory TomOAuthPkce.generate() {
-    final verifier = _randomUrlToken(32);
+    final verifier = TomOAuthFlow.randomHandle(32);
     return TomOAuthPkce(verifier, challengeFor(verifier));
   }
 
@@ -166,12 +169,31 @@ class TomOAuthAuthorizationState {
   /// The client's IANA timezone name.
   final String clientTimezone;
 
+  /// The value the next leg of the flow must echo, or `''`.
+  ///
+  /// For an OpenID Connect flow, the `nonce` sent in the authorization request,
+  /// which the `id_token` must carry back (OIDC Core §3.1.2.1): it binds the
+  /// token to this flow. For a SAML flow, the `ID` of the `AuthnRequest`, which
+  /// the response must name in `InResponseTo` — and, once the response has
+  /// been verified, the digest of the handoff code the application posts back.
+  final String nonce;
+
+  /// The identity a SAML response asserted, once the assertion consumer service
+  /// has verified it; `null` for every other record.
+  ///
+  /// A SAML response reaches the server as a browser form post, not as the
+  /// application's call, so the verified identity waits here until the
+  /// application completes the login with the handoff code.
+  final TomExternalIdentity? assertedIdentity;
+
   /// Creates a pending-authorization record.
   TomOAuthAuthorizationState({
     required this.state,
     required this.providerId,
     required this.createdAt,
     this.pkce,
+    this.nonce = '',
+    this.assertedIdentity,
     this.client = '',
     this.application = '',
     this.process = '',
@@ -371,8 +393,18 @@ class TomExternalIdentity {
   /// A human-readable name, when the provider sent one.
   final String displayName;
 
-  /// Every claim the provider returned, for a deployment's own mapping.
+  /// Every claim the provider returned, for a deployment's own mapping. For a
+  /// SAML identity, the assertion's attributes: a single value as a string,
+  /// several as a list.
   final Map<String, Object?> claims;
+
+  /// The groups the provider asserted, read through the provider's
+  /// [TomExternalRoleMapping.groupsClaim].
+  final List<String> groups;
+
+  /// The Tom roles the provider's [TomExternalRoleMapping] grants for
+  /// [groups]. Applied to the session's principal on every login.
+  final List<String> roles;
 
   /// Creates an external identity.
   const TomExternalIdentity({
@@ -381,7 +413,39 @@ class TomExternalIdentity {
     this.username = '',
     this.displayName = '',
     this.claims = const {},
+    this.groups = const [],
+    this.roles = const [],
   });
+
+  /// The identity as JSON, for a store that holds a verified identity between
+  /// two requests.
+  Map<String, Object?> toJson() => {
+    'issuer': issuer,
+    'subject': subject,
+    'username': username,
+    'displayName': displayName,
+    'claims': claims,
+    'groups': groups,
+    'roles': roles,
+  };
+
+  /// The identity [json] describes — the inverse of [toJson].
+  factory TomExternalIdentity.fromJson(Map<String, Object?> json) {
+    List<String> strings(Object? raw) =>
+        raw is List ? List.unmodifiable(raw.map((e) => '$e')) : const [];
+    final claims = json['claims'];
+    return TomExternalIdentity(
+      issuer: '${json['issuer'] ?? ''}',
+      subject: '${json['subject'] ?? ''}',
+      username: '${json['username'] ?? ''}',
+      displayName: '${json['displayName'] ?? ''}',
+      claims: claims is Map
+          ? Map.unmodifiable(claims.map((k, v) => MapEntry('$k', v)))
+          : const {},
+      groups: strings(json['groups']),
+      roles: strings(json['roles']),
+    );
+  }
 
   @override
   String toString() => 'TomExternalIdentity($issuer/$subject)';
@@ -412,7 +476,10 @@ class TomOAuthExchange {
   /// configuration, so it identifies the IdP and not the registration — and two
   /// registrations may share an issuer, which is how a deployment offers one
   /// IdP under two scope sets or two client registrations.
-  final TomOAuthProviderConfig provider;
+  ///
+  /// An OAuth 2.0 / OIDC provider or a SAML identity provider; everything the
+  /// login decides from it is on [TomExternalProvider].
+  final TomExternalProvider provider;
 
   /// What the provider's token endpoint returned, or `null` when it returned no
   /// usable access token.
@@ -456,12 +523,34 @@ class TomOAuthFlow {
   /// The one HTTP seam.
   final TomOAuthTokenTransport transport;
 
+  /// The SAML 2.0 identity providers, or `null` when the deployment has none.
+  ///
+  /// A SAML provider is begun and completed through the same two calls as an
+  /// OAuth one — [beginAuthorization] and [completeAuthorization] dispatch on
+  /// the provider id — so an application's login page treats every provider
+  /// alike. Provider ids are one namespace across both protocols.
+  final TomSamlFlow? saml;
+
   /// Creates a flow over explicit collaborators.
-  const TomOAuthFlow({
+  TomOAuthFlow({
     required this.providers,
     required this.stateStore,
     required this.transport,
-  });
+    this.saml,
+  }) {
+    final shared = saml?.providers.providers.keys
+        .where(providers.providers.containsKey)
+        .toList();
+    if (shared != null && shared.isNotEmpty) {
+      throw TomOAuthException(
+        'oauth.config.duplicate_provider_id',
+        'The provider ids $shared are configured both as OAuth and as SAML '
+            'providers; a login names its provider by id, so the ids must be '
+            'unique across both.',
+        parameters: {'providers': shared.join(', ')},
+      );
+    }
+  }
 
   /// Creates a flow from the installed beans, falling back to configuration for
   /// the provider set.
@@ -469,27 +558,54 @@ class TomOAuthFlow {
   /// The convenience the endpoints use, so the ordinary case is wiring-free:
   /// install nothing and external login reads its providers from the config
   /// tree, keeps state in memory and talks real HTTP.
-  factory TomOAuthFlow.fromBeans() => TomOAuthFlow(
-    providers:
-        TomOAuthProviders.resolve() ?? TomOAuthProviders.fromConfiguration(),
-    stateStore: TomOAuthStateStore.resolve(),
-    transport: TomOAuthTokenTransport.resolve(),
-  );
+  factory TomOAuthFlow.fromBeans() {
+    final stateStore = TomOAuthStateStore.resolve();
+    final samlProviders =
+        TomSamlProviders.resolve() ?? TomSamlProviders.fromConfiguration();
+    return TomOAuthFlow(
+      providers:
+          TomOAuthProviders.resolve() ?? TomOAuthProviders.fromConfiguration(),
+      stateStore: stateStore,
+      transport: TomOAuthTokenTransport.resolve(),
+      saml: samlProviders.isEmpty
+          ? null
+          : TomSamlFlow(providers: samlProviders, stateStore: stateStore),
+    );
+  }
+
+  /// Every provider a login page offers — the OAuth providers, then the SAML
+  /// ones — as client-facing descriptors.
+  List<TomOAuthProviderDto> get descriptors => List.unmodifiable([
+    ...providers.descriptors,
+    ...?saml?.providers.descriptors,
+  ]);
 
   /// Starts a flow: remembers the pending authorization and answers where to
   /// send the user.
   Future<TomOAuthAuthorizationDto> beginAuthorization(
     TomOAuthAuthorizationRequest request,
   ) async {
+    final samlFlow = saml;
+    if (samlFlow != null &&
+        samlFlow.providers.lookup(request.providerId) != null) {
+      return samlFlow.beginAuthorization(request);
+    }
     final provider = providers[request.providerId];
     final pkce = provider.usePkce ? TomOAuthPkce.generate() : null;
-    final state = _randomUrlToken(32);
+    final state = TomOAuthFlow.randomHandle(32);
+    // A nonce whenever an `id_token` can come back. It is what ties the token
+    // to this flow rather than to any flow at this client, which `state` alone
+    // does not: `state` protects the redirect, the nonce protects the token.
+    final nonce = provider.scopes.contains('openid')
+        ? TomOAuthFlow.randomHandle(24)
+        : '';
 
     await stateStore.store(
       TomOAuthAuthorizationState(
         state: state,
         providerId: provider.id,
         pkce: pkce,
+        nonce: nonce,
         createdAt: DateTime.now().toUtc(),
         client: request.client,
         application: request.application,
@@ -517,6 +633,7 @@ class TomOAuthFlow {
         'redirect_uri': provider.redirectUri,
         'scope': provider.scopes.join(' '),
         'state': state,
+        if (nonce.isNotEmpty) 'nonce': nonce,
         if (pkce != null) 'code_challenge': pkce.challenge,
         if (pkce != null) 'code_challenge_method': TomOAuthPkce.method,
       },
@@ -554,9 +671,14 @@ class TomOAuthFlow {
         clientThrow: true,
       );
     }
+    final samlFlow = saml;
+    if (samlFlow != null &&
+        samlFlow.providers.lookup(pending.providerId) != null) {
+      return samlFlow.completeAuthorization(pending, code);
+    }
     final provider = providers[pending.providerId];
     final tokens = await _exchangeCode(provider, pending, code);
-    final claims = await _claimsFor(provider, tokens);
+    final claims = await _claimsFor(provider, tokens, pending);
     final grant = TomOAuthTokenGrant.fromTokenResponse(tokens);
     return TomOAuthExchange(
       _identityFor(provider, claims),
@@ -872,11 +994,13 @@ class TomOAuthFlow {
   Future<Map<String, Object?>> _claimsFor(
     TomOAuthProviderConfig provider,
     Map<String, Object?> tokens,
+    TomOAuthAuthorizationState pending,
   ) async {
     final idToken = tokens['id_token'];
     if (idToken is String && idToken.isNotEmpty) {
       final claims = decodeIdTokenClaims(idToken);
       _verifyIdTokenClaims(provider, claims);
+      _verifyNonce(provider, claims, pending);
       return claims;
     }
     final userInfoEndpoint = provider.userInfoEndpoint;
@@ -943,6 +1067,26 @@ class TomOAuthFlow {
       );
     }
     _verifyIdTokenFreshness(provider, claims);
+  }
+
+  /// Checks that the `id_token` carries the nonce this flow sent.
+  ///
+  /// OIDC Core §3.1.3.7 makes the check the relying party's whenever it sent a
+  /// nonce: a token minted for another flow at the same client — one the user
+  /// never started — names a different nonce, or none.
+  void _verifyNonce(
+    TomOAuthProviderConfig provider,
+    Map<String, Object?> claims,
+    TomOAuthAuthorizationState pending,
+  ) {
+    if (pending.nonce.isEmpty) return;
+    if (claims['nonce'] != pending.nonce) {
+      throw TomOAuthException(
+        'oauth.flow.nonce_mismatch',
+        "The id_token from provider '${provider.id}' does not carry the nonce "
+            'its authorization request sent.',
+      );
+    }
   }
 
   /// Checks that the token is inside its own validity window.
@@ -1030,7 +1174,19 @@ class TomOAuthFlow {
       username: '${claims[provider.usernameClaim] ?? ''}',
       displayName: '${claims[provider.displayNameClaim] ?? ''}',
       claims: Map.unmodifiable(claims),
+      groups: provider.roleMapping.groupsIn(claims),
+      roles: provider.roleMapping.rolesFor(claims),
     );
+  }
+
+  /// [byteCount] cryptographically secure bytes, base64url-encoded without
+  /// padding — the shape a PKCE verifier, a `state` handle, a nonce and a SAML
+  /// handoff code all need, and what keeps each safe to put in a query string.
+  static String randomHandle(int byteCount) {
+    final random = Random.secure();
+    return base64Url
+        .encode(List<int>.generate(byteCount, (_) => random.nextInt(256)))
+        .replaceAll('=', '');
   }
 
   /// The claims of a JWT, **without** verifying its signature.
@@ -1089,14 +1245,7 @@ class TomOAuthFlow {
   }
 }
 
-/// [byteCount] cryptographically secure bytes, base64url-encoded without
-/// padding — the shape both a PKCE verifier and a `state` handle need.
-String _randomUrlToken(int byteCount) {
-  final random = Random.secure();
-  return _base64Url(List<int>.generate(byteCount, (_) => random.nextInt(256)));
-}
-
 /// base64url without padding, which is what RFC 7636 specifies for the
-/// challenge and what keeps a `state` handle safe to put in a query string.
+/// challenge.
 String _base64Url(List<int> bytes) =>
     base64Url.encode(bytes).replaceAll('=', '');
