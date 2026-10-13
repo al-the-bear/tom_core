@@ -376,6 +376,8 @@ is in context. Where the tenant matters, it is a column.
 | `tom_scim_resource` | `TomSqlScimStore` | none |
 | `tom_blob`, `tom_blob_chunk` | `TomDatabaseBlobStore` | none |
 | `tom_audit_trail` | `TomSqlAuditSink` | none |
+| `tom_service_account`, `tom_api_key` | `TomSqlApiKeyStore` | a nullable `tenant` column on the account, carried onto the principal its keys authenticate |
+| `tom_rate_limit` | `TomSqlRateLimiter` | none — a `principal` rule's counter key already names the tenant |
 
 Build these stores over a data source that is not in `TomTenancy.datasources`,
 or construct them outside any tenant's context, which is where a server's

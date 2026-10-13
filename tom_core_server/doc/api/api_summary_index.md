@@ -10,7 +10,7 @@ surface documented here.
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
 | Audit | [api_summary_audit.md](api_summary_audit.md) | Attributable, tamper-evident records: the hash-chained trail, its sinks, and signed anchors. |
-| Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login and two-factor services, adaptors, the policy deciding who owes a factor, enrolment and its stores, the authentication server, the server's own self-login, and external identity: the OAuth / OpenID Connect handshake and SAML 2.0 single sign-on, their pending-authorization stores, role mapping, and the linking table; and user provisioning over SCIM 2.0 — the service, its stores and endpoints, and the directory that resolves single sign-on to provisioned accounts. |
+| Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login and two-factor services, adaptors, the policy deciding who owes a factor, enrolment and its stores, the authentication server, the server's own self-login, and external identity: the OAuth / OpenID Connect handshake and SAML 2.0 single sign-on, their pending-authorization stores, role mapping, and the linking table; and user provisioning over SCIM 2.0 — the service, its stores and endpoints, and the directory that resolves single sign-on to provisioned accounts; and service accounts with their API keys and stores. |
 | Authorization | [api_summary_authorization.md](api_summary_authorization.md) | Authorization cache, graded access, principal delegation and resource grants. |
 | Cache | [api_summary_cache.md](api_summary_cache.md) | Isolate-backed server cache and its command messages. |
 | Command Line | [api_summary_cmdline.md](api_summary_cmdline.md) | CLI argument parsing (`TomArgs`) and `.env` file loading (`TomEnvFile`). |
@@ -25,6 +25,7 @@ surface documented here.
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, and resource-keyed email and SMS. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, and the `/preferences/*` endpoints. |
+| Rate Limiting | [api_summary_ratelimit.md](api_summary_ratelimit.md) | Request rate limits per principal, API key or client address: the rules, the sliding-window arithmetic, the per-process and shared limiters, and the middleware answering `429` with `Retry-After`. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call. |
 | Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, per-request logging state, middleware, and the paths whose credentials belong to the endpoint. |
@@ -224,6 +225,18 @@ surface documented here.
 | `readPemFile` | top-level function | Reads a configured PEM key file, naming it in the error a missing file raises. |
 | `TomJwksService` | abstract class | The `GET /.well-known/jwks.json` endpoint (`@tomService`). |
 | `TomJwksServer` | class | The default JSON Web Key Set component; publishes `TomJwtSigning.current`'s keys. |
+| `TomServiceAccount` | class | A non-human caller with roles of its own. |
+| `TomApiKey` | class | One API key's stored record — the hash of its secret, never the secret. |
+| `TomIssuedApiKey` | class | A key as issued: the record and the one-time `tomk.<keyId>.<secret>` value. |
+| `TomApiKeyIdentity` | class | The key and account a request authenticated with, in the request zone. |
+| `TomApiKeyStore` | abstract class | Where service accounts and key records live. |
+| `TomMemoryApiKeyStore` | class | In-memory API-key store, per process. |
+| `TomSqlApiKeyStore` | class | API-key store over `tom_service_account` and `tom_api_key`, shared by every node. |
+| `TomServiceAccountRow` / `TomApiKeyRow` | class | One row of each table, as the SQL store reads it back. |
+| `serviceAccountTable` / `apiKeyTable` | top-level function | The two tables' declarations. |
+| `defaultServiceAccountTable` / `defaultApiKeyTable` | constant | `tom_service_account` and `tom_api_key`. |
+| `TomApiKeys` | class | Issues, rotates, revokes and checks API keys; installed once per process. |
+| `TomApiKeyException` | class | An API-key operation that cannot be done (extends `TomServerException`). |
 
 ### Authorization (`lib/src/tomserver/authorization/`)
 
@@ -632,6 +645,24 @@ surface documented here.
 | `TomUserPreferencesServer` | class | The `@TomApiImplementation` behind the kernel's `tomUserPreferencesApi`. |
 | `TomUserPreferencesErrorHandler` | class | Maps `preferences.not_found` — and only that key — to a `404`, so a client can tell a miss from an outage. |
 
+### Rate Limiting (`lib/src/tomserver/ratelimit/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomRateLimits` | class | The rules, the limiter and the trusted proxies; installed once per process or from the `rateLimits` configuration key. |
+| `TomRateLimitRule` | class | At most `limit` requests per `window` per key of a scope, optionally on some paths. |
+| `TomRateLimitScope` | enum | `principal`, `apiKey` or `address`. |
+| `TomRateLimitDecision` | class | One counted request's outcome; `slidingWindow` is the shared arithmetic. |
+| `TomRateLimiter` | abstract class | Counts one request for a key under a rule. |
+| `TomMemoryRateLimiter` | class | Sliding-window counters in this process — per node. |
+| `TomSqlRateLimiter` | class | Sliding-window counters in `tom_rate_limit`, shared by every node. |
+| `TomRateLimitRow` | class | One counter row, as the shared limiter reads it back. |
+| `TomClientAddress` | abstract final class | The socket peer, or `X-Forwarded-For` behind a trusted proxy. |
+| `TomRateLimitException` | class | `rate_limit.exceeded` and the configuration refusals (extends `TomServerException`). |
+| `tomRateLimitMiddleware` | function | The middleware `TomServer` installs inside authentication. |
+| `rateLimitTable` | top-level function | The `tom_rate_limit` declaration. |
+| `defaultRateLimitTable` | constant | `tom_rate_limit`. |
+
 ### Resources (`lib/src/tomserver/resources/`)
 
 | Type | Kind | Description |
@@ -702,6 +733,7 @@ surface documented here.
 | Type | Module |
 | ---- | ------ |
 | `And` | Object Persistence |
+| `apiKeyTable` | Authentication |
 | `applyExternalRoles` | Authentication |
 | `auditDiff` | Audit |
 | `auditProjectionPrefix` | Audit |
@@ -728,6 +760,7 @@ surface documented here.
 | `DateTimeCol` | Object Persistence |
 | `DateTimeLiteral` | Object Persistence |
 | `DbCol` | Object Persistence |
+| `defaultApiKeyTable` | Authentication |
 | `defaultAuditTrailTable` | Audit |
 | `defaultBlobChunkTable` | File Storage |
 | `defaultBlobManifestTable` | File Storage |
@@ -737,8 +770,10 @@ surface documented here.
 | `defaultLeaseTable` | Scheduling |
 | `defaultNodeFailureSlack` | Scheduling |
 | `defaultOAuthStateTable` | Authentication |
+| `defaultRateLimitTable` | Rate Limiting |
 | `defaultSchedulerNodeTable` | Scheduling |
 | `defaultScimResourceTable` | Authentication |
+| `defaultServiceAccountTable` | Authentication |
 | `deliveryReportTable` | Messaging |
 | `deliveryReportTableDdl` | Messaging |
 | `DoubleCol` | Object Persistence |
@@ -796,6 +831,7 @@ surface documented here.
 | `parseSqlTimeOfDay` | Datasources |
 | `PrincipalDelegationStore` | Authorization |
 | `PrincipalResourceGrantStore` | Authorization |
+| `rateLimitTable` | Rate Limiting |
 | `readPemFile` | Authentication |
 | `Regexp` | Object Persistence |
 | `RepositoryPrincipalDelegationStore` | Authorization |
@@ -809,6 +845,7 @@ surface documented here.
 | `scimResourceTableDdl` | Authentication |
 | `scimValues` | Authentication |
 | `selectedRuntimeEnvironmentName` | Configuration |
+| `serviceAccountTable` | Authentication |
 | `sqlDate` | Datasources |
 | `sqlFailureCauses` | Datasources |
 | `sqlInstant` | Datasources |
@@ -852,6 +889,12 @@ surface documented here.
 | `TomAnnotationAnalyzerSyntaxException` | Object Persistence |
 | `TomApiEndpointImplementation` | Endpoints |
 | `TomApiImplementation` | Endpoints |
+| `TomApiKey` | Authentication |
+| `TomApiKeyException` | Authentication |
+| `TomApiKeyIdentity` | Authentication |
+| `TomApiKeyRow` | Authentication |
+| `TomApiKeys` | Authentication |
+| `TomApiKeyStore` | Authentication |
 | `TomApnsProviderToken` | Messaging |
 | `TomApnsPushProtocol` | Messaging |
 | `tomAppId` | Configuration |
@@ -936,6 +979,7 @@ surface documented here.
 | `TomCacheRetrieveMessage` | Cache |
 | `TomCacheStoreMessage` | Cache |
 | `TomClassScanResult` | Endpoints |
+| `TomClientAddress` | Rate Limiting |
 | `TomColumnAuthorization` | Object Persistence |
 | `TomColumnAuthorizationException` | Object Persistence |
 | `TomColumnAuthResolver` | Object Persistence |
@@ -1087,6 +1131,7 @@ surface documented here.
 | `TomIntConfig` | Configuration |
 | `TomInvalidationChannel` | Cache |
 | `TomInvalidationKind` | Cache |
+| `TomIssuedApiKey` | Authentication |
 | `TomJobRunRow` | Scheduling |
 | `TomJobRunWindowRow` | Scheduling |
 | `TomJwksServer` | Authentication |
@@ -1104,6 +1149,7 @@ surface documented here.
 | `TomLoginException` | Authentication |
 | `TomMemory2FAEnrolmentStore` | Authentication |
 | `TomMemory2FAGraceStore` | Authentication |
+| `TomMemoryApiKeyStore` | Authentication |
 | `TomMemoryAuditAnchorStore` | Audit |
 | `TomMemoryAuditSink` | Audit |
 | `TomMemoryBlobStore` | File Storage |
@@ -1113,6 +1159,7 @@ surface documented here.
 | `TomMemoryExternalIdentityStore` | Authentication |
 | `TomMemoryMessageTransport` | Messaging |
 | `TomMemoryOAuthTokenStore` | Authentication |
+| `TomMemoryRateLimiter` | Rate Limiting |
 | `TomMemoryScimStore` | Authentication |
 | `TomMessage` | Messaging |
 | `TomMessageBody` | Messaging |
@@ -1178,6 +1225,14 @@ surface documented here.
 | `TomQueryBuilder` | Object Persistence |
 | `TomQuerySentenceCompiler` | Object Persistence |
 | `TomQuerySyntaxException` | Object Persistence |
+| `TomRateLimitDecision` | Rate Limiting |
+| `TomRateLimiter` | Rate Limiting |
+| `TomRateLimitException` | Rate Limiting |
+| `tomRateLimitMiddleware` | Rate Limiting |
+| `TomRateLimitRow` | Rate Limiting |
+| `TomRateLimitRule` | Rate Limiting |
+| `TomRateLimits` | Rate Limiting |
+| `TomRateLimitScope` | Rate Limiting |
 | `TomRecipient` | Messaging |
 | `TomRecipientKind` | Messaging |
 | `TomRedirect` | Endpoints |
@@ -1247,6 +1302,8 @@ surface documented here.
 | `TomServerSession` | Authentication |
 | `TomService` | Endpoints |
 | `tomService` | Endpoints |
+| `TomServiceAccount` | Authentication |
+| `TomServiceAccountRow` | Authentication |
 | `TomServiceCredential` | Authentication |
 | `TomServiceLoginResponse` | Authentication |
 | `TomServiceLoginTransport` | Authentication |
@@ -1272,6 +1329,7 @@ surface documented here.
 | `TomSocketSmtpConnection` | Messaging |
 | `TomSortDirection` | Object Persistence |
 | `TomSortField` | Object Persistence |
+| `TomSqlApiKeyStore` | Authentication |
 | `TomSqlAuditSink` | Audit |
 | `TomSqlDatasourceRepository` | Object Persistence |
 | `TomSqlDeliveryReportStore` | Messaging |
@@ -1281,6 +1339,7 @@ surface documented here.
 | `TomSqlLeaseLock` | Scheduling |
 | `TomSqlLexer` | Datasources |
 | `TomSqlOAuthStateStore` | Authentication |
+| `TomSqlRateLimiter` | Rate Limiting |
 | `TomSqlSchedulerNodes` | Scheduling |
 | `TomSqlScimStore` | Authentication |
 | `TomSqlTypeFamily` | Datasources |

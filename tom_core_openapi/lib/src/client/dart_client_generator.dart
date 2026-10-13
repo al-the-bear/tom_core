@@ -396,8 +396,13 @@ class TomOpenApiDartClientGenerator {
   void _writeException(StringBuffer out) {
     out
       ..writeln('/// A call that did not succeed: the HTTP [statusCode], the')
-      ..writeln('/// raw [body], and the error envelope\'s [errorKey] when the')
-      ..writeln('/// server sent one.')
+      ..writeln(
+        '/// raw [body], the response [headers] — `retry-after` on a 429',
+      )
+      ..writeln(
+        '/// — and the error envelope\'s [errorKey] when the server sent',
+      )
+      ..writeln('/// one.')
       ..writeln('class $_exceptionName implements Exception {')
       ..writeln('  /// The HTTP status code.')
       ..writeln('  final int statusCode;')
@@ -408,8 +413,26 @@ class TomOpenApiDartClientGenerator {
       ..writeln('  /// The error envelope\'s `errorKey`, or `null`.')
       ..writeln('  final String? errorKey;')
       ..writeln()
-      ..writeln('  /// A failure with [statusCode], [body] and [errorKey].')
-      ..writeln('  $_exceptionName(this.statusCode, this.body, this.errorKey);')
+      ..writeln('  /// The response headers, lower-cased by name.')
+      ..writeln('  final Map<String, String> headers;')
+      ..writeln()
+      ..writeln('  /// How long a `429` asks the caller to wait, or `null`.')
+      ..writeln('  Duration? get retryAfter {')
+      ..writeln(
+        "    final seconds = int.tryParse(headers['retry-after'] ?? '');",
+      )
+      ..writeln(
+        '    return seconds == null ? null : Duration(seconds: seconds);',
+      )
+      ..writeln('  }')
+      ..writeln()
+      ..writeln(
+        '  /// A failure with [statusCode], [body], [errorKey] and [headers].',
+      )
+      ..writeln(
+        '  $_exceptionName(this.statusCode, this.body, this.errorKey, '
+        '[this.headers = const {}]);',
+      )
       ..writeln()
       ..writeln('  /// The failure [response] reports.')
       ..writeln('  factory $_exceptionName.of(http.Response response) {')
@@ -423,7 +446,8 @@ class TomOpenApiDartClientGenerator {
       ..writeln('      key = null;')
       ..writeln('    }')
       ..writeln(
-        '    return $_exceptionName(response.statusCode, response.body, key);',
+        '    return $_exceptionName(response.statusCode, response.body, key, '
+        'response.headers);',
       )
       ..writeln('  }')
       ..writeln()
@@ -509,8 +533,9 @@ class TomOpenApiDartClientGenerator {
     out
       ..writeln('/// Calls the operations of the API, one method each.')
       ..writeln('///')
-      ..writeln('/// Operations that require a bearer token send [bearerToken]')
-      ..writeln('/// when it is set; public operations never send it.')
+      ..writeln('/// Operations that require authentication send [bearerToken]')
+      ..writeln('/// when it is set, else [apiKey] as `X-API-Key`; public')
+      ..writeln('/// operations send neither.')
       ..writeln('class $clientName {')
       ..writeln('  /// The server every call is addressed to.')
       ..writeln('  final Uri baseUri;')
@@ -518,12 +543,18 @@ class TomOpenApiDartClientGenerator {
       ..writeln('  /// The bearer token sent to operations that require one.')
       ..writeln('  String? bearerToken;')
       ..writeln()
+      ..writeln(
+        '  /// The API key sent to operations that require authentication',
+      )
+      ..writeln('  /// when no [bearerToken] is set.')
+      ..writeln('  String? apiKey;')
+      ..writeln()
       ..writeln('  final http.Client _http;')
       ..writeln()
       ..writeln('  /// A client of the server at [baseUri], over [httpClient]')
       ..writeln('  /// (a new one when omitted).')
       ..writeln(
-        '  $clientName(this.baseUri, {http.Client? httpClient, this.bearerToken})',
+        '  $clientName(this.baseUri, {http.Client? httpClient, this.bearerToken, this.apiKey})',
       )
       ..writeln('    : _http = httpClient ?? http.Client();')
       ..writeln()
@@ -732,7 +763,9 @@ class TomOpenApiDartClientGenerator {
       ..writeln('    final headers = <String, String>{')
       ..writeln("      'accept': 'application/json',")
       ..writeln('      if (authenticated && bearerToken != null)')
-      ..writeln("        'authorization': 'Bearer \$bearerToken',")
+      ..writeln("        'authorization': 'Bearer \$bearerToken'")
+      ..writeln('      else if (authenticated && apiKey != null)')
+      ..writeln("        'x-api-key': apiKey!,")
       ..writeln('    };')
       ..writeln('    final http.BaseRequest request;')
       ..writeln('    if (fields != null || files != null) {')

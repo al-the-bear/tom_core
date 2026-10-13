@@ -2,6 +2,62 @@
 
 ### Added
 
+- **Service accounts and API keys** — `authentication/api_keys.dart` and
+  `authentication/sql_api_key_store.dart`. `TomServiceAccount` (`id`, `name`,
+  `roles`, `tenant`, `organization`, `disabled`; `withDisabled`, `withRoles`),
+  `TomApiKey` (the SHA-256 of the secret, never the secret; `isLiveAt`,
+  `copyWith`), `TomIssuedApiKey` (the one-time `tomk.<keyId>.<secret>` value),
+  `TomApiKeyIdentity` (the key a request authenticated with, in the request
+  zone), `TomApiKeyStore`, `TomMemoryApiKeyStore`, and `TomApiKeys` with
+  `install`, `reset`, `current`, `saveAccount`, `issue`, `rotate` (overlap zero
+  by default — the old key ends at once; an overlap never extends a key past its
+  own expiry), `revoke`, `keysOf`, `authenticate` and `hashSecret`. A key's
+  roles are intersected with its account's; the principal is
+  `service:<accountId>` with the account's tenant and organization. Key records
+  are cached per node in `tom.apiKeys` for at most `lookupCacheSeconds` (60), and
+  `revoke` / `rotate` drop the entry through `TomCacheInvalidator`;
+  `lastUsedAt` is written at most once per `touchInterval` (one minute).
+  `TomSqlApiKeyStore` keeps accounts and keys in `tom_service_account` and
+  `tom_api_key` (`serviceAccountTable`, `apiKeyTable`,
+  `defaultServiceAccountTable`, `defaultApiKeyTable`, `TomServiceAccountRow`,
+  `TomApiKeyRow`). `TomApiKeyException` raises `api_key.issue.unknown_account`,
+  `api_key.issue.role_not_held`, `api_key.rotate.unknown_key` and
+  `api_key.revoke.unknown_key`.
+- **Requests authenticated by an API key.** `tomDefaultAuthenticationMiddleware`
+  reads `X-API-Key` when a request carries no `Authorization` header, puts the
+  service account's principal and its `TomApiKeyIdentity` in the zone.
+  A key never widens a request that presented a bearer token; with no
+  `TomApiKeys` installed the header is ignored with a warning.
+- **Rate limiting** — the new `ratelimit` module (`ratelimit/rate_limit.dart`,
+  `ratelimit/sql_rate_limiter.dart`). `TomRateLimitScope` (`principal`,
+  `apiKey`, `address`; `parse`), `TomRateLimitRule` (`name`, `scope`, `limit`,
+  `window`, `pathPrefixes`, `anonymousOnly`), `TomRateLimitDecision` with the
+  sliding-window counter in `slidingWindow` and `retryAfterSeconds`,
+  `TomRateLimiter`, `TomMemoryRateLimiter` (per node), `TomSqlRateLimiter` (the
+  `tom_rate_limit` table — `rateLimitTable`, `defaultRateLimitTable`,
+  `TomRateLimitRow` — counted with one atomic
+  `INSERT … ON DUPLICATE KEY UPDATE` per request), `TomClientAddress`
+  (`X-Forwarded-For` read right to left, only from trusted proxies),
+  `TomRateLimits` (`configurationKey` `rateLimits`, `fromConfiguration`,
+  `install`, `reset`, `current`, `bucketOf`, `check`, `headersOf`,
+  `tooManyRequests`) and `tomRateLimitMiddleware`. A refused request is answered
+  `429` with `Retry-After` and `RateLimit-Limit` / `-Remaining` / `-Reset`; an
+  admitted one carries the `RateLimit-*` headers of its tightest rule.
+  `TomRateLimitException` raises `rate_limit.exceeded` and
+  `rate_limit.config.not_a_map`, `invalid_rule`, `duplicate_rule`,
+  `unknown_scope`, `unknown_limiter` and `missing_datasource`. Nothing is
+  limited by default.
+- **`TomServer` stacks `tomRateLimitMiddleware` inside the authentication
+  middleware**, and `start` installs the limits the `rateLimits` configuration
+  key describes when none were installed.
+- `example/ratelimit/rate_limit_example.dart` walks a service account's key
+  through seven steps; `test/api_keys_test.dart` and `test/ratelimit_test.dart`
+  cover both features without a database and
+  `test/ratelimit_api_keys_db_test.dart` (tagged `db`) runs the shared store
+  and limiter across two nodes.
+- `doc/ratelimit.md`, `doc/api/api_summary_ratelimit.md`, the module readme, and
+  the service-account section of `doc/authentication.md`.
+
 - **Multi-tenancy** — the new `tenancy` module (`tenancy/tenancy.dart`,
   `tenancy/tenant_resolution.dart`). `TomTenancy` holds the deployment's
   `TomTenant`s, read from the `tenancy` configuration key by

@@ -620,6 +620,13 @@ the optional `scim.baseUrl` are read by `TomScimProvisioning.fromConfiguration`.
 Every bearer token is secret-bearing and written as a `${...}` placeholder. See
 [authentication.md](authentication.md#enabling-scim).
 
+**Rate limits are configured in the tree.** `rateLimits` — `limiter` (`memory`
+or `sql`), `datasource`, `trustedProxies` and the `rules` list (`name`, `per`,
+`limit`, `windowSeconds`, `paths`, `anonymousOnly`) — is read by
+`TomRateLimits.fromConfiguration`, which `TomServer.start` calls when no limits
+were installed in code. Without the key nothing is limited. See
+[ratelimit.md](ratelimit.md#configuration).
+
 ### JWT Signing Keys
 
 What the server signs an issued token with, what it verifies an incoming one

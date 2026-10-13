@@ -6,7 +6,8 @@ two-pass second-factor flow, the JWT-issuing `TomAuthenticationServer`, the
 token signing and verification keys with the JSON Web Key Set that publishes
 them, the server's own self-login against an auth server, and single sign-on
 against external identity providers over OAuth 2.0 / OpenID Connect and SAML
-2.0, and user provisioning over SCIM 2.0.
+2.0, user provisioning over SCIM 2.0, and service accounts authenticating with
+API keys.
 
 ## Table of Contents
 
@@ -142,6 +143,17 @@ against external identity providers over OAuth 2.0 / OpenID Connect and SAML
   - [TomScimApi](#tomscimapi)
   - [TomScimServer](#tomscimserver)
   - [TomScimIdentityDirectory](#tomscimidentitydirectory)
+  - [TomApiKeyException](#tomapikeyexception)
+  - [TomServiceAccount](#tomserviceaccount)
+  - [TomApiKey](#tomapikey)
+  - [TomIssuedApiKey](#tomissuedapikey)
+  - [TomApiKeyIdentity](#tomapikeyidentity)
+  - [TomApiKeyStore](#tomapikeystore)
+  - [TomMemoryApiKeyStore](#tommemoryapikeystore)
+  - [TomApiKeys](#tomapikeys)
+  - [TomSqlApiKeyStore](#tomsqlapikeystore)
+  - [TomServiceAccountRow](#tomserviceaccountrow)
+  - [TomApiKeyRow](#tomapikeyrow)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -178,7 +190,9 @@ Sources: `lib/src/tomserver/authentication/authentication_server.dart`,
 `lib/src/tomserver/authentication/scim_sql.dart`,
 `lib/src/tomserver/authentication/sql_scim_store.dart`,
 `lib/src/tomserver/authentication/scim_endpoints.dart`,
-`lib/src/tomserver/authentication/scim_directory.dart`.
+`lib/src/tomserver/authentication/scim_directory.dart`,
+`lib/src/tomserver/authentication/api_keys.dart`,
+`lib/src/tomserver/authentication/sql_api_key_store.dart`.
 
 The module orchestrates the server-side login flow. `TomAuthenticationServer`
 receives a `TomAuthenticationMessage`, builds a `TomAuthenticationData` from it,
@@ -299,6 +313,17 @@ endpoints under `/scim/v2` and `TomScimServer` answers them, once a
 `TomScimIdentityDirectory` resolves a single sign-on login to the provisioned
 account, with roles from its groups. Failures are `TomScimException`.
 
+Service accounts are non-human callers with roles of their own
+(`TomServiceAccount`) that authenticate with API keys in the `X-API-Key` header.
+`TomApiKeys` issues a key once as a `TomIssuedApiKey` — `tomk.<keyId>.<secret>`,
+with only the SHA-256 of the secret kept in the `TomApiKey` record — scopes it to
+a subset of the account's roles, rotates and revokes it, and authenticates a
+presented key into an authenticated principal and its `TomApiKeyIdentity`. The
+records live in a `TomApiKeyStore`: `TomMemoryApiKeyStore`, or
+`TomSqlApiKeyStore` over the `tom_service_account` and `tom_api_key` tables
+`serviceAccountTable` and `apiKeyTable` declare. Failures are
+`TomApiKeyException`.
+
 ## Class Hierarchy
 
 ```text
@@ -310,7 +335,8 @@ TomServerException  (little_things)
     ├── TomSamlException
     ├── TomScimException
     ├── TomSigningKeyException
-    └── TomJwtKeyException
+    ├── TomJwtKeyException
+    └── TomApiKeyException
 
 TomJwksService  (@tomService, abstract)
     └── TomJwksServer  (@tomComponent, implements)
@@ -461,6 +487,18 @@ TomScimResourceRow         (@tomReflector, @TomDbTable row type)
 TomScimPath                (standalone, immutable)
 TomScimService             (standalone)
 TomScimProvisioning        (standalone, statics hold the installed one)
+
+TomApiKeyStore  (abstract)
+    ├── TomMemoryApiKeyStore  (implements, per-process, the default)
+    └── TomSqlApiKeyStore     (implements, over tom_service_account and tom_api_key, shared)
+
+TomServiceAccount          (standalone, immutable)
+TomApiKey                  (standalone, immutable)
+TomIssuedApiKey            (standalone, immutable)
+TomApiKeyIdentity          (standalone, immutable)
+TomApiKeys                 (standalone, statics hold the installed one)
+TomServiceAccountRow       (@tomReflector, @TomDbTable row type)
+TomApiKeyRow               (@tomReflector, @TomDbTable row type)
 ```
 
 ## Classes
@@ -4227,6 +4265,312 @@ TomScimIdentityDirectory(
 | ------ | --------- | ----------- |
 | `authenticatedPrincipalFor` | `Future<TomAuthenticationInfo?> authenticatedPrincipalFor(String username, TomAuthenticationData authData)` | *(override)* The provisioned user named `username`, as a principal carrying the user's name, given and family name, primary email, `scimId` and `externalId` attributes, its groups' display names in `aci.groups` and the roles `roleMapping` maps them to — derived on every login. |
 
+### TomApiKeyException
+
+A failure of the API-key subsystem, keyed `api_key.<area>.<condition>`. In
+`authentication/api_keys.dart`.
+
+| Key | Meaning |
+| --- | ------- |
+| `api_key.issue.unknown_account` | `issue` names a service account that does not exist. |
+| `api_key.issue.role_not_held` | `issue` asks for a role the account does not hold. |
+| `api_key.rotate.unknown_key` | `rotate` names a key that does not exist. |
+| `api_key.revoke.unknown_key` | `revoke` names a key that does not exist. |
+
+- **Extends:** `TomServerException`
+
+#### Constructors
+
+```dart
+TomApiKeyException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  bool clientThrow = false,
+})
+```
+
+### TomServiceAccount
+
+A non-human caller with its own roles.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomServiceAccount({
+  required String id,
+  required String name,
+  List<String> roles = const [],
+  String? tenant,
+  String? organization,
+  bool disabled = false,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `id` | `String` | The account's id — stable, and how keys refer to it (final). |
+| `name` | `String` | A human-readable name (final). |
+| `roles` | `List<String>` | The roles the account holds; every key's roles are bounded by them (final). |
+| `tenant` | `String?` | The tenant the account belongs to, or `null` outside tenancy; carried onto its principal (final). |
+| `organization` | `String?` | The organization the account acts in, or `null`; carried onto its principal (final). |
+| `disabled` | `bool` | Whether the account is disabled: its keys authenticate nothing, without being revoked one by one (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `withDisabled` | `TomServiceAccount withDisabled(bool disabled)` | This account with `disabled` set. |
+| `withRoles` | `TomServiceAccount withRoles(List<String> roles)` | This account with `roles` replaced. |
+
+### TomApiKey
+
+The stored record of one API key — everything but its secret.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomApiKey({
+  required String id,
+  required String accountId,
+  required String secretHash,
+  List<String> roles = const [],
+  String label = '',
+  required DateTime createdAt,
+  DateTime? expiresAt,
+  DateTime? revokedAt,
+  DateTime? lastUsedAt,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `id` | `String` | The key's public id, the middle part of the presented key (final). |
+| `accountId` | `String` | The account the key authenticates as (final). |
+| `secretHash` | `String` | The SHA-256 hash of the secret, hex-encoded (final). |
+| `roles` | `List<String>` | The roles the key is scoped to, or empty for the account's roles (final). |
+| `label` | `String` | A label saying what the key is for (final). |
+| `createdAt` | `DateTime` | When the key was issued (final). |
+| `expiresAt` | `DateTime?` | When the key stops working by itself, or `null` for never (final). |
+| `revokedAt` | `DateTime?` | When the key was revoked, or `null` (final). |
+| `lastUsedAt` | `DateTime?` | When the key last authenticated a request, recorded at most once a minute, or `null` (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `isLiveAt` | `bool isLiveAt(DateTime now)` | Whether the key authenticates at `now`: not revoked, and not expired. |
+| `copyWith` | `TomApiKey copyWith({DateTime? expiresAt, DateTime? revokedAt, DateTime? lastUsedAt})` | This record with the given fields replaced; a field left `null` keeps its value. |
+
+### TomIssuedApiKey
+
+A key as issued: the record, and the one time the full key is visible.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomIssuedApiKey(TomApiKey record, String value)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `record` | `TomApiKey` | The stored record (final). |
+| `value` | `String` | The key to hand over — `tomk.<keyId>.<secret>`. Stored nowhere (final). |
+
+### TomApiKeyIdentity
+
+The service account and key a request authenticated with, put in the request
+zone by `tomDefaultAuthenticationMiddleware` — what a rate limit keyed per API
+key reads.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomApiKeyIdentity(String keyId, String accountId)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `keyId` | `String` | The key's id (final). |
+| `accountId` | `String` | The account's id (final). |
+
+### TomApiKeyStore
+
+Where service accounts and key records live.
+
+- **Extends:** none (abstract)
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `saveAccount` | `Future<void> saveAccount(TomServiceAccount account)` | Stores `account`, replacing one with its id. |
+| `findAccount` | `Future<TomServiceAccount?> findAccount(String id)` | The account `id`, or `null`. |
+| `accounts` | `Future<List<TomServiceAccount>> accounts()` | Every account. |
+| `saveKey` | `Future<void> saveKey(TomApiKey key)` | Stores `key`, replacing one with its id. |
+| `findKey` | `Future<TomApiKey?> findKey(String id)` | The key `id`, or `null`. |
+| `keysOf` | `Future<List<TomApiKey>> keysOf(String accountId)` | The keys of account `accountId`, live or not. |
+| `touch` | `Future<void> touch(String keyId, DateTime at)` | Records that the key was used `at` — that field only, never a whole-record write, so a node's cached copy cannot restore a revocation another node made. |
+
+### TomMemoryApiKeyStore
+
+The default store: maps in this process. Right for a single node and for tests;
+a cluster shares a store, or each node would know only the keys issued on it.
+
+- **Implements:** `TomApiKeyStore`
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `saveAccount` | `Future<void> saveAccount(TomServiceAccount account)` | *(override)* |
+| `findAccount` | `Future<TomServiceAccount?> findAccount(String id)` | *(override)* |
+| `accounts` | `Future<List<TomServiceAccount>> accounts()` | *(override)* |
+| `saveKey` | `Future<void> saveKey(TomApiKey key)` | *(override)* |
+| `findKey` | `Future<TomApiKey?> findKey(String id)` | *(override)* |
+| `keysOf` | `Future<List<TomApiKey>> keysOf(String accountId)` | *(override)* |
+| `touch` | `Future<void> touch(String keyId, DateTime at)` | *(override)* |
+
+### TomApiKeys
+
+Issues, rotates, revokes and checks API keys.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+TomApiKeys({required TomApiKeyStore store, DateTime Function()? clock, Random? random})
+```
+
+`clock` and `random` are injectable for tests; the defaults are `DateTime.now`
+and `Random.secure()`.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `header` | `static const String` | `'x-api-key'` — the request header a key is presented in. |
+| `prefix` | `static const String` | `'tomk'` — the prefix of every key, which tells a key from any other secret. |
+| `lookupCacheName` | `static const String` | `'tom.apiKeys'` — the cache the keys a node has looked up are held in. |
+| `lookupCacheSeconds` | `static const int` | `60` — how long a looked-up key stays cached on a node at most. |
+| `touchInterval` | `static const Duration` | One minute — how often a key's `lastUsedAt` is written, at most. |
+| `current` | `static TomApiKeys?` | *(getter)* The installed service, or `null` — a server with none installed reads no `X-API-Key` header. |
+| `store` | `TomApiKeyStore` | Where the accounts and keys live (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `install` | `static void install(TomApiKeys keys)` | Installs `keys` as the service the request pipeline authenticates with, and registers the node's lookup cache. |
+| `reset` | `static void reset()` | Uninstalls the service and drops the lookup cache. Test-support, and a server's shutdown. |
+| `hashSecret` | `static String hashSecret(String secret)` | The hex SHA-256 of `secret` — what a store keeps in place of it. |
+| `saveAccount` | `Future<void> saveAccount(TomServiceAccount account)` | Stores `account`, replacing one with its id. A change to its roles or to `disabled` takes effect on the next request. |
+| `issue` | `Future<TomIssuedApiKey> issue(String accountId, {List<String> roles = const [], String label = '', Duration? expiresIn})` | Issues a key for `accountId`, scoped to `roles` (empty for the account's), expiring after `expiresIn` (never when `null`). The key id is 8 random bytes in hex, the secret 32 random bytes base64url-encoded. Throws `api_key.issue.unknown_account` and `api_key.issue.role_not_held`. |
+| `rotate` | `Future<TomIssuedApiKey> rotate(String keyId, {Duration overlap = Duration.zero, Duration? expiresIn})` | Issues a successor to `keyId` with the same account, roles and label, and ends the old key after `overlap` — at once by default, so a rotation revokes the old key. A non-zero overlap sets the old key's expiry to the earlier of its own and `now + overlap`. Drops the old key from the lookup cache. Throws `api_key.rotate.unknown_key`. |
+| `revoke` | `Future<void> revoke(String keyId)` | Revokes `keyId` at once — a key already revoked keeps its first revocation time — and drops it from the lookup cache. Throws `api_key.revoke.unknown_key`. |
+| `keysOf` | `Future<List<TomApiKey>> keysOf(String accountId)` | The keys of `accountId`, live or not — never their secrets. |
+| `authenticate` | `Future<(TomPrincipal, TomApiKeyIdentity)?> authenticate(String presented)` | The principal `presented` authenticates as, with its key's identity, or `null`. `null` for every reason alike — malformed, unknown, wrong secret, revoked, expired, account disabled or gone — with the reason logged and never the key; the hash is compared in constant time. The principal is authenticated, named `service:<accountId>`, carries the key's roles intersected with the account's (the account's when the key has none), the account's tenant and organization, and `{serviceAccount, apiKey}` as its context. Records `lastUsedAt` at most once per `touchInterval`. |
+
+The lookup cache is `TomCache`'s, registered by `install`: a key record read
+from the store is kept there for at most `lookupCacheSeconds`, and `rotate` and
+`revoke` drop it through `TomCacheInvalidator.invalidateCacheEntry`, which a
+shared invalidation channel carries to every node.
+
+### TomSqlApiKeyStore
+
+A `TomApiKeyStore` whose accounts and keys are rows of two framework tables in a
+`TomDataSource` every node shares. A write replaces the row whole (`REPLACE`).
+In `authentication/sql_api_key_store.dart`.
+
+- **Implements:** `TomApiKeyStore`
+
+#### Constructors
+
+```dart
+TomSqlApiKeyStore(
+  TomDataSource datasource, {
+  String accountTable = defaultServiceAccountTable,
+  String keyTable = defaultApiKeyTable,
+  bool createSchema = true,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `datasource` | `TomDataSource` | The data source holding both tables (final). |
+| `accountTable` | `String` | The service-account table's name (final). |
+| `keyTable` | `String` | The API-key table's name (final). |
+| `createSchema` | `bool` | Whether the store creates its tables on first use; `false` when a migration creates them (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `ensureSchema` | `Future<void> ensureSchema()` | Creates both tables when `createSchema` asks for it; once per store. Called by every operation. |
+| `saveAccount` | `Future<void> saveAccount(TomServiceAccount account)` | *(override)* `REPLACE` of the account row; roles stored as a JSON array. |
+| `findAccount` | `Future<TomServiceAccount?> findAccount(String id)` | *(override)* |
+| `accounts` | `Future<List<TomServiceAccount>> accounts()` | *(override)* In id order. |
+| `saveKey` | `Future<void> saveKey(TomApiKey key)` | *(override)* `REPLACE` of the key row. |
+| `findKey` | `Future<TomApiKey?> findKey(String id)` | *(override)* |
+| `keysOf` | `Future<List<TomApiKey>> keysOf(String accountId)` | *(override)* In issue order. |
+| `touch` | `Future<void> touch(String keyId, DateTime at)` | *(override)* An `UPDATE` of `last_used_at` alone. |
+| `deleteAll` | `Future<void> deleteAll()` | Deletes every account and key. Test-support. |
+
+### TomServiceAccountRow
+
+One `tom_service_account` row, as `TomSqlApiKeyStore` reads it back —
+reflected, `@TomDbTable`-mapped, and internal to the store.
+
+#### Properties
+
+| Property | Type | Column | Description |
+| -------- | ---- | ------ | ----------- |
+| `id` | `String` | `id` | The account's id. |
+| `name` | `String` | `name` | Its name. |
+| `roles` | `String` | `roles` | Its roles, a JSON array. |
+| `tenant` | `String?` | `tenant` | Its tenant, or `null`. |
+| `organization` | `String?` | `organization` | Its organization, or `null`. |
+| `disabled` | `bool` | `disabled` | Whether it is disabled. |
+
+### TomApiKeyRow
+
+One `tom_api_key` row, as `TomSqlApiKeyStore` reads it back — reflected,
+`@TomDbTable`-mapped, and internal to the store. The instants are `String`
+fields read back through `parseSqlInstant`.
+
+#### Properties
+
+| Property | Type | Column | Description |
+| -------- | ---- | ------ | ----------- |
+| `id` | `String` | `id` | The key's id. |
+| `accountId` | `String` | `account_id` | The account it authenticates as. |
+| `secretHash` | `String` | `secret_hash` | The hex SHA-256 of its secret. |
+| `roles` | `String` | `roles` | Its roles, a JSON array. |
+| `label` | `String` | `label` | Its label. |
+| `createdAt` | `String` | `created_at` | When it was issued, as the stored text. |
+| `expiresAt` | `String?` | `expires_at` | When it expires, or `null`. |
+| `revokedAt` | `String?` | `revoked_at` | When it was revoked, or `null`. |
+| `lastUsedAt` | `String?` | `last_used_at` | When it last authenticated a request, or `null`. |
+
 ## Global Functions and Constants
 
 | Name | Type | Description |
@@ -4237,6 +4581,10 @@ TomScimIdentityDirectory(
 | `defaultScimResourceTable` | `String` | `'tom_scim_resource'` — the SCIM resource table's default name |
 | `scimResourceTable(String table)` | `TomFrameworkTable` | The SCIM resource table's single declaration — `id` (`BIGINT` auto-increment, primary key, the SCIM id), `resource_type`, `name_key` (unique per type), `external_id` (nullable, indexed), `document` (`LONGTEXT`), `created_at`, `last_modified`, `version` — from which the store's DDL and statements and the convergence guard's schema model all derive |
 | `scimResourceTableDdl(String table)` | `String` | That declaration rendered as `CREATE TABLE IF NOT EXISTS`, for a deployment that applies DDL by hand |
+| `defaultServiceAccountTable` | `String` | `'tom_service_account'` — the service-account table's default name |
+| `defaultApiKeyTable` | `String` | `'tom_api_key'` — the API-key table's default name |
+| `serviceAccountTable(String table)` | `TomFrameworkTable` | The service-account table's declaration — `id` (`VARCHAR(191)`, primary key), `name`, `roles` (`TEXT`, a JSON array), `tenant` and `organization` (nullable), `disabled` (`TINYINT(1)`, default `0`) |
+| `apiKeyTable(String table)` | `TomFrameworkTable` | The API-key table's declaration — `id` (`VARCHAR(64)`, primary key), `account_id` (indexed), `secret_hash` (`CHAR(64)`), `roles`, `label`, `created_at`, and the nullable `expires_at`, `revoked_at` and `last_used_at` (`DATETIME(6)`) |
 | `scimValues(Map<String, Object?> json, String path)` | `List<Object?>` | The values at `path` — `attr` or `attr.sub`, optionally prefixed with an extension schema URN and a colon — in `json`, flattening multi-valued attributes, with attribute names compared case-insensitively |
 | `scimLookup(Map<String, Object?> json, String name)` | `Object?` | The value of `name` in `json`, matched case-insensitively |
 | `scimKeyOf(Map<String, Object?> json, String name)` | `String?` | The key of `json` that equals `name` case-insensitively, or `null` |
@@ -4252,6 +4600,9 @@ signing and verifying the same tokens with the same installed key, which is why
 they share a file. The keys themselves, `readPemFile` and `TomJwtKeyException`
 are `authentication/jwt_keys.dart`'s; the endpoint publishing them is
 `authentication/jwks_endpoint.dart`'s.
+
+The four service-account and API-key entries live in `sql_api_key_store.dart`,
+beside the store that is their only reader.
 
 The first three live in `oauth_state_sql.dart` rather than beside the store so
 `db_migration/framework_convergence.dart` can name the table without importing

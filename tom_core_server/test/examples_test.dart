@@ -119,6 +119,7 @@ const _stepCounts = <String, int>{
   'example/resources/resources_example.dart': 10,
   'example/scheduling/scheduling_example.dart': 10,
   'example/server/server_example.dart': 6,
+  'example/ratelimit/rate_limit_example.dart': 7,
   'example/tenancy/tenancy_example.dart': 8,
   'example/transactions/transactions_example.dart': 8,
 };

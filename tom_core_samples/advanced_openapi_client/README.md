@@ -62,7 +62,7 @@ dart run tom_core_openapi:openapi :dart-client \
 | ---- | ----------------------------------- |
 | The client | `AppApi` / `AuthApi`: `(Uri baseUri, {http.Client? httpClient, String? bearerToken})`, a mutable `bearerToken`, `close()`, and one method per operation of the document — the server's own endpoints and the framework's (health, preferences, OAuth, SCIM, `GET /openapi.json`) |
 | The models | one class per object schema — the sample's DTOs and entities (`Workspace`, `Project`, `TodoItem`, `LoginRequest`, `LoginResult`, `UserDto`, …) and the framework's (`TomAuthenticationResult`, `TomUserPreferenceDto`, `TomError`, …) — each with `fromJson` / `toJson` |
-| The failure | `AppApiException` / `AuthApiException`, carrying `statusCode`, `body` and the framework envelope's `errorKey` |
+| The failure | `AppApiException` / `AuthApiException`, carrying `statusCode`, `body`, the response `headers`, the framework envelope's `errorKey`, and `retryAfter` on a `429` |
 
 Each method is named after the operation's `operationId` — the endpoint id in
 the contracts registry, such as `appListWorkspaces` or `authLogin` — and takes

@@ -63,6 +63,32 @@
               "application/json": {}
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -114,6 +140,32 @@
           "200": {
             "description": "Done; the response carries no body."
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -145,6 +197,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -172,6 +227,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -203,6 +284,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -231,6 +315,32 @@
           "200": {
             "description": "Done; the response carries no body."
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -262,6 +372,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -292,6 +405,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -323,6 +462,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -358,6 +500,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -389,6 +557,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -424,6 +595,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -455,6 +652,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -485,6 +685,32 @@
           "200": {
             "description": "Done; the response carries no body."
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -516,6 +742,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -543,6 +772,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -574,6 +829,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -604,6 +862,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -635,6 +919,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -670,6 +957,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -701,6 +1014,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -736,6 +1052,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -767,6 +1109,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -797,6 +1142,32 @@
           "200": {
             "description": "Done; the response carries no body."
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -828,6 +1199,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -858,6 +1232,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -889,6 +1289,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -924,6 +1327,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -955,6 +1384,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -990,6 +1422,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -1021,6 +1479,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -1051,6 +1512,32 @@
           "200": {
             "description": "Done; the response carries no body."
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -1082,6 +1569,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ],
         "x-tom-access": {
@@ -1115,6 +1605,32 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
                 }
               }
             }
@@ -1177,6 +1693,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -1231,6 +1773,32 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
                 }
               }
             }
@@ -1293,6 +1861,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -1334,6 +1928,32 @@
           "200": {
             "description": "Done; the response carries no body."
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -1365,6 +1985,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ]
       }
@@ -1386,6 +2009,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -1417,6 +2066,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ]
       }
@@ -1438,6 +2090,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -1469,6 +2147,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ]
       }
@@ -1486,6 +2167,32 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ResourceBundleDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
                 }
               }
             }
@@ -1544,6 +2251,32 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
                 }
               }
             }
@@ -1618,6 +2351,32 @@
               "application/json": {}
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -1649,6 +2408,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ]
       },
@@ -1696,6 +2458,32 @@
               "application/json": {}
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -1727,6 +2515,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ]
       },
@@ -1774,6 +2565,32 @@
               "application/json": {}
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -1805,6 +2622,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ]
       },
@@ -1852,6 +2672,32 @@
               "application/json": {}
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -1883,6 +2729,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ]
       },
@@ -1924,6 +2773,32 @@
               "application/json": {}
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -1955,6 +2830,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ]
       }
@@ -1970,6 +2848,32 @@
             "description": "The response the handler builds itself.",
             "content": {
               "text/plain": {}
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
             }
           },
           "404": {
@@ -2020,6 +2924,32 @@
             "description": "The response the handler builds itself.",
             "content": {
               "application/json": {}
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
             }
           },
           "404": {
@@ -2076,6 +3006,32 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TomOAuthAuthorizationDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
                 }
               }
             }
@@ -2138,6 +3094,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -2189,6 +3171,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -2231,6 +3239,32 @@
             "description": "The response the handler builds itself.",
             "content": {
               "application/json": {}
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
             }
           },
           "404": {
@@ -2285,6 +3319,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -2316,6 +3376,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ]
       },
@@ -2346,6 +3409,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -2377,6 +3466,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ]
       },
@@ -2390,6 +3482,32 @@
           "200": {
             "description": "Done; the response carries no body."
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -2421,6 +3539,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ]
       }
@@ -2452,6 +3573,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -2483,6 +3630,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ]
       },
@@ -2505,6 +3655,32 @@
           "200": {
             "description": "Done; the response carries no body."
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -2536,6 +3712,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
           }
         ]
       }
@@ -2551,6 +3730,32 @@
             "description": "The response the handler builds itself.",
             "content": {
               "text/plain": {}
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
             }
           },
           "404": {
@@ -2611,6 +3816,32 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -2665,6 +3896,32 @@
               "application/xml": {}
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -2707,6 +3964,32 @@
             "description": "The response the handler builds itself.",
             "content": {
               "application/json": {}
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
             }
           },
           "404": {
@@ -2755,6 +4038,32 @@
             "description": "The response the handler builds itself.",
             "content": {
               "application/json": {}
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
             }
           },
           "404": {
@@ -2809,6 +4118,32 @@
             "description": "The response the handler builds itself.",
             "content": {
               "application/json": {}
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
             }
           },
           "404": {
@@ -2869,6 +4204,32 @@
               "application/json": {}
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -2925,6 +4286,32 @@
             "description": "The response the handler builds itself.",
             "content": {
               "application/json": {}
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
             }
           },
           "404": {
@@ -2985,6 +4372,32 @@
               "application/json": {}
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -3027,6 +4440,32 @@
             "description": "The response the handler builds itself.",
             "content": {
               "application/json": {}
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
             }
           },
           "404": {
@@ -3083,6 +4522,32 @@
               "application/json": {}
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -3125,6 +4590,32 @@
             "description": "The response the handler builds itself.",
             "content": {
               "application/json": {}
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
             }
           },
           "404": {
@@ -3181,6 +4672,32 @@
               "application/json": {}
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -3225,6 +4742,32 @@
               "application/json": {}
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -3267,6 +4810,32 @@
             "description": "The response the handler builds itself.",
             "content": {
               "application/json": {}
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
             }
           },
           "404": {
@@ -3315,6 +4884,32 @@
             "description": "The response the handler builds itself.",
             "content": {
               "application/json": {}
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
             }
           },
           "404": {
@@ -3369,6 +4964,32 @@
             "description": "The response the handler builds itself.",
             "content": {
               "application/json": {}
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
             }
           },
           "404": {
@@ -3429,6 +5050,32 @@
               "application/json": {}
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -3487,6 +5134,32 @@
               "application/json": {}
             }
           },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
             "content": {
@@ -3543,6 +5216,32 @@
             "description": "The response the handler builds itself.",
             "content": {
               "application/json": {}
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
             }
           },
           "404": {
@@ -4092,6 +5791,12 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT"
+      },
+      "apiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "A service account's API key, `tomk.<keyId>.<secret>`; read only when no Authorization header is sent."
       }
     }
   }

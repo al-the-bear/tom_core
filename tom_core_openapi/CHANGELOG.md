@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **`apiKeyAuth`** (`TomOpenApiDocumentGenerator.apiKeyScheme`): a security
+  scheme of `type: apiKey` in the `X-API-Key` header — a service account's key
+  — defined beside `bearerAuth`. Every authenticated operation's `security`
+  names both as alternative requirements, `[{bearerAuth: []}, {apiKeyAuth: []}]`.
+- **A `429` response on every operation**, with the framework error envelope
+  and a `Retry-After` header (`integer`, `minimum: 1`), because rate limits are
+  deployment configuration any operation may be under.
+- **`apiKey` on the generated Dart client**: a constructor parameter and a
+  mutable field, sent as `X-API-Key` to secured operations when no
+  `bearerToken` is set; public operations send neither.
+
 ## 0.1.0
 
 ### Added

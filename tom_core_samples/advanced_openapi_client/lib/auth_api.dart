@@ -13,8 +13,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 /// A call that did not succeed: the HTTP [statusCode], the
-/// raw [body], and the error envelope's [errorKey] when the
-/// server sent one.
+/// raw [body], the response [headers] — `retry-after` on a 429
+/// — and the error envelope's [errorKey] when the server sent
+/// one.
 class AuthApiException implements Exception {
   /// The HTTP status code.
   final int statusCode;
@@ -25,8 +26,22 @@ class AuthApiException implements Exception {
   /// The error envelope's `errorKey`, or `null`.
   final String? errorKey;
 
-  /// A failure with [statusCode], [body] and [errorKey].
-  AuthApiException(this.statusCode, this.body, this.errorKey);
+  /// The response headers, lower-cased by name.
+  final Map<String, String> headers;
+
+  /// How long a `429` asks the caller to wait, or `null`.
+  Duration? get retryAfter {
+    final seconds = int.tryParse(headers['retry-after'] ?? '');
+    return seconds == null ? null : Duration(seconds: seconds);
+  }
+
+  /// A failure with [statusCode], [body], [errorKey] and [headers].
+  AuthApiException(
+    this.statusCode,
+    this.body,
+    this.errorKey, [
+    this.headers = const {},
+  ]);
 
   /// The failure [response] reports.
   factory AuthApiException.of(http.Response response) {
@@ -39,7 +54,12 @@ class AuthApiException implements Exception {
     } on FormatException {
       key = null;
     }
-    return AuthApiException(response.statusCode, response.body, key);
+    return AuthApiException(
+      response.statusCode,
+      response.body,
+      key,
+      response.headers,
+    );
   }
 
   @override
@@ -885,8 +905,9 @@ class UserDto {
 
 /// Calls the operations of the API, one method each.
 ///
-/// Operations that require a bearer token send [bearerToken]
-/// when it is set; public operations never send it.
+/// Operations that require authentication send [bearerToken]
+/// when it is set, else [apiKey] as `X-API-Key`; public
+/// operations send neither.
 class AuthApi {
   /// The server every call is addressed to.
   final Uri baseUri;
@@ -894,12 +915,20 @@ class AuthApi {
   /// The bearer token sent to operations that require one.
   String? bearerToken;
 
+  /// The API key sent to operations that require authentication
+  /// when no [bearerToken] is set.
+  String? apiKey;
+
   final http.Client _http;
 
   /// A client of the server at [baseUri], over [httpClient]
   /// (a new one when omitted).
-  AuthApi(this.baseUri, {http.Client? httpClient, this.bearerToken})
-    : _http = httpClient ?? http.Client();
+  AuthApi(
+    this.baseUri, {
+    http.Client? httpClient,
+    this.bearerToken,
+    this.apiKey,
+  }) : _http = httpClient ?? http.Client();
 
   /// Closes the underlying HTTP client.
   void close() => _http.close();
@@ -1656,7 +1685,9 @@ class AuthApi {
     final headers = <String, String>{
       'accept': 'application/json',
       if (authenticated && bearerToken != null)
-        'authorization': 'Bearer $bearerToken',
+        'authorization': 'Bearer $bearerToken'
+      else if (authenticated && apiKey != null)
+        'x-api-key': apiKey!,
     };
     final http.BaseRequest request;
     if (fields != null || files != null) {

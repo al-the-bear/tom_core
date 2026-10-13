@@ -102,6 +102,10 @@ registers the framework's API contracts, scans every `@tomService` and
 mounts, framework endpoints included. WebSocket endpoints are skipped; an
 `OPTIONS` method is never listed. Paths, tags, methods and component schemas
 are sorted, so the output is deterministic and a committed copy diffs cleanly.
+Every operation states a `404`, a `429` with a `Retry-After` header — a rate
+limit is deployment configuration any operation may be under — and a `default`
+error response; an authenticated operation's `security` is
+`[{bearerAuth: []}, {apiKeyAuth: []}]`, a bearer token or an API key.
 
 ```dart
 registerMyApis();
@@ -127,7 +131,8 @@ TomOpenApiDocumentGenerator({
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `openApiVersion` | `String` | The OpenAPI version written into every document, `3.1.0` (a `const`). |
-| `bearerScheme` | `String` | The security scheme every authenticated operation names, `bearerAuth` (a `const`). |
+| `bearerScheme` | `String` | The security scheme of a bearer token, `bearerAuth` (a `const`): HTTP bearer with a JWT. Every authenticated operation names it. |
+| `apiKeyScheme` | `String` | The security scheme of a service account's API key, `apiKeyAuth` (a `const`): `type: apiKey` in the `X-API-Key` header. Every authenticated operation names it as the alternative to `bearerScheme`. |
 | `errorSchema` | `String` | The component describing the framework's error envelope, `TomError` (a `const`). |
 | `contextTypes` | `Set<String>` | The parameter types the pipeline supplies from the request itself and a caller never sends: `TomPrincipal`, `TomClientJwtToken`, `TomExecutionContext`, `TomRequestLogInfo`. |
 | `primitiveParameterTypes` | `Set<String>` | The parameter types bound from a path variable or a query parameter: `String`, `int`, `double`, `num`, `bool`. |
@@ -349,7 +354,11 @@ TomOpenApiValidator({List<String>? python})
 
 Generates a typed Dart client library from an OpenAPI 3.1 document. The
 generated code depends on `package:http` and nothing else — no Tom package, no
-reflection. It reads the document only, never a server.
+reflection. It reads the document only, never a server. The generated client is
+constructed as `<clientName>(Uri baseUri, {http.Client? httpClient, String?
+bearerToken, String? apiKey})`; a secured operation sends `bearerToken` as
+`Authorization: Bearer …` when it is set, else `apiKey` as `X-API-Key`, and a
+public operation sends neither.
 
 #### Constructors
 

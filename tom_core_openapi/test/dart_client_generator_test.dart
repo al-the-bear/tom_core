@@ -58,8 +58,17 @@ Future<void> main(List<String> args) async {
     await api.fixtureListAll();
     out['refused'] = 'no';
   } on FixtureApiException catch (e) {
-    out['refused'] = {'status': e.statusCode, 'key': e.errorKey};
+    out['refused'] = {
+      'status': e.statusCode,
+      'key': e.errorKey,
+      'retryAfter': e.retryAfter?.inSeconds,
+    };
   }
+  final keyed = FixtureApi(Uri.parse(args.single), apiKey: 'tomk.k1.secret');
+  out['keyed'] = (await keyed.fixtureNoteServiceList(author: 'key')).length;
+  // A public operation sends no key either.
+  await keyed.fixtureNoteServiceRead(id: 'n 1');
+  keyed.close();
   print(jsonEncode(out));
   api.close();
 }
@@ -151,6 +160,8 @@ dependencies:
             'path': request.uri.path,
             'query': request.uri.queryParameters,
             'auth': request.headers.value('authorization'),
+            if (request.headers.value('x-api-key') != null)
+              'apiKey': request.headers.value('x-api-key'),
             'body': body.isEmpty ? null : jsonDecode(body),
           });
           final path = request.uri.path;
@@ -169,8 +180,9 @@ dependencies:
               'labels': ['l'],
             };
           } else if (path == '/fixture-api/all') {
-            status = 409;
-            answer = {'errorType': 'X', 'errorKey': 'fixture.conflict'};
+            status = 429;
+            request.response.headers.set('retry-after', '17');
+            answer = {'errorType': 'X', 'errorKey': 'rate_limit.exceeded'};
           }
           request.response
             ..statusCode = status
@@ -201,7 +213,20 @@ dependencies:
           'due': '2026-01-02T03:04:05.000Z',
           'labels': ['l'],
         });
-        expect(out['refused'], {'status': 409, 'key': 'fixture.conflict'});
+        expect(out['refused'], {
+          'status': 429,
+          'key': 'rate_limit.exceeded',
+          'retryAfter': 17,
+        });
+        expect(out['keyed'], 2);
+        // With no bearer token, a secured operation carries the API key, and
+        // a public one carries nothing.
+        final keyedList = requests.firstWhere(
+          (r) => (r['query'] as Map)['author'] == 'key',
+        );
+        expect(keyedList['apiKey'], 'tomk.k1.secret');
+        expect(keyedList['auth'], isNull);
+        expect(requests.last['apiKey'], isNull);
 
         expect(requests[0], {
           'method': 'GET',

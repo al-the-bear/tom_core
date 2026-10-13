@@ -99,6 +99,7 @@ components:
   schemas: {...}                      — every reached class, plus TomError
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+    apiKeyAuth: {type: apiKey, in: header, name: X-API-Key, description}
 ```
 
 **Which endpoints.** `generate` runs the router's own discovery:
@@ -204,7 +205,14 @@ otherwise from the method's reflected return type, without its `Future`
 | shelf `Response` | `200` with an untyped body of the produced media type |
 | anything else | `200` with the type's schema under the produced media type |
 
-Every operation also carries two error responses:
+Every operation also carries three error responses:
+
+- **`429`**, as `application/json` with the same schema as `default`, and a
+  `Retry-After` header (`integer`, `minimum: 1`) giving the seconds to wait. It
+  is stated for every operation because rate limits are deployment
+  configuration the build cannot see: any operation may be limited, and a
+  caller should be ready to wait the `Retry-After` it is given. The body is the
+  framework envelope keyed `rate_limit.exceeded`.
 
 - **`404`**, as `text/plain`. It is stated for every operation because it is
   how the framework refuses a caller: a denied request answers a bare
@@ -224,21 +232,31 @@ the error carries them.
 
 ## Security
 
-The document defines one security scheme, `bearerAuth` — HTTP bearer with a
-JWT — and each operation's `security` follows the endpoint's access control:
+The document defines two security schemes, and every authenticated operation
+accepts either:
+
+| Scheme | Constant | Definition |
+| ------ | -------- | ---------- |
+| `bearerAuth` | `TomOpenApiDocumentGenerator.bearerScheme` | HTTP bearer with a JWT — a signed-in user's token |
+| `apiKeyAuth` | `TomOpenApiDocumentGenerator.apiKeyScheme` | an API key in the `X-API-Key` header — a service account's key, `tomk.<keyId>.<secret>`, read by the server only when no `Authorization` header is sent |
+
+Each operation's `security` follows the endpoint's access control. For an
+authenticated operation it lists the two schemes as two alternative
+requirements, which is how OpenAPI spells "either":
 
 | Access control | `security` | `x-tom-access` |
 | -------------- | ---------- | -------------- |
 | `@TomPublicAccess()` | `[]` | — |
 | none declared, on a registry endpoint with `includeBearerAuthentication: false` | `[]` | — |
-| `@TomAuthenticatedAccess()` | `[{bearerAuth: []}]` | — |
-| `@TomRoleAccess([...])` | `[{bearerAuth: []}]` | `{rule: roles, roles: [...]}` |
-| any other rule | `[{bearerAuth: []}]` | `{rule: <the rule's type name>}` |
-| none declared | `[{bearerAuth: []}]` | — |
+| `@TomAuthenticatedAccess()` | `[{bearerAuth: []}, {apiKeyAuth: []}]` | — |
+| `@TomRoleAccess([...])` | `[{bearerAuth: []}, {apiKeyAuth: []}]` | `{rule: roles, roles: [...]}` |
+| any other rule | `[{bearerAuth: []}, {apiKeyAuth: []}]` | `{rule: <the rule's type name>}` |
+| none declared | `[{bearerAuth: []}, {apiKeyAuth: []}]` | — |
 
 An endpoint that declares no access rule falls under the server's protection
 default, which requires an authenticated principal — so it is documented as
-needing the bearer token. `x-tom-access` is a vendor extension: OpenAPI has no
+needing a bearer token or an API key. A service account's key carries roles like
+a user's token, so `x-tom-access` applies to it the same way. `x-tom-access` is a vendor extension: OpenAPI has no
 standard way to say *which* authenticated callers an operation admits, and a
 reader can learn the roles from it while a standard generator ignores it.
 
@@ -408,7 +426,8 @@ class named after a Dart type the generated code uses (`String`, `List`,
 `DateTime`, …) or after the client gains a `Model` suffix.
 
 **The client class.** `<ClientName>(Uri baseUri, {http.Client? httpClient,
-String? bearerToken})`, with a mutable `bearerToken` and `close()`. One method
+String? bearerToken, String? apiKey})`, with a mutable `bearerToken` and
+`apiKey`, and `close()`. One method
 per operation, named after its `operationId`:
 
 - path and query parameters are named arguments — `required` when the document
@@ -423,12 +442,18 @@ per operation, named after its `operationId`:
 
 **Authentication.** `bearerToken` is sent as `Authorization: Bearer …` only to
 operations whose `security` is not empty, so a public operation never receives
-it.
+it. When no `bearerToken` is set, `apiKey` is sent as `X-API-Key` to the same
+operations instead — a client holds a signed-in user's token or a service
+account's key, and a request carries one credential, never both. A public
+operation receives neither.
 
 **Failures.** Any status below `200` or from `400` up throws
-`<ClientName>Exception` with `statusCode`, the raw `body`, and `errorKey` when
-the body is the framework error envelope. A refused call is a `404` with no
-`errorKey`, as the document says.
+`<ClientName>Exception` with `statusCode`, the raw `body`, the response
+`headers`, and `errorKey` when the body is the framework error envelope. A
+refused call is a `404` with no `errorKey`, as the document says; a
+rate-limited one a `429` whose `errorKey` is `rate_limit.exceeded` and whose
+`retryAfter` is the wait its `Retry-After` header names. The client does not
+retry on its own: when to try again is the caller's decision.
 
 `formatDartSource` runs `dart format` over the result; the command-line tool
 always does, so a committed client is stable for a byte comparison.

@@ -72,6 +72,10 @@ const List<TourStop> tour = [
     'Versioned schema migrations and the plan a chain produces',
   ),
   TourStop(
+    'example/ratelimit/rate_limit_example.dart',
+    'Service accounts with scoped API keys, rotation, revocation, rate limits',
+  ),
+  TourStop(
     'example/tenancy/tenancy_example.dart',
     'Two tenants: resolution, token binding, caches, revocations, jobs, outbox',
   ),

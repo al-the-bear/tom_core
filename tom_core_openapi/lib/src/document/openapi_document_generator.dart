@@ -51,6 +51,10 @@ class TomOpenApiDocumentGenerator {
   /// The security scheme every authenticated operation names.
   static const String bearerScheme = 'bearerAuth';
 
+  /// The security scheme a service account's API key satisfies — the
+  /// alternative to [bearerScheme] on every authenticated operation.
+  static const String apiKeyScheme = 'apiKeyAuth';
+
   /// The component describing the framework's error envelope.
   static const String errorSchema = 'TomError';
 
@@ -196,6 +200,14 @@ class TomOpenApiDocumentGenerator {
             'type': 'http',
             'scheme': 'bearer',
             'bearerFormat': 'JWT',
+          },
+          apiKeyScheme: {
+            'type': 'apiKey',
+            'in': 'header',
+            'name': 'X-API-Key',
+            'description':
+                "A service account's API key, `tomk.<keyId>.<secret>`; read "
+                'only when no Authorization header is sent.',
           },
         },
       },
@@ -473,6 +485,10 @@ class TomOpenApiDocumentGenerator {
 
   /// The error responses of every operation.
   ///
+  /// `429` is stated for every operation because rate limits are deployment
+  /// configuration the build cannot see: any operation may be limited, and a
+  /// caller should be ready to wait the `Retry-After` it is given.
+  ///
   /// `404` is stated for every operation because it is how the framework
   /// refuses a caller: a denial is a bare `404 Not found`, indistinguishable
   /// from a route that does not exist, so that a refusal does not confirm what
@@ -481,6 +497,18 @@ class TomOpenApiDocumentGenerator {
   /// handler's decision, and so is its body — usually the framework envelope,
   /// which the schema names, but a handler may write its own.
   static const Map<String, Object?> _errorResponses = {
+    '429': {
+      'description':
+          'Too many requests: a rate limit the deployment configured refused '
+          'this one. Retry after the number of seconds Retry-After names.',
+      'headers': {
+        'Retry-After': {
+          'description': 'Seconds to wait before the next request.',
+          'schema': {'type': 'integer', 'minimum': 1},
+        },
+      },
+      'content': _errorContent,
+    },
     '404': {
       'description':
           'Not found — also the answer to a caller the endpoint refuses, '
@@ -510,8 +538,9 @@ class TomOpenApiDocumentGenerator {
     },
   };
 
-  /// The operation's security requirement: none for a public endpoint, the
-  /// bearer scheme for everything else.
+  /// The operation's security requirement: none for a public endpoint, and
+  /// for everything else a bearer token **or** an API key — two alternative
+  /// requirements, as OpenAPI spells "either".
   ///
   /// An endpoint that declares no access rule falls under the server's global
   /// protection default, which requires an authenticated principal.
@@ -525,6 +554,7 @@ class TomOpenApiDocumentGenerator {
     }
     return const [
       {bearerScheme: <String>[]},
+      {apiKeyScheme: <String>[]},
     ];
   }
 

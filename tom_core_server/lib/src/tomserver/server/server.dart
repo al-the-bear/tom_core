@@ -6,6 +6,7 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import '../authentication/api_keys.dart';
 import '../authentication/jwt_signing.dart';
 import '../authentication/server_self_login.dart';
 import '../little_things/request_id.dart';
@@ -15,6 +16,7 @@ import '../configuration/runtime_environment.dart';
 import '../endpoints/endpoint_pipeline.dart';
 import '../endpoints/openapi_document_endpoint.dart';
 import '../authorization/authorization_cache.dart';
+import '../ratelimit/rate_limit.dart';
 import '../tenancy/tenancy.dart';
 import '../tenancy/tenant_resolution.dart';
 import '../transactions/transaction_manager.dart';
@@ -350,6 +352,31 @@ Middleware tomDefaultAuthenticationMiddleware(
         clientToken,
         callPrincipal,
       );
+      // An API key is read only when no Authorization header was: a request
+      // presenting both is answered as the bearer it presented, so a key never
+      // widens what a signed-in user may do.
+      TomApiKeyIdentity? apiKey;
+      if (outcome == TomCredentialOutcome.noCredentials) {
+        final presented = request.headers[TomApiKeys.header];
+        if (presented != null) {
+          final keys = TomApiKeys.current;
+          final accepted = keys == null
+              ? null
+              : await keys.authenticate(presented);
+          if (accepted == null) {
+            // [TomApiKeys.authenticate] has logged why it refused the key;
+            // a server with no keys installed says so here.
+            if (keys == null) {
+              tomLog.warn(
+                'Ignored an X-API-Key header: this server has no API keys '
+                'installed. The request proceeds unauthenticated.',
+              );
+            }
+          } else {
+            (principal, apiKey) = accepted;
+          }
+        }
+      }
       // The tenant, when the deployment has tenancy: the verified token's
       // claim, or what the host or a header names — see
       // TomTenancy.resolveRequest. A refusal is answered here, before any
@@ -371,6 +398,7 @@ Middleware tomDefaultAuthenticationMiddleware(
         TomExecutionContext: tomExecutionContext,
         TomPrincipal: principal,
         TomClientJwtToken: clientToken,
+        TomApiKeyIdentity: apiKey,
         TomRequestId: TomRequestId(),
       });
       zoneValues[TomZoneValues] = zoneValues;
@@ -645,6 +673,13 @@ class TomServer {
         ? null
         : configuration.openApiDocument;
 
+    // Rate limits, when the configuration names any and the application did
+    // not install its own.
+    if (TomRateLimits.current == null) {
+      final limits = TomRateLimits.fromConfiguration();
+      if (limits != null) TomRateLimits.install(limits);
+    }
+
     // let the router be set up...
     router = TomEndpointRouting().initializeRouter();
 
@@ -697,6 +732,9 @@ class TomServer {
                 "tomDefaultAuthenticationMiddleware",
               ),
         )
+        // Inside authentication, where the principal and the API key it is
+        // counted by are in the zone; a no-op while no limits are installed.
+        .addMiddleware(tomRateLimitMiddleware())
         .addMiddleware(_handleError(errorHandler, "InnerErrorHandler"))
         .addHandler(routerHandler);
 

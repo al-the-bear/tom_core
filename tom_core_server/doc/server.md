@@ -19,6 +19,7 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
 - [The Pipeline](#the-pipeline)
 - [Request Context and Zone Values](#request-context-and-zone-values)
   - [Endpoint-owned credentials](#endpoint-owned-credentials)
+  - [A service account's API key](#a-service-accounts-api-key)
   - [The request's tenant](#the-requests-tenant)
 - [Error Mapping](#error-mapping)
 - [Extending the Pipeline](#extending-the-pipeline)
@@ -128,8 +129,15 @@ order:
    the `authenticationErrorHandler`.
 4. **Authentication middleware** — the configuration's `authenticationMiddleware`
    or `tomDefaultAuthenticationMiddleware`.
-5. **Inner error handler** — catches errors from handling using `errorHandler`.
-6. **Router** — optionally wrapped in a `Cascade` with the configuration's
+5. **Rate-limiting middleware** — `tomRateLimitMiddleware()`, directly inside
+   authentication, where the request's principal and the API key it
+   authenticated with are in the zone. A no-op while no limits are installed;
+   otherwise a request over a limit is answered `429` here, before any handler
+   runs. `start()` installs the limits the `rateLimits` configuration key
+   describes when no limits were installed before it. See
+   [ratelimit.md](ratelimit.md).
+6. **Inner error handler** — catches errors from handling using `errorHandler`.
+7. **Router** — optionally wrapped in a `Cascade` with the configuration's
    `preExecutionHandler` / `postExecutionHandler`.
 
 **Logging sits above both error layers**, and that is what makes the access log
@@ -157,7 +165,10 @@ Three channels carry per-request state:
 - **The request `Zone`** (established by `tomDefaultAuthenticationMiddleware`)
   exposes a `TomZoneValues` bundle: the shelf `Request`, the ambient
   `TomExecutionContext`, the resolved `TomPrincipal`, the `TomClientJwtToken`,
-  and a fresh `TomRequestId` (declared in the little-things module) — and, in a
+  the `TomApiKeyIdentity` of a request a service account's API key
+  authenticated (`null` otherwise; see
+  [API keys](#a-service-accounts-api-key)), and a fresh `TomRequestId`
+  (declared in the little-things module) — and, in a
   multi-tenant deployment, the request's tenant (see
   [The request's tenant](#the-requests-tenant)). Downstream
   code recovers any of them with
@@ -191,6 +202,11 @@ requests:
 | `noPrincipal` | Sent a token that verified but yielded no principal. The ordinary cause is a token that is not live — expired, without a readable `exp`, or with a `validUntil` that disagrees with its `exp` — which `TomBearerAuthentication.convertTokenPayloadToPrincipal` refuses. The token is handed back with the outcome, so a refresh endpoint is reached with exactly it. |
 | `authenticated` | Sent a token that verified and yielded a principal. |
 | `endpointCredential` | Sent a header to a path claimed in `TomEndpointCredentials`. The header was left for the endpoint, unread — see [Endpoint-owned credentials](#endpoint-owned-credentials). |
+
+A request that sent no `Authorization` header (`noCredentials`) may still carry
+a service account's `X-API-Key`, which `tomDefaultAuthenticationMiddleware`
+reads after the outcome is known — see
+[A service account's API key](#a-service-accounts-api-key).
 
 An anonymous caller and a client whose signing key this deployment stopped
 recognising are the two worth separating. Rotate a key, miss an issuer, and
@@ -241,6 +257,22 @@ checks the header itself. A request with no header is still `noCredentials`.
 Claim a prefix only for endpoints that do check the header — a claimed path is
 unauthenticated as far as the framework knows, so an endpoint under it that
 relies on the framework's principal sees none.
+
+### A service account's API key
+
+When the request carries **no `Authorization` header** and an `X-API-Key`,
+`tomDefaultAuthenticationMiddleware` hands the key to the installed `TomApiKeys`
+(see [authentication.md](authentication.md#service-accounts-and-api-keys)). An
+accepted key puts the service account's principal in the zone as a bearer token
+would, and its `TomApiKeyIdentity` beside it. A key that authenticates nothing
+leaves the request unauthenticated, and `TomApiKeys.authenticate` logs the
+reason without the key.
+
+The header is read only when no `Authorization` header was sent: a request
+presenting both is answered as the bearer it presented, so a key never widens
+what a signed-in user may do. A server with no `TomApiKeys` installed ignores
+the header with a warning. A substitute authentication middleware that should
+admit service accounts has to read the key the same way.
 
 ### The request's tenant
 
@@ -302,7 +334,8 @@ to guess from and an intermediary free to sniff it as anything it likes.
   everything the default established: the zone values — at minimum
   `TomPrincipal` and `TomRequestId` — and the
   `TomTransactionManager.runInTransactionScope` around them, and, with a
-  tenancy installed, the request's tenant. Everything below
+  tenancy installed, the request's tenant; and, for an API-key limit to count
+  anything, the `TomApiKeyIdentity` of a request a key authenticated. Everything below
   the middleware reads those from the ambient zone rather than being passed
   them, so omitting one is not a compile error. Drop the transaction scope and
   repository code silently falls back to the per-isolate current transaction
@@ -322,7 +355,8 @@ to guess from and an intermediary free to sniff it as anything it likes.
 ## Verification
 
 Three suites cover this module, a fourth covers its endpoint-owned
-credentials, and a fifth its tenant resolution.
+credentials, a fifth its tenant resolution, and a sixth the API keys and rate
+limits it reads.
 
 `test/server_test.dart` covers the pipeline as composed functions:
 `TomRequestLogInfo`, `extractAuthentication` reading a credential off a request
@@ -367,6 +401,12 @@ through the pipeline with the identity provider's secret.
 through `tomDefaultAuthenticationMiddleware` with a tenancy installed: a request
 runs inside the tenant it names, a token used for another tenant is refused with
 `403`, and a deployment without tenancy runs every request in none.
+
+`test/ratelimit_test.dart`, in the group `the middleware`, runs requests
+through `tomDefaultAuthenticationMiddleware` and `tomRateLimitMiddleware`
+stacked as `start()` stacks them: an API key authenticating its request and
+counted per key, a refused key proceeding anonymous and counted by its address,
+and no limits installed leaving every response unannotated.
 
 ```bash
 dart run example/server/server_example.dart
@@ -438,10 +478,11 @@ and an application that needs one builds it today rather than waiting:
 | `shelf` | package | every file | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
 | `shelf_router` | package | every file | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
 | `tom_core_kernel` | package | every file | `TomPrincipal`, `TomClientJwtToken`, `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`, `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException` |
-| [authentication](authentication.md) | module | every file | `TomServerSelfLogin`, `TomServerSelfLoginException` |
+| [authentication](authentication.md) | module | every file | `TomServerSelfLogin`, `TomServerSelfLoginException`, `TomApiKeys` and `TomApiKeyIdentity` (a service account's API key) |
 | [authorization](authorization.md) | module | every file | `TomAuthorizationCache` (principal resolution) |
 | [configuration](configuration.md) | module | every file | `TomBaseServerConfiguration` |
 | [endpoints](endpoints.md) | module | every file | `TomEndpointRouting` (router initialisation), `TomOpenApiServer` (the OpenAPI document path, set from `openApiDocument`) |
 | [little_things](little_things.md) | module | every file | `TomServerException` (its `clientThrow` flag feeds the error response) and `TomRequestId` (seeded into every request zone) |
+| [ratelimit](ratelimit.md) | module | every file | `TomRateLimits` (installed from configuration at start) and `tomRateLimitMiddleware` |
 | [tenancy](tenancy.md) | module | every file | `TomTenancy` and `TomTenantResolution` — the request's tenant, or the refusal to answer it with |
 | [transactions](transactions.md) | module | every file | `TomTransactionManager` |

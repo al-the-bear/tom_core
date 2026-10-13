@@ -51,11 +51,11 @@ interpreter is `python3`, `py -3` on Windows, or whatever `TOM_PYTHON` names.
 
 | Type | What it does |
 | ---- | ------------ |
-| `TomOpenApiDocumentGenerator` · `TomOpenApiInfo` | Builds the OpenAPI 3.1 document of every endpoint the router would mount — framework endpoints included — from the annotations and the reflection seed. Deterministic, sorted output. |
+| `TomOpenApiDocumentGenerator` · `TomOpenApiInfo` | Builds the OpenAPI 3.1 document of every endpoint the router would mount — framework endpoints included — from the annotations and the reflection seed. Every authenticated operation accepts a bearer token (`bearerAuth`) or a service account's API key (`apiKeyAuth`, `X-API-Key`), and every operation states the `429` a rate limit answers, with `Retry-After`. Deterministic, sorted output. |
 | `TomOpenApiSchemaBuilder` · `TomOpenApiDartType` | Turns Dart types into JSON Schema 2020-12 schemas that follow the kernel serializer, not the declaration: plain DTOs, `TomClass` observables, self-rendering types, nullability. |
 | `TomOpenApiDocumentCheck` | The cross-reference rules the meta-schema cannot express: unique `operationId`s, resolvable `$ref`s, path variables matched to path parameters, no duplicate parameter. |
 | `TomOpenApiValidator` · `TomOpenApiValidation` | The OpenAPI 3.1 meta-schema (*schema-base* variant, vendored) through Python's `jsonschema`, plus the cross-reference check. A validation that could not run is **NOT MEASURED**, never valid. |
-| `TomOpenApiDartClientGenerator` | A typed Dart client: one class per object schema, one method per operation, a `<Client>Exception` carrying the status and the error key. |
+| `TomOpenApiDartClientGenerator` | A typed Dart client: one class per object schema, one method per operation, a `bearerToken` or an `apiKey` sent to secured operations, a `<Client>Exception` carrying the status and the error key. |
 | `runTomOpenApiTool` | The `openapi` command-line tool on `tom_build_base`: `:document`, `:dart-client`, `:validate`. |
 | `TomOpenApiException` | The generator's refusals, keyed `openapi.document.*` and `openapi.schema.*`. |
 
@@ -137,6 +137,13 @@ Future<void> main() async {
 of the identity server, in the advanced sample. The bearer token is sent only
 to operations the document marks as secured.
 
+A service account calls with its API key instead — the client sends it as
+`X-API-Key` to the same operations when no bearer token is set:
+
+```dart
+final app = AppApi(Uri.parse('http://localhost:8080'), apiKey: 'tomk.<keyId>.<secret>');
+```
+
 **Other languages.** The document is standard OpenAPI 3.1, so any standard
 generator reads it — `openapi-typescript`, `openapi-generator`, an API
 browser. A TypeScript client is not generated here for that reason. The one Tom
@@ -171,6 +178,10 @@ server's preparation — refuses with a pointer to `tool/openapi.dart`.
   generator refuses it by name (`openapi.schema.type_not_reflected`) rather than
   guess a shape; two reflected classes sharing a simple name are refused the
   same way (`openapi.schema.ambiguous_type`).
+- **The generated client does not retry.** A rate-limited call throws
+  `<Client>Exception` with status `429`, the error key `rate_limit.exceeded`,
+  the response headers and `retryAfter`; when to try again is the caller's
+  decision.
 - **A self-rendering type is opaque.** A DTO with its own `toJson`, a
   `jsonEncode` getter or `TomJsonSerializable` is described as an object marked
   `x-tom-opaque`, because no declaration states its shape.

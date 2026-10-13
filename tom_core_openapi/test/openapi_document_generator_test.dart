@@ -98,6 +98,12 @@ void main() {
         'scheme': 'bearer',
         'bearerFormat': 'JWT',
       });
+      expect((components['securitySchemes'] as Map)['apiKeyAuth'], {
+        'type': 'apiKey',
+        'in': 'header',
+        'name': 'X-API-Key',
+        'description': isA<String>(),
+      });
       expect(((components['schemas'] as Map)['TomError'] as Map)['required'], [
         'errorType',
       ]);
@@ -266,6 +272,13 @@ void main() {
       final responses = op('/fixture/notes', 'get')['responses'] as Map;
       expect(responses.keys, containsAll(['404', 'default']));
     });
+
+    test('states the 429 a rate limit answers, with Retry-After', () {
+      final responses = op('/fixture/notes', 'get')['responses'] as Map;
+      expect(((responses['429'] as Map)['headers'] as Map).keys, [
+        'Retry-After',
+      ]);
+    });
   });
 
   group('security', () {
@@ -277,16 +290,18 @@ void main() {
       expect(op('/fixture-api/authors-by-tag', 'get')['security'], isEmpty);
     });
 
-    test('an authenticated endpoint requires the bearer scheme', () {
+    test('an authenticated endpoint takes a bearer token or an API key', () {
       expect(op('/fixture/notes/{id}', 'delete')['security'], [
         {'bearerAuth': <String>[]},
+        {'apiKeyAuth': <String>[]},
       ]);
       expect(op('/fixture/notes/{id}', 'delete')['x-tom-access'], isNull);
     });
 
-    test('an undeclared rule falls under the protection default: bearer', () {
+    test('an undeclared rule falls under the protection default', () {
       expect(op('/fixture/notes', 'get')['security'], [
         {'bearerAuth': <String>[]},
+        {'apiKeyAuth': <String>[]},
       ]);
     });
 

@@ -9,6 +9,9 @@ single sign-on over OpenID Connect or SAML 2.0 — is one more implementation of
 that service contract. User provisioning over SCIM 2.0 lets the identity
 provider keep the accounts themselves: it creates, updates and deactivates
 users and groups, and a deactivation revokes the sessions the user holds.
+Service accounts authenticate with API keys — a non-human caller with roles of
+its own, presenting `X-API-Key` instead of a bearer token, and held to the same
+access rules as a user.
 
 ## Table of Contents
 
@@ -82,6 +85,15 @@ users and groups, and a deactivation revokes the sessions the user holds.
   - [Single sign-on over provisioned accounts](#single-sign-on-over-provisioned-accounts)
   - [Where provisioned resources are kept](#where-provisioned-resources-are-kept)
   - [SCIM error keys](#scim-error-keys)
+- [Service Accounts and API Keys](#service-accounts-and-api-keys)
+  - [The shape](#the-shape-1)
+  - [Wiring it up](#wiring-it-up-1)
+  - [A key is shown once](#a-key-is-shown-once)
+  - [Scoped roles](#scoped-roles)
+  - [Rotation and revocation](#rotation-and-revocation)
+  - [Authenticating a request](#authenticating-a-request)
+  - [Where accounts and keys live](#where-accounts-and-keys-live)
+  - [API key failure keys](#api-key-failure-keys)
 - [Verification](#verification)
 - [Core Components](#core-components)
   - [`TomAuthenticationServer`](#tomauthenticationserver)
@@ -122,6 +134,8 @@ users and groups, and a deactivation revokes the sessions the user holds.
   - [`TomScimFilter` / `TomScimPath`](#tomscimfilter--tomscimpath)
   - [`TomScimIdentityDirectory`](#tomscimidentitydirectory)
   - [`TomScimException`](#tomscimexception)
+  - [`TomApiKeys` / `TomServiceAccount` / `TomApiKey`](#tomapikeys--tomserviceaccount--tomapikey)
+  - [`TomApiKeyStore` / `TomMemoryApiKeyStore` / `TomSqlApiKeyStore`](#tomapikeystore--tommemoryapikeystore--tomsqlapikeystore)
 - [Status and Limitations](#status-and-limitations)
 - [Dependencies](#dependencies)
 
@@ -268,6 +282,18 @@ users and groups, and a deactivation revokes the sessions the user holds.
 | `TomScimApi` | abstract class | The SCIM 2.0 endpoints under `/scim/v2`; reflected (`@tomReflector`) |
 | `TomScimServer` | class | The default SCIM endpoint component, answering in `application/scim+json`; reflected (`@tomReflector`) |
 | `TomScimIdentityDirectory` | class | The `TomExternalIdentityDirectory` over the provisioned users: single sign-on resolves the provisioned account, with roles from its groups |
+| `TomServiceAccount` | class | A non-human caller with roles of its own; every key it issues is bounded by them |
+| `TomApiKey` | class | One API key's stored record — the hash of its secret, never the secret — with its roles, label, expiry, revocation and last use |
+| `TomIssuedApiKey` | class | A key as issued: the record, and the one time the full `tomk.<keyId>.<secret>` value is visible |
+| `TomApiKeyIdentity` | class | The key and service account a request authenticated with, in the request zone |
+| `TomApiKeyStore` | abstract class | Where service accounts and key records live |
+| `TomMemoryApiKeyStore` | class | The default store — maps in this process, for a single node and tests |
+| `TomSqlApiKeyStore` | class | A store over `tom_service_account` and `tom_api_key`, shared by every node |
+| `TomServiceAccountRow` | class | One `tom_service_account` row, as the store reads it back; reflected (`@tomReflector`) |
+| `TomApiKeyRow` | class | One `tom_api_key` row, as the store reads it back; reflected (`@tomReflector`) |
+| `serviceAccountTable` / `apiKeyTable` | function | The two tables' declarations, from which the store's DDL derives |
+| `TomApiKeys` | class | Issues, rotates, revokes and checks API keys; `install` makes it the one the request pipeline reads `X-API-Key` with |
+| `TomApiKeyException` | class | An API-key operation that cannot be done: an unknown account or key, or a role the account does not hold |
 
 One type every service in the list throws lives in `little_things`, with the
 rest of the package's exception hierarchy:
@@ -3293,6 +3319,161 @@ The one key raised to a login rather than to the identity provider:
 | --- | --------- | ------- |
 | `login.error.scim.inactive` | `TomLoginException` (`accountProblem`) | The account has been deactivated by its identity provider. |
 
+## Service Accounts and API Keys
+
+A **service account** is a non-human caller — a nightly import, another
+service, a partner's integration — with roles of its own. It authenticates with
+an **API key** in the `X-API-Key` header instead of a bearer token, and the
+request then runs as an authenticated principal holding the key's roles, so
+every access rule — `@TomAuthenticatedAccess`, `@TomRoleAccess`, row and column
+grades — applies to it exactly as to a user. Nothing about an endpoint changes
+to admit service accounts.
+
+### The shape
+
+| Part | What it is |
+| ---- | ---------- |
+| `TomServiceAccount` | The account: `id`, `name`, `roles`, `tenant`, `organization`, `disabled` |
+| `TomApiKey` | One key's stored record — everything but the secret: `id`, `accountId`, `secretHash`, `roles`, `label`, `createdAt`, `expiresAt`, `revokedAt`, `lastUsedAt` |
+| `TomIssuedApiKey` | A key as issued: its record, and the one time its full value is visible |
+| `TomApiKeyIdentity` | The key and account a request authenticated with, in the request zone |
+| `TomApiKeyStore` | Where accounts and key records live: `TomMemoryApiKeyStore` per process, `TomSqlApiKeyStore` in a shared data source |
+| `TomApiKeys` | Issues, rotates, revokes and checks keys; installed once per process |
+
+### Wiring it up
+
+```dart
+final keys = TomApiKeys(
+  store: TomSqlApiKeyStore(TomDataSourceInfo.getDataSourceInfo('main')!.datasource),
+);
+TomApiKeys.install(keys);
+
+await keys.saveAccount(
+  const TomServiceAccount(
+    id: 'importer',
+    name: 'Nightly import',
+    roles: ['import', 'read'],
+  ),
+);
+final issued = await keys.issue('importer', roles: ['import'], label: 'nightly');
+// Hand issued.value over once; nothing stores it.
+```
+
+`TomApiKeys.install` makes the service the one the request pipeline reads
+`X-API-Key` with and registers the node's lookup cache; `TomApiKeys.reset`
+uninstalls it. A server with no `TomApiKeys` installed reads no `X-API-Key`: it
+ignores the header with a warning and the request proceeds unauthenticated.
+
+Install it before the server starts, beside the other start-up stores. The
+tables are deployment-wide, like the framework's other tables — build the store
+over a data source that is not routed per tenant; an account names its tenant
+itself.
+
+### A key is shown once
+
+`issue` answers the key as `tomk.<keyId>.<secret>` once, in
+`TomIssuedApiKey.value`. The `tomk` prefix (`TomApiKeys.prefix`) tells a key
+from any other secret in a configuration file or a log line; the key id is
+sixteen hex characters; the secret is 32 random bytes from `Random.secure`,
+base64url-encoded. The store keeps the key id and the SHA-256 of the secret
+(`TomApiKeys.hashSecret`), never the secret, so a read of the key table hands
+nobody a working key. A fast hash is the right one here: a slow password hash
+exists to protect guessable secrets, and nothing about 256 random bits is
+guessable. A lost key is replaced, not recovered.
+
+### Scoped roles
+
+A key may carry fewer roles than its account. Its effective roles are the
+intersection of the two, so the account's roles bound every key it issues, and
+narrowing an account narrows its keys at the next request. A key with no roles
+of its own carries the account's. `issue` refuses a role the account does not
+hold (`api_key.issue.role_not_held`) and an account that does not exist
+(`api_key.issue.unknown_account`).
+
+The principal a key authenticates as:
+
+| Field | Value |
+| ----- | ----- |
+| `user.username` | `service:<accountId>` |
+| `aci.roles` | the key's roles ∩ the account's roles, or the account's when the key has none |
+| `authenticated` | `true` |
+| `tenant` | the account's `tenant` |
+| `organization` | the account's `organization` |
+| `context` | `{serviceAccount: <accountId>, apiKey: <keyId>}` |
+
+### Rotation and revocation
+
+`rotate(keyId)` issues a successor with the old key's account, roles and label,
+and ends the old key after `overlap` — **zero by default**, so a rotation revokes
+the old key at once unless a grace period is asked for. With an overlap the old
+key expires at the earlier of `now + overlap` and its own expiry; an overlap
+never extends a key. `revoke(keyId)` ends a key at once. Both refuse a key that
+does not exist (`api_key.rotate.unknown_key`, `api_key.revoke.unknown_key`).
+`expiresIn` on `issue` and `rotate` gives a key an expiry of its own.
+
+A disabled account (`TomServiceAccount.disabled`, saved with `saveAccount`)
+authenticates nothing through any of its keys, without revoking them one by
+one, and enabling it again restores them. `keysOf(accountId)` lists an account's
+keys, live and ended — never their secrets.
+
+A node caches the key records it has looked up, in the `tom.apiKeys` cache
+(`TomApiKeys.lookupCacheName`), for at most `lookupCacheSeconds` (60).
+`revoke` and `rotate` drop the entry through `TomCacheInvalidator`, so on a
+cluster with a shared invalidation channel every node drops it; the cache's
+lifetime bounds the staleness where the drop does not reach.
+
+### Authenticating a request
+
+`tomDefaultAuthenticationMiddleware` reads `X-API-Key` **only when the request
+carries no `Authorization` header**. A request presenting both is answered as
+the bearer it presented, so a key never widens what a signed-in user may do.
+`TomApiKeys.authenticate` answers the principal and its `TomApiKeyIdentity`, or
+`null`:
+
+- `null` for every failure alike — a malformed key, an unknown key, a wrong
+  secret, a revoked or expired key, a disabled or deleted account — so a caller
+  probing keys learns nothing from the answer. The reason is logged, never the
+  key. The secret's hash is compared in constant time.
+- On success the middleware puts the principal in the zone as for a bearer
+  token, and the `TomApiKeyIdentity` beside it — what a rate limit keyed per API
+  key counts by (see [ratelimit.md](ratelimit.md#scopes)).
+
+A key that authenticates nothing leaves the request unauthenticated, like a
+refused token. See
+[server.md](server.md#request-context-and-zone-values).
+
+A key's `lastUsedAt` is written at most once a minute (`touchInterval`), so a
+busy integration does not turn every request into a write.
+
+### Where accounts and keys live
+
+`TomMemoryApiKeyStore` keeps them in this process — right for a single node and
+for tests; on a cluster each node would know only the keys issued on it.
+`TomSqlApiKeyStore` keeps them in two tables of a shared data source:
+
+| Table | Default name | Columns |
+| ----- | ------------ | ------- |
+| service accounts | `tom_service_account` (`defaultServiceAccountTable`) | `id`, `name`, `roles` (a JSON array), `tenant`, `organization`, `disabled` |
+| API keys | `tom_api_key` (`defaultApiKeyTable`) | `id`, `account_id` (indexed), `secret_hash` (`CHAR(64)`), `roles`, `label`, `created_at`, `expires_at`, `revoked_at`, `last_used_at` |
+
+A write replaces the row whole (`REPLACE`). The store creates both tables on
+first use unless `createSchema` is `false`; `serviceAccountTable(table)` and
+`apiKeyTable(table)` are the declarations a deployment's own migration renders.
+A store of another kind implements `TomApiKeyStore`'s six methods.
+
+### API key failure keys
+
+| Key | Raised by | Meaning |
+| --- | --------- | ------- |
+| `api_key.issue.unknown_account` | `issue` | There is no service account with that id. |
+| `api_key.issue.role_not_held` | `issue` | A requested role the account does not hold — a key cannot carry more than its account. |
+| `api_key.rotate.unknown_key` | `rotate` | There is no key with that id. |
+| `api_key.revoke.unknown_key` | `revoke` | There is no key with that id. |
+
+Each is a `TomApiKeyException`, which extends `TomServerException`. A presented
+key that authenticates nothing raises nothing: the request proceeds
+unauthenticated, and a protected endpoint refuses it downstream.
+
 ## Verification
 
 `test/authentication_test.dart` covers the module's own contract:
@@ -3330,6 +3511,18 @@ bearer secret, users, groups, every PATCH form above), and the group
 `TomScimIdentityDirectory` and shows each deprovisioning change refusing the
 session it should. `scim_store_db_test.dart` runs the relational store and the
 service over it; it is tagged `db` and skips when no server is reachable.
+[Service accounts and API keys](#service-accounts-and-api-keys) are
+`api_keys_test.dart` — issuing, a key shown once and stored as a hash, the
+refusal of an unknown account and of a role the account does not hold;
+authenticating as the account with the key's scope, narrowing and disabling the
+account, the failures that all answer alike, expiry and the last-use stamp;
+revocation, even of a cached key; and rotation with and without an overlap.
+`ratelimit_api_keys_db_test.dart`, tagged `db`, runs `TomSqlApiKeyStore` across
+two nodes — a key revoked or rotated on one is refused by the other at once —
+and `ratelimit_test.dart`'s group `the middleware` reads a key through the
+request pipeline. `example/ratelimit/rate_limit_example.dart` walks a service
+account from issuing to revocation; it is the rate-limiting module's example,
+because a key is what an `apiKey` limit counts by.
 
 ```bash
 dart run example/authentication/authentication_example.dart
@@ -3679,6 +3872,27 @@ A SCIM request that cannot be served, carrying its `status` and `scimType`;
 `toJson` is the SCIM error body. `clientThrow` is `true`. See
 [SCIM error keys](#scim-error-keys).
 
+### `TomApiKeys` / `TomServiceAccount` / `TomApiKey`
+
+Service accounts and the API keys they authenticate with. `TomApiKeys` —
+`install`, `reset`, `current`; `saveAccount`, `issue`, `rotate`, `revoke`,
+`keysOf`; `authenticate`, which the request pipeline calls for an `X-API-Key`
+header; `hashSecret`; and the constants `header`, `prefix`, `lookupCacheName`,
+`lookupCacheSeconds` and `touchInterval`. `TomServiceAccount` carries
+`withDisabled` and `withRoles`; `TomApiKey` carries `isLiveAt` and `copyWith`.
+`TomIssuedApiKey` is a key as issued and `TomApiKeyIdentity` the key a request
+authenticated with. `TomApiKeyException` is every refusal. See
+[Service Accounts and API Keys](#service-accounts-and-api-keys).
+
+### `TomApiKeyStore` / `TomMemoryApiKeyStore` / `TomSqlApiKeyStore`
+
+Where accounts and key records live. The memory store is per process; the SQL
+store keeps them in `tom_service_account` and `tom_api_key`, declared by
+`serviceAccountTable(table)` and `apiKeyTable(table)` and named by default from
+`defaultServiceAccountTable` and `defaultApiKeyTable`, and reads them back as
+`TomServiceAccountRow` and `TomApiKeyRow`. See
+[Where accounts and keys live](#where-accounts-and-keys-live).
+
 ## Status and Limitations
 
 - **`TomDummyAuthenticationService` is for scaffolding only** — it grants any
@@ -3832,6 +4046,11 @@ A SCIM request that cannot be served, carrying its `status` and `scimType`;
   ETags, `/Me`, `.search` and changing passwords are not implemented, and
   `ServiceProviderConfig` says so. See [What is supported](#what-is-supported).
   <!-- pinned: test/scim_test.dart › the service provider configuration states what is supported -->
+- **An API key's lookup is cached per node for up to a minute.** `revoke` and
+  `rotate` drop the cached record through `TomCacheInvalidator`; where that drop
+  does not reach a node — no shared invalidation channel — the node serves the
+  record it holds until the entry expires, at most `lookupCacheSeconds` later.
+  <!-- unpinned: decision — a node caches key lookups rather than reading the store on every request -->
 - **SCIM is the only directory protocol.** LDAP and Active Directory are not
   provided: an on-premises directory reaches this server through an identity
   provider that speaks SCIM, OpenID Connect or SAML.
@@ -3842,24 +4061,24 @@ A SCIM request that cannot be served, carrying its `status` and `scimType`;
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `server_self_login.dart`, `two_factor.dart` | `Future`, `FutureOr`, and the `Timer` the server principal's renewal is scheduled on |
-| `dart:convert` | dart | 20 of 33 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
+| `dart:convert` | dart | 22 of 35 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
 | `dart:io` | dart | `jwt_keys.dart`, `saml_flow.dart`, `saml_provider.dart` | `File`, reading the configured key and certificate files; `ZLibCodec`, deflating a SAML `AuthnRequest` for the redirect binding |
-| `dart:math` | dart | `jwt_signing.dart`, `oauth_flow.dart`, `two_factor_send_limit.dart`, `webauthn_software_authenticator.dart` | `Random`, `exp`, and `pow` / `min` for the send pace's doubling interval; `Random.secure` for the unusable signing key a verify-only server holds |
+| `dart:math` | dart | `api_keys.dart`, `jwt_signing.dart`, `oauth_flow.dart`, `two_factor_send_limit.dart`, `webauthn_software_authenticator.dart` | `Random`, `exp`, and `pow` / `min` for the send pace's doubling interval; `Random.secure` for the unusable signing key a verify-only server holds and for an API key's id and secret |
 | `dart:typed_data` | dart | `saml_xml_signature.dart`, `two_factor_delivered_code.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | `Uint8List`, `ByteData`, `BytesBuilder` |
-| `crypto` | package | 9 of 33 files | `sha256` and `sha512`, for the JWK thumbprint a key id is, the SCIM bearer-secret digests, the PKCE code challenge, the SAML handoff-code digest and XML Signature digests, the interim-token fingerprint an attempt store keys on, the delivered-code digest, and the WebAuthn RP id hash, client-data hash and user handle |
+| `crypto` | package | 10 of 35 files | `sha256` and `sha512`, for the JWK thumbprint a key id is, the API-key secret digest, the SCIM bearer-secret digests, the PKCE code challenge, the SAML handoff-code digest and XML Signature digests, the interim-token fingerprint an attempt store keys on, the delivered-code digest, and the WebAuthn RP id hash, client-data hash and user handle |
 | `dart_jsonwebtoken` | package | `jwt_keys.dart`, `jwt_signing.dart`, `saml_provider.dart` | `jwt.JWT.verify`, `jwt.JWTAlgorithm`, `jwt.RSAPrivateKey` / `jwt.RSAPublicKey`, `jwt.ECPrivateKey` / `jwt.ECPublicKey`, `jwt.SecretKey`, and `toJWK` for the published set |
 | `http` | package | `oauth_flow.dart` | `http.dart`, `http.get`, `http.post` |
 | `pointycastle` | package | `jwt_keys.dart`, `saml_provider.dart`, `saml_xml_signature.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | RSA PKCS#1 v1.5 signing and verification for XML Signature, ECDSA P-256 and RSA PKCS#1 v1.5 signature verification for passkeys, and the software authenticator's key generation and signing; deriving a signing key's public half |
 | `shelf` | package | `jwks_endpoint.dart`, `saml_endpoints.dart`, `scim_endpoints.dart` | `Request` and `Response` — the SCIM endpoints read the raw request and answer in `application/scim+json`; `Response`, which the JSON Web Key Set and SAML metadata endpoints answer with directly to set their content type — and, for the key set, its cache header |
-| `tom_core_kernel` | package | 27 of 33 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
+| `tom_core_kernel` | package | 29 of 35 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
 | `xml` | package | `saml_flow.dart`, `saml_provider.dart`, `saml_xml_signature.dart` | `XmlDocument`, `XmlElement`, parsing SAML responses and metadata, and the node walk exclusive canonicalization is written over |
-| [cache](cache.md) | module | `scim_service.dart` | `TomCacheInvalidator.revokePrincipal`, the default revocation a SCIM deprovisioning change calls |
+| [cache](cache.md) | module | `api_keys.dart`, `scim_service.dart` | `TomCacheInvalidator.revokePrincipal`, the default revocation a SCIM deprovisioning change calls; `TomCache` and `TomCacheManager` for the node's API-key lookup cache, and `TomCacheInvalidator.invalidateCacheEntry`, which drops a revoked or rotated key from it |
 | [configuration](configuration.md) | module | `jwt_signing.dart`, `oauth_provider.dart`, `saml_provider.dart`, `scim_endpoints.dart`, `server_self_login.dart`, `sql_oauth_state_store.dart` | `TomBaseServerConfiguration` supplies the JWT fields `installJwtSigning` reads and the service-account fields `TomServiceCredential.fromConfiguration` reads; `isDevelopmentOrTestRuntime` decides whether the sample-key fallback is permitted |
-| [datasources](datasources.md) | module | `oauth_state_sql.dart`, `scim_sql.dart`, `sql_oauth_state_store.dart`, `sql_scim_store.dart` | `TomDataSource`, `TomDataSourceInfo`, `TomFrameworkTable` (the single declaration of `tom_oauth_state` and `tom_scim_resource`) and `sqlInstant` / `parseSqlInstant` |
+| [datasources](datasources.md) | module | `oauth_state_sql.dart`, `scim_sql.dart`, `sql_api_key_store.dart`, `sql_oauth_state_store.dart`, `sql_scim_store.dart` | `TomDataSource`, `TomDataSourceInfo`, `TomFrameworkTable` (the single declaration of `tom_oauth_state`, `tom_scim_resource`, `tom_service_account` and `tom_api_key`), `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` |
 | [endpoints](endpoints.md) | module | `jwks_endpoint.dart`, `oauth_endpoints.dart`, `saml_endpoints.dart`, `scim_endpoints.dart` | `TomScimApi` declares its seventeen routes with `@TomEndpoint` and `@TomPublicAccess`; `TomSamlService` binds the identity provider's form post as a `TomMultipartForm` and answers it with a `TomRedirect`; `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract; `TomJwksService` declares its route with `@TomEndpoint` and `@TomPublicAccess` |
-| [little_things](little_things.md) | module | 15 of 33 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSamlException`, `TomScimException`, `TomSigningKeyException` and `TomJwtKeyException` |
+| [little_things](little_things.md) | module | 16 of 35 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSamlException`, `TomScimException`, `TomSigningKeyException`, `TomJwtKeyException` and `TomApiKeyException` |
 | [messaging](messaging.md) | module | `two_factor_delivered_code.dart` | `TomEmailService` and `TomSmsService` deliver the one-time codes, through `TomTemplatedMessageService.deliverNow` rather than the outbox. A deployment that registers neither can still run TOTP |
-| [object_persistence](object_persistence.md) | module | `oauth_identity.dart`, `oauth_tokens.dart`, `sql_oauth_state_store.dart`, `sql_scim_store.dart`, `two_factor_enrolment.dart` | `TomExternalIdentityLink` and `TomUserTwoFactorEnrolment` are ordinary entities over `TomSqlDatasourceRepository`. Neither table is created by the framework; each entity carries its own `createTableSql` for a deployment's migration to run |
+| [object_persistence](object_persistence.md) | module | `oauth_identity.dart`, `oauth_tokens.dart`, `sql_api_key_store.dart`, `sql_oauth_state_store.dart`, `sql_scim_store.dart`, `two_factor_enrolment.dart` | `TomExternalIdentityLink` and `TomUserTwoFactorEnrolment` are ordinary entities over `TomSqlDatasourceRepository`. Neither table is created by the framework; each entity carries its own `createTableSql` for a deployment's migration to run |
 | [preferences](preferences.md) | module | `authentication_server.dart` | `TomUserPreferences` |
 | [resources](resources.md) | module | `two_factor_delivered_code.dart` | no user-facing text originates in this module |
 | [server](server.md) | module | `scim_endpoints.dart` | `TomEndpointCredentials`, which `TomScimProvisioning.install` claims `/scim/v2/` in |

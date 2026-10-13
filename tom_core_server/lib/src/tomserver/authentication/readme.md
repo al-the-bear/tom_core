@@ -249,6 +249,28 @@ secret to the endpoint instead of refusing it as a token.
   reaches this server through an identity provider that speaks SCIM, OpenID
   Connect or SAML.
 
+### Service accounts: a credential that is not a login
+
+A service account — a nightly import, another service, a partner's integration
+— authenticates with an API key in `X-API-Key` rather than by logging in.
+`TomApiKeys` (`api_keys.dart`) issues a key once as `tomk.<keyId>.<secret>`,
+keeps only the SHA-256 of the secret, scopes the key to a subset of the
+account's roles, and rotates and revokes it; `TomSqlApiKeyStore`
+(`sql_api_key_store.dart`) keeps accounts and keys where every node sees them.
+
+* **The key resolves a principal; it mints nothing.** The request pipeline reads
+  `X-API-Key` only when no `Authorization` header was sent, and the key yields an
+  authenticated principal — `service:<accountId>`, the key's roles intersected
+  with the account's — that every access rule reads as it reads a user's. There
+  is no token, no second factor and no session: a key is presented on every
+  request.
+* **A refusal looks like no key.** A malformed, unknown, revoked or expired key
+  and a disabled account all authenticate nothing alike, and the request
+  proceeds unauthenticated; the reason is logged, never the key.
+* **Revocation reaches every node** that shares the cache invalidation channel:
+  a node caches the key records it looked up for at most a minute, and `revoke`
+  and `rotate` drop the entry through `TomCacheInvalidator`.
+
 ## Key types
 
 | Type | Responsibility |
@@ -301,6 +323,10 @@ secret to the endpoint instead of refusing it as a token.
 | `TomScimFilter` · `TomScimPath` · `TomScimAnd` · `TomScimOr` · `TomScimNot` · `TomScimValuePath` · `TomScimComparison` · `scimValues` · `scimLookup` · `scimKeyOf` | The SCIM filter and PATCH-path language, and the case-insensitive JSON reads it is written over. In `scim_filter.dart`. |
 | `TomScimProvisioning` · `TomScimApi` · `TomScimServer` | The installed service and its bearer secrets (SHA-256 digests, compared in constant time), and the seventeen endpoints under `/scim/v2` in `application/scim+json`. In `scim_endpoints.dart`. |
 | `TomScimIdentityDirectory` | Single sign-on over the provisioned users, with roles from their groups. In `scim_directory.dart`. |
+| `TomApiKeys` · `TomApiKeyException` | Issues, rotates, revokes and checks API keys; `install` makes it the one the request pipeline reads `X-API-Key` with. In `api_keys.dart`. |
+| `TomServiceAccount` · `TomApiKey` · `TomIssuedApiKey` · `TomApiKeyIdentity` | The account, a key's stored record (the hash of its secret, never the secret), a key as issued — the one time its value is visible — and the key a request authenticated with, in the request zone. In `api_keys.dart`. |
+| `TomApiKeyStore` · `TomMemoryApiKeyStore` · `TomSqlApiKeyStore` · `TomServiceAccountRow` · `TomApiKeyRow` | Where accounts and key records live: per process, or rows of `tom_service_account` and `tom_api_key` every node shares. In `api_keys.dart` and `sql_api_key_store.dart`. |
+| `serviceAccountTable` · `apiKeyTable` · `defaultServiceAccountTable` · `defaultApiKeyTable` | The two tables' declarations and default names. In `sql_api_key_store.dart`. |
 
 ### Error keys raised by the token signing
 
@@ -338,6 +364,14 @@ secret to the endpoint instead of refusing it as a token.
 | `scim.store.unknown_datasource` | `TomServerException` | `TomSqlScimStore.named` names a data source that is not registered. |
 | `login.error.scim.inactive` | `TomLoginException` | A single sign-on login to an account its identity provider deactivated. |
 
+### Error keys raised by API keys
+
+| Key | Exception | Meaning |
+| --- | --------- | ------- |
+| `api_key.issue.unknown_account` | `TomApiKeyException` | `issue` names an account that does not exist. |
+| `api_key.issue.role_not_held` | `TomApiKeyException` | `issue` asks for a role the account does not hold. |
+| `api_key.rotate.unknown_key` · `api_key.revoke.unknown_key` | `TomApiKeyException` | `rotate` or `revoke` names a key that does not exist. |
+
 ## Quick start
 
 ```dart
@@ -367,8 +401,8 @@ Future<void> main() async {
 ```
 
 See [`doc/authentication.md`](../../../../doc/authentication.md) for the two
-authentication passes, the 2FA handshake, the external-identity path and SCIM
-provisioning. Five examples split the module along the seam described above:
+authentication passes, the 2FA handshake, the external-identity path, SCIM
+provisioning and service accounts with API keys. Five examples split the module along the seam described above:
 `example/authentication/authentication_example.dart` is the local login,
 `two_factor_enrolment_example.dart` and `two_factor_login_example.dart` the
 second factor either side of enrolment, `oauth_login_example.dart` the
@@ -377,8 +411,10 @@ identity provider's first call to the deactivation that ends a session — all
 five connection-free and checking their own results.
 `test/authentication_test.dart`, `test/two_factor_test.dart`,
 `test/oauth_test.dart`, `test/saml_test.dart`, `test/scim_test.dart`,
-`test/jwt_signing_test.dart` and `test/jwt_keys_test.dart` cover the module,
-`test/scim_store_db_test.dart` (tag `db`) runs the relational SCIM store, and
+`test/jwt_signing_test.dart`, `test/jwt_keys_test.dart` and
+`test/api_keys_test.dart` cover the module,
+`test/scim_store_db_test.dart` and `test/ratelimit_api_keys_db_test.dart`
+(tag `db`) run the relational SCIM and API-key stores, and
 `test/sso_keycloak_test.dart` (tag `sso`, started by `tool/run_sso_tests.sh`)
 logs in against a real Keycloak; `test/examples_test.dart` runs the five
 examples and
