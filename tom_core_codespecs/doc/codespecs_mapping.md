@@ -5910,8 +5910,7 @@ rather than against shipped source.
 **§8.5** carries the standing per-part coverage verdict, and it records every
 active part COVERED. One item is open against that verdict:
 
-- `qrb6_ajlx-required-arguments-without-a-som-source` — two required marker
-  arguments have no stored SOM source: `@CsTrigger.kind` (CE-AC) and
+- Two required marker arguments have no stored SOM source: `@CsTrigger.kind` (CE-AC) and
   `@CsNotification.body` (CE-NT). Stage A's A4 therefore cannot hold a document
   to them (`codespecs_prompt.md` §4.4.2), and an agent authoring either part
   reads prose for a required argument. Until it closes, CE-AC's and CE-NT's
