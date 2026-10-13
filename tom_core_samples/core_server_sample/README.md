@@ -874,7 +874,7 @@ left out — the column each record field maps to is in
 [§9](#9-the-live-server-boot).
 
 There is no `doc/` folder and no `doc/api/` summary: no sample carries one, a
-decision taken once for all fifteen in [the suite map](../README.md). This
+decision taken once for all sixteen in [the suite map](../README.md). This
 section is the reference instead, and `test/readme_api_reference_test.dart`
 holds it to the source in both directions — every line below must occur in its
 library, and every public declaration of an exported library must be listed.

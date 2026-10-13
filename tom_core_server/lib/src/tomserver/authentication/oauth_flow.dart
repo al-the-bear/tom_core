@@ -264,10 +264,23 @@ class TomOAuthMemoryStateStore implements TomOAuthStateStore {
   /// credential quickly.
   final Duration timeToLive;
 
+  /// The clock expiry is judged against.
+  ///
+  /// The same clock the flow stamps `createdAt` with must be passed here: a
+  /// flow on an injected clock with a store on the wall clock measures a
+  /// record's age between two different timelines, and a test pinned to a
+  /// fixed instant then starts failing the day that instant is ten minutes
+  /// old.
+  final DateTime Function() clock;
+
   final Map<String, TomOAuthAuthorizationState> _pending = {};
 
-  /// Creates a store; [timeToLive] defaults to ten minutes.
-  TomOAuthMemoryStateStore({this.timeToLive = const Duration(minutes: 10)});
+  /// Creates a store; [timeToLive] defaults to ten minutes and [clock] to the
+  /// wall clock.
+  TomOAuthMemoryStateStore({
+    this.timeToLive = const Duration(minutes: 10),
+    DateTime Function()? clock,
+  }) : clock = clock ?? DateTime.now;
 
   @override
   Future<void> store(TomOAuthAuthorizationState pending) async {
@@ -301,7 +314,7 @@ class TomOAuthMemoryStateStore implements TomOAuthStateStore {
   }
 
   bool _isExpired(TomOAuthAuthorizationState pending) =>
-      DateTime.now().toUtc().difference(pending.createdAt) > timeToLive;
+      clock().toUtc().difference(pending.createdAt) > timeToLive;
 
   void _sweep() => _pending.removeWhere((_, pending) => _isExpired(pending));
 }

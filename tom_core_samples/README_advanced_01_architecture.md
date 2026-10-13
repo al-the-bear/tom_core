@@ -364,7 +364,7 @@ is the shared JWT signing key above.
 ## Primary sources
 
 - [`README_advanced_sample.md`](README_advanced_sample.md) — Architecture section + diagram, the suite map, and the quickstart.
-- The eight package READMEs, for per-node detail.
+- The nine package READMEs, for per-node detail.
 - `assets/architecture/` — the suite's nine SVG figures. [`assets/README.md`](assets/README.md) is their inventory — which chapter embeds each — and the conventions every figure follows: a description comment inside the SVG, a mermaid equivalent beside the embed, full-sentence alt text.
 
 ---

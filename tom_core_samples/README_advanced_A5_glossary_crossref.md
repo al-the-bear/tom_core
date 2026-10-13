@@ -46,7 +46,7 @@ survives the edit that moves a line.
 
 ## Cross-reference: package README → guide section
 
-Each of the eight `advanced_*` packages has its own `README.md` describing that
+Each of the nine `advanced_*` packages has its own `README.md` describing that
 package in isolation. The guide section in the right column is where the package
 is explained *in the context of the whole system*.
 
@@ -63,7 +63,7 @@ is explained *in the context of the whole system*.
 
 ## Primary sources
 
-- All eight package `README.md` files (the per-package descriptions)
+- All nine package `README.md` files (the per-package descriptions)
 - The spine docs [00](README_advanced_00_introduction.md)–[14](README_advanced_14_operations.md) and appendices [A1](README_advanced_A1_authorization_state_machine.md)–[A4](README_advanced_A4_implementation_rules_checklist.md) (each term's defining section)
 
 ---

@@ -515,7 +515,7 @@ There is no `doc/` folder and no API reference mirror, deliberately: this is a
 showcase application, not a library — `publish_to: 'none'`, no package depends
 on it, and its showcase groups are consumed only by its own `main.dart`, so its
 surface is read as the worked example this README and the code already are. The
-decision is taken once for all fifteen samples in [the suite map](../README.md).
+decision is taken once for all sixteen samples in [the suite map](../README.md).
 
 ---
 

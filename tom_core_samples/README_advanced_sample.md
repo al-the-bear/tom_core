@@ -13,7 +13,7 @@ back-office operations server running scheduled work over the app database — a
 sharing one reflected domain and one wire contract, with live four-state field
 authorization and cross-user sharing.
 
-> **Reading this map.** This document links the eight packages, draws the
+> **Reading this map.** This document links the nine packages, draws the
 > architecture, and gives the one quickstart that stands the whole system up.
 > Every package ships its own article-grade `README.md` with the depth — nothing
 > about a package's internals is re-documented here.
@@ -33,9 +33,9 @@ bottom; each links to the next.
 
 | Part | Document | Covers |
 | --- | --- | --- |
-| 00 | [Introduction & how to read this guide](README_advanced_00_introduction.md) | What the sample is and is *not*; who it is for; the eight packages at a glance; reading order; conventions. |
+| 00 | [Introduction & how to read this guide](README_advanced_00_introduction.md) | What the sample is and is *not*; who it is for; the nine packages at a glance; reading order; conventions. |
 | 01 | [Full-stack architecture](README_advanced_01_architecture.md) | Two HTTP servers / two databases / two clients; layering; dependency arrows; the shared JWT key; the request + grant-propagation loop. |
-| 02 | [Project layout, packages & build](README_advanced_02_project_layout_build.md) | The eight pubspecs and their wiring; `publish_to: none`; build order; reflection generation; running build_runner; local run. |
+| 02 | [Project layout, packages & build](README_advanced_02_project_layout_build.md) | The nine pubspecs and their wiring; `publish_to: none`; build order; reflection generation; running build_runner; local run. |
 | 03 | [Domain model & reflection](README_advanced_03_domain_reflection.md) | The reflected `TomClass` entities; `@tomReflector`; the single reflection seed; enums; scope + `tomId`/`formId` addressing resolved by convention (no key catalogue). |
 | 04 | [Wire contracts & DTOs](README_advanced_04_wire_contracts_dtos.md) | The contracts package: DTOs, the typed service interfaces, the api registry, the domain↔wire boundary. |
 | 05 | [Persistence & the two databases](README_advanced_05_persistence_database.md) | Persistence mapping; CRUD repositories; the two-database design; datasources config; the schema vs sample-data migration split. |
@@ -61,7 +61,7 @@ bottom; each links to the next.
 
 ---
 
-## The eight packages
+## The nine packages
 
 | # | Package | What it is | Runtime |
 | --- | --- | --- | --- |
@@ -73,6 +73,7 @@ bottom; each links to the next.
 | 6 | [`advanced_app_client`](advanced_app_client/README.md) | The end-user Flutter app: login, a status-column task board, a bound item-detail editor with per-field four-state authorization driven live over the wire, and cross-user sharing. | Flutter |
 | 7 | [`advanced_authadmin_client`](advanced_authadmin_client/README.md) | The administrator Flutter console: manages users, roles, groups, role assignments, and the `projectRole` × field grant matrix via the auth server's `/admin/*` API. | Flutter |
 | 8 | [`advanced_ops_server`](advanced_ops_server/README.md) | Back-office scheduled work over the app database — a nightly retention purge, a morning digest rendered from a localised text bundle into the messaging outbox, a weekly export into the blob store, and an audit-anchor publisher on its own timer. No HTTP surface and no database of its own. | timers, `app_db` `:3308` |
+| 9 | [`advanced_openapi_client`](advanced_openapi_client/README.md) | Typed Dart clients for the two HTTP servers, **generated** by `tom_core_openapi` from the OpenAPI documents the servers publish at `GET /openapi.json`. They depend on `package:http` alone — no Tom package, no reflection — and show the system called from code that shares nothing with it. | library (generated) |
 
 **Four of the five runtime packages carry no `example/` directory, and that
 is deliberate.** Each is run directly — `flutter run` for the two clients,
@@ -106,11 +107,16 @@ this family, and
 ship `example/`, and a missing folder and a deliberately absent one look
 identical.
 
-**Nor does any of the eight carry a `doc/` folder or a `doc/api/` summary**, and
+`advanced_openapi_client` ships no `example/` either, for a third reason: its
+two libraries are generated, and the runnable demonstration of them is
+`test/generated_client_integration_test.dart`, which the cross-tier runner
+below executes against both live servers.
+
+**Nor does any of the nine carry a `doc/` folder or a `doc/api/` summary**, and
 that is deliberate and decided once for the whole sample
 suite — see [the suite map](README.md). A sample has no consumers who need its
-surface indexed: these eight are `publish_to: none`, and the three libraries
-among them are imported only by the other five. The `## Current API` content an
+surface indexed: these nine are `publish_to: none`, and the three hand-written
+libraries among them are imported only by the other packages. The `## Current API` content an
 API summary would carry is in each package's own README, in context, and the
 fourteen guide documents beside this one carry the rest.
 
@@ -259,7 +265,9 @@ tom_core_samples/advanced_client_core/tool/run_cross_tier_integration.sh
 ```
 
 It boots both databases and both servers, runs every live suite in
-`advanced_client_core/test/` against them, and tears the stack down on exit:
+`advanced_client_core/test/` — and the generated-client suite in
+`advanced_openapi_client/test/` — against them, and tears the stack down on
+exit:
 
 | Suite | What it walks |
 | --- | --- |
@@ -268,6 +276,7 @@ It boots both databases and both servers, runs every live suite in
 | `file_transfer_integration_test.dart` | bytes through both blob stores, the closed-column and anonymous refusals, and a `read`-graded principal who gets the download but not the upload |
 | `app_api_client_integration_test.dart` | one end-user call over the wire — health, then `alice` listing her workspaces through the typed app client |
 | `admin_api_client_integration_test.dart` | the same, one tier down — `admin` signing in and listing users through the typed admin client |
+| `advanced_openapi_client/test/generated_client_integration_test.dart` | the clients **generated** from the servers' OpenAPI documents: a login through the generated `AuthApi`, reads and a write through the generated `AppApi` carrying its token, an unauthenticated call refused with the bare `404` the document states, and each server serving the document its client was generated from |
 
 A green run is a genuine live-stack pass — the runner converts a
 server-unreachable skip into a failure.
@@ -369,6 +378,7 @@ clean and the suite at 18/18, and `--check` still failed.
 | Kernel (foundation) | [`../tom_core_kernel/README.md`](../tom_core_kernel/README.md) |
 | Flutter integration | [`../tom_core_flutter/README.md`](../tom_core_flutter/README.md) |
 | Endpoints module | [`../tom_core_server/doc/endpoints.md`](../tom_core_server/doc/endpoints.md) |
+| OpenAPI document and generated clients | [`../tom_core_openapi/README.md`](../tom_core_openapi/README.md) |
 
 ---
 
@@ -385,6 +395,7 @@ tom_core_samples/
   advanced_app_client/           end-user Flutter app (board + sharing + field grades)
   advanced_authadmin_client/     administrator Flutter console (users/roles/groups/grants)
   advanced_ops_server/           scheduled back-office work           (no port, app_db 3308)
+  advanced_openapi_client/       Dart clients generated from the servers' OpenAPI documents
   tool/                          suite-wide runners (dart doc over every package)
 ```
 

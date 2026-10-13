@@ -13,6 +13,7 @@ import '../little_things/server_exception.dart';
 import '../configuration/base_server_configuration.dart';
 import '../configuration/runtime_environment.dart';
 import '../endpoints/endpoint_pipeline.dart';
+import '../endpoints/openapi_document_endpoint.dart';
 import '../authorization/authorization_cache.dart';
 import '../tenancy/tenancy.dart';
 import '../tenancy/tenant_resolution.dart';
@@ -636,6 +637,13 @@ class TomServer {
     String? poweredByHeader = ((configuration.poweredByHeader).isEmpty)
         ? null
         : configuration.poweredByHeader;
+
+    // Serving the OpenAPI document is opt-in per deployment: an empty setting
+    // leaves `GET /openapi.json` answering 404.
+    TomOpenApiServer.globalSettingDocumentPath =
+        configuration.openApiDocument.isEmpty
+        ? null
+        : configuration.openApiDocument;
 
     // let the router be set up...
     router = TomEndpointRouting().initializeRouter();

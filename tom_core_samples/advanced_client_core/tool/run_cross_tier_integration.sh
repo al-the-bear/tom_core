@@ -26,6 +26,7 @@ CLIENT_CORE="$(cd "$SCRIPT_DIR/.." && pwd)"
 SAMPLES="$(cd "$CLIENT_CORE/.." && pwd)"
 AUTH_DIR="$SAMPLES/advanced_auth_server"
 APP_DIR="$SAMPLES/advanced_app_server"
+OPENAPI_CLIENT="$SAMPLES/advanced_openapi_client"
 
 SERVER_PIDS=()
 LOG_DIR="$(mktemp -d)"
@@ -162,6 +163,7 @@ log "Resolving Dart dependencies"
 (cd "$AUTH_DIR" && dart pub get)
 (cd "$APP_DIR" && dart pub get)
 (cd "$CLIENT_CORE" && dart pub get)
+(cd "$OPENAPI_CLIENT" && dart pub get)
 
 # 3. Start the auth server first (it owns the grant matrix and mints tokens),
 #    then the app server (it reads grants from auth_db and verifies auth tokens).
@@ -238,17 +240,25 @@ wait_app_health
 #        admin signing in and listing users through the typed admin client,
 #        against the auth server alone.
 #
-#    Those last two are deliberately narrow. The three above them exercise the
+#    One more suite runs from the `advanced_openapi_client` package:
+#      - generated_client_integration_test — the clients *generated* from the
+#        two servers' OpenAPI documents, which share no code with either server
+#        and depend on package:http alone: a login through the generated
+#        AuthApi, reads and a write through the generated AppApi carrying its
+#        token, the error envelope of an unauthenticated call, and both servers
+#        serving the document their client was generated from.
+#
+#    The app and admin smoke suites are deliberately narrow. The three above them exercise the
 #    clients only *through* a scenario, so when one of them breaks it cannot say
 #    whether the base URI, the route shape and the DTO decoding stopped agreeing,
 #    or whether the authorization logic did. These two answer that question in
 #    one line of output — which is worth the two seconds only for as long as
 #    something actually runs them.
 run_live_suite() {
-  local label="$1" path="$2" output status
+  local label="$1" path="$2" dir="${3:-$CLIENT_CORE}" output status
   log "Running $label"
   set +e
-  output="$(cd "$CLIENT_CORE" && dart test "$path" 2>&1)"
+  output="$(cd "$dir" && dart test "$path" 2>&1)"
   status=$?
   set -e
   printf '%s\n' "$output"
@@ -273,6 +283,8 @@ run_live_suite "the live app API client smoke suite" \
   test/app_api_client_integration_test.dart || result=1
 run_live_suite "the live admin API client smoke suite" \
   test/admin_api_client_integration_test.dart || result=1
+run_live_suite "the generated OpenAPI clients against both servers" \
+  test/generated_client_integration_test.dart "$OPENAPI_CLIENT" || result=1
 
 # Server logs are dumped by the EXIT trap (cleanup) whenever the run exits
 # non-zero, so a test failure here surfaces them without an explicit dump.

@@ -90,7 +90,8 @@ SCRATCH = TOOL_DIR / "ztmp" / "dartdoc"
 #: see the module docstring. `tom_core_server` and the Flutter-side packages
 #: have not been surveyed. The `advanced_*` samples are discovered rather than
 #: listed, so a ninth is gated the day it is added.
-PACKAGES = ["tom_core_kernel", "tom_core_agentic", "tom_core_codespecs"] + sorted(
+PACKAGES = ["tom_core_kernel", "tom_core_agentic", "tom_core_codespecs",
+            "tom_core_openapi"] + sorted(
     f"tom_core_samples/{d.name}"
     for d in (REPO_ROOT / "tom_core_samples").glob("advanced_*")
     if (d / "pubspec.yaml").is_file())

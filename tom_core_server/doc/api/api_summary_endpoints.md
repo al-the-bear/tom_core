@@ -42,6 +42,8 @@ method, and runs the per-request handling.
   - [TomFileEndpoint](#tomfileendpoint)
   - [TomFileService](#tomfileservice)
   - [TomFileServer](#tomfileserver)
+  - [TomOpenApiService](#tomopenapiservice)
+  - [TomOpenApiServer](#tomopenapiserver)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -51,7 +53,8 @@ Source: `lib/src/tomserver/endpoints/endpoint_annotation.dart`,
 `lib/src/tomserver/endpoints/form_binding.dart`,
 `lib/src/tomserver/endpoints/endpoint_results.dart`,
 `lib/src/tomserver/endpoints/web_socket_endpoint.dart`,
-`lib/src/tomserver/endpoints/file_endpoint.dart`.
+`lib/src/tomserver/endpoints/file_endpoint.dart`,
+`lib/src/tomserver/endpoints/openapi_document_endpoint.dart`.
 
 `endpoint_annotation.dart` defines the declarative surface: `@tomService` /
 `@TomApiImplementation` mark a class as a routable service, `@TomEndpoint`
@@ -98,6 +101,13 @@ grammar and the store registry — and the row-side contract
 (`TomFileRepository`, `@TomFileReference`) belongs to
 [Object Persistence](api_summary_object_persistence.md).
 
+`openapi_document_endpoint.dart` is a framework endpoint of the same kind:
+`TomOpenApiService` (implementation `TomOpenApiServer`) serves the server's
+OpenAPI 3.1 document at `GET /openapi.json`. The document is generated at build
+time by `tom_core_openapi` from the endpoint annotations; the server only serves
+the file `TomOpenApiServer.globalSettingDocumentPath` names, which
+`TomServer.start` sets from the `openApiDocument` configuration setting.
+
 ## Class Hierarchy
 
 ```
@@ -127,6 +137,9 @@ TomFileSlot  (abstract)
 
 TomFileService  (abstract)
     └── TomFileServer  (implements)
+
+TomOpenApiService  (abstract)
+    └── TomOpenApiServer  (implements)
 
 TomEndpointHandler
 TomEndpointRoutingInfo
@@ -1044,6 +1057,53 @@ bean of its own.
 ```dart
 TomFileServer()
 ```
+
+### TomOpenApiService
+
+The route contract for the server's OpenAPI document, mounted by the endpoints
+pipeline like any other `@tomService`.
+
+Public (`@TomPublicAccess()`), because the document describes how to call the
+server and is read before a caller holds any credential — the same reason a
+well-known JWKS is public. It describes routes, never data. Its requests are
+not logged (`logRequests: false`).
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `openApiDocument` | `Future<Response> openApiDocument()` | `GET /openapi.json` — the generated document, as the build wrote it. |
+
+### TomOpenApiServer
+
+The `TomOpenApiService` implementation: serves the file
+`globalSettingDocumentPath` names, as `application/json`.
+
+The file is read on every request rather than cached: it is small, it is
+replaced by a deployment rather than at run time, and a cached copy would go on
+serving a document the deployment had already replaced. Both refusals are a
+`404` carrying the framework error envelope — `openapi.document.not_served`
+when no path is configured, `openapi.document.missing` (with a logged warning)
+when the configured path names no file.
+
+#### Constructors
+
+```dart
+TomOpenApiServer()
+```
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `documentUri` | `String` | The route the document is served at, `/openapi.json` (a `const`). |
+| `globalSettingDocumentPath` | `String?` | The generated document to serve, or `null` to serve none. `TomServer.start` sets it from `TomBaseServerConfiguration.openApiDocument`; a relative path resolves against the working directory. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `openApiDocument` | `Future<Response> openApiDocument()` | Answers the document, or a `404` envelope saying why there is none. |
 
 ## Global Functions and Constants
 

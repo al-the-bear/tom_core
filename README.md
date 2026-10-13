@@ -80,6 +80,12 @@ for all entries is this repository root.
 | [`tom_core_server`](tom_core_server/README.md) | The server layer: an HTTP host, an endpoint pipeline, a relational persistence layer with a type-safe query model, datasources and migrations, server configuration, caching, and authentication/authorization. Re-exports the kernel through its own barrel. |
 | [`tom_core_flutter`](tom_core_flutter/README.md) | The Flutter integration layer: re-exports the kernel and adds Flutter widgets that bind to observable kernel state, form primitives, typed UI properties, client-side platform detection, and client auth helpers. |
 
+### Server tooling
+
+| Package | What it is |
+| --- | --- |
+| [`tom_core_openapi`](tom_core_openapi/README.md) | OpenAPI 3.1 for Tom servers: generates a server's document at build time from its endpoint annotations and reflected DTOs, validates it against the OpenAPI meta-schema, and generates a typed Dart client that depends on `package:http` only. A `tom_build_base` command-line tool (`openapi`). |
+
 ### UI
 
 | Package | What it is |
@@ -137,6 +143,7 @@ above link the relevant files. The most common entry points:
 | Widget library — ACL engine | [`tom_flutter_ui/doc/advanced_container_layout.md`](tom_flutter_ui/doc/advanced_container_layout.md) |
 | Widget library — forms & authorizers | [`tom_flutter_ui/doc/forms.md`](tom_flutter_ui/doc/forms.md) · [`form_authorizers.md`](tom_flutter_ui/doc/form_authorizers.md) |
 | Agentic building blocks | [`tom_core_agentic/doc/`](tom_core_agentic/doc/) |
+| OpenAPI generation, validation and the Dart client | [`tom_core_openapi/doc/`](tom_core_openapi/doc/) |
 | Form demo catalogue | [`tom_flutter_form_test/doc/demo_catalogue.md`](tom_flutter_form_test/doc/demo_catalogue.md) |
 | UI demo catalogue | [`tom_flutter_ui_test/doc/demo_catalogue.md`](tom_flutter_ui_test/doc/demo_catalogue.md) |
 
@@ -150,6 +157,7 @@ tom_core_server/       backend runtime: HTTP, persistence, auth               (r
 tom_core_flutter/      Flutter integration layer (re-exports the kernel)      (runtime)
 tom_flutter_ui/        Flutter widget library: widgets, forms, ACL engine     (UI)
 tom_core_agentic/      domain-free agentic building blocks (dart:io-free)      (agentic)
+tom_core_openapi/      OpenAPI 3.1 document, validator and Dart client         (tooling)
 tom_flutter_form_test/ runnable demo: the form framework                      (demo app)
 tom_flutter_ui_test/   runnable demo/smoke-test: the whole widget library     (demo app)
 tool/                  repo-wide developer tooling (see below)                (tooling)
@@ -243,7 +251,7 @@ about, and the gates, are green. `tool/run_suites.py` runs what "green" means
 for this repository — every package suite and the gate suite — with one verdict:
 
 ```bash
-python3 tool/run_suites.py                   # all eight package suites, then the gates
+python3 tool/run_suites.py                   # all nine package suites, then the gates
 python3 tool/run_suites.py kernel server     # a subset, by name or unique part of one
 python3 tool/run_suites.py --no-gates flutter_ui
 python3 tool/run_suites.py --list            # what would run, and with which runner
@@ -256,7 +264,7 @@ longest suites take a quarter of an hour), prints a table of per-suite verdicts
 and durations, keeps each run's output under `tool/ztmp/suites/`, and exits
 non-zero if any suite failed. Run it before calling a cross-package change
 finished. It is deliberately not a `check_*.py`: the gate runner would discover
-it and start eight test suites.
+it and start nine test suites.
 
 **Nor are the gates the reflection seeds.** The thirteen sample seeds mirror
 every type reachable from their roots, the framework's included, so a change to
@@ -702,8 +710,9 @@ Every warning counts, not only unresolved references: a documentation build
 that is allowed to say one thing is a build nobody reads. The log names every
 warning by file and line and is kept under `tool/ztmp/dartdoc/`; the HTML is
 deleted once it has been read. Packages are gated only once they are silent,
-the same rule `check_doc_dart_blocks.py` states. The three framework packages
-are listed and the eight `advanced_*` samples are discovered, and all of them
+the same rule `check_doc_dart_blocks.py` states. Four packages —
+`tom_core_kernel`, `tom_core_agentic`, `tom_core_codespecs` and
+`tom_core_openapi` — are listed and the `advanced_*` samples are discovered, and all of them
 build in parallel — about eighty seconds, against four minutes in series.
 
 **A silent build is necessary, not sufficient.** `dart doc` resolves a
@@ -929,9 +938,9 @@ fire. A green light there would be coverage in appearance only. Whether those
 signatures are *true* is a different question, answered by
 `check_api_signatures.py` below.
 
-Seven packages are triaged to zero and gated: `tom_core_kernel`,
-`tom_core_agentic`, `tom_core_codespecs`, `tom_core_flutter`, `tom_core_server`,
-`tom_flutter_ui` and `tom_flutter_ui_test`. One is not: `tom_flutter_form_test`
+Eight packages are triaged to zero and gated: `tom_core_kernel`,
+`tom_core_agentic`, `tom_core_codespecs`, `tom_core_flutter`, `tom_core_openapi`,
+`tom_core_server`, `tom_flutter_ui` and `tom_flutter_ui_test`. One is not: `tom_flutter_form_test`
 carries no ` ```dart ` fence, and a gated package with nothing to read exits
 unmeasured. The sample
 packages under `tom_core_samples/` are not read by this gate. A Flutter
@@ -962,9 +971,9 @@ caller writes their names; types are compared structurally, so a typedef, a raw
 generic or a record with its fields reordered is the same type the analyzer
 prints expanded. A fence that is not a list of declarations — a truncated
 parameter list — is a fault; one that parses as statements is a usage sample
-and is left to the gate above. Six packages: `tom_core_kernel`,
-`tom_core_server`, `tom_core_flutter`, `tom_core_agentic`, `tom_core_codespecs`
-and `tom_flutter_ui`. The `Methods` and `Properties` tables quote signatures
+and is left to the gate above. Seven packages: `tom_core_kernel`,
+`tom_core_server`, `tom_core_flutter`, `tom_core_agentic`, `tom_core_codespecs`,
+`tom_core_openapi` and `tom_flutter_ui`. The `Methods` and `Properties` tables quote signatures
 too, as inline code, and are not read.
 
 ```bash

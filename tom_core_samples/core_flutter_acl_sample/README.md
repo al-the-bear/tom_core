@@ -160,7 +160,7 @@ on it, and its only public surface is the app shell and its group list. The API
 it demonstrates is `tom_flutter_ui`'s, which carries its own reference — for
 the ACL engine,
 [`api_summary_advanced_container_layout.md`](../../tom_flutter_ui/doc/api/api_summary_advanced_container_layout.md). The decision is taken
-once for all fifteen samples in [the suite map](../README.md).
+once for all sixteen samples in [the suite map](../README.md).
 
 ---
 

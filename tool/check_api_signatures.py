@@ -82,6 +82,7 @@ PACKAGES = [
     ("tom_core_flutter", "doc/api"),
     ("tom_core_agentic", "doc/api"),
     ("tom_core_codespecs", "doc/api"),
+    ("tom_core_openapi", "doc/api"),
     ("tom_flutter_ui", "doc/api"),
 ]
 

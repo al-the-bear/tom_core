@@ -100,6 +100,7 @@ export 'src/tomserver/endpoints/endpoint_pipeline.dart';
 export 'src/tomserver/endpoints/endpoint_results.dart';
 export 'src/tomserver/endpoints/file_endpoint.dart';
 export 'src/tomserver/endpoints/form_binding.dart';
+export 'src/tomserver/endpoints/openapi_document_endpoint.dart';
 export 'src/tomserver/endpoints/web_socket_endpoint.dart';
 export 'src/tomserver/export/blob_export_store.dart';
 export 'src/tomserver/export/csv_renderer.dart';

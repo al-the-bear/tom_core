@@ -16,13 +16,13 @@ four-state authorization driven live over the wire, plus cross-user sharing.
 deliberate: this package is itself the runnable example, and a sample has no
 consumers who need its surface mirrored — see
 [the suite map](../README.md) for that decision, which is the same for all
-fifteen sample packages.** It is one of the eight `advanced_*` packages
+sixteen sample packages.** It is one of the nine `advanced_*` packages
 that together form the full-stack sample, so `flutter run` on the package is
 the demonstration — an `example/` here would either duplicate `lib/main.dart`
 or isolate a fragment the app already shows in context. Generate a platform folder first ([Before the first run](#before-the-first-run)),
 then see [Running the full stack](#running-the-full-stack) for the live command and the
 `--dart-define=TEST_MODE=true` offline variant, and
-[the family's index](../README_advanced_sample.md#the-eight-packages) for which of the eight carry an `example/`, and why.
+[the family's index](../README_advanced_sample.md#the-nine-packages) for which of the nine carry an `example/`, and why.
 
 `test/documented_launch_test.dart` holds that command to the code: the define
 the section above names is derived from the README and from `lib/main.dart` and

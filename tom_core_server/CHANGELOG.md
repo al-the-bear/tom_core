@@ -202,6 +202,19 @@
   `TomEntitySchemaReader` reads a version column as `nullable: false`. A table
   gains the column with `ALTER TABLE t ADD COLUMN version BIGINT NOT NULL
   DEFAULT 0;`, and its existing rows load at version `0`.
+- **The OpenAPI document endpoint** (`endpoints/openapi_document_endpoint.dart`).
+  `TomOpenApiService` declares `GET /openapi.json` (`@TomPublicAccess()`,
+  `logRequests: false`) and `TomOpenApiServer` serves the file
+  `TomOpenApiServer.globalSettingDocumentPath` names, read on every request.
+  The document is generated at build time by `tom_core_openapi`; the server
+  only serves it. With no path configured the route answers `404` with the
+  error envelope keyed `openapi.document.not_served`, and with a path naming no
+  file `404` keyed `openapi.document.missing`.
+- **`TomBaseServerConfiguration.openApiDocument`** (environment name
+  `OPEN_API_DOCUMENT`, default empty): the document `GET /openapi.json` serves.
+  `TomServer.start` sets `TomOpenApiServer.globalSettingDocumentPath` from it.
+- `doc/endpoints.md` § The OpenAPI Document and `doc/configuration.md`
+  § Publishing the OpenAPI Document.
 
 ### Changed
 

@@ -31,3 +31,6 @@ dev_dependencies:
   build_runner: ^2.10.4
   tom_reflection_generator:
     path: ../../../reflection/tom_reflection_generator
+  # Writes openapi/openapi.json from the endpoint annotations (tool/openapi.dart).
+  tom_core_openapi:
+    path: ../../tom_core_openapi

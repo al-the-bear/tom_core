@@ -5,3 +5,6 @@ app:
 # Single isolate keeps the sample readable.
 isolateCount: 0
 logLevel: "production"
+# Publishes the build-generated OpenAPI document at GET /openapi.json
+# (regenerate it with `dart run tool/openapi.dart :document`).
+openApiDocument: "openapi/openapi.json"

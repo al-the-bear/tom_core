@@ -978,6 +978,24 @@ void main() {
         expect(await store.consume('s-2'), isNull);
       },
     );
+
+    test("expiry is judged on the store's clock, not the wall clock", () async {
+      // A record stamped on a fixed timeline stays live while that timeline
+      // says it is young, however long ago the instant is in real time, and
+      // expires when that timeline moves past the time to live.
+      var now = DateTime.utc(2020, 1, 1, 12);
+      final store = TomOAuthMemoryStateStore(clock: () => now);
+      await store.store(
+        TomOAuthAuthorizationState(
+          state: 's-3',
+          providerId: 'stub',
+          createdAt: now,
+        ),
+      );
+      expect((await store.peek('s-3'))?.providerId, 'stub');
+      now = now.add(const Duration(minutes: 11));
+      expect(await store.peek('s-3'), isNull);
+    });
   });
 
   // ===========================================================================

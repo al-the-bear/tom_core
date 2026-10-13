@@ -55,7 +55,9 @@ final socket = await server.start();       // completes when it is listening
 credential (below), TLS material (`certificateChain` / `privateKey`, unless
 `noSsl`), the listen address (`host`, or any-IPv4 when empty or
 `listenToAnyIp`), the `port`, `isolateCount` (sockets are `shared` when more
-than one), `autoCompress`, and the `serverHeader` / `poweredByHeader`.
+than one), `autoCompress`, the `serverHeader` / `poweredByHeader`, and
+`openApiDocument`, the generated OpenAPI document `GET /openapi.json` serves
+(see [endpoints.md](endpoints.md#the-openapi-document)).
 `start()` completes **when the socket is listening**, with the bound
 `HttpServer`. So a bind failure — a port already in use, an unreadable
 certificate, a malformed private key — rejects the returned future instead of
@@ -439,7 +441,7 @@ and an application that needs one builds it today rather than waiting:
 | [authentication](authentication.md) | module | every file | `TomServerSelfLogin`, `TomServerSelfLoginException` |
 | [authorization](authorization.md) | module | every file | `TomAuthorizationCache` (principal resolution) |
 | [configuration](configuration.md) | module | every file | `TomBaseServerConfiguration` |
-| [endpoints](endpoints.md) | module | every file | `TomEndpointRouting` (router initialisation) |
+| [endpoints](endpoints.md) | module | every file | `TomEndpointRouting` (router initialisation), `TomOpenApiServer` (the OpenAPI document path, set from `openApiDocument`) |
 | [little_things](little_things.md) | module | every file | `TomServerException` (its `clientThrow` flag feeds the error response) and `TomRequestId` (seeded into every request zone) |
 | [tenancy](tenancy.md) | module | every file | `TomTenancy` and `TomTenantResolution` — the request's tenant, or the refusal to answer it with |
 | [transactions](transactions.md) | module | every file | `TomTransactionManager` |

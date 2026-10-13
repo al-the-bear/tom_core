@@ -940,6 +940,16 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// ties a migration set to the datasource key it belongs to.
   String databaseMigrationsDirectory = "./database_migrations";
 
+  /// The generated OpenAPI document this server publishes at
+  /// `GET /openapi.json`, or empty to publish none.
+  ///
+  /// The document is written at build time by `tom_core_openapi` from the
+  /// endpoint annotations; the server only serves the file. Relative to the
+  /// working directory unless absolute, like [databaseMigrationsDirectory].
+  ///
+  /// Environment name: `OPEN_API_DOCUMENT`.
+  String openApiDocument = "";
+
   /// Builds the merged value map used to populate a configuration instance.
   ///
   /// Starts from a **deep copy** of the active provider's

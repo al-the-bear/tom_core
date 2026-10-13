@@ -80,6 +80,7 @@ abstract, so other backends can be added.
 | `TomMultipartForm` / `TomFormFile` | HTML form bodies (multipart or url-encoded): text parts fold into the request DTO, file parts bind as typed parameters and upload through the same file slot |
 | `TomRedirect` | The directive a handler returns to answer with a `3xx`, so the pipeline builds the response rather than the handler |
 | `TomWebSocketEndpoint` / `TomWebSocketConnection` | Sockets as a *kind of endpoint* — same scan, access check and parameter binding, run inside the captured request zone, with their own connection lifecycle |
+| `TomOpenApiService` / `TomOpenApiServer` | `GET /openapi.json`, public: serves the OpenAPI 3.1 document `tom_core_openapi` generates at build time, from the file the `openApiDocument` setting names |
 | `TomErrorHandler` / `TomDefaultErrorHandler` | Maps a thrown exception onto the response the caller sees |
 
 ### Persistence (`object_persistence`, `datasources`)

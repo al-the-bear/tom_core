@@ -2352,8 +2352,18 @@ back.
 The default store: a per-process map with a time-to-live.
 
 ```dart
-TomOAuthMemoryStateStore({Duration timeToLive = const Duration(minutes: 10)})
+TomOAuthMemoryStateStore({
+  Duration timeToLive = const Duration(minutes: 10),
+  DateTime Function()? clock,
+})
 ```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `timeToLive` | `Duration` | How long a pending authorization stays completable. |
+| `clock` | `DateTime Function()` | The clock expiry is judged against; the wall clock unless given. Pass the flow's own clock, so a record's age is measured on one timeline. |
 
 Expired and unknown handles are indistinguishable to a caller. Correct for a
 single-node deployment; a cluster installs a shared store (see

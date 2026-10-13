@@ -479,7 +479,7 @@ void main() {
     late TomSamlFlow saml;
 
     setUp(() {
-      store = TomOAuthMemoryStateStore();
+      store = TomOAuthMemoryStateStore(clock: () => _now);
       saml = TomSamlFlow(
         providers: TomSamlProviders({'corporate': _provider()}),
         stateStore: store,
@@ -945,7 +945,7 @@ void main() {
     late TomOAuthMemoryStateStore store;
 
     setUp(() {
-      store = TomOAuthMemoryStateStore();
+      store = TomOAuthMemoryStateStore(clock: () => _now);
       TomBean.resetBeanContext();
       TomBean.withType<TomSamlServer>(const TomSamlServer());
       TomBean.withType<TomSamlProviders>(

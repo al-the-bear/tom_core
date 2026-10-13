@@ -16,11 +16,11 @@ deliverable — they do not exist elsewhere in the framework yet.
 > [10 · Servers & the secured endpoint pipeline](../README_advanced_10_servers_endpoints.md).
 
 **There is no `example/` directory, and that is deliberate: this package is
-itself the runnable example.** It is one of the eight `advanced_*` packages
+itself the runnable example.** It is one of the nine `advanced_*` packages
 that together form the full-stack sample, so
 `dart run bin/auth_server_start.dart` — the JWT issuer and the admin API — is
 the demonstration, and an `example/` beside it would duplicate the entry point.
-[The family's index](../README_advanced_sample.md#the-eight-packages) says which of the eight carry an `example/`, and why.
+[The family's index](../README_advanced_sample.md#the-nine-packages) says which of the nine carry an `example/`, and why.
 
 Read instead, in the order a newcomer wants them: [Running it](#running-it)
 for the boot and its database, the [`curl` tour](#curl-tour) for login,
@@ -148,6 +148,7 @@ request and exposes it through `GET /resource-roles`, which the client reads.
 | `POST /auth/enrol/confirm` | public | Confirm enrolment by proving one code against the new secret |
 | `POST /auth/enrol/skip` | public | Decline an *offered* factor and complete the login unchanged |
 | `GET /auth/resources/login` | public | The login screen's resource bundle — readable before a token exists |
+| `GET /openapi.json` | public | The server's OpenAPI 3.1 document — framework-mounted; see [OpenAPI document](#openapi-document) |
 | `POST /auth/refresh` | authenticated | Re-issue a fresh token pair |
 | `GET /auth/me` | authenticated | The caller's `UserDto` |
 | `POST /auth/logout` | authenticated | No-op (stateless JWT) |
@@ -160,6 +161,37 @@ request and exposes it through `GET /resource-roles`, which the client reads.
 | `GET /admin/grants` · `PUT /admin/grants` | admin | Read / write the `(role, resourceKey) → TomAuthState` matrix |
 | `POST /admin/assignments` | admin | Assign a user to a role and/or group |
 | `GET /admin/resources` | admin | The admin console's resource bundle |
+
+## OpenAPI document
+
+The server publishes its OpenAPI 3.1 document at `GET /openapi.json`. The
+document is generated at build time from the endpoint annotations by
+`tom_core_openapi` and committed as `openapi/openapi.json`; the server only
+serves the file, which `assets/config-resources_default.yaml` names:
+
+```yaml
+openApiDocument: "openapi/openapi.json"
+```
+
+`tool/openapi.dart` is the generator's entry point for this package. It
+registers the contracts and installs this server's reflection seed — what makes
+the endpoints visible — and states the document's title (`Advanced Auth Server`),
+description and server URL (`http://localhost:8081`), so the commands need no
+arguments:
+
+```sh
+dart run tool/openapi.dart :document           # rewrite openapi/openapi.json
+dart run tool/openapi.dart :document --check   # fail when it is stale
+dart run tool/openapi.dart :validate           # OpenAPI 3.1 meta-schema + references
+```
+
+`test/openapi_document_test.dart` runs `:document --check` and `:validate`, so
+a change to an endpoint fails the suite until the document is regenerated, and
+the regeneration is a reviewable diff. Validation needs `python3` with
+`jsonschema`. The document lists the framework's endpoints beside the sample's
+own, and [`advanced_openapi_client`](../advanced_openapi_client/README.md)
+carries the `AuthApi` client generated from it, depending on `package:http`
+alone.
 
 ## `curl` tour
 

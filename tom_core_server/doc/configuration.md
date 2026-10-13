@@ -27,6 +27,7 @@ environment-variable substitution.
   - [Server Self-Login](#server-self-login)
   - [Outbound Mail (SMTP)](#outbound-mail-smtp)
   - [Outbound SMS (HTTP Gateway)](#outbound-sms-http-gateway)
+- [Publishing the OpenAPI Document](#publishing-the-openapi-document)
 - [Source Precedence](#source-precedence)
   - [A `SCREAMING_SNAKE_CASE` variable names a `lowerCamelCase` field](#a-screaming_snake_case-variable-names-a-lowercamelcase-field)
 - [Loading YAML](#loading-yaml)
@@ -723,6 +724,26 @@ See `messaging/sms_transport.dart` and `doc/messaging.md`.
 The remaining fields — the server, TLS, JWT, handler and logging settings — are
 listed with their types and defaults in
 `doc/api/api_summary_configuration.md`.
+
+## Publishing the OpenAPI Document
+
+One setting decides whether the server publishes its OpenAPI document at
+`GET /openapi.json`. The document is not generated here: `tom_core_openapi`
+writes it at build time from the endpoint annotations, and the server serves the
+file it is pointed at.
+
+| Setting | Type | Default | What it decides |
+| ------- | ---- | ------- | --------------- |
+| `openApiDocument` | `String` | `""` | The generated document to serve. Empty publishes none, and `GET /openapi.json` answers `404` with `openapi.document.not_served`. A path that names no file answers `404` with `openapi.document.missing` and logs a warning. Relative to the working directory unless absolute, like `databaseMigrationsDirectory`. Environment name `OPEN_API_DOCUMENT`. |
+
+`TomServer.start` copies the value into
+`TomOpenApiServer.globalSettingDocumentPath` before it builds the router. The
+route itself is described in [endpoints.md](endpoints.md#the-openapi-document).
+
+```yaml
+# assets/config-resources_default.yaml
+openApiDocument: "openapi/openapi.json"
+```
 
 ## Source Precedence
 

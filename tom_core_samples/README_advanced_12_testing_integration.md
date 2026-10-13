@@ -14,7 +14,7 @@ matrix proves the same widget renders differently per principal.
 [Part 13](README_advanced_13_file_transfer.md) then follows a single feature —
 file transfer — through every layer this part tests.
 
-## Test strategy across the eight packages
+## Test strategy across the nine packages
 
 Each package carries its own suite, written against the layer it owns and
 against the seam directly below it — never against a live socket:
@@ -154,6 +154,13 @@ pipeline actually consults it — neither of which a socket-free test can show.
 Its unit counterpart proves the handler *function* returns a 400; only the live
 run proves the server calls it. A suite no script runs decays silently, which is why they run here rather
 than being left to a manual invocation.
+
+The runner also drives one suite from another package,
+`advanced_openapi_client/test/generated_client_integration_test.dart`
+(**OC-1…5**): the clients generated from the two servers' OpenAPI documents —
+code that shares nothing with either server — logging in, reading and writing,
+meeting the bare `404` an unauthenticated call is refused with, and finding each
+server serving the document its client was generated from.
 
 The runner is one scripted command for the Phase-7 "scenario passes end-to-end"
 bar:

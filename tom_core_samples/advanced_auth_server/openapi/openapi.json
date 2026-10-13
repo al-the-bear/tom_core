@@ -1,0 +1,4098 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Advanced Auth Server",
+    "version": "0.1.0",
+    "description": "Credential login, token lifecycle and the role-gated administration API of the advanced sample."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8081"
+    }
+  ],
+  "tags": [
+    {
+      "name": "TomDeliveryReportService"
+    },
+    {
+      "name": "TomFileService"
+    },
+    {
+      "name": "TomHealthService"
+    },
+    {
+      "name": "TomJwksService"
+    },
+    {
+      "name": "TomOpenApiService"
+    },
+    {
+      "name": "TomSamlService"
+    },
+    {
+      "name": "TomScimApi"
+    },
+    {
+      "name": "admin",
+      "description": "Account, role, group, grant and assignment management."
+    },
+    {
+      "name": "auth",
+      "description": "Credential login and token lifecycle."
+    },
+    {
+      "name": "tomOAuth",
+      "description": "OAuth 2.0 / OpenID Connect authorization-code login."
+    },
+    {
+      "name": "tomUserPreferences",
+      "description": "Per-principal preferences stored on the server."
+    }
+  ],
+  "paths": {
+    "/.well-known/jwks.json": {
+      "get": {
+        "tags": [
+          "TomJwksService"
+        ],
+        "operationId": "tomJwksServiceJwks",
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/admin/assignments": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminAssign",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Done; the response carries no body."
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      }
+    },
+    "/admin/grants": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminGetGrants",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantMatrixDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminPutGrants",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantMatrixDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Done; the response carries no body."
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      }
+    },
+    "/admin/groups": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminListGroups",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminUpdateGroup",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminCreateGroup",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      }
+    },
+    "/admin/groups/{id}": {
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminDeleteGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done; the response carries no body."
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      }
+    },
+    "/admin/resources": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminResources",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceBundleDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      }
+    },
+    "/admin/roles": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminListRoles",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoleDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminUpdateRole",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminCreateRole",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      }
+    },
+    "/admin/roles/{key}": {
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminDeleteRole",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done; the response carries no body."
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminListUsers",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminUpdateUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminCreateUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      }
+    },
+    "/admin/users/{id}": {
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminDeleteUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done; the response carries no body."
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "admin"
+          ]
+        }
+      }
+    },
+    "/auth/enrol/begin": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "authBeginEnrolment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFactorEnrolmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/enrol/confirm": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "authConfirmEnrolment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFactorEnrolmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/enrol/skip": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "authSkipEnrolment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFactorEnrolmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "authLogin",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "authLogout",
+        "responses": {
+          "200": {
+            "description": "Done; the response carries no body."
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "authMe",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "authRefresh",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/auth/resources/login": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "authLoginResources",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceBundleDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/second-factor": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "authSecondFactor",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecondFactorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/files/{entity}/{id}/{column}": {
+      "get": {
+        "tags": [
+          "TomFileService"
+        ],
+        "operationId": "tomFileServiceFileGet",
+        "parameters": [
+          {
+            "name": "entity",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "column",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "TomFileService"
+        ],
+        "operationId": "tomFileServiceFilePut",
+        "parameters": [
+          {
+            "name": "entity",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "column",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/octet-stream": {}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "TomFileService"
+        ],
+        "operationId": "tomFileServiceFilePost",
+        "parameters": [
+          {
+            "name": "entity",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "column",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/octet-stream": {}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "TomFileService"
+        ],
+        "operationId": "tomFileServiceFileDelete",
+        "parameters": [
+          {
+            "name": "entity",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "column",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/octet-stream": {}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "head": {
+        "tags": [
+          "TomFileService"
+        ],
+        "operationId": "tomFileServiceFileHead",
+        "parameters": [
+          {
+            "name": "entity",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "column",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "TomHealthService"
+        ],
+        "operationId": "tomHealthServiceHealth",
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "text/plain": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/messaging/delivery-report": {
+      "post": {
+        "tags": [
+          "TomDeliveryReportService"
+        ],
+        "operationId": "tomDeliveryReportServiceDeliveryReport",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/oauth/authorize": {
+      "post": {
+        "tags": [
+          "tomOAuth"
+        ],
+        "operationId": "beginOAuthAuthorization",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TomOAuthAuthorizationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomOAuthAuthorizationDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/oauth/complete": {
+      "post": {
+        "tags": [
+          "tomOAuth"
+        ],
+        "operationId": "completeOAuthAuthorization",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TomOAuthCallbackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomAuthenticationResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/oauth/providers": {
+      "get": {
+        "tags": [
+          "tomOAuth"
+        ],
+        "operationId": "listOAuthProviders",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TomOAuthProviderDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "tags": [
+          "TomOpenApiService"
+        ],
+        "operationId": "tomOpenApiServiceOpenApiDocument",
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/preferences": {
+      "get": {
+        "tags": [
+          "tomUserPreferences"
+        ],
+        "operationId": "listPreferences",
+        "description": "Every preference of the caller, ordered by key. Unpaged by design and bounded by construction: at most 256 entries, each value at most 16384 bytes of JSON.",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TomUserPreferenceDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "tomUserPreferences"
+        ],
+        "operationId": "writePreference",
+        "description": "Writes one preference of the caller, replacing any previous value. A value longer than 16384 bytes of JSON is refused (400, preferences.encoded.too_large); a write that would add a key beyond 256 preferences is refused (409, preferences.limit.exceeded).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TomUserPreferenceWriteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomUserPreferenceDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "tomUserPreferences"
+        ],
+        "operationId": "clearPreferences",
+        "description": "Deletes every preference of the caller in one statement. Idempotent and unconditional: a caller holding none is cleared with a 200, and there is no filter to narrow what goes.",
+        "responses": {
+          "200": {
+            "description": "Done; the response carries no body."
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/preferences/{key}": {
+      "get": {
+        "tags": [
+          "tomUserPreferences"
+        ],
+        "operationId": "readPreference",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomUserPreferenceDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "tomUserPreferences"
+        ],
+        "operationId": "deletePreference",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done; the response carries no body."
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": [
+          "TomHealthService"
+        ],
+        "operationId": "tomHealthServiceReady",
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "text/plain": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/saml/acs": {
+      "post": {
+        "tags": [
+          "TomSamlService"
+        ],
+        "operationId": "tomSamlServiceAssertionConsumer",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "text/plain": {
+                "schema": {}
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/saml/metadata/{providerId}": {
+      "get": {
+        "tags": [
+          "TomSamlService"
+        ],
+        "operationId": "tomSamlServiceMetadata",
+        "parameters": [
+          {
+            "name": "providerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/xml": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/scim/v2/Groups": {
+      "get": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiListGroups",
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      },
+      "post": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiCreateGroup",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/scim/v2/Groups/{id}": {
+      "get": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiGetGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      },
+      "put": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiReplaceGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      },
+      "delete": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiDeleteGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      },
+      "patch": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiPatchGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/scim/v2/ResourceTypes": {
+      "get": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiResourceTypes",
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/scim/v2/ResourceTypes/{name}": {
+      "get": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiResourceType",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/scim/v2/Schemas": {
+      "get": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiSchemas",
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/scim/v2/Schemas/{schemaId}": {
+      "get": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiSchema",
+        "parameters": [
+          {
+            "name": "schemaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/scim/v2/ServiceProviderConfig": {
+      "get": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiServiceProviderConfig",
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/scim/v2/Users": {
+      "get": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiListUsers",
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      },
+      "post": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiCreateUser",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/scim/v2/Users/{id}": {
+      "get": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiGetUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      },
+      "put": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiReplaceUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      },
+      "delete": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiDeleteUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      },
+      "patch": {
+        "tags": [
+          "TomScimApi"
+        ],
+        "operationId": "tomScimApiPatchUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AssignmentRequest": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "roleKey": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "roleKey",
+          "groupId"
+        ]
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password",
+          "displayName",
+          "email"
+        ]
+      },
+      "EntityIdRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "GrantMatrixDto": {
+        "type": "object",
+        "properties": {
+          "matrix": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "matrix"
+        ]
+      },
+      "GroupDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "memberUserIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "memberUserIds"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "app": {
+            "type": "string"
+          },
+          "org": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password",
+          "app",
+          "org"
+        ]
+      },
+      "LoginResult": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserDto"
+          },
+          "authToken": {
+            "type": "string"
+          },
+          "authzToken": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requires2FA": {
+            "type": "boolean"
+          },
+          "twoFactorType": {
+            "type": "string"
+          },
+          "requires2FAEnrolment": {
+            "type": "boolean"
+          },
+          "availableTwoFactorMethods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tom2FAMethodDescriptor"
+            }
+          },
+          "twoFactorEnrolmentSkippable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "user",
+          "authToken",
+          "authzToken",
+          "expiresAt",
+          "requires2FA",
+          "twoFactorType",
+          "requires2FAEnrolment",
+          "availableTwoFactorMethods",
+          "twoFactorEnrolmentSkippable"
+        ]
+      },
+      "ResourceBundleDto": {
+        "type": "object",
+        "properties": {
+          "texts": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "texts"
+        ]
+      },
+      "RoleDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name"
+        ]
+      },
+      "SecondFactorRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "challengeToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "challengeToken"
+        ]
+      },
+      "Tom2FAMethodDescriptor": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "displayNameKey": {
+            "type": "string"
+          },
+          "descriptionKey": {
+            "type": "string"
+          },
+          "iconKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "displayNameKey",
+          "descriptionKey",
+          "iconKey"
+        ]
+      },
+      "TomAuthenticationResult": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "loginFailure": {
+            "type": "string"
+          },
+          "authenticationToken": {
+            "type": "string"
+          },
+          "authorizationToken": {
+            "type": "string"
+          },
+          "requires2FA": {
+            "type": "boolean"
+          },
+          "twoFactorType": {
+            "type": "string"
+          },
+          "requires2FAEnrolment": {
+            "type": "boolean"
+          },
+          "availableTwoFactorMethods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tom2FAMethodDescriptor"
+            }
+          },
+          "twoFactorEnrolmentSkippable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "error",
+          "loginFailure",
+          "authenticationToken",
+          "authorizationToken",
+          "requires2FA",
+          "twoFactorType",
+          "requires2FAEnrolment",
+          "availableTwoFactorMethods",
+          "twoFactorEnrolmentSkippable"
+        ]
+      },
+      "TomError": {
+        "type": "object",
+        "description": "Every error response of a Tom server. A member is absent, never null, when the error does not carry it.",
+        "properties": {
+          "errorType": {
+            "type": "string"
+          },
+          "errorKey": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "autoLog": {
+            "type": "boolean"
+          },
+          "requestUuid": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "clientThrow": {
+            "type": "boolean"
+          },
+          "loginFailure": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "errorType"
+        ]
+      },
+      "TomOAuthAuthorizationDto": {
+        "type": "object",
+        "properties": {
+          "authorizationUri": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "authorizationUri",
+          "state"
+        ]
+      },
+      "TomOAuthAuthorizationRequest": {
+        "type": "object",
+        "properties": {
+          "providerId": {
+            "type": "string"
+          },
+          "client": {
+            "type": "string"
+          },
+          "application": {
+            "type": "string"
+          },
+          "process": {
+            "type": "string"
+          },
+          "organization": {
+            "type": "string"
+          },
+          "clientLanguage": {
+            "type": "string"
+          },
+          "clientCountry": {
+            "type": "string"
+          },
+          "clientTimezone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "providerId",
+          "client",
+          "application",
+          "process",
+          "organization",
+          "clientLanguage",
+          "clientCountry",
+          "clientTimezone"
+        ]
+      },
+      "TomOAuthCallbackRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "errorDescription": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "state",
+          "error",
+          "errorDescription"
+        ]
+      },
+      "TomOAuthProviderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayNameKey": {
+            "type": "string"
+          },
+          "iconKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayNameKey",
+          "iconKey"
+        ]
+      },
+      "TomUserPreferenceDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "valueType": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "key",
+          "valueType",
+          "value"
+        ]
+      },
+      "TomUserPreferenceKeyRequest": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ]
+      },
+      "TomUserPreferenceWriteRequest": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "valueType": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "valueType",
+          "value"
+        ]
+      },
+      "TwoFactorEnrolmentRequest": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "enrolmentToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "code",
+          "enrolmentToken"
+        ]
+      },
+      "UserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "displayName",
+          "email",
+          "status",
+          "language",
+          "country"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+name: advanced_openapi_client
+description: >-
+  Typed Dart clients for the advanced sample's two servers, generated from their
+  OpenAPI documents by tom_core_openapi. The generated code depends on
+  package:http only — no Tom package, no reflection.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  http: ^1.6.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.28.0
+  # Regenerates the two clients and checks the committed ones are current.
+  tom_core_openapi:
+    path: ../../tom_core_openapi

@@ -212,6 +212,7 @@ PACKAGES = [
     "tom_core_agentic",
     "tom_core_codespecs",
     "tom_core_flutter",
+    "tom_core_openapi",
     "tom_core_server",
     "tom_flutter_ui",
     "tom_flutter_ui_test",

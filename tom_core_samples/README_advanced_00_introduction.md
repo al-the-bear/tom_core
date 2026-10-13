@@ -65,7 +65,7 @@ collects the vocabulary in the [glossary](README_advanced_A5_glossary_crossref.m
 but if you have read the basic `core_*_sample` pair, this is the natural next
 step.
 
-## The eight packages at a glance
+## The nine packages at a glance
 
 | # | Package | What it is | Runtime |
 | --- | --- | --- | --- |
@@ -77,6 +77,7 @@ step.
 | 6 | [`advanced_app_client`](advanced_app_client/README.md) | The end-user Flutter app: login, a status-column board, a bound item editor with live per-field authorization, and cross-user sharing. | Flutter |
 | 7 | [`advanced_authadmin_client`](advanced_authadmin_client/README.md) | The administrator Flutter console: manages users, roles, groups, assignments, and the `projectRole` × field grant matrix. | Flutter |
 | 8 | [`advanced_ops_server`](advanced_ops_server/README.md) | Back-office scheduled work over `app_db` — retention purge, digest into the messaging outbox, weekly export, audit anchors. No HTTP surface, no database of its own. | timers, `app_db` `:3308` |
+| 9 | [`advanced_openapi_client`](advanced_openapi_client/README.md) | Typed clients for both servers, generated from their OpenAPI documents by `tom_core_openapi` — `package:http` only, no Tom package. | library |
 
 Part [02](README_advanced_02_project_layout_build.md) shows how they depend on
 one another and how to build and run them; part

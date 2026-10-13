@@ -30,8 +30,8 @@ dart run example/authenticated_call_example.dart
 Its work is in `listWorkspacesAs`, which takes the transport as a parameter, so
 `test/examples_test.dart` runs the same sequence over a fake transport, and also
 runs the file under the command above.
-[The family's index](../README_advanced_sample.md#the-eight-packages) says which
-of the eight carry an `example/`, and why.
+[The family's index](../README_advanced_sample.md#the-nine-packages) says which
+of the nine carry an `example/`, and why.
 
 ## The HTTP seam
 
@@ -544,11 +544,19 @@ Live (all guarded by a reachability check):
   on the column getting the download while the upload and the delete are
   refused.
 
+The same runner also drives one live suite outside this package:
+`advanced_openapi_client/test/generated_client_integration_test.dart`, which
+calls both servers through the clients **generated** from their OpenAPI
+documents — code that shares nothing with this package — and requires each
+server to serve the document its client was generated from. See
+[`advanced_openapi_client`](../advanced_openapi_client/README.md).
+
 ## The cross-tier scenario
 
 `tool/run_cross_tier_integration.sh` boots the whole stack — both MariaDB
 databases from each server's `docker-compose`, then both Dart servers — runs all
-five live suites against it, and tears everything down. It refuses to start if
+five live suites against it, then the generated-client suite of
+`advanced_openapi_client`, and tears everything down. It refuses to start if
 a leftover server holds `8080`/`8081`, starts the databases from *fresh* volumes
 so the seed re-applies, dumps the server logs on any non-zero exit, and treats a
 whole-suite skip as a failure (under this runner the servers are guaranteed up,

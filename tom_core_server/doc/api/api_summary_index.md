@@ -417,6 +417,8 @@ surface documented here.
 | `TomFileService` | abstract class | The file-transfer service interface, mounted like any other `@tomService`. |
 | `TomFileServer` | class | The default `TomFileService`, and the bean an application registers to mount it. |
 | `TomFormFileStorage` | extension | Stores a `TomFormFile` through the same file slot the raw-body endpoint uses. |
+| `TomOpenApiService` | abstract class | The public route contract for the server's OpenAPI document, `GET /openapi.json`. |
+| `TomOpenApiServer` | class | Serves the build-generated OpenAPI document the configuration points at. |
 
 ### Export (`lib/src/tomserver/export/`)
 
@@ -1146,6 +1148,8 @@ surface documented here.
 | `TomOAuthTokenGrant` | Authentication |
 | `TomOAuthTokenStore` | Authentication |
 | `TomOAuthTokenTransport` | Authentication |
+| `TomOpenApiServer` | Endpoints |
+| `TomOpenApiService` | Endpoints |
 | `TomOperator` | Datasources |
 | `TomOptimisticLockException` | Object Persistence |
 | `tomOutboxJobName` | Messaging |

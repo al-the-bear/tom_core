@@ -16,11 +16,11 @@ another user so the grant takes effect on the grantee's next request.
 > [10 · Servers & the secured endpoint pipeline](../README_advanced_10_servers_endpoints.md).
 
 **There is no `example/` directory, and that is deliberate: this package is
-itself the runnable example.** It is one of the eight `advanced_*` packages that
+itself the runnable example.** It is one of the nine `advanced_*` packages that
 together form the full-stack sample, so `dart run bin/app_server_start.dart` —
 the secured board API — is the demonstration, and an `example/` beside it would
 duplicate the entry point.
-[The family's index](../README_advanced_sample.md#the-eight-packages) says which of the eight carry an `example/`, and why.
+[The family's index](../README_advanced_sample.md#the-nine-packages) says which of the nine carry an `example/`, and why.
 
 Read instead, in the order a newcomer wants them: [Running it](#running-it)
 for the boot and its two databases, the [`curl` tour](#curl-tour) for the
@@ -143,13 +143,15 @@ The seeded users come from the auth server (sample only — never ship them):
 
 `POST` / `PUT` bodies are JSON; `Authorization: Bearer <authzToken>` carries the
 auth server login's `authzToken`. All but `/status` (and the framework's
-`/health` liveness probe) require an authenticated principal; resource
+`/health` liveness probe and `/openapi.json` document) require an authenticated
+principal; resource
 ownership/share and per-field grade are enforced inside the handlers.
 
 | Method & path | Access | Purpose |
 | --- | --- | --- |
 | `GET /status` | public | Typed JSON status (`{status, service}`) |
 | `GET /health` | public | Framework plain-text liveness probe (`OK`) — auto-mounted |
+| `GET /openapi.json` | public | The server's OpenAPI 3.1 document — framework-mounted; see [OpenAPI document](#openapi-document) |
 | `GET /workspaces` · `POST /workspaces` | authenticated | List (owner-scoped) / create a workspace |
 | `PUT /workspaces` · `DELETE /workspaces/{id}` | authenticated | Update / delete a workspace (owner-scoped at the database) |
 | `GET /projects` · `POST /projects` | authenticated | List / create a project (workspace owner/editor) |
@@ -171,6 +173,37 @@ one-line `TomFileSlots.register(itemRepository)`. It is graded per row by the
 C-4 column resolver, not by the endpoint access declaration. The item's second
 file column, `internal_note`, is deliberately **not** exposed, so
 `/files/app_items/{id}/internal_note` is a 404 however privileged the caller is.
+
+## OpenAPI document
+
+The server publishes its OpenAPI 3.1 document at `GET /openapi.json`. The
+document is generated at build time from the endpoint annotations by
+`tom_core_openapi` and committed as `openapi/openapi.json`; the server only
+serves the file, which `assets/config-resources_default.yaml` names:
+
+```yaml
+openApiDocument: "openapi/openapi.json"
+```
+
+`tool/openapi.dart` is the generator's entry point for this package. It
+registers the contracts and installs this server's reflection seed — what makes
+the endpoints visible — and states the document's title (`Advanced App Server`),
+description and server URL (`http://localhost:8080`), so the commands need no
+arguments:
+
+```sh
+dart run tool/openapi.dart :document           # rewrite openapi/openapi.json
+dart run tool/openapi.dart :document --check   # fail when it is stale
+dart run tool/openapi.dart :validate           # OpenAPI 3.1 meta-schema + references
+```
+
+`test/openapi_document_test.dart` runs `:document --check` and `:validate`, so
+a change to an endpoint fails the suite until the document is regenerated, and
+the regeneration is a reviewable diff. Validation needs `python3` with
+`jsonschema`. The document lists the framework's endpoints beside the sample's
+own, and [`advanced_openapi_client`](../advanced_openapi_client/README.md)
+carries the `AppApi` client generated from it, depending on `package:http`
+alone.
 
 ## `curl` tour
 

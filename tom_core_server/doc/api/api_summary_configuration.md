@@ -194,6 +194,7 @@ last so a merged key spelled `args` cannot displace the invocation.
 | `logLevelExceptions` | `String` | Per-logger level overrides as `name1=level1,name2=level2` — the "exception" is to the global `logLevel`, not an error. Applied by the application's boot; an unparseable pattern is logged and the overrides are lost. |
 | `logLevel` | `String` | The global log level by name (`TRACE` … `FATAL`, or an aggregate such as `PRODUCTION`). Empty leaves the logger as it was — a deployment that says nothing does not get silence. Applied by the application's boot, so anything logged before that call uses the previous level. Environment name `LOG_LEVEL`. |
 | `databaseMigrationsDirectory` | `String` | The directory `TomDbMigrations.migrateDatabases` reads, one subdirectory per datasource name (default `"./database_migrations"`). Relative, so a server started from anywhere but its package root finds no migrations. Migration is the application's boot step. |
+| `openApiDocument` | `String` | The generated OpenAPI document this server publishes at `GET /openapi.json` (default `""`, publish none). `TomServer.start` hands it to `TomOpenApiServer.globalSettingDocumentPath`; the file is written at build time by `tom_core_openapi` and only served here. Relative to the working directory unless absolute, like `databaseMigrationsDirectory`. Environment name `OPEN_API_DOCUMENT`. |
 
 Three of the blocks above are whole subsystems that are **off until
 configured**, and each names one field that switches it on:

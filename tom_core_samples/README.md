@@ -16,7 +16,7 @@ with the depth. Nothing about a package's API is re-documented here — the samp
 
 **No sample package carries a `doc/` folder, and none carries a `doc/api/`
 summary. That is a decision, not an omission**, and it is the same for all
-fifteen. The framework packages carry API mirrors because they have consumers
+sixteen. The framework packages carry API mirrors because they have consumers
 who need the surface without reading the source; a sample has none. Every one
 here is `publish_to: none`, nothing outside this folder imports one, and the
 three libraries among them (`advanced_todo_domain`,
@@ -141,7 +141,7 @@ server whose most useful seam needs no infrastructure gets a runnable file.
 | `core_client_sample` | **no — exempt** | a Flutter GUI app: `lib/main.dart` is the entry point and the serial widget suite is its smoke test; argued in its README, [§13 Tests](core_client_sample/README.md#13-tests) |
 | `core_flutter_ui_showcase`, `core_flutter_form_showcase` | **no — exempt** | Flutter showcase apps: each screen is an example, run with `flutter run` |
 | `core_flutter_acl_sample`, `core_flutter_acl_responsive` | **no — exempt** | Flutter showcase apps, as above |
-| the eight `advanced_*` packages | the three libraries and `advanced_ops_server` — yes; the other four runtimes — **no, exempt** | stated per package in [the advanced family's index](README_advanced_sample.md#the-eight-packages) |
+| the nine `advanced_*` packages | the three hand-written libraries and `advanced_ops_server` — yes; the other four runtimes and the generated `advanced_openapi_client` — **no, exempt** | stated per package in [the advanced family's index](README_advanced_sample.md#the-nine-packages) |
 
 An exempt row is a decision, not a gap: a sweep that finds no `example/` in one
 of those packages has found what this table says.
@@ -193,7 +193,7 @@ bootstrap) — see its `README.md` for the one-command bring-up.
 
 ## Reflection seeds
 
-Thirteen of the fifteen packages carry a generated `*.reflection.dart` — the
+Thirteen of the sixteen packages carry a generated `*.reflection.dart` — the
 reflection seed a program or a test installs with `initializeReflection()`.
 The rule for them is the same in every package, decided once here:
 
@@ -279,6 +279,7 @@ tom_core_samples/
   advanced_ops_server/           scheduled back-office work over app_db
   advanced_app_client/           end-user Flutter app
   advanced_authadmin_client/     administrator Flutter console
+  advanced_openapi_client/       Dart clients generated from the servers' OpenAPI documents
 ```
 
 Four of the packages also have an `assets/` folder of their own — the servers'
