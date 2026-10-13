@@ -19,6 +19,7 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
 - [The Pipeline](#the-pipeline)
 - [Request Context and Zone Values](#request-context-and-zone-values)
   - [Endpoint-owned credentials](#endpoint-owned-credentials)
+  - [The request's tenant](#the-requests-tenant)
 - [Error Mapping](#error-mapping)
 - [Extending the Pipeline](#extending-the-pipeline)
 - [Verification](#verification)
@@ -154,7 +155,9 @@ Three channels carry per-request state:
 - **The request `Zone`** (established by `tomDefaultAuthenticationMiddleware`)
   exposes a `TomZoneValues` bundle: the shelf `Request`, the ambient
   `TomExecutionContext`, the resolved `TomPrincipal`, the `TomClientJwtToken`,
-  and a fresh `TomRequestId` (declared in the little-things module). Downstream
+  and a fresh `TomRequestId` (declared in the little-things module) — and, in a
+  multi-tenant deployment, the request's tenant (see
+  [The request's tenant](#the-requests-tenant)). Downstream
   code recovers any of them with
   `getFromCurrentZone<T>()` — this is how the endpoints pipeline and
   `TomServerException` obtain the request id and principal.
@@ -237,6 +240,34 @@ Claim a prefix only for endpoints that do check the header — a claimed path is
 unauthenticated as far as the framework knows, so an endpoint under it that
 relies on the framework's principal sees none.
 
+### The request's tenant
+
+When a `TomTenancy` is installed (see [tenancy.md](tenancy.md)),
+`tomDefaultAuthenticationMiddleware` resolves every request's tenant before any
+handler runs, through `TomTenancy.resolveRequest`:
+
+1. the verified token's `tenant` claim, when the request carries one, is
+   authoritative;
+2. otherwise the configured resolvers — host, then header — are asked in order;
+3. no answer at all is not a refusal: the request runs explicitly outside every
+   tenant, and tenant-owned data is closed to it.
+
+The request then runs inside `TomTenantContext.run(tenant, …)`, which wraps the
+transaction scope and the zone values above, so everything it reaches — the
+repositories, the caches, the outbox — reads the tenant from the zone. A refused
+request is answered by the middleware itself, with a small JSON body
+`{"error": <key>, "message": <message>}` and `Content-Type: application/json`:
+
+| Status | Key | When |
+| ------ | --- | ---- |
+| `403` | `tenancy.resolution.conflict` | The host or a header names another tenant than the token — a token is not a pass to another tenant |
+| `404` | `tenancy.tenant.unknown` | The request names a tenant the deployment does not have |
+| `400` | `tenancy.id.invalid` | The request names something that is not a tenant id |
+
+With no tenancy installed the middleware resolves no tenant and adds no tenant
+zone. A substitute authentication middleware that serves a
+multi-tenant deployment has to establish the tenant the same way.
+
 ## Error Mapping
 
 `TomServer.errorHandler` turns a thrown error into an HTTP 500 JSON response
@@ -268,7 +299,8 @@ to guess from and an intermediary free to sniff it as anything it likes.
   replace `tomDefaultAuthenticationMiddleware`. A substitute is responsible for
   everything the default established: the zone values — at minimum
   `TomPrincipal` and `TomRequestId` — and the
-  `TomTransactionManager.runInTransactionScope` around them. Everything below
+  `TomTransactionManager.runInTransactionScope` around them, and, with a
+  tenancy installed, the request's tenant. Everything below
   the middleware reads those from the ambient zone rather than being passed
   them, so omitting one is not a compile error. Drop the transaction scope and
   repository code silently falls back to the per-isolate current transaction
@@ -287,8 +319,8 @@ to guess from and an intermediary free to sniff it as anything it likes.
 
 ## Verification
 
-Three suites cover this module, and a fourth covers its endpoint-owned
-credentials.
+Three suites cover this module, a fourth covers its endpoint-owned
+credentials, and a fifth its tenant resolution.
 
 `test/server_test.dart` covers the pipeline as composed functions:
 `TomRequestLogInfo`, `extractAuthentication` reading a credential off a request
@@ -328,6 +360,11 @@ test `the framework leaves the claimed header to the endpoint` reads a SCIM
 request as `endpointCredential` and the same header on an unclaimed path as
 `unreadableToken`, and the rest of that suite reaches the SCIM endpoints
 through the pipeline with the identity provider's secret.
+
+`test/tenancy_test.dart`, in the group `the request pipeline`, runs requests
+through `tomDefaultAuthenticationMiddleware` with a tenancy installed: a request
+runs inside the tenant it names, a token used for another tenant is refused with
+`403`, and a deployment without tenancy runs every request in none.
 
 ```bash
 dart run example/server/server_example.dart
@@ -404,4 +441,5 @@ and an application that needs one builds it today rather than waiting:
 | [configuration](configuration.md) | module | every file | `TomBaseServerConfiguration` |
 | [endpoints](endpoints.md) | module | every file | `TomEndpointRouting` (router initialisation) |
 | [little_things](little_things.md) | module | every file | `TomServerException` (its `clientThrow` flag feeds the error response) and `TomRequestId` (seeded into every request zone) |
+| [tenancy](tenancy.md) | module | every file | `TomTenancy` and `TomTenantResolution` — the request's tenant, or the refusal to answer it with |
 | [transactions](transactions.md) | module | every file | `TomTransactionManager` |

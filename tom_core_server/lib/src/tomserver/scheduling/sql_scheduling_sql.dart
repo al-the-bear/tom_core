@@ -30,10 +30,15 @@ const String defaultSchedulerNodeTable = 'tom_scheduler_node';
 ///    a stable insertion order — `all()` and the candidate scan both use it, so
 ///    two nodes reading the same queue see the same order. It is not the key:
 ///    the run's own id is, because that is what every other statement addresses.
-///  * the **unique key on `(job_name, scheduled_for)`** is the point of the
-///    whole table. The scheduler's idempotence key is "one run per job per
-///    window"; expressing it as a database constraint makes a duplicate window
+///  * the **unique key on `(job_name, tenant, scheduled_for)`** is the point of
+///    the whole table. The scheduler's idempotence key is "one run per job per
+///    window" — per tenant, since two tenants' events in one instant are two
+///    runs; expressing it as a database constraint makes a duplicate window
 ///    impossible rather than merely unlikely under a race.
+///  * `tenant` is `''` for a run of no tenant rather than `NULL`, because a
+///    unique key never treats two `NULL`s as equal — two tenant-less runs of
+///    one window would both insert. It is at most 32 characters, the length a
+///    tenant id is limited to.
 ///  * `state, run_at` is the index the claim scan rides; `state, claimed_at` is
 ///    the one abandoned-lease recovery rides.
 ///  * `started_at` is nullable **and that is the information**: a `running` row
@@ -50,16 +55,17 @@ const String defaultSchedulerNodeTable = 'tom_scheduler_node';
 ///    which is the one disagreement neither can resolve.
 ///  * instants are `DATETIME(6)` and always written in UTC — see
 ///    `sqlInstant` in `datasources/sql_instant.dart`.
-///  * `job_name` is `VARCHAR(160)` rather than 191 so the composite unique key
+///  * `job_name` is `VARCHAR(150)` rather than 191 so the composite unique key
 ///    stays inside the 767-byte index limit of older InnoDB row formats
-///    (160 × 4 bytes of utf8mb4 + 8 bytes of `DATETIME(6)`).
+///    (150 × 4 + 32 × 4 bytes of utf8mb4 + 8 bytes of `DATETIME(6)` = 736).
 TomFrameworkTable jobRunTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'jobRunTable',
   columns: const [
     TomFrameworkColumn('seq', 'BIGINT', autoIncrement: true),
     TomFrameworkColumn('id', 'VARCHAR(191)'),
-    TomFrameworkColumn('job_name', 'VARCHAR(160)'),
+    TomFrameworkColumn('job_name', 'VARCHAR(150)'),
+    TomFrameworkColumn('tenant', 'VARCHAR(32)', defaultValue: "''"),
     TomFrameworkColumn('scheduled_for', 'DATETIME(6)'),
     TomFrameworkColumn('run_at', 'DATETIME(6)'),
     TomFrameworkColumn('state', 'VARCHAR(16)'),
@@ -75,7 +81,7 @@ TomFrameworkTable jobRunTable(String table) => TomFrameworkTable(
   primaryKey: const ['id'],
   keys: const [
     TomFrameworkKey.unique('seq', ['seq']),
-    TomFrameworkKey.unique('window', ['job_name', 'scheduled_for']),
+    TomFrameworkKey.unique('window', ['job_name', 'tenant', 'scheduled_for']),
     TomFrameworkKey('due', ['state', 'run_at']),
     TomFrameworkKey('lease', ['state', 'claimed_at']),
   ],

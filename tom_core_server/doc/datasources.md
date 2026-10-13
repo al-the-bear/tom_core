@@ -34,6 +34,7 @@ declared.
 - [Finding Placeholders in Quoted SQL](#finding-placeholders-in-quoted-sql)
 - [Data Sources and Drivers](#data-sources-and-drivers)
   - [Every settings key has to bind](#every-settings-key-has-to-bind)
+  - [Routing per tenant](#routing-per-tenant)
 - [When a Write Fails](#when-a-write-fails)
   - [Why the test recognises the *definite* side](#why-the-test-recognises-the-definite-side)
   - [Walking the chain](#walking-the-chain)
@@ -44,6 +45,7 @@ declared.
   - [The connection lifecycle](#the-connection-lifecycle)
   - [One statement per call](#one-statement-per-call)
 - [Framework-Owned Tables](#framework-owned-tables)
+  - [Creating a store's tables once](#creating-a-stores-tables-once)
 - [Verification](#verification)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
@@ -87,6 +89,7 @@ declared.
 | `MariadbDatasourceException` | class | A MariaDB connect, execute or result-mapping failure |
 | `MariadbPreparedStatementException` | class | A statement failed with no live link to have run on; raising it *is* the decision to retry once |
 | `TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey` | class | The single declaration of a table the framework itself owns, from which its DDL, column lists and inserts are derived |
+| `TomSchemaProvisioning` | class | Creates a store's tables at most once, however many first calls arrive together |
 | `unknownFrameworkColumns` | function | Audits a hand-written statement for column references no framework table declares |
 
 ## SQL-Typed Values
@@ -702,6 +705,27 @@ a file the operator wrote against a driver whose field set is fixed and shipped:
 absorbed, a misspelling surfaces much later as a connection error that names
 neither the schema nor the credentials the driver was never given, and never
 mentions the key that caused it.
+
+### Routing per tenant
+
+The registry answers by name, and in a multi-tenant deployment the answer
+depends on the tenant in context. `TomDataSourceInfo.router` is the seam: a
+function from a registered data source to the one the current tenant's data
+lives in. The `tenancy` module installs it (`TomTenancy.install`); this module
+declares it, so it does not depend on tenancy.
+
+| Lookup | Answer |
+| ------ | ------ |
+| `TomDataSourceInfo.getDataSourceInfo(name)` | The registered data source **as the current tenant reaches it** — its schema or its database under schema or database isolation, the registered one otherwise. `null` when nothing is registered under `name`. |
+| `TomDataSourceInfo.route(info)` | `info` as the current tenant reaches it — `router(info)`, or `info` itself when no router is installed. |
+| `TomDataSourceInfo.getBaseDataSourceInfo(name)` | The registered data source itself, unrouted, whatever tenant is in context. |
+
+A repository resolves its data source through `route` on every call, so one
+repository serves every tenant. A framework store — the job queue, the leases,
+the invalidation log — is built once over a data source and keeps it, which is
+what keeps the framework's tables deployment-wide. With no router installed,
+`getDataSourceInfo` and `getBaseDataSourceInfo` answer the same. See
+[tenancy.md](tenancy.md#how-a-data-source-is-routed) for the routing rules.
 
 ## When a Write Fails
 
@@ -1321,6 +1345,40 @@ ignored; anything else that survives is reported. A word missing from that set
 is a false positive in a test — noisy and self-correcting — whereas a missed
 column reference is the production failure the whole file exists to prevent.
 
+### Creating a store's tables once
+
+Each framework store creates its tables on first use, in `ensureSchema`. Two
+requests reaching a fresh store at the same moment both see "not yet created";
+with a connection pool their two `CREATE TABLE IF NOT EXISTS` run on two
+connections, and the second can return — the table "exists" — before the first
+has finished creating it, so the second request's statement fails on a table
+that does not exist yet. A boolean flag set after the creation cannot close that
+window.
+
+`TomSchemaProvisioning` closes it by sharing the one creation in flight:
+`ensure(create)` runs `create` once, and every caller — the first and every one
+arriving while it runs — awaits the same future. A creation that fails is
+forgotten, so the next call tries again rather than inheriting the failure for
+the life of the store.
+
+```dart
+class TodoArchiveStore {
+  TodoArchiveStore(this.datasource);
+
+  final TomDataSource datasource;
+  final TomSchemaProvisioning _schema = TomSchemaProvisioning();
+
+  Future<void> ensureSchema() => _schema.ensure(() async {
+    await datasource.executeCommand(archiveTableDdl);
+  });
+}
+```
+
+All eight framework stores provision their tables this way: `TomSqlJobStore`,
+`TomSqlLeaseLock`, `TomSqlSchedulerNodes`, `TomSqlDeliveryReportStore`,
+`TomSqlInvalidationChannel`, `TomSqlOAuthStateStore`, `TomSqlScimStore` and
+`TomDatabaseBlobStore`.
+
 ## Verification
 
 Three suites cover the driver, split by what needs a server rather than by what
@@ -1572,6 +1630,9 @@ test here requires this file in particular to keep using it.
   trail), from which its `CREATE TABLE`, its projections and its inserts are all
   derived. See [Framework-Owned Tables](#framework-owned-tables) and
   [Schema Convergence](db_migration.md#schema-convergence).
+- **`TomSchemaProvisioning`** — creates a store's tables once, however many
+  first calls arrive together; see
+  [Creating a store's tables once](#creating-a-stores-tables-once).
 
 ## Not Yet Implemented
 

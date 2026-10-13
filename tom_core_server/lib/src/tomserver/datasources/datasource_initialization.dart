@@ -237,10 +237,30 @@ class TomDataSourceInfo {
   /// All registered data sources, keyed by name.
   static Map<String, TomDataSourceInfo> datasources = {};
 
-  /// Returns the registered info for [dsName], or `null` if none.
-  static TomDataSourceInfo? getDataSourceInfo(String dsName) {
-    return datasources[dsName];
+  /// The routing a multi-tenant deployment installs: maps a registered data
+  /// source to the one the current tenant's data lives in (its schema or its
+  /// database), or answers it unchanged. `null` routes nothing.
+  ///
+  /// Declared here and installed by the `tenancy` module, so this module does
+  /// not depend on it.
+  static TomDataSourceInfo Function(TomDataSourceInfo base)? router;
+
+  /// [base] as the current tenant reaches it — see [router].
+  static TomDataSourceInfo route(TomDataSourceInfo base) {
+    final routing = router;
+    return routing == null ? base : routing(base);
   }
+
+  /// Returns the registered info for [dsName] as the current tenant reaches
+  /// it ([route]), or `null` if none is registered.
+  static TomDataSourceInfo? getDataSourceInfo(String dsName) {
+    final base = datasources[dsName];
+    return base == null ? null : route(base);
+  }
+
+  /// Returns the registered info for [dsName] itself, unrouted, or `null`.
+  static TomDataSourceInfo? getBaseDataSourceInfo(String dsName) =>
+      datasources[dsName];
 
   /// Builds and initialises a registry entry for every map-valued entry in
   /// [datasourceConfiguration]. Returns `1` on success.

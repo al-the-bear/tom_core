@@ -88,7 +88,7 @@ class TomSqlInvalidationChannel implements TomInvalidationChannel {
 
   late final TomFrameworkTable _rows = invalidationTable(table);
 
-  bool _schemaReady = false;
+  final TomSchemaProvisioning _schema = TomSchemaProvisioning();
   int _lastSeenId = 0;
   Timer? _timer;
   bool _polling = false;
@@ -102,13 +102,11 @@ class TomSqlInvalidationChannel implements TomInvalidationChannel {
   bool get isRunning => _timer != null;
 
   /// Creates the log table if it does not exist. Idempotent.
-  Future<void> ensureSchema() async {
-    if (_schemaReady) return;
+  Future<void> ensureSchema() => _schema.ensure(() async {
     if (createSchema) {
       await datasource.executeCommand(_rows.createTableDdl);
     }
-    _schemaReady = true;
-  }
+  });
 
   @override
   Future<void> start(

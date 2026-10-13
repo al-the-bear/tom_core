@@ -16,7 +16,7 @@ declarations are omitted.
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
 | Bean Locator | [api_summary_beanlocator.md](api_summary_beanlocator.md) | Component annotation and typed bean lookup/dependency injection. |
-| Context | [api_summary_context.md](api_summary_context.md) | Zone-scoped typed execution context and ambient providers. |
+| Context | [api_summary_context.md](api_summary_context.md) | Zone-scoped typed execution context and ambient providers, and the zone-carried tenant. |
 | HTTP Connection | [api_summary_http_connection.md](api_summary_http_connection.md) | Server call model, remote APIs/endpoints, headers, MIME types, auth-retry, client factories. |
 | Isolate Pooling | [api_summary_isolate_pooling.md](api_summary_isolate_pooling.md) | Worker/executor/command model and isolate worker pool. |
 | JSON | [api_summary_json.md](api_summary_json.md) | JSON serialization contract, map merge/traversal, env substitution, pretty printing. |
@@ -57,6 +57,10 @@ declarations are omitted.
 | `TomZoneValues` | class | `Map`-like view over a zone's values used when running in context. |
 | `TomContextProviders` | class | Static accessors for the ambient providers (organization, application, …). |
 | `tomExecutionContext` | var | Pre-wired execution context (reassignable). |
+| `TomTenantContext` | abstract final class | The current tenant — an isolation boundary, not an organization — held in the zone. |
+| `TomTenantException` | class | Invalid tenant id or missing tenant context (extends `TomException`). |
+| `TomTenantScopedCommand` | class | A `TomCommand` that runs its inner command inside a tenant, across isolates too. |
+| `TomTenantEvent` | class | An event for an event-triggered job, carrying its tenant. |
 
 ### HTTP Connection (`lib/src/tombase/http_connection/`)
 

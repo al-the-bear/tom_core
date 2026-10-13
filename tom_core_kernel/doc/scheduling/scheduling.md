@@ -33,6 +33,7 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
 - [Retries, Backoff and Timeouts](#retries-backoff-and-timeouts)
 - [Running More Than One Node](#running-more-than-one-node)
   - [What the lease is taken on](#what-the-lease-is-taken-on)
+- [Runs and Tenants](#runs-and-tenants)
 - [Lease Locks](#lease-locks)
   - [Choosing a substrate](#choosing-a-substrate)
 - [Observability](#observability)
@@ -977,7 +978,7 @@ The resource key *is* the policy:
 
 | `allowOverlap` | Lease resource | Effect |
 | -------------- | -------------- | ------ |
-| `false` | `job:<name>` | The whole cluster runs at most one of this job at a time |
+| `false` | `job:<name>`, or `job:<name>@<tenant>` for a run of a tenant | The whole cluster runs at most one of this job at a time — per tenant |
 | `true` | `run:<id>` | Concurrent windows are fine; no single window runs twice |
 
 The lease is held for as long as the body executes, not merely for as long as
@@ -993,6 +994,39 @@ tokens at 1, and a token that repeats cannot tell a stale holder from a live one
 `TomLeaseLock.forget` therefore takes a `TomOneShotResource`, not a `String`: the
 run key is built as `TomOneShotResource.run(runId)`, and a job name cannot reach
 `forget` without being explicitly declared one-shot.
+
+## Runs and Tenants
+
+A run can belong to a tenant (see
+[Tenant Context](../context/context.md#tenant-context)). `TomJobRun.tenant`
+records it, and the scheduler keeps every tenant's work apart:
+
+- **The body runs inside the run's tenant.** The job's body factory is called in
+  the tenant's zone, and the command it returns is wrapped in a
+  `TomTenantScopedCommand`, which re-enters the tenant when it executes. A body
+  dispatched to a worker isolate therefore still sees
+  `TomTenantContext.currentId` — the zone does not cross the isolate boundary,
+  the command does.
+- **A window is per tenant.** `TomJobStore.findWindow` takes a `tenant:` and
+  looks a window up for that tenant only, so two tenants' events in the
+  same instant are two runs, not one collapsed into the other.
+- **`allowOverlap: false` serialises per job and tenant.** The rule exists for a
+  body that reads and rewrites the same rows, and two tenants' runs never touch
+  the same rows: one tenant's long run never holds up another tenant's. The
+  cluster lease is taken on `job:<name>@<tenant>` accordingly.
+
+An event-triggered job learns its tenant from the event, not from the zone — a
+stream listener runs in the zone it subscribed in. Add a `TomTenantEvent` to the
+job's stream; the run records `event.tenant` and carries `event.payload`:
+
+```dart
+events.add(TomTenantEvent('acme', {'invoice': 42}));
+// In a tenant's context, the same without naming it:
+events.add(TomTenantEvent.inCurrentTenant({'invoice': 42}));
+```
+
+A plain event is a run of no tenant. A periodic job has no tenant of its own;
+one that does each tenant's work loops over the tenants in its body.
 
 ## Lease Locks
 
@@ -1151,6 +1185,7 @@ Three questions and where they are answered:
 | `dart:math` | dart | `job_definition.dart`, `job_store.dart`, `scheduler.dart` | `Random` and `pow`; in `job_store.dart`, the random part of `TomFileJobStore`'s mutex owner |
 | `tom_basics` | package | `job_store.dart`, `scheduler.dart` | `tomLog`, the default `onAlert` sink |
 | `tom_reflection` | package | `scheduled_job.dart` | `ClassMirror`, which appears in `TomScheduledJobs.discover`'s own signature. The whole of [Declaring a Job](#declaring-a-job) rests on it |
+| [context](../context/context.md) | module | `scheduler.dart` | `TomTenantContext`, `TomTenantScopedCommand` and `TomTenantEvent` — a run's body runs inside its tenant |
 | [isolate_pooling](../isolate_pooling/isolate_pooling.md) | module | `job_definition.dart`, `scheduled_job.dart`, `scheduler.dart` | `TomCommand`, which *is* the job body type; `TomWorkerPool` for `TomWorkerPoolJobDispatcher` |
 | [little_things](../little_things/little_things.md) | module | `job_store.dart`, `schedule.dart`, `scheduled_job.dart` | `TomException`, base of `TomScheduleException` and `TomScheduledJobException`; `tomWriteFileAtomically` for `TomFileJobStore` |
 | [reflection](../reflection/reflection.md) | module | `scheduled_job.dart` | The global `tomReflector` and the `@tomReflector` annotation — the only query the scan has |

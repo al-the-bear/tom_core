@@ -214,7 +214,7 @@ void main() {
     });
 
     test('reset reaches every cache the analyzer declares', () {
-      // The failure this guards is a *seventh* cache added beside the six and
+      // The failure this guards is an *eighth* cache added beside the seven and
       // not added to reset(): the analyzer would then half-forget an entity,
       // and the stale half would be read as current. Identity checks cannot
       // see that — a memo nobody thought to test is a memo nobody thought to
@@ -223,7 +223,7 @@ void main() {
       final declared = RegExp(
         r'static final (_\w*Cache)\b',
       ).allMatches(source).map((match) => match.group(1)!).toSet();
-      expect(declared, hasLength(6));
+      expect(declared, hasLength(7));
       final cleared = RegExp(r'(_\w*Cache)\.clear\(\)')
           .allMatches(_bodyOfReset(source))
           .map((match) => match.group(1)!)

@@ -259,8 +259,33 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// repository's `K` is [TomCompositeKey].
   bool get hasCompositeKey => primaryKeyColumns.length > 1;
 
-  /// The resolved data source this repository runs against.
-  late TomDataSourceInfo datasourceInfo;
+  late TomDataSourceInfo _baseDatasourceInfo;
+
+  /// The data source this repository runs against: the registered one, or —
+  /// in a multi-tenant deployment — the current tenant's schema or database
+  /// ([TomDataSourceInfo.route]). Resolved on every access, so one repository
+  /// serves every tenant.
+  TomDataSourceInfo get datasourceInfo =>
+      TomDataSourceInfo.route(_baseDatasourceInfo);
+
+  /// Prepared statements, per data source.
+  ///
+  /// A statement is bound to the data source that prepared it. Kept in one
+  /// map per data source, so a statement prepared on one tenant's database is
+  /// never executed against another's — which a single cached statement would
+  /// do the moment routing sends the next call elsewhere.
+  final Map<TomDataSource, Map<String, Object>> _preparedByDatasource = {};
+
+  Map<String, Object> get _prepared =>
+      _preparedByDatasource.putIfAbsent(datasourceInfo.datasource, () => {});
+
+  void _keep(String name, Object? statement) {
+    if (statement == null) {
+      _prepared.remove(name);
+    } else {
+      _prepared[name] = statement;
+    }
+  }
 
   /// The resolved persistence metadata of the entity.
   late TomTypePersistenceInfo persistenceInfo;
@@ -315,9 +340,9 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
         );
       }
     }
-    var dsInfo = TomDataSourceInfo.getDataSourceInfo(dbTable.datasource);
+    var dsInfo = TomDataSourceInfo.getBaseDataSourceInfo(dbTable.datasource);
     if (dsInfo != null) {
-      datasourceInfo = dsInfo;
+      _baseDatasourceInfo = dsInfo;
     } else {
       throw TomRepositoryException(
         'crud_repository.constructor.datasource_not_registered',
@@ -349,6 +374,78 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// scope kind that registers no write resolver writes exactly what it reads,
   /// so every other kind is unaffected.
   Future<TomDataScopePredicate?> _resolveScope({bool forWrite = false}) async {
+    final tenant = _tenantPredicate();
+    final scope = await _resolveDataScope(forWrite: forWrite);
+    if (tenant == null) return scope;
+    if (scope == null) return tenant;
+    return TomDataScopePredicate(and([tenant.predicate, scope.predicate]), {
+      ...tenant.parameters,
+      ...scope.parameters,
+    });
+  }
+
+  /// The parameter prefix of the tenant predicate, apart from the data scope's
+  /// so the two can be bound in one statement.
+  static const String tenantParameterPrefix = '__tomtenant_';
+
+  /// `<tenant field> = <current tenant>` for a `@TomTenantOwned` entity — a
+  /// `FALSE` predicate when no tenant is in context — or `null` for an entity
+  /// that is not tenant-owned.
+  ///
+  /// Not suppressed inside an async resolver's enumeration, unlike the data
+  /// scope: a resolver computing one tenant's visible ids must not read
+  /// another tenant's rows to do it.
+  TomDataScopePredicate? _tenantPredicate() {
+    final owned = TomAnnotationAnalyzer.findTenantOwnership(queryTypes[0]);
+    if (owned == null) return null;
+    final col = TomAnnotationAnalyzer.determineColumn(owned.field, [
+      persistenceInfo,
+    ]);
+    final tenant = TomTenantContext.currentId;
+    return TomDataScope.inList(
+      this,
+      col,
+      tenant == null ? const [] : [tenant],
+      prefix: tenantParameterPrefix,
+    );
+  }
+
+  /// Fills the tenant of a `@TomTenantOwned` [entity] about to be written, or
+  /// refuses the write: with no tenant in context
+  /// (`data_scope.write.no_tenant`), or when the entity names another tenant
+  /// than the one in context (`data_scope.write.foreign_tenant`) — which is
+  /// also what stops an update from moving a row to another tenant.
+  void _assertEntityTenant(T entity) {
+    final owned = TomAnnotationAnalyzer.findTenantOwnership(queryTypes[0]);
+    if (owned == null) return;
+    final tenant = TomTenantContext.currentId;
+    if (tenant == null) {
+      throw TomDataScopeAuthorizationException(
+        'data_scope.write.no_tenant',
+        'A tenant-owned row cannot be written with no tenant in context.',
+        parameters: {'entity': '${queryTypes[0]}'},
+      );
+    }
+    final col = TomAnnotationAnalyzer.determineColumn(owned.field, [
+      persistenceInfo,
+    ]);
+    final value = col.getVariableValue(entity);
+    if (value == null || '$value'.isEmpty) {
+      col.setVariableValue(entity, tenant);
+    } else if ('$value' != tenant) {
+      throw TomDataScopeAuthorizationException(
+        'data_scope.write.foreign_tenant',
+        'You may not write a row of another tenant.',
+        parameters: {'entity': '${queryTypes[0]}'},
+      );
+    }
+  }
+
+  /// The entity's `@TomDbScope` predicate for the current principal, or
+  /// `null` when it declares none or its resolver opts out.
+  Future<TomDataScopePredicate?> _resolveDataScope({
+    bool forWrite = false,
+  }) async {
     // Inside an async resolver's own enumeration, scope resolution is
     // suppressed so the reads that *compute* the visible id-set are not
     // themselves re-scoped — the guard against unbounded resolver recursion.
@@ -391,7 +488,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// principal may only read is reported here exactly as an invisible one is —
   /// as not writable.
   Future<void> _assertRowWritable(K id) async {
-    if (TomAnnotationAnalyzer.findDataScope(queryTypes[0]) == null) return;
+    if (_unscopedForWrites) return;
     if (await _selectById(id, forWrite: true) == null) {
       throw TomDataScopeAuthorizationException(
         'data_scope.write.out_of_scope',
@@ -407,7 +504,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// scoped [existsById] so the same bound-parameter predicate governs the
   /// check and the reads — resolved against the *writable* set.
   Future<void> _assertIdsWritable(Iterable<K> ids) async {
-    if (TomAnnotationAnalyzer.findDataScope(queryTypes[0]) == null) return;
+    if (_unscopedForWrites) return;
     if (!await _existsById(ids, forWrite: true)) {
       throw TomDataScopeAuthorizationException(
         'data_scope.write.out_of_scope',
@@ -415,6 +512,12 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
       );
     }
   }
+
+  /// Whether the entity has neither a `@TomDbScope` nor a `@TomTenantOwned`,
+  /// so no write needs a scope check.
+  bool get _unscopedForWrites =>
+      TomAnnotationAnalyzer.findDataScope(queryTypes[0]) == null &&
+      TomAnnotationAnalyzer.findTenantOwnership(queryTypes[0]) == null;
 
   /// Asserts the current principal may create [entity] under the entity's
   /// `@TomDbScope`: its scope-field value must be one the principal is allowed
@@ -715,6 +818,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     // there is no row yet and the resolver is handed the unsaved key.
     final primaryKey = readPrimaryKey<K>(keyOf(entity));
     await _assertColumnWritable(column, primaryKey);
+    _assertEntityTenant(entity);
     if (isUnsavedKey(primaryKey)) {
       await _assertInsertWritable(entity);
     } else {
@@ -940,7 +1044,10 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     after: after,
   );
 
-  TomPreparedStatement<T>? _deleteQuery;
+  TomPreparedStatement<T>? get _deleteQuery =>
+      _prepared['deleteQuery'] as TomPreparedStatement<T>?;
+  set _deleteQuery(TomPreparedStatement<T>? statement) =>
+      _keep('deleteQuery', statement);
 
   @override
   Future<void> delete(T entity) async {
@@ -1047,7 +1154,10 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     return affected;
   }
 
-  TomPreparedStatement<T>? _deleteByIdQuery;
+  TomPreparedStatement<T>? get _deleteByIdQuery =>
+      _prepared['deleteByIdQuery'] as TomPreparedStatement<T>?;
+  set _deleteByIdQuery(TomPreparedStatement<T>? statement) =>
+      _keep('deleteByIdQuery', statement);
   @override
   Future<int> deleteById(K id) async {
     // C-3: a principal may only delete a row within its data scope.
@@ -1101,7 +1211,10 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     return result.isNotEmpty && result[0].count == idSet.length;
   }
 
-  TomPreparedStatement<T>? _findAllQuery;
+  TomPreparedStatement<T>? get _findAllQuery =>
+      _prepared['findAllQuery'] as TomPreparedStatement<T>?;
+  set _findAllQuery(TomPreparedStatement<T>? statement) =>
+      _keep('findAllQuery', statement);
   @override
   Future<List<T>> findAll([TomPageRequest? page]) async {
     final scope = await _resolveScope();
@@ -1165,7 +1278,10 @@ SELECT * FROM ${dbTable.table}
     );
   }
 
-  TomPreparedStatement<T>? _findByIdQuery;
+  TomPreparedStatement<T>? get _findByIdQuery =>
+      _prepared['findByIdQuery'] as TomPreparedStatement<T>?;
+  set _findByIdQuery(TomPreparedStatement<T>? statement) =>
+      _keep('findByIdQuery', statement);
   @override
   Future<T?> findById(K id) async {
     final row = await _selectById(id);
@@ -1241,7 +1357,10 @@ SELECT * FROM ${dbTable.table}
     return TomDbInt(rows[0].count);
   }
 
-  TomPreparedStatement<TomCountResult>? _countQuery;
+  TomPreparedStatement<TomCountResult>? get _countQuery =>
+      _prepared['countQuery'] as TomPreparedStatement<TomCountResult>?;
+  set _countQuery(TomPreparedStatement<TomCountResult>? statement) =>
+      _keep('countQuery', statement);
   @override
   Future<TomDbInt> count() async {
     final scope = await _resolveScope();
@@ -1400,7 +1519,10 @@ SELECT * FROM ${dbTable.table}
     return rows.isEmpty || rows[0].count == 0;
   }
 
-  TomPreparedStatement<TomCountResult>? _keyStoredQuery;
+  TomPreparedStatement<TomCountResult>? get _keyStoredQuery =>
+      _prepared['keyStoredQuery'] as TomPreparedStatement<TomCountResult>?;
+  set _keyStoredQuery(TomPreparedStatement<TomCountResult>? statement) =>
+      _keep('keyStoredQuery', statement);
 
   /// Whether [primaryKey] marks an entity that has **not** yet been persisted,
   /// so [save] should `INSERT` rather than `UPDATE`.
@@ -1482,8 +1604,14 @@ SELECT * FROM ${dbTable.table}
     return (sql, paramNames);
   }
 
-  TomPreparedStatement<T>? _saveInsertQuery;
-  TomPreparedStatement<T>? _saveUpdateQuery;
+  TomPreparedStatement<T>? get _saveInsertQuery =>
+      _prepared['saveInsertQuery'] as TomPreparedStatement<T>?;
+  set _saveInsertQuery(TomPreparedStatement<T>? statement) =>
+      _keep('saveInsertQuery', statement);
+  TomPreparedStatement<T>? get _saveUpdateQuery =>
+      _prepared['saveUpdateQuery'] as TomPreparedStatement<T>?;
+  set _saveUpdateQuery(TomPreparedStatement<T>? statement) =>
+      _keep('saveUpdateQuery', statement);
   @override
   Future<T> save(T toSave) async {
     // The repository resolved this in its constructor, where a type that is
@@ -1509,6 +1637,7 @@ SELECT * FROM ${dbTable.table}
     // the principal is allowed (it cannot create a row outside its scope); an
     // update must target a row already within the principal's scope (it cannot
     // update a row it could not read). Both raise before any statement runs.
+    _assertEntityTenant(toSave);
     if (insert) {
       await _assertInsertWritable(toSave);
     } else {

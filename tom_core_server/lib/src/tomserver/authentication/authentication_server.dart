@@ -936,6 +936,26 @@ class TomAuthenticationServer {
         orElse: () => enrolments.first,
       );
 
+  /// Binds [principal] to the tenant the login runs in, which the token then
+  /// carries as its `tenant` claim.
+  ///
+  /// A principal the authentication service already placed in another tenant
+  /// is refused (`login.error.tenant-mismatch`): an account of one tenant
+  /// signing in through another's host would otherwise receive a token for
+  /// the tenant it reached.
+  static void _bindTenant(TomPrincipal principal) {
+    final tenant = TomTenantContext.currentId;
+    if (tenant == null) return;
+    if (principal.tenant != null && principal.tenant != tenant) {
+      throw TomLoginException(
+        'login.error.tenant-mismatch',
+        'The account belongs to another tenant than the one signed in to.',
+        reason: TomLoginFailure.accountProblem,
+      );
+    }
+    principal.tenant = tenant;
+  }
+
   /// Projects [principal] onto the token pair of a [TomAuthenticationResult].
   ///
   /// The single point at which this server mints tokens, so a completed pass 2
@@ -961,6 +981,7 @@ class TomAuthenticationServer {
     Tom2FAEnrolmentState? enrolment,
     bool twoFactorSatisfied = false,
   }) async {
+    _bindTenant(principal);
     await _applyStoredTimezone(principal, m);
     await _applyClientLimits(principal);
 

@@ -186,7 +186,7 @@ class TomSqlJobStore implements TomJobStore {
   /// liveness signal.
   final TomSqlSchedulerNodes? nodes;
 
-  bool _schemaReady = false;
+  final TomSchemaProvisioning _schema = TomSchemaProvisioning();
 
   /// The queue table's single column declaration — see `sql_scheduling_sql.dart`.
   late final TomFrameworkTable _queue = jobRunTable(table);
@@ -201,6 +201,7 @@ class TomSqlJobStore implements TomJobStore {
   static const Map<String, String> _writeColumns = {
     'id': ':id',
     'job_name': ':jobName',
+    'tenant': ':tenant',
     'scheduled_for': ':scheduledFor',
     'run_at': ':runAt',
     'state': ':state',
@@ -218,13 +219,11 @@ class TomSqlJobStore implements TomJobStore {
   ///
   /// Idempotent and called automatically by every operation; exposed so a
   /// start-up sequence can provision the schema before serving traffic.
-  Future<void> ensureSchema() async {
-    if (_schemaReady) return;
+  Future<void> ensureSchema() => _schema.ensure(() async {
     if (createSchema) {
       await datasource.executeCommand(_queue.createTableDdl);
     }
-    _schemaReady = true;
-  }
+  });
 
   @override
   Future<void> enqueue(TomJobRun run) async {
@@ -241,11 +240,20 @@ class TomSqlJobStore implements TomJobStore {
   }
 
   @override
-  Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor) async {
+  Future<TomJobRun?> findWindow(
+    String jobName,
+    DateTime scheduledFor, {
+    String? tenant,
+  }) async {
     await ensureSchema();
     final rows = await _select(
-      'WHERE job_name = :jobName AND scheduled_for = :scheduledFor LIMIT 1',
-      {'jobName': jobName, 'scheduledFor': sqlInstant(scheduledFor)},
+      'WHERE job_name = :jobName AND tenant = :tenant '
+      'AND scheduled_for = :scheduledFor LIMIT 1',
+      {
+        'jobName': jobName,
+        'tenant': tenant ?? '',
+        'scheduledFor': sqlInstant(scheduledFor),
+      },
     );
     return rows.isEmpty ? null : rows.first;
   }
@@ -757,6 +765,7 @@ class TomSqlJobStore implements TomJobStore {
     lastError: row.lastError,
     completedAt: parseOptionalSqlInstant(row.completedAt),
     payload: _decodePayload(row.payload),
+    tenant: row.tenant.isEmpty ? null : row.tenant,
   );
 
   /// Binds [run] to the queue table's columns.
@@ -769,6 +778,7 @@ class TomSqlJobStore implements TomJobStore {
   Map<String, dynamic> _bindOf(TomJobRun run) => {
     'id': run.id,
     'jobName': run.jobName,
+    'tenant': run.tenant ?? '',
     'scheduledFor': sqlInstant(run.scheduledFor),
     'runAt': sqlInstant(run.runAt),
     'state': run.state.name,
@@ -825,6 +835,10 @@ class TomJobRunRow {
   /// The job this run belongs to.
   @TomDbColumn(columnName: "job_name")
   String jobName = "";
+
+  /// The run's tenant, or `''` for a run of no tenant.
+  @TomDbColumn(columnName: "tenant")
+  String tenant = "";
 
   /// The schedule window this run represents, as stored UTC text.
   @TomDbColumn(columnName: "scheduled_for")

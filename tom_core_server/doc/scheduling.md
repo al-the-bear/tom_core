@@ -28,6 +28,7 @@ covers only what changes when the substrate is a database.
 - [Creating the Schema](#creating-the-schema)
 - [Time](#time)
 - [Wiring a Cluster Node](#wiring-a-cluster-node)
+- [Runs per Tenant](#runs-per-tenant)
 - [Operating Notes](#operating-notes)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
@@ -390,7 +391,7 @@ One row per scheduled run of a job, shared by every node.
 | ------ | ---- | ---- |
 | `seq` | `BIGINT AUTO_INCREMENT` | Insertion order, so every node scans the queue in the same order |
 | `id` | `VARCHAR(191)` | Primary key; what every claim, completion and failure addresses |
-| `job_name`, `scheduled_for` | `VARCHAR(160)`, `DATETIME(6)` | The window |
+| `job_name`, `tenant`, `scheduled_for` | `VARCHAR(150)`, `VARCHAR(32)`, `DATETIME(6)` | The window, per tenant; `tenant` is `''` for a run of no tenant |
 | `run_at` | `DATETIME(6)` | When this run should next be attempted |
 | `state`, `attempt` | `VARCHAR(16)`, `INT` | `pending` / `running` / `succeeded` / `failed`, and which attempt |
 | `claimed_by`, `claimed_at` | `VARCHAR(191)`, `DATETIME(6)` | The store's own lease on the run; `claimed_at` is the heartbeat and moves during an attempt |
@@ -414,13 +415,17 @@ conjunct on a row already located by its primary key.
 Two indexes exist because two scans do: `ix_…_due (state, run_at)` for the claim
 and `ix_…_lease (state, claimed_at)` for recovery.
 
-**`UNIQUE (job_name, scheduled_for)`** is the load-bearing constraint. It turns
-the scheduler's idempotence key — one run per job per window — from a convention
-into a database invariant, so a duplicate window cannot exist even when two nodes
-plan the same window in the same instant. `job_name` is `VARCHAR(160)`: 640 bytes
-in utf8mb4 plus an 8-byte `DATETIME(6)` stays under the 767-byte index limit of
-the older InnoDB row formats, so the table can be created on a server that has
-not been switched to `DYNAMIC`.
+**`UNIQUE (job_name, tenant, scheduled_for)`** is the load-bearing constraint.
+It turns the scheduler's idempotence key — one run per job per window, per
+tenant — from a convention into a database invariant, so a duplicate window
+cannot exist even when two nodes plan the same window in the same instant, while
+two tenants' events in one instant stay two runs. `tenant` is
+`NOT NULL DEFAULT ''` rather than nullable, because a unique key never treats two `NULL`s as equal:
+two tenant-less runs of one window would both insert. `job_name` is
+`VARCHAR(150)` and `tenant` `VARCHAR(32)` — the length a tenant id is limited to:
+600 + 128 bytes in utf8mb4 plus an 8-byte `DATETIME(6)` is 736, under the
+767-byte index limit of the older InnoDB row formats, so the table can be created
+on a server that has not been switched to `DYNAMIC`.
 
 ### tom_lease
 
@@ -534,6 +539,28 @@ same string. `ownerId` is what the lock uses to tell holders apart, so two nodes
 sharing one would each treat the other's lease as its own; and it is what
 `claimed_by` records, so a `nodeId` that differs from it would leave a departed
 node's work unattributable.
+
+## Runs per Tenant
+
+The kernel's scheduler records the tenant of a run (`TomJobRun.tenant`), runs
+its body inside that tenant, and keeps each tenant's windows and overlap
+protection apart — see the kernel's
+[scheduling guide](../../tom_core_kernel/doc/scheduling/scheduling.md#runs-and-tenants).
+This module stores it:
+
+- `TomSqlJobStore` writes the run's tenant to `tom_job_run.tenant` — `''` for a
+  run of no tenant — and reads `''` back as `null`.
+- `findWindow(jobName, scheduledFor, tenant: …)` matches `tenant = :tenant`,
+  so the window lookup that makes enqueueing idempotent is per tenant, and the
+  unique key enforces the same thing in the database.
+- The queue itself is **deployment-wide**: one `tom_job_run` holds every
+  tenant's runs, and the store is not routed per tenant. A node claims whatever
+  is due, whichever tenant it belongs to; the tenant travels with the run.
+- A job with `allowOverlap: false` takes its lease on `job:<name>@<tenant>` for a
+  run of a tenant, so `tom_lease` serialises per job and tenant and one tenant's
+  long run never holds up another's.
+
+See [tenancy.md](tenancy.md) for where tenants come from.
 
 ## Operating Notes
 

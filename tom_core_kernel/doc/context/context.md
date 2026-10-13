@@ -2,6 +2,10 @@
 
 The Tom Execution Context System provides zone-based context propagation for passing request-scoped values through synchronous and asynchronous call chains without explicit parameter passing.
 
+The module also carries the **tenant** a piece of work belongs to —
+`TomTenantContext` — in the same zone. A tenant is an isolation boundary, not an
+organization: see [Tenant Context](#tenant-context).
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -19,6 +23,12 @@ The Tom Execution Context System provides zone-based context propagation for pas
 - [Context Composition](#context-composition)
   - [Which side wins on a colliding name](#which-side-wins-on-a-colliding-name)
 - [Default Context](#default-context)
+- [Tenant Context](#tenant-context)
+  - [Tenant and organization](#tenant-and-organization)
+  - [Running work in a tenant](#running-work-in-a-tenant)
+  - [Tenant-scoped keys](#tenant-scoped-keys)
+  - [Jobs carry their tenant](#jobs-carry-their-tenant)
+  - [Failure keys](#failure-keys)
 - [Best Practices](#best-practices)
   - [1. Always write the entry's type parameter](#1-always-write-the-entrys-type-parameter)
   - [2. Handle Missing Context](#2-handle-missing-context)
@@ -35,8 +45,12 @@ The Tom Execution Context System provides zone-based context propagation for pas
 | `TomContextEntry` | class | A lazily-evaluated named context value. |
 | `TomZoneValues` | class | `Map`-like view over a zone's values used when running in context. |
 | `TomContextProviders` | class | Static accessors for the ambient providers (organization, application, …). |
+| `TomTenantContext` | abstract final class | The current tenant, held in the zone: `currentId`, `run`, `require`, `validate`, `qualify`, `idPattern`. |
+| `TomTenantException` | class | A tenant id that cannot be used, or tenant-owned work with no tenant in context. |
+| `TomTenantScopedCommand` | class | A `TomCommand` that runs its inner command inside a tenant, wherever it executes. |
+| `TomTenantEvent` | class | An event for an event-triggered job, carrying the tenant it was raised for. |
 
-The context system consists of four public types:
+The execution-context system consists of four public types:
 
 1. **`TomExecutionContext`**: Container for context entries that runs code in a Dart Zone with those values available.
 
@@ -388,7 +402,7 @@ final entry = TomContextEntry<String>(() {
 Static methods for extracting common values from `TomPrincipal`:
 
 ```dart
-// Organization/tenant info
+// Organization info (the business unit, not the tenant)
 TomContextProviders.getOrganization();  // Returns 'default' if no principal
 TomContextProviders.getApplication();
 TomContextProviders.getProcess();
@@ -549,6 +563,111 @@ tomExecutionContext.runInContext(() {
 });
 ```
 
+## Tenant Context
+
+`TomTenantContext` holds the tenant the current zone belongs to. It sits beside
+`TomExecutionContext` rather than inside it, because the tenant is not a value a
+caller composes: it is set once, at the edge — the server's request pipeline,
+or a job run — and everything that holds tenant data reads it from here.
+
+### Tenant and organization
+
+A **tenant** is an isolation boundary: whose data a query may read, which
+database or schema a connection reaches, whose cache entries and queued jobs
+these are. Nothing crosses it. An **organization** is a business unit *inside* a
+tenant — the `organization` a principal logs in for, which authorization and
+`TomContextProviders.getOrganization()` read, and which a tenant may have
+several of. A deployment that sells to companies typically makes each customer a
+tenant and lets the customer model its departments as organizations. The two can
+coincide, but the framework never infers one from the other, and the
+`'tenant'` entries in this guide's `TomExecutionContext` examples are ordinary
+named values, not the isolation boundary.
+
+`TomPrincipal.tenant` and the token's `tenant` claim carry the tenant across the
+wire; see [Tenant and Organization](../security/security.md#tenant-and-organization)
+in the security guide.
+
+### Running work in a tenant
+
+```dart
+TomTenantContext.run('acme', () {
+  print(TomTenantContext.currentId); // acme
+  print(TomTenantContext.isSet);     // true
+});
+
+TomTenantContext.run(null, () {
+  print(TomTenantContext.currentId); // null — explicitly no tenant
+  print(TomTenantContext.isSet);     // true
+});
+
+print(TomTenantContext.isSet);       // false — no statement at all
+```
+
+| Member | Meaning |
+| ------ | ------- |
+| `currentId` | The tenant the current zone belongs to, or `null` — a deployment without tenancy, a system task, an anonymous request that named no tenant. |
+| `isSet` | Whether the zone states a tenant (or states that it has none), as opposed to inheriting no statement at all. |
+| `run(tenantId, body)` | Runs `body` with `tenantId` as the current tenant; `null` runs it explicitly outside every tenant. Validates the id first. The zone follows the body across its awaits, like every zone value. |
+| `require(what)` | The current tenant, or `tenancy.context.missing` naming `what` needed it. |
+| `validate(tenantId)` | Throws `tenancy.id.invalid` unless the id matches `idPattern`. |
+| `idPattern` | `^[a-z][a-z0-9_]{0,31}$` — a lower-case letter, then up to 31 lower-case letters, digits or underscores. |
+| `qualify(name, [tenantId])` | `name` qualified by the tenant — `tenant:<id>/<name>` — or `name` itself with none. |
+
+The id rule is narrow on purpose. A tenant id names a schema or a database in
+the stronger isolation models, is part of cache keys and job windows, and is
+written into tokens; an id that is a safe identifier everywhere is one that never
+needs quoting anywhere.
+
+### Tenant-scoped keys
+
+`qualify` is the one spelling every tenant-scoped key uses — the server's cache
+entries and principal revocations among them — so two tenants' `alice` never
+meet:
+
+```dart
+TomTenantContext.qualify('alice', 'acme');   // tenant:acme/alice
+TomTenantContext.qualify('alice');           // alice
+```
+
+### Jobs carry their tenant
+
+Work that leaves the request carries the tenant explicitly. A `TomJobRun`
+records its `tenant`, and the scheduler runs the run's body back inside it: the
+body factory runs in the tenant's zone, and the command it returns is wrapped in
+a `TomTenantScopedCommand`, which re-enters the tenant when it executes — in a
+worker isolate too, where the zone does not follow but the command, copied
+across, does.
+
+An event-triggered job cannot learn its tenant from the zone, because a stream
+listener runs in the zone it subscribed in, not the zone the event was added
+from. Adding a `TomTenantEvent` to the job's stream instead makes the run record
+the tenant:
+
+```dart
+final events = StreamController<Object?>.broadcast();
+
+// Inside a tenant's request: the current tenant, or tenancy.context.missing.
+TomTenantContext.run('acme', () {
+  events.add(TomTenantEvent.inCurrentTenant({'invoice': 42}));
+});
+
+// From anywhere, naming the tenant.
+events.add(TomTenantEvent('globex', {'invoice': 7}));
+```
+
+The run's payload is the event's `payload`, and its window — one run per job per
+instant — is per tenant, so two tenants' events in the same instant are two
+runs. See [the scheduling guide](../scheduling/scheduling.md#runs-and-tenants).
+
+### Failure keys
+
+Both are raised as `TomTenantException`, which extends `TomException`.
+
+| Key | Meaning |
+| --- | ------- |
+| `tenancy.id.invalid` | A tenant id is not a lower-case identifier of at most 32 characters. |
+| `tenancy.context.missing` | Tenant-owned work ran with no tenant in context. |
+
 ## Best Practices
 
 ### 1. Always write the entry's type parameter
@@ -703,5 +822,6 @@ than a `!`.
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | every file | `Future` |
 | `dart:collection` | dart | `execution_context.dart` | `UnmodifiableMapView`, the read-only view `contextMap` hands out |
-| [little_things](../little_things/little_things.md) | module | every file | `getFromCurrentZone`, the zone lookup the context installs itself for |
-| [security](../security/security.md) | module | every file | `TomPrincipal` for authenticated user context |
+| [isolate_pooling](../isolate_pooling/isolate_pooling.md) | module | `tenant_context.dart` | `TomCommand`, which `TomTenantScopedCommand` extends so a tenant survives an isolate hop |
+| [little_things](../little_things/little_things.md) | module | every file | `getFromCurrentZone`, the zone lookup the context installs itself for, and `TomException`, the base of `TomTenantException` |
+| [security](../security/security.md) | module | `execution_context.dart` | `TomPrincipal` for authenticated user context |

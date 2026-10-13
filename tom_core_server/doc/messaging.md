@@ -58,6 +58,7 @@ out of.
 - [What "Queued" Guarantees](#what-queued-guarantees)
 - [Failure Reporting](#failure-reporting)
 - [Wiring a Server](#wiring-a-server)
+- [Messages per Tenant](#messages-per-tenant)
 - [Application Email: A Template Key, Not a Body](#application-email-a-template-key-not-a-body)
   - [The three sub-keys](#the-three-sub-keys)
   - [Locale comes from the recipient, not the process](#locale-comes-from-the-recipient-not-the-process)
@@ -910,6 +911,11 @@ every id and the reports that arrive afterwards match nothing.
 `example/messaging/migrations/`; `test/framework_schema_test.dart` fails if the
 two drift apart.
 
+Each correlation also records the message's `tenant` (nullable — a message of
+no tenant has none), so a report, which arrives carrying nothing but the
+carrier's id, is attributed to the tenant it belongs to. See
+[Messages per Tenant](#messages-per-tenant).
+
 Nothing purges automatically. `purgeSentBefore` exists so the retention decision
 can be made — the index is a delivery audit trail, and how long to keep one is a
 deployment's call, exactly as `TomMessageOutbox.purgeFinished` leaves it.
@@ -1178,6 +1184,27 @@ down because the outbox stopped.
 A `send` after `close()` throws `messaging.outbox.closed`, a
 `TomMessagingException`: the message is not queued, and nothing is written to
 the store.
+
+## Messages per Tenant
+
+In a multi-tenant deployment (see [tenancy.md](tenancy.md)) the outbox keeps
+each message with the tenant it was sent for:
+
+- **`send` queues the message for the tenant in context.** The outbox's run
+  records `TomTenantContext.currentId` as its tenant, so the message carries it
+  through the durable queue and across a restart.
+- **Delivery runs inside that tenant.** The scheduler runs the run's body back
+  inside its tenant, so a transport reading `TomTenantContext.currentId` at
+  `send` time sees the tenant the message was composed in — which is how a
+  transport chooses a per-tenant sending identity, a sender address or a
+  carrier account, without a tenant field on `TomMessage`.
+- **Receipts and correlations name it.** Every `TomDeliveryReceipt` the outbox
+  publishes on `receipts` carries `tenant` (`TomDeliveryReceipt.forTenant`), and
+  the `TomDeliveryCorrelation` it records for a later delivery report carries it
+  too, in `tom_delivery_report.tenant`.
+
+The outbox's queue is the framework's job queue, which is deployment-wide: one
+table holds every tenant's messages, and the tenant travels with each run.
 
 ## Application Email: A Template Key, Not a Body
 

@@ -85,6 +85,10 @@ class TomDeliveryReceipt {
   /// information the operator needs.
   final List<String> rejectedRecipients;
 
+  /// The tenant the message was sent for, or `null` for a message of no
+  /// tenant. Set by the outbox from the run it delivered.
+  final String? tenant;
+
   /// Creates a receipt.
   TomDeliveryReceipt({
     required this.messageId,
@@ -93,7 +97,19 @@ class TomDeliveryReceipt {
     DateTime? at,
     this.detail,
     this.rejectedRecipients = const [],
+    this.tenant,
   }) : at = at ?? DateTime.now();
+
+  /// This receipt for [tenant].
+  TomDeliveryReceipt forTenant(String? tenant) => TomDeliveryReceipt(
+    messageId: messageId,
+    outcome: outcome,
+    remoteId: remoteId,
+    at: at,
+    detail: detail,
+    rejectedRecipients: rejectedRecipients,
+    tenant: tenant,
+  );
 
   /// Whether the far side took responsibility for the message.
   bool get isDelivered => outcome == TomDeliveryOutcome.delivered;
@@ -109,6 +125,7 @@ class TomDeliveryReceipt {
     'at': at.toIso8601String(),
     if (detail != null) 'detail': detail,
     if (rejectedRecipients.isNotEmpty) 'rejectedRecipients': rejectedRecipients,
+    if (tenant != null) 'tenant': tenant,
   };
 
   @override

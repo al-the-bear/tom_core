@@ -228,7 +228,7 @@ class TomSqlSchedulerNodes {
   /// The grace period applied on top of a peer's expected check-in.
   final Duration slack;
 
-  bool _schemaReady = false;
+  final TomSchemaProvisioning _schema = TomSchemaProvisioning();
   DateTime? _lastCheckin;
 
   /// When this node last checked in, or `null` before its first pass.
@@ -245,13 +245,11 @@ class TomSqlSchedulerNodes {
   };
 
   /// Creates the roll-call table if it does not exist.
-  Future<void> ensureSchema() async {
-    if (_schemaReady) return;
+  Future<void> ensureSchema() => _schema.ensure(() async {
     if (createSchema) {
       await datasource.executeCommand(_roll.createTableDdl);
     }
-    _schemaReady = true;
-  }
+  });
 
   /// Announces this node as alive at [now].
   Future<void> checkIn(DateTime now) async {

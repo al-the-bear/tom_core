@@ -14,6 +14,7 @@ users and groups, and a deactivation revokes the sessions the user holds.
 
 - [Overview](#overview)
 - [The Login Flow](#the-login-flow)
+  - [Tenancy and the token](#tenancy-and-the-token)
 - [Implementing a Service](#implementing-a-service)
   - [Your service is the source of what the principal asserts](#your-service-is-the-source-of-what-the-principal-asserts)
 - [Wiring the Server](#wiring-the-server)
@@ -307,6 +308,30 @@ set rather than on the key. Any other error becomes a `"login.error.unknown"`
 result classified `providerError`. A refused second factor that is offered
 again — a re-issued challenge or enrolment token — carries its reason the same
 way.
+
+### Tenancy and the token
+
+In a multi-tenant deployment (see [tenancy.md](tenancy.md)) a login request
+carries no token yet, so the request pipeline resolves its tenant from the host
+or a header, and the login runs inside it. Before the tokens are minted,
+`TomAuthenticationServer` binds the principal to that tenant: `TomPrincipal.tenant`
+is set to `TomTenantContext.currentId`, and both tokens carry it as the `tenant`
+claim — separately from `organization`, the business unit inside the tenant the
+login is for. From then on the claim decides which tenant the session's requests
+are for.
+
+A principal the `TomAuthenticationService` already placed in **another** tenant
+is refused:
+
+| Key | Reason | When |
+| --- | ------ | ---- |
+| `login.error.tenant-mismatch` | `TomLoginFailure.accountProblem` | The account belongs to another tenant than the one signed in to — an account of one tenant signing in through another tenant's host would otherwise receive a token for the tenant it reached. |
+
+A service that places no tenant on its principals leaves the choice to the
+request; a service whose accounts are tenant-owned rows reads them through a
+`@TomTenantOwned` entity and finds only the current tenant's. With no tenant in
+context — a deployment without tenancy, or a login naming none — the token
+carries no `tenant` claim.
 
 ## Implementing a Service
 
@@ -1794,7 +1819,7 @@ server configuration by `TomServiceCredential.fromConfiguration`:
 | `authServerLoginUri` | **yes** | Absolute URI of the auth server's login endpoint, e.g. `https://auth.example.com/auth/login` |
 | `serviceAccountName` | **yes** | The service account's login name |
 | `serviceAccountCredential` | **yes** | The service account's secret |
-| `serviceAccountOrganization` | no | Multi-tenant context; omit when single-tenant |
+| `serviceAccountOrganization` | no | The organization the deployment logs in for; omit when it has none |
 | `serviceAccountApplication` | no | Application the deployment logs into |
 | `serviceAccountProcess` | no | Process (sub-context of the application) |
 | `serviceAccountClient` | no | Client identifier the login originates from |

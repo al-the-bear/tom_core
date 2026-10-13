@@ -68,16 +68,14 @@ class TomSqlScimStore implements TomScimStore {
   final bool createSchema;
 
   late final TomFrameworkTable _resources = scimResourceTable(table);
-  bool _schemaReady = false;
+  final TomSchemaProvisioning _schema = TomSchemaProvisioning();
 
   /// Creates the table if it does not exist. Idempotent; called by every
   /// operation.
-  Future<void> ensureSchema() async {
-    if (_schemaReady) return;
+  Future<void> ensureSchema() => _schema.ensure(() async {
     if (createSchema)
       await datasource.executeCommand(_resources.createTableDdl);
-    _schemaReady = true;
-  }
+  });
 
   @override
   Future<TomScimResource> create(

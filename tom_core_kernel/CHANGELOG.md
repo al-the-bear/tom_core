@@ -2,6 +2,25 @@
 
 ### Added
 
+- **Tenant context** in `context/tenant_context.dart`: `TomTenantContext` holds
+  the tenant the current zone belongs to (`currentId`, `isSet`, `run`,
+  `require`, `validate`, `qualify`, `idPattern` — a lower-case identifier of at
+  most 32 characters); `TomTenantException` raises `tenancy.id.invalid` and
+  `tenancy.context.missing`; `TomTenantScopedCommand` runs a `TomCommand` inside
+  a tenant wherever it executes, a worker isolate included; `TomTenantEvent`
+  names the tenant of an event-triggered job's run. A tenant is an isolation
+  boundary and is distinct from the organization, a business unit inside it.
+- **`TomPrincipal.tenant`**, written into and read back from the token as the
+  `tenant` claim by `TomBearerAuthentication`, independently of
+  `organization`.
+- **Runs of a tenant.** `TomJobRun.tenant` (serialized by `toJson` /
+  `fromJson`); `TomJobStore.findWindow` takes `tenant:`, so a window is per
+  tenant. `TomScheduler` records the tenant of a `TomTenantEvent`, builds and
+  runs the run's body inside the tenant (wrapping the command in a
+  `TomTenantScopedCommand`), and serialises `allowOverlap: false` per job and
+  tenant — the cluster lease is `job:<name>@<tenant>` — so one tenant's run
+  never waits for another's.
+
 - **`package:tom_core_kernel/tom_core_kernel_io.dart`**, the native-only entry
   library, exporting the file guard the kernel's file-backed stores use:
   `tomWithFileLock`, the new **`tomWithFileLockAsync`** — the same guard,
@@ -24,6 +43,13 @@
 
 ### Changed
 
+- **`TomJobStore.findWindow(jobName, scheduledFor, {String? tenant})`** — every
+  store implementation takes the named `tenant` and matches a window of that
+  tenant only (`null` matching runs of no tenant). `TomMemoryJobStore` and
+  `TomFileJobStore` do.
+- **`TomPrincipal.organization` is documented as the business unit inside the
+  tenant**, no longer as the multi-tenant identifier; the tenant is
+  `TomPrincipal.tenant`.
 - **Every sample group runner frames its output the same way**, through
   `sampleGroupHeader` / `sampleGroupFooter` in `example/sample_bootstrap.dart`
   (`Running <Group> Examples...` and a rule; the rule and `All <Group> examples

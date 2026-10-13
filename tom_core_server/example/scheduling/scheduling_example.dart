@@ -38,19 +38,20 @@ import 'package:tom_core_server/tom_core_server.dart';
 import '../_support/check.dart';
 
 void run() {
-  // 1. The queue table. The unique key on (job_name, scheduled_for) is the
-  //    point: it makes the scheduler's idempotence key — one run per job per
-  //    window — a database invariant rather than a convention, so two nodes
-  //    planning the same window at the same moment cannot both succeed.
+  // 1. The queue table. The unique key on (job_name, tenant, scheduled_for)
+  //    is the point: it makes the scheduler's idempotence key — one run per
+  //    job per window, per tenant — a database invariant rather than a
+  //    convention, so two nodes planning the same window at the same moment
+  //    cannot both succeed.
   final queueDdl = jobRunTableDdl(defaultJobRunTable);
   print('1. queue table `$defaultJobRunTable`:');
   print(queueDdl);
   check(
     queueDdl.contains(
       'UNIQUE KEY uq_tom_job_run_window '
-      '(job_name, scheduled_for)',
+      '(job_name, tenant, scheduled_for)',
     ),
-    'the database itself enforces one run per job per window',
+    'the database itself enforces one run per job per window and tenant',
   );
 
   // 2. The lease table. `token` is the fencing counter and is why a released

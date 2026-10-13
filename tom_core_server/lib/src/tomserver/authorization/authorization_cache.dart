@@ -245,6 +245,10 @@ class TomAuthorizationCache implements TomDisposable {
   ///
   /// Main isolate only: the invalidator applies revocations there, where the
   /// cache lives.
+  ///
+  /// [username] is spelled as `TomTenantContext.qualify` spells it — the bare
+  /// name in a deployment without tenancy, `tenant:<id>/<name>` for a
+  /// tenant's account — which is what [isRevoked] compares against.
   static void revokeLocally(String username, DateTime at) {
     final cache = _current;
     final previous = cache._revokedAt[username];
@@ -252,7 +256,12 @@ class TomAuthorizationCache implements TomDisposable {
       cache._revokedAt[username] = at.toUtc();
     }
     cache._cache.removeWhere(
-      (_, entry) => entry.authorizedPrincipal.username == username,
+      (_, entry) =>
+          TomTenantContext.qualify(
+            entry.authorizedPrincipal.username,
+            entry.authorizedPrincipal.tenant,
+          ) ==
+          username,
     );
     // The sweep is what eventually forgets the revocation.
     cache._ensureEviction();
@@ -272,7 +281,11 @@ class TomAuthorizationCache implements TomDisposable {
   /// never revoked by user.
   static bool isRevoked(TomClientJwtToken token) {
     final payload = token.payload;
-    final username = payload?['username'];
+    final user = payload?['username'];
+    final tenant = payload?['tenant'];
+    final username = user is String
+        ? TomTenantContext.qualify(user, tenant is String ? tenant : null)
+        : null;
     if (username is! String) return false;
     final revoked = _current._revokedAt[username];
     if (revoked == null) return false;

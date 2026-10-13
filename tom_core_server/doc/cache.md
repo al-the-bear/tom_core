@@ -31,6 +31,7 @@ every node through an installed channel.
 - [Isolate Model](#isolate-model)
   - [One crossing per operation](#one-crossing-per-operation)
 - [Failures Are Internal](#failures-are-internal)
+- [Tenant-Scoped Entries](#tenant-scoped-entries)
 - [Cross-Node Invalidation](#cross-node-invalidation)
   - [Channels and their staleness bound](#channels-and-their-staleness-bound)
   - [Installing a channel at start-up](#installing-a-channel-at-start-up)
@@ -641,6 +642,39 @@ cache can pass `clientThrow: true`. It survives the isolate boundary intact, so
 a forwarded failure carries the same `key` **and** the same `clientThrow` as a
 local one.
 
+## Tenant-Scoped Entries
+
+In a multi-tenant deployment (see [tenancy.md](tenancy.md)) two tenants caching
+one key hold two entries. Every entry point of the static API — `fromNameCache`,
+`toNameCache`, `removeFromNameCache` and the type-cache variants built on them —
+qualifies the key by the tenant in context with
+`TomTenantContext.qualify(key, TomTenantContext.currentId)`, which is
+`tenant:<id>/<key>`, or the key unchanged with no tenant:
+
+```dart
+await TomTenantContext.run('acme', () => TomCache.toNameCache('plans', 'plan', 'gold'));
+
+final globex = await TomTenantContext.run(
+  'globex',
+  () => TomCache.fromNameCache<String>('plans', 'plan'),
+); // null — globex's 'plan' is another entry
+```
+
+A tenant therefore reads, replaces and removes only its own entries, without a
+tenant argument on any call. A value meant for every tenant is cached outside
+any tenant's context, under the bare key. The instance methods — `getEntry`,
+`putEntry`, `removeEntry` — take the key as given: they are the structural layer
+under the static API, and the key they receive is already qualified.
+
+The cluster-wide calls follow the same rule.
+`TomCacheInvalidator.invalidateCacheEntry(cacheName, key)` invalidates the
+current tenant's entry, qualified exactly as `TomCache` keyed it, and
+`revokePrincipal(username)` revokes the current tenant's account of that name
+only — another tenant's `alice` is a different person (see
+[authorization.md](authorization.md#revocation-per-tenant)).
+`invalidateCache(cacheName)` empties the whole cache, every tenant's entries
+together.
+
 ## Cross-Node Invalidation
 
 Every cache in this module lives in one process, and so does the
@@ -722,8 +756,8 @@ An invalidation is a `TomCacheInvalidation`: a `TomInvalidationKind`, a
 
 | `TomInvalidationKind` | `target` | Applied as |
 | --------------------- | -------- | ---------- |
-| `principal` | the username | `TomAuthorizationCache.revokeLocally(target, at)` — tokens issued at or before `at` are refused, and the user's cached principals are dropped |
-| `cacheEntry` | the cache name | `removeEntry(key)` on the cache registered under that name |
+| `principal` | the username, qualified by tenant (`tenant:<id>/<name>`) when raised in a tenant | `TomAuthorizationCache.revokeLocally(target, at)` — tokens issued at or before `at` are refused, and the user's cached principals are dropped |
+| `cacheEntry` | the cache name | `removeEntry(key)` on the cache registered under that name; `key` is already qualified by tenant when raised in one |
 | `cache` | the cache name | `clear()` on the cache registered under that name |
 
 A cache name nothing registered on this node is nothing to invalidate, and is

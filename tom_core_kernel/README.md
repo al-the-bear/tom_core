@@ -29,9 +29,10 @@ serialized without hand-written boilerplate. Conceptually it provides five thing
 
 - **Observable state** — values and objects that notify observers on change, with
   a terse operator syntax (`|` set, `~` read, `>>` observe).
-- **Ambient context** — zone-propagated execution context and hierarchical
-  scope identifiers, so a deeply nested call can resolve "where am I" without
-  threading parameters through every frame.
+- **Ambient context** — zone-propagated execution context, the tenant a piece
+  of work belongs to, and hierarchical scope identifiers, so a deeply nested
+  call can resolve "where am I" without threading parameters through every
+  frame.
 - **Dependency injection** — a reflection-driven bean container.
 - **Security** — authentication, a layered access-control model, bearer-token
   auth, and a four-state authorization model (`TomAuthState`).
@@ -89,6 +90,7 @@ require a `dart run build_runner build` to generate `*.reflection.dart`.
 | ---- | -------------- |
 | `TomExecutionContext` | Ambient, zone-propagated execution context |
 | `TomContextEntry<T>` | A typed value carried on the context |
+| `TomTenantContext` / `TomTenantScopedCommand` / `TomTenantEvent` | The tenant — an isolation boundary, not an organization — carried in the zone, into a job's body and across an isolate hop |
 | `TomScope` / `ScopeCapture` | Hierarchical, zone-propagated scope identifiers |
 
 ### Dependency injection (`beanlocator`)

@@ -579,6 +579,7 @@ TomDeliveryReceipt({
   DateTime? at,
   String? detail,
   List<String> rejectedRecipients = const [],
+  String? tenant,
 })
 ```
 
@@ -592,6 +593,7 @@ TomDeliveryReceipt({
 | `at` | `DateTime` | When the attempt concluded; defaults to now (final). |
 | `detail` | `String?` | The far side's own words, kept verbatim for diagnosis (final). |
 | `rejectedRecipients` | `List<String>` | Recipients the far side refused while accepting the others (final). |
+| `tenant` | `String?` | The tenant the message was sent for, or `null` for a message of no tenant. Set by `TomMessageOutbox` from the run it delivered (final). |
 | `isDelivered` | `bool` | *(getter)* Whether the far side took responsibility for the message. |
 | `isPartial` | `bool` | *(getter)* Whether the message was delivered but some recipients were refused. |
 
@@ -599,6 +601,7 @@ TomDeliveryReceipt({
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `forTenant` | `TomDeliveryReceipt forTenant(String? tenant)` | This receipt for `tenant` — every other field unchanged. |
 | `toJson` | `Map<String, Object?> toJson()` | Encodes the receipt as a JSON-native map; null and empty fields are omitted. |
 | `toString` | `String toString()` | *(override)* The message id, the outcome name and the remote id when there is one. |
 
@@ -953,7 +956,7 @@ all — are routinely measured in minutes.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `send` | `Future<void> send(TomMessage message)` | Queues `message` and returns once it is durably stored. Enqueues directly rather than through the schedule's event stream, so two messages composed in the same instant are two runs. Throws `TomMessagingException` once the outbox is closed. |
+| `send` | `Future<void> send(TomMessage message)` | Queues `message` and returns once it is durably stored. Enqueues directly rather than through the schedule's event stream, so two messages composed in the same instant are two runs. The run records the tenant in context, and the message is delivered inside it — a transport choosing a per-tenant sending identity reads it from `TomTenantContext.currentId`; the receipt and the delivery correlation name it. Throws `TomMessagingException` once the outbox is closed. |
 | `sendNow` | `Future<void> sendNow(TomMessage message)` | Queues `message` and ticks immediately, for a case where the tick interval is felt by a human. A failure still retries on the queue exactly as `send` would. |
 | `tick` | `Future<void> tick()` | Runs one delivery pass; exposed so a test can drive delivery without waiting on wall-clock time. |
 | `start` | `void start()` | Begins delivering on the scheduler's tick interval. |
@@ -2465,6 +2468,7 @@ TomDeliveryCorrelation({
   TomDeliveryState? state,
   DateTime? reportedAt,
   String? detail,
+  String? tenant,
 })
 ```
 
@@ -2479,6 +2483,7 @@ TomDeliveryCorrelation({
 | `state` | `final TomDeliveryState?` | The last state reported, or `null` while none has arrived. |
 | `reportedAt` | `final DateTime?` | When that report was recorded. |
 | `detail` | `final String?` | The carrier's own words from that report. |
+| `tenant` | `final String?` | The tenant the message was sent for, or `null` — so a report, which arrives carrying nothing but the carrier's id, is attributed to its tenant. `withReport` keeps it. |
 | `isReported` | `bool` | *(getter)* Whether a report has been recorded. |
 
 #### Methods
@@ -2595,6 +2600,7 @@ single place the framework decides what a stored instant means.
 | `state` | `String?` | `state` — the last state reported, `null` while none has arrived. |
 | `reportedAt` | `String?` | `reported_at`, as the stored text. |
 | `detail` | `String?` | `detail` — the carrier's own words from that report. |
+| `tenant` | `String?` | `tenant` — the message's tenant, or `null`. |
 
 ### TomDeliveryCallback
 

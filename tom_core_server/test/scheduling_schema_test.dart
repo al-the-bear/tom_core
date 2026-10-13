@@ -57,18 +57,22 @@ void main() {
   group('the queue schema encodes the invariants the scheduler relies on', () {
     final ddl = jobRunTableDdl(defaultJobRunTable);
 
-    test('one run per job per window is a database constraint', () {
-      // The scheduler's idempotence key. As a convention it holds until two
-      // nodes plan the same window at the same moment; as a unique index it
-      // holds always.
-      expect(
-        ddl,
-        contains(
-          'UNIQUE KEY uq_tom_job_run_window '
-          '(job_name, scheduled_for)',
-        ),
-      );
-    });
+    test(
+      'one run per job per window, per tenant, is a database constraint',
+      () {
+        // The scheduler's idempotence key. As a convention it holds until two
+        // nodes plan the same window at the same moment; as a unique index it
+        // holds always. The tenant is part of it: two tenants' events in one
+        // instant are two runs.
+        expect(
+          ddl,
+          contains(
+            'UNIQUE KEY uq_tom_job_run_window '
+            '(job_name, tenant, scheduled_for)',
+          ),
+        );
+      },
+    );
 
     test('the claim scan and the recovery scan each have an index', () {
       expect(ddl, contains('KEY ix_tom_job_run_due (state, run_at)'));
@@ -88,10 +92,15 @@ void main() {
     );
 
     test('the composite unique key fits the legacy InnoDB index limit', () {
-      // 160 utf8mb4 characters (640 bytes) plus a DATETIME(6) (8 bytes) stays
-      // under the 767-byte limit of the older row formats, so the table can be
-      // created on a server that has not been switched to DYNAMIC.
-      expect(ddl, contains('job_name      VARCHAR(160)'));
+      // 150 + 32 utf8mb4 characters (600 + 128 bytes) plus a DATETIME(6) (8
+      // bytes) is 736, under the 767-byte limit of the older row formats, so
+      // the table can be created on a server that has not been switched to
+      // DYNAMIC.
+      expect(ddl, contains(RegExp(r'job_name\s+VARCHAR\(150\)')));
+      expect(
+        ddl,
+        contains(RegExp(r"tenant\s+VARCHAR\(32\)\s+NOT NULL DEFAULT ''")),
+      );
     });
   });
 

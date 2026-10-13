@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS tom_delivery_report (
   state       VARCHAR(32)  NULL,
   reported_at DATETIME(6)  NULL,
   detail      TEXT         NULL,
+  tenant      VARCHAR(32)  NULL,
   PRIMARY KEY (remote_id),
   KEY ix_tom_delivery_report_message (message_id),
   KEY ix_tom_delivery_report_sent (sent_at)

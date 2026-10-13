@@ -34,6 +34,7 @@ const String defaultDeliveryReportTable = 'tom_delivery_report';
 ///    distinction that makes an outstanding delivery findable.
 ///  * `sent_at` carries the sweep, so it is indexed: pruning is otherwise a full
 ///    scan of a table that grows with every message ever sent.
+///  * `tenant` is nullable: a message of no tenant has none.
 ///  * instants are `DATETIME(6)` and always written in UTC — see `sqlInstant` in
 ///    `datasources/sql_instant.dart`.
 TomFrameworkTable deliveryReportTable(String table) => TomFrameworkTable(
@@ -47,6 +48,7 @@ TomFrameworkTable deliveryReportTable(String table) => TomFrameworkTable(
     TomFrameworkColumn('state', 'VARCHAR(32)', nullable: true),
     TomFrameworkColumn('reported_at', 'DATETIME(6)', nullable: true),
     TomFrameworkColumn('detail', 'TEXT', nullable: true),
+    TomFrameworkColumn('tenant', 'VARCHAR(32)', nullable: true),
   ],
   primaryKey: const ['remote_id'],
   keys: const [

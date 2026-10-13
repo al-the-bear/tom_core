@@ -157,7 +157,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
   final DateTime Function() clock;
 
   static const Uuid _uuid = Uuid();
-  bool _schemaReady = false;
+  final TomSchemaProvisioning _schema = TomSchemaProvisioning();
 
   /// The manifest table's single column declaration — see
   /// `file_storage/database_blob_sql.dart`.
@@ -171,14 +171,12 @@ class TomDatabaseBlobStore extends TomBlobStore {
   /// Idempotent and called automatically by every operation; exposed so a
   /// start-up sequence can provision the schema before serving traffic rather
   /// than on the first request.
-  Future<void> ensureSchema() async {
-    if (_schemaReady) return;
+  Future<void> ensureSchema() => _schema.ensure(() async {
     if (createSchema) {
       await datasource.executeCommand(_manifest.createTableDdl);
       await datasource.executeCommand(_chunks.createTableDdl);
     }
-    _schemaReady = true;
-  }
+  });
 
   @override
   Future<TomStoredBlob> doPut({

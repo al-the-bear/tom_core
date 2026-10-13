@@ -451,3 +451,30 @@ const Set<String> _sqlWords = {
   'where',
   'with',
 };
+
+/// Provisions a store's tables at most once, however many first calls arrive
+/// together.
+///
+/// A store creates its tables on first use. Two requests reaching a fresh
+/// store at the same moment both see "not yet created"; with a connection pool
+/// their two `CREATE TABLE IF NOT EXISTS` run on two connections, and the
+/// second can return — the table "exists" — before the first has finished
+/// creating it, so the second request's statement fails on a table that does
+/// not exist yet. Sharing the one creation in flight closes that: every
+/// caller awaits the same run.
+///
+/// A creation that fails is forgotten, so the next call tries again rather
+/// than inheriting the failure for the life of the store.
+class TomSchemaProvisioning {
+  Future<void>? _ready;
+
+  /// Runs [create] once, or awaits the run already in flight or finished.
+  Future<void> ensure(Future<void> Function() create) =>
+      _ready ??= create().then<void>(
+        (_) {},
+        onError: (Object error, StackTrace stack) {
+          _ready = null;
+          return Future<void>.error(error, stack);
+        },
+      );
+}

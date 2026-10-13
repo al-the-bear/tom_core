@@ -89,6 +89,7 @@ const _quickStarts = <_QuickStart>[
   _QuickStart.runnable('export', prints: ['true']),
   _QuickStart.runnable('file_storage', prints: ['12', 'total: 19.99']),
   _QuickStart.runnable('resources', prints: ['Ihre Rechnung', 'null']),
+  _QuickStart.runnable('tenancy', prints: ['acme', '403', 'globex']),
 
   _QuickStart.notRunnable(
     'authorization',

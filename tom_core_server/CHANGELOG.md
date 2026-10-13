@@ -2,6 +2,61 @@
 
 ### Added
 
+- **Multi-tenancy** — the new `tenancy` module (`tenancy/tenancy.dart`,
+  `tenancy/tenant_resolution.dart`). `TomTenancy` holds the deployment's
+  `TomTenant`s, read from the `tenancy` configuration key by
+  `fromConfiguration`, and is installed with `TomTenancy.install`, which
+  provisions every tenant and routes data-source lookups; `reset`, `current`,
+  `addTenant` (onboarding without a restart), `isolationOf`, `route`, `runFor`,
+  `forEachTenant` and `resolveRequest`. `TomTenantIsolation` — `shared`,
+  `schema` (a schema of its own on the shared server, created with
+  `createSchemas`) or `database` (a database of its own, configured per tenant)
+  — is chosen per tenant. `TomTenantResolver`, `TomTenantHostResolver`
+  (subdomain or own host), `TomTenantHeaderResolver` (`X-Tenant-Id` by default)
+  and `TomTenantResolution`. `TomTenancyException` raises
+  `tenancy.config.not_a_map`, `tenancy.config.unknown_isolation`,
+  `tenancy.config.unknown_resolver`, `tenancy.config.schema_unsupported`,
+  `tenancy.config.invalid_schema`, `tenancy.config.missing_datasource`,
+  `tenancy.config.unknown_datasource` and `tenancy.tenant.unknown`. A tenant is
+  an isolation boundary, distinct from the organization, a business unit inside
+  it.
+- **Requests run in their tenant.** With a tenancy installed,
+  `tomDefaultAuthenticationMiddleware` resolves the request's tenant — the
+  verified token's `tenant` claim, authoritative; otherwise host or header — and
+  runs the request inside `TomTenantContext`. A request naming another tenant
+  than its token is answered `403 tenancy.resolution.conflict`, an unknown
+  tenant `404 tenancy.tenant.unknown`, a malformed one `400 tenancy.id.invalid`,
+  each with a JSON body.
+- **Tokens are bound to their tenant.** `TomAuthenticationServer` sets the
+  principal's `tenant` to the tenant the login runs in, so the token carries the
+  `tenant` claim, and refuses a principal placed in another tenant with
+  `login.error.tenant-mismatch`.
+- **`@TomTenantOwned`** (`object_persistence/persistence_annotations.dart`,
+  `field` default `tenantId`) and `TomAnnotationAnalyzer.findTenantOwnership`.
+  The repository ANDs `<field> = <tenant>` with the `@TomDbScope` predicate on
+  every read (parameters prefixed `TomSqlDatasourceRepository.tenantParameterPrefix`,
+  `__tomtenant_`), fills the tenant on insert, and refuses a write with no
+  tenant (`data_scope.write.no_tenant`) or naming another
+  (`data_scope.write.foreign_tenant`).
+- **Data-source routing.** `TomDataSourceInfo.router`, `route` and
+  `getBaseDataSourceInfo`; `getDataSourceInfo` answers the data source as the
+  current tenant reaches it.
+- **`TomSchemaProvisioning`** (`datasources/framework_table.dart`): a store's
+  tables are created at most once, however many first calls arrive together.
+- **Tenants in caches, revocations, jobs and messages.** `TomCache`'s static API
+  qualifies keys by the tenant in context; `TomCacheInvalidator.revokePrincipal`
+  and `invalidateCacheEntry` qualify by it; `TomAuthorizationCache.isRevoked`
+  reads the token's `tenant` claim. `tom_job_run` gains
+  `tenant VARCHAR(32) NOT NULL DEFAULT ''` and the window key `(job_name, tenant, scheduled_for)`;
+  `TomSqlJobStore.findWindow` takes `tenant:`. The outbox queues a message for
+  the tenant in context and delivers it inside it; `TomDeliveryReceipt.tenant`,
+  `TomDeliveryReceipt.forTenant` and `TomDeliveryCorrelation.tenant`, stored in
+  `tom_delivery_report.tenant VARCHAR(32) NULL`.
+- `example/tenancy/tenancy_example.dart` walks two tenants through eight steps;
+  `test/tenancy_test.dart` covers the module without a database and
+  `test/tenancy_db_test.dart` (tagged `db`) under all three isolation models.
+- `doc/tenancy.md`, `doc/api/api_summary_tenancy.md` and the module readme.
+
 - **User provisioning over SCIM 2.0** (RFC 7643 / RFC 7644), for Microsoft
   Entra ID, Okta and any other SCIM client. `TomScimService`
   (`authentication/scim_service.dart`) creates, reads, queries, replaces,
@@ -119,6 +174,20 @@
 
 ### Changed
 
+- **`tom_job_run.job_name` is `VARCHAR(150)`**, so the window key
+  `(job_name, tenant, scheduled_for)` stays inside the 767-byte index limit of
+  older InnoDB row formats; the reference migration
+  `example/scheduling/migrations/main/tomcore/[1]-create_tom_job_run.sql`
+  declares the new shape.
+- **`TomSqlDatasourceRepository.datasourceInfo` is a getter** resolved through
+  `TomDataSourceInfo.route` on every access, and prepared statements are cached
+  per data source, so one repository serves every tenant.
+- **Every framework store's `ensureSchema`** — `TomSqlJobStore`,
+  `TomSqlLeaseLock`, `TomSqlSchedulerNodes`, `TomSqlDeliveryReportStore`,
+  `TomSqlInvalidationChannel`, `TomSqlOAuthStateStore`, `TomSqlScimStore`,
+  `TomDatabaseBlobStore` — runs through `TomSchemaProvisioning`. Concurrent
+  first calls on a pooled data source no longer race a `CREATE TABLE` still in
+  progress on another connection.
 - `frameworkOwnedTables` lists `scimResourceTable` and takes a `scimResource`
   parameter, so the framework schema check covers `tom_scim_resource`.
 - **`verifyBearerToken` checks whose token it is**: the algorithm is the

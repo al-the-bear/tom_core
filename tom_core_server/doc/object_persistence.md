@@ -34,6 +34,9 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
   - [Reads filter, writes reject](#reads-filter-writes-reject)
   - [Reading and writing can differ](#reading-and-writing-can-differ)
   - [The grant-driven `resource` kind](#the-grant-driven-resource-kind)
+- [Tenant-Owned Rows](#tenant-owned-rows)
+  - [What the repository does with it](#what-the-repository-does-with-it)
+  - [One repository, every tenant](#one-repository-every-tenant)
 - [Column Authorization](#column-authorization)
   - [Grading a column](#grading-a-column)
   - [Reads mask](#reads-mask)
@@ -82,6 +85,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `TomAnnotationAnalyzer` | mixin | Resolves an entity's persistence metadata by reflection |
 | `TomColumnInformation` | class | The resolved metadata for one entity field |
 | `TomDbScope` | class | Declares (or explicitly opts out of) an entity's row scope |
+| `TomTenantOwned` | class | Marks an entity whose every row belongs to a tenant; the repository reads and writes only the current tenant's rows |
 | `TomDataScopeRegistry` | class | The named scope-kind resolvers, read and write. Statics only |
 | `TomDataScope` | class | Renders a resolver's answer into a bound `IN` / union predicate. Statics only |
 | `TomDataScopeResolver` / `TomAsyncDataScopeResolver` | typedef | What a scope kind supplies: `null` opts out of scoping, an empty list denies every row — the secure default a `null` principal resolves to |
@@ -943,7 +947,7 @@ Three kinds are registered out of the box:
 | `group` | `principal.aci.groups` | synchronous |
 | `resource` (`TomDbScope.resourceScope`) | the resource keys the principal holds a grant on | **asynchronous**, through the installed `TomResourceScopeSource` |
 
-An application adds its own (`'tenant'`, `'organization'`, …) with
+An application adds its own (`'organization'`, `'department'`, …) with
 `TomDataScopeRegistry.register` or `registerAsync`; `reset()` restores just the
 built-ins. A scope naming a kind nothing registered fails the query rather than
 leaving it unscoped: `data_scope.build.unknown_scope` when no resolver is
@@ -1071,6 +1075,69 @@ implemented in the authorization module by `TomResourceDataScope`, which is the
 inversion that keeps the dependency arrow pointing from authorization down to
 persistence rather than the reverse. See
 [`authorization.md`](authorization.md#the-grant-driven-row-scope).
+
+## Tenant-Owned Rows
+
+A deployment serving several tenants marks the entities whose rows belong to a
+tenant with `@TomTenantOwned`. The tenant itself comes from the zone —
+`TomTenantContext.currentId`, set per request by the server's pipeline — so no
+repository call takes a tenant argument. See [tenancy.md](tenancy.md) for where
+tenants come from and the three isolation models.
+
+```dart
+@tomReflector
+@TomTenantOwned()
+@TomDbTable(datasource: 'main', table: 'invoice', primaryKeyFields: ['id'])
+class Invoice {
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  @TomDbColumn(columnName: 'tenant_id')
+  String? tenantId;
+}
+```
+
+`field` names the entity field holding the tenant id — `tenantId` unless the
+annotation says otherwise (`@TomTenantOwned(field: 'customer')`).
+
+### What the repository does with it
+
+| Operation | With a tenant in context | With no tenant in context |
+| --------- | ------------------------ | ------------------------- |
+| every read — `findAll`, `findById`, `count`, `findWhere`, the existence checks | adds `<field> = <tenant>` as a bound predicate | reads nothing (a `FALSE` predicate) |
+| `save`, `saveFile` — insert | fills an unset tenant field with the current tenant; refuses an entity naming another, `data_scope.write.foreign_tenant` | refused, `data_scope.write.no_tenant` |
+| `save`, `saveFile` — update | the same tenant check, then touches only a row the predicate admits; another tenant's row is reported exactly as a missing one, `data_scope.write.out_of_scope` | refused, `data_scope.write.no_tenant` |
+| `delete`, `deleteById`, `deleteAllById` | touches only rows the predicate admits, `data_scope.write.out_of_scope` otherwise | nothing is in scope, `data_scope.write.out_of_scope` |
+
+Naming another tenant on an update is refused the same way, which is what stops
+an update from moving a row out of its tenant.
+
+The tenant predicate is **independent of `@TomDbScope` and ANDed with it**, so an
+entity can be a tenant's and scoped to its owner or to a resource grant at once.
+Its parameters carry their own prefix,
+`TomSqlDatasourceRepository.tenantParameterPrefix` (`__tomtenant_`), so the two
+bind in one statement. And unlike the data scope it is **not suppressed inside an
+async resolver's enumeration** (see
+[Async resolvers must not recurse](#async-resolvers-must-not-recurse)): a
+resolver computing one tenant's visible ids must not read another tenant's rows
+to do it.
+
+`TomAnnotationAnalyzer.findTenantOwnership(type)` answers the annotation, or
+`null` for an entity that is not tenant-owned, memoised like the analyzer's
+other lookups.
+
+### One repository, every tenant
+
+A repository's `datasourceInfo` is a getter, resolved through
+`TomDataSourceInfo.route` on every access: in a deployment whose tenants live in
+a schema or a database of their own, the same repository instance reaches the
+current tenant's. Prepared statements are cached **per data source**, so a
+statement prepared on one tenant's database is never executed against
+another's. The predicate above applies in every isolation model — under schema
+and database isolation it is a second wall rather than the only one, and it is
+why moving a tenant between models is a copy of its rows rather than a schema
+change.
 
 ## Column Authorization
 
@@ -1713,6 +1780,12 @@ is where it stops you. Its entities live in
 `example/object_persistence/object_persistence_entities.dart`. Every step checks
 its own result, and `test/examples_test.dart` runs it.
 
+[Tenant-Owned Rows](#tenant-owned-rows) is asserted by
+`test/tenancy_db_test.dart`, tagged `db`: two tenants writing and reading
+through one repository under each of the three isolation models, the tenant
+filled on insert, a foreign tenant refused, and the rows landing in the shared
+table, in each tenant's schema or in each tenant's database.
+
 ## Core Components
 
 - **Annotations** — `TomDbTable`, `TomDbColumn`, `TomEntityId`, `TomReference`,
@@ -1731,6 +1804,8 @@ its own result, and `test/examples_test.dart` runs it.
   and its result shape.
 - **`TomAnnotationAnalyzer`** — reflection-based metadata resolver, including
   `findDataScope` / `autoScopeFor` and the `resourceScopeInputTables` guard.
+- **`TomTenantOwned`** — marks a tenant's entity; the repository ANDs the
+  tenant predicate into every read and checks the tenant on every write.
 - **`TomDbScope` + `TomDataScopeRegistry` + `TomDataScope`** — the row-scope
   declaration, its named resolvers (read and write, sync and async), and the
   bound-parameter predicate they render. `TomResourceScopeSource` is the hook the

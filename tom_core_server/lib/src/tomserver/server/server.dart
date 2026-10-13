@@ -14,6 +14,8 @@ import '../configuration/base_server_configuration.dart';
 import '../configuration/runtime_environment.dart';
 import '../endpoints/endpoint_pipeline.dart';
 import '../authorization/authorization_cache.dart';
+import '../tenancy/tenancy.dart';
+import '../tenancy/tenant_resolution.dart';
 import '../transactions/transaction_manager.dart';
 
 /// A pass-through shelf [Middleware] that seeds the request [Request.context].
@@ -347,6 +349,22 @@ Middleware tomDefaultAuthenticationMiddleware(
         clientToken,
         callPrincipal,
       );
+      // The tenant, when the deployment has tenancy: the verified token's
+      // claim, or what the host or a header names — see
+      // TomTenancy.resolveRequest. A refusal is answered here, before any
+      // handler runs, so nothing downstream sees a request in a tenant it may
+      // not enter.
+      final tenancy = TomTenancy.current;
+      String? tenant;
+      if (tenancy != null) {
+        final claim = clientToken?.payload?['tenant'];
+        final resolution = tenancy.resolveRequest(
+          request,
+          claim: claim is String ? claim : null,
+        );
+        if (resolution.isRejected) return _tenantRejection(resolution);
+        tenant = resolution.tenant;
+      }
       TomZoneValues zoneValues = TomZoneValues({
         Request: request,
         TomExecutionContext: tomExecutionContext,
@@ -358,17 +376,27 @@ Middleware tomDefaultAuthenticationMiddleware(
       // Each request also gets its own current transaction, for the same reason
       // it gets its own principal: two requests interleaving in one isolate must
       // not be able to see — let alone commit or roll back — each other's work.
-      return TomTransactionManager.runInTransactionScope(
-        () => runZoned<FutureOr<Response>>(
-          zoneValues: zoneValues.zoneValues,
-          () => innerHandler(newRequest),
-        ),
-      );
+      Future<Response> handle() async =>
+          await TomTransactionManager.runInTransactionScope(
+            () => runZoned<FutureOr<Response>>(
+              zoneValues: zoneValues.zoneValues,
+              () => innerHandler(newRequest),
+            ),
+          );
+      return tenancy == null ? handle() : TomTenantContext.run(tenant, handle);
     }).then((response) {
       return response;
     });
   };
 };
+
+/// The response refusing a request whose tenant [resolution] rejected: its
+/// status, and the key and message as a JSON error.
+Response _tenantRejection(TomTenantResolution resolution) => Response(
+  resolution.status!,
+  body: jsonEncode({'error': resolution.key, 'message': resolution.message}),
+  headers: {TomHeader.contentType: TomMimeType.json.toHeaderValue()},
+);
 
 /// The default request-logging [Middleware] of a [TomServer].
 ///

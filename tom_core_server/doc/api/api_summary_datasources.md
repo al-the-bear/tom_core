@@ -61,6 +61,7 @@ module builds its query DSL and repositories on top of this layer.
     - [TomFrameworkColumn](#tomframeworkcolumn)
     - [TomFrameworkKey](#tomframeworkkey)
     - [TomFrameworkTable](#tomframeworktable)
+    - [TomSchemaProvisioning](#tomschemaprovisioning)
   - [Exceptions](#exceptions)
     - [TomDatasourceInitException](#tomdatasourceinitexception)
     - [TomConnectionPoolException](#tomconnectionpoolexception)
@@ -169,6 +170,7 @@ TomSqlLexer
 TomFrameworkTable
 TomFrameworkColumn
 TomFrameworkKey
+TomSchemaProvisioning
 
 TomServerException  (little_things)
     ├── MariadbDatasourceException
@@ -871,13 +873,16 @@ TomDataSourceInfo(String name, Map<String, dynamic> settings)
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `datasources` | `Map<String, TomDataSourceInfo>` | All registered data sources, keyed by name. |
+| `router` | `TomDataSourceInfo Function(TomDataSourceInfo base)?` | The routing a multi-tenant deployment installs: maps a registered data source to the one the current tenant's data lives in — its schema or its database — or answers it unchanged. `null` routes nothing. Declared here and installed by the `tenancy` module's `TomTenancy.install`, so this module does not depend on it. |
 | `registryKeys` | `Set<String>` | The settings keys the registry reads itself and does not pass on — `type`, which selects the driver, and `delegateTo`, which makes the entry an alias. Neither is a field of any driver. They are removed from the block before it reaches `TomDataSource.initialize` rather than being excused by an allowlist inside the unknown-key check, so that a driver is handed only what is addressed to it and every key it is handed has to bind. |
 
 ##### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `getDataSourceInfo` | `static TomDataSourceInfo? getDataSourceInfo(String dsName)` | Returns the registered info for `dsName`, or `null` if none. |
+| `route` | `static TomDataSourceInfo route(TomDataSourceInfo base)` | `base` as the current tenant reaches it — `router(base)`, or `base` itself when no router is installed. A repository resolves its data source through this on every call, so one repository serves every tenant. |
+| `getDataSourceInfo` | `static TomDataSourceInfo? getDataSourceInfo(String dsName)` | Returns the registered info for `dsName` as the current tenant reaches it (`route`), or `null` if none is registered. |
+| `getBaseDataSourceInfo` | `static TomDataSourceInfo? getBaseDataSourceInfo(String dsName)` | Returns the registered info for `dsName` itself, unrouted, or `null` — what a store built for the whole deployment, and the tenancy's own provisioning, look up. |
 | `initializeDatasourceInfo` | `static Future<int> initializeDatasourceInfo(Map<String, dynamic> datasourceConfiguration)` | Builds and initialises a registry entry for every map-valued config entry. Returns `1` on success. |
 | `closeAll` | `static Future<void> closeAll()` | Closes every initialised data source in the registry. |
 
@@ -1421,6 +1426,33 @@ because a descriptor is built once at start-up, where the alternative is a
 | `columnsOf` | `String columnsOf(Iterable<String> names)` | `names` as a column list, in the order given. Throws `ArgumentError` when a name is not a column — a projection that outlived the column it names fails at the first call rather than at the database. |
 | `insert` | `String insert(String verb, Map<String, String> values)` | Renders a row-writing statement. `verb` is the whole leading clause (`INSERT`, `REPLACE`, `INSERT IGNORE`); `values` maps a column name to the SQL text that supplies it, usually a `:bind` but sometimes a literal. Keyed by name rather than by position, because a positional list would let a column inserted in the descriptor silently shift every value one place along. Throws `ArgumentError` on an unknown column. |
 | `toString` | `String toString()` | *(override)* `"TomFrameworkTable(<name>)"`. |
+
+#### TomSchemaProvisioning
+
+Provisions a store's tables at most once, however many first calls arrive
+together. A store creates its tables on first use; two requests reaching a fresh
+store at the same moment both see "not yet created", and with a connection pool
+their two `CREATE TABLE IF NOT EXISTS` run on two connections — the second can
+return before the first has finished creating the table, so the second request's
+statement fails on a table that does not exist yet. Sharing the one creation in
+flight closes that: every caller awaits the same run. A creation that fails is
+forgotten, so the next call tries again rather than inheriting the failure for
+the life of the store. Every framework store's `ensureSchema` — `TomSqlJobStore`,
+`TomSqlLeaseLock`, `TomSqlSchedulerNodes`, `TomSqlDeliveryReportStore`,
+`TomSqlInvalidationChannel`, `TomSqlOAuthStateStore`, `TomSqlScimStore` and
+`TomDatabaseBlobStore` — runs through one.
+
+##### Constructors
+
+```dart
+TomSchemaProvisioning()
+```
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `ensure` | `Future<void> ensure(Future<void> Function() create)` | Runs `create` once, or awaits the run already in flight or finished. |
 
 ### Exceptions
 

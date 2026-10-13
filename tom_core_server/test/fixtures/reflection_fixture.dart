@@ -1687,6 +1687,38 @@ class FixtureUntaggedRepository
 class FixtureTaskRepository
     extends TomSqlDatasourceRepository<FixtureTaskRecord, int> {}
 
+/// A reflected **tenant-owned** entity, for the multi-tenancy surfaces.
+///
+/// `@TomTenantOwned` puts every read and write behind the tenant in context,
+/// in every isolation model; `tenant_id` is filled from the context on insert.
+/// Maps to `fixture_tenant_note`, which the tenancy suite creates in every
+/// schema and database a tenant's data lives in.
+@tomReflector
+@TomTenantOwned()
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_tenant_note',
+  primaryKeyFields: ['id'],
+)
+class FixtureTenantNote {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The tenant the note belongs to.
+  @TomDbColumn(columnName: 'tenant_id')
+  String? tenantId;
+
+  /// The note's text.
+  @TomDbColumn(columnName: 'text')
+  String? text;
+}
+
+/// The MariaDB-backed repository for [FixtureTenantNote].
+class FixtureTenantNoteRepository
+    extends TomSqlDatasourceRepository<FixtureTenantNote, int> {}
+
 /// A reflected entity carrying a **redacted** column, for the CE-LG audit
 /// surface.
 ///

@@ -160,6 +160,8 @@ export 'src/tomserver/scheduling/sql_lease_lock.dart';
 export 'src/tomserver/scheduling/sql_scheduler_nodes.dart';
 export 'src/tomserver/scheduling/sql_scheduling_sql.dart';
 export 'src/tomserver/server/server.dart';
+export 'src/tomserver/tenancy/tenancy.dart';
+export 'src/tomserver/tenancy/tenant_resolution.dart';
 export 'src/tomserver/transactions/transaction_manager.dart';
 export 'package:mysql_client/mysql_client.dart';
 // The driver's own barrel omits its exception taxonomy, but

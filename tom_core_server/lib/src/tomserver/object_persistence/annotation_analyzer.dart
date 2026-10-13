@@ -111,6 +111,10 @@ mixin TomAnnotationAnalyzer {
   /// (`null` = the entity declares no row scope).
   static final _dataScopeCache = <Type, TomDbScope?>{};
 
+  /// Cache of resolved `@TomTenantOwned` annotations per entity type
+  /// (`null` = the entity is not tenant-owned).
+  static final _tenantOwnedCache = <Type, TomTenantOwned?>{};
+
   /// Cache of the column-authorized (`@TomDbColumn(authKey: …)`) columns per
   /// entity type (an empty list = the entity declares no column access rights).
   static final _authColumnCache = <Type, List<TomColumnInformation>>{};
@@ -128,8 +132,9 @@ mixin TomAnnotationAnalyzer {
   /// answer back and fails as though the mapping were wrong. That failure is
   /// expensive to diagnose, because nothing about it points at a cache.
   ///
-  /// Clearing all six together is the whole point: they are derived from one
-  /// another — the columns come from the mirror, the row scope and the two
+  /// Clearing all seven together is the whole point: they are derived from one
+  /// another — the columns come from the mirror, the row scope, the tenant
+  /// ownership and the two
   /// column subsets come from the columns — so a caller emptying the ones it
   /// happens to know about would leave the rest describing an entity that no
   /// longer exists. `test/persistence_metadata_sharing_test.dart` asserts this
@@ -139,6 +144,7 @@ mixin TomAnnotationAnalyzer {
     _tableCache.clear();
     _columnInfoCache.clear();
     _dataScopeCache.clear();
+    _tenantOwnedCache.clear();
     _authColumnCache.clear();
     _fileColumnCache.clear();
   }
@@ -283,6 +289,17 @@ mixin TomAnnotationAnalyzer {
     'tom_principal_delegation',
     'tom_resource_grant',
   };
+
+  /// The entity's `@TomTenantOwned`, or `null` when it is not tenant-owned.
+  static TomTenantOwned? findTenantOwnership(Type dbType) {
+    if (_tenantOwnedCache.containsKey(dbType)) {
+      return _tenantOwnedCache[dbType];
+    }
+    final mirror = findMirror(dbType);
+    final found = mirror?.metadata.whereType<TomTenantOwned>().firstOrNull;
+    _tenantOwnedCache[dbType] = found;
+    return found;
+  }
 
   /// Returns the row-level data scope of [dbType], or `null` when the entity is
   /// unscoped.

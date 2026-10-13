@@ -16,6 +16,7 @@ row scope.
 - [Isolate Model](#isolate-model)
 - [Lifetime and Expiry](#lifetime-and-expiry)
 - [Revoking a Principal](#revoking-a-principal)
+  - [Revocation per tenant](#revocation-per-tenant)
 - [Grants, Grades and Delegations](#grants-grades-and-delegations)
 - [The Grant-Driven Row Scope](#the-grant-driven-row-scope)
   - [The grades are the design](#the-grades-are-the-design)
@@ -297,6 +298,30 @@ outlives the retention after a revocation is served with the grants it was
 issued with, so the retention must be at least the longest lifetime of a token
 the deployment issues. `TomSqlInvalidationChannel` keeps its log rows, and
 looks back on start-up, over the same span by default.
+
+### Revocation per tenant
+
+In a multi-tenant deployment (see [tenancy.md](tenancy.md)) two tenants may
+each have an account called `alice`, and they are two people. A revocation is
+therefore recorded under the **tenant-qualified** name —
+`TomTenantContext.qualify(username, tenant)`, which is `tenant:<id>/<name>`, or
+the bare name for an account of no tenant:
+
+- `TomCacheInvalidator.revokePrincipal('alice')` raised inside a tenant's
+  context revokes that tenant's `alice` only; raised outside every tenant it
+  revokes the `alice` of no tenant. Revoking a tenant's account from a
+  background task runs inside the tenant — `TomTenancy.runFor(tenant, …)`.
+- `TomAuthorizationCache.revokeLocally(username, at)` receives the name already
+  qualified, and drops the cached principals whose qualified name matches.
+- `TomAuthorizationCache.isRevoked(token)` qualifies the token's `username`
+  claim by its `tenant` claim before looking the revocation up, so a token is
+  compared against its own tenant's revocations only.
+- `revokedAt` is asked with the qualified name:
+  `TomAuthorizationCache.revokedAt(TomTenantContext.qualify('alice', 'acme'))`.
+
+SCIM deprovisioning revokes through `revokePrincipal` from inside the request
+that deprovisioned the account, so it revokes in the tenant that request
+resolved to.
 
 ## Grants, Grades and Delegations
 

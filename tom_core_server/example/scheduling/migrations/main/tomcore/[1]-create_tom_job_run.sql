@@ -8,9 +8,12 @@
 --
 -- Two things carry the design:
 --
---  * UNIQUE (job_name, scheduled_for) makes the scheduler's idempotence key —
---    one run per job per window — a database invariant rather than a
---    convention, so a duplicate window cannot exist even under a race.
+--  * UNIQUE (job_name, tenant, scheduled_for) makes the scheduler's
+--    idempotence key — one run per job per window, per tenant — a database
+--    invariant rather than a convention, so a duplicate window cannot exist
+--    even under a race. `tenant` is '' for a run of no tenant, not NULL: a
+--    unique key never treats two NULLs as equal. `job_name` is VARCHAR(150) so
+--    the key stays inside the 767-byte limit of older InnoDB row formats.
 --  * `seq` is an AUTO_INCREMENT surrogate that exists only to give the queue a
 --    stable insertion order, so two nodes scanning it see the same order. The
 --    run's own id remains the primary key, because that is what every claim,
@@ -34,7 +37,8 @@
 CREATE TABLE IF NOT EXISTS tom_job_run (
   seq           BIGINT       NOT NULL AUTO_INCREMENT,
   id            VARCHAR(191) NOT NULL,
-  job_name      VARCHAR(160) NOT NULL,
+  job_name      VARCHAR(150) NOT NULL,
+  tenant        VARCHAR(32)  NOT NULL DEFAULT '',
   scheduled_for DATETIME(6)  NOT NULL,
   run_at        DATETIME(6)  NOT NULL,
   state         VARCHAR(16)  NOT NULL,
@@ -48,7 +52,7 @@ CREATE TABLE IF NOT EXISTS tom_job_run (
   payload       LONGTEXT     NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_tom_job_run_seq (seq),
-  UNIQUE KEY uq_tom_job_run_window (job_name, scheduled_for),
+  UNIQUE KEY uq_tom_job_run_window (job_name, tenant, scheduled_for),
   KEY ix_tom_job_run_due (state, run_at),
   KEY ix_tom_job_run_lease (state, claimed_at)
 );

@@ -576,6 +576,16 @@ class TomCache {
     _last = null;
   }
 
+  /// [key] as the current tenant's entry: qualified by the tenant in context
+  /// (`TomTenantContext.qualify`), unchanged with none.
+  ///
+  /// Every entry point of the static API goes through it, so a tenant reads,
+  /// replaces and removes only its own entries — two tenants caching the same
+  /// key hold two entries. A value meant for every tenant is cached outside any
+  /// tenant's context.
+  static String _tenantKey(String key) =>
+      TomTenantContext.qualify(key, TomTenantContext.currentId);
+
   /// Reads the value of type [T] keyed by [key] from the cache named after [T].
   /// See [fromNameCache].
   static Future<T?> fromTypeCache<T>(String key) async {
@@ -607,6 +617,7 @@ class TomCache {
   /// the transport, which reports a *remote throw* as a throw but has nothing to
   /// say about a value that came back intact and then failed to convert.
   static Future<T?> fromNameCache<T>(String cacheName, String key) async {
+    key = _tenantKey(key);
     var cache = TomCacheManager.getCache(cacheName);
     if (cache != null) {
       TomCacheEntry? entry = cache.getEntry(key);
@@ -726,6 +737,7 @@ class TomCache {
     Object value, [
     DateTime? deletionTime,
   ]) async {
+    key = _tenantKey(key);
     var cache = TomCacheManager.getCache(cacheName);
     if (cache != null) {
       if (value is TomCacheEntry) {
@@ -776,6 +788,7 @@ class TomCache {
   /// isolate that is a second crossing. A forwarded removal carries the same
   /// answer back.
   static Future<bool> removeFromNameCache(String cacheName, String key) async {
+    key = _tenantKey(key);
     var cache = TomCacheManager.getCache(cacheName);
     if (cache != null) {
       return cache.removeEntry(key);

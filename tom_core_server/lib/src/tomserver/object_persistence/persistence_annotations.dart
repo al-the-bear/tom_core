@@ -140,6 +140,43 @@ class TomEntityId {
   const TomEntityId();
 }
 
+/// Marks an entity as owned by a tenant: every row carries its tenant in
+/// [field], and a repository reads and writes only the rows of the tenant in
+/// context (`TomTenantContext`).
+///
+/// It is independent of [TomDbScope] and is ANDed with it: an entity can be a
+/// tenant's *and* scoped to its owner or to a resource grant. Concretely:
+///
+/// - every read — `findAll`, `findById`, `count`, `findWhere`, the existence
+///   checks — carries `<field> = <tenant>` as a bound predicate;
+/// - every update and delete may touch only rows that predicate admits;
+/// - an insert whose [field] is unset is filled with the current tenant, and
+///   one naming another tenant is refused;
+/// - with no tenant in context, the entity is unreadable and unwritable.
+///
+/// The predicate applies in every isolation model. Where the tenant's rows live
+/// in a schema or a database of their own, it is a second wall rather than the
+/// only one — which is also what makes moving a tenant between models a data
+/// copy rather than a schema change.
+///
+/// ```dart
+/// @tomReflector
+/// @TomTenantOwned()
+/// @TomDbTable(datasource: 'main', table: 'invoice', primaryKeyFields: ['id'])
+/// class Invoice {
+///   @TomDbColumn(columnName: 'tenant_id')
+///   String? tenantId;
+///   // …
+/// }
+/// ```
+class TomTenantOwned {
+  /// Marks the entity tenant-owned, with its tenant in [field].
+  const TomTenantOwned({this.field = 'tenantId'});
+
+  /// The entity field holding the row's tenant id.
+  final String field;
+}
+
 /// Annotation declaring the **row-level data scope** of an entity (C-3).
 ///
 /// Applied to a `@tomReflector` entity, it restricts which rows the repository

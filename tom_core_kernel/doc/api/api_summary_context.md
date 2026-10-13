@@ -13,13 +13,18 @@ asynchronous call chains without explicit parameter passing.
   - [TomZoneValues](#tomzonevalues)
   - [TomContextEntry\<T\>](#tomcontextentryt)
   - [TomContextProviders](#tomcontextproviders)
+  - [TomTenantContext](#tomtenantcontext)
+  - [TomTenantException](#tomtenantexception)
+  - [TomTenantScopedCommand](#tomtenantscopedcommand)
+  - [TomTenantEvent](#tomtenantevent)
 - [Global Functions and Constants](#global-functions-and-constants)
   - [Constants](#constants)
   - [Functions](#functions)
 
 ## Overview
 
-Source: `lib/src/tombase/context/execution_context.dart`.
+Source: `lib/src/tombase/context/execution_context.dart`,
+`lib/src/tombase/context/tenant_context.dart`.
 
 The Context module uses Dart's Zone system to propagate contextual information
 across async boundaries. `TomExecutionContext` holds a map of named
@@ -33,6 +38,16 @@ providers that read common values (organization, application, process, locale)
 from the current zone's `TomPrincipal` with sensible defaults, and the global
 `tomExecutionContext` pre-wires them.
 
+`TomTenantContext` carries, in the same zone, the **tenant** a piece of work
+belongs to. A tenant is an isolation boundary — whose data a query may read,
+which database or schema a connection reaches, whose cache entries and queued
+jobs these are. It is not the **organization**, a business unit inside a tenant
+that `TomContextProviders.getOrganization` reads; the framework never infers one
+from the other. The server's request pipeline sets the tenant per request; work
+that leaves the request carries it explicitly — a job run records it and the
+scheduler runs the body back inside it through `TomTenantScopedCommand`, and an
+event-triggered job learns it from a `TomTenantEvent`.
+
 ## Class Hierarchy
 
 ```
@@ -43,6 +58,13 @@ TomZoneValues
 TomContextEntry<T>
 
 TomContextProviders
+
+TomTenantContext  (abstract final)
+TomException  (little_things)
+    └── TomTenantException
+TomCommand  (isolate_pooling)
+    └── TomTenantScopedCommand
+TomTenantEvent
 ```
 
 ## Classes
@@ -208,6 +230,100 @@ applies that precedence and answers `null` rather than a sentinel.
 | `getClientLanguage` | `static String getClientLanguage()` | Client language from the current principal, or `"en"`. |
 | `getClientCountry` | `static String getClientCountry()` | Client country from the current principal, or `"XX"`; often the stored value, since `TomLoginMessage.clientCountry` defaults to it. |
 | `getClientTimezone` | `static String getClientTimezone()` | Client timezone from the current principal, or `"utc"`. |
+
+### TomTenantContext
+
+The current tenant, held in the zone. All members are static.
+
+- **Extends:** none (abstract final — not instantiable)
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `idPattern` | `RegExp` | `^[a-z][a-z0-9_]{0,31}$` — a lower-case letter, then up to 31 lower-case letters, digits or underscores (final). Narrow on purpose: a tenant id names a schema or a database in the stronger isolation models, is part of cache keys and job windows, and is written into tokens, so it must be a safe identifier everywhere. |
+| `currentId` | `String?` | *(getter)* The tenant the current zone belongs to, or `null` when it belongs to none — a deployment without tenancy, a system task, an anonymous request that named no tenant. |
+| `isSet` | `bool` | *(getter)* Whether the current zone states a tenant (or states that it has none), as opposed to inheriting no statement at all. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `run` | `static R run<R>(String? tenantId, R Function() body)` | Runs `body` with `tenantId` as the current tenant; `null` runs it explicitly outside every tenant. Throws `tenancy.id.invalid` for an id that is not `idPattern`. |
+| `require` | `static String require(String what)` | The current tenant, or throws `tenancy.context.missing` naming `what` needed it. |
+| `validate` | `static void validate(String tenantId)` | Throws `tenancy.id.invalid` unless `tenantId` matches `idPattern`. |
+| `qualify` | `static String qualify(String name, [String? tenantId])` | `name` qualified by `tenantId` — `tenant:<id>/<name>` — or `name` itself when `tenantId` is `null`. The one spelling every tenant-scoped key uses (cache entries, revocations), so two tenants' `alice` never meet. |
+
+### TomTenantException
+
+A tenant identifier or context that cannot be used.
+
+| Key | Meaning |
+| --- | ------- |
+| `tenancy.id.invalid` | A tenant id is not a lower-case identifier of at most 32 characters. |
+| `tenancy.context.missing` | Tenant-owned work ran with no tenant in context. |
+
+- **Extends:** `TomException`
+
+#### Constructors
+
+```dart
+TomTenantException(String key, String defaultUserMessage, {Map<String, Object?>? parameters})
+```
+
+### TomTenantScopedCommand
+
+A `TomCommand` that runs `inner` inside `tenantId`'s context — wherever it
+executes, including a worker isolate the command is copied into, where the zone
+does not follow. The scheduler wraps the body of every run of a tenant in one.
+
+- **Extends:** `TomCommand`
+
+#### Constructors
+
+```dart
+TomTenantScopedCommand(String tenantId, TomCommand inner)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `tenantId` | `String` | The tenant the command runs for (final). |
+| `inner` | `TomCommand` | The work (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `execute` | `Future<Object?> execute()` | *(override)* Runs `inner.execute()` inside `TomTenantContext.run(tenantId, …)`. |
+
+### TomTenantEvent
+
+An event for an event-triggered job, carrying the tenant it was raised for. A
+stream listener runs in the zone it subscribed in, not the zone the event was
+added from, so a tenant cannot reach an event-triggered run through the zone.
+Adding a `TomTenantEvent` to the job's stream instead makes the run record the
+tenant, carry `payload`, and run its body inside the tenant.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomTenantEvent(String tenant, Object? payload)
+factory TomTenantEvent.inCurrentTenant(Object? payload)
+```
+
+`inCurrentTenant` takes the current tenant, and throws `tenancy.context.missing`
+when there is none.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `tenant` | `String` | The tenant the run belongs to (final). |
+| `payload` | `Object?` | The run's payload (final). |
 
 ## Global Functions and Constants
 

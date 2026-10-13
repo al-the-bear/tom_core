@@ -98,6 +98,40 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
       expect((await store.findWindow('job', at))!.id, 'a');
     });
 
+    test(
+      'a tenant\'s run keeps its tenant, and its window is its own',
+      () async {
+        await store.enqueue(
+          TomJobRun(
+            id: 'acme',
+            jobName: 'job',
+            scheduledFor: at,
+            runAt: at,
+            tenant: 'acme',
+          ),
+        );
+        expect(await store.findWindow('job', at), isNull);
+        expect(await store.findWindow('job', at, tenant: 'globex'), isNull);
+        final found = await store.findWindow('job', at, tenant: 'acme');
+        expect(found!.tenant, 'acme');
+        await store.enqueue(
+          TomJobRun(
+            id: 'globex',
+            jobName: 'job',
+            scheduledFor: at,
+            runAt: at,
+            tenant: 'globex',
+          ),
+        );
+        expect((await reload('globex')).tenant, 'globex');
+        final claims = await store.claimDue(at, 'node', limit: 10);
+        expect(
+          {for (final claim in claims) claim.run.id: claim.run.tenant},
+          {'acme': 'acme', 'globex': 'globex'},
+        );
+      },
+    );
+
     test('enqueue rejects a payload that is not JSON-encodable', () async {
       await expectLater(
         store.enqueue(

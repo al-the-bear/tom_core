@@ -1008,7 +1008,16 @@ class TomPrincipal {
   /// The user's identity information.
   TomUser get user => _user;
 
-  /// The organization identifier for multi-tenant systems.
+  /// The tenant this principal belongs to — the isolation boundary its data,
+  /// caches and jobs live behind — or `null` in a deployment without tenancy.
+  ///
+  /// Not the [organization]: a tenant is whose data this is, an organization
+  /// a business unit inside it (see `TomTenantContext`). Carried in the token
+  /// as the `tenant` claim, which the server treats as authoritative.
+  String? tenant;
+
+  /// The organization — a business unit within the tenant — the principal
+  /// acts for.
   String? organization;
 
   /// The application identifier for multi-application deployments.
@@ -1102,6 +1111,7 @@ class TomPrincipal {
     bool requires2FA = false,
     String? twoFactorType,
     Map<String, Object?> context = const {},
+    this.tenant,
     this.organization,
     this.application,
     this.process,

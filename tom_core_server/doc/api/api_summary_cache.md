@@ -246,12 +246,18 @@ factory TomCache.forType(
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `fromTypeCache` | `static Future<T?> fromTypeCache<T>(String key)` | Reads the value of type `T` keyed by `key` from the cache named after `T`. |
+| `fromTypeCache` | `static Future<T?> fromTypeCache<T>(String key)` | Reads the value of type `T` keyed by `key` from the cache named after `T`. Like every static entry point, keys the current tenant's entry — see the note under this table. |
 | `fromNameCache` | `static Future<T?> fromNameCache<T>(String cacheName, String key)` | Reads the value keyed by `key` from cache `cacheName`; returns `null` on a miss or expiry, and an expired entry is removed in passing; throws `TomCacheException` on type mismatch or missing cache, and forwards from a worker isolate — with the same answers on the forwarded path as on the local one. |
 | `toTypeCache` | `static Future<bool> toTypeCache<T>(String key, Object value)` | Stores `value` under `key` in the cache named after `T`; answers whether the key was already held. |
 | `toNameCache` | `static Future<bool> toNameCache(String cacheName, String key, Object value, [DateTime? deletionTime])` | Stores `value` under `key` in cache `cacheName`, defaulting expiry from the cache's `deleteEntriesAfterSeconds`. **Answers whether the key was already held** — `true` for a replacement, `false` for an insert — a fact free at the write site, where a caller establishing it otherwise would have to read first (from a worker, a second crossing). It is about *this key*: an insert that pushes a bounded cache past its bound evicts a different key and still answers `false`. A forwarded store carries the same answer back.| a `value` that is already a `TomCacheEntry` is stored verbatim and keeps its own `deletionTime` instead, linked into the LRU chain like any other entry. `value` is non-nullable: a `null` is refused, being what a miss already answers. |
 | `removeFromTypeCache` | `static Future<bool> removeFromTypeCache<T>(String key)` | Removes the entry keyed by `key` from the cache named after `T`; answers whether there was one. |
 | `removeFromNameCache` | `static Future<bool> removeFromNameCache(String cacheName, String key)` | Removes the entry keyed by `key` from cache `cacheName`; forwards from a worker isolate, which carries the answer back. **Answers whether anything was removed.** Removing an absent key is still not an error — it is merely distinguishable now, where a caller wanting to know had to read first. |
+
+**Tenant-scoped keys.** Every static entry point qualifies `key` by the tenant in
+context before it touches the cache, through `TomTenantContext.qualify` —
+`tenant:<id>/<key>`, or `key` itself with no tenant — so a tenant reads, replaces and removes only its own entries, and
+two tenants caching one key hold two entries. A value meant for every tenant is
+cached outside any tenant's context. The instance methods take the key as given.
 
 #### Properties
 
@@ -474,8 +480,8 @@ Callable from any isolate: a worker forwards the call to the main isolate as a
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `install` | `static Future<void> install(TomInvalidationChannel channel)` | Installs `channel`, stops the one it replaces and starts the new one with `apply` as its delivery callback. Called once at start-up, before serving requests, so the revocations still in force reach this node before it answers anyone. |
-| `revokePrincipal` | `static Future<void> revokePrincipal(String username)` | Revokes, on every node, the tokens `username` holds that were issued now or earlier, and drops the principals cached for them. |
-| `invalidateCacheEntry` | `static Future<void> invalidateCacheEntry(String cacheName, String key)` | Removes `key` from the cache named `cacheName` on every node. |
+| `revokePrincipal` | `static Future<void> revokePrincipal(String username)` | Revokes, on every node, the tokens `username` holds that were issued now or earlier, and drops the principals cached for them. In a tenant's context, revokes that tenant's `username` only — the name travels qualified (`TomTenantContext.qualify`), because another tenant's account of the same name is a different person. |
+| `invalidateCacheEntry` | `static Future<void> invalidateCacheEntry(String cacheName, String key)` | Removes `key` from the cache named `cacheName` on every node — the current tenant's entry, in a tenant's context, qualified as `TomCache` keys it. |
 | `invalidateCache` | `static Future<void> invalidateCache(String cacheName)` | Empties the cache named `cacheName` on every node. |
 | `raise` | `static Future<void> raise(TomCacheInvalidation invalidation)` | Applies `invalidation` here, then publishes it — on the main isolate; a worker forwards it there. |
 | `apply` | `static Future<void> apply(TomCacheInvalidation invalidation)` | Applies `invalidation` to this process's caches, whichever node raised it: a principal through `TomAuthorizationCache.revokeLocally`, an entry through `TomCache.removeEntry`, a cache through `TomCache.clear`. A cache name nothing registered here is nothing to invalidate. |

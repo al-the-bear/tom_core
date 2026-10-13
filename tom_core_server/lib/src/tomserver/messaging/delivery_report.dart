@@ -175,6 +175,11 @@ class TomDeliveryCorrelation {
   /// The carrier's own words from that report.
   final String? detail;
 
+  /// The tenant the message was sent for, or `null` — so a report, which
+  /// arrives carrying nothing but the carrier's id, is attributed to its
+  /// tenant.
+  final String? tenant;
+
   /// Creates a correlation.
   TomDeliveryCorrelation({
     required this.remoteId,
@@ -184,6 +189,7 @@ class TomDeliveryCorrelation {
     this.state,
     this.reportedAt,
     this.detail,
+    this.tenant,
   });
 
   /// Whether a report has been recorded against this message.
@@ -199,6 +205,7 @@ class TomDeliveryCorrelation {
         state: report.state,
         reportedAt: report.at,
         detail: report.detail,
+        tenant: tenant,
       );
 
   @override

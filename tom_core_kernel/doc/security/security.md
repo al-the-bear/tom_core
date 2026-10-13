@@ -16,6 +16,7 @@ The security module provides a comprehensive authentication and authorization sy
     - [TomLoginFailure](#tomloginfailure)
   - [Identity](#identity)
     - [TomUser](#tomuser)
+    - [Tenant and Organization](#tenant-and-organization)
   - [Authorization](#authorization)
     - [TomClientLimitsInformation](#tomclientlimitsinformation)
   - [Access Control](#access-control)
@@ -379,7 +380,7 @@ one.
 is base64, readable by anyone holding the token and by anything with access to
 where it is stored, so `convertPrincipalToTokenPayload` puts only what
 identifies the session there — `username`, `id` (`userId`), `timezone`
-(`userTimezone`), the organization/application/process context, the locale and
+(`userTimezone`), the tenant, the organization/application/process context, the locale and
 the subscription and second-factor claims. First and last name, email, phone,
 mobile, both address lines, city, postcode, state/region and `attributes` go in
 the **private** half, beside the ACI. A reader that decrypts the authorization
@@ -408,6 +409,25 @@ protected field of every token the server issues.
 
 Runnable:
 [`example/samples/security/01_user_principal_example.dart`](../../example/samples/security/01_user_principal_example.dart).
+
+#### Tenant and Organization
+
+`TomPrincipal` carries two fields that read alike and mean different things, and
+nothing in the framework infers one from the other:
+
+| Field | What it is | Claim |
+| ----- | ---------- | ----- |
+| `tenant` | The **isolation boundary** the principal belongs to: whose data its queries read, which schema or database its connections reach, whose cache entries and jobs these are. `null` in a deployment without tenancy. | `tenant` |
+| `organization` | A **business unit inside the tenant** the principal acts for — what authorization and the execution context read. A tenant may have several. | `organization` |
+
+`TomBearerAuthentication` writes both into the token's public half and reads
+both back, independently. A server treats the `tenant` claim as authoritative:
+a request carrying a token is for that tenant, and one naming another tenant
+by its host or a header is refused. The tenant itself travels in the zone as
+`TomTenantContext.currentId` — see
+[the context module](../context/context.md#tenant-context) — and
+`tom_core_server`'s `tenancy` module resolves it per request and binds a login's
+token to it.
 
 ### Authorization
 

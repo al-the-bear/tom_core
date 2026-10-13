@@ -145,8 +145,8 @@ tick.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `ensureSchema` | `Future<void> ensureSchema()` | Creates the queue table if it does not exist. Idempotent, called by every operation, and exposed so a start-up sequence can provision the schema before serving traffic. |
-| `enqueue` | `Future<void> enqueue(TomJobRun run)` | *(override)* Writes the run with `REPLACE`, so re-planning a window overwrites it; the unique key on `(job_name, scheduled_for)` keeps one-run-per-window a database invariant. A payload that is not JSON-encodable is refused by `TomJobStore.encodePayload` while the bind map is built, so no statement is sent. |
-| `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor)` | *(override)* The run recorded for that job and window, or `null`. |
+| `enqueue` | `Future<void> enqueue(TomJobRun run)` | *(override)* Writes the run with `REPLACE`, so re-planning a window overwrites it; the unique key on `(job_name, tenant, scheduled_for)` keeps one-run-per-window — per tenant — a database invariant. A payload that is not JSON-encodable is refused by `TomJobStore.encodePayload` while the bind map is built, so no statement is sent. |
+| `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor, {String? tenant})` | *(override)* The run recorded for that job and window for `tenant` (`null` matching the stored `''` of a run of no tenant), or `null`. |
 | `lastWindow` | `Future<DateTime?> lastWindow(String jobName)` | *(override)* The greatest `scheduled_for` recorded for the job, as a UTC instant, or `null` when it has no runs. |
 | `claimDue` | `Future<List<TomJobClaim>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | *(override)* Scans pending runs due at `now` ordered by `seq`, applies `accept` in Dart, and issues one conditional compare-and-set per survivor; a candidate a peer claimed first is skipped. Returns a ticket per run actually won, at most `limit`. |
 | `release` | `Future<void> release(TomJobClaim claim)` | *(override)* Returns a claimed run to `pending` and clears its lease, fenced on the claim so a completion that raced the release wins. `claim_token` is left where it is — the next claim raises it, and a token that repeats is not a fence. |
@@ -179,6 +179,7 @@ TomJobRunRow()
 | -------- | ---- | ----------- |
 | `id` | `String` | The run's stable id, and the primary key every other statement addresses. |
 | `jobName` | `String` | The job this run belongs to. |
+| `tenant` | `String` | The run's tenant, or `''` for a run of no tenant — `''` rather than `NULL` because a unique key never treats two `NULL`s as equal. |
 | `scheduledFor` | `String` | The schedule window, as stored UTC text. |
 | `runAt` | `String` | When the run may next be attempted, as stored UTC text. |
 | `state` | `String` | The `TomJobRunState` name. |
@@ -417,7 +418,7 @@ TomSchedulerNodeRow()
 | -------- | --------- | ----------- |
 | `schedulerNodeFailedAfter` | `DateTime schedulerNodeFailedAfter({required TomSchedulerNode peer, required DateTime now, required DateTime lastSelfCheckin, Duration slack = defaultNodeFailureSlack})` | The instant after which `peer` counts as failed: its last check-in plus the greater of its own published interval and the asking node's lateness, plus `slack`. Pure, so the judgement is assertable without a database. |
 | `isSchedulerNodeFailed` | `bool isSchedulerNodeFailed({required TomSchedulerNode peer, required DateTime now, required DateTime lastSelfCheckin, Duration slack = defaultNodeFailureSlack})` | Whether `now` is past `schedulerNodeFailedAfter` for that peer. |
-| `jobRunTable` | `TomFrameworkTable jobRunTable(String table)` | The one declaration of the job queue table: `seq` as an auto-increment ordering surrogate, `id` as the key, the unique key on `(job_name, scheduled_for)`, and the `(state, run_at)` and `(state, claimed_at)` indexes the claim and recovery scans ride. |
+| `jobRunTable` | `TomFrameworkTable jobRunTable(String table)` | The one declaration of the job queue table: `seq` as an auto-increment ordering surrogate, `id` as the key, the `tenant` column (`VARCHAR(32)`, default `''`), the unique key on `(job_name, tenant, scheduled_for)`, and the `(state, run_at)` and `(state, claimed_at)` indexes the claim and recovery scans ride. |
 | `leaseTable` | `TomFrameworkTable leaseTable(String table)` | The one declaration of the lease table, keyed by `resource`, carrying the fencing `token` and the `version` write counter. |
 | `schedulerNodeTable` | `TomFrameworkTable schedulerNodeTable(String table)` | The one declaration of the roll-call table, keyed by `node_id`, with no index beyond its key because a cluster is read in full. |
 | `jobRunTableDdl` | `String jobRunTableDdl(String table)` | The `CREATE TABLE` statement for the job queue table, derived from `jobRunTable`. |

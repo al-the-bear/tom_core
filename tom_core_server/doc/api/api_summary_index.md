@@ -28,6 +28,7 @@ surface documented here.
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call. |
 | Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, per-request logging state, middleware, and the paths whose credentials belong to the endpoint. |
+| Tenancy | [api_summary_tenancy.md](api_summary_tenancy.md) | Multi-tenancy: the deployment's tenants, the three isolation models chosen per tenant, data-source routing, and the resolution of a request's tenant from its token, host or header. |
 | Transactions | [api_summary_transactions.md](api_summary_transactions.md) | Distributed transaction manager and participants. |
 
 ## Modules
@@ -325,6 +326,7 @@ surface documented here.
 | `TomFrameworkTable` | class | The single declaration of a table the framework itself owns. |
 | `TomFrameworkColumn` | class | One column of a framework-owned table. |
 | `TomFrameworkKey` | class | One index or unique constraint of a framework-owned table. |
+| `TomSchemaProvisioning` | class | Creates a store's tables at most once, however many first calls arrive together. |
 | `TomDatasourceInitException` | class | Init error (extends `TomServerException`). |
 | `MariadbDatasourceException` | class | MariaDB error (extends `TomServerException`). |
 | `MariadbPreparedStatementException` | class | Prepared-statement error. |
@@ -574,6 +576,7 @@ surface documented here.
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
 | `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomDbScope` / `TomReference` | class | Persistence annotations. |
+| `TomTenantOwned` | class | Marks an entity whose every row belongs to a tenant; the repository reads and writes only the current tenant's rows. |
 | `TomDartType` | class | Dart-type descriptor for persistence. |
 | `TomColumnInformation` | class | Column metadata. |
 | `TomRepository<T, K>` | abstract class | Repository contract. |
@@ -664,6 +667,19 @@ surface documented here.
 | `tomLoggingMiddleware` | function | Request-logging middleware. |
 | `tomRequestLogInfoMiddleware` | function | Seeds a new `TomRequestLogInfo` into every request's context. |
 | `noopHandler` | function | A handler returning a fixed status. |
+
+### Tenancy (`lib/src/tomserver/tenancy/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomTenancy` | class | The deployment's tenants, their routing and request resolution; installed once per process. |
+| `TomTenant` | class | One tenant: its id, name, isolation model, schema and data sources. |
+| `TomTenantIsolation` | enum | `shared`, `schema` or `database` — where a tenant's rows live. |
+| `TomTenancyException` | class | Tenancy configuration or unknown-tenant error (extends `TomServerException`). |
+| `TomTenantResolver` | abstract interface class | Reads a tenant id from a request without a token claim. |
+| `TomTenantHostResolver` | class | Names the tenant by an exact host or a subdomain. |
+| `TomTenantHeaderResolver` | class | Names the tenant by a header, `X-Tenant-Id` by default. |
+| `TomTenantResolution` | class | A request's tenant, none, or the rejection to answer it with. |
 
 ### Transactions (`lib/src/tomserver/transactions/`)
 
@@ -1194,6 +1210,7 @@ surface documented here.
 | `TomSchemaDivergence` | Database Migration |
 | `TomSchemaDivergenceKind` | Database Migration |
 | `TomSchemaModel` | Database Migration |
+| `TomSchemaProvisioning` | Datasources |
 | `TomSchemaTable` | Database Migration |
 | `TomScimAnd` | Authentication |
 | `TomScimApi` | Authentication |
@@ -1273,6 +1290,15 @@ surface documented here.
 | `TomTabularRow` | Export |
 | `TomTabularSection` | Export |
 | `TomTemplatedMessageService` | Messaging |
+| `TomTenancy` | Tenancy |
+| `TomTenancyException` | Tenancy |
+| `TomTenant` | Tenancy |
+| `TomTenantHeaderResolver` | Tenancy |
+| `TomTenantHostResolver` | Tenancy |
+| `TomTenantIsolation` | Tenancy |
+| `TomTenantOwned` | Object Persistence |
+| `TomTenantResolution` | Tenancy |
+| `TomTenantResolver` | Tenancy |
 | `TomTextLocale` | Resources |
 | `TomTotp2FAService` | Authentication |
 | `TomTotpSecretResolver` | Authentication |

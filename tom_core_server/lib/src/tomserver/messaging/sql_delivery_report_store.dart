@@ -74,7 +74,7 @@ class TomSqlDeliveryReportStore extends TomDeliveryReportStore {
   /// Whether to create the table on first use.
   final bool createSchema;
 
-  bool _schemaReady = false;
+  final TomSchemaProvisioning _schema = TomSchemaProvisioning();
 
   /// The table's single column declaration — see `delivery_report_sql.dart`.
   late final TomFrameworkTable _rows = deliveryReportTable(table);
@@ -92,19 +92,18 @@ class TomSqlDeliveryReportStore extends TomDeliveryReportStore {
     'state': ':state',
     'reported_at': ':reportedAt',
     'detail': ':detail',
+    'tenant': ':tenant',
   };
 
   /// Creates the correlation table if it does not exist.
   ///
   /// Idempotent and called automatically by every operation; exposed so a
   /// start-up sequence can provision the schema before serving traffic.
-  Future<void> ensureSchema() async {
-    if (_schemaReady) return;
+  Future<void> ensureSchema() => _schema.ensure(() async {
     if (createSchema) {
       await datasource.executeCommand(_rows.createTableDdl);
     }
-    _schemaReady = true;
-  }
+  });
 
   @override
   Future<void> remember(TomDeliveryCorrelation correlation) async {
@@ -181,6 +180,7 @@ class TomSqlDeliveryReportStore extends TomDeliveryReportStore {
     'state': row.state?.name,
     'reportedAt': row.reportedAt == null ? null : sqlInstant(row.reportedAt!),
     'detail': row.detail,
+    'tenant': row.tenant,
   };
 
   static TomDeliveryCorrelation _correlationOf(TomDeliveryReportRow row) =>
@@ -194,6 +194,7 @@ class TomSqlDeliveryReportStore extends TomDeliveryReportStore {
             ? null
             : parseSqlInstant(row.reportedAt!),
         detail: row.detail,
+        tenant: row.tenant,
       );
 }
 
@@ -237,4 +238,8 @@ class TomDeliveryReportRow {
   /// The carrier's own words from that report.
   @TomDbColumn(columnName: "detail")
   String? detail;
+
+  /// The message's tenant, or `null`.
+  @TomDbColumn(columnName: "tenant")
+  String? tenant;
 }

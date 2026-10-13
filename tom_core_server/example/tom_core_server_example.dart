@@ -68,6 +68,10 @@ const List<TourStop> tour = [
     'Versioned schema migrations and the plan a chain produces',
   ),
   TourStop(
+    'example/tenancy/tenancy_example.dart',
+    'Two tenants: resolution, token binding, caches, revocations, jobs, outbox',
+  ),
+  TourStop(
     'example/transactions/transactions_example.dart',
     'Local and XA transaction coordination',
   ),

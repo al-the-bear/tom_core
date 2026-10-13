@@ -617,6 +617,7 @@ TomJobRun({
   String? lastError,
   DateTime? completedAt,
   Object? payload,
+  String? tenant,
 })
 
 factory TomJobRun.fromJson(Map<String, Object?> map)
@@ -639,6 +640,7 @@ factory TomJobRun.fromJson(Map<String, Object?> map)
 | `lastError` | `String?` | The most recent failure text. |
 | `completedAt` | `DateTime?` | When the run reached a terminal state. |
 | `payload` | `Object?` | The trigger payload, for event-driven runs. Must be JSON-encodable — `enqueue` refuses anything else. |
+| `tenant` | `String?` | The tenant the run belongs to, or `null` for a run of no tenant. The scheduler runs the body inside it (`TomTenantContext`) and keeps each tenant's windows apart. Round-trips through `toJson` / `fromJson`. |
 | `isFinished` | `bool` | Whether `state` is terminal (getter). |
 
 #### Methods
@@ -721,7 +723,7 @@ re-reading the store.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `enqueue` | `Future<void> enqueue(TomJobRun run)` | Adds a run. Idempotence is the caller's job, via `findWindow`. Throws `schedule.job.payload` — **before** changing the queue — when `payload` is not JSON-encodable. |
-| `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor)` | The existing run for a window, if it was already planned. |
+| `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor, {String? tenant})` | The existing run for a window of `tenant` (`null` for runs of no tenant), if it was already planned. A window belongs to one tenant: the same instant for two tenants is two windows. |
 | `lastWindow` | `Future<DateTime?> lastWindow(String jobName)` | The most recent window planned for a job — where catch-up resumes from. |
 | `claimDue` | `Future<List<TomJobClaim>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | Atomically claims up to `limit` due runs for `owner`, returning one ticket per run won. |
 | `release` | `Future<void> release(TomJobClaim claim)` | Hands a claimed run back to `pending` **without** charging an attempt — the voluntary counterpart of `recoverAbandoned`, so lease contention cannot drain a retry budget. |

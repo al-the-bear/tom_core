@@ -212,7 +212,7 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
   /// How often [store] prunes expired rows.
   final Duration sweepInterval;
 
-  bool _schemaReady = false;
+  final TomSchemaProvisioning _schema = TomSchemaProvisioning();
   DateTime? _lastSweep;
 
   /// The table's single column declaration — see `oauth_state_sql.dart`.
@@ -244,13 +244,11 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
   ///
   /// Idempotent and called automatically by every operation; exposed so a
   /// start-up sequence can provision the schema before serving traffic.
-  Future<void> ensureSchema() async {
-    if (_schemaReady) return;
+  Future<void> ensureSchema() => _schema.ensure(() async {
     if (createSchema) {
       await datasource.executeCommand(_states.createTableDdl);
     }
-    _schemaReady = true;
-  }
+  });
 
   @override
   Future<void> store(TomOAuthAuthorizationState pending) async {

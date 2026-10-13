@@ -34,7 +34,10 @@ observable state, security, resources) and adds everything a service needs:
   **streaming blob storage** behind one contract, and relational **job
   scheduling** for a cluster that shares no filesystem;
 - server **configuration** (typed config + YAML resources), an isolate-backed
-  **cache**, **authentication/authorization** services, and **health** endpoints.
+  **cache**, **authentication/authorization** services, and **health** endpoints;
+- first-class **multi-tenancy** — each tenant's data in a shared table, a schema
+  of its own or a database of its own, chosen per tenant, with repositories,
+  caches, revocations, jobs and the outbox kept apart by the tenant in context.
 
 Because the barrel re-exports the kernel, a server app depends only on
 `tom_core_server` — one import gives both the kernel API and the server stack.
@@ -102,7 +105,7 @@ abstract, so other backends can be added.
 | `TomSchemaConvergenceCheck` / `TomSchemaModel` / `TomEntitySchemaReader` / `TomSchemaDivergence` | Checks that the entities, the migrations and the live database still describe the same schema, and names each divergence |
 | `TomTransactionManager` / `TomTransaction` / `TomTransactionParticipant` | Local/XA transaction coordination |
 
-### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `audit`, `messaging`, `resources`, `export`, `file_storage`, `scheduling`, `preferences`, `healthcheck`, `cmdline`, `little_things`)
+### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `tenancy`, `audit`, `messaging`, `resources`, `export`, `file_storage`, `scheduling`, `preferences`, `healthcheck`, `cmdline`, `little_things`)
 
 | Module | Key types | What it does |
 | ------ | --------- | ------------ |
@@ -110,6 +113,7 @@ abstract, so other backends can be added.
 | `cache` | `TomCache`, `TomCacheManager` | Isolate-backed server-side cache |
 | `authentication` | `TomAuthenticationService`, `TomAuthenticationData`, `TomAuthenticationAdaptor`, `Tom2FAAdaptor`, `Tom2FAService`, `Tom2FARegistry`, `TomTotp2FAService`, `TomServerSelfLogin`, `TomOAuthAuthenticationService`, `TomOAuthFlow`, `TomOAuthProviders`, `TomSamlProviders`, `TomSamlFlow`, `TomExternalRoleMapping`, `TomExternalIdentityStore`, `TomScimService`, `TomScimProvisioning`, `TomScimIdentityDirectory`, `TomJwtSigning`, `TomJwksService` | Authentication service and adaptor annotations; tokens signed RS256 (default), ES256 or HS256 from configured key files, verified by key id through a rotation, and published as a JSON Web Key Set at `/.well-known/jwks.json`; second-factor challenges behind one service contract, with a TOTP implementation and a registry that picks the factor per principal; a server's own login when it calls another service as itself; and external identity — an OAuth 2.0 / OIDC authorization-code + PKCE login written as *another implementation of the same service contract*, so it reaches the unchanged token and 2FA path instead of a second one; and enterprise single sign-on over OpenID Connect (endpoints read from the issuer's discovery document, nonce-bound `id_token`) or SAML 2.0 (signed responses verified against the identity provider's metadata), with group claims mapped onto roles on every login and just-in-time provisioning; and user provisioning over SCIM 2.0 — the `/scim/v2` endpoints Entra ID and Okta provision users and groups through, with deactivation and group changes revoking the sessions they affect on every node, and single sign-on resolving to the provisioned account |
 | `authorization` | `TomAuthorizationCache`, `TomResourceGrant`, `TomGradedAccessControlInformation`, `TomPrincipalResourceGrant`, `TomPrincipalDelegation`, `TomDelegationResolver`, `TomResourceDataScope` | Isolate-backed authorization cache; graded per-key grants that add the middle states the kernel's granted/denied list cannot express; per-principal-per-resource roles; delegation of those roles by explicit share, out-of-office window, or revocable hand-over; and the row scope that filters an entity's rows by those grants — `read` to list, `full` to write — with no application-side resolver |
+| `tenancy` | `TomTenancy`, `TomTenant`, `TomTenantIsolation`, `TomTenantHostResolver`, `TomTenantHeaderResolver` | Multi-tenancy. A **tenant** is an isolation boundary — not an organization, which is a business unit inside a tenant. Each tenant's data lives in the shared database, a schema of its own or a database of its own, chosen per tenant and reached through one data-source routing seam; a request's tenant is its token's `tenant` claim, or before login its host or a header; `@TomTenantOwned` entities are filtered and checked per tenant |
 | `audit` | `TomAuditTrail`, `TomAudited`, `TomAuditRecord`, `TomAuditSink`, `TomSqlAuditSink`, `TomAuditAnchor`, `TomAuditAnchorStore`, `TomAuditAnchorPublisher` | Attributable, tamper-evident trail written at the endpoint and repository chokepoints, stored in memory, in append-only files, or in a table whose write-once guarantee is the grant it is served with — and anchors, published outside the server, that turn a wholesale rewrite or a truncation from invisible into provable |
 | `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler |
 | `resources` | `TomTextLocale`, `TomLocalizedTextResources`, `TomResourceLocaleException` | Per-recipient text for a server that renders many languages at once: the locale is an argument rather than ambient state, bundles resolve along a fallback chain *per key* so a half-translated language serves what it has, and a missing key answers `null` instead of the key — right on a screen, unacceptable in a subject line |
@@ -193,6 +197,7 @@ there, or excluded with a stated reason.
 | [`example/preferences/`](example/preferences/) | The five-piece bootstrap a user preference needs — reflection, the datasource name, the bean, a principal-carrying zone and the migration — with a scalar and a `@tomReflector` object written and read back through the shipped service |
 | [`example/file_storage/`](example/file_storage/) | The one streaming blob contract, the key grammar, the infrastructure-free backends, configuration-driven selection, generated file-reference keys and the blob-backed export store |
 | [`example/scheduling/`](example/scheduling/) | The relational job queue and lease lock: the schema and why each constraint is load-bearing, the shipped migrations, the UTC instant encoding, and the cluster wiring. [`example/scheduling/cluster/`](example/scheduling/cluster/) adds the part that needs a database — two real nodes arbitrating over one MariaDB, asserted rather than narrated |
+| [`example/tenancy/`](example/tenancy/) | Two tenants in one deployment: request resolution by host, header and token, a login binding its token, and caches, revocations, jobs and the outbox kept apart |
 | [`example/healthcheck/`](example/healthcheck/) · [`example/cmdline/`](example/cmdline/) · [`example/little_things/`](example/little_things/) | Health, CLI, and exceptions |
 
 Run a single example, or all of them:

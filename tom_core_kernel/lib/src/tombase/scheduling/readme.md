@@ -10,6 +10,11 @@ dispatched, then completed or retried, and because the store outlives the
 process, a restart resumes rather than forgets. A lease lock keeps one window on
 one node when several are running.
 
+A run can belong to a **tenant** (`TomJobRun.tenant`): its body runs inside that
+tenant's `TomTenantContext` — in a worker isolate too — its window is its own,
+and `allowOverlap: false` serialises per job and tenant. An event-triggered job
+names the tenant through a `TomTenantEvent`.
+
 ## Key types
 
 | Type | Responsibility |
@@ -41,7 +46,7 @@ one node when several are running.
 | `TomJobStore` | Durable storage for job runs; the queue the scheduler works from. |
 | `TomMemoryJobStore` | Keeps everything in memory and nothing across restarts. For tests and single-shot processes. |
 | `TomFileJobStore` | Keeps the queue in a JSON file that survives a restart. Several stores over one file share one queue: every operation holds a file mutex and re-reads the file, so a claim is atomic between processes and isolates. |
-| `TomJobRun` | One attempt-carrying occurrence of a job: its window, attempt count, state and claim. |
+| `TomJobRun` | One attempt-carrying occurrence of a job: its window, attempt count, state, claim and tenant. |
 | `TomJobRunState` | The lifecycle of a single `TomJobRun`. |
 | `TomJobClaim` | A ticket proving one particular claim of a run was won — the fencing token a displaced node fails to present. |
 

@@ -20,6 +20,7 @@ implementation (`MariadbMigrationAdaptor`) is provided.
   - [Environment Tags](#environment-tags)
   - [The Tree Root Has to Be There](#the-tree-root-has-to-be-there)
 - [Running Migrations](#running-migrations)
+  - [Per-tenant migrations](#per-tenant-migrations)
 - [Adaptor Discovery](#adaptor-discovery)
 - [The MariaDB Adaptor](#the-mariadb-adaptor)
   - [The outcome row is written with bound parameters](#the-outcome-row-is-written-with-bound-parameters)
@@ -448,6 +449,32 @@ version 1. A migrator that carried the first schema's history into the second
 would read the second's version 1 as already applied and skip it silently. The
 MariaDB adaptor enforces the same invariant from its own side — see below.
 
+### Per-tenant migrations
+
+`migrateDatabases` looks each data source up through
+`TomDataSourceInfo.getDataSourceInfo`, which in a multi-tenant deployment
+routes to the current tenant's schema or database (see
+[tenancy.md](tenancy.md)). The same tree applied inside each tenant therefore
+lands in each tenant's place, and each keeps its own versioning table:
+
+```dart
+// The framework's own tables, once, outside any tenant.
+await TomDbMigrations.migrateDatabases('migrations/deployment');
+
+// The application's tenant tables, once per tenant.
+await TomTenancy.current!.forEachTenant(
+  (_) => TomDbMigrations.migrateDatabases('migrations/tenant'),
+);
+```
+
+Keep the two trees apart. The framework's tables (below) are deployment-wide —
+their stores are built over a data source once and never routed — so their
+migrations run once, outside every tenant; run inside each tenant they would
+create unused copies in every tenant's schema. A shared tenant's per-tenant run
+reaches the shared database, where the versioning table makes every run after
+the first a no-op. A tenant onboarded later is brought to the current version by
+the same call inside `TomTenancy.runFor`.
+
 ## Adaptor Discovery
 
 A migrator registers by annotating its class with
@@ -777,6 +804,15 @@ Table names stay per-instance constructor arguments, so the descriptor is a
 so two queues in one schema cannot collide.
 
 `frameworkOwnedTables()` returns them all at their default names.
+
+The set is the same in a multi-tenant deployment: these tables serve the whole
+deployment and are not created per tenant. Two of them carry the tenant as a
+column — `tom_job_run.tenant` (`VARCHAR(32) NOT NULL DEFAULT ''`, part of the
+unique window key `(job_name, tenant, scheduled_for)`) and
+`tom_delivery_report.tenant` (`VARCHAR(32) NULL`) — and their reference
+migrations, `example/scheduling/migrations/main/tomcore/[1]-create_tom_job_run.sql`
+and `example/messaging/migrations/main/tomcore/[1]-create_tom_delivery_report.sql`,
+declare them.
 
 ### The Four Places a Column Name Could Have Been Spelled
 

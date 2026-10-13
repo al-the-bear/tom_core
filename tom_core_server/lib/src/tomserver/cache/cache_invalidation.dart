@@ -216,12 +216,24 @@ abstract final class TomCacheInvalidator {
 
   /// Revokes, on every node, the tokens [username] holds that were issued now
   /// or earlier, and drops the principals cached for them.
-  static Future<void> revokePrincipal(String username) =>
-      _raise(TomCacheInvalidation.principal(username));
+  ///
+  /// In a tenant's context, revokes that tenant's [username] only: another
+  /// tenant's account of the same name is a different person.
+  static Future<void> revokePrincipal(String username) => _raise(
+    TomCacheInvalidation.principal(
+      TomTenantContext.qualify(username, TomTenantContext.currentId),
+    ),
+  );
 
-  /// Removes [key] from the cache named [cacheName] on every node.
+  /// Removes [key] from the cache named [cacheName] on every node — the
+  /// current tenant's entry, in a tenant's context, as `TomCache` keys it.
   static Future<void> invalidateCacheEntry(String cacheName, String key) =>
-      _raise(TomCacheInvalidation.cacheEntry(cacheName, key));
+      _raise(
+        TomCacheInvalidation.cacheEntry(
+          cacheName,
+          TomTenantContext.qualify(key, TomTenantContext.currentId),
+        ),
+      );
 
   /// Empties the cache named [cacheName] on every node.
   static Future<void> invalidateCache(String cacheName) =>

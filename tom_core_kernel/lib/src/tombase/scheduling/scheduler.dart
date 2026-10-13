@@ -48,6 +48,7 @@ import 'dart:math';
 
 import 'package:tom_basics/tom_basics.dart';
 
+import '../context/tenant_context.dart';
 import '../isolate_pooling/tom_worker.dart';
 import '../shutdown_cleanup/tom_shutdown_cleanup.dart';
 import 'job_definition.dart';
@@ -175,7 +176,7 @@ class TomScheduler implements TomClosable {
   /// future back out of the map to await it would be a race with the removal
   /// that ends it. A completer is written once, at dispatch, and completed once,
   /// after the run is finished and its entry gone.
-  final Map<String, ({String jobName, Future<void> finished})> _inFlight = {};
+  final Map<String, ({String overlap, Future<void> finished})> _inFlight = {};
 
   /// Bodies still executing after their attempt timed out: run id to the job
   /// and the heartbeat keeping the run's lease alive.
@@ -190,7 +191,7 @@ class TomScheduler implements TomClosable {
   /// the retry start a second body beside the first — the duplicate
   /// `allowOverlap: false` exists to prevent, produced by the one path certain
   /// to leave a body running.
-  final Map<String, ({String jobName, Timer heartbeat})> _overrunning = {};
+  final Map<String, ({String overlap, Timer heartbeat})> _overrunning = {};
 
   /// Coordination leases currently held, keyed by run id.
   ///
@@ -798,15 +799,19 @@ class TomScheduler implements TomClosable {
     return true;
   }
 
-  /// Enqueues a run for an event-triggered job, carrying [payload].
+  /// Enqueues a run for an event-triggered job, carrying [event] as its
+  /// payload — or, for a [TomTenantEvent], its payload and its tenant.
   ///
   /// Each event gets its own window keyed by arrival time, so two events in the
   /// same instant collapse into one run and a rapid source cannot flood the
-  /// queue with duplicates of the same moment.
-  Future<void> _enqueueEvent(TomJobDefinition job, Object? payload) async {
+  /// queue with duplicates of the same moment. The window is per tenant: two
+  /// tenants' events in the same instant are two runs.
+  Future<void> _enqueueEvent(TomJobDefinition job, Object? event) async {
     if (_closed) return;
+    final tenant = event is TomTenantEvent ? event.tenant : null;
+    final payload = event is TomTenantEvent ? event.payload : event;
     final now = clock();
-    if (await store.findWindow(job.name, now) != null) return;
+    if (await store.findWindow(job.name, now, tenant: tenant) != null) return;
     await store.enqueue(
       TomJobRun(
         id: _nextRunId(job.name),
@@ -814,6 +819,7 @@ class TomScheduler implements TomClosable {
         scheduledFor: now,
         runAt: now,
         payload: payload,
+        tenant: tenant,
       ),
     );
   }
@@ -828,8 +834,8 @@ class TomScheduler implements TomClosable {
   /// Claims every due run this scheduler is willing to take, and starts it.
   Future<void> _dispatchDue(DateTime now) async {
     final busy = {
-      for (final entry in _inFlight.values) entry.jobName,
-      for (final entry in _overrunning.values) entry.jobName,
+      for (final entry in _inFlight.values) entry.overlap,
+      for (final entry in _overrunning.values) entry.overlap,
     };
     final claimed = await store.claimDue(
       now,
@@ -848,7 +854,7 @@ class TomScheduler implements TomClosable {
         // non-overlapping job arrive in the same pass — a catch-up run and the
         // window it was late for, say — and a predicate that only consulted the
         // set as it stood before the claim would accept both.
-        return busy.add(run.jobName);
+        return busy.add(_overlapKey(run));
       },
     );
     for (final claim in claimed) {
@@ -865,7 +871,7 @@ class TomScheduler implements TomClosable {
         continue;
       }
       final attempt = Completer<void>();
-      _inFlight[run.id] = (jobName: run.jobName, finished: attempt.future);
+      _inFlight[run.id] = (overlap: _overlapKey(run), finished: attempt.future);
       // Not awaited: a tick starts runs, it does not wait them out. A slow job
       // must not hold up the next window of a fast one — and because the
       // periodic timer re-arms before calling `tick`, awaiting here would also
@@ -883,8 +889,18 @@ class TomScheduler implements TomClosable {
   /// reading of [TomJobDefinition.allowOverlap]. A job that allows overlap
   /// leases the individual run, so concurrent windows are fine but no single
   /// window is executed twice.
-  String _leaseResource(TomJobDefinition job, TomJobRun run) =>
-      job.allowOverlap ? TomOneShotResource.run(run.id) : 'job:${job.name}';
+  String _leaseResource(TomJobDefinition job, TomJobRun run) => job.allowOverlap
+      ? TomOneShotResource.run(run.id)
+      : 'job:${_overlapKey(run)}';
+
+  /// What [TomJobDefinition.allowOverlap] serialises on: the job, and for a
+  /// run of a tenant, the job *in that tenant*.
+  ///
+  /// The rule exists for a body that reads and rewrites the same rows, and two
+  /// tenants' runs never touch the same rows. Serialising across tenants would
+  /// only let one tenant's long run hold up every other tenant's.
+  static String _overlapKey(TomJobRun run) =>
+      run.tenant == null ? run.jobName : '${run.jobName}@${run.tenant}';
 
   /// Wins the coordination lease for [run], or reports why it could not.
   ///
@@ -949,7 +965,16 @@ class TomScheduler implements TomClosable {
     try {
       final TomCommand command;
       try {
-        command = job.body(run);
+        // A run of a tenant is built and executed inside that tenant: the
+        // factory runs in its zone, and the command carries it — across an
+        // isolate hop too, where the zone does not follow.
+        final tenant = run.tenant;
+        command = tenant == null
+            ? job.body(run)
+            : TomTenantScopedCommand(
+                tenant,
+                TomTenantContext.run(tenant, () => job.body(run)),
+              );
       } catch (error, stack) {
         // A body factory that throws is a permanent defect, not a transient
         // failure — retrying it just fails identically. Fail the run outright.
@@ -1012,7 +1037,7 @@ class TomScheduler implements TomClosable {
     Future<Object?> body,
     Timer heartbeat,
   ) {
-    _overrunning[run.id] = (jobName: run.jobName, heartbeat: heartbeat);
+    _overrunning[run.id] = (overlap: _overlapKey(run), heartbeat: heartbeat);
     unawaited(
       body
           .then<void>((_) {}, onError: (Object _, StackTrace _) {})

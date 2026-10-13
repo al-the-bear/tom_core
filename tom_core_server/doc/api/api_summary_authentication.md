@@ -1895,6 +1895,12 @@ selected via the static globals; the issued tokens' issuer, audience and
 signing key are `TomJwtSigning.current`'s, and a verify-only server refuses to
 issue with `jwt.keys.verify_only`.
 
+Every issued token is bound to the tenant the login runs in: the principal's
+`tenant` is set to `TomTenantContext.currentId` before the tokens are minted, so
+they carry it as the `tenant` claim, and a principal the authentication service
+already placed in another tenant is refused with `login.error.tenant-mismatch`
+(`TomLoginFailure.accountProblem`).
+
 #### Static Properties
 
 | Property | Type | Description |
@@ -1951,7 +1957,7 @@ const TomServiceCredential({
 | `loginUri` | `Uri` | Absolute URI of the auth server's login endpoint. |
 | `username` | `String` | The service account's login name. |
 | `credential` | `String` | The service account's secret. Never logged, never serialised anywhere but into the login request body. |
-| `organization` | `String` | Multi-tenant context presented with the login; empty when single-tenant. |
+| `organization` | `String` | The organization — a business unit within the tenant — presented with the login; empty when the deployment has none. |
 | `application` | `String` | The application the deployment logs into. |
 | `process` | `String` | The process (sub-context of `application`) the deployment logs into. |
 | `client` | `String` | The client identifier the login originates from. |

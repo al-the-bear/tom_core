@@ -230,6 +230,9 @@ class TomMessageOutbox implements TomClosable {
   /// same moment are one moment) and catastrophic for an outbox (two messages
   /// composed in the same microsecond are two messages). Owning the enqueue
   /// keeps the idempotence key the message id, where it belongs.
+  ///
+  /// The message is queued for the tenant in context, and delivered inside it:
+  /// a transport choosing a per-tenant sending identity reads it from there.
   Future<void> send(TomMessage message) async {
     _requireOpen();
     final now = _clock();
@@ -240,6 +243,7 @@ class TomMessageOutbox implements TomClosable {
         scheduledFor: now,
         runAt: now,
         payload: message.toJson(),
+        tenant: TomTenantContext.currentId,
       ),
     );
   }
@@ -301,7 +305,11 @@ class TomMessageOutbox implements TomClosable {
   /// recording the send — carriers are fast and some post the first status
   /// within the second — and an index written afterwards would have a window in
   /// which the report is unmatchable.
+  ///
+  /// Both name the tenant the message was sent for: the delivery body runs in
+  /// it, because the run carries it.
   Future<void> _report(TomDeliveryReceipt receipt, TomMessage message) async {
+    final tenant = TomTenantContext.currentId;
     final index = reportStore;
     if (index != null && receipt.remoteId != null) {
       await index.remember(
@@ -310,10 +318,11 @@ class TomMessageOutbox implements TomClosable {
           messageId: receipt.messageId,
           channel: message.channel,
           sentAt: receipt.at,
+          tenant: tenant,
         ),
       );
     }
-    if (!_receipts.isClosed) _receipts.add(receipt);
+    if (!_receipts.isClosed) _receipts.add(receipt.forTenant(tenant));
   }
 
   void _requireOpen() {

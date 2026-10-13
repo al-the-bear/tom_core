@@ -215,8 +215,9 @@ the schema and the application's database user may not run DDL.
 
 Three constraints carry the design:
 
-- **`UNIQUE (job_name, scheduled_for)`** makes the scheduler's idempotence key —
-  one run per job per window — a database invariant rather than a convention.
+- **`UNIQUE (job_name, tenant, scheduled_for)`** makes the scheduler's
+  idempotence key — one run per job per window, per tenant — a database
+  invariant rather than a convention. `tenant` is `''` for a run of no tenant.
 - **`tom_lease.version`**, incremented on every write, exists because MariaDB
   reports *changed* rows, not matched rows. Without it a renewal landing in the
   same clock instant with the same TTL would report zero affected rows, look

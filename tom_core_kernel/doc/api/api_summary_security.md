@@ -526,6 +526,7 @@ TomPrincipal({
   bool requires2FA = false,
   String? twoFactorType,
   Map<String, Object?> context = const {},
+  String? tenant,
   String? organization,
   String? application,
   String? process,
@@ -550,7 +551,8 @@ TomPrincipal({
 | `id` | `int` | The user's unique identifier (from [user]). |
 | `username` | `String` | The user's login name (from [user]). |
 | `user` | `TomUser` | The user's identity information. |
-| `organization` | `String?` | The organization identifier for multi-tenant systems. |
+| `tenant` | `String?` | The tenant this principal belongs to — the isolation boundary its data, caches and jobs live behind — or `null` in a deployment without tenancy. Not the `organization`: a tenant is whose data this is, an organization a business unit inside it (see `TomTenantContext`). Carried in the token as the `tenant` claim, which the server treats as authoritative. |
+| `organization` | `String?` | The organization — a business unit within the tenant — the principal acts for. |
 | `application` | `String?` | The application identifier for multi-application deployments. |
 | `process` | `String?` | The process identifier within the application. |
 | `organizationId` | `int` | The organization's database ID. Defaults to `-1`, the "unset" value. These four ids are non-nullable where their string counterparts ([organization], [application], [process]) are nullable, so test for `-1` — not for `0`, and not for null. |
@@ -1160,7 +1162,7 @@ TomAuthenticationMessage()
 | `password` | `String` | The password for authentication. |
 | `application` | `String` | The application identifier for multi-application deployments. |
 | `process` | `String` | The process identifier within the application. |
-| `organization` | `String` | The organization identifier for multi-tenant deployments. |
+| `organization` | `String` | The organization — a business unit within the tenant — the login is for. Not the tenant, which the server resolves from the request. |
 | `clientLanguage` | `String` | The client's preferred language (ISO 639-1). Defaults to `"en"`. |
 | `clientCountry` | `String` | The client's country (ISO 3166-1 alpha-2). Defaults to `"XX"`, the "no country" code — not the empty string, so a country is always syntactically present. |
 | `clientTimezone` | `String` | The client's timezone identifier — what the *device* is set to, never a stored preference (that is server-side, applied after login). Defaults to `"utc"`. |
@@ -1230,7 +1232,7 @@ TomBearerAuthentication()
 | `replacePrincipalAci({required List<String> groups, required List<String> roles, required List<String> entitlements, required List<String> resourceKeys, required Map<String, String> resourceRoles})` | `void` | Refreshes the current principal's ACI without re-authentication. **Replaces** it: each collection becomes exactly what is passed, so a caller supplies the whole set rather than a delta. All five are required and named, which closes the two silent failures the shape otherwise invites — an omitted `resourceRoles` clearing every per-resource grant, and two identically typed lists swapped by position granting the wrong things. Clearing one is spelled `const []` / `const {}`. |
 | `replaceClientLimits({required List<String> enabledModules, required Map<String, int> quotas})` | `void` | Replaces the current principal's client limits with exactly what is passed — the sibling of `replacePrincipalAci`, for values already in hand (a server push). Does not re-mint the token. |
 | `refreshClientLimits()` | `Future<bool>` | Asks the installed [TomClientLimitsProvider] for the current principal's limits and replaces them with the answer. `false` when no provider is installed or it had no answer; a provider failure propagates to the caller. |
-| `convertPrincipalToTokenPayload(TomPrincipal principal, TomAccessControlDefinition? definition, String? clientCountry, String? clientLanguage, {Tom2FAChallenge? challenge, Map<String, Object?>? twoFactorVerification, bool twoFactorSatisfied = false})` | `(Map<String, Object?>, Map<String, Object?>)` | Converts a principal to the public and private JWT payloads. The **public** one — readable by any token holder — carries only what identifies the session: `username`, `userId`, `userTimezone`, the organization/application/process context and ids, `clientId`, locale, the subscription claims and the second-factor claims. The **private** (encrypted) one carries every personal field — names, email, phone, mobile, address, city, postcode, state/region, `attributes`, each redacted by `protectFor` against the subject's own `tom.user.<field>` keys — beside the context and the ACI. The two second-factor parameters are **not** independent — a `challenge` decides both. Supplying one projects its claims, which include `requires2FA: "true"` unconditionally: `twoFactorSatisfied` is consulted only when there is *no* challenge, so `(challenge: c, twoFactorSatisfied: true)` still yields an interim token. That is the fail-safe direction — forgetting a parameter produces an unusable token, never an over-privileged one. `twoFactorVerification` is written into the private payload **only alongside a `challenge`**, and is silently dropped without one, so a mechanism secret cannot outlive the challenge it was minted for. With no challenge, `requires2FA` is `"true"` exactly when the principal owes a factor and `twoFactorSatisfied` is `false`. |
+| `convertPrincipalToTokenPayload(TomPrincipal principal, TomAccessControlDefinition? definition, String? clientCountry, String? clientLanguage, {Tom2FAChallenge? challenge, Map<String, Object?>? twoFactorVerification, bool twoFactorSatisfied = false})` | `(Map<String, Object?>, Map<String, Object?>)` | Converts a principal to the public and private JWT payloads. The **public** one — readable by any token holder — carries only what identifies the session: `username`, `userId`, `userTimezone`, the `tenant`, the organization/application/process context and ids, `clientId`, locale, the subscription claims and the second-factor claims. The **private** (encrypted) one carries every personal field — names, email, phone, mobile, address, city, postcode, state/region, `attributes`, each redacted by `protectFor` against the subject's own `tom.user.<field>` keys — beside the context and the ACI. The two second-factor parameters are **not** independent — a `challenge` decides both. Supplying one projects its claims, which include `requires2FA: "true"` unconditionally: `twoFactorSatisfied` is consulted only when there is *no* challenge, so `(challenge: c, twoFactorSatisfied: true)` still yields an interim token. That is the fail-safe direction — forgetting a parameter produces an unusable token, never an over-privileged one. `twoFactorVerification` is written into the private payload **only alongside a `challenge`**, and is silently dropped without one, so a mechanism secret cannot outlive the challenge it was minted for. With no challenge, `requires2FA` is `"true"` exactly when the principal owes a factor and `twoFactorSatisfied` is `false`. |
 
 ### TomTokenLifetimeException
 

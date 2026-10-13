@@ -18,6 +18,7 @@ column-level access rights (C-4).
     - [TomDbColumn](#tomdbcolumn)
     - [TomEntityId](#tomentityid)
     - [TomDbScope](#tomdbscope)
+    - [TomTenantOwned](#tomtenantowned)
     - [TomReference&lt;TARGET, K, REPO&gt;](#tomreferencetarget-k-repo)
     - [TomColumnInformation](#tomcolumninformation)
   - [Repositories](#repositories)
@@ -294,6 +295,40 @@ resolver would deny itself its own input.
 | `scope` | `String` | The scope kind — a key into `TomDataScopeRegistry` selecting the resolver (default `'owner'`). |
 | `isOptOut` | `bool` | *(getter)* Whether this is the explicit opt-out (`scope == noScope`) rather than a scope declaration. `findDataScope` returns `null` for such an annotation. |
 
+#### TomTenantOwned
+
+Annotation marking an entity as owned by a tenant: every row carries its tenant
+in `field`, and a repository reads and writes only the rows of the tenant in
+context (the kernel's `TomTenantContext`). It is independent of `TomDbScope` and
+is ANDed with it, so an entity can be a tenant's *and* scoped to its owner or to
+a resource grant.
+
+- every read — `findAll`, `findById`, `count`, `findWhere`, the existence checks
+  — carries `<field> = <tenant>` as a bound predicate (parameters prefixed
+  `TomSqlDatasourceRepository.tenantParameterPrefix`);
+- every update and delete may touch only rows that predicate admits;
+- an insert whose `field` is unset is filled with the current tenant, and one
+  naming another tenant is refused with `data_scope.write.foreign_tenant`;
+- with no tenant in context the entity is unreadable, and every write is refused
+  with `data_scope.write.no_tenant`.
+
+The predicate applies in every isolation model of the `tenancy` module. Where a
+tenant's rows live in a schema or a database of their own it is a second wall
+rather than the only one — which is what makes moving a tenant between models a
+copy of its rows rather than a schema change.
+
+##### Constructors
+
+```dart
+const TomTenantOwned({String field = 'tenantId'})
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `field` | `String` | The entity field holding the row's tenant id (default `'tenantId'`). |
+
 #### TomReference&lt;TARGET, K, REPO&gt;
 
 Annotation describing a reference (association) from one entity to another,
@@ -503,13 +538,19 @@ TomSqlDatasourceRepository([List<Type>? queryTypes, Type? resultType])
 | `buildInsertStatement` | `static (String, List<String>) buildInsertStatement(String table, List<TomColumnInformation> columns)` | Builds the `INSERT` SQL and its ordered bind-parameter names. |
 | `buildUpdateStatement` | `static (String, List<String>) buildUpdateStatement(String table, List<TomColumnInformation> columns, List<TomColumnInformation> primaryKey)` | Builds the `UPDATE ... SET ... WHERE pk = :pk` SQL — every key column ANDed — and its ordered bind names. |
 
+##### Static Constants
+
+| Constant | Type | Value | Description |
+| -------- | ---- | ----- | ----------- |
+| `tenantParameterPrefix` | `String` | `'__tomtenant_'` | The parameter prefix of the `@TomTenantOwned` predicate, apart from the data scope's, so the two bind in one statement. |
+
 ##### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `primaryKeyColumns` | `List<TomColumnInformation>` | Resolved metadata for the primary-key columns, in `primaryKeyFields` order. |
 | `hasCompositeKey` | `bool` | *(getter)* Whether the key spans more than one field, making `K` a `TomCompositeKey`. |
-| `datasourceInfo` | `TomDataSourceInfo` | The resolved data source this repository runs against. |
+| `datasourceInfo` | `TomDataSourceInfo` | *(getter)* The data source this repository runs against: the registered one, or — in a multi-tenant deployment — the current tenant's schema or database (`TomDataSourceInfo.route`). Resolved on every access, so one repository serves every tenant; prepared statements are cached per data source, so a statement prepared on one tenant's database is never executed against another's. |
 | `persistenceInfo` | `TomTypePersistenceInfo` | The resolved persistence metadata of the entity. |
 | `dbTable` | `TomDbTable` | The table the entity maps to. |
 | `sqlDialect` | `TomStandardSqlDialect` | *(getter)* The SQL dialect used to render queries; defaults to the data source's dialect. |
@@ -1361,7 +1402,7 @@ static.
 
 Resolves the persistence metadata of an entity type from its reflection
 annotations. A mixin whose members are all static; every lookup is memoised in
-one of the six per-type caches below.
+one of the seven per-type caches below.
 
 Three of its members are not lookups but *policy*: `resourceKeyColumn`,
 `resourceKeyField` and `resourceScopeInputTables` are what make grant-driven
@@ -1375,6 +1416,7 @@ scoping the default rather than an annotation anyone has to remember — see
 | `analysePersistentType` | `static TomTypePersistenceInfo analysePersistentType(Type T)` | Resolves the full persistence metadata (table + columns) for entity `T`. Throws `TomAnnotationAnalyzerException` when the type is not reflectable or has no `@TomDbTable`, and lets its lookups' `TomAnnotationAnalyzerSyntaxException` through unchanged. |
 | `findMirror` | `static ClassMirror? findMirror(Type dbType)` | The cached/looked-up `ClassMirror` for `dbType`, or `null` when — and only when — `dbType` is not registered with `tomReflector`. Every other reflection failure is thrown as `TomAnnotationAnalyzerException`; see *Reflection failures*. |
 | `findTable` | `static TomDbTable? findTable(Type dbType)` | The `@TomDbTable` annotation on `dbType`, or `null` if absent. |
+| `findTenantOwnership` | `static TomTenantOwned? findTenantOwnership(Type dbType)` | The entity's `@TomTenantOwned`, or `null` when it is not tenant-owned. Memoised, `null` included, and cleared by `reset`. |
 | `findDataScope` | `static TomDbScope? findDataScope(Type dbType)` | The row scope of `dbType`, or `null` when unscoped. An explicit `@TomDbScope` wins — including `@TomDbScope.unscoped()`, for which this returns `null`; failing that, `autoScopeFor` decides. |
 | `autoScopeFor` | `static TomDbScope? autoScopeFor(List<TomColumnInformation> columns)` | The scope an entity with these `columns` carries *implicitly* — a `TomDbScope(field: …, scope: resourceScope)` when one column is a resource key, `null` otherwise. `null` whenever any column names a `resourceScopeInputTables` table, which is decided for the whole list before the resource key is looked for. |
 | `findAuthColumns` | `static List<TomColumnInformation> findAuthColumns(Type dbType)` | The columns of `dbType` that opt into column-level access rights (C-4), or empty. |
@@ -1385,7 +1427,7 @@ scoping the default rather than an annotation anyone has to remember — see
 | `getPersistentColumns` | `static List<TomColumnInformation>? getPersistentColumns(Type dbType)` | The persistence metadata for every annotated field, or `null` if not reflectable. Throws `TomAnnotationAnalyzerSyntaxException`. The list is unmodifiable and shared with every other caller for the same entity; a caller wanting one of its own copies it. |
 | `determineColumn` | `static TomColumnInformation determineColumn(String name, List<TomTypePersistenceInfo> persistenceInfo)` | Finds the `TomColumnInformation` matching `name`. Throws `TomAnnotationAnalyzerSyntaxException` when nothing matches. |
 | `referenceQuery` | `static ({String sentence, Map<String, Object?> parameters}) referenceQuery(TomReference reference, Type owningType, Object? Function(String field) readOwningField)` | The `FIND BY` sentence resolving a `@TomReference` for one mapped row, and the parameters it binds. Throws `TomAnnotationAnalyzerSyntaxException` for a malformed expression, `TomAnnotationAnalyzerException` for a context value the zone cannot supply. |
-| `reset` | `static void reset()` | Discards every memoised resolution, so the next lookup of any entity re-reads its reflection metadata. All six memos together — see *Memoisation*. |
+| `reset` | `static void reset()` | Discards every memoised resolution, so the next lookup of any entity re-reads its reflection metadata. All seven memos together — see *Memoisation*. |
 
 ##### Static Constants
 
@@ -1420,8 +1462,8 @@ on where the resource key sits in the list.
 
 ##### Memoisation
 
-Each of the six resolutions above — mirror, table, columns, row scope,
-column-authorized columns, file columns — is computed once per entity type and
+Each of the seven resolutions above — mirror, table, columns, row scope,
+tenant ownership, column-authorized columns, file columns — is computed once per entity type and
 kept in a private `static final` map. The memos are not part of the API: there
 is no way to read, seed or replace one, and `reset()` is the only way to clear
 them.
@@ -1434,14 +1476,14 @@ the memos completes what `TomColumnInformation`'s `final` fields and the
 unmodifiable column lists start: two resolutions of one entity cannot be made
 to disagree. `test/persistence_metadata_sharing_test.dart` pins it.
 
-`reset()` clears all six or none. They are derived from one another — the
-columns come from the mirror, the row scope and the two column subsets come
-from the columns — so emptying a subset would leave the rest describing an
+`reset()` clears all seven or none. They are derived from one another — the
+columns come from the mirror, the row scope, the tenant ownership and the two
+column subsets come from the columns — so emptying a subset would leave the rest describing an
 entity that no longer exists. A server never calls it: an entity's annotations
 are fixed for the run. A test does, when it re-registers a fixture type it has
 already analysed under a different mapping and would otherwise read the first
 answer back. The same test file asserts `reset()` reaches every memo the mixin
-declares, so a seventh added later cannot quietly survive the reset.
+declares, so an eighth added later cannot quietly survive the reset.
 
 ##### Reflection failures
 

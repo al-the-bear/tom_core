@@ -164,6 +164,13 @@ class TomJobRun {
   /// Restricted to a JSON-encodable value so a durable store can round-trip it.
   final Object? payload;
 
+  /// The tenant the run belongs to, or `null` for a run of no tenant.
+  ///
+  /// The scheduler runs the body inside this tenant's context
+  /// (`TomTenantContext`), and keeps each tenant's windows apart: two tenants'
+  /// events arriving in the same instant are two runs, not one.
+  final String? tenant;
+
   /// Creates a run record.
   TomJobRun({
     required this.id,
@@ -179,6 +186,7 @@ class TomJobRun {
     this.lastError,
     this.completedAt,
     this.payload,
+    this.tenant,
   });
 
   /// Whether this run has reached a terminal state.
@@ -204,6 +212,7 @@ class TomJobRun {
     'lastError': lastError,
     'completedAt': completedAt?.toIso8601String(),
     'payload': payload,
+    'tenant': tenant,
   };
 
   /// Decodes a map produced by [toJson].
@@ -232,6 +241,7 @@ class TomJobRun {
     lastError: map['lastError'] as String?,
     completedAt: _parseOrNull(map['completedAt']),
     payload: map['payload'],
+    tenant: map['tenant'] as String?,
   );
 
   static DateTime? _parseOrNull(Object? value) =>
@@ -431,11 +441,17 @@ abstract class TomJobStore {
   /// [encodePayload].
   Future<void> enqueue(TomJobRun run);
 
-  /// The run already recorded for [jobName] at [scheduledFor], or `null`.
+  /// The run already recorded for [jobName] at [scheduledFor] for [tenant]
+  /// (`null` for runs of no tenant), or `null`.
   ///
   /// This is what makes enqueueing idempotent, and therefore what makes a tick
-  /// safe to replay after a crash.
-  Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor);
+  /// safe to replay after a crash. A window belongs to one tenant: the same
+  /// instant for two tenants is two windows.
+  Future<TomJobRun?> findWindow(
+    String jobName,
+    DateTime scheduledFor, {
+    String? tenant,
+  });
 
   /// The latest window ever enqueued for [jobName], or `null` if the job has no
   /// history in this store.
@@ -609,9 +625,14 @@ class TomMemoryJobStore implements TomJobStore {
   }
 
   @override
-  Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor) async {
+  Future<TomJobRun?> findWindow(
+    String jobName,
+    DateTime scheduledFor, {
+    String? tenant,
+  }) async {
     for (final run in _runs.values) {
       if (run.jobName == jobName &&
+          run.tenant == tenant &&
           run.scheduledFor.isAtSameMomentAs(scheduledFor)) {
         return run;
       }
@@ -926,8 +947,13 @@ class TomFileJobStore extends TomMemoryJobStore {
   Future<void> enqueue(TomJobRun run) => _exclusively(() => super.enqueue(run));
 
   @override
-  Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor) =>
-      _exclusively(() => super.findWindow(jobName, scheduledFor));
+  Future<TomJobRun?> findWindow(
+    String jobName,
+    DateTime scheduledFor, {
+    String? tenant,
+  }) => _exclusively(
+    () => super.findWindow(jobName, scheduledFor, tenant: tenant),
+  );
 
   @override
   Future<DateTime?> lastWindow(String jobName) =>

@@ -45,18 +45,20 @@
 -- The job queue.
 -- ---------------------------------------------------------------------------
 -- `uq_tom_job_run_window` is the load-bearing constraint: it makes "one run per
--- job per window" a database invariant rather than a convention, so two ops
--- nodes planning the same nightly purge cannot both succeed. This sample runs
--- one node — but the table it runs on is the clustered one, because a schema
--- that only works single-node is a schema you discover you have on the day you
--- add the second. `claim_token` is the other clustered column: it rises on every
--- claim of a run and never repeats, so a node whose lease expired cannot report
--- an outcome over the peer that re-claimed its work. Single-node it never
--- advances past 1, and it is here for the same reason the unique key is.
+-- job per window" — per tenant, `tenant` being '' for a run of none — a
+-- database invariant rather than a convention, so two ops nodes planning the
+-- same nightly purge cannot both succeed. This sample runs one node — but the
+-- table it runs on is the clustered one, because a schema that only works
+-- single-node is a schema you discover you have on the day you add the second.
+-- `claim_token` is the other clustered column: it rises on every claim of a run
+-- and never repeats, so a node whose lease expired cannot report an outcome
+-- over the peer that re-claimed its work. Single-node it never advances past 1,
+-- and it is here for the same reason the unique key is.
 CREATE TABLE IF NOT EXISTS tom_job_run (
   seq           BIGINT       NOT NULL AUTO_INCREMENT,
   id            VARCHAR(191) NOT NULL,
   job_name      VARCHAR(160) NOT NULL,
+  tenant        VARCHAR(32)  NOT NULL DEFAULT '',
   scheduled_for DATETIME(6)  NOT NULL,
   run_at        DATETIME(6)  NOT NULL,
   state         VARCHAR(16)  NOT NULL,
@@ -70,7 +72,7 @@ CREATE TABLE IF NOT EXISTS tom_job_run (
   payload       LONGTEXT     NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_tom_job_run_seq (seq),
-  UNIQUE KEY uq_tom_job_run_window (job_name, scheduled_for),
+  UNIQUE KEY uq_tom_job_run_window (job_name, tenant, scheduled_for),
   KEY ix_tom_job_run_due (state, run_at),
   KEY ix_tom_job_run_lease (state, claimed_at)
 );

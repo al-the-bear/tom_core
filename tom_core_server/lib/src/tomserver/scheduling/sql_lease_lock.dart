@@ -115,7 +115,7 @@ class TomSqlLeaseLock extends TomLeaseLock {
   /// The clock every expiry is computed against.
   final DateTime Function() clock;
 
-  bool _schemaReady = false;
+  final TomSchemaProvisioning _schema = TomSchemaProvisioning();
 
   /// The lease table's single column declaration — see `sql_scheduling_sql.dart`.
   late final TomFrameworkTable _leases = leaseTable(table);
@@ -140,13 +140,11 @@ class TomSqlLeaseLock extends TomLeaseLock {
   ///
   /// Idempotent and called automatically by every operation; exposed so a
   /// start-up sequence can provision the schema before serving traffic.
-  Future<void> ensureSchema() async {
-    if (_schemaReady) return;
+  Future<void> ensureSchema() => _schema.ensure(() async {
     if (createSchema) {
       await datasource.executeCommand(_leases.createTableDdl);
     }
-    _schemaReady = true;
-  }
+  });
 
   @override
   Future<TomLease?> acquire(String resource, String owner, Duration ttl) async {
