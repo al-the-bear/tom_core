@@ -89,7 +89,10 @@ import 'user_principal_aci.dart';
 ///
 /// Client context information helps the server customize the session:
 /// - [clientLanguage], [clientCountry], [clientTimezone]: Localization
-/// - [application], [process], [organization]: Multi-tenant context
+/// - [application], [process], [organization]: what the login is for — the
+///   application, the process within it, and the organization (a business unit
+///   inside the tenant) the user logs in for. The tenant is not part of the
+///   message: it is resolved from the request.
 ///
 /// ## Example
 ///
@@ -122,7 +125,8 @@ class TomAuthenticationMessage {
   /// The process identifier within the application.
   String process = "";
 
-  /// The organization identifier for multi-tenant deployments.
+  /// The organization the user logs in for — a business unit inside the tenant,
+  /// not the tenant itself, which is resolved from the request.
   String organization = "";
 
   /// The client's preferred language (ISO 639-1 code).

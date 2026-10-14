@@ -566,11 +566,11 @@ abstract class Tom2FAEnrolmentStore {
   /// "this user" means and a test written against one is meaningful for the
   /// other.
   ///
-  /// **The organization is deliberately not part of it.** [TomPrincipal.id] is
-  /// unique across the deployment rather than within a tenant, so it already
+  /// **Neither the organization nor the tenant is part of it.** [TomPrincipal.id]
+  /// is unique across the deployment rather than within a tenant, so it already
   /// names one person; adding the organization would split that person's
-  /// factors across the tenants they log into, so the same authenticator would
-  /// have to be enrolled once per organization. Every framework table that
+  /// factors across the organizations they log in for, so the same
+  /// authenticator would have to be enrolled once per organization. Every framework table that
   /// files rows per principal rests on the same premise and carries no tenant
   /// column — `tom_principal_resource_grant`, `tom_external_identity`, and this
   /// module's own `tom_user_two_factor_enrolment`, keyed

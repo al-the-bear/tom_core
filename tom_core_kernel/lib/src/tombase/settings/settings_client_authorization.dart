@@ -116,7 +116,7 @@ class TomGetSettingsMessage {
 ///   groups: ['staff'],
 ///   entitlements: ['read', 'write'],
 ///   resourceKeys: ['dashboard', 'reports'],
-///   organization: 'acme-corp',
+///   organization: 'sales',
 ///   clientLanguage: 'en',
 ///   clientCountry: 'US',
 /// );

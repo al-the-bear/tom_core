@@ -382,7 +382,7 @@ Future<void> main() async {
   final data = TomAuthenticationData(
     username: 'alice',
     key: 'secret',
-    organization: 'acme',
+    organization: 'sales',
     application: 'todo',
     process: 'login',
     language: 'en',

@@ -1307,7 +1307,7 @@ final authorization = await api.beginOAuthAuthorization(
     providerId: providers.first.id,
     client: 'flutter',
     application: 'web-portal',
-    organization: 'acme',
+    organization: 'sales',
     clientLanguage: 'en',
     clientCountry: 'US',
     clientTimezone: 'Europe/Berlin',

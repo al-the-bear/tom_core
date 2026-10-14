@@ -529,7 +529,9 @@ class TomContextEntry<T> {
 ///
 /// ## Available Providers
 ///
-/// - **Organization/Application/Process**: Tenant identification
+/// - **Organization/Application/Process**: what the principal acts for inside
+///   its tenant — the organization it logged in for, the application and the
+///   process. The tenant itself is `TomTenantContext.currentId`.
 /// - **Language/Country/Timezone**: Server locale settings
 /// - **ClientLanguage/ClientCountry/ClientTimezone**: Client locale settings
 ///
