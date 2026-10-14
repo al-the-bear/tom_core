@@ -722,6 +722,7 @@ surface documented here.
 | `TomTenancyException` | class | Tenancy configuration or unknown-tenant error (extends `TomServerException`). |
 | `TomTenantResolver` | abstract interface class | Reads a tenant id from a request without a token claim. |
 | `TomTenantHostResolver` | class | Names the tenant by an exact host or a subdomain. |
+| `TomTenantPathResolver` | class | Names the tenant by the path segment after a prefix, `/t/<segment>` by default. |
 | `TomTenantHeaderResolver` | class | Names the tenant by a header, `X-Tenant-Id` by default. |
 | `TomTenantResolution` | class | A request's tenant, none, or the rejection to answer it with. |
 
@@ -1380,6 +1381,7 @@ surface documented here.
 | `TomTenantHeaderResolver` | Tenancy |
 | `TomTenantHostResolver` | Tenancy |
 | `TomTenantIsolation` | Tenancy |
+| `TomTenantPathResolver` | Tenancy |
 | `TomTenantOwned` | Object Persistence |
 | `TomTenantResolution` | Tenancy |
 | `TomTenantResolver` | Tenancy |

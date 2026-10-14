@@ -15,6 +15,22 @@ Request _request({
   Map<String, String> headers = const {},
 }) => Request('GET', Uri.parse('https://$host/things'), headers: headers);
 
+Request _at(String path, {Map<String, String> headers = const {}}) => Request(
+  'GET',
+  Uri.parse('https://app.example.test$path'),
+  headers: headers,
+);
+
+/// A deployment whose URLs name tenants by a slug: `acme-gmbh` is `acme`.
+TomTenancy _bySlug() => _tenancy(
+  resolvers: [
+    TomTenantPathResolver(
+      lookup: (segment) =>
+          const {'acme-gmbh': 'acme', 'globex': 'globex'}[segment],
+    ),
+  ],
+);
+
 TomTenancy _tenancy({List<TomTenantResolver>? resolvers}) => TomTenancy(
   tenants: [TomTenant('acme'), TomTenant('globex')],
   datasources: const {'tenant_data'},
@@ -102,6 +118,65 @@ void main() {
     });
   });
 
+  group('resolving a request\'s tenant by its path', () {
+    test('a slug the lookup maps names its tenant', () {
+      final tenancy = _bySlug();
+      expect(
+        tenancy.resolveRequest(_at('/t/acme-gmbh/sign-in')).tenant,
+        'acme',
+      );
+      expect(tenancy.resolveRequest(_at('/t/globex')).tenant, 'globex');
+    });
+
+    test('an unknown slug is refused, not taken for no tenant', () {
+      final unknown = _bySlug().resolveRequest(_at('/t/initech/sign-in'));
+      expect((unknown.status, unknown.key), (404, 'tenancy.tenant.unknown'));
+    });
+
+    test('a path outside the prefix names no tenant', () {
+      final tenancy = _bySlug();
+      for (final path in ['/sign-in', '/t', '/t/', '/u/acme-gmbh', '/']) {
+        final none = tenancy.resolveRequest(_at(path));
+        expect(none.isRejected, isFalse, reason: path);
+        expect(none.tenant, isNull, reason: path);
+      }
+    });
+
+    test('without a lookup the segment is the tenant id', () {
+      final tenancy = _tenancy(resolvers: const [TomTenantPathResolver()]);
+      expect(tenancy.resolveRequest(_at('/t/globex/x')).tenant, 'globex');
+      final unknown = tenancy.resolveRequest(_at('/t/initech/x'));
+      expect((unknown.status, unknown.key), (404, 'tenancy.tenant.unknown'));
+      final malformed = tenancy.resolveRequest(_at('/t/Not%20A%20Tenant/x'));
+      expect((malformed.status, malformed.key), (400, 'tenancy.id.invalid'));
+    });
+
+    test('a prefix of several segments', () {
+      final tenancy = _tenancy(
+        resolvers: const [TomTenantPathResolver(prefix: '/api/t/')],
+      );
+      expect(tenancy.resolveRequest(_at('/api/t/acme/users')).tenant, 'acme');
+      expect(tenancy.resolveRequest(_at('/t/acme/users')).tenant, isNull);
+    });
+
+    test('a token for another tenant is refused', () {
+      final refused = _bySlug().resolveRequest(
+        _at('/t/acme-gmbh/users'),
+        claim: 'globex',
+      );
+      expect(
+        (refused.status, refused.key),
+        (403, 'tenancy.resolution.conflict'),
+      );
+      expect(
+        _bySlug()
+            .resolveRequest(_at('/t/acme-gmbh/users'), claim: 'acme')
+            .tenant,
+        'acme',
+      );
+    });
+  });
+
   group('the configuration', () {
     test('reads tenants, models, data sources and resolution', () {
       final tenancy = TomTenancy.fromConfiguration(
@@ -154,6 +229,34 @@ void main() {
       );
     });
 
+    test('reads the path resolution, its prefix and its segments', () {
+      final tenancy = TomTenancy.fromConfiguration(
+        TomServerConfigResourceProvider.from({
+          'tenancy': {
+            'resolution': ['path'],
+            'pathPrefix': 'tenants',
+            'pathSegments': {'acme-gmbh': 'acme'},
+            'tenants': {'acme': null, 'globex': null},
+          },
+        }),
+      );
+      expect(
+        tenancy.resolveRequest(_at('/tenants/acme-gmbh/x')).tenant,
+        'acme',
+      );
+      final unknown = tenancy.resolveRequest(_at('/tenants/globex/x'));
+      expect(unknown.status, 404, reason: 'only mapped segments name a tenant');
+      final plain = TomTenancy.fromConfiguration(
+        TomServerConfigResourceProvider.from({
+          'tenancy': {
+            'resolution': 'path',
+            'tenants': {'acme': null},
+          },
+        }),
+      );
+      expect(plain.resolveRequest(_at('/t/acme/x')).tenant, 'acme');
+    });
+
     test('refuses an unknown model, resolver or tenant id', () {
       Matcher refused(String key) =>
           throwsA(isA<TomException>().having((e) => e.key, 'key', key));
@@ -179,6 +282,13 @@ void main() {
       );
       expect(
         () => read({'tenants': 'acme'}),
+        refused('tenancy.config.not_a_map'),
+      );
+      expect(
+        () => read({
+          'resolution': ['path'],
+          'pathSegments': ['acme'],
+        }),
         refused('tenancy.config.not_a_map'),
       );
     });
@@ -378,6 +488,22 @@ void main() {
               'authorization': 'Bearer $token',
               'x-tenant-id': 'globex',
             },
+          ),
+        ),
+        (403, null),
+      );
+    });
+
+    test('runs a request inside the tenant its path names', () async {
+      await TomTenancy.install(_bySlug());
+      expect(await serve(_at('/t/acme-gmbh/sign-in')), (200, 'acme'));
+      expect(await serve(_at('/t/initech/sign-in')), (404, null));
+      final token = _signed({'username': 'alice', 'tenant': 'globex'});
+      expect(
+        await serve(
+          _at(
+            '/t/acme-gmbh/users',
+            headers: {'authorization': 'Bearer $token'},
           ),
         ),
         (403, null),

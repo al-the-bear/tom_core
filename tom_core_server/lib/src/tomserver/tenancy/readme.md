@@ -13,7 +13,8 @@ database of its own, chosen **per tenant**. All three are reached through one
 seam — a repository asks for its data source, and the installed tenancy answers
 with the current tenant's — so application code is the same under every model.
 A request's tenant comes from its token's `tenant` claim, which is
-authoritative, or, before login, from its host or a header.
+authoritative, or, before login, from its host, a segment of its path or a
+header.
 
 ## Key types
 
@@ -21,7 +22,7 @@ authoritative, or, before login, from its host or a header.
 | ---- | -------------- |
 | `TomTenancy` | The deployment's tenants and their routing. `install` provisions each tenant's schema or database and routes data-source lookups; `runFor` / `forEachTenant` run work inside a tenant; `resolveRequest` names a request's tenant or the rejection to answer it with; `addTenant` onboards without a restart. |
 | `TomTenant` · `TomTenantIsolation` | One tenant, and where its data lives: `shared`, `schema` or `database`. |
-| `TomTenantResolver` · `TomTenantHostResolver` · `TomTenantHeaderResolver` | How a request without a token claim names its tenant: by subdomain or own host, or by the `X-Tenant-Id` header. |
+| `TomTenantResolver` · `TomTenantHostResolver` · `TomTenantPathResolver` · `TomTenantHeaderResolver` | How a request without a token claim names its tenant: by subdomain or own host, by the path segment after a prefix (`/t/<segment>`, mapped to a tenant id when a lookup is given), or by the `X-Tenant-Id` header. |
 | `TomTenantResolution` | A tenant, none, or a rejection with its HTTP status and key. |
 | `TomTenancyException` | Every refusal the module raises — `tenancy.config.*` and `tenancy.tenant.unknown`. |
 

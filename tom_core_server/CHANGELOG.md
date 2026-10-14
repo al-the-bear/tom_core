@@ -2,6 +2,17 @@
 
 ### Added
 
+- **Tenant resolution by a path segment** — `TomTenantPathResolver` in
+  `tenancy/tenant_resolution.dart`, beside the host and header resolvers. It
+  names the tenant by the path segment after `prefix` (`t` by default:
+  `/t/acme/…`), mapped through `lookup` when the URLs name tenants by a slug
+  other than the tenant id. A segment the lookup does not know is refused by
+  `TomTenancy.resolveRequest` as `tenancy.tenant.unknown` (404) instead of
+  passing as a request without a tenant; a token for another tenant is refused
+  as `tenancy.resolution.conflict` (403), as for host and header. Configured
+  as `resolution: [path]` with `pathPrefix` and `pathSegments`
+  (segment → tenant id). `doc/tenancy.md` § Resolving a Request's Tenant;
+  tests in `test/tenancy_test.dart`.
 - **Secret references in configuration** — `configuration/secrets.dart`. A
   value in any configuration source may be written
   `secret:<provider>:<path>[#<field>]`. `TomSecrets` holds the registered

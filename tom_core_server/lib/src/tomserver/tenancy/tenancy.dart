@@ -53,7 +53,7 @@ import 'tenant_resolution.dart';
 /// | --- | ------- |
 /// | `tenancy.config.not_a_map` | `tenancy` or one of its tenants is not a map. |
 /// | `tenancy.config.unknown_isolation` | An isolation model other than `shared`, `schema` or `database`. |
-/// | `tenancy.config.unknown_resolver` | A tenant resolution other than `host` or `header`. |
+/// | `tenancy.config.unknown_resolver` | A tenant resolution other than `host`, `path` or `header`. |
 /// | `tenancy.config.schema_unsupported` | Schema isolation over a data source whose settings name no `databaseName`. |
 /// | `tenancy.config.invalid_schema` | A schema name that is not a plain identifier of at most 64 characters. |
 /// | `tenancy.config.missing_datasource` | Database isolation without a data source for a routed name. |
@@ -210,8 +210,10 @@ class TomTenancy {
   /// tenancy:
   ///   isolation: shared              # the default model
   ///   datasources: [main]            # the data sources holding tenant data
-  ///   resolution: [host, header]     # after the token claim, in order
+  ///   resolution: [host, path, header]  # after the token claim, in order
   ///   hostSuffix: app.example.com    # <tenant>.app.example.com
+  ///   pathPrefix: t                  # /t/<segment>/…
+  ///   pathSegments: {acme-gmbh: acme}  # segment → tenant id; omit: segment = id
   ///   header: X-Tenant-Id
   ///   createSchemas: true
   ///   tenants:
@@ -260,6 +262,7 @@ class TomTenancy {
             'host' => TomTenantHostResolver(
               suffix: raw['hostSuffix'] == null ? null : '${raw['hostSuffix']}',
             ),
+            'path' => _pathResolver(raw),
             'header' => TomTenantHeaderResolver(
               header: raw['header'] == null
                   ? TomTenantHeaderResolver.defaultHeader
@@ -267,7 +270,7 @@ class TomTenancy {
             ),
             _ => throw TomTenancyException(
               'tenancy.config.unknown_resolver',
-              'Unknown tenant resolution "$name"; expected host or header.',
+              'Unknown tenant resolution "$name"; expected host, path or header.',
               parameters: {'resolver': name},
             ),
           },
@@ -362,12 +365,22 @@ class TomTenancy {
   /// refused (`tenancy.resolution.conflict`, 403) — a token is not a pass to
   /// another tenant. Without a claim, the [resolvers] are asked in order and
   /// the first answer wins. A tenant the deployment does not have is refused
-  /// (`tenancy.tenant.unknown`, 404); so is an id that is not one
+  /// (`tenancy.tenant.unknown`, 404) — a path segment a
+  /// [TomTenantPathResolver]'s lookup does not know included; so is an id
+  /// that is not one
   /// (`tenancy.id.invalid`, 400). No answer at all is not a rejection: the
   /// request proceeds with no tenant, and tenant-owned data is closed to it.
   TomTenantResolution resolveRequest(Request request, {String? claim}) {
     String? named;
     for (final resolver in resolvers) {
+      if (resolver is TomTenantPathResolver &&
+          resolver.namesUnknownSegment(request)) {
+        return const TomTenantResolution.rejected(
+          404,
+          'tenancy.tenant.unknown',
+          'The request names a tenant this server does not have.',
+        );
+      }
       named = resolver.resolve(request);
       if (named != null) break;
     }
@@ -395,6 +408,25 @@ class TomTenancy {
       );
     }
     return TomTenantResolution.of(tenant);
+  }
+
+  /// The path resolver of the configuration: `pathPrefix` (default `t`) and,
+  /// when the URLs name tenants by another segment than their id,
+  /// `pathSegments` mapping segment → tenant id.
+  static TomTenantPathResolver _pathResolver(Map<Object?, Object?> raw) {
+    final prefix = raw['pathPrefix'] == null
+        ? TomTenantPathResolver.defaultPrefix
+        : '${raw['pathPrefix']}';
+    final segments = raw['pathSegments'];
+    if (segments == null) return TomTenantPathResolver(prefix: prefix);
+    if (segments is! Map) throw _notAMap('$configurationKey.pathSegments');
+    final bySegment = {
+      for (final e in segments.entries) '${e.key}': '${e.value}',
+    };
+    return TomTenantPathResolver(
+      prefix: prefix,
+      lookup: (segment) => bySegment[segment],
+    );
   }
 
   /// The exception for work in a tenant the deployment does not have.

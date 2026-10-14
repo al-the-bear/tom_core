@@ -14,6 +14,7 @@ tenant — and how a request names the tenant it is for.
   - [TomTenancy](#tomtenancy)
   - [TomTenantResolver](#tomtenantresolver)
   - [TomTenantHostResolver](#tomtenanthostresolver)
+  - [TomTenantPathResolver](#tomtenantpathresolver)
   - [TomTenantHeaderResolver](#tomtenantheaderresolver)
   - [TomTenantResolution](#tomtenantresolution)
 - [Enums](#enums)
@@ -38,7 +39,8 @@ repository reaches the current tenant's data source through that one seam, so
 application code is the same under all three `TomTenantIsolation` models. The
 request pipeline resolves a request's tenant through `resolveRequest`: the
 verified token's `tenant` claim is authoritative, and the `TomTenantResolver`s
-(`TomTenantHostResolver`, `TomTenantHeaderResolver`) answer only for a request
+(`TomTenantHostResolver`, `TomTenantPathResolver`, `TomTenantHeaderResolver`)
+answer only for a request
 without one. `TomTenantResolution` is the outcome — a tenant, none, or a
 rejection with its status and key. `TomTenancyException` is every refusal the
 module raises.
@@ -55,6 +57,7 @@ TomTenantIsolation  (enum)
 
 TomTenantResolver  (abstract interface)
     ├── TomTenantHostResolver    (implements)
+    ├── TomTenantPathResolver    (implements)
     └── TomTenantHeaderResolver  (implements)
 
 TomTenantResolution
@@ -233,6 +236,39 @@ const TomTenantHostResolver({String? suffix, Map<String, String> hosts = const {
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `resolve` | `String? resolve(Request request)` | *(override)* The tenant the request's host names, case-insensitively, or `null`. |
+
+### TomTenantPathResolver
+
+Names the tenant by the path segment after a prefix — `/t/acme/sign-in` names
+`acme` under the default prefix `t`. With a `lookup`, the segment is a slug
+mapped to the tenant id, and a segment the lookup does not know is refused by
+`TomTenancy.resolveRequest` as `tenancy.tenant.unknown` (404) instead of
+passing as a request without a tenant. It only names the tenant; the routes
+under the prefix are the deployment's router's.
+
+- **Implements:** `TomTenantResolver`
+
+#### Constructors
+
+```dart
+const TomTenantPathResolver({String prefix = defaultPrefix, String? Function(String segment)? lookup})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `defaultPrefix` | `static const String` | `'t'` — the prefix read when none is configured. |
+| `prefix` | `String` | The path segments before the tenant's, `/`-separated: `t`, or `api/t` (final). |
+| `lookup` | `String? Function(String segment)?` | Segment → tenant id, `null` for a segment naming no tenant; without it the segment is the tenant id (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `segmentOf` | `String? segmentOf(Request request)` | The tenant segment of the request's path, or `null` when the path does not start with the prefix followed by a segment. |
+| `namesUnknownSegment` | `bool namesUnknownSegment(Request request)` | Whether the path names a segment the lookup does not know. |
+| `resolve` | `String? resolve(Request request)` | *(override)* The tenant the path names — the segment, or its lookup — or `null`. |
 
 ### TomTenantHeaderResolver
 

@@ -50,6 +50,7 @@ This guide is the server half.
 | `TomTenancyException` | class | A tenancy configuration that cannot be used, or a tenant that does not exist |
 | `TomTenantResolver` | abstract interface class | Reads a tenant id from a request that carries no token claim |
 | `TomTenantHostResolver` | class | Names the tenant by host: an exact host, or a subdomain of a suffix |
+| `TomTenantPathResolver` | class | Names the tenant by the path segment after a prefix, `/t/<segment>` by default, mapping the segment to a tenant id when a lookup is given |
 | `TomTenantHeaderResolver` | class | Names the tenant by a request header, `X-Tenant-Id` by default |
 | `TomTenantResolution` | class | The outcome of resolving a request: a tenant, none, or a rejection |
 
@@ -143,8 +144,11 @@ source without routing, whatever tenant is in context.
 tenancy:
   isolation: shared              # the default model (shared | schema | database)
   datasources: [main]            # the data sources holding tenant data
-  resolution: [host, header]     # how a request without a token names its tenant, in order
+  resolution: [host, path, header]  # how a request without a token names its tenant, in order
   hostSuffix: app.example.com    # <tenant>.app.example.com
+  pathPrefix: t                  # /t/<segment>/… for the path resolver
+  pathSegments:                  # segment → tenant id, when URLs name tenants by a slug
+    acme-gmbh: acme
   header: X-Tenant-Id            # the header the header resolver reads
   createSchemas: true            # create a schema tenant's schema at provisioning
   tenants:
@@ -165,8 +169,10 @@ tenancy:
 | --- | ------- | ------- |
 | `isolation` | `shared` | The model of a tenant that names none. |
 | `datasources` | `[main]` | The data sources routed per tenant. |
-| `resolution` | none | `host`, `header`, or both in order. With none, only the token claim names a tenant. |
+| `resolution` | none | `host`, `path`, `header`, or several in order. With none, only the token claim names a tenant. |
 | `hostSuffix` | none | The domain tenants are subdomains of, for the `host` resolver. |
+| `pathPrefix` | `t` | The path segments before the tenant's, for the `path` resolver: `t`, or `api/t`. |
+| `pathSegments` | none | Segment → tenant id, for the `path` resolver. Without it the segment is the tenant id; with it only a listed segment names a tenant, and any other segment after the prefix is refused as an unknown tenant. |
 | `header` | `X-Tenant-Id` | The header the `header` resolver reads. |
 | `createSchemas` | `false` | Whether provisioning a `schema` tenant runs `CREATE DATABASE IF NOT EXISTS` for its schema. |
 | `tenants.<id>.name` | none | A display name. |
@@ -261,6 +267,15 @@ request's tenant through `TomTenancy.resolveRequest` and runs the request inside
      the first label of a host one level under its `suffix`
      (`acme.app.example.com` under `app.example.com`). A host deeper than one
      label under the suffix names nothing.
+   - `TomTenantPathResolver` answers the path segment after its `prefix`
+     (`/t/acme/sign-in` names `acme` under the default prefix `t`), mapped
+     through its `lookup` when it has one. That is how a deployment names
+     tenants in its URLs and issuers by a slug other than the tenant id: the
+     lookup maps `acme-gmbh` to `acme`. A segment the lookup does not know is
+     refused as an unknown tenant (`404`) rather than taken for no tenant, so
+     a mistyped or retired slug never reaches a page as an anonymous request. A
+     path outside the prefix names nothing. The resolver only names the tenant;
+     serving the routes under the prefix is the deployment's router's.
    - `TomTenantHeaderResolver` answers the value of its header, trimmed.
 3. **No answer is not a rejection.** The request proceeds in an explicit
    no-tenant context; tenant-owned data is closed to it, and everything else is
@@ -269,7 +284,7 @@ request's tenant through `TomTenancy.resolveRequest` and runs the request inside
 A header is the weakest of the sources, because a client chooses it freely. It
 is safe here because it only ever *proposes* a tenant: data stays closed until a
 login in that tenant succeeds, and once a token exists its claim wins and a
-contradicting header or host is refused.
+contradicting header, host or path is refused.
 
 ### Rejections
 
@@ -283,8 +298,8 @@ body is a small JSON object carrying the key and a message:
 
 | Status | Key | When |
 | ------ | --- | ---- |
-| `403` | `tenancy.resolution.conflict` | The host or header names another tenant than the token's claim. A token is not a pass to another tenant. |
-| `404` | `tenancy.tenant.unknown` | The request names a tenant the deployment does not have. |
+| `403` | `tenancy.resolution.conflict` | The host, path or header names another tenant than the token's claim. A token is not a pass to another tenant. |
+| `404` | `tenancy.tenant.unknown` | The request names a tenant the deployment does not have — a path segment the path resolver's lookup does not know included. |
 | `400` | `tenancy.id.invalid` | The request names something that is not a tenant id. |
 
 ### A login binds the token to its tenant

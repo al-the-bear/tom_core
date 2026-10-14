@@ -1,5 +1,5 @@
 /// How a request that carries no tenant claim names its tenant: by its host,
-/// or by a header.
+/// by a segment of its path, or by a header.
 ///
 /// The token's `tenant` claim always comes first and is not a resolver: a
 /// request that has authenticated is for its token's tenant, and the
@@ -42,6 +42,63 @@ class TomTenantHostResolver implements TomTenantResolver {
     if (domain == null || !host.endsWith('.$domain')) return null;
     final label = host.substring(0, host.length - domain.length - 1);
     return label.isEmpty || label.contains('.') ? null : label;
+  }
+}
+
+/// Names the tenant by the path segment after [prefix] —
+/// `/t/acme/sign-in` names `acme` under the default prefix `t`.
+///
+/// A deployment that names its tenants in its URLs and issuers by a slug
+/// other than the tenant id passes [lookup], which maps the segment to the
+/// tenant id. A segment the lookup does not know is not "no tenant": the
+/// request names a tenant this deployment does not have, and
+/// `TomTenancy.resolveRequest` refuses it (`tenancy.tenant.unknown`, 404)
+/// rather than letting it proceed as an anonymous request. Without a lookup
+/// the segment is the tenant id itself.
+///
+/// The resolver only names the tenant; serving the routes under the prefix
+/// is the deployment's router's.
+class TomTenantPathResolver implements TomTenantResolver {
+  /// Creates the resolver.
+  const TomTenantPathResolver({this.prefix = defaultPrefix, this.lookup});
+
+  /// The prefix read when none is configured.
+  static const String defaultPrefix = 't';
+
+  /// The path segments before the tenant's, `/`-separated: `t`, or `api/t`.
+  final String prefix;
+
+  /// Segment → tenant id, or `null` for a segment that names no tenant; the
+  /// segment itself when not given.
+  final String? Function(String segment)? lookup;
+
+  /// The tenant segment of [request]'s path, or `null` when the path does
+  /// not start with [prefix] followed by a segment.
+  String? segmentOf(Request request) {
+    final path = request.requestedUri.pathSegments;
+    final before = [
+      for (final part in prefix.split('/'))
+        if (part.isNotEmpty) part,
+    ];
+    if (path.length <= before.length) return null;
+    for (var i = 0; i < before.length; i++) {
+      if (path[i] != before[i]) return null;
+    }
+    final segment = path[before.length];
+    return segment.isEmpty ? null : segment;
+  }
+
+  /// Whether [request]'s path names a segment the [lookup] does not know.
+  bool namesUnknownSegment(Request request) {
+    final segment = segmentOf(request);
+    return segment != null && lookup != null && lookup!(segment) == null;
+  }
+
+  @override
+  String? resolve(Request request) {
+    final segment = segmentOf(request);
+    if (segment == null) return null;
+    return lookup == null ? segment : lookup!(segment);
   }
 }
 
