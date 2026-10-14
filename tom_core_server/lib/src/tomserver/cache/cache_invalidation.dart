@@ -26,6 +26,8 @@ import 'dart:math';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../authorization/authorization_cache.dart';
+import 'item_authorization_cache.dart';
+import 'item_authorization_changes.dart';
 import 'server_cache.dart';
 
 /// What a [TomCacheInvalidation] invalidates.
@@ -41,6 +43,12 @@ enum TomInvalidationKind {
   /// Every entry of a named cache: [TomCacheInvalidation.target] is the cache
   /// name.
   cache,
+
+  /// The cached item-authorization answers an item and a subject name:
+  /// [TomCacheInvalidation.target] is the tenant-qualified item key, pattern
+  /// `<type>:<prefix>*` or `*`, and [TomCacheInvalidation.key] the subject, or
+  /// `null` for every subject.
+  item,
 }
 
 /// One invalidation, as it travels between nodes.
@@ -93,6 +101,23 @@ class TomCacheInvalidation {
     origin ?? TomCacheInvalidator.nodeId,
   );
 
+  /// Drops the cached item-authorization answers on [item] — an item key, a
+  /// pattern `<type>:<prefix>*`, or `*` for every item — for [subject], or for
+  /// every subject when it is `null`. [item] is taken as given: the invalidator
+  /// qualifies it by the tenant in context.
+  factory TomCacheInvalidation.item(
+    String item, {
+    String? subject,
+    DateTime? at,
+    String? origin,
+  }) => TomCacheInvalidation._(
+    TomInvalidationKind.item,
+    item,
+    subject,
+    (at ?? DateTime.now()).toUtc(),
+    origin ?? TomCacheInvalidator.nodeId,
+  );
+
   /// Rebuilds an invalidation from its stored parts; throws [ArgumentError]
   /// for a [kind] name no [TomInvalidationKind] carries.
   factory TomCacheInvalidation.fromParts({
@@ -112,10 +137,11 @@ class TomCacheInvalidation {
   /// What is invalidated.
   final TomInvalidationKind kind;
 
-  /// The username, or the cache name.
+  /// The username, the cache name, or the item.
   final String target;
 
-  /// The entry key of a [TomInvalidationKind.cacheEntry]; `null` otherwise.
+  /// The entry key of a [TomInvalidationKind.cacheEntry], the subject of a
+  /// [TomInvalidationKind.item]; `null` otherwise.
   final String? key;
 
   /// When the invalidation was raised, in UTC. For a principal, tokens issued
@@ -239,6 +265,25 @@ abstract final class TomCacheInvalidator {
   static Future<void> invalidateCache(String cacheName) =>
       _raise(TomCacheInvalidation.cache(cacheName));
 
+  /// Drops, on every node, the cached item-authorization answers
+  /// ([TomItemAuthorizationCache]) on [item] for [subject] — the current
+  /// tenant's, in a tenant's context.
+  ///
+  /// [item] is an item key `<type>:<id>`, a pattern `<type>:<prefix>*`
+  /// covering every item whose id starts with the prefix, or `*` for every
+  /// item; a `null` [subject] is every subject. Raised when the authority
+  /// reports a change — by [TomItemAuthorizationWebhook] and
+  /// [TomItemAuthorizationFeedFollower].
+  static Future<void> invalidateItemAuthorization(
+    String item, {
+    String? subject,
+  }) => _raise(
+    TomCacheInvalidation.item(
+      TomTenantContext.qualify(item, TomTenantContext.currentId),
+      subject: subject,
+    ),
+  );
+
   /// Applies [invalidation] here, then publishes it — on the main isolate; a
   /// worker forwards it there.
   static Future<void> raise(TomCacheInvalidation invalidation) =>
@@ -271,6 +316,11 @@ abstract final class TomCacheInvalidator {
         )?.removeEntry(invalidation.key!);
       case TomInvalidationKind.cache:
         TomCacheManager.getCache(invalidation.target)?.clear();
+      case TomInvalidationKind.item:
+        TomItemAuthorizationCache.invalidateLocally(
+          invalidation.target,
+          invalidation.key,
+        );
     }
   }
 

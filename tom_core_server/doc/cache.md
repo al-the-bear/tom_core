@@ -5,8 +5,10 @@ A lightweight in-memory cache for the server. Caches are registered by name in a
 isolate through a small set of static helpers. A cache is LRU-bounded by default
 and unbounded on request, and can expire entries by age or clear itself on a
 schedule. On a cluster, `TomCacheInvalidator` carries an invalidation — of an
-entry, of a whole cache, or of a user's tokens in the authorization cache — to
-every node through an installed channel.
+entry, of a whole cache, of a user's tokens in the authorization cache, or of
+the item-authorization answers an item and a subject name — to every node
+through an installed channel. Those answers come from a remote authority such
+as Tom UAM, and its webhook and change feed say when they changed.
 
 ## Table of Contents
 
@@ -38,6 +40,12 @@ every node through an installed channel.
   - [What each kind does](#what-each-kind-does)
   - [The SQL channel](#the-sql-channel)
   - [Failures](#failures)
+- [Item-Authorization Answers](#item-authorization-answers)
+  - [The answer cache](#the-answer-cache)
+  - [Dropping answers by item and subject](#dropping-answers-by-item-and-subject)
+  - [The webhook](#the-webhook)
+  - [The change feed](#the-change-feed)
+  - [How long a revoked share keeps granting](#how-long-a-revoked-share-keeps-granting)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
@@ -58,12 +66,20 @@ every node through an installed channel.
 | `TomCacheRetrieveMessage` | class | Cross-isolate read, run in the main isolate |
 | `TomCacheInvalidator` | abstract final class | Cluster-wide entry point: revoke a principal, invalidate an entry or a cache on every node |
 | `TomCacheInvalidation` | class | One invalidation as it travels between nodes |
-| `TomInvalidationKind` | enum | `principal`, `cacheEntry`, `cache` |
+| `TomInvalidationKind` | enum | `principal`, `cacheEntry`, `cache`, `item` |
 | `TomInvalidationChannel` | abstract interface class | How invalidations reach the other nodes, and how fast (`stalenessBound`) |
 | `TomLocalInvalidationChannel` | class | The default channel for a single process; bound zero |
 | `TomSqlInvalidationChannel` | class | A channel over a table every node polls; bound is the poll interval |
 | `TomCacheInvalidateMessage` | class | Cross-isolate invalidation, run in the main isolate |
 | `TomCacheInvalidationRow` | class | One row of the invalidation log, as the SQL channel reads it |
+| `TomItemAuthorizationCache` | abstract final class | The answers a remote authority gave on items, keyed by item and subject |
+| `TomCachedItemLevel` | class | One cached answer: the level held, or none |
+| `TomItemAuthorizationChange` | class | One change the authority reports: an item and, where it concerns one user, that user |
+| `TomItemAuthorizationChangePage` | class | One answer of the change feed: changes, next cursor, whether more wait |
+| `TomItemAuthorizationWebhook` | class | Verifies an `itemAuthorization.changed` delivery and drops the answers it names |
+| `TomItemAuthorizationFeedFollower` | class | Reads the change feed on a timer and drops the answers each change names |
+| `TomItemAuthorizationWebhookException` | class | A webhook delivery that cannot be trusted or read |
+| `TomItemAuthorizationFeedExpiredException` | class | The change feed no longer holds the cursor asked with |
 | `invalidationTable` / `invalidationTableDdl` / `defaultInvalidationTable` | functions / const String | The invalidation log, declared once as a framework-owned table |
 
 ## Walkthrough
@@ -693,6 +709,7 @@ invalidator applies it in turn:
 | `TomCacheInvalidator.revokePrincipal(username)` | refuses every token `username` holds that was issued now or earlier, and drops the principals cached for them |
 | `TomCacheInvalidator.invalidateCacheEntry(cacheName, key)` | removes `key` from the cache named `cacheName` |
 | `TomCacheInvalidator.invalidateCache(cacheName)` | empties the cache named `cacheName` |
+| `TomCacheInvalidator.invalidateItemAuthorization(item, subject: subject)` | drops the cached item-authorization answers on `item` for `subject`, or for every subject — see [Item-Authorization Answers](#item-authorization-answers) |
 
 **A grant change calls `revokePrincipal`** — a role removed, a resource grant
 withdrawn, an account disabled. The user's tokens then stop yielding a principal
@@ -759,6 +776,7 @@ An invalidation is a `TomCacheInvalidation`: a `TomInvalidationKind`, a
 | `principal` | the username, qualified by tenant (`tenant:<id>/<name>`) when raised in a tenant | `TomAuthorizationCache.revokeLocally(target, at)` — tokens issued at or before `at` are refused, and the user's cached principals are dropped |
 | `cacheEntry` | the cache name | `removeEntry(key)` on the cache registered under that name; `key` is already qualified by tenant when raised in one |
 | `cache` | the cache name | `clear()` on the cache registered under that name |
+| `item` | the item key, pattern `<type>:<prefix>*` or `*`, qualified by tenant when raised in one; `key` is the subject or `null` | `TomItemAuthorizationCache.invalidateLocally(target, key)` — drops the answers on the matching items for that subject, or for every subject |
 
 A cache name nothing registered on this node is nothing to invalidate, and is
 skipped. `TomCache.clear()` is the same reset the clearance timer performs: the
@@ -779,8 +797,8 @@ declared once by `invalidationTable(table)` and listed by
 | ------ | ---- | ------- |
 | `id` | `BIGINT` auto-increment, primary key | the order every node reads by — an instant could not, since two nodes' clocks disagree |
 | `kind` | `VARCHAR(16)` | the `TomInvalidationKind` name |
-| `target` | `VARCHAR(191)` | the username or cache name |
-| `entry_key` | `VARCHAR(512)`, nullable | the key of a single-entry invalidation |
+| `target` | `VARCHAR(191)` | the username, the cache name, or the tenant-qualified item — an item key longer than that with its tenant prefix cannot be published |
+| `entry_key` | `VARCHAR(512)`, nullable | the key of a single-entry invalidation, or the subject of an item invalidation |
 | `origin` | `VARCHAR(32)` | the node that wrote the row |
 | `raised_at` | `DATETIME(6)`, indexed, UTC | the retention sweep and the start-up catch-up |
 
@@ -825,13 +843,150 @@ the database is unreachable.
 | --- | ----------- |
 | `cache.invalidation.unknown_datasource` | `TomSqlInvalidationChannel.named` names a data source that is not registered. A `TomCacheException` (`clientThrow: false`), carrying the name as `datasource` — a configuration error, best caught at start-up. |
 
+## Item-Authorization Answers
+
+An application whose item authorizations live in a remote authority — Tom UAM
+keeps who may view, comment on or edit which document — asks that authority
+"which level does this user hold on this item?" and keeps the answer instead of
+asking on every request. The answer stays good until the authority reports that
+the item or the subject changed. This section is the receiving end of those
+reports: a cache of the answers, an invalidation keyed by item and subject, and
+two ways the reports arrive. The levels themselves are the kernel's item
+permission levels (`TomItemType`); the client that asks the authority supplies
+the answers and the feed reader.
+
+### The answer cache
+
+`TomItemAuthorizationCache` is a `TomCache` named
+`TomItemAuthorizationCache.cacheName`. It lives on the main isolate like every
+other cache — a worker's read and store are forwarded — and its entries are the
+current tenant's.
+
+| Call | Does |
+| ---- | ---- |
+| `install(timeToLive: …, maximumEntries: …)` | registers the cache; each answer is kept for `timeToLive` (five minutes by default) when no change names it, and the cache holds `maximumEntries` (10,000 by default) |
+| `store(subject, item, level)` | caches `level` — `null` for "holds none" — as `subject`'s answer on `item` |
+| `lookup(subject, item)` | the cached `TomCachedItemLevel`, or `null` on a miss; a cached "none" is `TomCachedItemLevel(null)`, not a miss |
+| `invalidateLocally(qualifiedItem, subject)` | drops the matching answers on this node; `apply` calls it |
+| `uninstall()` | removes the cache — test support |
+
+An item is named by its resource key, `<type>:<id>`; a subject by the id the
+authority names it by in its change reports — the user's id. Neither may
+contain a NUL character, which separates them in the stored key.
+
+`TomCache.removeWhere(test)` is what makes an invalidation by item and subject
+possible: it drops every entry whose stored key passes `test`, through
+`removeEntry`, and answers how many.
+
+### Dropping answers by item and subject
+
+`TomCacheInvalidator.invalidateItemAuthorization(item, subject: subject)` drops
+the answers on every node, like every other invalidation:
+
+| `item` | Drops the answers on |
+| ------ | -------------------- |
+| `document:a1` | that item |
+| `document:finance/*` | every item whose key starts with `document:finance/` — a category, a folder |
+| `*` | every item of the tenant |
+
+A `subject` narrows the drop to that subject's answers; without one every
+subject's answers on the matching items go. Raised in a tenant's context, the
+item is qualified by the tenant, so one tenant's report never drops another
+tenant's answers. The pattern grammar is the one item permission levels use.
+
+### The webhook
+
+`TomItemAuthorizationWebhook` verifies one `itemAuthorization.changed`
+delivery and raises an item invalidation for each change it carries. The
+application's own endpoint hands it the headers and the raw body:
+
+```dart
+final webhook = TomItemAuthorizationWebhook(
+  [subscriptionSecret], // two during a rotation
+  tenantId: tenantId, // the subscription's tenant, when it is one
+);
+final applied = await webhook.receive(requestHeaders, requestBody);
+```
+
+A delivery carries three headers, read in any case:
+
+| Header | Content |
+| ------ | ------- |
+| `x-tom-event-id` | the event id |
+| `x-tom-timestamp` | when it was sent, in seconds since the epoch |
+| `x-tom-signature` | `sha256=` and the hex HMAC-SHA256 of `<event id>.<timestamp>.<body>`, keyed by the subscription's secret |
+
+`TomItemAuthorizationWebhook.sign(secret, eventId, timestamp, body)` computes
+the signature, which is what a sender — or a test — needs. The body is
+`{"type": "itemAuthorization.changed", "changes": [...]}`, each change as
+`TomItemAuthorizationChange.fromJson` reads it:
+`{"item": "document:42", "subject": "u-7", "subjectKind": "user"}`. A change for
+a group or another kind of subject changes the answers of members the
+application cannot list, so it drops every subject's answers on the item.
+Other event types are accepted and ignored, so one endpoint can receive all of
+a subscription's events. `receive` answers how many changes it applied.
+
+| Key | Raised when |
+| --- | ----------- |
+| `error.item_authorization.webhook.signature_invalid` | a header is missing, or the signature matches none of the secrets |
+| `error.item_authorization.webhook.timestamp_stale` | the timestamp lies further than `tolerance` (five minutes) from now, so a captured delivery cannot be replayed later |
+| `error.item_authorization.webhook.payload_invalid` | the body is not an event, or a change names no item |
+
+Each is a `TomItemAuthorizationWebhookException`, which the endpoint answers
+with a client error; the authority then retries.
+
+### The change feed
+
+A webhook can be lost, and needs the application reachable from the authority.
+`TomItemAuthorizationFeedFollower` is the catch-up: it reads the authority's
+change feed since its cursor and raises an item invalidation for each change.
+The function that reads the feed comes from the authority's client:
+
+```dart
+final follower = TomItemAuthorizationFeedFollower(
+  (cursor) => readChangeFeed(cursor), // the client's call
+  pollInterval: const Duration(seconds: 30),
+  tenantId: tenantId,
+);
+await follower.start();
+```
+
+The function answers a `TomItemAuthorizationChangePage` — the `changes`, the
+`nextCursor` and whether more changes wait (`hasMore`) — and throws
+`TomItemAuthorizationFeedExpiredException`
+(`error.item_authorization.feed.cursor_expired`) for a cursor older than the
+feed keeps.
+
+- **The first poll takes the current position** by asking with no cursor, and
+  then drops every answer of the tenant: whatever changed before that position
+  is out of reach. The order matters — an answer cached after the position was
+  taken is still ahead of the cursor.
+- **Each poll reads until no more changes wait**, raises their invalidations,
+  and advances the cursor only after a page is applied, so a failure — logged
+  at warning level — makes the next poll read the same page again.
+- **An expired cursor** starts over as the first poll does.
+- **The cursor lives in the follower.** A restarted node pays one full drop of
+  its tenant's answers.
+
+Running the follower on every node is correct, since dropping an answer twice
+is harmless; one per cluster is enough. Run the webhook and the follower
+together: the webhook for speed, the feed for what the webhook missed.
+
+### How long a revoked share keeps granting
+
+| Path | Delay until every node stops granting |
+| ---- | ------------------------------------- |
+| webhook delivered | the invalidation channel's `stalenessBound` (two seconds with the SQL channel) |
+| webhook lost, feed followed | `follower.stalenessBound`: the poll interval plus the channel's bound — 32 seconds with the defaults |
+| neither | the cache's `timeToLive`, five minutes by default |
+
 ## Core Components
 
 - **`TomCache`** — the cache and its static accessor helpers. Instance methods
   `getEntry` / `putEntry` / `removeEntry` implement the MRU bookkeeping and are
   *structural* — see [Two reads, and only one of them
   expires](#two-reads-and-only-one-of-them-expires); `clear` empties the map
-  and the chain together; `createTimers` / `stopTimers` manage the background
+  and the chain together, `removeWhere` drops the entries a test selects; `createTimers` / `stopTimers` manage the background
   timers.
 - **`TomCacheEntry`** — value object: the cached `value`, which is non-nullable,
   and its `deletionTime`.
@@ -842,7 +997,8 @@ the database is unreachable.
 - **`TomCacheStoreMessage` / `TomCacheRemoveMessage` / `TomCacheRetrieveMessage`**
   — the cross-isolate commands.
 - **`TomCacheInvalidator`** — the cluster-wide entry point: `install`,
-  `revokePrincipal`, `invalidateCacheEntry`, `invalidateCache`, `raise`,
+  `revokePrincipal`, `invalidateCacheEntry`, `invalidateCache`,
+  `invalidateItemAuthorization`, `raise`,
   `apply`, `reset`, `channel` and `nodeId`.
 - **`TomCacheInvalidation` + `TomInvalidationKind`** — one invalidation and what
   it invalidates; `TomCacheInvalidateMessage` carries one from a worker.
@@ -851,6 +1007,13 @@ the database is unreachable.
   (the polled log, read through `TomCacheInvalidationRow`).
 - **`invalidationTable` / `invalidationTableDdl` / `defaultInvalidationTable`**
   — the log's single declaration.
+- **`TomItemAuthorizationCache` + `TomCachedItemLevel`** — the answers a remote
+  authority gave on items, keyed by item and subject.
+- **`TomItemAuthorizationChange` / `TomItemAuthorizationChangePage`** — what the
+  authority reports, one change and one page of the feed.
+- **`TomItemAuthorizationWebhook` / `TomItemAuthorizationFeedFollower`** — the
+  two ways the reports arrive, with `TomItemAuthorizationWebhookException` and
+  `TomItemAuthorizationFeedExpiredException`.
 
 ## Not Yet Implemented
 
@@ -893,10 +1056,15 @@ needs no database: a fake channel plays the other node, recording what this
 node publishes and delivering "remote" invalidations through the callback the
 invalidator gave it — revocation and its second-granularity comparison, a
 publish failure that still revokes here, entry and cache invalidations, channel
-replacement and the retention sweep. `test/cache_invalidation_db_test.dart`,
+replacement and the retention sweep. `test/item_authorization_invalidation_test.dart`
+covers the item answers the same way: drops by item, pattern, subject and
+tenant, published and received; the webhook's signature, rotation, tolerance,
+payload and group subjects; and the feed follower's position, pages, expired
+cursor and failed read. `test/cache_invalidation_db_test.dart`,
 tagged `db`, runs `TomSqlInvalidationChannel` against MariaDB: own-origin rows
 skipped, the start-up catch-up of revocations in force, retention pruning, and
-a grant revoked on one node refused on a second — a spawned isolate, whose
+a revoked item share that drops the cached answer on the reading node, and a
+grant revoked on one node refused on a second — a spawned isolate, whose
 static caches are its own — within the poll interval.
 
 The two are linked in both directions — the example's header names the suite,
@@ -920,11 +1088,13 @@ itself accounts for. None of them can drift quietly while nobody is reading.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `cache_invalidation.dart`, `server_cache.dart`, `sql_invalidation_channel.dart` | `Future`, `Timer`, `Zone` |
+| `dart:async` | dart | `cache_invalidation.dart`, `item_authorization_changes.dart`, `server_cache.dart`, `sql_invalidation_channel.dart` | `Future`, `Timer`, `Zone` |
+| `dart:convert` | dart | `item_authorization_changes.dart` | `jsonDecode` and `utf8`, for a webhook body and its signature |
 | `dart:isolate` | dart | `server_cache.dart` | `Isolate` |
 | `dart:math` | dart | `cache_invalidation.dart` | `Random.secure`, for the per-process `nodeId` |
-| `tom_core_kernel` | package | `cache_invalidation.dart`, `server_cache.dart`, `sql_invalidation_channel.dart` | `TomWorker`, `TomCommand`, and the logging helpers |
+| `crypto` | package | `item_authorization_changes.dart` | `Hmac` and `sha256`, for the webhook signature |
+| `tom_core_kernel` | package | `cache_invalidation.dart`, `item_authorization_changes.dart`, `server_cache.dart`, `sql_invalidation_channel.dart` | `TomWorker`, `TomCommand`, `TomTenantContext`, and the logging helpers |
 | [authorization](authorization.md) | module | `cache_invalidation.dart`, `sql_invalidation_channel.dart` | `TomAuthorizationCache` — `revokeLocally`, which a principal invalidation applies, and `revocationRetention`, the SQL channel's default retention |
 | [datasources](datasources.md) | module | `invalidation_sql.dart`, `sql_invalidation_channel.dart` | `TomFrameworkTable` (the log's declaration), `TomDataSource` and `TomDataSourceInfo` (named data sources), `parseSqlInstant` |
-| [little_things](little_things.md) | module | `server_cache.dart` | `TomServerException`, the base of `TomCacheException` |
+| [little_things](little_things.md) | module | `item_authorization_changes.dart`, `server_cache.dart` | `TomServerException`, the base of `TomCacheException` and the item-authorization exceptions |
 | [object_persistence](object_persistence.md) | module | `sql_invalidation_channel.dart` | `TomDbTable` / `TomDbColumn` on `TomCacheInvalidationRow` |

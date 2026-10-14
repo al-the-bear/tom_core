@@ -24,7 +24,12 @@ const String defaultInvalidationTable = 'tom_cache_invalidation';
 ///    written in one microsecond would tie.
 ///  * `raised_at` carries the retention sweep and the start-up catch-up of
 ///    revocations still in force, so it is indexed.
-///  * `entry_key` is nullable: only a single-entry invalidation names a key.
+///  * `entry_key` is nullable: a single-entry invalidation names its key, an
+///    item invalidation its subject, and the others none.
+///  * `kind` holds a `TomInvalidationKind` name, the longest of which is
+///    `cacheEntry`; `target` holds a username, a cache name or a
+///    tenant-qualified item key, so an item key longer than 191 characters
+///    with its tenant prefix cannot be published.
 ///  * instants are `DATETIME(6)` and always written in UTC — see `sqlInstant`
 ///    in `datasources/sql_instant.dart`.
 TomFrameworkTable invalidationTable(String table) => TomFrameworkTable(

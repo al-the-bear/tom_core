@@ -576,6 +576,22 @@ class TomCache {
     _last = null;
   }
 
+  /// Removes every entry whose stored key satisfies [test] and answers how
+  /// many there were.
+  ///
+  /// [test] sees the key as stored — tenant-qualified where the entry was
+  /// stored in a tenant's context. Each removal goes through [removeEntry], so
+  /// the MRU chain stays consistent. An invalidation that names a set of
+  /// entries rather than one key (`TomItemAuthorizationCache.invalidateLocally`)
+  /// comes here.
+  int removeWhere(bool Function(String key) test) {
+    final matching = _cache.keys.where(test).toList();
+    for (final key in matching) {
+      removeEntry(key);
+    }
+    return matching.length;
+  }
+
   /// [key] as the current tenant's entry: qualified by the tenant in context
   /// (`TomTenantContext.qualify`), unchanged with none.
   ///

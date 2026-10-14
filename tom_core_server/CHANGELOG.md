@@ -2,6 +2,23 @@
 
 ### Added
 
+- **Item-authorization answers, dropped by item and subject from outside.**
+  `TomItemAuthorizationCache` keeps the level a remote authority answered for a
+  subject on an item (`TomCachedItemLevel`). The new invalidation kind
+  `TomInvalidationKind.item`, raised by
+  `TomCacheInvalidator.invalidateItemAuthorization(item, subject: …)`, drops the
+  answers on an item, a pattern `<type>:<prefix>*` or `*` — for one subject or
+  every subject — on every node, through the installed channel.
+  `TomItemAuthorizationWebhook` verifies an `itemAuthorization.changed` delivery
+  (HMAC-SHA256 over event id, timestamp and body; two secrets during a rotation;
+  five minutes' tolerance) and raises one per change;
+  `TomItemAuthorizationFeedFollower` reads the authority's change feed on a
+  timer as the catch-up for a lost delivery, taking the current position and
+  dropping every answer when it has none or its cursor expired
+  (`TomItemAuthorizationFeedExpiredException`). `TomCache.removeWhere` drops the
+  entries a test selects. `doc/cache.md` § Item-Authorization Answers; tests in
+  `test/item_authorization_invalidation_test.dart` and
+  `test/cache_invalidation_db_test.dart`.
 - **Item permission levels in the grant layer.** On the key of an item type the
   kernel's `TomItemTypeRegistry` declares, `TomPrincipalResourceRoleResolver.foldRoles`
   keeps the stronger level by the type's order and `TomResourceDataScope` grades

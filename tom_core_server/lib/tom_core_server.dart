@@ -80,6 +80,8 @@ export 'src/tomserver/configuration/tom_config.dart';
 export 'src/tomserver/configuration/yaml_resources.dart';
 export 'src/tomserver/cache/cache_invalidation.dart';
 export 'src/tomserver/cache/invalidation_sql.dart';
+export 'src/tomserver/cache/item_authorization_cache.dart';
+export 'src/tomserver/cache/item_authorization_changes.dart';
 export 'src/tomserver/cache/server_cache.dart';
 export 'src/tomserver/cache/sql_invalidation_channel.dart';
 export 'src/tomserver/datasources/connection_pool.dart';

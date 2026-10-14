@@ -129,6 +129,47 @@ void main() async {
       expect(received.single.origin, 'node-b');
     });
 
+    test(
+      'a revoked item share reaches the other node through the table',
+      () async {
+        // Node B: a reader with a cached item answer of its own.
+        TomItemAuthorizationCache.install();
+        addTearDown(TomItemAuthorizationCache.uninstall);
+        await TomItemAuthorizationCache.store('u-1', 'document:a1', 'edit');
+        await TomItemAuthorizationCache.store('u-2', 'document:a1', 'view');
+        final nodeB = TomSqlInvalidationChannel(ds);
+        await nodeB.start(TomCacheInvalidator.apply);
+        addTearDown(nodeB.stop);
+
+        // Node A received the webhook and published the item invalidation.
+        await TomSqlInvalidationChannel(ds).publish(
+          TomCacheInvalidation.item(
+            'tenant:acme/document:a1',
+            subject: 'u-1',
+            origin: 'node-a',
+          ),
+        );
+        await TomTenantContext.run(
+          'acme',
+          () => TomItemAuthorizationCache.store('u-1', 'document:a1', 'edit'),
+        );
+        await nodeB.poll();
+
+        expect(
+          await TomTenantContext.run(
+            'acme',
+            () => TomItemAuthorizationCache.lookup('u-1', 'document:a1'),
+          ),
+          isNull,
+        );
+        expect(
+          await TomItemAuthorizationCache.lookup('u-1', 'document:a1'),
+          isNotNull,
+          reason: 'another tenant\'s answer is not touched',
+        );
+      },
+    );
+
     test('a node starting up applies the revocations still in force', () async {
       final writer = TomSqlInvalidationChannel(ds);
       await writer.publish(

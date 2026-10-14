@@ -22,13 +22,21 @@ from the main isolate and transparently forwarded to from worker isolates.
   - [TomCacheInvalidateMessage](#tomcacheinvalidatemessage)
   - [TomSqlInvalidationChannel](#tomsqlinvalidationchannel)
   - [TomCacheInvalidationRow](#tomcacheinvalidationrow)
+  - [TomCachedItemLevel](#tomcacheditemlevel)
+  - [TomItemAuthorizationCache](#tomitemauthorizationcache)
+  - [TomItemAuthorizationChange](#tomitemauthorizationchange)
+  - [TomItemAuthorizationChangePage](#tomitemauthorizationchangepage)
+  - [TomItemAuthorizationWebhookException](#tomitemauthorizationwebhookexception)
+  - [TomItemAuthorizationFeedExpiredException](#tomitemauthorizationfeedexpiredexception)
+  - [TomItemAuthorizationWebhook](#tomitemauthorizationwebhook)
+  - [TomItemAuthorizationFeedFollower](#tomitemauthorizationfeedfollower)
 - [Enums](#enums)
   - [TomInvalidationKind](#tominvalidationkind)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 
-Sources: `lib/src/tomserver/cache/cache_invalidation.dart`, `lib/src/tomserver/cache/invalidation_sql.dart`, `lib/src/tomserver/cache/server_cache.dart`, `lib/src/tomserver/cache/sql_invalidation_channel.dart`.
+Sources: `lib/src/tomserver/cache/cache_invalidation.dart`, `lib/src/tomserver/cache/invalidation_sql.dart`, `lib/src/tomserver/cache/item_authorization_cache.dart`, `lib/src/tomserver/cache/item_authorization_changes.dart`, `lib/src/tomserver/cache/server_cache.dart`, `lib/src/tomserver/cache/sql_invalidation_channel.dart`.
 
 `TomCache` is a named in-memory cache of `TomCacheEntry` values keyed by string.
 A cache is **bounded by default** (`maximumEntries`, LRU eviction) and unbounded
@@ -72,11 +80,23 @@ default, reaches no other node and has a staleness bound of zero;
 `TomSqlInvalidationChannel` writes each invalidation to a table every node polls,
 and its poll interval is the bound.
 
+**Item-authorization answers follow the authority's reports.** An application
+that asks a remote authority — Tom UAM — which level a user holds on an item
+keeps the answer in `TomItemAuthorizationCache`, keyed by item and subject.
+`TomCacheInvalidator.invalidateItemAuthorization` drops the answers an item (or
+a pattern `<type>:<prefix>*`, or `*`) and a subject name on every node.
+`TomItemAuthorizationWebhook` raises it for each change of a verified
+`itemAuthorization.changed` delivery, and `TomItemAuthorizationFeedFollower`
+for each change read from the authority's change feed — the catch-up for a
+lost delivery.
+
 ## Class Hierarchy
 
 ```
 TomServerException  (little_things)
-    └── TomCacheException
+    ├── TomCacheException
+    ├── TomItemAuthorizationWebhookException
+    └── TomItemAuthorizationFeedExpiredException
 
 TomCacheEntry
 
@@ -99,6 +119,18 @@ TomInvalidationChannel  (interface)
 TomCacheInvalidator  (static only)
 
 TomCacheInvalidationRow
+
+TomCachedItemLevel
+
+TomItemAuthorizationCache  (static only)
+
+TomItemAuthorizationChange
+
+TomItemAuthorizationChangePage
+
+TomItemAuthorizationWebhook
+
+TomItemAuthorizationFeedFollower
 ```
 
 ## Classes
@@ -283,6 +315,7 @@ cached outside any tenant's context. The instance methods take the key as given.
 | `createDeletionTimer` | `Timer createDeletionTimer()` | Builds the periodic timer that removes entries past their `deletionTime`, in `Zone.root`. |
 | `createClearanceTimer` | `Timer createClearanceTimer()` | Builds the periodic timer that empties the entire cache, in `Zone.root`. |
 | `clear` | `void clear()` | Removes every entry, resetting the MRU chain along with the backing map so a bounded cache is left consistently empty. The clearance timer and a cross-node `cache` invalidation (`TomCacheInvalidator.invalidateCache`) both come here. |
+| `removeWhere` | `int removeWhere(bool Function(String key) test)` | Removes every entry whose stored key — tenant-qualified where it was stored in a tenant's context — satisfies `test`, each through `removeEntry`, and answers how many. An `item` invalidation comes here. |
 
 ### TomCacheStoreMessage
 
@@ -370,9 +403,9 @@ TomCacheRetrieveMessage(String cacheName, String key)
 
 One invalidation, as it travels between nodes: what is invalidated (`kind`),
 the username or cache name it names (`target`), the entry key of a single-entry
-invalidation (`key`), when it was raised (`at`, in UTC) and the node that raised
-it (`origin`). The constructor is private; an invalidation is built by one of
-the four factories.
+invalidation or the subject of an item invalidation (`key`), when it was raised
+(`at`, in UTC) and the node that raised it (`origin`). The constructor is
+private; an invalidation is built by one of the five factories.
 
 #### Constructors
 
@@ -380,11 +413,14 @@ the four factories.
 factory TomCacheInvalidation.principal(String username, {DateTime? at, String? origin})
 factory TomCacheInvalidation.cacheEntry(String cacheName, String key, {DateTime? at, String? origin})
 factory TomCacheInvalidation.cache(String cacheName, {DateTime? at, String? origin})
+factory TomCacheInvalidation.item(String item, {String? subject, DateTime? at, String? origin})
 factory TomCacheInvalidation.fromParts({required String kind, required String target, String? key, required DateTime at, required String origin})
 ```
 
 `at` defaults to now and `origin` to `TomCacheInvalidator.nodeId`; both are
-stored in UTC. `fromParts` rebuilds an invalidation from its stored parts and
+stored in UTC. `item` takes the item — key, pattern `<type>:<prefix>*` or `*` —
+as given; `TomCacheInvalidator.invalidateItemAuthorization` qualifies it by the
+tenant in context. `fromParts` rebuilds an invalidation from its stored parts and
 throws `ArgumentError` for a `kind` name no `TomInvalidationKind` carries.
 
 #### Properties
@@ -392,8 +428,8 @@ throws `ArgumentError` for a `kind` name no `TomInvalidationKind` carries.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `kind` | `TomInvalidationKind` | What is invalidated. |
-| `target` | `String` | The username, or the cache name. |
-| `key` | `String?` | The entry key of a `cacheEntry` invalidation; `null` otherwise. |
+| `target` | `String` | The username, the cache name, or the item. |
+| `key` | `String?` | The entry key of a `cacheEntry` invalidation, the subject of an `item` invalidation; `null` otherwise. |
 | `at` | `DateTime` | When the invalidation was raised, in UTC. For a principal, tokens issued at or before it are revoked. |
 | `origin` | `String` | The node that raised it — `TomCacheInvalidator.nodeId` there. |
 
@@ -483,8 +519,9 @@ Callable from any isolate: a worker forwards the call to the main isolate as a
 | `revokePrincipal` | `static Future<void> revokePrincipal(String username)` | Revokes, on every node, the tokens `username` holds that were issued now or earlier, and drops the principals cached for them. In a tenant's context, revokes that tenant's `username` only — the name travels qualified (`TomTenantContext.qualify`), because another tenant's account of the same name is a different person. |
 | `invalidateCacheEntry` | `static Future<void> invalidateCacheEntry(String cacheName, String key)` | Removes `key` from the cache named `cacheName` on every node — the current tenant's entry, in a tenant's context, qualified as `TomCache` keys it. |
 | `invalidateCache` | `static Future<void> invalidateCache(String cacheName)` | Empties the cache named `cacheName` on every node. |
+| `invalidateItemAuthorization` | `static Future<void> invalidateItemAuthorization(String item, {String? subject})` | Drops, on every node, the cached item-authorization answers on `item` — an item key `<type>:<id>`, a pattern `<type>:<prefix>*`, or `*` — for `subject`, or for every subject when it is `null`; the current tenant's, in a tenant's context. |
 | `raise` | `static Future<void> raise(TomCacheInvalidation invalidation)` | Applies `invalidation` here, then publishes it — on the main isolate; a worker forwards it there. |
-| `apply` | `static Future<void> apply(TomCacheInvalidation invalidation)` | Applies `invalidation` to this process's caches, whichever node raised it: a principal through `TomAuthorizationCache.revokeLocally`, an entry through `TomCache.removeEntry`, a cache through `TomCache.clear`. A cache name nothing registered here is nothing to invalidate. |
+| `apply` | `static Future<void> apply(TomCacheInvalidation invalidation)` | Applies `invalidation` to this process's caches, whichever node raised it: a principal through `TomAuthorizationCache.revokeLocally`, an entry through `TomCache.removeEntry`, a cache through `TomCache.clear`, an item through `TomItemAuthorizationCache.invalidateLocally`. A cache name nothing registered here is nothing to invalidate. |
 | `reset` | `static Future<void> reset()` | Puts back the local channel, stopping the installed one. Test support. |
 
 ### TomCacheInvalidateMessage
@@ -598,6 +635,227 @@ every raw-query row type carries).
 | ------ | --------- | ----------- |
 | `toInvalidation` | `TomCacheInvalidation toInvalidation()` | The invalidation this row records. |
 
+### TomCachedItemLevel
+
+One cached item-authorization answer: the `level` a subject holds on an item,
+or `null` when the authority answered that it holds none. Equal by `level`.
+
+#### Constructors
+
+```dart
+const TomCachedItemLevel(String? level)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `level` | `String?` | The level held, or `null` for none (final). |
+| `hashCode` | `int` | *(override)* The hash of `level`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `==` | `bool operator ==(Object other)` | *(override)* Equal when `level` is. |
+| `toString` | `String toString()` | *(override)* The level, or `none`. |
+
+### TomItemAuthorizationCache
+
+The process-wide cache of item-authorization answers, keyed by item — its
+resource key `<type>:<id>` — and subject — the id the authority names it by in
+its change reports. An `abstract final class`: every member is static. It is a
+`TomCache` named `cacheName`, so it lives on the main isolate, a worker's read
+and store are forwarded, and its entries are the current tenant's.
+
+#### Static Members
+
+| Member | Type | Description |
+| ------ | ---- | ----------- |
+| `cacheName` | `String` | `'tom.itemAuthorization'`, the name of the underlying `TomCache`. |
+| `defaultTimeToLive` | `Duration` | Five minutes: how long an answer is kept when no change names it. |
+| `defaultMaximumEntries` | `int` | 10,000: the bound when `install` names none. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `install` | `static void install({Duration timeToLive = defaultTimeToLive, int? maximumEntries = defaultMaximumEntries})` | Registers the cache on this isolate's `TomCacheManager`, replacing one of the same name. Called once at start-up on the main isolate. |
+| `uninstall` | `static void uninstall()` | Removes the cache. Test support. |
+| `lookup` | `static Future<TomCachedItemLevel?> lookup(String subject, String item)` | The cached answer for `subject` on `item`, or `null` on a miss. |
+| `store` | `static Future<void> store(String subject, String item, String? level)` | Caches `level` — `null` for none — as `subject`'s answer on `item`. Throws `ArgumentError` when either contains a NUL character. |
+| `invalidateLocally` | `static int invalidateLocally(String qualifiedItem, String? subject)` | Drops on this node only the answers on `qualifiedItem` — an item key, a pattern `<type>:<prefix>*` or `*`, tenant-qualified as an `item` invalidation carries it — for `subject`, or for every subject when `null`; answers how many. `TomCacheInvalidator.apply` calls it. |
+
+### TomItemAuthorizationChange
+
+One change an authority reports: the `item` whose authorizations changed and
+the `subject` they changed for, or `null` when they may have changed for
+several subjects.
+
+#### Constructors
+
+```dart
+const TomItemAuthorizationChange(String item, {String? subject})
+factory TomItemAuthorizationChange.fromJson(Map<String, Object?> json)
+```
+
+`fromJson` reads `{"item": "document:42", "subject": "u-7", "subjectKind": "user"}`.
+A subject of another kind than `user` — a group, an organization — becomes a
+change for every subject, since the application cannot list its members.
+Throws `FormatException` when `item` is missing.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `item` | `String` | The item key `<type>:<id>`, a pattern `<type>:<prefix>*`, or `*` (final). |
+| `subject` | `String?` | The user the change is for, or `null` for every subject (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | The change as `fromJson` reads it. |
+| `invalidate` | `Future<void> invalidate()` | Drops the answers this change names on every node, through `TomCacheInvalidator.invalidateItemAuthorization`. |
+| `toString` | `String toString()` | *(override)* The item and subject, for a log line. |
+
+### TomItemAuthorizationChangePage
+
+One answer of the change feed.
+
+#### Constructors
+
+```dart
+const TomItemAuthorizationChangePage({required List<TomItemAuthorizationChange> changes, required String nextCursor, bool hasMore = false})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `changes` | `List<TomItemAuthorizationChange>` | The changes since the cursor asked with, oldest first (final). |
+| `nextCursor` | `String` | The cursor to read the following changes with (final). |
+| `hasMore` | `bool` | Whether more changes follow `nextCursor` at once (final). |
+
+### TomItemAuthorizationWebhookException
+
+A webhook delivery that cannot be trusted or read; the receiving endpoint
+answers it with a client error and the authority retries. Keys:
+`error.item_authorization.webhook.signature_invalid`,
+`error.item_authorization.webhook.timestamp_stale` (with `timestamp`),
+`error.item_authorization.webhook.payload_invalid`.
+
+- **Extends:** `TomServerException`
+
+#### Constructors
+
+```dart
+TomItemAuthorizationWebhookException(String key, String defaultUserMessage, {Map<String, Object?>? parameters})
+```
+
+### TomItemAuthorizationFeedExpiredException
+
+The change feed no longer holds the cursor asked with. Thrown by the fetch
+function given to `TomItemAuthorizationFeedFollower`, which then drops every
+answer and continues from the current position. Key
+`error.item_authorization.feed.cursor_expired`, with `cursor`;
+`clientThrow: false`.
+
+- **Extends:** `TomServerException`
+
+#### Constructors
+
+```dart
+TomItemAuthorizationFeedExpiredException(String cursor)
+```
+
+### TomItemAuthorizationWebhook
+
+Verifies one `itemAuthorization.changed` webhook delivery and drops, on every
+node, the answers its changes name. A delivery carries `x-tom-event-id`,
+`x-tom-timestamp` (seconds since the epoch) and `x-tom-signature` (`sha256=`
+and the hex HMAC-SHA256 of `<event id>.<timestamp>.<body>`, keyed by the
+subscription's secret) and the body
+`{"type": "itemAuthorization.changed", "changes": [...]}`.
+
+#### Constructors
+
+```dart
+TomItemAuthorizationWebhook(List<String> secrets, {String? tenantId, Duration tolerance = defaultTolerance, DateTime Function()? clock})
+```
+
+`secrets` holds one secret, or two during a rotation; any other count throws
+`ArgumentError`. `clock` defaults to `DateTime.now`.
+
+#### Static Members
+
+| Member | Type | Description |
+| ------ | ---- | ----------- |
+| `eventIdHeader` | `String` | `'x-tom-event-id'`. |
+| `timestampHeader` | `String` | `'x-tom-timestamp'`. |
+| `signatureHeader` | `String` | `'x-tom-signature'`. |
+| `eventType` | `String` | `'itemAuthorization.changed'`, the event type applied. |
+| `defaultTolerance` | `Duration` | Five minutes. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `sign` | `static String sign(String secret, String eventId, String timestamp, String body)` | The signature header value a sender computes. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `secrets` | `List<String>` | The secrets a signature may be made with (final). |
+| `tenantId` | `String?` | The tenant the subscription belongs to; changes are applied in its context (final). |
+| `tolerance` | `Duration` | How far a delivery's timestamp may lie from now, either way (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `receive` | `Future<int> receive(Map<String, String> headers, String body)` | Verifies the delivery — header names in any case — and raises an item invalidation for each change; answers how many, none for another event type. Throws `TomItemAuthorizationWebhookException` for a missing or wrong signature, a timestamp outside `tolerance`, or a body that is not an event. |
+
+### TomItemAuthorizationFeedFollower
+
+Follows an authority's change feed and drops, on every node, the answers each
+change names. Without a known position — at the first poll and after an
+expired cursor — it takes the current position and then drops every answer of
+its tenant. The cursor advances only after a page is applied; a failed read is
+logged and retried at the next poll.
+
+#### Constructors
+
+```dart
+TomItemAuthorizationFeedFollower(Future<TomItemAuthorizationChangePage> Function(String? cursor) fetch, {Duration pollInterval = defaultPollInterval, String? tenantId})
+```
+
+#### Static Members
+
+| Member | Type | Description |
+| ------ | ---- | ----------- |
+| `defaultPollInterval` | `Duration` | Thirty seconds. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `fetch` | `Future<TomItemAuthorizationChangePage> Function(String? cursor)` | Reads the feed since a cursor, `null` for the current position; throws `TomItemAuthorizationFeedExpiredException` for a cursor the feed no longer holds (final). |
+| `pollInterval` | `Duration` | How often the feed is read (final). |
+| `tenantId` | `String?` | The tenant whose feed this is (final). |
+| `cursor` | `String?` | The cursor the next poll reads with; `null` until the position is known. |
+| `isRunning` | `bool` | Whether the follower polls on a timer. |
+| `stalenessBound` | `Duration` | `pollInterval` plus the installed channel's `stalenessBound`: the longest time from a change to its answers being dropped on every node when no webhook delivered it. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `start` | `Future<void> start()` | Polls once, then on a timer in `Zone.root` every `pollInterval`. |
+| `poll` | `Future<int> poll()` | Reads the feed until no more changes wait and raises their invalidations; answers how many. Not overlapped with a running poll. |
+| `stop` | `void stop()` | Stops the timer. Idempotent. |
+
 ## Enums
 
 ### TomInvalidationKind
@@ -609,6 +867,7 @@ What a `TomCacheInvalidation` invalidates.
 | `principal` | Every token a user holds that was issued at or before the invalidation; `target` is the username. |
 | `cacheEntry` | One entry of a named cache; `target` is the cache name and `key` the entry key. |
 | `cache` | Every entry of a named cache; `target` is the cache name. |
+| `item` | The cached item-authorization answers an item and a subject name; `target` is the tenant-qualified item key, pattern `<type>:<prefix>*` or `*`, and `key` the subject, or `null` for every subject. |
 
 ## Global Functions and Constants
 

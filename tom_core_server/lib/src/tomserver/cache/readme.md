@@ -14,7 +14,8 @@ cache — live in one process each, so on a cluster `TomCacheInvalidator` carrie
 an invalidation to the other nodes through an installed
 `TomInvalidationChannel`: `revokePrincipal(username)` refuses every token the
 user holds so far on every node, and `invalidateCacheEntry` / `invalidateCache` remove
-an entry or empty a cache everywhere. The default `TomLocalInvalidationChannel`
+an entry or empty a cache everywhere, and `invalidateItemAuthorization` drops
+the item-authorization answers an item and a subject name. The default `TomLocalInvalidationChannel`
 reaches no other node, for a single process; `TomSqlInvalidationChannel` writes
 each invalidation to the `tom_cache_invalidation` table — declared once by
 `invalidationTable` — and every node polls it,
@@ -40,9 +41,11 @@ being the deployment's decision rather than the framework's.
 | `TomCacheEntry` | One cached value (`value`) with an optional `deletionTime`. The value is non-nullable: a read answers `null` for a miss and for an expiry, so an entry holding `null` would be one no read could surface. |
 | Static helpers | `TomCache.toTypeCache<T>` / `fromTypeCache<T>` / `removeFromTypeCache<T>` and the `*NameCache` variants store/retrieve/remove by type or name. |
 | `TomCacheManager` | Per-isolate registry; `getCache(name)` / `addCache` / `removeCache(name)`, `dispose()`, and the cross-isolate forwarding decision (`useInThisIsolate`). A cache installs its timers in its constructor, so leaving the registry has to stop them too — `removeCache` and `dispose` do, while `setCurrent` stays a pure swap and hands back the displaced manager for the caller to `dispose` when the swap is final. |
-| `TomCacheInvalidator` | The cluster-wide entry point: `install(channel)` at start-up, then `revokePrincipal`, `invalidateCacheEntry` and `invalidateCache`. Applies each invalidation here first, then publishes it; a publish failure propagates. Callable from any isolate. |
+| `TomCacheInvalidator` | The cluster-wide entry point: `install(channel)` at start-up, then `revokePrincipal`, `invalidateCacheEntry`, `invalidateCache` and `invalidateItemAuthorization`. Applies each invalidation here first, then publishes it; a publish failure propagates. Callable from any isolate. |
 | `TomInvalidationChannel` · `TomLocalInvalidationChannel` · `TomSqlInvalidationChannel` | How invalidations reach the other nodes, each stating its `stalenessBound`: zero for the local channel, the poll interval for the SQL one, which also applies the revocations still in force when it starts. |
-| `TomCacheInvalidation` · `TomInvalidationKind` | One invalidation — `principal`, `cacheEntry` or `cache` — with its target, instant and originating node. |
+| `TomCacheInvalidation` · `TomInvalidationKind` | One invalidation — `principal`, `cacheEntry`, `cache` or `item` — with its target, instant and originating node. |
+| `TomItemAuthorizationCache` · `TomCachedItemLevel` | The answers a remote authority (Tom UAM) gave on items — which level a subject holds — keyed by item and subject, kept until a change names them or their lifetime ends. |
+| `TomItemAuthorizationWebhook` · `TomItemAuthorizationFeedFollower` · `TomItemAuthorizationChange` · `TomItemAuthorizationChangePage` | How the authority's change reports arrive: a verified `itemAuthorization.changed` delivery, and the change feed read on a timer as the catch-up. Each change raises `invalidateItemAuthorization`. Failures: `TomItemAuthorizationWebhookException`, `TomItemAuthorizationFeedExpiredException`. |
 
 **Two reads, and only one of them expires.** `TomCache.fromNameCache` is the
 *value*-level read: it applies the expiry rule, dropping an entry whose

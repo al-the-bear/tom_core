@@ -12,7 +12,7 @@ surface documented here.
 | Audit | [api_summary_audit.md](api_summary_audit.md) | Attributable, tamper-evident records: the hash-chained trail, its sinks, and signed anchors. |
 | Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login and two-factor services, adaptors, the policy deciding who owes a factor, enrolment and its stores, the authentication server, the server's own self-login, and external identity: the OAuth / OpenID Connect handshake and SAML 2.0 single sign-on, their pending-authorization stores, role mapping, and the linking table; and user provisioning over SCIM 2.0 — the service, its stores and endpoints, and the directory that resolves single sign-on to provisioned accounts; and service accounts with their API keys and stores. |
 | Authorization | [api_summary_authorization.md](api_summary_authorization.md) | Authorization cache, graded access, principal delegation and resource grants. |
-| Cache | [api_summary_cache.md](api_summary_cache.md) | Isolate-backed server cache and its command messages. |
+| Cache | [api_summary_cache.md](api_summary_cache.md) | Isolate-backed server cache, its command messages, cross-node invalidation and item-authorization answers. |
 | Command Line | [api_summary_cmdline.md](api_summary_cmdline.md) | CLI argument parsing (`TomArgs`) and `.env` file loading (`TomEnvFile`). |
 | Configuration | [api_summary_configuration.md](api_summary_configuration.md) | Server config provider, typed config values, YAML resources, and secret references resolved from a secret store. |
 | Datasources | [api_summary_datasources.md](api_summary_datasources.md) | DB type system, SQL dialects, queries, MariaDB datasource/prepared statements. |
@@ -282,16 +282,24 @@ surface documented here.
 | `TomCacheRetrieveMessage` | class | Retrieve command (extends `TomCommand`). |
 | `TomCacheException` | class | Cache error (extends `TomServerException`). |
 | `TomCacheInvalidation` | class | One invalidation as it travels between nodes: kind, target, key, instant, origin. |
-| `TomInvalidationKind` | enum | `principal`, `cacheEntry`, `cache`. |
+| `TomInvalidationKind` | enum | `principal`, `cacheEntry`, `cache`, `item`. |
 | `TomInvalidationChannel` | abstract interface class | How invalidations reach the other nodes; states its `stalenessBound`. |
 | `TomLocalInvalidationChannel` | class | The default single-process channel; staleness bound zero. |
 | `TomSqlInvalidationChannel` | class | Channel over a polled database table; staleness bound is the poll interval. |
-| `TomCacheInvalidator` | abstract final class | Cluster-wide entry point: `revokePrincipal`, `invalidateCacheEntry`, `invalidateCache`, `install`. |
+| `TomCacheInvalidator` | abstract final class | Cluster-wide entry point: `revokePrincipal`, `invalidateCacheEntry`, `invalidateCache`, `invalidateItemAuthorization`, `install`. |
 | `TomCacheInvalidateMessage` | class | Cross-isolate invalidation command (extends `TomCommand`). |
 | `TomCacheInvalidationRow` | class | One row of the invalidation log, as the SQL channel reads it. |
 | `invalidationTable` | function | The invalidation log, declared once as a framework-owned table. |
 | `invalidationTableDdl` | function | The `CREATE TABLE` for it, for a deployment that applies DDL by hand. |
 | `defaultInvalidationTable` | constant | `tom_cache_invalidation`. |
+| `TomItemAuthorizationCache` | abstract final class | The answers a remote authority gave on items, keyed by item and subject. |
+| `TomCachedItemLevel` | class | One cached answer: the level held, or none. |
+| `TomItemAuthorizationChange` | class | One change an authority reports: an item and, for one user, that user. |
+| `TomItemAuthorizationChangePage` | class | One answer of the change feed: changes, next cursor, more waiting. |
+| `TomItemAuthorizationWebhook` | class | Verifies an `itemAuthorization.changed` delivery and drops the answers it names. |
+| `TomItemAuthorizationFeedFollower` | class | Reads the change feed on a timer, the catch-up for lost deliveries. |
+| `TomItemAuthorizationWebhookException` | class | A webhook delivery that cannot be trusted or read (extends `TomServerException`). |
+| `TomItemAuthorizationFeedExpiredException` | class | The feed no longer holds the cursor (extends `TomServerException`). |
 
 ### Command Line (`lib/src/tomserver/cmdline/`)
 
@@ -983,6 +991,7 @@ surface documented here.
 | `TomBlobStoreOperation` | File Storage |
 | `TomBoolConfig` | Configuration |
 | `TomCache` | Cache |
+| `TomCachedItemLevel` | Cache |
 | `TomCacheEntry` | Cache |
 | `TomCacheException` | Cache |
 | `TomCacheInvalidateMessage` | Cache |
@@ -1148,6 +1157,13 @@ surface documented here.
 | `TomInvalidationChannel` | Cache |
 | `TomInvalidationKind` | Cache |
 | `TomIssuedApiKey` | Authentication |
+| `TomItemAuthorizationCache` | Cache |
+| `TomItemAuthorizationChange` | Cache |
+| `TomItemAuthorizationChangePage` | Cache |
+| `TomItemAuthorizationFeedExpiredException` | Cache |
+| `TomItemAuthorizationFeedFollower` | Cache |
+| `TomItemAuthorizationWebhook` | Cache |
+| `TomItemAuthorizationWebhookException` | Cache |
 | `TomJobRunRow` | Scheduling |
 | `TomJobRunWindowRow` | Scheduling |
 | `TomJwksServer` | Authentication |
