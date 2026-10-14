@@ -31,6 +31,7 @@ This guide is the server half.
 - [What Stays Deployment-Wide](#what-stays-deployment-wide)
 - [Working in a Tenant Outside a Request](#working-in-a-tenant-outside-a-request)
 - [Onboarding a Tenant](#onboarding-a-tenant)
+- [Removing a Tenant](#removing-a-tenant)
 - [Operating Costs](#operating-costs)
 - [Failure Keys](#failure-keys)
 - [Not Yet Implemented](#not-yet-implemented)
@@ -440,6 +441,34 @@ running deployment only once that succeeded, so a request naming the tenant
 cannot arrive before its data source exists. No restart is needed. Add the
 tenant to the configuration as well, so the next start knows it.
 
+## Removing a Tenant
+
+```dart
+final tenancy = TomTenancy.current!;
+final removed = await tenancy.removeTenant('umbrella');
+// The data stays where it is: drop it once the retention period allows.
+final main = TomDataSourceInfo.getBaseDataSourceInfo('main')!;
+final schema =
+    removed.schema ?? '${main.settings['databaseName']}_${removed.id}';
+await main.datasource.executeCommand('DROP DATABASE IF EXISTS `$schema`');
+```
+
+`removeTenant` is the counterpart of `addTenant`, for a tenant whose deletion is
+final. It takes the tenant out of `tenants` first, so from then on a request
+naming it — by its token's claim, its host, its path or a header — is refused
+as `tenancy.tenant.unknown` (`404`), and work still in its context is refused by
+`route` and `runFor`. It then drops the tenant's routes and closes the data
+sources the tenancy opened for it, which closes their connection pools. A data
+source the tenant only named by reference belongs to the deployment and stays
+open. Other tenants are untouched.
+
+The tenant's data is not touched: dropping its schema or database is the
+caller's, with the `TomTenant` the call returns. Work that is still running in
+the tenant when its pools close fails, so a deployment that needs it to finish
+stops admitting the tenant's requests first — Tom UAM suspends a tenant before
+it deletes it — and removes the tenant afterwards. Remove it from the
+configuration as well, so the next start does not provision it again.
+
 ## Operating Costs
 
 - **Connection pools.** Every `schema` and `database` tenant has a data source
@@ -464,12 +493,12 @@ tenant to the configuration as well, so the next start knows it.
 | --- | --------- | ------- |
 | `tenancy.config.not_a_map` | `TomTenancy.fromConfiguration` | `tenancy` or one of its tenants is not a map. |
 | `tenancy.config.unknown_isolation` | `TomTenantIsolation.parse` | An isolation model other than `shared`, `schema` or `database`. |
-| `tenancy.config.unknown_resolver` | `TomTenancy.fromConfiguration` | A tenant resolution other than `host` or `header`. |
+| `tenancy.config.unknown_resolver` | `TomTenancy.fromConfiguration` | A tenant resolution other than `host`, `path` or `header`. |
 | `tenancy.config.schema_unsupported` | provisioning | Schema isolation over a data source whose settings name no `databaseName`. |
 | `tenancy.config.invalid_schema` | provisioning | A schema name that is not a plain identifier of at most 64 characters. |
 | `tenancy.config.missing_datasource` | provisioning | Database isolation without a data source for a routed name. |
 | `tenancy.config.unknown_datasource` | provisioning | A routed or referenced data source that is not registered. |
-| `tenancy.tenant.unknown` | `route`, `runFor`, `resolveRequest` | Work or a request for a tenant the deployment does not have (`404` on a request; `clientThrow: true`). |
+| `tenancy.tenant.unknown` | `route`, `runFor`, `resolveRequest`, `removeTenant` | Work or a request for a tenant the deployment does not have (`404` on a request; `clientThrow: true`). |
 | `tenancy.resolution.conflict` | `resolveRequest` | A request naming another tenant than its token (`403`). |
 | `tenancy.id.invalid` | kernel `TomTenantContext.validate`, `TomTenant`, `resolveRequest` | A tenant id that is not a lower-case identifier of at most 32 characters (`400` on a request). |
 | `tenancy.context.missing` | kernel `TomTenantContext.require` | Tenant-owned work ran with no tenant in context. |
@@ -482,10 +511,6 @@ raised as the kernel's `TomTenantException`.
 
 ## Not Yet Implemented
 
-- **A tenant cannot be removed from a running deployment.** `addTenant` onboards
-  without a restart; there is no counterpart that closes a tenant's data source
-  and withdraws it. Removing a tenant is a configuration change and a restart.
-  <!-- unpinned: absence — no removeTenant exists -->
 - **The framework's own stores are not tenant-scoped beyond their columns.** The
   audit trail, the blob store, the SCIM store and the OAuth state store serve the
   whole deployment from the data source they were built over, and their rows
@@ -538,7 +563,7 @@ result, and `test/examples_test.dart` runs it.
 - **`TomTenancy`** — the configuration (`tenants`, `datasources`, `resolvers`,
   `defaultIsolation`, `createSchemas`), its reading (`fromConfiguration`,
   `configurationKey`), its lifecycle (`install`, `reset`, `current`,
-  `addTenant`), its routing (`route`, `isolationOf`), work in a tenant
+  `addTenant`, `removeTenant`), its routing (`route`, `isolationOf`), work in a tenant
   (`runFor`, `forEachTenant`), request resolution (`resolveRequest`) and the
   refusal of an unknown tenant (`unknownTenant`).
 - **`TomTenant`** / **`TomTenantIsolation`** — one tenant and its model;

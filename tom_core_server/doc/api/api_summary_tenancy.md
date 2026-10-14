@@ -170,7 +170,7 @@ reads as a tenancy with no tenants. Throws `tenancy.config.not_a_map`,
 | -------- | ---- | ----------- |
 | `configurationKey` | `static const String` | `'tenancy'` — the configuration path of the settings. |
 | `current` | `static TomTenancy?` | *(getter)* The installed configuration, or `null` in a deployment without tenancy. |
-| `tenants` | `Map<String, TomTenant>` | The tenants, by id (final; `addTenant` adds to it). |
+| `tenants` | `Map<String, TomTenant>` | The tenants, by id (final; `addTenant` adds to it, `removeTenant` removes from it). |
 | `datasources` | `Set<String>` | The data sources routed per tenant (final). |
 | `resolvers` | `List<TomTenantResolver>` | How a request without a token claim names its tenant, in order (final). |
 | `defaultIsolation` | `TomTenantIsolation` | The isolation of a tenant that names none (final). |
@@ -184,6 +184,7 @@ reads as a tenancy with no tenants. Throws `tenancy.config.not_a_map`,
 | `reset` | `static Future<void> reset()` | Removes the installed configuration, uninstalls the router, and closes and unregisters the data sources it opened. |
 | `unknownTenant` | `static TomTenancyException unknownTenant(String tenantId)` | The `tenancy.tenant.unknown` exception for work in a tenant the deployment does not have (`clientThrow: true`). |
 | `addTenant` | `Future<void> addTenant(TomTenant tenant)` | Provisions `tenant`'s schema or database, then adds it to the running deployment — onboarding without a restart. |
+| `removeTenant` | `Future<TomTenant> removeTenant(String tenantId)` | Withdraws the tenant from the running deployment: its requests and work are refused as `tenancy.tenant.unknown`, its routes dropped, the data sources opened for it closed (their pools with them). Returns the tenant; dropping its schema or database is the caller's. Throws `tenancy.tenant.unknown` for an unknown id. |
 | `isolationOf` | `TomTenantIsolation isolationOf(TomTenant tenant)` | The isolation `tenant` runs under: its own, or `defaultIsolation`. |
 | `route` | `TomDataSourceInfo route(TomDataSourceInfo base)` | `base` as the current tenant reaches it: the tenant's schema or database for a routed data source, `base` itself with no tenant, for an unrouted data source, or for a shared tenant. Throws `tenancy.tenant.unknown` for a tenant in context the deployment does not have — routing it to the shared data source would hand it everyone's rows. |
 | `runFor` | `Future<T> runFor<T>(String tenantId, FutureOr<T> Function() body)` | Runs `body` inside `tenantId`, which must be a tenant of the deployment (`tenancy.tenant.unknown` otherwise). |

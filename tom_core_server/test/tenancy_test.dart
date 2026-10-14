@@ -345,6 +345,76 @@ void main() {
       );
     });
 
+    test(
+      'a removed tenant is refused everywhere; the others are not',
+      () async {
+        final acmeData = TomDataSourceInfo('acme_data', const {});
+        TomDataSourceInfo.datasources['acme_data'] = acmeData;
+        addTearDown(() => TomDataSourceInfo.datasources.remove('acme_data'));
+        final tenancy = TomTenancy(
+          tenants: [
+            TomTenant(
+              'acme',
+              isolation: TomTenantIsolation.database,
+              datasources: const {'': 'acme_data'},
+            ),
+            TomTenant('globex'),
+          ],
+          datasources: const {'tenant_data'},
+          resolvers: const [TomTenantHeaderResolver()],
+        );
+        await TomTenancy.install(tenancy);
+        expect(
+          TomTenantContext.run(
+            'acme',
+            () => TomDataSourceInfo.getDataSourceInfo('tenant_data'),
+          ),
+          same(acmeData),
+        );
+
+        final removed = await tenancy.removeTenant('acme');
+
+        expect(removed.id, 'acme');
+        expect(tenancy.tenants.keys, ['globex']);
+        Matcher unknown() => throwsA(
+          isA<TomTenancyException>().having(
+            (e) => e.key,
+            'key',
+            'tenancy.tenant.unknown',
+          ),
+        );
+        expect(
+          () => TomTenantContext.run(
+            'acme',
+            () => TomDataSourceInfo.getDataSourceInfo('tenant_data'),
+          ),
+          unknown(),
+        );
+        final byToken = tenancy.resolveRequest(_request(), claim: 'acme');
+        expect((byToken.status, byToken.key), (404, 'tenancy.tenant.unknown'));
+        final byHeader = tenancy.resolveRequest(
+          _request(headers: {'x-tenant-id': 'acme'}),
+        );
+        expect(byHeader.status, 404);
+        expect(() => tenancy.runFor('acme', () => null), unknown());
+        // A data source the tenant only named is the deployment's: still there.
+        expect(TomDataSourceInfo.datasources['acme_data'], same(acmeData));
+        // The other tenant is untouched.
+        expect(
+          TomTenantContext.run(
+            'globex',
+            () => TomDataSourceInfo.getDataSourceInfo('tenant_data'),
+          ),
+          same(tenantData),
+        );
+        expect(
+          tenancy.resolveRequest(_request(), claim: 'globex').tenant,
+          'globex',
+        );
+        await expectLater(tenancy.removeTenant('acme'), unknown());
+      },
+    );
+
     test('runFor and forEachTenant run work inside each tenant', () async {
       final tenancy = _tenancy();
       await TomTenancy.install(tenancy);
@@ -508,6 +578,25 @@ void main() {
         ),
         (403, null),
       );
+    });
+
+    test('a removed tenant\'s token and header are refused', () async {
+      final tenancy = _tenancy();
+      await TomTenancy.install(tenancy);
+      await tenancy.removeTenant('acme');
+      final token = _signed({'username': 'alice', 'tenant': 'acme'});
+      expect(
+        await serve(_request(headers: {'authorization': 'Bearer $token'})),
+        (404, null),
+      );
+      expect(await serve(_request(headers: {'x-tenant-id': 'acme'})), (
+        404,
+        null,
+      ));
+      expect(await serve(_request(headers: {'x-tenant-id': 'globex'})), (
+        200,
+        'globex',
+      ));
     });
 
     test('a deployment without tenancy runs every request in none', () async {

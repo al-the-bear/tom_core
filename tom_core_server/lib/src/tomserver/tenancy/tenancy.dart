@@ -322,6 +322,41 @@ class TomTenancy {
     tenants[tenant.id] = tenant;
   }
 
+  /// Removes the tenant [tenantId] from the running deployment — the
+  /// counterpart of [addTenant], for a tenant whose deletion is final.
+  ///
+  /// In order: the tenant leaves [tenants], so a request naming it — by its
+  /// token's claim, its host, its path or a header — is refused as
+  /// `tenancy.tenant.unknown` (404) and [route] refuses it for work still in
+  /// context; its routes are dropped; and the data sources this tenancy opened
+  /// for it are unregistered and closed, which closes their connection pools.
+  /// A data source the tenant only named by reference is the deployment's and
+  /// stays open. Other tenants are untouched.
+  ///
+  /// The tenant's data is left where it is: dropping the schema or the
+  /// database is the caller's, with the [TomTenant] this returns — under
+  /// `schema` isolation its schema is [TomTenant.schema], or
+  /// `<databaseName>_<id>` when it names none. Work that is still running in
+  /// the tenant when its pools close fails; a caller that needs it to finish
+  /// stops admitting the tenant's requests first and removes it afterwards.
+  ///
+  /// Throws `tenancy.tenant.unknown` for a tenant the deployment does not have.
+  Future<TomTenant> removeTenant(String tenantId) async {
+    final tenant = tenants.remove(tenantId);
+    if (tenant == null) throw unknownTenant(tenantId);
+    _routes.removeWhere((key, _) => key.$2 == tenantId);
+    final owned = [
+      for (final info in _opened)
+        if (info.name.endsWith('@$tenantId')) info,
+    ];
+    for (final info in owned) {
+      _opened.remove(info);
+      TomDataSourceInfo.datasources.remove(info.name);
+      await info.datasource.close();
+    }
+    return tenant;
+  }
+
   /// The isolation [tenant] runs under.
   TomTenantIsolation isolationOf(TomTenant tenant) =>
       tenant.isolation ?? defaultIsolation;

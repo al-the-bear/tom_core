@@ -2,6 +2,15 @@
 
 ### Added
 
+- **Removing a tenant from a running deployment** — `TomTenancy.removeTenant`,
+  the counterpart of `addTenant`. The tenant leaves `tenants`, so its requests
+  — by token claim, host, path or header — and its work in context are refused
+  as `tenancy.tenant.unknown`; its routes are dropped and the data sources the
+  tenancy opened for it are unregistered and closed, with their connection
+  pools. A data source it only named by reference stays open; its schema or
+  database is left for the caller to drop, with the returned `TomTenant`.
+  `doc/tenancy.md` § Removing a Tenant; tests in `test/tenancy_test.dart` and,
+  under all three isolation models, `test/tenancy_db_test.dart`.
 - **Tenant resolution by a path segment** — `TomTenantPathResolver` in
   `tenancy/tenant_resolution.dart`, beside the host and header resolvers. It
   names the tenant by the path segment after `prefix` (`t` by default:

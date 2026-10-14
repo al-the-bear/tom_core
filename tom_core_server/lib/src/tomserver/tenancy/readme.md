@@ -20,7 +20,7 @@ header.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomTenancy` | The deployment's tenants and their routing. `install` provisions each tenant's schema or database and routes data-source lookups; `runFor` / `forEachTenant` run work inside a tenant; `resolveRequest` names a request's tenant or the rejection to answer it with; `addTenant` onboards without a restart. |
+| `TomTenancy` | The deployment's tenants and their routing. `install` provisions each tenant's schema or database and routes data-source lookups; `runFor` / `forEachTenant` run work inside a tenant; `resolveRequest` names a request's tenant or the rejection to answer it with; `addTenant` onboards without a restart, and `removeTenant` withdraws a tenant, closing the data sources opened for it. |
 | `TomTenant` · `TomTenantIsolation` | One tenant, and where its data lives: `shared`, `schema` or `database`. |
 | `TomTenantResolver` · `TomTenantHostResolver` · `TomTenantPathResolver` · `TomTenantHeaderResolver` | How a request without a token claim names its tenant: by subdomain or own host, by the path segment after a prefix (`/t/<segment>`, mapped to a tenant id when a lookup is given), or by the `X-Tenant-Id` header. |
 | `TomTenantResolution` | A tenant, none, or a rejection with its HTTP status and key. |

@@ -456,6 +456,45 @@ void main() async {
             );
           },
         );
+
+        // Last in the group: it removes acme for good.
+        test(
+          'removing a tenant closes what was opened for it and nothing else',
+          () async {
+            final routed = '$name@acme';
+            final opened = TomDataSourceInfo.datasources[routed];
+            if (isolation != TomTenantIsolation.shared) {
+              expect(opened, isNotNull, reason: 'a pool of its own');
+            }
+
+            await tenancy.removeTenant('acme');
+
+            expect(TomDataSourceInfo.datasources.containsKey(routed), isFalse);
+            if (opened != null) {
+              await expectLater(
+                opened.datasource.executeQuery<TomCountResult>(
+                  'SELECT COUNT(*) AS count FROM fixture_tenant_note',
+                ),
+                throwsA(anything),
+                reason: 'its pool is closed',
+              );
+            }
+            await expectLater(
+              inTenant('acme', () => null),
+              throwsA(isA<TomTenancyException>()),
+            );
+            // The shared base and the other tenant keep working.
+            expect(await _count(base, 'WHERE 1 = 1'), greaterThanOrEqualTo(0));
+            await inTenant(
+              'globex',
+              () => notes.save(FixtureTenantNote()..text = 'after removal'),
+            );
+            expect(
+              (await inTenant('globex', notes.findAll)).map((n) => n.text),
+              contains('after removal'),
+            );
+          },
+        );
       });
     }
   }, skip: skipReason);
